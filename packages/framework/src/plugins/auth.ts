@@ -5,8 +5,14 @@ import type {
   AuthCallbackInput,
   AuthCheckResult,
   AuthContext,
+  AccessConstraint,
   AccessDecision,
+  AccessEvaluation,
   AccessQuery,
+  AccessReason,
+  AccessRecord,
+  AuthCapabilitiesResolved,
+  AuthIdentity,
   AuthLoginInput,
   AuthPermissions,
   AuthProvider,
@@ -27,14 +33,36 @@ import type { HAI3Plugin } from '../types';
 
 export type AuthRuntime = {
   provider: AuthProvider;
+  /** Resolved capability flags built by method-presence probe at provider-attach time. */
+  capabilities: AuthCapabilitiesResolved;
   getSession: (ctx?: AuthContext) => Promise<AuthSession | null>;
   checkAuth: (ctx?: AuthContext) => Promise<AuthCheckResult>;
   logout: (ctx?: AuthContext) => Promise<AuthTransition>;
   login?: (input: AuthLoginInput, ctx?: AuthContext) => Promise<AuthTransition>;
   handleCallback?: (input: AuthCallbackInput, ctx?: AuthContext) => Promise<AuthTransition>;
   refresh?: (ctx?: AuthContext) => Promise<AuthSession | null>;
+  getIdentity?: (ctx?: AuthContext) => Promise<AuthIdentity | null>;
   getPermissions?: (ctx?: AuthContext) => Promise<AuthPermissions>;
-  canAccess?: <TRecord extends Record<string, string | number | boolean | null> = Record<string, string | number | boolean | null>>(query: AccessQuery<TRecord>, ctx?: AuthContext) => Promise<AccessDecision>;
+  /** Fail-closed: always resolves to 'allow' | 'deny'. Never throws. */
+  canAccess: <TRecord extends AccessRecord = AccessRecord>(
+    query: AccessQuery<TRecord>,
+    ctx?: AuthContext,
+  ) => Promise<AccessDecision>;
+  /** Fail-closed: always resolves to ReadonlyArray<AccessDecision>. Never throws. Order preserved. */
+  canAccessMany: (
+    queries: ReadonlyArray<AccessQuery>,
+    ctx?: AuthContext,
+  ) => Promise<ReadonlyArray<AccessDecision>>;
+  /** Fail-closed: always resolves to AccessEvaluation with deny+reason on any error path. Never throws. */
+  evaluateAccess: <TRecord extends AccessRecord = AccessRecord>(
+    query: AccessQuery<TRecord>,
+    ctx?: AuthContext,
+  ) => Promise<AccessEvaluation>;
+  /** Fail-closed: always resolves to ReadonlyArray<AccessEvaluation>. Never throws. Order preserved. */
+  evaluateMany: (
+    queries: ReadonlyArray<AccessQuery>,
+    ctx?: AuthContext,
+  ) => Promise<ReadonlyArray<AccessEvaluation>>;
   subscribe?: (listener: AuthStateListener) => AuthUnsubscribe;
 };
 
@@ -68,6 +96,269 @@ export type AuthPluginConfig = {
    */
   hai3Api?: Hai3ApiAuthTransportConfig;
 };
+
+// ---------------------------------------------------------------------------
+// Capability probe
+// ---------------------------------------------------------------------------
+
+function buildCapabilities(provider: AuthProvider): AuthCapabilitiesResolved {
+  return {
+    hasGetIdentity: typeof provider.getIdentity === 'function',
+    hasGetPermissions: typeof provider.getPermissions === 'function',
+    hasCanAccess: typeof provider.canAccess === 'function',
+    hasCanAccessMany: typeof provider.canAccessMany === 'function',
+    hasEvaluateAccess: typeof provider.evaluateAccess === 'function',
+    hasEvaluateMany: typeof provider.evaluateMany === 'function',
+    hasRefresh: typeof provider.refresh === 'function',
+    hasSubscribe: typeof provider.subscribe === 'function',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Fail-closed access wrappers
+// ---------------------------------------------------------------------------
+
+function classifyAbortReason(signal: AbortSignal): AccessReason {
+  const reason = signal.reason;
+  if (reason instanceof Error && reason.name === 'TimeoutError') return 'timeout';
+  return 'aborted';
+}
+
+function isAccessDecision(value: unknown): value is AccessDecision {
+  return value === 'allow' || value === 'deny';
+}
+
+function normalizeDecision(value: unknown): AccessDecision {
+  return value === 'allow' ? 'allow' : 'deny';
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function isAccessReason(value: unknown): value is AccessReason {
+  return typeof value === 'string';
+}
+
+function isAccessJsonValue(value: unknown, seen: WeakSet<object> = new WeakSet()): boolean {
+  if (
+    value === null
+    || typeof value === 'string'
+    || typeof value === 'number'
+    || typeof value === 'boolean'
+  ) {
+    return true;
+  }
+
+  if (Array.isArray(value)) {
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return value.every((entry) => isAccessJsonValue(entry, seen));
+  }
+
+  if (isPlainObject(value)) {
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return Object.values(value).every((entry) => isAccessJsonValue(entry, seen));
+  }
+
+  return false;
+}
+
+function isAccessConstraint(value: unknown): value is AccessConstraint {
+  return isPlainObject(value)
+    && Object.values(value).every((entry) => isAccessJsonValue(entry));
+}
+
+function isAccessConstraints(value: unknown): value is ReadonlyArray<AccessConstraint> {
+  return Array.isArray(value) && value.every((entry) => isAccessConstraint(entry));
+}
+
+function isAccessMeta(value: unknown): value is NonNullable<AccessEvaluation['meta']> {
+  return isPlainObject(value)
+    && Object.values(value).every((entry) => isAccessJsonValue(entry));
+}
+
+function normalizeEvaluation(value: unknown): AccessEvaluation {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return { decision: 'deny', reason: 'provider_error' };
+  }
+
+  const maybeEvaluation = value as {
+    decision?: unknown;
+    constraints?: unknown;
+    reason?: unknown;
+    meta?: unknown;
+  };
+  if (!isAccessDecision(maybeEvaluation.decision)) {
+    return { decision: 'deny', reason: 'provider_error' };
+  }
+
+  if (maybeEvaluation.constraints !== undefined && !isAccessConstraints(maybeEvaluation.constraints)) {
+    return { decision: 'deny', reason: 'provider_error' };
+  }
+
+  if (maybeEvaluation.reason !== undefined && !isAccessReason(maybeEvaluation.reason)) {
+    return { decision: 'deny', reason: 'provider_error' };
+  }
+
+  if (maybeEvaluation.meta !== undefined && !isAccessMeta(maybeEvaluation.meta)) {
+    return { decision: 'deny', reason: 'provider_error' };
+  }
+
+  const normalized: AccessEvaluation = { decision: maybeEvaluation.decision };
+  if (maybeEvaluation.constraints !== undefined) {
+    normalized.constraints = maybeEvaluation.constraints;
+  }
+  if (maybeEvaluation.reason !== undefined) {
+    normalized.reason = maybeEvaluation.reason;
+  }
+  if (maybeEvaluation.meta !== undefined) {
+    normalized.meta = maybeEvaluation.meta;
+  }
+  return normalized;
+}
+
+async function safeCanAccess(
+  provider: AuthProvider,
+  caps: AuthCapabilitiesResolved,
+  query: AccessQuery,
+  ctx?: AuthContext,
+): Promise<AccessDecision> {
+  if (!query.action || !query.resource) return 'deny';
+  if (!caps.hasCanAccess) return 'deny';
+
+  let session: AuthSession | null;
+  try {
+    session = await provider.getSession(ctx);
+  } catch {
+    return 'deny';
+  }
+  if (session === null) return 'deny';
+
+  try {
+    return normalizeDecision(await provider.canAccess!(query, ctx));
+  } catch {
+    return 'deny';
+  }
+}
+
+async function safeEvaluateAccess(
+  provider: AuthProvider,
+  caps: AuthCapabilitiesResolved,
+  query: AccessQuery,
+  ctx?: AuthContext,
+): Promise<AccessEvaluation> {
+  if (!query.action || !query.resource) {
+    return { decision: 'deny', reason: 'malformed' };
+  }
+  if (!caps.hasEvaluateAccess) {
+    return { decision: 'deny', reason: 'unsupported' };
+  }
+
+  let session: AuthSession | null;
+  try {
+    session = await provider.getSession(ctx);
+  } catch {
+    return { decision: 'deny', reason: 'unauthenticated' };
+  }
+  if (session === null) {
+    return { decision: 'deny', reason: 'unauthenticated' };
+  }
+
+  try {
+    return normalizeEvaluation(await provider.evaluateAccess!(query, ctx));
+  } catch {
+    const signal = ctx?.signal;
+    if (signal?.aborted) {
+      return { decision: 'deny', reason: classifyAbortReason(signal) };
+    }
+    return { decision: 'deny', reason: 'provider_error' };
+  }
+}
+
+async function safeCanAccessMany(
+  provider: AuthProvider,
+  caps: AuthCapabilitiesResolved,
+  queries: ReadonlyArray<AccessQuery>,
+  ctx?: AuthContext,
+): Promise<ReadonlyArray<AccessDecision>> {
+  if (queries.length === 0) return [];
+
+  if (caps.hasCanAccessMany) {
+    let session: AuthSession | null;
+    try {
+      session = await provider.getSession(ctx);
+    } catch {
+      return queries.map(() => 'deny' as const);
+    }
+    if (session === null) return queries.map(() => 'deny' as const);
+
+    try {
+      const decisions = await provider.canAccessMany!(queries, ctx);
+      if (!Array.isArray(decisions) || decisions.length !== queries.length) {
+        return queries.map(() => 'deny' as const);
+      }
+      return decisions.map((decision) => normalizeDecision(decision));
+    } catch {
+      return queries.map(() => 'deny' as const);
+    }
+  }
+
+  const results: AccessDecision[] = [];
+  for (const query of queries) {
+    results.push(await safeCanAccess(provider, caps, query, ctx));
+  }
+  return results;
+}
+
+async function safeEvaluateMany(
+  provider: AuthProvider,
+  caps: AuthCapabilitiesResolved,
+  queries: ReadonlyArray<AccessQuery>,
+  ctx?: AuthContext,
+): Promise<ReadonlyArray<AccessEvaluation>> {
+  if (queries.length === 0) return [];
+
+  if (caps.hasEvaluateMany) {
+    let session: AuthSession | null;
+    try {
+      session = await provider.getSession(ctx);
+    } catch {
+      return queries.map(() => ({ decision: 'deny' as const, reason: 'unauthenticated' as const }));
+    }
+    if (session === null) {
+      return queries.map(() => ({ decision: 'deny' as const, reason: 'unauthenticated' as const }));
+    }
+
+    try {
+      const evaluations = await provider.evaluateMany!(queries, ctx);
+      if (!Array.isArray(evaluations) || evaluations.length !== queries.length) {
+        return queries.map(() => ({ decision: 'deny' as const, reason: 'provider_error' as const }));
+      }
+      return evaluations.map((evaluation) => normalizeEvaluation(evaluation));
+    } catch {
+      const signal = ctx?.signal;
+      if (signal?.aborted) {
+        const reason = classifyAbortReason(signal);
+        return queries.map(() => ({ decision: 'deny' as const, reason }));
+      }
+      return queries.map(() => ({ decision: 'deny' as const, reason: 'provider_error' as const }));
+    }
+  }
+
+  const results: AccessEvaluation[] = [];
+  for (const query of queries) {
+    results.push(await safeEvaluateAccess(provider, caps, query, ctx));
+  }
+  return results;
+}
+
+// ---------------------------------------------------------------------------
+// REST transport helpers
+// ---------------------------------------------------------------------------
 
 function isSupportedAuthTransportMethod(
   method: RestRequestContext['method']
@@ -296,6 +587,7 @@ export function hai3ApiTransport(): AuthTransportBinder {
 export function auth(config: AuthPluginConfig): HAI3Plugin {
   const transport = config.transport ?? hai3ApiTransport();
   let binding: AuthTransportBinding | null = null;
+  const caps = buildCapabilities(config.provider);
 
   return {
     name: 'auth',
@@ -304,15 +596,27 @@ export function auth(config: AuthPluginConfig): HAI3Plugin {
       app: {
         auth: {
           provider: config.provider,
+          capabilities: caps,
           getSession: (ctx?: AuthContext) => config.provider.getSession(ctx),
           checkAuth: (ctx?: AuthContext) => config.provider.checkAuth(ctx),
           logout: (ctx?: AuthContext) => config.provider.logout(ctx),
           login: config.provider.login?.bind(config.provider),
           handleCallback: config.provider.handleCallback?.bind(config.provider),
           refresh: config.provider.refresh?.bind(config.provider),
-
+          getIdentity: config.provider.getIdentity?.bind(config.provider),
           getPermissions: config.provider.getPermissions?.bind(config.provider),
-          canAccess: config.provider.canAccess?.bind(config.provider),
+          canAccess: <TRecord extends AccessRecord = AccessRecord>(
+            query: AccessQuery<TRecord>,
+            ctx?: AuthContext,
+          ) => safeCanAccess(config.provider, caps, query as AccessQuery, ctx),
+          canAccessMany: (queries, ctx) =>
+            safeCanAccessMany(config.provider, caps, queries, ctx),
+          evaluateAccess: <TRecord extends AccessRecord = AccessRecord>(
+            query: AccessQuery<TRecord>,
+            ctx?: AuthContext,
+          ) => safeEvaluateAccess(config.provider, caps, query as AccessQuery, ctx),
+          evaluateMany: (queries, ctx) =>
+            safeEvaluateMany(config.provider, caps, queries, ctx),
           subscribe: config.provider.subscribe?.bind(config.provider),
         } satisfies AuthRuntime,
       },

@@ -18,7 +18,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { apiRegistry, RestProtocol } from '@cyberfabric/api';
 import { createStore } from '@cyberfabric/state';
 import type { RestPlugin, RestPluginHooks, RestRequestContext } from '@cyberfabric/api';
-import type { AuthProvider, AuthSession } from '@cyberfabric/auth';
+import type { AccessEvaluation, AuthProvider, AuthSession } from '@cyberfabric/auth';
 import { createHAI3 } from '../src/createHAI3';
 import { auth, hai3ApiTransport } from '../src/plugins/auth';
 import type { AuthTransportBinder } from '../src/plugins/auth';
@@ -667,6 +667,727 @@ describe('auth plugin', () => {
       expect(ctx2.retry).not.toHaveBeenCalled();
       // Single refresh call (deduped)
       expect(refreshFn).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 15. Capability probe via app.auth runtime
+  // -------------------------------------------------------------------------
+  describe('auth capabilities', () => {
+    it('sets all flags false for a minimal provider', () => {
+      const app = createHAI3().use(auth({ provider: makeNullSessionProvider() })).build();
+
+      expect(app.auth?.capabilities.hasCanAccess).toBe(false);
+      expect(app.auth?.capabilities.hasCanAccessMany).toBe(false);
+      expect(app.auth?.capabilities.hasEvaluateAccess).toBe(false);
+      expect(app.auth?.capabilities.hasEvaluateMany).toBe(false);
+      expect(app.auth?.capabilities.hasGetIdentity).toBe(false);
+      expect(app.auth?.capabilities.hasGetPermissions).toBe(false);
+      expect(app.auth?.capabilities.hasRefresh).toBe(false);
+      expect(app.auth?.capabilities.hasSubscribe).toBe(false);
+
+      app.destroy();
+    });
+
+    it('sets hasCanAccess=true when provider implements canAccess', () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccess: vi.fn().mockResolvedValue('allow'),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      expect(app.auth?.capabilities.hasCanAccess).toBe(true);
+      app.destroy();
+    });
+
+    it('sets individual flags independently', () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        refresh: vi.fn().mockResolvedValue(null),
+        subscribe: vi.fn().mockReturnValue(vi.fn()),
+        getPermissions: vi.fn().mockResolvedValue({ roles: [] }),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      expect(app.auth?.capabilities.hasRefresh).toBe(true);
+      expect(app.auth?.capabilities.hasSubscribe).toBe(true);
+      expect(app.auth?.capabilities.hasGetPermissions).toBe(true);
+      expect(app.auth?.capabilities.hasCanAccess).toBe(false);
+      expect(app.auth?.capabilities.hasGetIdentity).toBe(false);
+      app.destroy();
+    });
+
+    it('app.auth.capabilities reflects probe result', () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccess: vi.fn().mockResolvedValue('allow'),
+        evaluateAccess: vi.fn().mockResolvedValue({ decision: 'allow' }),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      expect(app.auth?.capabilities.hasCanAccess).toBe(true);
+      expect(app.auth?.capabilities.hasEvaluateAccess).toBe(true);
+      expect(app.auth?.capabilities.hasCanAccessMany).toBe(false);
+      expect(app.auth?.capabilities.hasEvaluateMany).toBe(false);
+
+      app.destroy();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 16. Fail-closed canAccess
+  // -------------------------------------------------------------------------
+  describe('fail-closed canAccess', () => {
+    it('returns allow when provider resolves allow and session exists', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccess: vi.fn().mockResolvedValue('allow'),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const decision = await app.auth!.canAccess({ action: 'read', resource: 'doc' });
+
+      expect(decision).toBe('allow');
+      app.destroy();
+    });
+
+    it('returns deny when provider has no canAccess', async () => {
+      const provider = makeBearerProvider('tok'); // no canAccess
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const decision = await app.auth!.canAccess({ action: 'read', resource: 'doc' });
+
+      expect(decision).toBe('deny');
+      app.destroy();
+    });
+
+    it('returns deny when session is null', async () => {
+      const provider: AuthProvider = {
+        ...makeNullSessionProvider(),
+        canAccess: vi.fn().mockResolvedValue('allow'),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const decision = await app.auth!.canAccess({ action: 'read', resource: 'doc' });
+
+      expect(decision).toBe('deny');
+      expect(provider.canAccess).not.toHaveBeenCalled();
+      app.destroy();
+    });
+
+    it('returns deny when getSession throws', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        getSession: vi.fn().mockRejectedValue(new Error('session error')),
+        canAccess: vi.fn().mockResolvedValue('allow'),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const decision = await app.auth!.canAccess({ action: 'read', resource: 'doc' });
+
+      expect(decision).toBe('deny');
+      expect(provider.canAccess).not.toHaveBeenCalled();
+      app.destroy();
+    });
+
+    it('returns deny when provider.canAccess throws', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccess: vi.fn().mockRejectedValue(new Error('pdp error')),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const decision = await app.auth!.canAccess({ action: 'read', resource: 'doc' });
+
+      expect(decision).toBe('deny');
+      app.destroy();
+    });
+
+    it('returns deny when provider.canAccess resolves malformed decision', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccess: vi.fn().mockResolvedValue('maybe' as unknown as 'allow' | 'deny'),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const decision = await app.auth!.canAccess({ action: 'read', resource: 'doc' });
+
+      expect(decision).toBe('deny');
+      app.destroy();
+    });
+
+    it('returns deny for malformed query (missing action)', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccess: vi.fn().mockResolvedValue('allow'),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const decision = await app.auth!.canAccess({ action: '', resource: 'doc' });
+
+      expect(decision).toBe('deny');
+      expect(provider.canAccess).not.toHaveBeenCalled();
+      app.destroy();
+    });
+
+    it('returns deny for malformed query (missing resource)', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccess: vi.fn().mockResolvedValue('allow'),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const decision = await app.auth!.canAccess({ action: 'read', resource: '' });
+
+      expect(decision).toBe('deny');
+      expect(provider.canAccess).not.toHaveBeenCalled();
+      app.destroy();
+    });
+
+    it('does not throw when provider.canAccess rejects', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccess: vi.fn().mockRejectedValue(new Error('unexpected')),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      await expect(app.auth!.canAccess({ action: 'read', resource: 'doc' })).resolves.toBe('deny');
+      app.destroy();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 17. Fail-closed evaluateAccess
+  // -------------------------------------------------------------------------
+  describe('fail-closed evaluateAccess', () => {
+    it('returns allow evaluation when provider resolves allow and session exists', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: vi.fn().mockResolvedValue({ decision: 'allow', reason: 'allowed' }),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
+
+      expect(result.decision).toBe('allow');
+      app.destroy();
+    });
+
+    it('returns deny+unsupported when provider lacks evaluateAccess', async () => {
+      const provider = makeBearerProvider('tok'); // no evaluateAccess
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
+
+      expect(result.decision).toBe('deny');
+      expect(result.reason).toBe('unsupported');
+      app.destroy();
+    });
+
+    it('returns deny+unauthenticated when session is null', async () => {
+      const provider: AuthProvider = {
+        ...makeNullSessionProvider(),
+        evaluateAccess: vi.fn().mockResolvedValue({ decision: 'allow' }),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
+
+      expect(result.decision).toBe('deny');
+      expect(result.reason).toBe('unauthenticated');
+      expect(provider.evaluateAccess).not.toHaveBeenCalled();
+      app.destroy();
+    });
+
+    it('returns deny+unauthenticated when getSession throws', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        getSession: vi.fn().mockRejectedValue(new Error('session error')),
+        evaluateAccess: vi.fn().mockResolvedValue({ decision: 'allow' }),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
+
+      expect(result.decision).toBe('deny');
+      expect(result.reason).toBe('unauthenticated');
+      app.destroy();
+    });
+
+    it('returns deny+provider_error when provider.evaluateAccess throws', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: vi.fn().mockRejectedValue(new Error('pdp error')),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
+
+      expect(result.decision).toBe('deny');
+      expect(result.reason).toBe('provider_error');
+      app.destroy();
+    });
+
+    it('returns deny+provider_error when provider.evaluateAccess resolves malformed payload', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: vi.fn().mockResolvedValue({} as unknown as { decision: 'allow' | 'deny' }),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
+
+      expect(result.decision).toBe('deny');
+      expect(result.reason).toBe('provider_error');
+      app.destroy();
+    });
+
+    it('returns deny+provider_error when provider.evaluateAccess resolves malformed constraints', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: vi.fn().mockResolvedValue({
+          decision: 'allow',
+          constraints: { field: 'tenantId', op: 'eq', value: 'acme' },
+        } as AccessEvaluation),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
+
+      expect(result).toEqual({ decision: 'deny', reason: 'provider_error' });
+      app.destroy();
+    });
+
+    it('returns deny+provider_error when provider.evaluateAccess resolves malformed reason shape', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: vi.fn().mockResolvedValue({
+          decision: 'allow',
+          reason: { code: 'wrong_reason' },
+        } as AccessEvaluation),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
+
+      expect(result).toEqual({ decision: 'deny', reason: 'provider_error' });
+      app.destroy();
+    });
+
+    it('returns deny+provider_error when provider.evaluateAccess resolves malformed meta shape', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: vi.fn().mockResolvedValue({
+          decision: 'allow',
+          meta: ['policy-meta'],
+        } as AccessEvaluation),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
+
+      expect(result).toEqual({ decision: 'deny', reason: 'provider_error' });
+      app.destroy();
+    });
+
+    it('passes through provider-defined reason and nested constraints/meta payloads', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: vi.fn().mockResolvedValue({
+          decision: 'deny',
+          reason: 'tenant_scope_conflict',
+          constraints: [
+            {
+              predicate: {
+                field: 'tenant.id',
+                op: 'custom_eq',
+                value: 'tenant-1',
+              },
+            },
+          ],
+          meta: {
+            source: 'pdp',
+            audit: {
+              policyId: 'p-1',
+            },
+          },
+        } as AccessEvaluation),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      await expect(
+        app.auth!.evaluateAccess({ action: 'read', resource: 'doc' }),
+      ).resolves.toEqual({
+        decision: 'deny',
+        reason: 'tenant_scope_conflict',
+        constraints: [
+          {
+            predicate: {
+              field: 'tenant.id',
+              op: 'custom_eq',
+              value: 'tenant-1',
+            },
+          },
+        ],
+        meta: {
+          source: 'pdp',
+          audit: {
+            policyId: 'p-1',
+          },
+        },
+      });
+      app.destroy();
+    });
+
+    it('returns deny+malformed for missing action', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: vi.fn().mockResolvedValue({ decision: 'allow' }),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const result = await app.auth!.evaluateAccess({ action: '', resource: 'doc' });
+
+      expect(result.decision).toBe('deny');
+      expect(result.reason).toBe('malformed');
+      expect(provider.evaluateAccess).not.toHaveBeenCalled();
+      app.destroy();
+    });
+
+    it('returns deny+aborted when signal is aborted on provider throw', async () => {
+      const controller = new AbortController();
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: vi.fn().mockImplementation(() => {
+          controller.abort();
+          return Promise.reject(new Error('aborted'));
+        }),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const result = await app.auth!.evaluateAccess(
+        { action: 'read', resource: 'doc' },
+        { signal: controller.signal },
+      );
+
+      expect(result.decision).toBe('deny');
+      expect(result.reason).toBe('aborted');
+      app.destroy();
+    });
+
+    it('returns deny+timeout when signal is aborted with TimeoutError', async () => {
+      const controller = new AbortController();
+      const timeoutErr = Object.assign(new Error('Timeout'), { name: 'TimeoutError' });
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: vi.fn().mockImplementation(() => {
+          controller.abort(timeoutErr);
+          return Promise.reject(timeoutErr);
+        }),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const result = await app.auth!.evaluateAccess(
+        { action: 'read', resource: 'doc' },
+        { signal: controller.signal },
+      );
+
+      expect(result.decision).toBe('deny');
+      expect(result.reason).toBe('timeout');
+      app.destroy();
+    });
+
+    it('does not throw from evaluateAccess in any error path', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: vi.fn().mockRejectedValue(new Error('unexpected')),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      await expect(
+        app.auth!.evaluateAccess({ action: 'read', resource: 'doc' }),
+      ).resolves.toMatchObject({ decision: 'deny' });
+      app.destroy();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 18. Fail-closed canAccessMany
+  // -------------------------------------------------------------------------
+  describe('fail-closed canAccessMany', () => {
+    const queries = [
+      { action: 'read', resource: 'doc' },
+      { action: 'write', resource: 'doc' },
+    ];
+
+    it('returns empty array for empty input', async () => {
+      const provider = makeBearerProvider('tok');
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.canAccessMany([]);
+
+      expect(results).toHaveLength(0);
+      app.destroy();
+    });
+
+    it('returns all deny when provider lacks canAccess and canAccessMany', async () => {
+      const provider = makeBearerProvider('tok'); // no access methods
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.canAccessMany(queries);
+
+      expect(results).toEqual(['deny', 'deny']);
+      app.destroy();
+    });
+
+    it('preserves order: fallback delegates to safeCanAccess per query', async () => {
+      const canAccessFn = vi.fn()
+        .mockResolvedValueOnce('allow')
+        .mockResolvedValueOnce('deny');
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccess: canAccessFn,
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.canAccessMany(queries);
+
+      expect(results).toEqual(['allow', 'deny']);
+      expect(canAccessFn).toHaveBeenCalledTimes(2);
+      app.destroy();
+    });
+
+    it('delegates to provider.canAccessMany when available', async () => {
+      const canAccessManyFn = vi.fn().mockResolvedValue(['allow', 'deny']);
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccessMany: canAccessManyFn,
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.canAccessMany(queries);
+
+      expect(results).toEqual(['allow', 'deny']);
+      expect(canAccessManyFn).toHaveBeenCalledTimes(1);
+      app.destroy();
+    });
+
+    it('returns all deny when provider.canAccessMany throws', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccessMany: vi.fn().mockRejectedValue(new Error('batch error')),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.canAccessMany(queries);
+
+      expect(results).toEqual(['deny', 'deny']);
+      app.destroy();
+    });
+
+    it('returns all deny when provider.canAccessMany returns wrong result length', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccessMany: vi.fn().mockResolvedValue(['allow']),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.canAccessMany(queries);
+
+      expect(results).toEqual(['deny', 'deny']);
+      app.destroy();
+    });
+
+    it('normalizes malformed decisions from provider.canAccessMany to deny', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccessMany: vi.fn().mockResolvedValue([
+          'allow',
+          'maybe' as unknown as 'allow' | 'deny',
+        ]),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.canAccessMany(queries);
+
+      expect(results).toEqual(['allow', 'deny']);
+      app.destroy();
+    });
+
+    it('returns all deny when session is null and provider has canAccessMany', async () => {
+      const provider: AuthProvider = {
+        ...makeNullSessionProvider(),
+        canAccessMany: vi.fn().mockResolvedValue(['allow', 'allow']),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.canAccessMany(queries);
+
+      expect(results).toEqual(['deny', 'deny']);
+      expect(provider.canAccessMany).not.toHaveBeenCalled();
+      app.destroy();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 19. Fail-closed evaluateMany
+  // -------------------------------------------------------------------------
+  describe('fail-closed evaluateMany', () => {
+    const queries = [
+      { action: 'read', resource: 'doc' },
+      { action: 'write', resource: 'doc' },
+    ];
+
+    it('returns empty array for empty input', async () => {
+      const provider = makeBearerProvider('tok');
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.evaluateMany([]);
+
+      expect(results).toHaveLength(0);
+      app.destroy();
+    });
+
+    it('returns all deny+unsupported when provider lacks evaluateAccess and evaluateMany', async () => {
+      const provider = makeBearerProvider('tok'); // no evaluate methods
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.evaluateMany(queries);
+
+      expect(results).toHaveLength(2);
+      expect(results[0]).toMatchObject({ decision: 'deny', reason: 'unsupported' });
+      expect(results[1]).toMatchObject({ decision: 'deny', reason: 'unsupported' });
+      app.destroy();
+    });
+
+    it('delegates to provider.evaluateMany when available', async () => {
+      const evalManyFn = vi.fn().mockResolvedValue([
+        { decision: 'allow', reason: 'allowed' },
+        { decision: 'deny', reason: 'denied' },
+      ]);
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateMany: evalManyFn,
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.evaluateMany(queries);
+
+      expect(results[0].decision).toBe('allow');
+      expect(results[1].decision).toBe('deny');
+      expect(evalManyFn).toHaveBeenCalledTimes(1);
+      app.destroy();
+    });
+
+    it('fallback: preserves order via safeEvaluateAccess', async () => {
+      const evaluateAccessFn = vi.fn()
+        .mockResolvedValueOnce({ decision: 'allow', reason: 'allowed' })
+        .mockResolvedValueOnce({ decision: 'deny', reason: 'denied' });
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: evaluateAccessFn,
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.evaluateMany(queries);
+
+      expect(results[0].decision).toBe('allow');
+      expect(results[1].decision).toBe('deny');
+      expect(evaluateAccessFn).toHaveBeenCalledTimes(2);
+      app.destroy();
+    });
+
+    it('returns all deny+unauthenticated when session is null and provider has evaluateMany', async () => {
+      const provider: AuthProvider = {
+        ...makeNullSessionProvider(),
+        evaluateMany: vi.fn().mockResolvedValue([{ decision: 'allow' }, { decision: 'allow' }]),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.evaluateMany(queries);
+
+      expect(results).toHaveLength(2);
+      expect(results[0]).toMatchObject({ decision: 'deny', reason: 'unauthenticated' });
+      expect(results[1]).toMatchObject({ decision: 'deny', reason: 'unauthenticated' });
+      expect(provider.evaluateMany).not.toHaveBeenCalled();
+      app.destroy();
+    });
+
+    it('returns all deny+provider_error when provider.evaluateMany throws', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateMany: vi.fn().mockRejectedValue(new Error('batch error')),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.evaluateMany(queries);
+
+      expect(results).toHaveLength(2);
+      expect(results[0]).toMatchObject({ decision: 'deny', reason: 'provider_error' });
+      expect(results[1]).toMatchObject({ decision: 'deny', reason: 'provider_error' });
+      app.destroy();
+    });
+
+    it('returns all deny+provider_error when provider.evaluateMany returns wrong result length', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateMany: vi.fn().mockResolvedValue([{ decision: 'allow' }]),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.evaluateMany(queries);
+
+      expect(results).toHaveLength(2);
+      expect(results[0]).toMatchObject({ decision: 'deny', reason: 'provider_error' });
+      expect(results[1]).toMatchObject({ decision: 'deny', reason: 'provider_error' });
+      app.destroy();
+    });
+
+    it('normalizes malformed entries from provider.evaluateMany to deny+provider_error', async () => {
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateMany: vi.fn().mockResolvedValue([
+          { decision: 'allow', reason: 'allowed' },
+          {} as unknown as { decision: 'allow' | 'deny' },
+        ]),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.evaluateMany(queries);
+
+      expect(results[0]).toMatchObject({ decision: 'allow', reason: 'allowed' });
+      expect(results[1]).toMatchObject({ decision: 'deny', reason: 'provider_error' });
+      app.destroy();
+    });
+
+    it('normalizes malformed constraints while preserving provider-defined reason/meta entries', async () => {
+      const malformedQueries = [
+        { action: 'read', resource: 'doc' },
+        { action: 'update', resource: 'doc' },
+        { action: 'delete', resource: 'doc' },
+        { action: 'list', resource: 'doc' },
+      ];
+
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateMany: vi.fn().mockResolvedValue([
+          { decision: 'allow', reason: 'allowed' },
+          { decision: 'allow', constraints: { field: 'tenantId', op: 'eq', value: 'acme' } },
+          { decision: 'deny', reason: 'unknown_reason' },
+          { decision: 'allow', meta: { source: 'scope', nested: { id: 'p-1' } } },
+        ] as ReadonlyArray<AccessEvaluation>),
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const results = await app.auth!.evaluateMany(malformedQueries);
+
+      expect(results).toEqual([
+        { decision: 'allow', reason: 'allowed' },
+        { decision: 'deny', reason: 'provider_error' },
+        { decision: 'deny', reason: 'unknown_reason' },
+        { decision: 'allow', meta: { source: 'scope', nested: { id: 'p-1' } } },
+      ]);
+      app.destroy();
     });
   });
 });

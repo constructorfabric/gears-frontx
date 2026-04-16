@@ -47,13 +47,61 @@ export interface AuthContext {
 // Access control
 // ---------------------------------------------------------------------------
 
-export interface AccessQuery<TRecord extends Record<string, string | number | boolean | null> = Record<string, string | number | boolean | null>> {
+/** Scalar-keyed record attached to an access query. */
+export type AccessRecord = Record<string, string | number | boolean | null>;
+
+export interface AccessQuery<TRecord extends AccessRecord = AccessRecord> {
   action: string;
   resource: string;
   record?: TRecord;
 }
 
 export type AccessDecision = 'allow' | 'deny';
+
+/** JSON-compatible primitives for provider-agnostic evaluation payload passthrough. */
+export type AccessJsonPrimitive = string | number | boolean | null;
+
+export interface AccessJsonObject {
+  readonly [key: string]: AccessJsonValue;
+}
+
+export type AccessJsonArray = ReadonlyArray<AccessJsonValue>;
+
+/** Recursive JSON-compatible value for extensible constraints/meta fields. */
+export type AccessJsonValue =
+  | AccessJsonPrimitive
+  | AccessJsonArray
+  | AccessJsonObject;
+
+/** Common reason hints used by framework fallbacks and common providers. */
+export type KnownAccessReason =
+  | 'allowed'
+  | 'denied'
+  | 'unauthenticated'
+  | 'policy_not_found'
+  | 'transport_error'
+  | 'timeout'
+  | 'aborted'
+  | 'unsupported'
+  | 'malformed'
+  | 'provider_error';
+
+/** Provider-defined reason string (framework-known values + custom PDP reason codes). */
+export type AccessReason = KnownAccessReason | (string & {});
+
+/** Provider-defined constraint entry (typed passthrough object). */
+export type AccessConstraint = Readonly<Record<string, AccessJsonValue>>;
+
+/** Provider-defined evaluation metadata (typed passthrough object). */
+export type AccessMeta = Readonly<Record<string, AccessJsonValue>>;
+
+/** Full evaluation result. evaluateAccess() resolves to this; canAccess() maps to decision only. */
+export interface AccessEvaluation {
+  decision: AccessDecision;
+  constraints?: ReadonlyArray<AccessConstraint>;
+  reason?: AccessReason;
+  meta?: AccessMeta;
+}
 
 // ---------------------------------------------------------------------------
 // Inputs
@@ -109,6 +157,18 @@ export interface AuthPermissions {
 }
 
 // ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+/** Subject identity derived from OIDC ID token / userinfo (UX hint only). */
+export interface AuthIdentity {
+  /** Subject identifier (sub claim). */
+  sub: string;
+  /** Raw claims from ID token / userinfo endpoint. */
+  claims?: Readonly<Record<string, string | number | boolean | null>>;
+}
+
+// ---------------------------------------------------------------------------
 // Transport adapter (interfaces only — for future @cyberfabric/api binding)
 // ---------------------------------------------------------------------------
 
@@ -140,6 +200,7 @@ export interface AuthTransportErrorEvent {
 // Capabilities (optional metadata)
 // ---------------------------------------------------------------------------
 
+/** Advisory capability hints declared by the provider (advisory only; runtime probes methods). */
 export interface AuthCapabilities {
   canLogin?: boolean;
   canRefresh?: boolean;
@@ -147,6 +208,22 @@ export interface AuthCapabilities {
   canCallback?: boolean;
   supportsPermissions?: boolean;
   supportsCanAccess?: boolean;
+  supportsGetIdentity?: boolean;
+  supportsCanAccessMany?: boolean;
+  supportsEvaluateAccess?: boolean;
+  supportsEvaluateMany?: boolean;
+}
+
+/** Resolved capability flags built by the framework at provider-attach time (method presence probe). */
+export interface AuthCapabilitiesResolved {
+  readonly hasGetIdentity: boolean;
+  readonly hasGetPermissions: boolean;
+  readonly hasCanAccess: boolean;
+  readonly hasCanAccessMany: boolean;
+  readonly hasEvaluateAccess: boolean;
+  readonly hasEvaluateMany: boolean;
+  readonly hasRefresh: boolean;
+  readonly hasSubscribe: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -180,12 +257,21 @@ export interface AuthProvider {
   refresh?(ctx?: AuthContext): Promise<AuthSession | null>;
   destroy?(): void | Promise<void>;
 
-  // --- Optional permissions ---
+  // --- Optional identity & permissions ---
+  getIdentity?(ctx?: AuthContext): Promise<AuthIdentity | null>;
   getPermissions?(ctx?: AuthContext): Promise<AuthPermissions>;
-  canAccess?<TRecord extends Record<string, string | number | boolean | null> = Record<string, string | number | boolean | null>>(
+
+  // --- Optional access control ---
+  canAccess?<TRecord extends AccessRecord = AccessRecord>(
     query: AccessQuery<TRecord>,
     ctx?: AuthContext,
   ): Promise<AccessDecision>;
+  canAccessMany?(queries: ReadonlyArray<AccessQuery>, ctx?: AuthContext): Promise<ReadonlyArray<AccessDecision>>;
+  evaluateAccess?<TRecord extends AccessRecord = AccessRecord>(
+    query: AccessQuery<TRecord>,
+    ctx?: AuthContext,
+  ): Promise<AccessEvaluation>;
+  evaluateMany?(queries: ReadonlyArray<AccessQuery>, ctx?: AuthContext): Promise<ReadonlyArray<AccessEvaluation>>;
 
   // --- Optional events ---
   onTransportError?(event: AuthTransportErrorEvent): void;

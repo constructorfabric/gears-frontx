@@ -16,6 +16,8 @@
 export { HAI3Provider } from './HAI3Provider';
 export { HAI3Context, useHAI3 } from './HAI3Context';
 export { invalidateQueryCacheForApp } from './queryClient';
+export { CanAccess } from './components/CanAccess';
+export type { CanAccessProps } from './types';
 
 // ============================================================================
 // Hooks
@@ -36,6 +38,7 @@ export {
   useApiStream,
   useQueryCache,
 } from './hooks';
+export { useCanAccess } from './hooks/useCanAccess';
 
 export type { ApiQueryOverrides } from './hooks/useApiQuery';
 export type {
@@ -94,6 +97,7 @@ export type {
   ApiInfiniteQueryResult,
   ApiSuspenseInfiniteQueryResult,
   ApiMutationResult,
+  UseCanAccessResult,
 } from './types';
 
 // ============================================================================

@@ -14,6 +14,8 @@ import type {
   RootState,
   Language,
   Formatters,
+  AccessQuery,
+  AccessRecord,
 } from '@cyberfabric/framework';
 import type { MfeContextValue } from './mfe/MfeContext';
 
@@ -229,3 +231,27 @@ export interface UseThemeReturn {
  * References @cyberfabric/i18n Formatters so signatures stay in sync.
  */
 export type UseFormattersReturn = Formatters;
+
+/**
+ * useCanAccess Hook Return Type
+ * Result of an RBAC access check.
+ * allow is false until an explicit 'allow' decision arrives (pessimistic default).
+ */
+export interface UseCanAccessResult {
+  allow: boolean;
+  isResolving: boolean;
+}
+
+/**
+ * CanAccess Component Props.
+ * Pessimistic: renders `denied` (or `loading`) until an authoritative 'allow' arrives.
+ */
+export interface CanAccessProps<TRecord extends AccessRecord = AccessRecord> {
+  query: AccessQuery<TRecord>;
+  /** Content rendered when access is explicitly allowed. */
+  allowed: ReactNode;
+  /** Content rendered on deny or error. Defaults to null. */
+  denied?: ReactNode;
+  /** Optional slot shown while the decision is resolving. Falls back to `denied`. */
+  loading?: ReactNode;
+}
