@@ -948,7 +948,7 @@ describe('auth plugin', () => {
         evaluateAccess: vi.fn().mockResolvedValue({
           decision: 'allow',
           constraints: { field: 'tenantId', op: 'eq', value: 'acme' },
-        } as AccessEvaluation),
+        } as unknown as AccessEvaluation),
       };
       const app = createHAI3().use(auth({ provider })).build();
 
@@ -964,7 +964,7 @@ describe('auth plugin', () => {
         evaluateAccess: vi.fn().mockResolvedValue({
           decision: 'allow',
           reason: { code: 'wrong_reason' },
-        } as AccessEvaluation),
+        } as unknown as AccessEvaluation),
       };
       const app = createHAI3().use(auth({ provider })).build();
 
@@ -980,7 +980,7 @@ describe('auth plugin', () => {
         evaluateAccess: vi.fn().mockResolvedValue({
           decision: 'allow',
           meta: ['policy-meta'],
-        } as AccessEvaluation),
+        } as unknown as AccessEvaluation),
       };
       const app = createHAI3().use(auth({ provider })).build();
 
@@ -1172,6 +1172,26 @@ describe('auth plugin', () => {
       app.destroy();
     });
 
+    it('routes malformed entries through per-query safe path before provider.canAccessMany', async () => {
+      // Even if a provider would otherwise grant 'allow', a missing action/resource
+      // must fail closed without delegating that entry to the bulk method.
+      const canAccessManyFn = vi.fn().mockResolvedValue(['allow', 'allow']);
+      const canAccessFn = vi.fn().mockResolvedValue('allow');
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        canAccess: canAccessFn,
+        canAccessMany: canAccessManyFn,
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const malformed = [{ action: '', resource: 'doc' }, { action: 'read', resource: 'doc' }];
+      const results = await app.auth!.canAccessMany(malformed);
+
+      expect(results).toEqual(['deny', 'allow']);
+      expect(canAccessManyFn).not.toHaveBeenCalled();
+      app.destroy();
+    });
+
     it('returns all deny when provider.canAccessMany throws', async () => {
       const provider: AuthProvider = {
         ...makeBearerProvider('tok'),
@@ -1276,6 +1296,30 @@ describe('auth plugin', () => {
       expect(results[0].decision).toBe('allow');
       expect(results[1].decision).toBe('deny');
       expect(evalManyFn).toHaveBeenCalledTimes(1);
+      app.destroy();
+    });
+
+    it('routes malformed entries through per-query safe path before provider.evaluateMany', async () => {
+      // Mirrors the canAccessMany guarantee: a missing action/resource forces
+      // the whole batch through safeEvaluateAccess, never the bulk method.
+      const evalManyFn = vi.fn().mockResolvedValue([
+        { decision: 'allow', reason: 'allowed' },
+        { decision: 'allow', reason: 'allowed' },
+      ]);
+      const evalAccessFn = vi.fn().mockResolvedValue({ decision: 'allow', reason: 'allowed' });
+      const provider: AuthProvider = {
+        ...makeBearerProvider('tok'),
+        evaluateAccess: evalAccessFn,
+        evaluateMany: evalManyFn,
+      };
+      const app = createHAI3().use(auth({ provider })).build();
+
+      const malformed = [{ action: 'read', resource: '' }, { action: 'read', resource: 'doc' }];
+      const results = await app.auth!.evaluateMany(malformed);
+
+      expect(results[0]).toEqual({ decision: 'deny', reason: 'malformed' });
+      expect(results[1].decision).toBe('allow');
+      expect(evalManyFn).not.toHaveBeenCalled();
       app.destroy();
     });
 

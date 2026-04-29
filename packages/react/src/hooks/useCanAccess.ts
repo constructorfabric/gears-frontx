@@ -1,3 +1,5 @@
+// @cpt-FEATURE:cpt-frontx-feature-auth-plugin:p1
+// @cpt-flow:cpt-frontx-flow-auth-plugin-rbac-guard:p1
 import { useEffect, useRef, useState } from 'react';
 import type {
   AccessQuery,
@@ -61,6 +63,7 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
 ): UseCanAccessResult {
   const app = useHAI3();
 
+  // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-stable-key
   const stableKey = accessQueryKey(query as AccessQuery);
 
   // Always keep the latest query in a ref so the effect closure stays fresh.
@@ -77,8 +80,10 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
     setPrevKey(stableKey);
     setResult({ allow: false, isResolving: true });
   }
+  // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-stable-key
 
   useEffect(() => {
+    // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-pending-effect
     const auth = getAuthRuntime(app);
     if (!auth) {
       setResult({ allow: false, isResolving: false });
@@ -89,7 +94,9 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
 
     let alive = true;
     const controller = new AbortController();
+    // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-pending-effect
 
+    // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-decision-apply
     void auth
       .canAccess(queryRef.current, { signal: controller.signal })
       .then((decision) => {
@@ -102,11 +109,14 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
           setResult({ allow: false, isResolving: false });
         }
       });
+    // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-decision-apply
 
+    // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-abort
     return () => {
       alive = false;
       controller.abort();
     };
+    // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-abort
   }, [app, prevKey]);
 
   return result;

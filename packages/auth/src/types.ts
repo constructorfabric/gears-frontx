@@ -164,8 +164,15 @@ export interface AuthPermissions {
 export interface AuthIdentity {
   /** Subject identifier (sub claim). */
   sub: string;
-  /** Raw claims from ID token / userinfo endpoint. */
-  claims?: Readonly<Record<string, string | number | boolean | null>>;
+  /**
+   * Raw claims from ID token / userinfo endpoint.
+   *
+   * OIDC permits arrays (e.g. `groups: string[]`, `aud: string[]`) and nested
+   * JSON objects (e.g. `address`). Carry the full `AccessJsonValue` union so
+   * common provider shapes (Keycloak `realm_access.roles`, Auth0 `permissions`,
+   * etc.) round-trip without adapter workarounds.
+   */
+  claims?: Readonly<Record<string, AccessJsonValue>>;
 }
 
 // ---------------------------------------------------------------------------

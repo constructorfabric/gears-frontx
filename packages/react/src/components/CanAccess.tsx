@@ -1,3 +1,5 @@
+// @cpt-FEATURE:cpt-frontx-feature-auth-plugin:p1
+// @cpt-flow:cpt-frontx-flow-auth-plugin-rbac-guard:p1
 import type { ReactElement } from 'react';
 import type { AccessRecord } from '@cyberfabric/framework';
 import { useCanAccess } from '../hooks/useCanAccess';
@@ -24,6 +26,7 @@ export function CanAccess<TRecord extends AccessRecord = AccessRecord>({
   denied = null,
   loading,
 }: CanAccessProps<TRecord>): ReactElement | null {
+  // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-component-render
   const { allow, isResolving } = useCanAccess(query);
 
   if (isResolving) {
@@ -31,4 +34,5 @@ export function CanAccess<TRecord extends AccessRecord = AccessRecord>({
   }
 
   return (allow ? allowed : denied) as ReactElement | null;
+  // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-component-render
 }

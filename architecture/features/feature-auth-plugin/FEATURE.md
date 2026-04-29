@@ -13,10 +13,13 @@
   - [Session Header Attach](#session-header-attach)
   - [Refresh and Retry on Unauthorized](#refresh-and-retry-on-unauthorized)
   - [Transport Lifecycle Binding](#transport-lifecycle-binding)
+  - [RBAC Pessimistic Guard Render](#rbac-pessimistic-guard-render)
 - [3. Processes / Business Logic (CDSL)](#3-processes--business-logic-cdsl)
   - [Transport Request Conversion](#transport-request-conversion)
   - [Credential Scope Resolution](#credential-scope-resolution)
   - [Shared Refresh Promise Deduplication](#shared-refresh-promise-deduplication)
+  - [Access Evaluation Normalization](#access-evaluation-normalization)
+  - [Safe Access Evaluation Wrapper](#safe-access-evaluation-wrapper)
 - [4. States (CDSL)](#4-states-cdsl)
   - [In-Flight Refresh State](#in-flight-refresh-state)
 - [5. Definitions of Done](#5-definitions-of-done)
@@ -94,6 +97,18 @@ Enable applications to integrate authentication transparently into the HTTP tran
 3. [ ] `p1` - `onInit(app)` binds the transport binder; adds the `AuthRestPlugin` to the API registry - `inst-on-init`
 4. [ ] `p1` - `onDestroy(_app)` removes the REST plugin, calls `provider.destroy?.()` if present, and nulls the binding - `inst-on-destroy`
 
+### RBAC Pessimistic Guard Render
+
+- [x] `p1` - **ID**: `cpt-frontx-flow-auth-plugin-rbac-guard`
+
+**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-runtime`
+
+1. [ ] `p1` - `useCanAccess(query)` resolves an `AccessQuery` into a stable key and starts in a Pending state (`allow=false`, `isResolving=true`) - `inst-stable-key`
+2. [ ] `p1` - On mount or query-key change, set Pending state and call `app.auth.canAccess(query, { signal })` - `inst-pending-effect`
+3. [ ] `p1` - On `'allow'` decision: transition to Allowed (`allow=true`, `isResolving=false`); on `'deny'` or error: transition to Denied (`allow=false`, `isResolving=false`) - `inst-decision-apply`
+4. [ ] `p1` - On unmount or query change abort the in-flight request via `AbortController` - `inst-abort`
+5. [ ] `p1` - `<CanAccess>` component renders `loading` (or `denied` fallback) while resolving and `allowed` only after a confirmed allow - `inst-component-render`
+
 ---
 
 ## 3. Processes / Business Logic (CDSL)
@@ -123,6 +138,28 @@ Enable applications to integrate authentication transparently into the HTTP tran
 2. [ ] `p1` - **AWAIT** `this.refreshPromise`; **IF** throws **RETURN** original error - `inst-refresh-await`
 3. [ ] `p1` - The shared promise is NOT bound to any request AbortSignal — cancelling one caller must not cancel the shared refresh - `inst-refresh-signal-note`
 
+### Access Evaluation Normalization
+
+- [x] `p1` - **ID**: `cpt-frontx-algo-auth-plugin-rbac-normalize`
+
+1. [ ] `p1` - **IF** value is not a plain object **RETURN** `{ decision: 'deny', reason: 'provider_error' }` - `inst-shape-guard`
+2. [ ] `p1` - **IF** `decision` is not one of `'allow' | 'deny'` **RETURN** `{ decision: 'deny', reason: 'provider_error' }` - `inst-decision-guard`
+3. [ ] `p1` - **IF** `constraints` is present and not a `ReadonlyArray<AccessConstraint>` **RETURN** `{ decision: 'deny', reason: 'provider_error' }` - `inst-constraints-guard`
+4. [ ] `p1` - **IF** `reason` is present and not a string **RETURN** `{ decision: 'deny', reason: 'provider_error' }` - `inst-reason-guard`
+5. [ ] `p1` - **IF** `meta` is present and not a JSON-object record **RETURN** `{ decision: 'deny', reason: 'provider_error' }` - `inst-meta-guard`
+6. [ ] `p1` - Build normalized `AccessEvaluation` keeping only validated optional fields - `inst-build-normalized`
+
+### Safe Access Evaluation Wrapper
+
+- [x] `p1` - **ID**: `cpt-frontx-algo-auth-plugin-rbac-safe-evaluate`
+
+1. [ ] `p1` - **IF** `query.action` or `query.resource` is empty **RETURN** `{ decision: 'deny', reason: 'malformed' }` - `inst-query-guard`
+2. [ ] `p1` - **IF** provider does not implement `evaluateAccess` **RETURN** `{ decision: 'deny', reason: 'unsupported' }` - `inst-capability-guard`
+3. [ ] `p1` - **IF** `getSession()` throws or resolves null **RETURN** `{ decision: 'deny', reason: 'unauthenticated' }` - `inst-session-guard`
+4. [ ] `p1` - Call `provider.evaluateAccess(query, ctx)` and pass through `normalizeEvaluation` - `inst-delegate-normalize`
+5. [ ] `p1` - On thrown error: classify abort vs other and **RETURN** deny with `aborted | timeout | provider_error` reason - `inst-error-classify`
+6. [ ] `p1` - For `evaluateMany`: same fail-closed envelope, preserves order, falls back to per-query `safeEvaluateAccess` if provider lacks batch capability - `inst-many-fallback`
+
 ---
 
 ## 4. States (CDSL)
@@ -150,9 +187,12 @@ Tracked as `AuthRestPlugin.refreshPromise: Promise<AuthSession | null> | null`.
 - `cpt-frontx-flow-auth-plugin-session-attach`
 - `cpt-frontx-flow-auth-plugin-refresh-retry`
 - `cpt-frontx-flow-auth-plugin-transport-binding`
+- `cpt-frontx-flow-auth-plugin-rbac-guard`
 - `cpt-frontx-algo-auth-plugin-transport-request`
 - `cpt-frontx-algo-auth-plugin-credentials-scope`
 - `cpt-frontx-algo-auth-plugin-refresh-dedup`
+- `cpt-frontx-algo-auth-plugin-rbac-normalize`
+- `cpt-frontx-algo-auth-plugin-rbac-safe-evaluate`
 - `cpt-frontx-state-auth-plugin-refresh`
 
 ---

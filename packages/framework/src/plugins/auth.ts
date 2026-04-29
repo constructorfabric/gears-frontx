@@ -146,10 +146,14 @@ function isAccessJsonValue(value: unknown, seen: WeakSet<object> = new WeakSet()
   if (
     value === null
     || typeof value === 'string'
-    || typeof value === 'number'
     || typeof value === 'boolean'
   ) {
     return true;
+  }
+
+  if (typeof value === 'number') {
+    // JSON forbids NaN / ±Infinity — fail closed so meta/constraints stay round-trippable.
+    return Number.isFinite(value);
   }
 
   if (Array.isArray(value)) {
@@ -182,9 +186,11 @@ function isAccessMeta(value: unknown): value is NonNullable<AccessEvaluation['me
 }
 
 function normalizeEvaluation(value: unknown): AccessEvaluation {
+  // @cpt-begin:cpt-frontx-algo-auth-plugin-rbac-normalize:p1:inst-shape-guard
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return { decision: 'deny', reason: 'provider_error' };
   }
+  // @cpt-end:cpt-frontx-algo-auth-plugin-rbac-normalize:p1:inst-shape-guard
 
   const maybeEvaluation = value as {
     decision?: unknown;
@@ -192,22 +198,31 @@ function normalizeEvaluation(value: unknown): AccessEvaluation {
     reason?: unknown;
     meta?: unknown;
   };
+  // @cpt-begin:cpt-frontx-algo-auth-plugin-rbac-normalize:p1:inst-decision-guard
   if (!isAccessDecision(maybeEvaluation.decision)) {
     return { decision: 'deny', reason: 'provider_error' };
   }
+  // @cpt-end:cpt-frontx-algo-auth-plugin-rbac-normalize:p1:inst-decision-guard
 
+  // @cpt-begin:cpt-frontx-algo-auth-plugin-rbac-normalize:p1:inst-constraints-guard
   if (maybeEvaluation.constraints !== undefined && !isAccessConstraints(maybeEvaluation.constraints)) {
     return { decision: 'deny', reason: 'provider_error' };
   }
+  // @cpt-end:cpt-frontx-algo-auth-plugin-rbac-normalize:p1:inst-constraints-guard
 
+  // @cpt-begin:cpt-frontx-algo-auth-plugin-rbac-normalize:p1:inst-reason-guard
   if (maybeEvaluation.reason !== undefined && !isAccessReason(maybeEvaluation.reason)) {
     return { decision: 'deny', reason: 'provider_error' };
   }
+  // @cpt-end:cpt-frontx-algo-auth-plugin-rbac-normalize:p1:inst-reason-guard
 
+  // @cpt-begin:cpt-frontx-algo-auth-plugin-rbac-normalize:p1:inst-meta-guard
   if (maybeEvaluation.meta !== undefined && !isAccessMeta(maybeEvaluation.meta)) {
     return { decision: 'deny', reason: 'provider_error' };
   }
+  // @cpt-end:cpt-frontx-algo-auth-plugin-rbac-normalize:p1:inst-meta-guard
 
+  // @cpt-begin:cpt-frontx-algo-auth-plugin-rbac-normalize:p1:inst-build-normalized
   const normalized: AccessEvaluation = { decision: maybeEvaluation.decision };
   if (maybeEvaluation.constraints !== undefined) {
     normalized.constraints = maybeEvaluation.constraints;
@@ -219,6 +234,7 @@ function normalizeEvaluation(value: unknown): AccessEvaluation {
     normalized.meta = maybeEvaluation.meta;
   }
   return normalized;
+  // @cpt-end:cpt-frontx-algo-auth-plugin-rbac-normalize:p1:inst-build-normalized
 }
 
 async function safeCanAccess(
@@ -239,7 +255,7 @@ async function safeCanAccess(
   if (session === null) return 'deny';
 
   try {
-    return normalizeDecision(await provider.canAccess!(query, ctx));
+    return normalizeDecision(await provider.canAccess?.(query, ctx));
   } catch {
     return 'deny';
   }
@@ -251,13 +267,18 @@ async function safeEvaluateAccess(
   query: AccessQuery,
   ctx?: AuthContext,
 ): Promise<AccessEvaluation> {
+  // @cpt-begin:cpt-frontx-algo-auth-plugin-rbac-safe-evaluate:p1:inst-query-guard
   if (!query.action || !query.resource) {
     return { decision: 'deny', reason: 'malformed' };
   }
+  // @cpt-end:cpt-frontx-algo-auth-plugin-rbac-safe-evaluate:p1:inst-query-guard
+  // @cpt-begin:cpt-frontx-algo-auth-plugin-rbac-safe-evaluate:p1:inst-capability-guard
   if (!caps.hasEvaluateAccess) {
     return { decision: 'deny', reason: 'unsupported' };
   }
+  // @cpt-end:cpt-frontx-algo-auth-plugin-rbac-safe-evaluate:p1:inst-capability-guard
 
+  // @cpt-begin:cpt-frontx-algo-auth-plugin-rbac-safe-evaluate:p1:inst-session-guard
   let session: AuthSession | null;
   try {
     session = await provider.getSession(ctx);
@@ -267,15 +288,20 @@ async function safeEvaluateAccess(
   if (session === null) {
     return { decision: 'deny', reason: 'unauthenticated' };
   }
+  // @cpt-end:cpt-frontx-algo-auth-plugin-rbac-safe-evaluate:p1:inst-session-guard
 
   try {
-    return normalizeEvaluation(await provider.evaluateAccess!(query, ctx));
+    // @cpt-begin:cpt-frontx-algo-auth-plugin-rbac-safe-evaluate:p1:inst-delegate-normalize
+    return normalizeEvaluation(await provider.evaluateAccess?.(query, ctx));
+    // @cpt-end:cpt-frontx-algo-auth-plugin-rbac-safe-evaluate:p1:inst-delegate-normalize
   } catch {
+    // @cpt-begin:cpt-frontx-algo-auth-plugin-rbac-safe-evaluate:p1:inst-error-classify
     const signal = ctx?.signal;
     if (signal?.aborted) {
       return { decision: 'deny', reason: classifyAbortReason(signal) };
     }
     return { decision: 'deny', reason: 'provider_error' };
+    // @cpt-end:cpt-frontx-algo-auth-plugin-rbac-safe-evaluate:p1:inst-error-classify
   }
 }
 
@@ -287,6 +313,17 @@ async function safeCanAccessMany(
 ): Promise<ReadonlyArray<AccessDecision>> {
   if (queries.length === 0) return [];
 
+  // Fail-closed contract parity with safeCanAccess: a single malformed query
+  // forces the whole batch through the per-query safe wrapper so the provider's
+  // bulk method cannot return 'allow' for an entry without action/resource.
+  if (queries.some((query) => !query.action || !query.resource)) {
+    const decisions: AccessDecision[] = [];
+    for (const query of queries) {
+      decisions.push(await safeCanAccess(provider, caps, query, ctx));
+    }
+    return decisions;
+  }
+
   if (caps.hasCanAccessMany) {
     let session: AuthSession | null;
     try {
@@ -297,7 +334,7 @@ async function safeCanAccessMany(
     if (session === null) return queries.map(() => 'deny' as const);
 
     try {
-      const decisions = await provider.canAccessMany!(queries, ctx);
+      const decisions = await provider.canAccessMany?.(queries, ctx);
       if (!Array.isArray(decisions) || decisions.length !== queries.length) {
         return queries.map(() => 'deny' as const);
       }
@@ -322,6 +359,18 @@ async function safeEvaluateMany(
 ): Promise<ReadonlyArray<AccessEvaluation>> {
   if (queries.length === 0) return [];
 
+  // Same fail-closed parity as safeCanAccessMany: route any malformed query
+  // through the per-query safe wrapper so the bulk path cannot leak 'allow'
+  // for entries with empty action/resource.
+  if (queries.some((query) => !query.action || !query.resource)) {
+    const evaluations: AccessEvaluation[] = [];
+    for (const query of queries) {
+      evaluations.push(await safeEvaluateAccess(provider, caps, query, ctx));
+    }
+    return evaluations;
+  }
+
+  // @cpt-begin:cpt-frontx-algo-auth-plugin-rbac-safe-evaluate:p1:inst-many-fallback
   if (caps.hasEvaluateMany) {
     let session: AuthSession | null;
     try {
@@ -334,7 +383,7 @@ async function safeEvaluateMany(
     }
 
     try {
-      const evaluations = await provider.evaluateMany!(queries, ctx);
+      const evaluations = await provider.evaluateMany?.(queries, ctx);
       if (!Array.isArray(evaluations) || evaluations.length !== queries.length) {
         return queries.map(() => ({ decision: 'deny' as const, reason: 'provider_error' as const }));
       }
@@ -354,6 +403,7 @@ async function safeEvaluateMany(
     results.push(await safeEvaluateAccess(provider, caps, query, ctx));
   }
   return results;
+  // @cpt-end:cpt-frontx-algo-auth-plugin-rbac-safe-evaluate:p1:inst-many-fallback
 }
 
 // ---------------------------------------------------------------------------

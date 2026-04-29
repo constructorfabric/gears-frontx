@@ -131,7 +131,7 @@ function makeKeycloakProvider(
     getIdentity: vi.fn().mockResolvedValue({
       sub: claims.sub,
       claims,
-    } as AuthIdentity),
+    } as unknown as AuthIdentity),
     getPermissions: vi.fn().mockResolvedValue(keycloakPermissions(claims)),
     canAccess: vi.fn().mockImplementation((query: AccessQuery) =>
       Promise.resolve(keycloakCanAccess(claims, query, throwOnMissingResourceAccess)),
@@ -168,25 +168,25 @@ function auth0Evaluation(
   },
 ): AccessEvaluation {
   if (malformed?.malformedDecisionResource && query.resource === malformed.malformedDecisionResource) {
-    return { decision: 'maybe' } as AccessEvaluation;
+    return { decision: 'maybe' } as unknown as AccessEvaluation;
   }
   if (malformed?.malformedConstraintsResource && query.resource === malformed.malformedConstraintsResource) {
     return {
       decision: 'allow',
       constraints: { field: 'tenantId', op: 'eq', value: 'acme' },
-    } as AccessEvaluation;
+    } as unknown as AccessEvaluation;
   }
   if (malformed?.malformedReasonShapeResource && query.resource === malformed.malformedReasonShapeResource) {
     return {
       decision: 'allow',
       reason: { code: 'not_a_reason' },
-    } as AccessEvaluation;
+    } as unknown as AccessEvaluation;
   }
   if (malformed?.malformedMetaShapeResource && query.resource === malformed.malformedMetaShapeResource) {
     return {
       decision: 'allow',
       meta: ['scope'],
-    } as AccessEvaluation;
+    } as unknown as AccessEvaluation;
   }
   if (malformed?.extensiblePayloadResource && query.resource === malformed.extensiblePayloadResource) {
     return {
@@ -253,7 +253,7 @@ function makeAuth0Provider(
     getIdentity: vi.fn().mockResolvedValue({
       sub: claims.sub,
       claims,
-    } as AuthIdentity),
+    } as unknown as AuthIdentity),
     getPermissions: vi.fn().mockResolvedValue(auth0Permissions(claims)),
     canAccess: vi.fn().mockImplementation((query: AccessQuery) =>
       Promise.resolve(auth0CanAccess(claims, query)),
@@ -302,8 +302,8 @@ describe('RBAC provider contracts', () => {
       const provider = makeKeycloakProvider(claims);
       const app = buildApp(provider);
 
-      const identity = await app.auth!.getIdentity();
-      const permissions = await app.auth!.getPermissions();
+      const identity = await app.auth!.getIdentity!();
+      const permissions = await app.auth!.getPermissions!();
 
       expect(identity).toEqual({
         sub: 'kc-user-1',
@@ -394,8 +394,8 @@ describe('RBAC provider contracts', () => {
       const provider = makeAuth0Provider(claims);
       const app = buildApp(provider);
 
-      const identity = await app.auth!.getIdentity();
-      const permissions = await app.auth!.getPermissions();
+      const identity = await app.auth!.getIdentity!();
+      const permissions = await app.auth!.getPermissions!();
 
       expect(identity).toEqual({
         sub: 'auth0-user-1',
