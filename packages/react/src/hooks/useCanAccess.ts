@@ -29,9 +29,11 @@ function serializeRecordValue(value: AccessRecord[string]): string {
 function accessQueryKey(query: AccessQuery): string {
   const { action, resource, record } = query;
   if (!record) return `${action}\x00${resource}`;
-  const pairs = Object.keys(record)
-    .sort()
-    .map((k) => `${k}\x01${serializeRecordValue(record[k])}`)
+  // Use Object.entries to avoid dynamic bracket access on `record` (static
+  // analyzers flag `record[k]` as a potential object-injection sink).
+  const pairs = Object.entries(record)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([k, v]) => `${k}\x01${serializeRecordValue(v)}`)
     .join('\x02');
   return `${action}\x00${resource}\x00${pairs}`;
 }
@@ -117,7 +119,7 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
       controller.abort();
     };
     // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-abort
-  }, [app, prevKey]);
+  }, [app, stableKey]);
 
   return result;
 }
