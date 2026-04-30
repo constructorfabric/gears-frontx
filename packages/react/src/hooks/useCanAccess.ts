@@ -1,6 +1,6 @@
 // @cpt-FEATURE:cpt-frontx-feature-auth-plugin:p1
 // @cpt-flow:cpt-frontx-flow-auth-plugin-rbac-guard:p1
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type {
   AccessQuery,
   AccessRecord,
@@ -68,21 +68,17 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
   // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-stable-key
   const stableKey = accessQueryKey(query as AccessQuery);
 
-  // Memoize the query by its stable key so its referential identity only
-  // changes when the access intent (action/resource/record) actually changes.
-  // The effect below depends on this exact reference, satisfying React/Biome
-  // exhaustive-deps without re-running on every parent render.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: stableKey is the canonical identity of `query`; re-memoize whenever it changes.
-  const stableQuery = useMemo<AccessQuery>(() => query as AccessQuery, [stableKey]);
-
-  // prevKey tracks the key from the previous render cycle.
-  // Calling setPrevKey during render triggers an immediate synchronous re-render
-  // so the Pending state is visible before the next commit (React derived-state pattern).
-  const [prevKey, setPrevKey] = useState(stableKey);
+  // Derived state: store the query value whose key matches `stableKey`. We
+  // refresh it during render whenever `stableKey` changes (React derived-state
+  // pattern) so the effect can depend on the stored value directly — its
+  // referential identity tracks the access intent, not the parent render cycle.
+  const [stableQuery, setStableQuery] = useState<AccessQuery>(() => query as AccessQuery);
+  const [storedKey, setStoredKey] = useState(stableKey);
   const [result, setResult] = useState<UseCanAccessResult>({ allow: false, isResolving: true });
 
-  if (prevKey !== stableKey) {
-    setPrevKey(stableKey);
+  if (storedKey !== stableKey) {
+    setStoredKey(stableKey);
+    setStableQuery(query as AccessQuery);
     setResult({ allow: false, isResolving: true });
   }
   // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-stable-key
