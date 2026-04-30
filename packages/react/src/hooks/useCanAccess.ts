@@ -1,6 +1,6 @@
 // @cpt-FEATURE:cpt-frontx-feature-auth-plugin:p1
 // @cpt-flow:cpt-frontx-flow-auth-plugin-rbac-guard:p1
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   AccessQuery,
   AccessRecord,
@@ -68,9 +68,12 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
   // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-stable-key
   const stableKey = accessQueryKey(query as AccessQuery);
 
-  // Always keep the latest query in a ref so the effect closure stays fresh.
-  const queryRef = useRef<AccessQuery>(query as AccessQuery);
-  queryRef.current = query as AccessQuery;
+  // Memoize the query by its stable key so its referential identity only
+  // changes when the access intent (action/resource/record) actually changes.
+  // The effect below depends on this exact reference, satisfying React/Biome
+  // exhaustive-deps without re-running on every parent render.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stableKey is the canonical identity of `query`; re-memoize whenever it changes.
+  const stableQuery = useMemo<AccessQuery>(() => query as AccessQuery, [stableKey]);
 
   // prevKey tracks the key from the previous render cycle.
   // Calling setPrevKey during render triggers an immediate synchronous re-render
@@ -100,7 +103,7 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
 
     // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-decision-apply
     void auth
-      .canAccess(queryRef.current, { signal: controller.signal })
+      .canAccess(stableQuery, { signal: controller.signal })
       .then((decision) => {
         if (alive) {
           setResult({ allow: decision === 'allow', isResolving: false });
@@ -119,7 +122,7 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
       controller.abort();
     };
     // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-abort
-  }, [app, stableKey]);
+  }, [app, stableQuery]);
 
   return result;
 }
