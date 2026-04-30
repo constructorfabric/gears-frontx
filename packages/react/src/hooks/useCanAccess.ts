@@ -28,14 +28,16 @@ function serializeRecordValue(value: AccessRecord[string]): string {
 
 function accessQueryKey(query: AccessQuery): string {
   const { action, resource, record } = query;
-  if (!record) return `${action}\x00${resource}`;
-  // Use Object.entries to avoid dynamic bracket access on `record` (static
+  // JSON-encode the tuple so delimiter characters in any component
+  // (action / resource / record keys / string values) cannot collide.
+  // Using Object.entries avoids dynamic bracket access on `record` (static
   // analyzers flag `record[k]` as a potential object-injection sink).
-  const pairs = Object.entries(record)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([k, v]) => `${k}\x01${serializeRecordValue(v)}`)
-    .join('\x02');
-  return `${action}\x00${resource}\x00${pairs}`;
+  const normalizedRecord = record
+    ? Object.entries(record)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => [k, serializeRecordValue(v)] as const)
+    : null;
+  return JSON.stringify([action, resource, normalizedRecord]);
 }
 
 type HAI3AuthAppContract = HAI3App & {
