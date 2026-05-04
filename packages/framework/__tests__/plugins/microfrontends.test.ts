@@ -21,7 +21,7 @@ import { microfrontends } from '../../src/plugins/microfrontends';
 import { loadLayoutDomains } from '../../src/plugins/microfrontends/gts/loader';
 import { themeSchema, languageSchema, extensionScreenSchema } from '../../src/gts';
 import type { MfeRegistry } from '@cyberfabric/framework';
-import { TestContainerProvider } from '../test-utils/TestContainerProvider';
+import { TestContainerProvider } from '../../src/testing/TestContainerProvider';
 import { resetSharedQueryClient } from '../../src/testing';
 import type { HAI3App } from '../../src/types';
 

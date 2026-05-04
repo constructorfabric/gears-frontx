@@ -51,7 +51,7 @@
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-frontx-featstatus-react-bindings`
+- [x] `p1` - **ID**: `cpt-frontx-featstatus-react-bindings`
 
 - [x] `p2` - `cpt-frontx-feature-react-bindings`
 ---
@@ -198,16 +198,16 @@ Success criteria: Developers can wrap their application with `<HAI3Provider>`, a
 
 ### Render an MFE Extension Domain Slot
 
-- [ ] `p1` - **ID**: `cpt-frontx-flow-react-bindings-extension-domain-slot`
+- [x] `p1` - **ID**: `cpt-frontx-flow-react-bindings-extension-domain-slot`
 
 **Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-microfrontend`, `cpt-frontx-actor-runtime`
 
 The slot is **per-domain only**. It accepts a `domainId` and provides the DOM root for that domain. It has no `extensionId` prop — what extensions live inside the root is a domain-policy concern (the strategy plus the implementation's container factory), not a slot-API concern. The slot is uniform across all cardinalities (Exclusive / Optional / Concurrent). Mount and unmount actions are dispatched by the host application via `registry.executeActionsChain`, not by the slot. The slot's only responsibility is to attach the DOM root that the per-domain `ExtensionMounter` uses to host whichever extensions the host mounts under it. Mounted extensions appear under the attached root by way of `mounter.mount(extId, container)` calls performed by the active `MountStrategy`; the slot does NOT render React children for those extensions — multi-mount children are placed imperatively by the mounter.
 
-1. [ ] - `p1` - Host renders `<ExtensionDomainSlot registry={registry} domainId={...}>`. The component renders a single root `<div>` per domain instance - `inst-render-slot`
-2. [ ] - `p1` - On `ref` attach callback: resolve `mounter = registry.getMounter(domainId)` and call `mounter.attach(element)`. This is the only DOM hand-off — the mounter owns the root and appends/removes per-extension containers as extensions mount and unmount. After attach, invoke optional `onAttached(element)` callback if provided - `inst-attach-root`
+1. [x] - `p1` - Host renders `<ExtensionDomainSlot registry={registry} domainId={...}>`. The component renders a single root `<div>` per domain instance - `inst-render-slot`
+2. [x] - `p1` - On `ref` attach callback: resolve `mounter = registry.getMounter(domainId)` and call `mounter.attach(element)`. This is the only DOM hand-off — the mounter owns the root and appends/removes per-extension containers as extensions mount and unmount. After attach, invoke optional `onAttached(element)` callback if provided - `inst-attach-root`
 3. [x] - `p1` - Component renders a loading placeholder until the mounter has been attached - `inst-show-loading`
-4. [ ] - `p1` - On component unmount: call `mounter.detach()`. The mounter mass-unmounts every currently-mounted extension in the domain (calling `mounter.unmount(extId)` and `hooks.destroy(extId)` per extension) so no orphan DOM trees or slice/registry desync remain; the diff dispatch (with idempotent reducers per `cpt-frontx-algo-framework-composition-mount-set-diff-dispatch`) reflects each removal. After detach, invoke optional `onDetached()` callback if provided - `inst-detach-root`
+4. [x] - `p1` - On component unmount: call `mounter.detach()`. The mounter mass-unmounts every currently-mounted extension in the domain (calling `mounter.unmount(extId)` and `hooks.destroy(extId)` per extension) so no orphan DOM trees or slice/registry desync remain; the diff dispatch (with idempotent reducers per `cpt-frontx-algo-framework-composition-mount-set-diff-dispatch`) reflects each removal. After detach, invoke optional `onDetached()` callback if provided - `inst-detach-root`
 
 ---
 
@@ -267,7 +267,7 @@ The slot is **per-domain only**. It accepts a `domainId` and provides the DOM ro
 
 ### Observe Active Screen Package
 
-- [ ] `p1` - **ID**: `cpt-frontx-flow-react-bindings-use-active-package`
+- [x] `p1` - **ID**: `cpt-frontx-flow-react-bindings-use-active-package`
 
 **Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-runtime`
 
@@ -276,25 +276,25 @@ The slot is **per-domain only**. It accepts a `domainId` and provides the DOM ro
 1. [x] - `p1` - Developer calls `useActivePackage()` inside a component wrapped by `HAI3Provider` - `inst-call-active-package`
 2. [x] - `p1` - Hook reads `app.mfeRegistry`; throws if absent - `inst-guard-registry-active`
 3. [x] - `p1` - Hook subscribes to `app.store` changes via `useSyncExternalStore` - `inst-subscribe-store-active`
-4. [ ] - `p1` - Snapshot function reads `mounted = registry.getMountedExtensions(HAI3_SCREEN_DOMAIN)` — the plural API returning a `readonly string[]` of currently-mounted screen extension IDs (insertion-ordered) - `inst-get-mounted-extension`
-5. [ ] - `p1` - IF `mounted.length === 0` THEN RETURN `undefined` (no active screen extension) - `inst-return-undefined-active`
-6. [ ] - `p1` - ELSE call `extractGtsPackage(mounted[0])` and RETURN result, using cached value when unchanged. Index `0` is correct only because the screen domain is documented as `ExclusiveMountStrategy`-backed — that contract is the hook's precondition - `inst-extract-package`
+4. [x] - `p1` - Snapshot function reads `mounted = registry.getMountedExtensions(HAI3_SCREEN_DOMAIN)` — the plural API returning a `readonly string[]` of currently-mounted screen extension IDs (insertion-ordered) - `inst-get-mounted-extension`
+5. [x] - `p1` - IF `mounted.length === 0` THEN RETURN `undefined` (no active screen extension) - `inst-return-undefined-active`
+6. [x] - `p1` - ELSE call `extractGtsPackage(mounted[0])` and RETURN result, using cached value when unchanged. Index `0` is correct only because the screen domain is documented as `ExclusiveMountStrategy`-backed — that contract is the hook's precondition - `inst-extract-package`
 
 ---
 
 ### Observe Mounted Extensions in a Domain
 
-- [ ] `p1` - **ID**: `cpt-frontx-flow-react-bindings-use-mounted-extensions`
+- [x] `p1` - **ID**: `cpt-frontx-flow-react-bindings-use-mounted-extensions`
 
 **Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-runtime`
 
 Domain-agnostic hook that returns the currently-mounted `Extension` instances for any registered domain — including multi-mount domains backed by `ConcurrentMountStrategy`. Pairs with `getMountedExtensions(domainId)` on the registry.
 
-1. [ ] - `p1` - Developer calls `useMountedExtensions(domainId)` inside a component wrapped by `HAI3Provider` - `inst-call-mounted-extensions`
-2. [ ] - `p1` - Hook reads `app.mfeRegistry`; throws if absent (requires `microfrontends()` plugin) - `inst-guard-registry-mounted`
-3. [ ] - `p1` - Hook subscribes to `app.store` changes via `useSyncExternalStore` - `inst-subscribe-store-mounted`
-4. [ ] - `p1` - Snapshot function reads `ids = registry.getMountedExtensions(domainId)` and resolves each ID to the corresponding `Extension` instance via `registry.getExtension(id)`, filtering out any that resolve to `undefined` (race against unregister) - `inst-use-mounted-extensions-snapshot`
-5. [ ] - `p1` - Compute scalar cache key by joining `ids` with comma; IF cache key unchanged RETURN previous reference; ELSE update ref and RETURN new array - `inst-mounted-extensions-stable-ref`
+1. [x] - `p1` - Developer calls `useMountedExtensions(domainId)` inside a component wrapped by `HAI3Provider` - `inst-call-mounted-extensions`
+2. [x] - `p1` - Hook reads `app.mfeRegistry`; throws if absent (requires `microfrontends()` plugin) - `inst-guard-registry-mounted`
+3. [x] - `p1` - Hook subscribes to `app.store` changes via `useSyncExternalStore` - `inst-subscribe-store-mounted`
+4. [x] - `p1` - Snapshot function reads `ids = registry.getMountedExtensions(domainId)` and resolves each ID to the corresponding `Extension` instance via `registry.getExtension(id)`, filtering out any that resolve to `undefined` (race against unregister) - `inst-use-mounted-extensions-snapshot`
+5. [x] - `p1` - Compute scalar cache key by joining `ids` with comma; IF cache key unchanged RETURN previous reference; ELSE update ref and RETURN new array - `inst-mounted-extensions-stable-ref`
 
 ---
 
@@ -392,13 +392,13 @@ Prevents unnecessary re-renders in store-subscribed hooks by returning referenti
 
 ### Extension Slot Lifecycle
 
-- [ ] `p1` - **ID**: `cpt-frontx-state-react-bindings-extension-slot`
+- [x] `p1` - **ID**: `cpt-frontx-state-react-bindings-extension-slot`
 
 Tracks the lifecycle of a single `ExtensionDomainSlot` component instance. Because the slot is per-domain (per `cpt-frontx-flow-react-bindings-extension-domain-slot`), its lifecycle is reduced to root attachment — mount/unmount of individual extensions inside the root is owned by the per-domain `ExtensionMounter`, not the slot.
 
-1. [ ] - `p1` - **FROM** `DETACHED` **TO** `ATTACHED` **WHEN** the React ref-attach callback fires and `mounter.attach(element)` returns - `inst-slot-attached`
-2. [ ] - `p1` - **FROM** `ATTACHED` **TO** `DETACHED` **WHEN** the React component unmounts and `mounter.detach()` returns (after the mounter has mass-unmounted every currently-mounted extension in the domain) - `inst-slot-detached`
-3. [ ] - `p2` - **FROM** `ATTACHED` **TO** `ATTACHED` (no-op) **WHEN** parent supplies the same `domainId` and `registry` props on re-render - `inst-slot-stable-rerender`
+1. [x] - `p1` - **FROM** `DETACHED` **TO** `ATTACHED` **WHEN** the React ref-attach callback fires and `mounter.attach(element)` returns - `inst-slot-attached`
+2. [x] - `p1` - **FROM** `ATTACHED` **TO** `DETACHED` **WHEN** the React component unmounts and `mounter.detach()` returns (after the mounter has mass-unmounted every currently-mounted extension in the domain) - `inst-slot-detached`
+3. [x] - `p2` - **FROM** `ATTACHED` **TO** `ATTACHED` (no-op) **WHEN** parent supplies the same `domainId` and `registry` props on re-render - `inst-slot-stable-rerender`
 
 ---
 
@@ -546,7 +546,7 @@ For MFE screen roots, the host owns the shared `QueryClient` through `queryCache
 
 ### Extension Domain Slot Component
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-react-bindings-extension-slot`
+- [x] `p1` - **ID**: `cpt-frontx-dod-react-bindings-extension-slot`
 
 `ExtensionDomainSlot` is a **per-domain** component. It accepts a `domainId` (no `extensionId` prop) and renders exactly ONE root `<div>` per domain instance. The slot's only job is to provide the DOM root that the per-domain `ExtensionMounter` uses to host extensions; what lives inside the root is decided by the domain's strategy and `ContainerHooks`. The slot is uniform across all cardinalities — Exclusive, Optional, Concurrent — there is no per-cardinality variant.
 
@@ -598,7 +598,7 @@ All five MFE-scoped hooks (`useMfeBridge`, `useMfeContext`, `useSharedProperty`,
 
 ### Domain and Package Observation Hooks
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-react-bindings-observation-hooks`
+- [x] `p1` - **ID**: `cpt-frontx-dod-react-bindings-observation-hooks`
 
 `useDomainExtensions(domainId)`, `useRegisteredPackages()`, `useActivePackage()`, and `useMountedExtensions(domainId): Extension[]` subscribe to `app.store` changes via `useSyncExternalStore`. All four require `app.mfeRegistry` (throw if absent). All four use ref-based snapshot caching to return referentially stable arrays, preventing re-renders when the underlying data has not changed. `useActivePackage` is screen-domain specific — it reads `getMountedExtensions(HAI3_SCREEN_DOMAIN)[0]` and extracts the GTS package string via `extractGtsPackage`. `useMountedExtensions(domainId)` is the domain-agnostic hook for arbitrary domains, including multi-mount domains backed by `ConcurrentMountStrategy`; it resolves each ID returned by `getMountedExtensions(domainId)` to the corresponding `Extension` instance via `registry.getExtension(id)`.
 
@@ -647,9 +647,9 @@ All five MFE-scoped hooks (`useMfeBridge`, `useMfeContext`, `useSharedProperty`,
 - [x]`useScreenTranslations` transitions through `UNLOADED → LOADING → LOADED` states; reloads when language changes; does not update state after unmount
 - [x]`useTheme` returns current theme and available themes; `setTheme` triggers framework theme change action
 - [x]`useFormatters` returns locale-aware formatters that recalculate on language change
-- [ ] `ExtensionDomainSlot` is per-domain only (no `extensionId` prop), renders exactly ONE root `<div>` per domain instance, calls `registry.getMounter(domainId).attach(element)` from its ref-attach callback and `mounter.detach()` on cleanup; on detach, `mounter.detach()` mass-unmounts every currently-mounted extension in the domain so no orphan DOM trees or slice/registry desync remain. The slot does NOT dispatch `mount_ext` or `unmount_ext` actions — the host owns those dispatches via `registry.executeActionsChain`
-- [ ] `useMountedExtensions(domainId)` returns the array of currently-mounted `Extension` instances for the named domain (multi-mount domains return >1 entries); the array reference is stable when the underlying ID list is unchanged
-- [ ] `useActivePackage()` is screen-domain specific (presumes `HAI3_SCREEN_DOMAIN` is registered with `ExclusiveMountStrategy`) and returns the GTS package of `getMountedExtensions(HAI3_SCREEN_DOMAIN)[0]`, or `undefined` when no screen extension is mounted; for non-Exclusive screen domains and arbitrary domains use `useMountedExtensions(domainId)` instead
+- [x] `ExtensionDomainSlot` is per-domain only (no `extensionId` prop), renders exactly ONE root `<div>` per domain instance, calls `registry.getMounter(domainId).attach(element)` from its ref-attach callback and `mounter.detach()` on cleanup; on detach, `mounter.detach()` mass-unmounts every currently-mounted extension in the domain so no orphan DOM trees or slice/registry desync remain. The slot does NOT dispatch `mount_ext` or `unmount_ext` actions — the host owns those dispatches via `registry.executeActionsChain`
+- [x] `useMountedExtensions(domainId)` returns the array of currently-mounted `Extension` instances for the named domain (multi-mount domains return >1 entries); the array reference is stable when the underlying ID list is unchanged
+- [x] `useActivePackage()` is screen-domain specific (presumes `HAI3_SCREEN_DOMAIN` is registered with `ExclusiveMountStrategy`) and returns the GTS package of `getMountedExtensions(HAI3_SCREEN_DOMAIN)[0]`, or `undefined` when no screen extension is mounted; for non-Exclusive screen domains and arbitrary domains use `useMountedExtensions(domainId)` instead
 - [x]`useSharedProperty` re-renders MFE component when host updates the subscribed property
 - [x]`useHostAction` sends an `ActionsChain` to the host bridge; errors are logged to console, not thrown
 - [x]`useDomainExtensions` throws a descriptive error when `microfrontends()` plugin is absent
