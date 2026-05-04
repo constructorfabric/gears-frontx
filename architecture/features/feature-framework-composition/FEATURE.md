@@ -1,6 +1,6 @@
 # Feature: Framework Composition
 
-<!-- artifact-version: 1.1 -->
+<!-- artifact-version: 1.2 -->
 
 
 <!-- toc -->
@@ -48,7 +48,7 @@
   - [Plugin Lifecycle Sequence](#plugin-lifecycle-sequence)
   - [MFE Effects Initialization Exception](#mfe-effects-initialization-exception)
   - [Shared Property Late Registration Limitation](#shared-property-late-registration-limitation)
-  - [No `updateDomainProperty` / `updateDomainProperties`](#no-updatedomainproperty--updatedomainproperties)
+  - [Single Write Path for Shared Properties](#single-write-path-for-shared-properties)
   - [HAI3Config Fields](#hai3config-fields)
 
 <!-- /toc -->
@@ -290,14 +290,16 @@ Enable host applications to compose a fully-wired FrontX framework instance by a
 
 Computes the per-domain mount-set delta around an action chain completion and dispatches one reducer call per element of the diff. Replaces the previous scalar before/after compare in `packages/framework/src/plugins/microfrontends/index.ts:137-157` (per ADR `cpt-frontx-adr-domain-implementation-mount-strategies`).
 
+`executeActionsChain` is NOT serialized at the domain level — concurrent chains for the same multi-mount domain are permitted. Eventual consistency under interleaving is preserved because the slice reducers are **idempotent** (`addExtensionMounted` is append-if-absent; `removeExtensionMounted` is no-op-if-absent — see `cpt-frontx-dod-framework-composition-mfe-plugin`). Two concurrent chains that both observe `[extB]` in their `added` set produce two `addExtensionMounted({ domainId, extensionId: extB })` dispatches; the first inserts, the second is a no-op — final slice state matches `registry.getMountedExtensions(domainId)`.
+
 1. [ ] `p1` - Resolve `domainId` from the chain's action target — only mount/unmount actions targeting a registered domain are eligible; other action types are skipped - `inst-mount-diff-resolve-domain`
 2. [ ] `p1` - **BEFORE** invoking the chain: snapshot `before = new Set(registry.getMountedExtensions(domainId))` - `inst-mount-diff-snapshot-before`
 3. [ ] `p1` - **AWAIT** the chain to complete (success or recorded failure) - `inst-mount-diff-await-chain`
 4. [ ] `p1` - **AFTER** the chain settles: snapshot `after = new Set(registry.getMountedExtensions(domainId))` - `inst-mount-diff-snapshot-after`
 5. [ ] `p1` - Compute `added = after \ before` (set difference: elements in `after` not in `before`) - `inst-mount-diff-compute-added`
 6. [ ] `p1` - Compute `removed = before \ after` (set difference: elements in `before` not in `after`) - `inst-mount-diff-compute-removed`
-7. [ ] `p1` - **FOR EACH** `extensionId` in `added`: dispatch `addExtensionMounted({ domainId, extensionId })` to the MFE slice - `inst-mount-diff-dispatch-added`
-8. [ ] `p1` - **FOR EACH** `extensionId` in `removed`: dispatch `removeExtensionMounted({ domainId, extensionId })` to the MFE slice - `inst-mount-diff-dispatch-removed`
+7. [ ] `p1` - **FOR EACH** `extensionId` in `added`: dispatch `addExtensionMounted({ domainId, extensionId })` to the MFE slice — append-if-absent reducer (idempotent under concurrent dispatch) - `inst-mount-diff-dispatch-added`
+8. [ ] `p1` - **FOR EACH** `extensionId` in `removed`: dispatch `removeExtensionMounted({ domainId, extensionId })` to the MFE slice — no-op-if-absent reducer (idempotent under concurrent dispatch) - `inst-mount-diff-dispatch-removed`
 
 ---
 
@@ -477,6 +479,13 @@ When the host changes theme or language, the respective plugin propagates the ne
 
 The `microfrontends()` plugin accepts `MicrofrontendsConfig` with required `typeSystem: TypeSystemPlugin` and optional `mfeHandlers: MfeHandler[]`. It builds a `MfeRegistry` instance via `mfeRegistryFactory.build({ typeSystem: config.typeSystem, mfeHandlers: config.mfeHandlers })` — the plugin does NOT import or hardcode any specific `TypeSystemPlugin` implementation. It exposes the registry as `app.mfeRegistry`. It registers the `mfe` Redux slice tracking per-extension registration state (`unregistered` | `registering` | `registered` | `error`) and per-domain mount state. The mount-state slot has shape `mountedExtensions: Record<string, string[]>` (per-domain insertion-ordered array of extension IDs). The slice exposes reducers `addExtensionMounted({ domainId, extensionId })` / `removeExtensionMounted({ domainId, extensionId })` and selector `selectMountedExtensions(state, domainId): readonly string[]`. The previous scalar reducers `setExtensionMounted` / `setExtensionUnmounted` and the previous selector `selectMountedExtension` do NOT exist.
 
+**Idempotent reducer contract** (required for safe concurrent diff-dispatch under unserialized action chains):
+
+- `addExtensionMounted({ domainId, extensionId })` is **append-if-absent**: if `extensionId` is already present in `state.mfe.mountedExtensions[domainId]`, the reducer is a no-op (it does NOT throw and does NOT append a duplicate).
+- `removeExtensionMounted({ domainId, extensionId })` is **no-op-if-absent**: if `extensionId` is not present in `state.mfe.mountedExtensions[domainId]`, the reducer is a no-op (it does NOT throw).
+
+These idempotency guarantees combined with the diff-dispatch algorithm produce eventually-consistent slice state under interleaved chains for the same multi-mount domain — the slice always converges to `registry.getMountedExtensions(domainId)`.
+
 The plugin wires MFE lifecycle actions (`loadExtension`, `mountExtension`, `unmountExtension`, `registerExtension`, `unregisterExtension`) into the FrontX actions map. The plugin intercepts `executeActionsChain` completions for mount/unmount actions and runs the mount-set diff dispatch (`cpt-frontx-algo-framework-composition-mount-set-diff-dispatch`): it snapshots `registry.getMountedExtensions(domainId)` before and after each chain, computes per-domain `added` and `removed` sets, and dispatches one `addExtensionMounted` per added element and one `removeExtensionMounted` per removed element.
 
 **Domain constants** (GTS instance IDs):
@@ -591,7 +600,7 @@ The framework does NOT export `createAction` to consumers; actions are handwritt
 - [x] `mfeRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, 'dark')` propagates to all domains declaring the property; domains not declaring it receive no update
 - [x] `app.actions.registerExtension(ext)` transitions `state.mfe.registrationStates[ext.id]` from `'unregistered'` → `'registering'` → `'registered'`
 - [x] A failing `mfeRegistry.registerExtension()` call transitions state to `'error'` with the error message recorded
-- [ ] `app.actions.mountExtension(extensionId)` after successful execution appends the extension's `subject` reference to `state.mfe.mountedExtensions[domainId]` (insertion-ordered string array); a subsequent `app.actions.unmountExtension(extensionId)` removes that ID from the array; the slice never holds `undefined` for a registered domain — it holds `[]`. Multi-mount domains backed by `ConcurrentMountStrategy` accumulate multiple IDs in the array
+- [ ] Slice `mountedExtensions[domainId]` is `[]` immediately after `registerDomain` returns; subsequent successful mount chains append the extension's `subject` to `state.mfe.mountedExtensions[domainId]` (insertion-ordered string array) via `addExtensionMounted` (append-if-absent); subsequent successful unmount chains remove the named ID via `removeExtensionMounted` (no-op-if-absent); the slice never holds `undefined` for a registered domain. Multi-mount domains backed by `ConcurrentMountStrategy` accumulate multiple IDs in the array; concurrent mount chains for the same multi-mount domain converge to `registry.getMountedExtensions(domainId)` because the reducers are idempotent
 - [x] `normalizeBase('/console/')` returns `'/console'`; `normalizeBase('')` returns `'/'`; `normalizeBase('console')` returns `'/console'`
 - [x] `stripBase('/console/dashboard', '/console')` returns `'/dashboard'`; `stripBase('/admin/x', '/console')` returns `null`; `stripBase('/console-admin', '/console')` returns `null`
 - [x] `createHAI3App()` uses the `full()` preset and returns a valid `HAI3App` without configuration
@@ -620,9 +629,9 @@ The `microfrontends()` plugin does NOT use `provides.effects` for its effect ini
 
 The broadcast model is fire-and-forget: `updateSharedProperty()` propagates only to domains already registered at call time. Domains registered after a broadcast do NOT retroactively receive prior values. The application layer is responsible for re-broadcasting current values after late domain registration if initial state is required.
 
-### No `updateDomainProperty` / `updateDomainProperties`
+### Single Write Path for Shared Properties
 
-These methods were removed as part of the global shared property broadcast model (`cpt-frontx-adr-global-shared-property-broadcast`). Shared properties are global — a property ID means the same thing across all domains that declare it, so domain-targeted writes are semantically incorrect. `updateSharedProperty(propertyId, value)` is the only write path.
+Shared properties are global — a property ID means the same thing across all domains that declare it, so writes are not domain-targeted. `updateSharedProperty(propertyId, value)` is the only write path; per ADR `cpt-frontx-adr-global-shared-property-broadcast`, propagation is determined by each domain's `sharedProperties` declaration.
 
 ### HAI3Config Fields
 
@@ -631,6 +640,6 @@ These methods were removed as part of the global shared property broadcast model
 | `name` | `string` | `'FrontX App'` | Application identifier |
 | `devMode` | `boolean` | `false` | Enables duplicate plugin warnings |
 | `strictMode` | `boolean` | `false` | Throws on missing plugin dependencies |
-| `autoNavigate` | `boolean` | `true` | Deprecated — auto-route to first screen on mount |
+| `autoNavigate` | `boolean` | `true` | Auto-route to the first registered route on mount; when `false`, stays on `/` until explicit navigation occurs |
 | `base` | `string` | `'/'` | Base path for navigation |
 | `routerMode` | `'browser'` \| `'hash'` \| `'memory'` | `'browser'` | Router strategy |

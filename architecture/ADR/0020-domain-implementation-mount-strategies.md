@@ -57,7 +57,7 @@ The question this ADR answers: where should mount semantics live, and what abstr
 - **Type-system agnosticism at L1**: the screensets package must not assume GTS in its behavior abstractions. GTS already validates the declaration; behavior code never names GTS.
 - **Class-first OOP**: per project convention, every new component is a class with private state. No standalone functions, no closure-only registration.
 - **Encapsulation enforcement, not convention**: where the design says "the mounter must not be accessible after registration", that constraint must be mechanically enforced, not left to discipline.
-- **No back-compat**: the convergent design does not preserve the current solution or its SDLC footprints. Removing scalar API surface and obsolete handlers is acceptable and required.
+- **No back-compat**: the design ships the chosen surface directly. Public-API shape is chosen on architectural merits without preservation constraints.
 
 ## Considered Options
 
@@ -74,75 +74,53 @@ H. Domain-implementation class with constructor-bound strategies and encapsulate
 
 Chosen option: **H. Domain-implementation class with constructor-bound strategies and encapsulated mounter**, because it inverts the responsibility correctly — the framework owns mount-set state and MFE primitives only, and the domain implementation owns mount/unmount policy through a small set of shipped strategy classes — while remaining type-system agnostic, mechanically encapsulated, and free of framework-side knowledge of how containers are created or positioned.
 
-The introduced abstractions in `@cyberfabric/screensets`:
+The decision introduces a small set of new abstractions in `@cyberfabric/screensets` that together establish where mount semantics live:
 
-- `ExtensionDomain` (interface, unchanged) remains the GTS-validated declaration. No rename.
-- `ExtensionDomainImplementation` (new abstract class). Pure behavior; constructor takes a `DomainContext`. Type-system agnostic: never names GTS.
-- `DomainContext` (interface). Carries `mounter: ExtensionMounter` (accessor that throws after registration completes) and `registerHandler(actionType, handler)` (throws after registration completes). Invalidation is performed by the registry in a `finally` block immediately after `factory(ctx)` returns.
-- `ExtensionMounter` (new abstract class). Per-domain facade composing the existing internal mount logic and `MfeHandler`. Methods: `mount(extId, container)`, `unmount(extId)`, `getMounted(): readonly string[]`. The internal concrete is `DefaultExtensionMounter`.
-- `ContainerHooks` (interface). `{ create(extId): Element; destroy(extId): void }`. The implementation provides hooks; the strategy uses them for container lifecycle.
-- Three concrete strategy classes: `ConcurrentMountStrategy`, `OptionalMountStrategy`, `ExclusiveMountStrategy`. All take `(mounter, hooks)` in their constructor and capture both privately. `ExclusiveMountStrategy` exposes only `mount` because the declaration must omit `unmount_ext`; the mediator rejects unmount actions for such domains at registration validation.
-- `registerDomain(declaration: ExtensionDomain, factory: (ctx: DomainContext) => ExtensionDomainImplementation): void`. Two-arg form. The factory function lets the implementation's constructor capture `ctx.mounter` synchronously while the registry invalidates `ctx` in a `finally` block.
-- `ScreensetsRegistry.getMountedExtensions(domainId): readonly string[]` (plural). Replaces the scalar `getMountedExtension`.
-- `ActionHandler.fromFunction(fn)` static helper. Convenience wrap when a strategy method needs to be exposed as an `ActionHandler` instance to the mediator.
+- A pure-behavior domain implementation (abstract class) constructed by an abstract factory; the factory's `build` is synchronous so async construction is rejected by the type system.
+- A construction-time context object that carries the per-domain mounter, lifecycle trigger, and per-action-type handler registration entry point — invalidated mechanically by the registry once construction returns.
+- A per-domain mount facade that owns root attachment, per-extension mount/unmount, and mass-unmount on detach. The mounter does not own mount-set state; the registry does, as the canonical source.
+- An abstract `MountStrategy` base with three shipped concrete strategies — `ConcurrentMountStrategy`, `OptionalMountStrategy`, `ExclusiveMountStrategy` — each capturing the mounter and an implementation-supplied container factory privately at construction.
+- An implementation-supplied pure container factory; it has no DOM-attachment responsibility (the mounter owns the attached root).
+- A per-domain lifecycle trigger facade for implementation-driven transitions; the mounter stays mount/unmount-only.
+- A strict cardinality matrix cross-validating the chosen strategy against the declaration's actions at registration time.
+- A two-argument `registerDomain(declaration, factory)` entry point on the registry, plus plural `getMountedExtensions(domainId)` and a per-domain `getMounter(domainId)` accessor consumed by the React slot.
 
-Removed from the public surface (no shims, no deprecation aliases):
+Framework-side and React-side consequences that follow: the per-domain MFE slice becomes a per-domain insertion-ordered list with idempotent diff-dispatch reducers; the chain-completion sync wrapper switches from scalar before/after compare to set-diff dispatch (idempotent reducers make this safe under unserialized concurrent chains for multi-mount domains); the React slot becomes a per-domain singleton-root component that delegates to the mounter via attach/detach; `useActivePackage` is documented as `Exclusive`-strategy specific; a domain-agnostic `useMountedExtensions(domainId)` hook is introduced for arbitrary cardinalities.
 
-- `ContainerProvider` (containers are now impl-internal).
-- `MountExtSwapHandler`, `MountExtToggleHandler` (replaced by strategies that own mount semantics).
-- `getMountedExtension(domainId)` (singular).
-- `MountManager` from public surface (becomes strictly internal behind `DefaultExtensionMounter`).
-
-Framework-side changes that follow:
-
-- Slice shape becomes `mountedExtensions: Record<string, string[]>` (per-domain insertion-ordered list).
-- Reducers become `addExtensionMounted({ domainId, extensionId })` / `removeExtensionMounted({ domainId, extensionId })`. Old `setExtensionMounted` / `setExtensionUnmounted` are removed.
-- Selector becomes `selectMountedExtensions(state, domainId): readonly string[]`. Old `selectMountedExtension` is removed.
-- Plugin sync wrapper at `packages/framework/src/plugins/microfrontends/index.ts:137-157` switches from scalar before/after compare to set-diff dispatch: `added = after \ before`, `removed = before \ after`, one reducer call per element.
-
-React-side changes that follow:
-
-- The framework's `ExtensionDomainImplementation` carries no DOM references and no `setRoot` method. The React package introduces a `RootAttachable` structural interface (NOT in framework): `interface RootAttachable { setRoot(root: Element | null): void }`.
-- `ExtensionDomainSlot` becomes a singleton root per domain: it does a structural type check (`'setRoot' in impl`) and calls `setRoot` from its ref callback. It does NOT render N children — multi-mount children are managed imperatively under the root by the implementation's container hooks.
-- `useActivePackage` is documented as screen-domain specific; reads `getMountedExtensions(HAI3_SCREEN_DOMAIN)[0]`.
-- New hook `useMountedExtensions(domainId): Extension[]` for arbitrary domains.
+The full method-level surface and per-flow algorithm steps live in `architecture/DESIGN.md` and the affected FEATURE artifacts. This ADR records the decision and its rationale; method shapes, per-flow algorithm steps, slice payload schemas, and DoD enumerations belong in the linked DESIGN/FEATURE artifacts and are not duplicated here.
+- New hook `useMountedExtensions(domainId): Extension[]` for arbitrary domains, including multi-mount.
 
 ### Consequences
 
 - Good: multi-mount domains are first-class. A domain author picks `ConcurrentMountStrategy`, supplies hooks, and the framework needs no changes.
 - Good: cardinality is declared, not inferred. The strategy class IS the declaration; there is no heuristic on `domain.actions`.
 - Good: framework gets out of the layout business. Containers are an implementation concern; the framework only sees opaque `Element` references during `mounter.mount(extId, container)` calls.
-- Good: encapsulation is mechanical. The `DomainContext` invalidation in the registry's `finally` block ensures the implementation cannot leak mounter access; references captured by strategies survive because they hold the mounter privately.
+- Good: encapsulation is mechanical. The `DomainContext` invalidation in the registry's `finally` block ensures the implementation cannot leak mounter / lifecycle-trigger / registerHandler access. Invalidation is at the function-handle level, so captured references in the implementation's closure also reject after registration. References captured by strategies (held privately on bound class fields) survive because they bypass the `ctx` object. Atomic rollback on factory-throw guarantees no partial registration is observable.
 - Good: type-system agnostic at the behavior boundary. `ExtensionDomainImplementation` and `ExtensionMounter` never reference GTS. The declaration validation is delegated to the pluggable `typeSystem` exactly as today.
 - Good: SOLID compliance is high (see Confirmation below).
-- Bad: more abstractions to learn for first-time domain authors. The bare minimum to register a domain rises from one function call to: pick a strategy class, write a `ContainerHooks`, supply a factory.
-- Bad: no back-compat. Code that calls `getMountedExtension`, `MountExtSwapHandler`, `MountExtToggleHandler`, or `ContainerProvider` will not compile. This is the explicit intent of the user co-design and is a hard requirement of this ADR.
-- Bad: `ExclusiveMountStrategy` has an asymmetric public surface (no `unmount`). Domain authors who pick it have to omit `unmount_ext` from the declaration; the mediator enforces this at registration time. The asymmetry is intentional but worth documenting prominently.
-- Neutral: the existing `MountManager` continues to live as the internal core. Its public surface goes away, but its logic survives, refactored to be per-domain rather than per-registry.
+- Bad: more abstractions to learn for first-time domain authors. The bare minimum to register a domain is: pick a strategy class, write a `ContainerHooks`, supply a factory.
+- Bad: `ExclusiveMountStrategy` has an asymmetric public surface (no `unmount`). Domain authors who pick it must omit `unmount_ext` from the declaration; the mediator enforces this at registration time. The asymmetry is intentional but worth documenting prominently.
+- Neutral: `MountManager` is internal to the package — `DefaultExtensionMounter` composes it per domain to execute mount/unmount primitives.
 
 ### Confirmation
 
 Compliance with this ADR is confirmed by:
 
-- Design review of `architecture/DESIGN.md` showing the new entities listed under L1 Domain Model and the removal of `ContainerProvider` and the `mountedExtension` scalar.
-- Design review of the affected FEATURE specs:
-  - `architecture/features/feature-screenset-registry/FEATURE.md` showing the new `registerDomain` two-arg signature, the new strategy algorithms, and the removal of `MountExtSwapHandler` / `MountExtToggleHandler` and `inst-toggle-semantics` / `inst-swap-semantics`.
-  - `architecture/features/feature-framework-composition/FEATURE.md` showing the array slice shape, the diff reducer pair, and the diff-dispatch sync wrapper algorithm.
-  - `architecture/features/feature-react-bindings/FEATURE.md` showing the singleton-root `ExtensionDomainSlot` description, the `useMountedExtensions` flow, and the screen-domain-specific framing of `useActivePackage`.
-- Code review confirming:
-  - `ScreensetsRegistry.getMountedExtensions(domainId): readonly string[]` is the only mount-set query method.
-  - `ContainerProvider`, `MountExtSwapHandler`, `MountExtToggleHandler`, `getMountedExtension` do not appear in the public barrel of `@cyberfabric/screensets`.
-  - The registry's `registerDomain` invalidates `ctx.mounter` in a `finally` block — verified by a unit test that calls `ctx.mounter` after `registerDomain` returns and asserts a thrown error.
-  - The framework slice has shape `Record<string, string[]>` and dispatches diffs.
-  - `ExtensionDomainSlot` calls `setRoot` exactly once per mount and does not render N children.
+- Design review of `architecture/DESIGN.md` reflecting the L1 Domain Model entities — per-domain mounter, mount strategies, container hooks, lifecycle trigger, implementation factory — and the array-shaped `mountedExtensions` mount-set on `ExtensionDomainState`.
+- Design review of the affected FEATURE specs that own the spec-level detail:
+  - `architecture/features/feature-screenset-registry/FEATURE.md` for the two-arg `registerDomain` form, the abstract `MountStrategy` base and shipped subclasses, the strict cardinality cross-validation matrix, and the per-domain lifecycle trigger.
+  - `architecture/features/feature-framework-composition/FEATURE.md` for the array-shaped per-domain slice, the idempotent diff reducer pair, and the diff-dispatch sync wrapper algorithm.
+  - `architecture/features/feature-react-bindings/FEATURE.md` for the per-domain singleton-root `ExtensionDomainSlot`, the `useMountedExtensions` flow, and the screen-domain-specific framing of `useActivePackage`.
+
+Acceptance criteria, per-method method shapes, slice payload schemas, and verification tests live in those FEATURE artifacts; this ADR does not restate them.
 
 SOLID verdicts (under this ADR):
 
-- SRP: PASS. Each new class has one reason to change — declaration (interface), behavior (implementation), per-domain mount facade (mounter), cardinality policy (strategies).
-- OCP: PASS. New cardinalities are added by introducing new strategy classes; the registry, framework, and React layers are not modified.
-- LSP: PASS. All three strategies satisfy a constructor signature `(mounter, hooks)` and their `mount`/`unmount` methods are interchangeable from the strategy-instance perspective. `ExclusiveMountStrategy` deliberately omits `unmount` from its public surface and the registry rejects unmount actions for such domains at registration — this is enforced as a structural constraint, not a runtime LSP violation.
-- ISP: PASS. `DomainContext` exposes only what the implementation needs at construction (mounter accessor, registerHandler) and is invalidated immediately after. Strategies depend on `ContainerHooks` (two methods) and `ExtensionMounter` (three methods) — both narrow.
-- DIP: PASS. Registry depends on `ExtensionDomainImplementation`, `ActionHandler`, `MfeHandler`, `TypeSystemPlugin` abstractions. Strategies depend on `ExtensionMounter` and `ContainerHooks` abstractions. The internal `DefaultExtensionMounter` is hidden behind the abstraction.
+- SRP: PASS. Each new class has one reason to change — declaration (interface), behavior (implementation), per-domain mount facade (mounter), cardinality policy (strategies), per-domain lifecycle facade (lifecycle trigger), factory shape (implementation factory).
+- OCP: PASS. New cardinalities are added by introducing new `MountStrategy` subclasses; the registry, framework, and React layers are not modified.
+- LSP: PASS. The abstract `MountStrategy` makes `mount` abstract and `unmount` optional; every concrete strategy satisfies the abstract base contract on the abstract surface. The strict cardinality matrix (`cpt-frontx-algo-screenset-registry-cross-validate-handlers`) enforces cardinality declaration at registration time; LSP-substitutability on the abstract surface is preserved.
+- ISP: PASS. `DomainContext` exposes only what the implementation needs at construction (mounter, lifecycle trigger, register handler) and is invalidated immediately after. Strategies depend on a narrow pure-factory container interface and a narrow per-domain mounter abstraction. The mounter does not carry mount-set queries; mount-set reads go through the registry, decoupling consumers from mounter internals.
+- DIP: PASS. The registry depends on the abstract `ExtensionDomainImplementation`, `ExtensionDomainImplementationFactory`, `MountStrategy`, `ActionHandler`, `MfeHandler`, and `TypeSystemPlugin` abstractions. Strategies depend on the abstract mounter, container hooks, and lifecycle trigger. Internal default implementations are hidden behind their abstractions.
 
 ## Pros and Cons of the Options
 
@@ -207,12 +185,12 @@ The trade-off accepted is that domain authors face more abstractions on day one.
 - **GitHub issue**: cyberfabric/frontx#278
 - **Affected ADRs**:
   - `cpt-frontx-adr-blob-url-mfe-isolation` (ADR-0004) — unchanged. Blob URL isolation is orthogonal to mount cardinality.
-  - `cpt-frontx-adr-per-action-type-handler-routing` (ADR-0018) — partially superseded. ADR-0018 established that per-action-type `ActionHandler` instances replace the monolithic `ExtensionLifecycleActionHandler` switch class. This ADR keeps that pattern and extends it: the per-domain handlers are now constructed by the domain implementation (via strategies) rather than picked by framework heuristic on `domain.actions`. The unified mediator handler map and the `ActionHandler` abstract contract are unchanged.
+  - `cpt-frontx-adr-per-action-type-handler-routing` (ADR-0018) — this ADR builds on ADR-0018's per-action-type `ActionHandler` pattern: per-domain handlers are constructed by the domain implementation (via strategies) and registered through `ctx.registerHandler` into the unified mediator handler map.
 - **Anti-pattern check**:
   - Premature abstraction: NO. Each new abstraction maps to a concrete responsibility identified in the convergent design — there is no speculation about "future cardinalities" that the strategies do not already cover.
   - Golden hammer: NO. The strategies-and-context pattern is matched to the problem (composable per-domain behavior under a class-first OOP convention), not borrowed reflexively.
   - Big ball of mud: NO. Each layer's responsibility is sharper after this ADR than before.
-  - Tight coupling: NO. The framework no longer couples mount semantics to `domain.actions`. The implementation no longer couples to GTS.
+  - Tight coupling: NO. Mount semantics are owned by the domain implementation (strategies plus `ContainerHooks`); the framework receives only opaque `Element` references through the mounter. The implementation does not depend on GTS — declaration validation is delegated to the pluggable `typeSystem`.
   - Magic: NO. The `finally`-block invalidation is explicit; the strategy registration is explicit via `ctx.registerHandler`.
   - Over-engineering: this is the closest thing to a risk on this list. Mitigation: the three strategy classes are shipped from the package, the typical implementation wrapper is small (constructor + hooks), and the structural type check in `ExtensionDomainSlot` is one line.
 
@@ -226,9 +204,9 @@ This decision directly addresses the following requirements or design elements:
 - `cpt-frontx-fr-sdk-screensets-package` — defines the L1 contract surface for domain implementations and mount semantics.
 - `cpt-frontx-fr-mfe-ext-domain` — extends domain semantics from declaration-only to declaration+behavior pairing without modifying the GTS-validated declaration.
 - `cpt-frontx-fr-mfe-dynamic-registration` — preserves runtime domain registration and adds the mounter encapsulation invariant.
-- `cpt-frontx-component-screensets` — introduces `ExtensionDomainImplementation`, `ExtensionMounter`, `DomainContext`, `ContainerHooks`, and the three strategy classes; removes `ContainerProvider` and `MountManager` from public surface.
-- `cpt-frontx-component-framework` — switches the MFE slice to per-domain ordered lists with diff dispatch.
-- `cpt-frontx-component-react` — replaces multi-child rendering in `ExtensionDomainSlot` with singleton-root `RootAttachable` opt-in; adds `useMountedExtensions`.
-- `cpt-frontx-feature-screenset-registry` — picks up the algorithm and public-API changes.
-- `cpt-frontx-feature-framework-composition` — picks up the slice and sync wrapper changes.
-- `cpt-frontx-feature-react-bindings` — picks up the slot and hook changes.
+- `cpt-frontx-component-screensets` — introduces `ExtensionDomainImplementation`, `ExtensionMounter`, `DomainContext`, `ContainerHooks`, and the three strategy classes; `MountManager` is internal-only.
+- `cpt-frontx-component-framework` — the MFE slice carries per-domain insertion-ordered lists with idempotent diff-dispatch reducers.
+- `cpt-frontx-component-react` — `ExtensionDomainSlot` is a per-domain singleton-root component that calls `registry.getMounter(domainId).attach(element)` / `detach()`; root attachment is a mounter responsibility. `useMountedExtensions(domainId)` exposes the per-domain mount-set.
+- `cpt-frontx-feature-screenset-registry` — owns the algorithm and public-API surface.
+- `cpt-frontx-feature-framework-composition` — owns the slice and sync wrapper algorithm.
+- `cpt-frontx-feature-react-bindings` — owns the slot and hook flows.
