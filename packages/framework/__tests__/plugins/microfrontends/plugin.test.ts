@@ -18,7 +18,7 @@ import {
   MfeEvents,
   selectExtensionState,
   selectExtensionError,
-  selectMountedExtension,
+  selectMountedExtensions,
 } from '../../../src/plugins/microfrontends';
 import { eventBus, resetStore } from '@cyberfabric/state';
 import {
@@ -39,7 +39,7 @@ type MountSyncRegistry = Pick<
   MfeRegistry,
   | 'typeSystem'
   | 'executeActionsChain'
-  | 'getMountedExtension'
+  | 'getMountedExtensions'
   | 'registerExtension'
   | 'unregisterExtension'
 >;
@@ -224,7 +224,7 @@ describe('microfrontends plugin - Phase 13', () => {
       const fakeRegistry: MountSyncRegistry = {
         typeSystem: gtsPlugin,
         executeActionsChain: vi.fn().mockResolvedValue(undefined),
-        getMountedExtension: vi.fn().mockReturnValue(undefined),
+        getMountedExtensions: vi.fn().mockReturnValue([] as readonly string[]),
         registerExtension: vi.fn().mockResolvedValue(undefined),
         unregisterExtension: vi.fn().mockResolvedValue(undefined),
       };
@@ -248,20 +248,17 @@ describe('microfrontends plugin - Phase 13', () => {
         },
       });
 
-      expect(selectMountedExtension(app.store.getState(), domainId)).toBeUndefined();
+      expect(selectMountedExtensions(app.store.getState(), domainId)).toEqual([]);
     });
 
     it('mirrors the registry mounted extension when a fallback path leaves a different extension mounted', async () => {
-      const mountedByDomain = new Map<string, string | undefined>();
+      const mountedByDomain = new Map<string, readonly string[]>();
       const fakeRegistry: MountSyncRegistry = {
         typeSystem: gtsPlugin,
         executeActionsChain: vi.fn().mockImplementation(async (chain: { action: { target: string } }) => {
-          mountedByDomain.set(
-            chain.action.target,
-            'gts.hai3.mfes.ext.extension.v1~test.app.fallback.ext.v1'
-          );
+          mountedByDomain.set(chain.action.target, ['gts.hai3.mfes.ext.extension.v1~test.app.fallback.ext.v1']);
         }),
-        getMountedExtension: vi.fn((domainId: string) => mountedByDomain.get(domainId)),
+        getMountedExtensions: vi.fn((domainId: string) => mountedByDomain.get(domainId) ?? []),
         registerExtension: vi.fn().mockResolvedValue(undefined),
         unregisterExtension: vi.fn().mockResolvedValue(undefined),
       };
@@ -286,29 +283,23 @@ describe('microfrontends plugin - Phase 13', () => {
         },
       });
 
-      expect(selectMountedExtension(app.store.getState(), domainId)).toBe(fallbackExtensionId);
+      expect(selectMountedExtensions(app.store.getState(), domainId)).toEqual([fallbackExtensionId]);
     });
 
     it('syncs every domain touched by a chained mount/unmount sequence', async () => {
-      const mountedByDomain = new Map<string, string | undefined>();
+      const mountedByDomain = new Map<string, readonly string[]>();
       const fakeRegistry: MountSyncRegistry = {
         typeSystem: gtsPlugin,
         executeActionsChain: vi.fn().mockImplementation(async (chain: {
           action: { target: string };
           next?: { action: { target: string } };
         }) => {
-          mountedByDomain.set(
-            chain.action.target,
-            'gts.hai3.mfes.ext.extension.v1~test.app.root.ext.v1'
-          );
+          mountedByDomain.set(chain.action.target, ['gts.hai3.mfes.ext.extension.v1~test.app.root.ext.v1']);
           if (chain.next) {
-            mountedByDomain.set(
-              chain.next.action.target,
-              'gts.hai3.mfes.ext.extension.v1~test.app.next.ext.v1'
-            );
+            mountedByDomain.set(chain.next.action.target, ['gts.hai3.mfes.ext.extension.v1~test.app.next.ext.v1']);
           }
         }),
-        getMountedExtension: vi.fn((domainId: string) => mountedByDomain.get(domainId)),
+        getMountedExtensions: vi.fn((domainId: string) => mountedByDomain.get(domainId) ?? []),
         registerExtension: vi.fn().mockResolvedValue(undefined),
         unregisterExtension: vi.fn().mockResolvedValue(undefined),
       };
@@ -341,25 +332,18 @@ describe('microfrontends plugin - Phase 13', () => {
         },
       });
 
-      expect(selectMountedExtension(app.store.getState(), rootDomainId)).toBe(
-        'gts.hai3.mfes.ext.extension.v1~test.app.root.ext.v1'
-      );
-      expect(selectMountedExtension(app.store.getState(), nextDomainId)).toBe(
-        'gts.hai3.mfes.ext.extension.v1~test.app.next.ext.v1'
-      );
+      expect(selectMountedExtensions(app.store.getState(), rootDomainId)).toEqual(['gts.hai3.mfes.ext.extension.v1~test.app.root.ext.v1']);
+      expect(selectMountedExtensions(app.store.getState(), nextDomainId)).toEqual(['gts.hai3.mfes.ext.extension.v1~test.app.next.ext.v1']);
     });
 
     it('does not dispatch mount sync for fallback-only domains that were never executed', async () => {
-      const mountedByDomain = new Map<string, string | undefined>();
+      const mountedByDomain = new Map<string, readonly string[]>();
       const fakeRegistry: MountSyncRegistry = {
         typeSystem: gtsPlugin,
         executeActionsChain: vi.fn().mockImplementation(async (chain: { action: { target: string } }) => {
-          mountedByDomain.set(
-            chain.action.target,
-            'gts.hai3.mfes.ext.extension.v1~test.app.root.ext.v1'
-          );
+          mountedByDomain.set(chain.action.target, ['gts.hai3.mfes.ext.extension.v1~test.app.root.ext.v1']);
         }),
-        getMountedExtension: vi.fn((domainId: string) => mountedByDomain.get(domainId)),
+        getMountedExtensions: vi.fn((domainId: string) => mountedByDomain.get(domainId) ?? []),
         registerExtension: vi.fn().mockResolvedValue(undefined),
         unregisterExtension: vi.fn().mockResolvedValue(undefined),
       };
@@ -396,10 +380,8 @@ describe('microfrontends plugin - Phase 13', () => {
       });
       unsubscribe();
 
-      expect(selectMountedExtension(app.store.getState(), rootDomainId)).toBe(
-        'gts.hai3.mfes.ext.extension.v1~test.app.root.ext.v1'
-      );
-      expect(selectMountedExtension(app.store.getState(), fallbackDomainId)).toBeUndefined();
+      expect(selectMountedExtensions(app.store.getState(), rootDomainId)).toEqual(['gts.hai3.mfes.ext.extension.v1~test.app.root.ext.v1']);
+      expect(selectMountedExtensions(app.store.getState(), fallbackDomainId)).toEqual([]);
       expect(notificationCount).toBe(1);
     });
   });

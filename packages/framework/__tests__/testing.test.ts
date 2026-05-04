@@ -11,11 +11,9 @@
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it, vi } from 'vitest';
-import {
-  describeBootstrapMfeContract,
-  TestContainerProvider,
-} from '../src/testing';
+import { describe, expect, it } from 'vitest';
+import { describeBootstrapMfeContract } from '../src/testing';
+import { TestContainerProvider } from './test-utils/TestContainerProvider';
 
 function resolveFixturePath(relativePath: string): string {
   if (import.meta.url.startsWith('file:')) {
@@ -67,39 +65,29 @@ describe('describeBootstrapMfeContract', () => {
   });
 });
 
-describe('TestContainerProvider', () => {
-  it('returns the provided container instance', () => {
+describe('TestContainerProvider (factory adapter)', () => {
+  it('exposes a mockContainer Element when document is available', () => {
+    const provider = new TestContainerProvider();
+    expect(provider.mockContainer instanceof HTMLElement).toBe(true);
+  });
+
+  it('accepts an explicit container in the constructor', () => {
     const container = document.createElement('section');
     const provider = new TestContainerProvider(container);
-
-    expect(provider.getContainer('demo')).toBe(container);
+    expect(provider.mockContainer).toBe(container);
   });
 
-  it('creates a div container when document is available', () => {
+  it('prepareForDomain returns the factory instance for chaining', () => {
     const provider = new TestContainerProvider();
-    const host = provider.getContainer('demo');
-
-    expect(host instanceof HTMLElement).toBe(true);
-    expect(host.tagName).toBe('DIV');
-  });
-
-  it('falls back to a lightweight container object when document is unavailable', () => {
-    const originalDocument = globalThis.document;
-    vi.stubGlobal('document', undefined);
-
-    try {
-      const provider = new TestContainerProvider();
-      expect(provider.getContainer('demo')).toEqual({ tagName: 'DIV' });
-    } finally {
-      vi.stubGlobal('document', originalDocument);
-    }
-  });
-
-  it('treats releaseContainer as a no-op', () => {
-    const provider = new TestContainerProvider(document.createElement('div'));
-
-    expect(() => {
-      provider.releaseContainer('demo');
-    }).not.toThrow();
+    const declaration = {
+      id: 'gts.hai3.mfes.ext.domain.v1~test.app.domain.v1',
+      sharedProperties: [],
+      actions: [],
+      extensionsActions: [],
+      defaultActionTimeout: 5000,
+      lifecycleStages: [],
+      extensionsLifecycleStages: [],
+    };
+    expect(provider.prepareForDomain(declaration)).toBe(provider);
   });
 });
