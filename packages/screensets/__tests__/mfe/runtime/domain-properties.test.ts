@@ -15,7 +15,7 @@ import { MfeRegistry } from '../../../src/mfe/runtime';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import type { ExtensionDomain } from '../../../src/mfe/types';
 import type { TypeSystemPlugin, ValidationResult, JSONSchema } from '../../../src/mfe/plugins/types';
-import { TestContainerProvider } from '../../../__test-utils__';
+import { MockDomainFactory } from '../../../__test-utils__';
 
 // Create a lenient mock plugin for testing domain properties
 function createMockPlugin(): TypeSystemPlugin {
@@ -79,7 +79,7 @@ function createMockPlugin(): TypeSystemPlugin {
 describe('MfeRegistry - Domain Properties', () => {
   let registry: MfeRegistry;
   let testDomain: ExtensionDomain;
-  let mockContainerProvider: TestContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
   const DOMAIN_ID = 'gts.hai3.mfes.ext.domain.v1~hai3.test.widget.slot.v1';
   const THEME_PROPERTY_ID = 'gts.hai3.mfes.comm.shared_property.v1~acme.ui.theme.v1';
   const USER_PROPERTY_ID = 'gts.hai3.mfes.comm.shared_property.v1~acme.auth.user.v1';
@@ -88,7 +88,7 @@ describe('MfeRegistry - Domain Properties', () => {
     registry = new DefaultMfeRegistry({
       typeSystem: createMockPlugin(),
     });
-    mockContainerProvider = new TestContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     testDomain = {
       id: DOMAIN_ID,
@@ -104,7 +104,7 @@ describe('MfeRegistry - Domain Properties', () => {
       ],
     };
 
-    registry.registerDomain(testDomain, mockContainerProvider);
+    registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
   });
 
   describe('updateSharedProperty', () => {
@@ -188,7 +188,7 @@ describe('MfeRegistry - Domain Properties', () => {
         ],
       };
 
-      registry.registerDomain(domain2, mockContainerProvider);
+      registry.registerDomain(domain2, mockContainerProvider.prepareForDomain(domain2));
     });
 
     it('should broadcast property value to all domains declaring it', () => {
@@ -239,7 +239,7 @@ describe('MfeRegistry - Domain Properties', () => {
           'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
         ],
       };
-      registry.registerDomain(domain3, mockContainerProvider);
+      registry.registerDomain(domain3, mockContainerProvider.prepareForDomain(domain3));
 
       // domain3 does NOT receive the prior value — the broadcast already happened
       expect(registry.getDomainProperty(DOMAIN3_ID, THEME_PROPERTY_ID)).toBeUndefined();
@@ -262,7 +262,7 @@ describe('MfeRegistry - Domain Properties', () => {
           'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
         ],
       };
-      registry.registerDomain(domain3, mockContainerProvider);
+      registry.registerDomain(domain3, mockContainerProvider.prepareForDomain(domain3));
 
       // Broadcast AFTER domain3 is registered — it should receive this one
       registry.updateSharedProperty(THEME_PROPERTY_ID, 'light');

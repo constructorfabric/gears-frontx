@@ -7,7 +7,7 @@ import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry'
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { ExtensionDomain } from '../../../src/mfe/types';
 import { DomainValidationError } from '../../../src/mfe/errors';
-import { TestContainerProvider } from '../../../__test-utils__';
+import { MockDomainFactory } from '../../../__test-utils__';
 
 /**
  * Deliberately invalid {@link ExtensionDomain} shape for negative tests.
@@ -23,13 +23,13 @@ function invalidExtensionDomainFixtureForValidation(): ExtensionDomain {
 describe('Domain Registration', () => {
   const plugin = new GtsPlugin();
   let registry: DefaultMfeRegistry;
-  let mockContainerProvider: TestContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
 
   beforeEach(() => {
     registry = new DefaultMfeRegistry({
       typeSystem: plugin,
     });
-    mockContainerProvider = new TestContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
   });
 
   describe('registerDomain with GTS validation', () => {
@@ -53,7 +53,7 @@ describe('Domain Registration', () => {
       };
 
       expect(() => {
-        registry.registerDomain(domain, mockContainerProvider);
+        registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
       }).not.toThrow();
 
       // Verify domain is registered
@@ -83,7 +83,7 @@ describe('Domain Registration', () => {
       };
 
       expect(() => {
-        registry.registerDomain(domain, mockContainerProvider);
+        registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
       }).not.toThrow();
 
       const domainState = registry.getDomainState(domain.id);
@@ -95,7 +95,7 @@ describe('Domain Registration', () => {
       const invalidDomain = invalidExtensionDomainFixtureForValidation();
 
       expect(() => {
-        registry.registerDomain(invalidDomain, mockContainerProvider);
+        registry.registerDomain(invalidDomain, mockContainerProvider.prepareForDomain(invalidDomain));
       }).toThrow(DomainValidationError);
     });
 
@@ -123,7 +123,7 @@ describe('Domain Registration', () => {
       };
 
       expect(() => {
-        registry.registerDomain(domain, mockContainerProvider);
+        registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
       }).not.toThrow();
     });
   });
@@ -155,7 +155,7 @@ describe('Domain Registration', () => {
       };
 
       expect(() => {
-        registry.registerDomain(sidebarDomain, mockContainerProvider);
+        registry.registerDomain(sidebarDomain, mockContainerProvider.prepareForDomain(sidebarDomain));
       }).not.toThrow();
 
       const domainState = registry.getDomainState(sidebarDomain.id);
@@ -190,7 +190,7 @@ describe('Domain Registration', () => {
       };
 
       expect(() => {
-        registry.registerDomain(screenDomain, mockContainerProvider);
+        registry.registerDomain(screenDomain, mockContainerProvider.prepareForDomain(screenDomain));
       }).not.toThrow();
 
       const domainState = registry.getDomainState(screenDomain.id);
@@ -225,7 +225,7 @@ describe('Domain Registration', () => {
       };
 
       expect(() => {
-        registry.registerDomain(popupDomain, mockContainerProvider);
+        registry.registerDomain(popupDomain, mockContainerProvider.prepareForDomain(popupDomain));
       }).not.toThrow();
     });
 
@@ -255,7 +255,7 @@ describe('Domain Registration', () => {
       };
 
       expect(() => {
-        registry.registerDomain(overlayDomain, mockContainerProvider);
+        registry.registerDomain(overlayDomain, mockContainerProvider.prepareForDomain(overlayDomain));
       }).not.toThrow();
     });
   });

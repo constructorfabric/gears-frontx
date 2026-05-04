@@ -10,7 +10,7 @@ import type { MfeRegistryConfig } from '../../src/mfe/runtime/config';
 import type { TypeSystemPlugin } from '../../src/mfe/plugins/types';
 import type { MfeHandler } from '../../src/mfe/handler/types';
 import type { ExtensionDomain, Action, ActionsChain } from '../../src/mfe/types';
-import { TestContainerProvider, createMockTypeSystemPlugin } from '../../__test-utils__';
+import { MockDomainFactory, createMockTypeSystemPlugin } from '../../__test-utils__';
 
 describe('MfeRegistry - Phase 4', () => {
   const createTestConfig = (): MfeRegistryConfig => ({
@@ -96,15 +96,15 @@ describe('MfeRegistry - Phase 4', () => {
         extensionsLifecycleStages: [],
       };
 
-      const mockContainerProvider = new TestContainerProvider();
+      const mockContainerProvider = new MockDomainFactory();
       expect(() => {
-        registry.registerDomain(validDomain, mockContainerProvider);
+        registry.registerDomain(validDomain, mockContainerProvider.prepareForDomain(validDomain));
       }).not.toThrow();
     });
 
     it('should validate action type ID via plugin before chain execution', async () => {
       const registry = new DefaultMfeRegistry(createTestConfig());
-      const mockContainerProvider = new TestContainerProvider();
+      const mockContainerProvider = new MockDomainFactory();
 
       // Register domain with the action in its supported actions
       const domain: ExtensionDomain = {
@@ -116,7 +116,7 @@ describe('MfeRegistry - Phase 4', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const validAction: Action = {
         type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
@@ -168,8 +168,8 @@ describe('MfeRegistry - Phase 4', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      const mockContainerProvider = new TestContainerProvider();
-      registry.registerDomain(domain, mockContainerProvider);
+      const mockContainerProvider = new MockDomainFactory();
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const actionWithPayload: Action = {
         type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
@@ -239,8 +239,8 @@ describe('MfeRegistry - Phase 4', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      const mockContainerProvider = new TestContainerProvider();
-      registry.registerDomain(domain, mockContainerProvider);
+      const mockContainerProvider = new MockDomainFactory();
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const actionWithoutPayload: Action = {
         type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
@@ -269,7 +269,7 @@ describe('MfeRegistry - Phase 4', () => {
         extensionsLifecycleStages: [],
       };
 
-      registry.registerDomain(domain, new TestContainerProvider());
+      registry.registerDomain(domain, new MockDomainFactory().prepareForDomain(domain));
       registry.dispose();
 
       // After disposal, registry should be clean

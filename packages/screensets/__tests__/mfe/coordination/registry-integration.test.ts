@@ -17,7 +17,7 @@ import {
   HAI3_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
 import type { Extension, ExtensionDomain, MfeEntry } from '../../../src/mfe/types';
-import { TestContainerProvider, createMockTypeSystemPlugin, makeMfeHandlerDouble } from '../../../__test-utils__';
+import { MockDomainFactory, createMockTypeSystemPlugin, makeMfeHandlerDouble } from '../../../__test-utils__';
 
 const toggleDomain: ExtensionDomain = {
   id: 'gts.hai3.mfes.ext.domain.v1~test.coordinator.integration.domain.v1',
@@ -86,11 +86,11 @@ describe('Runtime Coordinator Integration - Task 8.4.8', () => {
           }),
         ],
       });
-      const containerProvider = new TestContainerProvider();
+      const containerProvider = new MockDomainFactory();
       const container = document.createElement('div');
       containerProvider.getContainer = vi.fn().mockReturnValue(container);
 
-      registry.registerDomain(toggleDomain, containerProvider);
+      registry.registerDomain(toggleDomain, containerProvider.prepareForDomain(toggleDomain));
       await registry.registerExtension(testExtension);
 
       await registry.executeActionsChain({

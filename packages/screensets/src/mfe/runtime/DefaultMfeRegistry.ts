@@ -19,7 +19,6 @@
 // @cpt-flow:cpt-frontx-flow-mfe-registry-query:p2
 // @cpt-algo:cpt-frontx-algo-mfe-registry-gts-package-discovery:p1
 // @cpt-algo:cpt-frontx-algo-mfe-registry-handler-resolution:p1
-// @cpt-algo:cpt-frontx-algo-mfe-registry-domain-semantics:p1
 // @cpt-dod:cpt-frontx-dod-mfe-registry-handler-injection:p1
 
 import type { TypeSystemPlugin } from '../plugins/types';
@@ -43,17 +42,20 @@ import { DefaultMountManager } from './default-mount-manager';
 import { OperationSerializer } from './operation-serializer';
 import { RuntimeBridgeFactory } from './runtime-bridge-factory';
 import { DefaultRuntimeBridgeFactory } from './default-runtime-bridge-factory';
-import {
-  LoadExtHandler,
-  MountExtSwapHandler,
-  MountExtToggleHandler,
-  UnmountExtHandler,
-} from './extension-lifecycle-action-handler';
-import type { ContainerProvider } from './container-provider';
-import type { RegisterDomainOptions } from './MfeRegistry';
+import { LoadExtHandler } from './extension-lifecycle-action-handler';
 import { HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT } from '../constants';
 import { EntryTypeNotHandledError } from '../errors';
 import { extractGtsPackage } from '../gts/extract-package';
+import type { ExtensionDomainImplementationFactory } from './ExtensionDomainImplementationFactory';
+import type { ExtensionMounter } from './ExtensionMounter';
+import { DefaultExtensionMounter } from './DefaultExtensionMounter';
+import { DefaultDomainLifecycleTrigger } from './DefaultDomainLifecycleTrigger';
+import { InvalidatableDomainContext } from './DomainContext';
+import {
+  ConcurrentMountStrategy,
+  OptionalMountStrategy,
+  ExclusiveMountStrategy,
+} from './mount-strategies';
 
 /**
  * Default concrete implementation of MfeRegistry.
@@ -79,43 +81,36 @@ export class DefaultMfeRegistry extends MfeRegistry {
 
   /**
    * Extension manager for managing extension and domain state.
-   * INTERNAL: Delegates extension/domain registration and query operations.
    */
   private readonly extensionManager: DefaultExtensionManager;
 
   /**
    * Lifecycle manager for triggering lifecycle stages.
-   * INTERNAL: Delegates lifecycle hook execution.
    */
   private readonly lifecycleManager: DefaultLifecycleManager;
 
   /**
    * Mount manager for loading and mounting MFEs.
-   * INTERNAL: Delegates loading and mounting operations.
    */
   private readonly mountManager: MountManager;
 
   /**
    * Runtime bridge factory for creating bridge connections.
-   * INTERNAL: Always constructed internally.
    */
   private readonly bridgeFactory: RuntimeBridgeFactory;
 
   /**
    * Runtime coordinator for managing runtime connections.
-   * INTERNAL: Always constructed internally.
    */
   private readonly coordinator: RuntimeCoordinator;
 
   /**
    * Actions chains mediator for action chain execution.
-   * INTERNAL: Always constructed internally.
    */
   private readonly mediator: ActionsChainsMediator;
 
   /**
    * Operation serializer for per-entity concurrency control.
-   * INTERNAL: Ensures operations on the same entity are serialized.
    */
   private readonly operationSerializer: OperationSerializer;
 
@@ -126,28 +121,22 @@ export class DefaultMfeRegistry extends MfeRegistry {
 
   /**
    * Child MFE bridges (parent -> child communication).
-   * INTERNAL: Bridge lifecycle is managed by the registry.
    */
   private readonly childBridges = new Map<string, ParentMfeBridge>();
 
   /**
    * Parent MFE bridge (child -> parent communication).
-   * INTERNAL: Set when this registry is mounted as a child MFE.
    */
   private parentBridge: ParentMfeBridge | null = null;
 
   /**
    * GTS package to extension ID mappings.
-   * Key: GTS package string (e.g., 'hai3.demo')
-   * Value: Set of extension IDs belonging to that package
-   * INTERNAL: Packages are auto-discovered during extension registration.
    */
   private readonly packages = new Map<string, Set<string>>();
 
   constructor(config: MfeRegistryConfig) {
     super();
 
-    // Validate required plugin
     if (!config.typeSystem) {
       throw new Error(
         'MfeRegistry requires a TypeSystemPlugin. ' +
@@ -158,20 +147,10 @@ export class DefaultMfeRegistry extends MfeRegistry {
 
     this.typeSystem = config.typeSystem;
 
-    // Initialize operation serializer
     this.operationSerializer = new OperationSerializer();
-
-    // Allow tests and advanced hosts to supply a custom coordinator while
-    // keeping WeakMap coordination as the default runtime behavior.
-    this.coordinator = config.coordinator ?? new WeakMapRuntimeCoordinator();
-
-    // Initialize runtime bridge factory
+    this.coordinator = new WeakMapRuntimeCoordinator();
     this.bridgeFactory = new DefaultRuntimeBridgeFactory();
 
-    // Initialize mediator (always construct internally)
-    // Note: mediator needs getDomainState and getExtensionEntry callbacks, which
-    // delegate to extensionManager that is initialized later, but these callbacks
-    // are only invoked after construction (on action chain execution).
     this.mediator = new DefaultActionsChainsMediator({
       typeSystem: this.typeSystem,
       getDomainState: (domainId) => this.extensionManager.getDomainState(domainId),
@@ -179,11 +158,13 @@ export class DefaultMfeRegistry extends MfeRegistry {
         this.extensionManager.getExtensionState(extensionId)?.entry,
     });
 
-    // Initialize extension manager (needs dependencies for business logic)
     this.extensionManager = new DefaultExtensionManager({
       typeSystem: this.typeSystem,
-      triggerLifecycle: (extensionId, stageId) => this.triggerLifecycleStage(extensionId, stageId),
-      triggerDomainOwnLifecycle: (domainId, stageId) => this.triggerDomainOwnLifecycleStage(domainId, stageId),
+      // Internal lifecycle trigger — bypasses the public surface (removed in spec v1.6).
+      triggerLifecycle: (extensionId, stageId) =>
+        this.triggerLifecycleStageInternal(extensionId, stageId),
+      triggerDomainOwnLifecycle: (domainId, stageId) =>
+        this.triggerDomainOwnLifecycleStageInternal(domainId, stageId),
       // Bypass OperationSerializer: the parent operation (unregisterExtension)
       // already holds the serializer lock for this entity ID, so calling
       // registry.unmountExtension would deadlock. Go directly to MountManager.
@@ -191,18 +172,17 @@ export class DefaultMfeRegistry extends MfeRegistry {
       validateEntryType: (entryTypeId) => this.validateEntryType(entryTypeId),
     });
 
-    // Initialize lifecycle manager (needs extension manager)
     this.lifecycleManager = new DefaultLifecycleManager(
       this.extensionManager,
       async (chain) => { await this.executeActionsChain(chain); }
     );
 
-    // Initialize mount manager (needs all collaborators)
     this.mountManager = new DefaultMountManager({
       extensionManager: this.extensionManager,
       resolveHandler: (entryTypeId) => this.resolveHandler(entryTypeId),
       coordinator: this.coordinator,
-      triggerLifecycle: (extensionId, stageId) => this.triggerLifecycleStage(extensionId, stageId),
+      triggerLifecycle: (extensionId, stageId) =>
+        this.triggerLifecycleStageInternal(extensionId, stageId),
       executeActionsChain: (chain) => this.executeActionsChain(chain),
       hostRuntime: this,
       registerCatchAllActionHandler: (domainId, handler) =>
@@ -216,7 +196,6 @@ export class DefaultMfeRegistry extends MfeRegistry {
       bridgeFactory: this.bridgeFactory,
     });
 
-    // Register custom handlers if provided
     if (config.mfeHandlers) {
       for (const handler of config.mfeHandlers) {
         this.handlers.push(handler);
@@ -225,20 +204,28 @@ export class DefaultMfeRegistry extends MfeRegistry {
     }
   }
 
+  // ─── Private lifecycle trigger helpers (replaces old public methods) ──────
+
   /**
-   * Validate that at least one registered handler can handle the given entry type.
-   * If no handler matches and handlers are registered, throws EntryTypeNotHandledError.
-   * If no handlers are registered, validation is skipped (early registration scenario).
-   *
-   * @param entryTypeId - Type ID of the entry to validate
-   * @throws {EntryTypeNotHandledError} if handlers are registered but none can handle the entry type
+   * Internal: trigger a lifecycle stage for a specific extension.
+   * Used by collaborators that previously called the now-removed public methods.
    */
+  private async triggerLifecycleStageInternal(extensionId: string, stageId: string): Promise<void> {
+    return this.lifecycleManager.triggerLifecycleStage(extensionId, stageId);
+  }
+
+  /**
+   * Internal: trigger a lifecycle stage on the domain entity itself.
+   */
+  private async triggerDomainOwnLifecycleStageInternal(domainId: string, stageId: string): Promise<void> {
+    return this.lifecycleManager.triggerDomainOwnLifecycleStage(domainId, stageId);
+  }
+
+  // ─── Entry type validation ────────────────────────────────────────────────
+
   // @cpt-begin:cpt-frontx-algo-mfe-registry-handler-resolution:p1:inst-1
   private validateEntryType(entryTypeId: string): void {
     if (this.handlers.length === 0) {
-      // No handlers registered -- skip validation.
-      // Loading will fail later when the extension is loaded,
-      // but registration is allowed during early setup.
       return;
     }
 
@@ -254,111 +241,191 @@ export class DefaultMfeRegistry extends MfeRegistry {
   }
   // @cpt-end:cpt-frontx-algo-mfe-registry-handler-resolution:p1:inst-1
 
-  /**
-   * Resolve the appropriate handler for a given entry type ID.
-   * Handlers are sorted by priority (highest first). The first handler whose
-   * handledBaseTypeId matches via typeSystem.isTypeOf() is returned.
-   *
-   * @param entryTypeId - Type ID of the entry to resolve a handler for
-   * @returns The matching handler, or undefined if none match
-   */
   private resolveHandler(entryTypeId: string): MfeHandler | undefined {
     return this.handlers.find(handler =>
       this.typeSystem.isTypeOf(entryTypeId, handler.handledBaseTypeId)
     );
   }
 
+  // ─── registerDomain ───────────────────────────────────────────────────────
+
   /**
    * Register an extension domain.
-   * Domains must be registered before extensions can mount into them.
-   * NOTE: registerDomain is synchronous, but lifecycle triggering happens fire-and-forget.
-   *
-   * @param domain - Domain to register
-   * @param containerProvider - Container provider for the domain
-   * @param options - Optional registration options (onInitError, actionHandlers)
-   * @throws {DomainValidationError} if GTS validation fails
-   * @throws {UnsupportedLifecycleStageError} if lifecycle hooks reference unsupported stages
    */
   // @cpt-begin:cpt-frontx-flow-mfe-registry-register-domain:p1:inst-1
-  // @cpt-begin:cpt-frontx-algo-mfe-registry-domain-semantics:p1:inst-1
   registerDomain(
-    domain: ExtensionDomain,
-    containerProvider: ContainerProvider,
-    options?: RegisterDomainOptions
+    declaration: ExtensionDomain,
+    factory: ExtensionDomainImplementationFactory
   ): void {
-    // Step 1: Register domain state (with onInitError callback)
-    this.extensionManager.registerDomain(domain, options?.onInitError);
+    // Step 1: GTS-validate and store initial domain state (no init trigger yet).
+    this.extensionManager.registerDomain(declaration);
 
-    // Step 2: Determine domain semantics from actions array.
-    // Domains declaring unmount_ext use 'toggle' semantics (sidebar/popup/overlay).
-    // Domains without unmount_ext use 'swap' semantics (screen domain): mounting a
-    // new extension implicitly unmounts the current one.
-    const supportsUnmount = domain.actions.includes(HAI3_ACTION_UNMOUNT_EXT);
+    // Step 2: Construct per-domain mounter and lifecycle trigger.
+    const mounter = new DefaultExtensionMounter(
+      declaration.id,
+      this.mountManager,
+      (domainId, extId) => this.extensionManager.addMountedExtension(domainId, extId),
+      (domainId, extId) => this.extensionManager.removeMountedExtension(domainId, extId),
+      (domainId) => this.extensionManager.getMountedExtensions(domainId),
+      // Hooks passed to detach — strategies create their own hooks; the mounter uses them
+      // only for mass-unmount in detach(), so we supply a no-op here and let each
+      // strategy handle its own hooks during normal unmount. Detach delegates to
+      // mountManager.unmountExtension directly without hooks.destroy since by detach
+      // time the strategy has already been invalidated.
+      {
+        create: (_extId) => { throw new Error('DefaultExtensionMounter: create called on detach hooks'); },
+        destroy: (_extId) => { /* no-op: strategy handles destroy during normal unmount */ },
+      }
+    );
+    const lifecycleTrigger = new DefaultDomainLifecycleTrigger(declaration.id, this.lifecycleManager);
 
-    // Step 3: Register per-action-type lifecycle handler instances for this domain.
-    // Each handler class encapsulates exactly one action type's behavior.
-    const loadHandler = new LoadExtHandler(this.operationSerializer, this.mountManager);
-    this.mediator.registerHandler(domain.id, HAI3_ACTION_LOAD_EXT, loadHandler);
+    // Step 3: Build DomainContext and pre-populate LoadExtHandler.
+    const ctx = new InvalidatableDomainContext(mounter, lifecycleTrigger);
+    ctx.prepopulateHandler(
+      HAI3_ACTION_LOAD_EXT,
+      new LoadExtHandler(this.operationSerializer, this.mountManager)
+    );
 
-    if (supportsUnmount) {
-      // Toggle semantics: mount independently without implicitly unmounting.
-      const mountHandler = new MountExtToggleHandler(
-        this.operationSerializer,
-        this.mountManager,
-        containerProvider
-      );
-      this.mediator.registerHandler(domain.id, HAI3_ACTION_MOUNT_EXT, mountHandler);
-
-      const unmountHandler = new UnmountExtHandler(
-        this.operationSerializer,
-        this.mountManager,
-        containerProvider
-      );
-      this.mediator.registerHandler(domain.id, HAI3_ACTION_UNMOUNT_EXT, unmountHandler);
-    } else {
-      // Swap semantics: atomically unmount current and mount new extension.
-      const mountHandler = new MountExtSwapHandler(
-        domain.id,
-        this.operationSerializer,
-        this.mountManager,
-        this.extensionManager,
-        containerProvider
-      );
-      this.mediator.registerHandler(domain.id, HAI3_ACTION_MOUNT_EXT, mountHandler);
+    // Step 4: Invoke factory (try/finally for rollback + ctx invalidation).
+    let implementation;
+    try {
+      implementation = factory.build(ctx);
+    } catch (error) {
+      // Atomic rollback: clear any partially-registered handlers and remove domain.
+      ctx.clearCollectedHandlers();
+      this.extensionManager.unregisterDomain(declaration.id).catch(() => { /* best-effort */ });
+      throw error;
+    } finally {
+      // Function-handle-level invalidation: after build() returns (or throws),
+      // any subsequent access to ctx.mounter / ctx.lifecycleTrigger / ctx.registerHandler
+      // — including captured function handles — throws.
+      ctx.invalidate();
     }
 
-    // Step 4: Register any caller-supplied custom handlers for this domain.
-    // Guard: lifecycle action type IDs are reserved for the built-in handlers registered
-    // in step 3. Allowing callers to overwrite them would silently break load/mount/unmount.
-    if (options?.actionHandlers) {
-      const reservedActionTypeIds = new Set([
-        HAI3_ACTION_LOAD_EXT,
-        HAI3_ACTION_MOUNT_EXT,
-        HAI3_ACTION_UNMOUNT_EXT,
-      ]);
-      for (const actionTypeId of Object.keys(options.actionHandlers)) {
-        if (reservedActionTypeIds.has(actionTypeId)) {
-          throw new Error(
-            `Cannot register custom handler for reserved lifecycle action type '${actionTypeId}' on domain '${domain.id}'. ` +
-            `The action types HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, and HAI3_ACTION_UNMOUNT_EXT are managed internally by the registry.`
-          );
-        }
+    // Step 5: Cross-validate handlers vs declaration AND strategy/cardinality matrix.
+    try {
+      this.crossValidateHandlers(declaration, implementation._getMountStrategiesInternal(), ctx);
+    } catch (error) {
+      ctx.clearCollectedHandlers();
+      this.extensionManager.unregisterDomain(declaration.id).catch(() => { /* best-effort */ });
+      throw error;
+    }
+
+    // Step 6: Persist handlers to mediator.
+    for (const [actionType, handler] of ctx.getCollectedHandlers()) {
+      this.mediator.registerHandler(declaration.id, actionType, handler);
+    }
+
+    // Step 7: Persist domain implementation references.
+    this.extensionManager.setDomainImplementation(
+      declaration.id,
+      mounter,
+      lifecycleTrigger,
+      implementation
+    );
+
+    // Step 8: Fire-and-forget 'init' lifecycle stage (errors logged to console.error).
+    this.triggerDomainOwnLifecycleStageInternal(
+      declaration.id,
+      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1'
+    ).catch(error => {
+      console.error('[DefaultMfeRegistry] Domain init error:', error, { domainId: declaration.id });
+    });
+  }
+  // @cpt-end:cpt-frontx-flow-mfe-registry-register-domain:p1:inst-1
+
+  /**
+   * Cross-validate handlers vs declaration AND strategy/cardinality matrix.
+   *
+   * @throws {Error} on any violation.
+   */
+  private crossValidateHandlers(
+    declaration: ExtensionDomain,
+    strategies: import('./mount-strategy').MountStrategy[],
+    ctx: InvalidatableDomainContext
+  ): void {
+    if (strategies.length === 0) {
+      throw new Error(
+        `Domain '${declaration.id}': domain implementation must capture at least one MountStrategy instance.`
+      );
+    }
+
+    // Use the first strategy as the representative — mixed-strategy domains are not supported.
+    const strategy = strategies[0];
+
+    // Identify strategy class and look up cardinality row.
+    let requireMount: boolean;
+    let requireUnmount: boolean;
+    let forbidUnmount: boolean;
+    let strategyName: string;
+
+    if (strategy instanceof ConcurrentMountStrategy) {
+      strategyName = 'ConcurrentMountStrategy';
+      requireMount = true;
+      requireUnmount = true;
+      forbidUnmount = false;
+    } else if (strategy instanceof OptionalMountStrategy) {
+      strategyName = 'OptionalMountStrategy';
+      requireMount = true;
+      requireUnmount = true;
+      forbidUnmount = false;
+    } else if (strategy instanceof ExclusiveMountStrategy) {
+      strategyName = 'ExclusiveMountStrategy';
+      requireMount = true;
+      requireUnmount = false;
+      forbidUnmount = true;
+    } else {
+      throw new Error(
+        `Domain '${declaration.id}': unrecognized MountStrategy class. ` +
+        'The cardinality matrix only handles ConcurrentMountStrategy, OptionalMountStrategy, and ExclusiveMountStrategy. ' +
+        'Custom strategy classes are not supported (per ADR-0020).'
+      );
+    }
+
+    const declaredActions = declaration.actions;
+
+    // Enforce REQUIRED actions in declaration.
+    if (requireMount && !declaredActions.includes(HAI3_ACTION_MOUNT_EXT)) {
+      throw new Error(
+        `Domain '${declaration.id}': ${strategyName} requires '${HAI3_ACTION_MOUNT_EXT}' in declaration.actions.`
+      );
+    }
+    if (requireUnmount && !declaredActions.includes(HAI3_ACTION_UNMOUNT_EXT)) {
+      throw new Error(
+        `Domain '${declaration.id}': ${strategyName} requires '${HAI3_ACTION_UNMOUNT_EXT}' in declaration.actions.`
+      );
+    }
+
+    // Enforce FORBIDDEN actions in declaration.
+    if (forbidUnmount && declaredActions.includes(HAI3_ACTION_UNMOUNT_EXT)) {
+      throw new Error(
+        `Domain '${declaration.id}': ${strategyName} forbids '${HAI3_ACTION_UNMOUNT_EXT}' in declaration.actions.`
+      );
+    }
+
+    const collectedHandlers = ctx.getCollectedHandlers();
+
+    // Every action in declaration.actions must have a handler.
+    for (const actionType of declaredActions) {
+      if (!collectedHandlers.has(actionType)) {
+        throw new Error(
+          `Domain '${declaration.id}': declaration lists '${actionType}' but no handler was registered via ctx.registerHandler.`
+        );
       }
-      for (const [actionTypeId, handler] of Object.entries(options.actionHandlers)) {
-        this.mediator.registerHandler(domain.id, actionTypeId, handler);
+    }
+
+    // Every handler registered must be in declaration.actions.
+    for (const [actionType] of collectedHandlers) {
+      if (!declaredActions.includes(actionType)) {
+        throw new Error(
+          `Domain '${declaration.id}': handler registered for '${actionType}' but '${actionType}' is not declared in declaration.actions.`
+        );
       }
     }
   }
-  // @cpt-end:cpt-frontx-flow-mfe-registry-register-domain:p1:inst-1
-  // @cpt-end:cpt-frontx-algo-mfe-registry-domain-semantics:p1:inst-1
 
-  /**
-   * Execute an actions chain.
-   * Delegates to the ActionsChainsMediator for chain execution.
-   *
-   * @param chain - Actions chain to execute
-   * @returns Promise resolving when execution is complete
-   */
+  // ─── Execute actions chain ────────────────────────────────────────────────
+
   // @cpt-begin:cpt-frontx-flow-mfe-registry-execute-chain:p1:inst-1
   async executeActionsChain(chain: ActionsChain): Promise<void> {
     const result = await this.mediator.executeActionsChain(chain);
@@ -372,86 +439,54 @@ export class DefaultMfeRegistry extends MfeRegistry {
   }
   // @cpt-end:cpt-frontx-flow-mfe-registry-execute-chain:p1:inst-1
 
-  /**
-   * Broadcast a shared property value to all registered domains that declare the property.
-   * Delegates to ExtensionManager.
-   *
-   * @param propertyId - Type ID of the shared property
-   * @param value - New property value
-   * @throws if GTS validation fails
-   */
+  // ─── Shared property ──────────────────────────────────────────────────────
+
   // @cpt-begin:cpt-frontx-flow-mfe-registry-update-shared-property:p1:inst-1
   updateSharedProperty(propertyId: string, value: unknown): void {
     this.extensionManager.updateSharedProperty(propertyId, value);
   }
   // @cpt-end:cpt-frontx-flow-mfe-registry-update-shared-property:p1:inst-1
 
-  /**
-   * Get a domain property value.
-   * Delegates to ExtensionManager.
-   *
-   * @param domainId - ID of the domain
-   * @param propertyTypeId - Type ID of the property to get
-   * @returns Property value, or undefined if not set
-   */
   getDomainProperty(domainId: string, propertyTypeId: string): unknown {
     return this.extensionManager.getDomainProperty(domainId, propertyTypeId);
   }
 
+  // ─── Query ────────────────────────────────────────────────────────────────
+
   /**
-   * Get the currently mounted extension in a domain.
-   * Delegates to ExtensionManager.
-   *
-   * @param domainId - ID of the domain
-   * @returns Extension ID if mounted, undefined otherwise
+   * Get the insertion-ordered list of currently-mounted extension IDs for a domain.
    */
-  getMountedExtension(domainId: string): string | undefined {
-    return this.extensionManager.getMountedExtension(domainId);
+  getMountedExtensions(domainId: string): readonly string[] {
+    return this.extensionManager.getMountedExtensions(domainId);
   }
 
   /**
-   * Returns the ParentMfeBridge for the given extension, or null if the extension
-   * is not mounted or does not exist. This is a query method -- it reads from
-   * ExtensionState.bridge, which is set by MountManager.mountExtension() during
-   * mount and cleared during unmount.
+   * Returns the per-domain `ExtensionMounter` instance.
+   * Called by the React `ExtensionDomainSlot` to call attach/detach.
    *
-   * @param extensionId - ID of the extension
-   * @returns ParentMfeBridge if extension is mounted, null otherwise
+   * @throws {Error} if domain is not registered.
    */
+  getMounter(domainId: string): ExtensionMounter {
+    const state = this.extensionManager.getDomainState(domainId);
+    if (!state || !state.mounter) {
+      throw new Error(
+        `getMounter: domain '${domainId}' is not registered or has no mounter. ` +
+        'Call registerDomain before accessing the mounter.'
+      );
+    }
+    return state.mounter;
+  }
+
   getParentBridge(extensionId: string): ParentMfeBridge | null {
     return this.extensionManager.getExtensionState(extensionId)?.bridge ?? null;
   }
 
-  /**
-   * Register an extension dynamically at runtime.
-   * Extensions can be registered at ANY time during the application lifecycle.
-   *
-   * Validation steps:
-   * 1. Validate extension against GTS schema
-   * 2. Check domain exists
-   * 3. Validate contract (entry vs domain)
-   * 4. Validate extension type (if domain specifies extensionsTypeId)
-   * 5. Validate lifecycle hooks
-   * 6. Validate entry type is handleable by registered handlers
-   * 7. Register in internal state
-   * 8. Trigger 'init' lifecycle stage
-   *
-   * @param extension - Extension to register
-   * @returns Promise resolving when registration is complete
-   * @throws {ExtensionValidationError} if GTS validation fails
-   * @throws {Error} if domain not registered
-   * @throws {ContractValidationError} if contract validation fails
-   * @throws {ExtensionTypeError} if extension type validation fails
-   * @throws {EntryTypeNotHandledError} if no registered handler can handle the entry type
-   */
   // @cpt-begin:cpt-frontx-flow-mfe-registry-register-extension:p1:inst-1
   // @cpt-begin:cpt-frontx-algo-mfe-registry-gts-package-discovery:p1:inst-1
   async registerExtension(extension: Extension): Promise<void> {
     return this.operationSerializer.serializeOperation(extension.id, async () => {
-      // Step 1: Register the extension
       await this.extensionManager.registerExtension(extension);
 
-      // Step 2: Track GTS package (auto-discovery, graceful — extension may not have a valid GTS ID)
       try {
         const packageId = extractGtsPackage(extension.id);
         if (!this.packages.has(packageId)) {
@@ -459,28 +494,18 @@ export class DefaultMfeRegistry extends MfeRegistry {
         }
         this.packages.get(packageId)!.add(extension.id);
       } catch {
-        // Extension ID is not a valid GTS ID — skip package tracking
+        // Not a valid GTS ID — skip package tracking.
       }
     });
   }
   // @cpt-end:cpt-frontx-flow-mfe-registry-register-extension:p1:inst-1
   // @cpt-end:cpt-frontx-algo-mfe-registry-gts-package-discovery:p1:inst-1
 
-  /**
-   * Unregister an extension from the registry.
-   * If the extension is currently mounted, it will be unmounted first.
-   * The extension is removed from the registry and its domain.
-   *
-   * @param extensionId - ID of the extension to unregister
-   * @returns Promise resolving when unregistration is complete
-   */
   // @cpt-begin:cpt-frontx-flow-mfe-registry-unregister-extension:p1:inst-1
   async unregisterExtension(extensionId: string): Promise<void> {
     return this.operationSerializer.serializeOperation(extensionId, async () => {
-      // Step 1: Unregister the extension
       await this.extensionManager.unregisterExtension(extensionId);
 
-      // Step 2: Clean up GTS package tracking (graceful — extension may not have a valid GTS ID)
       try {
         const packageId = extractGtsPackage(extensionId);
         const extensionSet = this.packages.get(packageId);
@@ -491,132 +516,39 @@ export class DefaultMfeRegistry extends MfeRegistry {
           }
         }
       } catch {
-        // Extension ID is not a valid GTS ID — no package tracking to clean up
+        // Not a valid GTS ID — no package tracking to clean up.
       }
     });
   }
   // @cpt-end:cpt-frontx-flow-mfe-registry-unregister-extension:p1:inst-1
 
-  /**
-   * Unregister a domain from the registry.
-   * All extensions in the domain are cascade-unregistered first.
-   * The domain is removed from the registry.
-   *
-   * @param domainId - ID of the domain to unregister
-   * @returns Promise resolving when unregistration is complete
-   */
   // @cpt-begin:cpt-frontx-flow-mfe-registry-unregister-domain:p1:inst-1
   async unregisterDomain(domainId: string): Promise<void> {
     return this.operationSerializer.serializeOperation(domainId, async () => {
-      // Step 1: Unregister all per-action-type handlers registered for this domain
       this.mediator.unregisterAllHandlers(domainId);
-
-      // Step 2: Unregister domain from extension manager (cascade-unregisters extensions)
       return this.extensionManager.unregisterDomain(domainId);
     });
   }
   // @cpt-end:cpt-frontx-flow-mfe-registry-unregister-domain:p1:inst-1
 
-  /**
-   * Get a registered extension by its ID.
-   * Delegates to ExtensionManager.
-   *
-   * @param extensionId - ID of the extension to get
-   * @returns Extension if registered, undefined otherwise
-   */
   // @cpt-begin:cpt-frontx-flow-mfe-registry-query:p2:inst-1
   getExtension(extensionId: string): Extension | undefined {
     return this.extensionManager.getExtensionState(extensionId)?.extension;
   }
 
-  /**
-   * Get a registered domain by its ID.
-   * Delegates to ExtensionManager.
-   *
-   * @param domainId - ID of the domain to get
-   * @returns ExtensionDomain if registered, undefined otherwise
-   */
   getDomain(domainId: string): ExtensionDomain | undefined {
     return this.extensionManager.getDomainState(domainId)?.domain;
   }
 
-  /**
-   * Get all extensions registered for a specific domain.
-   * Delegates to ExtensionManager.
-   *
-   * @param domainId - ID of the domain
-   * @returns Array of extensions in the domain (empty if domain not found or has no extensions)
-   */
   getExtensionsForDomain(domainId: string): Extension[] {
     const extensionStates = this.extensionManager.getExtensionStatesForDomain(domainId);
     return extensionStates.map(state => state.extension);
   }
 
-  /**
-   * Trigger a lifecycle stage for a specific extension.
-   * Delegates to LifecycleManager.
-   *
-   * @param extensionId - ID of the extension
-   * @param stageId - ID of the lifecycle stage to trigger
-   * @returns Promise resolving when all hooks have executed
-   */
-  async triggerLifecycleStage(extensionId: string, stageId: string): Promise<void> {
-    return this.lifecycleManager.triggerLifecycleStage(extensionId, stageId);
-  }
-
-  /**
-   * Trigger a lifecycle stage for all extensions in a domain.
-   * Delegates to LifecycleManager.
-   *
-   * @param domainId - ID of the domain
-   * @param stageId - ID of the lifecycle stage to trigger
-   * @returns Promise resolving when all hooks have executed
-   */
-  async triggerDomainLifecycleStage(domainId: string, stageId: string): Promise<void> {
-    return this.lifecycleManager.triggerDomainLifecycleStage(domainId, stageId);
-  }
-
-  /**
-   * Trigger a lifecycle stage for a domain itself.
-   * Delegates to LifecycleManager.
-   *
-   * @param domainId - ID of the domain
-   * @param stageId - ID of the lifecycle stage to trigger
-   * @returns Promise resolving when all hooks have executed
-   */
-  async triggerDomainOwnLifecycleStage(domainId: string, stageId: string): Promise<void> {
-    return this.lifecycleManager.triggerDomainOwnLifecycleStage(domainId, stageId);
-  }
-
-  /**
-   * Get domain state for a registered domain.
-   * INTERNAL: Used by ActionsChainsMediator for domain resolution.
-   * Delegates to ExtensionManager.
-   *
-   * @param domainId - ID of the domain
-   * @returns Domain state, or undefined if not found
-   */
-  getDomainState(domainId: string): ExtensionDomainState | undefined {
-    return this.extensionManager.getDomainState(domainId);
-  }
-
-  /**
-   * Get all registered GTS packages.
-   * Returns packages in discovery order (order of first extension registration).
-   *
-   * @returns Array of GTS package strings
-   */
   getRegisteredPackages(): string[] {
     return Array.from(this.packages.keys());
   }
 
-  /**
-   * Get all extensions registered for a specific GTS package.
-   * Returns empty array if the package is not tracked.
-   *
-   * @param packageId - GTS package string (e.g., 'hai3.demo')
-   * @returns Array of extensions in the package
-   */
   getExtensionsForPackage(packageId: string): Extension[] {
     const extensionIdSet = this.packages.get(packageId);
     if (!extensionIdSet) {
@@ -635,42 +567,33 @@ export class DefaultMfeRegistry extends MfeRegistry {
   // @cpt-end:cpt-frontx-flow-mfe-registry-query:p2:inst-1
 
   /**
-   * Delegate theme CSS variable delivery to the mount manager.
+   * Get domain state for a registered domain.
+   * INTERNAL: Used by ActionsChainsMediator for domain resolution.
    */
+  getDomainState(domainId: string): ExtensionDomainState | undefined {
+    return this.extensionManager.getDomainState(domainId);
+  }
+
   setTheme(cssVars: Record<string, string>): void {
     this.mountManager.setTheme(cssVars);
   }
 
-  /**
-   * Dispose the registry and clean up resources.
-   * Cleans up all bridges, runtime connections, and internal state.
-   */
   dispose(): void {
-    // Dispose parent bridge if present
     if (this.parentBridge) {
       this.parentBridge.dispose();
       this.parentBridge = null;
     }
 
-    // Dispose all child bridges
     for (const bridge of this.childBridges.values()) {
       bridge.dispose();
     }
     this.childBridges.clear();
 
-    // Clear collaborator state
     this.extensionManager.clear();
     this.operationSerializer.clear();
-
-    // Clear GTS package tracking
     this.packages.clear();
-
-    // Clear handlers
     this.handlers.length = 0;
 
-    // Note: RuntimeCoordinator (using internal WeakMap) will be garbage collected automatically.
-    // No need to manually clear it. The coordinator is used for bridge coordination.
-    // Reference here to avoid TypeScript unused warning:
     void this.coordinator;
   }
 }

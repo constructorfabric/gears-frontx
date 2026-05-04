@@ -150,7 +150,6 @@ export {
   MfeRegistry,
   MfeRegistryFactory,
   mfeRegistryFactory,
-  ContainerProvider,
 } from '@cyberfabric/screensets';
 
 // MFE Concrete Implementations (re-exported from @cyberfabric/screensets subpath exports)
@@ -459,7 +458,6 @@ export {
 // Test utilities (subset re-export; full API: `@cyberfabric/framework/testing`)
 // ============================================================================
 
-export { TestContainerProvider } from './testing/TestContainerProvider';
 export { resetSharedQueryClient } from './plugins/queryCache';
 
 // ============================================================================

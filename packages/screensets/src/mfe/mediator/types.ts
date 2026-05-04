@@ -68,6 +68,52 @@ export abstract class ActionHandler {
     payload: Record<string, unknown> | undefined
 
   ): Promise<void>;
+
+  /**
+   * Create an `ActionHandler` instance from a plain async function.
+   *
+   * Convenience wrapper for one-off handlers — strategies use this inside
+   * `ExtensionDomainImplementationFactory.build(ctx)` to push mount/unmount
+   * handlers via `ctx.registerHandler` without writing a full subclass.
+   *
+   * @param fn - Async function `(actionTypeId, payload) => Promise<void>`.
+   * @returns An `ActionHandler` instance that delegates to `fn`.
+   *
+   * @example
+   * ```typescript
+   * ctx.registerHandler(HAI3_ACTION_MOUNT_EXT,
+   *   ActionHandler.fromFunction((_t, p) => strategy.mount(p as ActionPayload)));
+   * ```
+   */
+  static fromFunction(
+    fn: (actionTypeId: string, payload: Record<string, unknown> | undefined) => Promise<void>
+  ): ActionHandler {
+    return new FunctionActionHandler(fn);
+  }
+}
+
+/**
+ * Private concrete handler created by `ActionHandler.fromFunction`.
+ * Not exported — consumers use the static helper method.
+ *
+ * @internal
+ */
+class FunctionActionHandler extends ActionHandler {
+  constructor(
+    private readonly fn: (
+      actionTypeId: string,
+      payload: Record<string, unknown> | undefined
+    ) => Promise<void>
+  ) {
+    super();
+  }
+
+  handleAction(
+    actionTypeId: string,
+    payload: Record<string, unknown> | undefined
+  ): Promise<void> {
+    return this.fn(actionTypeId, payload);
+  }
 }
 
 /**

@@ -23,7 +23,7 @@ import type {
   MfeMountContext,
 } from '../../../src/mfe/handler/types';
 import type { JSONSchema } from '../../../src/mfe/plugins/types';
-import { TestContainerProvider, makeMfeHandlerDouble } from '../../../__test-utils__';
+import { MockDomainFactory, makeMfeHandlerDouble } from '../../../__test-utils__';
 
 const DOMAIN_ID =
   'gts.hai3.mfes.ext.domain.v1~hai3.test.host_state_protection.domain.v1';
@@ -78,7 +78,7 @@ const testExtension: Extension = {
 
 describe('Host State Protection', () => {
   let registry: DefaultMfeRegistry;
-  let mockContainerProvider: TestContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
   let mockLifecycle: MfeEntryLifecycle<ChildMfeBridge>;
   let capturedBridge: ChildMfeBridge | undefined;
   let capturedMountContext: MfeMountContext | undefined;
@@ -91,7 +91,7 @@ describe('Host State Protection', () => {
 
     capturedBridge = undefined;
     capturedMountContext = undefined;
-    mockContainerProvider = new TestContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
     mockLifecycle = {
       mount: vi.fn(
         async (
@@ -119,7 +119,7 @@ describe('Host State Protection', () => {
       typeSystem,
       mfeHandlers: [mockHandler],
     });
-    registry.registerDomain(testDomain, mockContainerProvider);
+    registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
   });
 
   async function mountExtensionThroughPublicApi(): Promise<ChildMfeBridge> {

@@ -17,7 +17,7 @@ import type { ExtensionDomain, Extension, MfeEntry } from '../../../src/mfe/type
 import type { ChildMfeBridge, MfeEntryLifecycle } from '../../../src/mfe/handler/types';
 import type { RuntimeCoordinator } from '../../../src/mfe/coordination/types';
 import {
-  TestContainerProvider,
+  MockDomainFactory,
   createMinimalMfeRegistryStub,
   makeMfeHandlerDouble,
 } from '../../../__test-utils__';
@@ -70,7 +70,7 @@ const testExtension: Extension = {
 describe('DefaultMountManager — mount context forwarding', () => {
   let mountManager: DefaultMountManager;
   let extensionManager: DefaultExtensionManager;
-  let mockContainerProvider: TestContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
   let mockLifecycle: MfeEntryLifecycle;
   let typeSystem: GtsPlugin;
   beforeEach(() => {
@@ -85,7 +85,7 @@ describe('DefaultMountManager — mount context forwarding', () => {
       validateEntryType: vi.fn(),
     });
 
-    mockContainerProvider = new TestContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
     mockLifecycle = {
       mount: vi.fn().mockResolvedValue(undefined),
       unmount: vi.fn().mockResolvedValue(undefined),

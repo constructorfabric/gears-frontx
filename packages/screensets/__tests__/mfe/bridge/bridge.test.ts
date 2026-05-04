@@ -13,7 +13,7 @@ import { NoActionsChainHandlerError, BridgeDisposedError } from '../../../src/mf
 import { DefaultActionsChainsMediator } from '../../../src/mfe/mediator/actions-chains-mediator';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import type { TypeSystemPlugin, ValidationResult, JSONSchema } from '../../../src/mfe/plugins/types';
-import { TestContainerProvider } from '../../../__test-utils__';
+import { MockDomainFactory } from '../../../__test-utils__';
 
 describe('Bridge Implementation', () => {
   describe('ChildMfeBridge', () => {
@@ -629,12 +629,12 @@ describe('Bridge Implementation', () => {
       let registry: DefaultMfeRegistry;
       let mediator: DefaultActionsChainsMediator;
       let domain: ExtensionDomain;
-      let containerProvider: TestContainerProvider;
+      let containerProvider: MockDomainFactory;
 
       beforeEach(() => {
         plugin = createMinimalTypeSystem();
         registry = new DefaultMfeRegistry({ typeSystem: plugin });
-        containerProvider = new TestContainerProvider();
+        containerProvider = new MockDomainFactory();
         mediator = new DefaultActionsChainsMediator({
           typeSystem: plugin,
           getDomainState: (domainId) => registry.getDomainState(domainId),
@@ -652,7 +652,7 @@ describe('Bridge Implementation', () => {
           lifecycleStages: [],
           extensionsLifecycleStages: [],
         };
-        registry.registerDomain(domain, containerProvider);
+        registry.registerDomain(domain, containerProvider.prepareForDomain(domain));
       });
 
       it('should route an action chain targeting the extension ID to the registered handler', async () => {
@@ -770,7 +770,7 @@ describe('Bridge Implementation', () => {
           lifecycleStages: [],
           extensionsLifecycleStages: [],
         };
-        gtsRegistry.registerDomain(domain, new TestContainerProvider());
+        gtsRegistry.registerDomain(domain, new MockDomainFactory().prepareForDomain(domain));
 
         gtsPlugin.register({
           id: PROFILE_EXT_ID,

@@ -8,7 +8,7 @@
  *
  * @packageDocumentation
  */
-// @cpt-dod:cpt-frontx-dod-mfe-registry-registry-contract:p1
+// Registry contract (DoD has unchecked tasks; begin/end blocks in DefaultMfeRegistry carry traceability)
 
 import type { TypeSystemPlugin } from '../plugins/types';
 import type { ParentMfeBridge } from '../handler/types';
@@ -17,23 +17,8 @@ import type {
   Extension,
   ActionsChain,
 } from '../types';
-import type { ContainerProvider } from './container-provider';
-import type { ActionHandler } from '../mediator/types';
-
-/**
- * Options for registering a domain.
- */
-export interface RegisterDomainOptions {
-  /**
-   * Optional callback for handling fire-and-forget init lifecycle errors.
-   */
-  onInitError?: (error: Error) => void;
-  /**
-   * Optional custom action handlers keyed by action type ID.
-   * These are registered in addition to the built-in lifecycle handlers.
-   */
-  actionHandlers?: Record<string, ActionHandler>;
-}
+import type { ExtensionDomainImplementationFactory } from './ExtensionDomainImplementationFactory';
+import type { ExtensionMounter } from './ExtensionMounter';
 
 /**
  * Abstract MfeRegistry - public contract for the MFE runtime facade.
@@ -53,7 +38,7 @@ export interface RegisterDomainOptions {
  * import { mfeRegistryFactory, gtsPlugin } from '@cyberfabric/screensets';
  *
  * const registry = mfeRegistryFactory.build({ typeSystem: gtsPlugin });
- * registry.registerDomain(myDomain, containerProvider);
+ * registry.registerDomain(myDomain, new MyDomainFactory());
  * await registry.registerExtension(myExtension);
  * ```
  */
@@ -69,18 +54,20 @@ export abstract class MfeRegistry {
   /**
    * Register an extension domain.
    * Domains must be registered before extensions can mount into them.
-   * NOTE: registerDomain is synchronous, but lifecycle triggering happens fire-and-forget.
+   * `registerDomain` is synchronous; the `init` lifecycle is fired
+   * fire-and-forget after handler registration completes.
    *
-   * @param domain - Domain to register
-   * @param containerProvider - Container provider for the domain
-   * @param options - Optional registration options (onInitError, actionHandlers)
-   * @throws {DomainValidationError} if GTS validation fails
+   * @param declaration - Domain to register (GTS-validated declaration).
+   * @param factory - Concrete `ExtensionDomainImplementationFactory` subclass
+   *   whose `build(ctx)` is called synchronously by the registry to construct
+   *   the domain implementation and register per-action-type handlers.
+   * @throws {Error} if GTS validation fails (from `typeSystem.register`)
    * @throws {UnsupportedLifecycleStageError} if lifecycle hooks reference unsupported stages
+   * @throws {Error} on cross-validation failure (strategy/action matrix or handler coverage)
    */
   abstract registerDomain(
-    domain: ExtensionDomain,
-    containerProvider: ContainerProvider,
-    options?: RegisterDomainOptions
+    declaration: ExtensionDomain,
+    factory: ExtensionDomainImplementationFactory
   ): void;
 
   /**
@@ -97,20 +84,8 @@ export abstract class MfeRegistry {
    * Register an extension dynamically at runtime.
    * Extensions can be registered at ANY time during the application lifecycle.
    *
-   * Validation steps:
-   * 1. Validate extension against GTS schema
-   * 2. Check domain exists
-   * 3. Validate contract (entry vs domain)
-   * 4. Validate extension type (if domain specifies extensionsTypeId)
-   * 5. Register in internal state
-   * 6. Trigger 'init' lifecycle stage
-   *
    * @param extension - Extension to register
    * @returns Promise resolving when registration is complete
-   * @throws {ExtensionValidationError} if GTS validation fails
-   * @throws {Error} if domain not registered
-   * @throws {ContractValidationError} if contract validation fails
-   * @throws {ExtensionTypeError} if extension type validation fails
    */
   abstract registerExtension(extension: Extension): Promise<void>;
 
@@ -159,38 +134,6 @@ export abstract class MfeRegistry {
    */
   abstract executeActionsChain(chain: ActionsChain): Promise<void>;
 
-  // --- Lifecycle Triggering ---
-
-  /**
-   * Trigger a lifecycle stage for a specific extension.
-   * Executes all lifecycle hooks registered for the given stage.
-   *
-   * @param extensionId - ID of the extension
-   * @param stageId - ID of the lifecycle stage to trigger
-   * @returns Promise resolving when all hooks have executed
-   */
-  abstract triggerLifecycleStage(extensionId: string, stageId: string): Promise<void>;
-
-  /**
-   * Trigger a lifecycle stage for all extensions in a domain.
-   * Useful for custom stages like "refresh" that affect all widgets.
-   *
-   * @param domainId - ID of the domain
-   * @param stageId - ID of the lifecycle stage to trigger
-   * @returns Promise resolving when all hooks have executed
-   */
-  abstract triggerDomainLifecycleStage(domainId: string, stageId: string): Promise<void>;
-
-  /**
-   * Trigger a lifecycle stage for a domain itself.
-   * Executes hooks registered on the domain entity.
-   *
-   * @param domainId - ID of the domain
-   * @param stageId - ID of the lifecycle stage to trigger
-   * @returns Promise resolving when all hooks have executed
-   */
-  abstract triggerDomainOwnLifecycleStage(domainId: string, stageId: string): Promise<void>;
-
   // --- Query ---
 
   /**
@@ -218,65 +161,46 @@ export abstract class MfeRegistry {
   abstract getExtensionsForDomain(domainId: string): Extension[];
 
   /**
-   * Get the currently mounted extension in a domain.
-   * Each domain supports at most one mounted extension at a time.
+   * Get the insertion-ordered list of currently-mounted extension IDs for a domain.
+   * Returns an empty array for an unknown or empty domain — never throws.
+   *
+   * The registry is the canonical owner of mount-set state per
+   * `cpt-frontx-dod-mfe-registry-mount-contracts`.
    *
    * @param domainId - ID of the domain
-   * @returns Extension ID if mounted, undefined otherwise
+   * @returns Readonly insertion-ordered list of mounted extension IDs.
    */
-  abstract getMountedExtension(domainId: string): string | undefined;
+  abstract getMountedExtensions(domainId: string): readonly string[];
+
+  /**
+   * Get the per-domain `ExtensionMounter` instance.
+   * Called by the React `ExtensionDomainSlot` to call
+   * `mounter.attach(element)` / `mounter.detach()`.
+   *
+   * @param domainId - ID of the domain
+   * @returns The per-domain `ExtensionMounter`.
+   * @throws {Error} if the domain is not registered.
+   */
+  abstract getMounter(domainId: string): ExtensionMounter;
 
   /**
    * Get all registered GTS packages.
    *
-   * Returns an array of unique GTS package strings that have been discovered
-   * from registered extensions. Packages are NOT explicitly registered -- they
-   * are automatically tracked when extensions are registered. The GTS package
-   * is extracted from each extension's ID.
-   *
-   * The returned array is in discovery order (order of first extension registration
-   * for each package).
-   *
-   * @returns Array of GTS package strings (e.g., ['hai3.demo', 'hai3.other'])
-   *
-   * @example
-   * ```typescript
-   * // After registering extensions with IDs containing 'hai3.demo' package
-   * const packages = registry.getRegisteredPackages();
-   * // Returns: ['hai3.demo']
-   * ```
+   * @returns Array of GTS package strings in discovery order.
    */
   abstract getRegisteredPackages(): string[];
 
   /**
    * Get all extensions registered for a specific GTS package.
    *
-   * Returns all registered extensions whose GTS package matches the given
-   * packageId. The GTS package groups extensions by their shared two-segment
-   * prefix (e.g., 'hai3.demo').
-   *
    * @param packageId - GTS package string (e.g., 'hai3.demo')
    * @returns Array of extensions in the package (empty if package not tracked)
-   *
-   * @example
-   * ```typescript
-   * // Get all extensions from the 'hai3.demo' package
-   * const extensions = registry.getExtensionsForPackage('hai3.demo');
-   * // Returns: [homeExtension, profileExtension, ...]
-   * ```
    */
   abstract getExtensionsForPackage(packageId: string): Extension[];
 
   /**
    * Returns the ParentMfeBridge for the given extension, or null if the extension
-   * is not mounted or does not exist. This is a query method (same category as
-   * getMountedExtension) -- it reads from ExtensionState.bridge, which is set
-   * by MountManager.mountExtension() during mount and cleared during unmount.
-   *
-   * Usage pattern: mount via executeActionsChain(), then query the bridge:
-   *
-   *   await registry.executeActionsChain({ action: { type: HAI3_ACTION_MOUNT_EXT, ... } });
-   *   const bridge = registry.getParentBridge(extensionId);
+   * is not mounted or does not exist.
    *
    * @param extensionId - ID of the extension
    * @returns ParentMfeBridge if extension is mounted, null otherwise
@@ -287,8 +211,6 @@ export abstract class MfeRegistry {
 
   /**
    * Apply theme CSS custom properties via the mount manager.
-   * The framework calls this on every theme change. The mount manager
-   * handles delivery appropriate to its isolation context.
    *
    * @param cssVars - CSS custom property name→value map
    */

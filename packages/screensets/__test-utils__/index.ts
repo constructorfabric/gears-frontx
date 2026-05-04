@@ -7,10 +7,7 @@
 // @cpt-dod:cpt-frontx-dod-mfe-registry-handler-injection:p1
 
 // @cpt-begin:cpt-frontx-dod-mfe-registry-handler-injection:p1:inst-screensets-test-utils-barrel
-export {
-  TestContainerProvider,
-  TestContainerProvider as MockContainerProvider,
-} from './mock-container-provider';
+export { MockDomainFactory } from './mock-domain-factory';
 export {
   setupBlobUrlLoaderMocks,
   createRemoteEntrySource,

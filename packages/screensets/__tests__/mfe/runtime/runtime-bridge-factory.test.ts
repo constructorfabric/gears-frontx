@@ -36,7 +36,10 @@ describe('Runtime Bridge Factory', () => {
       ]),
       extensions: new Set(),
       propertySubscribers: new Map(),
-      mountedExtension: undefined,
+      mountedExtensions: [],
+      mounter: null,
+      lifecycleTrigger: null,
+      implementation: null,
     };
 
     bridgeFactory = new DefaultRuntimeBridgeFactory();

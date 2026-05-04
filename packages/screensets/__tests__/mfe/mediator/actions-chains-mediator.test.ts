@@ -23,7 +23,7 @@ import {
   HAI3_ACTION_MOUNT_EXT,
   HAI3_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
-import { MockContainerProvider } from '../../../__test-utils__';
+import { MockDomainFactory } from '../../../__test-utils__';
 
 /**
  * Test-only ActionHandler that delegates to a vitest mock function.
@@ -130,7 +130,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
   let plugin: TypeSystemPlugin;
   let mediator: DefaultActionsChainsMediator;
   let registry: DefaultMfeRegistry;
-  let mockContainerProvider: MockContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
   /**
    * Stub store for MfeEntry lookup used by runtime action declaration validation.
    * Tests that need entry-declaration checks populate this map with their target
@@ -142,7 +142,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
   beforeEach(() => {
     plugin = createMockPlugin();
     registry = new DefaultMfeRegistry({ typeSystem: plugin });
-    mockContainerProvider = new MockContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
     extensionEntries = new Map();
     mediator = new DefaultActionsChainsMediator({
       typeSystem: plugin,
@@ -168,7 +168,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -216,7 +216,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -259,7 +259,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const payload = { data: 'test value' };
       const chain: ActionsChain = {
@@ -295,7 +295,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -343,7 +343,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -379,7 +379,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -416,7 +416,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -506,7 +506,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const chain: ActionsChain = {
         action: {
@@ -556,7 +556,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const chain: ActionsChain = {
         action: {
@@ -604,7 +604,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const chain: ActionsChain = {
         action: {
@@ -634,7 +634,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -667,7 +667,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -714,7 +714,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -752,7 +752,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -787,7 +787,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -824,7 +824,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -879,7 +879,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const invocations: string[] = [];
       const handler = new class extends ActionHandler {
@@ -914,7 +914,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -967,7 +967,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
     }
 
     it('throws when action type is not declared in target entry actions', async () => {

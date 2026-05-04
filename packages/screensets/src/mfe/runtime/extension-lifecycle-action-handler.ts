@@ -3,10 +3,12 @@
  *
  * Per-action-type ActionHandler subclasses for domain lifecycle operations.
  * Each class encapsulates a single lifecycle action's behavior, capturing
- * its dependencies (serializer, mount manager, container provider) via constructor.
+ * its dependencies via constructor.
  *
- * These replace the anonymous closures that were previously registered in
- * DefaultMfeRegistry.registerDomain() (ADR 0018).
+ * `LoadExtHandler` is registry-provided and pre-populated into every domain's
+ * `DomainContext` before `ExtensionDomainImplementationFactory.build(ctx)` is
+ * called. Mount and unmount handlers are supplied by domain authors through
+ * their factory implementation (typically via one of the shipped strategy classes).
  *
  * @packageDocumentation
  * @internal
@@ -15,8 +17,6 @@
 import { ActionHandler } from '../mediator/types';
 import type { OperationSerializer } from './operation-serializer';
 import type { MountManager } from './mount-manager';
-import type { ContainerProvider } from './container-provider';
-import type { DefaultExtensionManager } from './default-extension-manager';
 
 /**
  * Typed lifecycle action payload.
@@ -42,7 +42,11 @@ function assertLifecyclePayload(
 }
 
 /**
- * Handles load_ext actions: serializes a load operation on the extension queue.
+ * Handles `load_ext` actions: serializes a load operation on the extension queue.
+ *
+ * Pre-populated into every domain's `DomainContext` by the registry before
+ * `factory.build(ctx)` is called. Domain authors do not need to register this
+ * handler manually.
  *
  * @internal
  */
@@ -55,7 +59,7 @@ export class LoadExtHandler extends ActionHandler {
   }
 
   /**
-   * Handle a load_ext action by serializing the load operation on the extension queue.
+   * Handle a `load_ext` action by serializing the load operation on the extension queue.
    *
    * @param _actionTypeId - Action type ID (unused — handler is registered per type)
    * @param payload - Action payload containing the target extension subject
@@ -66,121 +70,5 @@ export class LoadExtHandler extends ActionHandler {
     await this.operationSerializer.serializeOperation(extensionId, () =>
       this.mountManager.loadExtension(extensionId)
     );
-  }
-}
-
-/**
- * Handles mount_ext actions under swap semantics (domains that do NOT support explicit unmount,
- * e.g. screen domain). Atomically unmounts the current extension and mounts the new one,
- * serialized on the domain queue to prevent interleaving swaps.
- *
- * @internal
- */
-export class MountExtSwapHandler extends ActionHandler {
-  constructor(
-    private readonly domainId: string,
-    private readonly operationSerializer: OperationSerializer,
-    private readonly mountManager: MountManager,
-    private readonly extensionManager: DefaultExtensionManager,
-    private readonly containerProvider: ContainerProvider
-  ) {
-    super();
-  }
-
-  /**
-   * Handle a mount_ext action under swap semantics by atomically replacing the current
-   * extension with the new one, serialized on the domain queue to prevent interleaving swaps.
-   *
-   * @param _actionTypeId - Action type ID (unused — handler is registered per type)
-   * @param payload - Action payload containing the target extension subject
-   */
-  async handleAction(_actionTypeId: string, payload: Record<string, unknown> | undefined): Promise<void> {
-    assertLifecyclePayload(payload);
-    const extensionId = payload.subject;
-
-    // Serialize the entire swap on the domain queue so no two swaps interleave.
-    await this.operationSerializer.serializeOperation(this.domainId, async () => {
-      const currentExtId = this.extensionManager.getMountedExtension(this.domainId);
-
-      if (currentExtId === extensionId) {
-        return;
-      }
-
-      if (currentExtId) {
-        await this.operationSerializer.serializeOperation(currentExtId, () =>
-          this.mountManager.unmountExtension(currentExtId)
-        );
-        this.containerProvider.releaseContainer(currentExtId);
-      }
-
-      const container = this.containerProvider.getContainer(extensionId);
-      await this.operationSerializer.serializeOperation(extensionId, () =>
-        this.mountManager.mountExtension(extensionId, container)
-      );
-    });
-  }
-}
-
-/**
- * Handles mount_ext actions under toggle semantics (domains that support explicit unmount,
- * e.g. sidebar, popup). Mounts independently without implicitly unmounting.
- *
- * @internal
- */
-export class MountExtToggleHandler extends ActionHandler {
-  constructor(
-    private readonly operationSerializer: OperationSerializer,
-    private readonly mountManager: MountManager,
-    private readonly containerProvider: ContainerProvider
-  ) {
-    super();
-  }
-
-  /**
-   * Handle a mount_ext action under toggle semantics by acquiring the extension's container
-   * and serializing the mount operation, without implicitly unmounting any current extension.
-   *
-   * @param _actionTypeId - Action type ID (unused — handler is registered per type)
-   * @param payload - Action payload containing the target extension subject
-   */
-  async handleAction(_actionTypeId: string, payload: Record<string, unknown> | undefined): Promise<void> {
-    assertLifecyclePayload(payload);
-    const extensionId = payload.subject;
-    const container = this.containerProvider.getContainer(extensionId);
-    await this.operationSerializer.serializeOperation(extensionId, () =>
-      this.mountManager.mountExtension(extensionId, container)
-    );
-  }
-}
-
-/**
- * Handles unmount_ext actions: unmounts the extension and releases its container.
- * Only registered for domains that support explicit unmount (toggle semantics).
- *
- * @internal
- */
-export class UnmountExtHandler extends ActionHandler {
-  constructor(
-    private readonly operationSerializer: OperationSerializer,
-    private readonly mountManager: MountManager,
-    private readonly containerProvider: ContainerProvider
-  ) {
-    super();
-  }
-
-  /**
-   * Handle an unmount_ext action by serializing the unmount operation and releasing
-   * the extension's container afterwards.
-   *
-   * @param _actionTypeId - Action type ID (unused — handler is registered per type)
-   * @param payload - Action payload containing the target extension subject
-   */
-  async handleAction(_actionTypeId: string, payload: Record<string, unknown> | undefined): Promise<void> {
-    assertLifecyclePayload(payload);
-    const extensionId = payload.subject;
-    await this.operationSerializer.serializeOperation(extensionId, () =>
-      this.mountManager.unmountExtension(extensionId)
-    );
-    this.containerProvider.releaseContainer(extensionId);
   }
 }
