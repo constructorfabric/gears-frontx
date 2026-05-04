@@ -53,7 +53,7 @@
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-frontx-featstatus-framework-composition`
+- [x] `p1` - **ID**: `cpt-frontx-featstatus-framework-composition`
 
 - [x] `p2` - `cpt-frontx-feature-framework-composition`
 ---
@@ -286,7 +286,7 @@ Enable host applications to compose a fully-wired FrontX framework instance by a
 
 ### Mount-Set Diff Dispatch
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-framework-composition-mount-set-diff-dispatch`
+- [x] `p1` - **ID**: `cpt-frontx-algo-framework-composition-mount-set-diff-dispatch`
 
 Computes the per-domain mount-set delta around an action chain completion and dispatches one reducer call per element of the diff. Replaces the previous scalar before/after compare in `packages/framework/src/plugins/microfrontends/index.ts:137-157` (per ADR `cpt-frontx-adr-domain-implementation-mount-strategies`).
 
@@ -330,7 +330,7 @@ Tracked in `state.mfe.registrationStates[extensionId]`.
 
 ### MFE Domain Mount State
 
-- [ ] `p1` - **ID**: `cpt-frontx-state-framework-composition-mfe-mount`
+- [x] `p1` - **ID**: `cpt-frontx-state-framework-composition-mfe-mount`
 
 Tracked in `state.mfe.mountedExtensions[domainId]` as a per-domain insertion-ordered `string[]` of currently-mounted extension IDs. The slice never stores `undefined` for a registered domain; it stores `[]`.
 
@@ -475,7 +475,7 @@ When the host changes theme or language, the respective plugin propagates the ne
 
 ### Microfrontends Plugin and MFE Lifecycle
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-framework-composition-mfe-plugin`
+- [x] `p1` - **ID**: `cpt-frontx-dod-framework-composition-mfe-plugin`
 
 The `microfrontends()` plugin accepts `MicrofrontendsConfig` with required `typeSystem: TypeSystemPlugin` and optional `mfeHandlers: MfeHandler[]`. It builds a `MfeRegistry` instance via `mfeRegistryFactory.build({ typeSystem: config.typeSystem, mfeHandlers: config.mfeHandlers })` — the plugin does NOT import or hardcode any specific `TypeSystemPlugin` implementation. It exposes the registry as `app.mfeRegistry`. It registers the `mfe` Redux slice tracking per-extension registration state (`unregistered` | `registering` | `registered` | `error`) and per-domain mount state. The mount-state slot has shape `mountedExtensions: Record<string, string[]>` (per-domain insertion-ordered array of extension IDs). The slice exposes reducers `addExtensionMounted({ domainId, extensionId })` / `removeExtensionMounted({ domainId, extensionId })` and selector `selectMountedExtensions(state, domainId): readonly string[]`. The previous scalar reducers `setExtensionMounted` / `setExtensionUnmounted` and the previous selector `selectMountedExtension` do NOT exist.
 
@@ -600,7 +600,7 @@ The framework does NOT export `createAction` to consumers; actions are handwritt
 - [x] `mfeRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, 'dark')` propagates to all domains declaring the property; domains not declaring it receive no update
 - [x] `app.actions.registerExtension(ext)` transitions `state.mfe.registrationStates[ext.id]` from `'unregistered'` → `'registering'` → `'registered'`
 - [x] A failing `mfeRegistry.registerExtension()` call transitions state to `'error'` with the error message recorded
-- [ ] Slice `mountedExtensions[domainId]` is `[]` immediately after `registerDomain` returns; subsequent successful mount chains append the extension's `subject` to `state.mfe.mountedExtensions[domainId]` (insertion-ordered string array) via `addExtensionMounted` (append-if-absent); subsequent successful unmount chains remove the named ID via `removeExtensionMounted` (no-op-if-absent); the slice never holds `undefined` for a registered domain. Multi-mount domains backed by `ConcurrentMountStrategy` accumulate multiple IDs in the array; concurrent mount chains for the same multi-mount domain converge to `registry.getMountedExtensions(domainId)` because the reducers are idempotent
+- [x] Slice `mountedExtensions[domainId]` is `[]` immediately after `registerDomain` returns; subsequent successful mount chains append the extension's `subject` to `state.mfe.mountedExtensions[domainId]` (insertion-ordered string array) via `addExtensionMounted` (append-if-absent); subsequent successful unmount chains remove the named ID via `removeExtensionMounted` (no-op-if-absent); the slice never holds `undefined` for a registered domain. Multi-mount domains backed by `ConcurrentMountStrategy` accumulate multiple IDs in the array; concurrent mount chains for the same multi-mount domain converge to `registry.getMountedExtensions(domainId)` because the reducers are idempotent
 - [x] `normalizeBase('/console/')` returns `'/console'`; `normalizeBase('')` returns `'/'`; `normalizeBase('console')` returns `'/console'`
 - [x] `stripBase('/console/dashboard', '/console')` returns `'/dashboard'`; `stripBase('/admin/x', '/console')` returns `null`; `stripBase('/console-admin', '/console')` returns `null`
 - [x] `createHAI3App()` uses the `full()` preset and returns a valid `HAI3App` without configuration

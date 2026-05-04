@@ -8,6 +8,7 @@
  * @packageDocumentation
  */
 
+// @cpt-algo:cpt-frontx-algo-framework-composition-mount-set-diff-dispatch:p1
 // @cpt-flow:cpt-frontx-flow-framework-composition-mfe-lifecycle:p1
 // @cpt-flow:cpt-frontx-flow-framework-composition-shared-property-broadcast:p1
 // @cpt-algo:cpt-frontx-algo-framework-composition-gts-validation:p1
@@ -25,7 +26,7 @@ import {
 } from '@cyberfabric/screensets';
 import { getStore } from '@cyberfabric/state';
 import type { HAI3Plugin } from '../../types';
-import { mfeSlice, setExtensionMounted, setExtensionUnmounted } from './slice';
+import { mfeSlice, addExtensionMounted, removeExtensionMounted } from './slice';
 import { initMfeEffects } from './effects';
 import {
   loadExtension,
@@ -129,34 +130,58 @@ export function microfrontends(config: MicrofrontendsConfig): HAI3Plugin {
     mfeHandlers: config.mfeHandlers,
   });
 
-  // Wrap executeActionsChain to intercept mount/unmount completions for store dispatch
+  /**
+   * Mount-set diff dispatch — `cpt-frontx-algo-framework-composition-mount-set-diff-dispatch`
+   *
+   * Algorithm:
+   * 1. Snapshot `before` per lifecycle domain from `registry.getMountedExtensions(domainId)`.
+   * 2. Await the chain in a try block; dispatch the diff in the finally block so both
+   *    success and failure paths reconcile the slice with the registry.
+   * 3. Snapshot `after` per lifecycle domain from `registry.getMountedExtensions(domainId)`.
+   * 4. Compute `added = after \ before` and `removed = before \ after` (set differences).
+   * 5. Dispatch one `addExtensionMounted` per element of `added` and one
+   *    `removeExtensionMounted` per element of `removed`.
+   *
+   * Idempotent reducers make this safe under unserialized concurrent chains for
+   * multi-mount domains: a duplicate `addExtensionMounted` is a no-op, and a
+   * duplicate `removeExtensionMounted` is a no-op — the slice converges to
+   * `registry.getMountedExtensions(domainId)` regardless of interleaving.
+   */
+  // @cpt-begin:cpt-frontx-algo-framework-composition-mount-set-diff-dispatch:p1:inst-1
   const originalExecuteActionsChain = mfeRegistry.executeActionsChain.bind(mfeRegistry);
   mfeRegistry.executeActionsChain = async (chain) => {
     const lifecycleDomains = collectLifecycleDomains(chain);
-    const mountedBeforeByDomain = new Map(
-      lifecycleDomains.map((domainId) => [domainId, mfeRegistry.getMountedExtension(domainId)])
+
+    // Step 1: snapshot pre-chain mount sets per domain
+    const beforeByDomain = new Map(
+      lifecycleDomains.map((domainId) => [domainId, new Set(mfeRegistry.getMountedExtensions(domainId))])
     );
 
-    await originalExecuteActionsChain(chain);
-    // Sync the store from the registry's post-condition instead of assuming
-    // that a resolved chain mounted/unmounted only the root link's extension.
-    if (lifecycleDomains.length > 0) {
-      const store = getStore();
-      for (const domainId of lifecycleDomains) {
-        const mountedBefore = mountedBeforeByDomain.get(domainId);
-        const mountedExtensionId = mfeRegistry.getMountedExtension(domainId);
-        if (mountedBefore === mountedExtensionId) {
-          continue;
-        }
+    try {
+      await originalExecuteActionsChain(chain);
+    } finally {
+      // Steps 3-5: run on both success and failure so the slice stays in sync
+      // even when the chain records a failure internally.
+      if (lifecycleDomains.length > 0) {
+        const store = getStore();
+        for (const domainId of lifecycleDomains) {
+          const before = beforeByDomain.get(domainId)!;
+          const after = new Set(mfeRegistry.getMountedExtensions(domainId));
 
-        if (mountedExtensionId) {
-          store.dispatch(setExtensionMounted({ domainId, extensionId: mountedExtensionId }));
-        } else {
-          store.dispatch(setExtensionUnmounted({ domainId }));
+          const added = [...after].filter((id) => !before.has(id));
+          const removed = [...before].filter((id) => !after.has(id));
+
+          for (const extensionId of added) {
+            store.dispatch(addExtensionMounted({ domainId, extensionId }));
+          }
+          for (const extensionId of removed) {
+            store.dispatch(removeExtensionMounted({ domainId, extensionId }));
+          }
         }
       }
     }
   };
+  // @cpt-end:cpt-frontx-algo-framework-composition-mount-set-diff-dispatch:p1:inst-1
 
   // Store cleanup functions in closure (encapsulated per plugin instance)
   let effectsCleanup: (() => void) | null = null;
@@ -234,9 +259,9 @@ export {
   selectExtensionState,
   selectRegisteredExtensions,
   selectExtensionError,
-  selectMountedExtension,
-  setExtensionMounted,
-  setExtensionUnmounted,
+  selectMountedExtensions,
+  addExtensionMounted,
+  removeExtensionMounted,
   type MfeState,
   type ExtensionRegistrationState,
 } from './slice';

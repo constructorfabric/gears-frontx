@@ -24,7 +24,7 @@ import { eventBus, resetStore } from '@cyberfabric/state';
 import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
 import type { MfeRegistry } from '@cyberfabric/screensets';
 import type { Extension, ExtensionDomain } from '@cyberfabric/framework';
-import { TestContainerProvider } from '../../../src/testing/TestContainerProvider';
+import { TestContainerProvider } from '../../test-utils/TestContainerProvider';
 import type { HAI3App } from '../../../src/types';
 
 function getMfeRegistry(app: HAI3App): MfeRegistry {
@@ -133,7 +133,7 @@ describe('dynamic registration - Phase 20', () => {
 
       // First register the domain
       const testContainerProvider = new TestContainerProvider();
-      mfeRegistry.registerDomain(mockDomain, testContainerProvider);
+      mfeRegistry.registerDomain(mockDomain, testContainerProvider.prepareForDomain(mockDomain));
 
       // Trigger action
       registerExtension(mockExtension);
@@ -231,7 +231,7 @@ describe('dynamic registration - Phase 20', () => {
 
       // Register domain first
       const testContainerProvider = new TestContainerProvider();
-      mfeRegistry.registerDomain(mockDomain, testContainerProvider);
+      mfeRegistry.registerDomain(mockDomain, testContainerProvider.prepareForDomain(mockDomain));
 
       // Initial state
       let state = app.store.getState();
@@ -265,7 +265,7 @@ describe('dynamic registration - Phase 20', () => {
 
       mfeRegistry.registerExtension = vi.fn().mockResolvedValue(undefined);
       const testContainerProvider = new TestContainerProvider();
-      mfeRegistry.registerDomain(mockDomain, testContainerProvider);
+      mfeRegistry.registerDomain(mockDomain, testContainerProvider.prepareForDomain(mockDomain));
 
       registerExtension(mockExtension);
       await waitForExtensionState(app, mockExtension.id, 'registered');
@@ -291,7 +291,7 @@ describe('dynamic registration - Phase 20', () => {
 
       mfeRegistry.registerExtension = vi.fn().mockResolvedValue(undefined);
       const testContainerProvider = new TestContainerProvider();
-      mfeRegistry.registerDomain(mockDomain, testContainerProvider);
+      mfeRegistry.registerDomain(mockDomain, testContainerProvider.prepareForDomain(mockDomain));
 
       const ext1 = { ...mockExtension, id: 'gts.hai3.mfes.ext.extension.v1~test.app.test.ext1.v1' };
       const ext2 = { ...mockExtension, id: 'gts.hai3.mfes.ext.extension.v1~test.app.test.ext2.v1' };
@@ -318,7 +318,7 @@ describe('dynamic registration - Phase 20', () => {
       apps.push(app);
 
       const testContainerProvider = new TestContainerProvider();
-      mfeRegistry.registerDomain(mockDomain, testContainerProvider);
+      mfeRegistry.registerDomain(mockDomain, testContainerProvider.prepareForDomain(mockDomain));
 
       // Mock one success and one failure
       const ext1 = { ...mockExtension, id: 'gts.hai3.mfes.ext.extension.v1~test.app.test.ext1.v1' };

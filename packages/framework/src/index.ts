@@ -73,7 +73,7 @@ export {
   selectExtensionState,
   selectRegisteredExtensions,
   selectExtensionError,
-  selectMountedExtension,
+  selectMountedExtensions,
   HAI3_POPUP_DOMAIN,
   HAI3_SIDEBAR_DOMAIN,
   HAI3_SCREEN_DOMAIN,

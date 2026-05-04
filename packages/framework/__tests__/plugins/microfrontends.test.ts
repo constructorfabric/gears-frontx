@@ -21,7 +21,7 @@ import { microfrontends } from '../../src/plugins/microfrontends';
 import { loadLayoutDomains } from '../../src/plugins/microfrontends/gts/loader';
 import { themeSchema, languageSchema, extensionScreenSchema } from '../../src/gts';
 import type { MfeRegistry } from '@cyberfabric/framework';
-import { TestContainerProvider } from '../../src/testing/TestContainerProvider';
+import { TestContainerProvider } from '../test-utils/TestContainerProvider';
 import { resetSharedQueryClient } from '../../src/testing';
 import type { HAI3App } from '../../src/types';
 
@@ -145,7 +145,7 @@ describe('microfrontends plugin - Phase 7.9', () => {
       const registry = getAppMfeRegistry(app);
       const provider = new TestContainerProvider();
 
-      registry.registerDomain(sidebarDomain, provider);
+      registry.registerDomain(sidebarDomain, provider.prepareForDomain(sidebarDomain));
 
       expect(registry.getDomain(sidebarDomain.id)).toBeDefined();
       expect(registry.getDomain(sidebarDomain.id)?.id).toBe(sidebarDomain.id);
@@ -156,7 +156,7 @@ describe('microfrontends plugin - Phase 7.9', () => {
       const registry = getAppMfeRegistry(app);
       const provider = new TestContainerProvider();
 
-      registry.registerDomain(popupDomain, provider);
+      registry.registerDomain(popupDomain, provider.prepareForDomain(popupDomain));
 
       expect(registry.getDomain(popupDomain.id)).toBeDefined();
     });
@@ -166,7 +166,7 @@ describe('microfrontends plugin - Phase 7.9', () => {
       const registry = getAppMfeRegistry(app);
       const provider = new TestContainerProvider();
 
-      registry.registerDomain(screenDomain, provider);
+      registry.registerDomain(screenDomain, provider.prepareForDomain(screenDomain));
 
       expect(registry.getDomain(screenDomain.id)).toBeDefined();
     });
@@ -176,7 +176,7 @@ describe('microfrontends plugin - Phase 7.9', () => {
       const registry = getAppMfeRegistry(app);
       const provider = new TestContainerProvider();
 
-      registry.registerDomain(overlayDomain, provider);
+      registry.registerDomain(overlayDomain, provider.prepareForDomain(overlayDomain));
 
       expect(registry.getDomain(overlayDomain.id)).toBeDefined();
     });
@@ -186,10 +186,10 @@ describe('microfrontends plugin - Phase 7.9', () => {
       const registry = getAppMfeRegistry(app);
       const provider = new TestContainerProvider();
 
-      registry.registerDomain(sidebarDomain, provider);
-      registry.registerDomain(popupDomain, provider);
-      registry.registerDomain(screenDomain, provider);
-      registry.registerDomain(overlayDomain, provider);
+      registry.registerDomain(sidebarDomain, provider.prepareForDomain(sidebarDomain));
+      registry.registerDomain(popupDomain, provider.prepareForDomain(popupDomain));
+      registry.registerDomain(screenDomain, provider.prepareForDomain(screenDomain));
+      registry.registerDomain(overlayDomain, provider.prepareForDomain(overlayDomain));
 
       expect(registry.getDomain(sidebarDomain.id)?.id).toBe(sidebarDomain.id);
       expect(registry.getDomain(popupDomain.id)?.id).toBe(popupDomain.id);
@@ -267,7 +267,7 @@ describe('microfrontends plugin - Phase 7.9', () => {
       const registry = getAppMfeRegistry(app);
       const provider = new TestContainerProvider();
 
-      registry.registerDomain(sidebarDomain, provider);
+      registry.registerDomain(sidebarDomain, provider.prepareForDomain(sidebarDomain));
 
       expect(registry.getDomain(sidebarDomain.id)).toBeDefined();
     });
