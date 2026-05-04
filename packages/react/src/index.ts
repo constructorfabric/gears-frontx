@@ -67,10 +67,10 @@ export {
   useSharedProperty,
   useHostAction,
   useDomainExtensions,
-  RefContainerProvider,
+  useMountedExtensions,
+  useRegisteredPackages,
+  useActivePackage,
   ExtensionDomainSlot,
-  bootstrapMfeDomains,
-  DetachedContainerProvider,
 } from './mfe';
 
 export type {
@@ -402,7 +402,7 @@ export {
   selectExtensionState,
   selectRegisteredExtensions,
   selectExtensionError,
-  selectMountedExtension,
+  selectMountedExtensions,
 } from '@cyberfabric/framework';
 
 // MFE Domain constants
@@ -476,7 +476,6 @@ export {
   MfeRegistry,
   MfeRegistryFactory,
   mfeRegistryFactory,
-  ContainerProvider,
   ActionHandler,
 } from '@cyberfabric/framework';
 

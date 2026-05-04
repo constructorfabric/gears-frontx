@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { formatCurrency, Language, type TranslationMap } from '@cyberfabric/framework';
 import {
   HAI3Context,
-  RefContainerProvider,
   useAppDispatch,
   useFormatters,
   useScreenTranslations,
@@ -248,22 +247,4 @@ describe('react hook coverage', () => {
     expect(result.current).toBe(store.dispatch);
   });
 
-  it('RefContainerProvider returns the attached ref and throws before mount', () => {
-    const detachedRef = { current: null };
-    const detachedProvider = new RefContainerProvider(detachedRef);
-
-    expect(() => {
-      detachedProvider.getContainer('demo');
-    }).toThrow(
-      'Container ref is not attached -- component may not be mounted yet'
-    );
-
-    const container = document.createElement('div');
-    const attachedProvider = new RefContainerProvider({ current: container });
-
-    expect(attachedProvider.getContainer('demo')).toBe(container);
-    expect(() => {
-      attachedProvider.releaseContainer('demo');
-    }).not.toThrow();
-  });
 });

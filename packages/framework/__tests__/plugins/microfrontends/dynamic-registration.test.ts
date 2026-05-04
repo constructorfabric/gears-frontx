@@ -24,7 +24,7 @@ import { eventBus, resetStore } from '@cyberfabric/state';
 import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
 import type { MfeRegistry } from '@cyberfabric/screensets';
 import type { Extension, ExtensionDomain } from '@cyberfabric/framework';
-import { TestContainerProvider } from '../../test-utils/TestContainerProvider';
+import { TestContainerProvider } from '../../../src/testing/TestContainerProvider';
 import type { HAI3App } from '../../../src/types';
 
 function getMfeRegistry(app: HAI3App): MfeRegistry {

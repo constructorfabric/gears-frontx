@@ -13,7 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { describeBootstrapMfeContract } from '../src/testing';
-import { TestContainerProvider } from './test-utils/TestContainerProvider';
+import { TestContainerProvider } from '../src/testing/TestContainerProvider';
 
 function resolveFixturePath(relativePath: string): string {
   if (import.meta.url.startsWith('file:')) {
