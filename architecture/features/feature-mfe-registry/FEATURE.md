@@ -1,6 +1,6 @@
 # Feature: MFE Registry & Contracts
 
-<!-- artifact-version: 1.5 -->
+<!-- artifact-version: 1.6 -->
 
 
 <!-- toc -->
@@ -30,6 +30,7 @@
   - [Entry Type Handler Resolution](#entry-type-handler-resolution)
   - [Operation Serialization](#operation-serialization)
   - [Domain Implementation Construction with Encapsulation Enforcement](#domain-implementation-construction-with-encapsulation-enforcement)
+  - [Strategy/Action Cross-Validation Matrix](#strategyaction-cross-validation-matrix)
   - [Concurrent Mount Strategy](#concurrent-mount-strategy)
   - [Optional Mount Strategy](#optional-mount-strategy)
   - [Exclusive Mount Strategy](#exclusive-mount-strategy)
@@ -47,6 +48,7 @@
   - [MFE Handler Injection](#mfe-handler-injection)
   - [ActionsChainsMediator Contract](#actionschainsmediator-contract)
   - [Mount Strategy and Mounter Contracts](#mount-strategy-and-mounter-contracts)
+  - [DomainLifecycleTrigger Contract](#domainlifecycletrigger-contract)
   - [TypeSystemPlugin Interface](#typesystemplugin-interface)
   - [Factory-with-Cache Pattern](#factory-with-cache-pattern)
   - [Layer and Build Constraints](#layer-and-build-constraints)
@@ -120,12 +122,12 @@ Success criteria: A host application can register a domain and extension, execut
 **Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-gts-plugin`
 
 1. - [x] `p1` - Host app obtains a `MfeRegistry` instance via `mfeRegistryFactory.build(config)` - `inst-obtain-registry`
-2. - [ ] `p1` - Host app calls `registry.registerDomain(declaration, factory)` where `declaration: ExtensionDomain` is the GTS-validated declaration and `factory: (ctx: DomainContext) => ExtensionDomainImplementation` returns the behavior class for the domain - `inst-call-register-domain`
+2. - [ ] `p1` - Host app calls `registry.registerDomain(declaration, factory)` where `declaration: ExtensionDomain` is the GTS-validated declaration and `factory: ExtensionDomainImplementationFactory` is a concrete subclass of the abstract `ExtensionDomainImplementationFactory` class. The factory's `build(ctx: DomainContext): ExtensionDomainImplementation` method returns synchronously; the synchronous return type enforces synchronous construction at the type level — no runtime check is required - `inst-call-register-domain`
 3. - [x] `p1` - Registry runs `cpt-frontx-algo-mfe-registry-domain-validation` — IF GTS validation fails the underlying `typeSystem.register(declaration)` call throws with a rich diagnostic message (instance JSON, resolved schema JSON, failure reason); IF a lifecycle hook references an unsupported stage RETURN `UnsupportedLifecycleStageError` - `inst-run-domain-validation`
-4. - [ ] `p1` - Registry constructs a `DefaultExtensionMounter` for the domain (composes the per-domain mount-set state and the resolved `MfeHandler` chain) - `inst-build-mounter`
-5. - [ ] `p1` - Registry runs `cpt-frontx-algo-mfe-registry-domain-implementation-construction` — builds `DomainContext`, invokes `factory(ctx)`, captures the `ExtensionDomainImplementation` instance, and invalidates `ctx` in a `finally` block so subsequent `ctx.mounter` access throws and `ctx.registerHandler` rejects further calls - `inst-construct-implementation`
-6. - [ ] `p1` - Registry cross-validates handlers vs declaration: every action type listed in `declaration.actions` must have a handler registered via `ctx.registerHandler` during construction; any handler registered for an action type not listed in `declaration.actions` is rejected; **IF** the implementation's strategy is `ExclusiveMountStrategy` AND `declaration.actions` includes the unmount action type **THEN** throw `Error("ExclusiveMountStrategy domains must omit unmount_ext from declaration.actions")` - `inst-cross-validate-handlers`
-7. - [ ] `p1` - Registry stores domain state (properties Map, extensions Set, propertySubscribers Map, **mountedExtensions empty array (insertion-ordered)**, implementation instance, mounter instance) - `inst-store-domain-state`
+4. - [ ] `p1` - Registry constructs a `DefaultExtensionMounter` for the domain (composes the per-domain mount-set state owned by the registry and the resolved `MfeHandler` chain) plus a per-domain `DefaultDomainLifecycleTrigger` instance - `inst-build-mounter`
+5. - [ ] `p1` - Registry runs `cpt-frontx-algo-mfe-registry-domain-implementation-construction` — builds `DomainContext` (carrying `mounter`, `lifecycleTrigger`, and `registerHandler`), invokes `factory.build(ctx)`, captures the `ExtensionDomainImplementation` instance, and invalidates `ctx` in a `finally` block so subsequent `ctx.mounter`, `ctx.lifecycleTrigger`, or `ctx.registerHandler` access — including any captured function handle — throws. **IF** `factory.build` throws after one or more `ctx.registerHandler` calls succeeded **THEN** the registry rolls back all registrations performed during the call (no handlers are persisted to the mediator, no domain state is stored) and rethrows the original error - `inst-construct-implementation`
+6. - [ ] `p1` - Registry cross-validates handlers vs declaration AND strategy/cardinality matrix per `cpt-frontx-algo-mfe-registry-cross-validate-handlers` — every action type listed in `declaration.actions` must have a handler registered via `ctx.registerHandler` during construction; any handler registered for an action type not listed in `declaration.actions` is rejected; the strategy/action matrix is enforced strictly (`ConcurrentMountStrategy` and `OptionalMountStrategy` both REQUIRE `mount_ext` AND `unmount_ext`; `ExclusiveMountStrategy` REQUIRES `mount_ext` and FORBIDS `unmount_ext`). Validation runs after factory construction and before the registry persists registration state - `inst-cross-validate-handlers`
+7. - [ ] `p1` - Registry stores domain state (properties Map, extensions Set, propertySubscribers Map, **mountedExtensions empty array (insertion-ordered) — owned by the registry as the canonical source of mount-set state**, implementation instance, mounter instance, lifecycle-trigger instance) - `inst-store-domain-state`
 8. - [x] `p1` - Registry fires-and-forgets the `init` lifecycle stage for the domain; errors logged to `console.error` - `inst-trigger-domain-init`
 9. - [x] `p1` - `registerDomain` returns synchronously - `inst-return-sync`
 
@@ -324,13 +326,37 @@ All mutating operations on a given entity are queued per entity ID to prevent co
 
 - [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-registry-domain-implementation-construction`
 
-Builds the `ExtensionDomainImplementation` instance for a domain and mechanically invalidates the construction context so that no implementation can hold mounter / registerHandler access beyond its constructor. References captured by strategies (which hold `mounter` privately) survive — only the `ctx` object is invalidated.
+Builds the `ExtensionDomainImplementation` instance for a domain and mechanically invalidates the construction context so that no implementation can hold mounter / lifecycleTrigger / registerHandler access beyond its constructor. Invalidation is at the **function-handle level** — captured references to `ctx.mounter`, `ctx.lifecycleTrigger`, or `ctx.registerHandler` (held in the implementation's closure) also reject after invalidation. References captured by strategies (which hold the mounter and lifecycleTrigger privately as bound class members) survive registration end because the `MountStrategy` and `ExtensionDomainImplementation` constructors store the values directly, not via the `ctx` object.
 
-1. - [ ] `p1` - Build `DomainContext` value object exposing `mounter` accessor (delegates to the registry-built `DefaultExtensionMounter`) and `registerHandler(actionType, handler)` (delegates to a private collector) - `inst-build-context`
+1. - [ ] `p1` - Build `DomainContext` value object exposing `mounter` accessor, `lifecycleTrigger` accessor, and `registerHandler(actionType, handler)`; each member is implemented as a closure-captured function that consults the `valid` flag on every call - `inst-build-context`
 2. - [ ] `p1` - Initialize an empty handler collector `Map<actionType, ActionHandler>` and a boolean `valid = true` flag inside the closure - `inst-init-collector`
-3. - [ ] `p1` - **TRY** invoke `factory(ctx)` synchronously to obtain the `ExtensionDomainImplementation` instance — the implementation's constructor instantiates one or more shipped strategies (`ConcurrentMountStrategy`, `OptionalMountStrategy`, `ExclusiveMountStrategy`) with `(ctx.mounter, hooks)`, capturing the mounter privately, and pushes per-action-type `ActionHandler` instances via `ctx.registerHandler` - `inst-invoke-factory`
-4. - [ ] `p1` - **FINALLY** flip `valid = false`; from this point any call to `ctx.mounter` throws `Error("DomainContext invalidated after registration")` and any call to `ctx.registerHandler` throws `Error("DomainContext.registerHandler called after registration")` - `inst-invalidate-context`
-5. - [ ] `p1` - **RETURN** `{ implementation, handlers }` to the registry; the registry registers each `(actionType, handler)` pair with the mediator via `mediator.registerHandler(domainId, actionType, handler)` - `inst-return-construction-result`
+3. - [ ] `p1` - **TRY** invoke `factory.build(ctx)` synchronously to obtain the `ExtensionDomainImplementation` instance — the implementation's constructor instantiates one or more shipped strategies (extending the abstract `MountStrategy` base class — `ConcurrentMountStrategy`, `OptionalMountStrategy`, `ExclusiveMountStrategy`) with `(ctx.mounter, hooks)`, capturing the mounter privately, and pushes per-action-type `ActionHandler` instances via `ctx.registerHandler` - `inst-invoke-factory`
+4. - [ ] `p1` - **CATCH** any throw from `factory.build`: clear the handler collector, instruct the mediator to discard any pending handler entries collected for this domain, and rethrow — atomic rollback ensures no partial registration is observable - `inst-rollback-on-throw`
+5. - [ ] `p1` - **FINALLY** flip `valid = false`; from this point any call to `ctx.mounter`, `ctx.lifecycleTrigger`, or `ctx.registerHandler` — including any captured function handle stashed in the implementation's closure — throws `Error("DomainContext invalidated after registration")` (or the corresponding member-specific message). Function-handle-level invalidation guarantees no implementation can stash a reference and use it asynchronously after registration - `inst-invalidate-context`
+6. - [ ] `p1` - **RETURN** `{ implementation, handlers }` to the registry; the registry registers each `(actionType, handler)` pair with the mediator via `mediator.registerHandler(domainId, actionType, handler)` - `inst-return-construction-result`
+
+---
+
+### Strategy/Action Cross-Validation Matrix
+
+- [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-registry-cross-validate-handlers`
+
+Enforces the strict cardinality matrix between the `MountStrategy` selected by the implementation and the action types declared by the domain. Runs after factory construction (the implementation's strategy is now observable) and before the registry persists registration state. Rejection here causes the registry to roll back any handlers collected during construction (per `cpt-frontx-algo-mfe-registry-domain-implementation-construction`) and rethrow.
+
+| Strategy | `mount_ext` | `unmount_ext` |
+|---|---|---|
+| `ConcurrentMountStrategy` | REQUIRED | REQUIRED |
+| `OptionalMountStrategy` | REQUIRED | REQUIRED |
+| `ExclusiveMountStrategy` | REQUIRED | FORBIDDEN |
+
+A "write-once" Concurrent variant (mount-only, no unmount) is NOT permitted; if a future use case emerges, relaxation is non-breaking. The matrix is enforced statically by the registry — no fallback heuristic on `domain.actions`.
+
+1. - [ ] `p1` - Identify the strategy class instance(s) the implementation captured during construction; if none, throw `Error("Domain implementation must capture at least one MountStrategy instance")` - `inst-identify-strategy`
+2. - [ ] `p1` - Look up the row in the cardinality matrix for the resolved strategy class; the row defines which of `mount_ext` / `unmount_ext` are REQUIRED and which are FORBIDDEN - `inst-lookup-matrix-row`
+3. - [ ] `p1` - **FOR EACH** action type marked REQUIRED: **IF** the action type is missing from `declaration.actions` **THEN** throw `Error("{Strategy} requires {actionType} in declaration.actions")` - `inst-enforce-required`
+4. - [ ] `p1` - **FOR EACH** action type marked FORBIDDEN: **IF** the action type is present in `declaration.actions` **THEN** throw `Error("{Strategy} forbids {actionType} in declaration.actions")` - `inst-enforce-forbidden`
+5. - [ ] `p1` - **FOR EACH** action type listed in `declaration.actions` that has no handler in the construction collector: throw `Error("Declaration lists {actionType} but no handler was registered via ctx.registerHandler")` - `inst-enforce-handler-coverage`
+6. - [ ] `p1` - **FOR EACH** action type registered via `ctx.registerHandler` that is NOT listed in `declaration.actions`: throw `Error("Handler registered for {actionType} but {actionType} is not declared in declaration.actions")` - `inst-enforce-no-extra-handlers`
 
 ---
 
@@ -338,18 +364,18 @@ Builds the `ExtensionDomainImplementation` instance for a domain and mechanicall
 
 - [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-registry-concurrent-mount-strategy`
 
-Append-mount semantics for multi-mount domains (e.g., `widgets`). Each mount adds a new container under the domain root; each unmount removes only the named extension. Multiple extensions remain mounted concurrently.
+Append-mount semantics for multi-mount domains (e.g., `widgets`). Each mount adds a new container under the domain root; each unmount removes only the named extension. Multiple extensions remain mounted concurrently. The strategy reads the registry's canonical mount-set when it needs to inspect cardinality (per `cpt-frontx-dod-mfe-registry-mount-contracts`).
 
 **Mount**:
 1. - [ ] `p1` - Receive `ActionPayload` carrying `subject` (the extension ID) - `inst-concurrent-mount-receive`
-2. - [ ] `p1` - Call `hooks.create(extensionId)` to materialize a fresh `Element` for this extension - `inst-concurrent-mount-create-container`
-3. - [ ] `p1` - **TRY** `await mounter.mount(extensionId, container)` — appends the extension to the per-domain mount-set; mount-set state becomes `[...prev, extensionId]` - `inst-concurrent-mount-call-mounter`
+2. - [ ] `p1` - Call `hooks.create(extensionId)` to materialize a fresh unattached `Element` for this extension — pure factory, no DOM attachment - `inst-concurrent-mount-create-container`
+3. - [ ] `p1` - **TRY** `await mounter.mount(extensionId, container)` — mounter appends `container` under its attached root and updates the registry's mount-set to `[...prev, extensionId]` - `inst-concurrent-mount-call-mounter`
 4. - [ ] `p1` - **CATCH** error: `hooks.destroy(extensionId)` to release the orphan container; rethrow - `inst-concurrent-mount-cleanup-on-error`
 5. - [ ] `p1` - **RETURN** resolved Promise on success - `inst-concurrent-mount-return`
 
 **Unmount**:
 1. - [ ] `p1` - Receive `ActionPayload` carrying `subject` (the extension ID) - `inst-concurrent-unmount-receive`
-2. - [ ] `p1` - **TRY** `await mounter.unmount(extensionId)` — removes the extension from the per-domain mount-set - `inst-concurrent-unmount-call-mounter`
+2. - [ ] `p1` - **TRY** `await mounter.unmount(extensionId)` — removes the extension from the registry's mount-set and detaches the container from the attached root - `inst-concurrent-unmount-call-mounter`
 3. - [ ] `p1` - Call `hooks.destroy(extensionId)` to release the container - `inst-concurrent-unmount-destroy-container`
 4. - [ ] `p1` - **RETURN** resolved Promise - `inst-concurrent-unmount-return`
 
@@ -359,21 +385,21 @@ Append-mount semantics for multi-mount domains (e.g., `widgets`). Each mount add
 
 - [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-registry-optional-mount-strategy`
 
-Zero-or-one mount with explicit unmount support (sidebar, popup, overlay domains). Mounting while occupied displaces the prior extension; explicit unmount empties the slot.
+Zero-or-one mount with explicit unmount support (sidebar, popup, overlay domains). Mounting while occupied displaces the prior extension; explicit unmount empties the slot. The strategy reads the canonical mount-set from the registry via the registry handle passed alongside the mounter (the registry owns mount-set state per `cpt-frontx-dod-mfe-registry-mount-contracts`).
 
 **Mount**:
 1. - [ ] `p1` - Receive `ActionPayload` carrying `subject` (the new extension ID) - `inst-optional-mount-receive`
-2. - [ ] `p1` - Read current `mounted = mounter.getMounted()` - `inst-optional-mount-read-current`
+2. - [ ] `p1` - Read current `mounted = registry.getMountedExtensions(domainId)` - `inst-optional-mount-read-current`
 3. - [ ] `p1` - **IF** `mounted.length === 1` AND `mounted[0] !== subject`: `await mounter.unmount(mounted[0])`; `hooks.destroy(mounted[0])` to displace the prior extension before mounting the new one - `inst-optional-mount-displace-prior`
 4. - [ ] `p1` - **IF** `mounted.includes(subject)`: idempotent — RETURN without re-mounting - `inst-optional-mount-idempotent`
-5. - [ ] `p1` - `container = hooks.create(subject)` - `inst-optional-mount-create-container`
-6. - [ ] `p1` - **TRY** `await mounter.mount(subject, container)` - `inst-optional-mount-call-mounter`
+5. - [ ] `p1` - `container = hooks.create(subject)` — pure factory; container is unattached, mounter appends under its root - `inst-optional-mount-create-container`
+6. - [ ] `p1` - **TRY** `await mounter.mount(subject, container)` — mounter appends `container` under the attached root and updates the registry's mount-set - `inst-optional-mount-call-mounter`
 7. - [ ] `p1` - **CATCH** error: `hooks.destroy(subject)`; rethrow - `inst-optional-mount-cleanup-on-error`
 8. - [ ] `p1` - **RETURN** resolved Promise - `inst-optional-mount-return`
 
 **Unmount**:
 1. - [ ] `p1` - Receive `ActionPayload` carrying `subject` (the extension ID to unmount) - `inst-optional-unmount-receive`
-2. - [ ] `p1` - **IF** `subject` is not in `mounter.getMounted()`: idempotent — RETURN - `inst-optional-unmount-idempotent`
+2. - [ ] `p1` - **IF** `subject` is not in `registry.getMountedExtensions(domainId)`: idempotent — RETURN - `inst-optional-unmount-idempotent`
 3. - [ ] `p1` - `await mounter.unmount(subject)` - `inst-optional-unmount-call-mounter`
 4. - [ ] `p1` - `hooks.destroy(subject)` - `inst-optional-unmount-destroy-container`
 5. - [ ] `p1` - **RETURN** resolved Promise - `inst-optional-unmount-return`
@@ -384,19 +410,19 @@ Zero-or-one mount with explicit unmount support (sidebar, popup, overlay domains
 
 - [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-registry-exclusive-mount-strategy`
 
-Pre-emptive single-mount semantics with no public unmount path (screen domain). Mounting always evicts any other extension currently mounted in the domain. The declaration MUST omit `unmount_ext` from `actions` — registration validation rejects otherwise.
+Pre-emptive single-mount semantics with no public unmount path (screen domain). Mounting always evicts any other extension currently mounted in the domain. The declaration MUST omit `unmount_ext` from `actions` — `cpt-frontx-algo-mfe-registry-cross-validate-handlers` rejects otherwise.
 
 **Mount**:
 1. - [ ] `p1` - Receive `ActionPayload` carrying `subject` (the new extension ID) - `inst-exclusive-mount-receive`
-2. - [ ] `p1` - Read `mounted = mounter.getMounted()` - `inst-exclusive-mount-read-current`
+2. - [ ] `p1` - Read `mounted = registry.getMountedExtensions(domainId)` — registry is the canonical source of mount-set state - `inst-exclusive-mount-read-current`
 3. - [ ] `p1` - **IF** `mounted.length === 1` AND `mounted[0] === subject`: idempotent — RETURN without re-mounting - `inst-exclusive-mount-idempotent`
 4. - [ ] `p1` - **FOR EACH** `siblingId` in `mounted` where `siblingId !== subject`: `await mounter.unmount(siblingId)`; `hooks.destroy(siblingId)` to evict any pre-existing siblings - `inst-exclusive-mount-evict-siblings`
-5. - [ ] `p1` - `container = hooks.create(subject)` - `inst-exclusive-mount-create-container`
-6. - [ ] `p1` - **TRY** `await mounter.mount(subject, container)` - `inst-exclusive-mount-call-mounter`
+5. - [ ] `p1` - `container = hooks.create(subject)` — pure factory; container is unattached - `inst-exclusive-mount-create-container`
+6. - [ ] `p1` - **TRY** `await mounter.mount(subject, container)` — mounter appends `container` under its attached root - `inst-exclusive-mount-call-mounter`
 7. - [ ] `p1` - **CATCH** error: `hooks.destroy(subject)`; rethrow - `inst-exclusive-mount-cleanup-on-error`
 8. - [ ] `p1` - **RETURN** resolved Promise on success - `inst-exclusive-mount-return`
 
-There is NO public `unmount` method on `ExclusiveMountStrategy`. Eviction happens only as a side effect of `mount`. The mediator rejects unmount actions for domains backed by this strategy at registration time (see `inst-cross-validate-handlers` in `cpt-frontx-flow-mfe-registry-register-domain`).
+`ExclusiveMountStrategy` does NOT implement the optional `unmount` method declared on the abstract `MountStrategy` base class. Eviction happens only as a side effect of `mount`. `cpt-frontx-algo-mfe-registry-cross-validate-handlers` rejects unmount actions for domains backed by this strategy at registration time.
 
 ---
 
@@ -443,9 +469,13 @@ Tracks the singleton caching state of `DefaultMfeRegistryFactory`.
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-registry-contract`
 
-`MfeRegistry` is exported as an abstract class. All external consumers hold references of type `MfeRegistry` — never the concrete `DefaultMfeRegistry`. The abstract class exposes: `typeSystem` (readonly), `registerDomain(declaration: ExtensionDomain, factory: (ctx: DomainContext) => ExtensionDomainImplementation): void` (two-arg, factory form), `unregisterDomain`, `registerExtension`, `unregisterExtension`, `updateSharedProperty`, `getDomainProperty`, `executeActionsChain`, `triggerLifecycleStage`, `triggerDomainLifecycleStage`, `triggerDomainOwnLifecycleStage`, `getExtension`, `getDomain`, `getExtensionsForDomain`, `getMountedExtensions(domainId): readonly string[]` (plural; insertion-ordered list of currently-mounted extension IDs), `getRegisteredPackages`, `getExtensionsForPackage`, `getParentBridge`, `dispose`. `loadExtension`, `mountExtension`, and `unmountExtension` are NOT public — all lifecycle operations go through `executeActionsChain`. The scalar `getMountedExtension(domainId)` method is removed; consumers that need "the active screen extension" call `getMountedExtensions(HAI3_SCREEN_DOMAIN)[0]`. `ContainerProvider`, `MountExtSwapHandler`, `MountExtToggleHandler`, and `MountManager` are NOT exported from the public barrel — `ContainerProvider` is replaced by impl-supplied `ContainerHooks`, the mount handlers are replaced by the three shipped strategy classes (`ConcurrentMountStrategy`, `OptionalMountStrategy`, `ExclusiveMountStrategy`), and `MountManager` becomes strictly internal behind `DefaultExtensionMounter`.
+`MfeRegistry` is exported as an abstract class. All external consumers hold references of type `MfeRegistry` — never the concrete `DefaultMfeRegistry`. The abstract class exposes: `typeSystem` (readonly), `registerDomain(declaration: ExtensionDomain, factory: ExtensionDomainImplementationFactory): void` (two-arg form; `factory` is a concrete subclass instance of the abstract `ExtensionDomainImplementationFactory` class whose `build(ctx): ExtensionDomainImplementation` method is called synchronously by the registry), `unregisterDomain`, `registerExtension`, `unregisterExtension`, `updateSharedProperty`, `getDomainProperty`, `executeActionsChain`, `getExtension`, `getDomain`, `getExtensionsForDomain`, `getMountedExtensions(domainId): readonly string[]` (plural; insertion-ordered list of currently-mounted extension IDs — the canonical source of mount-set state), `getMounter(domainId): ExtensionMounter` (returns the per-domain mounter for slot-side root attachment via `mounter.attach(element)` / `mounter.detach()`), `getRegisteredPackages`, `getExtensionsForPackage`, `getParentBridge`, `dispose`.
 
-The package additionally exports `ExtensionDomainImplementation` (abstract class), `ExtensionMounter` (abstract class), `DomainContext` (interface), `ContainerHooks` (interface), `ConcurrentMountStrategy` / `OptionalMountStrategy` / `ExclusiveMountStrategy` (concrete classes), and `ActionHandler.fromFunction(fn)` (static helper for one-off function-to-handler wraps).
+`loadExtension`, `mountExtension`, and `unmountExtension` are NOT public — all lifecycle operations go through `executeActionsChain`. Implementation-driven lifecycle transitions go through the per-domain `DomainLifecycleTrigger` (see `cpt-frontx-dod-mfe-registry-lifecycle-trigger-contract`); the framework's mount/unmount completion handlers call internal trigger plumbing directly (not the public lifecycle trigger). `ChildMfeBridge.triggerLifecycleStage` (extension-side self-trigger) is a separate channel.
+
+Mount-set reads use the plural `getMountedExtensions(domainId)`; consumers that need "the active screen extension" call `getMountedExtensions(HAI3_SCREEN_DOMAIN)[0]`. Containers are supplied by the implementation via `ContainerHooks`; mount semantics are owned by the three shipped strategy classes (`ConcurrentMountStrategy`, `OptionalMountStrategy`, `ExclusiveMountStrategy`); `MountManager` is strictly internal, composed by `DefaultExtensionMounter`.
+
+The package additionally exports `ExtensionDomainImplementation` (abstract class), `ExtensionDomainImplementationFactory` (abstract class), `ExtensionMounter` (abstract class), `MountStrategy` (abstract base class), `DomainLifecycleTrigger` (abstract class), `DomainContext` (interface — carries `mounter`, `lifecycleTrigger`, `registerHandler`), `ContainerHooks` (interface — pure factory: `create`/`destroy`), `ConcurrentMountStrategy` / `OptionalMountStrategy` / `ExclusiveMountStrategy` (concrete classes extending `MountStrategy`), and `ActionHandler.fromFunction(fn)` (static helper for one-off function-to-handler wraps).
 
 **Implements**:
 - `cpt-frontx-flow-mfe-registry-register-domain`
@@ -645,28 +675,60 @@ Domain-side: `registerDomain()` registers three handlers (one per lifecycle acti
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-mount-contracts`
 
-The mounter facade, the implementation-supplied container lifecycle, and the three shipped strategy classes are exported with the following type contracts. All abstractions are abstract classes (or interfaces where noted), consistent with the package's class-first style.
+The mounter facade, the implementation-supplied container factory, the abstract `MountStrategy` base, and the three shipped concrete strategy classes are exported with the following type contracts. All abstractions are abstract classes (or interfaces where noted), consistent with the package's class-first style. The registry owns the canonical per-domain mount-set state (`ExtensionDomainState.mountedExtensions: string[]`, insertion-ordered); the mounter does NOT keep duplicate state.
 
-- `ExtensionMounter` (abstract class) exposes three abstract methods:
-  - `mount(extensionId: string, container: Element): Promise<void>` — appends the extension to the per-domain mount-set with `container` as the host element
-  - `unmount(extensionId: string): Promise<void>` — removes the extension from the per-domain mount-set
-  - `getMounted(): readonly string[]` — returns the current insertion-ordered set of mounted extension IDs for this domain
-  One concrete `ExtensionMounter` instance is constructed by the registry per registered domain.
-- `ContainerHooks` (interface, supplied by the implementation) exposes:
-  - `create(extensionId: string): Element` — materializes a fresh host element for the named extension; called by strategies during mount
-  - `destroy(extensionId: string): void` — releases the host element previously produced by `create`; called by strategies during unmount and on mount-failure cleanup
+- `ExtensionMounter` (abstract class) exposes the following abstract methods:
+  - `attach(root: Element): void` — registers `root` as the DOM root the mounter places per-extension containers under; called by `ExtensionDomainSlot` from its ref-attach callback. Idempotent if called with the same root; replaces the prior root if called with a different element.
+  - `detach(): void` — releases the attached root and **mass-unmounts every currently-mounted extension in the domain** by calling `mounter.unmount(extId)` and `hooks.destroy(extId)` per extension (so the slice/registry stay consistent — the diff dispatch reflects each removal). After detach, the mounter has no root; subsequent `mount` calls will throw until `attach` is called again.
+  - `mount(extensionId: string, container: Element): Promise<void>` — appends `container` under the attached root; updates the registry's mount-set to include `extensionId`; throws if the mounter has no attached root.
+  - `unmount(extensionId: string): Promise<void>` — detaches the per-extension container from the attached root and updates the registry's mount-set to remove `extensionId`.
+  The mounter does NOT expose `getMounted()` — strategies and consumers read mount-set state from the registry via `getMountedExtensions(domainId)`. One concrete `ExtensionMounter` instance is constructed by the registry per registered domain.
+- `MountStrategy` (abstract base class) exposes:
+  - `mount(payload: ActionPayload, mounter: ExtensionMounter, hooks: ContainerHooks): Promise<void>` — abstract; every concrete strategy implements this method.
+  - `unmount(payload: ActionPayload, mounter: ExtensionMounter, hooks: ContainerHooks): Promise<void>` — OPTIONAL; declared on the base for shape, NOT abstract. Concrete strategies MAY define it. `ExclusiveMountStrategy` does NOT define it; `ConcurrentMountStrategy` and `OptionalMountStrategy` do. Cardinality enforcement is structural (the absence of `unmount`) plus runtime cross-validation at registration (`cpt-frontx-algo-mfe-registry-cross-validate-handlers`).
+- `ContainerHooks` (interface, supplied by the implementation) is a **pure factory** with NO DOM-attachment responsibility:
+  - `create(extensionId: string): Element` — materializes a fresh **unattached** host element for the named extension; the mounter (which owns the attached root) appends/removes from its root.
+  - `destroy(extensionId: string): void` — releases the host element produced by the matching `create` call; invoked by strategies during unmount and on mount-failure cleanup.
   This interface is on the implementation side, never on the framework side, because container shape is domain-specific (DOM, Shadow DOM, off-DOM portal, etc.) and the framework treats containers as opaque `Element` references.
-- `ConcurrentMountStrategy`, `OptionalMountStrategy`, `ExclusiveMountStrategy` are concrete classes shipped by `@cyberfabric/screensets`. Each accepts the mounter and the implementation's container hooks at construction time as `constructor(mounter: ExtensionMounter, hooks: ContainerHooks)`. The implementation captures the strategy instance privately; the strategy in turn captures the mounter privately, which is what allows mount/unmount calls to keep functioning after `DomainContext` invalidation.
-- `DomainContext` (interface) exposes a `mounter: ExtensionMounter` accessor and `registerHandler(actionType: string, handler: ActionHandler): void`. Both members reject (throw) once the registry invalidates the context at the end of `registerDomain`.
+- `ConcurrentMountStrategy`, `OptionalMountStrategy`, `ExclusiveMountStrategy` are concrete classes shipped by `@cyberfabric/screensets` extending `MountStrategy`. Each accepts the mounter and the implementation's container hooks at construction time as `constructor(mounter: ExtensionMounter, hooks: ContainerHooks)`. The implementation captures the strategy instance privately; the strategy in turn captures the mounter privately as a bound class field, which is what allows mount/unmount calls to keep functioning after `DomainContext` invalidation.
+- `ExtensionDomainImplementationFactory` (abstract class) exposes a single abstract method `build(ctx: DomainContext): ExtensionDomainImplementation`. The synchronous return type enforces synchronous construction at the type level — async factories are rejected at compile time (no `Promise<ExtensionDomainImplementation>` overload) and no runtime check is required. Concrete subclasses are written by domain authors.
+- `DomainContext` (interface) exposes `mounter: ExtensionMounter`, `lifecycleTrigger: DomainLifecycleTrigger`, and `registerHandler(actionType: string, handler: ActionHandler): void`. All three members reject (throw) once the registry invalidates the context at the end of `registerDomain`. Function-handle-level invalidation: captured references to `mounter`, `lifecycleTrigger`, or `registerHandler` (held in the implementation's closure) also reject after invalidation, not just access through the `ctx` object.
 
-The framework receives only opaque `Element` references through `mounter.mount(extId, container)`. The framework does not know — and does not need to know — how the implementation constructs, positions, or destroys those elements; that is entirely the implementation's responsibility through `ContainerHooks`.
+The framework receives only opaque `Element` references through `mounter.mount(extId, container)`. The framework does not know — and does not need to know — how the implementation constructs, positions, or destroys those elements; that is entirely the implementation's responsibility through `ContainerHooks`. Container attachment to the DOM is the **mounter's** responsibility (via the slot's `mounter.attach(element)` call), not the implementation's.
 
 **Implements**:
 - `cpt-frontx-flow-mfe-registry-register-domain`
 - `cpt-frontx-algo-mfe-registry-domain-implementation-construction`
+- `cpt-frontx-algo-mfe-registry-cross-validate-handlers`
 - `cpt-frontx-algo-mfe-registry-concurrent-mount-strategy`
 - `cpt-frontx-algo-mfe-registry-optional-mount-strategy`
 - `cpt-frontx-algo-mfe-registry-exclusive-mount-strategy`
+
+**Covers (PRD)**:
+- `cpt-frontx-fr-mfe-dynamic-registration`
+
+**Covers (DESIGN)**:
+- `cpt-frontx-component-screensets`
+- `cpt-frontx-adr-domain-implementation-mount-strategies`
+
+---
+
+### DomainLifecycleTrigger Contract
+
+- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-lifecycle-trigger-contract`
+
+Implementation-driven lifecycle transitions go through a per-domain `DomainLifecycleTrigger` facade. The mounter stays SRP-pure (mounting only). Mount and unmount internally auto-fire their associated mount/unmount lifecycle stages — implementations do NOT have to call the trigger to fire those.
+
+- `DomainLifecycleTrigger` (abstract class) exposes three abstract methods:
+  - `triggerExtensionStage(extId: string, stageId: string): Promise<void>` — fires a lifecycle stage for the named extension only.
+  - `triggerStage(stageId: string): Promise<void>` — cascades the named stage across all extensions registered in the domain.
+  - `triggerOwnStage(stageId: string): Promise<void>` — fires the named stage on the domain itself (no cascade to extensions).
+- One concrete `DomainLifecycleTrigger` instance is constructed by the registry per registered domain (`DefaultDomainLifecycleTrigger`, marked `@internal`) and exposed to the implementation through `DomainContext.lifecycleTrigger`. The captured reference (held privately by the implementation as a bound class field) survives `DomainContext` invalidation; access through the `ctx` object after invalidation throws.
+- The registry's public `triggerLifecycleStage`, `triggerDomainLifecycleStage`, and `triggerDomainOwnLifecycleStage` methods are REMOVED. Framework-side mount/unmount completion handlers call internal trigger plumbing directly (not the public `lifecycleTrigger`). `ChildMfeBridge.triggerLifecycleStage` (extension-side self-trigger) stays unchanged — that channel was always extension-side, separate from the per-domain trigger.
+
+**Implements**:
+- `cpt-frontx-flow-mfe-registry-register-domain`
+- `cpt-frontx-algo-mfe-registry-domain-implementation-construction`
 
 **Covers (PRD)**:
 - `cpt-frontx-fr-mfe-dynamic-registration`
@@ -740,7 +802,7 @@ The framework receives only opaque `Element` references through `mounter.mount(e
 
 - [x] `mfeRegistryFactory.build({ typeSystem: gtsPlugin })` returns a `MfeRegistry` instance and subsequent calls with the same `typeSystem` return the same instance
 - [x] `mfeRegistryFactory.build({ typeSystem: differentPlugin })` after an initial build throws a config mismatch error
-- [ ] `registerDomain(declaration, factory)` propagates the plain `Error` thrown by `typeSystem.register(declaration)` when the declaration fails GTS schema validation (message carries instance JSON, schema JSON, and the failure reason), and throws `UnsupportedLifecycleStageError` when a lifecycle hook references a stage not in `declaration.lifecycleStages`; the registry invokes `factory(ctx)`, captures the implementation, and invalidates `ctx` in a `finally` block such that subsequent `ctx.mounter` access throws `Error("DomainContext invalidated after registration")`; references captured by strategies survive (verified by mounting and unmounting an extension after `registerDomain` returns); the registry rejects handler/declaration mismatches and rejects `ExclusiveMountStrategy`-backed implementations whose declaration includes `unmount_ext`
+- [ ] `registerDomain(declaration, factory)` accepts a concrete `ExtensionDomainImplementationFactory` subclass instance (not a function); the registry invokes `factory.build(ctx)`, captures the implementation, and invalidates `ctx` in a `finally` block such that subsequent `ctx.mounter`, `ctx.lifecycleTrigger`, or `ctx.registerHandler` access — including any captured function handle stashed in the implementation's closure — throws. Strategy-captured references survive registration end (verified by mounting and unmounting an extension after `registerDomain` returns). It propagates the plain `Error` thrown by `typeSystem.register(declaration)` when the declaration fails GTS schema validation (message carries instance JSON, schema JSON, and the failure reason), and throws `UnsupportedLifecycleStageError` when a lifecycle hook references a stage not in `declaration.lifecycleStages`. The registry rejects handler/declaration mismatches per the strict cross-validation matrix in `cpt-frontx-algo-mfe-registry-cross-validate-handlers`. **IF** `factory.build` throws after one or more `ctx.registerHandler` calls succeeded **THEN** the registry rolls back all collected handlers and the domain is not registered (atomic rollback)
 - [x] `registerExtension` propagates the plain `Error` thrown by `typeSystem.register(extension)` on schema validation failure, throws an `Error` with the collected contract error list on contract-matching failure, and throws `ExtensionTypeError`, `UnsupportedLifecycleStageError`, or `EntryTypeNotHandledError` at the appropriate validation step
 - [x] Contract matching enforces all three subset rules and excludes infrastructure lifecycle actions from Rule 3
 - [x] `updateSharedProperty` throws synchronously if GTS validation fails and no domain receives the update; silently no-ops if no domain declares the property
@@ -754,7 +816,11 @@ The framework receives only opaque `Element` references through `mounter.mount(e
 - [ ] Mediator rejects an extension-targeted action whose `type` is not declared in the target entry's `actions` array — the chain fails with an error naming the action type and entry ID; `domainActions` is NOT consulted at runtime (it is enforced at registration time by contract matching Rule 3); domain-targeted infrastructure lifecycle actions (`HAI3_ACTION_LOAD_EXT`, `HAI3_ACTION_MOUNT_EXT`, `HAI3_ACTION_UNMOUNT_EXT`) remain exempt
 - [ ] Bootstrap schema registration is scoped per entry: only schemas whose `$id` matches an action ID declared in `entry.actions` or `entry.domainActions` of at least one entry in the package are registered via `typeSystem.registerSchema`; unreferenced schemas from `config.schemas[]` are never registered
 - [ ] `getMountedExtensions(domainId)` returns a `readonly string[]` of insertion-ordered extension IDs currently mounted in the domain — empty array for an unknown or empty domain, never `undefined`
-- [ ] `ConcurrentMountStrategy` mounts multiple extensions concurrently for a domain that includes both mount and unmount action types in its declaration: after mounting `extA` then `extB`, `getMountedExtensions(domainId)` returns `[extA, extB]`; after unmounting `extA`, it returns `[extB]`
-- [ ] `OptionalMountStrategy` displaces a prior single mount: after mounting `extA` then mounting `extB`, `getMountedExtensions(domainId)` returns `[extB]`; after unmounting `extB`, it returns `[]`
-- [ ] `ExclusiveMountStrategy` evicts pre-existing siblings on mount and has no public unmount method; the registry rejects an `ExclusiveMountStrategy`-backed declaration that lists `unmount_ext` in `declaration.actions` with a clear error
+- [ ] `ConcurrentMountStrategy` mounts multiple extensions concurrently: after mounting `extA` then `extB`, `getMountedExtensions(domainId)` returns `[extA, extB]`; after unmounting `extA`, it returns `[extB]`. The registry's strict cross-validation matrix REQUIRES `mount_ext` AND `unmount_ext` for `ConcurrentMountStrategy`-backed declarations and rejects any declaration that omits either
+- [ ] `OptionalMountStrategy` displaces a prior single mount: after mounting `extA` then mounting `extB`, `getMountedExtensions(domainId)` returns `[extB]`; after unmounting `extB`, it returns `[]`. The registry's strict cross-validation matrix REQUIRES `mount_ext` AND `unmount_ext` for `OptionalMountStrategy`-backed declarations and rejects any declaration that omits either
+- [ ] `ExclusiveMountStrategy` evicts pre-existing siblings on mount and does NOT implement the optional `unmount` method on the abstract `MountStrategy` base; the registry rejects an `ExclusiveMountStrategy`-backed declaration that lists `unmount_ext` in `declaration.actions` with a clear error and rejects one that omits `mount_ext`
+- [ ] `ExtensionMounter.attach(root)` registers the DOM root used by subsequent `mount` calls; `ExtensionMounter.detach()` mass-unmounts every currently-mounted extension in the domain (calling `mounter.unmount(extId)` and `hooks.destroy(extId)` per extension), reflected in the slice via the diff-dispatch reducers
+- [ ] `ExtensionMounter` does NOT expose `getMounted()`; strategies and consumers read mount-set state via `registry.getMountedExtensions(domainId)` (the canonical owner)
+- [ ] `DomainContext` exposes `mounter`, `lifecycleTrigger`, and `registerHandler`; the public registry methods `triggerLifecycleStage`, `triggerDomainLifecycleStage`, `triggerDomainOwnLifecycleStage` do NOT exist on `MfeRegistry`
+- [ ] `registry.getMounter(domainId)` returns the per-domain `ExtensionMounter` instance; consumers (e.g., `ExtensionDomainSlot`) call `mounter.attach(element)` and `mounter.detach()`
 - [ ] `DomainContext` invalidation is mechanical: calling `ctx.mounter` after `registerDomain` returns throws `Error("DomainContext invalidated after registration")`; calling `ctx.registerHandler` after `registerDomain` returns throws `Error("DomainContext.registerHandler called after registration")`; strategies that captured the mounter inside the implementation's constructor continue to function
