@@ -26,6 +26,9 @@ import {
   type LifecycleTriggerCallback,
   type DomainLifecycleTriggerCallback,
 } from './extension-manager';
+import type { ExtensionMounter } from './ExtensionMounter';
+import type { DomainLifecycleTrigger } from './DomainLifecycleTrigger';
+import type { ExtensionDomainImplementation } from './ExtensionDomainImplementation';
 import { validateDomainLifecycleHooks, validateExtensionLifecycleHooks } from '../validation/lifecycle';
 import { validateContract } from '../validation/contract';
 import { validateExtensionType } from '../validation/extension-type';
@@ -98,10 +101,9 @@ export class DefaultExtensionManager extends ExtensionManager {
    * Performs validation, stores state, and triggers init lifecycle.
    *
    * @param domain - Domain to register
-   * @param onInitError - Optional callback for handling fire-and-forget init lifecycle errors
    */
   // @cpt-begin:cpt-frontx-algo-mfe-registry-domain-validation:p1:inst-1
-  registerDomain(domain: ExtensionDomain, onInitError?: (error: Error) => void): void {
+  registerDomain(domain: ExtensionDomain): void {
     // Step 1: GTS-native validation — register() validates and throws on failure
     try {
       this.typeSystem.register(domain);
@@ -124,30 +126,21 @@ export class DefaultExtensionManager extends ExtensionManager {
       );
     }
 
-    // Step 3: Store domain state
+    // Step 3: Store domain state (mounter/lifecycleTrigger/implementation set later
+    // by setDomainImplementation once the factory completes successfully)
     this.domains.set(domain.id, {
       domain,
       properties: new Map(),
       extensions: new Set(),
       propertySubscribers: new Map(),
-      mountedExtension: undefined,
+      mountedExtensions: [],
+      mounter: null,
+      lifecycleTrigger: null,
+      implementation: null,
     });
 
-    // Step 4: Trigger 'init' lifecycle stage (fire-and-forget)
-    // Since registerDomain is synchronous but lifecycle is async,
-    // we fire-and-forget and handle errors via onInitError callback
-    this.triggerDomainOwnLifecycle(
-      domain.id,
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1'
-    ).catch(error => {
-      const mfeError = error instanceof Error ? error : new Error(String(error));
-      if (onInitError) {
-        onInitError(mfeError);
-      } else {
-        // Minimal fallback: log to console.error
-        console.error('[DefaultExtensionManager] Domain init error:', mfeError, { domainId: domain.id });
-      }
-    });
+    // NOTE: The 'init' lifecycle stage is fired by DefaultMfeRegistry after
+    // handler registration and cross-validation complete — not here.
   }
   // @cpt-end:cpt-frontx-algo-mfe-registry-domain-validation:p1:inst-1
 
@@ -464,30 +457,78 @@ export class DefaultExtensionManager extends ExtensionManager {
 
 
   /**
-   * Get the currently mounted extension in a domain.
-   * Each domain supports at most one mounted extension at a time.
+   * Get the insertion-ordered list of currently-mounted extension IDs for a domain.
+   * Returns an empty array for an unknown or empty domain — never throws.
    *
    * @param domainId - ID of the domain
-   * @returns Extension ID if mounted, undefined otherwise
+   * @returns Readonly insertion-ordered list of mounted extension IDs.
    */
-  getMountedExtension(domainId: string): string | undefined {
+  getMountedExtensions(domainId: string): readonly string[] {
     const domainState = this.domains.get(domainId);
-    return domainState?.mountedExtension;
+    if (!domainState) {
+      return [];
+    }
+    // Return a copy so callers cannot mutate the internal array.
+    return domainState.mountedExtensions.slice();
   }
 
   /**
-   * Set the mounted extension for a domain.
-   * Called by MountManager when an extension is mounted.
+   * Append an extension to the domain's mount-set (append-if-absent semantics).
+   * No-op if the extension is already in the mount-set.
    *
    * @param domainId - ID of the domain
-   * @param extensionId - ID of the mounted extension, or undefined to clear
+   * @param extensionId - ID of the extension to add
    */
-  setMountedExtension(domainId: string, extensionId: string | undefined): void {
+  addMountedExtension(domainId: string, extensionId: string): void {
+    const domainState = this.domains.get(domainId);
+    if (!domainState) {
+      return;
+    }
+    if (!domainState.mountedExtensions.includes(extensionId)) {
+      domainState.mountedExtensions.push(extensionId);
+    }
+  }
+
+  /**
+   * Remove an extension from the domain's mount-set (remove-if-present semantics).
+   * No-op if the extension is not in the mount-set.
+   *
+   * @param domainId - ID of the domain
+   * @param extensionId - ID of the extension to remove
+   */
+  removeMountedExtension(domainId: string, extensionId: string): void {
+    const domainState = this.domains.get(domainId);
+    if (!domainState) {
+      return;
+    }
+    const idx = domainState.mountedExtensions.indexOf(extensionId);
+    if (idx !== -1) {
+      domainState.mountedExtensions.splice(idx, 1);
+    }
+  }
+
+  /**
+   * Wire the domain implementation, mounter, and lifecycle trigger into the
+   * domain state after `registerDomain` completes successfully.
+   *
+   * @param domainId - ID of the domain
+   * @param mounter - Per-domain `ExtensionMounter` instance
+   * @param lifecycleTrigger - Per-domain `DomainLifecycleTrigger` instance
+   * @param implementation - `ExtensionDomainImplementation` instance
+   */
+  setDomainImplementation(
+    domainId: string,
+    mounter: ExtensionMounter,
+    lifecycleTrigger: DomainLifecycleTrigger,
+    implementation: ExtensionDomainImplementation
+  ): void {
     const domainState = this.domains.get(domainId);
     if (!domainState) {
       throw new Error(`Domain '${domainId}' not registered`);
     }
-    domainState.mountedExtension = extensionId;
+    domainState.mounter = mounter;
+    domainState.lifecycleTrigger = lifecycleTrigger;
+    domainState.implementation = implementation;
   }
 
 }

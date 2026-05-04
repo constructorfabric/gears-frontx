@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
-import { TestContainerProvider } from '../../../__test-utils__';
+import { MockDomainFactory } from '../../../__test-utils__';
 import type { ExtensionDomain, Extension, MfeEntry } from '../../../src/mfe/types';
 import {
   HAI3_ACTION_LOAD_EXT,
@@ -20,7 +20,7 @@ import {
 describe('Phase 41 Regression Tests', () => {
   let gtsPlugin: GtsPlugin;
   let registry: DefaultMfeRegistry;
-  let mockContainerProvider: TestContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   const testDomain: ExtensionDomain = {
@@ -70,7 +70,7 @@ describe('Phase 41 Regression Tests', () => {
       typeSystem: gtsPlugin,
     });
 
-    mockContainerProvider = new TestContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     // Register domain and entry with GTS
     gtsPlugin.register(testDomain);
@@ -87,7 +87,7 @@ describe('Phase 41 Regression Tests', () => {
   describe('41.5.1 - Action with domain target passes schema validation', () => {
     it('should validate action with domain target successfully', async () => {
       // Register domain with registry
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register a derived action type schema, then an instance of it.
       const actionTypeId = 'gts.hai3.mfes.comm.action.v1~hai3.test.phase41.action_to_domain.v1~';
@@ -112,7 +112,7 @@ describe('Phase 41 Regression Tests', () => {
   describe('41.5.2 - Action with extension target passes schema validation', () => {
     it('should validate action with extension target successfully', async () => {
       // Register domain and extension with registry
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
       await registry.registerExtension(testExtension);
 
       // Register a derived action type schema, then an instance of it.
@@ -138,7 +138,7 @@ describe('Phase 41 Regression Tests', () => {
   describe('41.5.3 - executeActionsChain logs error on chain failure', () => {
     it('should log console.error when actions chain fails', async () => {
       // Register domain with registry
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Execute actions chain that will fail (target non-existent extension)
       const nonExistentExtensionId = 'gts.hai3.mfes.ext.extension.v1~hai3.test.phase41.nonexistent.v1';
@@ -159,7 +159,7 @@ describe('Phase 41 Regression Tests', () => {
 
     it('should not throw when actions chain fails', async () => {
       // Register domain with registry
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Execute actions chain that will fail
       const nonExistentExtensionId = 'gts.hai3.mfes.ext.extension.v1~hai3.test.phase41.nonexistent.v1';
@@ -204,7 +204,7 @@ describe('Phase 41 Regression Tests', () => {
         ],
       };
       gtsPlugin.register(customDomain);
-      registry.registerDomain(customDomain, mockContainerProvider);
+      registry.registerDomain(customDomain, mockContainerProvider.prepareForDomain(customDomain));
 
       // Execute successful actions chain with a mocked domain handler.
       // The domain handler will be automatically created by the registry for the domain.

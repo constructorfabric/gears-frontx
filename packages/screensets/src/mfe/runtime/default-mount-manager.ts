@@ -204,12 +204,9 @@ export class DefaultMountManager extends MountManager {
       );
     }
 
-    // Check if already mounted
+    // If already mounted, return idempotently — the strategy layer gates re-mount.
     if (extensionState.mountState === 'mounted') {
-      throw new Error(
-        `Cannot mount extension '${extensionId}': extension is already mounted. ` +
-        `Call unmountExtension() first before remounting.`
-      );
+      return extensionState.bridge!;
     }
 
     // Auto-load if not loaded
@@ -286,8 +283,9 @@ export class DefaultMountManager extends MountManager {
       extensionState.container = container;
       extensionState.mountState = 'mounted';
 
-      // Track mounted extension in domain (single extension per domain invariant)
-      this.extensionManager.setMountedExtension(extensionState.extension.domain, extensionId);
+      // Mount-set state is now owned by ExtensionMounter (called from strategy).
+      // MountManager does not track it directly — this line is a no-op placeholder
+      // to maintain the call site in case extensionManager API changes are needed.
 
       // Trigger 'activated' lifecycle stage
       await this.triggerLifecycle(
@@ -378,11 +376,8 @@ export class DefaultMountManager extends MountManager {
       extensionState.error = undefined;
       extensionState.shadowRoot = undefined;
 
-      // Clear mounted extension tracking in domain
-      const domainState = this.extensionManager.getDomainState(extensionState.extension.domain);
-      if (domainState && domainState.mountedExtension === extensionId) {
-        this.extensionManager.setMountedExtension(extensionState.extension.domain, undefined);
-      }
+      // Mount-set state is owned by ExtensionMounter (called from strategy).
+      // MountManager does not clear it directly.
     } catch (error) {
       extensionState.mountState = 'error';
       extensionState.error = error instanceof Error ? error : new Error(String(error));

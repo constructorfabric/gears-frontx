@@ -44,12 +44,11 @@ export interface ContractValidationResult {
 }
 
 /**
- * Infrastructure lifecycle actions handled by the per-action-type lifecycle handlers
- * (LoadExtHandler, MountExtSwapHandler, MountExtToggleHandler, UnmountExtHandler).
- * These actions target domains and are wired by the framework, not declared by MFE
- * entries. They are excluded from rule 3 (entry.domainActions ⊆ domain.actions)
- * validation as a defensive safety — entry.domainActions should not contain these
- * actions in the first place — and from mediator-level extension contract enforcement.
+ * Infrastructure lifecycle actions wired by the registry (load_ext) and the
+ * domain implementation's mount strategy (mount_ext, unmount_ext). These actions
+ * target domains and are excluded from rule 3 (entry.domainActions ⊆ domain.actions)
+ * validation — entry.domainActions should not contain these actions in the first
+ * place — and from mediator-level extension contract enforcement.
  */
 export const INFRASTRUCTURE_LIFECYCLE_ACTIONS = new Set<string>([
   HAI3_ACTION_LOAD_EXT,

@@ -11,11 +11,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { ExtensionDomain, Extension, ScreenExtension } from '../../../src/mfe/types';
-import { TestContainerProvider } from '../../../__test-utils__';
+import { MockDomainFactory } from '../../../__test-utils__';
 
 describe('MfeRegistry Query Methods', () => {
   let registry: DefaultMfeRegistry;
-  let mockContainerProvider: TestContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
   let typeSystem: GtsPlugin;
 
   const testDomain: ExtensionDomain = {
@@ -55,7 +55,7 @@ describe('MfeRegistry Query Methods', () => {
     registry = new DefaultMfeRegistry({
       typeSystem,
     });
-    mockContainerProvider = new TestContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     // Register the entry instance with GTS plugin before using it
     typeSystem.register(testEntry);
@@ -64,7 +64,7 @@ describe('MfeRegistry Query Methods', () => {
   describe('getExtension', () => {
     it('should return registered extension', async () => {
       // Register domain and extension
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
       await registry.registerExtension(testExtension);
 
       const result = registry.getExtension(testExtension.id);
@@ -92,7 +92,7 @@ describe('MfeRegistry Query Methods', () => {
       };
 
       // Register domain and extension
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
       await registry.registerExtension(extensionWithPresentation);
 
       const result = registry.getExtension(extensionWithPresentation.id);
@@ -108,7 +108,7 @@ describe('MfeRegistry Query Methods', () => {
 
   describe('getDomain', () => {
     it('should return registered domain', () => {
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       const result = registry.getDomain(testDomain.id);
       expect(result).toBeDefined();
@@ -130,7 +130,7 @@ describe('MfeRegistry Query Methods', () => {
       };
 
       // Register domain
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extensions
       await registry.registerExtension(testExtension);
@@ -143,7 +143,7 @@ describe('MfeRegistry Query Methods', () => {
     });
 
     it('should return empty array for domain with no extensions', () => {
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       const result = registry.getExtensionsForDomain(testDomain.id);
       expect(result).toEqual([]);

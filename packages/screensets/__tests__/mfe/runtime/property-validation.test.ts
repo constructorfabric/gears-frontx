@@ -22,7 +22,7 @@ import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry'
 import { GtsPlugin } from '../../../src/mfe/plugins/gts/index';
 import type { JSONSchema } from '../../../src/mfe/plugins/types';
 import type { ExtensionDomain } from '../../../src/mfe/types';
-import { TestContainerProvider } from '../../../__test-utils__';
+import { MockDomainFactory } from '../../../__test-utils__';
 
 /**
  * Minimal derived shared-property schema for testing.
@@ -43,7 +43,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
   let registry: DefaultMfeRegistry;
   let gtsPlugin: GtsPlugin;
   let testDomain: ExtensionDomain;
-  let mockContainerProvider: TestContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
 
   const DOMAIN_ID = 'gts.hai3.mfes.ext.domain.v1~hai3.test.validation.slot.v1';
 
@@ -54,7 +54,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
     gtsPlugin.registerSchema(testPropertySchema);
 
     registry = new DefaultMfeRegistry({ typeSystem: gtsPlugin });
-    mockContainerProvider = new TestContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     testDomain = {
       id: DOMAIN_ID,
@@ -70,7 +70,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
       ],
     };
 
-    registry.registerDomain(testDomain, mockContainerProvider);
+    registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
   });
 
   describe('ephemeral instance re-registration', () => {
@@ -137,7 +137,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
           'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
         ],
       };
-      registry.registerDomain(domain2, mockContainerProvider);
+      registry.registerDomain(domain2, mockContainerProvider.prepareForDomain(domain2));
 
       // register() auto-validates, so counting ephemeral runtime-instance
       // register() calls counts validations.

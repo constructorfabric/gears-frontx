@@ -54,14 +54,28 @@ export type {
   MfManifestAssets,
 } from './types';
 
-// Runtime (includes factory)
+// Runtime (includes factory and new abstractions)
 export {
   MfeRegistry,
   MfeRegistryFactory,
   mfeRegistryFactory,
-  ContainerProvider,
+  // Mount strategy abstractions and shipped strategies
+  MountStrategy,
+  ConcurrentMountStrategy,
+  OptionalMountStrategy,
+  ExclusiveMountStrategy,
+  // Domain implementation abstractions
+  ExtensionDomainImplementation,
+  ExtensionDomainImplementationFactory,
+  ExtensionMounter,
+  DomainLifecycleTrigger,
 } from './runtime';
-export type { MfeRegistryConfig, RegisterDomainOptions } from './runtime';
+export type {
+  MfeRegistryConfig,
+  ContainerHooks,
+  ActionPayload,
+  DomainContext,
+} from './runtime';
 
 // Handler Types and Abstract Classes (concrete implementations are internal)
 export {

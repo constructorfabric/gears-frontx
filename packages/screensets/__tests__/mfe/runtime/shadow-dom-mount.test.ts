@@ -17,7 +17,7 @@ import type { ChildMfeBridge, MfeEntryLifecycle } from '../../../src/mfe/handler
 import type { RuntimeCoordinator } from '../../../src/mfe/coordination/types';
 import type { MfeRegistry } from '../../../src/mfe/runtime/MfeRegistry';
 import {
-  TestContainerProvider,
+  MockDomainFactory,
   createMinimalMfeRegistryStub,
   makeMfeHandlerDouble,
 } from '../../../__test-utils__';
@@ -31,7 +31,7 @@ describe('Shadow DOM Mount Pipeline', () => {
   let mountManager: DefaultMountManager;
   let extensionManager: DefaultExtensionManager;
   let coordinator: RuntimeCoordinator;
-  let mockContainerProvider: TestContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
   let mockLifecycle: MfeEntryLifecycle;
   let mockHostRuntime: MfeRegistry;
   let typeSystem: GtsPlugin;
@@ -98,7 +98,7 @@ describe('Shadow DOM Mount Pipeline', () => {
     };
 
     // Create mock container provider
-    mockContainerProvider = new TestContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     // Create mock lifecycle
     mockLifecycle = {

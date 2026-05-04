@@ -22,12 +22,12 @@ import {
 } from '../../../src/mfe/constants';
 import type { ExtensionDomain, Extension, MfeEntry } from '../../../src/mfe/types';
 import type { ChildMfeBridge, MfeEntryLifecycle } from '../../../src/mfe/handler/types';
-import { TestContainerProvider, makeMfeHandlerDouble } from '../../../__test-utils__';
+import { MockDomainFactory, makeMfeHandlerDouble } from '../../../__test-utils__';
 
 
 describe('Extension Lifecycle Actions', () => {
   let registry: DefaultMfeRegistry;
-  let mockContainerProvider: TestContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
   let typeSystem: GtsPlugin;
 
   // Test domain with toggle semantics (supports mount + unmount)
@@ -104,7 +104,7 @@ describe('Extension Lifecycle Actions', () => {
     registry = new DefaultMfeRegistry({
       typeSystem,
     });
-    mockContainerProvider = new TestContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     // Register test entry with GTS
     typeSystem.register(testEntry);
@@ -124,7 +124,7 @@ describe('Extension Lifecycle Actions', () => {
         typeSystem,
         mfeHandlers: [mockHandler],
       });
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
       await registry.registerExtension(testExtension1);
 
       const result = await registry.executeActionsChain({
@@ -142,7 +142,7 @@ describe('Extension Lifecycle Actions', () => {
     it('should fail chain gracefully when payload is missing', async () => {
       // registry.executeActionsChain() does not throw — it logs the error and resolves.
       // The handler's MfeError is captured by the mediator, which marks the chain as failed.
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
 
       // Should resolve without throwing
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -175,7 +175,7 @@ describe('Extension Lifecycle Actions', () => {
         typeSystem,
         mfeHandlers: [mockHandler],
       });
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
       await registry.registerExtension(testExtension1);
 
       const container = document.createElement('div');
@@ -188,11 +188,11 @@ describe('Extension Lifecycle Actions', () => {
         action: { type: HAI3_ACTION_MOUNT_EXT, target: toggleDomain.id, payload: { subject: testExtension1.id } },
       });
 
-      expect(registry.getMountedExtension(toggleDomain.id)).toBe(testExtension1.id);
+      expect(registry.getMountedExtensions(toggleDomain.id)).toEqual([testExtension1.id]);
     });
 
     it('should fail chain gracefully when mount payload is missing', async () => {
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -217,7 +217,7 @@ describe('Extension Lifecycle Actions', () => {
         typeSystem,
         mfeHandlers: [mockHandler],
       });
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
       await registry.registerExtension(testExtension1);
 
       const container1 = document.createElement('div');
@@ -230,7 +230,7 @@ describe('Extension Lifecycle Actions', () => {
         action: { type: HAI3_ACTION_MOUNT_EXT, target: toggleDomain.id, payload: { subject: testExtension1.id } },
       });
 
-      expect(registry.getMountedExtension(toggleDomain.id)).toBe(testExtension1.id);
+      expect(registry.getMountedExtensions(toggleDomain.id)).toEqual([testExtension1.id]);
     });
   });
 
@@ -248,7 +248,7 @@ describe('Extension Lifecycle Actions', () => {
         typeSystem,
         mfeHandlers: [mockHandler],
       });
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
       await registry.registerExtension(testExtension1);
 
       const container = document.createElement('div');
@@ -262,7 +262,7 @@ describe('Extension Lifecycle Actions', () => {
         action: { type: HAI3_ACTION_MOUNT_EXT, target: toggleDomain.id, payload: { subject: testExtension1.id } },
       });
 
-      expect(registry.getMountedExtension(toggleDomain.id)).toBe(testExtension1.id);
+      expect(registry.getMountedExtensions(toggleDomain.id)).toEqual([testExtension1.id]);
 
       await registry.executeActionsChain({
         action: {
@@ -272,13 +272,13 @@ describe('Extension Lifecycle Actions', () => {
         },
       });
 
-      expect(registry.getMountedExtension(toggleDomain.id)).toBeUndefined();
+      expect(registry.getMountedExtensions(toggleDomain.id)).toEqual([]);
     });
 
     it('should fail chain gracefully when unmount payload is missing', async () => {
       // Missing payload causes the handler to throw MfeError inside the mediator.
       // registry.executeActionsChain() catches this and resolves (logs the error).
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -331,7 +331,7 @@ describe('Extension Lifecycle Actions', () => {
         entry: testEntry.id,
       };
 
-      registry.registerDomain(swapDomain, mockContainerProvider);
+      registry.registerDomain(swapDomain, mockContainerProvider.prepareForDomain(swapDomain));
       await registry.registerExtension(testExtension2);
       await registry.registerExtension(testExtension3);
 
@@ -347,7 +347,7 @@ describe('Extension Lifecycle Actions', () => {
       await registry.executeActionsChain({
         action: { type: HAI3_ACTION_MOUNT_EXT, target: swapDomain.id, payload: { subject: testExtension2.id } },
       });
-      expect(registry.getMountedExtension(swapDomain.id)).toBe(testExtension2.id);
+      expect(registry.getMountedExtensions(swapDomain.id)).toEqual([testExtension2.id]);
 
       // Mount second extension — swap domain should unmount ext2 first
       await registry.executeActionsChain({
@@ -364,7 +364,7 @@ describe('Extension Lifecycle Actions', () => {
       const secondMountOrder = mountFn.mock.invocationCallOrder[1];
       expect(unmountOrder).toBeLessThan(secondMountOrder);
 
-      expect(registry.getMountedExtension(swapDomain.id)).toBe(testExtension3.id);
+      expect(registry.getMountedExtensions(swapDomain.id)).toEqual([testExtension3.id]);
     });
 
     it('should no-op when mounting the same extension that is already mounted', async () => {
@@ -389,7 +389,7 @@ describe('Extension Lifecycle Actions', () => {
       const container = document.createElement('div');
       mockContainerProvider.getContainer = vi.fn().mockReturnValue(container);
 
-      registry.registerDomain(swapDomain, mockContainerProvider);
+      registry.registerDomain(swapDomain, mockContainerProvider.prepareForDomain(swapDomain));
       await registry.registerExtension(testExtension2);
 
       await registry.executeActionsChain({
@@ -426,11 +426,11 @@ describe('Extension Lifecycle Actions', () => {
         typeSystem,
         mfeHandlers: [mockHandler],
       });
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
       await registry.registerExtension(testExtension1);
 
       // Initially no extension mounted
-      expect(registry.getMountedExtension(toggleDomain.id)).toBeUndefined();
+      expect(registry.getMountedExtensions(toggleDomain.id)).toEqual([]);
 
       // Mount extension via actions chain
       const container = document.createElement('div');
@@ -445,14 +445,14 @@ describe('Extension Lifecycle Actions', () => {
       });
 
       // Now should return the mounted extension
-      const mounted = registry.getMountedExtension(toggleDomain.id);
+      const mounted = registry.getMountedExtensions(toggleDomain.id)[0];
       expect(mounted).toBe(testExtension1.id);
     });
 
     it('should return undefined when no extension is mounted', () => {
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
 
-      const mounted = registry.getMountedExtension(toggleDomain.id);
+      const mounted = registry.getMountedExtensions(toggleDomain.id)[0];
       expect(mounted).toBeUndefined();
     });
 
@@ -466,7 +466,7 @@ describe('Extension Lifecycle Actions', () => {
         typeSystem,
         mfeHandlers: [mockHandler],
       });
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
       await registry.registerExtension(testExtension1);
 
       // Mount first
@@ -483,7 +483,7 @@ describe('Extension Lifecycle Actions', () => {
       });
 
       // Verify mounted
-      expect(registry.getMountedExtension(toggleDomain.id)).toBe(testExtension1.id);
+      expect(registry.getMountedExtensions(toggleDomain.id)).toEqual([testExtension1.id]);
 
       // Unmount
       await registry.executeActionsChain({
@@ -495,7 +495,7 @@ describe('Extension Lifecycle Actions', () => {
       });
 
       // Should return undefined
-      expect(registry.getMountedExtension(toggleDomain.id)).toBeUndefined();
+      expect(registry.getMountedExtensions(toggleDomain.id)).toEqual([]);
     });
   });
 
@@ -509,7 +509,7 @@ describe('Extension Lifecycle Actions', () => {
       // We verify handlers are wired by sending missing-payload actions.
       // When a handler IS registered, it runs and logs an error for the missing payload.
       // When no handler is registered, the action is a silent no-op (no console.error).
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
 
       const errors: string[] = [];
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation((...args) => {
@@ -542,7 +542,7 @@ describe('Extension Lifecycle Actions', () => {
 
     it('should register load_ext and mount_ext but NOT unmount_ext for swap domain', async () => {
       // Swap domain does not support unmount — only load_ext and mount_ext are registered.
-      registry.registerDomain(swapDomain, mockContainerProvider);
+      registry.registerDomain(swapDomain, mockContainerProvider.prepareForDomain(swapDomain));
 
       const errors: string[] = [];
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation((...args) => {
@@ -580,7 +580,7 @@ describe('Extension Lifecycle Actions', () => {
     });
 
     it('should unregister all handlers during unregisterDomain', async () => {
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
       // Register extension so load_ext payload.subject passes GTS x-gts-ref validation.
       // (unregisterExtension removes runtime state but leaves the instance in the GTS store.)
       await registry.registerExtension(testExtension1);
@@ -613,7 +613,7 @@ describe('Extension Lifecycle Actions', () => {
         typeSystem,
         mfeHandlers: [mockHandler],
       });
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
       await registry.registerExtension(testExtension1);
 
       const container = document.createElement('div');
@@ -649,7 +649,7 @@ describe('Extension Lifecycle Actions', () => {
         typeSystem,
         mfeHandlers: [mockHandler],
       });
-      registry.registerDomain(toggleDomain, mockContainerProvider);
+      registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
       await registry.registerExtension(testExtension1);
 
       mockContainerProvider.getContainer = vi.fn().mockImplementation(() => {

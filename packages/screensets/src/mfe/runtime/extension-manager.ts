@@ -14,6 +14,9 @@ import type {
   MfeEntry,
 } from '../types';
 import type { ParentMfeBridge } from '../handler/types';
+import type { ExtensionMounter } from './ExtensionMounter';
+import type { DomainLifecycleTrigger } from './DomainLifecycleTrigger';
+import type { ExtensionDomainImplementation } from './ExtensionDomainImplementation';
 
 /**
  * State for a registered extension domain.
@@ -24,8 +27,14 @@ export interface ExtensionDomainState {
   properties: Map<string, unknown>;
   extensions: Set<string>;
   propertySubscribers: Map<string, Set<(propertyTypeId: string, value: unknown) => void>>;
-  /** Currently mounted extension ID (single extension per domain invariant) */
-  mountedExtension: string | undefined;
+  /** Insertion-ordered list of currently-mounted extension IDs for this domain. */
+  mountedExtensions: string[];
+  /** Per-domain mount facade; null until set by setDomainImplementation. */
+  mounter: ExtensionMounter | null;
+  /** Per-domain lifecycle trigger; null until set by setDomainImplementation. */
+  lifecycleTrigger: DomainLifecycleTrigger | null;
+  /** Domain implementation instance; null until set by setDomainImplementation. */
+  implementation: ExtensionDomainImplementation | null;
 }
 
 /**
@@ -75,12 +84,13 @@ export type DomainLifecycleTriggerCallback = (domainId: string, stageId: string)
 export abstract class ExtensionManager {
   /**
    * Register a domain.
-   * Performs validation, stores state, and triggers init lifecycle.
+   * Performs GTS validation and stores initial domain state.
+   * Does NOT trigger the init lifecycle — that is done by the registry after
+   * handler registration completes.
    *
    * @param domain - Domain to register
-   * @param onInitError - Optional callback for handling fire-and-forget init lifecycle errors
    */
-  abstract registerDomain(domain: ExtensionDomain, onInitError?: (error: Error) => void): void;
+  abstract registerDomain(domain: ExtensionDomain): void;
 
   /**
    * Unregister a domain.
@@ -131,20 +141,45 @@ export abstract class ExtensionManager {
   abstract getDomainProperty(domainId: string, propertyTypeId: string): unknown;
 
   /**
-   * Get the currently mounted extension in a domain.
-   * Each domain supports at most one mounted extension at a time.
+   * Get the insertion-ordered list of currently-mounted extension IDs for a domain.
+   * Returns an empty array for an unknown or empty domain — never throws.
    *
    * @param domainId - ID of the domain
-   * @returns Extension ID if mounted, undefined otherwise
+   * @returns Readonly insertion-ordered list of mounted extension IDs.
    */
-  abstract getMountedExtension(domainId: string): string | undefined;
+  abstract getMountedExtensions(domainId: string): readonly string[];
 
   /**
-   * Set the mounted extension for a domain.
-   * Called by MountManager when an extension is mounted.
+   * Append an extension to the domain's mount-set (append-if-absent semantics).
+   * No-op if the extension is already in the mount-set.
    *
    * @param domainId - ID of the domain
-   * @param extensionId - ID of the mounted extension, or undefined to clear
+   * @param extensionId - ID of the extension to add
    */
-  abstract setMountedExtension(domainId: string, extensionId: string | undefined): void;
+  abstract addMountedExtension(domainId: string, extensionId: string): void;
+
+  /**
+   * Remove an extension from the domain's mount-set (remove-if-present semantics).
+   * No-op if the extension is not in the mount-set.
+   *
+   * @param domainId - ID of the domain
+   * @param extensionId - ID of the extension to remove
+   */
+  abstract removeMountedExtension(domainId: string, extensionId: string): void;
+
+  /**
+   * Wire the domain implementation, mounter, and lifecycle trigger into the
+   * domain state after `registerDomain` completes successfully.
+   *
+   * @param domainId - ID of the domain
+   * @param mounter - Per-domain `ExtensionMounter` instance
+   * @param lifecycleTrigger - Per-domain `DomainLifecycleTrigger` instance
+   * @param implementation - `ExtensionDomainImplementation` instance
+   */
+  abstract setDomainImplementation(
+    domainId: string,
+    mounter: ExtensionMounter,
+    lifecycleTrigger: DomainLifecycleTrigger,
+    implementation: ExtensionDomainImplementation
+  ): void;
 }

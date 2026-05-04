@@ -93,9 +93,23 @@ export {
   MfeRegistry,
   MfeRegistryFactory,
   mfeRegistryFactory,
-  ContainerProvider,
+  // Mount strategy abstractions and shipped strategies
+  MountStrategy,
+  ConcurrentMountStrategy,
+  OptionalMountStrategy,
+  ExclusiveMountStrategy,
+  // Domain implementation abstractions
+  ExtensionDomainImplementation,
+  ExtensionDomainImplementationFactory,
+  ExtensionMounter,
+  DomainLifecycleTrigger,
 } from './mfe';
-export type { MfeRegistryConfig, RegisterDomainOptions } from './mfe';
+export type {
+  MfeRegistryConfig,
+  ContainerHooks,
+  ActionPayload,
+  DomainContext,
+} from './mfe';
 
 // Shadow DOM Utilities
 export { createShadowRoot, injectCssVariables } from './mfe';

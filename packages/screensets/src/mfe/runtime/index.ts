@@ -8,9 +8,10 @@
  * - MfeRegistryFactory (abstract class) - Factory contract
  * - mfeRegistryFactory (singleton) - Factory instance for building registry
  * - MfeRegistryConfig (interface) - Registry configuration
+ * - Abstract mount strategy classes and shipped concrete strategies
+ * - DomainContext interface and related types
  *
- * NOTE: DefaultMfeRegistry and DefaultMfeRegistryFactory (concrete classes)
- * are NOT exported. They are internal implementation details.
+ * NOTE: Default* concrete classes are NOT exported. They are internal implementation details.
  *
  * @packageDocumentation
  */
@@ -19,10 +20,22 @@ import { DefaultMfeRegistryFactory } from './DefaultMfeRegistryFactory';
 import type { MfeRegistryFactory } from './MfeRegistryFactory';
 
 export { MfeRegistry } from './MfeRegistry';
-export type { RegisterDomainOptions } from './MfeRegistry';
 export { MfeRegistryFactory } from './MfeRegistryFactory';
-export { ContainerProvider } from './container-provider';
 export type { MfeRegistryConfig } from './config';
+
+// Mount strategy abstractions and shipped implementations
+export { MountStrategy } from './mount-strategy';
+export type { ContainerHooks, ActionPayload } from './mount-strategy';
+export { ConcurrentMountStrategy, OptionalMountStrategy, ExclusiveMountStrategy } from './mount-strategies';
+
+// Domain implementation abstractions
+export { ExtensionDomainImplementation } from './ExtensionDomainImplementation';
+export { ExtensionDomainImplementationFactory } from './ExtensionDomainImplementationFactory';
+export { ExtensionMounter } from './ExtensionMounter';
+export { DomainLifecycleTrigger } from './DomainLifecycleTrigger';
+
+// DomainContext interface (domain authors see only the interface)
+export type { DomainContext } from './DomainContext';
 
 /**
  * Singleton MfeRegistryFactory instance.
@@ -42,8 +55,8 @@ export type { MfeRegistryConfig } from './config';
  * // Build the registry with GTS plugin at application wiring time
  * const registry = mfeRegistryFactory.build({ typeSystem: gtsPlugin });
  *
- * // Register a domain with container provider
- * registry.registerDomain(myDomain, containerProvider);
+ * // Register a domain via concrete factory
+ * registry.registerDomain(myDomain, new MyDomainFactory());
  *
  * // Register an extension
  * await registry.registerExtension(myExtension);

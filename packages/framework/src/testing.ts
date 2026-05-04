@@ -2,9 +2,8 @@
  * Test-only entry for @cyberfabric/framework.
  *
  * Utilities here are intended for Vitest (or similar) teardown between cases.
- * Prefer this entry for test-only APIs. `TestContainerProvider` and
- * `resetSharedQueryClient` are also re-exported from the package root when
- * importing alongside runtime symbols (e.g. for static analysis / single import).
+ * `resetSharedQueryClient` is also re-exported from the package root when
+ * importing alongside runtime symbols.
  */
 
 // @cpt-dod:cpt-frontx-dod-framework-composition-reexports:p1
@@ -15,7 +14,6 @@ export type {
   BootstrapMfeResolveArgs,
   BootstrapMfeTestSpecOptions,
 } from './testing/describeBootstrapMfeContract';
-export { TestContainerProvider } from './testing/TestContainerProvider';
 export {
   peekSharedQueryClient,
   peekSharedQueryClientRetainers,

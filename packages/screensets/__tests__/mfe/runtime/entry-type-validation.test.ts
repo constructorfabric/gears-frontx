@@ -17,11 +17,11 @@ import {
   HAI3_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
 import { EntryTypeNotHandledError } from '../../../src/mfe/errors';
-import { TestContainerProvider } from '../../../__test-utils__';
+import { MockDomainFactory } from '../../../__test-utils__';
 
 describe('Entry Type Validation (Phase 32.3)', () => {
   let gtsPlugin: GtsPlugin;
-  let mockContainerProvider: TestContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
 
   const testDomain: ExtensionDomain = {
     id: 'gts.hai3.mfes.ext.domain.v1~test.entryval.reg.domain.v1',
@@ -92,7 +92,7 @@ describe('Entry Type Validation (Phase 32.3)', () => {
   beforeEach(() => {
     gtsPlugin = new GtsPlugin();
 
-    mockContainerProvider = new TestContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     // Register entries in GTS before using them
     gtsPlugin.register(nonMfEntry);
@@ -108,7 +108,7 @@ describe('Entry Type Validation (Phase 32.3)', () => {
     });
 
     // Register domain
-    registry.registerDomain(testDomain, mockContainerProvider);
+    registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
     // Attempt to register extension with non-MF entry type
     const extension: Extension = {
@@ -132,7 +132,7 @@ describe('Entry Type Validation (Phase 32.3)', () => {
     });
 
     // Register domain
-    registry.registerDomain(testDomain, mockContainerProvider);
+    registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
     // Register extension with MfeEntryMF-derived entry type
     const extension: Extension = {
@@ -158,7 +158,7 @@ describe('Entry Type Validation (Phase 32.3)', () => {
     });
 
     // Register domain
-    registry.registerDomain(testDomain, mockContainerProvider);
+    registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
     // Register extension with non-MF entry type -- should succeed since no handlers
     const extension: Extension = {

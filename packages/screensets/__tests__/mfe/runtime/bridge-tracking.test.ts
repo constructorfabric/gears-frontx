@@ -14,7 +14,7 @@ import { MfeRegistry } from '../../../src/mfe/runtime';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { ExtensionDomain } from '../../../src/mfe/types';
-import { TestContainerProvider } from '../../../__test-utils__';
+import { MockDomainFactory } from '../../../__test-utils__';
 
 
 describe('MfeRegistry - Bridge Tracking', () => {
@@ -64,7 +64,7 @@ describe('MfeRegistry - Bridge Tracking', () => {
         ],
       };
 
-      registry.registerDomain(testDomain, new TestContainerProvider());
+      registry.registerDomain(testDomain, new MockDomainFactory().prepareForDomain(testDomain));
 
       // Verify domain is registered before disposal
       expect(registry.getDomain(testDomain.id)).toBeDefined();

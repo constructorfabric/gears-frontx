@@ -18,12 +18,9 @@ export interface LoadExtPayload {
 }
 
 /**
- * Payload for mount_ext action.
- *
- * NOTE: The `container` field was removed in Phase 25. The container element
- * is now provided by the domain's ContainerProvider, which is registered at
- * domain registration time. This makes mount_ext payloads pure data (no DOM
- * references), and shifts container management responsibility to the domain.
+ * Payload for mount_ext action. Pure data; no DOM references. Containers are
+ * materialized by the domain implementation's `ContainerHooks` and attached
+ * by the per-domain `ExtensionMounter`.
  */
 export interface MountExtPayload {
   /** The extension ID to mount (GTS subject reference) */
