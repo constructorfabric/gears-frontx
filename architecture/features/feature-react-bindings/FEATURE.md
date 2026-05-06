@@ -1,6 +1,6 @@
 # Feature: React Bindings
 
-<!-- artifact-version: 1.3 -->
+<!-- artifact-version: 1.4 -->
 
 
 <!-- toc -->
@@ -23,7 +23,6 @@
   - [Request Host Action from MFE](#request-host-action-from-mfe)
   - [Observe Domain Extensions](#observe-domain-extensions)
   - [Observe Registered Packages](#observe-registered-packages)
-  - [Observe Active Screen Package](#observe-active-screen-package)
   - [Observe Mounted Extensions in a Domain](#observe-mounted-extensions-in-a-domain)
   - [Provide MFE Context to Child Extension](#provide-mfe-context-to-child-extension)
   - [Access the FrontX App Instance Directly](#access-the-frontx-app-instance-directly)
@@ -265,23 +264,6 @@ The slot is **per-domain only**. It accepts a `domainId` and provides the DOM ro
 
 ---
 
-### Observe Active Screen Package
-
-- [x] `p1` - **ID**: `cpt-frontx-flow-react-bindings-use-active-package`
-
-**Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-runtime`
-
-`useActivePackage` is screen-domain specific. It surfaces "the GTS package of the currently active screen extension" and is intentionally scoped to `HAI3_SCREEN_DOMAIN`. The hook PRESUMES `HAI3_SCREEN_DOMAIN` is registered with `ExclusiveMountStrategy` (the registry's strict cardinality matrix in `cpt-frontx-algo-screenset-registry-cross-validate-handlers` guarantees a domain registered with `ExclusiveMountStrategy` can hold at most one mounted extension). For domains backed by `ConcurrentMountStrategy` or `OptionalMountStrategy` — and for any future screen domain registered with a non-Exclusive strategy — developers MUST use `useMountedExtensions(domainId)` instead. The hook does NOT assert the strategy at runtime; it documents the contract and leaves enforcement to the host configuration.
-
-1. [x] - `p1` - Developer calls `useActivePackage()` inside a component wrapped by `HAI3Provider` - `inst-call-active-package`
-2. [x] - `p1` - Hook reads `app.mfeRegistry`; throws if absent - `inst-guard-registry-active`
-3. [x] - `p1` - Hook subscribes to `app.store` changes via `useSyncExternalStore` - `inst-subscribe-store-active`
-4. [x] - `p1` - Snapshot function reads `mounted = registry.getMountedExtensions(HAI3_SCREEN_DOMAIN)` — the plural API returning a `readonly string[]` of currently-mounted screen extension IDs (insertion-ordered) - `inst-get-mounted-extension`
-5. [x] - `p1` - IF `mounted.length === 0` THEN RETURN `undefined` (no active screen extension) - `inst-return-undefined-active`
-6. [x] - `p1` - ELSE call `extractGtsPackage(mounted[0])` and RETURN result, using cached value when unchanged. Index `0` is correct only because the screen domain is documented as `ExclusiveMountStrategy`-backed — that contract is the hook's precondition - `inst-extract-package`
-
----
-
 ### Observe Mounted Extensions in a Domain
 
 - [x] `p1` - **ID**: `cpt-frontx-flow-react-bindings-use-mounted-extensions`
@@ -371,7 +353,7 @@ Guards that throw when MFE-scoped hooks are used outside their required context.
 
 1. [x] - `p1` - `useMfeBridge()`, `useMfeContext()`, `useSharedProperty()`, `useHostAction()` MUST throw a descriptive error if called outside a `MfeProvider` ancestor - `inst-throw-no-mfe-context`
 2. [x] - `p1` - `useFrontX()` MUST throw a descriptive error if called outside a `HAI3Provider` ancestor - `inst-throw-no-hai3-context`
-3. [x] - `p1` - `useDomainExtensions()` MUST throw if `app.mfeRegistry` is not present, directing developers to add the `microfrontends()` plugin - `inst-throw-no-registry`
+3. [x] - `p1` - `useDomainExtensions()`, `useRegisteredPackages()` MUST throw if `app.mfeRegistry` is not present, directing developers to add the `microfrontends()` plugin - `inst-throw-no-registry`
 
 ---
 
@@ -600,12 +582,11 @@ All five MFE-scoped hooks (`useMfeBridge`, `useMfeContext`, `useSharedProperty`,
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-react-bindings-observation-hooks`
 
-`useDomainExtensions(domainId)`, `useRegisteredPackages()`, `useActivePackage()`, and `useMountedExtensions(domainId): Extension[]` subscribe to `app.store` changes via `useSyncExternalStore`. All four require `app.mfeRegistry` (throw if absent). All four use ref-based snapshot caching to return referentially stable arrays, preventing re-renders when the underlying data has not changed. `useActivePackage` is screen-domain specific — it reads `getMountedExtensions(HAI3_SCREEN_DOMAIN)[0]` and extracts the GTS package string via `extractGtsPackage`. `useMountedExtensions(domainId)` is the domain-agnostic hook for arbitrary domains, including multi-mount domains backed by `ConcurrentMountStrategy`; it resolves each ID returned by `getMountedExtensions(domainId)` to the corresponding `Extension` instance via `registry.getExtension(id)`.
+`useDomainExtensions(domainId)`, `useRegisteredPackages()`, and `useMountedExtensions(domainId): Extension[]` subscribe to `app.store` changes via `useSyncExternalStore`. All three require `app.mfeRegistry` (throw if absent). All three use ref-based snapshot caching to return referentially stable arrays, preventing re-renders when the underlying data has not changed. `useDomainExtensions(domainId)` enumerates every extension registered against the domain regardless of the GTS package it originated from — for the screen domain it surfaces every screen extension across every GTS package discovered at runtime, which is the contract the nav menu relies on to render its full screen list. `useRegisteredPackages()` is a passive enumeration of the GTS packages discovered at runtime; it is observation-only and does not drive any filtering. `useMountedExtensions(domainId)` is the domain-agnostic hook for arbitrary domains, including multi-mount domains backed by `ConcurrentMountStrategy`; it resolves each ID returned by `getMountedExtensions(domainId)` to the corresponding `Extension` instance via `registry.getExtension(id)`.
 
 **Implements**:
 - `cpt-frontx-flow-react-bindings-use-domain-extensions`
 - `cpt-frontx-flow-react-bindings-use-registered-packages`
-- `cpt-frontx-flow-react-bindings-use-active-package`
 - `cpt-frontx-flow-react-bindings-use-mounted-extensions`
 - `cpt-frontx-algo-react-bindings-stable-snapshots`
 
@@ -649,10 +630,11 @@ All five MFE-scoped hooks (`useMfeBridge`, `useMfeContext`, `useSharedProperty`,
 - [x]`useFormatters` returns locale-aware formatters that recalculate on language change
 - [x] `ExtensionDomainSlot` is per-domain only (no `extensionId` prop), renders exactly ONE root `<div>` per domain instance, calls `registry.getMounter(domainId).attach(element)` from its ref-attach callback and `mounter.detach()` on cleanup; on detach, `mounter.detach()` mass-unmounts every currently-mounted extension in the domain so no orphan DOM trees or slice/registry desync remain. The slot does NOT dispatch `mount_ext` or `unmount_ext` actions — the host owns those dispatches via `registry.executeActionsChain`
 - [x] `useMountedExtensions(domainId)` returns the array of currently-mounted `Extension` instances for the named domain (multi-mount domains return >1 entries); the array reference is stable when the underlying ID list is unchanged
-- [x] `useActivePackage()` is screen-domain specific (presumes `HAI3_SCREEN_DOMAIN` is registered with `ExclusiveMountStrategy`) and returns the GTS package of `getMountedExtensions(HAI3_SCREEN_DOMAIN)[0]`, or `undefined` when no screen extension is mounted; for non-Exclusive screen domains and arbitrary domains use `useMountedExtensions(domainId)` instead
+- [x] `useDomainExtensions(HAI3_SCREEN_DOMAIN)` returns every screen extension registered at runtime — including those whose IDs belong to different GTS packages — without filtering by package, so a nav menu wired to this hook lists screens from every co-existing package
+- [x] `useRegisteredPackages()` is a passive enumeration of GTS packages discovered at runtime; consumers use it for observation only and not for filtering other queries
 - [x]`useSharedProperty` re-renders MFE component when host updates the subscribed property
 - [x]`useHostAction` sends an `ActionsChain` to the host bridge; errors are logged to console, not thrown
-- [x]`useDomainExtensions` throws a descriptive error when `microfrontends()` plugin is absent
+- [x]`useDomainExtensions` and `useRegisteredPackages` both throw descriptive errors when `microfrontends()` plugin is absent
 - [x]All three observation hooks return referentially stable arrays when the underlying data has not changed
 - [x]MFE-scoped hooks throw descriptive errors when called outside `MfeProvider`
 - [x]`useFrontX` throws descriptive error when called outside `HAI3Provider`
