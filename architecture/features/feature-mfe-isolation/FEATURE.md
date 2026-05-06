@@ -1,6 +1,6 @@
 # Feature: MFE Blob URL Isolation
 
-<!-- version: 1.9 -->
+<!-- version: 1.12 -->
 
 
 <!-- toc -->
@@ -38,9 +38,11 @@
   - [MFE-Internal Dataflow](#mfe-internal-dataflow)
   - [MfManifest Type and GTS Schema Update](#mfmanifest-type-and-gts-schema-update)
   - [ChildMfeBridge Abstract Class Contract](#childmfebridge-abstract-class-contract)
+  - [MFE Author State Lifecycle Boundary](#mfe-author-state-lifecycle-boundary)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
   - [Behavioral (verified in browser)](#behavioral-verified-in-browser)
   - [Structural (verified by code/tests)](#structural-verified-by-codetests)
+- [7. State Lifecycle](#7-state-lifecycle)
 - [Additional Context](#additional-context)
 
 <!-- /toc -->
@@ -90,6 +92,7 @@ Enable multiple independently deployed MFE bundles to coexist in the same browse
 - PRD: [PRD.md](../../PRD.md) — sections 5.6 (MFE Blob URL Isolation), 5.7 (MFE Build Plugin), 5.8 (MFE Internal Dataflow)
 - ADR: `cpt-frontx-adr-blob-url-mfe-isolation`
 - ADR: `cpt-frontx-adr-mf2-manifest-discovery`
+- ADR: `cpt-frontx-adr-mfe-state-lifecycle-boundary`
 - Depends on feature: `cpt-frontx-feature-mfe-registry`
 
 #### Non-Applicable Domains
@@ -549,6 +552,26 @@ Action target contract enforcement is two-layered: (1) **GTS schema validation**
 
 ---
 
+### MFE Author State Lifecycle Boundary
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-author-state-lifecycle`
+
+The MFE entry's `mount(container, bridge, mountContext?)` is the only place per-instance state is constructed; the matching `unmount(container)` is the only place that state is torn down. Module-scope state established when the bundle first evaluates (the `HAI3App` instance built in `init.ts`, plugin registrations, module-level singletons and caches) persists for the lifetime of the load — the host neither resets it nor offers an API to reset it, because never-revoke (`cpt-frontx-fr-blob-no-revoke`) makes any such reset unsafe.
+
+**Implementation details**:
+- Each `mount()` call creates an independent set of resources: React root via `createRoot(container)`, `bridge.subscribeToProperty()` subscriptions, `bridge.registerActionHandler()` registrations, timers, `MutationObserver` / `IntersectionObserver` instances, DOM nodes attached to `container`.
+- The matching `unmount()` call MUST tear those resources down: unsubscribe property subscriptions, cancel timers, call `root.unmount()` on the React root, disconnect observers, remove DOM nodes from `container`, drop references to the bridge.
+- `unmount()` MUST NOT touch module-level singletons (the `HAI3App` instance, plugin registrations, blob URLs, module-scope caches).
+- An MFE that needs fresh module-scope state per use case keeps that state at instance scope inside `mount()`, not at module scope in `init.ts`. "Cycle the MFE" is therefore an MFE-author operation realised by unregistering and re-registering with a fresh ID — this triggers a new load and a new module evaluation — not a host-side reset hook.
+
+**Covers (PRD)**:
+- `cpt-frontx-fr-mfe-author-state-lifecycle`
+
+**Covers (DESIGN)**:
+- `cpt-frontx-principle-mfe-isolation` (instance-scope cleanup boundary)
+
+---
+
 ## 6. Acceptance Criteria
 
 ### Behavioral (verified in browser)
@@ -560,6 +583,7 @@ Action target contract enforcement is two-layered: (1) **GTS schema validation**
 - [x] **AC-5: Version separation** — different versions of the same shared package produce separate downloads and separate isolated instances; `react@18` and `react@19` from different MFEs are NOT shared
 - [x] **AC-6: Shared properties** — shared properties (theme, language) reach child runtimes via the bridge; child MFE components display the host-set theme and language values
 - [x] **AC-7: Actions chain routing** — `mount_ext` actions chain works across package switches in any order (MFE A → MFE B → MFE A), including programmatic navigation via `executeActionsChain`; zero `OperationTimeout` errors during cross-package mount/unmount cycles
+- [x] **AC-8: Mount/unmount instance hygiene** — repeatedly mounting and unmounting the same MFE entry on the same container leaves no leaked instance-scope resources: after `unmount()` returns, prior-mount property subscriptions emit no further callbacks, prior-mount action handlers no longer receive routed actions, and the React root attached by the prior mount is gone from the DOM
 
 ### Structural (verified by code/tests)
 
@@ -574,12 +598,43 @@ Action target contract enforcement is two-layered: (1) **GTS schema validation**
 - [x] The `frontx-mf-gts` plugin enriches `mfe.json` in-place: `manifest.shared[].chunkPath` set to MFE-relative paths (`shared/{name}.js`); the handler resolves against `publicPath` and deduplicates via `sharedDepTextCache` keyed by `name@version`; no intermediate `mfe.gts-manifest.json` artifact
 - [x] MFE `vite.config.ts` uses `shared: {}` (empty) and `build.rollupOptions.external` for shared deps; expose chunks contain bare specifiers for shared deps
 - [x] MFE `init.ts` files contain no direct imports from `react-redux`, `redux`, or `@reduxjs/toolkit`
+- [x] Each MFE entry's `mount()` and `unmount()` are paired: every resource created in `mount()` (React root, `bridge.subscribeToProperty` returns, `bridge.registerActionHandler` registrations, timers, observers, DOM nodes) is disposed in the matching `unmount()`; no `unmount()` mutates module-level singletons (`HAI3App`, plugin registrations, module-scope caches)
+
+---
+
+## 7. State Lifecycle
+
+The loader and the MFE entry sit on opposite sides of a single, sharp responsibility boundary. The host owns module-scope lifetime (load → page unload, no revocation); the MFE author owns instance-scope lifetime (mount → unmount).
+
+**Host loader (`MfeHandlerMF`) owns module-scope lifetime.**
+
+- The host fetches source text, builds blob URLs, evaluates the bundle, and returns the lifecycle. From the moment a load completes, every blob URL produced for that load is live for the page lifetime — including transitive shared dep blob URLs, the expose chunk blob URL, and any chunks reached through the recursive chain.
+- The host does NOT call `URL.revokeObjectURL()`. Ever. This is a correctness invariant of the loader: ES module evaluation is deferred and asynchronous, and the only safe lower bound for "this URL is no longer needed" is page unload, which the browser handles automatically. See FR `cpt-frontx-fr-blob-no-revoke`.
+- Module-scope state established during evaluation (the React module instance, store singletons declared at module scope, plugin registrations performed in `init.ts`, registered effects, entries pushed into module-level caches) therefore persists for the lifetime of the load. The host treats this state as immutable from its perspective — it neither resets it nor offers an API to reset it.
+- The `sharedDepTextCache` keyed by `name@version` is host-managed and shared across all runtimes; the `sourceTextCache` keyed by absolute URL is host-managed and bounded via LRU. Neither is touched on unmount.
+
+**MFE author owns instance-scope lifetime.**
+
+- The lifecycle's `mount(container, bridge, mountContext?)` is called once per mount and is the only place per-instance state may be created: React roots, subscriptions, timers, MutationObservers, IntersectionObservers, action handlers registered through `bridge.registerActionHandler()`, listeners registered with `bridge.subscribeToProperty()`, DOM nodes attached to the mount container.
+- The lifecycle's `unmount(container)` is called once per mount and MUST tear those resources down. The MFE author MUST NOT rely on `unmount()` to reset module-level singletons or to drop blob URLs — it is purely an instance-lifecycle hook. See FR `cpt-frontx-fr-mfe-author-state-lifecycle`.
+- An MFE that wants fresh module state per use case (a wizard that should reset on every open, a modal that should not preserve form data across opens) MUST keep that state at instance scope, not at module scope. The boundary is enforceable by the author at the source level — no host-side flag can simulate it without breaking the never-revoke invariant.
+- Any module-scope cache the MFE chooses to keep is the MFE's contract with itself — the host treats it as opaque and durable.
+
+**What this rules out.**
+
+- The loader does NOT expose a "clear cached lifecycle" or "revoke this extension's blob URLs" hook. Any such hook would have to either violate `cpt-frontx-fr-blob-no-revoke` or pretend to clean up while leaking — neither is acceptable.
+- The host does NOT trigger a fresh `handler.load()` on remount. Remount reuses the existing lifecycle reference returned by the original load, calling its `mount()` again. The MFE author sees mount/unmount cycles, not load/load cycles.
+- "Cycle the MFE" is therefore an MFE-author operation, not a host operation. An MFE that needs to be reset MUST be unregistered and re-registered with a fresh ID; this triggers a new load and a new evaluation.
 
 ---
 
 ## Additional Context
 
-**Never-revoke policy rationale**: The `import()` function resolves when a module is parsed and its top-level synchronous code has run. Modules with top-level `await` or dynamic `import()` internally continue evaluating asynchronously after the outer `import()` promise resolves. If the blob URL is revoked at this point, the async continuation cannot fetch the already-queued sub-module evaluation and fails with `ERR_FILE_NOT_FOUND`. Blob URLs are cleaned up automatically by the browser on page unload; no manual revocation is needed.
+**Never-revoke is a top-level-await correctness invariant**: The `import()` function resolves when a module is parsed and its top-level synchronous code has run. Modules with top-level `await` or dynamic `import()` internally continue evaluating asynchronously after the outer `import()` promise resolves. If the blob URL is revoked at this point, the async continuation cannot fetch the already-queued sub-module evaluation and fails with `ERR_FILE_NOT_FOUND` — nondeterministically, depending on scheduler timing. Never-revoke is therefore a correctness rule for the loader, not a memory-hygiene policy. Blob URLs are cleaned up automatically by the browser on page unload.
+
+**Decision rationale and rejected alternatives**: The host/author state-lifecycle boundary documented in §7 is recorded as ADR-0020 (`cpt-frontx-adr-mfe-state-lifecycle-boundary`), which captures the full pros/cons analysis of the alternatives evaluated and rejected (`persistAcrossMounts: false` flag with revocation on unmount, per-mount fresh `load()` with force-reload, iframe-per-instance, `new Function`-based runtime instantiation, build-time whitelist enforcement on expose chains). Future revisits should start there rather than re-deriving the analysis.
+
+**Open follow-up — heap snapshot validation**: A single DevTools heap-snapshot run on a representative session remains useful as a sanity check on the per-load bound — does the retained set per load match the static prediction? Lower priority than the artifact updates, runs whenever a mount-heavy regression is suspected.
 
 **Per-load isolation mechanism**: Each load creates fresh blob URLs for ALL shared deps from the handler-level `sharedDepTextCache` (keyed by `name@version`). Even though the source text is identical (same `name@version`), each `URL.createObjectURL()` call produces a unique blob URL that the browser evaluates as a fresh module — independent state, independent closures. The `sharedDepBlobUrls` map and `blobUrlMap` are scoped to a single load; the `sharedDepTextCache` is handler-level (keyed by `name@version`) to avoid redundant fetches across runtimes.
 

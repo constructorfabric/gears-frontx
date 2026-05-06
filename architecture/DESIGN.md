@@ -65,7 +65,8 @@ Requirements that significantly influence architecture decisions.
 `cpt-frontx-adr-channel-aware-version-locking`,
 `cpt-frontx-adr-per-action-type-handler-routing`,
 `cpt-frontx-adr-tanstack-query-data-management`,
-`cpt-frontx-adr-mf2-manifest-discovery`
+`cpt-frontx-adr-mf2-manifest-discovery`,
+`cpt-frontx-adr-mfe-state-lifecycle-boundary`
 
 #### Functional Drivers
 
@@ -107,7 +108,8 @@ Requirements that significantly influence architecture decisions.
 | `cpt-frontx-fr-mfe-action-types` | `Action` and `ActionsChain` types enable chain-based MFE action execution with fallback support; action `type` values are GTS schema type IDs (trailing `~`); extension references in payloads use `subject` field |
 | `cpt-frontx-fr-mfe-theme-propagation` | `themes()` plugin propagates theme changes to all MFE extensions via `mfeRegistry.updateSharedProperty()` |
 | `cpt-frontx-fr-mfe-i18n-propagation` | `i18n()` plugin propagates language changes to all MFE extensions via `mfeRegistry.updateSharedProperty()` |
-| `cpt-frontx-fr-blob-no-revoke` | Blob URLs kept alive for page lifetime; `URL.revokeObjectURL()` never called after `import()` resolves |
+| `cpt-frontx-fr-blob-no-revoke` | Blob URLs kept alive for page lifetime; `URL.revokeObjectURL()` never called after `import()` resolves — top-level-await correctness invariant of the loader |
+| `cpt-frontx-fr-mfe-author-state-lifecycle` | MFE entry constructs per-mount state in `mount()` and disposes it in `unmount()`; module-scope state survives across mount cycles within a single load (host owns module-scope lifetime, author owns instance-scope lifetime) |
 | `cpt-frontx-fr-blob-source-cache` | In-memory cache of fetched source text keyed by chunk URL; at most one network fetch per chunk across all loads |
 | `cpt-frontx-fr-blob-recursive-chain` | MFE handler recursively creates blob URLs for chunk and all static dependencies |
 | `cpt-frontx-fr-blob-per-load-map` | Blob URL mapping scoped per MFE load; different loads have independent instances preventing cross-load reuse |
