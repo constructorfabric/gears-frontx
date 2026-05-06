@@ -204,6 +204,7 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
   - [x] `p1` - `cpt-frontx-fr-blob-import-rewriting`
   - [x] `p1` - `cpt-frontx-fr-blob-recursive-chain`
   - [x] `p2` - `cpt-frontx-fr-blob-per-load-map`
+  - [x] `p1` - `cpt-frontx-fr-mfe-author-state-lifecycle`
   - [x] `p1` - `cpt-frontx-fr-externalize-transform`
   - [x] `p1` - `cpt-frontx-fr-externalize-filenames`
   - [x] `p2` - `cpt-frontx-fr-externalize-build-only`

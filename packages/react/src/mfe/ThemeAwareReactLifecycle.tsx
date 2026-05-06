@@ -87,6 +87,7 @@ function MountRuntimeAwareProvider({
  * Concrete subclasses must provide:
  * - `renderContent(bridge)` - screen component rendering
  */
+// @cpt-dod:cpt-frontx-dod-mfe-isolation-author-state-lifecycle:p1
 export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<ChildMfeBridge> {
   private root: Root | null = null;
 

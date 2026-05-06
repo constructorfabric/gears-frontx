@@ -568,7 +568,23 @@ The `i18n()` plugin MUST call `mfeRegistry?.updateSharedProperty(HAI3_SHARED_PRO
 
 The handler MUST NOT call `URL.revokeObjectURL()` after `import()` resolves; blob URLs MUST remain valid for the page lifetime.
 
-**Rationale**: Modules with top-level `await` continue evaluating after `import()` resolves.
+**Rationale**: ES module evaluation is not finished when `import()` resolves. A module that contains top-level `await`, dynamic `import()`, or any deferred sub-module load continues to fetch and parse against the blob URL after the outer promise has settled. Revoking the URL — at any point — turns those queued fetches into `ERR_FILE_NOT_FOUND` and breaks the load nondeterministically. Never-revoke is a correctness invariant of the loader, not a memory-hygiene policy; per-mount state hygiene is the MFE author's responsibility, not the loader's (see `cpt-frontx-fr-mfe-author-state-lifecycle`).
+**Actors**: `cpt-frontx-actor-microfrontend`
+
+#### MFE Author Owns Per-Mount State Lifecycle
+
+- [x] `p1` - **ID**: `cpt-frontx-fr-mfe-author-state-lifecycle`
+
+The MFE entry is responsible for constructing per-mount state inside its `mount()` and for disposing of that state inside its `unmount()`. Module-scope state established when the MFE bundle first evaluates (the React module instance, the MFE-local store singleton, registered effects, plugin registrations) survives across mount/unmount cycles within a single load — the loader does not, and will not, force fresh module evaluation at every mount.
+
+Concretely, the MFE entry MUST:
+
+1. Create per-instance state (component trees, subscriptions, timers, observers, action handlers registered through the bridge) inside `mount(container, bridge, mountContext?)` so that each mount produces an independent set of resources.
+2. Tear those resources down inside `unmount(container)` (unsubscribe, cancel timers, remove DOM nodes, dispose observers, release any references to the bridge).
+3. NOT rely on `unmount()` to reset module-level singletons or to drop blob URLs; `unmount()` is purely an instance-lifecycle hook.
+4. MUST assume any module-scope cache it keeps is shared across all mounts of that MFE within the page, and key/manage that cache accordingly (e.g., key entries by mount-context, do not rely on per-mount eviction).
+
+**Rationale**: The loader cannot safely revoke blob URLs (`cpt-frontx-fr-blob-no-revoke`), so module-scope state must be assumed to persist for the lifetime of the load. Pushing per-mount lifecycle to the MFE author keeps a clean correctness boundary: the host guarantees module-scope persistence, the MFE guarantees instance-scope cleanup. Authors who want fresh module state per use case can elect not to keep state at module scope at all.
 **Actors**: `cpt-frontx-actor-microfrontend`
 
 #### Source Text Cache
