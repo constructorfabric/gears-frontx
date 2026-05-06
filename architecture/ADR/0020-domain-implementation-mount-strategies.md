@@ -45,8 +45,6 @@ The invariant is encoded across four layers, each citing the line in the current
 
 The invariant is also reinforced by framework-selected mount handlers. `MountExtSwapHandler` and `MountExtToggleHandler` are picked by a heuristic on `domain.actions.includes(unmount_ext)` — the framework decides mount semantics for the domain, and domain authors have no say. This is why fixing only the data shape (turn the scalar into an array) is insufficient: the centralized mount path is the root cause. The framework owns mount semantics through implicit heuristics, the domain declaration cannot express its intent, and adding a third cardinality (concurrent / "widgets") means adding another framework heuristic and another framework-side handler.
 
-Historically the scalar invariant was acceptable because all in-tree domains (screen, sidebar, popup, overlay) were 0-or-1. The heuristic-driven handler selection was a low-friction shortcut for two cases. Once a third case (multi-mount) is introduced, the shortcut breaks: the framework cannot infer cardinality from `domain.actions` alone, and the bookkeeping cannot represent the result.
-
 The question this ADR answers: where should mount semantics live, and what abstractions are needed so that domain authors can declare the cardinality (exclusive single, optional single, concurrent multiple) their domain wants without the framework having to know about them?
 
 ## Decision Drivers
@@ -83,12 +81,23 @@ The decision introduces a small set of new abstractions in `@cyberfabric/screens
 - An implementation-supplied pure container factory; it has no DOM-attachment responsibility (the mounter owns the attached root).
 - A per-domain lifecycle trigger facade for implementation-driven transitions; the mounter stays mount/unmount-only.
 - A strict cardinality matrix cross-validating the chosen strategy against the declaration's actions at registration time.
-- A two-argument `registerDomain(declaration, factory)` entry point on the registry, plus plural `getMountedExtensions(domainId)` and a per-domain `getMounter(domainId)` accessor consumed by the React slot.
+- A registry entry point that accepts the declaration paired with the implementation factory, plus a per-domain mounter accessor consumed by the React slot.
 
-Framework-side and React-side consequences that follow: the per-domain MFE slice becomes a per-domain insertion-ordered list with idempotent diff-dispatch reducers; the chain-completion sync wrapper switches from scalar before/after compare to set-diff dispatch (idempotent reducers make this safe under unserialized concurrent chains for multi-mount domains); the React slot becomes a per-domain singleton-root component that delegates to the mounter via attach/detach; `useActivePackage` is documented as `Exclusive`-strategy specific; a domain-agnostic `useMountedExtensions(domainId)` hook is introduced for arbitrary cardinalities.
+Framework-side and React-side responsibilities follow this decision; the method-level surface, per-flow algorithm steps, slice payload schemas, hook signatures, and DoD enumerations are specified in the linked DESIGN component definitions and FEATURE artifacts. This ADR records the decision and its rationale only.
 
-The full method-level surface and per-flow algorithm steps live in `architecture/DESIGN.md` and the affected FEATURE artifacts. This ADR records the decision and its rationale; method shapes, per-flow algorithm steps, slice payload schemas, and DoD enumerations belong in the linked DESIGN/FEATURE artifacts and are not duplicated here.
-- New hook `useMountedExtensions(domainId): Extension[]` for arbitrary domains, including multi-mount.
+All mount-related state and machinery is per-registry. Each FrontX app independently registers its domains and mounts its extensions; an app's registry holds only the extensions registered against that app.
+
+#### Per-app boundaries
+
+Every FrontX app instance — including any MFE that owns extensions domains — uses the same `createHAI3()` primitive and owns its own registry, store, mediator, event bus, and lifecycle trigger. The host is the root FrontX app; nested apps are architecturally identical. There is no shared registry across the tree; chain delivery between apps is an internal routing concern, not a registry-sharing concern.
+
+#### Layout Conventions
+
+The framework does not enforce a layout taxonomy. Projects MAY use the shipped layout-domain constants, MAY define entirely custom domains, MAY mix. Domain registration is an L4 (application) concern; the framework provides the strategy and registry primitives, and the application decides which domains to register.
+
+#### Cross-runtime extension discovery
+
+Cross-runtime extension discovery is content-addressed by the extension's `domain` GTS instance ID — not by the MFE's source-tree location. An MFE may live anywhere under the project's `mfe_packages` tree and may declare extensions targeting domains owned by different FrontX apps in a single manifest; each entry reaches the registry of the app that owns its target domain. Every FrontX app's framework-composition plugin reads `MfManifest` entities from the GTS runtime store and filters those entities' `extensions[]` by its own app's registered-domain-IDs view. The source from which `MfManifest` entities are registered into the GTS runtime store is an L4 (host bootstrap) concern and is out of scope for this ADR. The capability the plugin consumes from the registry — its registered-domain-IDs view — and the filter-and-dispatch contract are enumerated in the FEATURE DoDs (see `cpt-frontx-dod-screenset-registry-registry-contract` and `cpt-frontx-dod-framework-composition-mfe-plugin`); this ADR records only the cross-runtime decision and its rationale.
 
 ### Consequences
 
@@ -101,6 +110,7 @@ The full method-level surface and per-flow algorithm steps live in `architecture
 - Bad: more abstractions to learn for first-time domain authors. The bare minimum to register a domain is: pick a strategy class, write a `ContainerHooks`, supply a factory.
 - Bad: `ExclusiveMountStrategy` has an asymmetric public surface (no `unmount`). Domain authors who pick it must omit `unmount_ext` from the declaration; the mediator enforces this at registration time. The asymmetry is intentional but worth documenting prominently.
 - Neutral: `MountManager` is internal to the package — `DefaultExtensionMounter` composes it per domain to execute mount/unmount primitives.
+- Neutral: cross-boundary action chain routing between a parent app and a nested app's mediator is internal infrastructure that satisfies the per-app symmetry decision. The user-visible API is `executeActionsChain` only; the framework routes chains to the target's owning mediator without exposing the routing as an API surface.
 
 ### Confirmation
 
@@ -113,6 +123,8 @@ Compliance with this ADR is confirmed by:
   - `architecture/features/feature-react-bindings/FEATURE.md` for the per-domain singleton-root `ExtensionDomainSlot`, the `useMountedExtensions` flow, and the screen-domain-specific framing of `useActivePackage`.
 
 Acceptance criteria, per-method method shapes, slice payload schemas, and verification tests live in those FEATURE artifacts; this ADR does not restate them.
+
+Cross-boundary mediator validation: validation against the target's runtime contract (entry-level action declarations, domain-level action declarations, GTS schema) runs in the target's app — the app that owns the target's mediator and registry. The caller's app does not validate against another app's registry data; it dispatches via `executeActionsChain` and the framework routes to the target's app where validation has the authoritative declarations available.
 
 SOLID verdicts (under this ADR):
 
@@ -178,7 +190,7 @@ Framework exposes a `ContainerManager` abstraction with `getContainer(extId)`, `
 
 See Decision Outcome. The strengths are: (1) the framework loses knowledge of layout / containers / cardinality without losing knowledge of state and MFE primitives; (2) the implementation gains authority over mount semantics without learning GTS; (3) encapsulation is mechanical via `finally`-block ctx invalidation; (4) the strategies are reusable building blocks that domain authors compose with their own hooks.
 
-The trade-off accepted is that domain authors face more abstractions on day one. The mitigation is that the three strategies cover the empirically observed cases (screen / sidebar-popup-overlay / widgets), and most domain authors will use one of them unmodified — they only write `ContainerHooks` and the implementation wrapper.
+The trade-off accepted is that domain authors face more abstractions on day one. The mitigation is that the three strategies cover the empirically observed cases (screen / sidebar-popup-overlay / widgets), and most domain authors will use one of them unmodified — they only write `ContainerHooks` and the implementation wrapper. Domain authors MAY also extend `MountStrategy` to implement custom mount semantics (the abstract base is an extension point per OCP).
 
 ## More Information
 
@@ -206,7 +218,7 @@ This decision directly addresses the following requirements or design elements:
 - `cpt-frontx-fr-mfe-dynamic-registration` — preserves runtime domain registration and adds the mounter encapsulation invariant.
 - `cpt-frontx-component-screensets` — introduces `ExtensionDomainImplementation`, `ExtensionMounter`, `DomainContext`, `ContainerHooks`, and the three strategy classes; `MountManager` is internal-only.
 - `cpt-frontx-component-framework` — the MFE slice carries per-domain insertion-ordered lists with idempotent diff-dispatch reducers.
-- `cpt-frontx-component-react` — `ExtensionDomainSlot` is a per-domain singleton-root component that calls `registry.getMounter(domainId).attach(element)` / `detach()`; root attachment is a mounter responsibility. `useMountedExtensions(domainId)` exposes the per-domain mount-set.
+- `cpt-frontx-component-react` — `ExtensionDomainSlot` is a per-domain component that surfaces a single host element; root attachment is the mounter's responsibility. A per-domain hook exposes the mount-set.
 - `cpt-frontx-feature-screenset-registry` — owns the algorithm and public-API surface.
 - `cpt-frontx-feature-framework-composition` — owns the slice and sync wrapper algorithm.
 - `cpt-frontx-feature-react-bindings` — owns the slot and hook flows.

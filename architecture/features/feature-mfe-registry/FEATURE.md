@@ -1,6 +1,6 @@
 # Feature: MFE Registry & Contracts
 
-<!-- artifact-version: 1.6 -->
+<!-- artifact-version: 1.7 -->
 
 
 <!-- toc -->
@@ -477,6 +477,14 @@ Mount-set reads use the plural `getMountedExtensions(domainId)`; consumers that 
 
 The package additionally exports `ExtensionDomainImplementation` (abstract class), `ExtensionDomainImplementationFactory` (abstract class), `ExtensionMounter` (abstract class), `MountStrategy` (abstract base class), `DomainLifecycleTrigger` (abstract class), `DomainContext` (interface — carries `mounter`, `lifecycleTrigger`, `registerHandler`), `ContainerHooks` (interface — pure factory: `create`/`destroy`), `ConcurrentMountStrategy` / `OptionalMountStrategy` / `ExclusiveMountStrategy` (concrete classes extending `MountStrategy`), and `ActionHandler.fromFunction(fn)` (static helper for one-off function-to-handler wraps).
 
+**Per-app boundary**: a `ScreensetsRegistry` is per-app — every FrontX app instance, including any MFE that itself owns extensions domains, owns its own registry, store, mediator, event bus, and lifecycle trigger built from the same `createHAI3()` primitive. Nested FrontX apps own their own registries; there is no shared registry across the app tree. Cross-boundary chain delivery is an internal routing concern of the framework, not a registry-sharing concern.
+
+**Domain-ID uniqueness scope**: domain IDs are unique within ONE registry — that is, per-app — not globally across the app tree. Two MFEs rooted in different FrontX apps MAY both register a domain with the same ID (for example, `gts.hai3.mfes.ext.domain.v1~hai3.widgets.domain.v1~hai3.widgets.area.v1`); each registration anchors the domain in its own owning registry. Uniqueness is enforced inside one registry only.
+
+**Extension discovery surface (registered-domain-IDs view)**: the registry exposes its set of registered domain IDs as a read-only collection. This is the capability the framework-composition plugin consumes to determine which extension declarations — read from registered `MfManifest` entities in the GTS runtime store — belong on this app's registry. The collection reflects current registry state — a newly-registered domain becomes part of the collection on registration, an unregistered domain leaves it on unregister — and the framework-composition plugin's content-addressed discovery (per `cpt-frontx-dod-framework-composition-mfe-plugin`) consumes this view to filter and dispatch.
+
+**Single-owner extension registration**: an extension is registered on exactly one registry — the registry of the FrontX app that owns the domain identified by the extension's `domain` field. The MFE that ships the extension does NOT determine the owning registry by its source-tree location; the GTS instance ID in `extension.domain` does. Registration is idempotent: dispatching the same `(extensionId, domainId)` pair more than once leaves registry state unchanged after the first successful registration. An MFE whose `extensions[]` declares entries targeting domains owned by different apps reaches each target registry independently — each entry resolves to the single registry whose registered-domain-IDs view contains its `domain`.
+
 **Implements**:
 - `cpt-frontx-flow-mfe-registry-register-domain`
 - `cpt-frontx-flow-mfe-registry-register-extension`
@@ -559,6 +567,8 @@ All registration and dispatch paths perform GTS-native validation. Schema valida
 - Shared property update: ephemeral instance `{ id: ephemeralId, value }` registered (and validated) in a single `register()` call before any domain receives the value; validation failure throws and blocks all propagation
 - Schema-validation failures surface as plain `Error` instances (thrown from `register()`); registry-level invariants (type hierarchy, lifecycle stage subset, handler resolution) surface as typed exceptions: `ExtensionTypeError`, `UnsupportedLifecycleStageError`, `EntryTypeNotHandledError`
 
+**GTS-ID convention**: derived schema IDs and instance IDs follow the project rule `<namespace>.<entity>.v<N>` for each chain segment; the entity segment is required. Schema IDs end with `~`; instance IDs do not. Each `~`-separated segment denotes a chain link — inheritance for derived schemas, anchoring for instances. The convention is a project rule applied uniformly across all GTS IDs the package emits or accepts.
+
 **Implements**:
 - `cpt-frontx-algo-mfe-registry-extension-validation`
 - `cpt-frontx-algo-mfe-registry-domain-validation`
@@ -584,12 +594,11 @@ All registration and dispatch paths perform GTS-native validation. Schema valida
 
 The `frontx-mf-gts` Vite plugin derives the shared dep list from `rollupOptions.external` in the resolved Vite config, builds standalone ESM modules for each from `node_modules` via esbuild, and writes the enriched `mfe.json` back to the package root.
 
-The host application's generation script (`scripts/generate-mfe-manifests.ts`) aggregates the enriched `mfe.json` files across all MFE packages and produces `src/app/mfe/generated-mfe-manifests.json` with environment-specific `--base-url`. The bootstrap loader imports `generated-mfe-manifests.json`, registers the `MfManifest` GTS entity, and performs **scoped schema registration per entry**: for each entry in the config, collect the action IDs declared in `entry.actions` and `entry.domainActions`; for each collected action ID, locate the matching schema in `config.schemas[]` (the schema whose `$id` equals the action ID with the `gts://` prefix); call `typeSystem.registerSchema(schema)` only for the matched schemas. Schemas that do not correspond to any action declared by any entry in the package are NOT registered. Entries and extensions are registered after schemas. Deduplication is automatic because GTS overwrites any schema with the same `$id`. When a backend API is ready, the static import of `generated-mfe-manifests.json` is replaced with a fetch call — same aggregated shape, different transport.
+The host application's bootstrap loader receives `mfe.json` content per package, registers the `MfManifest` GTS entity for each package into the GTS runtime store, and performs **scoped schema registration per entry**: for each entry in the loaded `mfe.json` content, collect the action IDs declared in `entry.actions` and `entry.domainActions`; for each collected action ID, locate the matching schema in the package's `schemas[]` (the schema whose `$id` equals the action ID with the `gts://` prefix); call `typeSystem.registerSchema(schema)` only for the matched schemas. Schemas that do not correspond to any action declared by any entry in the package are NOT registered. Entries and extensions are registered after schemas. Deduplication is automatic because GTS overwrites any schema with the same `$id`. The L4 transport by which the bootstrap loader receives `mfe.json` content is documented under `cpt-frontx-fr-manifest-generation-script` and is out of scope for this DoD.
 
 **Rules**:
 - `mfe.json` is the single source of truth per MFE package and is committed in its enriched state; there is no separate build-output file per MFE
 - Enrichment is deterministic and idempotent: re-running the build against an already-enriched `mfe.json` rewrites the `metaData`, `shared[]`, and `exposeAssets` fields from the current build inputs without producing a different shape
-- `generated-mfe-manifests.json` is produced at build/deploy time by the host generation script with `--base-url`; it lives under `src/app/mfe/` and is NOT checked into version control
 - Schema registration in the bootstrap happens before `registerEntry` and before `registerExtension` calls for the loaded package
 - Schema registration is scoped: only schemas matching action IDs declared by at least one entry in the package are registered; this, combined with runtime action declaration validation in the mediator, ensures entries receive only the actions they opt into
 - Missing or empty `schemas` array is silently skipped
@@ -627,6 +636,8 @@ The `MfManifest` TypeScript interface and the GTS schema `mf_manifest.v1.json` (
 - Propagates the raw value to all matching domain states and notifies all per-domain, per-property subscribers
 - Known property constants are `HAI3_SHARED_PROPERTY_THEME = 'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~'` and `HAI3_SHARED_PROPERTY_LANGUAGE = 'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~'`. Their derived GTS schemas are registered at the application layer, not bundled in the SDK.
 
+**Cross-boundary subscription**: shared property subscription is propagated across the parent-child edge — a subscriber in the child app receives updates the parent app's property tree emits for the matching property. Each parent-child edge is independent; multi-edge propagation along a chain (root app → screen-MFE app → widget-MFE app) is per-edge sequential, with each edge applying its own validation and notification before the next edge is reached.
+
 **Implements**:
 - `cpt-frontx-flow-mfe-registry-update-shared-property`
 - `cpt-frontx-algo-mfe-registry-shared-property-broadcast`
@@ -663,6 +674,16 @@ Domain-side: `registerDomain()` registers three handlers (one per lifecycle acti
 
 **Runtime action declaration validation**: before resolving and invoking a handler, the mediator validates that the action's `type` is declared by the target entry. For extension-targeted actions, it resolves the extension, locates the entry that owns the extension, and requires that the entry's `actions` array (the list of action types the entry is capable of receiving and executing) contain the action type. `domainActions` is NOT consulted at runtime — it captures the action types the parent domain must support for the entry to be injectable, and is enforced at registration time via contract matching Rule 3, not at dispatch time. Undeclared actions fail the chain with a recorded error `Action type '{type}' is not declared by target entry '{entryId}'`. Infrastructure lifecycle actions (`HAI3_ACTION_LOAD_EXT`, `HAI3_ACTION_MOUNT_EXT`, `HAI3_ACTION_UNMOUNT_EXT`) target domains, not extensions, so this check does not apply to them. Combined with scoped bootstrap schema registration, this ensures the `actions` array on entries is a live runtime contract — not a dead declaration only consulted at registration time.
 
+**Cross-app chain delivery**: any caller may target any target via `executeActionsChain`, regardless of which app's mediator the caller and the target belong to. The framework's bridge infrastructure routes the chain to the target's owning mediator at internal runtime; the caller does not need to know which mediator owns the target. Validation against the target's runtime contract — entry-level `entry.actions[]`, domain-level `domain.actions[]`, and GTS schema validation — happens in the target's owning mediator's app, against THAT app's registry data. The routing is a runtime implementation detail; the user-visible API surface is `executeActionsChain` only. Internal mechanisms that bridge mediators across boundaries are infrastructure detail and are not part of the user-facing contract.
+
+**Cross-app handler precedence**: the mediator looks up `handlers.get(target).get(actionType)` first; IF a handler is found, it is invoked. IF no per-`(target, actionType)` handler is present in the local mediator, the framework's internal cross-boundary routing engages (the target may belong to another app), and the chain is delivered to the target's owning mediator. The caller's app does NOT check entry declarations against the target — entry declaration checks and GTS schema checks always run in the target's owning app, against THAT app's registry data, on arrival.
+
+**Cross-app timeout origin**: the target's owning app applies its own `defaultActionTimeout` for the target domain. The caller's app does NOT impose its own timeout on a cross-boundary chain.
+
+**Cross-app error propagation**: exceptions and chain failures propagate back to the caller via the bridge as the rejected Promise from `executeActionsChain`. Stack and cause information is preserved end-to-end; the routing path does not swallow errors.
+
+**Cross-app result propagation**: action chain results, where a chain emits one, are returned to the caller via the same Promise, serialized as the `Action`-typed result the chain emits.
+
 **Implements**:
 - `cpt-frontx-flow-mfe-registry-execute-chain`
 - `cpt-frontx-flow-mfe-registry-register-extension-handler`
@@ -695,6 +716,8 @@ The mounter facade, the implementation-supplied container factory, the abstract 
 - `DomainContext` (interface) exposes `mounter: ExtensionMounter`, `lifecycleTrigger: DomainLifecycleTrigger`, and `registerHandler(actionType: string, handler: ActionHandler): void`. All three members reject (throw) once the registry invalidates the context at the end of `registerDomain`. Function-handle-level invalidation: captured references to `mounter`, `lifecycleTrigger`, or `registerHandler` (held in the implementation's closure) also reject after invalidation, not just access through the `ctx` object.
 
 The framework receives only opaque `Element` references through `mounter.mount(extId, container)`. The framework does not know — and does not need to know — how the implementation constructs, positions, or destroys those elements; that is entirely the implementation's responsibility through `ContainerHooks`. Container attachment to the DOM is the **mounter's** responsibility (via the slot's `mounter.attach(element)` call), not the implementation's.
+
+**Per-app boundary**: mount semantics are LOCAL to one registry. Each FrontX app instance gets its own `ExtensionMounter` per domain it registers, its own per-domain mount-set state, its own cross-validation pass at registration, and its own diff dispatch into its own slice. The mount machinery is entirely per-app; cross-app mount visibility does not exist. A nested FrontX app rooted inside an MFE owns mount state for its own domains independently; the parent app's registry holds only the parent's directly-registered extensions and is unaware of the nested app's mounts.
 
 **Implements**:
 - `cpt-frontx-flow-mfe-registry-register-domain`

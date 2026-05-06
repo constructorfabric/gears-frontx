@@ -67,7 +67,8 @@ Requirements that significantly influence architecture decisions.
 `cpt-frontx-adr-tanstack-query-data-management`,
 `cpt-frontx-adr-mf2-manifest-discovery`,
 `cpt-frontx-adr-mfe-state-lifecycle-boundary`,
-`cpt-frontx-adr-domain-implementation-mount-strategies`
+`cpt-frontx-adr-domain-implementation-mount-strategies`,
+`cpt-frontx-adr-lazy-import-abi`
 
 #### Functional Drivers
 
@@ -128,8 +129,8 @@ Requirements that significantly influence architecture decisions.
 | `cpt-frontx-fr-i18n-graceful-invalid` | All formatters return `''` for null, undefined, or invalid inputs; never throw |
 | `cpt-frontx-fr-i18n-hybrid-namespace` | Two-tier namespaces: `screenset.<id>` for shared content, `screen.<setId>.<screenId>` for screen-specific |
 | `cpt-frontx-fr-studio-panel` | `StudioPanel` floating overlay: draggable, resizable, collapsible; visible only in dev mode; state in localStorage |
-| `cpt-frontx-fr-studio-controls` | StudioPanel provides: theme selector, MFE package selector, language selector, mock/real API toggle |
-| `cpt-frontx-fr-studio-persistence` | Theme, language, mock API state, GTS package persisted to localStorage; restored on Studio mount |
+| `cpt-frontx-fr-studio-controls` | StudioPanel provides: theme selector, language selector, mock/real API toggle |
+| `cpt-frontx-fr-studio-persistence` | Theme, language, mock API state persisted to localStorage; restored on Studio mount |
 | `cpt-frontx-fr-studio-viewport` | Studio button and panel clamped to viewport (20px margin) on load and window resize |
 | `cpt-frontx-fr-studio-independence` | `@cyberfabric/studio` standalone package; `"sideEffects": false`; excluded from production via `import.meta.env.DEV` |
 | `cpt-frontx-fr-cli-package` | `@cyberfabric/cli` workspace package with binary `frontx`; ESM (Node 18+) and programmatic API |
@@ -147,7 +148,7 @@ Requirements that significantly influence architecture decisions.
 | `cpt-frontx-fr-framework-query-cache-plugin` | `queryCache(config?)` owns the host shared `QueryClient`; `queryCacheShared()` joins it for child apps; cache clears on mock toggle, handles `cache/invalidate`/`cache/set`/`cache/remove`, and keeps `sharedFetchCache` in sync |
 | `cpt-frontx-fr-react-query-hooks` | `useApiQuery`, `useApiMutation`, `useApiStream`, `useQueryCache` hooks consume descriptors; HAI3-owned result types; no `queryOptions` re-export |
 | `cpt-frontx-fr-react-query-client-sharing` | `HAI3Provider` resolves the shared `QueryClient` from the app instance; separately mounted MFEs receive the same host client through `queryCache()` / `queryCacheShared()` shared-client reuse rather than L1 token plumbing, and expose only the restricted `QueryCache` interface |
-| `cpt-frontx-fr-manifest-generation-script` | Generation script is a temporary static aggregator that produces pointers to `mfe.json` files with `--base-url` for environment-specific `publicPath`; `mfe.json` is already enriched in-place by the `frontx-mf-gts` plugin (manifest metadata, shared dep info, expose assets); when a backend API is ready, the static import is replaced with a fetch call — same `mfe.json` shape, different transport |
+| `cpt-frontx-fr-manifest-generation-script` | Generation script is a temporary static aggregator that writes the aggregated `generated-mfe-manifests.json` to a public asset path at build time and produces pointers to `mfe.json` files with `--base-url` for environment-specific `publicPath`; `mfe.json` is already enriched in-place by the `frontx-mf-gts` plugin (manifest metadata, shared dep info, expose assets); the aggregator passes the optional `domains[]` array through verbatim (transport-only — no enrichment, no validation, no shape derivation) so MFE-declared `ExtensionDomain` instances reach the host bootstrap unchanged; the host bootstrap (and any nested FrontX app instance) fetches the aggregated manifest at runtime from that public-asset URL — script builds json, json is read at runtime; the public-asset URL is a temporary substitute for an eventual backend API, and replacing it is a one-line URL change in the host bootstrap fetch — same `mfe.json` shape, different transport |
 
 #### NFR Allocation
 
@@ -341,16 +342,16 @@ All direct runtime dependencies MUST use MIT, Apache-2.0, or BSD-compatible lice
 | Component | A React UI element authored in app-owned UI folders such as `components/ui/` | Per-MFE/screenset or generated app source |
 | Microfrontend | An externally-built UI bundle loaded at runtime via blob URL isolation | `packages/screensets/src/mfe/` |
 | ExtensionDomain | GTS-validated declaration of a domain (id, sharedProperties, actions, lifecycleStages, etc.); behavior-free | `packages/screensets/src/types.ts` |
-| ExtensionDomainImplementation | Abstract behavior class for a registered domain; the framework owns construction via an `ExtensionDomainImplementationFactory` subclass and supplies it with a per-registration context | `packages/screensets/src/mfe/runtime/` |
-| ExtensionDomainImplementationFactory | Abstract factory class with synchronous `build(ctx)`; concrete subclasses construct the implementation. The synchronous return type enforces synchronous construction at the type level | `packages/screensets/src/mfe/runtime/` |
-| ExtensionMounter | Per-domain abstract mount facade owned by the registry; exposes root attachment (attach/detach) and per-extension mount/unmount; does NOT own mount-set state (the registry does) | `packages/screensets/src/mfe/runtime/` |
-| DomainContext | Construction-time bundle exposing the mount facade, the per-domain lifecycle trigger, and per-action-type handler registration; the framework owns its lifetime so post-registration access (including any captured function handle) is mechanically scoped | `packages/screensets/src/mfe/runtime/` |
-| ContainerHooks | Implementation-supplied **pure factory** for per-extension elements (no DOM-attachment responsibility); kept on the implementation side because container shape is domain-specific and outside the framework's responsibility | `packages/screensets/src/mfe/runtime/` |
-| MountStrategy | Abstract base class declaring `mount` (abstract) and `unmount` (optional, non-abstract); concrete strategies extend this base | `packages/screensets/src/mfe/runtime/` |
-| DomainLifecycleTrigger | Per-domain abstract facade for implementation-driven lifecycle transitions (extension stage, cascading stage, domain-only stage); replaces the public `triggerLifecycleStage*` methods on the registry | `packages/screensets/src/mfe/runtime/` |
-| ConcurrentMountStrategy | Shipped strategy class for multi-mount domains (append-mount, no displacement); implements both `mount` and `unmount` | `packages/screensets/src/mfe/runtime/` |
-| OptionalMountStrategy | Shipped strategy class for 0-or-1 cardinality domains with explicit unmount; implements both `mount` and `unmount` | `packages/screensets/src/mfe/runtime/` |
-| ExclusiveMountStrategy | Shipped strategy class for pre-emptive single-mount domains; declarations using this strategy must omit the unmount action; implements `mount` only | `packages/screensets/src/mfe/runtime/` |
+| ExtensionDomainImplementation | Abstract behavior class for a registered domain | `packages/screensets/src/mfe/runtime/` |
+| ExtensionDomainImplementationFactory | Abstract factory class that constructs an ExtensionDomainImplementation | `packages/screensets/src/mfe/runtime/` |
+| ExtensionMounter | Per-domain abstract mount facade owned by the registry | `packages/screensets/src/mfe/runtime/` |
+| DomainContext | Per-registration bundle of framework primitives passed to the implementation factory | `packages/screensets/src/mfe/runtime/` |
+| ContainerHooks | Implementation-supplied per-extension element factory | `packages/screensets/src/mfe/runtime/` |
+| MountStrategy | Abstract base class for domain mount-cardinality strategies | `packages/screensets/src/mfe/runtime/` |
+| DomainLifecycleTrigger | Per-domain abstract facade for implementation-driven lifecycle transitions | `packages/screensets/src/mfe/runtime/` |
+| ConcurrentMountStrategy | Strategy class for multi-mount cardinality domains | `packages/screensets/src/mfe/runtime/` |
+| OptionalMountStrategy | Strategy class for 0-or-1 cardinality domains with explicit unmount | `packages/screensets/src/mfe/runtime/` |
+| ExclusiveMountStrategy | Strategy class for pre-emptive single-mount cardinality domains | `packages/screensets/src/mfe/runtime/` |
 | State (Store) | Redux Toolkit store composed from plugin-registered slices | `packages/state/src/store.ts` |
 | Event | A typed message on the event bus; carries a name and payload | `packages/state/src/eventBus.ts` |
 | Action | A domain operation that dispatches events; created via `createAction()` | `packages/state/src/actions.ts` |
@@ -445,15 +446,18 @@ Defines the contract between the host application and microfrontend extensions. 
 
 - **Screen-set registry**: `mfeRegistryFactory` for registering/querying screen-sets with handler injection
 - **MFE type contracts**: Entry types (component, screen, extension), domain declarations, shared property schemas, action schema type definitions (GTS schema type IDs with trailing `~`; payloads use `subject` for extension references)
-- **Domain implementation contract**: domain authors register a concrete `ExtensionDomainImplementationFactory` subclass whose `build(ctx)` constructs an `ExtensionDomainImplementation`; the construction-time context (`DomainContext`) carries the framework primitives the implementation needs (mounter, lifecycle trigger, register-handler); the framework owns the lifetime of that context so post-registration access is mechanically scoped at the function-handle level
-- **Per-domain mount facade**: `ExtensionMounter` abstract class with `attach(root)` / `detach()` / `mount(extId, container)` / `unmount(extId)`; the registry constructs one instance per registered domain and exposes it to the implementation through `DomainContext` for the duration of registration. The mounter does not own mount-set state — the registry does
-- **Per-domain lifecycle trigger**: `DomainLifecycleTrigger` abstract class; the registry constructs one instance per domain and exposes it via `DomainContext.lifecycleTrigger` for implementation-driven lifecycle transitions
-- **Mount strategies**: the framework ships an abstract `MountStrategy` base plus three concrete subclasses (`ConcurrentMountStrategy`, `OptionalMountStrategy`, `ExclusiveMountStrategy`). The choice of cardinality is made by the implementation when it picks a strategy — there is no framework heuristic over `domain.actions`. A strict cross-validation matrix at registration enforces the strategy/action declaration pairing
-- **Mount-set query**: `MfeRegistry.getMountedExtensions(domainId)` returns the current insertion-ordered set of mounted extension IDs for the domain (plural — the canonical owner of mount-set state). The scalar `getMountedExtension` does not exist
-- **Mounter accessor**: `MfeRegistry.getMounter(domainId)` returns the per-domain `ExtensionMounter`; consumed by `ExtensionDomainSlot` for slot-side root attachment
+- **Domain implementation contract**: domain authors plug behavior into a registered domain by supplying an implementation factory; the framework owns the construction lifetime and provides per-registration primitives. Method-level surface is in `cpt-frontx-feature-mfe-registry`.
+- **Per-domain mount facade**: the registry exposes a per-domain mount facade to the implementation for root attachment and per-extension mount/unmount; the registry retains canonical mount-set state.
+- **Per-domain lifecycle trigger**: the registry exposes a per-domain facade for implementation-driven lifecycle transitions.
+- **Mount strategies**: the framework ships an abstract base plus three concrete cardinality strategies (concurrent / optional / exclusive). Cardinality is the domain author's choice via the strategy class; the framework infers nothing from action declarations. A registration-time cross-validation matrix enforces strategy/action consistency.
+- **Mount-set query**: the registry's per-domain mount-set is the canonical source of currently-mounted extension IDs within its owning app.
 - **Blob URL isolation**: Fetches MFE bundles, rewrites import specifiers to blob URLs, caches source text, manages per-load import maps
 - **Import rewriting**: Transforms bare import specifiers for all declared shared dependencies (both `@cyberfabric/*` and third-party) in MFE bundles to blob URL references for runtime resolution
 - **Recursive chain loading**: Resolves transitive dependencies by recursively blob-loading imported modules
+
+**Per-app boundary.** `ScreensetsRegistry` is per FrontX app instance. Every FrontX app — the root host application AND any nested app created by an MFE that needs to own its own extension domains — uses the same `createHAI3()` primitive and owns its own registry, store, mediator, event bus, and lifecycle trigger. There is no shared registry across the app tree. An app's registry holds only the domains and extensions registered against THAT app; a parent app's registry never sees a nested app's mount state. Cross-app chain delivery between apps is an internal routing concern (described in §3.6 Extension Action Delivery), not a registry-sharing concern.
+
+**Layout taxonomy is opt-in.** The framework does NOT enforce a layout taxonomy. Projects MAY use the shipped `LayoutDomain` / `HAI3_*_DOMAIN` convenience constants, MAY define entirely custom domains, MAY mix the two. Domain registration is an L4 (application) concern: the framework provides the `ExtensionDomain` mechanism and ships a set of conventional domain IDs; choosing which domains to register, with which mount strategies, is the application's call.
 
 ##### Responsibility boundaries
 
@@ -462,12 +466,13 @@ Defines the contract between the host application and microfrontend extensions. 
 - Does NOT depend on any other `@cyberfabric/*` package
 - Does NOT handle CSS isolation (Shadow DOM) — delegated to rendering layer
 - Does NOT know how containers are created, positioned, or styled — container lifecycle lives on the implementation side; the framework receives opaque `Element` references through the mounter and uses them as host elements only
-- Does NOT expose `ContainerProvider`, `MountExtSwapHandler`, `MountExtToggleHandler`, or `MountManager` — `ContainerProvider` is removed; the framework-side mount handlers are replaced by the three strategy classes; `MountManager` becomes strictly internal behind `DefaultExtensionMounter`
+- Does NOT enforce a layout-domain taxonomy — the shipped `LayoutDomain` enum / `HAI3_*_DOMAIN` constants are conveniences, and projects MAY register entirely custom domains or mix custom and shipped
+- Mount handlers are the cardinality strategy classes; the per-domain mounter is the only public mount facade
 
 ##### Related components (by ID)
 
 - `cpt-frontx-component-framework` — depends on: framework's `microfrontends()` plugin orchestrates MFE lifecycle using screensets API
-- `cpt-frontx-component-react` — depends on: `ExtensionDomainSlot` is per-domain (no `extensionId` prop) and mounts a singleton root by calling `registry.getMounter(domainId).attach(element)` from its ref-attach callback; multi-mount children are placed imperatively under that root by the per-domain mounter
+- `cpt-frontx-component-react` — depends on: `ExtensionDomainSlot` provides a per-domain host element; mounted extensions render under it via the per-domain mounter
 
 #### @cyberfabric/api (L1)
 
@@ -540,9 +545,11 @@ Composes L1 SDK packages into a cohesive application framework through a plugin 
 - **Plugin system**: `HAI3Plugin` interface with `init(context: HAI3PluginContext)`; context provides access to store, event bus, registries
 - **Layout orchestration**: Layout slices (menu, header, footer, sidebars, overlay, popups) managed as Redux state
 - **Configuration management**: `AppConfig` with tenant settings, router config, layout visibility, theme — propagated via `app/*` events
-- **MFE lifecycle plugin**: `microfrontends()` plugin handles MFE registration, theme propagation, i18n forwarding, shared property bridge, and per-domain mount-state mirroring. The plugin's MFE slice tracks the per-domain set of currently mounted extensions and exposes a typed selector for it. The plugin's chain-completion sync wrapper reconciles the slice against the registry's mount-set after each lifecycle action chain by emitting per-extension state events. There is no scalar mount slot
+- **MFE lifecycle plugin**: `microfrontends()` plugin handles MFE registration, theme propagation, i18n forwarding, shared property bridge, and per-domain mount-state mirroring within its app. The plugin's MFE slice tracks the per-domain set of currently mounted extensions for THIS app and exposes a typed selector for it. The plugin's chain-completion sync wrapper reconciles the slice against the registry's mount-set after each lifecycle action chain by emitting per-extension state events. There is no scalar mount slot. Cross-runtime extension discovery — including nested-app discovery — is content-addressed by the extension's `domain` GTS instance ID: every FrontX app's `microfrontends()` plugin reads `MfManifest` entities from the GTS runtime store and filters them by its own app's registered-domain-IDs view, so an MFE's source-tree location is independent of which runtime owns its target domain
 - **Shared property system**: `setSharedProperty()` / `getSharedProperty()` with validation via GTS plugin
 - **SDK re-exports**: Re-exports L1 public API so consumers can import from `@cyberfabric/framework` as a convenience
+
+**Per-app boundary.** `createHAI3()` is the same primitive at every level of the app tree. The root host is the root FrontX app; any nested app created by an MFE that needs its own extension domains uses the SAME `createHAI3()` builder and ends up with its OWN store, event bus, MFE slice, mediator, and lifecycle trigger. Each app's `microfrontends()` plugin tracks only the extensions mounted in THAT app's registry. Architecturally there is no privileged "host" app — the root is just the outermost app, and nested apps are identical in shape and capability.
 
 ##### Responsibility boundaries
 
@@ -570,10 +577,10 @@ Bridges the framework layer to React 19, providing the provider tree, hooks, and
 ##### Responsibility scope
 
 - **HAI3Provider**: Root provider component that wraps the application with Redux store, i18n context, theme, framework context, and an internal `QueryClientProvider` bridge. `HAI3Provider` does not create a TanStack client; `queryCache()` is the sole owner of the host shared `QueryClient`, while `queryCacheShared()` lets child apps join that client. The provider resolves the client from the app instance so every root reuses the plugin-owned cache, while `sharedFetchCache` deduplicates overlapping descriptor fetches across roots before React observers attach.
-- **Hooks**: `useHAI3()` for the app instance; `useAppSelector()` / `useAppDispatch()` for typed Redux bindings; `useTranslation()`, `useScreenTranslations()`, `useFormatters()`, `useTheme()` for i18n and presentation; MFE hooks including `useMfeBridge`, `useSharedProperty`, `useHostAction`, `useDomainExtensions`, `useRegisteredPackages`, `useMountedExtensions` (per-domain mount-state subscription), and `useActivePackage` (screen-domain active package binding) — typed wrappers over framework primitives
+- **Hooks**: `useHAI3()` for the app instance; `useAppSelector()` / `useAppDispatch()` for typed Redux bindings; `useTranslation()`, `useScreenTranslations()`, `useFormatters()`, `useTheme()` for i18n and presentation; MFE hooks including `useMfeBridge`, `useSharedProperty`, `useHostAction`, `useDomainExtensions`, `useRegisteredPackages` (passive enumeration of GTS packages discovered at runtime), and `useMountedExtensions` (per-domain mount-state subscription; for the screen domain it surfaces every mounted screen extension across all discovered packages) — typed wrappers over framework primitives
 - **Query hooks**: `useApiQuery()` for single-page declarative reads, `useApiSuspenseQuery()` for Suspense-driven single-page reads, `useApiInfiniteQuery()` for descriptor-driven paginated reads, `useApiSuspenseInfiniteQuery()` for Suspense-driven paginated reads, `useApiMutation()` for writes with optimistic updates via `QueryCache`, and `useQueryCache()` as the sanctioned imperative cache API. `QueryCache` exposes `get`, `getState`, `set`, `cancel`, `invalidate`, `invalidateMany`, and `remove`. The raw `QueryClient` stays internal, `useQueryClient` is NOT exported from `@cyberfabric/react`, and app/MFE code uses `QueryCache` rather than raw TanStack APIs.
 - **Service descriptors**: Service descriptors are the only sanctioned source of query keys and cache metadata. `BaseApiService` descriptors feed `useApiQuery()`, `useApiMutation()`, and `QueryCache` directly.
-- **MFE rendering**: `ExtensionDomainSlot` is per-domain (no `extensionId` prop) and mounts a singleton root by calling `registry.getMounter(domainId).attach(element)` from its ref-attach callback (and `mounter.detach()` on cleanup, which mass-unmounts every currently-mounted extension in the domain). The slot does NOT dispatch mount/unmount actions — the host owns those dispatches via `registry.executeActionsChain`. Multi-mount layouts are placed imperatively under the attached root by the per-domain mounter. Host bootstrap registers domains/extensions/shared properties and returns screen extensions for route selection; the host screen container renders `ExtensionDomainSlot`, and MFE roots join the same `queryCache()`-owned host `QueryClient` via `queryCacheShared()` without leaking cache metadata into L1 contracts. MFEs still render inside Shadow DOM and do not inherit host React context directly.
+- **MFE rendering**: `ExtensionDomainSlot` is per-domain — it provides a single host element for the domain's mounted extensions. The slot does not dispatch mount/unmount actions; the host owns those dispatches through the registry. Multi-mount layouts are placed under the host element by the domain's mounter (specified in `cpt-frontx-feature-react-bindings`). Host bootstrap registers domains, extensions, and shared properties and returns screen extensions for route selection; MFE roots join the host's shared `QueryClient` via the shared-cache plugin without leaking cache metadata into L1 contracts. MFEs render inside Shadow DOM and do not inherit host React context directly.
 - **Error boundaries**: Per-MFE error boundaries preventing extension failures from crashing the host
 - **Initialization sequence**: Orchestrates `themeRegistry → mfeRegistryFactory.build() → domain registration → HAI3Provider`
 
@@ -673,7 +680,7 @@ FrontX is a frontend framework; all API contracts are TypeScript interfaces cons
 - **Technology**: TypeScript abstract class
 - **Location**: `packages/screensets/src/mfe/runtime/MfeRegistry.ts`
 
-`MfeRegistry` is the runtime authority for MFE registration, lifecycle, action chains, and shared property broadcast. It owns canonical per-domain mount-set state (insertion-ordered list of currently-mounted extension IDs), serializes concurrent operations per entity, and mediates action-chain execution. The full method-level surface — `registerDomain` (two-arg with factory), `getMountedExtensions`, `getMounter`, `executeActionsChain`, and the rest — is enumerated in `cpt-frontx-feature-mfe-registry` under DoD `cpt-frontx-dod-mfe-registry-registry-contract`.
+`MfeRegistry` is each FrontX app's runtime authority for MFE registration, lifecycle, action chains, and shared property broadcast. Every FrontX app instance owns its own `MfeRegistry` (root host and any nested app are architecturally identical). The registry owns canonical per-domain mount-set state for its owning app, serializes concurrent operations per entity, and mediates action-chain execution against the targets registered in its app. The full method-level surface lives in `cpt-frontx-feature-mfe-registry` under DoD `cpt-frontx-dod-mfe-registry-registry-contract`.
 
 - [x] `p1` - **ID**: `cpt-frontx-interface-api-service`
 - **Contract**: cpt-frontx-contract-api-service
@@ -696,14 +703,14 @@ Stream descriptors extend the service to SSE: each `StreamDescriptor` carries a 
 - **Technology**: TypeScript abstract class
 - **Location**: `packages/screensets/src/mfe/handler/types.ts`
 
-`ChildMfeBridge` is the abstract MFE-side bridge handed to each mounted extension. It exposes the readonly `domainId` and `instanceId` of the bridge holder, delegates action-chain execution to the mediator, lets the extension subscribe to and read shared property values, and accepts per-action-type `ActionHandler` registrations. Per-method behavior, including the per-action-type registration semantics, is specified in `cpt-frontx-dod-mfe-registry-mediator-contract` and the flow `cpt-frontx-flow-mfe-registry-register-extension-handler`.
+`ChildMfeBridge` is the abstract MFE-side bridge handed to each mounted extension. It exposes the readonly `domainId` and `instanceId` of the bridge holder, delegates action-chain execution to the parent app's mediator (and the framework routes the chain from there to the target's owning app, when the target lives in a different app), lets the extension subscribe to and read shared property values across the parent-child edge, and accepts per-action-type `ActionHandler` registrations. Per-method behavior, including the per-action-type registration semantics, is specified in `cpt-frontx-dod-mfe-registry-mediator-contract` and the flow `cpt-frontx-flow-mfe-registry-register-extension-handler`.
 
 - [ ] `p1` - **ID**: `cpt-frontx-interface-parent-mfe-bridge`
 - **Contract**: `cpt-frontx-interface-parent-mfe-bridge`
 - **Technology**: TypeScript abstract class
 - **Location**: `packages/screensets/src/mfe/handler/types.ts`
 
-`ParentMfeBridge` is the abstract host-side counterpart held by the parent runtime for each mounted extension. It exposes the readonly `instanceId` of the extension instance and a `dispose` operation that the runtime calls on extension unmount or unregister. The dispose semantics — including unregistration of all per-action-type handlers — are specified by the mediator contract DoD (`cpt-frontx-dod-mfe-registry-mediator-contract`).
+`ParentMfeBridge` is the abstract counterpart held by the parent app's runtime for each extension it has mounted. It exposes the readonly `instanceId` of the extension instance and a `dispose` operation that the parent app's runtime calls on extension unmount or unregister. The dispose semantics — including unregistration of all per-action-type handlers in the parent app's mediator — are specified by the mediator contract DoD (`cpt-frontx-dod-mfe-registry-mediator-contract`).
 
 - [ ] `p1` - **ID**: `cpt-frontx-interface-action-handler`
 - **Contract**: `cpt-frontx-interface-action-handler`
@@ -719,13 +726,7 @@ Stream descriptors extend the service to SSE: each `StreamDescriptor` carries a 
 
 `ActionsChainsMediator` is the abstract per-registry mediator that resolves action chains, dispatches them to per-target handlers, and stages handler registration. The mediator exposes asynchronous chain execution, a unified per-action-type registration entry point, and a bulk-unregistration entry point keyed by target identifier. Handler storage is a unified two-level map (target identifier → action type identifier → `ActionHandler`); a single registration entry point covers both domain-side and extension-side cases, and the bulk unregistration entry point removes the entire inner map entry, covering bridge dispose and domain unregister alike. There is no separate `registerDomainHandler`, `registerExtensionHandler`, or `unregisterDomainHandler` on the abstract class — see `cpt-frontx-dod-mfe-registry-mediator-contract` for the full method shape.
 
-During `registerDomain(declaration, factory)`, the registry (per ADR `cpt-frontx-adr-domain-implementation-mount-strategies` and `cpt-frontx-feature-mfe-registry`): (1) GTS-validates the declaration via `typeSystem.register(declaration)`; (2) constructs the per-domain `DefaultExtensionMounter` and `DefaultDomainLifecycleTrigger`; (3) builds a `DomainContext` exposing `mounter`, `lifecycleTrigger`, and `registerHandler`; (4) invokes the factory's `build(ctx)` synchronously — the implementation's constructor instantiates its strategy classes (subclasses of the abstract `MountStrategy` base), capturing the mounter and lifecycle trigger privately on bound class fields, and pushes per-action-type `ActionHandler` instances via `ctx.registerHandler`; (5) in a `finally` block, invalidates `ctx` at the function-handle level — so subsequent access through `ctx.mounter`, `ctx.lifecycleTrigger`, or `ctx.registerHandler` (including any captured function handle) throws — while strategy-captured references survive because they bypass the `ctx` object; (6) cross-validates handlers against the declaration AND enforces the strict cardinality matrix (Concurrent and Optional REQUIRE both `mount_ext` and `unmount_ext`; Exclusive REQUIRES `mount_ext` and FORBIDS `unmount_ext`). If `factory.build` throws after some `ctx.registerHandler` calls succeeded, the registry rolls back all collected handlers atomically and the domain is not registered.
-
-The factory passed to `registerDomain` is a concrete subclass of the abstract `ExtensionDomainImplementationFactory` class. The synchronous return type of `build(ctx)` enforces synchronous construction at the type level — async factories are rejected at compile time and no runtime check is required.
-
-Containers are an implementation concern: the implementation supplies a `ContainerHooks` instance (a pure factory — `create(extId): Element` returns an unattached element, `destroy(extId): void` releases it), the strategy uses the factory to materialize containers, and the **mounter** (which owns the attached root via `attach(root)` / `detach()`) appends/removes per-extension containers under that root. The framework receives only opaque `Element` references through `mounter.mount(extId, container)` and never knows how containers are constructed, positioned, or destroyed.
-
-Mount-set state is owned by the registry (`ExtensionDomainState.mountedExtensions: string[]`, insertion-ordered); the mounter does NOT keep duplicate state. Strategies and consumers read mount-set via `registry.getMountedExtensions(domainId)`. Slot-side root attachment is performed by `ExtensionDomainSlot` calling `registry.getMounter(domainId).attach(element)` from its ref-attach callback and `mounter.detach()` on cleanup; on detach, the mounter mass-unmounts every currently-mounted extension in the domain so no orphan DOM trees remain.
+Domain registration semantics — including the per-registration context, the implementation factory contract, the cross-validation matrix at registration, and the rollback policy on factory failure — are enumerated in `cpt-frontx-feature-mfe-registry` (per ADR `cpt-frontx-adr-domain-implementation-mount-strategies`). Container handling lives entirely on the implementation side: the registry receives only opaque `Element` references at mount time and never models container construction or layout. Mount-set state is owned by the registry and is the single source of truth within an app; the per-domain mount facade and the React slot read through that source.
 
 - [ ] `p1` - **ID**: `cpt-frontx-interface-mfe-json-schemas`
 - **Contract**: `cpt-frontx-interface-mfe-json-schemas`
@@ -734,13 +735,18 @@ Mount-set state is owned by the registry (`ExtensionDomainState.mountedExtension
 
 `mfe.json` carries an optional top-level `schemas` array of inline GTS JSON Schema objects. Each element is a standard JSON Schema with a GTS `$id` (e.g., `gts://gts.hai3.mfes.comm.action.v1~vendor.action.refresh.v1~`). The parent registers all schemas with the type system before registering any entries or extensions, ensuring GTS validation is available for all action types declared in `actions`. The contract is a single envelope with three peer arrays — `schemas`, `entries`, `extensions` — at the top level. The full registration sequence is enumerated under `cpt-frontx-dod-mfe-registry-mfe-schema-registration`.
 
-`mfe.json` is human-authored and environment-independent: it contains entries (without `exposeAssets`), extensions, and schemas. There is no `manifest` section, no URLs, and no chunk paths. The `frontx-mf-gts` plugin derives shared dependencies automatically from `rollupOptions.external` in the resolved Vite config, matches them against `mf-manifest.json` shared entries, and errors if an external is not found. The plugin enriches `mfe.json` in-place with `manifest.metaData`, `manifest.shared[]` (with `chunkPath`/`version`/`unwrapKey` per dep), and `entries[].exposeAssets`. Enriched `mfe.json` is the complete self-contained contract per MFE — no intermediate artifacts are produced. The generation script (see `cpt-frontx-fr-manifest-generation-script`) is a temporary aggregator that produces pointers to enriched `mfe.json` files with environment-specific `--base-url`; when a backend API is ready, the static import is replaced with a fetch call — same `mfe.json` shape, different transport. `mf-manifest.json` is consumed by the plugin only and never reaches runtime.
+**GTS identifier conventions used in the manifest and at runtime.** Schema `$id` fields in JSON Schema definitions use the `gts://...~` URL form — the `gts://` prefix is mandatory there. Runtime IDs (the `Action.type` field, instance IDs, target identifiers, `domainId` and `instanceId` arguments to bridge operations) use the same canonical identifier WITHOUT the `gts://` prefix. Schema identifiers always end with a trailing `~`; instance identifiers do not. Each `~`-separated segment denotes a chain link (inheritance for schemas, anchoring for instances).
+
+`mfe.json` is human-authored and environment-independent: it contains entries (without `exposeAssets`), extensions, schemas, and an optional `domains[]` array of MFE-declared `ExtensionDomain` instances. There is no `manifest` section, no URLs, and no chunk paths. The `frontx-mf-gts` plugin derives shared dependencies automatically from `rollupOptions.external` in the resolved Vite config, matches them against `mf-manifest.json` shared entries, and errors if an external is not found. The plugin enriches `mfe.json` in-place with `manifest.metaData`, `manifest.shared[]` (with `chunkPath`/`version`/`unwrapKey` per dep), and `entries[].exposeAssets`; `domains[]` is preserved unchanged through enrichment. Enriched `mfe.json` is the complete self-contained contract per MFE — no intermediate artifacts are produced. The generation script (see `cpt-frontx-fr-manifest-generation-script`) is a temporary aggregator that produces pointers to enriched `mfe.json` files with environment-specific `--base-url` and writes the aggregated `generated-mfe-manifests.json` to a public asset path at build time; the host bootstrap (and any nested FrontX app instance) fetches the aggregated manifest at runtime from the public-asset URL — script builds json, json is read at runtime; the public-asset URL is a temporary substitute for an eventual backend API, and replacing it is a one-line URL change in the host bootstrap fetch — same `mfe.json` shape, different transport. `mf-manifest.json` is consumed by the plugin only and never reaches runtime.
+
+**Host bootstrap registration order** (per `MfManifest` in the aggregated manifest): schemas → `MfManifest` entity → MFE-declared `domains[]` → entries → extensions. The `domains[]` step registers each declared `ExtensionDomain` instance opaquely into the GTS runtime store between the `MfManifest` entity and entries so that subsequent entry/extension registrations — and content-addressed extension discovery (see `cpt-frontx-algo-framework-composition-content-addressed-discovery`) — can resolve their target domain by GTS instance ID against entities already present in the store. `domains[]` is optional per MFE; MFEs that do not declare their own `ExtensionDomain` instances omit the field. The registration sequence is codified by `cpt-frontx-dod-framework-composition-mfe-plugin` and `cpt-frontx-dod-screenset-registry-mfe-schema-registration`.
 
 **Registration flow** (parent side):
-1. Import `generated-mfe-manifests.json` (produced by the generation script with environment-specific `--base-url`).
-2. FOR EACH schema in `mfe.json.schemas` (present in the generated config if authored in `mfe.json`): call `typeSystem.registerSchema(schema)`. Deduplication is automatic — GTS overwrites any existing entry with the same `$id`.
-3. Register the `MfManifest` GTS entity from the generated config.
-4. Register entries (with `exposeAssets` populated from the generated config) and extensions as normal.
+1. Fetch the aggregated `generated-mfe-manifests.json` at runtime from its public-asset URL (produced by the generation script with environment-specific `--base-url`).
+2. FOR EACH schema in `mfe.json.schemas` (present in the fetched config if authored in `mfe.json`): call `typeSystem.registerSchema(schema)`. Deduplication is automatic — GTS overwrites any existing entry with the same `$id`.
+3. Register the `MfManifest` GTS entity from the fetched config.
+4. FOR EACH `ExtensionDomain` instance in `mfe.json.domains` (when the optional field is authored): register the instance opaquely into the GTS runtime store. The field is optional per MFE; MFEs that do not own `ExtensionDomain` instances omit it.
+5. Register entries (with `exposeAssets` populated from the fetched config) and extensions as normal.
 
 The CLI package exposes a command-and-generated-files contract to scaffolded projects. `frontx create` and code-generation commands leave behind a canonical test contract (`test`, `test:unit`, `test:unit:watch`), Vitest configuration, starter tests, and project testing guidance that AI tools can consume without inspecting CLI internals. `frontx ai sync` extends that contract by projecting the same testing convention into generated assistant files and project-level guidance targets.
 
@@ -753,15 +759,15 @@ The CLI package exposes a command-and-generated-files contract to scaffolded pro
 | `cpt-frontx-interface-api` | `@cyberfabric/api` | Protocol-agnostic API layer with REST and SSE protocols, plugin chain, mock mode, type guards, endpoint/stream descriptors |
 | `cpt-frontx-interface-i18n` | `@cyberfabric/i18n` | 36-language i18n registry, locale-aware formatters, RTL support, language metadata |
 | `cpt-frontx-interface-framework` | `@cyberfabric/framework` | Plugin architecture with `createHAI3()` builder, presets, layout domain slices, effect coordination, re-exports all L1 APIs |
-| `cpt-frontx-interface-react` | `@cyberfabric/react` | HAI3Provider, typed hooks, MFE hooks (`useMfeBridge`, `useSharedProperty`, `useHostAction`, `useDomainExtensions`, `useRegisteredPackages`, `useMountedExtensions`, `useActivePackage`), per-domain `ExtensionDomainSlot` (renders one root and calls `registry.getMounter(domainId).attach`/`detach`), re-exports all L2 APIs |
-| `cpt-frontx-interface-studio` | `@cyberfabric/studio` | Dev-only floating overlay with MFE package selector, theme/language/mock controls, persistence, viewport clamping |
+| `cpt-frontx-interface-react` | `@cyberfabric/react` | HAI3Provider, typed hooks, MFE hooks (`useMfeBridge`, `useSharedProperty`, `useHostAction`, `useDomainExtensions`, `useRegisteredPackages`, `useMountedExtensions`), per-domain `ExtensionDomainSlot` (renders one root and calls `registry.getMounter(domainId).attach`/`detach`), re-exports all L2 APIs |
+| `cpt-frontx-interface-studio` | `@cyberfabric/studio` | Dev-only floating overlay with theme/language/mock controls, persistence, viewport clamping |
 | `cpt-frontx-interface-cli` | `@cyberfabric/cli` | Project scaffolding, code generation, migration runners, AI tool configuration sync, unit-test scaffold contract, and generated testing guidance |
 
 **External Integration Contracts**
 
 | Contract | Description |
 |----------|-------------|
-| `cpt-frontx-contract-mfe-manifest` | MFE packages provide `mfe.json` — human-authored base (entries, extensions, schemas) enriched in-place by the `frontx-mf-gts` plugin at build time with manifest metadata, shared dep info (`chunkPath`/`version`/`unwrapKey`), and `exposeAssets`. The plugin derives shared dependencies from build externals (`rollupOptions.external`). `mfe.json` is the complete self-contained contract per MFE. `mf-manifest.json` is a build-time intermediate consumed by the plugin only and never reaches runtime. A temporary generation script aggregates pointers to `mfe.json` files for host bootstrap. ADR: `cpt-frontx-adr-mf2-manifest-discovery` |
+| `cpt-frontx-contract-mfe-manifest` | MFE packages provide `mfe.json` — human-authored base (entries, extensions, schemas, and an optional `domains[]` array of MFE-declared `ExtensionDomain` instances) enriched in-place by the `frontx-mf-gts` plugin at build time with manifest metadata, shared dep info (`chunkPath`/`version`/`unwrapKey`), and `exposeAssets`. `domains[]` is preserved unchanged through enrichment — each element is an `ExtensionDomain` instance authored by the MFE that owns the domain (most MFEs omit the field; only MFEs that own `ExtensionDomain` instances declare them). The plugin derives shared dependencies from build externals (`rollupOptions.external`). `mfe.json` is the complete self-contained contract per MFE. `mf-manifest.json` is a build-time intermediate consumed by the plugin only and never reaches runtime. A temporary generation script aggregates pointers to `mfe.json` files into a public-asset `generated-mfe-manifests.json` that the host bootstrap (and any nested FrontX app instance) fetches at runtime; the host bootstrap registers each `MfManifest`'s `domains[]` into the GTS runtime store between the `MfManifest` entity and entries per `cpt-frontx-dod-framework-composition-mfe-plugin`. ADR: `cpt-frontx-adr-mf2-manifest-discovery` |
 | `cpt-frontx-contract-federation-runtime` | The handler resolves the `MfManifest` GTS entity for package-level metadata (shared deps with `chunkPath`/`version`/`unwrapKey`, base URL) and reads per-module chunk paths from `entry.exposeAssets`. The handler builds shared dep blob URLs by fetching standalone ESM source text (deduplicated via `sharedDepTextCache` keyed by `name@version`), rewriting bare specifiers between deps, and creating per-load blob URLs. The expose blob URL chain rewrites both relative and bare specifiers. No `createInstance()`, no `FederationHost`, no `__mf_init__` — no MF 2.0 runtime interaction. ADR: `cpt-frontx-adr-mf2-manifest-discovery` |
 
 ### 3.4 Internal Dependencies
@@ -920,7 +926,7 @@ sequenceDiagram
     Host->>Host: ExtensionDomainSlot renders in host screen container
 ```
 
-**Description**: The `microfrontends()` plugin registers an MFE handler with the screen-sets registry. When a screen-set requests an MFE, the handler resolves the `MfManifest` GTS entity for package-level metadata (shared dependencies with `chunkPath`/`version`/`unwrapKey`, base URL) and reads per-module chunk paths and CSS assets from `entry.exposeAssets` (ADR: `cpt-frontx-adr-mf2-manifest-discovery`). The `MfManifest` GTS entity is pre-registered at bootstrap time — it is not fetched at runtime. The handler then builds shared dep blob URLs: it fetches standalone ESM source text for each shared dep (deduplicated via `sharedDepTextCache` keyed by `name@version` across all runtimes), rewrites bare specifiers between shared deps to per-load blob URLs, and creates a blob URL per shared dep per load for isolation. Next, the handler fetches the expose chunk source text, rewrites both relative and bare import specifiers to per-load blob URLs (ADR: `cpt-frontx-adr-blob-url-mfe-isolation`), recursively resolves transitive dependencies through the blob URL chain, and returns the loaded module with its lifecycle. No MF 2.0 runtime interaction — no `FederationHost`, no `__loadShare__`, no `__mf_init__`. The framework propagates theme and i18n settings. Mount/unmount semantics are owned by the registered domain implementation through one of the shipped strategy classes (ADR: `cpt-frontx-adr-domain-implementation-mount-strategies`): when a mount action is dispatched the registry resolves the per-action-type handler the implementation registered, the handler delegates to the strategy, the strategy uses `ContainerHooks.create(extId)` to materialize a host element, and finally calls `mounter.mount(extId, container)`; the framework receives only the opaque `Element` reference and uses it as a host. The React layer's `ExtensionDomainSlot` is per-domain and mounts a singleton root by calling `registry.getMounter(domainId).attach(element)` from its ref-attach callback — multi-mount children live under that root, placed imperatively by the per-domain mounter — inside a Shadow DOM container for CSS isolation. CDN hosting for MFE bundles with appropriate cache headers is a deployment concern owned by the consuming application.
+**Description**: The `microfrontends()` plugin registers an MFE handler with the screen-sets registry. When a screen-set requests an MFE, the handler resolves the `MfManifest` GTS entity for package-level metadata (shared dependencies with `chunkPath`/`version`/`unwrapKey`, base URL) and reads per-module chunk paths and CSS assets from `entry.exposeAssets` (ADR: `cpt-frontx-adr-mf2-manifest-discovery`). The `MfManifest` GTS entity is pre-registered at bootstrap time — it is not fetched at runtime. The handler then builds shared dep blob URLs: it fetches standalone ESM source text for each shared dep (deduplicated via `sharedDepTextCache` keyed by `name@version` across all runtimes), rewrites bare specifiers between shared deps to per-load blob URLs, and creates a blob URL per shared dep per load for isolation. Next, the handler fetches the expose chunk source text, rewrites both relative and bare import specifiers to per-load blob URLs (ADR: `cpt-frontx-adr-blob-url-mfe-isolation`), recursively resolves transitive dependencies through the blob URL chain, and returns the loaded module with its lifecycle. No MF 2.0 runtime interaction — no `FederationHost`, no `__loadShare__`, no `__mf_init__`. The framework propagates theme and i18n settings. Mount/unmount semantics are owned by the registered domain implementation through one of the shipped cardinality strategies (ADR: `cpt-frontx-adr-domain-implementation-mount-strategies`); the framework receives only opaque host elements at mount time. The React layer's `ExtensionDomainSlot` is per-domain and renders a single host element for the domain inside a Shadow DOM container for CSS isolation. CDN hosting for MFE bundles with appropriate cache headers is a deployment concern owned by the consuming application.
 
 #### Shared Property Broadcast
 
@@ -1043,6 +1049,68 @@ sequenceDiagram
 
 **Description**: AI-assisted development starts by loading the generated project guidance, including the project-level testing instructions that describe when code changes require unit-test updates and when the standard unit-test command must run. Those instructions intentionally stay compact and avoid full Vitest reference coverage so agents load FrontX-specific testing rules instead of a broad upstream manual. The agent updates source and test files together, resolves whether the tiered triggers require the standard unit-test workflow, and runs the project-standard unit-test command against the scaffolded Vitest baseline only when those triggers apply. The agent advances to `type-check` and `arch:check` after applicable unit tests pass, or immediately when the guidance says no unit-test run is required. This keeps the generated-project verification loop aligned with the tiered test policy while preserving final architecture enforcement for every change.
 
+#### Cross-App Chain Delivery
+
+**ID**: `cpt-frontx-seq-cross-app-chain-delivery`
+
+**Use cases**: `cpt-frontx-usecase-mfe-load`
+
+**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-microfrontend`, `cpt-frontx-actor-runtime`
+
+```mermaid
+sequenceDiagram
+    participant Caller as Caller (App A)
+    participant BridgeA as Bridge (A↔B edge)
+    participant MedB as Mediator (App B, target's owning app)
+    participant Handler as ActionHandler (App B)
+
+    Caller->>BridgeA: executeActionsChain(chain targeting App B's extension)
+    BridgeA->>MedB: route to target's owning mediator
+    MedB->>MedB: resolveHandler(target, actionType) in App B's registry
+    MedB->>MedB: validate against App B's runtime contract
+    alt handler resolves and validation passes
+        MedB->>Handler: handler(actionTypeId, payload)
+        Handler-->>MedB: result
+        MedB-->>BridgeA: chain complete (result)
+        BridgeA-->>Caller: Promise resolves with result
+    else validation fails OR handler rejects OR App B's timeout fires
+        MedB-->>BridgeA: error / rejection
+        BridgeA-->>Caller: Promise rejects (cause preserved)
+    end
+```
+
+**Description**: Any caller can target any target via `executeActionsChain`, regardless of which FrontX app the caller and the target belong to. The user-visible API is `executeActionsChain` — the framework's bridge infrastructure routes the chain to the target's owning mediator, which is the mediator of the FrontX app that registered the target. Validation against the target's runtime contract (`entry.actions[]` entry-level, `domain.actions[]` domain-level, GTS schema validation) happens in the TARGET'S owning app, where the registry data needed to validate exists. The target's owning app applies its own `defaultActionTimeout`; the caller's app does not impose its own timeout on a cross-boundary chain. Errors, timeouts, and results propagate back through the same routing path to the originating caller as the rejected or resolved Promise from `executeActionsChain`, with cause information preserved. The routing is a runtime implementation detail: the user-visible API surface is `executeActionsChain` only.
+
+#### Nested-App Bootstrap
+
+**ID**: `cpt-frontx-seq-nested-app-bootstrap`
+
+**Use cases**: `cpt-frontx-usecase-mfe-load`
+
+**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-microfrontend`, `cpt-frontx-actor-runtime`
+
+```mermaid
+sequenceDiagram
+    participant RootApp as Root App
+    participant RootReg as Root Registry
+    participant ParentMfe as Parent MFE (mounts as extension in Root)
+    participant NestedApp as Nested FrontX App (owned by Parent MFE)
+    participant NestedReg as Nested Registry
+    participant LeafMfe as Leaf MFE (extension in Nested)
+
+    RootApp->>RootReg: registerDomain(...) and register Parent MFE as extension
+    RootApp->>ParentMfe: mount via Root's mounter
+    ParentMfe->>NestedApp: createHAI3().use(microfrontends()).build()
+    NestedApp->>NestedReg: own registry / store / mediator / event bus / lifecycle trigger
+    ParentMfe->>NestedReg: registerDomain(nestedDomain, factory) for its OWN domains
+    ParentMfe->>NestedReg: register Leaf MFE entries / extensions
+    ParentMfe->>NestedReg: executeActionsChain(mount Leaf into nestedDomain)
+    NestedReg->>LeafMfe: mount under Parent MFE's ExtensionDomainSlot
+    Note over RootReg,NestedReg: Root Registry never sees nestedDomain or Leaf MFE.<br/>Each registry holds only the extensions registered against ITS app.
+```
+
+**Description**: A Parent MFE that needs to own its own extension domains creates its own FrontX app on mount via the SAME `createHAI3()` primitive the root host uses. The nested app gets its own registry, store, mediator, event bus, and lifecycle trigger — architecturally identical to the root. The Parent MFE registers its own domain schemas and domain instances, registers leaf MFE entries and extensions, and dispatches mount chains against its own registry. The root app's registry sees the Parent MFE only as one mounted extension; the nested app's domains and the leaf MFEs registered under them are invisible to the root. Mount machinery, mount-set state, slice mirroring, and chain validation are entirely per-app: each app independently runs its own diff dispatch and its own cross-validation pass at registration. Cross-app chain delivery between the root and the nested app (when needed) follows the routing described in `cpt-frontx-seq-cross-app-chain-delivery`.
+
 ### 3.7 Database schemas & tables
 
 Not applicable — FrontX is a frontend framework with no server-side database.
@@ -1094,7 +1162,7 @@ Packages are versioned independently within the `0.x` major. Each package can be
 
 1. `themeRegistry` — theme tokens resolved
 2. `mfeRegistryFactory.build()` — screen-set definitions with MFE handlers wired
-3. Domain registration — domain plugins call `registerDomain(declaration, factory)` where `factory` is a concrete `ExtensionDomainImplementationFactory` subclass; its `build(ctx)` instantiates an `ExtensionDomainImplementation` that picks one of the shipped strategies (`Concurrent` / `Optional` / `Exclusive`) and supplies a `ContainerHooks` pure-factory instance scoped to the domain's layout. Root attachment is handled by the per-domain `ExtensionMounter` via `attach`/`detach`, called from `ExtensionDomainSlot` on the React side
+3. Domain registration — domain plugins register their domains with the registry; the registration semantics (factory contract, cardinality choice, cross-validation) are specified in `cpt-frontx-feature-mfe-registry`
 4. Extension registration — MFE extensions registered and loaded
 5. `HAI3Provider` mounts — React tree renders with all contexts available
 

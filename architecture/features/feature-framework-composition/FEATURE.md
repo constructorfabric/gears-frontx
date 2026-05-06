@@ -1,6 +1,6 @@
 # Feature: Framework Composition
 
-<!-- artifact-version: 1.2 -->
+<!-- artifact-version: 1.5 -->
 
 
 <!-- toc -->
@@ -27,6 +27,7 @@
   - [GTS Shared Property Validation](#gts-shared-property-validation)
   - [Base Path Resolution](#base-path-resolution)
   - [Mount-Set Diff Dispatch](#mount-set-diff-dispatch)
+  - [Content-Addressed Extension Discovery](#content-addressed-extension-discovery)
   - [Mock Mode Toggle](#mock-mode-toggle)
 - [4. States (CDSL)](#4-states-cdsl)
   - [MFE Extension Registration State](#mfe-extension-registration-state)
@@ -53,7 +54,7 @@
 
 <!-- /toc -->
 
-- [x] `p1` - **ID**: `cpt-frontx-featstatus-framework-composition`
+- [ ] `p1` - **ID**: `cpt-frontx-featstatus-framework-composition`
 
 - [x] `p2` - `cpt-frontx-feature-framework-composition`
 ---
@@ -288,9 +289,11 @@ Enable host applications to compose a fully-wired FrontX framework instance by a
 
 - [x] `p1` - **ID**: `cpt-frontx-algo-framework-composition-mount-set-diff-dispatch`
 
-Computes the per-domain mount-set delta around an action chain completion and dispatches one reducer call per element of the diff. Replaces the previous scalar before/after compare in `packages/framework/src/plugins/microfrontends/index.ts:137-157` (per ADR `cpt-frontx-adr-domain-implementation-mount-strategies`).
+Computes the per-domain mount-set delta around an action chain completion and dispatches one reducer call per element of the diff (per ADR `cpt-frontx-adr-domain-implementation-mount-strategies`).
 
 `executeActionsChain` is NOT serialized at the domain level — concurrent chains for the same multi-mount domain are permitted. Eventual consistency under interleaving is preserved because the slice reducers are **idempotent** (`addExtensionMounted` is append-if-absent; `removeExtensionMounted` is no-op-if-absent — see `cpt-frontx-dod-framework-composition-mfe-plugin`). Two concurrent chains that both observe `[extB]` in their `added` set produce two `addExtensionMounted({ domainId, extensionId: extB })` dispatches; the first inserts, the second is a no-op — final slice state matches `registry.getMountedExtensions(domainId)`.
+
+**Per-app scope**: Diff dispatch is per-app. Each FrontX app's `mfe` slice is independent of every other app's slice; the snapshots, the set difference, and the reducer dispatches all run against this app's registry and this app's store. Idempotency reasoning applies within one app — concurrent chains within the same app converge on this app's slice. Cross-app effects (e.g., a chain that targets an extension owned by a different app) are routed via internal bridge infrastructure; that routing is single-threaded per chain because chains complete sequentially in the target's owning app. Concurrent chains across app boundaries do not race the slice — each app's slice is its own.
 
 1. [ ] `p1` - Resolve `domainId` from the chain's action target — only mount/unmount actions targeting a registered domain are eligible; other action types are skipped - `inst-mount-diff-resolve-domain`
 2. [ ] `p1` - **BEFORE** invoking the chain: snapshot `before = new Set(registry.getMountedExtensions(domainId))` - `inst-mount-diff-snapshot-before`
@@ -300,6 +303,22 @@ Computes the per-domain mount-set delta around an action chain completion and di
 6. [ ] `p1` - Compute `removed = before \ after` (set difference: elements in `before` not in `after`) - `inst-mount-diff-compute-removed`
 7. [ ] `p1` - **FOR EACH** `extensionId` in `added`: dispatch `addExtensionMounted({ domainId, extensionId })` to the MFE slice — append-if-absent reducer (idempotent under concurrent dispatch) - `inst-mount-diff-dispatch-added`
 8. [ ] `p1` - **FOR EACH** `extensionId` in `removed`: dispatch `removeExtensionMounted({ domainId, extensionId })` to the MFE slice — no-op-if-absent reducer (idempotent under concurrent dispatch) - `inst-mount-diff-dispatch-removed`
+
+---
+
+### Content-Addressed Extension Discovery
+
+- [ ] `p1` - **ID**: `cpt-frontx-algo-framework-composition-content-addressed-discovery`
+
+Reads registered `MfManifest` entities from the GTS runtime store, filters their `extensions[]` by this app's registered-domain-IDs view, and dispatches the matching extension registrations onto this app's `ScreensetsRegistry`. The discovery contract is content-addressed by the extension's `domain` GTS instance ID — an MFE's source-tree location is independent of which runtime owns the target domain.
+
+The plugin's input surface is the GTS runtime store — the same abstraction the framework already consumes for handler resolution per `cpt-frontx-contract-federation-runtime`. Each FrontX app's plugin runs the same filter pass independently against its own registered-domain-IDs view; nested apps query the same GTS runtime store as the root and select the entries their registry owns.
+
+1. [ ] `p1` - At plugin construction, capture references to the GTS runtime store and to the app's `ScreensetsRegistry` instance — both readonly thereafter - `inst-content-addressed-capture`
+2. [ ] `p1` - On each refilter trigger (a new domain registers on this app's registry, OR new `MfManifest` entities are registered into the GTS runtime store), read the current registered-domain-IDs collection from the registry per `cpt-frontx-dod-screenset-registry-registry-contract` (extension discovery surface) - `inst-content-addressed-read-domain-ids`
+3. [ ] `p1` - Query the GTS runtime store for registered `MfManifest` entities; iterate each manifest's `extensions[]` and collect every extension declaration whose `domain` GTS instance ID is present in the registered-domain-IDs collection - `inst-content-addressed-filter`
+4. [ ] `p1` - **FOR EACH** matched extension declaration, dispatch `registerExtension(declaration)` onto this app's registry; registration is idempotent per `cpt-frontx-dod-screenset-registry-registry-contract` (single-owner extension registration), so re-emitting the same declaration after a prior successful registration is a no-op - `inst-content-addressed-dispatch`
+5. [ ] `p1` - Extensions whose `domain` is not present in this app's registered-domain-IDs collection are NOT dispatched — they belong to a different FrontX app whose plugin runs the same filter against its own collection - `inst-content-addressed-skip-foreign`
 
 ---
 
@@ -367,6 +386,8 @@ Tracked in `state.tenant`.
 - [x] `p1` - **ID**: `cpt-frontx-dod-framework-composition-builder`
 
 Host applications can compose a FrontX framework instance by chaining `.use(plugin)` calls on the builder returned by `createHAI3()` and calling `.build()`. The builder resolves plugin dependencies topologically, aggregates all slice/effect/action/registry contributions, creates the Redux store, and returns a `HAI3App` with fully initialized registries and actions. Duplicate plugins (same name) are silently ignored. Circular dependencies throw immediately. Missing dependencies throw in `strictMode` or warn otherwise.
+
+**Per-app boundaries**: `createHAI3()` is the same primitive at every level of the architecture — the root host application and any nested MFE that needs to own extension domains both invoke it identically. Each FrontX app instance produced by `.build()` owns its own registry, store, mediator, event bus, and lifecycle trigger. Architecturally there is no "host"-only path: the root host is simply the outermost FrontX app, and a nested MFE that calls `createHAI3()` becomes another FrontX app peer in the tree, with its own isolated runtime boundary. Cross-app coordination is an internal routing concern of the framework, not a registry-sharing concern.
 
 **API surface**:
 - `createHAI3(config?: HAI3Config): HAI3AppBuilder`
@@ -477,7 +498,7 @@ When the host changes theme or language, the respective plugin propagates the ne
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-framework-composition-mfe-plugin`
 
-The `microfrontends()` plugin accepts `MicrofrontendsConfig` with required `typeSystem: TypeSystemPlugin` and optional `mfeHandlers: MfeHandler[]`. It builds a `MfeRegistry` instance via `mfeRegistryFactory.build({ typeSystem: config.typeSystem, mfeHandlers: config.mfeHandlers })` — the plugin does NOT import or hardcode any specific `TypeSystemPlugin` implementation. It exposes the registry as `app.mfeRegistry`. It registers the `mfe` Redux slice tracking per-extension registration state (`unregistered` | `registering` | `registered` | `error`) and per-domain mount state. The mount-state slot has shape `mountedExtensions: Record<string, string[]>` (per-domain insertion-ordered array of extension IDs). The slice exposes reducers `addExtensionMounted({ domainId, extensionId })` / `removeExtensionMounted({ domainId, extensionId })` and selector `selectMountedExtensions(state, domainId): readonly string[]`. The previous scalar reducers `setExtensionMounted` / `setExtensionUnmounted` and the previous selector `selectMountedExtension` do NOT exist.
+The `microfrontends()` plugin accepts `MicrofrontendsConfig` with required `typeSystem: TypeSystemPlugin` and optional `mfeHandlers: MfeHandler[]`. It builds a `MfeRegistry` instance via `mfeRegistryFactory.build({ typeSystem: config.typeSystem, mfeHandlers: config.mfeHandlers })` — the plugin does NOT import or hardcode any specific `TypeSystemPlugin` implementation. It exposes the registry as `app.mfeRegistry`. It registers the `mfe` Redux slice tracking per-extension registration state (`unregistered` | `registering` | `registered` | `error`) and per-domain mount state. The mount-state slot has shape `mountedExtensions: Record<string, string[]>` (per-domain insertion-ordered array of extension IDs). The slice exposes reducers `addExtensionMounted({ domainId, extensionId })` / `removeExtensionMounted({ domainId, extensionId })` and selector `selectMountedExtensions(state, domainId): readonly string[]`.
 
 **Idempotent reducer contract** (required for safe concurrent diff-dispatch under unserialized action chains):
 
@@ -487,6 +508,14 @@ The `microfrontends()` plugin accepts `MicrofrontendsConfig` with required `type
 These idempotency guarantees combined with the diff-dispatch algorithm produce eventually-consistent slice state under interleaved chains for the same multi-mount domain — the slice always converges to `registry.getMountedExtensions(domainId)`.
 
 The plugin wires MFE lifecycle actions (`loadExtension`, `mountExtension`, `unmountExtension`, `registerExtension`, `unregisterExtension`) into the FrontX actions map. The plugin intercepts `executeActionsChain` completions for mount/unmount actions and runs the mount-set diff dispatch (`cpt-frontx-algo-framework-composition-mount-set-diff-dispatch`): it snapshots `registry.getMountedExtensions(domainId)` before and after each chain, computes per-domain `added` and `removed` sets, and dispatches one `addExtensionMounted` per added element and one `removeExtensionMounted` per removed element.
+
+**Per-app slice scope**: The slice's `mountedExtensions[domainId]` reflects only THIS app's directly-mounted extensions. Each FrontX app owns its own `mfe` slice instance backed by its own store, populated exclusively by the diff dispatch running against its own registry. Cross-app mount visibility does not exist: a nested FrontX app's mounted extensions are not surfaced in any ancestor app's slice, and an ancestor app's mounted extensions are not surfaced in any descendant app's slice. Each app's slice is the authoritative mirror of its own registry's mount sets and nothing else.
+
+**Manifest filtering & dispatch (content-addressed extension discovery)**: at construction the plugin captures readonly references to the GTS runtime store and to its app's `ScreensetsRegistry`. On each refilter trigger — a new domain registers on the app's registry, or new `MfManifest` entities are registered into the GTS runtime store — the plugin queries the GTS runtime store for registered `MfManifest` entities, iterates each manifest's `extensions[]`, and dispatches `registerExtension` onto its app's registry for every entry whose `domain` GTS instance ID is present in the app's registered-domain-IDs collection (per `cpt-frontx-dod-screenset-registry-registry-contract`, extension discovery surface). Dispatch is idempotent per `cpt-frontx-dod-screenset-registry-registry-contract` (single-owner extension registration), so refilter passes that re-observe an already-registered extension produce no state change. The full filter-and-dispatch sequence is enumerated in `cpt-frontx-algo-framework-composition-content-addressed-discovery`. An MFE whose `extensions[]` declares entries targeting domains owned by different runtimes — for example one entry on the root host's screen domain and another on a nested app's widgets domain — reaches each owning registry through this filter, regardless of where the MFE itself lives in the source tree, because each FrontX app's plugin runs the same query against the GTS runtime store and selects only the entries its registry owns.
+
+**Layer boundary (L2 ↔ L4) for MfManifest sourcing**: the plugin's input surface is the GTS runtime store. The source from which `MfManifest` entities are registered into the GTS runtime store is an L4 (host bootstrap) concern and is out of scope for this DoD and for the framework contract — host bootstrap registers the entities before the framework boots. `MfManifest` entities reach the GTS runtime store via a runtime fetch: the host bootstrap (and any nested FrontX app instance) fetches the aggregated `generated-mfe-manifests.json` from a public-asset URL at runtime, then registers each package's `MfManifest` (and its entries / extensions) opaquely into the GTS runtime store — script builds json, json is read at runtime. The L4 transport detail (build-time half — the generation script writing the aggregated manifest to the public-asset path) is documented under `cpt-frontx-fr-manifest-generation-script`; the transport decision is documented in ADR `cpt-frontx-adr-mf2-manifest-discovery`. The eventual backend API swap is a one-line URL change in the host bootstrap fetch (same `mfe.json` shape, different transport). The plugin contract is invariant under that L4 transport choice — it sees only registered `MfManifest` entities in the GTS runtime store.
+
+**`mfe.json` registration order at host bootstrap**: for each `MfManifest` in the aggregated manifest the host bootstrap registers the package's entities into the GTS runtime store in this order — schemas → `MfManifest` entity → MFE-declared `domains[]` → entries → extensions. The `domains[]` step registers each `ExtensionDomain` instance from `MfManifest.domains` opaquely between the `MfManifest` entity and entries; placing the step here ensures that subsequent entry/extension registrations — and the content-addressed extension discovery filter (`cpt-frontx-algo-framework-composition-content-addressed-discovery`) — can resolve their target domain by GTS instance ID against entities already present in the store. `domains[]` is OPTIONAL per MFE: MFEs that do not own `ExtensionDomain` instances omit the field, and the bootstrap iterates an empty list with no side effects. Domain ownership semantics (which FrontX app calls `registerDomain` with the implementation factory) are unchanged by this registration step — host bootstrap only seeds the GTS runtime store, while the owning app picks up the domain instance by GTS instance ID and takes ownership through `cpt-frontx-flow-screenset-registry-register-domain`.
 
 **Domain constants** (GTS instance IDs):
 - `HAI3_SCREEN_DOMAIN` — main content area
@@ -500,6 +529,7 @@ The plugin wires MFE lifecycle actions (`loadExtension`, `mountExtension`, `unmo
 - `cpt-frontx-state-framework-composition-mfe-registration`
 - `cpt-frontx-state-framework-composition-mfe-mount`
 - `cpt-frontx-algo-framework-composition-mount-set-diff-dispatch`
+- `cpt-frontx-algo-framework-composition-content-addressed-discovery`
 
 **Covers (PRD)**:
 - `cpt-frontx-fr-mfe-plugin`
