@@ -1,192 +1,137 @@
-# Contributing to HAI3 Dev Kit
+# Contributing to Cyber Ware FrontX
 
 > **TARGET AUDIENCE:** Humans
 > **PURPOSE:** Contribution guidelines and workflow for developers
 
-Thank you for your interest in contributing to HAI3 Dev Kit! This document provides guidelines and information for contributors.
+## Branching Model (Gitflow)
 
-## Quick Start
+| Branch | Lifecycle | Purpose | Publishes to |
+|--------|-----------|---------|-------------|
+| `main` | permanent | Current stable major | `latest` npm dist-tag |
+| `develop` | permanent | Active development | `alpha` npm dist-tag |
+| `release/X.Y.Z` | short-lived | Release preparation (from develop → main) | `next` npm dist-tag |
+| `release/vN` | long-lived | Maintenance line for major version N | `vN` npm dist-tag (e.g. `v1`) |
+| `feature/*` | short-lived | Feature branches (from develop) | — |
+| `hotfix/*` | short-lived | Hotfix branches (from main → main + develop) | — |
 
-### Prerequisites
+### Standard Workflow
 
-- **Node.js** v25.1.0+
-- **Git** for version control
+1. Create a `feature/*` branch from `develop`
+2. Make changes, commit, push, open PR targeting `develop`
+3. After review and merge, CI publishes alpha versions
+4. When ready for release, create `release/X.Y.Z` from `develop`
+5. Finalize version bumps, merge `release/X.Y.Z` into `main`
+6. CI publishes stable versions, merge back to `develop`
 
-### Development Setup
+### Previous-Major Maintenance
 
-TODO
+When a new major is released, the previous major gets a long-lived `release/vN` branch:
 
-### Workspace Layout
+1. When cutting major v2, create `release/v1` from the last v1 commit on `main`
+2. To fix a bug in v1: branch `hotfix/*` from `release/v1`
+3. PR targets `release/v1` → merge → CI publishes with `--tag v1`
+4. If the fix also applies to v2, cherry-pick to `develop` or `main`
 
-TODO
+Users install old majors explicitly: `npm install @cyberfabric/react@v1`
 
-## Development Workflow
+## Versioning
 
-### 1. Create a Feature Branch
+The project is **pre-1.0** — backward compatibility is not guaranteed.
+
+| Version format | Channel | Branch | Meaning |
+|---------------|---------|--------|---------|
+| `0.y.z-alpha.N` | `alpha` | `develop` | Development snapshot |
+| `0.y.z-rc.N` | `next` | `release/X.Y.Z` | Release candidate |
+| `0.y.z` | `latest` | `main` | Stable release |
+| `N.y.z` | `vN` | `release/vN` | Previous major maintenance |
+
+- **Minor bump** (`0.1.x` → `0.2.x`) — may contain breaking changes
+- **Patch bump** (`0.1.0` → `0.1.1`) — non-breaking fixes/features
+- **Alpha increment** (`alpha.0` → `alpha.1`) — each merge to develop
+
+## Publishing
+
+Publishing is automated via CI/CD. On push to a publishing branch, CI detects version changes and publishes affected packages.
+
+### Branch-to-Channel Mapping
+
+| Branch | Dist-tag | Trigger |
+|--------|----------|---------|
+| `develop` | `alpha` | Every merge |
+| `release/X.Y.Z` | `next` | RC prep merges |
+| `main` | `latest` | Release merges |
+| `release/vN` | `vN` | Maintenance patches |
+
+### Publish Order
+
+Packages are published in dependency order:
+1. L1 SDK: `@cyberfabric/state`, `@cyberfabric/screensets`, `@cyberfabric/api`, `@cyberfabric/i18n`
+2. L2 Framework: `@cyberfabric/framework`
+3. L3 React: `@cyberfabric/react`
+4. Standalone: `@cyberfabric/studio`, `@cyberfabric/cli`
+
+Each package is versioned independently within a single major version.
+
+## Package Scope
+
+- npm scope: `@cyberfabric/*`
+- CLI binary: `frontx`
+- Config file: `frontx.config.json`
+
+## Development Setup
 
 ```bash
-git checkout -b feature/your-feature-name
-```
-
-Use descriptive branch names:
-- `feature/user-authentication`
-- `fix/memory-leak-in-router`
-- `docs/api-gateway-examples`
-- `refactor/entity-to-contract-conversions`
-
-### 2. Make Your Changes
-
-Follow the coding standards and patterns described below.
-
-### 3. Run Quality Checks
-
-Minimum checks before opening a PR:
-
-```bash
+git clone https://github.com/cyberfabric/frontx.git
+cd frontx
 npm ci
+npm run build:packages
+npm run dev
+```
+
+## Building
+
+```bash
+# Build all packages in layer order
+npm run build:packages
+
+# Build specific layer
+npm run build:packages:sdk
+npm run build:packages:framework
+npm run build:packages:react
+npm run build:packages:studio
+npm run build:packages:cli
+```
+
+## Validation
+
+```bash
+# Repo-wide type checking (host app + workspace packages + nested MFEs)
+npm run type-check:all
+
+# Host app only (`tsconfig.json`; nested MFEs and package test tsconfigs run separately)
+npm run type-check
+
+# Linting
+npm run lint
+
+# Architecture checks
 npm run arch:check
+npm run arch:deps
 ```
 
-If your change touches `packages/cli`, `packages/cli/template-sources`, or CLI-related workflows, also run:
+### Unit tests
+
+Run the full suite from the repo root with the monorepo fan-out runner ([`scripts/run-monorepo-unit-tests.mjs`](scripts/run-monorepo-unit-tests.mjs)):
 
 ```bash
-npm run build --workspace=@hai3/cli
-npm run test:e2e:pr --workspace=@hai3/cli
+npm run test:unit
+npm run test:unit:watch
 ```
 
-### 4. Commit Changes
+The host app (`src/app`) and each workspace or nested MFE that defines `test:unit` is exercised by that command. For conventions, CI expectations, and narrowing runs to a single project or path, see [`.ai/project/targets/UNIT_TESTING.md`](.ai/project/targets/UNIT_TESTING.md).
 
-Follow a structured commit message format:
+**Internal scripts (do not call directly):** Root [`package.json`](package.json) defines `_test:unit:host` and `_test:unit:host:watch` for the host app only; they exist so the monorepo runner can invoke Vitest where there is no workspace package. Agents and CI should use `npm run test:unit` / `test:unit:watch` instead.
 
-```text
-<type>(<module>): <description>
-```
+## License
 
-- `<type>`: change category (see table below)
-- `<module>` (optional): the area touched (e.g., api_ingress, modkit, ecommerce)
-- `<description>`: concise, imperative summary
-
-Accepted commit types:
-
-| Type       | Meaning                                                     |
-|------------|-------------------------------------------------------------|
-| feat       | A new feature                                               |
-| fix        | A bug fix                                                   |
-| tech       | A technical improvement                                     |
-| cleanup    | Code cleanup                                                |
-| refactor   | Code restructuring without functional changes               |
-| test       | Adding or modifying tests                                   |
-| docs       | Documentation updates                                       |
-| style      | Code style changes (whitespace, formatting, etc.)           |
-| chore      | Misc tasks (deps, tooling, scripts)                         |
-| perf       | Performance improvements                                    |
-| ci         | CI/CD configuration changes                                 |
-| build      | Build system or dependency changes                          |
-| revert     | Reverting a previous commit                                 |
-| security   | Security fixes                                              |
-| breaking   | Backward incompatible changes                               |
-
-Examples:
-
-```text
-feat(auth): add OAuth2 support for login
-fix(ui): resolve button alignment issue on mobile
-tech(database): add error abstraction for database and API errors
-refactor(database): optimize query execution
-test(api): add unit tests for user authentication
-docs(readme): update installation instructions
-style(css): apply consistent spacing in stylesheet
-```
-
-Best practices:
-
-- Keep the title concise (ideally ≤ 50 chars)
-- Use imperative mood (e.g., "Fix bug", not "Fixed bug")
-- Make commits atomic (one logical change per commit)
-- Add details in the body when necessary (what/why, not how)
-- For breaking changes, either use `feat!:`/`fix!:` or include a `BREAKING CHANGE:` footer
-
-New functionality development:
-
-- Follow the repository structure in `README.md`
-- Prefer soft-deletion for entities; provide hard-deletion with retention routines
-- Include unit tests (and integration tests when relevant)
-
-### 5. Push and Create PR
-
-```bash
-git push origin feature/your-feature-name
-```
-
-Then create a Pull Request on GitHub with:
-- Clear title and description
-- Reference to related issues
-- Test coverage information
-- Breaking changes (if any)
-
-### Required Status Checks on `main`
-
-Configure branch protection for `main` to require these checks before merge:
-
-- `validate`
-- `cli-pr-e2e`
-
-Path-scoped workflows such as AI guideline validation can stay non-required, because they do not run for every PR.
-
-## Publishing Packages
-
-HAI3 packages are **automatically published** to NPM when a PR is merged to the `main` branch. No manual publishing is required.
-
-### How It Works
-
-1. **Version Bump**: Bump the version in `package.json` as part of your PR
-2. **PR Merge**: When merged to `main`, the workflow detects version changes (works with all merge strategies: merge, squash, rebase)
-3. **NPM Check**: Skips versions that already exist on NPM (safe for re-runs)
-4. **Build**: All packages are built via `npm run build:packages` before publishing
-5. **Publish**: Packages are published in dependency order with retry logic:
-   - **Layer 1 (SDK)**: `@hai3/state`, `@hai3/screensets`, `@hai3/api`, `@hai3/i18n`
-   - **Layer 2 (Framework)**: `@hai3/framework`
-   - **Layer 3 (React)**: `@hai3/react`
-   - **Layer 4 (Tools)**: `@hai3/studio`
-   - **Layer 5 (CLI)**: `@hai3/cli`
-
-### Version Bumping Guidelines
-
-Use semantic versioning for version bumps:
-
-```bash
-# Patch release (0.2.0-alpha.1 -> 0.2.0-alpha.2)
-npm version prerelease --preid=alpha
-
-# Minor release (0.2.0 -> 0.3.0)
-npm version minor
-
-# Major release (0.2.0 -> 1.0.0)
-npm version major
-```
-
-**Important**: During alpha stage, use prerelease versions (e.g., `0.2.0-alpha.X`).
-
-### Publishing Multiple Packages
-
-If your changes affect multiple packages, bump versions for all affected packages in the same PR. The workflow will publish them in the correct dependency order automatically.
-
-### NPM Token Setup (Maintainers Only)
-
-The workflow requires an `NPM_TOKEN` secret configured in GitHub Actions:
-
-1. Generate an NPM automation token at npmjs.com (organization-level recommended)
-2. Add it as a GitHub Actions secret named `NPM_TOKEN`
-3. Token should have publish permissions for `@hai3/*` packages
-
-### Troubleshooting
-
-**Version Already Exists**: The workflow skips versions that already exist on NPM and logs "SKIPPING". This is expected behavior - simply bump to the next version if needed.
-
-**Build Failure**: If `npm run build:packages` fails, the workflow stops before publishing. Check the build logs, fix the issue locally, and create a new PR.
-
-**Publish Failure**: The workflow retries each publish 3 times with exponential backoff (5s, 10s, 20s delays). If all retries fail, check the workflow logs and re-run after fixing the issue.
-
-**No Packages Published**: If your PR had no version changes, the workflow completes successfully with "No packages with version changes to publish."
-
-**Workflow Summary**: After each run, check the GitHub Actions summary for a list of published and skipped packages.
+Apache-2.0
