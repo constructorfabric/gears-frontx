@@ -23,21 +23,12 @@ export default defineConfig({
   plugins: [
     react(),
     federation({
-      name: 'demoMfe',
+      name: 'widgetsFixtureB',
       filename: 'remoteEntry.js',
       exposes: {
-        './lifecycle-helloworld': './src/lifecycle-helloworld.tsx',
-        './lifecycle-profile': './src/lifecycle-profile.tsx',
-        './lifecycle-theme': './src/lifecycle-theme.tsx',
-        './lifecycle-uikit': './src/lifecycle-uikit.tsx',
-        './lifecycle-widgets-host': './src/lifecycle-widgets-host.tsx',
+        './lifecycle': './src/lifecycle.tsx',
       },
-      // Empty shared config — MF 2.0's shared dep mechanism is bypassed.
-      // Shared deps are externalized via rollupOptions.external and provided
-      // at runtime by the handler's bare-specifier rewriting.
       shared: {},
-      // mf-manifest.json must be generated alongside remoteEntry.js so that
-      // MfeHandlerMF can discover expose chunk paths without regex-parsing the bundle.
       manifest: true,
     }),
     frontxMfGts(),
@@ -48,8 +39,6 @@ export default defineConfig({
     minify: true,
     cssCodeSplit: true,
     rollupOptions: {
-      // Preserve bare specifiers for shared deps in the output chunks.
-      // The handler rewrites these to blob URLs at runtime.
       external: sharedDeps,
     },
   },

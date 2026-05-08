@@ -5,12 +5,11 @@
  * Uses local shadcn/ui Sidebar components for proper styling and collapsible behavior.
  */
 
-import React, { useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   useAppSelector,
   useHAI3,
-  useDomainExtensions,
-  selectMountedExtension,
+  useMountedExtensions,
   eventBus,
   HAI3_ACTION_MOUNT_EXT,
   HAI3_SCREEN_DOMAIN,
@@ -41,10 +40,28 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
 
   const collapsed = menuState?.collapsed ?? false;
 
-  const extensions = useDomainExtensions(HAI3_SCREEN_DOMAIN) as ScreenExtension[];
-  const activeExtensionId = useAppSelector(
-    (state) => selectMountedExtension(state, HAI3_SCREEN_DOMAIN)
-  );
+  // Currently-mounted screen extension (subscribes to store changes; no polling).
+  // Index 0 is meaningful because the host registers the screen domain with
+  // ExclusiveMountStrategy in `bootstrap.ts` (single mount per domain).
+  const mountedScreens = useMountedExtensions(HAI3_SCREEN_DOMAIN);
+  const mountedId = mountedScreens[0]?.id;
+
+  const [extensions, setExtensions] = useState<ScreenExtension[]>([]);
+
+  useEffect(() => {
+    if (!mfeRegistry) return;
+
+    const refresh = () => {
+      const screenExts = mfeRegistry.getExtensionsForDomain(HAI3_SCREEN_DOMAIN) as ScreenExtension[];
+      const sorted = screenExts
+        .sort((a, b) => (a.presentation.order ?? 999) - (b.presentation.order ?? 999));
+      setExtensions(sorted);
+    };
+
+    refresh();
+    const interval = setInterval(refresh, 500);
+    return () => clearInterval(interval);
+  }, [mfeRegistry]);
 
   const handleToggleCollapse = () => {
     eventBus.emit('layout/menu/collapsed', { collapsed: !collapsed });
@@ -79,25 +96,25 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
         <SidebarMenu>
           {extensions.length === 0 ? (
             <div className="px-3 py-4 text-sm text-muted-foreground">
-              No screen extensions registered.
+              No screens yet. Create a screenset with <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">hai3 screenset create</code> or add MFE packages.
             </div>
           ) : (
-            extensions.map((extension) => {
-              const { label, icon } = extension.presentation;
-              const isActive = extension.id === activeExtensionId;
+            extensions.map((ext) => {
+              const isActive = ext.id === mountedId;
+              const pres = ext.presentation;
               return (
-                <SidebarMenuItem key={extension.id}>
+                <SidebarMenuItem key={ext.id}>
                   <SidebarMenuButton
                     isActive={isActive}
-                    onClick={() => handleMenuItemClick(extension.id)}
-                    tooltip={collapsed ? label : undefined}
+                    onClick={() => handleMenuItemClick(ext.id)}
+                    tooltip={collapsed ? pres.label : undefined}
                   >
-                    {icon && (
+                    {pres.icon && (
                       <SidebarMenuIcon>
-                        <Icon icon={icon} className="w-4 h-4" />
+                        <Icon icon={pres.icon} className="w-4 h-4" />
                       </SidebarMenuIcon>
                     )}
-                    <span>{label}</span>
+                    <span>{pres.label}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               );

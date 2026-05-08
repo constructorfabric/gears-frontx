@@ -1,0 +1,141 @@
+{
+  "manifest": {
+    "id": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.widgets.fixture_a.manifest.v1",
+    "remoteEntry": "http://localhost:3201/assets/remoteEntry.js",
+    "metaData": {
+      "publicPath": "/",
+      "name": "widgetsFixtureA",
+      "type": "app",
+      "buildInfo": {
+        "buildVersion": "1.0.0",
+        "buildName": "widgetsFixtureA"
+      },
+      "remoteEntry": {
+        "name": "remoteEntry.js",
+        "path": "",
+        "type": "module"
+      },
+      "globalName": "widgetsFixtureA"
+    },
+    "shared": [
+      {
+        "name": "react",
+        "version": "19.2.4",
+        "chunkPath": "shared/react.js",
+        "unwrapKey": null
+      },
+      {
+        "name": "react-dom",
+        "version": "19.2.4",
+        "chunkPath": "shared/react-dom.js",
+        "unwrapKey": null
+      },
+      {
+        "name": "@cyberfabric/react",
+        "version": "0.2.0-alpha.2",
+        "chunkPath": "shared/cyberfabric-react.js",
+        "unwrapKey": null
+      },
+      {
+        "name": "@cyberfabric/framework",
+        "version": "0.2.0-alpha.2",
+        "chunkPath": "shared/cyberfabric-framework.js",
+        "unwrapKey": null
+      },
+      {
+        "name": "@cyberfabric/state",
+        "version": "0.2.0-alpha.1",
+        "chunkPath": "shared/cyberfabric-state.js",
+        "unwrapKey": null
+      },
+      {
+        "name": "@cyberfabric/screensets",
+        "version": "0.2.0-alpha.3",
+        "chunkPath": "shared/cyberfabric-screensets.js",
+        "unwrapKey": null
+      },
+      {
+        "name": "@cyberfabric/api",
+        "version": "0.2.0-alpha.2",
+        "chunkPath": "shared/cyberfabric-api.js",
+        "unwrapKey": null
+      },
+      {
+        "name": "@cyberfabric/i18n",
+        "version": "0.2.0-alpha.0",
+        "chunkPath": "shared/cyberfabric-i18n.js",
+        "unwrapKey": null
+      },
+      {
+        "name": "@tanstack/react-query",
+        "version": "5.99.0",
+        "chunkPath": "shared/tanstack-react-query.js",
+        "unwrapKey": null
+      },
+      {
+        "name": "@reduxjs/toolkit",
+        "version": "2.11.2",
+        "chunkPath": "shared/reduxjs-toolkit.js",
+        "unwrapKey": null
+      },
+      {
+        "name": "react-redux",
+        "version": "9.2.0",
+        "chunkPath": "shared/react-redux.js",
+        "unwrapKey": null
+      }
+    ],
+    "name": "widgetsFixtureA"
+  },
+  "schemas": [
+    {
+      "$id": "gts://gts.hai3.mfes.comm.action.v1~hai3.widgets.test.widget_ping.v1~",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$comment": "Derived Action type for the duplicate-entry-instance stress test. Inherits the base Action contract (type, target, payload, timeout, required) via allOf — no fields are added or narrowed. The mediator routes by (extensionInstanceId, actionType) so an action targeted at one instance does not reach another; per-entry validation enforces that only entries declaring this action in their actions[] (fixture-a's entry) accept it.",
+      "allOf": [
+        {
+          "$ref": "gts://gts.hai3.mfes.comm.action.v1~"
+        }
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.widgets.fixture_a.entry.v1",
+      "requiredProperties": [],
+      "actions": [
+        "gts.hai3.mfes.comm.action.v1~hai3.widgets.test.widget_ping.v1~"
+      ],
+      "domainActions": [
+        "gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~",
+        "gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~"
+      ],
+      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.widgets.fixture_a.manifest.v1",
+      "exposedModule": "./lifecycle",
+      "exposeAssets": {
+        "js": {
+          "async": [],
+          "sync": [
+            "assets/lifecycle-CYBN1MNT.js"
+          ]
+        },
+        "css": {
+          "async": [],
+          "sync": []
+        }
+      }
+    }
+  ],
+  "extensions": [
+    {
+      "id": "gts.hai3.mfes.ext.extension.v1~hai3.widgets.fixture_a.widget_alpha.v1",
+      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.widgets.area.main.v1",
+      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.widgets.fixture_a.entry.v1"
+    },
+    {
+      "id": "gts.hai3.mfes.ext.extension.v1~hai3.widgets.fixture_a.widget_beta.v1",
+      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.widgets.area.main.v1",
+      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.widgets.fixture_a.entry.v1"
+    }
+  ]
+}

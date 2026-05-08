@@ -6,8 +6,10 @@
  * MFE Manifest Generation Script
  *
  * Reads the enriched mfe.json produced by the frontx-mf-gts Vite plugin for
- * each MFE package and generates a TypeScript module consumed by the host
- * application's bootstrap.
+ * each MFE package and writes the aggregated manifest to a public asset
+ * (`public/generated-mfe-manifests.json`) served by Vite at the runtime URL
+ * `/generated-mfe-manifests.json`. Every FrontX app instance (root host AND
+ * any nested app) reads it from that URL at runtime.
  *
  * The enriched mfe.json already contains all required data:
  * - manifest.metaData: publicPath, remoteEntry, buildInfo from mf-manifest.json
@@ -19,7 +21,12 @@
  *   1. Read mfe.json — enriched by the build plugin
  *   2. Inject resolved publicPath (overrides build-time placeholder)
  *   3. Copy shared dep `chunkPath` entries unchanged from the enriched manifest
- *   4. Map entries to MfeEntryMF shape with manifest reference and exposeAssets
+ *   4. Map entries to MfeEntryMF shape with the resolved MfManifest object
+ *      inlined into each entry's `manifest` field (the schema accepts both
+ *      string ID and inline object; inline removes the need for any consumer
+ *      to spread/override the entry to attach the manifest reference at
+ *      registration time, so consumers can pass entries opaquely to
+ *      `typeSystem.register()`)
  *
  * Usage:
  *   npx tsx scripts/generate-mfe-manifests.ts [--base-url <url>]
@@ -80,6 +87,16 @@ interface RawSchema {
   [key: string]: unknown;
 }
 
+interface RawDomain {
+  id: string;
+  sharedProperties: string[];
+  actions: string[];
+  extensionsActions: string[];
+  defaultActionTimeout: number;
+  lifecycleStages: string[];
+  extensionsLifecycleStages: string[];
+}
+
 interface RawManifest {
   id: string;
   name: string;
@@ -92,6 +109,7 @@ interface RawManifest {
 /** Enriched mfe.json shape produced by the frontx-mf-gts Vite plugin. */
 interface RawEnrichedMfeJson {
   manifest: RawManifest;
+  domains?: RawDomain[];
   entries: RawEntry[];
   extensions: RawExtension[];
   schemas?: RawSchema[];
@@ -134,13 +152,14 @@ interface OutMfeEntryMF {
   optionalProperties?: string[];
   actions: string[];
   domainActions: string[];
-  manifest: string;
+  manifest: OutMfManifest;
   exposedModule: string;
   exposeAssets: OutMfManifestAssets;
 }
 
 interface OutMfeManifestConfig {
   manifest: OutMfManifest;
+  domains?: RawDomain[];
   entries: OutMfeEntryMF[];
   extensions: RawExtension[];
   schemas?: RawSchema[];
@@ -197,10 +216,11 @@ class ManifestGenerator {
     const publicPath = this.resolvePublicPath(mfeJson, packageDir);
 
     const outManifest = this.buildManifest(mfeJson.manifest, publicPath);
-    const outEntries = this.buildEntries(mfeJson.entries, outManifest.id, packageDir);
+    const outEntries = this.buildEntries(mfeJson.entries, outManifest, packageDir);
 
     return {
       manifest: outManifest,
+      ...(mfeJson.domains !== undefined && { domains: mfeJson.domains }),
       entries: outEntries,
       extensions: mfeJson.extensions,
       ...(mfeJson.schemas !== undefined && { schemas: mfeJson.schemas }),
@@ -304,7 +324,7 @@ class ManifestGenerator {
 
   private buildEntries(
     entries: RawEntry[],
-    manifestId: string,
+    outManifest: OutMfManifest,
     packageDir: string
   ): OutMfeEntryMF[] {
     return entries.map((entry) => {
@@ -321,7 +341,7 @@ class ManifestGenerator {
         requiredProperties: entry.requiredProperties,
         actions: entry.actions,
         domainActions: entry.domainActions,
-        manifest: manifestId,
+        manifest: outManifest,
         exposedModule: entry.exposedModule,
         exposeAssets: {
           js: {
@@ -362,7 +382,7 @@ function parseArgs(argv: string[]): { baseUrl: string | null } {
 const { baseUrl } = parseArgs(process.argv.slice(2));
 
 const MFE_PACKAGES_DIR = join(process.cwd(), 'src/mfe_packages');
-const OUTPUT_FILE = join(process.cwd(), 'src/app/mfe/generated-mfe-manifests.json');
+const OUTPUT_FILE = join(process.cwd(), 'public/generated-mfe-manifests.json');
 
 try {
   new ManifestGenerator(MFE_PACKAGES_DIR, OUTPUT_FILE, baseUrl).run();

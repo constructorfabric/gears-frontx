@@ -693,15 +693,20 @@ describe('Bridge Implementation', () => {
         expect(calls[0].payload).toEqual(expectedPayload);
       });
 
-      it('should complete chain as no-op when no handler is registered for the extension target', async () => {
-        // The mediator treats a missing handler as a successful no-op (see executeAction internals).
+      it('should fail the chain with a recorded "No handler found" error when no handler is registered for the extension target (cpt-frontx-dod-screenset-registry-missing-handler-fallback)', async () => {
+        // Per cpt-frontx-dod-screenset-registry-missing-handler-fallback the
+        // mediator now treats a missing-handler step as FAILED rather than as
+        // a silent no-op. With no `fallback` chain present the recorded error
+        // surfaces via `result.error`; the mediator itself does NOT throw.
         const result = await mediator.executeActionsChain({
           action: { type: ACTION_TYPE, target: EXTENSION_ID },
         });
 
-        // Chain completes — the action is a no-op, not an error.
-        expect(result.completed).toBe(true);
-        expect(result.path).toContain(ACTION_TYPE);
+        expect(result.completed).toBe(false);
+        expect(result.error).toBe(
+          `No handler found for target '${EXTENSION_ID}' and action type '${ACTION_TYPE}'`
+        );
+        expect(result.path).toEqual([ACTION_TYPE]);
       });
     });
 
@@ -830,6 +835,19 @@ describe('Bridge Implementation', () => {
       });
 
       it('lifecycle action (mount_ext) targeting domain passes GTS validation', async () => {
+        // Register a domain-side mount_ext handler so the chain progresses past
+        // GTS validation AND past handler resolution (the test's intent is to
+        // verify the GTS x-gts-ref step accepts domain targets for lifecycle
+        // actions; without a registered handler the mediator now correctly
+        // fails the chain per cpt-frontx-dod-screenset-registry-missing-handler-fallback,
+        // which would mask the GTS-pass we want to assert).
+        const mountHandler = new SpyHandler();
+        gtsMediator.registerHandler(
+          SCREEN_DOMAIN_ID,
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+          mountHandler
+        );
+
         const result = await gtsMediator.executeActionsChain({
           action: {
             type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
@@ -840,6 +858,7 @@ describe('Bridge Implementation', () => {
 
         // mount_ext targeting domain passes GTS. The domain handler handles it.
         expect(result.completed).toBe(true);
+        expect(mountHandler.getCalls()).toHaveLength(1);
       });
     });
   });
