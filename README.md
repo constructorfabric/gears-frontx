@@ -1,12 +1,12 @@
 > VERSION: 0.1.0, early preview, do not use in production, overall scope completion ~30%
 
-# FrontX - AI-Optimized UI Development Kit for Modern SaaS Applications
+# Cyber Ware FrontX - AI-Optimized UI Development Kit for Modern SaaS Applications
 
 ![Badge](./.github/badgeHN.svg)
 
 
 
-**FrontX** is a **UI development kit** for modern SaaS applications - heavily optimized for **AI-driven UI generation** with minimal human assistance.
+**FrontX**, part of Cyber Ware, is a **UI development kit** for modern SaaS applications - heavily optimized for **AI-driven UI generation** with minimal human assistance.
 
 It provides a structured, multi-layered framework that enables **AI systems and humans to collaborate** on building, evolving, and refining complex user interfaces - from drafts and mockups to production-ready screens.
 
