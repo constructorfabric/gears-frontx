@@ -1,17 +1,17 @@
 > VERSION: 0.1.0, early preview, do not use in production, overall scope completion ~30%
 
-# HAI3 - AI-Optimized UI Development Kit for Modern SaaS Applications
+# Cyber Ware FrontX - AI-Optimized UI Development Kit for Modern SaaS Applications
 
 ![Badge](./.github/badgeHN.svg)
 
 
 
-**HAI3** is a **UI development kit** for modern SaaS applications - heavily optimized for **AI-driven UI generation** with minimal human assistance.
+**FrontX**, part of Cyber Ware, is a **UI development kit** for modern SaaS applications - heavily optimized for **AI-driven UI generation** with minimal human assistance.
 
 It provides a structured, multi-layered framework that enables **AI systems and humans to collaborate** on building, evolving, and refining complex user interfaces - from drafts and mockups to production-ready screens.
 
 
-## Why HAI3?
+## Why FrontX?
 
 Building modern control panels for cloud service providers, corporate software vendors, and SaaS vendors requires solving complex challenges:
 
@@ -23,14 +23,14 @@ Building modern control panels for cloud service providers, corporate software v
 - **Flexible Build Options**: Web, desktop, on-premise & cloud from a single codebase
 - **High Customization**: Adjust control panel elements, views, dashboards & automation workflows
 
-HAI3 addresses these challenges while enabling **AI-assisted development** to accelerate UI creation by 10x.
+FrontX addresses these challenges while enabling **AI-assisted development** to accelerate UI creation by 10x.
 
 
 ## The Mission
 
-HAI3's mission is to **democratize powerful in-product UI customization and development** — making it accessible without deep programming expertise.
+FrontX's mission is to **democratize powerful in-product UI customization and development** — making it accessible without deep programming expertise.
 
-Traditionally, advanced UI development capabilities are available only to SaaS vendors and their engineering teams. HAI3 changes this by providing a framework that is:
+Traditionally, advanced UI development capabilities are available only to SaaS vendors and their engineering teams. FrontX changes this by providing a framework that is:
 
 - **As powerful as traditional cloud-side UI development** — offering full flexibility and control
 - **Accessible without deep technical knowledge** — no need to master complex programming languages and frameworks
@@ -43,12 +43,12 @@ This empowers:
 - **Non-technical stakeholders** (product managers, designers, business analysts) to participate directly in UI creation
 - **Rapid iteration** through AI-assisted development workflows
 
-By combining structured conventions, AI-optimized patterns, and a layered architecture, HAI3 bridges the gap between no-code simplicity and full-code flexibility—making enterprise-grade UI development accessible to everyone.
+By combining structured conventions, AI-optimized patterns, and a layered architecture, FrontX bridges the gap between no-code simplicity and full-code flexibility—making enterprise-grade UI development accessible to everyone.
 
 
 ## Target Audience
 
-HAI3 dev kit is designed for:
+FrontX dev kit is designed for:
 
 - **Cloud SaaS Service Providers** requiring multitenant architectures with tenant isolation and customization
 - **Service Vendors** developing white-label solutions with per-customer branding and feature sets
@@ -61,20 +61,20 @@ HAI3 dev kit is designed for:
 
 ## Overview
 
-The HAI3 Dev Kit introduces a new paradigm in UI development where product management and designers can work with AI to create and polish user interfaces and engineers can take the generated code and turn it into production-ready code.
+The FrontX Dev Kit introduces a new paradigm in UI development where product management and designers can work with AI to create and polish user interfaces and engineers can take the generated code and turn it into production-ready code.
 
-With HAI3, UI development becomes a **three-layer process** where AI and humans co-create interfaces:
+With FrontX, UI development becomes a **three-layer process** where AI and humans co-create interfaces:
 - AI generates **draft** layouts using standardized prompts and patterns.
 - Designers and PMs refine **mockups** with lightweight iteration over drafts.
 - Engineers finalize **production screens** with reusable components taking the mockups as a starting point.
 
-HAI3 provides the visual structure (menu, header, footer, sidebars, main view), defines source code layout conventions, microfrontend engine, customizable type system, and a screen-set switcher ensuring that generated screens reuse needed components libraries and visual styles. It also provides a structured prompting system and AI generation guide set that enables consistent, parameterized UI generation via LLMs.
+FrontX provides the visual structure (menu, header, footer, sidebars, main view), defines source code layout conventions, microfrontend engine, customizable type system, and a screen-set switcher ensuring that generated screens reuse needed components libraries and visual styles. It also provides a structured prompting system and AI generation guide set that enables consistent, parameterized UI generation via LLMs.
 
 ---
 
-## Key HAI3 Use-cases and Values
+## Key FrontX Use-cases and Values
 
-The HAI3 Dev Kit is built on top of the following key values below allowing it to be used for different usecases starting from a single desktop application to multitenant and mulit-user SaaS  control panel development:
+The FrontX Dev Kit is built on top of the following key values below allowing it to be used for different usecases starting from a single desktop application to multitenant and mulit-user SaaS  control panel development:
 
 - **V#1** - Human-Configurable UI-Core - layout, styles, build targets
 - **V#2** - Layout-Safe Screen Generation - AI/Human code separation
@@ -89,7 +89,7 @@ The HAI3 Dev Kit is built on top of the following key values below allowing it t
 
 See [MANIFEST.md](architecture/PRD.md) for detailed descriptions of each value.
 
-HAI3 is structured around **three main projections**, each addressing a critical dimension of the development lifecycle.
+FrontX is structured around **three main projections**, each addressing a critical dimension of the development lifecycle.
 
 ### Projection #I - Assets
 
@@ -99,7 +99,7 @@ HAI3 is structured around **three main projections**, each addressing a critical
 | **2. Prompts & Guidelines** | A structured prompting system and AI generation guide set that enables consistent, parameterized UI generation via LLMs. |
 | **3. Build System** | Flexible build pipeline that can produce Web apps or Electron apps, configure included screen-sets, and pull screens from multiple repositories, and also build the mock API servers automatically. |
 
-Each HAI3 project includes these three assets to ensure **repeatable, automatable, and composable** UI generation workflows.
+Each FrontX project includes these three assets to ensure **repeatable, automatable, and composable** UI generation workflows.
 
 ---
 
@@ -109,7 +109,7 @@ The UI Core is built to host **three categories of screen-sets**, corresponding 
 
 | Category | Purpose | Description |
 |-----------|----------|-------------|
-| **1. Drafts** | AI-generated layouts | Automatically created by AI agents using HAI3 prompt sets, rules and conventions. Multiple draft sets can coexist (e.g., per PM or feature group). |
+| **1. Drafts** | AI-generated layouts | Automatically created by AI agents using FrontX prompt sets, rules and conventions. Multiple draft sets can coexist (e.g., per PM or feature group). |
 | **2. Mockups** | Semi-refined screens | Converted from drafts when human designers or PMs start refining visual and interaction details. |
 | **3. Production Screens** | Finalized versions | Human-polished mockups integrated into production builds. |
 
@@ -119,7 +119,7 @@ Each category lives in its own folder and is accessible via the **screen-set swi
 
 ### Projection #III - UI Core Layers
 
-HAI3’s **UI Core** consists of three architectural layers designed for composability and reuse.
+FrontX’s **UI Core** consists of three architectural layers designed for composability and reuse.
 
 | Layer | Description |
 |--------|-------------|
@@ -133,7 +133,7 @@ The combination of these layers allows developers to **compose UI experiences** 
 
 ## AI + Human Collaboration Model
 
-HAI3 defines a **three-stage development workflow** that maximizes AI efficiency while maintaining code quality:
+FrontX defines a **three-stage development workflow** that maximizes AI efficiency while maintaining code quality:
 
 ![pipeline.drawio.png](architecture/pipeline.drawio.png)
 
@@ -173,11 +173,11 @@ HAI3 defines a **three-stage development workflow** that maximizes AI efficiency
 #### Option 1: Create a new project with CLI (Recommended)
 
 ```bash
-# Install HAI3 CLI globally
-npm install -g @hai3/cli
+# Install FrontX CLI globally
+npm install -g @cyberfabric/cli
 
 # Create a new project (full app with UI)
-hai3 create my-app
+frontx create my-app
 
 # Navigate to project and start development
 cd my-app
@@ -186,17 +186,17 @@ npm run dev
 
 #### Creating Layer-Specific Packages
 
-For building SDK packages that integrate with the HAI3 ecosystem:
+For building SDK packages that integrate with the FrontX ecosystem:
 
 ```bash
-# Create an SDK-layer package (no HAI3 dependencies, no React)
-hai3 create my-sdk-package --layer sdk
+# Create an SDK-layer package (no FrontX dependencies, no React)
+frontx create my-sdk-package --layer sdk
 
 # Create a framework-layer package (depends on SDK packages only)
-hai3 create my-framework-package --layer framework
+frontx create my-framework-package --layer framework
 
-# Create a React-layer package (depends on @hai3/framework)
-hai3 create my-react-package --layer react
+# Create a React-layer package (depends on @cyberfabric/framework)
+frontx create my-react-package --layer react
 ```
 
 Each layer package includes:
@@ -209,8 +209,8 @@ Each layer package includes:
 
 ```bash
 # Clone the repository
-git clone https://github.com/HAI3org/HAI3.git
-cd HAI3
+git clone https://github.com/Cyber Fabric/FrontX.git
+cd FrontX
 
 # Install dependencies
 npm ci
@@ -225,7 +225,7 @@ npm run dev
 ### Project Structure
 
 ```bash
-HAI3/                               # Repository root
+FrontX/                               # Repository root
 ├── .ai/                            # AI prompting rules and GUIDELINES for generation
 ├── architecture/                   # Cypilot architecture artifacts
 │   ├── PRD.md                      # Product requirements (from MANIFEST)
@@ -257,16 +257,16 @@ HAI3/                               # Repository root
 
 ### SDK Architecture (4-Layer)
 
-HAI3 follows a layered architecture for maximum flexibility:
+FrontX follows a layered architecture for maximum flexibility:
 
 ```
-L1 (SDK)        @hai3/state, @hai3/api, @hai3/i18n, @hai3/screensets
+L1 (SDK)        @cyberfabric/state, @cyberfabric/api, @cyberfabric/i18n, @cyberfabric/screensets
                 Zero cross-dependencies, no React, use anywhere
                     ↓
-L2 (Framework)  @hai3/framework
+L2 (Framework)  @cyberfabric/framework
                 Plugin system, registries, composed from SDK
                     ↓
-L3 (React)      @hai3/react
+L3 (React)      @cyberfabric/react
                 React bindings, hooks, providers
                     ↓
 L4 (App)        User application code
@@ -274,20 +274,20 @@ L4 (App)        User application code
 ```
 
 **Use Cases:**
-- **Full HAI3**: Import `@hai3/react` for complete platform with UI
-- **Headless/External**: Import `@hai3/framework` for screensets-only (no UI)
+- **Full FrontX**: Import `@cyberfabric/react` for complete platform with UI
+- **Headless/External**: Import `@cyberfabric/framework` for screensets-only (no UI)
 - **Custom Integration**: Import SDK packages directly for maximum control
 
 ### Creating a New Screen-Set
 
-Use the HAI3 CLI to create screensets:
+Use the FrontX CLI to create screensets:
 
 ```bash
 # Create a new screenset
-hai3 screenset create my-screenset
+frontx screenset create my-screenset
 
 # Copy an existing screenset with transformed IDs
-hai3 screenset copy demo myDemo
+frontx screenset copy demo myDemo
 ```
 
 After creation:
@@ -295,16 +295,26 @@ After creation:
 2. The screenset auto-registers via Vite glob pattern
 3. Run `npm run dev` and switch to the new screenset via the UI selector
 
+### Testing
+
+From the monorepo root, the canonical entry for all unit tests (host app, workspace packages, and nested MFEs) is:
+
+```bash
+npm run test:unit
+```
+
+Use `npm run test:unit:watch` for interactive runs. Conventions and monorepo-specific behavior are described in [`.ai/project/targets/UNIT_TESTING.md`](.ai/project/targets/UNIT_TESTING.md); contributors should also read the [Validation](CONTRIBUTING.md#validation) section in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ### Updating AI Configuration
 
-When HAI3 updates are released, use the update command to sync your project:
+When FrontX updates are released, use the update command to sync your project:
 
 ```bash
 # Update AI configuration and templates
-hai3 update
+frontx update
 ```
 
-For layer packages, the update respects your project's layer (stored in `hai3.config.json`) and only syncs layer-appropriate targets and commands.
+For layer packages, the update respects your project's layer (stored in `frontx.config.json`) and only syncs layer-appropriate targets and commands.
 
 See [GUIDELINES.md](.ai/GUIDELINES.md) for detailed development guidelines.
 
@@ -317,7 +327,8 @@ TODO
 - **[DECOMPOSITION.md](architecture/DECOMPOSITION.md)**: Project roadmap and feature decomposition
 - **[PRD.md](architecture/PRD.md)**: Core philosophy, principles, and values
 - **[GUIDELINES.md](.ai/GUIDELINES.md)**: Development guidelines for AI and humans
-- **[CONTRIBUTING.md](CONTRIBUTING.md)**: How to contribute to the project
+- **[CONTRIBUTING.md](CONTRIBUTING.md)**: How to contribute to the project (includes validation and unit-test commands)
+- **[UNIT_TESTING.md](.ai/project/targets/UNIT_TESTING.md)**: Unit-test contract and monorepo runner rules
 
 ## Community & Support
 
@@ -328,7 +339,7 @@ TODO
 
 ## License
 
-HAI3 is available under the [Apache License 2.0](LICENSE).
+FrontX is available under the [Apache License 2.0](LICENSE).
 
 ## Credits
 
