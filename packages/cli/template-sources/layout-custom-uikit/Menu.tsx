@@ -1,9 +1,8 @@
-import React, { useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   useAppSelector,
   useHAI3,
-  useDomainExtensions,
-  selectMountedExtension,
+  useMountedExtensions,
   eventBus,
   HAI3_ACTION_MOUNT_EXT,
   HAI3_SCREEN_DOMAIN,
@@ -40,10 +39,28 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
 
   const collapsed = menuState?.collapsed ?? false;
 
-  const extensions = useDomainExtensions(HAI3_SCREEN_DOMAIN) as ScreenExtension[];
-  const activeExtensionId = useAppSelector(
-    (state) => selectMountedExtension(state, HAI3_SCREEN_DOMAIN)
-  );
+  // Currently-mounted screen extension (subscribes to store changes; no polling).
+  // Index 0 is meaningful because the host registers the screen domain with
+  // ExclusiveMountStrategy (single mount per domain).
+  const mountedScreens = useMountedExtensions(HAI3_SCREEN_DOMAIN);
+  const mountedId = mountedScreens[0]?.id;
+
+  const [extensions, setExtensions] = useState<ScreenExtension[]>([]);
+
+  useEffect(() => {
+    if (!mfeRegistry) return;
+
+    const refresh = () => {
+      const screenExts = mfeRegistry.getExtensionsForDomain(HAI3_SCREEN_DOMAIN) as ScreenExtension[];
+      const sorted = screenExts
+        .sort((a, b) => (a.presentation.order ?? 999) - (b.presentation.order ?? 999));
+      setExtensions(sorted);
+    };
+
+    refresh();
+    const interval = setInterval(refresh, 500);
+    return () => clearInterval(interval);
+  }, [mfeRegistry]);
 
   const handleToggleCollapse = () => {
     eventBus.emit('layout/menu/collapsed', { collapsed: !collapsed });
@@ -51,7 +68,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
 
   const handleMenuItemClick = useCallback(
     async (extensionId: string) => {
-      if (!mfeRegistry) return;
+      if (!mfeRegistry || extensionId === mountedId) return;
       await mfeRegistry.executeActionsChain({
         action: {
           type: HAI3_ACTION_MOUNT_EXT,
@@ -60,7 +77,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
         },
       });
     },
-    [mfeRegistry]
+    [mfeRegistry, mountedId]
   );
 
   return (
@@ -92,7 +109,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
           color: 'hsl(var(--foreground))',
         }}
       >
-        <span style={{ fontSize: 20, lineHeight: 1 }}>{collapsed ? '\u2630' : '\u2715'}</span>
+        <span style={{ fontSize: 20, lineHeight: 1 }}>{collapsed ? '☰' : '✕'}</span>
         {!collapsed && <span style={{ fontWeight: 600, fontSize: 14 }}>Menu</span>}
       </button>
 
@@ -100,17 +117,17 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, flex: 1, overflowY: 'auto' }}>
         {extensions.length === 0 ? (
           <li style={{ padding: '16px 12px', fontSize: 13, color: 'hsl(var(--muted-foreground))' }}>
-            {collapsed ? '' : 'No screen extensions registered.'}
+            {collapsed ? '' : 'No screens yet.'}
           </li>
         ) : (
-          extensions.map((extension) => {
-            const { label, icon } = extension.presentation;
-            const isActive = extension.id === activeExtensionId;
-            const LucideIcon = resolveLucideIcon(icon);
+          extensions.map((ext) => {
+            const isActive = ext.id === mountedId;
+            const pres = ext.presentation;
+            const Icon = resolveLucideIcon(pres.icon);
             return (
-              <li key={extension.id}>
+              <li key={ext.id}>
                 <button
-                  onClick={() => handleMenuItemClick(extension.id)}
+                  onClick={() => handleMenuItemClick(ext.id)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -126,16 +143,16 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
                     textAlign: 'left',
                     borderRadius: 4,
                   }}
-                  title={collapsed ? label : undefined}
+                  title={collapsed ? pres.label : undefined}
                 >
-                  {LucideIcon ? (
-                    <LucideIcon size={20} style={{ flexShrink: 0 }} />
+                  {Icon ? (
+                    <Icon size={20} style={{ flexShrink: 0 }} />
                   ) : (
                     <span style={{ width: 20, textAlign: 'center', flexShrink: 0, fontWeight: 600 }}>
-                      {label.charAt(0)}
+                      {pres.label.charAt(0)}
                     </span>
                   )}
-                  {!collapsed && <span>{label}</span>}
+                  {!collapsed && <span>{pres.label}</span>}
                 </button>
               </li>
             );

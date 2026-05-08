@@ -477,6 +477,19 @@ export {
   MfeRegistryFactory,
   mfeRegistryFactory,
   ActionHandler,
+  ExtensionDomainImplementation,
+  ExtensionDomainImplementationFactory,
+  ExtensionMounter,
+  MountStrategy,
+  ConcurrentMountStrategy,
+  OptionalMountStrategy,
+  ExclusiveMountStrategy,
+} from '@cyberfabric/framework';
+
+export type {
+  ContainerHooks,
+  DomainContext,
+  ActionPayload,
 } from '@cyberfabric/framework';
 
 // MFE Concrete implementations

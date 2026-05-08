@@ -114,6 +114,31 @@
     "mfInitKey": "",
     "name": "demoMfe"
   },
+  "domains": [
+    {
+      "id": "gts.hai3.mfes.ext.domain.v1~hai3.widgets.area.main.v1",
+      "sharedProperties": [],
+      "actions": [
+        "gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~",
+        "gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~",
+        "gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~"
+      ],
+      "extensionsActions": [],
+      "defaultActionTimeout": 5000,
+      "lifecycleStages": [
+        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1",
+        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1",
+        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1",
+        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1"
+      ],
+      "extensionsLifecycleStages": [
+        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1",
+        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1",
+        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1",
+        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1"
+      ]
+    }
+  ],
   "entries": [
     {
       "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.helloworld.v1",
@@ -166,7 +191,7 @@
             "assets/zh-DpJ9fTal.js"
           ],
           "sync": [
-            "assets/lifecycle-helloworld-DUCHUcR6.js"
+            "assets/lifecycle-helloworld-Cv11faOJ.js"
           ]
         },
         "css": {
@@ -228,7 +253,7 @@
             "assets/zh-BRJDH7tI.js"
           ],
           "sync": [
-            "assets/lifecycle-profile-B7HDY_9c.js"
+            "assets/lifecycle-profile-DUYcqvg9.js"
           ]
         },
         "css": {
@@ -288,7 +313,27 @@
             "assets/zh-BLvEAXaM.js"
           ],
           "sync": [
-            "assets/lifecycle-theme-rSG2OyHF.js"
+            "assets/lifecycle-theme-BNBw4nSE.js"
+          ]
+        },
+        "css": {
+          "async": [],
+          "sync": []
+        }
+      }
+    },
+    {
+      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.widgets_host.v1",
+      "requiredProperties": [],
+      "actions": [],
+      "domainActions": [],
+      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
+      "exposedModule": "./lifecycle-widgets-host",
+      "exposeAssets": {
+        "js": {
+          "async": [],
+          "sync": [
+            "assets/lifecycle-widgets-host-CZbeOCle.js"
           ]
         },
         "css": {
@@ -310,15 +355,15 @@
       "exposeAssets": {
         "js": {
           "async": [
-            "assets/LayoutElements-xKE3jr6S.js",
-            "assets/NavigationElements-CMzhHrB-.js",
-            "assets/FormElements-eptmkCKB.js",
-            "assets/ActionElements-BX5rV_k2.js",
-            "assets/FeedbackElements-ClNebK4t.js",
-            "assets/DataDisplayElements-OvyBt_7c.js",
-            "assets/OverlayElements-BcgPcob_.js",
-            "assets/MediaElements-BkSJbjBl.js",
-            "assets/DisclosureElements-nIcYoQi4.js",
+            "assets/LayoutElements-B6t_U0s2.js",
+            "assets/NavigationElements-ByYsEE-B.js",
+            "assets/FormElements-CFUKQzkh.js",
+            "assets/ActionElements-CCE3pzLE.js",
+            "assets/FeedbackElements-DkLitXsl.js",
+            "assets/DataDisplayElements-BTIi_fG_.js",
+            "assets/OverlayElements-BRFztEYw.js",
+            "assets/MediaElements-C82JUScP.js",
+            "assets/DisclosureElements-CyBsJuVd.js",
             "assets/ar-DHEDwF2j.js",
             "assets/bn-BIfP88eS.js",
             "assets/cs-CWPaus97.js",
@@ -357,7 +402,7 @@
             "assets/zh-DEzQBzHR.js"
           ],
           "sync": [
-            "assets/lifecycle-uikit-BpIU2pQT.js"
+            "assets/lifecycle-uikit-Cc9mEtpS.js"
           ]
         },
         "css": {
@@ -368,6 +413,17 @@
     }
   ],
   "extensions": [
+    {
+      "id": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.widgets.host.screen.v1",
+      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1",
+      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.widgets_host.v1",
+      "presentation": {
+        "label": "Widgets Host",
+        "icon": "lucide:layout-grid",
+        "route": "/widgets-host",
+        "order": 200
+      }
+    },
     {
       "id": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.helloworld.v1",
       "domain": "gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1",

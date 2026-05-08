@@ -166,9 +166,11 @@ export class DefaultMfeRegistry extends MfeRegistry {
       triggerDomainOwnLifecycle: (domainId, stageId) =>
         this.triggerDomainOwnLifecycleStageInternal(domainId, stageId),
       // Bypass OperationSerializer: the parent operation (unregisterExtension)
-      // already holds the serializer lock for this entity ID, so calling
-      // registry.unmountExtension would deadlock. Go directly to MountManager.
-      unmountExtension: (extensionId) => this.mountManager.unmountExtension(extensionId),
+      // already holds the serializer lock for this entity ID, so we cannot
+      // re-enter registry.executeActionsChain. Routing through the per-domain
+      // DefaultExtensionMounter keeps mount-set bookkeeping (removeMountedExtension)
+      // and DOM container teardown centralized while still avoiding the lock.
+      unmountExtension: (extensionId) => this.bypassUnmountExtension(extensionId),
       validateEntryType: (entryTypeId) => this.validateEntryType(entryTypeId),
     });
 
@@ -212,6 +214,31 @@ export class DefaultMfeRegistry extends MfeRegistry {
    */
   private async triggerLifecycleStageInternal(extensionId: string, stageId: string): Promise<void> {
     return this.lifecycleManager.triggerLifecycleStage(extensionId, stageId);
+  }
+
+  /**
+   * Internal: auto-unmount path used by `DefaultExtensionManager.unregisterExtension`.
+   *
+   * Resolves the extension's domain, then dispatches through the per-domain
+   * `DefaultExtensionMounter` so mount-set bookkeeping (`removeMountedExtension`)
+   * and container DOM teardown run alongside `MountManager.unmountExtension`.
+   *
+   * The serializer lock for this extension is already held by the parent
+   * `unregisterExtension` operation; the mounter does not re-acquire it, so
+   * no deadlock is possible.
+   */
+  private async bypassUnmountExtension(extensionId: string): Promise<void> {
+    const extState = this.extensionManager.getExtensionState(extensionId);
+    if (!extState) {
+      return;
+    }
+    const domainState = this.extensionManager.getDomainState(extState.extension.domain);
+    const mounter = domainState?.mounter;
+    if (mounter) {
+      await mounter.unmount(extensionId);
+      return;
+    }
+    await this.mountManager.unmountExtension(extensionId);
   }
 
   /**

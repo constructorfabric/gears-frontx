@@ -150,6 +150,19 @@ export {
   MfeRegistry,
   MfeRegistryFactory,
   mfeRegistryFactory,
+  ExtensionDomainImplementationFactory,
+  ExtensionDomainImplementation,
+  ExtensionMounter,
+  MountStrategy,
+  ConcurrentMountStrategy,
+  OptionalMountStrategy,
+  ExclusiveMountStrategy,
+} from '@cyberfabric/screensets';
+
+export type {
+  ContainerHooks,
+  DomainContext,
+  ActionPayload,
 } from '@cyberfabric/screensets';
 
 // MFE Concrete Implementations (re-exported from @cyberfabric/screensets subpath exports)

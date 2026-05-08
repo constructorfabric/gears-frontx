@@ -1,0 +1,33 @@
+{
+  "name": "@cyberfabric/widgets-fixture-b",
+  "private": true,
+  "version": "0.1.0-alpha.0",
+  "type": "module",
+  "description": "Leaf widget MFE. Targets the widgets domain (owned by demo-mfe's child FrontX app at runtime) via its Extension instance. Mounts concurrently alongside widgets-fixture-a under ConcurrentMountStrategy.",
+  "scripts": {
+    "dev": "vite build && vite preview --port 3202",
+    "build": "vite build",
+    "preview": "vite preview --port 3202"
+  },
+  "dependencies": {
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "@cyberfabric/react": "file:../../../packages/react",
+    "@tanstack/react-query": "5.90.21"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.8",
+    "@types/react-dom": "19.0.3",
+    "@vitejs/plugin-react": "4.3.4",
+    "@module-federation/vite": "^1.14.2",
+    "vite": "6.4.2",
+    "typescript": "5.4.2",
+    "@cyberfabric/framework": "file:../../../packages/framework",
+    "@cyberfabric/state": "file:../../../packages/state",
+    "@cyberfabric/screensets": "file:../../../packages/screensets",
+    "@cyberfabric/api": "file:../../../packages/api",
+    "@cyberfabric/i18n": "file:../../../packages/i18n",
+    "@reduxjs/toolkit": "^2.11.2",
+    "react-redux": "^9.2.0"
+  }
+}

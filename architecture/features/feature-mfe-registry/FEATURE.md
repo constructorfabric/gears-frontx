@@ -1,6 +1,6 @@
 # Feature: MFE Registry & Contracts
 
-<!-- artifact-version: 1.7 -->
+<!-- artifact-version: 1.8 -->
 
 
 <!-- toc -->
@@ -587,23 +587,26 @@ All registration and dispatch paths perform GTS-native validation. Schema valida
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-mfe-schema-registration`
 
-`mfe.json` is the single validatable per-package contract describing all entries, extensions, and schemas under one GTS package. It has two states:
+`mfe.json` is the single validatable per-package contract describing all entries, extensions, schemas, and an optional `domains[]` array of MFE-declared `ExtensionDomain` instances under one GTS package. It has two states:
 
-- **Authored state** (pre-build): the developer maintains `entries` (without `exposeAssets`), `extensions`, and an optional `schemas` array of inline GTS JSON Schema definitions. The `manifest` field exists only with authored metadata (`id`, `remoteEntry`); `metaData`, `shared[]`, and per-entry `exposeAssets` are absent.
-- **Enriched state** (post-build): the `frontx-mf-gts` Vite plugin enriches the SAME `mfe.json` file in place, populating `manifest.metaData` (from `mf-manifest.json` — includes `publicPath`, `remoteEntry`, `name`, `buildInfo`, `globalName`), `manifest.shared[]` entries (with `chunkPath`, `version`, `unwrapKey` per dep), and `entries[].exposeAssets`. The enriched file is committed alongside source.
+- **Authored state** (pre-build): the developer maintains `entries` (without `exposeAssets`), `extensions`, an optional `schemas` array of inline GTS JSON Schema definitions, and an optional `domains[]` array of MFE-declared `ExtensionDomain` instances. The `manifest` field exists only with authored metadata (`id`, `remoteEntry`); `metaData`, `shared[]`, and per-entry `exposeAssets` are absent.
+- **Enriched state** (post-build): the `frontx-mf-gts` Vite plugin enriches the SAME `mfe.json` file in place, populating `manifest.metaData` (from `mf-manifest.json` — includes `publicPath`, `remoteEntry`, `name`, `buildInfo`, `globalName`), `manifest.shared[]` entries (with `chunkPath`, `version`, `unwrapKey` per dep), and `entries[].exposeAssets`. The `domains[]` array, when authored, is preserved unchanged through enrichment. The enriched file is committed alongside source.
 
 The `frontx-mf-gts` Vite plugin derives the shared dep list from `rollupOptions.external` in the resolved Vite config, builds standalone ESM modules for each from `node_modules` via esbuild, and writes the enriched `mfe.json` back to the package root.
 
-The host application's bootstrap loader receives `mfe.json` content per package, registers the `MfManifest` GTS entity for each package into the GTS runtime store, and performs **scoped schema registration per entry**: for each entry in the loaded `mfe.json` content, collect the action IDs declared in `entry.actions` and `entry.domainActions`; for each collected action ID, locate the matching schema in the package's `schemas[]` (the schema whose `$id` equals the action ID with the `gts://` prefix); call `typeSystem.registerSchema(schema)` only for the matched schemas. Schemas that do not correspond to any action declared by any entry in the package are NOT registered. Entries and extensions are registered after schemas. Deduplication is automatic because GTS overwrites any schema with the same `$id`. The L4 transport by which the bootstrap loader receives `mfe.json` content is documented under `cpt-frontx-fr-manifest-generation-script` and is out of scope for this DoD.
+The host application's bootstrap loader receives `mfe.json` content per package and registers each package's entities into the GTS runtime store in this order — scoped schemas → `MfManifest` entity → MFE-declared `domains[]` (when authored) → entries → extensions. Schema registration is **scoped per entry**: for each entry in the loaded `mfe.json` content, collect the action IDs declared in `entry.actions` and `entry.domainActions`; for each collected action ID, locate the matching schema in the package's `schemas[]` (the schema whose `$id` equals the action ID with the `gts://` prefix); call `typeSystem.registerSchema(schema)` only for the matched schemas. Schemas that do not correspond to any action declared by any entry in the package are NOT registered. The `domains[]` step registers each `ExtensionDomain` instance opaquely between the `MfManifest` entity and entries so entries/extensions registered after it can resolve their target domain by GTS instance ID; `domains[]` is OPTIONAL per MFE — MFEs that do not own `ExtensionDomain` instances omit it and the bootstrap iterates an empty list. Deduplication is automatic because GTS overwrites any entity with the same `$id` or instance ID. The L4 transport by which the bootstrap loader receives `mfe.json` content is documented under `cpt-frontx-fr-manifest-generation-script` and is out of scope for this DoD.
 
 **Rules**:
 - `mfe.json` is the single source of truth per MFE package and is committed in its enriched state; there is no separate build-output file per MFE
-- Enrichment is deterministic and idempotent: re-running the build against an already-enriched `mfe.json` rewrites the `metaData`, `shared[]`, and `exposeAssets` fields from the current build inputs without producing a different shape
-- Schema registration in the bootstrap happens before `registerEntry` and before `registerExtension` calls for the loaded package
+- Enrichment is deterministic and idempotent: re-running the build against an already-enriched `mfe.json` rewrites the `metaData`, `shared[]`, and `exposeAssets` fields from the current build inputs without producing a different shape; the `domains[]` field, when authored, is preserved unchanged through enrichment
+- Bootstrap registration order per package is fixed: schemas → `MfManifest` entity → MFE-declared `domains[]` → entries → extensions
+- `domains[]` registration in the bootstrap happens after `MfManifest` entity registration and before `registerEntry` / `registerExtension` calls; `domains[]` is OPTIONAL per MFE (missing or empty array is silently skipped, the bootstrap iterates an empty list)
+- Schema registration in the bootstrap happens before `MfManifest` entity registration (and therefore before `domains[]`, entries, and extensions) for the loaded package
 - Schema registration is scoped: only schemas matching action IDs declared by at least one entry in the package are registered; this, combined with runtime action declaration validation in the mediator, ensures entries receive only the actions they opt into
 - Missing or empty `schemas` array is silently skipped
 - An action ID declared by an entry but missing a matching schema in `config.schemas[]` does NOT cause bootstrap to fail — the type system will reject unvalidatable actions at dispatch time
 - Each schema element must carry a `$id` — the GTS `registerSchema` implementation enforces this at runtime
+- Each `ExtensionDomain` instance in `domains[]` must carry a GTS instance ID; the GTS runtime store rejects duplicate instance IDs at registration
 - Registration is idempotent: loading the same MFE package twice does not produce errors
 
 **Implements**:

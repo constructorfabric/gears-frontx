@@ -16,7 +16,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { TypeSystemPlugin, ValidationResult, JSONSchema } from '../../../src/mfe/plugins/types';
 import type { ActionsChain, ExtensionDomain, MfeEntry } from '../../../src/mfe/types';
 import { ActionHandler } from '../../../src/mfe/mediator';
-import { DefaultActionsChainsMediator } from '../../../src/mfe/mediator/actions-chains-mediator';
+import {
+  DefaultActionsChainsMediator,
+  NoHandlerForActionTargetError,
+} from '../../../src/mfe/mediator/actions-chains-mediator';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import {
   HAI3_ACTION_LOAD_EXT,
@@ -366,6 +369,189 @@ describe('ActionsChainsMediator - Phase 9', () => {
     });
   });
 
+  // @cpt-dod:cpt-frontx-dod-screenset-registry-missing-handler-fallback:p1
+  describe('Missing-handler fallback semantics (cpt-frontx-dod-screenset-registry-missing-handler-fallback)', () => {
+    const TARGET = 'gts.hai3.mfes.ext.domain.v1~test.missing-handler.target.v1~';
+    const PRIMARY_TYPE = 'gts.hai3.mfes.comm.action.v1~test.missing-handler.primary.v1~';
+    const FALLBACK_TYPE = 'gts.hai3.mfes.comm.action.v1~test.missing-handler.fallback.v1~';
+
+    it('handler present: primary executes and fallback is NOT triggered', async () => {
+      const primary = mockHandler();
+      const fallback = mockHandler();
+
+      mediator.registerHandler(TARGET, PRIMARY_TYPE, primary);
+      mediator.registerHandler(TARGET, FALLBACK_TYPE, fallback);
+
+      const domain: ExtensionDomain = {
+        id: TARGET,
+        sharedProperties: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, PRIMARY_TYPE, FALLBACK_TYPE],
+        extensionsActions: [],
+        defaultActionTimeout: 5000,
+        lifecycleStages: [],
+        extensionsLifecycleStages: [],
+      };
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
+
+      const result = await mediator.executeActionsChain({
+        action: { type: PRIMARY_TYPE, target: TARGET },
+        fallback: { action: { type: FALLBACK_TYPE, target: TARGET } },
+      });
+
+      expect(result.completed).toBe(true);
+      expect(result.path).toEqual([PRIMARY_TYPE]);
+      expect(primary.mock).toHaveBeenCalledTimes(1);
+      expect(fallback.mock).not.toHaveBeenCalled();
+    });
+
+    it('handler absent + fallback present: primary fails with NoHandlerForActionTargetError and fallback chain executes', async () => {
+      const fallback = mockHandler();
+      // Register ONLY the fallback handler — the primary's (target, type) has no handler
+      // and no catch-all exists for the target. resolveHandler returns undefined → throws.
+      mediator.registerHandler(TARGET, FALLBACK_TYPE, fallback);
+
+      const domain: ExtensionDomain = {
+        id: TARGET,
+        sharedProperties: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, PRIMARY_TYPE, FALLBACK_TYPE],
+        extensionsActions: [],
+        defaultActionTimeout: 5000,
+        lifecycleStages: [],
+        extensionsLifecycleStages: [],
+      };
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
+
+      const result = await mediator.executeActionsChain({
+        action: { type: PRIMARY_TYPE, target: TARGET },
+        fallback: { action: { type: FALLBACK_TYPE, target: TARGET } },
+      });
+
+      // Fallback fires → chain completes; primary's failure is observable in the path.
+      expect(result.completed).toBe(true);
+      expect(result.path).toEqual([PRIMARY_TYPE, FALLBACK_TYPE]);
+      expect(fallback.mock).toHaveBeenCalledTimes(1);
+      // Side-effect observability: the fallback handler received the fallback action type + payload
+      // (no payload on this chain → undefined).
+      expect(fallback.mock).toHaveBeenCalledWith(FALLBACK_TYPE, undefined);
+    });
+
+    it('handler absent + no fallback: chain fails with the spec-mandated error message and the mediator does NOT throw', async () => {
+      // No handlers registered for TARGET at all. No catch-all. No fallback.
+      const result = await mediator.executeActionsChain({
+        action: { type: PRIMARY_TYPE, target: TARGET },
+      });
+
+      expect(result.completed).toBe(false);
+      // Error message format is the contract (feature-screenset-registry §5
+      // cpt-frontx-dod-screenset-registry-missing-handler-fallback "Failure shape").
+      expect(result.error).toBe(
+        `No handler found for target '${TARGET}' and action type '${PRIMARY_TYPE}'`
+      );
+      // The mediator does NOT throw — it resolves with completed:false carrying the recorded error.
+      // (If executeActionsChain had thrown, `await` above would have rejected before reaching expect.)
+    });
+
+    it('cross-app routing precedence preserved: a catch-all handler on the target satisfies the lookup before missing-handler is recorded', async () => {
+      // Catch-all simulates child-domain bridge forwarding (cross-boundary routing).
+      // Per the DoD: cross-app handler precedence runs BEFORE missing-handler failure is recorded.
+      const catchAll = mockHandler();
+      mediator.registerCatchAllHandler(TARGET, catchAll);
+
+      const domain: ExtensionDomain = {
+        id: TARGET,
+        sharedProperties: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, PRIMARY_TYPE],
+        extensionsActions: [],
+        defaultActionTimeout: 5000,
+        lifecycleStages: [],
+        extensionsLifecycleStages: [],
+      };
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
+
+      const result = await mediator.executeActionsChain({
+        action: { type: PRIMARY_TYPE, target: TARGET },
+      });
+
+      expect(result.completed).toBe(true);
+      expect(catchAll.mock).toHaveBeenCalledTimes(1);
+      expect(catchAll.mock).toHaveBeenCalledWith(PRIMARY_TYPE, undefined);
+    });
+
+    it('typed error: the thrown class is NoHandlerForActionTargetError with target + actionType captured', async () => {
+      // Drill the internal throw path directly: invoke executeAction via the
+      // public chain entrypoint, then inspect the error carrier. The class is
+      // exported from the implementation file for typed catches by downstream
+      // wrappers; the mediator's public API still surfaces only the error
+      // string (via ChainResult.error).
+      const result = await mediator.executeActionsChain({
+        action: { type: PRIMARY_TYPE, target: TARGET },
+      });
+      expect(result.completed).toBe(false);
+      // Sanity check on the class itself — it is a real Error subclass that
+      // carries structured fields for observability tooling.
+      const probe = new NoHandlerForActionTargetError(TARGET, PRIMARY_TYPE);
+      expect(probe).toBeInstanceOf(Error);
+      expect(probe.name).toBe('NoHandlerForActionTargetError');
+      expect(probe.target).toBe(TARGET);
+      expect(probe.actionType).toBe(PRIMARY_TYPE);
+      expect(probe.message).toBe(result.error);
+    });
+
+    // Integration-style test: simulates mount → unmount → ping-to-unmounted-target,
+    // mirroring the parent plan's Test 6 ("ping-to-unmounted alpha → expect fallback").
+    // This exercises the same code path as the runtime tier reproduction in the
+    // Widgets Host fixture but at the jsdom test layer for fast, deterministic
+    // coverage of the post-unmount missing-handler → fallback contract.
+    it('integration: post-unmount ping → fallback observable side-effect fires', async () => {
+      const sideEffect = vi.fn<() => void>();
+      const primary = new MockActionHandler();
+      const fallback = new class extends ActionHandler {
+        async handleAction(actionTypeId: string): Promise<void> {
+          sideEffect();
+          expect(actionTypeId).toBe(FALLBACK_TYPE);
+        }
+      }();
+
+      const domain: ExtensionDomain = {
+        id: TARGET,
+        sharedProperties: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, PRIMARY_TYPE, FALLBACK_TYPE],
+        extensionsActions: [],
+        defaultActionTimeout: 5000,
+        lifecycleStages: [],
+        extensionsLifecycleStages: [],
+      };
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
+
+      // "Mount": register the primary handler (the extension is reachable).
+      mediator.registerHandler(TARGET, PRIMARY_TYPE, primary);
+      mediator.registerHandler(TARGET, FALLBACK_TYPE, fallback);
+
+      const chain: ActionsChain = {
+        action: { type: PRIMARY_TYPE, target: TARGET },
+        fallback: { action: { type: FALLBACK_TYPE, target: TARGET } },
+      };
+
+      // Pre-unmount: primary fires, fallback does not.
+      primary.mock.mockResolvedValueOnce(undefined);
+      const before = await mediator.executeActionsChain(chain);
+      expect(before.completed).toBe(true);
+      expect(before.path).toEqual([PRIMARY_TYPE]);
+      expect(sideEffect).not.toHaveBeenCalled();
+
+      // "Unmount": unregister the primary's per-(target, type) handler. The
+      // fallback handler stays registered (it would be on the host or another
+      // extension that did not unmount). No catch-all is registered.
+      mediator.unregisterHandler(TARGET, PRIMARY_TYPE);
+
+      // Post-unmount ping: primary missing → fallback observable side-effect fires.
+      const after = await mediator.executeActionsChain(chain);
+      expect(after.completed).toBe(true);
+      expect(after.path).toEqual([PRIMARY_TYPE, FALLBACK_TYPE]);
+      expect(sideEffect).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('9.3.3 Chain termination scenarios', () => {
     it('should terminate when no next chain is defined', async () => {
       const handler = mockHandler();
@@ -533,8 +719,10 @@ describe('ActionsChainsMediator - Phase 9', () => {
 
       mediator.unregisterAllHandlers('gts.hai3.mfes.ext.extension.v1~test.ext.v1~');
 
-      // Handler should no longer be registered
-      // (Will result in no-op execution)
+      // Handler should no longer be registered. A subsequent chain targeting
+      // this handler would throw NoHandlerForActionTargetError per the
+      // missing-handler fallback DoD (see dedicated block below); this test
+      // only covers the unregister side-effect.
     });
 
     it('should throw error when unregistering extension with pending actions', async () => {
