@@ -1,4 +1,4 @@
-# Contributing to FrontX Dev Kit
+# Contributing to Cyber Ware FrontX
 
 > **TARGET AUDIENCE:** Humans
 > **PURPOSE:** Contribution guidelines and workflow for developers
