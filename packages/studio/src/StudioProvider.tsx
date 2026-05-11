@@ -68,7 +68,6 @@ interface StudioContextValue {
 
 const StudioContext = createContext<StudioContextValue | undefined>(undefined);
 
-
 export const useStudioContext = () => {
   const context = useContext(StudioContext);
   if (!context) {

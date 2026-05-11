@@ -1,6 +1,6 @@
 # Feature: Studio DevTools
 
-<!-- artifact-version: 1.1 -->
+<!-- artifact-version: 1.2 -->
 
 - [x] `p1` - **ID**: `cpt-frontx-featstatus-studio-devtools`
 
@@ -59,7 +59,7 @@
 
 ### 1.1 Overview
 
-Studio DevTools is the development-time overlay package (`@cyberfabric/studio`) for FrontX applications. It provides a floating glassmorphic panel that developers can use to switch themes, languages, GTS packages, and API mock mode without leaving the running application.
+Studio DevTools is the development-time overlay package (`@cyberfabric/studio`) for FrontX applications. It provides a floating glassmorphic panel that developers can use to switch themes, languages, and API mock mode without leaving the running application.
 
 Problem: During development, iterating on theme, language, and API mock states requires either page reloads, hard-coded configuration, or direct Redux DevTools manipulation — all of which break the iterative feedback loop.
 
@@ -69,7 +69,7 @@ Key assumptions: Studio is only mounted when `import.meta.env.DEV` is true. All 
 
 ### 1.2 Purpose
 
-Enable the Studio User to inspect and manipulate runtime configuration (theme, language, mock API state, active GTS package) through a draggable, resizable, collapsible overlay panel during development, with settings persisted to localStorage for session continuity.
+Enable the Studio User to inspect and manipulate runtime configuration (theme, language, mock API state) through a draggable, resizable, collapsible overlay panel during development, with settings persisted to localStorage for session continuity.
 
 Success criteria: A developer can toggle theme, language, and API mock mode in under two seconds from anywhere in the application, and the settings survive a page reload.
 
@@ -424,7 +424,7 @@ Applies independently to both `StudioPanel` and `CollapsedButton` draggables:
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-studio-devtools-control-panel`
 
-`ControlPanel` renders three sections vertically: `ApiModeToggle`, `ThemeSelector`, `LanguageSelector`. Controls use Studio local UI (`packages/studio/src/uikit/`) or project-chosen components. Dropdowns render inside the high-z-index portal container to prevent clipping by the panel's `backdrop-filter` stacking context.
+`ControlPanel` renders three sections vertically: `ApiModeToggle`, `ThemeSelector`, `LanguageSelector`. Controls use Studio local UI (`packages/studio/src/uikit/`) or project-chosen components. Dropdowns render inside the high-z-index portal container to prevent clipping by the panel's `backdrop-filter` stacking context. The host application's nav menu — not Studio — surfaces the screens registered against every co-existing GTS package; Studio's scope is bounded to theme, language, and API mock toggles.
 
 **Implementation details**:
 - `ThemeSelector`: reads `useTheme()`, uses `DropdownMenu` / `DropdownButton` with `ButtonVariant.Outline`; formats names with `upperFirst` word-split on `-`
@@ -452,7 +452,7 @@ Applies independently to both `StudioPanel` and `CollapsedButton` draggables:
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-studio-devtools-persistence`
 
-All Studio control panel settings (theme, language, mock mode, active GTS package) and all UI state (panel position, panel size, collapsed state, button position) are persisted to localStorage on change and restored on Studio mount. All persistence logic lives exclusively inside `@cyberfabric/studio`.
+All Studio control panel settings (theme, language, mock mode) and all UI state (panel position, panel size, collapsed state, button position) are persisted to localStorage on change and restored on Studio mount. All persistence logic lives exclusively inside `@cyberfabric/studio`.
 
 **Implementation details**:
 - Storage keys under prefix `hai3:studio:` — see `STORAGE_KEYS` in `packages/studio/src/types.ts`
@@ -557,11 +557,10 @@ Studio panel toggling is accessible via `Shift+\`` keyboard shortcut using `e.co
 - [x] Panel can be dragged to any in-viewport position and resized within `[320–600]×[400–800]` px constraints
 - [x] Collapsed button and panel maintain independent positions with the 5px click-vs-drag threshold correctly separating the two interactions
 - [x] `Shift+\`` toggles panel visibility from any focus point in the application
-- [x] Dropdown menus for theme, language, and GTS package render above the panel with no z-index clipping
-- [x] Changing theme, language, mock mode, or GTS package via Studio applies the change immediately to the live application
-- [x] All settings survive a page reload — theme, language, mock state, active package, position, size, collapsed state all restore correctly
+- [x] Dropdown menus for theme and language render above the panel with no z-index clipping
+- [x] Changing theme, language, or mock mode via Studio applies the change immediately to the live application
+- [x] All settings survive a page reload — theme, language, mock state, position, size, collapsed state all restore correctly
 - [x] Settings restore emits framework events that existing plugin handlers process without any framework code changes
-- [x] GTS package restore skips gracefully when the persisted package ID is no longer registered or the registry is unavailable
 - [x] Panel and button positions are clamped to the visible viewport on load and re-clamped on window resize; no unnecessary persistence occurs when position is unchanged
 - [x] No Studio code executes in production (`import.meta.env.DEV` guard confirmed via bundle analysis)
 - [x] All `@cyberfabric/studio` code compiles with TypeScript strict mode and zero `any`/`as unknown as` violations

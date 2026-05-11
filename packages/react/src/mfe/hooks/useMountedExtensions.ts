@@ -33,8 +33,7 @@ import type { Extension } from '@cyberfabric/framework';
  * Returns a referentially stable array when the underlying ID list is unchanged.
  *
  * For multi-mount domains (ConcurrentMountStrategy), may return more than one entry.
- * For single-mount domains (ExclusiveMountStrategy), prefer useActivePackage() when
- * you only need the GTS package of the active screen extension.
+ * For single-mount domains (ExclusiveMountStrategy), the returned array has at most one entry.
  *
  * @param domainId - Domain ID to query mounted extensions for
  * @returns Array of Extension instances currently mounted in the domain
