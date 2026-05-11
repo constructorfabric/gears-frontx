@@ -66,7 +66,6 @@ export {
   useDomainExtensions,
   useMountedExtensions,
   useRegisteredPackages,
-  useActivePackage,
   ExtensionDomainSlot,
 } from './mfe';
 

@@ -13,7 +13,6 @@ export {
   useDomainExtensions,
   useMountedExtensions,
   useRegisteredPackages,
-  useActivePackage,
 } from './hooks';
 export { ThemeAwareReactLifecycle } from './ThemeAwareReactLifecycle';
 export { ExtensionDomainSlot, type ExtensionDomainSlotProps } from './components/ExtensionDomainSlot';
