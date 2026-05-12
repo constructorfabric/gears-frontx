@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { ConcurrentMountStrategy, OptionalMountStrategy, ExclusiveMountStrategy } from '../mount-strategies';
 import { MountStrategy, type ActionPayload, type ContainerHooks } from '../mount-strategy';
 import { ExtensionMounter } from '../ExtensionMounter';
-import { ScreensetsRegistry } from '../ScreensetsRegistry';
+import { MfeRegistry } from '../MfeRegistry';
 import type { TypeSystemPlugin } from '../../plugins/types';
 import type { ExtensionDomain, Extension, ActionsChain } from '../../types';
 import type { ExtensionDomainImplementationFactory } from '../ExtensionDomainImplementationFactory';
@@ -53,9 +53,9 @@ class FakeContainerHooks implements ContainerHooks {
   }
 }
 
-// Minimal ScreensetsRegistry stub for strategy tests — only getMountedExtensions matters here.
-class FakeRegistry extends ScreensetsRegistry {
-  readonly typeSystem: TypeSystemPlugin = { name: 'fake', version: '0', register: () => {}, registerSchema: () => {}, getSchema: () => undefined, isTypeOf: () => false };
+// Minimal MfeRegistry stub for strategy tests — only getMountedExtensions matters here.
+class FakeRegistry extends MfeRegistry {
+  readonly typeSystem: TypeSystemPlugin = { name: 'fake', version: '0', register: () => {}, registerSchema: () => {}, getSchema: () => undefined, isTypeOf: () => false, validateInstance: () => ({ valid: true, errors: [] }) };
   private readonly mountedByDomain = new Map<string, string[]>();
 
   setMounted(domainId: string, ids: string[]): void {

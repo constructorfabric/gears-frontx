@@ -1,16 +1,15 @@
 /**
  * Unit tests for ExtensionDomainSlot component.
  *
- * Uses class-based fakes for ScreensetsRegistry and ExtensionMounter so that
+ * Uses class-based fakes for MfeRegistry and ExtensionMounter so that
  * the component can be exercised through its public API. No production code
  * is modified; all stubs live here in the test file.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
-import React from 'react';
 import { ExtensionDomainSlot, type ExtensionDomainSlotProps } from '../ExtensionDomainSlot';
 import { ExtensionMounter } from '@cyberfabric/framework';
-import { ScreensetsRegistry } from '@cyberfabric/framework';
+import { MfeRegistry } from '@cyberfabric/framework';
 import type { ActionsChain, ExtensionDomain, Extension } from '@cyberfabric/framework';
 import type { ExtensionDomainImplementationFactory } from '@cyberfabric/framework';
 import type { ParentMfeBridge } from '@cyberfabric/framework';
@@ -36,7 +35,7 @@ class FakeMounter extends ExtensionMounter {
 
 // ─── FakeRegistry ─────────────────────────────────────────────────────────────
 
-class FakeRegistry extends ScreensetsRegistry {
+class FakeRegistry extends MfeRegistry {
   readonly typeSystem: TypeSystemPlugin = {
     name: 'fake',
     version: '0',
@@ -44,6 +43,7 @@ class FakeRegistry extends ScreensetsRegistry {
     registerSchema: () => {},
     getSchema: () => undefined,
     isTypeOf: () => false,
+    validateInstance: () => ({ valid: true, errors: [] }),
   };
 
   private readonly mounsterByDomain = new Map<string, ExtensionMounter>();

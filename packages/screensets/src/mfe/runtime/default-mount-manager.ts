@@ -159,8 +159,11 @@ export class DefaultMountManager extends MountManager {
         );
       }
 
-      // Load bundle using handler
-      const lifecycle = await handler.load(entry);
+      // Load bundle using handler. The extension instance ID is the cache
+      // key — sibling extensions sharing this entry definition each get a
+      // distinct load (distinct blob URL chain, distinct module evaluation)
+      // per ADR-0004 + ADR-0020 isolation.
+      const lifecycle = await handler.load(entry, extensionState.extension.id);
 
       // Cache loaded lifecycle for mounting
       extensionState.lifecycle = lifecycle;

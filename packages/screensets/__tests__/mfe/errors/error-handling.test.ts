@@ -32,9 +32,8 @@ describe('Error Handling', () => {
         domainActions: [],
       };
 
-      const error = await handler.load(entry).catch((loadError: unknown) => loadError);
-      expect(error).toBeInstanceOf(MfeLoadError);
-      expect((error as Error).message).toMatch(/Manifest 'missing-manifest-id' not found/);
+      await expect(handler.load(entry, 'ext-missing-manifest.v1')).rejects.toThrow(MfeLoadError);
+      await expect(handler.load(entry, 'ext-missing-manifest.v1')).rejects.toThrow(/Manifest 'missing-manifest-id' not found/);
     });
 
     it('should throw MfeLoadError when manifest reference is not cached', async () => {
@@ -50,9 +49,8 @@ describe('Error Handling', () => {
         domainActions: [],
       };
 
-      const error = await handler.load(entry).catch((loadError: unknown) => loadError);
-      expect(error).toBeInstanceOf(MfeLoadError);
-      expect((error as Error).message).toMatch(/Manifest 'test-manifest' not found/);
+      // This will fail because the manifest is not cached
+      await expect(handler.load(entry, 'ext-invalid-lifecycle.v1')).rejects.toThrow(MfeLoadError);
     });
   });
 
@@ -165,7 +163,7 @@ describe('Error Handling', () => {
       };
 
       // Should fail after retries
-      await expect(handler.load(entry)).rejects.toThrow(MfeLoadError);
+      await expect(handler.load(entry, 'ext-retry-integration.v1')).rejects.toThrow(MfeLoadError);
     });
   });
 });

@@ -188,10 +188,22 @@ export abstract class MfeHandler<TEntry extends MfeEntry = MfeEntry, TBridge ext
   }
 
   /**
-   * Load an MFE bundle.
+   * Load an MFE bundle for a specific extension instance.
+   *
+   * `extensionId` is the cache key. Two extensions registered against the
+   * same `entry` definition (sibling extensions sharing an `entry.id`) MUST
+   * receive distinct loads — distinct blob URL chains and distinct module
+   * evaluations — per ADR-0004 + ADR-0020 isolation invariant. Re-mount of
+   * the same extension instance (same `extensionId`) MUST reuse the cached
+   * load. Sibling isolation is the handler's responsibility, not the MFE
+   * author's.
    *
    * @param entry - The entry to load
+   * @param extensionId - The extension instance ID; cache key for the load
    * @returns Promise resolving to MFE lifecycle interface with ChildMfeBridge
    */
-  abstract load(entry: TEntry): Promise<MfeEntryLifecycle<ChildMfeBridge>>;
+  abstract load(
+    entry: TEntry,
+    extensionId: string
+  ): Promise<MfeEntryLifecycle<ChildMfeBridge>>;
 }

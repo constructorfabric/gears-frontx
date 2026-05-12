@@ -4,8 +4,8 @@
  * Uses a minimal mock app — no real framework build — so tests run fast and
  * don't depend on the GTS singleton state. The hook only accesses:
  *   - app.store.subscribe (to detect mount-set changes)
- *   - app.screensetsRegistry.getMountedExtensions(domainId)
- *   - app.screensetsRegistry.getExtension(id)
+ *   - app.mfeRegistry.getMountedExtensions(domainId)
+ *   - app.mfeRegistry.getExtension(id)
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
@@ -46,7 +46,7 @@ class MockApp {
     dispatch: vi.fn(),
   };
 
-  readonly screensetsRegistry = {
+  readonly mfeRegistry = {
     getMountedExtensions: vi.fn((domainId: string): readonly string[] => {
       return this.mountedByDomain.get(domainId) ?? [];
     }),
@@ -103,11 +103,11 @@ describe('useMountedExtensions', () => {
     expect(result.current[1].id).toBe('ext-b');
   });
 
-  it('throws when screensetsRegistry is absent', () => {
-    // Build an app without screensetsRegistry property set.
+  it('throws when mfeRegistry is absent', () => {
+    // Build an app without mfeRegistry property set.
     const appWithoutRegistry = {
       store: mockApp.store,
-      screensetsRegistry: undefined,
+      mfeRegistry: undefined,
     } as unknown as HAI3App;
 
     const wrapper = ({ children }: { children: React.ReactNode }) =>

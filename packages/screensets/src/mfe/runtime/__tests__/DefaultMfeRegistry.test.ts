@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 // @internal — colocated test, direct relative import is permitted.
-import { DefaultScreensetsRegistry } from '../DefaultScreensetsRegistry';
-import { ScreensetsRegistry } from '../ScreensetsRegistry';
-import type { ScreensetsRegistryConfig } from '../config';
+import { DefaultMfeRegistry } from '../DefaultMfeRegistry';
+import { MfeRegistry } from '../MfeRegistry';
+import type { MfeRegistryConfig } from '../config';
 import type { TypeSystemPlugin, JSONSchema } from '../../plugins/types';
 import type { ExtensionDomain } from '../../types';
 import type { DomainContext } from '../DomainContext';
@@ -41,14 +41,17 @@ function createMockPlugin(): TypeSystemPlugin {
     isTypeOf(typeId: string, baseTypeId: string): boolean {
       return typeId === baseTypeId || typeId.startsWith(baseTypeId);
     },
+    validateInstance(_instanceId: string) {
+      return { valid: true, errors: [] };
+    },
   };
 }
 
 // ─── Fresh registry factory — avoids the singleton cache ─────────────────────
 
-function freshRegistry(): DefaultScreensetsRegistry {
-  const config: ScreensetsRegistryConfig = { typeSystem: createMockPlugin() };
-  return new DefaultScreensetsRegistry(config);
+function freshRegistry(): DefaultMfeRegistry {
+  const config: MfeRegistryConfig = { typeSystem: createMockPlugin() };
+  return new DefaultMfeRegistry(config);
 }
 
 // ─── Test domain constants ────────────────────────────────────────────────────
@@ -145,7 +148,7 @@ class ConcurrentDomainFactory extends ExtensionDomainImplementationFactory {
 class ExclusiveDomainImpl extends ExtensionDomainImplementation {
   private readonly strategy: ExclusiveMountStrategy;
 
-  constructor(ctx: DomainContext, registry: ScreensetsRegistry) {
+  constructor(ctx: DomainContext, registry: MfeRegistry) {
     super();
     const hooks = new TestHooks();
     this.strategy = new ExclusiveMountStrategy(ctx.mounter, hooks, registry, DOMAIN_EXCL_ID);
@@ -162,7 +165,7 @@ class ExclusiveDomainImpl extends ExtensionDomainImplementation {
 }
 
 class ExclusiveDomainFactory extends ExtensionDomainImplementationFactory {
-  constructor(private readonly reg: ScreensetsRegistry) { super(); }
+  constructor(private readonly reg: MfeRegistry) { super(); }
 
   build(ctx: DomainContext): ExclusiveDomainImpl {
     return new ExclusiveDomainImpl(ctx, this.reg);
@@ -183,7 +186,7 @@ class FailingAfterHandlerFactory extends ExtensionDomainImplementationFactory {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe('DefaultScreensetsRegistry', () => {
+describe('DefaultMfeRegistry', () => {
   describe('registerDomain', () => {
     it('succeeds for ConcurrentMountStrategy-backed factory with mount+unmount declared', () => {
       const reg = freshRegistry();

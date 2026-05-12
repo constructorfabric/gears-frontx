@@ -1,5 +1,6 @@
 // @cpt-FEATURE:frontx-mf-gts-plugin:p1
 // @cpt-dod:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1
+// @cpt-dod:cpt-frontx-dod-mfe-isolation-lazy-import-abi:p1
 // @cpt-flow:cpt-frontx-flow-mfe-isolation-build-v2:p2
 import * as esbuild from 'esbuild';
 import * as fs from 'node:fs';
@@ -571,10 +572,215 @@ class StandaloneEsmBuilder {
   }
 }
 
-// ── Plugin class ─────────────────────────────────────────────────────────────
+
+// ── Lazy-import AST transform ───────────────────────────────────────────────
+
+/**
+ * AST shape exported by Rollup's `this.parse()` (ESTree-compliant). Only the
+ * fields the transform reads are declared — the rest of the tree is opaque.
+ */
+interface AstNode {
+  type: string;
+  start: number;
+  end: number;
+  [key: string]: unknown;
+}
+
+interface ImportExpressionNode extends AstNode {
+  type: 'ImportExpression';
+  source: AstNode;
+}
+
+/**
+ * AST-level rewriter that converts dynamic `import('<relative-path>')` calls
+ * into `__hai3_lazy('<relative-path>')` calls in compiled MFE chunks.
+ *
+ * Operates on Rollup-emitted output (post-bundle) rather than on TypeScript
+ * source. Rationale: a source-level transform would replace `import('./X')`
+ * before Rollup analyses the module graph, killing code-splitting — Rollup
+ * would no longer see the dynamic import and would tree-shake `./X` out of
+ * the build entirely. Operating in `renderChunk` preserves Rollup's
+ * code-splitting (every lazy chunk is still emitted as its own file) while
+ * still performing the rewrite at build time with full AST fidelity.
+ *
+ * Supported source patterns (after Rollup compilation, dynamic-import args
+ * are always literal — Rollup constant-folds template/expression imports at
+ * build time):
+ *  - `import('./X.js')` — string-literal path.
+ *  - `` import(`./X.js`) `` — template-literal with no embedded expressions.
+ *
+ * Non-statically-resolvable patterns (runtime-computed paths, dynamic
+ * property lookup) emit a build-time error with file + position pointing at
+ * the offending expression.
+ */
+class LazyImportTransformer {
+  private readonly replacements: { start: number; end: number }[] = [];
+  private transformedCount = 0;
+  private readonly nonStatic: { node: AstNode }[] = [];
+
+  visit(node: unknown): void {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      for (const child of node) this.visit(child);
+      return;
+    }
+    const astNode = node as AstNode;
+
+    if (astNode.type === 'ImportExpression') {
+      this.handleImportExpression(astNode as ImportExpressionNode);
+    }
+
+    for (const key of Object.keys(astNode)) {
+      if (
+        key === 'loc' ||
+        key === 'range' ||
+        key === 'start' ||
+        key === 'end' ||
+        key === 'type'
+      ) {
+        continue;
+      }
+      this.visit(astNode[key]);
+    }
+  }
+
+  private handleImportExpression(node: ImportExpressionNode): void {
+    const source = node.source;
+    if (LazyImportTransformer.isStaticallyResolvable(source)) {
+      this.replacements.push({
+        start: node.start,
+        end: node.start + 'import'.length,
+      });
+      this.transformedCount += 1;
+      return;
+    }
+    this.nonStatic.push({ node: source });
+  }
+
+  private static isStaticallyResolvable(node: AstNode): boolean {
+    if (node.type === 'Literal' && typeof node.value === 'string') return true;
+    if (
+      node.type === 'TemplateLiteral' &&
+      Array.isArray(node.expressions) &&
+      node.expressions.length === 0
+    ) {
+      return true;
+    }
+    if (
+      node.type === 'BinaryExpression' &&
+      node.operator === '+'
+    ) {
+      const left = node.left as AstNode | undefined;
+      const right = node.right as AstNode | undefined;
+      return (
+        left !== undefined &&
+        right !== undefined &&
+        LazyImportTransformer.isStaticallyResolvable(left) &&
+        LazyImportTransformer.isStaticallyResolvable(right)
+      );
+    }
+    return false;
+  }
+
+  apply(code: string): string {
+    if (this.replacements.length === 0) return code;
+    // Reverse order so each replacement preserves the offsets of earlier ones.
+    const sorted = [...this.replacements].sort((a, b) => b.start - a.start);
+    let out = code;
+    for (const r of sorted) {
+      out = out.slice(0, r.start) + '__hai3_lazy' + out.slice(r.end);
+    }
+    return out;
+  }
+
+  count(): number {
+    return this.transformedCount;
+  }
+
+  nonStaticNodes(): readonly { node: AstNode }[] {
+    return this.nonStatic;
+  }
+}
+
+/**
+ * Substrings that identify chunks `@module-federation/vite` emits as part
+ * of its own runtime — federation share initialisation, remote-entry
+ * bootstrap, virtual expose maps, the share-load helper indirection. The
+ * lazy-import transform MUST skip these chunks: their `import()` calls are
+ * federation's internal protocol (share loading, container init), not
+ * vendor lazy chunks. Substituting `__hai3_lazy` for `import` there would
+ * silently break federation's share/remote-entry mechanics.
+ *
+ * Kept in lockstep with `@module-federation/vite`'s
+ * `FEDERATION_CONTROL_CHUNK_HINTS` list (and `__loadShare__` helper
+ * chunks emitted under the same plugin). Updates to the federation
+ * version may require expanding this list.
+ */
+const FEDERATION_CONTROL_CHUNK_PATTERNS: readonly string[] = [
+  'hostInit',
+  'virtualExposes',
+  'localSharedImportMap',
+  'remoteEntry',
+  '__loadShare__',
+  '__federation_',
+];
+
+function isFederationControlChunk(fileName: string): boolean {
+  return FEDERATION_CONTROL_CHUNK_PATTERNS.some((hint) =>
+    fileName.includes(hint)
+  );
+}
+
+/**
+ * Run the lazy-import AST transform on a compiled chunk. Returns the
+ * rewritten code and transform count, or `null` if nothing changed.
+ *
+ * The parser is the caller-provided Rollup `parse` — using Rollup's bundled
+ * acorn means no new dependency in the plugin and exact compatibility with
+ * the chunk syntax Rollup itself emits.
+ *
+ * Non-static dynamic imports are surfaced via the caller-provided `error`
+ * callback (Rollup's `this.error`); the caller decides how to format
+ * file/position context for the message.
+ */
+function transformLazyImports(
+  code: string,
+  parse: (input: string) => unknown,
+  error: (message: string, pos: number) => never,
+  chunkFileName: string
+): { code: string; count: number } | null {
+  // Fast skip — nothing to do for chunks without a dynamic import.
+  if (!code.includes('import(')) return null;
+
+  let ast: unknown;
+  try {
+    ast = parse(code);
+  } catch {
+    // Parse failure here means another plugin will surface the issue with a
+    // proper diagnostic. We don't mask it by throwing our own error.
+    return null;
+  }
+
+  const transformer = new LazyImportTransformer();
+  transformer.visit(ast);
+
+  for (const { node } of transformer.nonStaticNodes()) {
+    error(
+      `[frontx-mf-gts] Non-statically-resolvable dynamic import in compiled chunk ` +
+        `'${chunkFileName}'. Lazy-import paths MUST be string literals, ` +
+        `constant template literals, or constant string concatenation so the ` +
+        `vendor MFE's runtime can resolve them through the per-load blob URL ` +
+        `chain. See architecture/ADR/0022-lazy-import-abi.md.`,
+      node.start
+    );
+  }
+
+  if (transformer.count() === 0) return null;
+
+  return { code: transformer.apply(code), count: transformer.count() };
+}
 
 // @cpt-begin:frontx-mf-gts-plugin:p1:inst-1
-
 /**
  * Creates the frontx-mf-gts Vite plugin.
  *
@@ -604,6 +810,50 @@ export function frontxMfGts(): Plugin {
     // Run after all other plugins, including @module-federation/vite, so
     // that dist/mf-manifest.json is already on disk.
     enforce: 'post',
+
+    // ── Lazy-import AST transform (build-time half of ADR-0022) ─────────
+    // Rewrites every dynamic `import('<rel>')` in compiled MFE chunks to
+    // `__hai3_lazy('<rel>')`. The handler-side `__hai3_lazy` runtime
+    // resolver then fetches the lazy chunk, rewrites its bare specifiers
+    // against the parent load's `sharedDepBlobUrls`, and mints a per-load
+    // blob URL — preserving per-load isolation for lazy chunks.
+    //
+    // Hook choice: `renderChunk` (post-bundle) rather than `transform`
+    // (pre-bundle). A pre-bundle transform on TS source would replace
+    // `import('./X')` before Rollup analyses the module graph, killing
+    // code-splitting. `renderChunk` operates after Rollup has emitted
+    // chunks for every lazy import, so the transform preserves Rollup's
+    // splitting while still performing an AST-level rewrite at build
+    // time — matching the ADR's intent ("build-time AST rewrite, not
+    // runtime regex on compiled output").
+    renderChunk(code, chunk) {
+      // Skip federation control chunks: `@module-federation/vite` generates
+      // its own runtime chunks (`hostInit`, `virtualExposes`,
+      // `localSharedImportMap`, `remoteEntry`, federation share-bootstrap
+      // helpers) whose dynamic-import calls are part of federation's
+      // internal protocol, NOT vendor lazy loading. Transforming them
+      // would replace federation's `import()` runtime hooks with a
+      // `__hai3_lazy` identifier federation has no awareness of, breaking
+      // federation's share-init and remote-entry mechanics.
+      if (isFederationControlChunk(chunk.fileName)) return null;
+
+      const result = transformLazyImports(
+        code,
+        (input) => this.parse(input),
+        (message, pos) => this.error({ message, pos }),
+        chunk.fileName
+      );
+      if (result === null) return null;
+      console.log(
+        `[frontx-mf-gts] transformed ${result.count} dynamic import(s) in ${chunk.fileName}`
+      );
+      // No source map emitted: the byte-for-byte replacements (`import` → `__hai3_lazy`)
+      // shift offsets by a constant 5 per call. Downstream sourcemap accuracy
+      // for those exact lines degrades to the nearest preceding token — an
+      // acceptable trade since the transformed sites are FrontX runtime
+      // plumbing, not vendor source debugging targets.
+      return { code: result.code, map: null };
+    },
 
     configResolved(config) {
       packageRoot = config.root;
@@ -676,7 +926,101 @@ export function frontxMfGts(): Plugin {
         );
 
         console.log(`[frontx-mf-gts] enriched ${mfeJsonPath}`);
+
+        // ── Repair lifecycle chunks whose default export was rewritten ─
+        // Each `entries[].exposedModule` writes `export default <lifecycle>`
+        // at the source level. Rollup may consolidate a heavy lifecycle
+        // (large transitive footprint, lazy sub-modules) with sibling
+        // shared code into a single chunk that rewrites the entry's
+        // `export default <X>` to a namespace-aliased re-export like
+        // `export { ..., oa as q, ... }`, leaving the chunk's namespace
+        // with no `default` field. The MfeHandler reads
+        // `moduleRecord['default']` and surfaces the breakage as
+        // `Module './lifecycle-uikit' must implement MfeEntryLifecycle
+        // interface (mount/unmount)` at host runtime.
+        //
+        // To keep `MfeHandler.loadInternal()` simple (it reads `default`
+        // only), the plugin repairs the chunk: detects the consolidation
+        // shape, identifies the lifecycle variable from the synthesized
+        // frozen-namespace object, and appends an explicit
+        // `export default <lifecycle>` to the chunk file. The repair runs
+        // post-bundle (rollup's chunk emission is complete), so the
+        // host-side `import()` of the chunk picks up the added default.
+        //
+        // Throws when neither a clean default-export nor the consolidation
+        // pattern is detected — that's a true plugin bug worth surfacing
+        // at build time rather than at runtime.
+        // @cpt-dod:cpt-frontx-dod-mfe-isolation-lifecycle-chunk-isolation:p1
+        const defaultExportPattern =
+          /export\s*\{[^}]*\bas\s+default\b|export\s+default\s/u;
+        const consolidatedNamespacePattern =
+          /([A-Za-z_$][\w$]*)\s*=\s*Object\.freeze\(\s*Object\.defineProperty\(\s*\{\s*__proto__\s*:\s*null\s*,\s*default\s*:\s*([A-Za-z_$][\w$]*)\s*\}\s*,\s*Symbol\.toStringTag\s*,\s*\{\s*value\s*:\s*"Module"\s*\}\s*\)\s*\)/gu;
+        const exportListExtractor =
+          /export\s*\{\s*([^}]*)\s*\}/gu;
+        const exportAliasPattern =
+          /^\s*([A-Za-z_$][\w$]*)\s+as\s+[A-Za-z_$][\w$]*\s*$/u;
+
+        for (const entry of enrichedMfeJson.entries) {
+          const syncChunks = entry.exposeAssets?.js?.sync ?? [];
+          for (const relChunk of syncChunks) {
+            const chunkPath = path.join(distDir, relChunk);
+            if (!fs.existsSync(chunkPath)) continue;
+            const source = fs.readFileSync(chunkPath, 'utf-8');
+            if (defaultExportPattern.test(source)) continue;
+
+            // Find every `Object.freeze(Object.defineProperty({__proto__:null,default:Y},...))`
+            // in the chunk — one per co-located source module — and pick the
+            // one whose namespace name appears in the chunk's export list.
+            const namespaceMatches = Array.from(
+              source.matchAll(consolidatedNamespacePattern)
+            );
+            if (namespaceMatches.length === 0) {
+              const tail = source.slice(Math.max(0, source.length - 200));
+              throw new Error(
+                `[frontx-mf-gts] Lifecycle chunk '${relChunk}' does not ` +
+                  `export 'default' cleanly and shows no recognizable ` +
+                  `consolidation pattern to repair. Expected either ` +
+                  `\`export default ...\` / \`export{...as default}\` or ` +
+                  `a namespace-wrapped default ` +
+                  `(\`<ns>=Object.freeze(Object.defineProperty({__proto__:null,default:<X>},...))\`). ` +
+                  `Got tail (last 200 chars): ${tail}.`
+              );
+            }
+
+            const exportedNamespaces = new Set<string>();
+            for (const exportListMatch of source.matchAll(exportListExtractor)) {
+              for (const part of exportListMatch[1].split(',')) {
+                const aliasMatch = exportAliasPattern.exec(part);
+                if (aliasMatch) exportedNamespaces.add(aliasMatch[1]);
+              }
+            }
+
+            let lifecycleVar: string | undefined;
+            for (const m of namespaceMatches) {
+              if (exportedNamespaces.has(m[1])) {
+                lifecycleVar = m[2];
+                break;
+              }
+            }
+            // Fallback: the entry module's namespace is typically the
+            // last one rollup emits in a consolidated chunk.
+            lifecycleVar ??=
+              namespaceMatches[namespaceMatches.length - 1][2];
+
+            const repaired =
+              source.replace(/\s*$/u, '') +
+              `\nexport default ${lifecycleVar};\n`;
+            fs.writeFileSync(chunkPath, repaired, 'utf-8');
+            console.log(
+              `[frontx-mf-gts] repaired lifecycle chunk '${relChunk}' — ` +
+                `appended \`export default ${lifecycleVar}\` for entry ` +
+                `'${entry.exposedModule}' (consolidated with sibling code)`
+            );
+          }
+        }
       },
     };
 }
 // @cpt-end:frontx-mf-gts-plugin:p1:inst-1
+
+export { LazyImportTransformer, transformLazyImports };
