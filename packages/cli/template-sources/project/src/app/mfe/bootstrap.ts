@@ -14,9 +14,111 @@
  */
 
 import type { RefObject } from 'react';
-import type { HAI3App, Extension, ScreenExtension } from '@cyberfabric/react';
-import { bootstrapMfeDomains } from '@cyberfabric/react';
+import {
+  ExtensionDomainImplementation,
+  ExtensionDomainImplementationFactory,
+  ExclusiveMountStrategy,
+  OptionalMountStrategy,
+  ActionHandler,
+  HAI3_ACTION_MOUNT_EXT,
+  HAI3_ACTION_UNMOUNT_EXT,
+  HAI3_SHARED_PROPERTY_THEME,
+  HAI3_SHARED_PROPERTY_LANGUAGE,
+  screenDomain,
+  sidebarDomain,
+  popupDomain,
+  overlayDomain,
+} from '@cyberfabric/react';
+import type {
+  HAI3App,
+  Extension,
+  ScreenExtension,
+  MfeRegistry,
+  ContainerHooks,
+  DomainContext,
+  ActionPayload,
+  MountStrategy,
+} from '@cyberfabric/react';
 import { MFE_MANIFESTS, type MfeManifestConfig } from './generated-mfe-manifests.ts';
+
+// ─── Domain implementation building blocks ───────────────────────────────────
+//
+// Each domain registered with the registry pairs an ExtensionDomain declaration
+// with an ExtensionDomainImplementationFactory whose build(ctx) constructs an
+// ExtensionDomainImplementation. The implementation captures the per-domain
+// mounter and a ContainerHooks inside its chosen MountStrategy and registers
+// per-action-type handlers that delegate to the strategy.
+
+class HostContainerHooks implements ContainerHooks {
+  private readonly elements = new Map<string, HTMLElement>();
+
+  create(extensionId: string): Element {
+    const el = document.createElement('div');
+    el.dataset.extensionId = extensionId;
+    el.style.height = '100%';
+    this.elements.set(extensionId, el);
+    return el;
+  }
+
+  destroy(extensionId: string): void {
+    this.elements.delete(extensionId);
+  }
+}
+
+class ScreenDomainImpl extends ExtensionDomainImplementation {
+  private readonly strategy: ExclusiveMountStrategy;
+
+  constructor(ctx: DomainContext, hooks: ContainerHooks, registry: MfeRegistry, domainId: string) {
+    super();
+    this.strategy = new ExclusiveMountStrategy(ctx.mounter, hooks, registry, domainId);
+    ctx.registerHandler(
+      HAI3_ACTION_MOUNT_EXT,
+      ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as ActionPayload)),
+    );
+  }
+
+  protected getMountStrategies(): MountStrategy[] {
+    return [this.strategy];
+  }
+}
+
+class OptionalDomainImpl extends ExtensionDomainImplementation {
+  private readonly strategy: OptionalMountStrategy;
+
+  constructor(ctx: DomainContext, hooks: ContainerHooks, registry: MfeRegistry, domainId: string) {
+    super();
+    this.strategy = new OptionalMountStrategy(ctx.mounter, hooks, registry, domainId);
+    ctx.registerHandler(
+      HAI3_ACTION_MOUNT_EXT,
+      ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as ActionPayload)),
+    );
+    ctx.registerHandler(
+      HAI3_ACTION_UNMOUNT_EXT,
+      ActionHandler.fromFunction((_t, p) => this.strategy.unmount!(p as ActionPayload)),
+    );
+  }
+
+  protected getMountStrategies(): MountStrategy[] {
+    return [this.strategy];
+  }
+}
+
+class ScreenDomainFactory extends ExtensionDomainImplementationFactory {
+  constructor(private readonly registry: MfeRegistry) { super(); }
+  build(ctx: DomainContext): ScreenDomainImpl {
+    return new ScreenDomainImpl(ctx, new HostContainerHooks(), this.registry, screenDomain.id);
+  }
+}
+
+class OptionalDomainFactory extends ExtensionDomainImplementationFactory {
+  constructor(
+    private readonly registry: MfeRegistry,
+    private readonly domainId: string,
+  ) { super(); }
+  build(ctx: DomainContext): OptionalDomainImpl {
+    return new OptionalDomainImpl(ctx, new HostContainerHooks(), this.registry, this.domainId);
+  }
+}
 
 function isScreenExtension(extension: Extension): extension is ScreenExtension {
   const candidate = extension as { presentation?: { route?: string } };
@@ -29,14 +131,28 @@ function isScreenExtension(extension: Extension): extension is ScreenExtension {
  * Initial screen mount is deferred to MfeScreenContainer -> ExtensionDomainSlot.
  *
  * @param app - FrontX application instance
- * @param screenContainerRef - React ref for the screen domain container element
+ * @param screenContainerRef - React ref for the screen domain container element (reserved for future slot wiring)
  * @returns Array of registered screen extensions, for URL routing in MfeScreenContainer
  */
 export async function bootstrapMFE(
   app: HAI3App,
-  screenContainerRef: RefObject<HTMLDivElement | null>,
+  // screenContainerRef is kept for API compatibility; slot wiring is owned by ExtensionDomainSlot
+  _screenContainerRef?: RefObject<HTMLDivElement | null>,
 ): Promise<ScreenExtension[]> {
-  const mfeRegistry = await bootstrapMfeDomains(app, screenContainerRef);
+  const registry = app.mfeRegistry;
+  if (!registry) {
+    throw new Error('[MFE Bootstrap] mfeRegistry is not available on app instance');
+  }
+
+  registry.registerDomain(screenDomain, new ScreenDomainFactory(registry));
+  registry.registerDomain(sidebarDomain, new OptionalDomainFactory(registry, sidebarDomain.id));
+  registry.registerDomain(popupDomain, new OptionalDomainFactory(registry, popupDomain.id));
+  registry.registerDomain(overlayDomain, new OptionalDomainFactory(registry, overlayDomain.id));
+
+  const currentThemeId = app.themeRegistry?.getCurrent()?.id ?? 'default';
+  registry.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, currentThemeId);
+  const derivedLanguage = app.i18nRegistry.getLanguage() ?? 'en';
+  registry.updateSharedProperty(HAI3_SHARED_PROPERTY_LANGUAGE, derivedLanguage);
 
   if (MFE_MANIFESTS.length === 0) {
     console.warn(
@@ -53,18 +169,18 @@ export async function bootstrapMFE(
     // type system can validate entry references to these schemas at registration time.
     if (config.schemas) {
       for (const schema of config.schemas) {
-        mfeRegistry.typeSystem.registerSchema(schema);
+        registry.typeSystem.registerSchema(schema);
       }
     }
 
-    mfeRegistry.typeSystem.register(config.manifest);
+    registry.typeSystem.register(config.manifest);
 
     for (const entry of config.entries) {
-      mfeRegistry.typeSystem.register({ ...entry, manifest: config.manifest });
+      registry.typeSystem.register({ ...entry, manifest: config.manifest });
     }
 
     for (const extension of config.extensions) {
-      await mfeRegistry.registerExtension(extension);
+      await registry.registerExtension(extension);
     }
 
     screenExtensions.push(...config.extensions.filter(isScreenExtension));

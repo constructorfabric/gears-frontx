@@ -19,7 +19,10 @@
 // @cpt-flow:cpt-frontx-flow-mfe-registry-query:p2
 // @cpt-algo:cpt-frontx-algo-mfe-registry-gts-package-discovery:p1
 // @cpt-algo:cpt-frontx-algo-mfe-registry-handler-resolution:p1
+// @cpt-algo:cpt-frontx-algo-mfe-registry-domain-implementation-construction:p1
+// @cpt-algo:cpt-frontx-algo-mfe-registry-cross-validate-handlers:p1
 // @cpt-dod:cpt-frontx-dod-mfe-registry-handler-injection:p1
+// @cpt-dod:cpt-frontx-dod-mfe-registry-registry-contract:p1
 
 import type { TypeSystemPlugin } from '../plugins/types';
 import type { MfeRegistryConfig } from './config';
@@ -314,6 +317,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
     );
 
     // Step 4: Invoke factory (try/finally for rollback + ctx invalidation).
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-domain-implementation-construction:p1:inst-1
     let implementation;
     try {
       implementation = factory.build(ctx);
@@ -328,6 +332,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
       // — including captured function handles — throws.
       ctx.invalidate();
     }
+    // @cpt-end:cpt-frontx-algo-mfe-registry-domain-implementation-construction:p1:inst-1
 
     // Step 5: Cross-validate handlers vs declaration AND strategy/cardinality matrix.
     try {
@@ -366,6 +371,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
    *
    * @throws {Error} on any violation.
    */
+  // @cpt-begin:cpt-frontx-algo-mfe-registry-cross-validate-handlers:p1:inst-1
   private crossValidateHandlers(
     declaration: ExtensionDomain,
     strategies: import('./mount-strategy').MountStrategy[],
@@ -441,8 +447,15 @@ export class DefaultMfeRegistry extends MfeRegistry {
       }
     }
 
-    // Every handler registered must be in declaration.actions.
+    // Every handler registered via ctx.registerHandler must be in
+    // declaration.actions. Per the spec (inst-enforce-no-extra-handlers), this
+    // check is scoped to handlers REGISTERED by the factory, not handlers
+    // PREPOPULATED by the registry itself (e.g., HAI3_ACTION_LOAD_EXT supplied
+    // by LoadExtHandler injection). The registry-supplied handlers are infrastructure
+    // and need not appear in declaration.actions for every domain.
+    const prepopulated = ctx.getPrepopulatedActionTypes();
     for (const [actionType] of collectedHandlers) {
+      if (prepopulated.has(actionType)) continue;
       if (!declaredActions.includes(actionType)) {
         throw new Error(
           `Domain '${declaration.id}': handler registered for '${actionType}' but '${actionType}' is not declared in declaration.actions.`
@@ -450,6 +463,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
       }
     }
   }
+  // @cpt-end:cpt-frontx-algo-mfe-registry-cross-validate-handlers:p1:inst-1
 
   // ─── Execute actions chain ────────────────────────────────────────────────
 

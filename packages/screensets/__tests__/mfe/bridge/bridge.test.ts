@@ -14,6 +14,7 @@ import { DefaultActionsChainsMediator } from '../../../src/mfe/mediator/actions-
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import type { TypeSystemPlugin, ValidationResult, JSONSchema } from '../../../src/mfe/plugins/types';
 import { MockDomainFactory } from '../../../__test-utils__';
+import { HAI3_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
 
 describe('Bridge Implementation', () => {
   describe('ChildMfeBridge', () => {
@@ -644,7 +645,10 @@ describe('Bridge Implementation', () => {
         domain = {
           id: DOMAIN_ID,
           sharedProperties: [],
-          actions: [],
+          // mount_ext satisfies the ExclusiveMountStrategy cardinality matrix
+          // (REQUIRED). The test does not exercise mount semantics; the
+          // declaration is plumbing so the domain can be registered.
+          actions: [HAI3_ACTION_MOUNT_EXT],
           // Extension-targeted actions are resolved via extensionHandlers map; the domain
           // must be registered so the mediator can look up defaultActionTimeout.
           extensionsActions: [ACTION_TYPE],
@@ -652,7 +656,7 @@ describe('Bridge Implementation', () => {
           lifecycleStages: [],
           extensionsLifecycleStages: [],
         };
-        registry.registerDomain(domain, containerProvider.prepareForDomain(domain));
+        registry.registerDomain(domain, containerProvider.setRegistry(registry).prepareForDomain(domain));
       });
 
       it('should route an action chain targeting the extension ID to the registered handler', async () => {
@@ -775,7 +779,7 @@ describe('Bridge Implementation', () => {
           lifecycleStages: [],
           extensionsLifecycleStages: [],
         };
-        gtsRegistry.registerDomain(domain, new MockDomainFactory().prepareForDomain(domain));
+        gtsRegistry.registerDomain(domain, new MockDomainFactory().setRegistry(gtsRegistry).prepareForDomain(domain));
 
         gtsPlugin.register({
           id: PROFILE_EXT_ID,

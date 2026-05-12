@@ -14,7 +14,9 @@
  * @packageDocumentation
  */
 // @cpt-FEATURE:cpt-frontx-feature-mfe-registry:p2
+// @cpt-dod:cpt-frontx-dod-mfe-registry-mount-contracts:p1
 
+// @cpt-begin:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-mount-strategy
 /**
  * Minimal typed payload for mount/unmount actions.
  *
@@ -84,3 +86,4 @@ export abstract class MountStrategy {
    */
   unmount?(payload: ActionPayload): Promise<void>;
 }
+// @cpt-end:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-mount-strategy

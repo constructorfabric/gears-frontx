@@ -14,6 +14,7 @@ import { MfeRegistry } from '../../../src/mfe/runtime';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { ExtensionDomain } from '../../../src/mfe/types';
+import { HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
 import { MockDomainFactory } from '../../../__test-utils__';
 
 
@@ -51,7 +52,7 @@ describe('MfeRegistry - Bridge Tracking', () => {
       const testDomain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.bridge.tracking.domain.v1',
         sharedProperties: [],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
@@ -64,7 +65,9 @@ describe('MfeRegistry - Bridge Tracking', () => {
         ],
       };
 
-      registry.registerDomain(testDomain, new MockDomainFactory().prepareForDomain(testDomain));
+      const bridgeTrackingFactory = new MockDomainFactory();
+      bridgeTrackingFactory.setRegistry(registry as DefaultMfeRegistry);
+      registry.registerDomain(testDomain, bridgeTrackingFactory.prepareForDomain(testDomain));
 
       // Verify domain is registered before disposal
       expect(registry.getDomain(testDomain.id)).toBeDefined();

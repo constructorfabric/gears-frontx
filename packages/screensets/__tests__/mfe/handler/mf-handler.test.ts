@@ -117,6 +117,9 @@ function createTestSetup(
       manifest,
       exposedModule,
       exposeAssets,
+      requiredProperties: [],
+      actions: [],
+      domainActions: [],
     };
   };
 
@@ -299,6 +302,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         manifest: 'gts.hai3.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
         exposedModule: './ChartWidget',
         exposeAssets,
+        requiredProperties: [],
+        actions: [],
+        domainActions: []
       };
 
       await expect(handler.load(entry, entry.id)).rejects.toThrow(MfeLoadError);
@@ -368,12 +374,18 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         manifest,
         exposedModule: './Widget1',
         exposeAssets: { js: { sync: ['expose-Widget1.js'], async: [] }, css: { sync: [], async: [] } },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
       const entry2: MfeEntryMF = {
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.cache2.v1',
         manifest,
         exposedModule: './Widget2',
         exposeAssets: { js: { sync: ['expose-Widget2.js'], async: [] }, css: { sync: [], async: [] } },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       // Both loads build shared dep blob URLs — sourceTextCache ensures the shared
@@ -416,6 +428,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         manifest,
         exposedModule: './ChartWidget',
         exposeAssets,
+        requiredProperties: [],
+        actions: [],
+        domainActions: []
       };
 
       const result = await handler.load(entry, entry.id);
@@ -483,6 +498,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
           js: { sync: [exposeChunkPath], async: [] },
           css: { sync: [], async: [] },
         },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       const result = await handler.load(entry, entry.id);
@@ -516,6 +534,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
           js: { sync: [exposeChunk], async: [] },
           css: { sync: [], async: [] },
         },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       const result = await handler.load(entry, entry.id);
@@ -551,6 +572,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
           js: { sync: [exposeChunk], async: [] },
           css: { sync: [], async: [] },
         },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       const result = await handler.load(entry, entry.id);
@@ -581,6 +605,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
           js: { sync: [exposeChunk], async: [] },
           css: { sync: [], async: [] },
         },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       const result = await handler.load(entry, entry.id);
@@ -605,6 +632,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
           js: { sync: [exposeChunk], async: [] },
           css: { sync: [cssFile], async: [] },
         },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       const lifecycle = await handler.load(entry, entry.id);
@@ -616,6 +646,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         executeActionsChain: async () => undefined,
         subscribeToProperty: () => () => undefined,
         getProperty: () => undefined,
+        registerActionHandler: () => undefined,
       });
 
       const styleElement = shadowRoot.getElementById('__hai3-mfe-runtime-style-0');
@@ -644,6 +675,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
           js: { sync: [exposeChunk], async: [] },
           css: { sync: ['widget.css'], async: [] },
         },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       const lifecycle = await handler.load(entry, entry.id);
@@ -655,6 +689,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         executeActionsChain: async () => undefined,
         subscribeToProperty: () => () => undefined,
         getProperty: () => undefined,
+        registerActionHandler: () => undefined,
       };
 
       await lifecycle.mount(shadowRoot, bridge);
@@ -689,6 +724,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
           js: { sync: [exposeChunk], async: [] },
           css: { sync: ['widget.css'], async: [] },
         },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       const lifecycle = await handler.load(entry, entry.id);
@@ -701,6 +739,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         executeActionsChain: async () => undefined,
         subscribeToProperty: () => () => undefined,
         getProperty: () => undefined,
+        registerActionHandler: () => undefined,
       });
 
       expect(shadowRoot.getElementById('__hai3-mfe-runtime-style-0')).toBeTruthy();
@@ -731,6 +770,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
           js: { sync: [exposeChunk], async: [] },
           css: { sync: [], async: [] },
         },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       await handler.load(entry, entry.id);
@@ -755,6 +797,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
           js: { sync: [exposeChunk], async: [] },
           css: { sync: [], async: [] },
         },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       await handler.load(entry, entry.id);
@@ -781,6 +826,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
           js: { sync: [exposeChunk], async: [] },
           css: { sync: [cssPath], async: [] },
         },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       const lifecycle = await handler.load(entry, entry.id);
@@ -792,6 +840,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         executeActionsChain: async () => undefined,
         subscribeToProperty: () => () => undefined,
         getProperty: () => undefined,
+        registerActionHandler: () => undefined,
       });
 
       const link = shadowRoot.getElementById('__hai3-mfe-runtime-style-0') as HTMLLinkElement;
@@ -809,6 +858,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
           js: { sync: [], async: [] }, // empty — no chunk to load
           css: { sync: [], async: [] },
         },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       await expect(handler.load(entry, entry.id)).rejects.toThrow(MfeLoadError);
@@ -831,6 +883,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
           js: { sync: [exposeChunk], async: [] },
           css: { sync: ['base.css', 'theme.css'], async: ['lazy.css'] },
         },
+        requiredProperties: [],
+        actions: [],
+        domainActions: [],
       };
 
       const lifecycle = await handler.load(entry, entry.id);
@@ -842,6 +897,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         executeActionsChain: async () => undefined,
         subscribeToProperty: () => () => undefined,
         getProperty: () => undefined,
+        registerActionHandler: () => undefined,
       });
 
       // sync and async CSS are both injected (3 total)
@@ -964,6 +1020,9 @@ describe('MfeHandlerMF - Process-Wide Load Cache', () => {
       manifest: 'gts.hai3.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
       exposedModule: './Widget',
       exposeAssets,
+      requiredProperties: [],
+      actions: [],
+      domainActions: []
     };
 
     await expect(handler.load(entry, entry.id)).rejects.toThrow(MfeLoadError);
@@ -1127,6 +1186,9 @@ describe('MfeHandlerMF - Extension-Instance-ID Cache Key', () => {
       manifest: 'gts.hai3.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
       exposedModule: './Widget',
       exposeAssets,
+      requiredProperties: [],
+      actions: [],
+      domainActions: []
     };
     const extensionId = 'ext-instance.fail.v1';
 

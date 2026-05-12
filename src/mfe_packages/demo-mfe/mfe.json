@@ -70,7 +70,7 @@
       },
       {
         "name": "@cyberfabric/state",
-        "version": "0.2.0-alpha.1",
+        "version": "0.2.0-alpha.2",
         "chunkPath": "shared/cyberfabric-state.js",
         "unwrapKey": null
       },
@@ -88,7 +88,7 @@
       },
       {
         "name": "@cyberfabric/i18n",
-        "version": "0.2.0-alpha.0",
+        "version": "0.2.0-alpha.1",
         "chunkPath": "shared/cyberfabric-i18n.js",
         "unwrapKey": null
       },
@@ -191,7 +191,7 @@
             "assets/zh-DpJ9fTal.js"
           ],
           "sync": [
-            "assets/lifecycle-helloworld-B18KUDLn.js"
+            "assets/lifecycle-helloworld-DXV8NIl4.js"
           ]
         },
         "css": {
@@ -253,7 +253,7 @@
             "assets/zh-BRJDH7tI.js"
           ],
           "sync": [
-            "assets/lifecycle-profile-Wzl5aUay.js"
+            "assets/lifecycle-profile-Bc4ez1ja.js"
           ]
         },
         "css": {
@@ -313,7 +313,7 @@
             "assets/zh-BLvEAXaM.js"
           ],
           "sync": [
-            "assets/lifecycle-theme-nmS5wmGz.js"
+            "assets/lifecycle-theme-BpMy0ncD.js"
           ]
         },
         "css": {
@@ -333,7 +333,7 @@
         "js": {
           "async": [],
           "sync": [
-            "assets/lifecycle-widgets-host-CZbeOCle.js"
+            "assets/lifecycle-widgets-host-DiEwnCGK.js"
           ]
         },
         "css": {
@@ -355,15 +355,15 @@
       "exposeAssets": {
         "js": {
           "async": [
-            "assets/LayoutElements-bm5qfkQo.js",
-            "assets/NavigationElements-CqcW5rfl.js",
-            "assets/FormElements-jjLRDvam.js",
-            "assets/ActionElements-CAYMfZ9-.js",
-            "assets/FeedbackElements-B7apSYjk.js",
-            "assets/DataDisplayElements-oWWAKx6B.js",
-            "assets/OverlayElements-DIB3BJ4S.js",
-            "assets/MediaElements-C82JUScP.js",
-            "assets/DisclosureElements-BTzsSSsv.js",
+            "assets/LayoutElements-BSsI-BJp.js",
+            "assets/NavigationElements-9Y57mt3k.js",
+            "assets/FormElements-C89NSKb5.js",
+            "assets/ActionElements-D5eETCRR.js",
+            "assets/FeedbackElements-D0jLUvvY.js",
+            "assets/DataDisplayElements-CHeUfspK.js",
+            "assets/OverlayElements-CZTwTGAa.js",
+            "assets/MediaElements-bABJTffl.js",
+            "assets/DisclosureElements-BL1nnLmu.js",
             "assets/ar-DHEDwF2j.js",
             "assets/bn-BIfP88eS.js",
             "assets/cs-CWPaus97.js",
@@ -402,7 +402,7 @@
             "assets/zh-DEzQBzHR.js"
           ],
           "sync": [
-            "assets/lifecycle-uikit-gLUrL-QN.js"
+            "assets/lifecycle-uikit-DbEmF17u.js"
           ]
         },
         "css": {

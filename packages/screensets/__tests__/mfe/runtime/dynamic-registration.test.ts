@@ -194,6 +194,9 @@ describe('Dynamic Registration', () => {
 
       // Register domain
       registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
+      // Attach a mount root — the React slot does this in production; tests must
+      // do it explicitly before driving mount/unmount chains.
+      registry.getMounter(testDomain.id).attach(document.createElement('div'));
 
       // Register extension properly
       await registry.registerExtension(testExtension);
@@ -249,6 +252,7 @@ describe('Dynamic Registration', () => {
 
       // Register domain
       registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
+      registry.getMounter(testDomain.id).attach(document.createElement('div'));
 
       // Register extension properly
       await registry.registerExtension(testExtension);
@@ -297,6 +301,7 @@ describe('Dynamic Registration', () => {
 
       // Register domain
       registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
+      registry.getMounter(testDomain.id).attach(document.createElement('div'));
 
       // Register extension properly
       await registry.registerExtension(testExtension);
@@ -363,6 +368,7 @@ describe('Dynamic Registration', () => {
 
       // Register domain
       registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
+      registry.getMounter(testDomain.id).attach(document.createElement('div'));
 
       // Register extension properly
       await registry.registerExtension(testExtension);
@@ -432,6 +438,7 @@ describe('Dynamic Registration', () => {
 
       // Register domain
       registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
+      registry.getMounter(testDomain.id).attach(document.createElement('div'));
 
       // Register extension properly
       await registry.registerExtension(testExtension);

@@ -1,155 +1,104 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { HAI3App, ScreenExtension } from '@cyberfabric/react';
-import { act, render, screen, waitFor } from '@testing-library/react';
-import type { RefObject } from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
 
 const mockBootstrapMFE = vi.fn();
 const mockUseHAI3 = vi.fn();
 const mockScreenDomain = { id: 'screen-domain' };
 
 vi.mock('./bootstrap', () => ({
-  bootstrapMFE: (app: HAI3App, screenContainerRef: RefObject<HTMLDivElement | null>) =>
-    mockBootstrapMFE(app, screenContainerRef),
+  bootstrapMFE: (...args: unknown[]) => mockBootstrapMFE(...args),
 }));
 
 vi.mock('@cyberfabric/react', async (importOriginal) => ({
-  ...(await importOriginal()),
+  ...(await importOriginal<Record<string, unknown>>()),
   useHAI3: () => mockUseHAI3(),
   screenDomain: mockScreenDomain,
   ExtensionDomainSlot: ({
+    registry,
     domainId,
-    extensionId,
     className,
   }: {
+    registry: unknown;
     domainId: string;
-    extensionId: string;
     className?: string;
   }) => (
     <div
       data-testid="extension-domain-slot"
+      data-registry-present={registry ? 'yes' : 'no'}
       data-domain-id={domainId}
-      data-extension-id={extensionId}
       data-class-name={className}
     />
   ),
 }));
 
 describe('MfeScreenContainer', () => {
-  let mountedExtensionId: string | null | undefined;
-  let notifyStoreChange: (() => void) | undefined;
-  let registeredScreenExtensions: ScreenExtension[];
-  let app: {
-    store: { subscribe: ReturnType<typeof vi.fn> };
-    mfeRegistry: {
-      getMountedExtension: ReturnType<typeof vi.fn>;
-      getExtensionsForDomain: ReturnType<typeof vi.fn>;
-    };
-  };
-
-  const setScreenExtensions = (extensions: ScreenExtension[]) => {
-    registeredScreenExtensions = extensions;
-    mockBootstrapMFE.mockResolvedValue(extensions);
-  };
+  let app: { mfeRegistry: object };
 
   beforeEach(() => {
-    mountedExtensionId = undefined;
-    notifyStoreChange = undefined;
-    registeredScreenExtensions = [];
-    app = {
-      store: {
-        subscribe: vi.fn((listener: () => void) => {
-          notifyStoreChange = listener;
-          return vi.fn();
-        }),
-      },
-      mfeRegistry: {
-        getMountedExtension: vi.fn(() => mountedExtensionId),
-        getExtensionsForDomain: vi.fn(
-          (domainId: string) =>
-            domainId === mockScreenDomain.id ? registeredScreenExtensions : [],
-        ),
-      },
-    };
+    app = { mfeRegistry: {} };
     mockUseHAI3.mockReturnValue(app);
     mockBootstrapMFE.mockReset();
-    globalThis.history.pushState({}, '', '/');
+    mockBootstrapMFE.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    globalThis.history.pushState({}, '', '/');
   });
 
-  it('bootstraps the MFE runtime only once', async () => {
-    setScreenExtensions([]);
+  it('renders nothing while bootstrap is pending', async () => {
+    let resolveBootstrap: (() => void) | undefined;
+    mockBootstrapMFE.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveBootstrap = resolve;
+        }),
+    );
+    const { MfeScreenContainer } = await import('./MfeScreenContainer');
+
+    render(<MfeScreenContainer />);
+
+    expect(screen.queryByTestId('extension-domain-slot')).toBeNull();
+
+    resolveBootstrap?.();
+  });
+
+  it('bootstraps the MFE runtime only once across re-renders', async () => {
     const { MfeScreenContainer } = await import('./MfeScreenContainer');
 
     const { rerender } = render(<MfeScreenContainer />);
+    rerender(<MfeScreenContainer />);
     rerender(<MfeScreenContainer />);
 
     await waitFor(() => {
       expect(mockBootstrapMFE).toHaveBeenCalledTimes(1);
     });
+    expect(mockBootstrapMFE).toHaveBeenCalledWith(app);
   });
 
-  it('renders the active mounted extension when one exists', async () => {
-    setScreenExtensions([
-      { id: 'screen.home', presentation: { route: '/home' } } as ScreenExtension,
-      { id: 'screen.profile', presentation: { route: '/profile' } } as ScreenExtension,
-    ]);
+  it('renders the screen-domain ExtensionDomainSlot after bootstrap succeeds', async () => {
     const { MfeScreenContainer } = await import('./MfeScreenContainer');
 
     render(<MfeScreenContainer />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('extension-domain-slot').dataset.extensionId).toBe(
-        'screen.home',
-      );
-    });
-
-    await act(async () => {
-      mountedExtensionId = 'screen.profile';
-      notifyStoreChange?.();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('extension-domain-slot').dataset.extensionId).toBe(
-        'screen.profile',
-      );
+      const slot = screen.getByTestId('extension-domain-slot');
+      expect(slot.dataset.domainId).toBe(mockScreenDomain.id);
+      expect(slot.dataset.registryPresent).toBe('yes');
+      expect(slot.dataset.className).toContain('h-full');
     });
   });
 
-  it('falls back to the URL-matched screen before anything is mounted', async () => {
-    globalThis.history.pushState({}, '', '/profile');
-    setScreenExtensions([
-      { id: 'screen.home', presentation: { route: '/home' } } as ScreenExtension,
-      { id: 'screen.profile', presentation: { route: '/profile' } } as ScreenExtension,
-    ]);
-    const { MfeScreenContainer } = await import('./MfeScreenContainer');
+  it('logs an error and renders nothing when bootstrap rejects', async () => {
+    const error = new Error('boom');
+    mockBootstrapMFE.mockRejectedValue(error);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
+    const { MfeScreenContainer } = await import('./MfeScreenContainer');
     render(<MfeScreenContainer />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('extension-domain-slot').dataset.extensionId).toBe(
-        'screen.profile',
-      );
+      expect(errorSpy).toHaveBeenCalled();
     });
-  });
-
-  it('falls back to the first registered screen when nothing is mounted or URL-matched', async () => {
-    globalThis.history.pushState({}, '', '/missing');
-    setScreenExtensions([
-      { id: 'screen.home', presentation: { route: '/home' } } as ScreenExtension,
-      { id: 'screen.profile', presentation: { route: '/profile' } } as ScreenExtension,
-    ]);
-    const { MfeScreenContainer } = await import('./MfeScreenContainer');
-
-    render(<MfeScreenContainer />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('extension-domain-slot').dataset.extensionId).toBe(
-        'screen.home',
-      );
-    });
+    expect(screen.queryByTestId('extension-domain-slot')).toBeNull();
   });
 });

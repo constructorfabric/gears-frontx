@@ -44,7 +44,7 @@
       },
       {
         "name": "@cyberfabric/state",
-        "version": "0.2.0-alpha.1",
+        "version": "0.2.0-alpha.2",
         "chunkPath": "shared/cyberfabric-state.js",
         "unwrapKey": null
       },
@@ -62,7 +62,7 @@
       },
       {
         "name": "@cyberfabric/i18n",
-        "version": "0.2.0-alpha.0",
+        "version": "0.2.0-alpha.1",
         "chunkPath": "shared/cyberfabric-i18n.js",
         "unwrapKey": null
       },

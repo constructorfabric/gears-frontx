@@ -15,6 +15,7 @@ import { MfeRegistry } from '../../../src/mfe/runtime';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import type { ExtensionDomain } from '../../../src/mfe/types';
 import type { TypeSystemPlugin, ValidationResult, JSONSchema } from '../../../src/mfe/plugins/types';
+import { HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
 import { MockDomainFactory } from '../../../__test-utils__';
 
 // Create a lenient mock plugin for testing domain properties
@@ -93,7 +94,7 @@ describe('MfeRegistry - Domain Properties', () => {
     testDomain = {
       id: DOMAIN_ID,
       sharedProperties: [THEME_PROPERTY_ID, USER_PROPERTY_ID],
-      actions: [],
+      actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
       extensionsActions: [],
       defaultActionTimeout: 5000,
       lifecycleStages: [
@@ -104,6 +105,7 @@ describe('MfeRegistry - Domain Properties', () => {
       ],
     };
 
+    mockContainerProvider.setRegistry(registry as DefaultMfeRegistry);
     registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
   });
 
@@ -177,7 +179,7 @@ describe('MfeRegistry - Domain Properties', () => {
       domain2 = {
         id: DOMAIN2_ID,
         sharedProperties: [THEME_PROPERTY_ID],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
@@ -229,7 +231,7 @@ describe('MfeRegistry - Domain Properties', () => {
       const domain3: ExtensionDomain = {
         id: DOMAIN3_ID,
         sharedProperties: [THEME_PROPERTY_ID],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
@@ -252,7 +254,7 @@ describe('MfeRegistry - Domain Properties', () => {
       const domain3: ExtensionDomain = {
         id: DOMAIN3_ID,
         sharedProperties: [THEME_PROPERTY_ID],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [

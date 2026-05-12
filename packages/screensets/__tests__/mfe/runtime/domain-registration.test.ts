@@ -7,6 +7,7 @@ import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry'
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { ExtensionDomain } from '../../../src/mfe/types';
 import { DomainValidationError } from '../../../src/mfe/errors';
+import { HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
 import { MockDomainFactory } from '../../../__test-utils__';
 
 /**
@@ -30,6 +31,7 @@ describe('Domain Registration', () => {
       typeSystem: plugin,
     });
     mockContainerProvider = new MockDomainFactory();
+    mockContainerProvider.setRegistry(registry);
   });
 
   describe('registerDomain with GTS validation', () => {
@@ -37,7 +39,7 @@ describe('Domain Registration', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.corp.layout.domain.v1',
         sharedProperties: [],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
@@ -67,7 +69,7 @@ describe('Domain Registration', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.corp.layout.domain_lifecycle.v1',
         sharedProperties: [],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
@@ -105,7 +107,7 @@ describe('Domain Registration', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.corp.layout.custom_stages.v1',
         sharedProperties: [],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         // Custom lifecycle stages for domain

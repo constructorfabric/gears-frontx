@@ -54,7 +54,7 @@ class TestHooks implements ContainerHooks {
 
 class FakeMounter extends ExtensionMounter {
   attach(_root: Element): void {}
-  detach(): void {}
+  async detach(): Promise<void> {}
   async mount(_extensionId: string, _container: Element): Promise<void> {}
   async unmount(_extensionId: string): Promise<void> {}
 }

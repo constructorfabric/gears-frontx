@@ -68,7 +68,7 @@
       },
       {
         "name": "@tanstack/react-query",
-        "version": "5.90.21",
+        "version": "5.99.0",
         "chunkPath": "shared/tanstack-react-query.js",
         "unwrapKey": null
       },
@@ -140,7 +140,7 @@
             "assets/zh-D5EVqBpG.js"
           ],
           "sync": [
-            "assets/lifecycle-D8PsuTwh.js"
+            "assets/lifecycle-BuxCpUqx.js"
           ]
         },
         "css": {
