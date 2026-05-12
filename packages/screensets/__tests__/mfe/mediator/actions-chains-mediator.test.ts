@@ -146,6 +146,10 @@ describe('ActionsChainsMediator - Phase 9', () => {
     plugin = createMockPlugin();
     registry = new DefaultMfeRegistry({ typeSystem: plugin });
     mockContainerProvider = new MockDomainFactory();
+    // ExclusiveMountStrategy requires a registry reference; permissive mode
+    // allows domains that declare only custom action types (no lifecycle actions)
+    // to register without per-action handler setup.
+    mockContainerProvider.setRegistry(registry).asPermissive();
     extensionEntries = new Map();
     mediator = new DefaultActionsChainsMediator({
       typeSystem: plugin,
@@ -163,6 +167,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
         actions: [
+          HAI3_ACTION_MOUNT_EXT,
           'gts.hai3.mfes.comm.action.v1~test.action1.v1~',
           'gts.hai3.mfes.comm.action.v1~test.action2.v1~',
         ],
@@ -213,7 +218,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -256,7 +261,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: domainId,
         sharedProperties: [],
-        actions: [actionTypeId],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, actionTypeId],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -292,7 +297,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~', 'gts.hai3.mfes.comm.action.v1~test.fallback.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~', 'gts.hai3.mfes.comm.action.v1~test.fallback.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -340,7 +345,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -559,7 +564,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -596,7 +601,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~', 'gts.hai3.mfes.comm.action.v1~test.fallback.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~', 'gts.hai3.mfes.comm.action.v1~test.fallback.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -686,7 +691,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -738,7 +743,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -786,7 +791,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -816,7 +821,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -849,7 +854,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -896,7 +901,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -934,7 +939,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 50, // Short timeout to trigger failure
         lifecycleStages: [],
@@ -969,7 +974,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 50, // Short default
         lifecycleStages: [],
@@ -1006,7 +1011,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~', 'gts.hai3.mfes.comm.action.v1~test.fallback.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~', 'gts.hai3.mfes.comm.action.v1~test.fallback.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 50,
         lifecycleStages: [],
@@ -1061,7 +1066,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: DOMAIN_ID,
         sharedProperties: [],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -1096,7 +1101,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 50,
         lifecycleStages: [],
@@ -1149,7 +1154,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: DOMAIN_ID,
         sharedProperties: [],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],

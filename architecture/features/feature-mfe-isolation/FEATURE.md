@@ -50,7 +50,7 @@
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-frontx-featstatus-mfe-isolation`
+- [x] `p1` - **ID**: `cpt-frontx-featstatus-mfe-isolation`
 
 - [x] `p2` - `cpt-frontx-feature-mfe-isolation`
 ---

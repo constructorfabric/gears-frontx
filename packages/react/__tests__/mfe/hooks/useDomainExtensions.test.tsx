@@ -140,9 +140,9 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     it('should return extensions for the specified domain', async () => {
       const app = buildApp();
       const testContainerProvider = new TestContainerProvider();
-      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.prepareForDomain(mockSidebarDomain));
+      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.setRegistry(app.mfeRegistry!).prepareForDomain(mockSidebarDomain));
       const testContainerProvider2 = new TestContainerProvider();
-      app.mfeRegistry!.registerDomain(mockPopupDomain, testContainerProvider2.prepareForDomain(mockPopupDomain));
+      app.mfeRegistry!.registerDomain(mockPopupDomain, testContainerProvider2.setRegistry(app.mfeRegistry!).prepareForDomain(mockPopupDomain));
       await app.mfeRegistry!.registerExtension(sidebarExtension1);
 
       const { result } = renderHook(() => useDomainExtensions(sidebarDomainId), { wrapper: buildWrapper(app) });
@@ -154,7 +154,7 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     it('should update when extension is registered', async () => {
       const app = buildApp();
       const testContainerProvider = new TestContainerProvider();
-      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.prepareForDomain(mockSidebarDomain));
+      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.setRegistry(app.mfeRegistry!).prepareForDomain(mockSidebarDomain));
 
       const { result } = renderHook(() => useDomainExtensions(sidebarDomainId), { wrapper: buildWrapper(app) });
 
@@ -176,7 +176,7 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     it('should update when extension is unregistered', async () => {
       const app = buildApp();
       const testContainerProvider = new TestContainerProvider();
-      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.prepareForDomain(mockSidebarDomain));
+      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.setRegistry(app.mfeRegistry!).prepareForDomain(mockSidebarDomain));
       await app.mfeRegistry!.registerExtension(sidebarExtension1);
 
       const { result } = renderHook(() => useDomainExtensions(sidebarDomainId), { wrapper: buildWrapper(app) });
@@ -197,9 +197,9 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     it('should only return extensions for the specified domain', async () => {
       const app = buildApp();
       const testContainerProvider = new TestContainerProvider();
-      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.prepareForDomain(mockSidebarDomain));
+      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.setRegistry(app.mfeRegistry!).prepareForDomain(mockSidebarDomain));
       const testContainerProvider2 = new TestContainerProvider();
-      app.mfeRegistry!.registerDomain(mockPopupDomain, testContainerProvider2.prepareForDomain(mockPopupDomain));
+      app.mfeRegistry!.registerDomain(mockPopupDomain, testContainerProvider2.setRegistry(app.mfeRegistry!).prepareForDomain(mockPopupDomain));
 
       await app.mfeRegistry!.registerExtension(sidebarExtension1);
       await app.mfeRegistry!.registerExtension(sidebarExtension2);
@@ -219,9 +219,9 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     it('should not re-render when extensions in other domains change but list is same', async () => {
       const app = buildApp();
       const testContainerProvider = new TestContainerProvider();
-      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.prepareForDomain(mockSidebarDomain));
+      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.setRegistry(app.mfeRegistry!).prepareForDomain(mockSidebarDomain));
       const testContainerProvider2 = new TestContainerProvider();
-      app.mfeRegistry!.registerDomain(mockPopupDomain, testContainerProvider2.prepareForDomain(mockPopupDomain));
+      app.mfeRegistry!.registerDomain(mockPopupDomain, testContainerProvider2.setRegistry(app.mfeRegistry!).prepareForDomain(mockPopupDomain));
 
       await app.mfeRegistry!.registerExtension(sidebarExtension1);
 
@@ -252,7 +252,7 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     it('should return all current extensions for domain', async () => {
       const app = buildApp();
       const testContainerProvider = new TestContainerProvider();
-      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.prepareForDomain(mockSidebarDomain));
+      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.setRegistry(app.mfeRegistry!).prepareForDomain(mockSidebarDomain));
 
       await app.mfeRegistry!.registerExtension(sidebarExtension1);
       await app.mfeRegistry!.registerExtension(sidebarExtension2);
@@ -267,7 +267,7 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     it('should return empty array for domain with no extensions', () => {
       const app = buildApp();
       const testContainerProvider = new TestContainerProvider();
-      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.prepareForDomain(mockSidebarDomain));
+      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.setRegistry(app.mfeRegistry!).prepareForDomain(mockSidebarDomain));
 
       const { result } = renderHook(() => useDomainExtensions(sidebarDomainId), { wrapper: buildWrapper(app) });
 
@@ -279,7 +279,7 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     it('should re-render when extensions change', async () => {
       const app = buildApp();
       const testContainerProvider = new TestContainerProvider();
-      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.prepareForDomain(mockSidebarDomain));
+      app.mfeRegistry!.registerDomain(mockSidebarDomain, testContainerProvider.setRegistry(app.mfeRegistry!).prepareForDomain(mockSidebarDomain));
 
       const { result } = renderHook(() => useDomainExtensions(sidebarDomainId), { wrapper: buildWrapper(app) });
 

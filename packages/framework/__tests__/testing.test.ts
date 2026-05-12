@@ -30,14 +30,12 @@ describeBootstrapMfeContract({
   bootstrapModulePath: './fixtures/bootstrap-contract/bootstrap.fixture.ts',
   manifestsModulePath: './fixtures/bootstrap-contract/generated-mfe-manifests.fixture.ts',
   callerUrl: import.meta.url,
-  reactModulePath: resolveFixturePath('./fixtures/bootstrap-contract/react-bridge.fixture.ts'),
 });
 
 describeBootstrapMfeContract({
   suiteName: 'describeBootstrapMfeContract (custom resolver)',
   bootstrapModulePath: 'virtual:bootstrap-contract',
   manifestsModulePath: 'virtual:bootstrap-manifests',
-  reactModulePath: resolveFixturePath('./fixtures/bootstrap-contract/react-bridge.fixture.ts'),
   resolveModule: ({ specifier }) => {
     if (specifier === 'virtual:bootstrap-contract') {
       return resolveFixturePath('./fixtures/bootstrap-contract/bootstrap.custom-react.fixture.ts');

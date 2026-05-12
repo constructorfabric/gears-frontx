@@ -10,6 +10,7 @@ import type { MfeRegistryConfig } from '../../src/mfe/runtime/config';
 import type { TypeSystemPlugin } from '../../src/mfe/plugins/types';
 import type { MfeHandler } from '../../src/mfe/handler/types';
 import type { ExtensionDomain, Action, ActionsChain } from '../../src/mfe/types';
+import { HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT } from '../../src/mfe/constants';
 import { MockDomainFactory, createMockTypeSystemPlugin } from '../../__test-utils__';
 
 describe('MfeRegistry - Phase 4', () => {
@@ -89,7 +90,7 @@ describe('MfeRegistry - Phase 4', () => {
       const validDomain: ExtensionDomain = {
         id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -97,6 +98,7 @@ describe('MfeRegistry - Phase 4', () => {
       };
 
       const mockContainerProvider = new MockDomainFactory();
+      mockContainerProvider.setRegistry(registry);
       expect(() => {
         registry.registerDomain(validDomain, mockContainerProvider.prepareForDomain(validDomain));
       }).not.toThrow();
@@ -105,12 +107,13 @@ describe('MfeRegistry - Phase 4', () => {
     it('should validate action type ID via plugin before chain execution', async () => {
       const registry = new DefaultMfeRegistry(createTestConfig());
       const mockContainerProvider = new MockDomainFactory();
+      mockContainerProvider.setRegistry(registry).asPermissive();
 
       // Register domain with the action in its supported actions
       const domain: ExtensionDomain = {
         id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.screensets.ext.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.screensets.ext.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -162,13 +165,14 @@ describe('MfeRegistry - Phase 4', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.screensets.ext.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.screensets.ext.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
       const mockContainerProvider = new MockDomainFactory();
+      mockContainerProvider.setRegistry(registry).asPermissive();
       registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const actionWithPayload: Action = {
@@ -233,13 +237,14 @@ describe('MfeRegistry - Phase 4', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.screensets.ext.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.screensets.ext.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
       const mockContainerProvider = new MockDomainFactory();
+      mockContainerProvider.setRegistry(registry).asPermissive();
       registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const actionWithoutPayload: Action = {
@@ -262,14 +267,16 @@ describe('MfeRegistry - Phase 4', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
 
-      registry.registerDomain(domain, new MockDomainFactory().prepareForDomain(domain));
+      const disposalFactory = new MockDomainFactory();
+      disposalFactory.setRegistry(registry);
+      registry.registerDomain(domain, disposalFactory.prepareForDomain(domain));
       registry.dispose();
 
       // After disposal, registry should be clean

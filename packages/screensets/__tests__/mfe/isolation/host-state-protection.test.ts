@@ -120,6 +120,7 @@ describe('Host State Protection', () => {
       mfeHandlers: [mockHandler],
     });
     registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
+    registry.getMounter(DOMAIN_ID).attach(document.createElement('div'));
   });
 
   async function mountExtensionThroughPublicApi(): Promise<ChildMfeBridge> {

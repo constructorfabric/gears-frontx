@@ -11,6 +11,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { ExtensionDomain, Extension, ScreenExtension } from '../../../src/mfe/types';
+import { HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
 import { MockDomainFactory } from '../../../__test-utils__';
 
 describe('MfeRegistry Query Methods', () => {
@@ -21,7 +22,7 @@ describe('MfeRegistry Query Methods', () => {
   const testDomain: ExtensionDomain = {
     id: 'gts.hai3.mfes.ext.domain.v1~test.testorg.query.domain.v1',
     sharedProperties: [],
-    actions: [],
+    actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
     extensionsActions: [],
     defaultActionTimeout: 5000,
     lifecycleStages: [
@@ -59,6 +60,7 @@ describe('MfeRegistry Query Methods', () => {
 
     // Register the entry instance with GTS plugin before using it
     typeSystem.register(testEntry);
+    mockContainerProvider.setRegistry(registry);
   });
 
   describe('getExtension', () => {

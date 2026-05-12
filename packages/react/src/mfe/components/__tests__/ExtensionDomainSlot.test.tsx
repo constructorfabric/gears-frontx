@@ -25,7 +25,7 @@ class FakeMounter extends ExtensionMounter {
     this.attachCalls.push(root);
   }
 
-  detach(): void {
+  async detach(): Promise<void> {
     this.detachCount += 1;
   }
 

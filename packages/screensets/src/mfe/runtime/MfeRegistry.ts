@@ -8,7 +8,8 @@
  *
  * @packageDocumentation
  */
-// Registry contract (DoD has unchecked tasks; begin/end blocks in DefaultMfeRegistry carry traceability)
+// @cpt-FEATURE:cpt-frontx-feature-mfe-registry:p2
+// @cpt-dod:cpt-frontx-dod-mfe-registry-registry-contract:p1
 
 import type { TypeSystemPlugin } from '../plugins/types';
 import type { ParentMfeBridge } from '../handler/types';
@@ -42,6 +43,7 @@ import type { ExtensionMounter } from './ExtensionMounter';
  * await registry.registerExtension(myExtension);
  * ```
  */
+// @cpt-begin:cpt-frontx-dod-mfe-registry-registry-contract:p1:inst-1
 export abstract class MfeRegistry {
   /**
    * Type System plugin instance.
@@ -224,3 +226,4 @@ export abstract class MfeRegistry {
    */
   abstract dispose(): void;
 }
+// @cpt-end:cpt-frontx-dod-mfe-registry-registry-contract:p1:inst-1

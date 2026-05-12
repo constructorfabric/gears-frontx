@@ -76,6 +76,10 @@ describe('Phase 41 Regression Tests', () => {
     gtsPlugin.register(testDomain);
     gtsPlugin.register(testEntry);
 
+    // Enable swap-semantics and permissive mode for domains that may declare only custom
+    // actions (ExclusiveMountStrategy requires setRegistry; permissive handles extra declared actions).
+    mockContainerProvider.setRegistry(registry).asPermissive();
+
     // Spy on console.error
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
@@ -189,11 +193,12 @@ describe('Phase 41 Regression Tests', () => {
         type: 'object',
       });
 
-      // Register domain with a custom action
+      // Register domain with a custom action (HAI3_ACTION_MOUNT_EXT is required by
+      // ExclusiveMountStrategy; asPermissive() registers the no-op for customActionSchemaId).
       const customDomain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~hai3.test.phase41.custom_domain.v1',
         sharedProperties: [],
-        actions: [customActionSchemaId],
+        actions: [HAI3_ACTION_MOUNT_EXT, customActionSchemaId],
         extensionsActions: [],
         defaultActionTimeout: 3000,
         lifecycleStages: [

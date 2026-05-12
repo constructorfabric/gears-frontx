@@ -105,6 +105,8 @@ describe('Extension Lifecycle Actions', () => {
       typeSystem,
     });
     mockContainerProvider = new MockDomainFactory();
+    // swapDomain uses ExclusiveMountStrategy (no unmount_ext), which requires a registry reference.
+    mockContainerProvider.setRegistry(registry);
 
     // Register test entry with GTS
     typeSystem.register(testEntry);
@@ -125,6 +127,7 @@ describe('Extension Lifecycle Actions', () => {
         mfeHandlers: [mockHandler],
       });
       registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
+      registry.getMounter(toggleDomain.id).attach(document.createElement('div'));
       await registry.registerExtension(testExtension1);
 
       const result = await registry.executeActionsChain({
@@ -176,6 +179,7 @@ describe('Extension Lifecycle Actions', () => {
         mfeHandlers: [mockHandler],
       });
       registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
+      registry.getMounter(toggleDomain.id).attach(document.createElement('div'));
       await registry.registerExtension(testExtension1);
 
       const container = document.createElement('div');
@@ -218,6 +222,7 @@ describe('Extension Lifecycle Actions', () => {
         mfeHandlers: [mockHandler],
       });
       registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
+      registry.getMounter(toggleDomain.id).attach(document.createElement('div'));
       await registry.registerExtension(testExtension1);
 
       const container1 = document.createElement('div');
@@ -249,6 +254,7 @@ describe('Extension Lifecycle Actions', () => {
         mfeHandlers: [mockHandler],
       });
       registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
+      registry.getMounter(toggleDomain.id).attach(document.createElement('div'));
       await registry.registerExtension(testExtension1);
 
       const container = document.createElement('div');
@@ -331,7 +337,9 @@ describe('Extension Lifecycle Actions', () => {
         entry: testEntry.id,
       };
 
+      mockContainerProvider.setRegistry(registry);
       registry.registerDomain(swapDomain, mockContainerProvider.prepareForDomain(swapDomain));
+      registry.getMounter(swapDomain.id).attach(document.createElement('div'));
       await registry.registerExtension(testExtension2);
       await registry.registerExtension(testExtension3);
 
@@ -389,7 +397,9 @@ describe('Extension Lifecycle Actions', () => {
       const container = document.createElement('div');
       mockContainerProvider.getContainer = vi.fn().mockReturnValue(container);
 
+      mockContainerProvider.setRegistry(registry);
       registry.registerDomain(swapDomain, mockContainerProvider.prepareForDomain(swapDomain));
+      registry.getMounter(swapDomain.id).attach(document.createElement('div'));
       await registry.registerExtension(testExtension2);
 
       await registry.executeActionsChain({
@@ -427,6 +437,7 @@ describe('Extension Lifecycle Actions', () => {
         mfeHandlers: [mockHandler],
       });
       registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
+      registry.getMounter(toggleDomain.id).attach(document.createElement('div'));
       await registry.registerExtension(testExtension1);
 
       // Initially no extension mounted
@@ -467,6 +478,7 @@ describe('Extension Lifecycle Actions', () => {
         mfeHandlers: [mockHandler],
       });
       registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
+      registry.getMounter(toggleDomain.id).attach(document.createElement('div'));
       await registry.registerExtension(testExtension1);
 
       // Mount first
@@ -614,6 +626,7 @@ describe('Extension Lifecycle Actions', () => {
         mfeHandlers: [mockHandler],
       });
       registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
+      registry.getMounter(toggleDomain.id).attach(document.createElement('div'));
       await registry.registerExtension(testExtension1);
 
       const container = document.createElement('div');
@@ -650,6 +663,7 @@ describe('Extension Lifecycle Actions', () => {
         mfeHandlers: [mockHandler],
       });
       registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
+      registry.getMounter(toggleDomain.id).attach(document.createElement('div'));
       await registry.registerExtension(testExtension1);
 
       mockContainerProvider.getContainer = vi.fn().mockImplementation(() => {

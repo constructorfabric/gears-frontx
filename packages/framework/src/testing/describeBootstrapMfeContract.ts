@@ -11,6 +11,16 @@ type TestManifest = {
   schemas?: Array<Record<string, unknown>>;
 };
 
+type TestMfeRegistry = {
+  registerDomain: ReturnType<typeof vi.fn>;
+  updateSharedProperty: ReturnType<typeof vi.fn>;
+  typeSystem: {
+    register: ReturnType<typeof vi.fn>;
+    registerSchema: ReturnType<typeof vi.fn>;
+  };
+  registerExtension: ReturnType<typeof vi.fn>;
+};
+
 /**
  * Arguments passed to a custom {@link BootstrapMfeTestSpecOptions.resolveModule}.
  */
@@ -55,11 +65,6 @@ export type BootstrapMfeTestSpecOptions = {
    * (===) to the key the SUT's import graph resolves to.
    */
   resolveModule?: (args: BootstrapMfeResolveArgs) => string;
-  /**
-   * Optional exact module key used by the bootstrap module when importing the
-   * React bridge helpers. Defaults to `@cyberfabric/react`.
-   */
-  reactModulePath?: string;
 };
 // @cpt-end:cpt-frontx-dod-framework-composition-reexports:p1:inst-bootstrap-mfe-contract-types
 
@@ -80,10 +85,29 @@ function defaultResolve({ specifier, callerUrl }: BootstrapMfeResolveArgs): stri
 }
 // @cpt-end:cpt-frontx-dod-framework-composition-reexports:p1:inst-bootstrap-mfe-contract-resolve
 
+function makeMockRegistry(): TestMfeRegistry {
+  return {
+    registerDomain: vi.fn(),
+    updateSharedProperty: vi.fn(),
+    typeSystem: {
+      register: vi.fn(),
+      registerSchema: vi.fn(),
+    },
+    registerExtension: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
+function makeMockApp(registry: TestMfeRegistry): Record<string, unknown> {
+  return {
+    mfeRegistry: registry,
+    themeRegistry: { getCurrent: () => undefined },
+    i18nRegistry: { getLanguage: () => null },
+  };
+}
+
 // @cpt-begin:cpt-frontx-dod-framework-composition-reexports:p1:inst-bootstrap-mfe-contract-suite
 export function describeBootstrapMfeContract(options: BootstrapMfeTestSpecOptions): void {
   const resolve = options.resolveModule ?? defaultResolve;
-  const reactModulePath = options.reactModulePath ?? '@cyberfabric/react';
   const bootstrapModulePath = resolve({
     specifier: options.bootstrapModulePath,
     callerUrl: options.callerUrl,
@@ -93,18 +117,12 @@ export function describeBootstrapMfeContract(options: BootstrapMfeTestSpecOption
     callerUrl: options.callerUrl,
   });
 
-  const mockBootstrapMfeDomains = vi.fn();
   const currentManifests: TestManifest[] = [];
 
   describe(options.suiteName, () => {
     beforeEach(() => {
       vi.resetModules();
       currentManifests.splice(0, currentManifests.length);
-      mockBootstrapMfeDomains.mockReset();
-
-      vi.doMock(reactModulePath, () => ({
-        bootstrapMfeDomains: (...args: unknown[]) => mockBootstrapMfeDomains(...args),
-      }));
 
       vi.doMock(manifestsModulePath, () => ({
         __esModule: true,
@@ -115,32 +133,22 @@ export function describeBootstrapMfeContract(options: BootstrapMfeTestSpecOption
 
     afterEach(() => {
       vi.restoreAllMocks();
-      vi.doUnmock(reactModulePath);
       vi.doUnmock(manifestsModulePath);
     });
 
     // @cpt-begin:cpt-frontx-dod-framework-composition-reexports:p1:inst-bootstrap-mfe-contract-it-empty
     it('warns and returns no screens when no manifests exist', async () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const registry = {
-        typeSystem: {
-          register: vi.fn(),
-          registerSchema: vi.fn(),
-        },
-        registerExtension: vi.fn(),
-      };
-      mockBootstrapMfeDomains.mockResolvedValue(registry);
+      const registry = makeMockRegistry();
+      const app = makeMockApp(registry);
       const { bootstrapMFE } = await import(bootstrapModulePath);
 
-      await expect(bootstrapMFE({} as never, { current: null })).resolves.toEqual([]);
+      await expect(bootstrapMFE(app as never, { current: null })).resolves.toEqual([]);
 
-      // If vi.doMock for @cyberfabric/react silently missed, the SUT would call
-      // the real bootstrapMfeDomains instead of our mock and this count would
-      // be 0. Asserting a positive call count keeps a mock-miss from producing
-      // a misleading downstream failure.
-      expect(mockBootstrapMfeDomains).toHaveBeenCalledTimes(1);
       expect(warnSpy).toHaveBeenCalledTimes(1);
       expect(warnSpy.mock.calls[0]?.[0]).toContain('No MFE manifests found');
+      // Domain setup happens before manifest check — four domains are always registered
+      expect(registry.registerDomain).toHaveBeenCalledTimes(4);
       expect(registry.typeSystem.register).not.toHaveBeenCalled();
       expect(registry.typeSystem.registerSchema).not.toHaveBeenCalled();
       expect(registry.registerExtension).not.toHaveBeenCalled();
@@ -149,16 +157,8 @@ export function describeBootstrapMfeContract(options: BootstrapMfeTestSpecOption
 
     // @cpt-begin:cpt-frontx-dod-framework-composition-reexports:p1:inst-bootstrap-mfe-contract-it-screens
     it('registers manifests and entries and only returns screen extensions', async () => {
-      const register = vi.fn();
-      const registerSchema = vi.fn();
-      const registerExtension = vi.fn().mockResolvedValue(undefined);
-      const registry = {
-        typeSystem: {
-          register,
-          registerSchema,
-        },
-        registerExtension,
-      };
+      const registry = makeMockRegistry();
+      const app = makeMockApp(registry);
       const manifest = { $id: 'manifest.demo' };
       const entry = { id: 'entry.demo', actions: [], domainActions: [] };
       const screenExtension = { id: 'screen.demo', presentation: { route: '/demo' } };
@@ -168,41 +168,28 @@ export function describeBootstrapMfeContract(options: BootstrapMfeTestSpecOption
         entries: [entry],
         extensions: [screenExtension, helperExtension],
       });
-      mockBootstrapMfeDomains.mockResolvedValue(registry);
       const { bootstrapMFE } = await import(bootstrapModulePath);
 
-      await expect(bootstrapMFE({} as never, { current: null })).resolves.toEqual([screenExtension]);
+      await expect(bootstrapMFE(app as never, { current: null })).resolves.toEqual([screenExtension]);
 
-      // Positive call-count assertion proves both mocks were applied: the react
-      // mock (bootstrapMfeDomains reaches our fn) and the manifests mock (the
-      // SUT iterated the injected currentManifests, producing the register /
-      // registerExtension call sequences asserted below).
-      expect(mockBootstrapMfeDomains).toHaveBeenCalledTimes(1);
-      expect(registerSchema).not.toHaveBeenCalled();
-      expect(register).toHaveBeenNthCalledWith(1, manifest);
-      expect(register).toHaveBeenNthCalledWith(2, { ...entry, manifest });
-      expect(registerExtension).toHaveBeenNthCalledWith(1, screenExtension);
-      expect(registerExtension).toHaveBeenNthCalledWith(2, helperExtension);
+      // Positive call-count assertion proves the manifests mock was applied:
+      // the SUT iterated the injected currentManifests, producing the register /
+      // registerExtension call sequences asserted below.
+      expect(registry.typeSystem.registerSchema).not.toHaveBeenCalled();
+      expect(registry.typeSystem.register).toHaveBeenNthCalledWith(1, manifest);
+      expect(registry.typeSystem.register).toHaveBeenNthCalledWith(2, { ...entry, manifest });
+      expect(registry.registerExtension).toHaveBeenNthCalledWith(1, screenExtension);
+      expect(registry.registerExtension).toHaveBeenNthCalledWith(2, helperExtension);
     });
     // @cpt-end:cpt-frontx-dod-framework-composition-reexports:p1:inst-bootstrap-mfe-contract-it-screens
 
     // @cpt-begin:cpt-frontx-dod-framework-composition-reexports:p1:inst-bootstrap-mfe-contract-it-schemas
     it('registers MFE-carried schemas before manifests and entries', async () => {
       const callOrder: string[] = [];
-      const register = vi.fn(() => {
-        callOrder.push('register');
-      });
-      const registerSchema = vi.fn(() => {
-        callOrder.push('registerSchema');
-      });
-      const registerExtension = vi.fn().mockResolvedValue(undefined);
-      const registry = {
-        typeSystem: {
-          register,
-          registerSchema,
-        },
-        registerExtension,
-      };
+      const registry = makeMockRegistry();
+      registry.typeSystem.register.mockImplementation(() => { callOrder.push('register'); });
+      registry.typeSystem.registerSchema.mockImplementation(() => { callOrder.push('registerSchema'); });
+      const app = makeMockApp(registry);
       const manifest = { $id: 'manifest.demo' };
       const entry = { id: 'entry.demo', actions: ['schema.demo.a'], domainActions: ['schema.demo.b'] };
       const schemaA = { $id: 'schema.demo.a' };
@@ -213,14 +200,12 @@ export function describeBootstrapMfeContract(options: BootstrapMfeTestSpecOption
         extensions: [],
         schemas: [schemaA, schemaB],
       });
-      mockBootstrapMfeDomains.mockResolvedValue(registry);
       const { bootstrapMFE } = await import(bootstrapModulePath);
 
-      await bootstrapMFE({} as never, { current: null });
+      await bootstrapMFE(app as never, { current: null });
 
-      expect(mockBootstrapMfeDomains).toHaveBeenCalledTimes(1);
-      expect(registerSchema).toHaveBeenNthCalledWith(1, schemaA);
-      expect(registerSchema).toHaveBeenNthCalledWith(2, schemaB);
+      expect(registry.typeSystem.registerSchema).toHaveBeenNthCalledWith(1, schemaA);
+      expect(registry.typeSystem.registerSchema).toHaveBeenNthCalledWith(2, schemaB);
       expect(callOrder).toEqual(['registerSchema', 'registerSchema', 'register', 'register']);
     });
     // @cpt-end:cpt-frontx-dod-framework-composition-reexports:p1:inst-bootstrap-mfe-contract-it-schemas
@@ -228,34 +213,24 @@ export function describeBootstrapMfeContract(options: BootstrapMfeTestSpecOption
     // @cpt-begin:cpt-frontx-dod-framework-composition-reexports:p1:inst-bootstrap-mfe-contract-it-warn
     it('warns when no screen extensions are available after registration', async () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const register = vi.fn();
-      const registerSchema = vi.fn();
-      const registerExtension = vi.fn().mockResolvedValue(undefined);
+      const registry = makeMockRegistry();
+      const app = makeMockApp(registry);
       const manifest = { $id: 'manifest.demo' };
       const entry = { id: 'entry.demo', actions: [], domainActions: [] };
       const helperExtension = { id: 'helper.demo' };
-      const registry = {
-        typeSystem: {
-          register,
-          registerSchema,
-        },
-        registerExtension,
-      };
       currentManifests.push({
         manifest,
         entries: [entry],
         extensions: [helperExtension],
       });
-      mockBootstrapMfeDomains.mockResolvedValue(registry);
       const { bootstrapMFE } = await import(bootstrapModulePath);
 
-      await expect(bootstrapMFE({} as never, { current: null })).resolves.toEqual([]);
+      await expect(bootstrapMFE(app as never, { current: null })).resolves.toEqual([]);
 
-      expect(mockBootstrapMfeDomains).toHaveBeenCalledTimes(1);
-      expect(register).toHaveBeenNthCalledWith(1, manifest);
-      expect(register).toHaveBeenNthCalledWith(2, { ...entry, manifest });
-      expect(registerSchema).not.toHaveBeenCalled();
-      expect(registerExtension).toHaveBeenCalledWith(helperExtension);
+      expect(registry.typeSystem.register).toHaveBeenNthCalledWith(1, manifest);
+      expect(registry.typeSystem.register).toHaveBeenNthCalledWith(2, { ...entry, manifest });
+      expect(registry.typeSystem.registerSchema).not.toHaveBeenCalled();
+      expect(registry.registerExtension).toHaveBeenCalledWith(helperExtension);
       expect(warnSpy).toHaveBeenCalledTimes(1);
       expect(warnSpy.mock.calls[0]?.[0]).toContain('No screen extensions available');
     });

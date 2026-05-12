@@ -91,6 +91,7 @@ describe('Runtime Coordinator Integration - Task 8.4.8', () => {
       containerProvider.getContainer = vi.fn().mockReturnValue(container);
 
       registry.registerDomain(toggleDomain, containerProvider.prepareForDomain(toggleDomain));
+      registry.getMounter(toggleDomain.id).attach(document.createElement('div'));
       await registry.registerExtension(testExtension);
 
       await registry.executeActionsChain({

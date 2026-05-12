@@ -124,9 +124,9 @@ export function ExtensionDomainSlot(props: ExtensionDomainSlotProps): React.Reac
     // @cpt-begin:cpt-frontx-flow-react-bindings-extension-domain-slot:p1:inst-detach-root
     return () => {
       // Mass-unmount every extension currently mounted in the domain.
-      // The mounter's detach() calls unmount(extId) and hooks.destroy(extId)
-      // per extension, keeping the registry mount-set and Redux slice consistent.
-      mounter.detach();
+      // detach() is async (awaits per-extension unmounts) but React cleanup is
+      // synchronous; we deliberately fire-and-forget here.
+      void mounter.detach();
 
       // @cpt-begin:cpt-frontx-state-react-bindings-extension-slot:p1:inst-slot-detached
       setAttached(false);

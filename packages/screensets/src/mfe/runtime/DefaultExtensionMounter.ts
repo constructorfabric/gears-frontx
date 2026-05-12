@@ -13,6 +13,8 @@
  * @packageDocumentation
  * @internal
  */
+// @cpt-dod:cpt-frontx-dod-mfe-registry-mount-contracts:p1
+// @cpt-flow:cpt-frontx-flow-mfe-registry-register-domain:p1
 
 import { ExtensionMounter } from './ExtensionMounter';
 import type { MountManager } from './mount-manager';
@@ -22,11 +24,14 @@ import type { ContainerHooks } from './mount-strategy';
  * @internal
  */
 export class DefaultExtensionMounter extends ExtensionMounter {
+  // @cpt-begin:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-default-mounter-state
   private attachedRoot: Element | null = null;
 
   // Tracks the per-extension containers so detach can remove them from root.
   private readonly containers = new Map<string, Element>();
+  // @cpt-end:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-default-mounter-state
 
+  // @cpt-begin:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-default-mounter-ctor
   constructor(
     private readonly domainId: string,
     private readonly mountManager: MountManager,
@@ -38,11 +43,15 @@ export class DefaultExtensionMounter extends ExtensionMounter {
   ) {
     super();
   }
+  // @cpt-end:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-default-mounter-ctor
 
+  // @cpt-begin:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-default-mounter-attach
   attach(root: Element): void {
     this.attachedRoot = root;
   }
+  // @cpt-end:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-default-mounter-attach
 
+  // @cpt-begin:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-default-mounter-detach
   async detach(): Promise<void> {
     // Mass-unmount every currently-mounted extension so the registry and
     // any framework slice stay consistent.
@@ -54,7 +63,9 @@ export class DefaultExtensionMounter extends ExtensionMounter {
     }
     this.attachedRoot = null;
   }
+  // @cpt-end:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-default-mounter-detach
 
+  // @cpt-begin:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-default-mounter-mount
   async mount(extensionId: string, container: Element): Promise<void> {
     if (!this.attachedRoot) {
       throw new Error(
@@ -71,7 +82,9 @@ export class DefaultExtensionMounter extends ExtensionMounter {
 
     this.addMountedExtension(this.domainId, extensionId);
   }
+  // @cpt-end:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-default-mounter-mount
 
+  // @cpt-begin:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-default-mounter-unmount
   async unmount(extensionId: string): Promise<void> {
     await this.mountManager.unmountExtension(extensionId);
 
@@ -86,4 +99,5 @@ export class DefaultExtensionMounter extends ExtensionMounter {
 
     this.removeMountedExtension(this.domainId, extensionId);
   }
+  // @cpt-end:cpt-frontx-dod-mfe-registry-mount-contracts:p1:inst-default-mounter-unmount
 }

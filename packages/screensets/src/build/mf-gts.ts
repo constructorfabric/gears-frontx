@@ -951,14 +951,82 @@ export function frontxMfGts(): Plugin {
         // pattern is detected — that's a true plugin bug worth surfacing
         // at build time rather than at runtime.
         // @cpt-dod:cpt-frontx-dod-mfe-isolation-lifecycle-chunk-isolation:p1
-        const defaultExportPattern =
-          /export\s*\{[^}]*\bas\s+default\b|export\s+default\s/u;
-        const consolidatedNamespacePattern =
-          /([A-Za-z_$][\w$]*)\s*=\s*Object\.freeze\(\s*Object\.defineProperty\(\s*\{\s*__proto__\s*:\s*null\s*,\s*default\s*:\s*([A-Za-z_$][\w$]*)\s*\}\s*,\s*Symbol\.toStringTag\s*,\s*\{\s*value\s*:\s*"Module"\s*\}\s*\)\s*\)/gu;
-        const exportListExtractor =
-          /export\s*\{\s*([^}]*)\s*\}/gu;
-        const exportAliasPattern =
-          /^\s*([A-Za-z_$][\w$]*)\s+as\s+[A-Za-z_$][\w$]*\s*$/u;
+        const hasDefaultExport = (src: string): boolean => {
+          // `export default ...` — direct default.
+          if (/export\s+default\s/u.test(src)) return true;
+          // `export { X as default }` — locate `as default` then verify the
+          // surrounding context is inside an `export { … }` block. Scanning
+          // forward over each match avoids the unbounded `[^}]*` Sonar flagged.
+          const asDefaultRegex = /\bas\s+default\b/gu;
+          for (let m = asDefaultRegex.exec(src); m !== null; m = asDefaultRegex.exec(src)) {
+            const openBrace = src.lastIndexOf('{', m.index);
+            const closeBrace = src.indexOf('}', m.index);
+            if (openBrace === -1 || closeBrace === -1) continue;
+            const before = src.slice(0, openBrace);
+            if (/export\s*$/u.test(before)) return true;
+          }
+          return false;
+        };
+
+        const findConsolidatedNamespaces = (src: string): Array<{ ns: string; defaultVar: string }> => {
+          // Walk each `=Object.freeze(Object.defineProperty(` occurrence and
+          // parse it incrementally, avoiding the long monolithic regex Sonar
+          // flagged on S5852/S5843.
+          const out: Array<{ ns: string; defaultVar: string }> = [];
+          const idTail = /[\w$]/u;
+          const isIdHead = (c: string): boolean => /[A-Za-z_$]/u.test(c);
+          const objectFreeze = 'Object.freeze(Object.defineProperty(';
+          let cursor = 0;
+          for (;;) {
+            const idx = src.indexOf(objectFreeze, cursor);
+            if (idx === -1) break;
+            cursor = idx + objectFreeze.length;
+            // Walk backwards from idx, skipping whitespace and `=`, then read the namespace identifier.
+            let p = idx - 1;
+            while (p >= 0 && src[p] === ' ') p--;
+            if (p < 0 || src[p] !== '=') continue;
+            p--;
+            while (p >= 0 && src[p] === ' ') p--;
+            const idEnd = p + 1;
+            while (p >= 0 && idTail.test(src[p])) p--;
+            const idStart = p + 1;
+            if (idStart >= idEnd || !isIdHead(src[idStart])) continue;
+            const ns = src.slice(idStart, idEnd);
+            // After `defineProperty(` expect `{__proto__:null,default:<X>}`.
+            const objectStart = src.indexOf('{', cursor);
+            if (objectStart === -1) continue;
+            const objectEnd = src.indexOf('}', objectStart);
+            if (objectEnd === -1) continue;
+            const objectBody = src.slice(objectStart + 1, objectEnd);
+            const defaultMatch = /__proto__\s*:\s*null\s*,\s*default\s*:\s*([A-Za-z_$][\w$]*)/u.exec(objectBody);
+            if (!defaultMatch) continue;
+            // After the inner object check that the remaining args carry the `Module` tag.
+            const tail = src.slice(objectEnd + 1, Math.min(src.length, objectEnd + 200));
+            if (!/Symbol\.toStringTag\s*,\s*\{\s*value\s*:\s*"Module"/u.test(tail)) continue;
+            out.push({ ns, defaultVar: defaultMatch[1] });
+            cursor = objectEnd + 1;
+          }
+          return out;
+        };
+
+        const extractExportedNamespaces = (src: string): Set<string> => {
+          // Replaces the `/export\s*\{\s*([^}]*)\s*\}/gu` extractor by
+          // bracket-walking each `export {` occurrence.
+          const out = new Set<string>();
+          const exportKw = /\bexport\s*\{/gu;
+          for (let m = exportKw.exec(src); m !== null; m = exportKw.exec(src)) {
+            const openIdx = src.indexOf('{', m.index);
+            const closeIdx = openIdx === -1 ? -1 : src.indexOf('}', openIdx);
+            if (openIdx === -1 || closeIdx === -1) continue;
+            const body = src.slice(openIdx + 1, closeIdx);
+            for (const part of body.split(',')) {
+              const aliasMatch = /^\s*([A-Za-z_$][\w$]*)\s+as\s+[A-Za-z_$][\w$]*\s*$/u.exec(part);
+              if (aliasMatch) out.add(aliasMatch[1]);
+            }
+            exportKw.lastIndex = closeIdx;
+          }
+          return out;
+        };
 
         for (const entry of enrichedMfeJson.entries) {
           const syncChunks = entry.exposeAssets?.js?.sync ?? [];
@@ -966,14 +1034,12 @@ export function frontxMfGts(): Plugin {
             const chunkPath = path.join(distDir, relChunk);
             if (!fs.existsSync(chunkPath)) continue;
             const source = fs.readFileSync(chunkPath, 'utf-8');
-            if (defaultExportPattern.test(source)) continue;
+            if (hasDefaultExport(source)) continue;
 
             // Find every `Object.freeze(Object.defineProperty({__proto__:null,default:Y},...))`
             // in the chunk — one per co-located source module — and pick the
             // one whose namespace name appears in the chunk's export list.
-            const namespaceMatches = Array.from(
-              source.matchAll(consolidatedNamespacePattern)
-            );
+            const namespaceMatches = findConsolidatedNamespaces(source);
             if (namespaceMatches.length === 0) {
               const tail = source.slice(Math.max(0, source.length - 200));
               throw new Error(
@@ -987,29 +1053,20 @@ export function frontxMfGts(): Plugin {
               );
             }
 
-            const exportedNamespaces = new Set<string>();
-            for (const exportListMatch of source.matchAll(exportListExtractor)) {
-              for (const part of exportListMatch[1].split(',')) {
-                const aliasMatch = exportAliasPattern.exec(part);
-                if (aliasMatch) exportedNamespaces.add(aliasMatch[1]);
-              }
-            }
+            const exportedNamespaces = extractExportedNamespaces(source);
 
             let lifecycleVar: string | undefined;
-            for (const m of namespaceMatches) {
-              if (exportedNamespaces.has(m[1])) {
-                lifecycleVar = m[2];
+            for (const { ns, defaultVar } of namespaceMatches) {
+              if (exportedNamespaces.has(ns)) {
+                lifecycleVar = defaultVar;
                 break;
               }
             }
             // Fallback: the entry module's namespace is typically the
             // last one rollup emits in a consolidated chunk.
-            lifecycleVar ??=
-              namespaceMatches[namespaceMatches.length - 1][2];
+            lifecycleVar ??= namespaceMatches[namespaceMatches.length - 1].defaultVar;
 
-            const repaired =
-              source.replace(/\s*$/u, '') +
-              `\nexport default ${lifecycleVar};\n`;
+            const repaired = source.trimEnd() + `\nexport default ${lifecycleVar};\n`;
             fs.writeFileSync(chunkPath, repaired, 'utf-8');
             console.log(
               `[frontx-mf-gts] repaired lifecycle chunk '${relChunk}' — ` +

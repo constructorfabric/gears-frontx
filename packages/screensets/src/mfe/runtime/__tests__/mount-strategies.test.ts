@@ -19,7 +19,7 @@ class FakeMounter extends ExtensionMounter {
   readonly unmountCalls: string[] = [];
 
   attach(_root: Element): void {}
-  detach(): void {}
+  async detach(): Promise<void> {}
 
   async mount(extensionId: string, container: Element): Promise<void> {
     this.mountCalls.push({ extensionId, container });
@@ -32,7 +32,7 @@ class FakeMounter extends ExtensionMounter {
 
 class ThrowingFakeMounter extends ExtensionMounter {
   attach(_root: Element): void {}
-  detach(): void {}
+  async detach(): Promise<void> {}
   async mount(_extensionId: string, _container: Element): Promise<void> {
     throw new Error('mount failed');
   }

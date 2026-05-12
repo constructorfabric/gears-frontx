@@ -22,6 +22,7 @@ import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry'
 import { GtsPlugin } from '../../../src/mfe/plugins/gts/index';
 import type { JSONSchema } from '../../../src/mfe/plugins/types';
 import type { ExtensionDomain } from '../../../src/mfe/types';
+import { HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
 import { MockDomainFactory } from '../../../__test-utils__';
 
 /**
@@ -59,7 +60,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
     testDomain = {
       id: DOMAIN_ID,
       sharedProperties: [TEST_PROPERTY_TYPE_ID],
-      actions: [],
+      actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
       extensionsActions: [],
       defaultActionTimeout: 5000,
       lifecycleStages: [
@@ -70,6 +71,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
       ],
     };
 
+    mockContainerProvider.setRegistry(registry);
     registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
   });
 
@@ -127,7 +129,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
       const domain2: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~hai3.test.validation2.slot.v1',
         sharedProperties: [TEST_PROPERTY_TYPE_ID],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
