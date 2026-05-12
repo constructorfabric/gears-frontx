@@ -70,3 +70,6 @@ coverage/
 
 # Cypilot execution plans
 .cypilot/.plans/
+
+# Cypilot archived plans (lifecycle = archive)
+.cypilot/.plans/.archive/

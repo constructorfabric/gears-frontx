@@ -191,7 +191,7 @@
             "assets/zh-DpJ9fTal.js"
           ],
           "sync": [
-            "assets/lifecycle-helloworld-Cv11faOJ.js"
+            "assets/lifecycle-helloworld-B18KUDLn.js"
           ]
         },
         "css": {
@@ -253,7 +253,7 @@
             "assets/zh-BRJDH7tI.js"
           ],
           "sync": [
-            "assets/lifecycle-profile-DUYcqvg9.js"
+            "assets/lifecycle-profile-Wzl5aUay.js"
           ]
         },
         "css": {
@@ -313,7 +313,7 @@
             "assets/zh-BLvEAXaM.js"
           ],
           "sync": [
-            "assets/lifecycle-theme-BNBw4nSE.js"
+            "assets/lifecycle-theme-nmS5wmGz.js"
           ]
         },
         "css": {
@@ -355,15 +355,15 @@
       "exposeAssets": {
         "js": {
           "async": [
-            "assets/LayoutElements-B6t_U0s2.js",
-            "assets/NavigationElements-ByYsEE-B.js",
-            "assets/FormElements-CFUKQzkh.js",
-            "assets/ActionElements-CCE3pzLE.js",
-            "assets/FeedbackElements-DkLitXsl.js",
-            "assets/DataDisplayElements-BTIi_fG_.js",
-            "assets/OverlayElements-BRFztEYw.js",
+            "assets/LayoutElements-bm5qfkQo.js",
+            "assets/NavigationElements-CqcW5rfl.js",
+            "assets/FormElements-jjLRDvam.js",
+            "assets/ActionElements-CAYMfZ9-.js",
+            "assets/FeedbackElements-B7apSYjk.js",
+            "assets/DataDisplayElements-oWWAKx6B.js",
+            "assets/OverlayElements-DIB3BJ4S.js",
             "assets/MediaElements-C82JUScP.js",
-            "assets/DisclosureElements-CyBsJuVd.js",
+            "assets/DisclosureElements-BTzsSSsv.js",
             "assets/ar-DHEDwF2j.js",
             "assets/bn-BIfP88eS.js",
             "assets/cs-CWPaus97.js",
@@ -402,7 +402,7 @@
             "assets/zh-DEzQBzHR.js"
           ],
           "sync": [
-            "assets/lifecycle-uikit-Cc9mEtpS.js"
+            "assets/lifecycle-uikit-gLUrL-QN.js"
           ]
         },
         "css": {

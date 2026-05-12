@@ -27,6 +27,33 @@ import {
  */
 const DEFAULT_CHAIN_TIMEOUT = 120000;
 
+// @cpt-dod:cpt-frontx-dod-screenset-registry-missing-handler-fallback:p1
+/**
+ * Thrown by the mediator's primary-step execution when neither a
+ * `(target, actionType)` handler nor a catch-all handler is registered
+ * for the resolved target. Caught by `executeChainRecursive`'s try/catch,
+ * which triggers `chain.fallback` if defined; with no fallback, the error
+ * propagates to `executeActionsChain`'s outer try/catch and the chain
+ * promise resolves with `{ completed: false, error: '...' }` — the
+ * mediator does not throw to the caller.
+ *
+ * Error message format matches the spec contract verbatim:
+ * `No handler found for target '{target}' and action type '{actionType}'`.
+ *
+ * @internal
+ */
+export class NoHandlerForActionTargetError extends Error {
+  constructor(
+    public readonly target: string,
+    public readonly actionType: string
+  ) {
+    super(
+      `No handler found for target '${target}' and action type '${actionType}'`
+    );
+    this.name = 'NoHandlerForActionTargetError';
+  }
+}
+
 /**
  * Concrete implementation of ActionsChainsMediator.
  *
@@ -232,20 +259,32 @@ export class DefaultActionsChainsMediator extends ActionsChainsMediator {
   /**
    * Execute a single action with timeout.
    *
+   * If neither a `(target, actionType)` handler nor a catch-all handler is
+   * registered, this method throws `NoHandlerForActionTargetError`. The
+   * thrown error is caught by `executeChainRecursive`'s try/catch around
+   * the primary step, which triggers the chain's `fallback` (if defined);
+   * with no fallback, the error propagates to `executeActionsChain`'s
+   * outer try/catch and the chain resolves with `completed: false`. The
+   * mediator never throws to the public caller.
+   *
    * @param action - The action to execute
    * @returns Promise that resolves when action completes
    */
   private async executeAction(
     action: ActionsChain['action']
   ): Promise<void> {
-    // Resolve per-(target, actionType) handler
+    // Resolve per-(target, actionType) handler. `resolveHandler` consults
+    // the catch-all map (used for child-domain bridge forwarding / cross-app
+    // routing) before returning undefined — reaching the throw below means
+    // BOTH the specific handler AND the catch-all are absent for this target.
     const handler = this.resolveHandler(action.target, action.type);
 
     if (!handler) {
-      // No handler registered - treat as successful no-op
-      // This allows validation-only tests to pass
-      // In production, handlers should be registered before executing chains
-      return;
+      console.debug(
+        '[ActionsChainsMediator] No handler registered for action target',
+        { target: action.target, actionType: action.type }
+      );
+      throw new NoHandlerForActionTargetError(action.target, action.type);
     }
 
     // Resolve timeout from domain or action

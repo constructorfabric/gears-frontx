@@ -20,12 +20,6 @@ import {
   TEST_BASE_URL,
 } from '../../../__test-utils__/mock-blob-url-loader';
 
-const MFE_ENTRY_CONTRACT: Pick<MfeEntryMF, 'requiredProperties' | 'actions' | 'domainActions'> = {
-  requiredProperties: [],
-  actions: [],
-  domainActions: [],
-};
-
 // ---------------------------------------------------------------------------
 // Test manifest factory helpers
 // ---------------------------------------------------------------------------
@@ -119,7 +113,6 @@ function createTestSetup(
       chunkSource: options.chunkSources?.[exposedModule],
     });
     return {
-      ...MFE_ENTRY_CONTRACT,
       id: `gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.${suffix}.v1`,
       manifest,
       exposedModule,
@@ -173,11 +166,11 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       const entry1 = makeEntry('./ChartWidget1', 'acme.chart1', mocks.registerSource);
       const entry2 = makeEntry('./ChartWidget2', 'acme.chart2', mocks.registerSource);
 
-      const result1 = await handler.load(entry1);
+      const result1 = await handler.load(entry1, entry1.id);
       expect(result1).toBeDefined();
       expect(typeof result1.mount).toBe('function');
 
-      const result2 = await handler.load(entry2);
+      const result2 = await handler.load(entry2, entry2.id);
       expect(result2).toBeDefined();
       expect(typeof result2.mount).toBe('function');
     });
@@ -191,10 +184,10 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       const entry1 = makeEntry('./ChartWidget1', 'acme.chart1b', mocks.registerSource);
       const entry2 = makeEntry('./ChartWidget2', 'acme.chart2b', mocks.registerSource);
 
-      const result1 = await handler.load(entry1);
+      const result1 = await handler.load(entry1, entry1.id);
       expect(result1).toBeDefined();
 
-      const result2 = await handler.load(entry2);
+      const result2 = await handler.load(entry2, entry2.id);
       expect(result2).toBeDefined();
     });
 
@@ -206,21 +199,23 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       // First load caches the manifest by its ID
       const entry1 = makeEntry('./ChartWidget', 'acme.chart.a', mocks.registerSource);
-      await handler.load(entry1);
+      await handler.load(entry1, entry1.id);
 
       // Second entry references the same manifest by ID string
       const exposeAssets2 = buildExposeAssets('analyticsRemote', './ChartWidget2', {
         registerSource: mocks.registerSource,
       });
       const entry2: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.acme.chart2.v1',
         manifest: manifest.id,
         exposedModule: './ChartWidget2',
         exposeAssets: exposeAssets2,
-      };
+      requiredProperties: [],
+      actions: [],
+      domainActions: [],
+    };
 
-      const result2 = await handler.load(entry2);
+      const result2 = await handler.load(entry2, entry2.id);
       expect(result2).toBeDefined();
     });
   });
@@ -230,7 +225,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       const { makeEntry } = createTestSetup('analyticsRemote', ['./ChartWidget']);
       const entry = makeEntry('./ChartWidget', 'acme.chart.2.1', mocks.registerSource);
 
-      const result = await handler.load(entry);
+      const result = await handler.load(entry, entry.id);
       expect(result).toBeDefined();
       expect(typeof result.mount).toBe('function');
       expect(typeof result.unmount).toBe('function');
@@ -240,7 +235,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       const { makeEntry } = createTestSetup('analyticsRemote', ['./ChartWidget']);
       const entry = makeEntry('./ChartWidget', 'acme.chart.2.2', mocks.registerSource);
 
-      const result = await handler.load(entry);
+      const result = await handler.load(entry, entry.id);
       expect(result).toBeDefined();
     });
 
@@ -252,21 +247,23 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       // Prime the cache with an inline manifest load
       const entry1 = makeEntry('./ChartWidget1', 'acme.chart.ref1', mocks.registerSource);
-      await handler.load(entry1);
+      await handler.load(entry1, entry1.id);
 
       // Second load uses type ID reference
       const exposeAssets2 = buildExposeAssets('analyticsRemote', './ChartWidget2', {
         registerSource: mocks.registerSource,
       });
       const entry2: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.acme.chart.ref2.v1',
         manifest: manifest.id,
         exposedModule: './ChartWidget2',
         exposeAssets: exposeAssets2,
-      };
+      requiredProperties: [],
+      actions: [],
+      domainActions: [],
+    };
 
-      const result = await handler.load(entry2);
+      const result = await handler.load(entry2, entry2.id);
       expect(result).toBeDefined();
     });
 
@@ -284,7 +281,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       ];
 
       for (const entry of entries) {
-        const result = await handler.load(entry);
+        const result = await handler.load(entry, entry.id);
         expect(result).toBeDefined();
       }
     });
@@ -298,15 +295,14 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         registerSource: mocks.registerSource,
       });
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.notcached.v1',
         manifest: 'gts.hai3.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
         exposedModule: './ChartWidget',
         exposeAssets,
       };
 
-      await expect(handler.load(entry)).rejects.toThrow(MfeLoadError);
-      await expect(handler.load(entry)).rejects.toThrow('not found');
+      await expect(handler.load(entry, entry.id)).rejects.toThrow(MfeLoadError);
+      await expect(handler.load(entry, entry.id)).rejects.toThrow('not found');
     });
 
     // Tests for missing remoteEntry.name, mfInitKey, id, publicPath removed —
@@ -321,7 +317,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       ]);
 
       const entry1 = makeEntry('./ChartWidget1', 'acme.int.chart1', mocks.registerSource);
-      const result1 = await handler.load(entry1);
+      const result1 = await handler.load(entry1, entry1.id);
       expect(result1).toBeDefined();
 
       // Second entry references manifest by ID
@@ -329,14 +325,16 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         registerSource: mocks.registerSource,
       });
       const entry2: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.acme.int.chart2.v1',
         manifest: manifest.id,
         exposedModule: './ChartWidget2',
         exposeAssets: exposeAssets2,
-      };
+      requiredProperties: [],
+      actions: [],
+      domainActions: [],
+    };
 
-      const result2 = await handler.load(entry2);
+      const result2 = await handler.load(entry2, entry2.id);
       expect(result2).toBeDefined();
     });
 
@@ -366,14 +364,12 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       mocks.registerSource(`${baseUrl}expose-Widget2.js`, createExposeChunkSource());
 
       const entry1: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.cache1.v1',
         manifest,
         exposedModule: './Widget1',
         exposeAssets: { js: { sync: ['expose-Widget1.js'], async: [] }, css: { sync: [], async: [] } },
       };
       const entry2: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.cache2.v1',
         manifest,
         exposedModule: './Widget2',
@@ -382,8 +378,8 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       // Both loads build shared dep blob URLs — sourceTextCache ensures the shared
       // dep ESM file is fetched at most once.
-      await handler.load(entry1);
-      await handler.load(entry2);
+      await handler.load(entry1, entry1.id);
+      await handler.load(entry2, entry2.id);
 
       const sharedDepFetches = mocks.mockFetch.mock.calls.filter(
         (call: unknown[]) => call[0] === sharedDepUrl
@@ -416,14 +412,13 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         registerSource: mocks.registerSource,
       });
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.acme.sharedmf.v1',
         manifest,
         exposedModule: './ChartWidget',
         exposeAssets,
       };
 
-      const result = await handler.load(entry);
+      const result = await handler.load(entry, entry.id);
       expect(result).toBeDefined();
       expect(typeof result.mount).toBe('function');
       expect(typeof result.unmount).toBe('function');
@@ -436,20 +431,22 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       ]);
 
       const entry1 = makeEntry('./ChartWidget1', 'acme.tidref1', mocks.registerSource);
-      await handler.load(entry1);
+      await handler.load(entry1, entry1.id);
 
       const exposeAssets2 = buildExposeAssets('analyticsRemote', './ChartWidget2', {
         registerSource: mocks.registerSource,
       });
       const entry2: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.acme.tidref2.v1',
         manifest: manifest.id,
         exposedModule: './ChartWidget2',
         exposeAssets: exposeAssets2,
-      };
+      requiredProperties: [],
+      actions: [],
+      domainActions: [],
+    };
 
-      const result = await handler.load(entry2);
+      const result = await handler.load(entry2, entry2.id);
       expect(result).toBeDefined();
       expect(typeof result.mount).toBe('function');
       expect(typeof result.unmount).toBe('function');
@@ -479,7 +476,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.scoped.v1',
         manifest,
         exposedModule: './Widget',
@@ -489,7 +485,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         },
       };
 
-      const result = await handler.load(entry);
+      const result = await handler.load(entry, entry.id);
       expect(result).toBeDefined();
       expect(typeof result.mount).toBe('function');
 
@@ -513,7 +509,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.flat.v1',
         manifest,
         exposedModule: './Widget',
@@ -523,7 +518,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         },
       };
 
-      const result = await handler.load(entry);
+      const result = await handler.load(entry, entry.id);
       expect(result).toBeDefined();
       expect(typeof result.mount).toBe('function');
 
@@ -549,7 +544,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.deep.v1',
         manifest,
         exposedModule: './Widget',
@@ -559,7 +553,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         },
       };
 
-      const result = await handler.load(entry);
+      const result = await handler.load(entry, entry.id);
       expect(result).toBeDefined();
 
       const fetchedUrls = mocks.mockFetch.mock.calls.map((c: unknown[]) => c[0]);
@@ -580,7 +574,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.minified.v1',
         manifest,
         exposedModule: './Widget',
@@ -590,7 +583,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         },
       };
 
-      const result = await handler.load(entry);
+      const result = await handler.load(entry, entry.id);
       expect(result).toBeDefined();
       expect(typeof result.mount).toBe('function');
     });
@@ -605,7 +598,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.styled.v1',
         manifest,
         exposedModule: './Widget',
@@ -615,7 +607,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         },
       };
 
-      const lifecycle = await handler.load(entry);
+      const lifecycle = await handler.load(entry, entry.id);
       const host = document.createElement('div');
       const shadowRoot = host.attachShadow({ mode: 'open' });
       await lifecycle.mount(shadowRoot, {
@@ -624,7 +616,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         executeActionsChain: async () => undefined,
         subscribeToProperty: () => () => undefined,
         getProperty: () => undefined,
-        registerActionHandler: () => {},
       });
 
       const styleElement = shadowRoot.getElementById('__hai3-mfe-runtime-style-0');
@@ -646,7 +637,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.styled-repeat.v1',
         manifest,
         exposedModule: './Widget',
@@ -656,7 +646,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         },
       };
 
-      const lifecycle = await handler.load(entry);
+      const lifecycle = await handler.load(entry, entry.id);
       const host = document.createElement('div');
       const shadowRoot = host.attachShadow({ mode: 'open' });
       const bridge = {
@@ -665,7 +655,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         executeActionsChain: async () => undefined,
         subscribeToProperty: () => () => undefined,
         getProperty: () => undefined,
-        registerActionHandler: () => {},
       };
 
       await lifecycle.mount(shadowRoot, bridge);
@@ -693,7 +682,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.styled-unmount.v1',
         manifest,
         exposedModule: './Widget',
@@ -703,7 +691,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         },
       };
 
-      const lifecycle = await handler.load(entry);
+      const lifecycle = await handler.load(entry, entry.id);
       const host = document.createElement('div');
       const shadowRoot = host.attachShadow({ mode: 'open' });
 
@@ -713,7 +701,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         executeActionsChain: async () => undefined,
         subscribeToProperty: () => () => undefined,
         getProperty: () => undefined,
-        registerActionHandler: () => {},
       });
 
       expect(shadowRoot.getElementById('__hai3-mfe-runtime-style-0')).toBeTruthy();
@@ -736,7 +723,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.manifestchunk.v1',
         manifest,
         exposedModule: './Widget',
@@ -747,7 +733,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         },
       };
 
-      await handler.load(entry);
+      await handler.load(entry, entry.id);
 
       const fetchedUrls = mocks.mockFetch.mock.calls.map((c: unknown[]) => c[0]);
       expect(fetchedUrls).toContain(`${baseUrl}${exposeChunk}`);
@@ -762,7 +748,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.publicpath.v1',
         manifest,
         exposedModule: './Widget',
@@ -772,7 +757,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         },
       };
 
-      await handler.load(entry);
+      await handler.load(entry, entry.id);
 
       // Chunk was fetched at publicPath + chunkFilename (not remoteEntry URL)
       const fetchedUrls = mocks.mockFetch.mock.calls.map((c: unknown[]) => c[0]);
@@ -789,7 +774,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.cssmanifest.v1',
         manifest,
         exposedModule: './Widget',
@@ -799,7 +783,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         },
       };
 
-      const lifecycle = await handler.load(entry);
+      const lifecycle = await handler.load(entry, entry.id);
       const host = document.createElement('div');
       const shadowRoot = host.attachShadow({ mode: 'open' });
       await lifecycle.mount(shadowRoot, {
@@ -808,7 +792,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         executeActionsChain: async () => undefined,
         subscribeToProperty: () => () => undefined,
         getProperty: () => undefined,
-        registerActionHandler: () => {},
       });
 
       const link = shadowRoot.getElementById('__hai3-mfe-runtime-style-0') as HTMLLinkElement;
@@ -819,7 +802,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
     it('throws MfeLoadError when exposeAssets.js.sync is empty', async () => {
       const manifest = buildManifest('emptyExposeRemote');
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.emptyexpose.v1',
         manifest,
         exposedModule: './Widget',
@@ -829,8 +811,8 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         },
       };
 
-      await expect(handler.load(entry)).rejects.toThrow(MfeLoadError);
-      await expect(handler.load(entry)).rejects.toThrow('exposeAssets.js.sync is empty');
+      await expect(handler.load(entry, entry.id)).rejects.toThrow(MfeLoadError);
+      await expect(handler.load(entry, entry.id)).rejects.toThrow('exposeAssets.js.sync is empty');
     });
 
     it('handles multiple CSS paths from exposeAssets.css.sync and css.async', async () => {
@@ -842,7 +824,6 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        ...MFE_ENTRY_CONTRACT,
         id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.multicss.v1',
         manifest,
         exposedModule: './Widget',
@@ -852,7 +833,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         },
       };
 
-      const lifecycle = await handler.load(entry);
+      const lifecycle = await handler.load(entry, entry.id);
       const host = document.createElement('div');
       const shadowRoot = host.attachShadow({ mode: 'open' });
       await lifecycle.mount(shadowRoot, {
@@ -861,12 +842,328 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         executeActionsChain: async () => undefined,
         subscribeToProperty: () => () => undefined,
         getProperty: () => undefined,
-        registerActionHandler: () => {},
       });
 
       // sync and async CSS are both injected (3 total)
       const links = shadowRoot.querySelectorAll('link[id^="__hai3-mfe-runtime-style-"]');
       expect(links).toHaveLength(3);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Process-wide load cache (cpt-frontx-dod-mfe-isolation-handler-load-cache)
+// ---------------------------------------------------------------------------
+//
+// The static load cache survives handler-instance disposal — a fresh
+// MfeHandlerMF instance constructed after the original is dropped still
+// returns the cached promise for any entry ID that has been loaded earlier
+// in the page lifetime. Tests reset the static cache between cases by
+// reaching through a typed cast: the cache is private to enforce the
+// "no public API for testing" rule, but TypeScript's `private` keyword
+// is a compile-time check only.
+
+type LoadCacheCarrier = { loadCache: Map<string, Promise<unknown>> };
+
+function resetStaticLoadCache(): void {
+  (MfeHandlerMF as unknown as LoadCacheCarrier).loadCache.clear();
+}
+
+function readStaticLoadCache(): Map<string, Promise<unknown>> {
+  return (MfeHandlerMF as unknown as LoadCacheCarrier).loadCache;
+}
+
+describe('MfeHandlerMF - Process-Wide Load Cache', () => {
+  let handler: MfeHandlerMF;
+  let mocks: ReturnType<typeof setupBlobUrlLoaderMocks>;
+
+  beforeEach(() => {
+    resetStaticLoadCache();
+    handler = new MfeHandlerMF(
+      'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+      { timeout: 5000, retries: 0 }
+    );
+    mocks = setupBlobUrlLoaderMocks();
+  });
+
+  afterEach(() => {
+    mocks.cleanup();
+    vi.clearAllMocks();
+    resetStaticLoadCache();
+  });
+
+  it('populates the static cache on first load (miss path)', async () => {
+    const { makeEntry } = createTestSetup('cacheRemoteMiss', ['./Widget']);
+    const entry = makeEntry('./Widget', 'cache.miss.entry', mocks.registerSource);
+
+    expect(readStaticLoadCache().has(entry.id)).toBe(false);
+    const result = await handler.load(entry, entry.id);
+
+    expect(result).toBeDefined();
+    expect(typeof result.mount).toBe('function');
+    expect(readStaticLoadCache().has(entry.id)).toBe(true);
+  });
+
+  it('returns the cached lifecycle on second load with the same entry id (hit path)', async () => {
+    const { makeEntry } = createTestSetup('cacheRemoteHit', ['./Widget']);
+    const entry = makeEntry('./Widget', 'cache.hit.entry', mocks.registerSource);
+
+    const first = await handler.load(entry, entry.id);
+    const fetchCountAfterFirst = mocks.mockFetch.mock.calls.length;
+
+    const second = await handler.load(entry, entry.id);
+
+    expect(second).toBe(first);
+    expect(mocks.mockFetch.mock.calls.length).toBe(fetchCountAfterFirst);
+  });
+
+  it('survives handler-instance disposal — a fresh handler sees the cached lifecycle', async () => {
+    const { makeEntry } = createTestSetup('cacheRemoteDispose', ['./Widget']);
+    const entry = makeEntry(
+      './Widget',
+      'cache.dispose.entry',
+      mocks.registerSource
+    );
+
+    const first = await handler.load(entry, entry.id);
+    const fetchCountAfterFirst = mocks.mockFetch.mock.calls.length;
+
+    // Drop the original handler and create a fresh one — mimics the
+    // nested-app registry teardown that destroys MfeHandlerMF instances
+    // between navigate cycles.
+    const replacementHandler = new MfeHandlerMF(
+      'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+      { timeout: 5000, retries: 0 }
+    );
+
+    const second = await replacementHandler.load(entry, entry.id);
+
+    expect(second).toBe(first);
+    expect(mocks.mockFetch.mock.calls.length).toBe(fetchCountAfterFirst);
+  });
+
+  it('shares a single in-flight promise for concurrent loads of the same entry id', async () => {
+    const { makeEntry } = createTestSetup('cacheRemoteInflight', ['./Widget']);
+    const entry = makeEntry(
+      './Widget',
+      'cache.inflight.entry',
+      mocks.registerSource
+    );
+
+    const [a, b] = await Promise.all([handler.load(entry, entry.id), handler.load(entry, entry.id)]);
+
+    expect(a).toBe(b);
+  });
+
+  it('evicts the cache entry when the underlying load rejects (failure eviction)', async () => {
+    const exposeAssets = buildExposeAssets('cacheRemoteFail', './Widget', {
+      registerSource: mocks.registerSource,
+    });
+    const entry: MfeEntryMF = {
+      id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.cache.fail.v1',
+      manifest: 'gts.hai3.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
+      exposedModule: './Widget',
+      exposeAssets,
+    };
+
+    await expect(handler.load(entry, entry.id)).rejects.toThrow(MfeLoadError);
+    expect(readStaticLoadCache().has(entry.id)).toBe(false);
+
+    // A subsequent load with the same id must trigger a fresh attempt
+    // (i.e. not hit a stale rejected promise).
+    await expect(handler.load(entry, entry.id)).rejects.toThrow(MfeLoadError);
+    expect(readStaticLoadCache().has(entry.id)).toBe(false);
+  });
+
+  it('caches distinct entry ids independently', async () => {
+    const { makeEntry } = createTestSetup('cacheRemoteDistinct', [
+      './WidgetA',
+      './WidgetB',
+    ]);
+    const entryA = makeEntry('./WidgetA', 'cache.distinct.a', mocks.registerSource);
+    const entryB = makeEntry('./WidgetB', 'cache.distinct.b', mocks.registerSource);
+
+    await handler.load(entryA, entryA.id);
+    await handler.load(entryB, entryB.id);
+
+    const cachedA = readStaticLoadCache().get(entryA.id);
+    const cachedB = readStaticLoadCache().get(entryB.id);
+    expect(cachedA).toBeDefined();
+    expect(cachedB).toBeDefined();
+    // Each entry id maps to its own promise — loading entry B does not
+    // overwrite or share the cache slot for entry A.
+    expect(cachedA).not.toBe(cachedB);
+
+    // Re-loading entry A reuses its cache slot (no overwrite) and leaves
+    // entry B's slot untouched.
+    await handler.load(entryA, entryA.id);
+    expect(readStaticLoadCache().get(entryA.id)).toBe(cachedA);
+    expect(readStaticLoadCache().get(entryB.id)).toBe(cachedB);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Extension-Instance-ID Cache Key (post-correction contract)
+// ---------------------------------------------------------------------------
+//
+// These tests pin the contract from
+// `cpt-frontx-dod-mfe-isolation-handler-load-cache`:
+//   - The cache is keyed by the EXTENSION INSTANCE ID, not by `entry.id`.
+//   - Two extensions registered against the SAME `MfeEntry` definition
+//     populate DISTINCT cache entries and receive DISTINCT loads.
+//   - Re-mount of the same extension instance reuses the cached load.
+//
+// The cache is reset between tests via the existing
+// `resetStaticLoadCache()` helper (private static field accessed through a
+// typed cast — no test-only public API on the handler).
+
+describe('MfeHandlerMF - Extension-Instance-ID Cache Key', () => {
+  let handler: MfeHandlerMF;
+  let mocks: ReturnType<typeof setupBlobUrlLoaderMocks>;
+
+  beforeEach(() => {
+    resetStaticLoadCache();
+    handler = new MfeHandlerMF(
+      'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+      { timeout: 5000, retries: 0 }
+    );
+    mocks = setupBlobUrlLoaderMocks();
+  });
+
+  afterEach(() => {
+    mocks.cleanup();
+    vi.clearAllMocks();
+    resetStaticLoadCache();
+  });
+
+  it('caches distinct extensions sharing the same entry under DISTINCT keys', async () => {
+    // Two sibling extensions that target the same MfeEntry definition.
+    // Per ADR-0004 + ADR-0020 they MUST receive distinct loads — distinct
+    // cache entries, distinct in-flight promises, and a fresh blob URL
+    // chain per load.
+    //
+    // Per-load DISTINCT runtime module evaluations are an invariant of the
+    // browser's `URL.createObjectURL` (each call mints a unique opaque
+    // blob URL → unique module cache slot). The unit test runs under jsdom
+    // with a content-based data: URL mock that intentionally dedupes
+    // identical source modules in Node's module cache, so the resolved
+    // lifecycle references compare equal here even though the cache
+    // entries are distinct. Runtime distinctness (alpha hex ≠ beta hex)
+    // is verified at the runtime tier in step 8 of this phase.
+    const { makeEntry } = createTestSetup('extKeyRemote', ['./Widget']);
+    const entry = makeEntry('./Widget', 'shared.entry.distinct.exts', mocks.registerSource);
+
+    const extensionIdAlpha = 'ext-alpha.v1';
+    const extensionIdBeta = 'ext-beta.v1';
+
+    const createObjectUrlCallsBefore =
+      (URL.createObjectURL as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
+
+    const promiseAlpha = handler.load(entry, extensionIdAlpha);
+    const promiseBeta = handler.load(entry, extensionIdBeta);
+
+    await Promise.all([promiseAlpha, promiseBeta]);
+
+    // Distinct cache slots populated, keyed by extension instance ID.
+    expect(readStaticLoadCache().has(extensionIdAlpha)).toBe(true);
+    expect(readStaticLoadCache().has(extensionIdBeta)).toBe(true);
+    expect(readStaticLoadCache().get(extensionIdAlpha)).not.toBe(
+      readStaticLoadCache().get(extensionIdBeta)
+    );
+
+    // Distinct in-flight promises while loading.
+    expect(promiseAlpha).not.toBe(promiseBeta);
+
+    // Each load mints its own blob URL chain → URL.createObjectURL must
+    // be called for both loads (per ADR-0004 isolation invariant).
+    const createObjectUrlCallsAfter =
+      (URL.createObjectURL as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
+    expect(createObjectUrlCallsAfter - createObjectUrlCallsBefore).toBeGreaterThanOrEqual(2);
+
+    // Entry-ID-keyed lookup MUST NOT find the load — the key is the
+    // extension instance ID. This pins the corrected contract.
+    expect(readStaticLoadCache().has(entry.id)).toBe(false);
+  });
+
+  it('returns the cached load on re-mount of the same extension instance', async () => {
+    const { makeEntry } = createTestSetup('extKeyRemoteHit', ['./Widget']);
+    const entry = makeEntry('./Widget', 'shared.entry.same.ext', mocks.registerSource);
+    const extensionId = 'ext-instance.v1';
+
+    const first = await handler.load(entry, extensionId);
+    const fetchCountAfterFirst = mocks.mockFetch.mock.calls.length;
+
+    const second = await handler.load(entry, extensionId);
+
+    // Same extension instance => same cached promise / lifecycle reference,
+    // no new fetch (cache short-circuits ahead of loadInternal).
+    expect(second).toBe(first);
+    expect(mocks.mockFetch.mock.calls.length).toBe(fetchCountAfterFirst);
+  });
+
+  it('shares a single in-flight promise for concurrent loads of the same extension instance', async () => {
+    const { makeEntry } = createTestSetup('extKeyRemoteInflight', ['./Widget']);
+    const entry = makeEntry(
+      './Widget',
+      'shared.entry.inflight.ext',
+      mocks.registerSource
+    );
+    const extensionId = 'ext-instance.inflight.v1';
+
+    const [a, b] = await Promise.all([
+      handler.load(entry, extensionId),
+      handler.load(entry, extensionId),
+    ]);
+
+    expect(a).toBe(b);
+  });
+
+  it('evicts the cache entry on load failure keyed by extension instance ID', async () => {
+    const exposeAssets = buildExposeAssets('extKeyRemoteFail', './Widget', {
+      registerSource: mocks.registerSource,
+    });
+    const entry: MfeEntryMF = {
+      id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.ext.fail.v1',
+      manifest: 'gts.hai3.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
+      exposedModule: './Widget',
+      exposeAssets,
+    };
+    const extensionId = 'ext-instance.fail.v1';
+
+    await expect(handler.load(entry, extensionId)).rejects.toThrow(MfeLoadError);
+    expect(readStaticLoadCache().has(extensionId)).toBe(false);
+
+    // A subsequent load against the same extension ID triggers a fresh
+    // attempt (no stale rejected promise is reused).
+    await expect(handler.load(entry, extensionId)).rejects.toThrow(MfeLoadError);
+    expect(readStaticLoadCache().has(extensionId)).toBe(false);
+  });
+
+  it('caches distinct extension instance IDs independently', async () => {
+    // Two different extension instances, distinct entries — verify the
+    // cache slots do not overwrite each other and that re-loading one does
+    // not perturb the other.
+    const { makeEntry } = createTestSetup('extKeyRemoteIndependent', [
+      './WidgetA',
+      './WidgetB',
+    ]);
+    const entryA = makeEntry('./WidgetA', 'ext.indep.a', mocks.registerSource);
+    const entryB = makeEntry('./WidgetB', 'ext.indep.b', mocks.registerSource);
+    const extensionIdA = 'ext-instance.indep.a.v1';
+    const extensionIdB = 'ext-instance.indep.b.v1';
+
+    await handler.load(entryA, extensionIdA);
+    await handler.load(entryB, extensionIdB);
+
+    const cachedA = readStaticLoadCache().get(extensionIdA);
+    const cachedB = readStaticLoadCache().get(extensionIdB);
+    expect(cachedA).toBeDefined();
+    expect(cachedB).toBeDefined();
+    expect(cachedA).not.toBe(cachedB);
+
+    // Re-loading A leaves B's cache slot untouched.
+    await handler.load(entryA, extensionIdA);
+    expect(readStaticLoadCache().get(extensionIdA)).toBe(cachedA);
+    expect(readStaticLoadCache().get(extensionIdB)).toBe(cachedB);
   });
 });

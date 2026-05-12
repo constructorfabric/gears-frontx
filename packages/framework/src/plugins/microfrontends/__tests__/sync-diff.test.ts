@@ -12,7 +12,6 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createHAI3 } from '../../../createHAI3';
-import { screensets } from '../../screensets';
 import { microfrontends, addExtensionMounted } from '../index';
 import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
 import { themeSchema, languageSchema, extensionScreenSchema } from '../../../gts';
@@ -141,8 +140,7 @@ function buildApp(): HAI3App {
   gtsPlugin.registerSchema(extensionScreenSchema);
 
   return createHAI3()
-    .use(screensets())
-    .use(microfrontends({ typeSystem: gtsPlugin }))
+        .use(microfrontends({ typeSystem: gtsPlugin }))
     .build();
 }
 
@@ -162,7 +160,7 @@ describe('microfrontends plugin — sync-diff dispatch wrapper', () => {
   // happened). The slice must remain consistent (no spurious entries).
 
   it('wrapper try/finally runs on a chain that targets a no-op handler: slice stays empty', async () => {
-    const registry = app.screensetsRegistry!;
+    const registry = app.mfeRegistry!;
     registry.registerDomain(domainA, new NoOpDomainFactory());
 
     await registry.executeActionsChain({
@@ -185,7 +183,7 @@ describe('microfrontends plugin — sync-diff dispatch wrapper', () => {
   // create spurious entries in domain B's slice bucket.
 
   it('chain targeting domain A does not affect domain B slice bucket', async () => {
-    const registry = app.screensetsRegistry!;
+    const registry = app.mfeRegistry!;
     registry.registerDomain(domainA, new NoOpDomainFactory());
     registry.registerDomain(domainB, new NoOpDomainFactory());
 
@@ -223,7 +221,7 @@ describe('microfrontends plugin — sync-diff dispatch wrapper', () => {
   // registry correctly and the registry is accessible with the expected shape.
 
   it('screensetsRegistry is available after build and has expected interface', () => {
-    const registry = app.screensetsRegistry!;
+    const registry = app.mfeRegistry!;
 
     expect(registry).toBeDefined();
     expect(typeof registry.registerDomain).toBe('function');
@@ -239,7 +237,7 @@ describe('microfrontends plugin — sync-diff dispatch wrapper', () => {
   // still return [] for the domain (no spurious entry from a failed chain).
 
   it('wrapper does not add spurious slice entries when the chain handler throws', async () => {
-    const registry = app.screensetsRegistry!;
+    const registry = app.mfeRegistry!;
     registry.registerDomain(domainB, new ThrowingDomainFactory());
 
     // The handler throws but the wrapper should swallow or re-throw — either

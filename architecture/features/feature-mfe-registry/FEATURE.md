@@ -1,6 +1,6 @@
 # Feature: MFE Registry & Contracts
 
-<!-- artifact-version: 1.8 -->
+<!-- artifact-version: 1.9 -->
 
 
 <!-- toc -->
@@ -47,6 +47,7 @@
   - [Shared Property Broadcast](#shared-property-broadcast)
   - [MFE Handler Injection](#mfe-handler-injection)
   - [ActionsChainsMediator Contract](#actionschainsmediator-contract)
+  - [Missing-Handler Fallback Semantics](#missing-handler-fallback-semantics)
   - [Mount Strategy and Mounter Contracts](#mount-strategy-and-mounter-contracts)
   - [DomainLifecycleTrigger Contract](#domainlifecycletrigger-contract)
   - [TypeSystemPlugin Interface](#typesystemplugin-interface)
@@ -187,7 +188,7 @@ Success criteria: A host application can register a domain and extension, execut
 5. - [x] `p1` - Mediator validates the action via anonymous instance pattern: the action object (no `id` field) is registered with `typeSystem.register(action)`; the type system resolves the schema from the action's `type` field and validates against it inside `register()`; IF validation fails `register()` throws and the chain fails with a recorded error - `inst-validate-action-anonymous`
 6. - [ ] `p1` - Mediator performs runtime entry declaration validation for extension-targeted actions: IF `chain.action.target` resolves to an extension (not a domain), look up the entry that owns the extension; IF `chain.action.type` is not present in the entry's `actions` array (the list of action types the entry is capable of receiving and executing), the chain fails with a recorded error `Action type '{type}' is not declared by target entry '{entryId}'`. Infrastructure lifecycle actions (`HAI3_ACTION_LOAD_EXT`, `HAI3_ACTION_MOUNT_EXT`, `HAI3_ACTION_UNMOUNT_EXT`) target domains, not extensions, and are exempt from this runtime check - `inst-validate-entry-declaration`
 7. - [x] `p1` - Mediator resolves the handler by `(action.target, action.type)` pair: looks up `handlers.get(action.target)?.get(action.type)`. Domain handlers and extension handlers are stored in the same unified `Map<targetId, Map<actionTypeId, ActionHandler>>`. Since GTS schemas enforce that domain-targeted actions use domain IDs and extension-targeted actions use extension IDs, there is no overlap — an action targets exactly one handler - `inst-resolve-handler`
-8. - [x] `p1` - IF a handler is found for the `(target, actionType)` pair, mediator calls `handler.handleAction(action.type, action.payload)`. IF no per-`(target, actionType)` handler is found, the mediator checks for a catch-all handler registered for the target (used for child domain forwarding). IF no handler exists at all, the action is a successful no-op - `inst-invoke-handler`
+8. - [x] `p1` - IF a handler is found for the `(target, actionType)` pair, mediator calls `handler.handleAction(action.type, action.payload)`. IF no per-`(target, actionType)` handler is found, the mediator checks for a catch-all handler registered for the target (used for child domain forwarding). IF no handler exists at all (target extension is unmounted, unregistered, or never registered; target domain is not registered; or no catch-all is in place), the mediator MUST treat the step as FAILED — the same as a handler that threw — and record an error of the form `No handler found for target '{target}' and action type '{actionType}'` so the failure is observable to chain authors. This failure SHALL trigger the chain's `fallback` (if present) per step 11 - `inst-invoke-handler`
 9. - [ ] `p1` - Action contract enforcement is two-layered: (1) GTS schema validation in step 5 constrains `target` via `x-gts-ref` — lifecycle action schemas restrict target to domain IDs; custom MFE action schemas restrict target to specific extension IDs; invalid targets are rejected by the type system. (2) Runtime entry declaration validation in step 6 ensures the target entry explicitly declares the action type in its `actions` array. GTS alone is insufficient — an entry may opt into only a subset of actions its domain supports, and runtime validation enforces that scoping before handler resolution - `inst-validate-extension-contract`
 10. - [x] `p1` - IF action completes successfully AND `chain.next` is defined, mediator executes `chain.next` recursively - `inst-execute-next`
 11. - [x] `p1` - IF action fails AND `chain.fallback` is defined, mediator executes `chain.fallback` instead - `inst-execute-fallback`
@@ -690,6 +691,27 @@ Domain-side: `registerDomain()` registers three handlers (one per lifecycle acti
 **Implements**:
 - `cpt-frontx-flow-mfe-registry-execute-chain`
 - `cpt-frontx-flow-mfe-registry-register-extension-handler`
+
+**Covers (DESIGN)**:
+- `cpt-frontx-component-screensets`
+- `cpt-frontx-seq-extension-action-delivery`
+
+### Missing-Handler Fallback Semantics
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-screenset-registry-missing-handler-fallback`
+
+When the mediator resolves an action-chain step's `target` and finds NO registered handler for the `(target, actionType)` pair (because the target extension is unmounted, unregistered, or never registered; the target domain is not registered; or no catch-all is in place for that target), the mediator MUST treat the step as FAILED — equivalent to a handler that threw — and trigger the chain's `fallback` chain when one is defined.
+
+**Failure shape**: the recorded error MUST identify both the target and the action type, in the form `No handler found for target '{target}' and action type '{actionType}'`. The error is surfaced through the same chain-failure pathway as any other handler error: it propagates to step 11 (`inst-execute-fallback`), which executes `chain.fallback` recursively.
+
+**No-fallback case**: when a step fails with a missing handler and `chain.fallback` is undefined, the chain fails with the same recorded error and the promise returned by `executeActionsChain` resolves with `result.completed === false` carrying the error (consistent with step 12 `inst-log-chain-failure` and step 13 `inst-resolve-chain`). The mediator does NOT throw; missing-handler is a chain-level failure, not a programming error.
+
+**Cross-app routing precedence preserved**: cross-app handler precedence (the framework's internal cross-boundary routing engagement when no local handler is present) runs BEFORE the missing-handler failure is recorded. The mediator only records a missing-handler failure after the local lookup AND any cross-boundary route both return no handler. The cross-app routing path is unchanged by this DoD — it still owns the "no local handler, try remote app" precedence; missing-handler→fallback engages only when no handler exists anywhere reachable.
+
+**Rationale**: this contract makes "target unreachable" observable to chain authors, enabling graceful degradation. A common pattern: an `executeActionsChain` whose primary step targets an extension that may or may not be mounted (e.g., a deep-link navigation), with a `fallback` chain that mounts a default screen or surfaces a not-found state. Without this contract the primary step silently succeeds with no handler match and the fallback never fires, leaving the caller with no observable signal that the action did not reach a handler.
+
+**Implements**:
+- `cpt-frontx-flow-screenset-registry-execute-chain` (steps 8 and 11)
 
 **Covers (DESIGN)**:
 - `cpt-frontx-component-screensets`
