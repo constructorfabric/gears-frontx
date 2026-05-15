@@ -10,11 +10,11 @@
 
 // @cpt-begin:cpt-frontx-dod-framework-composition-reexports:p1:inst-testing-subpath-exports
 export { describeBootstrapMfeContract } from './testing/describeBootstrapMfeContract';
-export { TestContainerProvider } from './testing/TestContainerProvider';
 export type {
   BootstrapMfeResolveArgs,
   BootstrapMfeTestSpecOptions,
 } from './testing/describeBootstrapMfeContract';
+export { TestContainerProvider } from './testing/TestContainerProvider';
 export {
   peekSharedQueryClient,
   peekSharedQueryClientRetainers,

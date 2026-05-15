@@ -158,23 +158,21 @@ The UI Libraries Choice feature provides per-project UI component strategy for n
 3. [x] - `p2` - Provide recursive `readDirRecursive` function that reads all files from a directory tree and returns them as `GeneratedFile[]` with relative paths - `inst-screenset-read-dir`
 4. [x] - `p2` - Provide `getUsedMfePorts` function that scans `src/mfe_packages/` to collect port numbers already in use from `mfe.json` manifests - `inst-screenset-port-scan`
 5. [x] - `p2` - Provide `assignMfePort` function that finds the next available port starting from 3001, skipping any ports already returned by `getUsedMfePorts` - `inst-screenset-port-assign`
-6. [x] - `p2` - Provide `regenerateMfeManifests` function that scans all `src/mfe_packages/*/mfe.json` files and rewrites `generated-mfe-manifests.ts` so the bootstrap auto-imports every registered MFE - `inst-screenset-regenerate-manifests`
-7. [x] - `p2` - Provide `buildMfeManifestsContent` utility that assembles the content of `generated-mfe-manifests.ts` from a list of MFE package directory names - `inst-screenset-build-manifests`
-8. [x] - `p2` - Provide `isReservedScreensetName` predicate and `RESERVED_SCREENSET_NAMES` list that prevents using system-reserved names (`screenset`, `screen`, `index`, `api`, `core`) as screenset identifiers - `inst-screenset-reserved-names`
-9. [x] - `p2` - Provide `validateNameAndLoadConfig` validation function that checks name validity and loads project config; define TypeScript types for command args and result - `inst-screenset-name-validation`
-10. [x] - `p2` - Developer invokes `frontx screenset` with a screenset name from within an MFE project directory; CLI defines command schema (name, port, project root options) - `inst-screenset-cmd-types`
-11. [x] - `p2` - CLI registers the `screenset` command definition with validation and execute callbacks - `inst-screenset-cmd-definition`
-12. [x] - `p2` - CLI execute handler reads `frontx.config.json`, resolves the screenset name, determines the next available port, resolves uikit type, then delegates to the screenset generator - `inst-screenset-cmd-execute`
-13. [x] - `p2` - CLI validates the screenset name; reads `frontx.config.json` from the project root and extracts the `uikit` field - `inst-screenset-generate-setup`
-14. [x] - `p2` - Developer invokes `frontx screenset` with a screenset name from within an MFE project directory - `inst-screenset-generate-1`
-15. [x] - `p2` - CLI reads `frontx.config.json` from the project root and extracts the `uikit` field - `inst-screenset-generate-2`
-16. [x] - `p2` - **IF** `uikit` is `"shadcn"`: CLI selects the shadcn screenset template, imports from `components/ui/` - `inst-screenset-generate-3`
-17. [x] - `p2` - **IF** `uikit` is `"none"`: CLI selects the custom screenset template, imports from `uikit/` - `inst-screenset-generate-4`
-18. [x] - `p2` - **IF** `uikit` is a third-party identifier: CLI selects the custom-uikit screenset template, imports from the declared package - `inst-screenset-generate-5`
-19. [x] - `p2` - Strip shadcn-specific dependencies (`tailwindcss`, `clsx`, `tailwind-merge`, `class-variance-authority`, `@radix-ui/react-slot`) from the generated MFE `package.json` when uikit is not `shadcn` - `inst-screenset-strip-shadcn-deps`
-20. [x] - `p2` - CLI generates the screenset files (screen definitions, registry entry, layout) using the resolved template - `inst-screenset-generate-6`
-21. [x] - `p2` - Ensure `src/mfe_packages/shared/` directory exists; write all generated files to the MFE package directory; regenerate `generated-mfe-manifests.ts` so bootstrap picks up the new MFE - `inst-screenset-generate-finalize`
-22. [x] - `p2` - **RETURN** fully wired screenset consistent with the project's UI kit choice - `inst-screenset-generate-7`
+6. [x] - `p2` - Provide `isReservedScreensetName` predicate and `RESERVED_SCREENSET_NAMES` list that prevents using system-reserved names (`screenset`, `screen`, `index`, `api`, `core`) as screenset identifiers - `inst-screenset-reserved-names`
+7. [x] - `p2` - Provide `validateNameAndLoadConfig` validation function that checks name validity and loads project config; define TypeScript types for command args and result - `inst-screenset-name-validation`
+8. [x] - `p2` - Developer invokes `frontx screenset` with a screenset name from within an MFE project directory; CLI defines command schema (name, port, project root options) - `inst-screenset-cmd-types`
+9. [x] - `p2` - CLI registers the `screenset` command definition with validation and execute callbacks - `inst-screenset-cmd-definition`
+10. [x] - `p2` - CLI execute handler reads `frontx.config.json`, resolves the screenset name, determines the next available port, resolves uikit type, then delegates to the screenset generator - `inst-screenset-cmd-execute`
+11. [x] - `p2` - CLI validates the screenset name; reads `frontx.config.json` from the project root and extracts the `uikit` field - `inst-screenset-generate-setup`
+12. [x] - `p2` - Developer invokes `frontx screenset` with a screenset name from within an MFE project directory - `inst-screenset-generate-1`
+13. [x] - `p2` - CLI reads `frontx.config.json` from the project root and extracts the `uikit` field - `inst-screenset-generate-2`
+14. [x] - `p2` - **IF** `uikit` is `"shadcn"`: CLI selects the shadcn screenset template, imports from `components/ui/` - `inst-screenset-generate-3`
+15. [x] - `p2` - **IF** `uikit` is `"none"`: CLI selects the custom screenset template, imports from `uikit/` - `inst-screenset-generate-4`
+16. [x] - `p2` - **IF** `uikit` is a third-party identifier: CLI selects the custom-uikit screenset template, imports from the declared package - `inst-screenset-generate-5`
+17. [x] - `p2` - Strip shadcn-specific dependencies (`tailwindcss`, `clsx`, `tailwind-merge`, `class-variance-authority`, `@radix-ui/react-slot`) from the generated MFE `package.json` when uikit is not `shadcn` - `inst-screenset-strip-shadcn-deps`
+18. [x] - `p2` - CLI generates the screenset files (screen definitions, registry entry, layout) using the resolved template - `inst-screenset-generate-6`
+19. [x] - `p2` - Ensure `src/mfe_packages/shared/` directory exists and write all generated files to the MFE package directory; print a hint that the developer runs `npm run generate:mfe-manifests` (chained from `npm run dev`) to refresh `public/generated-mfe-manifests.json` so the bootstrap picks up the new MFE — same workflow as adding an MFE in the monorepo - `inst-screenset-generate-finalize`
+20. [x] - `p2` - **RETURN** fully wired screenset consistent with the project's UI kit choice - `inst-screenset-generate-7`
 
 ### Add Shadcn Component to an Existing MFE (Manual Process)
 

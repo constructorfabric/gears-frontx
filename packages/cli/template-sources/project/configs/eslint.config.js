@@ -30,8 +30,12 @@ export default [
   {
     ignores: [
       'dist/**',
+      '**/dist/**',                     // MFE-package build output
+      '**/.__mf__temp/**',              // Module Federation Vite plugin temp dir
+      '**/coverage/**',
       'node_modules/**',
       '*.config.*',
+      '**/*.config.*',                  // sub-package vite/vitest configs
       '**/*.cjs',
       'scripts/**',
       'eslint-plugin-local/**', // ESLint plugin is CommonJS, has its own linting

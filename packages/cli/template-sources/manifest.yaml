@@ -50,6 +50,10 @@ root:
     - src/app/App.tsx
     - src/app/initApp.ts
     - src/app/globals.css
+    - scripts/generate-mfe-manifests.ts  # Single generator — same script powers host + scaffold
+    # public/generated-mfe-manifests.json is shipped as an empty `[]` placeholder
+    # by copy-templates.ts directly (not pulled from monorepo content), so a fresh
+    # scaffold's bootstrap fetch succeeds before its first `npm run generate:mfe-manifests`
     # Standalone-only files (in template-sources/project/ instead of monorepo root):
     # - vite.config.ts -> configs/vite.config.ts (no federation plugin)
     # - postcss.config.js -> configs/postcss.config.js
@@ -65,13 +69,15 @@ root:
     - src/app/api         # API services (AccountsApiService)
     - src/app/components  # Reusable components (TextLoader)
     - src/app/lib         # Utility functions (cn)
-    - src/app/mfe         # Shared MFE runtime files (bootstrap overridden in Stage 1b-override)
+    - src/app/mfe         # Shared MFE runtime (bootstrap + MfeScreenContainer copied verbatim from monorepo — no override)
     - src/app/actions     # Bootstrap actions
     - src/app/effects     # Bootstrap effects
     - src/app/events      # Bootstrap events
   # MFE template is sourced from src/mfe_packages/_blank-mfe/ (see copy-templates.ts)
-  # src/app/mfe is handled by Stage 1b-override so standalone templates keep the
-  # manifest-driven bootstrap plus an empty generated-mfe-manifests.ts stub
+  # src/app/mfe ships verbatim from the monorepo — scaffolded projects run the
+  # same fetch-based bootstrap the host runs; the runtime manifest endpoint is
+  # served from public/generated-mfe-manifests.json (initially `[]`, regenerated
+  # by `npm run generate:mfe-manifests`).
 
 # Stage 1c: AI documentation overrides
 ai_overrides:

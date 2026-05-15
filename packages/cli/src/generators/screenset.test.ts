@@ -12,7 +12,6 @@ import type { GeneratedFile } from '../core/types.js';
 import {
   applyMfeReplacements,
   applyMfeFileRename,
-  buildMfeManifestsContent,
   adaptMfeForCustomUikit,
   generateScreenset,
 } from './screenset.js';
@@ -151,55 +150,6 @@ describe('applyMfeFileRename', () => {
   it('should handle nested path segments', () => {
     const result = applyMfeFileRename('_BlankApiService.test.ts', 'contacts');
     expect(result).toBe('_ContactsApiService.test.ts');
-  });
-});
-
-describe('buildMfeManifestsContent', () => {
-  it('should generate valid content with no MFE packages', () => {
-    const result = buildMfeManifestsContent([]);
-    expect(result).toContain('AUTO-GENERATED FILE');
-    expect(result).toContain('MFE_MANIFESTS: MfeManifestConfig[] = [');
-    expect(result).toContain('getMfeManifests');
-    expect(result).not.toContain('import mfe');
-  });
-
-  it('should generate imports and registry entries for one package', () => {
-    const result = buildMfeManifestsContent(['contacts-mfe']);
-    expect(result).toContain(
-      "import mfe0 from '../../mfe_packages/contacts-mfe/mfe.json' with { type: 'json' };"
-    );
-    expect(result).toContain('  mfe0,');
-  });
-
-  it('should generate imports and registry entries for multiple packages', () => {
-    const result = buildMfeManifestsContent(['contacts-mfe', 'dashboard-mfe', 'settings-mfe']);
-    expect(result).toContain(
-      "import mfe0 from '../../mfe_packages/contacts-mfe/mfe.json' with { type: 'json' };"
-    );
-    expect(result).toContain(
-      "import mfe1 from '../../mfe_packages/dashboard-mfe/mfe.json' with { type: 'json' };"
-    );
-    expect(result).toContain(
-      "import mfe2 from '../../mfe_packages/settings-mfe/mfe.json' with { type: 'json' };"
-    );
-    expect(result).toContain('  mfe0,');
-    expect(result).toContain('  mfe1,');
-    expect(result).toContain('  mfe2,');
-  });
-
-  it('should include type imports', () => {
-    const result = buildMfeManifestsContent([]);
-    expect(result).toContain("import type { Extension, JSONSchema, MfeEntry } from '@cyberfabric/react';");
-  });
-
-  it('should export the MfeManifestConfig interface', () => {
-    const result = buildMfeManifestsContent([]);
-    expect(result).toContain('export interface MfeManifestConfig');
-  });
-
-  it('should emit schemas?: JSONSchema[] on MfeManifestConfig for schema-aware bootstrap', () => {
-    const result = buildMfeManifestsContent([]);
-    expect(result).toContain('schemas?: JSONSchema[]');
   });
 });
 
@@ -540,10 +490,10 @@ describe('generateScreenset() integration', () => {
     );
     expect(buttonContent, 'shadcn button preserved').toContain('lib/utils');
 
-    const manifestsPath = joinUnderRoot(projectRoot, 'src', 'app', 'mfe', 'generated-mfe-manifests.ts');
-    expect(await fs.pathExists(manifestsPath)).toBeTruthy();
-    const manifestsContent = await fs.readFile(manifestsPath, 'utf-8');
-    expect(manifestsContent).toContain('test-widget-mfe');
+    // The CLI no longer regenerates the manifest in-process. The user runs
+    // `npm run generate:mfe-manifests` (chained from `npm run dev`) in the
+    // scaffolded project to refresh `public/generated-mfe-manifests.json` —
+    // same script and same workflow as the monorepo host.
   });
 
   it('none: replaces shadcn components with plain-CSS equivalents', async () => {
@@ -615,20 +565,11 @@ describe('generateScreenset() integration', () => {
     expect(pkgJson.dependencies['class-variance-authority'], 'cva stripped').toBe(undefined);
   });
 
-  it('regenerates manifests including pre-existing MFE packages', async () => {
-    const projectRoot = await makeTempProject('shadcn');
-
-    const existingMfePath = joinUnderRoot(projectRoot, 'src', 'mfe_packages', 'existing-mfe');
-    await fs.ensureDir(existingMfePath);
-    await fs.writeJSON(joinUnderRoot(existingMfePath, 'mfe.json'), { name: 'existing' });
-
-    await generateScreenset({ name: 'analytics', port: 4004, projectRoot });
-
-    const manifestsContent = await fs.readFile(
-      joinUnderRoot(projectRoot, 'src', 'app', 'mfe', 'generated-mfe-manifests.ts'), 'utf-8',
-    );
-    expect(manifestsContent, 'new MFE in manifests').toContain('analytics-mfe');
-    expect(manifestsContent, 'pre-existing MFE in manifests').toContain('existing-mfe');
-    expect(manifestsContent, '_blank-mfe excluded').not.toContain('_blank-mfe');
-  });
+  // Manifest regeneration was removed from the CLI screenset generator —
+  // scaffolded projects ship `scripts/generate-mfe-manifests.ts` (the same
+  // generator that powers the monorepo host) and the user runs
+  // `npm run generate:mfe-manifests` (chained from `npm run dev`) to pick up
+  // new MFEs. The generator's own coverage lives in the monorepo (it's the
+  // same file shipped to scaffolded projects); the CLI is no longer the
+  // entity that produces manifest content.
 });
