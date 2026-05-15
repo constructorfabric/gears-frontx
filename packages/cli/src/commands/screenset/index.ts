@@ -183,7 +183,9 @@ export const screensetCreateCommand: CommandDefinition<
     logger.log('  npm install');
     logger.log(`  npm run dev  # starts on port ${port}`);
     logger.newline();
-    logger.info('MFE manifests regenerated in src/app/mfe/generated-mfe-manifests.ts.');
+    logger.info(
+      'Run `npm run generate:mfe-manifests` (chained from `npm run dev`) to refresh public/generated-mfe-manifests.json so the bootstrap picks up the new MFE.',
+    );
 
     return {
       mfePath: result.mfePath,

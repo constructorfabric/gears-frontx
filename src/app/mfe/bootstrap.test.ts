@@ -25,7 +25,7 @@ const mockApp = {
 };
 
 vi.mock('@cyberfabric/react', async (importOriginal) => {
-  const real = await importOriginal<Record<string, unknown>>();
+  const real = await importOriginal<Record<string, never>>();
   return {
     ...real,
     screenDomain: { id: 'screen-domain' },

@@ -26,7 +26,7 @@ import {
   resolvePathUnderProjectRoot,
   rewriteTsconfigPackagePaths,
 } from '../utils/project.js';
-import { applyMfeReplacements, applyMfeFileRename, buildMfeManifestsContent } from './screenset.js';
+import { applyMfeReplacements, applyMfeFileRename } from './screenset.js';
 import { isCustomUikit, assertValidUikitForCodegen, normalizeUikit } from '../utils/validation.js';
 import {
   getUikitBridge,
@@ -580,6 +580,19 @@ function sanitizeMainTemplateContent(content: string): string {
     ''
   );
 }
+
+/**
+ * Strip `@ts-nocheck` template-source directives that only exist because the
+ * file lives in `template-sources/` where `@/` aliases don't resolve. In a
+ * scaffolded project those aliases resolve, so the directive becomes dead
+ * weight — and the project's eslint config bans `@ts-nocheck` anyway.
+ */
+function sanitizeTemplateTsNoCheck(content: string): string {
+  return content.replace(
+    /^\/\/ @ts-nocheck.*Template source:.*\n/gm,
+    ''
+  );
+}
 // @cpt-end:cpt-frontx-algo-ui-libraries-choice-template-selection:p1:inst-template-selection-4
 // @cpt-end:cpt-frontx-algo-ui-libraries-choice-template-selection:p1:inst-template-selection-3
 
@@ -627,7 +640,12 @@ async function copyTemplateFiles(input: TemplateCopyInput): Promise<GeneratedFil
 
     const filePath = path.join(templatesDir, file);
     if (await fs.pathExists(filePath)) {
-      files.push({ path: file, content: await fs.readFile(filePath, 'utf-8') });
+      const raw = await fs.readFile(filePath, 'utf-8');
+      // Strip template-source-only `@ts-nocheck` directives: they exist because
+      // `@/` aliases don't resolve inside the CLI's template-sources tree, but
+      // in a scaffolded project the aliases resolve and the directive is dead
+      // weight (and the project's eslint config bans `@ts-nocheck`).
+      files.push({ path: file, content: sanitizeTemplateTsNoCheck(raw) });
     }
   }
 
@@ -657,6 +675,31 @@ async function copyTemplateFiles(input: TemplateCopyInput): Promise<GeneratedFil
       });
     }
   }
+
+  // @cpt-begin:cpt-frontx-dod-ui-libraries-choice-template-selection-impl:p1:inst-mfe-runtime-fetch-placeholder
+  // The bootstrap fetches `/generated-mfe-manifests.json` from public/ at
+  // runtime. Ship an empty `[]` placeholder produced by the templates pipeline
+  // so a freshly-scaffolded project boots before its first
+  // `npm run generate:mfe-manifests`. Same script regenerates this JSON in both
+  // monorepo and scaffolded contexts.
+  const manifestPlaceholderSrc = path.join(templatesDir, 'public/generated-mfe-manifests.json');
+  if (await fs.pathExists(manifestPlaceholderSrc)) {
+    files.push({
+      path: 'public/generated-mfe-manifests.json',
+      content: await fs.readFile(manifestPlaceholderSrc, 'utf-8'),
+    });
+  }
+  // @cpt-end:cpt-frontx-dod-ui-libraries-choice-template-selection-impl:p1:inst-mfe-runtime-fetch-placeholder
+
+  // @cpt-begin:cpt-frontx-dod-ui-libraries-choice-template-selection-impl:p1:inst-mfe-manifest-generator-script
+  const generatorScriptSrc = path.join(templatesDir, 'scripts/generate-mfe-manifests.ts');
+  if (await fs.pathExists(generatorScriptSrc)) {
+    files.push({
+      path: 'scripts/generate-mfe-manifests.ts',
+      content: await fs.readFile(generatorScriptSrc, 'utf-8'),
+    });
+  }
+  // @cpt-end:cpt-frontx-dod-ui-libraries-choice-template-selection-impl:p1:inst-mfe-manifest-generator-script
 
   const layoutDir = uikit === 'shadcn'
     ? path.join(templatesDir, 'layout', 'shadcn')
@@ -814,18 +857,6 @@ async function generateThemeFiles(uikit: string): Promise<GeneratedFile[]> {
   return files;
 }
 // @cpt-end:cpt-frontx-dod-ui-libraries-choice-theme-propagation:p1:inst-theme-files-generate
-
-// @cpt-begin:cpt-frontx-dod-ui-libraries-choice-create-scaffolding:p2:inst-scaffolding-mfe-bootstrap
-function generateMfeBootstrap(uikit: string): GeneratedFile[] {
-  const initialMfePackages = uikit === 'shadcn' ? ['demo-mfe'] : [];
-  return [
-    {
-      path: 'src/app/mfe/generated-mfe-manifests.ts',
-      content: buildMfeManifestsContent(initialMfePackages),
-    },
-  ];
-}
-// @cpt-end:cpt-frontx-dod-ui-libraries-choice-create-scaffolding:p2:inst-scaffolding-mfe-bootstrap
 
 // @cpt-begin:cpt-frontx-dod-ui-libraries-choice-ai-guidelines:p1:inst-ai-targets-generate
 async function generateAiTargets(input: AiTargetsInput): Promise<GeneratedFile[]> {
@@ -1118,7 +1149,6 @@ export async function generateProject(input: ProjectGeneratorInput): Promise<Gen
     projectPath,
   })));
   files.push(...(await generateThemeFiles(uikit)));
-  files.push(...generateMfeBootstrap(uikit));
   files.push(...(await generateAiTargets({ templatesDir, layer, uikit })));
 
   const config: Hai3Config = {

@@ -190,27 +190,41 @@ describe('project template coverage', () => {
     expect(configFile!.content).toContain('vitest.setup.ts');
   });
 
-  it('carries the standalone MFE bootstrap contract test into generated projects', async () => {
-    expect.assertions(5);
+  it('ships an empty public/generated-mfe-manifests.json placeholder so the bootstrap fetch succeeds before first regeneration', async () => {
+    expect.assertions(2);
     const projectFiles = await generateProject({
       projectName: 'demo-app',
       studio: false,
       uikit: 'none',
       packageManager: 'npm',
-      projectPath: await makeTempProjectPath('frontx-project-test-bootstrap-'),
+      projectPath: await makeTempProjectPath('frontx-project-test-manifest-placeholder-'),
     });
 
-    const bootstrapTestFile = projectFiles.find(
-      (file) => file.path === 'src/app/mfe/bootstrap.test.ts',
+    const placeholder = projectFiles.find(
+      (file) => file.path === 'public/generated-mfe-manifests.json',
     );
 
-    expect(bootstrapTestFile).toBeTruthy();
-    expect(bootstrapTestFile!.content).toContain('describeBootstrapMfeContract');
-    expect(bootstrapTestFile!.content).toContain("bootstrapModulePath: './bootstrap.ts'");
-    expect(bootstrapTestFile!.content).toContain(
-      "manifestsModulePath: './generated-mfe-manifests.ts'",
+    expect(placeholder).toBeTruthy();
+    expect(placeholder!.content.trim()).toBe('[]');
+  });
+
+  it('carries the shared generate-mfe-manifests.ts script into generated projects', async () => {
+    expect.assertions(2);
+    const projectFiles = await generateProject({
+      projectName: 'demo-app',
+      studio: false,
+      uikit: 'none',
+      packageManager: 'npm',
+      projectPath: await makeTempProjectPath('frontx-project-test-mfe-generator-'),
+    });
+
+    const generator = projectFiles.find(
+      (file) => file.path === 'scripts/generate-mfe-manifests.ts',
     );
-    expect(bootstrapTestFile!.content).toContain('callerUrl: import.meta.url');
+
+    expect(generator).toBeTruthy();
+    // Sanity-check the generator emits the runtime JSON the bootstrap fetches.
+    expect(generator!.content).toContain("public/generated-mfe-manifests.json");
   });
 
   it('includes the shared MFE Vitest base in generated app projects', async () => {

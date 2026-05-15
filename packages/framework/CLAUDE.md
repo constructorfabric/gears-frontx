@@ -351,7 +351,7 @@ const menu = useAppSelector((state: RootStateWithLayout) => state.layout.menu);
 
 ## Testing Subpath (`@cyberfabric/framework/testing`)
 
-The `./testing` subpath exposes Vitest-based contract helpers (e.g. `describeBootstrapMfeContract`) used by app projects to cover their generated bootstrap/manifest wiring.
+The `./testing` subpath exposes Vitest-based helpers — `TestContainerProvider` (factory adapter for MFE domain registration in tests), shared `QueryClient` peek hooks, and `resetSharedQueryClient` for inter-test teardown.
 
 - `vitest` is an **optional** peer dependency. Production apps that never import `@cyberfabric/framework/testing` do **not** need to install or pin `vitest`.
 - Projects that import from `@cyberfabric/framework/testing` **must** install `vitest` at a version compatible with the range declared in this package's `peerDependencies` (currently pinned to `4.1.4`).

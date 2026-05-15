@@ -6,11 +6,11 @@ const mockUseHAI3 = vi.fn();
 const mockScreenDomain = { id: 'screen-domain' };
 
 vi.mock('./bootstrap', () => ({
-  bootstrapMFE: (...args: unknown[]) => mockBootstrapMFE(...args),
+  bootstrapMFE: (...args: never[]) => mockBootstrapMFE(...args),
 }));
 
 vi.mock('@cyberfabric/react', async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<Record<string, never>>()),
   useHAI3: () => mockUseHAI3(),
   screenDomain: mockScreenDomain,
   ExtensionDomainSlot: ({
@@ -18,7 +18,7 @@ vi.mock('@cyberfabric/react', async (importOriginal) => ({
     domainId,
     className,
   }: {
-    registry: unknown;
+    registry: { mfeRegistry: Record<string, never> } | null;
     domainId: string;
     className?: string;
   }) => (
@@ -32,7 +32,7 @@ vi.mock('@cyberfabric/react', async (importOriginal) => ({
 }));
 
 describe('MfeScreenContainer', () => {
-  let app: { mfeRegistry: object };
+  let app: { mfeRegistry: Record<string, never> };
 
   beforeEach(() => {
     app = { mfeRegistry: {} };

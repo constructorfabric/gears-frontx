@@ -658,9 +658,9 @@ The MFE build plugin MUST operate at build time only (`vite build`); it MUST NOT
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-manifest-generation-script`
 
-The build system MUST provide a temporary generation script that aggregates pointers to enriched `mfe.json` files into `generated-mfe-manifests.json` with environment-specific base URL. The script MUST accept a `--base-url` parameter that sets the `publicPath` in each `MfManifest` GTS entity. The enriched `mfe.json` already contains `manifest.metaData`, `manifest.shared[]` (with per-dep `chunkPath`/`version`/`unwrapKey`), and `entries[].exposeAssets` — all set in-place by the `frontx-mf-gts` plugin at build time. The generated file is what the bootstrap loader imports to register GTS entities with the runtime; when a backend API is ready, the static import is replaced with a fetch call — same `mfe.json` shape, different transport.
+The build system MUST emit a per-environment registration manifest that lets every FrontX app instance (host, scaffolded, or nested) register the available MFE entries against the correct deployment. Deployment-specific data (base URLs, asset paths) MUST be injected at build/serve time so MFE source artifacts remain environment-independent. The manifest delivery mechanism MUST be swappable for a backend-delivered equivalent without changing MFE authoring or the per-app registration contract.
 
-**Rationale**: `mfe.json` is environment-independent before enrichment (no URLs, no chunk paths) and therefore human-authorable and version-controllable. The `frontx-mf-gts` plugin enriches it in-place at build time with manifest metadata, shared dep info, and expose assets — all determined without heuristics. The generation script is a temporary aggregator that injects environment-specific `publicPath` via `--base-url`. This separation keeps `mfe.json` reviewable and keeps runtime bootstrapping simple.
+**Rationale**: keeping MFE source artifacts environment-independent makes them reviewable and version-controllable; injecting deployment data at build/serve time keeps environment promotion mechanical; isolating the swap to a single transport seam keeps the future backend migration low-risk.
 **Actors**: `cpt-frontx-actor-build-system`, `cpt-frontx-actor-ci-cd`
 
 ### 5.8 MFE Internal Dataflow
