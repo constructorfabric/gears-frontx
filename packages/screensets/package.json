@@ -1,6 +1,6 @@
 {
   "name": "@cyberfabric/screensets",
-  "version": "0.2.0-alpha.3",
+  "version": "0.2.0-alpha.4",
   "description": "Pure TypeScript contracts and registry for FrontX screenset management",
   "type": "module",
   "main": "./dist/index.cjs",
