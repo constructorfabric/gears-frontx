@@ -1,8 +1,9 @@
 /**
  * Production MFE integration: build _blank-mfe and verify that:
  *  - mf-manifest.json is emitted by @module-federation/vite
- *  - mfe.json is enriched in-place by the frontxMfGts plugin with manifest
- *    metaData, shared[] (chunkPath, version, unwrapKey), and per-entry exposeAssets
+ *  - dist/mfe-manifest.json is written by the frontxMfGts plugin with
+ *    manifest metaData, shared[] (chunkPath, version, unwrapKey), and per-entry exposeAssets
+ *  - source mfe.json remains human-authored and unenriched
  *  - MfeHandlerMF can derive chunk paths from it without regex parsing
  *
  * Full load()+mount() is not run here: Node's default ESM loader cannot evaluate
@@ -24,9 +25,23 @@ const BLANK_MFE_ROOT = join(REPO_ROOT, 'src', 'mfe_packages', '_blank-mfe');
 const DIST_DIR = join(BLANK_MFE_ROOT, 'dist');
 /** Raw @module-federation/vite output — used for expose chunk verification */
 const RAW_MANIFEST_PATH = join(DIST_DIR, 'mf-manifest.json');
-/** mfe.json is enriched in-place by frontxMfGts plugin — the canonical runtime contract */
+/** Enriched build-output manifest consumed by host manifest generation. */
+const ENRICHED_MANIFEST_PATH = join(DIST_DIR, 'mfe-manifest.json');
+/** Human-authored source contract; must remain unenriched after build. */
 const MFE_JSON_PATH = join(BLANK_MFE_ROOT, 'mfe.json');
 const POSIX_NPM_PATHS = ['/usr/bin/npm', '/usr/local/bin/npm'] as const;
+
+type SourceMfeJson = {
+  manifest?: {
+    id?: string;
+    remoteEntry?: string;
+    metaData?: object;
+    shared?: object[];
+  };
+  entries?: Array<{
+    exposeAssets?: object;
+  }>;
+};
 
 type CommandSpec = {
   command: string;
@@ -136,11 +151,21 @@ describe('MfeHandlerMF + production _blank-mfe build', () => {
     if (!existsSync(RAW_MANIFEST_PATH)) {
       throw new Error(`Expected mf-manifest.json at ${RAW_MANIFEST_PATH} after build.\n${buildInfo}`);
     }
-    // Verify mfe.json was enriched with manifest.metaData
-    const enrichedMfeJson = JSON.parse(readFileSync(MFE_JSON_PATH, 'utf8')) as Record<string, unknown>;
-    const manifest = enrichedMfeJson['manifest'] as Record<string, unknown> | undefined;
-    if (!manifest?.['metaData']) {
-      throw new Error(`Expected mfe.json to be enriched with manifest.metaData after build.\n${buildInfo}`);
+    if (!existsSync(ENRICHED_MANIFEST_PATH)) {
+      throw new Error(`Expected mfe-manifest.json at ${ENRICHED_MANIFEST_PATH} after build.\n${buildInfo}`);
+    }
+
+    const sourceMfeJson = JSON.parse(readFileSync(MFE_JSON_PATH, 'utf8')) as SourceMfeJson;
+    if (!sourceMfeJson.manifest?.id || !sourceMfeJson.manifest.remoteEntry) {
+      throw new Error(`Expected source mfe.json to keep manifest.id and manifest.remoteEntry after build.\n${buildInfo}`);
+    }
+    if (sourceMfeJson.manifest.metaData || sourceMfeJson.manifest.shared) {
+      throw new Error(`Expected source mfe.json manifest to remain unenriched after build.\n${buildInfo}`);
+    }
+    for (const entry of sourceMfeJson.entries ?? []) {
+      if (entry.exposeAssets) {
+        throw new Error(`Expected source mfe.json entries to remain without exposeAssets after build.\n${buildInfo}`);
+      }
     }
   }, 120_000);
 
@@ -270,7 +295,7 @@ describe('MfeHandlerMF + production _blank-mfe build', () => {
     ]);
   });
 
-  it('enriches mfe.json with manifest metaData, shared[], and mfInitKey', () => {
+  it('writes build-output mfe-manifest.json with manifest metaData and shared[]', () => {
     type EnrichedManifest = {
       id: string;
       remoteEntry: string;
@@ -285,7 +310,7 @@ describe('MfeHandlerMF + production _blank-mfe build', () => {
       shared: { name: string; version: string; chunkPath: string; unwrapKey: string | null }[];
     };
     type EnrichedMfeJson = { manifest: EnrichedManifest };
-    const mfeJson = JSON.parse(readFileSync(MFE_JSON_PATH, 'utf8')) as EnrichedMfeJson;
+    const mfeJson = JSON.parse(readFileSync(ENRICHED_MANIFEST_PATH, 'utf8')) as EnrichedMfeJson;
 
     expect(typeof mfeJson.manifest.id).toBe('string');
     expect(mfeJson.manifest.metaData).toBeDefined();
@@ -299,10 +324,10 @@ describe('MfeHandlerMF + production _blank-mfe build', () => {
     // couple this plugin-contract test to fixture state.
   });
 
-  it('enriched mfe.json shared[] has chunkPath pointing to standalone ESMs', () => {
+  it('build-output mfe-manifest.json shared[] has chunkPath pointing to standalone ESMs', () => {
     type SharedEntry = { name: string; version: string; chunkPath: string; unwrapKey: string | null };
     type EnrichedMfeJson = { manifest: { shared: SharedEntry[] } };
-    const mfeJson = JSON.parse(readFileSync(MFE_JSON_PATH, 'utf8')) as EnrichedMfeJson;
+    const mfeJson = JSON.parse(readFileSync(ENRICHED_MANIFEST_PATH, 'utf8')) as EnrichedMfeJson;
 
     expect(mfeJson.manifest.shared.length).toBeGreaterThan(0);
     for (const dep of mfeJson.manifest.shared) {
@@ -315,10 +340,10 @@ describe('MfeHandlerMF + production _blank-mfe build', () => {
     }
   });
 
-  it('enriched mfe.json shared[] has resolved versions from node_modules', () => {
+  it('build-output mfe-manifest.json shared[] has resolved versions from node_modules', () => {
     type SharedEntry = { name: string; version: string; chunkPath: string; unwrapKey: string | null };
     type EnrichedMfeJson = { manifest: { shared: SharedEntry[] } };
-    const mfeJson = JSON.parse(readFileSync(MFE_JSON_PATH, 'utf8')) as EnrichedMfeJson;
+    const mfeJson = JSON.parse(readFileSync(ENRICHED_MANIFEST_PATH, 'utf8')) as EnrichedMfeJson;
 
     expect(mfeJson.manifest.shared.length).toBeGreaterThan(0);
     for (const dep of mfeJson.manifest.shared) {
@@ -330,11 +355,11 @@ describe('MfeHandlerMF + production _blank-mfe build', () => {
     }
   });
 
-  it('enriched mfe.json entries have exposeAssets from mf-manifest.json', () => {
+  it('build-output mfe-manifest.json entries have exposeAssets from mf-manifest.json', () => {
     type ExposeAssets = { js: { async: string[]; sync: string[] }; css: { async: string[]; sync: string[] } };
     type EnrichedEntry = { id: string; exposedModule: string; exposeAssets: ExposeAssets };
     type EnrichedMfeJson = { entries: EnrichedEntry[] };
-    const mfeJson = JSON.parse(readFileSync(MFE_JSON_PATH, 'utf8')) as EnrichedMfeJson;
+    const mfeJson = JSON.parse(readFileSync(ENRICHED_MANIFEST_PATH, 'utf8')) as EnrichedMfeJson;
 
     expect(mfeJson.entries.length).toBeGreaterThan(0);
     for (const entry of mfeJson.entries) {

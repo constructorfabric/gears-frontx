@@ -244,7 +244,7 @@ src/                -- Demo host application + MFE packages
 
 **Build orchestration**: Sequential layer build — SDK (parallel) → framework → react → studio → cli.
 
-**Development**: `npm run dev` generates MFE manifests and color tokens, then starts Vite dev server.
+**Development**: `npm run dev` builds MFE packages, generates MFE manifests and color tokens, then starts the Vite dev server.
 
 **Architecture checks**: `npm run arch:check`, `arch:deps`, `arch:unused` validate layer boundaries and unused exports.
 
@@ -1413,18 +1413,18 @@ Non-production screensets MUST NOT be included in the production build's module 
 - [x] `p1` - **ID**: `cpt-frontx-contract-mfe-manifest`
 
 **Direction**: required from MFE packages
-**Protocol/Format**: `mfe.json` per MFE package — human-authored base enriched in-place by the `frontx-mf-gts` Vite plugin at build time. A temporary generation script aggregates pointers to enriched `mfe.json` files into `generated-mfe-manifests.json` for host bootstrap.
-**Compatibility**: Enriched `mfe.json` content MUST conform to the `MfManifest` GTS schema.
-**Description**: Each MFE package provides `mfe.json` — human-authored and version-controlled: it contains entries (without `exposeAssets`), extensions, and schemas. The `frontx-mf-gts` Vite plugin derives shared dependencies from `rollupOptions.external` in the resolved Vite config and enriches `mfe.json` in-place at build time with `manifest.metaData`, `manifest.shared[]` (with `chunkPath`/`version`/`unwrapKey` per dep), and `entries[].exposeAssets`. Enriched `mfe.json` is the complete self-contained contract per MFE — no intermediate artifacts (`mfe.gts-manifest.json`) are produced. The generation script (see `cpt-frontx-fr-manifest-generation-script`) is a temporary aggregator that produces pointers to enriched `mfe.json` files with environment-specific `--base-url`; when a backend API is ready, the static import is replaced with a fetch call. `mf-manifest.json` is consumed by the plugin only and never reaches runtime.
+**Protocol/Format**: `mfe.json` per MFE package (human-authored source) + `{outDir}/mfe-manifest.json` (build output produced by the `frontx-mf-gts` Vite plugin). A temporary generation script reads `{outDir}/mfe-manifest.json` from each MFE into `generated-mfe-manifests.json` for host bootstrap.
+**Compatibility**: `{outDir}/mfe-manifest.json` content MUST conform to the `MfManifest` GTS schema.
+**Description**: Each MFE package provides `mfe.json` — human-authored and version-controlled: it contains a minimal `manifest` section (`manifest.id`, `manifest.remoteEntry`), entries (without `exposeAssets`), extensions, schemas, and optional `domains[]`. The source file does not contain `manifest.metaData`, `manifest.shared[]`, or `entries[].exposeAssets`. The `frontx-mf-gts` Vite plugin derives shared dependencies from `rollupOptions.external` in the resolved Vite config and writes the enriched manifest to `{outDir}/mfe-manifest.json` at build time with `manifest.metaData`, `manifest.shared[]` (with `chunkPath`/`version`/`unwrapKey` per dep), and `entries[].exposeAssets`. Source `mfe.json` is never modified by the build. `{outDir}/mfe-manifest.json` is the complete self-contained build-output contract per MFE. The generation script (see `cpt-frontx-fr-manifest-generation-script`) is a temporary aggregator that reads `{outDir}/mfe-manifest.json` from each MFE with environment-specific `--base-url`; when a backend API is ready, the static import is replaced with a fetch call. `mf-manifest.json` is consumed by the plugin only and never reaches runtime.
 
 #### Module Federation Runtime
 
 - [x] `p2` - **ID**: `cpt-frontx-contract-federation-runtime`
 
 **Direction**: required from build system
-**Protocol/Format**: `@module-federation/vite` build plugin (`shared: {}`, `rollupOptions.external`; produces `mf-manifest.json`) + `frontx-mf-gts` Vite plugin (builds standalone ESMs for shared deps, enriches `mfe.json` in-place with manifest metadata, shared dep info, and expose assets)
+**Protocol/Format**: `@module-federation/vite` build plugin (`shared: {}`, `rollupOptions.external`; produces `mf-manifest.json`) + `frontx-mf-gts` Vite plugin (builds standalone ESMs for shared deps, writes enriched manifest to `{outDir}/mfe-manifest.json` with manifest metadata, shared dep info, and expose assets)
 **Compatibility**: Compatible with Module Federation 2.0 manifest schema for expose compilation and `mf-manifest.json` generation.
-**Description**: The MFE build pipeline runs `@module-federation/vite` to produce `mf-manifest.json` (expose chunk paths, CSS assets). The `frontx-mf-gts` plugin runs in `closeBundle`: builds standalone ESM modules for each shared dep from `node_modules` via esbuild into `dist/shared/`, then enriches `mfe.json` in-place with `manifest.metaData`, `manifest.shared[]` (with `chunkPath`/`version`/`unwrapKey`), and `entries[].exposeAssets`. No intermediate artifacts (`mfe.gts-manifest.json`) are produced. At runtime, the handler fetches standalone ESM source text (deduplicated via `sharedDepTextCache` keyed by `name@version`), rewrites bare specifiers to per-load blob URLs, and constructs the expose blob URL chain — no `@module-federation/runtime`, no `FederationHost`, no `__mf_init__`.
+**Description**: The MFE build pipeline runs `@module-federation/vite` to produce `mf-manifest.json` (expose chunk paths, CSS assets). The `frontx-mf-gts` plugin runs in `closeBundle`: builds standalone ESM modules for each shared dep from `node_modules` via esbuild into `{outDir}/shared/`, then writes the enriched manifest to `{outDir}/mfe-manifest.json` with `manifest.metaData`, `manifest.shared[]` (with `chunkPath`/`version`/`unwrapKey`), and `entries[].exposeAssets`. Source `mfe.json` is never modified. At runtime, the handler fetches standalone ESM source text (deduplicated via `sharedDepTextCache` keyed by `name@version`), rewrites bare specifiers to per-load blob URLs, and constructs the expose blob URL chain — no `@module-federation/runtime`, no `FederationHost`, no `__mf_init__`.
 
 ## 8. Use Cases
 

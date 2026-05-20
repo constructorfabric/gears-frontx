@@ -1,4 +1,3 @@
-// @cpt-FEATURE:frontx-mf-gts-plugin:p1
 // @cpt-dod:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1
 // @cpt-dod:cpt-frontx-dod-mfe-isolation-lazy-import-abi:p1
 // @cpt-flow:cpt-frontx-flow-mfe-isolation-build-v2:p2
@@ -145,7 +144,7 @@ interface MfeJson {
   schemas: MfeJsonSchema[];
 }
 
-// ── Types for enriched mfe.json fields ──────────────────────────────────────
+// ── Types for enriched build-output manifest fields ─────────────────────────
 
 interface EnrichedMetaData {
   publicPath: string;
@@ -178,7 +177,7 @@ type EnrichedMfeJson = Omit<MfeJson, 'manifest' | 'entries'> & {
   entries: EnrichedMfeJsonEntry[];
 };
 
-// ── mfe.json enricher ───────────────────────────────────────────────────────
+// ── Build-output manifest enricher ──────────────────────────────────────────
 // @cpt-algo:cpt-frontx-algo-mfe-isolation-enrich-mfe-json:p1
 
 class MfeJsonEnricher {
@@ -780,13 +779,13 @@ function transformLazyImports(
   return { code: transformer.apply(code), count: transformer.count() };
 }
 
-// @cpt-begin:frontx-mf-gts-plugin:p1:inst-1
+// @cpt-begin:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-1
 /**
  * Creates the frontx-mf-gts Vite plugin.
  *
  * Runs in `closeBundle` after `@module-federation/vite`. Builds standalone
- * ESM modules for shared deps and enriches `mfe.json` in-place with manifest
- * metadata, shared dep info, and per-entry expose assets.
+ * ESM modules for shared deps and writes `{outDir}/mfe-manifest.json` with
+ * manifest metadata, shared dep info, and per-entry expose assets.
  *
  * The package root is resolved from Vite's `config.root` — no `__dirname`
  * argument needed.
@@ -803,6 +802,7 @@ function transformLazyImports(
  */
 export function frontxMfGts(): Plugin {
   let packageRoot = '';
+  let distDirPath = '';
   let resolvedExternals: string[] = [];
 
   return {
@@ -857,6 +857,7 @@ export function frontxMfGts(): Plugin {
 
     configResolved(config) {
       packageRoot = config.root;
+      distDirPath = config.build?.outDir ?? 'dist';
       // Derive shared deps from rollupOptions.external so they stay in sync
       // with what the build actually externalizes. Sub-path imports and
       // function-form externals are not supported here — the handler
@@ -878,8 +879,11 @@ export function frontxMfGts(): Plugin {
     },
 
     async closeBundle() {
-      const distDir = path.join(packageRoot, 'dist');
+      const distDir = path.isAbsolute(distDirPath)
+        ? distDirPath
+        : path.join(packageRoot, distDirPath);
       const mfeJsonPath = path.join(packageRoot, 'mfe.json');
+      const mfeJsonManifestPath = path.join(distDir, 'mfe-manifest.json');
 
         // ── Read inputs ─────────────────────────────────────────────────────
 
@@ -914,18 +918,18 @@ export function frontxMfGts(): Plugin {
           console.log('[frontx-mf-gts] Shared deps build complete.');
         }
 
-        // ── Enrich mfe.json in-place ────────────────────────────────────────
+        // ── Write enriched build-output manifest ─────────────────────────────
 
         const enricher = new MfeJsonEnricher(packageRoot);
         const enrichedMfeJson = enricher.enrich(mfeJson, mfManifest, sharedDeps);
 
         fs.writeFileSync(
-          mfeJsonPath,
+          mfeJsonManifestPath,
           JSON.stringify(enrichedMfeJson, null, 2) + '\n',
           'utf-8'
         );
 
-        console.log(`[frontx-mf-gts] enriched ${mfeJsonPath}`);
+        console.log(`[frontx-mf-gts] enriched ${mfeJsonManifestPath}`);
 
         // ── Repair lifecycle chunks whose default export was rewritten ─
         // Each `entries[].exposedModule` writes `export default <lifecycle>`
@@ -1078,6 +1082,6 @@ export function frontxMfGts(): Plugin {
       },
     };
 }
-// @cpt-end:frontx-mf-gts-plugin:p1:inst-1
+// @cpt-end:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-1
 
 export { LazyImportTransformer, transformLazyImports };

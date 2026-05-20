@@ -38,8 +38,8 @@
  *      `/[.*+?^${}()|[\]\\]/g` → `String.raw\`\\$&\``. The escape covers every
  *      character that has regex meaning; ReDoS requires a pattern capable of
  *      catastrophic backtracking, which the escaped literal cannot produce.
- * @inputs `packageName` ∈ the set of shared dep names declared in the MFE's
- *         enriched `mfe.json` — bounded, author-declared, not user input.
+ * @inputs `packageName` ∈ the set of shared dep names declared on the resolved
+ *         `MfManifest` contract — bounded, author-declared, not user input.
  */
 export function sourceImports(source: string, packageName: string): boolean {
   const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
@@ -55,7 +55,7 @@ export function sourceImports(source: string, packageName: string): boolean {
  * @why Same escaping argument as `sourceImports`: `packageName` is
  *      regex-escaped before interpolation, so the constructed RegExp cannot
  *      be exploited by adversarial inputs.
- * @inputs `packageName` ∈ shared dep names from enriched `mfe.json`.
+ * @inputs `packageName` in shared dep names from the resolved `MfManifest` contract.
  *         `replacement` is a blob URL produced by `URL.createObjectURL`.
  *         Neither is user input.
  */

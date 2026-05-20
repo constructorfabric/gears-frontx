@@ -12,7 +12,6 @@
 
 /**
  * Asset file lists for a module or shared dependency.
- * Mirrors the `assets` shape emitted by @module-federation/vite in mf-manifest.json.
  */
 export interface MfManifestAssets {
   js: {
@@ -30,21 +29,19 @@ export interface MfManifestAssets {
 }
 
 /**
- * A single shared dependency entry from enriched mfe.json shared[].
- * Built at build time by the frontx-mf-gts Vite plugin from
- * rollupOptions.external with resolved versions from node_modules
- * and MFE-relative chunkPath values.
+ * A single shared dependency entry from `MfManifest.shared[]`.
+ * Declares a standalone ESM dependency with a resolved version and an
+ * MFE-relative chunkPath to its standalone bundle.
  */
 export interface MfManifestShared {
   /** npm package name (e.g. 'react', '@cyberfabric/screensets'). */
   name: string;
-  /** Concrete version resolved from node_modules (e.g. '19.2.4'). */
+  /** Concrete resolved version (e.g. '19.2.4'). */
   version: string;
   /**
    * Path to the standalone ESM file for this dependency, relative to
-   * the MFE's publicPath (e.g. "shared/react.js"). Built by
-   * StandaloneEsmBuilder in the frontx-mf-gts plugin. The handler
-   * resolves this against publicPath to form the fetch URL.
+   * the MFE's publicPath (e.g. "shared/react.js"). The handler resolves
+   * this against publicPath to form the fetch URL.
    */
   chunkPath: string;
   /**
@@ -55,7 +52,7 @@ export interface MfManifestShared {
 }
 
 /**
- * RemoteEntry descriptor from mf-manifest.json metaData.remoteEntry.
+ * RemoteEntry descriptor from `MfManifestMetaData.remoteEntry`.
  */
 export interface MfManifestRemoteEntry {
   /** Filename of the remote entry (e.g. 'remoteEntry.js'). */
@@ -67,7 +64,7 @@ export interface MfManifestRemoteEntry {
 }
 
 /**
- * Build information from mf-manifest.json metaData.buildInfo.
+ * Build information from `MfManifestMetaData.buildInfo`.
  */
 export interface MfManifestBuildInfo {
   buildVersion: string;
@@ -75,7 +72,7 @@ export interface MfManifestBuildInfo {
 }
 
 /**
- * Package-level metadata from enriched mfe.json manifest.metaData.
+ * Package-level metadata from `MfManifest.metaData`.
  * Contains everything needed to locate and load remote chunks.
  */
 export interface MfManifestMetaData {
@@ -104,9 +101,8 @@ export interface MfManifestMetaData {
 /**
  * MFE manifest — package-level metadata for an MFE package.
  *
- * Represents the manifest field from enriched mfe.json, produced by
- * the frontx-mf-gts Vite plugin. Contains metaData (from mf-manifest.json),
- * and shared[] (standalone ESM deps with resolved versions and chunkPaths).
+ * Contains metaData (publicPath, remoteEntry descriptor) and shared[]
+ * (standalone ESM deps with resolved versions and chunkPaths).
  *
  * Per-module expose chunk paths are stored separately on MfeEntryMF.exposeAssets.
  *

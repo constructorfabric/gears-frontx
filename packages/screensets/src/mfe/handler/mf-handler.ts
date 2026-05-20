@@ -760,11 +760,10 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
     // Inject the per-load `__hai3_lazy` loader stub at the top of the chunk
     // when the chunk references it. The stub is the runtime half of ADR-0022:
-    // build-time AST transform in `frontx-mf-gts` rewrote every dynamic
-    // `import('./X')` to `__hai3_lazy('./X')`; the loader stub closes over
-    // this load's resolver and routes those calls through the parent load's
-    // blob URL chain so lazy chunks inherit the same `sharedDepBlobUrls` as
-    // the entry chunk.
+    // a build-time AST transform rewrote every dynamic `import('./X')` to
+    // `__hai3_lazy('./X')`; the loader stub closes over this load's resolver
+    // and routes those calls through the parent load's blob URL chain so
+    // lazy chunks inherit the same `sharedDepBlobUrls` as the entry chunk.
     if (rewritten.includes('__hai3_lazy(')) {
       const loaderUrl = this.ensureLazyLoaderUrl(loadState);
       rewritten = `import{__hai3_lazy}from${JSON.stringify(loaderUrl)};\n${rewritten}`;
@@ -1121,9 +1120,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       (_match, relPath: string) => `import "${resolve(relPath)}";`
     );
 
-    // Dynamic `import('<rel>')` calls are NOT rewritten here. The
-    // `frontx-mf-gts` plugin's `renderChunk` AST transform converts every
-    // dynamic import to `__hai3_lazy('<rel>')` at build time (ADR-0022);
+    // Dynamic `import('<rel>')` calls are NOT rewritten here. A build-time
+    // AST transform converts every dynamic import to `__hai3_lazy('<rel>')`
+    // (ADR-0022);
     // the loader stub injected by `createBlobUrlChainInternal` routes those
     // calls through `resolveLazyChunk`, which mints per-load blob URLs that
     // inherit the parent load's `sharedDepBlobUrls`. Eagerly rewriting

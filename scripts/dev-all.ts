@@ -11,66 +11,9 @@
  */
 
 import { spawn } from 'child_process';
-import { existsSync, readdirSync, readFileSync } from 'fs';
-import { dirname, join } from 'path';
-
-// Resolve sibling CLIs (npm, vite via node_modules/.bin) from Node's own
-// bin directory rather than relying on PATH lookup. This avoids the
-// CWE-427 concern (`typescript:S4036`) of an attacker-controllable PATH
-// shadowing a trusted executable, even though this script is dev-only.
-const NODE_BIN_DIR = dirname(process.execPath);
-
-const MFE_PACKAGES_DIR = join(process.cwd(), 'src/mfe_packages');
-
-// Packages to skip (shared libraries)
-const EXCLUDED_PACKAGES = new Set(['shared']);
-
-interface MfeInfo {
-  name: string;
-  port: number;
-}
-
-// Scan src/mfe_packages/ and extract port from each package's scripts
-function getMFEPackages(): MfeInfo[] {
-  if (!existsSync(MFE_PACKAGES_DIR)) {
-    return [];
-  }
-
-  const mfes: MfeInfo[] = [];
-  const entries = readdirSync(MFE_PACKAGES_DIR, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    if (EXCLUDED_PACKAGES.has(entry.name)) continue;
-    if (entry.name.startsWith('.')) continue;
-
-    const pkgJsonPath = join(MFE_PACKAGES_DIR, entry.name, 'package.json');
-    if (!existsSync(pkgJsonPath)) continue;
-
-    try {
-      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf-8')) as {
-        scripts?: Record<string, string>;
-      };
-      const scripts = pkgJson.scripts ?? {};
-
-      // Try preview first (stable port source), fall back to dev
-      const portSource = scripts['preview'] ?? scripts['dev'] ?? '';
-      const portMatch = portSource.match(/--port\s+(\d+)/);
-
-      if (!portMatch) {
-        console.warn(`⚠️  Could not find --port in scripts for ${entry.name}, skipping`);
-        continue;
-      }
-
-      const port = parseInt(portMatch[1], 10);
-      mfes.push({ name: entry.name, port });
-    } catch (e) {
-      console.warn(`⚠️  Failed to read package.json for ${entry.name}:`, e);
-    }
-  }
-
-  return mfes;
-}
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { buildMfesSequentially, getMFEPackages, MfeInfo } from './lib/mfe-tools.js';
 
 // Determine main app command based on available scripts
 function getMainAppCommand(): string {
@@ -101,39 +44,6 @@ function buildPreviewCommands(mfes: MfeInfo[]): string[] {
   }
 
   return commands;
-}
-
-// Build MFEs sequentially, then generate manifests, then start previews
-async function buildMfesSequentially(mfes: MfeInfo[]): Promise<void> {
-  if (mfes.length === 0) return;
-
-  console.log('📦 Building MFE packages...\n');
-
-  // Spawn `vite build` per package with `cwd` set to that package — avoids
-  // `/bin/sh -c` concatenation (which is non-portable on Windows and fragile
-  // when a package path contains shell-special characters).
-  for (const mfe of mfes) {
-    await new Promise<void>((resolve, reject) => {
-      const npxPath = join(
-        NODE_BIN_DIR,
-        process.platform === 'win32' ? 'npx.cmd' : 'npx',
-      );
-      const proc = spawn(npxPath, ['vite', 'build'], {
-        stdio: 'inherit',
-        cwd: join(MFE_PACKAGES_DIR, mfe.name),
-      });
-      proc.on('error', reject);
-      proc.on('exit', (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`MFE build failed for ${mfe.name} with exit code ${code}`));
-        }
-      });
-    });
-  }
-
-  console.log('\n✅ All MFE packages built successfully.\n');
 }
 
 // Run manifest generation after MFE builds

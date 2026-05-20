@@ -1,24 +1,23 @@
 #!/usr/bin/env node
 
-// @cpt-FEATURE:cpt-frontx-dod-mfe-isolation-chunk-path-type:p2
+// @cpt-dod:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1
 
 /**
  * MFE Manifest Generation Script
  *
- * Reads the enriched mfe.json produced by the frontx-mf-gts Vite plugin for
- * each MFE package and writes the aggregated manifest to a public asset
- * (`public/generated-mfe-manifests.json`) served by Vite at the runtime URL
- * `/generated-mfe-manifests.json`. Every FrontX app instance (root host AND
- * any nested app) reads it from that URL at runtime.
+ * Reads the enriched mfe-manifest.json (produced by the frontx-mf-gts Vite
+ * plugin into each MFE's dist directory) and writes the aggregated manifest
+ * to a public asset (`public/generated-mfe-manifests.json`) served by Vite at
+ * the runtime URL `/generated-mfe-manifests.json`. Every FrontX app instance
+ * (root host AND any nested app) reads it from that URL at runtime.
  *
- * The enriched mfe.json already contains all required data:
+ * The enriched mfe-manifest.json already contains all required data:
  * - manifest.metaData: publicPath, remoteEntry, buildInfo from mf-manifest.json
  * - manifest.shared[]: standalone ESM deps with resolved versions and chunkPaths
- * - manifest.mfInitKey: empty string (MF 2.0 runtime removed)
  * - entries[].exposeAssets: from mf-manifest.json exposes[]
  *
  * Pipeline per MFE package:
- *   1. Read mfe.json — enriched by the build plugin
+ *   1. Read dist/mfe-manifest.json — enriched by the build plugin
  *   2. Inject resolved publicPath (overrides build-time placeholder)
  *   3. Copy shared dep `chunkPath` entries unchanged from the enriched manifest
  *   4. Map entries to MfeEntryMF shape with the resolved MfManifest object
@@ -32,14 +31,14 @@
  *   npx tsx scripts/generate-mfe-manifests.ts [--base-url <url>]
  *
  * When --base-url is omitted, publicPath comes from manifest.metaData.publicPath
- * in the enriched mfe.json (set by the build plugin from mf-manifest.json).
+ * in the enriched mfe-manifest.json (set by the build plugin from mf-manifest.json).
  */
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // ---------------------------------------------------------------------------
-// Raw JSON shape types (what we read from the enriched mfe.json on disk)
+// Raw JSON shape types (what we read from the enriched mfe-manifest.json on disk)
 // ---------------------------------------------------------------------------
 
 interface RawMetaData {
@@ -103,10 +102,9 @@ interface RawManifest {
   remoteEntry: string;
   metaData: RawMetaData;
   shared: RawShared[];
-  mfInitKey: string;
 }
 
-/** Enriched mfe.json shape produced by the frontx-mf-gts Vite plugin. */
+/** Enriched mfe-manifest.json shape produced by the frontx-mf-gts Vite plugin. */
 interface RawEnrichedMfeJson {
   manifest: RawManifest;
   domains?: RawDomain[];
@@ -169,11 +167,12 @@ interface OutMfeManifestConfig {
 // ManifestGenerator — class-based implementation
 // ---------------------------------------------------------------------------
 
-// @cpt-begin:cpt-frontx-dod-mfe-isolation-chunk-path-type:p2:inst-1
+// @cpt-begin:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-2
 class ManifestGenerator {
   private readonly mfePackagesDir: string;
   private readonly outputFile: string;
   private readonly globalBaseUrl: string | null;
+  private readonly mfeManifestPath: string;
 
   // Packages to skip (hidden dirs, non-MFE directories)
   private static readonly EXCLUDED = new Set(['.git', '.DS_Store']);
@@ -181,10 +180,12 @@ class ManifestGenerator {
   constructor(
     mfePackagesDir: string,
     outputFile: string,
+    mfeManifestPath: string,
     globalBaseUrl: string | null
   ) {
     this.mfePackagesDir = mfePackagesDir;
     this.outputFile = outputFile;
+    this.mfeManifestPath = mfeManifestPath;
     this.globalBaseUrl = globalBaseUrl;
   }
 
@@ -228,24 +229,23 @@ class ManifestGenerator {
   }
 
   private readEnrichedMfeJson(pkgPath: string, packageDir: string): RawEnrichedMfeJson {
-    const mfeJsonPath = join(pkgPath, 'mfe.json');
-    if (!existsSync(mfeJsonPath)) {
+    const manifestFilePath = join(pkgPath, this.mfeManifestPath);
+    if (!existsSync(manifestFilePath)) {
       throw new Error(
-        `[${packageDir}] mfe.json not found. ` +
-          `Ensure the MFE package has an mfe.json file.`
+        `[${packageDir}] ${this.mfeManifestPath} not found. ` +
+          `Build the MFE package first and ensure the frontxMfGts plugin is configured in vite.config.ts.`
       );
     }
     let mfeJson: RawEnrichedMfeJson;
     try {
-      mfeJson = JSON.parse(readFileSync(mfeJsonPath, 'utf-8')) as RawEnrichedMfeJson;
+      mfeJson = JSON.parse(readFileSync(manifestFilePath, 'utf-8')) as RawEnrichedMfeJson;
     } catch (err) {
-      throw new Error(`[${packageDir}] Cannot parse mfe.json: ${String(err)}`);
+      throw new Error(`[${packageDir}] Cannot parse ${this.mfeManifestPath}: ${String(err)}`);
     }
     if (!mfeJson.manifest?.metaData) {
       throw new Error(
-        `[${packageDir}] mfe.json is not enriched (missing manifest.metaData). ` +
-          `Run 'vite build' for this MFE first (cd src/mfe_packages/${packageDir} && npm run build). ` +
-          `Ensure the frontxMfGts plugin is configured in vite.config.ts.`
+        `[${packageDir}] ${this.mfeManifestPath} is missing manifest.metaData. ` +
+          `Build the MFE package first and ensure the frontxMfGts plugin is configured in vite.config.ts.`
       );
     }
     return mfeJson;
@@ -255,8 +255,8 @@ class ManifestGenerator {
    * Resolve publicPath for this MFE.
    * Priority:
    *   1. --base-url CLI flag (global override for all packages)
-   *   2. publicPath from enriched mfe.json manifest.metaData (set by plugin)
-   *   3. Origin from mfe.json manifest.remoteEntry URL (per-package default)
+   *   2. publicPath from enriched mfe-manifest.json manifest.metaData (set by plugin)
+   *   3. Origin from mfe-manifest.json manifest.remoteEntry URL (per-package default)
    *   4. "/" as final fallback
    */
   private resolvePublicPath(
@@ -269,7 +269,7 @@ class ManifestGenerator {
         : `${this.globalBaseUrl}/`;
     }
 
-    // Use publicPath from enriched manifest (set by the plugin from mf-manifest.json).
+    // Use publicPath from enriched manifest (set by the plugin from mfe-manifest.json).
     const manifestPublicPath = mfeJson.manifest.metaData.publicPath;
     if (manifestPublicPath && manifestPublicPath !== '/') {
       return manifestPublicPath.endsWith('/')
@@ -277,7 +277,7 @@ class ManifestGenerator {
         : `${manifestPublicPath}/`;
     }
 
-    // Fall back to mfe.json manifest.remoteEntry origin.
+    // Fall back to mfe-manifest.json manifest.remoteEntry origin.
     const remoteEntry = mfeJson.manifest.remoteEntry;
     if (remoteEntry) {
       try {
@@ -331,8 +331,8 @@ class ManifestGenerator {
       if (!entry.exposeAssets) {
         throw new Error(
           `[${packageDir}] Entry "${entry.id}" has no exposeAssets. ` +
-            `This usually means mfe.json was not enriched by the build plugin. ` +
-            `Rebuild the MFE (cd src/mfe_packages/${packageDir} && npm run build).`
+            `This usually means the manifest was not enriched by the build plugin. ` +
+            `Rebuild the MFE package and ensure the frontxMfGts plugin is configured.`
         );
       }
 
@@ -367,7 +367,7 @@ class ManifestGenerator {
     return JSON.stringify(configs, null, 2) + '\n';
   }
 }
-// @cpt-end:cpt-frontx-dod-mfe-isolation-chunk-path-type:p2:inst-1
+// @cpt-end:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-2
 
 // ---------------------------------------------------------------------------
 // CLI entry point
@@ -383,9 +383,10 @@ const { baseUrl } = parseArgs(process.argv.slice(2));
 
 const MFE_PACKAGES_DIR = join(process.cwd(), 'src/mfe_packages');
 const OUTPUT_FILE = join(process.cwd(), 'public/generated-mfe-manifests.json');
+const MFE_MANIFEST_PATH = 'dist/mfe-manifest.json';
 
 try {
-  new ManifestGenerator(MFE_PACKAGES_DIR, OUTPUT_FILE, baseUrl).run();
+  new ManifestGenerator(MFE_PACKAGES_DIR, OUTPUT_FILE, MFE_MANIFEST_PATH, baseUrl).run();
 } catch (err) {
   console.error('Error generating MFE manifests:', err instanceof Error ? err.message : String(err));
   process.exit(1);

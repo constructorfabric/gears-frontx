@@ -1,6 +1,6 @@
 {
   "name": "@cyberfabric/cli",
-  "version": "0.2.0-alpha.3",
+  "version": "0.2.0-alpha.4",
   "description": "FrontX CLI - Project scaffolding and screenset management tools",
   "type": "module",
   "bin": {

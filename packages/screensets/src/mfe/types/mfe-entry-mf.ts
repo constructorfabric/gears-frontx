@@ -26,7 +26,7 @@ export interface MfeEntryMF extends MfeEntry {
   /**
    * Per-module chunk assets for this specific exposed module.
    *
-   * Populated at registration time from mf-manifest.json exposes[].assets.
+   * Populated at registration time by the host manifest pipeline.
    * exposeAssets.js.sync[0] is the primary JS chunk filename to load.
    * exposeAssets.css.sync/async contains CSS paths to inject at mount time.
    */

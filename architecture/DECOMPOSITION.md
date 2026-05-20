@@ -189,8 +189,8 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
   - Deterministic filenames without content hashes
   - Never-revoke policy for blob URLs
   - MFE internal dataflow (useReducer/useState, no host Redux)
-  - Per-load blob URL chain construction from enriched `mfe.json` manifest (no `FederationHost` instance)
-  - Generation script aggregating pointers to enriched `mfe.json` files into `generated-mfe-manifests.json`
+  - Per-load blob URL chain construction from enriched `{outDir}/mfe-manifest.json` (no `FederationHost` instance)
+  - Generation script reading `{outDir}/mfe-manifest.json` from each MFE into aggregated `generated-mfe-manifests.json`
 
 - **Out of scope**:
   - CSS isolation via Shadow DOM (see `cpt-frontx-feature-react-bindings`)
@@ -235,7 +235,7 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
   - `sharedDepTextCache` (keyed by `name@version`) and `sourceTextCache` (keyed by absolute URL)
   - Bare specifier rewriting within the handler
   - `@module-federation/vite` plugin configuration (expose chunks only)
-  - `frontx-mf-gts` Vite plugin configuration (standalone ESM builder + `mfe.json` enricher)
+  - `frontx-mf-gts` Vite plugin configuration (standalone ESM builder + `{outDir}/mfe-manifest.json` producer)
 
 - **Sequences**:
 

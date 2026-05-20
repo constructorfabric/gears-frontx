@@ -16,7 +16,7 @@
     },
     "exposeAssets": {
       "type": "object",
-      "$comment": "Per-module chunk assets for this specific exposed module, split from mf-manifest.json exposes[] at registration time",
+      "$comment": "Per-module chunk assets for this specific exposed module, split per exposed module by the host manifest pipeline at registration time",
       "properties": {
         "js": {
           "type": "object",
