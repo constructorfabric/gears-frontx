@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Dict, Tuple
 
+from ._tomllib_compat import tomllib
+
 logger = logging.getLogger(__name__)
 
 # @cpt-begin:cpt-cypilot-algo-kit-whatsnew-display:p1:inst-whatsnew-format
@@ -130,11 +132,6 @@ def read_whatsnew(path: Path) -> Dict[str, Dict[str, str]]:
     if not path.is_file():
         return {}
     try:
-        import tomllib
-    except ModuleNotFoundError as e:
-        logger.debug("Failed to parse %s: %s", path, e)
-        return {}
-    try:
         with open(path, "rb") as f:
             data = tomllib.load(f)
     except (FileNotFoundError, PermissionError, tomllib.TOMLDecodeError) as e:
@@ -214,7 +211,8 @@ def _prompt_continue(interactive: bool) -> bool:
     if not interactive:
         return True
 
-    sys.stderr.write("  Press Enter to continue with update (or 'q' to abort): ")
+    sys.stderr.write("  Why this input is needed: confirm that you reviewed the update summary before changes continue.\n")
+    sys.stderr.write("  Press Enter to continue, or type `q` to abort the update: ")
     sys.stderr.flush()
     try:
         response = input().strip().lower()

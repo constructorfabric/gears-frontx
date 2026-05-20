@@ -125,6 +125,7 @@ Grouping rules:
 | Task steps | 3-7 | 10 | Split task |
 
 Enforcement algorithm: compile, count lines, accept if `≤ 500`, warn if `501-1000`, MUST split if `> 1000`.
+When the plan includes a raw-input package under `input/`, its chunk files count as runtime input and MUST be distributed across phases explicitly through `input_files`; do not hide them in generic context estimates.
 
 Splitting rules:
  
@@ -189,8 +190,10 @@ Phases MUST declare dependencies in TOML frontmatter.
 
 ## Single-Context Bypass
 
-If total compiled content would fit within `500` lines, the plan workflow MUST stop and redirect to the direct workflow instead of generating a plan.
+If total compiled content would fit within `500` lines, the plan workflow MAY redirect to the direct workflow only when no approved or reusable raw-input package is already in effect.
 
-1. Estimate total compiled size.
-2. If estimate `≤ 500`, redirect to `/cypilot-generate` or `/cypilot-analyze`.
-3. If estimate `> 500`, continue plan generation.
+1. First determine whether `{cypilot_path}/.plans/{task-slug}/input/manifest.json` already exists with an `input_signature` that exactly matches the current direct prompt text plus provided file contents.
+2. If it does, continue plan generation and do NOT redirect back to `/cypilot-generate` or `/cypilot-analyze`, even when later compiled content would fit within `500` lines.
+3. Otherwise estimate total compiled size.
+4. If estimate `≤ 500`, redirect to `/cypilot-generate` or `/cypilot-analyze`.
+5. If estimate `> 500`, continue plan generation.

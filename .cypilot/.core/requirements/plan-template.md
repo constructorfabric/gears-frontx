@@ -49,6 +49,8 @@ total = {M}
 type = "{generate|analyze|implement}"
 title = "{short descriptive title}"
 depends_on = []
+input_manifest = ""
+input_signature = ""
 input_files = []
 output_files = []
 outputs = []
@@ -62,6 +64,7 @@ Field rules:
 - `total` MUST equal total phase count.
 - `type` MUST be `generate`, `analyze`, or `implement`.
 - `depends_on` MUST be `[]` or integer phase numbers.
+- `input_manifest` and `input_signature` MUST be empty strings when no raw-input package is assigned to the phase; otherwise they MUST point to the authoritative `input/manifest.json` and its matching signature.
 - `input_files` and `inputs` are runtime-read items and MUST have matching Task read steps.
 - `output_files` are created or modified project files; `outputs` are intermediate files in `out/`.
 
@@ -133,6 +136,7 @@ Rules:
 - Template variables MUST be pre-resolved before inlining.
 - Inline template sections, checklist criteria, example excerpts, and file-pattern metadata.
 - Do NOT inline project artifacts, source code, or prior intermediate outputs.
+- When the plan carries raw-input chunk files under `input/`, keep them in `input_files` and read them at runtime from Task only from the package identified by `input_manifest` + `input_signature`; do NOT inline those chunks into the phase body.
 
 ### Section 7: Task
 
@@ -140,6 +144,7 @@ Rules:
 - Each step MUST produce a visible result.
 - No conditional branching.
 - Final step MUST self-verify against the acceptance criteria.
+- When `input_manifest` is non-empty, Task MUST read `input/manifest.json` before reading any assigned `input/*.md` chunks so the worker verifies it is using the matching authoritative package.
 
 ### Section 8: Acceptance Criteria
 
