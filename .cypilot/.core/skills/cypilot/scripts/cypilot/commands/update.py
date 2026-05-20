@@ -25,21 +25,19 @@ Pipeline:
 
 # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-update-imports
 import argparse
-import json
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
+from ..utils._tomllib_compat import tomllib
 from .init import (
     CACHE_DIR,
     COPY_ARCHITECTURE_ITEMS,
     COPY_DIRS,
     CORE_SUBDIR,
-    GEN_SUBDIR,
     _copy_from_cache,
     _core_readme,
-    _gen_readme,
     _inject_root_agents,
     _inject_root_claude,
 )
@@ -129,7 +127,6 @@ def cmd_update(argv: List[str]) -> int:
     warnings: List[str] = []
 
     core_dir = cypilot_dir / CORE_SUBDIR
-    gen_dir = cypilot_dir / GEN_SUBDIR
     config_dir = cypilot_dir / "config"
 
     # ── Show core whatsnew (before .core/ is replaced) ────────────────────
@@ -226,7 +223,6 @@ def cmd_update(argv: List[str]) -> int:
         update_kit, regenerate_gen_aggregates,
         _read_kits_from_core_toml, _parse_github_source, _download_kit_from_github,
         _read_kit_version_from_core,
-        migrate_legacy_kit_to_manifest,
     )
 
     kit_results: Dict[str, Any] = {}
@@ -244,7 +240,7 @@ def cmd_update(argv: List[str]) -> int:
                 owner, repo, version = _parse_github_source(owner_repo)
                 kit_src, _ = _download_kit_from_github(owner, repo, version)
                 tmp_to_clean = kit_src.parent
-            except Exception as exc:
+            except (OSError, ValueError, KeyError, RuntimeError) as exc:
                 errors.append({"path": kit_slug, "error": f"Download failed: {exc}"})
                 ui.warn(f"{kit_slug}: download failed: {exc}")
                 continue
@@ -313,7 +309,7 @@ def cmd_update(argv: List[str]) -> int:
                         )
             # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-manifest-legacy-migration-algo
 
-        except Exception as exc:
+        except (OSError, ValueError, KeyError, RuntimeError) as exc:
             kit_r = {
                 "kit": kit_slug,
                 "status": "ERROR",
@@ -448,7 +444,7 @@ def cmd_update(argv: List[str]) -> int:
                 ui.hint("Run 'cpt validate-kits --verbose' for full details.")
             else:
                 ui.step("Validate kits: PASS")
-        except Exception as exc:
+        except (OSError, ValueError, KeyError) as exc:
             warnings.append(f"validate-kits failed to run: {exc}")
     # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-self-check
 
@@ -573,25 +569,15 @@ def _maybe_regenerate_agents(
     from .agents import (
         _ALL_RECOGNIZED_AGENTS,
         _default_agents_config,
+        _is_agent_installed,
         _process_single_agent,
     )
 
     cfg = _default_agents_config()
-    agents_cfg = cfg.get("agents", {})
     regenerated: List[str] = []
 
     for agent in _ALL_RECOGNIZED_AGENTS:
-        agent_cfg = agents_cfg.get(agent, {})
-        skills_cfg = agent_cfg.get("skills", {})
-        outputs = skills_cfg.get("outputs", [])
-        # Only regenerate if at least one skill output file already exists
-        has_existing = any(
-            isinstance(out, dict)
-            and isinstance(out.get("path"), str)
-            and (project_root / out["path"]).is_file()
-            for out in outputs
-        )
-        if not has_existing:
+        if not _is_agent_installed(agent, project_root):
             continue
         result = _process_single_agent(
             agent, project_root, cypilot_dir, cfg, None, dry_run=False,
@@ -654,10 +640,9 @@ def _remove_system_from_core_toml(config_dir: Path) -> bool:
         return False
 
     try:
-        import tomllib
         with open(core_toml, "rb") as f:
             data = tomllib.load(f)
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
         sys.stderr.write(f"update: warning: cannot read {core_toml}: {exc}\n")
         return False
 
@@ -669,7 +654,7 @@ def _remove_system_from_core_toml(config_dir: Path) -> bool:
     try:
         from ..utils import toml_utils
         toml_utils.dump(data, core_toml, header_comment="Cypilot project configuration")
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
         sys.stderr.write(f"update: warning: cannot write {core_toml}: {exc}\n")
         return False
 
@@ -701,10 +686,9 @@ def _deduplicate_legacy_kits(config_dir: Path) -> Dict[str, str]:
         return {}
 
     try:
-        import tomllib
         with open(core_toml, "rb") as f:
             data = tomllib.load(f)
-    except Exception:
+    except (OSError, ValueError):
         return {}
 
     kits = data.get("kits", {})
@@ -736,7 +720,7 @@ def _deduplicate_legacy_kits(config_dir: Path) -> Dict[str, str]:
         try:
             from ..utils import toml_utils
             toml_utils.dump(data, core_toml, header_comment="Cypilot project configuration")
-        except Exception:
+        except (OSError, ValueError):
             pass
 
     # Update artifacts.toml — fix system.kit references unconditionally.
@@ -745,9 +729,8 @@ def _deduplicate_legacy_kits(config_dir: Path) -> Dict[str, str]:
     artifacts_toml = config_dir / "artifacts.toml"
     if artifacts_toml.is_file():
         try:
-            import tomllib as _tomllib
             with open(artifacts_toml, "rb") as f:
-                reg = _tomllib.load(f)
+                reg = tomllib.load(f)
 
             changed = False
             for sys_entry in reg.get("systems", []):
@@ -762,7 +745,7 @@ def _deduplicate_legacy_kits(config_dir: Path) -> Dict[str, str]:
             if changed:
                 from ..utils import toml_utils
                 toml_utils.dump(reg, artifacts_toml, header_comment="Cypilot artifacts registry")
-        except Exception:
+        except (OSError, ValueError):
             pass
 
     return renamed
@@ -788,10 +771,9 @@ def _migrate_kit_sources(config_dir: Path) -> Dict[str, str]:
         return {}
 
     try:
-        import tomllib
         with open(core_toml, "rb") as f:
             data = tomllib.load(f)
-    except Exception:
+    except (OSError, ValueError):
         return {}
 
     kits = data.get("kits", {})
@@ -815,7 +797,7 @@ def _migrate_kit_sources(config_dir: Path) -> Dict[str, str]:
     try:
         from ..utils import toml_utils
         toml_utils.dump(data, core_toml, header_comment="Cypilot project configuration")
-    except Exception:
+    except (OSError, ValueError):
         pass
 
     return migrated

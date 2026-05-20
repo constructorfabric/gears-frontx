@@ -27,6 +27,8 @@ purpose: Generic (kit-agnostic) quality checklist for code changes and reviews
 
 <!-- /toc -->
 
+**Companion methodology**: for bug hunting, logic bug review, edge-case search, regression risk analysis, or maximum-recall code review, also use `bug-finding.md` as the search procedure for hotspot mapping, invariant extraction, failure-path exploration, counterexample construction, and dynamic-escalation guidance.
+
 ## Procedure
 - [ ] Identify the code domain and decide applicability per checklist item.
 - [ ] Mark each item `PASS`, `FAIL`, `N/A` with rationale, or `NOT REVIEWED` when excluded by review mode.
@@ -121,6 +123,13 @@ purpose: Generic (kit-agnostic) quality checklist for code changes and reviews
 - [ ] Side effects are isolated and mockable.
 - [ ] Behavior is deterministic.
 - [ ] Outcomes are observable.
+### QUAL-CODE-004: Complexity Control [HIGH]
+- [ ] Cyclomatic and cognitive complexity stay proportionate to the problem being solved.
+- [ ] Deep nesting and long branching chains are simplified or extracted.
+- [ ] Complex logic hotspots are isolated behind clear abstractions with focused tests.
+- [ ] Control flow remains understandable without tracing excessive hidden state or side effects.
+- [ ] Necessary complexity is justified by requirements rather than convenience or incidental design.
+Optional: Quantitative guidance — advisory calibration only, not hard limits. Reviewers may use rough thresholds such as cyclomatic complexity `<= 10` for simple functions, `11–20` for moderate functions, and `> 20` as a refactor flag; max nesting depth around `3–4` levels; function length around `~200` LOC as a soft upper bound; and similar cognitive-complexity breakpoints for triage.
 ## Error Handling (ERR)
 ### ERR-CODE-001: Explicit Error Handling [CRITICAL]
 - [ ] Errors fail explicitly.
