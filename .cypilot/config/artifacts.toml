@@ -24,6 +24,10 @@ patterns = ["packages/docs/*"]
 reason = "Auth SDK package has no backing CDSL artifact"
 patterns = ["packages/auth/*"]
 
+[[ignore]]
+reason = "Legacy SDLC artifacts archived during ecosystem redesign; archive is reference-only and deleted after redesign lands"
+patterns = ["architecture/.archive-pre-ecosystem-redesign/**", "*/.archive-pre-ecosystem-redesign/*"]
+
 [[systems]]
 name = "FrontX Dev Kit"
 slug = "frontx"
@@ -57,12 +61,6 @@ required = false
 pattern = "features/*/FEATURE.md"
 traceability = "FULL"
 required = false
-
-[[systems.artifacts]]
-name = "Publishing Pipeline Feature"
-path = "architecture/features/feature-publishing-pipeline/FEATURE.md"
-kind = "FEATURE"
-traceability = "DOCS-ONLY"
 
 [[systems.codebase]]
 path = "packages/"
