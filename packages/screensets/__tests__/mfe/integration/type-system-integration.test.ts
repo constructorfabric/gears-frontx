@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
-import type { TypeSystemPlugin } from '../../../src/mfe/plugins/types';
+import type { TypeSystemPlugin, JSONSchema } from '../../../src/mfe/plugins/types';
 import type { MfeRegistry } from '../../../src/mfe/runtime';
 import { HAI3_SCREEN_EXTENSION_TYPE } from '../../../src/mfe/constants';
 
@@ -52,12 +52,14 @@ describe('In-memory type-system integration (DefaultMfeRegistry + GTS plugin)', 
     });
 
     it('should access schema information', () => {
-      // First-class schemas should be available
-      const entrySchema = runtime.typeSystem.getSchema('gts.hai3.mfes.mfe.entry.v1~');
+      // First-class schemas should be available. The registry's typeSystem is
+      // schema-agnostic (TypeSystemPlugin<unknown>); this suite wires the GTS
+      // plugin, so view the schemas as JSONSchema for the GTS-specific assertions.
+      const entrySchema = runtime.typeSystem.getSchema('gts.hai3.mfes.mfe.entry.v1~') as JSONSchema | undefined;
       expect(entrySchema).toBeDefined();
       expect(entrySchema?.$id).toContain('gts.hai3.mfes.mfe.entry.v1~');
 
-      const domainSchema = runtime.typeSystem.getSchema('gts.hai3.mfes.ext.domain.v1~');
+      const domainSchema = runtime.typeSystem.getSchema('gts.hai3.mfes.ext.domain.v1~') as JSONSchema | undefined;
       expect(domainSchema).toBeDefined();
       expect(domainSchema?.$id).toContain('gts.hai3.mfes.ext.domain.v1~');
     });
@@ -86,7 +88,7 @@ describe('In-memory type-system integration (DefaultMfeRegistry + GTS plugin)', 
   describe('12.1.5: Custom TypeSystemPlugin wrapper', () => {
     it('should work with custom TypeSystemPlugin wrapper', () => {
       // Create a custom plugin that wraps GTS
-      const customPlugin: TypeSystemPlugin = {
+      const customPlugin: TypeSystemPlugin<JSONSchema> = {
         name: 'custom-test',
         version: '1.0.0',
         registerSchema: (schema) => {
@@ -140,7 +142,7 @@ describe('In-memory type-system integration (DefaultMfeRegistry + GTS plugin)', 
 
     it('should have base extension schema without presentation field', () => {
       // Verify base extension schema does NOT have presentation
-      const baseSchema = runtime.typeSystem.getSchema('gts.hai3.mfes.ext.extension.v1~');
+      const baseSchema = runtime.typeSystem.getSchema('gts.hai3.mfes.ext.extension.v1~') as JSONSchema | undefined;
       expect(baseSchema).toBeDefined();
 
       // Base schema should NOT have presentation in required or properties

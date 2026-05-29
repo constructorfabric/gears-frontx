@@ -40,7 +40,7 @@ import { loadSchemas, loadLifecycleStages } from '../../gts/loader';
  *
  * @internal - Exported only for test usage. External code should use gtsPlugin singleton.
  */
-export class GtsPlugin implements TypeSystemPlugin {
+export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
   readonly name = 'gts';
   readonly version = '1.0.0';
 
@@ -184,4 +184,4 @@ export class GtsPlugin implements TypeSystemPlugin {
  * registry.registerDomain(myDomain, containerProvider);
  * ```
  */
-export const gtsPlugin: TypeSystemPlugin = new GtsPlugin();
+export const gtsPlugin: TypeSystemPlugin<JSONSchema> = new GtsPlugin();

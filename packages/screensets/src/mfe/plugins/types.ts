@@ -49,16 +49,31 @@ export interface JSONSchema {
  * The screensets package treats type IDs as OPAQUE STRINGS.
  * All type ID understanding is delegated to the plugin.
  *
+ * Generic over `TSchema` — the schema shape the plugin accepts and returns.
+ * Concrete plugins state their own shape: the built-in GTS plugin is
+ * `TypeSystemPlugin<JSONSchema>`; a CTI/RAML-based plugin would be
+ * `TypeSystemPlugin<CtiSchema>`.
+ *
+ * TEMPORARY DEFAULT: `TSchema` defaults to `unknown` to keep this change
+ * minimal and non-breaking — many schema-agnostic consumers (registry,
+ * mediator, config, framework wiring, @cyberfabric/react bindings) spell
+ * `TypeSystemPlugin` with no type argument. A deliberate stopgap ahead of the
+ * in-flight template/framework separation, to be removed/updated there so
+ * every consumer states its schema shape explicitly. It is `unknown`, NOT
+ * {@link JSONSchema}, on purpose: the JSON Schema shape is GTS-specific and
+ * must not be the contract's implicit identity.
+ *
  * @example
  * ```typescript
- * // Using the GTS plugin (default)
- * import { mfeRegistryFactory, gtsPlugin } from '@cyberfabric/screensets';
+ * // The built-in GTS plugin declares the JSON Schema shape explicitly
+ * class GtsPlugin implements TypeSystemPlugin<JSONSchema> { ... }
  *
- * const registry = mfeRegistryFactory.build({ typeSystem: gtsPlugin });
- * registry.registerDomain(myDomain, containerProvider);
+ * // A CTI/RAML-based plugin declares its own schema shape
+ * interface CtiSchema { cti: string; ... }                  // RAML-shaped
+ * class CtiPlugin implements TypeSystemPlugin<CtiSchema> { ... }
  * ```
  */
-export interface TypeSystemPlugin {
+export interface TypeSystemPlugin<TSchema = unknown> {
   /** Plugin identifier */
   readonly name: string;
 
@@ -68,26 +83,28 @@ export interface TypeSystemPlugin {
   // === Schema Registry ===
 
   /**
-   * Register a JSON Schema for validation.
-   * The type ID is extracted from the schema's $id field.
+   * Register a schema for validation.
+   * The type ID is extracted from the schema in a plugin-specific way
+   * (for the GTS plugin's JSON Schema shape, from the `$id` field).
    *
    * Note: First-class citizen schemas (MfeEntry, ExtensionDomain, Extension,
    * SharedProperty, Action, ActionsChain, LifecycleStage, LifecycleHook,
    * MfManifest, MfeEntryMF) are built into the plugin and do not need
    * to be registered. This method is for vendor/dynamic schemas only.
    *
-   * @param schema - JSON Schema to register
-   * @throws Error if schema does not have a $id field
+   * @param schema - Schema to register; shape is plugin-defined via the
+   *   `TSchema` generic parameter (e.g. {@link JSONSchema} for the GTS plugin)
+   * @throws Error if the schema lacks the plugin's required type-id field
    */
-  registerSchema(schema: JSONSchema): void;
+  registerSchema(schema: TSchema): void;
 
   /**
    * Get the schema registered for a type ID.
    *
    * @param typeId - Type ID identifying the schema
-   * @returns JSON Schema if found, undefined otherwise
+   * @returns Schema in the plugin's `TSchema` shape if found, undefined otherwise
    */
-  getSchema(typeId: string): JSONSchema | undefined;
+  getSchema(typeId: string): TSchema | undefined;
 
   // === Instance Registry (GTS-Native Approach) ===
 

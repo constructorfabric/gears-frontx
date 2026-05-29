@@ -15,7 +15,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { eventBus, resetStore } from '@cyberfabric/state';
 import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
-import type { TypeSystemPlugin } from '@cyberfabric/screensets';
+import type { TypeSystemPlugin, JSONSchema } from '@cyberfabric/screensets';
 import { createHAI3 } from '../../src/createHAI3';
 import { microfrontends } from '../../src/plugins/microfrontends';
 import { loadLayoutDomains } from '../../src/plugins/microfrontends/gts/loader';
@@ -237,11 +237,13 @@ describe('microfrontends plugin - Phase 7.9', () => {
       const app = buildApp();
       const registry = getAppMfeRegistry(app);
 
-      const entrySchema = registry.typeSystem.getSchema('gts.hai3.mfes.mfe.entry.v1~');
+      // registry.typeSystem is schema-agnostic (TypeSystemPlugin<unknown>); this
+      // app wires the GTS plugin, so view the schemas as JSONSchema here.
+      const entrySchema = registry.typeSystem.getSchema('gts.hai3.mfes.mfe.entry.v1~') as JSONSchema | undefined;
       expect(entrySchema).toBeDefined();
       expect(entrySchema?.$id).toContain('gts.hai3.mfes.mfe.entry.v1~');
 
-      const domainSchema = registry.typeSystem.getSchema('gts.hai3.mfes.ext.domain.v1~');
+      const domainSchema = registry.typeSystem.getSchema('gts.hai3.mfes.ext.domain.v1~') as JSONSchema | undefined;
       expect(domainSchema).toBeDefined();
       expect(domainSchema?.$id).toContain('gts.hai3.mfes.ext.domain.v1~');
     });
