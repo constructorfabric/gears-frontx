@@ -18,6 +18,7 @@
 - [5. Functional Requirements](#5-functional-requirements)
   - [5.1 Core Framework](#51-core-framework)
   - [5.2 CLI](#52-cli)
+  - [5.3 AI Tooling Framework](#53-ai-tooling-framework)
 
 <!-- /toc -->
 
@@ -41,7 +42,6 @@ Across both groups, three needs recur: stable, narrow contracts an AI agent can 
 
 - **Bounded time-to-scaffold** — A Project Developer (or an AI agent acting for one) can scaffold a working project from a project template in a single operation whose duration is bounded by a target published in the platform's release notes. Baseline: not yet measured (new product); Target: a predictable, bounded scaffold operation; Timeframe: established and published at the first platform release.
 - **Reviewable, reversible upgrades** — Every upgrade of an existing project to a newer template version is applied as a reviewable change set that a developer approves before it touches project files, with non-destructive rollback. Baseline: none (new product); Target: 100% of upgrades review-gated and reversible; Timeframe: first platform release.
-- **Ecosystem-wide AI SDLC coverage** — AI agents working in any FrontX-based project have ecosystem SDLC operations available — creating and validating PRD, ADR, DESIGN, DECOMPOSITION, and FEATURE artifacts with traceability across them — at session start, with no per-project training step. Baseline: none (new product); Target: all five artifact types supported; Timeframe: first platform release.
 - **Automatic activation of template AI extensions** — When a template that bundles AI capabilities is installed in a project, those capabilities become available to AI agents automatically, with no manual wiring by the developer. Baseline: none (new product); Target: zero manual wiring steps for template-bundled AI capabilities; Timeframe: first platform release.
 - **Compatibility within a major version** — Platform releases preserve backward compatibility within a major version, so consuming applications are not forced to upgrade in lockstep with the product. Baseline: none (new product); Target: zero breaking changes to published product contracts within a major version line; Timeframe: ongoing from the first major release.
 - **No architectural ceiling on application scale** — The platform places no upper limit on the number of microfrontends or type definitions an application integrates, beyond the thresholds stated in the non-functional requirements. Baseline: none (new product); Target: scale governed only by the stated NFR thresholds, not by product architecture; Timeframe: first platform release.
@@ -150,7 +150,6 @@ None.
 
 #### AI Tooling Framework (Pillar 3)
 
-- Ecosystem-wide SDLC workflows available to AI agents, for creating and validating SDLC artifacts with traceability across them.
 - FrontX-specific skills available to AI agents, such as creating microfrontends, validating templates, generating type definitions, and other ecosystem-scoped operations.
 - Template-bundled AI extensions — template-specific skills, workflows, guidelines, and reference artifacts that operate alongside the ecosystem's base AI capabilities.
 - Automatic discovery and activation of installed-template AI extensions in consuming projects, without manual wiring by the developer.
@@ -356,5 +355,67 @@ The system **MUST** allow a developer to review and approve upgrade changes befo
 The system **MUST** organize its commands into two namespaces: one for project-level operations and one for microfrontend-level operations.
 
 **Rationale**: Reflects the two first-class template kinds the product supports, so developers find the right command by the kind of work they are doing.
+
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
+
+### 5.3 AI Tooling Framework
+
+#### FrontX-specific skills available to AI agents
+
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-frontx-skills`
+
+The system **MUST** make FrontX-specific skills available to AI agents working in a FrontX-based project, including creating new microfrontends, validating templates, generating type definitions, and other ecosystem-scoped operations.
+
+**Rationale**: Gives AI agents fluency in ecosystem operations from the start, so developers receive correct, ecosystem-aware assistance without configuring it for each project.
+
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
+
+#### Template-bundled AI extensions
+
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-template-bundle-extensions`
+
+The system **MUST** allow a Template Developer to bundle a template with AI extensions — template-specific skills, workflows, guidelines, and reference artifacts — that operate alongside the ecosystem's base AI capabilities.
+
+**Rationale**: Lets templates carry their own AI expertise, so the knowledge specific to a template travels with it instead of being recreated in each consuming project.
+
+**Actors**: `cpt-frontx-actor-template-developer`
+
+#### Automatic discovery and activation of template-supplied AI extensions
+
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-extension-discovery-activation`
+
+When a template is installed in a project, the system **MUST** discover the template's AI extensions and activate them for AI agents working in that project, without the developer needing to wire them up manually.
+
+**Rationale**: Delivers zero-configuration extensibility, so template-supplied AI capabilities become available the moment a template is installed.
+
+**Actors**: `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-cypilot-cli`
+
+#### AI-driven project-upgrade orchestration
+
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-upgrade-orchestration`
+
+The system **MUST** allow a Project Developer to use AI agents to orchestrate template upgrades — analysing the change, applying the upgrade, and validating downstream effects — through AI-driven workflows that may include review gates, migration analyses, and downstream impact assessments.
+
+**Rationale**: Complements direct CLI invocation with guided, AI-driven upgrades, so developers can adopt newer template versions with analysis and review built into the flow.
+
+**Actors**: `cpt-frontx-actor-project-developer`
+
+#### Ecosystem-knowledge artifacts available at session start
+
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-session-start-knowledge`
+
+The system **MUST** make ecosystem-knowledge artifacts — rules, examples, guidelines, and reference artifacts — available to AI agents at session start, with no training step required.
+
+**Rationale**: Makes AI agents ecosystem-aware from the first interaction, so developers receive correct guidance immediately rather than after a setup or learning step.
+
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
+
+#### AI Tooling Framework is template-agnostic
+
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-tooling-template-agnostic`
+
+The AI Tooling Framework **MUST** ship zero template-specific content; template-specific AI capabilities **MUST** arrive exclusively via template bundles.
+
+**Rationale**: Keeps the framework free of coupling to any particular template's domain, so it stays portable across every template and templates remain the single source of their own AI capabilities.
 
 **Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
