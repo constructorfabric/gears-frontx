@@ -25,6 +25,8 @@
 - [7. Public Library Interfaces](#7-public-library-interfaces)
   - [7.1 Public API Surface](#71-public-api-surface)
   - [7.2 External Integration Contracts](#72-external-integration-contracts)
+- [8. Use Cases](#8-use-cases)
+- [9. Acceptance Criteria](#9-acceptance-criteria)
 
 <!-- /toc -->
 
@@ -580,3 +582,124 @@ The system **MUST** place no architectural upper limit on the number of microfro
 **Description**: The product publishes its packages to the package registry (`cpt-frontx-actor-package-registry`) and is installed from that registry by consuming applications using their chosen package manager.
 
 **Compatibility**: Published packages follow semantic versioning; consuming applications rely on the platform's evolvability commitments (`cpt-frontx-nfr-evolvability`).
+
+## 8. Use Cases
+
+#### Template Developer publishes a project template that composes microfrontend templates
+
+- [ ] `p2` - **ID**: `cpt-frontx-usecase-publish-composed-project-template`
+
+**Actor**: `cpt-frontx-actor-template-developer`
+
+**Preconditions**:
+- A template repository exists with the template's content authored.
+- The product is installed on the developer's machine.
+
+**Main Flow**:
+1. The Template Developer authors the project template's content.
+2. The Template Developer declares the project template's composed microfrontend templates by reference.
+3. The Template Developer validates the template's structure against the publication contract before publishing (`cpt-frontx-fr-cli-template-validate-prepublish`).
+4. The Template Developer publishes the template to the source registry (`cpt-frontx-actor-github`).
+
+**Postconditions**:
+- The template is available for installation by Project Developers from the source registry.
+
+**Alternative Flows**:
+- **Validation fails**: the validation step reports specific errors; the Template Developer fixes them and re-validates before publishing.
+
+#### Template Developer bundles a template with AI extensions
+
+- [ ] `p2` - **ID**: `cpt-frontx-usecase-bundle-template-ai-extensions`
+
+**Actor**: `cpt-frontx-actor-template-developer`
+
+**Preconditions**:
+- A template exists.
+- The AI Tooling Framework's extension contract is documented in the ecosystem-knowledge artifacts available to AI agents at session start.
+
+**Main Flow**:
+1. The Template Developer declares AI extensions — skills, workflows, guidelines, and reference artifacts — inside the template bundle (`cpt-frontx-fr-ai-template-bundle-extensions`).
+2. The Template Developer publishes the template via the source registry (`cpt-frontx-actor-github`).
+
+**Postconditions**:
+- When Project Developers install this template, the AI Tooling Framework automatically discovers and activates the bundled AI extensions for AI agents working in that project (`cpt-frontx-fr-ai-extension-discovery-activation`).
+
+**Alternative Flows**:
+- **Extension declaration malformed**: pre-publish validation reports the structural error before publication.
+
+#### Project Developer scaffolds a new project from a composed project template
+
+- [ ] `p2` - **ID**: `cpt-frontx-usecase-scaffold-composed-project`
+
+**Actor**: `cpt-frontx-actor-project-developer`
+
+**Preconditions**:
+- The source registry (`cpt-frontx-actor-github`) is reachable.
+- A target directory is chosen.
+- The product is installed.
+
+**Main Flow**:
+1. The Project Developer installs the project template by versioned reference (`cpt-frontx-fr-cli-template-install`).
+2. The Project Developer scaffolds the project (`cpt-frontx-fr-cli-project-scaffold`); the composed microfrontends declared by the template are resolved and scaffolded as part of the same operation (`cpt-frontx-fr-cli-composed-template-resolution`).
+3. The AI Tooling Framework activates the ecosystem's base AI capabilities and any template-bundled AI extensions for AI agents working in the new project (`cpt-frontx-fr-ai-extension-discovery-activation`, `cpt-frontx-fr-ai-session-start-knowledge`).
+
+**Postconditions**:
+- A scaffolded project on disk with its composed microfrontends; AI agents have ecosystem and template-specific AI capabilities active.
+
+**Alternative Flows**:
+- **Source registry unreachable**: the CLI reports the failure and aborts the scaffold without writing any files.
+- **Composition collision**: the CLI reports the conflicting composition before any files are written.
+
+#### Project Developer adds a new microfrontend to an existing project
+
+- [ ] `p2` - **ID**: `cpt-frontx-usecase-add-microfrontend-to-project`
+
+**Actor**: `cpt-frontx-actor-project-developer`
+
+**Preconditions**:
+- An existing scaffolded project is on disk.
+- The microfrontend template is available in the source registry.
+
+**Main Flow**:
+1. The Project Developer installs the microfrontend template by versioned reference (`cpt-frontx-fr-cli-template-install`).
+2. The Project Developer scaffolds the microfrontend into the existing project (`cpt-frontx-fr-cli-microfrontend-scaffold`).
+3. At application runtime the microfrontend is registered with the application (`cpt-frontx-fr-mfe-runtime-registration`); type-definition validation runs at registration (`cpt-frontx-fr-mfe-type-validation`).
+
+**Postconditions**:
+- The microfrontend is added to the project and registers and validates successfully at runtime.
+
+**Alternative Flows**:
+- **Type validation fails at registration**: the application surfaces the validation error and the microfrontend is not placed into its extension domain.
+
+#### Project Developer runs an AI-driven template upgrade
+
+- [ ] `p2` - **ID**: `cpt-frontx-usecase-ai-driven-template-upgrade`
+
+**Actor**: `cpt-frontx-actor-project-developer`
+
+**Preconditions**:
+- A project is scaffolded from a template at an older version.
+- A newer version of that template is available in the source registry.
+
+**Main Flow**:
+1. An AI agent uses the AI Tooling Framework's upgrade orchestration to analyse the change from the older version to the newer version (`cpt-frontx-fr-ai-upgrade-orchestration`).
+2. The AI agent applies the upgrade as a reviewable change set (`cpt-frontx-fr-cli-project-upgrade-changeset`).
+3. The Project Developer reviews and approves the upgrade changes before they apply to project files (`cpt-frontx-fr-cli-upgrade-review-approval`).
+4. The approved change set is applied to the project files.
+
+**Postconditions**:
+- The project is upgraded to the newer template version with all reviewable changes accepted.
+
+**Alternative Flows**:
+- **Change set rejected**: the Project Developer declines the change set; the project remains at its current version and no files are written.
+- **Downstream impact assessment flags incompatibilities**: the AI agent surfaces the incompatibilities before the change set is applied, and the Project Developer decides whether to proceed.
+
+## 9. Acceptance Criteria
+
+- [ ] AI agents can drive end-to-end FrontX-project creation: install a project template, scaffold the project with its composed microfrontends, and operate on the resulting project with ecosystem-aware AI capabilities — verifiable via `cpt-frontx-usecase-publish-composed-project-template`, `cpt-frontx-usecase-scaffold-composed-project`, and `cpt-frontx-usecase-ai-driven-template-upgrade`.
+- [ ] All three pillars deliver capabilities at the user-capability level: §5 contains functional requirements for all 24 capabilities locked in §2 (Core Framework: 8; CLI: 10; AI Tooling Framework: 6) — verifiable via the §5 inventory.
+- [ ] Pillar balance is maintained in the §5 distribution: each pillar has at least 5 functional requirements and the maximum-to-minimum ratio is at most 2 — verifiable by counting §5 entries per pillar.
+- [ ] All four public components have a §7.1 entry with a stability level and a breaking-change policy — verifiable via the §7.1 enumeration.
+- [ ] All five external integration contracts are documented with party, direction, and a compatibility commitment in §7.2 — verifiable via the §7.2 enumeration.
+- [ ] The PRD is structurally valid and internally consistent: `cpt validate --artifact architecture/PRD.md --skip-code` returns PASS, and the standing content-quality checks — citation discipline, design-agnostic prose, controlled product vocabulary, and external-system-name scope, together with pillar balance — all clear.
+- [ ] Downstream SDLC artifacts authored against this PRD trace back to specific functional-requirement IDs (`cpt-frontx-fr-*`) and component or contract IDs (`cpt-frontx-interface-*` / `cpt-frontx-contract-*`).
