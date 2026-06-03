@@ -19,6 +19,12 @@
   - [5.1 Core Framework](#51-core-framework)
   - [5.2 CLI](#52-cli)
   - [5.3 AI Tooling Framework](#53-ai-tooling-framework)
+- [6. Non-Functional Requirements](#6-non-functional-requirements)
+  - [6.1 NFR Inclusions](#61-nfr-inclusions)
+  - [6.2 NFR Exclusions](#62-nfr-exclusions)
+- [7. Public Library Interfaces](#7-public-library-interfaces)
+  - [7.1 Public API Surface](#71-public-api-surface)
+  - [7.2 External Integration Contracts](#72-external-integration-contracts)
 
 <!-- /toc -->
 
@@ -419,3 +425,158 @@ The AI Tooling Framework **MUST** ship zero template-specific content; template-
 **Rationale**: Keeps the framework free of coupling to any particular template's domain, so it stays portable across every template and templates remain the single source of their own AI capabilities.
 
 **Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
+
+## 6. Non-Functional Requirements
+
+### 6.1 NFR Inclusions
+
+#### Runtime performance
+
+- [ ] `p1` - **ID**: `cpt-frontx-nfr-runtime-performance`
+
+The system **MUST** meet measurable response-time and throughput targets for runtime operations.
+
+**Threshold**: Microfrontend registration completes in ≤ 50 ms at p95 per registration call; on-demand microfrontend load completes in ≤ 1500 ms at p95 from request to the microfrontend being loaded and placed; the application sustains ≥ 20 registration calls per second without p95 latency exceeding these targets.
+
+**Rationale**: Predictable runtime performance is required for AI agents that compose applications from many microfrontends at scale.
+
+#### Evolvability
+
+- [ ] `p1` - **ID**: `cpt-frontx-nfr-evolvability`
+
+The system **MUST** evolve through versioned releases without forcing consumers to upgrade in lockstep.
+
+**Threshold**: Major and minor versions across the product's published artifacts match; patch and pre-release versions may diverge; breaking changes are isolated from consuming applications by versioning and compatibility commitments; every removal is preceded by a deprecation cycle of at least one minor version.
+
+**Rationale**: Predictable upgrade discipline lets consuming applications adopt new platform versions on their own cadence rather than in forced lockstep.
+
+#### Scaling without an architectural ceiling
+
+- [ ] `p1` - **ID**: `cpt-frontx-nfr-scalability-ceiling`
+
+The system **MUST** place no architectural upper limit on the number of microfrontends or type definitions an application can integrate.
+
+**Threshold**: At least 100 microfrontends concurrently registered with a single application, and at least 500 type definitions registered with a single application, measured without architectural failure; these values are operational floors that conforming implementations meet or exceed, not ceilings.
+
+**Rationale**: AI-driven projects accumulate complexity over time; the platform must not impose architectural limits that force teams to re-platform.
+
+#### Security
+
+- [ ] `p1` - **ID**: `cpt-frontx-nfr-security`
+
+**Threshold**: The platform enforces a default-deny access posture — a microfrontend receives no host state or capability beyond what its extension domain explicitly grants, and no implicit access to other microfrontends; every microfrontend and its extension passes type validation before it is admitted to run. Measured: 100% of admitted microfrontends validated at admission (zero unvalidated executions); zero access paths available to a microfrontend outside its extension domain's declared grants.
+
+**Rationale**: Running independently-developed microfrontends — potentially from different teams or vendors — within one host makes default-deny access and admission validation essential for the trust enterprises require.
+
+### 6.2 NFR Exclusions
+
+- **Safety** (SAFE-PRD-001/002) — Not applicable as a safety-critical concern. FrontX is frontend developer tooling; it does not control, monitor, or interact with physical or safety-critical systems, so it cannot directly cause harm to people, property, or the environment. Risks arising from loading and running independently-developed microfrontends at runtime are addressed by the Security NFR in §6.1, not as a physical-safety concern.
+- **Privacy by Design** (SEC-PRD-005): Not applicable — the product is developer tooling that does not collect, store, or process end-user personal data.
+- **Accessibility** (UX-PRD-002): Not applicable — the product ships no end-user-facing interface; applications and templates built on the product own their own accessibility posture.
+- **Internationalization** (UX-PRD-003): Not applicable — the product ships no end-user-facing text; applications and templates built on the product own their own internationalization.
+- **Inclusivity** (UX-PRD-005): Not applicable — for the same reason as Accessibility, the product ships no end-user-facing interface.
+- **Regulatory Compliance** (COMPL-PRD-001 / COMPL-PRD-002 / COMPL-PRD-003): Not applicable — the product is developer tooling that does not process regulated data; applications and templates built on the product own their own compliance posture.
+
+## 7. Public Library Interfaces
+
+### 7.1 Public API Surface
+
+#### MFE Runtime
+
+- [ ] `p1` - **ID**: `cpt-frontx-interface-mfe-runtime`
+
+**Type**: Library
+
+**Stability**: unstable
+
+**Description**: The MFE Runtime registers microfrontends with a running application and loads them on demand, lets multiple microfrontends occupy the same extension domain when that domain permits multiple occupants, mediates communication between microfrontends and the host application and lets microfrontends react to changes in the host application's state, and validates microfrontends and their extensions against type definitions when they are registered (anchors capabilities C1-1, C1-2, C1-3, C1-4).
+
+**Breaking Change Policy**: A major version bump is required for any incompatible change to the component's public surface; minor and patch versions preserve backward compatibility.
+
+#### Type System
+
+- [ ] `p1` - **ID**: `cpt-frontx-interface-type-system`
+
+**Type**: Library
+
+**Stability**: unstable
+
+**Description**: The Type System validates microfrontends and their extensions against type definitions at registration and lets an application use type definitions for its own entities, with additional type definitions registered at runtime (anchors capabilities C1-4, C1-5).
+
+**Breaking Change Policy**: A major version bump is required for any incompatible change to the component's public surface; minor and patch versions preserve backward compatibility.
+
+#### CLI
+
+- [ ] `p1` - **ID**: `cpt-frontx-interface-cli`
+
+**Type**: CLI
+
+**Stability**: unstable
+
+**Description**: The CLI owns the project lifecycle: it installs, lists, updates, and validates templates from the source registry; scaffolds projects and microfrontends into a chosen target directory; resolves composed templates as part of a single scaffold operation; records project provenance; upgrades existing projects to newer template versions as reviewable change sets that a developer approves before they apply; and organizes its commands into project-level and microfrontend-level namespaces (anchors capabilities C2-1 through C2-10).
+
+**Breaking Change Policy**: A major version bump is required for any incompatible change to the command surface; minor and patch versions preserve backward compatibility.
+
+#### AI Tooling Framework
+
+- [ ] `p1` - **ID**: `cpt-frontx-interface-ai-tooling-framework`
+
+**Type**: Library
+
+**Stability**: unstable
+
+**Description**: The AI Tooling Framework provides FrontX-specific skills to AI agents working in a project, lets Template Developers bundle template-specific AI extensions, automatically discovers and activates installed-template AI extensions for AI agents in a consuming project, supports AI-driven orchestration of template upgrades, and makes ecosystem-knowledge artifacts available to AI agents at session start, while itself shipping zero template-specific content (anchors capabilities C3-2, C3-3, C3-4, C3-5, C3-6, C3-7).
+
+**Breaking Change Policy**: A major version bump is required for any incompatible change to the component's public surface; minor and patch versions preserve backward compatibility.
+
+### 7.2 External Integration Contracts
+
+#### Source-spec contract
+
+- [ ] `p2` - **ID**: `cpt-frontx-contract-source-spec`
+
+**Direction**: required from client
+
+**Description**: The product accepts versioned references that identify templates hosted on the source registry (`cpt-frontx-actor-github`). References resolve generically; the contract does not prescribe a specific reference syntax at the product-requirements level.
+
+**Compatibility**: Reference resolution remains compatible across minor and patch versions; any breaking change follows the platform's evolvability requirement (`cpt-frontx-nfr-evolvability`).
+
+#### Template manifest contract
+
+- [ ] `p2` - **ID**: `cpt-frontx-contract-template-manifest`
+
+**Direction**: bidirectional
+
+**Description**: The product requires every template to publish a manifest that describes the template in a defined shape, and it both produces that manifest when a template is validated for publication and consumes it when a template is installed or scaffolded. This is an internal contract between templates and the product; it names no external party.
+
+**Compatibility**: The manifest shape is versioned with the platform; changes that are not backward-compatible follow `cpt-frontx-nfr-evolvability`.
+
+#### Project provenance contract
+
+- [ ] `p2` - **ID**: `cpt-frontx-contract-project-provenance`
+
+**Direction**: provided by library
+
+**Description**: The product records provenance into each scaffolded project, capturing which template and which template version the project was scaffolded from, so a later upgrade can determine what to apply. This is an internal contract recorded per scaffolded project; it names no external party.
+
+**Compatibility**: Provenance records remain readable across versions; any change that is not backward-compatible follows `cpt-frontx-nfr-evolvability`.
+
+#### Kit-installation contract
+
+- [ ] `p2` - **ID**: `cpt-frontx-contract-kit-installation`
+
+**Direction**: required from client
+
+**Description**: The AI Tooling Framework is installed into a consuming project through the AI-tooling CLI integration (`cpt-frontx-actor-cypilot-cli`), which is how AI agents come to have the framework's skills and the activated template extensions available.
+
+**Compatibility**: The installation contract remains compatible across minor and patch versions; breaking changes follow `cpt-frontx-nfr-evolvability`.
+
+#### Package-registry distribution contract
+
+- [ ] `p2` - **ID**: `cpt-frontx-contract-package-registry-distribution`
+
+**Direction**: bidirectional
+
+**Description**: The product publishes its packages to the package registry (`cpt-frontx-actor-package-registry`) and is installed from that registry by consuming applications using their chosen package manager.
+
+**Compatibility**: Published packages follow semantic versioning; consuming applications rely on the platform's evolvability commitments (`cpt-frontx-nfr-evolvability`).
