@@ -27,6 +27,9 @@
   - [7.2 External Integration Contracts](#72-external-integration-contracts)
 - [8. Use Cases](#8-use-cases)
 - [9. Acceptance Criteria](#9-acceptance-criteria)
+- [10. Dependencies](#10-dependencies)
+- [11. Assumptions](#11-assumptions)
+- [12. Risks](#12-risks)
 
 <!-- /toc -->
 
@@ -703,3 +706,30 @@ The system **MUST** place no architectural upper limit on the number of microfro
 - [ ] All five external integration contracts are documented with party, direction, and a compatibility commitment in §7.2 — verifiable via the §7.2 enumeration.
 - [ ] The PRD is structurally valid and internally consistent: `cpt validate --artifact architecture/PRD.md --skip-code` returns PASS, and the standing content-quality checks — citation discipline, design-agnostic prose, controlled product vocabulary, and external-system-name scope, together with pillar balance — all clear.
 - [ ] Downstream SDLC artifacts authored against this PRD trace back to specific functional-requirement IDs (`cpt-frontx-fr-*`) and component or contract IDs (`cpt-frontx-interface-*` / `cpt-frontx-contract-*`).
+
+## 10. Dependencies
+
+| Dependency | Description | Criticality |
+|------------|-------------|-------------|
+| GitHub (source registry, `cpt-frontx-actor-github`) | Public source registry hosting the project templates, microfrontend templates, and the FrontX AI Tooling Framework; referenced by versioned source-spec contract at install and upgrade time. | p1 |
+| npm-compatible package registry (`cpt-frontx-actor-package-registry`) | Package registry hosting the product's published packages; consumed by applications at install time using their chosen npm-compatible package manager. | p1 |
+| Cypilot CLI (`cpt-frontx-actor-cypilot-cli`) | The AI-tooling command-line integration through which the AI Tooling Framework is installed into consuming projects and AI agents discover the ecosystem's skills, workflows, and guidelines. | p1 |
+| JavaScript / TypeScript runtime | The runtime environment on which the platform and its consuming applications execute. | p1 |
+| Type-definition specification | The specification language the product uses to describe and validate entity shapes; resolved generically at the product-requirements level so the contract, not any single specification, is what the product depends on. | p1 |
+
+## 11. Assumptions
+
+- AI agents capable of operating FrontX's AI tooling are available to both human actor types — Template Developer and Project Developer — during their work.
+- Humans-using-AI is the dominant interaction model for the product's two human actor types; the product is designed for work driven by AI agents under human direction rather than for unaided manual operation.
+- The package registry and its compatible package managers remain the dominant distribution channel for frontend libraries throughout the product's release horizon.
+- Semantic versioning remains the dominant version-discipline convention for the product's published artifacts and for the templates that consume them.
+- Templates and their bundled AI extensions are versioned together; a template's AI extensions are part of the template bundle, not separate publications, and upgrade in step with the template.
+
+## 12. Risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| The forward-looking AI Tooling Framework pillar lacks initial concrete parity with the Core Framework and CLI pillars at the first published baseline. | Pillar 3 capabilities may be perceived as aspirational rather than delivered at the product's first published baseline. | Deliver Pillar 3 alongside Pillar 1 and Pillar 2 in a matched-version release; publish reference template-bundled AI extensions that exercise template extension, automatic activation, and AI-driven upgrade orchestration. |
+| Template-ecosystem adoption depends on the quality of the reference templates the product ships. | Without high-quality reference templates, Project Developers may not discover the product's strengths, slowing adoption. | Bundle at least one reference project template and at least one reference microfrontend template with the first published baseline; validate each against the publication contract before publishing. |
+| The type-definition specification dependency couples the product to an external specification. | A breaking change in the chosen type-definition specification could ripple through the product and its consumers. | Depend on the type-definition contract rather than on a single specification, keeping the specification a replaceable concern at the contract boundary. |
+| Pillar parity drifts over time as new capabilities accumulate unevenly across the three pillars. | One pillar may come to dominate future releases, eroding the co-equal framing the product depends on. | Re-check pillar balance on every revision of this document; escalate any imbalance before it propagates into downstream work. |
