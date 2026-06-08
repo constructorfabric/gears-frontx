@@ -4,6 +4,7 @@
 <!-- toc -->
 
 - [Purpose](#purpose)
+- [Current cycle scope & status](#current-cycle-scope--status)
 - [The three-pillar vision (foundational)](#the-three-pillar-vision-foundational)
   - [Pillar 1 — Core framework (technical skeleton)](#pillar-1--core-framework-technical-skeleton)
   - [Pillar 2 — CLI (project lifecycle orchestrator)](#pillar-2--cli-project-lifecycle-orchestrator)
@@ -41,6 +42,16 @@
 ## Purpose
 
 Overseer-compact vision document for the FrontX ecosystem redesign. Designed to survive session compacting: any future overseer or planner session that picks up this work reads this file to recover the locked vision, scope of works, and important context. This is NOT a document that defines how to generate the PRD — kickoff files do that. CORE_SURFACE.md is vision + scope + context only.
+
+## Current cycle scope & status
+
+**Scope of THIS redesign cycle is ECOSYSTEM-ONLY** — the five artifacts in the Ecosystem inventory below. Everything under "Out-of-ecosystem inventory" (the `frontx-template-standard` template repo and its contents) is a SEPARATE, later design cycle — NOT part of this cycle's DESIGN or DECOMPOSITION. A DECOMPOSITION/FEATURE session MUST NOT decompose template-repo work.
+
+**Surviving vs greenfield** (load-bearing for DECOMPOSITION ordering/effort):
+  - Pillar 1 (Core Framework — `@cyberfabric/mfes`, `@cyberfabric/gts-plugin`, `@cyberfabric/api`) is an EXTRACTION + boundary-hardening of surviving, shipping code (today in `packages/screensets/` + `packages/api/`), not a rewrite. `packages/mfes/` and `packages/gts-plugin/` do not exist yet — they are extracted from `packages/screensets`.
+  - Pillars 2 (CLI) and 3 (AI Tooling Framework) are GREENFIELD — the current `packages/cli` and current AI tooling have zero carryover and are designed fresh.
+
+**SDLC progress (point-in-time):** PRD (`architecture/PRD.md`) validated. DESIGN (`architecture/DESIGN.md`) + the full 27-ADR set (`architecture/ADR/`) authored and overseer-reviewed. Next stage: DECOMPOSITION → FEATURE → CODE. This file remains the vision anchor through those stages and is deleted before the PR lands.
 
 ## The three-pillar vision (foundational)
 
@@ -335,7 +346,7 @@ The first-baseline version across all five is `0.3.0-alpha.0`. The distribution 
 
 ## Open items deferred to later phases
 
-- `@cyberfabric/cli` detailed surface — authored in DESIGN
-- `cyber-pilot-kit-frontx` content — authored alongside artifact rules
-- Solution GTS schema details — owned by template authors, not by this document
-- `@cyberfabric/auth` and `@cyberfabric/studio` template strategy — stay in `frontx-template-standard` or split into separate templates? Deferred to DESIGN.
+- `@cyberfabric/cli` detailed surface — RESOLVED: decided in DESIGN §3.2 + ADRs 0016–0022.
+- `cyber-pilot-kit-frontx` decisions — RESOLVED at the decision level in ADRs 0023–0027 (+ DESIGN §3.2); concrete kit resource content is implementation (FEATURE/CODE).
+- Solution GTS schema details — owned by template authors, not by this document (unchanged).
+- `@cyberfabric/auth` and `@cyberfabric/studio` template strategy — stay in `frontx-template-standard` or split into separate templates? Deferred to the SEPARATE template-repo design cycle (out of scope for the ecosystem-only DESIGN authored this cycle) — NOT decided by this ecosystem DESIGN.
