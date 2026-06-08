@@ -270,7 +270,7 @@ The type-system plugin owns no solution-specific schemas. Application- and templ
 
 - [ ] `p2` - **ID**: `cpt-frontx-constraint-api-no-solution-content`
 
-The API Protocol Surface (`@cyberfabric/api`) contains no solution-specific content, including any built-in mock concept. The surface provides protocol-separated request and stream primitives and a generic plugin extension point; solution behavior is supplied by consumers through that extension point.
+The API Protocol Surface (`@cyberfabric/api`) contains no solution-specific content — such as concrete endpoints, auth wiring, request stand-ins, or any other application-specific plugin — and ships no application-specific plugin of its own. The surface provides protocol-separated request and stream primitives, a generic plugin extension point, and a short-circuit capability; solution behavior is supplied by consumers through that extension point.
 
 **ADRs**: `cpt-frontx-adr-protocol-separated-api`
 
@@ -423,7 +423,7 @@ Composed applications and their microfrontends issue request/response and stream
 
 ##### Responsibility boundaries
 
-- Contains no solution-specific content, including any built-in mock concept; solution behavior arrives only through the generic plugin extension point (API-1).
+- Contains no solution-specific content and ships no application-specific plugin of its own; solution behavior arrives only through the generic plugin extension point and its short-circuit capability (API-1).
 - Carries no runtime dependency on any specific data-fetching or state library; its transport dependency is a peer dependency.
 - Is intentionally below PRD interface altitude — it maps to no PRD §7.1 public interface and is an internal Core Framework dependency rather than a PRD-level capability.
 
@@ -705,7 +705,7 @@ sequenceDiagram
 
 **Use cases**: `cpt-frontx-usecase-bundle-template-ai-extensions`
 
-**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer` (the use case declares the Template Developer for the bundle-and-publish leg; the install-and-activate leg is exercised by the Project Developer per the use case postcondition).
 
 ```mermaid
 sequenceDiagram

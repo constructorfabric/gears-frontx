@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-06-05
 ---
 
@@ -26,11 +26,11 @@ date: 2026-06-05
 **ID**: `cpt-frontx-adr-short-circuit-and-shared-fetch-cache`
 ## Context and Problem Statement
 
-Independently bundled microfrontends running in the same browser realm frequently issue identical or overlapping fetches, and many cross-cutting plugins (for example, fixtures or cached-response providers) need to return a response without performing a network round trip. The API Protocol Surface (`cpt-frontx-component-api-surface`) must let a plugin supply a response in place of a network call, and must let independently bundled units converge on shared in-flight and completed fetch results — without taking a runtime dependency on any caching or state-management library, and while meeting the runtime performance targets in `cpt-frontx-nfr-runtime-performance`. How should the surface let a plugin bypass transport, and how should it share fetch results across separately bundled units in one realm?
+Independently bundled microfrontends running in the same browser realm frequently issue identical or overlapping fetches, and many cross-cutting plugins need to return a response without performing a network round trip. The API Protocol Surface (`cpt-frontx-component-api-surface`) must let a plugin supply a response in place of a network call, and must let independently bundled units converge on shared in-flight and completed fetch results — without taking a runtime dependency on any caching or state-management library, and while meeting the runtime performance targets in `cpt-frontx-nfr-runtime-performance`. How should the surface let a plugin bypass transport, and how should it share fetch results across separately bundled units in one realm?
 
 ## Decision Drivers
 
-* **Bypass without special-casing** — any plugin must be able to return a response in place of the transport call through one uniform mechanism, so the surface need not special-case fixtures, caches, or offline providers.
+* **Bypass without special-casing** — any plugin must be able to return a response in place of the transport call through one uniform mechanism, so the surface need not special-case any particular kind of response provider.
 * **Cross-bundle reuse within a realm** — separately bundled units that share a realm must be able to deduplicate concurrent fetches and reuse completed results, so the same data is not fetched repeatedly. This serves the runtime performance targets in `cpt-frontx-nfr-runtime-performance`.
 * **Library-agnostic, dependency-light** — the reuse mechanism must not impose a runtime dependency on any specific caching or state library, keeping the surface a self-contained Core Framework unit.
 * **Bounded lifetime and safe teardown** — shared state must be reclaimable: it must track how many holders depend on it and release cleanly when the last holder departs, so the cache cannot outlive its consumers or be retained beyond teardown.
@@ -50,7 +50,7 @@ The short-circuit contract is a discriminated return value: a plugin returns eit
 
 ### Consequences
 
-* Good, because any plugin can bypass transport through one mechanism, so fixtures, caches, and offline providers need no special core support.
+* Good, because any plugin can bypass transport through one mechanism, so any response provider needs no special core support.
 * Good, because separately bundled units in one realm share in-flight and completed fetches, reducing duplicate network work in support of the runtime performance targets.
 * Good, because the mechanism is library-agnostic and adds no runtime dependency, keeping the surface self-contained.
 * Good, because retainer counting bounds the shared cache's lifetime and gives deterministic teardown when the last holder releases.
