@@ -15,7 +15,7 @@ import {
   useHAI3,
   ExtensionDomainSlot,
   screenDomain,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import { bootstrapMFE } from './bootstrap';
 
 export function MfeScreenContainer() {

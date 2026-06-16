@@ -48,7 +48,7 @@
 ### 1.1 Overview
 
 Automated NPM package publishing pipeline for the FrontX monorepo. When a pull request that
-bumps one or more `@cyberfabric/*` package versions is merged to `main`, the CI/CD system detects
+bumps one or more `@gears-frontx/*` package versions is merged to `main`, the CI/CD system detects
 which packages changed, builds them in strict layer order, verifies each version does not
 already exist on the NPM registry, and publishes affected packages with an appropriate dist-tag.
 
@@ -67,7 +67,7 @@ live under `packages/` in the monorepo root and are built via `npm run build:pac
 Guarantee that every version bump merged to `main` results in a correct, idempotent, and
 layer-ordered NPM publish with no human intervention after the PR merge.
 
-Success criteria: A PR that bumps `@cyberfabric/state` from `0.3.0` to `0.4.0-alpha.0` triggers
+Success criteria: A PR that bumps `@gears-frontx/state` from `0.3.0` to `0.4.0-alpha.0` triggers
 exactly one publish of that version; subsequent re-runs of the same workflow skip it.
 
 ### 1.3 Actors
@@ -310,7 +310,7 @@ Describes the publishing state of a single package within one workflow run.
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-publishing-pipeline-metadata-contract`
 
-All `@cyberfabric/*` packages include the required NPM publishing metadata in their `package.json`.
+All `@gears-frontx/*` packages include the required NPM publishing metadata in their `package.json`.
 Running `npm pack` on any package produces a tarball containing only `dist/` files plus any
 documented extras (README, CLAUDE.md), with no source TypeScript files.
 
@@ -346,7 +346,7 @@ documented extras (README, CLAUDE.md), with no source TypeScript files.
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-publishing-pipeline-version-alignment`
 
-All `@cyberfabric/*` packages that are published together carry the same version string. A PR that
+All `@gears-frontx/*` packages that are published together carry the same version string. A PR that
 bumps versions bumps them uniformly (e.g., all go from `0.3.0` to `0.4.0-alpha.0`).
 
 **Implementation details**:
@@ -425,7 +425,7 @@ publishes. Packages whose version already exists on NPM are silently skipped.
 
 ## 6. Acceptance Criteria
 
-- [x] A PR that bumps the version of a single `@cyberfabric/*` package triggers exactly one successful `npm publish` for that package upon merge to `main`
+- [x] A PR that bumps the version of a single `@gears-frontx/*` package triggers exactly one successful `npm publish` for that package upon merge to `main`
 - [x] A PR that bumps versions in multiple packages across layers publishes them in layer order: L1 SDK first, CLI last
 - [x] If a version already exists on NPM, the workflow skips that package, logs the skip reason, and continues with remaining packages
 - [x] If any `npm publish` command fails after three attempts, the workflow exits immediately and does not publish subsequent packages
@@ -460,7 +460,7 @@ explicit dist-tags. This preserves `latest` for stable releases only.
 The current implementation is fail-fast: the first unrecoverable publish failure halts the
 entire run. This is intentional. If a lower-layer package fails to publish, allowing
 higher-layer packages to publish would produce an inconsistent registry state where consumers
-see a new `@cyberfabric/framework` but cannot resolve its new `@cyberfabric/state` dependency. Fail-fast
+see a new `@gears-frontx/framework` but cannot resolve its new `@gears-frontx/state` dependency. Fail-fast
 and the fixed layer order together guarantee registry consistency.
 
 ### Architecture Enforcement Connection

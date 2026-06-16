@@ -9,7 +9,7 @@
 // @cpt-state:cpt-frontx-state-framework-composition-mfe-mount:p1
 // @cpt-dod:cpt-frontx-dod-framework-composition-mfe-plugin:p1
 
-import { createSlice, type ReducerPayload, type RootState } from '@cyberfabric/state';
+import { createSlice, type ReducerPayload, type RootState } from '@gears-frontx/state';
 
 // ============================================================================
 // State Types
@@ -35,7 +35,7 @@ export interface MfeState {
   mountedExtensions: Record<string, string[]>;
 }
 
-declare module '@cyberfabric/state' {
+declare module '@gears-frontx/state' {
   interface RootState {
     /** Present when the microfrontends plugin is registered. */
     mfe?: MfeState;

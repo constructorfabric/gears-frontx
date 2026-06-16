@@ -12,8 +12,8 @@ import { renderHook, act } from '@testing-library/react';
 import React from 'react';
 import { useMountedExtensions } from '../useMountedExtensions';
 import { HAI3Context } from '../../../HAI3Context';
-import type { HAI3App } from '@cyberfabric/framework';
-import type { Extension } from '@cyberfabric/framework';
+import type { HAI3App } from '@gears-frontx/framework';
+import type { Extension } from '@gears-frontx/framework';
 
 // ─── Mock extension factory ───────────────────────────────────────────────────
 

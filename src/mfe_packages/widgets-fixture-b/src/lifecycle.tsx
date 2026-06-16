@@ -13,7 +13,7 @@ import {
   mock,
   ThemeAwareReactLifecycle,
   type ChildMfeBridge,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 
 const fixtureApp = createHAI3()
   .use(effects())

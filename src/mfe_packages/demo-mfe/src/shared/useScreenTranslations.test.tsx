@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import type { ChildMfeBridge } from '@cyberfabric/react';
-import { HAI3_SHARED_PROPERTY_LANGUAGE } from '@cyberfabric/react';
+import type { ChildMfeBridge } from '@gears-frontx/react';
+import { HAI3_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useScreenTranslations } from './useScreenTranslations';
 

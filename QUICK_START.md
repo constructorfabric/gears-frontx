@@ -127,7 +127,7 @@ const [open, setOpen] = useState(false);
 
 ### Read state
 ```typescript
-import { useAppSelector } from '@cyberfabric/react';
+import { useAppSelector } from '@gears-frontx/react';
 
 const MyComponent = () => {
   const collapsed = useAppSelector(state => state['layout/menu'].collapsed);
@@ -138,7 +138,7 @@ const MyComponent = () => {
 
 ### Use event-driven actions (recommended)
 ```typescript
-import { useHAI3Actions } from '@cyberfabric/react';
+import { useHAI3Actions } from '@gears-frontx/react';
 
 const MyComponent = () => {
   const { toggleMenu } = useHAI3Actions();
@@ -292,7 +292,7 @@ npm run clean:build      # Clean + build from scratch
 ### Unit tests (host vs packages/MFEs)
 
 - **`npm run test:unit`** — runs the repo-wide runner; it fans out to the **host app** (repo root Vitest), **workspace packages** under `packages/*`, and **nested MFEs** under `src/mfe_packages/*` that define a `test:unit` script.
-- To run tests for a single workspace package while iterating: `npm run test:unit --workspace=@cyberfabric/<package>`.
+- To run tests for a single workspace package while iterating: `npm run test:unit --workspace=@gears-frontx/<package>`.
 - Full contract, narrowing options, and internal root-only aliases are documented in [`.ai/project/targets/UNIT_TESTING.md`](.ai/project/targets/UNIT_TESTING.md).
 
 ## Next Steps

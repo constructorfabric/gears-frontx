@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HAI3Provider } from '@cyberfabric/react';
+import { HAI3Provider } from '@gears-frontx/react';
 import './globals.css';
 import App from './App';
 import { app } from './initApp';

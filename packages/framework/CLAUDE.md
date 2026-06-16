@@ -1,12 +1,12 @@
-# @cyberfabric/framework
+# @gears-frontx/framework
 
 Plugin-based application framework for FrontX applications. Orchestrates SDK packages into cohesive applications with MFE (Microfrontend) support.
 
 ## Framework Layer
 
-This package is part of the **Framework Layer (L2)** - it depends on SDK packages (@cyberfabric/state, @cyberfabric/screensets, @cyberfabric/api, @cyberfabric/i18n). It provides the plugin architecture and **owns the layout slices** (header, footer, menu, sidebar, screen, popup, overlay).
+This package is part of the **Framework Layer (L2)** - it depends on SDK packages (@gears-frontx/state, @gears-frontx/screensets, @gears-frontx/api, @gears-frontx/i18n). It provides the plugin architecture and **owns the layout slices** (header, footer, menu, sidebar, screen, popup, overlay).
 
-> **NOTE:** @cyberfabric/uicore is deprecated. Layout slices are defined in @cyberfabric/framework.
+> **NOTE:** @gears-frontx/uicore is deprecated. Layout slices are defined in @gears-frontx/framework.
 
 ## Core Concepts
 
@@ -15,7 +15,7 @@ This package is part of the **Framework Layer (L2)** - it depends on SDK package
 Build applications by composing plugins:
 
 ```typescript
-import { createHAI3, screensets, themes, layout, microfrontends, i18n } from '@cyberfabric/framework';
+import { createHAI3, screensets, themes, layout, microfrontends, i18n } from '@gears-frontx/framework';
 
 const app = createHAI3()
   .use(screensets())
@@ -31,7 +31,7 @@ const app = createHAI3()
 Pre-configured plugin combinations:
 
 ```typescript
-import { createHAI3App, presets } from '@cyberfabric/framework';
+import { createHAI3App, presets } from '@gears-frontx/framework';
 
 // Full preset (default) - all plugins including MFE support
 const fullApp = createHAI3App();
@@ -62,10 +62,10 @@ const headlessApp = createHAI3()
 
 ### Query Cache Plugin
 
-The `queryCache()` plugin owns the shared **headless TanStack Query `QueryClient`** (`@tanstack/query-core` peer) and bridges it to L1 transport dedup: it **retains** the global `sharedFetchCache` from `@cyberfabric/api` for the app lifetime and **keeps it aligned** with Flux-driven cache events. It's included in the `full()` preset by default:
+The `queryCache()` plugin owns the shared **headless TanStack Query `QueryClient`** (`@tanstack/query-core` peer) and bridges it to L1 transport dedup: it **retains** the global `sharedFetchCache` from `@gears-frontx/api` for the app lifetime and **keeps it aligned** with Flux-driven cache events. It's included in the `full()` preset by default:
 
 ```typescript
-import { createHAI3App } from '@cyberfabric/framework';
+import { createHAI3App } from '@gears-frontx/framework';
 
 // Full preset includes queryCache plugin automatically
 const app = createHAI3App();
@@ -83,7 +83,7 @@ const app = createHAI3App();
 For custom plugin compositions:
 
 ```typescript
-import { createHAI3, queryCache } from '@cyberfabric/framework';
+import { createHAI3, queryCache } from '@gears-frontx/framework';
 
 const app = createHAI3()
   .use(queryCache({ staleTime: 60_000, gcTime: 600_000 }))
@@ -95,17 +95,17 @@ The plugin:
 - Calls `retainSharedFetchCache()` on init and `releaseSharedFetchCache()` after teardown on destroy (balances in-flight shared fetch retention)
 - On mock toggle: cancels queries, clears the shared `QueryClient`, then clears `peekSharedFetchCache()` when present
 - Subscribes to `cache/invalidate`, `cache/set`, and `cache/remove` — updates the shared `QueryClient` **and** mirrors invalidation to `sharedFetchCache` for matching keys (avoiding stale transport dedup vs React observers)
-- Attaches the shared `QueryClient` to each app instance so `@cyberfabric/react` can resolve it internally
+- Attaches the shared `QueryClient` to each app instance so `@gears-frontx/react` can resolve it internally
 - On destroy: unsubscribes listeners, cancels and clears the client when the last retainer is released, then releases shared-fetch retention
 
-`@tanstack/query-core` is a peer dependency of `@cyberfabric/framework` (React bindings remain in `@cyberfabric/react`).
+`@tanstack/query-core` is a peer dependency of `@gears-frontx/framework` (React bindings remain in `@gears-frontx/react`).
 
 ### Mock Mode Control
 
 The `mock()` plugin provides centralized mock mode control. It's included in the `full()` preset by default, so apps don't need manual setup:
 
 ```typescript
-import { createHAI3App } from '@cyberfabric/framework';
+import { createHAI3App } from '@gears-frontx/framework';
 
 // Full preset includes mock plugin automatically
 const app = createHAI3App();
@@ -118,7 +118,7 @@ app.actions.toggleMockMode(false); // Deactivates all registered mock plugins
 For custom plugin compositions:
 
 ```typescript
-import { createHAI3, effects, mock } from '@cyberfabric/framework';
+import { createHAI3, effects, mock } from '@gears-frontx/framework';
 
 const app = createHAI3()
   .use(effects())  // Required dependency
@@ -178,7 +178,7 @@ import {
   unmountExtension,
   registerExtension,
   unregisterExtension,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // Load extension code
 await loadExtension({ extensionId: 'home' });
@@ -205,7 +205,7 @@ import {
   selectExtensionState,
   selectRegisteredExtensions,
   selectExtensionError,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // Get extension state
 const extensionState = selectExtensionState(state, 'home');
@@ -229,7 +229,7 @@ import {
   sidebarDomain,
   popupDomain,
   overlayDomain,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // String constants (GTS instance IDs)
 HAI3_SCREEN_DOMAIN   // 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1'
@@ -255,7 +255,7 @@ import {
   HAI3_ACTION_UNMOUNT_EXT,
   HAI3_SHARED_PROPERTY_THEME,
   HAI3_SHARED_PROPERTY_LANGUAGE,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // Action IDs
 HAI3_ACTION_LOAD_EXT     // 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~'
@@ -272,7 +272,7 @@ HAI3_SHARED_PROPERTY_LANGUAGE // 'gts.hai3.mfes.comm.shared_property.v1~hai3.mfe
 Extend FrontX with custom functionality:
 
 ```typescript
-import type { HAI3Plugin } from '@cyberfabric/framework';
+import type { HAI3Plugin } from '@gears-frontx/framework';
 
 export function myPlugin(): HAI3Plugin {
   return {
@@ -300,19 +300,19 @@ export function myPlugin(): HAI3Plugin {
 2. **Compose plugins for customization** - Use `createHAI3().use()` pattern
 3. **Dependencies are auto-resolved** - Plugin order doesn't matter
 4. **Access via app instance** - All registries and actions on `app.*`
-5. **NO React in this package** - Framework is headless, use @cyberfabric/react for React bindings
+5. **NO React in this package** - Framework is headless, use @gears-frontx/react for React bindings
 6. **MFE is the primary architecture** - Use `screensetsRegistry` for domain/extension management when the app includes `microfrontends()`
 
 ## Re-exports
 
 For convenience, this package re-exports from SDK packages:
 
-- From @cyberfabric/state: `eventBus`, `createStore`, `getStore`, `registerSlice`, `hasSlice`, `createSlice`
-- From @cyberfabric/screensets: `LayoutDomain`, `ScreensetsRegistry`, `Extension`, `ScreenExtension`, `ExtensionDomain`, `MfeHandler`, `MfeBridgeFactory`, `ParentMfeBridge`, `ChildMfeBridge`, action/property constants, contracts/types
-- From @cyberfabric/api: `apiRegistry`, `BaseApiService`, `RestProtocol`, `SseProtocol`, `RestMockPlugin`, `SseMockPlugin`, `MOCK_PLUGIN`, `isMockPlugin`, `StreamDescriptor`, `StreamStatus`
-- From @cyberfabric/i18n: `i18nRegistry`, `Language`, `SUPPORTED_LANGUAGES`, `getLanguageMetadata`
+- From @gears-frontx/state: `eventBus`, `createStore`, `getStore`, `registerSlice`, `hasSlice`, `createSlice`
+- From @gears-frontx/screensets: `LayoutDomain`, `ScreensetsRegistry`, `Extension`, `ScreenExtension`, `ExtensionDomain`, `MfeHandler`, `MfeBridgeFactory`, `ParentMfeBridge`, `ChildMfeBridge`, action/property constants, contracts/types
+- From @gears-frontx/api: `apiRegistry`, `BaseApiService`, `RestProtocol`, `SseProtocol`, `RestMockPlugin`, `SseMockPlugin`, `MOCK_PLUGIN`, `isMockPlugin`, `StreamDescriptor`, `StreamStatus`
+- From @gears-frontx/i18n: `i18nRegistry`, `Language`, `SUPPORTED_LANGUAGES`, `getLanguageMetadata`
 
-**Layout Slices (owned by @cyberfabric/framework):**
+**Layout Slices (owned by @gears-frontx/framework):**
 - `layoutReducer`, `layoutDomainReducers`, `LAYOUT_SLICE_NAME`
 - Domain slices: `headerSlice`, `footerSlice`, `menuSlice`, `sidebarSlice`, `screenSlice`, `popupSlice`, `overlaySlice`
 - Domain actions: `headerActions`, `footerActions`, `menuActions`, `sidebarActions`, `screenActions`, `popupActions`, `overlayActions`
@@ -325,7 +325,7 @@ For convenience, this package re-exports from SDK packages:
 
 **NOTE:** `createAction` is NOT exported to consumers. Actions should be handwritten functions in extensions that contain business logic and emit events via `eventBus.emit()`.
 
-**NOTE:** "Selector" is Redux terminology and is not used in FrontX. Access state via `useAppSelector` hook from @cyberfabric/react:
+**NOTE:** "Selector" is Redux terminology and is not used in FrontX. Access state via `useAppSelector` hook from @gears-frontx/react:
 ```typescript
 const menu = useAppSelector((state: RootStateWithLayout) => state.layout.menu);
 ```
@@ -349,12 +349,12 @@ const menu = useAppSelector((state: RootStateWithLayout) => state.layout.menu);
 - `Preset`, `Presets`, `ScreensetsConfig`
 - All re-exported types from SDK packages
 
-## Testing Subpath (`@cyberfabric/framework/testing`)
+## Testing Subpath (`@gears-frontx/framework/testing`)
 
 The `./testing` subpath exposes Vitest-based helpers — `TestContainerProvider` (factory adapter for MFE domain registration in tests), shared `QueryClient` peek hooks, and `resetSharedQueryClient` for inter-test teardown.
 
-- `vitest` is an **optional** peer dependency. Production apps that never import `@cyberfabric/framework/testing` do **not** need to install or pin `vitest`.
-- Projects that import from `@cyberfabric/framework/testing` **must** install `vitest` at a version compatible with the range declared in this package's `peerDependencies` (currently pinned to `4.1.4`).
+- `vitest` is an **optional** peer dependency. Production apps that never import `@gears-frontx/framework/testing` do **not** need to install or pin `vitest`.
+- Projects that import from `@gears-frontx/framework/testing` **must** install `vitest` at a version compatible with the range declared in this package's `peerDependencies` (currently pinned to `4.1.4`).
 - The `./testing` entry is runtime-isolated from the main entry; importing the default entry does not pull `vitest` into the production bundle.
 
 ## Migration from Legacy API
@@ -387,7 +387,7 @@ await app.actions.mountExtension({
 
 **OLD**: Register screenset
 ```typescript
-import { screensetRegistry, ScreensetDefinition } from '@cyberfabric/framework';
+import { screensetRegistry, ScreensetDefinition } from '@gears-frontx/framework';
 
 const screenset: ScreensetDefinition = {
   id: 'demo',
@@ -402,7 +402,7 @@ screensetRegistry.register(screenset);
 
 **NEW**: Register domain and extensions
 ```typescript
-import { screensetsRegistry, ExtensionDomain, Extension } from '@cyberfabric/framework';
+import { screensetsRegistry, ExtensionDomain, Extension } from '@gears-frontx/framework';
 
 // Register domain
 app.screensetsRegistry.registerDomain(screenDomain, containerProvider);

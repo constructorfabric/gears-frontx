@@ -23,7 +23,7 @@
  * @packageDocumentation
  */
 
-import type { ExtensionDomain } from '@cyberfabric/screensets';
+import type { ExtensionDomain } from '@gears-frontx/screensets';
 import {
   HAI3_ACTION_LOAD_EXT,
   HAI3_ACTION_MOUNT_EXT,
@@ -31,7 +31,7 @@ import {
   HAI3_SHARED_PROPERTY_THEME,
   HAI3_SHARED_PROPERTY_LANGUAGE,
   HAI3_SCREEN_EXTENSION_TYPE,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 import {
   HAI3_SCREEN_DOMAIN,
   HAI3_SIDEBAR_DOMAIN,

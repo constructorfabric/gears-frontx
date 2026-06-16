@@ -1,4 +1,4 @@
-import { createSlice, type ReducerPayload } from '@cyberfabric/state';
+import { createSlice, type ReducerPayload } from '@gears-frontx/state';
 import type { MenuItem, MenuState } from '../layoutTypes';
 
 /**

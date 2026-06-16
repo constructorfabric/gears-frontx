@@ -27,7 +27,7 @@ import {
   sidebarDomain,
   popupDomain,
   overlayDomain,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import type {
   HAI3App,
   Extension,
@@ -40,7 +40,7 @@ import type {
   DomainContext,
   ActionPayload,
   MountStrategy,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 
 const MFE_MANIFESTS_URL = '/generated-mfe-manifests.json';
 

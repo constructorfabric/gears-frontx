@@ -1,8 +1,8 @@
-# @cyberfabric/framework
+# @gears-frontx/framework
 
 > Plugin-based application framework for FrontX SDK. Orchestrates SDK packages into cohesive applications with MFE (Microfrontend) support.
 
-Part of the FrontX Framework Layer (L2) - depends on all SDK packages (@cyberfabric/state, @cyberfabric/screensets, @cyberfabric/api, @cyberfabric/i18n). Owns layout slices.
+Part of the FrontX Framework Layer (L2) - depends on all SDK packages (@gears-frontx/state, @gears-frontx/screensets, @gears-frontx/api, @gears-frontx/i18n). Owns layout slices.
 
 ## Core API
 
@@ -25,7 +25,7 @@ Part of the FrontX Framework Layer (L2) - depends on all SDK packages (@cyberfab
 ## Quick Start
 
 ```typescript
-import { createHAI3, screensets, themes, layout, microfrontends, i18n } from '@cyberfabric/framework';
+import { createHAI3, screensets, themes, layout, microfrontends, i18n } from '@gears-frontx/framework';
 
 // Compose plugins
 const app = createHAI3()
@@ -37,7 +37,7 @@ const app = createHAI3()
   .build();
 
 // Or use preset (equivalent to above)
-import { createHAI3App } from '@cyberfabric/framework';
+import { createHAI3App } from '@gears-frontx/framework';
 const app = createHAI3App();
 
 // Access MFE-enabled registry
@@ -68,7 +68,7 @@ import {
   unmountExtension,     // Unmount extension from domain
   registerExtension,    // Register extension dynamically
   unregisterExtension,  // Unregister extension
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 ```
 
 ### MFE Selectors
@@ -78,7 +78,7 @@ import {
   selectExtensionState,       // Get extension state
   selectRegisteredExtensions, // Get all registered extensions
   selectExtensionError,       // Get extension error
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 ```
 
 ### Domain Constants
@@ -93,7 +93,7 @@ import {
   sidebarDomain,        // ExtensionDomain object
   popupDomain,          // ExtensionDomain object
   overlayDomain,        // ExtensionDomain object
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 ```
 
 ### Action Constants
@@ -103,7 +103,7 @@ import {
   HAI3_ACTION_LOAD_EXT,     // 'hai3.action.load_ext'
   HAI3_ACTION_MOUNT_EXT,    // 'hai3.action.mount_ext'
   HAI3_ACTION_UNMOUNT_EXT,  // 'hai3.action.unmount_ext'
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 ```
 
 ### Shared Property Constants
@@ -112,13 +112,13 @@ import {
 import {
   HAI3_SHARED_PROPERTY_THEME,     // 'hai3.shared.theme'
   HAI3_SHARED_PROPERTY_LANGUAGE,  // 'hai3.shared.language'
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 ```
 
 ## Plugin Composition Pattern
 
 ```typescript
-import { createHAI3, screensets, microfrontends } from '@cyberfabric/framework';
+import { createHAI3, screensets, microfrontends } from '@gears-frontx/framework';
 
 // MFE-enabled app
 const app = createHAI3()
@@ -144,14 +144,14 @@ import type {
   ChildMfeBridge,         // Child bridge interface
   LifecycleStage,         // Lifecycle stage definition
   ActionsChain,           // Actions chain for lifecycle hooks
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 ```
 
 ## Concrete MFE Implementations
 
 ```typescript
-import { MfeHandlerMF } from '@cyberfabric/framework';  // Module Federation handler
-import { gtsPlugin } from '@cyberfabric/framework';     // GTS type validation plugin
+import { MfeHandlerMF } from '@gears-frontx/framework';  // Module Federation handler
+import { gtsPlugin } from '@gears-frontx/framework';     // GTS type validation plugin
 ```
 
 ## Optional

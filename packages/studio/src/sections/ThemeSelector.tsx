@@ -2,7 +2,7 @@
 // @cpt-dod:cpt-frontx-dod-studio-devtools-control-panel:p1
 import React from 'react';
 import { upperFirst } from 'lodash';
-import { useTheme, useTranslation } from '@cyberfabric/react';
+import { useTheme, useTranslation } from '@gears-frontx/react';
 import { ButtonVariant } from '../uikit/types';
 import {
   DropdownMenu,

@@ -1,6 +1,6 @@
-import { apiRegistry } from '@cyberfabric/api';
-import { createHAI3 } from '@cyberfabric/framework';
-import { auth } from '@cyberfabric/framework';
+import { apiRegistry } from '@gears-frontx/api';
+import { createHAI3 } from '@gears-frontx/framework';
+import { auth } from '@gears-frontx/framework';
 
 import { DummyJsonService } from './dummyjson-service.mjs';
 
@@ -47,4 +47,3 @@ console.log('[bearer-attach] OK:', {
   id: me.id,
   username: me.username,
 });
-

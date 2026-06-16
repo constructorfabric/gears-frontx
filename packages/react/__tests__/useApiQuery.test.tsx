@@ -15,8 +15,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient } from '@tanstack/react-query';
-import { eventBus, resetSharedFetchCache, resetSharedQueryClient } from '@cyberfabric/framework';
-import { HAI3Provider, useApiQuery } from '@cyberfabric/react';
+import { eventBus, resetSharedFetchCache, resetSharedQueryClient } from '@gears-frontx/framework';
+import { HAI3Provider, useApiQuery } from '@gears-frontx/react';
 import {
   ownedApps,
   buildTestQueryClient,

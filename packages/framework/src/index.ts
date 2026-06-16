@@ -1,5 +1,5 @@
 /**
- * @cyberfabric/framework - FrontX Framework Package
+ * @gears-frontx/framework - FrontX Framework Package
  *
  * This package provides:
  * - Plugin architecture for composable FrontX applications
@@ -44,7 +44,7 @@ export {
   type QueryCacheConfig,
 } from './plugins';
 
-// Auth contract types (re-exported from @cyberfabric/auth)
+// Auth contract types (re-exported from @gears-frontx/auth)
 export type {
   AuthProvider,
   AuthSession,
@@ -67,7 +67,7 @@ export type {
   AuthStateEvent,
   AuthStateListener,
   AuthUnsubscribe,
-} from '@cyberfabric/auth';
+} from '@gears-frontx/auth';
 
 // MFE Plugin Exports
 export {
@@ -91,26 +91,26 @@ export {
   overlayDomain,
 } from './plugins';
 
-// MFE Type Constants (re-exported from @cyberfabric/screensets for convenience)
+// MFE Type Constants (re-exported from @gears-frontx/screensets for convenience)
 export {
   HAI3_SCREEN_EXTENSION_TYPE,
   HAI3_MFE_ENTRY_MF,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 
-// MFE Action Constants (re-exported from @cyberfabric/screensets for convenience)
+// MFE Action Constants (re-exported from @gears-frontx/screensets for convenience)
 export {
   HAI3_ACTION_LOAD_EXT,
   HAI3_ACTION_MOUNT_EXT,
   HAI3_ACTION_UNMOUNT_EXT,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 
-// MFE Shared Property Constants (re-exported from @cyberfabric/screensets for convenience)
+// MFE Shared Property Constants (re-exported from @gears-frontx/screensets for convenience)
 export {
   HAI3_SHARED_PROPERTY_THEME,
   HAI3_SHARED_PROPERTY_LANGUAGE,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 
-// MFE Types (re-exported from @cyberfabric/screensets for convenience)
+// MFE Types (re-exported from @gears-frontx/screensets for convenience)
 export type {
   MfeMountContext,
   Extension,
@@ -138,9 +138,9 @@ export type {
   MfManifestBuildInfo,
   MfManifestShared,
   MfManifestAssets,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 
-// MFE Abstract Classes (re-exported from @cyberfabric/screensets for convenience)
+// MFE Abstract Classes (re-exported from @gears-frontx/screensets for convenience)
 export {
   ChildMfeBridge,
   ParentMfeBridge,
@@ -157,27 +157,27 @@ export {
   ConcurrentMountStrategy,
   OptionalMountStrategy,
   ExclusiveMountStrategy,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 
 export type {
   ContainerHooks,
   DomainContext,
   ActionPayload,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 
-// MFE Concrete Implementations (re-exported from @cyberfabric/screensets subpath exports)
-export { MfeHandlerMF } from '@cyberfabric/screensets/mfe/handler';
-export { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+// MFE Concrete Implementations (re-exported from @gears-frontx/screensets subpath exports)
+export { MfeHandlerMF } from '@gears-frontx/screensets/mfe/handler';
+export { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 
 // GTS Derived Schemas (application-layer registration)
 export { themeSchema, languageSchema, extensionScreenSchema } from './gts';
 
-// MFE Utilities (re-exported from @cyberfabric/screensets for convenience)
+// MFE Utilities (re-exported from @gears-frontx/screensets for convenience)
 export {
   createShadowRoot,
   injectCssVariables,
   extractGtsPackage,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 
 // MFE Plugin Types
 export type {
@@ -231,8 +231,8 @@ export type {
 // Re-exports from SDK packages for convenience
 // ============================================================================
 
-// From @cyberfabric/state (unified Flux dataflow pattern)
-export { eventBus, createStore, getStore, registerSlice, hasSlice, createSlice } from '@cyberfabric/state';
+// From @gears-frontx/state (unified Flux dataflow pattern)
+export { eventBus, createStore, getStore, registerSlice, hasSlice, createSlice } from '@gears-frontx/state';
 export type {
   EventBus,
   ReducerPayload,
@@ -243,15 +243,15 @@ export type {
   AppDispatch,
   SliceObject,
   EffectInitializer,
-} from '@cyberfabric/state';
+} from '@gears-frontx/state';
 
 // Re-export FrontXStore from types (wrapped version)
 export type { HAI3Store } from './types';
 
-// From @cyberfabric/screensets (contracts only - SDK Layer L1)
-export { LayoutDomain } from '@cyberfabric/screensets';
+// From @gears-frontx/screensets (contracts only - SDK Layer L1)
+export { LayoutDomain } from '@gears-frontx/screensets';
 
-// Layout slices (owned by @cyberfabric/framework)
+// Layout slices (owned by @gears-frontx/framework)
 export {
   layoutReducer,
   layoutDomainReducers,
@@ -362,7 +362,7 @@ export {
 } from './effects/mockEffects';
 export type { MockTogglePayload } from './effects/mockEffects';
 
-// From @cyberfabric/api
+// From @gears-frontx/api
 export {
   apiRegistry,
   BaseApiService,
@@ -390,7 +390,7 @@ export {
   // Mock plugin identification
   MOCK_PLUGIN,
   isMockPlugin,
-} from '@cyberfabric/api';
+} from '@gears-frontx/api';
 export type {
   MockMap,
   ApiServiceConfig,
@@ -429,16 +429,16 @@ export type {
   // Stream descriptor types (consumed by useApiStream at L3)
   StreamDescriptor,
   StreamStatus,
-} from '@cyberfabric/api';
+} from '@gears-frontx/api';
 
 
 // NOTE: AccountsApiService, ACCOUNTS_DOMAIN, and account types (ApiUser, UserRole, etc.)
 // have been moved to CLI templates. They are now generated by `hai3 scaffold layout`
 // and should be imported from user code (e.g., @/layout/api or @/api).
 
-// From @cyberfabric/i18n
-export { i18nRegistry, I18nRegistryImpl, createI18nRegistry, Language, SUPPORTED_LANGUAGES, getLanguageMetadata, TextDirection, LanguageDisplayMode } from '@cyberfabric/i18n';
-export type { I18nConfig, TranslationLoader, TranslationMap, TranslationDictionary, LanguageMetadata, I18nRegistry as I18nRegistryType } from '@cyberfabric/i18n';
+// From @gears-frontx/i18n
+export { i18nRegistry, I18nRegistryImpl, createI18nRegistry, Language, SUPPORTED_LANGUAGES, getLanguageMetadata, TextDirection, LanguageDisplayMode } from '@gears-frontx/i18n';
+export type { I18nConfig, TranslationLoader, TranslationMap, TranslationDictionary, LanguageMetadata, I18nRegistry as I18nRegistryType } from '@gears-frontx/i18n';
 
 // Formatters (locale from i18nRegistry.getLanguage())
 export {
@@ -455,12 +455,12 @@ export {
   type DateFormatStyle,
   type TimeFormatStyle,
   type DateInput,
-} from '@cyberfabric/i18n';
-export type { Formatters } from '@cyberfabric/i18n';
+} from '@gears-frontx/i18n';
+export type { Formatters } from '@gears-frontx/i18n';
 
 // Backward compatibility aliases
-// I18nRegistry type (capital I) - alias for consistency with old @cyberfabric/uicore API
-export { I18nRegistryImpl as I18nRegistry } from '@cyberfabric/i18n';
+// I18nRegistry type (capital I) - alias for consistency with old @gears-frontx/uicore API
+export { I18nRegistryImpl as I18nRegistry } from '@gears-frontx/i18n';
 
 // Backward compatibility constants
 export {
@@ -468,14 +468,14 @@ export {
 } from './compat';
 
 // ============================================================================
-// Test utilities (subset re-export; full API: `@cyberfabric/framework/testing`)
+// Test utilities (subset re-export; full API: `@gears-frontx/framework/testing`)
 // ============================================================================
 
 export { TestContainerProvider } from './testing/TestContainerProvider';
 export { resetSharedQueryClient } from './plugins/queryCache';
 
 // ============================================================================
-// Migration Helpers (for @cyberfabric/uicore backward compatibility)
+// Migration Helpers (for @gears-frontx/uicore backward compatibility)
 // ============================================================================
 
 export {

@@ -10,8 +10,8 @@
 // @cpt-flow:cpt-frontx-flow-request-lifecycle-use-api-mutation:p2:inst-create-query-cache
 // @cpt-FEATURE:implement-endpoint-descriptors:p3
 
-import type { EndpointDescriptor } from '@cyberfabric/framework';
-import { eventBus } from '@cyberfabric/framework';
+import type { EndpointDescriptor } from '@gears-frontx/framework';
+import { eventBus } from '@gears-frontx/framework';
 import { type QueryClient, type QueryState } from '@tanstack/react-query';
 
 export type QueryCacheKey = readonly unknown[];

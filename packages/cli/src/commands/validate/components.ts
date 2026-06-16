@@ -52,8 +52,8 @@ export interface ValidateComponentsResult {
 // Note: FC generics may contain nested braces, so we match until `= ` more permissively
 const INLINE_FC_PATTERN = /const\s+(\w+)\s*:\s*(?:React\.)?FC(?:<[\s\S]*?>)?\s*=/g;
 const INLINE_DATA_PATTERN = /const\s+(\w+)\s*(?::\s*\w+(?:\[\])?)?\s*=\s*\[[\s\S]*?\{[\s\S]*?\}/g;
-// Detect business logic imports (hooks, state, events) from @cyberfabric/react or @cyberfabric/framework
-const BUSINESS_LOGIC_IMPORT_PATTERN = /import\s+(?:(?!\btype\b)[^;]*)\s+from\s+['"]@cyberfabric\/(?:react|framework)['"]/;
+// Detect business logic imports (hooks, state, events) from @gears-frontx/react or @gears-frontx/framework
+const BUSINESS_LOGIC_IMPORT_PATTERN = /import\s+(?:(?!\btype\b)[^;]*)\s+from\s+['"]@gears-frontx\/(?:react|framework)['"]/;
 const INLINE_STYLE_PATTERN = /style\s*=\s*\{\{/g;
 const HEX_COLOR_PATTERN = /#[0-9a-fA-F]{3,8}(?=['"`])/g;
 
@@ -153,7 +153,7 @@ async function scanFile(
   }
 
   // @cpt-begin:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-detect-ui-component-impurity
-  // Check for @cyberfabric/react or @cyberfabric/framework imports in UI component files
+  // Check for @gears-frontx/react or @gears-frontx/framework imports in UI component files
   if (isUiComponentFile) {
     if (BUSINESS_LOGIC_IMPORT_PATTERN.test(content)) {
       // Find line number of the import
@@ -169,7 +169,7 @@ async function scanFile(
         file: relativePath,
         line: lineNumber,
         rule: 'ui-component-impurity',
-        message: 'UI component imports from @cyberfabric/react or @cyberfabric/framework',
+        message: 'UI component imports from @gears-frontx/react or @gears-frontx/framework',
         severity: 'error',
         suggestion:
           'UI components in components/ui/ must be presentational only. Move to screens/{screen}/components/ if business logic is needed.',

@@ -22,7 +22,7 @@ import {
   type MfeContextValue,
   type MutationDescriptor,
   type StreamDescriptor,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 
 const APP_QUERY_CLIENT_SYMBOL = Symbol.for('hai3:query-cache:app-client');
 
@@ -32,7 +32,7 @@ const APP_QUERY_CLIENT_SYMBOL = Symbol.for('hai3:query-cache:app-client');
  * file in its own worker, each worker gets its own module instance, so this
  * array is isolated per file.
  */
-export const ownedApps: import('@cyberfabric/framework').HAI3App[] = [];
+export const ownedApps: import('@gears-frontx/framework').HAI3App[] = [];
 
 // ============================================================================
 // QueryClient factories
@@ -71,14 +71,14 @@ export function buildMutationCacheTestQueryClient(): QueryClient {
 // ============================================================================
 
 export function attachQueryClient(
-  app: import('@cyberfabric/framework').HAI3App,
+  app: import('@gears-frontx/framework').HAI3App,
   client: QueryClient
-): import('@cyberfabric/framework').HAI3App {
+): import('@gears-frontx/framework').HAI3App {
   Reflect.set(app as object, APP_QUERY_CLIENT_SYMBOL, client);
   return app;
 }
 
-export function getAttachedQueryClient(app: import('@cyberfabric/framework').HAI3App): QueryClient {
+export function getAttachedQueryClient(app: import('@gears-frontx/framework').HAI3App): QueryClient {
   const queryClient = Reflect.get(app as object, APP_QUERY_CLIENT_SYMBOL) as QueryClient | undefined;
   if (!queryClient) {
     throw new Error('expected app query client');
@@ -86,13 +86,13 @@ export function getAttachedQueryClient(app: import('@cyberfabric/framework').HAI
   return queryClient;
 }
 
-export function buildAppWithQueryClient(client: QueryClient): import('@cyberfabric/framework').HAI3App {
+export function buildAppWithQueryClient(client: QueryClient): import('@gears-frontx/framework').HAI3App {
   const app = attachQueryClient(createHAI3App(), client);
   ownedApps.push(app);
   return app;
 }
 
-export function buildPresetApp(): import('@cyberfabric/framework').HAI3App {
+export function buildPresetApp(): import('@gears-frontx/framework').HAI3App {
   const app = createHAI3App();
   ownedApps.push(app);
   return app;
@@ -101,7 +101,7 @@ export function buildPresetApp(): import('@cyberfabric/framework').HAI3App {
 /** Host + child pattern keeps `retainSharedFetchCache()` active (real queryCache wiring). */
 export function buildHostAppWithQueryCache(
   staleTime: number
-): import('@cyberfabric/framework').HAI3App {
+): import('@gears-frontx/framework').HAI3App {
   const app = createHAI3()
     .use(
       queryCache({
@@ -115,7 +115,7 @@ export function buildHostAppWithQueryCache(
   return app;
 }
 
-export function buildChildAppWithQueryCacheShared(): import('@cyberfabric/framework').HAI3App {
+export function buildChildAppWithQueryCacheShared(): import('@gears-frontx/framework').HAI3App {
   const app = createHAI3().use(queryCacheShared()).build();
   ownedApps.push(app);
   return app;

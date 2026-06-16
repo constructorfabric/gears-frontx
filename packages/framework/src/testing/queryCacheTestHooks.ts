@@ -9,7 +9,7 @@
  * the test boundary. Runtime shape remains internal — tests should read here
  * instead of calling `Symbol.for('hai3:query-cache:…')` directly.
  *
- * Exposed only through `@cyberfabric/framework/testing`. Not re-exported from
+ * Exposed only through `@gears-frontx/framework/testing`. Not re-exported from
  * the main entry.
  */
 

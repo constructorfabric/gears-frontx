@@ -175,7 +175,7 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
  *
  * @example
  * ```typescript
- * import { gtsPlugin, mfeRegistryFactory } from '@cyberfabric/screensets';
+ * import { gtsPlugin, mfeRegistryFactory } from '@gears-frontx/screensets';
  *
  * // Build the registry with GTS plugin at application wiring time
  * const registry = mfeRegistryFactory.build({ typeSystem: gtsPlugin });

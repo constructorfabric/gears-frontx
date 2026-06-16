@@ -70,8 +70,8 @@ export function applyMfeReplacements(content: string, name: string, namePascal: 
     .replace(/\/api\/blank/g, `/api/${nameKebab}`)
     // Federation name: blankMfe → contactsMfe
     .replace(/blankMfe/g, `${name}Mfe`)
-    // Package name: @cyberfabric/blank-mfe → @cyberfabric/contacts-mfe
-    .replace(/@cyberfabric\/blank-mfe/g, `@cyberfabric/${nameKebab}-mfe`)
+    // Package name: @gears-frontx/blank-mfe → @gears-frontx/contacts-mfe
+    .replace(/@gears-frontx\/blank-mfe/g, `@gears-frontx/${nameKebab}-mfe`)
     // GTS IDs: hai3.blank. → hai3.contacts. (always lowercase)
     .replace(/hai3\.blank\./g, `hai3.${name.toLowerCase()}.`)
     // Remote entry port: localhost:3099 → localhost:{port}

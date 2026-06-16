@@ -58,7 +58,7 @@
 
 ### 1.1 Overview
 
-The CLI Tooling feature provides the `@cyberfabric/cli` package — a standalone scaffolding tool that reduces boilerplate and enforces FrontX architectural conventions across all project layers. It generates complete project structures, layout components, and AI assistant configurations from real project files used as build-time templates.
+The CLI Tooling feature provides the `@gears-frontx/cli` package — a standalone scaffolding tool that reduces boilerplate and enforces FrontX architectural conventions across all project layers. It generates complete project structures, layout components, and AI assistant configurations from real project files used as build-time templates.
 
 Problem: Without tooling, developers must manually assemble multi-file project structures, navigate layer-specific package.json configurations, and keep AI assistant integration files in sync across Claude, Cursor, Windsurf, and GitHub Copilot. Inconsistencies accumulate quickly across teams.
 
@@ -131,8 +131,8 @@ Success criteria: A developer runs `frontx create my-app`, selects or passes a s
 1. [x] - `p1` - Developer invokes `frontx update` with optional flags (`--alpha`, `--stable`, `--templates-only`, `--skip-ai-sync`) - `inst-invoke-update`
 2. [x] - `p1` - **IF** both `--alpha` and `--stable` are specified **RETURN** validation error `CONFLICTING_OPTIONS` - `inst-check-conflicting-update-flags`
 3. [x] - `p1` - Algorithm: resolve release channel using `cpt-frontx-algo-cli-tooling-detect-release-channel` - `inst-run-detect-channel`
-4. [x] - `p1` - **IF** `--templates-only` is not set **THEN** install `@cyberfabric/cli@<tag>` globally using the detected project package manager; **IF** the manager is `yarn` **THEN** skip global CLI update with a warning because yarn global install is not managed by the command - `inst-update-cli-global`
-5. [x] - `p1` - **IF** `--templates-only` is not set **AND** inside a FrontX project **THEN** locate all `@cyberfabric/*` entries in project `package.json` and install each with the resolved tag - `inst-update-project-packages`
+4. [x] - `p1` - **IF** `--templates-only` is not set **THEN** install `@gears-frontx/cli@<tag>` globally using the detected project package manager; **IF** the manager is `yarn` **THEN** skip global CLI update with a warning because yarn global install is not managed by the command - `inst-update-cli-global`
+5. [x] - `p1` - **IF** `--templates-only` is not set **AND** inside a FrontX project **THEN** locate all `@gears-frontx/*` entries in project `package.json` and install each with the resolved tag - `inst-update-project-packages`
 6. [x] - `p1` - **IF** inside a FrontX project **THEN** sync templates using `cpt-frontx-algo-cli-tooling-sync-templates` - `inst-run-sync-templates`
 7. [x] - `p1` - **IF** inside a FrontX project **AND** `--skip-ai-sync` is not set **THEN** execute `aiSyncCommand` with `detectPackages: true` - `inst-run-ai-sync-after-update`
 8. [x] - `p1` - **RETURN** `UpdateCommandResult` with flags for each step completed - `inst-return-update`
@@ -160,7 +160,7 @@ Success criteria: A developer runs `frontx create my-app`, selects or passes a s
 2. [x] - `p1` - **IF** not inside a FrontX project root **RETURN** validation error `NOT_IN_PROJECT` - `inst-check-project-root-ai-sync`
 3. [x] - `p1` - **IF** `.ai/` directory does not exist **AND** not in `--diff` mode **THEN** create minimal `.ai/GUIDELINES.md` stub - `inst-create-ai-dir`
 4. [x] - `p1` - Read user custom rules from `.ai/rules/app.md` if the file exists - `inst-read-user-rules`
-5. [x] - `p1` - **IF** `--detect-packages` is set **THEN** scan `node_modules/@cyberfabric/*/commands/*.md` for package command files, skipping `hai3dev-*` prefixed files - `inst-scan-package-commands`
+5. [x] - `p1` - **IF** `--detect-packages` is set **THEN** scan `node_modules/@gears-frontx/*/commands/*.md` for package command files, skipping `hai3dev-*` prefixed files - `inst-scan-package-commands`
 6. [x] - `p1` - **FOR EACH** target tool in resolved tool list: generate tool-specific configuration files using `cpt-frontx-algo-cli-tooling-generate-ai-config` - `inst-generate-per-tool`
 7. [x] - `p1` - **IF** `--diff` is set **THEN** print file-level diff summary to logger and **RETURN** without writing files - `inst-diff-mode`
 8. [x] - `p1` - Write generated configuration files to the project root - `inst-write-ai-configs`
@@ -201,7 +201,7 @@ Success criteria: A developer runs `frontx create my-app`, selects or passes a s
 **Actors**: `cpt-frontx-actor-build-system`, `cpt-frontx-actor-cli`
 
 1. [x] - `p1` - CI triggers `.github/workflows/cli-pr.yml` on pull request to `main`; job `cli-pr-e2e` starts on `ubuntu-latest` with Node 24.14.x and a matrix over `package-manager in [npm, pnpm, yarn]` - `inst-e2e-pr-trigger`
-2. [x] - `p1` - Build `@cyberfabric/cli` via `npm run build --workspace=@cyberfabric/cli` - `inst-e2e-pr-build-cli`
+2. [x] - `p1` - Build `@gears-frontx/cli` via `npm run build --workspace=@gears-frontx/cli` - `inst-e2e-pr-build-cli`
 3. [x] - `p1` - Algorithm: create harness using `cpt-frontx-algo-cli-tooling-e2e-harness-step` with suite name `pr` - `inst-e2e-pr-create-harness`
 4. [x] - `p1` - Run `frontx create smoke-app --no-studio --uikit shadcn --package-manager <matrix package-manager>` in a temporary workspace - `inst-e2e-pr-create-app`
 5. [x] - `p1` - Assert scaffolded files exist: `frontx.config.json`, `package.json`, `.ai/GUIDELINES.md`, `src/app/layout/Layout.tsx`, `scripts/generate-mfe-manifests.ts` - `inst-e2e-pr-assert-files`
@@ -222,7 +222,7 @@ Success criteria: A developer runs `frontx create my-app`, selects or passes a s
 **Actors**: `cpt-frontx-actor-build-system`, `cpt-frontx-actor-cli`
 
 1. [x] - `p2` - CI triggers `.github/workflows/cli-nightly.yml` on schedule (daily 03:00 UTC) or manual dispatch - `inst-e2e-nightly-trigger`
-2. [x] - `p2` - Build `@cyberfabric/cli` via `npm run build --workspace=@cyberfabric/cli` - `inst-e2e-nightly-build-cli`
+2. [x] - `p2` - Build `@gears-frontx/cli` via `npm run build --workspace=@gears-frontx/cli` - `inst-e2e-nightly-build-cli`
 3. [x] - `p2` - Algorithm: create harness using `cpt-frontx-algo-cli-tooling-e2e-harness-step` with suite name `nightly` - `inst-e2e-nightly-create-harness`
 4. [x] - `p2` - Run `frontx create nightly-app --no-studio --uikit shadcn --package-manager npm`, then install, build, and type-check - `inst-e2e-nightly-create-default`
 5. [x] - `p2` - Run `frontx create nightly-pnpm --no-studio --uikit shadcn --package-manager pnpm` and `frontx create nightly-yarn --no-studio --uikit shadcn --package-manager yarn`; assert manager-specific metadata/files, then install, build, and type-check using manager-appropriate commands
@@ -267,7 +267,7 @@ Constructs the complete set of `GeneratedFile` entries for a new FrontX project 
 12. [x] - `p1` - Copy `eslint-plugin-local/` and `scripts/` directories; **IF** `uikit === 'none'` exclude `scripts/generate-colors.ts`
 13. [x] - `p1` - Copy root config files: `CLAUDE.md`, `README.md`, `eslint.config.js`, `tsconfig.json`, `vite.config.ts`, `.dependency-cruiser.cjs`, `.pre-commit-config.yaml`, `.npmrc`, `.nvmrc`; **IF** `uikit === 'shadcn'` also include `postcss.config.js`
 14. [x] - `p1` - Generate `frontx.config.json` dynamically with `{ hai3: true, layer, uikit, packageManager }`; include `linkerMode: "node-modules"` when the selected manager is `yarn`
-15. [x] - `p1` - Generate `package.json` dynamically with resolved dependencies: always include core `@cyberfabric/*` packages at `alpha` tag; include `@cyberfabric/studio` in devDependencies only if `studio === true`; set manager-specific `packageManager`, centralized manager-specific `engines`, and `workspaces: ["eslint-plugin-local"]`
+15. [x] - `p1` - Generate `package.json` dynamically with resolved dependencies: always include core `@gears-frontx/*` packages at `alpha` tag; include `@gears-frontx/studio` in devDependencies only if `studio === true`; set manager-specific `packageManager`, centralized manager-specific `engines`, and `workspaces: ["eslint-plugin-local"]`
 16. [x] - `p1` - Generate manager-specific workspace/config files (`pnpm-workspace.yaml` for pnpm, `.yarnrc.yml` for yarn)
 17. [x] - `p1` - Rewrite npm-centric command snippets in generated text files to manager-specific commands using `cpt-frontx-algo-cli-tooling-package-manager-policy`
 18. [x] - `p1` - **RETURN** complete `GeneratedFile[]` array
@@ -302,9 +302,9 @@ Selects the most specific command file variant for a given FrontX architecture l
 
 - [x] `p1` - **ID**: `cpt-frontx-algo-cli-tooling-detect-release-channel`
 
-Determines whether the globally installed `@cyberfabric/cli` is on the `alpha` or `stable` channel.
+Determines whether the globally installed `@gears-frontx/cli` is on the `alpha` or `stable` channel.
 
-1. [x] - `p1` - **TRY** locate the current `@cyberfabric/cli` `package.json` by walking upward from the executing module path until a package with `name: "@cyberfabric/cli"` is found - `inst-read-cli-package-version`
+1. [x] - `p1` - **TRY** locate the current `@gears-frontx/cli` `package.json` by walking upward from the executing module path until a package with `name: "@gears-frontx/cli"` is found - `inst-read-cli-package-version`
 2. [x] - `p1` - Read the current CLI version string from that `package.json` - `inst-read-cli-version-string`
 3. [x] - `p1` - **IF** version string contains `-alpha`, `-beta`, or `-rc` **RETURN** `'alpha'` - `inst-check-prerelease-tag`
 4. [x] - `p1` - **RETURN** `'stable'` - `inst-return-stable`
@@ -341,7 +341,7 @@ Generates the IDE/AI-tool-specific configuration file and command adapter files 
 
 Writes adapter stub files for each discovered command into the target IDE commands directory. Implements a four-tier precedence hierarchy so project-level overrides take priority over framework defaults.
 
-1. [x] - `p1` - Scan command files from four sources: `frontx` level (`.ai/commands/`), `company` level (`.ai/company/commands/`), `project` level (`.ai/project/commands/`), and package level (from installed `@cyberfabric/*` packages); skip filenames with `hai3dev-` prefix - `inst-scan-four-tiers`
+1. [x] - `p1` - Scan command files from four sources: `frontx` level (`.ai/commands/`), `company` level (`.ai/company/commands/`), `project` level (`.ai/project/commands/`), and package level (from installed `@gears-frontx/*` packages); skip filenames with `hai3dev-` prefix - `inst-scan-four-tiers`
 2. [x] - `p1` - Collect the union of all unique command base names across all tiers - `inst-collect-command-names`
 3. [x] - `p1` - **FOR EACH** command base name: resolve the source file by checking tiers in order `project → company → hai3 → package`; use the first match found - `inst-resolve-precedence`
 4. [x] - `p1` - Extract the command description from the resolved source file by matching the pattern `# hai3:<name> - <description>`; fall back to a name-derived description if the pattern is absent - `inst-extract-description`
@@ -357,7 +357,7 @@ Inspects TypeScript and TSX source files for four categories of architectural vi
 1. [x] - `p1` - **FOR EACH** `.ts` or `.tsx` file in the scan directory (excluding `node_modules/` and `dist/`): read file contents and determine file type (`Screen`, `UI component`, or general) - `inst-iterate-source-files`
 2. [x] - `p1` - **IF** file is a Screen file (ends with `Screen.tsx`): scan for `const <Name>: FC` declarations that are not the file's default export; **FOR EACH** match emit a violation of rule `inline-component` at the matched line - `inst-detect-inline-components`
 3. [x] - `p1` - **IF** file is a Screen file: scan for inline data arrays (variable declarations initialized to array literals containing 3 or more nested object literals); skip variables named `columns`, `options`, `items`, `routes`, `menu`, `tabs`, `steps`, `fields`; **FOR EACH** match emit a violation of rule `inline-data` - `inst-detect-inline-data`
-4. [x] - `p1` - **IF** file is a UI component file (path contains `/components/ui/`): scan for non-type imports from `@cyberfabric/react` or `@cyberfabric/framework`; **IF** found emit a violation of rule `ui-component-impurity` - `inst-detect-ui-component-impurity`
+4. [x] - `p1` - **IF** file is a UI component file (path contains `/components/ui/`): scan for non-type imports from `@gears-frontx/react` or `@gears-frontx/framework`; **IF** found emit a violation of rule `ui-component-impurity` - `inst-detect-ui-component-impurity`
 5. [x] - `p1` - **IF** file is NOT inside `components/ui/`: scan for `style={{` occurrences and emit a violation of rule `inline-style` for each; scan for hex color literals and emit a violation of rule `inline-style` for each - `inst-detect-inline-styles`
 6. [x] - `p1` - **RETURN** all collected `ComponentViolation` objects with file path, line number, rule name, message, severity, and suggestion - `inst-return-violations`
 
@@ -455,10 +455,10 @@ Tracks which migrations have been applied to a project, persisted in `.hai3/migr
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-cli-tooling-package`
 
-`@cyberfabric/cli` is published as a workspace package with a `frontx` binary entry point. The package supports ESM environments (Node.js 18+) and exposes a dual programmatic API via `api.ts` for use by AI agents without interactive prompts.
+`@gears-frontx/cli` is published as a workspace package with a `frontx` binary entry point. The package supports ESM environments (Node.js 18+) and exposes a dual programmatic API via `api.ts` for use by AI agents without interactive prompts.
 
 **Implementation details**:
-- Package: `packages/cli/package.json` — `name: @cyberfabric/cli`, `type: module`, `bin: { hai3: ./dist/index.js }`, `engines: { node: ">=18" }`
+- Package: `packages/cli/package.json` — `name: @gears-frontx/cli`, `type: module`, `bin: { hai3: ./dist/index.js }`, `engines: { node: ">=18" }`
 - Entry: `src/index.ts` — Commander.js program with all commands registered
 - Programmatic API: `src/api.ts` — exports `executeCommand`, `buildCommandContext`, `registry`, core types, `createCommand`, `updateCommand`, generator functions, and utility functions
 - Build: `tsup.config.ts` — ESM primary output; dual CJS/ESM exports for `api.ts`
@@ -557,7 +557,7 @@ The `copy-templates.ts` build script assembles the full template set into `packa
 - Command: `src/commands/ai/sync.ts` — `aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult>`
 - Tool outputs: `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/hai3.mdc`, `.windsurf/rules/hai3.md`
 - Command adapters written to: `.claude/commands/`, `.github/copilot-commands/`, `.cursor/commands/`, `.windsurf/workflows/`
-- Package scanning: reads `node_modules/@cyberfabric/*/commands/*.md` when `--detect-packages` is set
+- Package scanning: reads `node_modules/@gears-frontx/*/commands/*.md` when `--detect-packages` is set
 
 **Implements**:
 - `cpt-frontx-flow-cli-tooling-ai-sync`
@@ -575,7 +575,7 @@ The `copy-templates.ts` build script assembles the full template set into `packa
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-cli-tooling-validate`
 
-`validateComponentsCommand` scans `.ts` / `.tsx` files and enforces four architectural rules: no inline FC components in Screen files, no inline data arrays in Screen files, no `@cyberfabric/react` / `@cyberfabric/framework` imports in `components/ui/` files, no `style={{}}` or hex color literals outside `components/ui/` folders. Violations carry file path, line number, rule name, message, severity, and a suggestion.
+`validateComponentsCommand` scans `.ts` / `.tsx` files and enforces four architectural rules: no inline FC components in Screen files, no inline data arrays in Screen files, no `@gears-frontx/react` / `@gears-frontx/framework` imports in `components/ui/` files, no `style={{}}` or hex color literals outside `components/ui/` folders. Violations carry file path, line number, rule name, message, severity, and a suggestion.
 
 **Implementation details**:
 - Command: `src/commands/validate/components.ts` — `validateComponentsCommand: CommandDefinition<ValidateComponentsArgs, ValidateComponentsResult>`

@@ -6,7 +6,7 @@ import {
   HAI3_SHARED_PROPERTY_LANGUAGE,
   HAI3_SHARED_PROPERTY_THEME,
   TextDirection,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import { createMfeBridgeFixture } from '@frontx-test-utils/createMfeBridgeFixture';
 import { mockShadowHost } from '@frontx-test-utils/mockShadowHost';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

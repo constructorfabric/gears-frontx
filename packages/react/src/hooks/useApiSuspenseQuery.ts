@@ -8,7 +8,7 @@
 // @cpt-flow:cpt-frontx-flow-request-lifecycle-use-api-query:p2
 // @cpt-state:cpt-frontx-state-request-lifecycle-query:p2
 
-import type { EndpointDescriptor } from '@cyberfabric/framework';
+import type { EndpointDescriptor } from '@gears-frontx/framework';
 import type { ApiSuspenseQueryResult } from '../types';
 import type { ApiQueryOverrides } from './useApiQuery';
 import { useHAI3SuspenseQuery } from '../queryClient';

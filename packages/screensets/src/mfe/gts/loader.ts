@@ -38,7 +38,7 @@ import lifecycleDestroyedInstance from './hai3.mfes/instances/lifecycle/destroye
  * Returns 13 schemas: 8 core + 2 MF-specific + 3 extension action schemas.
  *
  * Application-specific derived schemas (theme, language, extension_screen) are
- * registered at the application layer via @cyberfabric/framework.
+ * registered at the application layer via @gears-frontx/framework.
  *
  * @returns Array of JSON schemas for core MFE types
  */

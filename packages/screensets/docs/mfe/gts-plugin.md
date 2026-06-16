@@ -9,17 +9,17 @@ The GTS plugin (`gtsPlugin`) is FrontX's default `TypeSystemPlugin` implementati
 ## Installation
 
 ```bash
-npm install @cyberfabric/screensets @globaltypesystem/gts-ts
+npm install @gears-frontx/screensets @globaltypesystem/gts-ts
 ```
 
-The GTS plugin is included with `@cyberfabric/screensets` and requires `@globaltypesystem/gts-ts` as a peer dependency.
+The GTS plugin is included with `@gears-frontx/screensets` and requires `@globaltypesystem/gts-ts` as a peer dependency.
 
 ## Basic Usage
 
 ### Building the Registry
 
 ```typescript
-import { screensetsRegistryFactory, gtsPlugin, ContainerProvider } from '@cyberfabric/screensets';
+import { screensetsRegistryFactory, gtsPlugin, ContainerProvider } from '@gears-frontx/screensets';
 
 // Build the registry with GTS plugin at application wiring time
 const registry = screensetsRegistryFactory.build({ typeSystem: gtsPlugin });
@@ -45,7 +45,7 @@ The GTS plugin ships with all FrontX first-class citizen schemas **built-in**. N
 
 ```typescript
 // ✅ Correct - Build registry with factory
-import { screensetsRegistryFactory, gtsPlugin } from '@cyberfabric/screensets';
+import { screensetsRegistryFactory, gtsPlugin } from '@gears-frontx/screensets';
 const registry = screensetsRegistryFactory.build({ typeSystem: gtsPlugin });
 registry.registerDomain(myDomain, containerProvider);
 
@@ -443,7 +443,7 @@ Register vendor schemas once during application initialization:
 
 ```typescript
 // ✅ Good - Register once at startup
-import { screensetsRegistryFactory, gtsPlugin } from '@cyberfabric/screensets';
+import { screensetsRegistryFactory, gtsPlugin } from '@gears-frontx/screensets';
 
 function initializeApp() {
   registerVendorSchemas(gtsPlugin);
@@ -475,7 +475,7 @@ const results = gtsPlugin.query('gts.*.*.*.*.*'); // Expensive!
 
 ```typescript
 // For custom configurations, create a new instance
-import { DefaultScreensetsRegistry, gtsPlugin } from '@cyberfabric/screensets';
+import { DefaultScreensetsRegistry, gtsPlugin } from '@gears-frontx/screensets';
 
 const runtime = new DefaultScreensetsRegistry({
   typeSystem: gtsPlugin,

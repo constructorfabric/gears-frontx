@@ -15,9 +15,9 @@ import { effects } from '../../../src/plugins/effects';
 import { themes } from '../../../src/plugins/themes';
 import { i18n } from '../../../src/plugins/i18n';
 import { microfrontends } from '../../../src/plugins/microfrontends';
-import { eventBus, resetStore } from '@cyberfabric/state';
-import { HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE } from '@cyberfabric/screensets';
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+import { eventBus, resetStore } from '@gears-frontx/state';
+import { HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/screensets';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 import type { HAI3App } from '../../../src/types';
 
 describe('Theme and Language Propagation - decouple-domain-contracts', () => {

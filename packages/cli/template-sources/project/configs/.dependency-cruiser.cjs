@@ -3,7 +3,7 @@
  * Base rules for FrontX projects - screenset isolation and flux architecture
  *
  * This is a SELF-CONTAINED configuration that includes all rules inline.
- * It does NOT depend on @cyberfabric/depcruise-config (which is monorepo-only internal tooling).
+ * It does NOT depend on @gears-frontx/depcruise-config (which is monorepo-only internal tooling).
  *
  * Rules included:
  * - L0 Base: Universal rules (no-circular)

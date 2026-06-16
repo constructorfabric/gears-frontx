@@ -1,5 +1,5 @@
 /**
- * Build-time version injection for @cyberfabric/cli.
+ * Build-time version injection for @gears-frontx/cli.
  *
  * Reads all packages/[*]/package.json in the monorepo, extracts name + version,
  * and writes src/generated/versions.ts so generators ship with locked versions
@@ -36,7 +36,7 @@ for (const name of readdirSync(PACKAGES_DIR)) {
   const pkg = readPackageJson(dir);
   if (!pkg?.name) continue;
   entries.push([pkg.name, pkg.version]);
-  if (pkg.name === '@cyberfabric/cli') {
+  if (pkg.name === '@gears-frontx/cli') {
     cliVersion = pkg.version;
   }
 }

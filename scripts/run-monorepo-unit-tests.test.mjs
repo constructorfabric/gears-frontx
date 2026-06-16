@@ -45,14 +45,14 @@ const projects = [
   {
     kind: 'workspace',
     name: 'api',
-    workspace: '@cyberfabric/api',
+    workspace: '@gears-frontx/api',
     rootPath: 'packages/api',
     hasWatchScript: true,
   },
   {
     kind: 'workspace',
     name: 'framework',
-    workspace: '@cyberfabric/framework',
+    workspace: '@gears-frontx/framework',
     rootPath: 'packages/framework',
     hasWatchScript: true,
   },
@@ -451,7 +451,7 @@ describe('validateWatchTargets', () => {
       {
         kind: 'workspace',
         name: 'state',
-        workspace: '@cyberfabric/state',
+        workspace: '@gears-frontx/state',
         rootPath: 'packages/state',
         hasWatchScript: false,
       },
@@ -815,7 +815,7 @@ describe('inferProjectsFromForwardArgs with extraRootPaths', () => {
     {
       kind: 'workspace',
       name: 'api',
-      workspace: '@cyberfabric/api',
+      workspace: '@gears-frontx/api',
       rootPath: 'packages/api',
       hasWatchScript: true,
     },

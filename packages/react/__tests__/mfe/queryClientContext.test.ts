@@ -9,17 +9,17 @@ import {
   queryCache,
   queryCacheShared,
   resetSharedQueryClient,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 import {
   ThemeAwareReactLifecycle,
   useApiQuery,
   useQueryCache,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import {
   bootstrapHAI3QueryClient,
   resolveHAI3QueryClient,
   useOptionalHAI3QueryClient,
-} from '@cyberfabric/react/testing';
+} from '@gears-frontx/react/testing';
 
 afterEach(() => {
   resetSharedQueryClient();

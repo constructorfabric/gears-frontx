@@ -20,14 +20,14 @@ import {
   selectExtensionError,
   selectMountedExtensions,
 } from '../../../src/plugins/microfrontends';
-import { eventBus, resetStore } from '@cyberfabric/state';
+import { eventBus, resetStore } from '@gears-frontx/state';
 import {
   HAI3_ACTION_MOUNT_EXT,
   mfeRegistryFactory,
   type Extension,
   type MfeRegistry,
-} from '@cyberfabric/screensets';
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+} from '@gears-frontx/screensets';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 import type { HAI3App } from '../../../src/types';
 
 /**

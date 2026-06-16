@@ -27,7 +27,7 @@ import {
   type MountStrategy,
   type MfeRegistry,
   type ActionPayload,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 
 class TestDomainImpl extends ExtensionDomainImplementation {
   private readonly _strategies: MountStrategy[];

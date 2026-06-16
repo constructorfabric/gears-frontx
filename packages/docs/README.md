@@ -1,4 +1,4 @@
-# @cyberfabric/docs
+# @gears-frontx/docs
 
 FrontX Documentation Site - AI-driven product lifecycle and framework documentation.
 

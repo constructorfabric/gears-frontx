@@ -45,7 +45,7 @@
   - [Plugin Execution Order Convention](#plugin-execution-order-convention)
   - [Full URL vs Relative URL Split](#full-url-vs-relative-url-split)
   - [MOCK_PLUGIN Symbol Identity](#mockplugin-symbol-identity)
-  - [No Mock State in @cyberfabric/api](#no-mock-state-in-cyberfabricapi)
+  - [No Mock State in @gears-frontx/api](#no-mock-state-in-gears-frontxapi)
   - [MockEventSource Abort Safety](#mockeventsource-abort-safety)
 
 <!-- /toc -->
@@ -63,13 +63,13 @@ Provides the unified API service layer for the FrontX system. Abstracts REST and
 
 Problem: API services scattered across screen-sets couple domain code to specific transports; mock logic bleeds into business logic; no centralized mechanism to switch between real and mock responses at runtime.
 
-Primary value: A single, extensible SDK package that any domain plugin can use to define typed API services with pluggable mock, retry, and cross-cutting concerns — without any `@cyberfabric/*` inter-dependencies.
+Primary value: A single, extensible SDK package that any domain plugin can use to define typed API services with pluggable mock, retry, and cross-cutting concerns — without any `@gears-frontx/*` inter-dependencies.
 
 Key assumptions: Consumers run in a browser environment that provides `EventSource`. Axios is the sole external peer dependency. Mock mode is controlled by the framework layer, not by service code.
 
 ### 1.2 Purpose
 
-Enable developers to define domain API services in a protocol-agnostic way, wire cross-cutting plugins (auth, logging, mocking, retry) at both global and service-instance levels, and switch between real and mock transports at runtime through a centralized toggle — all with zero coupling to other `@cyberfabric/*` packages.
+Enable developers to define domain API services in a protocol-agnostic way, wire cross-cutting plugins (auth, logging, mocking, retry) at both global and service-instance levels, and switch between real and mock transports at runtime through a centralized toggle — all with zero coupling to other `@gears-frontx/*` packages.
 
 Success criteria: A developer can scaffold a new domain service, register it, add a mock plugin, and toggle mock mode without modifying any protocol or registry internals.
 
@@ -390,7 +390,7 @@ Mirrors the `EventSource` `readyState` spec values for compatibility.
 
 - [x] `p2` - **ID**: `cpt-frontx-state-api-communication-mock-mode`
 
-Global mock mode state managed by the framework layer, not within `@cyberfabric/api` itself. `@cyberfabric/api` exposes the identification mechanism (`MOCK_PLUGIN` symbol, `isMockPlugin` guard) that the framework uses to act on this state.
+Global mock mode state managed by the framework layer, not within `@gears-frontx/api` itself. `@gears-frontx/api` exposes the identification mechanism (`MOCK_PLUGIN` symbol, `isMockPlugin` guard) that the framework uses to act on this state.
 
 1. [x] `p2` - **FROM** `REAL` **TO** `MOCK` **WHEN** `toggleMockMode(true)` action fires; framework activates all plugins where `isMockPlugin(plugin)` is `true` — `inst-mock-on`
 2. [x] `p2` - **FROM** `MOCK` **TO** `REAL` **WHEN** `toggleMockMode(false)` action fires; framework deactivates all mock plugins — `inst-mock-off`
@@ -644,7 +644,7 @@ The type system provides protocol-specific plugin base classes and type guards t
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-api-communication-public-api`
 
-The `@cyberfabric/api` package exposes a complete, tree-shakeable public surface through `packages/api/src/index.ts` with zero `@cyberfabric/*` dependencies.
+The `@gears-frontx/api` package exposes a complete, tree-shakeable public surface through `packages/api/src/index.ts` with zero `@gears-frontx/*` dependencies.
 
 **Implementation details**:
 
@@ -656,7 +656,7 @@ The `@cyberfabric/api` package exposes a complete, tree-shakeable public surface
 - Exports: `SHARED_FETCH_CACHE_SYMBOL`, `SHARED_FETCH_CACHE_RETAINERS_SYMBOL`
 - Type exports: all types from `types.ts`, `sharedFetchCache.ts`, and config interfaces from plugin files
 - Peer dependency: `axios` only
-- No `@cyberfabric/*` entries in `dependencies` or `devDependencies`
+- No `@gears-frontx/*` entries in `dependencies` or `devDependencies`
 
 **Covers (PRD)**:
 - `cpt-frontx-fr-sdk-api-package`
@@ -687,7 +687,7 @@ The `@cyberfabric/api` package exposes a complete, tree-shakeable public surface
 - [x] `apiRegistry.register` instantiates the service; `getService` returns the typed instance; calling `getService` for an unregistered class throws
 - [x] `apiRegistry.plugins.add` / `remove` / `has` / `getAll` / `clear` operate correctly on the protocol plugin map; `remove` and `clear` call `destroy()` on affected plugins
 - [x] Service-level `plugins.exclude(PluginClass)` prevents excluded global plugin classes from appearing in `getPluginsInOrder()` for that protocol
-- [x] `@cyberfabric/api` `package.json` contains zero `@cyberfabric/*` entries in `dependencies` and `devDependencies`
+- [x] `@gears-frontx/api` `package.json` contains zero `@gears-frontx/*` entries in `dependencies` and `devDependencies`
 - [x] TypeScript strict-mode compilation passes with no `any`, `as unknown as`, or `@ts-ignore` usage in any source file under `packages/api/src/`
 
 ---
@@ -706,9 +706,9 @@ Plugins in `RestProtocol` receive the full URL (`baseURL + relativeUrl`) in `Res
 
 `Symbol.for('hai3:plugin:mock')` is used (not `Symbol()`) so that the symbol is stable across module boundaries and iframe contexts. Any plugin class can be marked as a mock plugin by declaring `static readonly [MOCK_PLUGIN] = true` on its constructor, without inheriting from a specific base class. The `isMockPlugin` guard checks the constructor, not the instance, so subclasses inherit the mark automatically.
 
-### No Mock State in @cyberfabric/api
+### No Mock State in @gears-frontx/api
 
-`@cyberfabric/api` does not track or toggle mock mode state. Mock plugins are plain plugins that intercept requests. Whether they are active is determined purely by whether they are registered in the protocol's plugin chain. The framework layer (`@cyberfabric/framework`) is responsible for activating and deactivating mock plugins in response to `toggleMockMode` events. `@cyberfabric/api` exposes only the identification primitives (`MOCK_PLUGIN`, `isMockPlugin`) that the framework uses to implement this logic.
+`@gears-frontx/api` does not track or toggle mock mode state. Mock plugins are plain plugins that intercept requests. Whether they are active is determined purely by whether they are registered in the protocol's plugin chain. The framework layer (`@gears-frontx/framework`) is responsible for activating and deactivating mock plugins in response to `toggleMockMode` events. `@gears-frontx/api` exposes only the identification primitives (`MOCK_PLUGIN`, `isMockPlugin`) that the framework uses to implement this logic.
 
 ### MockEventSource Abort Safety
 

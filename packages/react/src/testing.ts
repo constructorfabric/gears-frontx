@@ -1,5 +1,5 @@
 /**
- * Test-only entry for @cyberfabric/react.
+ * Test-only entry for @gears-frontx/react.
  *
  * Utilities here are intended for Vitest (or similar) suites that need access
  * to query-client wiring without importing package internals directly.
@@ -14,10 +14,10 @@ export {
   useOptionalHAI3QueryClient,
 } from './queryClient';
 
-/** App-layer tests must import this from `@cyberfabric/react/testing`, not `@cyberfabric/framework/testing`. */
-export { describeBootstrapMfeContract } from '@cyberfabric/framework/testing';
+/** App-layer tests must import this from `@gears-frontx/react/testing`, not `@gears-frontx/framework/testing`. */
+export { describeBootstrapMfeContract } from '@gears-frontx/framework/testing';
 export type {
   BootstrapMfeResolveArgs,
   BootstrapMfeTestSpecOptions,
-} from '@cyberfabric/framework/testing';
+} from '@gears-frontx/framework/testing';
 // @cpt-end:cpt-frontx-dod-react-bindings-provider:p1:inst-react-testing-reexports

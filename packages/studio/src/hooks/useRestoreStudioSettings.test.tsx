@@ -1,10 +1,10 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { eventBus } from '@cyberfabric/react';
+import { eventBus } from '@gears-frontx/react';
 import { STORAGE_KEYS } from '../types';
 import { useRestoreStudioSettings } from './useRestoreStudioSettings';
 
-vi.mock('@cyberfabric/react', () => ({
+vi.mock('@gears-frontx/react', () => ({
   eventBus: {
     emit: vi.fn(),
   },

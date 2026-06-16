@@ -9,7 +9,7 @@
 
 /**
  * Text Direction Type
- * Compatible with @cyberfabric/i18n TextDirection enum values.
+ * Compatible with @gears-frontx/i18n TextDirection enum values.
  */
 export type TextDirection = 'ltr' | 'rtl';
 

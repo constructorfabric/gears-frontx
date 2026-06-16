@@ -2,14 +2,14 @@
 // @cpt-FEATURE:implement-endpoint-descriptors:p4
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { ChildMfeBridge } from '@cyberfabric/react';
+import type { ChildMfeBridge } from '@gears-frontx/react';
 import {
   HAI3_SHARED_PROPERTY_THEME,
   HAI3_SHARED_PROPERTY_LANGUAGE,
   useApiQuery,
   useApiMutation,
   apiRegistry,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import { Card, CardContent, CardFooter } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';

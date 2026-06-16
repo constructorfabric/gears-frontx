@@ -9,13 +9,13 @@
 // @cpt-dod:cpt-frontx-dod-framework-composition-propagation:p1
 // @cpt-dod:cpt-frontx-dod-framework-composition-shared-property:p1
 
-import { eventBus } from '@cyberfabric/state';
-import { i18nRegistry as singletonI18nRegistry, Language } from '@cyberfabric/i18n';
-import { HAI3_SHARED_PROPERTY_LANGUAGE } from '@cyberfabric/screensets';
+import { eventBus } from '@gears-frontx/state';
+import { i18nRegistry as singletonI18nRegistry, Language } from '@gears-frontx/i18n';
+import { HAI3_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/screensets';
 import type { HAI3Plugin, SetLanguagePayload, LanguagePropagationFailedPayload } from '../types';
 
 // Define i18n events for module augmentation
-declare module '@cyberfabric/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'i18n/language/changed': SetLanguagePayload;
     'i18n/propagation/failed': LanguagePropagationFailedPayload;

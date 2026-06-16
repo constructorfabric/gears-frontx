@@ -1,5 +1,5 @@
 {
-  "name": "@cyberfabric/auth",
+  "name": "@gears-frontx/auth",
   "version": "0.2.0-alpha.0",
   "description": "Headless authentication contract and types for HAI3 SDK",
   "type": "module",

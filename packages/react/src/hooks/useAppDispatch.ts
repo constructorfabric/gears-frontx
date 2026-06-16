@@ -7,7 +7,7 @@
 // @cpt-dod:cpt-frontx-dod-react-bindings-redux-hooks:p1
 
 import { useDispatch } from 'react-redux';
-import type { AppDispatch } from '@cyberfabric/framework';
+import type { AppDispatch } from '@gears-frontx/framework';
 
 /**
  * Type-safe dispatch hook.

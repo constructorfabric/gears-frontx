@@ -41,7 +41,7 @@ How should the mediator store and route action handlers so that adding new actio
 * Open/Closed Principle — new action types must not require modification of existing handler infrastructure
 * Single Responsibility — each handler class handles exactly one action type; no branching aggregators
 * Consistency — domain and extension sides must use the same registration API and handler signature; all public contracts use abstract classes, not function types
-* Class-based architecture — every public component in `@cyberfabric/screensets` is an abstract class; `ActionHandler` follows the same convention as `MfeHandler`, `MfeBridgeFactory`, `RuntimeCoordinator`, and `ChildMfeBridge`
+* Class-based architecture — every public component in `@gears-frontx/screensets` is an abstract class; `ActionHandler` follows the same convention as `MfeHandler`, `MfeBridgeFactory`, `RuntimeCoordinator`, and `ChildMfeBridge`
 
 ## Considered Options
 
@@ -68,7 +68,7 @@ Chosen option: "Per-action-type registration with unified mediator storage", bec
 
 * Code review: `ActionsChainsMediator` abstract class must not declare `registerDomainHandler`, `registerExtensionHandler`, or `unregisterDomainHandler`; it must declare `registerHandler(targetId, actionTypeId, handler)` and `unregisterAllHandlers(targetId)`.
 * Code review: Monolithic `ExtensionLifecycleActionHandler` switch class must not exist; each lifecycle action type has its own small `ActionHandler` subclass.
-* Code review: `CustomActionHandler` type and `ActionHandlerFn` type alias must not be exported from `@cyberfabric/screensets`; `ActionHandler` abstract class is the only public handler contract.
+* Code review: `CustomActionHandler` type and `ActionHandlerFn` type alias must not be exported from `@gears-frontx/screensets`; `ActionHandler` abstract class is the only public handler contract.
 * Code review: `ChildMfeBridge.registerActionHandler` signature must be `(actionTypeId: string, handler: ActionHandler): void`.
 * Test: registering two handlers for different action types on the same target and dispatching each type invokes the correct handler and does not invoke the other.
 * Test: unregistering all handlers for a target removes all entries; subsequent dispatch for any action type on that target is a no-op.
@@ -104,7 +104,7 @@ Keep `ActionHandler` interface (`handleAction(actionTypeId, payload)`). Register
 
 ## More Information
 
-`ActionHandler` is an abstract class with a single method: `abstract handleAction(actionTypeId: string, payload: Record<string, unknown> | undefined): Promise<void>`. It is exported from `@cyberfabric/screensets`. The `ChildMfeBridge.registerActionHandler(actionTypeId, handler)` signature accepts `actionTypeId` as the first parameter, making the per-type intent explicit at the call site. Domain-side lifecycle handlers are small classes extending `ActionHandler` — one class per lifecycle action type — registered via `mediator.registerHandler(domainId, actionTypeId, handler)` during `registerDomain()`.
+`ActionHandler` is an abstract class with a single method: `abstract handleAction(actionTypeId: string, payload: Record<string, unknown> | undefined): Promise<void>`. It is exported from `@gears-frontx/screensets`. The `ChildMfeBridge.registerActionHandler(actionTypeId, handler)` signature accepts `actionTypeId` as the first parameter, making the per-type intent explicit at the call site. Domain-side lifecycle handlers are small classes extending `ActionHandler` — one class per lifecycle action type — registered via `mediator.registerHandler(domainId, actionTypeId, handler)` during `registerDomain()`.
 
 `registerDomain` uses an options object as the third parameter:
 ```typescript

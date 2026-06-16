@@ -19,7 +19,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
-import { createHAI3, auth } from '@cyberfabric/framework';
+import { createHAI3, auth } from '@gears-frontx/framework';
 import type {
   AuthProvider,
   AuthContext,
@@ -28,7 +28,7 @@ import type {
   AuthCheckResult,
   AuthSession,
   AuthTransition,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 import { HAI3Provider } from '../src/HAI3Provider';
 import { useCanAccess } from '../src/hooks/useCanAccess';
 import { CanAccess } from '../src/components/CanAccess';
@@ -37,7 +37,7 @@ import { CanAccess } from '../src/components/CanAccess';
 // Helpers
 // ============================================================================
 
-const ownedApps: import('@cyberfabric/framework').HAI3App[] = [];
+const ownedApps: import('@gears-frontx/framework').HAI3App[] = [];
 
 afterEach(() => {
   ownedApps.forEach((a) => a.destroy());
@@ -66,19 +66,19 @@ function makeProviderWithoutCanAccess(): AuthProvider {
   };
 }
 
-function buildApp(provider: AuthProvider): import('@cyberfabric/framework').HAI3App {
+function buildApp(provider: AuthProvider): import('@gears-frontx/framework').HAI3App {
   const app = createHAI3().use(auth({ provider })).build();
   ownedApps.push(app);
   return app;
 }
 
-function buildAppNoAuth(): import('@cyberfabric/framework').HAI3App {
+function buildAppNoAuth(): import('@gears-frontx/framework').HAI3App {
   const app = createHAI3().build();
   ownedApps.push(app);
   return app;
 }
 
-function makeWrapper(app: import('@cyberfabric/framework').HAI3App) {
+function makeWrapper(app: import('@gears-frontx/framework').HAI3App) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return <HAI3Provider app={app}>{children}</HAI3Provider>;
   };

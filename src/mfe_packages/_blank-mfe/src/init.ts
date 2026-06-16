@@ -17,7 +17,7 @@ import {
   effects,
   mock,
   queryCacheShared,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import { homeSlice } from './slices/homeSlice';
 import { initHomeEffects } from './effects/homeEffects';
 import { _BlankApiService } from './api/_BlankApiService';

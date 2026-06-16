@@ -1,5 +1,5 @@
 
-# @cyberfabric/react Guidelines (Canonical)
+# @gears-frontx/react Guidelines (Canonical)
 
 ## AI WORKFLOW (REQUIRED)
 1) Summarize 3-6 rules from this file before making changes.
@@ -7,8 +7,8 @@
 
 ## SCOPE
 - Package: `packages/react/`
-- Layer: L3 React (depends on @cyberfabric/framework)
-- Peer dependencies: `@cyberfabric/framework`, `react`, `react-redux`
+- Layer: L3 React (depends on @gears-frontx/framework)
+- Peer dependencies: `@gears-frontx/framework`, `react`, `react-redux`
 
 ## CRITICAL RULES
 - All apps wrapped with `<HAI3Provider>`.
@@ -39,7 +39,7 @@ function App() {
 
 // OPTIONAL: With pre-built app — register queryCache() before .build() so the app
 // carries the shared QueryClient; HAI3Provider resolves it and mounts QueryClientProvider.
-import { createHAI3, queryCache, screensets } from '@cyberfabric/react';
+import { createHAI3, queryCache, screensets } from '@gears-frontx/react';
 const app = createHAI3().use(queryCache()).use(screensets()).build();
 <HAI3Provider app={app}>
   <AppRouter fallback={<Loading />} />
@@ -54,7 +54,7 @@ import {
   mock,
   queryCacheShared,
   registerSlice,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 apiRegistry.register(MyApiService);
 apiRegistry.initialize();
 const mfeApp = createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build();
@@ -135,7 +135,7 @@ const { data } = useApiQuery(service.getConfig, { staleTime: 0 });
 - Using hooks outside HAI3Provider.
 - Using raw react-redux instead of provided hooks.
 - Exposing TanStack `useQueryClient()` directly to app or MFE code.
-- Importing `queryOptions` from `@tanstack/react-query` or `@cyberfabric/react` in MFE code.
+- Importing `queryOptions` from `@tanstack/react-query` or `@gears-frontx/react` in MFE code.
 - Creating standalone query modules with manual query key factories in MFE packages.
 - Adding layout components to this package.
 - Forgetting TextLoader wrapper for translations.

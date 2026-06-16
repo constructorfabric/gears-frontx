@@ -43,8 +43,8 @@ export interface FullPresetConfig {
  *
  * @example
  * ```typescript
- * import { MfeHandlerMF, FrontX_MFE_ENTRY_MF } from '@cyberfabric/screensets/mfe/handler';
- * import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+ * import { MfeHandlerMF, FrontX_MFE_ENTRY_MF } from '@gears-frontx/screensets/mfe/handler';
+ * import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
  *
  * const app = createFrontX()
  *   .use(full({

@@ -12,7 +12,7 @@ How does RTK Query (`@reduxjs/toolkit/query`) compare with TanStack Query v5 acr
 
 **Out of scope:** SWR, Apollo Client, other data-fetching libraries. Implementation details of how either library would integrate with `BaseApiService` (covered in the [existing TanStack exploration](./2026-03-17-tanstack-query-integration-research.md)).
 
-**Constraints:** HAI3 uses `@reduxjs/toolkit@2.11.2` as a devDependency in `@cyberfabric/state` and `@cyberfabric/react`. The store is a single global instance created via `createStore()` in `@cyberfabric/state` with dynamic slice registration. All MFEs share the host's `QueryClient` for cross-MFE cache deduplication (see `HAI3Provider.tsx` and `MfeProvider.tsx`). Redux state uses a `screensetId/domain` namespace convention for MFE isolation.
+**Constraints:** HAI3 uses `@reduxjs/toolkit@2.11.2` as a devDependency in `@gears-frontx/state` and `@gears-frontx/react`. The store is a single global instance created via `createStore()` in `@gears-frontx/state` with dynamic slice registration. All MFEs share the host's `QueryClient` for cross-MFE cache deduplication (see `HAI3Provider.tsx` and `MfeProvider.tsx`). Redux state uses a `screensetId/domain` namespace convention for MFE isolation.
 
 ## Findings
 
@@ -124,13 +124,13 @@ RTK Query requires a Redux store. Each `createApi` call generates:
 
 This means RTK Query's cache lives inside the Redux store. All cache reads and writes are Redux actions visible in Redux DevTools. This is an advantage for debugging and for code that already interacts with Redux state.
 
-In HAI3, the store is created via `createStore()` in `@cyberfabric/state` (L1). Adding RTK Query's reducer and middleware would require modifying the store creation logic. Since `@cyberfabric/state` is an L1 package with zero `@hai3` dependencies, adding RTK Query integration here would keep it at L1 (RTK is already a peer dependency). However, RTK Query's `createApi` with React hooks comes from `@reduxjs/toolkit/query/react`, which has a React dependency -- this would need to live at L3.
+In HAI3, the store is created via `createStore()` in `@gears-frontx/state` (L1). Adding RTK Query's reducer and middleware would require modifying the store creation logic. Since `@gears-frontx/state` is an L1 package with zero `@hai3` dependencies, adding RTK Query integration here would keep it at L1 (RTK is already a peer dependency). However, RTK Query's `createApi` with React hooks comes from `@reduxjs/toolkit/query/react`, which has a React dependency -- this would need to live at L3.
 
 **Coupling concern.** RTK Query tightly couples data fetching to the Redux store. If HAI3 ever moved away from Redux for client state, RTK Query would also need to be replaced. TanStack Query is independent of the client state manager -- it can coexist with Redux, Zustand, or no state manager at all.
 
 **HAI3-specific observation.** The current store uses dynamic slice registration (`registerSlice`). RTK Query's reducer would need to be registered as a static reducer during store creation, or the store creation logic would need modification to accommodate the API slice's reducer and middleware. The current `createStore` function accepts `initialReducers` but does not expose middleware configuration.
 
-**Confidence:** Substantiated -- based on RTK Query architecture and reading the HAI3 `@cyberfabric/state` store implementation.
+**Confidence:** Substantiated -- based on RTK Query architecture and reading the HAI3 `@gears-frontx/state` store implementation.
 
 ### 7. MFE isolation
 
@@ -205,7 +205,7 @@ Summary matrix against ADR-0017 decision drivers:
 ## Open questions
 
 1. **Auto-cancellation verification.** The TanStack comparison table marks RTK Query as lacking "Query Cancellation." RTK Query does expose `AbortSignal` in `BaseQueryApi`. The exact behavior on component unmount (whether in-flight requests are auto-aborted) should be verified with a prototype, as the comparison table may be referring specifically to auto-cancellation rather than signal availability.
-2. **Store modification scope.** If RTK Query were adopted, how much modification to `@cyberfabric/state`'s `createStore()` would be needed to accommodate the API reducer and middleware? The current API does not expose middleware configuration.
+2. **Store modification scope.** If RTK Query were adopted, how much modification to `@gears-frontx/state`'s `createStore()` would be needed to accommodate the API reducer and middleware? The current API does not expose middleware configuration.
 3. **Tag invalidation cross-MFE.** If a shared `createApi` with `injectEndpoints` were used, would tag invalidation from one MFE unintentionally refetch queries in another MFE? This would need testing.
 4. **OpenAPI codegen value.** RTK Query supports generating endpoint definitions from OpenAPI schemas. If HAI3's backend exposes OpenAPI specs, this could reduce boilerplate significantly. The value depends on whether such specs exist.
 5. **TanStack comparison table bias.** The feature comparison table is maintained by the TanStack team. Independent verification of each "No" for RTK Query would strengthen confidence, particularly for query cancellation and offline mutations.

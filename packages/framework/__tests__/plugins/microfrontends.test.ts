@@ -13,14 +13,14 @@
  */
 
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { eventBus, resetStore } from '@cyberfabric/state';
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
-import type { TypeSystemPlugin, JSONSchema } from '@cyberfabric/screensets';
+import { eventBus, resetStore } from '@gears-frontx/state';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
+import type { TypeSystemPlugin, JSONSchema } from '@gears-frontx/screensets';
 import { createHAI3 } from '../../src/createHAI3';
 import { microfrontends } from '../../src/plugins/microfrontends';
 import { loadLayoutDomains } from '../../src/plugins/microfrontends/gts/loader';
 import { themeSchema, languageSchema, extensionScreenSchema } from '../../src/gts';
-import type { MfeRegistry } from '@cyberfabric/framework';
+import type { MfeRegistry } from '@gears-frontx/framework';
 import { TestContainerProvider } from '../../src/testing/TestContainerProvider';
 import { resetSharedQueryClient } from '../../src/testing';
 import type { HAI3App } from '../../src/types';

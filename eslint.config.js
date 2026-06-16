@@ -45,7 +45,7 @@ export default [
         {
           patterns: [
             {
-              group: ['@cyberfabric/*/src/**'],
+              group: ['@gears-frontx/*/src/**'],
               message:
                 'MONOREPO VIOLATION: Import from package root, not internal paths.',
             },
@@ -78,7 +78,7 @@ export default [
         {
           patterns: [
             {
-              group: ['@cyberfabric/*'],
+              group: ['@gears-frontx/*'],
               message:
                 'SDK VIOLATION: SDK packages cannot import other @hai3 packages.',
             },
@@ -88,7 +88,7 @@ export default [
                 'SDK VIOLATION: SDK packages cannot import React.',
             },
             {
-              group: ['@cyberfabric/*/src/**'],
+              group: ['@gears-frontx/*/src/**'],
               message:
                 'MONOREPO VIOLATION: Import from package root, not internal paths.',
             },
@@ -104,7 +104,7 @@ export default [
   },
 
   // Framework package: Allow unknown/object types (wraps SDK with plugin architecture)
-  // Layer enforcement: Framework cannot import @cyberfabric/react or React
+  // Layer enforcement: Framework cannot import @gears-frontx/react or React
   // BUT keep Flux rules for effects files
   {
     files: ['packages/framework/**/*.ts'],
@@ -117,9 +117,9 @@ export default [
         {
           patterns: [
             {
-              group: ['@cyberfabric/react', '@cyberfabric/react/*'],
+              group: ['@gears-frontx/react', '@gears-frontx/react/*'],
               message:
-                'FRAMEWORK VIOLATION: Framework cannot import @cyberfabric/react (circular dependency).',
+                'FRAMEWORK VIOLATION: Framework cannot import @gears-frontx/react (circular dependency).',
             },
             {
               group: ['react', 'react-dom', 'react/*'],
@@ -127,7 +127,7 @@ export default [
                 'FRAMEWORK VIOLATION: Framework cannot import React.',
             },
             {
-              group: ['@cyberfabric/*/src/**'],
+              group: ['@gears-frontx/*/src/**'],
               message:
                 'MONOREPO VIOLATION: Import from package root, not internal paths.',
             },
@@ -152,9 +152,9 @@ export default [
         {
           patterns: [
             {
-              group: ['@cyberfabric/react', '@cyberfabric/react/*'],
+              group: ['@gears-frontx/react', '@gears-frontx/react/*'],
               message:
-                'FRAMEWORK VIOLATION: Framework cannot import @cyberfabric/react (circular dependency).',
+                'FRAMEWORK VIOLATION: Framework cannot import @gears-frontx/react (circular dependency).',
             },
             {
               group: ['react', 'react-dom', 'react/*'],
@@ -162,7 +162,7 @@ export default [
                 'FRAMEWORK VIOLATION: Framework cannot import React.',
             },
             {
-              group: ['@cyberfabric/*/src/**'],
+              group: ['@gears-frontx/*/src/**'],
               message:
                 'MONOREPO VIOLATION: Import from package root, not internal paths.',
             },
@@ -194,9 +194,9 @@ export default [
         {
           patterns: [
             {
-              group: ['@cyberfabric/react', '@cyberfabric/react/*'],
+              group: ['@gears-frontx/react', '@gears-frontx/react/*'],
               message:
-                'FRAMEWORK VIOLATION: Framework cannot import @cyberfabric/react (circular dependency).',
+                'FRAMEWORK VIOLATION: Framework cannot import @gears-frontx/react (circular dependency).',
             },
             {
               group: ['react', 'react-dom', 'react/*'],
@@ -204,7 +204,7 @@ export default [
                 'FRAMEWORK VIOLATION: Framework cannot import React.',
             },
             {
-              group: ['@cyberfabric/*/src/**'],
+              group: ['@gears-frontx/*/src/**'],
               message:
                 'MONOREPO VIOLATION: Import from package root, not internal paths.',
             },
@@ -220,7 +220,7 @@ export default [
   },
 
   // React package: Allow unknown types for hook generics
-  // Layer enforcement: React must import from @cyberfabric/framework, not SDK packages directly
+  // Layer enforcement: React must import from @gears-frontx/framework, not SDK packages directly
   {
     files: ['packages/react/**/*.ts', 'packages/react/**/*.tsx'],
     rules: {
@@ -231,27 +231,27 @@ export default [
         {
           patterns: [
             {
-              group: ['@cyberfabric/state', '@cyberfabric/state/*'],
+              group: ['@gears-frontx/state', '@gears-frontx/state/*'],
               message:
-                'REACT VIOLATION: Import from @cyberfabric/framework instead.',
+                'REACT VIOLATION: Import from @gears-frontx/framework instead.',
             },
             {
-              group: ['@cyberfabric/screensets', '@cyberfabric/screensets/*'],
+              group: ['@gears-frontx/screensets', '@gears-frontx/screensets/*'],
               message:
-                'REACT VIOLATION: Import from @cyberfabric/framework instead.',
+                'REACT VIOLATION: Import from @gears-frontx/framework instead.',
             },
             {
-              group: ['@cyberfabric/api', '@cyberfabric/api/*'],
+              group: ['@gears-frontx/api', '@gears-frontx/api/*'],
               message:
-                'REACT VIOLATION: Import from @cyberfabric/framework instead.',
+                'REACT VIOLATION: Import from @gears-frontx/framework instead.',
             },
             {
-              group: ['@cyberfabric/i18n', '@cyberfabric/i18n/*'],
+              group: ['@gears-frontx/i18n', '@gears-frontx/i18n/*'],
               message:
-                'REACT VIOLATION: Import from @cyberfabric/framework instead.',
+                'REACT VIOLATION: Import from @gears-frontx/framework instead.',
             },
             {
-              group: ['@cyberfabric/*/src/**'],
+              group: ['@gears-frontx/*/src/**'],
               message:
                 'MONOREPO VIOLATION: Import from package root, not internal paths.',
             },
@@ -314,7 +314,7 @@ export default [
     },
   },
 
-  // App: Layer enforcement for src/app/** (must use @cyberfabric/react, not L1/L2 packages)
+  // App: Layer enforcement for src/app/** (must use @gears-frontx/react, not L1/L2 packages)
   {
     files: ['src/app/**/*.{ts,tsx}'],
     rules: {
@@ -324,42 +324,42 @@ export default [
         {
           patterns: [
             {
-              group: ['@cyberfabric/framework', '@cyberfabric/framework/*'],
+              group: ['@gears-frontx/framework', '@gears-frontx/framework/*'],
               message:
-                'LAYER VIOLATION: App-layer code must import from @cyberfabric/react, not directly from @cyberfabric/framework (Layer 2).',
+                'LAYER VIOLATION: App-layer code must import from @gears-frontx/react, not directly from @gears-frontx/framework (Layer 2).',
             },
             {
-              group: ['@cyberfabric/state', '@cyberfabric/state/*'],
+              group: ['@gears-frontx/state', '@gears-frontx/state/*'],
               message:
-                'LAYER VIOLATION: App-layer code must import from @cyberfabric/react, not directly from @cyberfabric/state (Layer 1).',
+                'LAYER VIOLATION: App-layer code must import from @gears-frontx/react, not directly from @gears-frontx/state (Layer 1).',
             },
             {
-              group: ['@cyberfabric/api', '@cyberfabric/api/*'],
+              group: ['@gears-frontx/api', '@gears-frontx/api/*'],
               message:
-                'LAYER VIOLATION: App-layer code must import from @cyberfabric/react, not directly from @cyberfabric/api (Layer 1).',
+                'LAYER VIOLATION: App-layer code must import from @gears-frontx/react, not directly from @gears-frontx/api (Layer 1).',
             },
             {
-              group: ['@cyberfabric/i18n', '@cyberfabric/i18n/*'],
+              group: ['@gears-frontx/i18n', '@gears-frontx/i18n/*'],
               message:
-                'LAYER VIOLATION: App-layer code must import from @cyberfabric/react, not directly from @cyberfabric/i18n (Layer 1).',
+                'LAYER VIOLATION: App-layer code must import from @gears-frontx/react, not directly from @gears-frontx/i18n (Layer 1).',
             },
             {
-              group: ['@cyberfabric/screensets', '@cyberfabric/screensets/*'],
+              group: ['@gears-frontx/screensets', '@gears-frontx/screensets/*'],
               message:
-                'LAYER VIOLATION: App-layer code must import from @cyberfabric/react, not directly from @cyberfabric/screensets (Layer 1).',
+                'LAYER VIOLATION: App-layer code must import from @gears-frontx/react, not directly from @gears-frontx/screensets (Layer 1).',
             },
             // Redux term bans - use FrontX state terms instead
             {
               group: ['react-redux'],
               importNames: ['useDispatch'],
               message:
-                'REDUX VIOLATION: Do not use useDispatch from react-redux. Use useAppDispatch from @cyberfabric/react instead.',
+                'REDUX VIOLATION: Do not use useDispatch from react-redux. Use useAppDispatch from @gears-frontx/react instead.',
             },
             {
               group: ['react-redux'],
               importNames: ['useSelector'],
               message:
-                'REDUX VIOLATION: Do not use useSelector from react-redux. Use useAppSelector from @cyberfabric/react instead.',
+                'REDUX VIOLATION: Do not use useSelector from react-redux. Use useAppSelector from @gears-frontx/react instead.',
             },
           ],
         },
@@ -381,7 +381,7 @@ export default [
         {
           patterns: [
             {
-              group: ['@cyberfabric/studio', '@cyberfabric/studio/**'],
+              group: ['@gears-frontx/studio', '@gears-frontx/studio/**'],
               message:
                 'STUDIO VIOLATION: Studio should not be imported directly in app code. HAI3Provider auto-detects and loads Studio in development mode.',
             },

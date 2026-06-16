@@ -10,7 +10,7 @@ import {
   useAppSelector,
   eventBus,
   type MenuState,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import {
   Sidebar,
   SidebarContent,

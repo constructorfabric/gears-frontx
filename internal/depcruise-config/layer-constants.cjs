@@ -14,23 +14,23 @@
  * framework, or a deprecated edge.
  */
 
-// L1 — SDK packages. Must have zero `@cyberfabric/*` dependencies and no React.
+// L1 — SDK packages. Must have zero `@gears-frontx/*` dependencies and no React.
 const SDK_PACKAGES = Object.freeze(['state', 'api', 'i18n', 'screensets']);
 
 // L2 — Framework package may import exactly these SDK packages (no more).
 const ALLOWED_FRAMEWORK_SDK_DEPS = Object.freeze([
-  '@cyberfabric/state',
-  '@cyberfabric/api',
-  '@cyberfabric/i18n',
-  '@cyberfabric/screensets',
+  '@gears-frontx/state',
+  '@gears-frontx/api',
+  '@gears-frontx/i18n',
+  '@gears-frontx/screensets',
 ]);
 
 // Packages that have been removed / folded into another layer. Any surviving
 // reference to them is a layer violation regardless of layer.
 const DEPRECATED_PACKAGES = Object.freeze([
-  '@cyberfabric/uikit-contracts', // theme types absorbed by @cyberfabric/framework
-  '@cyberfabric/uicore',          // consolidated into @cyberfabric/framework
-  '@cyberfabric/layout',          // layout slices now in @cyberfabric/framework
+  '@gears-frontx/uikit-contracts', // theme types absorbed by @gears-frontx/framework
+  '@gears-frontx/uicore',          // consolidated into @gears-frontx/framework
+  '@gears-frontx/layout',          // layout slices now in @gears-frontx/framework
 ]);
 
 module.exports = {

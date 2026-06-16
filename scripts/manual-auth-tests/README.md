@@ -50,7 +50,7 @@ Expected: requests to the allowlisted origin are sent with `withCredentials: tru
 
 If you changed FrontX locally and want to test in a separate consumer app, you have two common options.
 
-Note: `@cyberfabric/api` has a peer dependency on `axios`. Install it in your consumer app:
+Note: `@gears-frontx/api` has a peer dependency on `axios`. Install it in your consumer app:
 
 ```bash
 pnpm add axios
@@ -72,9 +72,9 @@ npm run build:packages:framework
 ```json
 {
   "dependencies": {
-    "@cyberfabric/auth": "file:/path/to/frontx/packages/auth",
-    "@cyberfabric/api": "file:/path/to/frontx/packages/api",
-    "@cyberfabric/framework": "file:/path/to/frontx/packages/framework"
+    "@gears-frontx/auth": "file:/path/to/frontx/packages/auth",
+    "@gears-frontx/api": "file:/path/to/frontx/packages/api",
+    "@gears-frontx/framework": "file:/path/to/frontx/packages/framework"
   }
 }
 ```
@@ -91,9 +91,9 @@ If you use pnpm, prefer `link:` for symlinks:
 ```json
 {
   "dependencies": {
-    "@cyberfabric/auth": "link:/path/to/frontx/packages/auth",
-    "@cyberfabric/api": "link:/path/to/frontx/packages/api",
-    "@cyberfabric/framework": "link:/path/to/frontx/packages/framework"
+    "@gears-frontx/auth": "link:/path/to/frontx/packages/auth",
+    "@gears-frontx/api": "link:/path/to/frontx/packages/api",
+    "@gears-frontx/framework": "link:/path/to/frontx/packages/framework"
   }
 }
 ```
@@ -113,7 +113,7 @@ cd /path/to/frontx/packages/framework && npm pack
 
 ```bash
 cd /path/to/consumer-app
-npm i /path/to/frontx/packages/auth/cyberfabric-auth-*.tgz
-npm i /path/to/frontx/packages/api/cyberfabric-api-*.tgz
-npm i /path/to/frontx/packages/framework/cyberfabric-framework-*.tgz
+npm i /path/to/frontx/packages/auth/gears-frontx-auth-*.tgz
+npm i /path/to/frontx/packages/api/gears-frontx-api-*.tgz
+npm i /path/to/frontx/packages/framework/gears-frontx-framework-*.tgz
 ```

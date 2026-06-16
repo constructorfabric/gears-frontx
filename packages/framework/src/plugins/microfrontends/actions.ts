@@ -10,7 +10,7 @@
 // @cpt-flow:cpt-frontx-flow-framework-composition-mfe-registration:p1
 // @cpt-dod:cpt-frontx-dod-framework-composition-mfe-plugin:p1
 
-import { eventBus } from '@cyberfabric/state';
+import { eventBus } from '@gears-frontx/state';
 import { MfeEvents } from './constants';
 import {
   HAI3_ACTION_LOAD_EXT,
@@ -18,7 +18,7 @@ import {
   HAI3_ACTION_UNMOUNT_EXT,
   type Extension,
   type MfeRegistry,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 
 // ============================================================================
 // Module-Level Registry Reference
@@ -66,7 +66,7 @@ export interface UnregisterExtensionPayload {
 // Module Augmentation for Type-Safe Events
 // ============================================================================
 
-declare module '@cyberfabric/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'mfe/registerExtensionRequested': RegisterExtensionPayload;
     'mfe/unregisterExtensionRequested': UnregisterExtensionPayload;
@@ -85,7 +85,7 @@ declare module '@cyberfabric/state' {
  *
  * @example
  * ```typescript
- * import { loadExtension } from '@cyberfabric/framework';
+ * import { loadExtension } from '@gears-frontx/framework';
  * loadExtension('gts.hai3.mfes.ext.extension.v1~my.extension.v1');
  * ```
  */
@@ -116,7 +116,7 @@ export function loadExtension(extensionId: string): void {
  *
  * @example
  * ```typescript
- * import { mountExtension } from '@cyberfabric/framework';
+ * import { mountExtension } from '@gears-frontx/framework';
  * mountExtension('gts.hai3.mfes.ext.extension.v1~my.extension.v1');
  * ```
  */
@@ -145,7 +145,7 @@ export function mountExtension(extensionId: string): void {
  *
  * @example
  * ```typescript
- * import { unmountExtension } from '@cyberfabric/framework';
+ * import { unmountExtension } from '@gears-frontx/framework';
  * unmountExtension('gts.hai3.mfes.ext.extension.v1~my.extension.v1');
  * ```
  */
@@ -188,7 +188,7 @@ export function unmountExtension(extensionId: string): void {
  *
  * @example
  * ```typescript
- * import { registerExtension } from '@cyberfabric/framework';
+ * import { registerExtension } from '@gears-frontx/framework';
  * const extension: Extension = {
  *   id: 'gts.hai3.mfes.ext.extension.v1~my.extension.v1',
  *   domain: 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1',
@@ -211,7 +211,7 @@ export function registerExtension(extension: Extension): void {
  *
  * @example
  * ```typescript
- * import { unregisterExtension } from '@cyberfabric/framework';
+ * import { unregisterExtension } from '@gears-frontx/framework';
  * unregisterExtension('gts.hai3.mfes.ext.extension.v1~my.extension.v1');
  * ```
  */

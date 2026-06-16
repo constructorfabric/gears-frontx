@@ -69,7 +69,7 @@ program
     "Package manager to use ('npm', 'pnpm', 'yarn')"
   )
   .option('-l, --layer <type>', 'Create a package for a specific SDK layer (sdk, framework, react)')
-  .option('--local', 'Use local @cyberfabric packages from monorepo (file:) instead of npm')
+  .option('--local', 'Use local @gears-frontx packages from monorepo (file:) instead of npm')
   .option('--tests <variant>', "Test scaffold ('unit' or 'none' to skip Vitest scaffolding)")
   .action(async (projectName: string, options: Record<string, unknown>) => {
     const result = await executeCommand(
@@ -199,7 +199,7 @@ aiCmd
     'Specific tool to sync (claude, copilot, cursor, windsurf, all)',
     'all'
   )
-  .option('-d, --detect-packages', 'Detect installed @cyberfabric packages')
+  .option('-d, --detect-packages', 'Detect installed @gears-frontx packages')
   .option('--diff', 'Show diff of changes without writing files')
   .action(async (options: Record<string, unknown>) => {
     const result = await executeCommand(

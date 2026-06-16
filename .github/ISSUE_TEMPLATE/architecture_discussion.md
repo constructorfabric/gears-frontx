@@ -28,13 +28,13 @@ Why would this change be beneficial? What problems does it solve?
 
 ## Affected Components
 Which FrontX components or packages are affected?
-- [ ] Core Framework (@cyberfabric/framework)
-- [ ] React Integration (@cyberfabric/react)
-- [ ] Screensets (@cyberfabric/screensets)
-- [ ] CLI (@cyberfabric/cli)
-- [ ] Internationalization (@cyberfabric/i18n)
-- [ ] State Management (@cyberfabric/state)
-- [ ] Studio (@cyberfabric/studio)
+- [ ] Core Framework (@gears-frontx/framework)
+- [ ] React Integration (@gears-frontx/react)
+- [ ] Screensets (@gears-frontx/screensets)
+- [ ] CLI (@gears-frontx/cli)
+- [ ] Internationalization (@gears-frontx/i18n)
+- [ ] State Management (@gears-frontx/state)
+- [ ] Studio (@gears-frontx/studio)
 - [ ] Multiple packages
 
 ## Breaking Changes

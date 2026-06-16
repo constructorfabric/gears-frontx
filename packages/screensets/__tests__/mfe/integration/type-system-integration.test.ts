@@ -116,7 +116,7 @@ describe('In-memory type-system integration (DefaultMfeRegistry + GTS plugin)', 
 
   describe('Phase 37: Screen Extension Derived Type - Type Hierarchy', () => {
     // NOTE: The extension_screen.v1 schema is NOT a built-in L1 schema.
-    // It lives in @cyberfabric/framework and is registered at the application layer.
+    // It lives in @gears-frontx/framework and is registered at the application layer.
     // Schema content tests are in packages/framework/__tests__/plugins/microfrontends/property-validation.test.ts.
     // Only the string-based type hierarchy check (isTypeOf) is tested here
     // because it does not require schema registration.

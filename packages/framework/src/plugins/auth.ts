@@ -21,14 +21,14 @@ import type {
   AuthStateListener,
   AuthUnsubscribe,
   AuthTransition,
-} from '@cyberfabric/auth';
+} from '@gears-frontx/auth';
 import {
   RestPlugin,
   RestProtocol,
   type ApiPluginErrorContext,
   type RestRequestContext,
   type RestResponseContext,
-} from '@cyberfabric/api';
+} from '@gears-frontx/api';
 import type { HAI3Plugin } from '../types';
 
 export type AuthRuntime = {
@@ -91,7 +91,7 @@ export type AuthPluginConfig = {
    */
   transport?: AuthTransportBinder;
   /**
-   * Configuration for the default @cyberfabric/api binding.
+   * Configuration for the default @gears-frontx/api binding.
    * Ignored when `transport` is provided.
    */
   hai3Api?: Hai3ApiAuthTransportConfig;
@@ -628,7 +628,7 @@ export function hai3ApiTransport(): AuthTransportBinder {
 /**
  * Auth plugin.
  *
- * Wires a headless AuthProvider into @cyberfabric/api protocol plugins and exposes `app.auth`.
+ * Wires a headless AuthProvider into @gears-frontx/api protocol plugins and exposes `app.auth`.
  *
  * **Scope:** REST transport only. SSE (Server-Sent Events) auth is out-of-scope for the
  * default `hai3ApiTransport()` binding. SSE connections requiring auth should use a custom

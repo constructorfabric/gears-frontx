@@ -21,7 +21,7 @@
 // @cpt-state:cpt-frontx-state-request-lifecycle-mutation:p2
 // @cpt-FEATURE:implement-endpoint-descriptors:p3
 
-import type { MutationDescriptor } from '@cyberfabric/framework';
+import type { MutationDescriptor } from '@gears-frontx/framework';
 import type { MutationCallbackContext } from './QueryCache';
 import type { ApiMutationResult } from '../types';
 import { useHAI3Mutation, useRequiredHAI3QueryClient } from '../queryClient';

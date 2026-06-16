@@ -1,13 +1,13 @@
 /**
  * FrontX Context - React context for FrontX application
  *
- * React Layer: L3 (Depends on @cyberfabric/framework)
+ * React Layer: L3 (Depends on @gears-frontx/framework)
  */
 // @cpt-flow:cpt-frontx-flow-react-bindings-use-hai3:p2
 // @cpt-algo:cpt-frontx-algo-react-bindings-mfe-context-guard:p1
 
 import { createContext, useContext } from 'react';
-import type { HAI3App } from '@cyberfabric/framework';
+import type { HAI3App } from '@gears-frontx/framework';
 
 // ============================================================================
 // Context Definition

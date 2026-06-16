@@ -1,11 +1,11 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { eventBus } from '@cyberfabric/react';
+import { eventBus } from '@gears-frontx/react';
 import { StudioEvents } from '../events/studioEvents';
 import { STORAGE_KEYS } from '../types';
 import { useDraggable } from './useDraggable';
 
-vi.mock('@cyberfabric/react', () => ({
+vi.mock('@gears-frontx/react', () => ({
   eventBus: {
     emit: vi.fn(),
   },

@@ -55,8 +55,8 @@ Create `src/lifecycle.tsx`:
 
 ```typescript
 import React from 'react';
-import type { ChildMfeBridge } from '@cyberfabric/react';
-import { ThemeAwareReactLifecycle } from '@cyberfabric/react';
+import type { ChildMfeBridge } from '@gears-frontx/react';
+import { ThemeAwareReactLifecycle } from '@gears-frontx/react';
 import { mfeApp } from './init';
 import { YourScreen } from './screens/YourScreen';
 
@@ -130,7 +130,7 @@ npm run dev:all
 ### Issue: Redux/useSelector errors
 - MFE must use mock data (no Redux Provider in isolation)
 - Use `useState` for local state management
-- Do not import Redux hooks (@cyberfabric/react)
+- Do not import Redux hooks (@gears-frontx/react)
 
 ## API SERVICE & DATA FETCHING
 
@@ -174,7 +174,7 @@ To isolate cache, use a different `baseURL`.
 
 ❌ **DON'T:**
 - Add standalone modules with query key factories or `queryOptions()` alongside the service
-- Import `queryOptions` from `@tanstack/react-query` or `@cyberfabric/react`
+- Import `queryOptions` from `@tanstack/react-query` or `@gears-frontx/react`
 - Add `queryCache()`, `createHAI3App()`, or `QueryClientProvider` inside the MFE bootstrap
 - Import Redux hooks directly
 - Use vite build && vite preview in dev mode

@@ -47,7 +47,7 @@ import {
   type MfManifest,
   type MfeEntryMF,
   type JSONSchema,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 
 const WIDGETS_DOMAIN_ID =
   'gts.hai3.mfes.ext.domain.v1~hai3.widgets.area.main.v1';

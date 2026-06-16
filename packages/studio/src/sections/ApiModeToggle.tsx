@@ -1,7 +1,7 @@
 // @cpt-flow:cpt-frontx-flow-studio-devtools-mock-toggle:p1
 // @cpt-dod:cpt-frontx-dod-studio-devtools-control-panel:p1
 import React from 'react';
-import { useTranslation, useAppSelector, toggleMockMode, type MockState } from '@cyberfabric/react';
+import { useTranslation, useAppSelector, toggleMockMode, type MockState } from '@gears-frontx/react';
 import { Switch } from '../uikit/base/switch';
 
 /**

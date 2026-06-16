@@ -93,7 +93,7 @@ export const createCommand: CommandDefinition<
     },
     {
       name: 'local',
-      description: 'Use local @cyberfabric packages from monorepo (file:) instead of npm; requires CLI run from linked monorepo or FRONTX_MONOREPO_ROOT',
+      description: 'Use local @gears-frontx packages from monorepo (file:) instead of npm; requires CLI run from linked monorepo or FRONTX_MONOREPO_ROOT',
       type: 'boolean',
     },
     {
@@ -206,7 +206,7 @@ export const createCommand: CommandDefinition<
       if (useLocal) {
         monorepoRoot = await findMonorepoRoot(getTemplatesDir());
         if (monorepoRoot) {
-          logger.info('Using local @cyberfabric packages from monorepo (file:).');
+          logger.info('Using local @gears-frontx packages from monorepo (file:).');
         } else {
           logger.warn(
             'Local packages requested but FrontX monorepo root not found. Set FRONTX_MONOREPO_ROOT or run from a linked CLI inside the monorepo. Using registry versions.'
@@ -387,7 +387,7 @@ export const createCommand: CommandDefinition<
           'Local packages requested but FrontX monorepo root not found. Set FRONTX_MONOREPO_ROOT or run from a linked CLI inside the monorepo. Using registry versions.'
         );
       } else {
-        logger.info('Using local @cyberfabric packages from monorepo (file:).');
+        logger.info('Using local @gears-frontx packages from monorepo (file:).');
       }
     }
     // @cpt-end:cpt-frontx-flow-unit-test-generation-and-agent-verification-create-project:p1:inst-create-project-invoke

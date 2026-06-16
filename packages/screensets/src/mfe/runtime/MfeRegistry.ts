@@ -36,7 +36,7 @@ import type { ExtensionMounter } from './ExtensionMounter';
  *
  * @example
  * ```typescript
- * import { mfeRegistryFactory, gtsPlugin } from '@cyberfabric/screensets';
+ * import { mfeRegistryFactory, gtsPlugin } from '@gears-frontx/screensets';
  *
  * const registry = mfeRegistryFactory.build({ typeSystem: gtsPlugin });
  * registry.registerDomain(myDomain, new MyDomainFactory());

@@ -1,4 +1,4 @@
-# @cyberfabric/auth
+# @gears-frontx/auth
 
 Headless authentication contract for HAI3.
 
@@ -19,12 +19,12 @@ Optional surface:
 
 ## HAI3 Integration
 
-Use the framework `auth()` plugin to bind your `AuthProvider` into `@cyberfabric/api` REST requests (bearer tokens and cookie-session).
+Use the framework `auth()` plugin to bind your `AuthProvider` into `@gears-frontx/api` REST requests (bearer tokens and cookie-session).
 
 ```ts
-import { createHAI3 } from '@cyberfabric/framework';
-import { auth } from '@cyberfabric/framework';
-import type { AuthProvider } from '@cyberfabric/auth';
+import { createHAI3 } from '@gears-frontx/framework';
+import { auth } from '@gears-frontx/framework';
+import type { AuthProvider } from '@gears-frontx/auth';
 
 const provider: AuthProvider = {
   async getSession() {
@@ -60,9 +60,9 @@ npm run build:packages:framework
 ```json
 {
   "dependencies": {
-    "@cyberfabric/auth": "file:/path/to/frontx/packages/auth",
-    "@cyberfabric/api": "file:/path/to/frontx/packages/api",
-    "@cyberfabric/framework": "file:/path/to/frontx/packages/framework"
+    "@gears-frontx/auth": "file:/path/to/frontx/packages/auth",
+    "@gears-frontx/api": "file:/path/to/frontx/packages/api",
+    "@gears-frontx/framework": "file:/path/to/frontx/packages/framework"
   }
 }
 ```
@@ -72,14 +72,14 @@ If you use pnpm, prefer `link:` for symlinks:
 ```json
 {
   "dependencies": {
-    "@cyberfabric/auth": "link:/path/to/frontx/packages/auth",
-    "@cyberfabric/api": "link:/path/to/frontx/packages/api",
-    "@cyberfabric/framework": "link:/path/to/frontx/packages/framework"
+    "@gears-frontx/auth": "link:/path/to/frontx/packages/auth",
+    "@gears-frontx/api": "link:/path/to/frontx/packages/api",
+    "@gears-frontx/framework": "link:/path/to/frontx/packages/framework"
   }
 }
 ```
 
-Note: `@cyberfabric/api` expects `axios` as a peer dependency. Install it in your consumer app:
+Note: `@gears-frontx/api` expects `axios` as a peer dependency. Install it in your consumer app:
 
 ```bash
 pnpm add axios

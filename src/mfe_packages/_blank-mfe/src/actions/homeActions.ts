@@ -4,7 +4,7 @@
  * Actions emit events via eventBus to trigger the flux cycle.
  *
  * Example:
- *   import { eventBus } from '@cyberfabric/react';
+ *   import { eventBus } from '@gears-frontx/react';
  *   import '../events/homeEvents';
  *
  *   export function fetchData(): void {

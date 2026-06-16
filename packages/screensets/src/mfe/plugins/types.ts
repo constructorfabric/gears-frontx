@@ -1,7 +1,7 @@
 /**
  * Type System Plugin for MFE contracts
  *
- * The @cyberfabric/screensets package treats type IDs as OPAQUE STRINGS.
+ * The @gears-frontx/screensets package treats type IDs as OPAQUE STRINGS.
  * All type ID understanding (parsing, format validation, building) is delegated to the plugin.
  *
  * @packageDocumentation
@@ -56,7 +56,7 @@ export interface JSONSchema {
  *
  * TEMPORARY DEFAULT: `TSchema` defaults to `unknown` to keep this change
  * minimal and non-breaking — many schema-agnostic consumers (registry,
- * mediator, config, framework wiring, @cyberfabric/react bindings) spell
+ * mediator, config, framework wiring, @gears-frontx/react bindings) spell
  * `TypeSystemPlugin` with no type argument. A deliberate stopgap ahead of the
  * in-flight template/framework separation, to be removed/updated there so
  * every consumer states its schema shape explicitly. It is `unknown`, NOT

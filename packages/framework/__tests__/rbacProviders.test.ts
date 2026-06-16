@@ -18,7 +18,7 @@ import type {
   AuthPermissions,
   AuthProvider,
   AuthSession,
-} from '@cyberfabric/auth';
+} from '@gears-frontx/auth';
 
 // ---------------------------------------------------------------------------
 // Fixtures

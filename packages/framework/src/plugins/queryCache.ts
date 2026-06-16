@@ -18,15 +18,15 @@ import {
   peekSharedFetchCache,
   releaseSharedFetchCache,
   retainSharedFetchCache,
-} from '@cyberfabric/api';
+} from '@gears-frontx/api';
 import { QueryClient } from '@tanstack/query-core';
-import { eventBus, type Subscription } from '@cyberfabric/state';
+import { eventBus, type Subscription } from '@gears-frontx/state';
 import type { HAI3App, HAI3Plugin } from '../types';
 import { MockEvents } from '../effects/mockEffects';
 
 const QUERY_CACHE_RUNTIME_CHANGED_EVENT = 'cache/runtime/changed' as const;
 
-declare module '@cyberfabric/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'cache/runtime/changed': CacheRuntimeChangedPayload;
     'cache/invalidate': CacheInvalidatePayload;

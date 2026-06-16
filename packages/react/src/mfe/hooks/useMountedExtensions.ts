@@ -14,7 +14,7 @@
 
 import { useSyncExternalStore, useCallback, useRef } from 'react';
 import { useHAI3 } from '../../HAI3Context';
-import type { Extension } from '@cyberfabric/framework';
+import type { Extension } from '@gears-frontx/framework';
 
 // ============================================================================
 // Hook Implementation

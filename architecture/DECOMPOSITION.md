@@ -180,7 +180,7 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
 
 - **Scope**:
   - Blob URL creation from fetched source text
-  - Bare specifier rewriting for all declared shared deps (`@cyberfabric/*` and third-party like `react`, `react-dom`, `@reduxjs/toolkit`) → per-load blob URLs
+  - Bare specifier rewriting for all declared shared deps (`@gears-frontx/*` and third-party like `react`, `react-dom`, `@reduxjs/toolkit`) → per-load blob URLs
   - Cross-runtime source text deduplication via `sharedDepTextCache` keyed by `name@version`
   - Recursive chain loading for transitive dependencies
   - Per-load import map management
@@ -549,7 +549,7 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
   - [x] `p1` - `cpt-frontx-component-studio`
 
 - **API**:
-  - `import('@cyberfabric/studio')` (dev-only dynamic import)
+  - `import('@gears-frontx/studio')` (dev-only dynamic import)
   - Studio panel toggle
 
 - **Sequences**:
@@ -740,7 +740,7 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
   - `AbortSignal` threading through `RestProtocol` and plugin chain
   - `RestRequestOptions` pattern for HTTP method extensibility
   - `CanceledError` detection and plugin chain bypass
-  - `EndpointDescriptor<TData>`, `MutationDescriptor<TData, TVariables>`, and `StreamDescriptor<TEvent>` types at L1 (`@cyberfabric/api`)
+  - `EndpointDescriptor<TData>`, `MutationDescriptor<TData, TVariables>`, and `StreamDescriptor<TEvent>` types at L1 (`@gears-frontx/api`)
   - `RestEndpointProtocol.query(path)`, `queryWith(pathFn)`, `mutation(method, path)`, and `SseStreamProtocol.stream(path)` — cache keys derived from `[baseURL, 'GET', path]` for static reads, `[baseURL, 'GET', resolvedPath, params]` for parameterized reads, `[baseURL, method, path]` for writes, and `[baseURL, 'SSE', path]` for streams
   - `queryCache()` framework plugin at L2 — creates and owns the host shared `QueryClient`, handles `MockEvents.Toggle` cache clear, handles `cache/invalidate` / `cache/set` / `cache/remove` events from Flux effects, keeps the L1 `sharedFetchCache` in sync, and attaches the client to the app instance for internal React consumption
   - `queryCacheShared()` framework plugin at L2 — required for separately mounted child roots (including MFE apps): joins the existing host `QueryClient` from `queryCache()` without creating a second client; may register before the host runtime and attach when the host initializes

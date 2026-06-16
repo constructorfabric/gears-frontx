@@ -30,7 +30,7 @@ export type {EventName}Payload = {
   // payload fields
 };
 
-declare module '@cyberfabric/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     [{Domain}Events.{EventName}]: {EventName}Payload;
   }
@@ -40,7 +40,7 @@ declare module '@cyberfabric/state' {
 ### 1.2 Create Action
 In src/screensets/{screenset}/actions/{domain}Actions.ts:
 ```typescript
-import { eventBus } from '@cyberfabric/state';
+import { eventBus } from '@gears-frontx/state';
 import { {Domain}Events } from '../events/{domain}Events';
 
 export const {actionName} = (params: ParamsType) => {
@@ -55,7 +55,7 @@ export const {actionName} = (params: ParamsType) => {
 ### 1.3 Create Effect
 In src/screensets/{screenset}/effects/{domain}Effects.ts:
 ```typescript
-import { eventBus, getStore } from '@cyberfabric/state';
+import { eventBus, getStore } from '@gears-frontx/state';
 import { {Domain}Events } from '../events/{domain}Events';
 
 export function init{Domain}Effects(): void {

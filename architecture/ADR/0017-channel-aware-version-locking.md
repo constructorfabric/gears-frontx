@@ -24,7 +24,7 @@ date: 2026-03-27
 
 ## Context and Problem Statement
 
-The `@cyberfabric/cli` scaffolds new projects with dependency versions for all `@cyberfabric/*` packages. Previously, these versions were hardcoded to the `alpha` dist-tag. With the introduction of gitflow (develop→alpha, main→latest, release→rc), the CLI must emit dependency versions that match its own publication channel. How should the CLI know which exact versions to inject into scaffolded `package.json` files?
+The `@gears-frontx/cli` scaffolds new projects with dependency versions for all `@gears-frontx/*` packages. Previously, these versions were hardcoded to the `alpha` dist-tag. With the introduction of gitflow (develop→alpha, main→latest, release→rc), the CLI must emit dependency versions that match its own publication channel. How should the CLI know which exact versions to inject into scaffolded `package.json` files?
 
 ## Decision Drivers
 
@@ -80,7 +80,7 @@ Keep version strings directly in the generator TypeScript files, updated manuall
 
 ### Runtime NPM registry lookup during scaffolding
 
-The CLI queries the NPM registry at scaffold time to determine the latest version for each `@cyberfabric/*` package.
+The CLI queries the NPM registry at scaffold time to determine the latest version for each `@gears-frontx/*` package.
 
 * Good, because always returns the freshest version available
 * Bad, because requires network access — breaks offline scaffolding

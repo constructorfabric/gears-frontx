@@ -12,8 +12,8 @@
  */
 
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import type { ChildMfeBridge } from '@cyberfabric/react';
-import { HAI3_SHARED_PROPERTY_LANGUAGE, HAI3_SHARED_PROPERTY_THEME } from '@cyberfabric/react';
+import type { ChildMfeBridge } from '@gears-frontx/react';
+import { HAI3_SHARED_PROPERTY_LANGUAGE, HAI3_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
 import { useScreenTranslations } from '../../shared/useScreenTranslations';
 import { CategoryMenu } from './components/CategoryMenu';
 import { Card, CardContent } from '../../components/ui/card';

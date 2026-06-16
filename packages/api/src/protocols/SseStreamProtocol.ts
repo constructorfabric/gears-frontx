@@ -4,7 +4,7 @@
  * Owns the descriptor contract for SSE streams while delegating imperative
  * connection lifecycle work to an injected SseProtocol instance.
  *
- * SDK Layer: L1 (Zero @cyberfabric dependencies)
+ * SDK Layer: L1 (Zero @gears-frontx dependencies)
  */
 
 import {

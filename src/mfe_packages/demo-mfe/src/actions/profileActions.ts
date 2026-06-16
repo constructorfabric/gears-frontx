@@ -1,4 +1,4 @@
-import { apiRegistry, invalidateQueryCacheForApp } from '@cyberfabric/react';
+import { apiRegistry, invalidateQueryCacheForApp } from '@gears-frontx/react';
 import { AccountsApiService } from '../api/AccountsApiService';
 import { mfeApp } from '../init';
 

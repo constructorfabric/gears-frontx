@@ -9,7 +9,7 @@ vi.mock('./bootstrap', () => ({
   bootstrapMFE: (...args: never[]) => mockBootstrapMFE(...args),
 }));
 
-vi.mock('@cyberfabric/react', async (importOriginal) => ({
+vi.mock('@gears-frontx/react', async (importOriginal) => ({
   ...(await importOriginal<Record<string, never>>()),
   useHAI3: () => mockUseHAI3(),
   screenDomain: mockScreenDomain,

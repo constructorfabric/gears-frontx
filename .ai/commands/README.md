@@ -6,9 +6,9 @@ FrontX commands are distributed across packages based on their layer:
 
 | Package | Layer | Commands |
 |---------|-------|----------|
-| `@cyberfabric/api` | L1 SDK | `frontx-new-api-service` |
-| `@cyberfabric/framework` | L2 Framework | `frontx-new-action`, `frontx-validate`, `frontx-fix-violation`, `frontx-quick-ref`, `frontx-rules` |
-| `@cyberfabric/react` | L3 React | `frontx-new-screenset`, `frontx-new-screen`, `frontx-new-component`, `frontx-duplicate-screenset` |
+| `@gears-frontx/api` | L1 SDK | `frontx-new-api-service` |
+| `@gears-frontx/framework` | L2 Framework | `frontx-new-action`, `frontx-validate`, `frontx-fix-violation`, `frontx-quick-ref`, `frontx-rules` |
+| `@gears-frontx/react` | L3 React | `frontx-new-screenset`, `frontx-new-screen`, `frontx-new-component`, `frontx-duplicate-screenset` |
 
 ## Monorepo-Only Commands
 
@@ -30,7 +30,7 @@ Commands in `internal/` are for FrontX development only:
 
 When users run `frontx ai sync --detect-packages`, the CLI:
 
-1. Scans `node_modules/@cyberfabric/*/commands/` for package commands
+1. Scans `node_modules/@gears-frontx/*/commands/` for package commands
 2. Composes commands based on installed packages
 3. Generates tool-specific output:
    - `.claude/commands/` for Claude Code
@@ -39,6 +39,6 @@ When users run `frontx ai sync --detect-packages`, the CLI:
    - `.github/copilot-commands/` for GitHub Copilot
 
 Users only get commands for packages they have installed:
-- SDK-only project (`@cyberfabric/api`) → Only `frontx-new-api-service`
+- SDK-only project (`@gears-frontx/api`) → Only `frontx-new-api-service`
 - Framework project → API + Framework commands
 - Full React project → All commands from all packages

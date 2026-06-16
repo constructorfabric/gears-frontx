@@ -3,7 +3,7 @@
 // @cpt-dod:cpt-frontx-dod-studio-devtools-persistence:p1
 // @cpt-dod:cpt-frontx-dod-studio-devtools-conditional-loading:p1
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { I18nRegistry, Language, i18nRegistry } from '@cyberfabric/react';
+import { I18nRegistry, Language, i18nRegistry } from '@gears-frontx/react';
 import { saveStudioState, loadStudioState } from './utils/persistence';
 import { STORAGE_KEYS } from './types';
 import { initPersistenceEffects } from './effects/persistenceEffects';

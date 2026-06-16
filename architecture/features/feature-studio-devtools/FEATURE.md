@@ -59,13 +59,13 @@
 
 ### 1.1 Overview
 
-Studio DevTools is the development-time overlay package (`@cyberfabric/studio`) for FrontX applications. It provides a floating glassmorphic panel that developers can use to switch themes, languages, and API mock mode without leaving the running application.
+Studio DevTools is the development-time overlay package (`@gears-frontx/studio`) for FrontX applications. It provides a floating glassmorphic panel that developers can use to switch themes, languages, and API mock mode without leaving the running application.
 
 Problem: During development, iterating on theme, language, and API mock states requires either page reloads, hard-coded configuration, or direct Redux DevTools manipulation — all of which break the iterative feedback loop.
 
 Primary value: A single persistent panel accessible via keyboard shortcut gives developers instant control over the application's runtime configuration, with all changes preserved across page reloads through localStorage persistence.
 
-Key assumptions: Studio is only mounted when `import.meta.env.DEV` is true. All state changes flow through the existing framework event bus — Studio does not bypass the standard Action → Event → Effect → Reducer flow. No framework or application code is modified to support Studio; all logic lives inside `@cyberfabric/studio`.
+Key assumptions: Studio is only mounted when `import.meta.env.DEV` is true. All state changes flow through the existing framework event bus — Studio does not bypass the standard Action → Event → Effect → Reducer flow. No framework or application code is modified to support Studio; all logic lives inside `@gears-frontx/studio`.
 
 ### 1.2 Purpose
 
@@ -251,9 +251,9 @@ Success criteria: A developer can toggle theme, language, and API mock mode in u
 **Actors**: `cpt-frontx-actor-build-system`, `cpt-frontx-actor-runtime`
 
 1. [ ] `p1` - Host application wraps Studio import with `import.meta.env.DEV` guard — `inst-dev-guard`
-2. [ ] `p1` - **IF** `import.meta.env.DEV` is true: dynamically import `StudioOverlay` from `@cyberfabric/studio` — `inst-dev-import`
+2. [ ] `p1` - **IF** `import.meta.env.DEV` is true: dynamically import `StudioOverlay` from `@gears-frontx/studio` — `inst-dev-import`
 3. [ ] `p1` - Mount `StudioOverlay` inside `StudioProvider` beneath `HAI3Provider` — `inst-mount-overlay`
-4. [ ] `p1` - **IF** `import.meta.env.DEV` is false: Vite tree-shakes the entire conditional branch and `@cyberfabric/studio` package — `inst-treeshake`
+4. [ ] `p1` - **IF** `import.meta.env.DEV` is false: Vite tree-shakes the entire conditional branch and `@gears-frontx/studio` package — `inst-treeshake`
 5. [ ] `p1` - Production bundle contains zero Studio code and zero Studio UIKit imports — `inst-zero-prod-footprint`
 
 ---
@@ -452,7 +452,7 @@ Applies independently to both `StudioPanel` and `CollapsedButton` draggables:
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-studio-devtools-persistence`
 
-All Studio control panel settings (theme, language, mock mode) and all UI state (panel position, panel size, collapsed state, button position) are persisted to localStorage on change and restored on Studio mount. All persistence logic lives exclusively inside `@cyberfabric/studio`.
+All Studio control panel settings (theme, language, mock mode) and all UI state (panel position, panel size, collapsed state, button position) are persisted to localStorage on change and restored on Studio mount. All persistence logic lives exclusively inside `@gears-frontx/studio`.
 
 **Implementation details**:
 - Storage keys under prefix `hai3:studio:` — see `STORAGE_KEYS` in `packages/studio/src/types.ts`
@@ -529,11 +529,11 @@ Studio panel toggling is accessible via `Shift+\`` keyboard shortcut using `e.co
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-studio-devtools-conditional-loading`
 
-`@cyberfabric/studio` is a standalone workspace package with `"sideEffects": false`. The host application loads it only in development via a `import.meta.env.DEV`-guarded dynamic `import()`. Production builds contain no Studio code.
+`@gears-frontx/studio` is a standalone workspace package with `"sideEffects": false`. The host application loads it only in development via a `import.meta.env.DEV`-guarded dynamic `import()`. Production builds contain no Studio code.
 
 **Implementation details**:
-- Package: `@cyberfabric/studio`, ESM-first, `"type": "module"`, `"sideEffects": false`
-- Host entry point pattern: `if (import.meta.env.DEV) { const { StudioOverlay } = await import('@cyberfabric/studio'); ... }`
+- Package: `@gears-frontx/studio`, ESM-first, `"type": "module"`, `"sideEffects": false`
+- Host entry point pattern: `if (import.meta.env.DEV) { const { StudioOverlay } = await import('@gears-frontx/studio'); ... }`
 - Vite tree-shakes the entire branch in production; no Studio chunk emitted
 - Studio translations registered automatically when `StudioProvider` is imported (side-effect-free i18n registry call at module scope)
 
@@ -563,7 +563,7 @@ Studio panel toggling is accessible via `Shift+\`` keyboard shortcut using `e.co
 - [x] Settings restore emits framework events that existing plugin handlers process without any framework code changes
 - [x] Panel and button positions are clamped to the visible viewport on load and re-clamped on window resize; no unnecessary persistence occurs when position is unchanged
 - [x] No Studio code executes in production (`import.meta.env.DEV` guard confirmed via bundle analysis)
-- [x] All `@cyberfabric/studio` code compiles with TypeScript strict mode and zero `any`/`as unknown as` violations
+- [x] All `@gears-frontx/studio` code compiles with TypeScript strict mode and zero `any`/`as unknown as` violations
 
 ---
 
@@ -585,7 +585,7 @@ All localStorage keys use the prefix `hai3:studio:`. Current keys defined in `ST
 
 ### Studio Event Namespace
 
-Studio-internal events use the `studio/` prefix and are declared via TypeScript module augmentation on `EventPayloadMap` from `@cyberfabric/state`. Framework events consumed by Studio (`theme/changed`, `i18n/language/changed`, `mock/toggle`) are not owned by Studio.
+Studio-internal events use the `studio/` prefix and are declared via TypeScript module augmentation on `EventPayloadMap` from `@gears-frontx/state`. Framework events consumed by Studio (`theme/changed`, `i18n/language/changed`, `mock/toggle`) are not owned by Studio.
 
 ### UIKit Component Organization
 
@@ -611,7 +611,7 @@ Following screenset conventions:
 
 ### Dependency Boundary
 
-`@cyberfabric/studio` depends on `@cyberfabric/react` (for hooks, `eventBus`, `HAI3Provider` context). UI components are supplied from Studio local `packages/studio/src/uikit/`. Dependencies are direct compile-time, tree-shaken in production because the entire Studio conditional branch is eliminated. Studio does NOT depend on `@cyberfabric/framework` or any L1 package directly.
+`@gears-frontx/studio` depends on `@gears-frontx/react` (for hooks, `eventBus`, `HAI3Provider` context). UI components are supplied from Studio local `packages/studio/src/uikit/`. Dependencies are direct compile-time, tree-shaken in production because the entire Studio conditional branch is eliminated. Studio does NOT depend on `@gears-frontx/framework` or any L1 package directly.
 
 ### i18n Self-Registration
 

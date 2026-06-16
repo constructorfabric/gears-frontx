@@ -1,6 +1,6 @@
 {
-  "name": "@cyberfabric/studio",
-  "version": "0.2.0-alpha.3",
+  "name": "@gears-frontx/studio",
+  "version": "0.2.0-alpha.0",
   "description": "FrontX Studio - Development studio overlay for FrontX applications",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -40,13 +40,13 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cyberfabric/frontx.git",
+    "url": "https://github.com/gears-frontx/frontx.git",
     "directory": "packages/studio"
   },
   "bugs": {
-    "url": "https://github.com/cyberfabric/frontx/issues"
+    "url": "https://github.com/gears-frontx/frontx/issues"
   },
-  "homepage": "https://github.com/cyberfabric/frontx#readme",
+  "homepage": "https://github.com/gears-frontx/frontx#readme",
   "engines": {
     "node": ">=24.14.0"
   },
@@ -63,7 +63,7 @@
     "tailwind-merge": "^2.6.0"
   },
   "peerDependencies": {
-    "@cyberfabric/react": "*",
+    "@gears-frontx/react": "*",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },

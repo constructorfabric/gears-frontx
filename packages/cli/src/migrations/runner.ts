@@ -90,7 +90,7 @@ export async function getMigrationStatus(
     const pkg = await fs.readJson(pkgPath);
     // Check for FrontX packages
     const frontxDeps = Object.keys(pkg.dependencies || {}).filter((d) =>
-      d.startsWith('@cyberfabric/')
+      d.startsWith('@gears-frontx/')
     );
     if (frontxDeps.length > 0) {
       const firstDep = pkg.dependencies[frontxDeps[0]];

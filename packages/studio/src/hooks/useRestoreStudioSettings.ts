@@ -1,7 +1,7 @@
 // @cpt-flow:cpt-frontx-flow-studio-devtools-restore-settings:p1
 // @cpt-dod:cpt-frontx-dod-studio-devtools-persistence:p1
 import { useEffect, useRef } from 'react';
-import { eventBus } from '@cyberfabric/react';
+import { eventBus } from '@gears-frontx/react';
 import { loadStudioState } from '../utils/persistence';
 import { STORAGE_KEYS } from '../types';
 

@@ -1,5 +1,5 @@
 /**
- * @cyberfabric/framework - Type Definitions
+ * @gears-frontx/framework - Type Definitions
  *
  * Core types for FrontX framework with plugin architecture.
  * Integrates all SDK packages into a cohesive framework.
@@ -12,21 +12,21 @@
 // Type Imports from SDK Packages
 // ============================================================================
 
-// From @cyberfabric/state
+// From @gears-frontx/state
 import type {
   HAI3Store as StoreType,
   EffectInitializer,
-} from '@cyberfabric/state';
+} from '@gears-frontx/state';
 
 import type { Reducer } from '@reduxjs/toolkit';
 
-// From @cyberfabric/api
-import type { ApiRegistry } from '@cyberfabric/api';
+// From @gears-frontx/api
+import type { ApiRegistry } from '@gears-frontx/api';
 
-// From @cyberfabric/i18n
-import type { I18nRegistry } from '@cyberfabric/i18n';
+// From @gears-frontx/i18n
+import type { I18nRegistry } from '@gears-frontx/i18n';
 
-// Re-export FrontXStore from @cyberfabric/store for framework consumers
+// Re-export FrontXStore from @gears-frontx/store for framework consumers
 export type HAI3Store = StoreType;
 
 // ============================================================================
@@ -105,7 +105,7 @@ export interface RegisterableSlice {
  *
  * @example
  * ```typescript
- * declare module '@cyberfabric/framework' {
+ * declare module '@gears-frontx/framework' {
  *   interface FrontXActions {
  *     myCustomAction: (payload: MyPayload) => void;
  *   }
@@ -150,7 +150,7 @@ export interface HAI3Actions {
   loadExtension: (extensionId: string) => void;
   mountExtension: (extensionId: string) => void;
   unmountExtension: (extensionId: string) => void;
-  registerExtension: (extension: import('@cyberfabric/screensets').Extension) => void;
+  registerExtension: (extension: import('@gears-frontx/screensets').Extension) => void;
   unregisterExtension: (extensionId: string) => void;
 }
 
@@ -405,7 +405,7 @@ export interface HAI3App extends HAI3AppRuntimeExtensions {
   i18nRegistry: I18nRegistry;
 
   /** MFE-enabled MfeRegistry (optional, provided by microfrontends plugin) */
-  mfeRegistry?: import('@cyberfabric/screensets').MfeRegistry;
+  mfeRegistry?: import('@gears-frontx/screensets').MfeRegistry;
 
   /** All registered actions (type-safe via FrontXActions interface) */
   actions: HAI3Actions;

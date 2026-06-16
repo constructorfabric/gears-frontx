@@ -4,7 +4,7 @@ import {
   HAI3_SHARED_PROPERTY_LANGUAGE,
   type ChildMfeBridge,
   type SharedProperty,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useScreenTranslations } from './useScreenTranslations';
 

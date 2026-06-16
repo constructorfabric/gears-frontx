@@ -15,7 +15,7 @@ import {
   HAI3_SCREEN_DOMAIN,
   type MenuState,
   type ScreenExtension,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import {
   Sidebar,
   SidebarContent,

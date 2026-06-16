@@ -21,7 +21,7 @@ import {
   subscribeQueryCacheRuntimeChanged,
   type EndpointDescriptor,
   type HAI3App,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 import type { ApiQueryOverrides } from './hooks/useApiQuery';
 import type {
   ApiInfiniteQueryOptions,

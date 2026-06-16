@@ -34,7 +34,7 @@ How does TanStack Query v5 work architecturally, and how does it integrate into 
 
 **Out of scope:** TanStack Query v4 or older, comparison with SWR or other data-fetching libraries, React Server Components integration specifics, TanStack Router integration.
 
-**Constraints:** HAI3 already has `@cyberfabric/api` (BaseApiService, RestProtocol, plugin system) and `@cyberfabric/state` (Redux via RTK, EventBus). Any integration must coexist with these, not replace them.
+**Constraints:** HAI3 already has `@gears-frontx/api` (BaseApiService, RestProtocol, plugin system) and `@gears-frontx/state` (Redux via RTK, EventBus). Any integration must coexist with these, not replace them.
 
 ## Findings
 
@@ -275,11 +275,11 @@ The two are complementary, not competitive:
 - TanStack Query manages the lifecycle of data fetched from the server: when to fetch, when to refetch, when to invalidate, what to cache, and for how long.
 - Redux/Zustand manages application state that is local to the client: UI toggles, selected items, form state, user preferences, navigation state.
 
-In HAI3's architecture, `@cyberfabric/state` uses Redux for client state with an EventBus for cross-domain communication. The API services in `@cyberfabric/api` handle transport (protocols, plugins, auth, retry). TanStack Query would sit between these layers -- consuming the API service methods as `queryFn` implementations while managing cache, deduplication, and refetch logic that currently does not exist in the architecture.
+In HAI3's architecture, `@gears-frontx/state` uses Redux for client state with an EventBus for cross-domain communication. The API services in `@gears-frontx/api` handle transport (protocols, plugins, auth, retry). TanStack Query would sit between these layers -- consuming the API service methods as `queryFn` implementations while managing cache, deduplication, and refetch logic that currently does not exist in the architecture.
 
 The overlap zone is "server data stored in Redux slices." If a Redux slice currently stores API response data (e.g., a list of threads fetched from the server), TanStack Query could take over that responsibility. The Redux slice would then only hold client-derived state (e.g., which thread is selected), while TanStack Query holds the server-fetched thread list.
 
-**Confidence:** Substantiated -- this is the documented and widely practiced integration pattern. The HAI3-specific observations are based on reading the current `@cyberfabric/state` and `@cyberfabric/api` source code.
+**Confidence:** Substantiated -- this is the documented and widely practiced integration pattern. The HAI3-specific observations are based on reading the current `@gears-frontx/state` and `@gears-frontx/api` source code.
 
 ## Key takeaways
 
@@ -313,7 +313,7 @@ A plugin chain can transform a request/response in a standard way. It cannot mea
 
 #### Option B: HAI3-owned factory (re-export queryOptions)
 
-Replace TanStack's `queryOptions` re-export with a HAI3-owned factory function. MFEs keep per-feature query modules but import from `@cyberfabric/react`.
+Replace TanStack's `queryOptions` re-export with a HAI3-owned factory function. MFEs keep per-feature query modules but import from `@gears-frontx/react`.
 
 This reduces the type leak (HAI3 owns the option and result types) but does not solve the core problem: every MFE still carries manual key factories, `queryFn` wrappers, and TanStack-shaped option objects in those modules. With hundreds of MFEs, a library swap still means editing hundreds of files. The abstraction hides the library name but not its shape.
 
@@ -331,11 +331,11 @@ The descriptor is a plain object at L1 with zero caching library dependency. The
 
 | Approach | Files to change | Where |
 |----------|----------------|-------|
-| Plugin | ~5 adapter files + plugin contract | `@cyberfabric/react` |
+| Plugin | ~5 adapter files + plugin contract | `@gears-frontx/react` |
 | Factory re-export | ~5 framework files + **hundreds of MFE-local query modules** | everywhere |
-| Endpoint descriptor | ~5 framework files | `@cyberfabric/react` only |
+| Endpoint descriptor | ~5 framework files | `@gears-frontx/react` only |
 
-**Verdict:** Endpoint descriptors provide the same swap boundary as an API plugin (5 files in `@cyberfabric/react`) without the artificial abstraction layer, and eliminate per-MFE coupling entirely. See [ADR-0017](../ADR/0017-tanstack-query-data-management.md).
+**Verdict:** Endpoint descriptors provide the same swap boundary as an API plugin (5 files in `@gears-frontx/react`) without the artificial abstraction layer, and eliminate per-MFE coupling entirely. See [ADR-0017](../ADR/0017-tanstack-query-data-management.md).
 
 #### Framework plugin for cache lifecycle (complementary, chosen)
 

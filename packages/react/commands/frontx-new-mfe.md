@@ -60,8 +60,8 @@ Create `src/lifecycle.tsx`:
 
 ```typescript
 import React from 'react';
-import type { ChildMfeBridge } from '@cyberfabric/react';
-import { ThemeAwareReactLifecycle } from '@cyberfabric/react';
+import type { ChildMfeBridge } from '@gears-frontx/react';
+import { ThemeAwareReactLifecycle } from '@gears-frontx/react';
 import { mfeApp } from './init';
 import { YourScreen } from './screens/YourScreen';
 
@@ -129,7 +129,7 @@ npm run dev:all
 ### Issue: Redux/useSelector errors
 - MFE must use mock data (no Redux Provider in isolation)
 - Use `useState` for local state management
-- Do not import Redux hooks (@cyberfabric/react)
+- Do not import Redux hooks (@gears-frontx/react)
 
 ## BEST PRACTICES
 

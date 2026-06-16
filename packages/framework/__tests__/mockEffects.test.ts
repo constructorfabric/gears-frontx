@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { eventBus, createStore, registerSlice, resetStore } from '@cyberfabric/state';
+import { eventBus, createStore, registerSlice, resetStore } from '@gears-frontx/state';
 import {
   ApiProtocol,
   apiRegistry,
@@ -13,7 +13,7 @@ import {
   isMockPlugin,
   RestMockPlugin,
   RestProtocol,
-} from '@cyberfabric/api';
+} from '@gears-frontx/api';
 import { mockSlice } from '../src/slices/mockSlice';
 import { initMockEffects, toggleMockMode, MockEvents } from '../src/effects/mockEffects';
 

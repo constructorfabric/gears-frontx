@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { eventBus } from '@cyberfabric/react';
+import { eventBus } from '@gears-frontx/react';
 import { StudioEvents } from '../events/studioEvents';
 import { saveStudioState } from '../utils/persistence';
 import { STORAGE_KEYS } from '../types';
@@ -9,7 +9,7 @@ type EventBusOn = typeof eventBus.on;
 type EventName = Parameters<EventBusOn>[0];
 type EventHandler = Parameters<EventBusOn>[1];
 
-vi.mock('@cyberfabric/react', () => ({
+vi.mock('@gears-frontx/react', () => ({
   eventBus: {
     on: vi.fn(),
   },

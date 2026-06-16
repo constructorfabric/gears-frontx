@@ -1,12 +1,12 @@
 /**
  * FrontX ESLint Framework Configuration (L2)
- * Rules for @cyberfabric/framework package
+ * Rules for @gears-frontx/framework package
  *
  * Framework package CAN import:
- * - @cyberfabric/state, @cyberfabric/screensets, @cyberfabric/api, @cyberfabric/i18n (SDK packages)
+ * - @gears-frontx/state, @gears-frontx/screensets, @gears-frontx/api, @gears-frontx/i18n (SDK packages)
  *
  * Framework package CANNOT import:
- * - @cyberfabric/react (would create circular dependency)
+ * - @gears-frontx/react (would create circular dependency)
  * - react, react-dom (framework is headless)
  */
 
@@ -25,8 +25,8 @@ export const frameworkConfig: ConfigArray = [
         {
           patterns: [
             {
-              group: ['@cyberfabric/react'],
-              message: 'FRAMEWORK VIOLATION: Framework cannot import @cyberfabric/react (circular dependency).',
+              group: ['@gears-frontx/react'],
+              message: 'FRAMEWORK VIOLATION: Framework cannot import @gears-frontx/react (circular dependency).',
             },
             {
               group: ['react', 'react-dom', 'react/*'],

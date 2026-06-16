@@ -1,5 +1,5 @@
 /**
- * @cyberfabric/api - API Communication
+ * @gears-frontx/api - API Communication
  *
  * This package provides:
  * - API service interface and registry
@@ -7,7 +7,7 @@
  * - Plugin system for request/response modification
  * - Mock data support for testing
  *
- * SDK Layer: L1 (Zero @cyberfabric dependencies)
+ * SDK Layer: L1 (Zero @gears-frontx dependencies)
  */
 
 // @cpt-dod:cpt-frontx-dod-api-communication-public-api:p1

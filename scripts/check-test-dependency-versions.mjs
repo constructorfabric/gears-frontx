@@ -37,7 +37,7 @@ export const sharedTestDependencies = [
 // Dependency groups (besides root `devDependencies` / `overrides`) that are
 // expected to stay pinned to the root devDep version when they reference a
 // shared test dependency. `peerDependencies` is included so packages like
-// `@cyberfabric/framework` — which pins `vitest` as a peer — cannot drift
+// `@gears-frontx/framework` — which pins `vitest` as a peer — cannot drift
 // away from the root monorepo pin without this guard catching it.
 export const checkedDependencyGroups = ['devDependencies', 'peerDependencies'];
 

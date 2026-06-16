@@ -68,7 +68,7 @@
 
 The MFE Registry & Contracts feature provides the foundational contract layer between host applications and microfrontend extensions in FrontX. It defines all TypeScript type contracts for the MFE type system, implements the `MfeRegistry` runtime facade, and manages the lifecycle of extension domains and extensions through a GTS-validated registration pipeline.
 
-The feature is a pure TypeScript L1 SDK package (`@cyberfabric/screensets`) with zero `@cyberfabric/*` inter-dependencies. It exports abstract classes (`MfeRegistry`, `MfeRegistryFactory`, `MfeHandler`, `MfeBridgeFactory`), all MFE TypeScript interfaces, action/property constants, and the `TypeSystemPlugin` interface that decouples the registry from any specific type system implementation.
+The feature is a pure TypeScript L1 SDK package (`@gears-frontx/screensets`) with zero `@gears-frontx/*` inter-dependencies. It exports abstract classes (`MfeRegistry`, `MfeRegistryFactory`, `MfeHandler`, `MfeBridgeFactory`), all MFE TypeScript interfaces, action/property constants, and the `TypeSystemPlugin` interface that decouples the registry from any specific type system implementation.
 
 The registry acts as the central runtime authority: it owns domain and extension state, enforces multi-step validation on registration, serializes concurrent operations per entity, mediates action chain execution, and manages the parent/child MFE bridge lifecycle.
 
@@ -76,7 +76,7 @@ The registry acts as the central runtime authority: it owns domain and extension
 
 Enable host applications and microfrontend extensions to communicate through declared contracts validated at runtime, while keeping the registry itself free of any React, framework, or type-system implementation dependencies.
 
-Success criteria: A host application can register a domain and extension, execute actions chains, broadcast shared properties, and dispose the registry — all without importing anything beyond `@cyberfabric/screensets`.
+Success criteria: A host application can register a domain and extension, execute actions chains, broadcast shared properties, and dispose the registry — all without importing anything beyond `@gears-frontx/screensets`.
 
 ### 1.3 Actors
 
@@ -97,7 +97,7 @@ Success criteria: A host application can register a domain and extension, execut
 - Design constraint: `cpt-frontx-constraint-no-react-below-l3`
 - Design constraint: `cpt-frontx-constraint-zero-cross-deps-at-l1`
 - Design constraint: `cpt-frontx-constraint-no-barrel-exports-for-registries`
-- ADR: `cpt-frontx-adr-domain-implementation-mount-strategies` — domain implementation as composable behavior class with mount strategies and encapsulated mounter (issue cyberfabric/frontx#278)
+- ADR: `cpt-frontx-adr-domain-implementation-mount-strategies` — domain implementation as composable behavior class with mount strategies and encapsulated mounter (issue gears-frontx/frontx#278)
 - ADR: `cpt-frontx-adr-per-action-type-handler-routing`
 
 #### Non-Applicable Domains
@@ -736,7 +736,7 @@ The mounter facade, the implementation-supplied container factory, the abstract 
   - `create(extensionId: string): Element` — materializes a fresh **unattached** host element for the named extension; the mounter (which owns the attached root) appends/removes from its root.
   - `destroy(extensionId: string): void` — releases the host element produced by the matching `create` call; invoked by strategies during unmount and on mount-failure cleanup.
   This interface is on the implementation side, never on the framework side, because container shape is domain-specific (DOM, Shadow DOM, off-DOM portal, etc.) and the framework treats containers as opaque `Element` references.
-- `ConcurrentMountStrategy`, `OptionalMountStrategy`, `ExclusiveMountStrategy` are concrete classes shipped by `@cyberfabric/screensets` extending `MountStrategy`. Each accepts the mounter and the implementation's container hooks at construction time as `constructor(mounter: ExtensionMounter, hooks: ContainerHooks)`. The implementation captures the strategy instance privately; the strategy in turn captures the mounter privately as a bound class field, which is what allows mount/unmount calls to keep functioning after `DomainContext` invalidation.
+- `ConcurrentMountStrategy`, `OptionalMountStrategy`, `ExclusiveMountStrategy` are concrete classes shipped by `@gears-frontx/screensets` extending `MountStrategy`. Each accepts the mounter and the implementation's container hooks at construction time as `constructor(mounter: ExtensionMounter, hooks: ContainerHooks)`. The implementation captures the strategy instance privately; the strategy in turn captures the mounter privately as a bound class field, which is what allows mount/unmount calls to keep functioning after `DomainContext` invalidation.
 - `ExtensionDomainImplementationFactory` (abstract class) exposes a single abstract method `build(ctx: DomainContext): ExtensionDomainImplementation`. The synchronous return type enforces synchronous construction at the type level — async factories are rejected at compile time (no `Promise<ExtensionDomainImplementation>` overload) and no runtime check is required. Concrete subclasses are written by domain authors.
 - `DomainContext` (interface) exposes `mounter: ExtensionMounter`, `lifecycleTrigger: DomainLifecycleTrigger`, and `registerHandler(actionType: string, handler: ActionHandler): void`. All three members reject (throw) once the registry invalidates the context at the end of `registerDomain`. Function-handle-level invalidation: captured references to `mounter`, `lifecycleTrigger`, or `registerHandler` (held in the implementation's closure) also reject after invalidation, not just access through the `ctx` object.
 
@@ -798,8 +798,8 @@ Implementation-driven lifecycle transitions go through a per-domain `DomainLifec
 - `register(entity: unknown): void` — GTS-native registration AND validation in one call; for named instances the schema is extracted from the chained instance ID; for anonymous instances (no `id` field) the schema is extracted from the entity's `type` field; the entity is validated against the resolved schema as part of registration — IF validation fails `register()` throws a plain `Error` whose message carries instance JSON, resolved schema JSON, and the failure reason; the throw is the authoritative "invalid" signal and a subsequent successful `register()` with the same deterministic id supersedes a failed attempt (callers that catch and continue MUST NOT rely on prior registration state). Schema-vs-instance determination is gts-ts's responsibility per gts-spec (the authoritative marker is the trailing `~` on the identifier); this interface does not impose a plugin-layer distinguishing check
 - `isTypeOf(typeId: string, baseTypeId: string): boolean` — type hierarchy check
 - `JSONSchema` is the only supporting type exported alongside the interface; schema validation failures are reported via thrown `Error` rather than a structured result object — there is no `validateInstance()` method, and no `ValidationResult`/`ValidationError` types
-- The package treats all type IDs as opaque strings; no parsing of type IDs occurs in `@cyberfabric/screensets`
-- The GTS plugin implementation is exported via subpath `@cyberfabric/screensets/plugins/gts` to avoid pulling `@globaltypesystem/gts-ts` when consumers only need the contracts
+- The package treats all type IDs as opaque strings; no parsing of type IDs occurs in `@gears-frontx/screensets`
+- The GTS plugin implementation is exported via subpath `@gears-frontx/screensets/plugins/gts` to avoid pulling `@globaltypesystem/gts-ts` when consumers only need the contracts
 
 **Covers (PRD)**:
 - `cpt-frontx-fr-sdk-screensets-package`
@@ -830,7 +830,7 @@ Implementation-driven lifecycle transitions go through a per-domain `DomainLifec
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-layer-constraints`
 
-`@cyberfabric/screensets` has zero `@cyberfabric/*` entries in `dependencies` or `devDependencies`. No `import 'react'` or any React API appears in `packages/screensets/src/`. The package output is ESM-only (`"type": "module"`, `format: ['esm']` in tsup config). All source compiles with `"strict": true`. `LayoutDomain` enum and all action/property constants are exported from the main barrel. Concrete runtime classes (`DefaultMfeRegistry`, `DefaultMfeRegistryFactory`) are not exported from the main barrel — only abstract base classes are public.
+`@gears-frontx/screensets` has zero `@gears-frontx/*` entries in `dependencies` or `devDependencies`. No `import 'react'` or any React API appears in `packages/screensets/src/`. The package output is ESM-only (`"type": "module"`, `format: ['esm']` in tsup config). All source compiles with `"strict": true`. `LayoutDomain` enum and all action/property constants are exported from the main barrel. Concrete runtime classes (`DefaultMfeRegistry`, `DefaultMfeRegistryFactory`) are not exported from the main barrel — only abstract base classes are public.
 
 **Covers (PRD)**:
 - `cpt-frontx-fr-sdk-flat-packages`
@@ -859,7 +859,7 @@ Implementation-driven lifecycle transitions go through a per-domain `DomainLifec
 - [x] Concurrent `registerExtension` calls for the same extension ID are serialized via `OperationSerializer`; calls for different IDs proceed concurrently
 - [x] `getRegisteredPackages()` returns packages in discovery order; `getExtensionsForPackage(packageId)` returns only live (still-registered) extensions
 - [x] `dispose()` clears all internal state, disposes all bridges, and clears the `packages` Map
-- [x] `@cyberfabric/screensets` package has zero `@cyberfabric/*` dependencies and zero React imports, confirmed by CI dependency-cruiser check
+- [x] `@gears-frontx/screensets` package has zero `@gears-frontx/*` dependencies and zero React imports, confirmed by CI dependency-cruiser check
 - [x] All source compiles without TypeScript errors under `"strict": true`
 - [ ] Mediator rejects an extension-targeted action whose `type` is not declared in the target entry's `actions` array — the chain fails with an error naming the action type and entry ID; `domainActions` is NOT consulted at runtime (it is enforced at registration time by contract matching Rule 3); domain-targeted infrastructure lifecycle actions (`HAI3_ACTION_LOAD_EXT`, `HAI3_ACTION_MOUNT_EXT`, `HAI3_ACTION_UNMOUNT_EXT`) remain exempt
 - [ ] Bootstrap schema registration is scoped per entry: only schemas whose `$id` matches an action ID declared in `entry.actions` or `entry.domainActions` of at least one entry in the package are registered via `typeSystem.registerSchema`; unreferenced schemas from `config.schemas[]` are never registered

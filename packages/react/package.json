@@ -1,6 +1,6 @@
 {
-  "name": "@cyberfabric/react",
-  "version": "0.2.0-alpha.3",
+  "name": "@gears-frontx/react",
+  "version": "0.2.0-alpha.0",
   "description": "React bindings and hooks for FrontX framework",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -53,13 +53,13 @@
     "vitest": "4.1.4"
   },
   "peerDependencies": {
-    "@cyberfabric/framework": "*",
+    "@gears-frontx/framework": "*",
     "@tanstack/react-query": ">=5.0.0",
     "react": "^19.2.4",
     "react-redux": ">=8.0.0"
   },
   "peerDependenciesMeta": {
-    "@cyberfabric/framework": {
+    "@gears-frontx/framework": {
       "optional": false
     },
     "react": {

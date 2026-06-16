@@ -7,7 +7,7 @@ import type {
   MfeEntryLifecycle,
   ChildMfeBridge,
   MfeMountContext,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 import { HAI3Provider } from '../HAI3Provider';
 import { hasHAI3QueryClientActivator, resolveHAI3QueryClient } from '../queryClient';
 

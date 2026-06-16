@@ -60,19 +60,19 @@ export const TEST_INCLUDE_TSX: readonly string[] = [
 
 /**
  * Vite `resolve.dedupe` for the host app and CLI scaffold. Under pnpm, multiple
- * symlinked copies of `@cyberfabric/*` can resolve from different paths; without
- * dedupe, `vi.doMock('@cyberfabric/react')` may not match the module instance
+ * symlinked copies of `@gears-frontx/*` can resolve from different paths; without
+ * dedupe, `vi.doMock('@gears-frontx/react')` may not match the module instance
  * that application code imports (e.g. bootstrap contract tests).
  */
 export const VITE_RESOLVE_DEDUPE: readonly string[] = [
   'react',
   'react-dom',
-  '@cyberfabric/react',
-  '@cyberfabric/framework',
+  '@gears-frontx/react',
+  '@gears-frontx/framework',
 ];
 
 /** Vitest `server.deps.inline` — see {@link VITE_RESOLVE_DEDUPE} (pnpm + vi.doMock). */
-export const VITEST_SERVER_DEPS_INLINE: readonly string[] = ['@cyberfabric/react', '@cyberfabric/framework'];
+export const VITEST_SERVER_DEPS_INLINE: readonly string[] = ['@gears-frontx/react', '@gears-frontx/framework'];
 
 /**
  * Monorepo-wide coverage thresholds, enforced whenever a config is executed

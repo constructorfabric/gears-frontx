@@ -1,5 +1,5 @@
 /**
- * Unit tests for the @cyberfabric/framework/testing subpath.
+ * Unit tests for the @gears-frontx/framework/testing subpath.
  *
  * Scope: pure-unit coverage for utilities that live at L2 and do not cross
  * package boundaries.

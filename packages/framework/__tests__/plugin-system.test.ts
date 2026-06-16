@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { eventBus, resetStore } from '@cyberfabric/state';
+import { eventBus, resetStore } from '@gears-frontx/state';
 import { createHAI3 } from '../src/createHAI3';
 import { createHAI3App } from '../src/createHAI3App';
 import { presets } from '../src/presets';

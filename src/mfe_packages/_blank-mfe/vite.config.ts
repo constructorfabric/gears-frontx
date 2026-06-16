@@ -3,17 +3,17 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { federation } from '@module-federation/vite';
-import { frontxMfGts } from '@cyberfabric/screensets/build/mf-gts';
+import { frontxMfGts } from '@gears-frontx/screensets/build/mf-gts';
 
 const sharedDeps = [
   'react',
   'react-dom',
-  '@cyberfabric/react',
-  '@cyberfabric/framework',
-  '@cyberfabric/state',
-  '@cyberfabric/screensets',
-  '@cyberfabric/api',
-  '@cyberfabric/i18n',
+  '@gears-frontx/react',
+  '@gears-frontx/framework',
+  '@gears-frontx/state',
+  '@gears-frontx/screensets',
+  '@gears-frontx/api',
+  '@gears-frontx/i18n',
   '@tanstack/react-query',
   '@reduxjs/toolkit',
   'react-redux',

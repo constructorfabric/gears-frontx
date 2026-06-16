@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppSelector, type FooterState } from '@cyberfabric/react';
+import { useAppSelector, type FooterState } from '@gears-frontx/react';
 
 export interface FooterProps {
   children?: React.ReactNode;

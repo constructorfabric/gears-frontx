@@ -36,22 +36,22 @@ function assertTsconfigPathsShape(
 }
 
 describe('getLocalPackageRef', () => {
-  it('should convert @cyberfabric/react to a file: reference', () => {
-    const result = getLocalPackageRef('@cyberfabric/react', '/repo', '/repo/app');
+  it('should convert @gears-frontx/react to a file: reference', () => {
+    const result = getLocalPackageRef('@gears-frontx/react', '/repo', '/repo/app');
     expect(result).toBe('file:../packages/react');
   });
 
-  it('should convert @cyberfabric/framework to a file: reference', () => {
-    const result = getLocalPackageRef('@cyberfabric/framework', '/repo', '/repo/app');
+  it('should convert @gears-frontx/framework to a file: reference', () => {
+    const result = getLocalPackageRef('@gears-frontx/framework', '/repo', '/repo/app');
     expect(result).toBe('file:../packages/framework');
   });
 
   it('should handle nested project paths', () => {
-    const result = getLocalPackageRef('@cyberfabric/state', '/repo', '/repo/projects/my-app');
+    const result = getLocalPackageRef('@gears-frontx/state', '/repo', '/repo/projects/my-app');
     expect(result).toBe('file:../../packages/state');
   });
 
-  it('should return non-@cyberfabric packages unchanged', () => {
+  it('should return non-@gears-frontx packages unchanged', () => {
     expect(getLocalPackageRef('react', '/repo', '/repo/app')).toBe('react');
     expect(getLocalPackageRef('lodash', '/repo', '/repo/app')).toBe('lodash');
     expect(getLocalPackageRef('@types/node', '/repo', '/repo/app')).toBe('@types/node');
@@ -64,10 +64,10 @@ describe('rewriteTsconfigPackagePaths', () => {
       compilerOptions: {
         paths: {
           '@/*': ['./src/*'],
-          '@cyberfabric/state': ['../../../state/src/index.ts'],
-          '@cyberfabric/state/*': ['../../../state/src/*'],
-          '@cyberfabric/react': ['../../../react/src/index.ts'],
-          '@cyberfabric/react/*': ['../../../react/src/*'],
+          '@gears-frontx/state': ['../../../state/src/index.ts'],
+          '@gears-frontx/state/*': ['../../../state/src/*'],
+          '@gears-frontx/react': ['../../../react/src/index.ts'],
+          '@gears-frontx/react/*': ['../../../react/src/*'],
         },
       },
     },
@@ -85,10 +85,10 @@ describe('rewriteTsconfigPackagePaths', () => {
 
     expect(rewritten.compilerOptions.paths).toEqual({
       '@/*': ['./src/*'],
-      '@cyberfabric/state': ['./node_modules/@cyberfabric/state'],
-      '@cyberfabric/state/*': ['./node_modules/@cyberfabric/state/*'],
-      '@cyberfabric/react': ['./node_modules/@cyberfabric/react'],
-      '@cyberfabric/react/*': ['./node_modules/@cyberfabric/react/*'],
+      '@gears-frontx/state': ['./node_modules/@gears-frontx/state'],
+      '@gears-frontx/state/*': ['./node_modules/@gears-frontx/state/*'],
+      '@gears-frontx/react': ['./node_modules/@gears-frontx/react'],
+      '@gears-frontx/react/*': ['./node_modules/@gears-frontx/react/*'],
     });
   });
 
@@ -104,14 +104,14 @@ describe('rewriteTsconfigPackagePaths', () => {
 
     expect(rewritten.compilerOptions.paths).toEqual({
       '@/*': ['./src/*'],
-      '@cyberfabric/state': ['../../packages/state/src/index.ts'],
-      '@cyberfabric/state/*': ['../../packages/state/src/*'],
-      '@cyberfabric/react': ['../../packages/react/src/index.ts'],
-      '@cyberfabric/react/*': ['../../packages/react/src/*'],
+      '@gears-frontx/state': ['../../packages/state/src/index.ts'],
+      '@gears-frontx/state/*': ['../../packages/state/src/*'],
+      '@gears-frontx/react': ['../../packages/react/src/index.ts'],
+      '@gears-frontx/react/*': ['../../packages/react/src/*'],
     });
   });
 
-  it('returns JSONC tsconfig unchanged when no @cyberfabric aliases exist', () => {
+  it('returns JSONC tsconfig unchanged when no @gears-frontx aliases exist', () => {
     const jsoncTsconfig = `{
   "compilerOptions": {
     "target": "ES2020",
@@ -295,7 +295,7 @@ describe('findMonorepoRoot', () => {
     delete process.env.FRONTX_MONOREPO_ROOT;
     const monoRoot = path.join(tmpDir, 'mono');
     await fs.ensureDir(path.join(monoRoot, 'packages', 'react'));
-    await fs.writeJson(path.join(monoRoot, 'packages', 'react', 'package.json'), { name: '@cyberfabric/react' });
+    await fs.writeJson(path.join(monoRoot, 'packages', 'react', 'package.json'), { name: '@gears-frontx/react' });
     await fs.writeJson(path.join(monoRoot, 'package.json'), {
       name: 'frontx-monorepo',
       workspaces: ['packages/*'],
@@ -312,7 +312,7 @@ describe('findMonorepoRoot', () => {
     expect.assertions(1);
     const monoRoot = path.join(tmpDir, 'env-mono');
     await fs.ensureDir(path.join(monoRoot, 'packages', 'react'));
-    await fs.writeJson(path.join(monoRoot, 'packages', 'react', 'package.json'), { name: '@cyberfabric/react' });
+    await fs.writeJson(path.join(monoRoot, 'packages', 'react', 'package.json'), { name: '@gears-frontx/react' });
 
     process.env.FRONTX_MONOREPO_ROOT = monoRoot;
 
@@ -327,7 +327,7 @@ describe('findMonorepoRoot', () => {
     delete process.env.FRONTX_MONOREPO_ROOT;
     const fakeRoot = path.join(tmpDir, 'fake-mono');
     await fs.ensureDir(path.join(fakeRoot, 'packages', 'react'));
-    await fs.writeJson(path.join(fakeRoot, 'packages', 'react', 'package.json'), { name: '@cyberfabric/react' });
+    await fs.writeJson(path.join(fakeRoot, 'packages', 'react', 'package.json'), { name: '@gears-frontx/react' });
     await fs.writeJson(path.join(fakeRoot, 'package.json'), {
       name: 'not-a-monorepo',
       workspaces: ['apps/*'],

@@ -32,7 +32,7 @@ decision-makers: FrontX core team
 **ID**: `cpt-frontx-adr-domain-implementation-mount-strategies`
 ## Context and Problem Statement
 
-GitHub issue cyberfabric/frontx#278 reports that the MFE extensions stack hard-wires a "0 or exactly 1 mounted extension per domain" invariant through bookkeeping rather than declared semantics. Multi-mount domains such as `widgets` are blocked at the bookkeeping level even though the underlying DOM mount path can host multiple children concurrently.
+GitHub issue gears-frontx/frontx#278 reports that the MFE extensions stack hard-wires a "0 or exactly 1 mounted extension per domain" invariant through bookkeeping rather than declared semantics. Multi-mount domains such as `widgets` are blocked at the bookkeeping level even though the underlying DOM mount path can host multiple children concurrently.
 
 The invariant is encoded across four layers, each citing the line in the current source tree:
 
@@ -72,7 +72,7 @@ H. Domain-implementation class with constructor-bound strategies and encapsulate
 
 Chosen option: **H. Domain-implementation class with constructor-bound strategies and encapsulated mounter**, because it inverts the responsibility correctly — the framework owns mount-set state and MFE primitives only, and the domain implementation owns mount/unmount policy through a small set of shipped strategy classes — while remaining type-system agnostic, mechanically encapsulated, and free of framework-side knowledge of how containers are created or positioned.
 
-The decision introduces a small set of new abstractions in `@cyberfabric/screensets` that together establish where mount semantics live:
+The decision introduces a small set of new abstractions in `@gears-frontx/screensets` that together establish where mount semantics live:
 
 - A pure-behavior domain implementation (abstract class) constructed by an abstract factory; the factory's `build` is synchronous so async construction is rejected by the type system.
 - A construction-time context object that carries the per-domain mounter, lifecycle trigger, and per-action-type handler registration entry point — invalidated mechanically by the registry once construction returns.
@@ -194,7 +194,7 @@ The trade-off accepted is that domain authors face more abstractions on day one.
 
 ## More Information
 
-- **GitHub issue**: cyberfabric/frontx#278
+- **GitHub issue**: gears-frontx/frontx#278
 - **Affected ADRs**:
   - `cpt-frontx-adr-blob-url-mfe-isolation` (ADR-0004) — unchanged. Blob URL isolation is orthogonal to mount cardinality.
   - `cpt-frontx-adr-per-action-type-handler-routing` (ADR-0018) — this ADR builds on ADR-0018's per-action-type `ActionHandler` pattern: per-domain handlers are constructed by the domain implementation (via strategies) and registered through `ctx.registerHandler` into the unified mediator handler map.

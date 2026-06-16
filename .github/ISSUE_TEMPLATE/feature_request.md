@@ -24,13 +24,13 @@ Provide concrete examples of how this feature would be used:
 
 ## Affected Package(s)
 Which FrontX package(s) would this impact?
-- [ ] @cyberfabric/framework
-- [ ] @cyberfabric/react
-- [ ] @cyberfabric/screensets
-- [ ] @cyberfabric/cli
-- [ ] @cyberfabric/i18n
-- [ ] @cyberfabric/state
-- [ ] @cyberfabric/studio
+- [ ] @gears-frontx/framework
+- [ ] @gears-frontx/react
+- [ ] @gears-frontx/screensets
+- [ ] @gears-frontx/cli
+- [ ] @gears-frontx/i18n
+- [ ] @gears-frontx/state
+- [ ] @gears-frontx/studio
 
 ## Alternative Solutions
 Have you considered any alternative approaches or workarounds?

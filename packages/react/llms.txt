@@ -1,8 +1,8 @@
-# @cyberfabric/react
+# @gears-frontx/react
 
 > React bindings, hooks, and components for FrontX SDK. Provides type-safe integration with React applications including MFE (Microfrontend) support.
 
-Part of the FrontX React Layer (L3) - depends on @cyberfabric/framework. Peer dependency on react and react-dom.
+Part of the FrontX React Layer (L3) - depends on @gears-frontx/framework. Peer dependency on react and react-dom.
 
 ## Core API
 
@@ -33,7 +33,7 @@ Part of the FrontX React Layer (L3) - depends on @cyberfabric/framework. Peer de
 ## Quick Start
 
 ```tsx
-import { HAI3Provider, useTranslation, useFrontX } from '@cyberfabric/react';
+import { HAI3Provider, useTranslation, useFrontX } from '@gears-frontx/react';
 
 // Wrap app with provider
 function App() {
@@ -64,7 +64,7 @@ function MyComponent() {
 ### Using ExtensionDomainSlot
 
 ```tsx
-import { ExtensionDomainSlot } from '@cyberfabric/react';
+import { ExtensionDomainSlot } from '@gears-frontx/react';
 
 function LayoutScreen() {
   return (
@@ -81,7 +81,7 @@ function LayoutScreen() {
 ### Using MFE Bridge
 
 ```tsx
-import { useMfeBridge, useSharedProperty, HAI3_ACTION_LOAD_EXT, HAI3_SHARED_PROPERTY_THEME } from '@cyberfabric/react';
+import { useMfeBridge, useSharedProperty, HAI3_ACTION_LOAD_EXT, HAI3_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
 
 function MyExtension() {
   const bridge = useMfeBridge();
@@ -100,7 +100,7 @@ function MyExtension() {
 ### Subscribing to Domain Extensions
 
 ```tsx
-import { useDomainExtensions } from '@cyberfabric/react';
+import { useDomainExtensions } from '@gears-frontx/react';
 
 function ScreenList() {
   const screenExtensions = useDomainExtensions('screen');

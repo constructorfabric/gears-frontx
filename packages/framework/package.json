@@ -1,6 +1,6 @@
 {
-  "name": "@cyberfabric/framework",
-  "version": "0.2.0-alpha.3",
+  "name": "@gears-frontx/framework",
+  "version": "0.2.0-alpha.0",
   "description": "FrontX framework integrating all SDK packages with plugin architecture",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -41,7 +41,7 @@
     "path-to-regexp": "^8.2.0"
   },
   "devDependencies": {
-    "@cyberfabric/auth": "*",
+    "@gears-frontx/auth": "*",
     "@vitest/coverage-v8": "4.1.4",
     "@tanstack/query-core": "^5.0.0",
     "tsup": "8.0.0",
@@ -49,28 +49,28 @@
     "vitest": "4.1.4"
   },
   "peerDependencies": {
-    "@cyberfabric/auth": "*",
-    "@cyberfabric/state": "*",
-    "@cyberfabric/screensets": "*",
-    "@cyberfabric/api": "*",
-    "@cyberfabric/i18n": "*",
+    "@gears-frontx/auth": "*",
+    "@gears-frontx/state": "*",
+    "@gears-frontx/screensets": "*",
+    "@gears-frontx/api": "*",
+    "@gears-frontx/i18n": "*",
     "@tanstack/query-core": "^5.0.0",
     "vitest": "4.1.4"
   },
   "peerDependenciesMeta": {
-    "@cyberfabric/auth": {
+    "@gears-frontx/auth": {
       "optional": false
     },
-    "@cyberfabric/state": {
+    "@gears-frontx/state": {
       "optional": false
     },
-    "@cyberfabric/screensets": {
+    "@gears-frontx/screensets": {
       "optional": false
     },
-    "@cyberfabric/api": {
+    "@gears-frontx/api": {
       "optional": false
     },
-    "@cyberfabric/i18n": {
+    "@gears-frontx/i18n": {
       "optional": false
     },
     "@tanstack/query-core": {

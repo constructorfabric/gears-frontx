@@ -1,7 +1,7 @@
 // @cpt-dod:cpt-frontx-dod-api-communication-rest-mock-plugin:p2
 
 // @cpt-begin:cpt-frontx-dod-api-communication-rest-mock-plugin:p2:inst-attach-rest-mocks
-import type { ApiPluginBase, ApiProtocol } from '@cyberfabric/react';
+import type { ApiPluginBase, ApiProtocol } from '@gears-frontx/react';
 
 type ProtocolRestProbe = {
   plugins?: {

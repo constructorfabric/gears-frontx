@@ -4,7 +4,7 @@
  */
 // @cpt-algo:cpt-frontx-algo-ui-libraries-choice-theme-propagation:p1
 
-import type { ThemeConfig } from '@cyberfabric/react';
+import type { ThemeConfig } from '@gears-frontx/react';
 import colors from './tailwindColors';
 import { hslToVar } from './utils';
 

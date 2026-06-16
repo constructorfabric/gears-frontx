@@ -73,7 +73,7 @@
   grep -R "getState.*app\\.|getState\\(\\).*\\." src "*Actions.ts"
 
 ## MFE RUNTIME ISOLATION
-- Each MFE gets its own isolated instances of shared dependencies (react, @cyberfabric/react, etc.) via blob URL evaluation.
+- Each MFE gets its own isolated instances of shared dependencies (react, @gears-frontx/react, etc.) via blob URL evaluation.
 - Shared dep source text is fetched once per `name@version` and converted to fresh blob URLs per load, so module-level singletons (eventBus, apiRegistry, store) are independent per MFE.
 - This gives each MFE its own isolated eventBus, apiRegistry, and store singletons.
 - MFE-internal events never cross runtime boundaries.

@@ -3,7 +3,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { Provider as ReduxProvider } from 'react-redux';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { formatCurrency, Language, type TranslationMap } from '@cyberfabric/framework';
+import { formatCurrency, Language, type TranslationMap } from '@gears-frontx/framework';
 import {
   HAI3Context,
   useAppDispatch,
@@ -11,7 +11,7 @@ import {
   useScreenTranslations,
   useTheme,
   useTranslation,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 
 type Subscriber = () => void;
 
@@ -105,7 +105,7 @@ function createApp() {
     i18nRegistry,
     store,
     themeRegistry,
-  } as unknown as import('@cyberfabric/framework').HAI3App;
+  } as unknown as import('@gears-frontx/framework').HAI3App;
 
   return {
     app,
@@ -116,7 +116,7 @@ function createApp() {
   };
 }
 
-function createWrapper(app: import('@cyberfabric/framework').HAI3App) {
+function createWrapper(app: import('@gears-frontx/framework').HAI3App) {
   return function Wrapper({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
       <HAI3Context.Provider value={app}>

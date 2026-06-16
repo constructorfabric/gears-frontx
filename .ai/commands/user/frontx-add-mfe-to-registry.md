@@ -15,7 +15,7 @@ The new MFE MUST have in its folder `src/mfe_packages/{name}-mfe/`:
 ✅ **`package.json`** with correct dev script:
 ```json
 {
-  "name": "@cyberfabric/notifications-mfe",
+  "name": "@gears-frontx/notifications-mfe",
   "scripts": {
     "dev": "vite --port 3020",
     "build": "vite build",
@@ -24,7 +24,7 @@ The new MFE MUST have in its folder `src/mfe_packages/{name}-mfe/`:
   "dependencies": {
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "@cyberfabric/react": "file:../../../packages/react"
+    "@gears-frontx/react": "file:../../../packages/react"
   }
 }
 ```

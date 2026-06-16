@@ -8,7 +8,7 @@ import {
   HAI3_SCREEN_DOMAIN,
   type MenuState,
   type ScreenExtension,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import * as lucideIcons from 'lucide-react';
 
 type LucideIcon = React.ComponentType<lucideIcons.LucideProps>;

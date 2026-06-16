@@ -11,14 +11,14 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { HAI3Provider } from '../../../src/HAI3Provider';
 import { useRegisteredPackages } from '../../../src/mfe/hooks/useRegisteredPackages';
-import { createHAI3 } from '@cyberfabric/framework';
-import { effects } from '@cyberfabric/framework';
-import { microfrontends } from '@cyberfabric/framework';
-import type { Extension, ExtensionDomain } from '@cyberfabric/framework';
-import { ExtensionDomainImplementationFactory } from '@cyberfabric/framework';
-import { gtsPlugin } from '@cyberfabric/framework';
-import type { HAI3App } from '@cyberfabric/framework';
-import type { DomainContext, ExtensionDomainImplementation } from '@cyberfabric/framework';
+import { createHAI3 } from '@gears-frontx/framework';
+import { effects } from '@gears-frontx/framework';
+import { microfrontends } from '@gears-frontx/framework';
+import type { Extension, ExtensionDomain } from '@gears-frontx/framework';
+import { ExtensionDomainImplementationFactory } from '@gears-frontx/framework';
+import { gtsPlugin } from '@gears-frontx/framework';
+import type { HAI3App } from '@gears-frontx/framework';
+import type { DomainContext, ExtensionDomainImplementation } from '@gears-frontx/framework';
 
 // Placeholder factory — never actually called because the test mocks registerDomain.
 // Extends ExtensionDomainImplementationFactory to satisfy the type system.

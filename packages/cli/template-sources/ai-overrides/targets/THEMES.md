@@ -6,11 +6,11 @@
 
 ## SCOPE
 - Theme objects and theme registration in app code.
-- Theme type definitions are exported from @cyberfabric/framework.
+- Theme type definitions are exported from @gears-frontx/framework.
 
 ## CRITICAL RULES
 - Theme objects are the single source of truth; no standalone CSS variables.
-- Theme shape MUST match the Theme interface from @cyberfabric/framework.
+- Theme shape MUST match the Theme interface from @gears-frontx/framework.
 - Apps define themes in src/themes/**; screensets must not modify themes.
 - Theme registration MUST use app.themeRegistry.register(themeConfig) with CSS variables in config.
 - FORBIDDEN: themeRegistry.register(id, theme).

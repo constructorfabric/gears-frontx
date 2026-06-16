@@ -63,16 +63,16 @@
 
 ### 1.1 Overview
 
-Framework Composition is the L2 layer that stitches together the four L1 SDK packages (`@cyberfabric/state`, `@cyberfabric/screensets`, `@cyberfabric/api`, `@cyberfabric/i18n`) into a cohesive, production-ready application framework. It does this through a plugin architecture centered on the `createHAI3()` builder: the host application chains `.use(plugin)` calls and calls `.build()` to produce an assembled `HAI3App` instance that owns a Redux store, theme registry, i18n registry, API registry, MFE-enabled screensets registry, and a complete set of typed actions.
+Framework Composition is the L2 layer that stitches together the four L1 SDK packages (`@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, `@gears-frontx/i18n`) into a cohesive, production-ready application framework. It does this through a plugin architecture centered on the `createHAI3()` builder: the host application chains `.use(plugin)` calls and calls `.build()` to produce an assembled `HAI3App` instance that owns a Redux store, theme registry, i18n registry, API registry, MFE-enabled screensets registry, and a complete set of typed actions.
 
 **Problem this solves**: Without this layer each application would manually wire state slices, event subscriptions, registries, and lifecycle hooks across four packages — a complex and error-prone process that produces inconsistent patterns across projects.
 
-**Primary value**: A single call to `createHAI3App()` (or a composed `.use()` chain) yields a framework instance that the React layer (`@cyberfabric/react`) can consume directly, with all cross-cutting concerns (theme, language, MFE lifecycle, mock mode, layout state) already coordinated.
+**Primary value**: A single call to `createHAI3App()` (or a composed `.use()` chain) yields a framework instance that the React layer (`@gears-frontx/react`) can consume directly, with all cross-cutting concerns (theme, language, MFE lifecycle, mock mode, layout state) already coordinated.
 
 **Key assumptions**:
 - Applications run in a browser environment; no SSR.
 - Each plugin declares name and optional dependencies; the builder performs topological ordering.
-- The framework has no React dependency — all React integration lives in `@cyberfabric/react` (L3).
+- The framework has no React dependency — all React integration lives in `@gears-frontx/react` (L3).
 
 ### 1.2 Purpose
 
@@ -96,7 +96,7 @@ Enable host applications to compose a fully-wired FrontX framework instance by a
 - PRD: [PRD.md](../../PRD.md) — sections 5.2 (App Configuration), 5.10 (Shared Property Broadcast), 5.11 (Shared Property Validation), 5.18 (Microfrontend Plugin)
 - Design component: `cpt-frontx-component-framework`
 - Sequences: `cpt-frontx-seq-app-bootstrap`, `cpt-frontx-seq-shared-property-broadcast`
-- ADRs: `cpt-frontx-adr-plugin-based-framework-composition`, `cpt-frontx-adr-four-layer-sdk-architecture`, `cpt-frontx-adr-global-shared-property-broadcast`, `cpt-frontx-adr-domain-implementation-mount-strategies` — drives the per-domain ordered-list slice shape and the diff-dispatch sync wrapper algorithm (issue cyberfabric/frontx#278)
+- ADRs: `cpt-frontx-adr-plugin-based-framework-composition`, `cpt-frontx-adr-four-layer-sdk-architecture`, `cpt-frontx-adr-global-shared-property-broadcast`, `cpt-frontx-adr-domain-implementation-mount-strategies` — drives the per-domain ordered-list slice shape and the diff-dispatch sync wrapper algorithm (issue gears-frontx/frontx#278)
 
 ---
 
@@ -422,7 +422,7 @@ Host applications can compose a FrontX framework instance by chaining `.use(plug
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-framework-composition-layout`
 
-The `layout()` plugin registers Redux slices for all six layout domains (header, footer, menu, sidebar, popup, overlay), subscribes to layout events on the event bus, and dispatches corresponding reducer actions to keep state consistent. All layout state types are exported from `@cyberfabric/framework`.
+The `layout()` plugin registers Redux slices for all six layout domains (header, footer, menu, sidebar, popup, overlay), subscribes to layout events on the event bus, and dispatches corresponding reducer actions to keep state consistent. All layout state types are exported from `@gears-frontx/framework`.
 
 **Layout domains and their slices**:
 - `header`: `HeaderState` — user info, loading
@@ -573,7 +573,7 @@ Three presets are provided as functions returning `HAI3Plugin[]`:
 - `full(config?)` — all plugins (`effects`, `themes`, `layout`, `i18n`, `queryCache`, `mock`, `microfrontends`)
 - `minimal()` — `themes` only
 
-All presets are exported from `@cyberfabric/framework`. The `presets` object collects all under named keys.
+All presets are exported from `@gears-frontx/framework`. The `presets` object collects all under named keys.
 
 **Covers (PRD)**:
 - `cpt-frontx-fr-sdk-plugin-arch`
@@ -587,11 +587,11 @@ All presets are exported from `@cyberfabric/framework`. The `presets` object col
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-framework-composition-reexports`
 
-`@cyberfabric/framework` re-exports the public API of all four L1 packages so that consumers can import from a single entry point. Re-exported symbols include:
-- From `@cyberfabric/state`: `eventBus`, `createStore`, `getStore`, `registerSlice`, `hasSlice`, `createSlice`, and all related types
-- From `@cyberfabric/screensets`: `MfeRegistry`, `mfeRegistryFactory`, `MfeHandler`, `MfeBridgeFactory`, `LayoutDomain`, action/property constants, type contracts
-- From `@cyberfabric/api`: `apiRegistry`, `BaseApiService`, `RestProtocol`, `SseProtocol`, mock plugins, type guards, `StreamDescriptor`, `StreamStatus`
-- From `@cyberfabric/i18n`: `i18nRegistry`, `Language`, `SUPPORTED_LANGUAGES`, all formatters
+`@gears-frontx/framework` re-exports the public API of all four L1 packages so that consumers can import from a single entry point. Re-exported symbols include:
+- From `@gears-frontx/state`: `eventBus`, `createStore`, `getStore`, `registerSlice`, `hasSlice`, `createSlice`, and all related types
+- From `@gears-frontx/screensets`: `MfeRegistry`, `mfeRegistryFactory`, `MfeHandler`, `MfeBridgeFactory`, `LayoutDomain`, action/property constants, type contracts
+- From `@gears-frontx/api`: `apiRegistry`, `BaseApiService`, `RestProtocol`, `SseProtocol`, mock plugins, type guards, `StreamDescriptor`, `StreamStatus`
+- From `@gears-frontx/i18n`: `i18nRegistry`, `Language`, `SUPPORTED_LANGUAGES`, all formatters
 
 The framework does NOT export `createAction` to consumers; actions are handwritten functions.
 
@@ -601,7 +601,7 @@ The framework does NOT export `createAction` to consumers; actions are handwritt
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-framework-composition-derived-schemas`
 
-`@cyberfabric/framework` exports three GTS derived schemas (`themeSchema`, `languageSchema`, `extensionScreenSchema`) for application-layer registration. These schemas encode application-level constraints — valid theme values, supported languages, screen extension presentation shape — and are NOT part of the core type system in `@cyberfabric/screensets` (L1). The application registers them on the `TypeSystemPlugin` instance before constructing the FrontX app via `gtsPlugin.registerSchema()`. This keeps the L1 SDK generic and allows projects to substitute custom schemas.
+`@gears-frontx/framework` exports three GTS derived schemas (`themeSchema`, `languageSchema`, `extensionScreenSchema`) for application-layer registration. These schemas encode application-level constraints — valid theme values, supported languages, screen extension presentation shape — and are NOT part of the core type system in `@gears-frontx/screensets` (L1). The application registers them on the `TypeSystemPlugin` instance before constructing the FrontX app via `gtsPlugin.registerSchema()`. This keeps the L1 SDK generic and allows projects to substitute custom schemas.
 
 **Covers (PRD)**:
 - `cpt-frontx-fr-mfe-shared-property`
@@ -634,8 +634,8 @@ The framework does NOT export `createAction` to consumers; actions are handwritt
 - [x] `normalizeBase('/console/')` returns `'/console'`; `normalizeBase('')` returns `'/'`; `normalizeBase('console')` returns `'/console'`
 - [x] `stripBase('/console/dashboard', '/console')` returns `'/dashboard'`; `stripBase('/admin/x', '/console')` returns `null`; `stripBase('/console-admin', '/console')` returns `null`
 - [x] `createHAI3App()` uses the `full()` preset and returns a valid `HAI3App` without configuration
-- [x] `@cyberfabric/framework` has no React import (enforced by `dependency-cruiser`)
-- [x] All layout domain types (`HeaderState`, `FooterState`, `MenuState`, `SidebarState`, `PopupState`, `OverlayState`) are exported from `@cyberfabric/framework`
+- [x] `@gears-frontx/framework` has no React import (enforced by `dependency-cruiser`)
+- [x] All layout domain types (`HeaderState`, `FooterState`, `MenuState`, `SidebarState`, `PopupState`, `OverlayState`) are exported from `@gears-frontx/framework`
 
 ---
 

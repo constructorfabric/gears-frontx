@@ -93,8 +93,8 @@ Read and scan the implementation for violations that automated tools miss.
 - Event-driven architecture only — no direct cross-domain communication
 - No string literal identifiers — use constants or enums
 - Registries follow Open/Closed — adding items must not modify registry root files
-- App-level deps limited to: `@cyberfabric/react`, the configured UI kit, `react`, `react-dom`
-- Import rules: relative within package, `@/` alias cross-branch, `@cyberfabric/*` cross-package
+- App-level deps limited to: `@gears-frontx/react`, the configured UI kit, `react`, `react-dom`
+- Import rules: relative within package, `@/` alias cross-branch, `@gears-frontx/*` cross-package
 - Index files only when aggregating 3+ exports; Redux slices imported directly (no barrels)
 
 **Architecture compliance**:

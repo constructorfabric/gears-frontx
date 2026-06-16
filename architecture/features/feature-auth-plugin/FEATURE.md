@@ -36,7 +36,7 @@
 
 ### 1.1 Overview
 
-The Auth Plugin wires a headless `AuthProvider` from `@cyberfabric/auth` into the `@cyberfabric/api` REST transport layer and exposes an `app.auth` runtime surface on the `HAI3App` instance. It attaches session credentials to outgoing requests, intercepts 401 responses to trigger token refresh, and deduplicates concurrent refresh calls. Scope is REST-only; SSE auth is out-of-scope for the default binding.
+The Auth Plugin wires a headless `AuthProvider` from `@gears-frontx/auth` into the `@gears-frontx/api` REST transport layer and exposes an `app.auth` runtime surface on the `HAI3App` instance. It attaches session credentials to outgoing requests, intercepts 401 responses to trigger token refresh, and deduplicates concurrent refresh calls. Scope is REST-only; SSE auth is out-of-scope for the default binding.
 
 ### 1.2 Purpose
 
@@ -51,8 +51,8 @@ Enable applications to integrate authentication transparently into the HTTP tran
 ### 1.4 References
 
 - Overall Design: [DESIGN.md](../../DESIGN.md)
-- Auth SDK: `@cyberfabric/auth`
-- API SDK: `@cyberfabric/api` (RestPlugin, RestProtocol)
+- Auth SDK: `@gears-frontx/auth`
+- API SDK: `@gears-frontx/api` (RestPlugin, RestProtocol)
 
 ---
 

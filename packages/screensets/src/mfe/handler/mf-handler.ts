@@ -947,7 +947,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    *
    * Matches all relative imports (both './' and '../' prefixed) and resolves
    * them relative to the importing chunk's path. For example, a chunk at
-   * '__federation_shared_@cyberfabric/react.js' importing '../runtime.js' resolves
+   * '__federation_shared_@gears-frontx/react.js' importing '../runtime.js' resolves
    * to 'runtime.js' (relative to baseUrl).
    */
   // @cpt-algo:cpt-frontx-algo-mfe-isolation-parse-imports:p1
@@ -1138,7 +1138,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * Resolve a relative import path against the importing chunk's filename.
    *
    * Uses URL resolution to correctly handle '../' traversals. For example:
-   *  - resolveRelativePath('__federation_shared_@cyberfabric/react.js', '../runtime.js')
+   *  - resolveRelativePath('__federation_shared_@gears-frontx/react.js', '../runtime.js')
    *    → 'runtime.js'
    *  - resolveRelativePath('expose-Widget1.js', './dep.js')
    *    → 'dep.js'

@@ -1,8 +1,8 @@
-# @cyberfabric/screensets
+# @gears-frontx/screensets
 
 > Pure TypeScript contracts and MFE (Microfrontend) runtime for FrontX SDK. Manages extension domains, lifecycle, and coordination.
 
-Part of the FrontX SDK Layer (L1) - ZERO dependencies. Can be used independently without other @cyberfabric packages.
+Part of the FrontX SDK Layer (L1) - ZERO dependencies. Can be used independently without other @gears-frontx packages.
 
 ## Core API
 
@@ -31,7 +31,7 @@ import {
   HAI3_ACTION_LOAD_EXT,
   HAI3_ACTION_MOUNT_EXT,
   HAI3_SHARED_PROPERTY_THEME,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 
 // Define domain
 const screenDomain: ExtensionDomain = {
@@ -85,7 +85,7 @@ import {
   HAI3_ACTION_LOAD_EXT,      // 'hai3.action.load_ext'
   HAI3_ACTION_MOUNT_EXT,     // 'hai3.action.mount_ext'
   HAI3_ACTION_UNMOUNT_EXT,   // 'hai3.action.unmount_ext'
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 ```
 
 ## Shared Property Constants
@@ -94,7 +94,7 @@ import {
 import {
   HAI3_SHARED_PROPERTY_THEME,     // 'hai3.shared.theme'
   HAI3_SHARED_PROPERTY_LANGUAGE,  // 'hai3.shared.language'
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 ```
 
 ## GTS Type System
@@ -102,7 +102,7 @@ import {
 FrontX uses GTS (Global Type System) for runtime type validation. Import from subpath to avoid dependency bloat:
 
 ```typescript
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 
 const registry = screensetsRegistryFactory({
   typeSystemPlugin: gtsPlugin,
@@ -136,7 +136,7 @@ Example type IDs:
 ## LayoutDomain Enum
 
 ```typescript
-import { LayoutDomain } from '@cyberfabric/screensets';
+import { LayoutDomain } from '@gears-frontx/screensets';
 
 LayoutDomain.Header    // 'header'
 LayoutDomain.Footer    // 'footer'

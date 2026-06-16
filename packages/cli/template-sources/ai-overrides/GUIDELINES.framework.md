@@ -37,7 +37,7 @@
 
 ## IMPORT RULES
 - Inside same package: relative paths.
-- SDK packages: @cyberfabric/state, @cyberfabric/screensets, @cyberfabric/api, @cyberfabric/i18n.
+- SDK packages: @gears-frontx/state, @gears-frontx/screensets, @gears-frontx/api, @gears-frontx/i18n.
 - External deps: lodash, @reduxjs/toolkit.
 - Index files: only when aggregating 3 or more exports.
 - Redux slices: import directly (no barrels).

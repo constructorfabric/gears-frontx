@@ -176,7 +176,7 @@ export interface AuthIdentity {
 }
 
 // ---------------------------------------------------------------------------
-// Transport adapter (interfaces only — for future @cyberfabric/api binding)
+// Transport adapter (interfaces only — for future @gears-frontx/api binding)
 // ---------------------------------------------------------------------------
 
 export interface AuthTransportRequest {

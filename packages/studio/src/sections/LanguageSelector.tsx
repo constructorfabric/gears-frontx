@@ -1,6 +1,6 @@
 // @cpt-flow:cpt-frontx-flow-studio-devtools-language-change:p1
 // @cpt-dod:cpt-frontx-dod-studio-devtools-control-panel:p1
-import { useTranslation, LanguageDisplayMode, TextDirection, SUPPORTED_LANGUAGES, getLanguageMetadata, type Language } from '@cyberfabric/react';
+import { useTranslation, LanguageDisplayMode, TextDirection, SUPPORTED_LANGUAGES, getLanguageMetadata, type Language } from '@gears-frontx/react';
 import { ButtonVariant } from '../uikit/types';
 import {
   DropdownMenu,

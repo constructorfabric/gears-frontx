@@ -7,7 +7,7 @@
  * @packageDocumentation
  */
 
-import type { ExtensionDomain } from '@cyberfabric/screensets';
+import type { ExtensionDomain } from '@gears-frontx/screensets';
 
 // Import layout domain instances
 import sidebarDomainInstance from './hai3.screensets/instances/domains/sidebar.v1.json';

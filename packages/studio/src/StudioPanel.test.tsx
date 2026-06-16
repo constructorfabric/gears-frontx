@@ -7,7 +7,7 @@ const setPortalContainer = vi.fn();
 const handleResizeMouseDown = vi.fn();
 const handleDragMouseDown = vi.fn();
 
-vi.mock('@cyberfabric/react', () => ({
+vi.mock('@gears-frontx/react', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),

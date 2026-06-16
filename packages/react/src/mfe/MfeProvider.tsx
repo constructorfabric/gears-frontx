@@ -9,7 +9,7 @@
  * (same query key) are deduplicated and cached once across MFE boundaries.
  * Each MFE still uses its own apiRegistry and service instances in queryFn.
  *
- * React Layer: L3 (Depends on @cyberfabric/framework)
+ * React Layer: L3 (Depends on @gears-frontx/framework)
  */
 // @cpt-flow:cpt-frontx-flow-react-bindings-mfe-provider:p1
 // @cpt-dod:cpt-frontx-dod-react-bindings-mfe-hooks:p1

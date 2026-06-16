@@ -7,8 +7,8 @@
 
 // @cpt-algo:cpt-frontx-algo-framework-composition-mock-toggle:p2
 
-import { eventBus, getStore } from '@cyberfabric/state';
-import { apiRegistry, isMockPlugin, type ApiProtocol, type ApiPluginBase } from '@cyberfabric/api';
+import { eventBus, getStore } from '@gears-frontx/state';
+import { apiRegistry, isMockPlugin, type ApiProtocol, type ApiPluginBase } from '@gears-frontx/api';
 import { setMockEnabled } from '../slices/mockSlice';
 
 // ============================================================================
@@ -47,7 +47,7 @@ export interface MockTogglePayload {
 // Module Augmentation for Type-Safe Events
 // ============================================================================
 
-declare module '@cyberfabric/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'mock/toggle': MockTogglePayload;
   }
@@ -136,7 +136,7 @@ export function initMockEffects(): () => void {
  *
  * @example
  * ```typescript
- * import { toggleMockMode } from '@cyberfabric/framework';
+ * import { toggleMockMode } from '@gears-frontx/framework';
  * toggleMockMode(true);  // Enable mock mode
  * toggleMockMode(false); // Disable mock mode
  * ```

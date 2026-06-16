@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { useAppSelector, type HeaderState } from '@cyberfabric/react';
+import { useAppSelector, type HeaderState } from '@gears-frontx/react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/app/components/ui/avatar';
 import { Skeleton } from '@/app/components/ui/skeleton';
 

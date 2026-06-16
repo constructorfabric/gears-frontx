@@ -1,8 +1,8 @@
-# @cyberfabric/i18n
+# @gears-frontx/i18n
 
 > Internationalization with 36 languages, namespace support, lazy loading, and RTL detection for FrontX SDK.
 
-Part of the FrontX SDK Layer (L1) - can be used independently without other @cyberfabric packages. Zero dependencies.
+Part of the FrontX SDK Layer (L1) - can be used independently without other @gears-frontx packages. Zero dependencies.
 
 ## Core API
 
@@ -20,7 +20,7 @@ Part of the FrontX SDK Layer (L1) - can be used independently without other @cyb
 ## Quick Start
 
 ```typescript
-import { i18nRegistry, Language, I18nRegistryImpl } from '@cyberfabric/i18n';
+import { i18nRegistry, Language, I18nRegistryImpl } from '@gears-frontx/i18n';
 
 // Register translations directly
 i18nRegistry.register('common', Language.English, {
@@ -45,5 +45,5 @@ const isRTL = i18nRegistry.isRTL();
 
 ## Optional
 
-- [Migration Guide](https://frontx.dev/docs/i18n/migration): Migrating from @cyberfabric/uicore
+- [Migration Guide](https://frontx.dev/docs/i18n/migration): Migrating from @gears-frontx/uicore
 - [RTL Support](https://frontx.dev/docs/i18n/rtl): Right-to-left language handling

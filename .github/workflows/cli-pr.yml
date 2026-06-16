@@ -6,7 +6,7 @@ name: CLI PR E2E
 # duplicating `npm run test:unit` here would just double the CI cost for
 # every PR. If the CLI ever grows a regression path that unit tests miss
 # but main.yml does not yet guard, add an explicit check here (ideally via
-# a `--workspace=@cyberfabric/cli` test run) rather than re-running the
+# a `--workspace=@gears-frontx/cli` test run) rather than re-running the
 # whole monorepo suite.
 on:
   pull_request:
@@ -50,7 +50,7 @@ jobs:
         run: npm run build:packages
 
       - name: Run CLI PR E2E
-        run: npm run test:e2e:pr --workspace=@cyberfabric/cli
+        run: npm run test:e2e:pr --workspace=@gears-frontx/cli
         env:
           CLI_E2E_ARTIFACT_DIR: .artifacts/cli-e2e/pr
           FRONTX_USE_LOCAL: '1'

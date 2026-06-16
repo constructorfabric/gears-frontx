@@ -9,13 +9,13 @@
 // @cpt-dod:cpt-frontx-dod-framework-composition-propagation:p1
 // @cpt-dod:cpt-frontx-dod-framework-composition-shared-property:p1
 
-import { eventBus } from '@cyberfabric/state';
-import { HAI3_SHARED_PROPERTY_THEME } from '@cyberfabric/screensets';
+import { eventBus } from '@gears-frontx/state';
+import { HAI3_SHARED_PROPERTY_THEME } from '@gears-frontx/screensets';
 import type { HAI3Plugin, ChangeThemePayload, ThemePropagationFailedPayload } from '../types';
 import { createThemeRegistry } from '../registries/themeRegistry';
 
 // Define theme events for module augmentation
-declare module '@cyberfabric/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'theme/changed': ChangeThemePayload;
     'theme/propagation/failed': ThemePropagationFailedPayload;

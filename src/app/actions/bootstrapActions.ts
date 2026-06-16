@@ -7,7 +7,7 @@
  * Following flux architecture: Actions emit events, Effects listen and dispatch.
  */
 
-import { eventBus } from '@cyberfabric/react';
+import { eventBus } from '@gears-frontx/react';
 import type { ApiUser } from '@/app/api';
 
 /**

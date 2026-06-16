@@ -8,7 +8,7 @@
 
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { HAI3Provider, useDomainExtensions } from '@cyberfabric/react';
+import { HAI3Provider, useDomainExtensions } from '@gears-frontx/react';
 import {
   createHAI3,
   effects,
@@ -19,7 +19,7 @@ import {
   type Extension,
   type ExtensionDomain,
   type HAI3App,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 describe('useDomainExtensions hook - Phase 21.7', () => {
   const sidebarDomainId = 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1';

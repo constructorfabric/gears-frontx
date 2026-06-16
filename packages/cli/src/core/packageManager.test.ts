@@ -68,14 +68,14 @@ describe('packageManager helpers', () => {
     expect(getRunScriptCommand('npm', 'build')).toBe('npm run build');
     expect(getRunScriptCommand('yarn', 'build')).toBe('yarn build');
 
-    expect(getWorkspaceRunScriptCommand('npm', '@cyberfabric/cli', 'test:unit')).toBe(
-      'npm run test:unit --workspace=@cyberfabric/cli'
+    expect(getWorkspaceRunScriptCommand('npm', '@gears-frontx/cli', 'test:unit')).toBe(
+      'npm run test:unit --workspace=@gears-frontx/cli'
     );
-    expect(getWorkspaceRunScriptCommand('pnpm', '@cyberfabric/cli', 'test:unit')).toBe(
-      'pnpm --filter @cyberfabric/cli run test:unit'
+    expect(getWorkspaceRunScriptCommand('pnpm', '@gears-frontx/cli', 'test:unit')).toBe(
+      'pnpm --filter @gears-frontx/cli run test:unit'
     );
-    expect(getWorkspaceRunScriptCommand('yarn', '@cyberfabric/cli', 'test:unit')).toBe(
-      'yarn workspace @cyberfabric/cli run test:unit'
+    expect(getWorkspaceRunScriptCommand('yarn', '@gears-frontx/cli', 'test:unit')).toBe(
+      'yarn workspace @gears-frontx/cli run test:unit'
     );
 
     expect(getExecCommand('npm', 'vitest')).toBe('npm exec -- vitest');
@@ -109,7 +109,7 @@ describe('packageManager helpers', () => {
   it('transforms npm command snippets for pnpm and yarn', () => {
     const content = [
       'npm run build',
-      'npm run test:unit --workspace=@cyberfabric/cli',
+      'npm run test:unit --workspace=@gears-frontx/cli',
       'npm ci',
       'npm install',
       "  cache: 'npm'",
@@ -118,7 +118,7 @@ describe('packageManager helpers', () => {
 
     expect(transformPackageManagerText(content, 'npm')).toBe(content);
     expect(transformPackageManagerText(content, 'pnpm')).toContain(
-      'pnpm --filter @cyberfabric/cli run test:unit'
+      'pnpm --filter @gears-frontx/cli run test:unit'
     );
     expect(transformPackageManagerText(content, 'pnpm')).toContain('pnpm run build');
     expect(transformPackageManagerText(content, 'pnpm')).toContain('pnpm install --frozen-lockfile');
@@ -126,7 +126,7 @@ describe('packageManager helpers', () => {
     expect(transformPackageManagerText(content, 'pnpm')).toContain('cache: pnpm');
 
     const yarnText = transformPackageManagerText(content, 'yarn');
-    expect(yarnText).toContain('yarn workspace @cyberfabric/cli run test:unit');
+    expect(yarnText).toContain('yarn workspace @gears-frontx/cli run test:unit');
     expect(yarnText).toContain('yarn build');
     expect(yarnText).toContain('yarn install --immutable');
     expect(yarnText).toContain("cache: 'yarn'");

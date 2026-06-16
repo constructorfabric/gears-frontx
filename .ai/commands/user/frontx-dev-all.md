@@ -112,7 +112,7 @@ cp -r packages/cli/template-sources/mfe-package/ \
 ```json
 // src/mfe_packages/my-new-mfe/package.json
 {
-  "name": "@cyberfabric/my-new-mfe",
+  "name": "@gears-frontx/my-new-mfe",
   "scripts": {
     "dev": "vite --port 3040",    // ← unique port
   }

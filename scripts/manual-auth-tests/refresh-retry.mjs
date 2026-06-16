@@ -1,6 +1,6 @@
-import { apiRegistry } from '@cyberfabric/api';
-import { createHAI3 } from '@cyberfabric/framework';
-import { auth } from '@cyberfabric/framework';
+import { apiRegistry } from '@gears-frontx/api';
+import { createHAI3 } from '@gears-frontx/framework';
+import { auth } from '@gears-frontx/framework';
 
 import { DummyJsonService } from './dummyjson-service.mjs';
 
@@ -15,7 +15,7 @@ import { DummyJsonService } from './dummyjson-service.mjs';
  *
  * Note:
  * - DummyJSON refresh expects refreshToken in JSON body, not in Authorization header.
- * - provider.refresh uses fetch directly to avoid recursion through @cyberfabric/api + auth plugin.
+ * - provider.refresh uses fetch directly to avoid recursion through @gears-frontx/api + auth plugin.
  */
 
 apiRegistry.reset?.();
@@ -74,4 +74,3 @@ console.log('[refresh-retry] OK:', {
   id: me.id,
   username: me.username,
 });
-

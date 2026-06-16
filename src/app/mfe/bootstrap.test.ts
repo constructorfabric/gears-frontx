@@ -24,7 +24,7 @@ const mockApp = {
   i18nRegistry: { getLanguage: () => null },
 };
 
-vi.mock('@cyberfabric/react', async (importOriginal) => {
+vi.mock('@gears-frontx/react', async (importOriginal) => {
   const real = await importOriginal<Record<string, never>>();
   return {
     ...real,

@@ -89,7 +89,7 @@ describe('npmSpawnArgs (routing contract)', () => {
     const project = {
       kind: 'workspace',
       name: 'api',
-      workspace: '@cyberfabric/api',
+      workspace: '@gears-frontx/api',
       rootPath: 'packages/api',
       hasWatchScript: true,
     };
@@ -97,7 +97,7 @@ describe('npmSpawnArgs (routing contract)', () => {
       'run',
       'test:unit',
       '-w',
-      '@cyberfabric/api',
+      '@gears-frontx/api',
     ]);
   });
 
@@ -115,7 +115,7 @@ describe('npmSpawnArgs (routing contract)', () => {
     const project = {
       kind: 'workspace',
       name: 'api',
-      workspace: '@cyberfabric/api',
+      workspace: '@gears-frontx/api',
       rootPath: 'packages/api',
       hasWatchScript: true,
     };
@@ -127,7 +127,7 @@ describe('npmSpawnArgs (routing contract)', () => {
       'run',
       'test:unit',
       '-w',
-      '@cyberfabric/api',
+      '@gears-frontx/api',
       '--',
       'src/foo.test.ts',
       '--reporter=verbose',
@@ -314,7 +314,7 @@ describe('runSequentially', () => {
     {
       kind: 'workspace',
       name: 'api',
-      workspace: '@cyberfabric/api',
+      workspace: '@gears-frontx/api',
       rootPath: 'packages/api',
       hasWatchScript: true,
     },
@@ -405,7 +405,7 @@ describe('runInParallel', () => {
     {
       kind: 'workspace',
       name: 'api',
-      workspace: '@cyberfabric/api',
+      workspace: '@gears-frontx/api',
       rootPath: 'packages/api',
       hasWatchScript: true,
     },

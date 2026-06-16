@@ -1,7 +1,7 @@
 /**
  * FrontX Provider - Main provider component for FrontX applications
  *
- * React Layer: L3 (Depends on @cyberfabric/framework)
+ * React Layer: L3 (Depends on @gears-frontx/framework)
  *
  * Query cache lifecycle is owned by the queryCache() framework plugin (L2).
  * HAI3Provider reads the plugin-owned QueryClient from the app and mounts the
@@ -21,8 +21,8 @@ import type { Store } from '@reduxjs/toolkit';
 import {
   createHAI3App,
   microfrontends,
-} from '@cyberfabric/framework';
-import type { HAI3App } from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
+import type { HAI3App } from '@gears-frontx/framework';
 import { HAI3Context } from './HAI3Context';
 import { MfeProvider } from './mfe/MfeProvider';
 import {

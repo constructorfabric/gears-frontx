@@ -12,7 +12,7 @@
 import React from 'react';
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { auth, createHAI3 } from '@cyberfabric/framework';
+import { auth, createHAI3 } from '@gears-frontx/framework';
 import type {
   AccessDecision,
   AccessQuery,
@@ -23,7 +23,7 @@ import type {
   AuthSession,
   AuthTransition,
   HAI3App,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 import { CanAccess } from '../src/components/CanAccess';
 import { HAI3Provider } from '../src/HAI3Provider';
 import { useCanAccess } from '../src/hooks/useCanAccess';

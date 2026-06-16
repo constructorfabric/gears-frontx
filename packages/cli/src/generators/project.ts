@@ -275,7 +275,7 @@ function generateCustomUikitThemes(uikit: string): GeneratedFile[] {
 
     themeFiles.push({
       path: 'src/app/themes/themes.ts',
-      content: `import type { ThemeConfig } from '@cyberfabric/react';
+      content: `import type { ThemeConfig } from '@gears-frontx/react';
 
 export const hai3Themes: ThemeConfig[] = [
   ${themeEntries.join(',\n  ')},
@@ -456,7 +456,7 @@ function rewriteCyberfabricDepsToLocalRefs(
 
     const nextDeps: Record<string, string> = {};
     for (const [name, value] of Object.entries(deps)) {
-      nextDeps[name] = name.startsWith('@cyberfabric/')
+      nextDeps[name] = name.startsWith('@gears-frontx/')
         ? getLocalPackageRef(name, monorepoRoot, projectPath)
         : value;
     }
@@ -798,7 +798,7 @@ ${varsBlock}
   }`;
   });
 
-  return `import type { ThemeConfig } from '@cyberfabric/react';
+  return `import type { ThemeConfig } from '@gears-frontx/react';
 
 export const hai3Themes: ThemeConfig[] = [
   ${themeBlocks.join(',\n  ')},
@@ -966,13 +966,13 @@ export function buildPackageJson(input: PackageJsonInput): string {
   const resolvedUikit = normalizeUikit(uikit);
 
   const dependencies: Record<string, string> = {
-    '@cyberfabric/react': 'alpha',
-    '@cyberfabric/framework': 'alpha',
-    '@cyberfabric/api': 'alpha',
-    '@cyberfabric/auth': 'alpha',
-    '@cyberfabric/i18n': 'alpha',
-    '@cyberfabric/screensets': 'alpha',
-    '@cyberfabric/state': 'alpha',
+    '@gears-frontx/react': 'alpha',
+    '@gears-frontx/framework': 'alpha',
+    '@gears-frontx/api': 'alpha',
+    '@gears-frontx/auth': 'alpha',
+    '@gears-frontx/i18n': 'alpha',
+    '@gears-frontx/screensets': 'alpha',
+    '@gears-frontx/state': 'alpha',
     '@hookform/resolvers': '5.2.2',
     '@iconify/react': '5.0.2',
     '@radix-ui/react-avatar': '1.1.10',
@@ -999,7 +999,7 @@ export function buildPackageJson(input: PackageJsonInput): string {
 
   // @cpt-begin:cpt-frontx-algo-unit-test-generation-and-agent-verification-scaffold-tests:p1:inst-add-package-json-entries
   const devDependencies: Record<string, string> = {
-    '@cyberfabric/cli': 'alpha',
+    '@gears-frontx/cli': 'alpha',
     '@j178/prek': '0.2.25',
     '@types/node': '^24.9.1',
     '@types/lodash': '4.17.20',
@@ -1029,7 +1029,7 @@ export function buildPackageJson(input: PackageJsonInput): string {
   };
 
   if (studio) {
-    devDependencies['@cyberfabric/studio'] = 'alpha';
+    devDependencies['@gears-frontx/studio'] = 'alpha';
   }
 
   if (resolvedUikit !== 'shadcn') {
@@ -1053,7 +1053,7 @@ export function buildPackageJson(input: PackageJsonInput): string {
       const out: Record<string, string> = {};
       for (const [name, value] of Object.entries(deps)) {
         out[name] =
-          name.startsWith('@cyberfabric/') ? getLocalPackageRef(name, monorepoRoot, projectPath) : value;
+          name.startsWith('@gears-frontx/') ? getLocalPackageRef(name, monorepoRoot, projectPath) : value;
       }
       return out;
     };

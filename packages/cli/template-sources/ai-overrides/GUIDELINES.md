@@ -29,7 +29,7 @@
 ## REPO INVARIANTS
 - Event-driven architecture only (see EVENTS.md).
 - Registries follow Open/Closed; adding items must not modify registry root files.
-- App-level deps limited to: @cyberfabric/react, the configured UI kit, react, react-dom.
+- App-level deps limited to: @gears-frontx/react, the configured UI kit, react, react-dom.
 - Cross-domain communication only via events.
 - No string literal identifiers; use constants or enums.
 - No any, no unknown in type definitions, no "as unknown as" casts.
@@ -49,7 +49,7 @@
 ## IMPORT RULES
 - Inside same package: relative paths.
 - Cross-branch in app: @/ alias.
-- Cross-package: @cyberfabric/framework, @cyberfabric/react, the configured UI kit.
+- Cross-package: @gears-frontx/framework, @gears-frontx/react, the configured UI kit.
 - Index files: only when aggregating 3 or more exports.
 - Redux slices: import directly (no barrels).
 

@@ -45,7 +45,7 @@ This decision affects MFE vendors (whose source is transformed at build time and
 * **(P0)** Lazy semantics must be preserved — chunks fetched on demand at first invocation, not eagerly at parent load time.
 * **(P0)** The build-time transform must use stable, public Vite APIs — no reliance on Vite or Rollup internals that change between minor releases.
 * **(P1)** Vendor MFEs must be able to use ordinary dynamic `import()` calls without learning a FrontX-specific source-level API — the build pipeline owns compliance, not the vendor author.
-* **(P1)** The mechanism must not introduce `@cyberfabric/*` runtime dependencies into vendor MFEs at runtime; the runtime ABI is host-injected, not imported by the MFE.
+* **(P1)** The mechanism must not introduce `@gears-frontx/*` runtime dependencies into vendor MFEs at runtime; the runtime ABI is host-injected, not imported by the MFE.
 * **(P1)** The never-revoke invariant (`cpt-frontx-fr-blob-no-revoke`) must hold for lazy-chunk blob URLs as it does for entry-chunk blob URLs.
 * **(P2)** The mechanism must work alongside `@module-federation/vite`'s `closeBundle` output without requiring changes to MF 2.0 build internals.
 

@@ -18,7 +18,7 @@
 // @cpt-dod:cpt-frontx-dod-react-bindings-extension-slot:p1
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { MfeRegistry } from '@cyberfabric/framework';
+import type { MfeRegistry } from '@gears-frontx/framework';
 
 /**
  * Props for ExtensionDomainSlot component

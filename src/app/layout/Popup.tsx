@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { useAppSelector, type PopupSliceState } from '@cyberfabric/react';
+import { useAppSelector, type PopupSliceState } from '@gears-frontx/react';
 
 export interface PopupProps {
   children?: React.ReactNode;

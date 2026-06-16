@@ -23,8 +23,8 @@ import {
   type TypeSystemPlugin,
   HAI3_ACTION_MOUNT_EXT,
   HAI3_ACTION_UNMOUNT_EXT,
-} from '@cyberfabric/screensets';
-import { getStore } from '@cyberfabric/state';
+} from '@gears-frontx/screensets';
+import { getStore } from '@gears-frontx/state';
 import type { HAI3Plugin } from '../../types';
 import { mfeSlice, addExtensionMounted, removeExtensionMounted } from './slice';
 import { initMfeEffects } from './effects';
@@ -99,9 +99,9 @@ function collectLifecycleDomains(chain: ActionsChain): string[] {
  *
  * @example
  * ```typescript
- * import { createFrontX, microfrontends } from '@cyberfabric/framework';
- * import { MfeHandlerMF, FrontX_MFE_ENTRY_MF } from '@cyberfabric/screensets/mfe/handler';
- * import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+ * import { createFrontX, microfrontends } from '@gears-frontx/framework';
+ * import { MfeHandlerMF, FrontX_MFE_ENTRY_MF } from '@gears-frontx/screensets/mfe/handler';
+ * import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
  *
  * const app = createFrontX()
  *   .use(microfrontends({

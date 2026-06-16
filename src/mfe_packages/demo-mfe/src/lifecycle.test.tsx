@@ -11,7 +11,7 @@ type ActionPayload = Record<string, string | number | boolean | null>;
 const superMountSpy = vi.fn();
 const fetchUserSpy = vi.fn();
 
-vi.mock('@cyberfabric/react', () => ({
+vi.mock('@gears-frontx/react', () => ({
   ActionHandler: class ActionHandler {
     static {
       void 0;

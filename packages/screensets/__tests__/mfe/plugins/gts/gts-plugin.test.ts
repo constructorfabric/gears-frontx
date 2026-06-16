@@ -3,10 +3,10 @@
  *
  * Tests for the GTS Type System Plugin implementation.
  * These tests verify the TypeSystemPlugin interface implementation
- * using only the core schemas that ship with @cyberfabric/screensets.
+ * using only the core schemas that ship with @gears-frontx/screensets.
  *
  * NOTE: Tests for application-layer derived schemas (theme, language,
- * extension_screen) live in @cyberfabric/framework because those schemas are
+ * extension_screen) live in @gears-frontx/framework because those schemas are
  * registered at the application layer, not here at L1.
  *
  * NOTE: Named-instance runtime validation mechanics (register() call shape,

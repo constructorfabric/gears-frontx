@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { useAppSelector, type SidebarState } from '@cyberfabric/react';
+import { useAppSelector, type SidebarState } from '@gears-frontx/react';
 
 export interface SidebarProps {
   children?: React.ReactNode;

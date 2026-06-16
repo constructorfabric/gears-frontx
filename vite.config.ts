@@ -26,7 +26,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
-    dedupe: ['@cyberfabric/api', '@cyberfabric/framework', '@cyberfabric/react'],
+    dedupe: ['@gears-frontx/api', '@gears-frontx/framework', '@gears-frontx/react'],
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'react/jsx-runtime', '@globaltypesystem/gts-ts'],
@@ -91,7 +91,7 @@ export default defineConfig({
           }
 
           // Split framework and react packages into separate chunk
-          if (id.includes('@cyberfabric/framework') || id.includes('@cyberfabric/react')) {
+          if (id.includes('@gears-frontx/framework') || id.includes('@gears-frontx/react')) {
             return 'frontx-core';
           }
           // Split React and React DOM

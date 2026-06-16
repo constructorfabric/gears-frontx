@@ -41,7 +41,7 @@ module.exports = {
       severity: 'error',
       from: { path: '^packages/react/' },
       to: { path: '^packages/(state|screensets|api|i18n)/' },
-      comment: 'LAYER VIOLATION: React (L3) cannot import SDK (L1) directly. Use @cyberfabric/framework re-exports.'
+      comment: 'LAYER VIOLATION: React (L3) cannot import SDK (L1) directly. Use @gears-frontx/framework re-exports.'
     },
     {
       name: 'packages-no-src-import',

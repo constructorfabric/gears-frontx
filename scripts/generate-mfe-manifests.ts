@@ -115,7 +115,7 @@ interface RawEnrichedMfeJson {
 
 // ---------------------------------------------------------------------------
 // Output shape types (mirror the SDK MfManifest / MfeEntryMF types; kept
-// local so the script has no dependency on @cyberfabric packages at run time)
+// local so the script has no dependency on @gears-frontx packages at run time)
 // ---------------------------------------------------------------------------
 
 interface OutMfManifestShared {

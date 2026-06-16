@@ -9,7 +9,7 @@
 // @cpt-state:cpt-frontx-state-framework-composition-tenant:p1
 // @cpt-dod:cpt-frontx-dod-framework-composition-app-config:p1
 
-import { eventBus, getStore } from '@cyberfabric/state';
+import { eventBus, getStore } from '@gears-frontx/state';
 import { setTenant, clearTenant } from '../slices/tenantSlice';
 import type { Tenant } from '../layoutTypes';
 
@@ -37,7 +37,7 @@ export interface TenantClearedPayload {
 // Module Augmentation for Type-Safe Events
 // ============================================================================
 
-declare module '@cyberfabric/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'app/tenant/changed': TenantChangedPayload;
     'app/tenant/cleared': TenantClearedPayload;

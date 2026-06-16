@@ -14,7 +14,7 @@ import {
   themeSchema,
   languageSchema,
   extensionScreenSchema,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import { AccountsApiService } from '@/app/api';
 import '@/app/events/bootstrapEvents';
 import { registerBootstrapEffects } from '@/app/effects/bootstrapEffects';

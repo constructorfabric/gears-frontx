@@ -1,7 +1,7 @@
 /**
  * MFE Hooks Tests
  *
- * Tests for MFE context and hooks in @cyberfabric/react.
+ * Tests for MFE context and hooks in @gears-frontx/react.
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -17,7 +17,7 @@ import {
   useHostAction,
   type MfeContextValue,
 } from '../../src/mfe';
-import type { ChildMfeBridge } from '@cyberfabric/framework';
+import type { ChildMfeBridge } from '@gears-frontx/framework';
 
 // ============================================================================
 // Mock Data

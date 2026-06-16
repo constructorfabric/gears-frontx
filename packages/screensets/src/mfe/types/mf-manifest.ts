@@ -34,7 +34,7 @@ export interface MfManifestAssets {
  * MFE-relative chunkPath to its standalone bundle.
  */
 export interface MfManifestShared {
-  /** npm package name (e.g. 'react', '@cyberfabric/screensets'). */
+  /** npm package name (e.g. 'react', '@gears-frontx/screensets'). */
   name: string;
   /** Concrete resolved version (e.g. '19.2.4'). */
   version: string;

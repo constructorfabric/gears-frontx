@@ -1,10 +1,10 @@
-# @cyberfabric/api
+# @gears-frontx/api
 
 API communication protocols and service registry for FrontX applications.
 
 ## SDK Layer
 
-This package is part of the **SDK Layer (L1)** - it has zero @cyberfabric dependencies and can be used independently. It has `axios` as a peer dependency.
+This package is part of the **SDK Layer (L1)** - it has zero @gears-frontx dependencies and can be used independently. It has `axios` as a peer dependency.
 
 ## Core Concepts
 
@@ -13,7 +13,7 @@ This package is part of the **SDK Layer (L1)** - it has zero @cyberfabric depend
 Abstract base class for domain-specific API services:
 
 ```typescript
-import { BaseApiService, RestEndpointProtocol, RestProtocol } from '@cyberfabric/api';
+import { BaseApiService, RestEndpointProtocol, RestProtocol } from '@gears-frontx/api';
 
 class AccountsApiService extends BaseApiService {
   constructor() {
@@ -40,7 +40,7 @@ class AccountsApiService extends BaseApiService {
 Services declare read and write endpoints as descriptors. Cache keys are derived automatically from `[baseURL, method, path]`. No manual key factories needed.
 
 ```typescript
-import { BaseApiService, RestEndpointProtocol, RestProtocol } from '@cyberfabric/api';
+import { BaseApiService, RestEndpointProtocol, RestProtocol } from '@gears-frontx/api';
 
 class AccountsApiService extends BaseApiService {
   constructor() {
@@ -68,14 +68,14 @@ class AccountsApiService extends BaseApiService {
 }
 ```
 
-Components consume descriptors via `useApiQuery(service.endpoint)` — see `@cyberfabric/react`.
+Components consume descriptors via `useApiQuery(service.endpoint)` — see `@gears-frontx/react`.
 
 ### API Registry
 
 Central registry for all API services:
 
 ```typescript
-import { apiRegistry } from '@cyberfabric/api';
+import { apiRegistry } from '@gears-frontx/api';
 
 // Register service with class reference (type-safe)
 apiRegistry.register(AccountsApiService);
@@ -94,7 +94,7 @@ import {
   BaseApiService,
   SseProtocol,
   SseStreamProtocol,
-} from '@cyberfabric/api';
+} from '@gears-frontx/api';
 
 class ChatApiService extends BaseApiService {
   constructor() {
@@ -119,14 +119,14 @@ class ChatApiService extends BaseApiService {
 }
 ```
 
-Components consume stream descriptors via `useApiStream(service.streamDescriptor)` — see `@cyberfabric/react`.
+Components consume stream descriptors via `useApiStream(service.streamDescriptor)` — see `@gears-frontx/react`.
 
 ### Mock Support
 
 Configure mocks via RestMockPlugin using the `registerPlugin()` pattern. Framework controls mock plugin activation via the Mock API toggle.
 
 ```typescript
-import { BaseApiService, RestProtocol, RestMockPlugin } from '@cyberfabric/api';
+import { BaseApiService, RestProtocol, RestMockPlugin } from '@gears-frontx/api';
 
 // Register mock plugins in service constructor
 // Framework activates/deactivates based on mock mode state
@@ -160,7 +160,7 @@ apiRegistry.plugins.add(RestProtocol, new RestMockPlugin({
 Create plugins by extending ApiPluginBase or ApiPlugin<TConfig>:
 
 ```typescript
-import { ApiPlugin, ApiPluginBase, ApiRequestContext, ApiResponseContext } from '@cyberfabric/api';
+import { ApiPlugin, ApiPluginBase, ApiRequestContext, ApiResponseContext } from '@gears-frontx/api';
 
 // Simple plugin (no config)
 class LoggingPlugin extends ApiPluginBase {
@@ -202,7 +202,7 @@ apiRegistry.plugins.add(new LoggingPlugin());
 HTTP REST API calls via axios:
 
 ```typescript
-import { RestProtocol } from '@cyberfabric/api';
+import { RestProtocol } from '@gears-frontx/api';
 
 const restProtocol = new RestProtocol({
   timeout: 30000,
@@ -216,13 +216,13 @@ const restProtocol = new RestProtocol({
 Mock mode is controlled centrally by the framework via the `toggleMockMode()` action. Services register mock plugins using `registerPlugin()`, and the framework activates/deactivates them based on mock mode state.
 
 ```typescript
-// In @cyberfabric/framework - toggle mock mode (used by FrontX Studio)
-import { toggleMockMode } from '@cyberfabric/framework';
+// In @gears-frontx/framework - toggle mock mode (used by FrontX Studio)
+import { toggleMockMode } from '@gears-frontx/framework';
 toggleMockMode(true);  // Enable all mock plugins
 toggleMockMode(false); // Disable all mock plugins
 
 // Custom mock plugins must be marked with MOCK_PLUGIN symbol
-import { ApiPluginBase, MOCK_PLUGIN } from '@cyberfabric/api';
+import { ApiPluginBase, MOCK_PLUGIN } from '@gears-frontx/api';
 
 class CustomMockPlugin extends ApiPluginBase {
   static readonly [MOCK_PLUGIN] = true;  // Required for framework to identify as mock plugin
@@ -230,7 +230,7 @@ class CustomMockPlugin extends ApiPluginBase {
 }
 
 // Check if a plugin is a mock plugin
-import { isMockPlugin } from '@cyberfabric/api';
+import { isMockPlugin } from '@gears-frontx/api';
 if (isMockPlugin(plugin)) {
   console.log('This is a mock plugin');
 }
@@ -253,7 +253,7 @@ if (isMockPlugin(plugin)) {
 Plugins can retry failed requests with optional modifications using `ApiPluginErrorContext`:
 
 ```typescript
-import { RestPluginWithConfig, ApiPluginErrorContext } from '@cyberfabric/api';
+import { RestPluginWithConfig, ApiPluginErrorContext } from '@gears-frontx/api';
 
 interface AuthConfig {
   getToken: () => string | null;

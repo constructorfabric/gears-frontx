@@ -22,15 +22,15 @@ import {
   resetSharedFetchCache,
   resetSharedQueryClient,
   type MockState,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 import {
   HAI3Provider,
   useApiQuery,
   useHAI3,
   useQueryCache,
   type MfeContextValue,
-} from '@cyberfabric/react';
-import { useOptionalHAI3QueryClient } from '@cyberfabric/react/testing';
+} from '@gears-frontx/react';
+import { useOptionalHAI3QueryClient } from '@gears-frontx/react/testing';
 import {
   ownedApps,
   buildTestQueryClient,

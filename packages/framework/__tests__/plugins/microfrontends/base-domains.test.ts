@@ -18,7 +18,7 @@ import {
   HAI3_SCREEN_EXTENSION_TYPE,
   HAI3_ACTION_LOAD_EXT,
   HAI3_ACTION_MOUNT_EXT,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 
 describe('Base Extension Domain Constants - Shared Properties', () => {
   describe('screenDomain sharedProperties', () => {

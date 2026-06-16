@@ -33,7 +33,7 @@ analytics-mfe/
 ### schemas.ts
 
 ```typescript
-import type { JSONSchema } from '@cyberfabric/screensets/types';
+import type { JSONSchema } from '@gears-frontx/screensets/types';
 
 /**
  * Custom action for data updates
@@ -148,7 +148,7 @@ export const TYPE_IDS = {
 
 ```typescript
 import React, { useEffect, useState } from 'react';
-import type { ChildMfeBridge, MfeEntryLifecycle, SharedProperty } from '@cyberfabric/screensets';
+import type { ChildMfeBridge, MfeEntryLifecycle, SharedProperty } from '@gears-frontx/screensets';
 import { TYPE_IDS } from './types/constants';
 
 interface ChartWidgetProps {
@@ -330,7 +330,7 @@ module.exports = {
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@cyberfabric/screensets": "latest",
+    "@gears-frontx/screensets": "latest",
     "@globaltypesystem/gts-ts": "latest",
     "typescript": "^5.4.2",
     "ts-loader": "^9.5.0",
@@ -346,13 +346,13 @@ module.exports = {
 ### register.ts
 
 ```typescript
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 import type {
   MfeEntryMF,
   Extension,
   MfManifest,
-} from '@cyberfabric/screensets';
-import type { ScreensetsRegistry } from '@cyberfabric/screensets/runtime';
+} from '@gears-frontx/screensets';
+import type { ScreensetsRegistry } from '@gears-frontx/screensets/runtime';
 import {
   dataUpdatedActionSchema,
   analyticsEntrySchema,
@@ -470,14 +470,14 @@ export async function registerAnalyticsMfe(runtime: ScreensetsRegistry) {
 ### Host application usage
 
 ```typescript
-import { screensetsRegistryFactory, gtsPlugin } from '@cyberfabric/screensets';
+import { screensetsRegistryFactory, gtsPlugin } from '@gears-frontx/screensets';
 import { registerAnalyticsMfe } from './register';
 
 // Build the registry with GTS plugin at application wiring time
 const registry = screensetsRegistryFactory.build({ typeSystem: gtsPlugin });
 
 // Create a container provider for the domain
-import { ContainerProvider } from '@cyberfabric/screensets';
+import { ContainerProvider } from '@gears-frontx/screensets';
 
 class SidebarContainerProvider extends ContainerProvider {
   getContainer(extensionId: string): Element {
@@ -612,7 +612,7 @@ lifecycle: [
 ```typescript
 import { describe, it, expect } from 'vitest';
 import { TYPE_IDS } from './types/constants';
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 
 describe('Analytics MFE', () => {
   it('should have valid type IDs', () => {
@@ -635,7 +635,7 @@ describe('Analytics MFE', () => {
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { DefaultScreensetsRegistry, gtsPlugin } from '@cyberfabric/screensets';
+import { DefaultScreensetsRegistry, gtsPlugin } from '@gears-frontx/screensets';
 import { registerAnalyticsMfe } from './register';
 
 describe('Analytics MFE Integration', () => {

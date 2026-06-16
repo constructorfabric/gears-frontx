@@ -8,7 +8,7 @@
 // @cpt-dod:cpt-frontx-dod-request-lifecycle-use-api-query:p2
 // @cpt-flow:cpt-frontx-flow-request-lifecycle-use-api-query:p2
 
-import type { EndpointDescriptor } from '@cyberfabric/framework';
+import type { EndpointDescriptor } from '@gears-frontx/framework';
 import type { ApiInfiniteQueryResult } from '../types';
 import type { ApiQueryOverrides } from './useApiQuery';
 import { useHAI3InfiniteQuery } from '../queryClient';

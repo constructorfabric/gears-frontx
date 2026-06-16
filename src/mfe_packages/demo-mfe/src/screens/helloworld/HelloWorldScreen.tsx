@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import type { ChildMfeBridge } from '@cyberfabric/react';
-import { HAI3_ACTION_MOUNT_EXT, HAI3_SCREEN_DOMAIN, HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE } from '@cyberfabric/react';
+import type { ChildMfeBridge } from '@gears-frontx/react';
+import { HAI3_ACTION_MOUNT_EXT, HAI3_SCREEN_DOMAIN, HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';

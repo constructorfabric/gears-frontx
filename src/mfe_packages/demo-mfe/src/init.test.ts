@@ -11,7 +11,7 @@ const effects = vi.fn(() => 'effects-plugin');
 const queryCacheShared = vi.fn(() => 'query-cache-shared-plugin');
 const mock = vi.fn(() => 'mock-plugin');
 
-vi.mock('@cyberfabric/react', () => ({
+vi.mock('@gears-frontx/react', () => ({
   createHAI3,
   apiRegistry: {
     register,

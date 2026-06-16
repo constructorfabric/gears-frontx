@@ -28,7 +28,7 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: '@cyberfabric/react/testing',
+        find: '@gears-frontx/react/testing',
         replacement: path.resolve(__dirname, './packages/framework/dist/testing.js'),
       },
       {

@@ -5,7 +5,7 @@
  * and registers API services. This module is imported once (as a side effect)
  * by ThemeAwareReactLifecycle, which provides the FrontXProvider to all screens.
  *
- * The MFE bundles its own copy of @cyberfabric/react, giving it isolated singletons:
+ * The MFE bundles its own copy of @gears-frontx/react, giving it isolated singletons:
  * - eventBus (no cross-MFE event leakage)
  * - apiRegistry (isolated service instances)
  * - storeInstance (isolated Redux store)
@@ -19,7 +19,7 @@ import {
   effects,
   mock,
   queryCacheShared,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import { AccountsApiService } from './api/AccountsApiService';
 
 // Register API services BEFORE build — mock plugin syncs during build(),

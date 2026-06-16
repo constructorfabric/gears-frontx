@@ -6,7 +6,7 @@
 2. Install dependencies: `npm install`
 3. Start the development server: `npm run dev`
 4. Open http://localhost:5173 in your browser
-5. Install FrontX CLI globally (recommended with npm): `npm install -g @cyberfabric/cli@alpha`
+5. Install FrontX CLI globally (recommended with npm): `npm install -g @gears-frontx/cli@alpha`
 6. Ask the AI: "Set up Chrome DevTools MCP server so you can see my browser"
 
 ## Creating Your First Screenset

@@ -1,7 +1,7 @@
 /**
  * useApiQuery - Declarative data fetching hook
  *
- * Accepts an EndpointDescriptor from @cyberfabric/api and returns a HAI3-owned
+ * Accepts an EndpointDescriptor from @gears-frontx/api and returns a HAI3-owned
  * ApiQueryResult. AbortSignal for request cancellation is threaded automatically
  * through the shared QueryClient integration.
  *
@@ -14,7 +14,7 @@
 // @cpt-state:cpt-frontx-state-request-lifecycle-query:p2
 // @cpt-FEATURE:implement-endpoint-descriptors:p3
 
-import type { EndpointDescriptor } from '@cyberfabric/framework';
+import type { EndpointDescriptor } from '@gears-frontx/framework';
 import type { ApiQueryResult } from '../types';
 import { useHAI3Query } from '../queryClient';
 

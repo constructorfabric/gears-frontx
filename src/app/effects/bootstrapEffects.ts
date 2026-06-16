@@ -8,7 +8,7 @@
  */
 
 import trim from 'lodash/trim';
-import { eventBus, setUser, setHeaderLoading, apiRegistry, type AppDispatch, type HeaderUser } from '@cyberfabric/react';
+import { eventBus, setUser, setHeaderLoading, apiRegistry, type AppDispatch, type HeaderUser } from '@gears-frontx/react';
 import { AccountsApiService, type ApiUser } from '@/app/api';
 
 /**

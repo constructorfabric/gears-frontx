@@ -259,7 +259,7 @@ This is a manual developer process using the external shadcn CLI — not impleme
 
 **Steps**:
 1. [x] - `p1` - At MFE bootstrap, the host sets shadcn CSS variables (`--background`, `--foreground`, `--primary`, `--primary-foreground`, `--muted`, `--accent`, `--destructive`, `--border`, `--radius`, and related tokens) on `document.documentElement` - `inst-theme-propagation-1`
-2. [x] - `p1` - **FOR EACH** shadow root created by the MFE: inherit CSS variables by including a `:host { ... }` block that forwards the same token set from the shadow root's outer context - `inst-theme-propagation-2` <!-- N/A for CLI: runtime behavior in @cyberfabric/react MFE bootstrap -->
+2. [x] - `p1` - **FOR EACH** shadow root created by the MFE: inherit CSS variables by including a `:host { ... }` block that forwards the same token set from the shadow root's outer context - `inst-theme-propagation-2` <!-- N/A for CLI: runtime behavior in @gears-frontx/react MFE bootstrap -->
 3. [x] - `p1` - **IF** UI kit type is `shadcn`: components consume variables directly; no additional mapping required - `inst-theme-propagation-3` <!-- N/A for CLI: inherent behavior, no code needed -->
 4. [x] - `p1` - **IF** UI kit type is `third-party`: the UIKit bridge file is responsible for mapping shadcn CSS variable values to the third-party library's theming API (e.g., MUI `createTheme`, Ant Design `ConfigProvider`) — this mapping is defined in the bridge template - `inst-theme-propagation-4`
 5. [x] - `p1` - **IF** UI kit type is `none`: the MFE developer is responsible for consuming the CSS variables in custom components; the scaffolded `uikit/` directory includes a `theme.css` file with variable forwarding - `inst-theme-propagation-5`

@@ -6,7 +6,7 @@
  * Keys are full URL patterns (including baseURL path).
  */
 
-import type { MockMap } from '@cyberfabric/react';
+import type { MockMap } from '@gears-frontx/react';
 import type { GetCurrentUserResponse, UpdateProfileRequest } from './types';
 import { readCurrentAccountsMockUser, replaceCurrentAccountsMockUser } from './mock-user-store';
 

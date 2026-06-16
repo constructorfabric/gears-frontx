@@ -5,7 +5,7 @@
  *
  * Uncomment the module augmentation below and add your event types:
  *
- * declare module '@cyberfabric/react' {
+ * declare module '@gears-frontx/react' {
  *   interface EventPayloadMap {
  *     'mfe/home/data-fetch-requested': undefined;
  *   }

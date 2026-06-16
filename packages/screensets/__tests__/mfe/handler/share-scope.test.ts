@@ -140,13 +140,13 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
     it('normalizes scoped package names: @scope/pkg → scope-pkg.js', async () => {
       const remoteName = 'scopedDepRemote';
       const baseUrl = `${TEST_BASE_URL}/${remoteName}/`;
-      // @cyberfabric/screensets → cyberfabric-screensets.js
-      const sharedDepUrl = `${baseUrl}shared/cyberfabric-screensets.js`;
+      // @gears-frontx/screensets → gears-frontx-screensets.js
+      const sharedDepUrl = `${baseUrl}shared/gears-frontx-screensets.js`;
 
       mocks.registerSource(sharedDepUrl, createSharedDepSource());
       mocks.registerSource(`${baseUrl}expose-Widget1.js`, createExposeChunkSource());
 
-      const manifest = buildManifest(remoteName, [sharedDep(remoteName, '@cyberfabric/screensets', '1.0.0')]);
+      const manifest = buildManifest(remoteName, [sharedDep(remoteName, '@gears-frontx/screensets', '1.0.0')]);
       const entry = buildEntry(remoteName, 'scoped-dep.entry', 'expose-Widget1.js', manifest);
 
       await handler.load(entry, entry.id);

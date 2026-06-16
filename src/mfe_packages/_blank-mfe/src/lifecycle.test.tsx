@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import {
   HAI3_SHARED_PROPERTY_LANGUAGE,
   HAI3_SHARED_PROPERTY_THEME,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMfeBridgeFixture } from '../../../__test-utils__/createMfeBridgeFixture';
 
@@ -22,8 +22,8 @@ const {
   useScreenTranslationsMock: vi.fn(),
 }));
 
-vi.mock('@cyberfabric/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@cyberfabric/react')>();
+vi.mock('@gears-frontx/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@gears-frontx/react')>();
   return {
     ...actual,
     ThemeAwareReactLifecycle: class ThemeAwareReactLifecycle {

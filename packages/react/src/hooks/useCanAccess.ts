@@ -6,7 +6,7 @@ import type {
   AccessRecord,
   AuthRuntime,
   HAI3App,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 import { useHAI3 } from '../HAI3Context';
 import type { UseCanAccessResult } from '../types';
 

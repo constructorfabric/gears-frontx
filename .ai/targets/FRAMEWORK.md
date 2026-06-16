@@ -1,5 +1,5 @@
 
-# @cyberfabric/framework Guidelines (Canonical)
+# @gears-frontx/framework Guidelines (Canonical)
 
 ## AI WORKFLOW (REQUIRED)
 1) Summarize 3-6 rules from this file before making changes.
@@ -8,13 +8,13 @@
 ## SCOPE
 - Package: `packages/framework/`
 - Layer: L2 Framework (depends on all L1 SDK packages)
-- Peer dependencies: `@cyberfabric/state`, `@cyberfabric/screensets`, `@cyberfabric/api`, `@cyberfabric/i18n`, `@cyberfabric/auth`, `@tanstack/query-core`
+- Peer dependencies: `@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, `@gears-frontx/i18n`, `@gears-frontx/auth`, `@tanstack/query-core`
 
 ## CRITICAL RULES
 - Applications built by composing plugins via `createHAI3().use()`.
 - Use presets for common configurations (full, minimal, headless).
 - Access registries and actions through app instance.
-- NO React code in this package (React bindings in @cyberfabric/react).
+- NO React code in this package (React bindings in @gears-frontx/react).
 - Plugin dependencies auto-resolved (order doesn't matter).
 
 ## PLUGIN COMPOSITION
@@ -45,7 +45,7 @@ const store = configureStore({ ... }); // FORBIDDEN
 | `microfrontends()` | `screensetsRegistry` (MFE-enabled), MFE actions, selectors, domain constants | screensets |
 | `i18n()` | i18nRegistry, setLanguage | - |
 | `effects()` | Core effect coordination | - |
-| `auth()` | app.auth (AuthRuntime), transport binding into REST plugin chain | @cyberfabric/auth |
+| `auth()` | app.auth (AuthRuntime), transport binding into REST plugin chain | @gears-frontx/auth |
 | `queryCache()` | Host-owned shared TanStack `QueryClient` (headless `@tanstack/query-core`), Flux `cache/*` bridge, mock teardown, L1 `sharedFetchCache` retain/release and invalidation sync | - |
 | `queryCacheShared()` | Joins the host `QueryClient` from `queryCache()` for MFE or other child roots (no second client) | host `queryCache()` (child may `.build()` first; attaches when host runtime appears) |
 | `mock()` | mockSlice, `toggleMockMode` | effects |
@@ -63,7 +63,7 @@ Public helpers related to query cache: `subscribeQueryCacheRuntimeChanged` (obse
 
 ## QUERY CACHE: HOST VS CHILD
 
-- **Host app** (shell): include `queryCache()` once. It owns the shared `QueryClient`, wires `cache/invalidate`, `cache/set`, `cache/remove` to the client and transport dedup, and attaches the client to the built app for `@cyberfabric/react`.
+- **Host app** (shell): include `queryCache()` once. It owns the shared `QueryClient`, wires `cache/invalidate`, `cache/set`, `cache/remove` to the client and transport dedup, and attaches the client to the built app for `@gears-frontx/react`.
 - **Child root** (e.g. extension bundle with its own `createHAI3().build()`): use `queryCacheShared()` instead of a second `queryCache()`. It reuses the host client so observers and invalidation stay unified.
 - **Load order:** The child app may be built before the host shell; the shared `QueryClient` is wired once the host initializes `queryCache()`. Use `subscribeQueryCacheRuntimeChanged` when you need to run logic on attach or clear.
 - **Rule:** Do not stack two `queryCache()` instances for the same logical app; use `queryCache()` + `queryCacheShared()` for host/child splits.

@@ -57,7 +57,7 @@ export type BootstrapMfeTestSpecOptions = {
   resolveModule?: (args: BootstrapMfeResolveArgs) => string;
   /**
    * Optional exact module key used by the bootstrap module when importing the
-   * React bridge helpers. Defaults to `@cyberfabric/react`.
+   * React bridge helpers. Defaults to `@gears-frontx/react`.
    */
   reactModulePath?: string;
 };
@@ -83,7 +83,7 @@ function defaultResolve({ specifier, callerUrl }: BootstrapMfeResolveArgs): stri
 // @cpt-begin:cpt-frontx-dod-framework-composition-reexports:p1:inst-bootstrap-mfe-contract-suite
 export function describeBootstrapMfeContract(options: BootstrapMfeTestSpecOptions): void {
   const resolve = options.resolveModule ?? defaultResolve;
-  const reactModulePath = options.reactModulePath ?? '@cyberfabric/react';
+  const reactModulePath = options.reactModulePath ?? '@gears-frontx/react';
   const bootstrapModulePath = resolve({
     specifier: options.bootstrapModulePath,
     callerUrl: options.callerUrl,
@@ -134,7 +134,7 @@ export function describeBootstrapMfeContract(options: BootstrapMfeTestSpecOption
 
       await expect(bootstrapMFE({} as never, { current: null })).resolves.toEqual([]);
 
-      // If vi.doMock for @cyberfabric/react silently missed, the SUT would call
+      // If vi.doMock for @gears-frontx/react silently missed, the SUT would call
       // the real bootstrapMfeDomains instead of our mock and this count would
       // be 0. Asserting a positive call count keeps a mock-miss from producing
       // a misleading downstream failure.

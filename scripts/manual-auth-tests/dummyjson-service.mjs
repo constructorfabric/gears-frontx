@@ -1,4 +1,4 @@
-import { BaseApiService, RestProtocol } from '@cyberfabric/api';
+import { BaseApiService, RestProtocol } from '@gears-frontx/api';
 
 export class DummyJsonService extends BaseApiService {
   constructor() {
@@ -17,4 +17,3 @@ export class DummyJsonService extends BaseApiService {
     return this.protocol(RestProtocol).get('/auth/me', options);
   }
 }
-

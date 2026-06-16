@@ -71,14 +71,14 @@ Each runnable Vitest entrypoint sets `test.environment` in its own `vitest.confi
 |-------|-------------|---------------|
 | Host app (repo root) | `vitest.config.ts` | `jsdom` |
 | Nested MFEs under `src/mfe_packages/*` | `src/mfe_packages/vitest.mfe.base.ts` | `jsdom` |
-| `@cyberfabric/api` | `packages/api/vitest.config.ts` | `node` |
-| `@cyberfabric/cli` | `packages/cli/vitest.config.ts` | `node` |
-| `@cyberfabric/framework` | `packages/framework/vitest.config.ts` | `node` |
-| `@cyberfabric/i18n` | `packages/i18n/vitest.config.ts` | `node` |
-| `@cyberfabric/react` | `packages/react/vitest.config.ts` | `jsdom` |
-| `@cyberfabric/screensets` | `packages/screensets/vitest.config.ts` | `jsdom` |
-| `@cyberfabric/state` | `packages/state/vitest.config.ts` | `node` |
-| `@cyberfabric/studio` | `packages/studio/vitest.config.ts` | `jsdom` |
+| `@gears-frontx/api` | `packages/api/vitest.config.ts` | `node` |
+| `@gears-frontx/cli` | `packages/cli/vitest.config.ts` | `node` |
+| `@gears-frontx/framework` | `packages/framework/vitest.config.ts` | `node` |
+| `@gears-frontx/i18n` | `packages/i18n/vitest.config.ts` | `node` |
+| `@gears-frontx/react` | `packages/react/vitest.config.ts` | `jsdom` |
+| `@gears-frontx/screensets` | `packages/screensets/vitest.config.ts` | `jsdom` |
+| `@gears-frontx/state` | `packages/state/vitest.config.ts` | `node` |
+| `@gears-frontx/studio` | `packages/studio/vitest.config.ts` | `jsdom` |
 
 - REQUIRED: The monorepo root `test:unit` is the deliberate exception to the plain Vitest contract: it runs `scripts/run-monorepo-unit-tests.mjs`, which delegates to each runnable monorepo project that ships `test:unit`; every delegated invocation honors the Vitest contract in the `EXECUTION RULES` section above.
 - REQUIRED: `packages/docs` is currently exempt from the monorepo `test:unit` fan-out because the VitePress site does not yet ship runnable unit tests.

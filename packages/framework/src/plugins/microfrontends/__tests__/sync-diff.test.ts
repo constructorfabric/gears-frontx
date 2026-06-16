@@ -13,7 +13,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createHAI3 } from '../../../createHAI3';
 import { microfrontends, addExtensionMounted } from '../index';
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 import { themeSchema, languageSchema, extensionScreenSchema } from '../../../gts';
 import { loadLayoutDomains } from '../gts/loader';
 import type { HAI3App } from '../../../types';
@@ -25,13 +25,13 @@ import {
   HAI3_ACTION_MOUNT_EXT,
   HAI3_ACTION_UNMOUNT_EXT,
   ExtensionMounter,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 import type {
   ContainerHooks,
   DomainContext,
   ActionPayload,
   MountStrategy,
-} from '@cyberfabric/screensets';
+} from '@gears-frontx/screensets';
 
 // ─── Container hooks that track created containers ────────────────────────────
 

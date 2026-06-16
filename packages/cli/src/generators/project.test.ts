@@ -266,7 +266,7 @@ describe('project template coverage', () => {
     );
   });
 
-  it('rewrites generated demo MFE @cyberfabric deps to local file refs when requested', async () => {
+  it('rewrites generated demo MFE @gears-frontx deps to local file refs when requested', async () => {
     expect.assertions(3);
     const projectPath = await makeTempProjectPath('frontx-project-test-local-mfe-');
     const projectFiles = await generateProject({
@@ -288,8 +288,8 @@ describe('project template coverage', () => {
       dependencies: Record<string, string>;
       devDependencies: Record<string, string>;
     };
-    expect(demoPackageJson.dependencies['@cyberfabric/react']).toMatch(/^file:/);
-    expect(demoPackageJson.devDependencies['@cyberfabric/framework']).toMatch(/^file:/);
+    expect(demoPackageJson.dependencies['@gears-frontx/react']).toMatch(/^file:/);
+    expect(demoPackageJson.devDependencies['@gears-frontx/framework']).toMatch(/^file:/);
   });
 
   it('wires shared test-utils aliases into the generated root tsconfig', async () => {

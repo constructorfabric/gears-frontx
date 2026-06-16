@@ -355,8 +355,8 @@ The system **MUST** provide a `queryCache()` framework plugin at L2 that owns th
 
 - Plugin: `queryCache(config?)` in `packages/framework/src/plugins/queryCache.ts` — creates or joins the shared `QueryClient`, manages lifecycle, and attaches the client to the app instance for internal consumption
 - Plugin: `queryCacheShared()` in `packages/framework/src/plugins/queryCache.ts` — joins the currently shared host runtime for MFE/local child apps without creating a second QueryClient
-- Package: `@tanstack/query-core` added as peer dependency of `@cyberfabric/framework`
-- Package: `@tanstack/react-query` added as peer dependency of `@cyberfabric/react`
+- Package: `@tanstack/query-core` added as peer dependency of `@gears-frontx/framework`
+- Package: `@tanstack/react-query` added as peer dependency of `@gears-frontx/react`
 - Config: Default `staleTime: 30_000`, `gcTime: 300_000`, `retry: 0`, `refetchOnWindowFocus: true` — overridable via `queryCache({ staleTime: 60_000 })`
 - Plugin attaches the shared `QueryClient` to the app instance, registers event listeners for `MockEvents.Toggle`, `cache/invalidate`, `cache/set`, and `cache/remove`, and shared invalidation also clears the L1 `sharedFetchCache`
 - Plugin is included in the `full()` preset
@@ -382,7 +382,7 @@ The system **MUST** provide a `queryCache()` framework plugin at L2 that owns th
 
 - [x] `p2` - **ID**: `cpt-frontx-dod-request-lifecycle-use-api-query`
 
-The system **MUST** export a `useApiQuery` hook from `@cyberfabric/react` that accepts an `EndpointDescriptor` from a service class, delegates to the underlying caching library, and returns a HAI3-owned `ApiQueryResult<TData>`. The same declarative query surface **MUST** also export `useApiSuspenseQuery`, `useApiInfiniteQuery`, and `useApiSuspenseInfiniteQuery` for Suspense-driven single-page reads and descriptor-driven paginated reads.
+The system **MUST** export a `useApiQuery` hook from `@gears-frontx/react` that accepts an `EndpointDescriptor` from a service class, delegates to the underlying caching library, and returns a HAI3-owned `ApiQueryResult<TData>`. The same declarative query surface **MUST** also export `useApiSuspenseQuery`, `useApiInfiniteQuery`, and `useApiSuspenseInfiniteQuery` for Suspense-driven single-page reads and descriptor-driven paginated reads.
 
 **Implementation details**:
 
@@ -422,7 +422,7 @@ The system **MUST** export a `useApiQuery` hook from `@cyberfabric/react` that a
 
 - [x] `p2` - **ID**: `cpt-frontx-dod-request-lifecycle-use-api-mutation`
 
-The system **MUST** export a `useApiMutation` hook from `@cyberfabric/react` that accepts a `MutationDescriptor` from a service class, delegates to the underlying caching library, and supports optimistic updates, rollback, and cache invalidation via a restricted `QueryCache` interface.
+The system **MUST** export a `useApiMutation` hook from `@gears-frontx/react` that accepts a `MutationDescriptor` from a service class, delegates to the underlying caching library, and supports optimistic updates, rollback, and cache invalidation via a restricted `QueryCache` interface.
 
 **Implementation details**:
 
@@ -430,7 +430,7 @@ The system **MUST** export a `useApiMutation` hook from `@cyberfabric/react` tha
 - Type: `QueryCache` interface with `get<T>(descriptorOrKey)`, `getState<TData, TError>(descriptorOrKey)`, `set<T>(descriptorOrKey, dataOrUpdater)`, `cancel(descriptorOrKey)`, `invalidate(descriptorOrKey)`, `invalidateMany(filters)`, `remove(descriptorOrKey)` — accepts `EndpointDescriptor` (extracts `.key`) or raw `QueryKey`. Wraps the active shared `QueryClient` internally, never exposed to MFEs as a raw caching-library client. `set` accepts both a value and an updater function for atomic read-modify-write.
 - Signature: accepts `{ endpoint: MutationDescriptor, onMutate?, onSuccess?, onError?, onSettled? }` — each callback receives `{ queryCache }` as an additional final parameter
 - Returns `ApiMutationResult<TData>` — HAI3-owned type exposing `mutate`, `mutateAsync`, `isPending`, `error`, `data`, `reset`
-- The caching library client is used internally only and is NOT re-exported from `@cyberfabric/react` — MFEs interact with the cache through `QueryCache` exposed by `useQueryCache()` and in mutation callbacks
+- The caching library client is used internally only and is NOT re-exported from `@gears-frontx/react` — MFEs interact with the cache through `QueryCache` exposed by `useQueryCache()` and in mutation callbacks
 
 **Implements**:
 - `cpt-frontx-flow-request-lifecycle-use-api-mutation`
@@ -450,7 +450,7 @@ The system **MUST** export a `useApiMutation` hook from `@cyberfabric/react` tha
 
 - [x] `p2` - **ID**: `cpt-frontx-dod-request-lifecycle-use-api-stream`
 
-The system **MUST** export a `useApiStream` hook from `@cyberfabric/react` that accepts a `StreamDescriptor<TEvent>` from a service class, manages the SSE connection lifecycle (connect on mount, disconnect on unmount), and returns a HAI3-owned `ApiStreamResult<TEvent>`.
+The system **MUST** export a `useApiStream` hook from `@gears-frontx/react` that accepts a `StreamDescriptor<TEvent>` from a service class, manages the SSE connection lifecycle (connect on mount, disconnect on unmount), and returns a HAI3-owned `ApiStreamResult<TEvent>`.
 
 **Implementation details**:
 
@@ -496,7 +496,7 @@ The system **MUST** export a `useApiStream` hook from `@cyberfabric/react` that 
 - [x] Infinite-query page fetches are grouped under the initial descriptor key while adjacent-page resolution still flows through service-owned `EndpointDescriptor` objects
 - [x] `useApiMutation({ endpoint: service.mutation, ... })` supports the full callback lifecycle: `onMutate` (optimistic), `onSuccess`, `onError` (rollback), `onSettled` — each callback receives `{ queryCache }` as an additional parameter
 - [x] `QueryCache` interface exposes `get`, `getState`, `set` (with updater function support), `cancel`, `invalidate`, `invalidateMany`, `remove` — accepts `EndpointDescriptor` or raw `QueryKey` — wraps the caching library client internally
-- [x] The caching library client is NOT re-exported from `@cyberfabric/react` — MFEs cannot access it directly
+- [x] The caching library client is NOT re-exported from `@gears-frontx/react` — MFEs cannot access it directly
 - [x] Optimistic updates apply immediately via `queryCache.set(service.endpoint, updater)` and rollback on error using the snapshot from `onMutate`
 - [x] `queryCache.invalidate(service.endpoint)` triggers background refetch for mounted observers
 - [x] Cache keys are derived automatically from `[baseURL, 'GET', path]` for static reads, `[baseURL, 'GET', resolvedPath, params]` for parameterized reads, and `[baseURL, method, path]` for writes via declarative contracts such as `RestEndpointProtocol.query()` / `queryWith()` / `mutation()` — no manual key factories
@@ -509,12 +509,12 @@ The system **MUST** export a `useApiStream` hook from `@cyberfabric/react` that 
 - [x] Per-endpoint cache options (`staleTime`, `gcTime`) are set on the descriptor via the declarative REST contract (for example `this.protocol(RestEndpointProtocol).query('/path', { staleTime, gcTime })`)
 - [x] Cache configuration follows three-tier cascade: component call overrides > descriptor defaults > framework defaults
 - [x] `ApiQueryResult<TData>`, `ApiSuspenseQueryResult<TData>`, `ApiInfiniteQueryResult<TPage>`, `ApiSuspenseInfiniteQueryResult<TPage>`, and `ApiMutationResult<TData>` are HAI3-owned types — not TanStack-specific types
-- [x] `queryOptions` is NOT re-exported from `@cyberfabric/react` — endpoint descriptors replace it
+- [x] `queryOptions` is NOT re-exported from `@gears-frontx/react` — endpoint descriptors replace it
 - [x] Cross-feature mutations use the Flux pattern with event-based cache updates at L2: Flux effects emit `cache/invalidate` (most common), or `cache/set` / `cache/remove` when imperative cache writes or evictions are required; the `queryCache()` framework plugin registers EventBus listeners during `onInit` (not in `HAI3Provider`) and keeps TanStack query state and L1 `sharedFetchCache` aligned for each payload
 - [x] Mock mode continues to work: `RestMockPlugin` short-circuits regardless of `signal` presence
 - [x] `MockEvents.Toggle` and `app.destroy()` teardown cancel in-flight work, clear runtime cache entries, clear matching `sharedFetchCache` windows, and release retained shared-cache coordination before the next root attaches
-- [x] `@cyberfabric/api` remains at zero `@cyberfabric/*` dependencies (AbortSignal is a browser API)
-- [x] `@tanstack/react-query` is a peer dependency of `@cyberfabric/react`, not bundled
+- [x] `@gears-frontx/api` remains at zero `@gears-frontx/*` dependencies (AbortSignal is a browser API)
+- [x] `@tanstack/react-query` is a peer dependency of `@gears-frontx/react`, not bundled
 - [x] This ticket's unit-test scope covers package-local behavior only: cancellation/plugin-bypass semantics, descriptor key derivation, `QueryCache` contract behavior, optimistic rollback, and SSE hook lifecycle
 - [x] Deferred follow-up integration coverage MUST verify host/child shared-client join, cross-root request dedupe, Flux `cache/invalidate` / `cache/set` / `cache/remove` propagation, and mock-toggle / destroy teardown of shared cache state
 
@@ -595,7 +595,7 @@ Representative consumer behavior:
 - `useApiMutation` works with mutation descriptors plus `QueryCache` callbacks for optimistic updates and rollback.
 - `useApiStream` consumes the stream descriptor in either latest-event or accumulate mode, with optional deferred connection through `enabled: false`.
 
-`EndpointDescriptor` is defined at L1 (`@cyberfabric/api`) with zero caching library dependency. It is a plain object carrying `key`, `fetch`, and optional cache configuration. The React layer (L3) consumes descriptors and maps them to the underlying caching library.
+`EndpointDescriptor` is defined at L1 (`@gears-frontx/api`) with zero caching library dependency. It is a plain object carrying `key`, `fetch`, and optional cache configuration. The React layer (L3) consumes descriptors and maps them to the underlying caching library.
 
 For GraphQL or other protocols, the service would expose descriptors through its registered protocol adapter rather than through `BaseApiService` shortcuts, and the key would be derived from the operation shape and variables. Component code remains identical: `useApiQuery(service.endpoint)` for reads, `useApiStream(service.streamDescriptor)` for streams.
 

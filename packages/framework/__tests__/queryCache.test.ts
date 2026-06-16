@@ -22,7 +22,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { QueryClient } from '@tanstack/query-core';
-import { getSharedFetchCache, resetSharedFetchCache } from '@cyberfabric/api';
+import { getSharedFetchCache, resetSharedFetchCache } from '@gears-frontx/api';
 import { createHAI3 } from '../src/createHAI3';
 import { queryCache, queryCacheShared } from '../src/plugins/queryCache';
 import {
@@ -34,7 +34,7 @@ import {
   peekAppQueryClientResolver,
   peekAppQueryClientActivator,
 } from '../src/testing';
-import { eventBus, resetStore } from '@cyberfabric/state';
+import { eventBus, resetStore } from '@gears-frontx/state';
 import { MockEvents } from '../src/effects/mockEffects';
 import type { HAI3App, HAI3Plugin } from '../src/types';
 

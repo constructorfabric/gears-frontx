@@ -32,7 +32,7 @@ When a new major is released, the previous major gets a long-lived `release/vN` 
 3. PR targets `release/v1` → merge → CI publishes with `--tag v1`
 4. If the fix also applies to v2, cherry-pick to `develop` or `main`
 
-Users install old majors explicitly: `npm install @cyberfabric/react@v1`
+Users install old majors explicitly: `npm install @gears-frontx/react@v1`
 
 ## Versioning
 
@@ -65,23 +65,23 @@ Publishing is automated via CI/CD. On push to a publishing branch, CI detects ve
 ### Publish Order
 
 Packages are published in dependency order:
-1. L1 SDK: `@cyberfabric/state`, `@cyberfabric/screensets`, `@cyberfabric/api`, `@cyberfabric/i18n`
-2. L2 Framework: `@cyberfabric/framework`
-3. L3 React: `@cyberfabric/react`
-4. Standalone: `@cyberfabric/studio`, `@cyberfabric/cli`
+1. L1 SDK: `@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, `@gears-frontx/i18n`
+2. L2 Framework: `@gears-frontx/framework`
+3. L3 React: `@gears-frontx/react`
+4. Standalone: `@gears-frontx/studio`, `@gears-frontx/cli`
 
 Each package is versioned independently within a single major version.
 
 ## Package Scope
 
-- npm scope: `@cyberfabric/*`
+- npm scope: `@gears-frontx/*`
 - CLI binary: `frontx`
 - Config file: `frontx.config.json`
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/cyberfabric/frontx.git
+git clone https://github.com/gears-frontx/frontx.git
 cd frontx
 npm ci
 npm run build:packages

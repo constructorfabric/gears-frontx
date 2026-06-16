@@ -194,7 +194,7 @@ Use \`.ai/${relativePath}\` as the single source of truth.
 }
 
 /**
- * Bundle commands from @cyberfabric packages into CLI templates
+ * Bundle commands from @gears-frontx packages into CLI templates
  * These are the actual command files (not adapters) that ship with each package
  * Scans packages/[pkg]/commands/[cmd].md and copies ALL variants to a commands-bundle directory
  * The variant selection happens at project creation time, not at CLI build time
@@ -816,7 +816,7 @@ async function copyTemplates() {
     .map((f) => f.relativePath);
   const adapterCounts = await generateCommandAdapters(standaloneCommands, TEMPLATES_DIR);
 
-  // Bundle ALL command variants from @cyberfabric packages (packages/*/commands/)
+  // Bundle ALL command variants from @gears-frontx packages (packages/*/commands/)
   // Variant selection happens at project creation time
   const packageCounts = await bundlePackageCommands(TEMPLATES_DIR);
 

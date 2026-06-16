@@ -31,7 +31,7 @@ export interface MfeStateContainerConfig<TState = unknown> {
  * - Subscription mechanism
  * - Disposal
  *
- * Exported from @cyberfabric/screensets for DIP -- consumers type against this.
+ * Exported from @gears-frontx/screensets for DIP -- consumers type against this.
  */
 export abstract class MfeStateContainer<TState = unknown> {
   /**

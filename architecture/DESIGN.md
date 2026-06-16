@@ -35,7 +35,7 @@
 
 ### 1.1 Architectural Vision
 
-FrontX is a four-layer monorepo architecture that separates concerns vertically by abstraction level and horizontally by domain. The lowest layer (L1 SDK) provides framework-agnostic primitives for state, API communication, localization, and screen-set contracts. The middle layer (L2 Framework) composes these primitives through a plugin system. The upper layer (L3 React) binds the framework to React 19. Standalone packages (`@cyberfabric/studio`, `@cyberfabric/cli`) operate outside the layer hierarchy with minimal coupling, while UI implementation remains app-owned.
+FrontX is a four-layer monorepo architecture that separates concerns vertically by abstraction level and horizontally by domain. The lowest layer (L1 SDK) provides framework-agnostic primitives for state, API communication, localization, and screen-set contracts. The middle layer (L2 Framework) composes these primitives through a plugin system. The upper layer (L3 React) binds the framework to React 19. Standalone packages (`@gears-frontx/studio`, `@gears-frontx/cli`) operate outside the layer hierarchy with minimal coupling, while UI implementation remains app-owned.
 
 This layering enforces a strict dependency direction: higher layers depend on lower layers, never the reverse. L1 packages have zero cross-dependencies, meaning any SDK package can be used in isolation — in a Node.js CLI, a web worker, or a non-React rendering engine. The plugin architecture at L2 means the framework never needs modification to add capabilities; all extensions compose through `createHAI3().use(plugin).build()`.
 
@@ -84,18 +84,18 @@ Requirements that significantly influence architecture decisions.
 | `cpt-frontx-fr-dataflow-no-redux` | MFEs use internal `useReducer`/`useState`; no access to host Redux store |
 | `cpt-frontx-fr-broadcast-write-api` | Shared properties bridge host↔MFE via `setSharedProperty()`/`useSharedProperty()` |
 | `cpt-frontx-fr-appconfig-event-api` | Application-level config changes propagated via `app/*` events, not direct store mutations |
-| `cpt-frontx-fr-sse-protocol` | `@cyberfabric/api` abstracts REST and SSE behind `createApiService()` with protocol-specific adapters |
+| `cpt-frontx-fr-sse-protocol` | `@gears-frontx/api` abstracts REST and SSE behind `createApiService()` with protocol-specific adapters |
 | `cpt-frontx-fr-i18n-lazy-chunks` | Namespace-based lazy loading: translation chunks loaded on demand per screen-set |
-| `cpt-frontx-fr-externalize-transform` | `@module-federation/vite` configured with `shared:{}` and `rollupOptions.external` to externalize all declared shared dependencies (both `@cyberfabric/*` and third-party packages like `react`, `react-dom`); `frontx-mf-gts` plugin builds standalone ESM modules for each shared dep via esbuild and writes the enriched manifest to `{outDir}/mfe-manifest.json` with per-dep `chunkPath`/`version`/`unwrapKey`; handler constructs per-load shared dep blob URLs with bare specifier rewriting at runtime |
+| `cpt-frontx-fr-externalize-transform` | `@module-federation/vite` configured with `shared:{}` and `rollupOptions.external` to externalize all declared shared dependencies (both `@gears-frontx/*` and third-party packages like `react`, `react-dom`); `frontx-mf-gts` plugin builds standalone ESM modules for each shared dep via esbuild and writes the enriched manifest to `{outDir}/mfe-manifest.json` with per-dep `chunkPath`/`version`/`unwrapKey`; handler constructs per-load shared dep blob URLs with bare specifier rewriting at runtime |
 | `cpt-frontx-fr-mfe-plugin` | `microfrontends()` plugin integrates MFE lifecycle, theme propagation, i18n, and shared property bridging into framework |
 | `cpt-frontx-fr-mock-toggle` | `mock()` plugin with `toggleMockMode` action enabling runtime switch between real and mock API responses |
-| `cpt-frontx-fr-sdk-state-interface` | `@cyberfabric/state` exports EventBus, `createStore`, slice management APIs, and all associated types |
+| `cpt-frontx-fr-sdk-state-interface` | `@gears-frontx/state` exports EventBus, `createStore`, slice management APIs, and all associated types |
 | `cpt-frontx-fr-sdk-flux-terminology` | FrontX Flux terms (Action, Event, Effect, Reducer, Slice) used consistently; Redux terms excluded from public API |
-| `cpt-frontx-fr-sdk-screensets-package` | `@cyberfabric/screensets` exports full MFE type system, registry, handler, bridge, and constants with zero `@cyberfabric/*` deps |
-| `cpt-frontx-fr-sdk-api-package` | `@cyberfabric/api` exports `BaseApiService`, REST/SSE protocols, mock plugins, `apiRegistry`, and type guards; only `axios` as peer dep |
-| `cpt-frontx-fr-sdk-i18n-package` | `@cyberfabric/i18n` exports I18nRegistry, Language enum, formatters, and metadata utilities with zero dependencies |
-| `cpt-frontx-fr-sdk-framework-layer` | `@cyberfabric/framework` wires SDK capabilities; depends only on SDK packages, provides `createHAI3()` and `createHAI3App()` |
-| `cpt-frontx-fr-sdk-react-layer` | `@cyberfabric/react` depends only on `@cyberfabric/framework`; provides `HAI3Provider` and typed hooks; no layout components |
+| `cpt-frontx-fr-sdk-screensets-package` | `@gears-frontx/screensets` exports full MFE type system, registry, handler, bridge, and constants with zero `@gears-frontx/*` deps |
+| `cpt-frontx-fr-sdk-api-package` | `@gears-frontx/api` exports `BaseApiService`, REST/SSE protocols, mock plugins, `apiRegistry`, and type guards; only `axios` as peer dep |
+| `cpt-frontx-fr-sdk-i18n-package` | `@gears-frontx/i18n` exports I18nRegistry, Language enum, formatters, and metadata utilities with zero dependencies |
+| `cpt-frontx-fr-sdk-framework-layer` | `@gears-frontx/framework` wires SDK capabilities; depends only on SDK packages, provides `createHAI3()` and `createHAI3App()` |
+| `cpt-frontx-fr-sdk-react-layer` | `@gears-frontx/react` depends only on `@gears-frontx/framework`; provides `HAI3Provider` and typed hooks; no layout components |
 | `cpt-frontx-fr-sdk-module-augmentation` | TypeScript module augmentation for `EventPayloadMap` and `RootState` extensibility; custom events type-safe |
 | `cpt-frontx-fr-appconfig-tenant` | `Tenant` type with `{ id: string }`; tenant change events via event bus (`app/tenant/changed`, `app/tenant/cleared`) |
 | `cpt-frontx-fr-appconfig-router-config` | `HAI3Config.routerMode` supporting `'browser'`, `'hash'`, `'memory'` routing strategies |
@@ -125,22 +125,22 @@ Requirements that significantly influence architecture decisions.
 | `cpt-frontx-fr-validation-gts` | `typeSystem.register()` validates shared property values against their GTS schema in a single call and throws with a rich diagnostic (instance JSON, resolved schema JSON, failure reason) on non-conformance |
 | `cpt-frontx-fr-validation-reject` | `updateSharedProperty()` throws with validation details on failure; value not stored or propagated |
 | `cpt-frontx-fr-i18n-formatters` | Locale-aware formatters (`formatDate`, `formatNumber`, `formatCurrency`, etc.) using `Intl.*` APIs |
-| `cpt-frontx-fr-i18n-formatter-exports` | Formatters exported from `@cyberfabric/i18n`, re-exported from `@cyberfabric/framework`, accessible via `useFormatters()` |
+| `cpt-frontx-fr-i18n-formatter-exports` | Formatters exported from `@gears-frontx/i18n`, re-exported from `@gears-frontx/framework`, accessible via `useFormatters()` |
 | `cpt-frontx-fr-i18n-graceful-invalid` | All formatters return `''` for null, undefined, or invalid inputs; never throw |
 | `cpt-frontx-fr-i18n-hybrid-namespace` | Two-tier namespaces: `screenset.<id>` for shared content, `screen.<setId>.<screenId>` for screen-specific |
 | `cpt-frontx-fr-studio-panel` | `StudioPanel` floating overlay: draggable, resizable, collapsible; visible only in dev mode; state in localStorage |
 | `cpt-frontx-fr-studio-controls` | StudioPanel provides: theme selector, language selector, mock/real API toggle |
 | `cpt-frontx-fr-studio-persistence` | Theme, language, mock API state persisted to localStorage; restored on Studio mount |
 | `cpt-frontx-fr-studio-viewport` | Studio button and panel clamped to viewport (20px margin) on load and window resize |
-| `cpt-frontx-fr-studio-independence` | `@cyberfabric/studio` standalone package; `"sideEffects": false`; excluded from production via `import.meta.env.DEV` |
-| `cpt-frontx-fr-cli-package` | `@cyberfabric/cli` workspace package with binary `frontx`; ESM (Node 18+) and programmatic API |
+| `cpt-frontx-fr-studio-independence` | `@gears-frontx/studio` standalone package; `"sideEffects": false`; excluded from production via `import.meta.env.DEV` |
+| `cpt-frontx-fr-cli-package` | `@gears-frontx/cli` workspace package with binary `frontx`; ESM (Node 18+) and programmatic API |
 | `cpt-frontx-fr-cli-commands` | CLI commands: create, update, scaffold layout/screenset, validate components, ai sync, migrate. `frontx validate components` is structural only and does not run the unit-test suite by default. `frontx create` scaffolds the standard Vitest workflow by default, and code-generation commands emit starter unit tests when a stable template exists |
 | `cpt-frontx-fr-cli-templates` | Template system with `copy-templates.ts` build script, `manifest.json`; templates are user-owned and include test assets plus editable project-level testing guidance for generated apps and screensets |
 | `cpt-frontx-fr-cli-skills` | CLI build generates IDE guidance files and command adapters for Claude, Cursor, Windsurf, and GitHub Copilot. Generated AI guidance routes agents to project testing guidance and the standard unit-test workflow under tiered triggers, and clarifies that `frontx validate components` does not run unit tests by default |
 | `cpt-frontx-fr-cli-e2e-verification` | Two-tier CI verification: required PR workflow (`cli-pr-e2e`) validates the critical scaffold path, including install, build, type-check, and the standard unit-test workflow; nightly workflow covers broader scenarios; shared scripted harness with artifact upload |
 | `cpt-frontx-fr-ai-agent-integration` | Generated project AI context carries machine-readable FrontX guidance plus project-level testing guidance so agents know when to add or update unit tests, run the standard unit-test command as a separate step from `frontx validate components` when tiered triggers apply, and run `type-check` and `arch:check` after applicable tests |
-| `cpt-frontx-fr-pub-metadata` | All `@cyberfabric/*` packages include complete NPM metadata: author, license, repository, engines, exports |
-| `cpt-frontx-fr-pub-versions` | All `@cyberfabric/*` packages use aligned (same) version numbers |
+| `cpt-frontx-fr-pub-metadata` | All `@gears-frontx/*` packages include complete NPM metadata: author, license, repository, engines, exports |
+| `cpt-frontx-fr-pub-versions` | All `@gears-frontx/*` packages use aligned (same) version numbers |
 | `cpt-frontx-fr-pub-esm` | ESM-first module format: `"type": "module"`, dual exports (ESM + CJS), TypeScript declarations |
 | `cpt-frontx-fr-pub-ci` | CI auto-publishes affected packages to NPM in layer order on version change merge; stops on first failure |
 | `cpt-frontx-fr-api-request-cancellation` | `RestProtocol` HTTP methods accept optional `AbortSignal` via `RestRequestOptions`; aborted requests bypass `onError` plugin chain |
@@ -168,7 +168,7 @@ Requirements that significantly influence architecture decisions.
 | `cpt-frontx-nfr-compat-typescript` | TypeScript ≥ 5.5 | All packages | `tsconfig.json` targets ES2022; strict mode enabled | CI type-check step |
 | `cpt-frontx-nfr-compat-esm` | ESM-first output | All packages | tsup configured with `format: ['esm']`; `"type": "module"` in `package.json` | Import resolution tests |
 | `cpt-frontx-nfr-compat-react` | Compatible with React 19 | `cpt-frontx-component-react` | React 19 as peer dependency; `ref` as prop (no `forwardRef`) | CI tests against React 19 |
-| `cpt-frontx-nfr-maint-zero-crossdeps` | L1 packages have zero cross-dependencies | All L1 packages | Each L1 `package.json` lists no `@cyberfabric/*` dependencies; `dependency-cruiser` rule blocks violations | CI dependency-cruiser check |
+| `cpt-frontx-nfr-maint-zero-crossdeps` | L1 packages have zero cross-dependencies | All L1 packages | Each L1 `package.json` lists no `@gears-frontx/*` dependencies; `dependency-cruiser` rule blocks violations | CI dependency-cruiser check |
 | `cpt-frontx-nfr-maint-event-driven` | Cross-domain communication via events only | `cpt-frontx-component-state`, `cpt-frontx-component-framework` | `eventBus` is the sole cross-domain channel; no direct store imports across domains | Architecture lint rules |
 | `cpt-frontx-nfr-maint-arch-enforcement` | Layer violations detected automatically | Build system, `cpt-frontx-component-cli` | `dependency-cruiser` config with forbidden dependency rules and `knip` for unused exports remain the hard architecture gates; generated AI guidance keeps `arch:check` in the default verification loop after applicable standard unit-test runs pass | CI gate on lint failure; scaffolded workflow verification in CLI CI |
 
@@ -179,19 +179,19 @@ Requirements that significantly influence architecture decisions.
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    Application                       │
-│          (Host app using @cyberfabric/* packages)           │
+│          (Host app using @gears-frontx/* packages)           │
 ├─────────────────────────────────────────────────────┤
-│ L3  @cyberfabric/react                                      │
+│ L3  @gears-frontx/react                                      │
 │     HAI3Provider · hooks · MFE components            │
 ├─────────────────────────────────────────────────────┤
-│ L2  @cyberfabric/framework                                  │
+│ L2  @gears-frontx/framework                                  │
 │     createHAI3() · plugins · layout slices           │
 ├────────┬────────┬──────────┬────────────────────────┤
 │ L1     │ L1     │ L1       │ L1                      │
 │ state  │ screen │ api      │ i18n                    │
 │        │ sets   │          │                         │
 ├────────┴────────┴──────────┴────────────────────────┤
-│ Standalone: @cyberfabric/studio · @cyberfabric/cli                            │
+│ Standalone: @gears-frontx/studio · @gears-frontx/cli                            │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -217,7 +217,7 @@ Requirements that significantly influence architecture decisions.
 
 **ADRs**: `cpt-frontx-adr-event-driven-flux-dataflow`
 
-All cross-domain communication flows through a typed event bus (`eventBus` in `@cyberfabric/state`). No component may directly call methods on or import internal state from another domain. This ensures loose coupling, enables replay/debugging of all system interactions, and allows MFE extensions to participate in host events without tight integration.
+All cross-domain communication flows through a typed event bus (`eventBus` in `@gears-frontx/state`). No component may directly call methods on or import internal state from another domain. This ensures loose coupling, enables replay/debugging of all system interactions, and allows MFE extensions to participate in host events without tight integration.
 
 The event bus uses a publish/subscribe model with typed event names and payloads. Framework plugins subscribe to events during initialization. Effects listen for specific events and dispatch state changes through reducers.
 
@@ -227,9 +227,9 @@ The event bus uses a publish/subscribe model with typed event names and payloads
 
 **ADRs**: `cpt-frontx-adr-four-layer-sdk-architecture`
 
-Dependencies flow strictly downward: L3 → L2 → L1. No upward or lateral dependencies are permitted within the layer hierarchy. L1 packages have zero `@cyberfabric/*` dependencies. L2 depends only on L1 packages. L3 depends only on L2 (which re-exports L1 surface). This enables each layer to be tested, built, and versioned independently.
+Dependencies flow strictly downward: L3 → L2 → L1. No upward or lateral dependencies are permitted within the layer hierarchy. L1 packages have zero `@gears-frontx/*` dependencies. L2 depends only on L1 packages. L3 depends only on L2 (which re-exports L1 surface). This enables each layer to be tested, built, and versioned independently.
 
-Standalone packages (`@cyberfabric/studio`, `@cyberfabric/cli`) exist outside the layer hierarchy and do not depend on framework or SDK packages, ensuring they can evolve independently. UI components are generated into or authored within application code rather than shipped as a shared workspace package.
+Standalone packages (`@gears-frontx/studio`, `@gears-frontx/cli`) exist outside the layer hierarchy and do not depend on framework or SDK packages, ensuring they can evolve independently. UI components are generated into or authored within application code rather than shipped as a shared workspace package.
 
 #### Plugin-First Composition
 
@@ -275,7 +275,7 @@ Microfrontend extensions execute in an isolated context. JavaScript isolation is
 
 **ADRs**: `cpt-frontx-adr-four-layer-sdk-architecture`
 
-L1 SDK and L2 Framework packages SHALL NOT import React or any React-specific APIs. This ensures the SDK and framework are usable in non-React environments (Node.js scripts, web workers, alternative renderers). React appears only in L3 (`@cyberfabric/react`) and standalone packages (`@cyberfabric/studio`).
+L1 SDK and L2 Framework packages SHALL NOT import React or any React-specific APIs. This ensures the SDK and framework are usable in non-React environments (Node.js scripts, web workers, alternative renderers). React appears only in L3 (`@gears-frontx/react`) and standalone packages (`@gears-frontx/studio`).
 
 **Enforcement**: `dependency-cruiser` rules flag any `react` import in `packages/state/`, `packages/screensets/`, `packages/api/`, `packages/i18n/`, or `packages/framework/`.
 
@@ -285,17 +285,17 @@ L1 SDK and L2 Framework packages SHALL NOT import React or any React-specific AP
 
 **ADRs**: `cpt-frontx-adr-four-layer-sdk-architecture`
 
-No L1 SDK package may depend on another L1 SDK package. `@cyberfabric/state` SHALL NOT import from `@cyberfabric/api`, `@cyberfabric/i18n`, or `@cyberfabric/screensets`, and vice versa. This keeps each SDK package independently deployable and prevents coupling between orthogonal concerns.
+No L1 SDK package may depend on another L1 SDK package. `@gears-frontx/state` SHALL NOT import from `@gears-frontx/api`, `@gears-frontx/i18n`, or `@gears-frontx/screensets`, and vice versa. This keeps each SDK package independently deployable and prevents coupling between orthogonal concerns.
 
-**Enforcement**: Each L1 `package.json` is verified in CI to contain zero `@cyberfabric/*` entries in `dependencies` or `devDependencies`.
+**Enforcement**: Each L1 `package.json` is verified in CI to contain zero `@gears-frontx/*` entries in `dependencies` or `devDependencies`.
 
 #### No Package Internals Imports
 
 - [x] `p2` - **ID**: `cpt-frontx-constraint-no-package-internals-imports`
 
-Consumers SHALL NOT import from sub-paths of workspace packages (e.g., `@cyberfabric/state/src/eventBus`). All public API is exported through the package entry point. Internal module structure is an implementation detail that may change without notice.
+Consumers SHALL NOT import from sub-paths of workspace packages (e.g., `@gears-frontx/state/src/eventBus`). All public API is exported through the package entry point. Internal module structure is an implementation detail that may change without notice.
 
-**Enforcement**: ESLint rule + `dependency-cruiser` forbidden path pattern `@cyberfabric/*/src/*`.
+**Enforcement**: ESLint rule + `dependency-cruiser` forbidden path pattern `@gears-frontx/*/src/*`.
 
 #### No Barrel Exports for Registries
 
@@ -378,14 +378,14 @@ All direct runtime dependencies MUST use MIT, Apache-2.0, or BSD-compatible lice
 │                      Host Application                      │
 │                                                           │
 │  ┌─────────┐  ┌──────────────┐  ┌──────────────────────┐ │
-│  │ @cyberfabric/  │  │  @cyberfabric/react │  │  app-owned UI        │ │
+│  │ @gears-frontx/  │  │  @gears-frontx/react │  │  app-owned UI        │ │
 │  │ studio  │  │  HAI3Provider │  │  components          │ │
 │  └─────────┘  │  hooks        │  └──────────────────────┘ │
 │               │  ExtensionDomainSlot │                   │
 │               └──────┬───────┘                            │
 │                      │ depends on                         │
 │               ┌──────▼───────┐                            │
-│               │ @cyberfabric/       │                            │
+│               │ @gears-frontx/       │                            │
 │               │ framework    │                            │
 │               │ createHAI3() │                            │
 │               │ plugins      │                            │
@@ -399,13 +399,13 @@ All direct runtime dependencies MUST use MIT, Apache-2.0, or BSD-compatible lice
 │  └──────┘ └──────┘ └────┘ └─────┘   │                   │
 │    L1       L1       L1     L1       │                   │
 │  (no cross-dependencies)      ┌──────▼─┐                 │
-│                               │@cyberfabric/  │                 │
+│                               │@gears-frontx/  │                 │
 │                               │cli     │                 │
 │                               └────────┘                 │
 └───────────────────────────────────────────────────────────┘
 ```
 
-#### @cyberfabric/state (L1)
+#### @gears-frontx/state (L1)
 
 - [x] `p1` - **ID**: `cpt-frontx-component-state`
 
@@ -420,13 +420,13 @@ Provides the foundational state management and event infrastructure that all oth
 - **Action factory**: `createAction()` produces typed action creators that dispatch events
 - **Effect system**: Registers effect handlers that respond to events and produce state changes
 - **Flux terminology**: Enforces Action → Event → Effect → Reducer naming and flow conventions
-- **Module augmentation**: Supports `declare module '@cyberfabric/state'` for type-safe slice extensions
+- **Module augmentation**: Supports `declare module '@gears-frontx/state'` for type-safe slice extensions
 
 ##### Responsibility boundaries
 
 - Does NOT provide UI bindings (React hooks, components) — delegated to `cpt-frontx-component-react`
 - Does NOT define domain-specific slices — each plugin registers its own slices
-- Does NOT depend on any other `@cyberfabric/*` package
+- Does NOT depend on any other `@gears-frontx/*` package
 - Does NOT implement persistence or devtools — relies on Redux Toolkit's built-in middleware
 
 ##### Related components (by ID)
@@ -434,13 +434,13 @@ Provides the foundational state management and event infrastructure that all oth
 - `cpt-frontx-component-framework` — depends on: framework registers slices and effects via plugin context
 - `cpt-frontx-component-react` — depends on: provides hooks (`useAppSelector`, `useAppDispatch`) over this store
 
-#### @cyberfabric/screensets (L1)
+#### @gears-frontx/screensets (L1)
 
 - [x] `p1` - **ID**: `cpt-frontx-component-screensets`
 
 ##### Why this component exists
 
-Defines the contract between the host application and microfrontend extensions. Manages the screen-set registry, MFE lifecycle, and blob URL isolation mechanism. Separating this from `@cyberfabric/state` keeps MFE concerns (loading, isolation, source caching) orthogonal to state management.
+Defines the contract between the host application and microfrontend extensions. Manages the screen-set registry, MFE lifecycle, and blob URL isolation mechanism. Separating this from `@gears-frontx/state` keeps MFE concerns (loading, isolation, source caching) orthogonal to state management.
 
 ##### Responsibility scope
 
@@ -452,7 +452,7 @@ Defines the contract between the host application and microfrontend extensions. 
 - **Mount strategies**: the framework ships an abstract base plus three concrete cardinality strategies (concurrent / optional / exclusive). Cardinality is the domain author's choice via the strategy class; the framework infers nothing from action declarations. A registration-time cross-validation matrix enforces strategy/action consistency.
 - **Mount-set query**: the registry's per-domain mount-set is the canonical source of currently-mounted extension IDs within its owning app.
 - **Blob URL isolation**: Fetches MFE bundles, rewrites import specifiers to blob URLs, caches source text, manages per-load import maps
-- **Import rewriting**: Transforms bare import specifiers for all declared shared dependencies (both `@cyberfabric/*` and third-party) in MFE bundles to blob URL references for runtime resolution
+- **Import rewriting**: Transforms bare import specifiers for all declared shared dependencies (both `@gears-frontx/*` and third-party) in MFE bundles to blob URL references for runtime resolution
 - **Recursive chain loading**: Resolves transitive dependencies by recursively blob-loading imported modules
 
 **Per-app boundary.** `ScreensetsRegistry` is per FrontX app instance. Every FrontX app — the root host application AND any nested app created by an MFE that needs to own its own extension domains — uses the same `createHAI3()` primitive and owns its own registry, store, mediator, event bus, and lifecycle trigger. There is no shared registry across the app tree. An app's registry holds only the domains and extensions registered against THAT app; a parent app's registry never sees a nested app's mount state. Cross-app chain delivery between apps is an internal routing concern (described in §3.6 Extension Action Delivery), not a registry-sharing concern.
@@ -463,7 +463,7 @@ Defines the contract between the host application and microfrontend extensions. 
 
 - Does NOT render MFE content (React mounting) — delegated to `cpt-frontx-component-react`
 - Does NOT manage theme or i18n propagation into MFEs — delegated to `cpt-frontx-component-framework`
-- Does NOT depend on any other `@cyberfabric/*` package
+- Does NOT depend on any other `@gears-frontx/*` package
 - Does NOT handle CSS isolation (Shadow DOM) — delegated to rendering layer
 - Does NOT know how containers are created, positioned, or styled — container lifecycle lives on the implementation side; the framework receives opaque `Element` references through the mounter and uses them as host elements only
 - Does NOT enforce a layout-domain taxonomy — the shipped `LayoutDomain` enum / `HAI3_*_DOMAIN` constants are conveniences, and projects MAY register entirely custom domains or mix custom and shipped
@@ -474,7 +474,7 @@ Defines the contract between the host application and microfrontend extensions. 
 - `cpt-frontx-component-framework` — depends on: framework's `microfrontends()` plugin orchestrates MFE lifecycle using screensets API
 - `cpt-frontx-component-react` — depends on: `ExtensionDomainSlot` provides a per-domain host element; mounted extensions render under it via the per-domain mounter
 
-#### @cyberfabric/api (L1)
+#### @gears-frontx/api (L1)
 
 - [x] `p1` - **ID**: `cpt-frontx-component-api`
 
@@ -496,7 +496,7 @@ Provides a unified API service layer that abstracts protocol differences (REST, 
 
 - Does NOT define business-domain API endpoints — each domain plugin defines its own services
 - Does NOT manage authentication tokens — relies on interceptors configured by the consumer
-- Does NOT depend on any other `@cyberfabric/*` package
+- Does NOT depend on any other `@gears-frontx/*` package
 - Axios is a peer dependency, not bundled
 
 ##### Related components (by ID)
@@ -504,7 +504,7 @@ Provides a unified API service layer that abstracts protocol differences (REST, 
 - `cpt-frontx-component-framework` — depends on: framework plugins use `createApiService()` to register domain APIs
 - `cpt-frontx-component-state` — publishes to: API effects dispatch events on the event bus for state updates
 
-#### @cyberfabric/i18n (L1)
+#### @gears-frontx/i18n (L1)
 
 - [x] `p1` - **ID**: `cpt-frontx-component-i18n`
 
@@ -524,14 +524,14 @@ Provides internationalization infrastructure with support for 36 languages, loca
 
 - Does NOT provide React hooks for translation — delegated to `cpt-frontx-component-react` (which wraps i18next React bindings)
 - Does NOT contain translation content — only infrastructure; content provided by consuming applications
-- Does NOT depend on any other `@cyberfabric/*` package
+- Does NOT depend on any other `@gears-frontx/*` package
 
 ##### Related components (by ID)
 
 - `cpt-frontx-component-framework` — depends on: framework initializes i18n and propagates language changes to MFEs
 - `cpt-frontx-component-react` — depends on: provides `useTranslation()` hook wrapping i18n infrastructure
 
-#### @cyberfabric/framework (L2)
+#### @gears-frontx/framework (L2)
 
 - [x] `p1` - **ID**: `cpt-frontx-component-framework`
 
@@ -547,7 +547,7 @@ Composes L1 SDK packages into a cohesive application framework through a plugin 
 - **Configuration management**: `AppConfig` with tenant settings, router config, layout visibility, theme — propagated via `app/*` events
 - **MFE lifecycle plugin**: `microfrontends()` plugin handles MFE registration, theme propagation, i18n forwarding, shared property bridge, and per-domain mount-state mirroring within its app. The plugin's MFE slice tracks the per-domain set of currently mounted extensions for THIS app and exposes a typed selector for it. The plugin's chain-completion sync wrapper reconciles the slice against the registry's mount-set after each lifecycle action chain by emitting per-extension state events. There is no scalar mount slot. Cross-runtime extension discovery — including nested-app discovery — is content-addressed by the extension's `domain` GTS instance ID: every FrontX app's `microfrontends()` plugin reads `MfManifest` entities from the GTS runtime store and filters them by its own app's registered-domain-IDs view, so an MFE's source-tree location is independent of which runtime owns its target domain
 - **Shared property system**: `setSharedProperty()` / `getSharedProperty()` with validation via GTS plugin
-- **SDK re-exports**: Re-exports L1 public API so consumers can import from `@cyberfabric/framework` as a convenience
+- **SDK re-exports**: Re-exports L1 public API so consumers can import from `@gears-frontx/framework` as a convenience
 
 **Per-app boundary.** `createHAI3()` is the same primitive at every level of the app tree. The root host is the root FrontX app; any nested app created by an MFE that needs its own extension domains uses the SAME `createHAI3()` builder and ends up with its OWN store, event bus, MFE slice, mediator, and lifecycle trigger. Each app's `microfrontends()` plugin tracks only the extensions mounted in THAT app's registry. Architecturally there is no privileged "host" app — the root is just the outermost app, and nested apps are identical in shape and capability.
 
@@ -566,7 +566,7 @@ Composes L1 SDK packages into a cohesive application framework through a plugin 
 - `cpt-frontx-component-i18n` — depends on: initializes i18n and manages language lifecycle
 - `cpt-frontx-component-react` — depended on by: React layer consumes framework's builder output
 
-#### @cyberfabric/react (L3)
+#### @gears-frontx/react (L3)
 
 - [x] `p1` - **ID**: `cpt-frontx-component-react`
 
@@ -578,7 +578,7 @@ Bridges the framework layer to React 19, providing the provider tree, hooks, and
 
 - **HAI3Provider**: Root provider component that wraps the application with Redux store, i18n context, theme, framework context, and an internal `QueryClientProvider` bridge. `HAI3Provider` does not create a TanStack client; `queryCache()` is the sole owner of the host shared `QueryClient`, while `queryCacheShared()` lets child apps join that client. The provider resolves the client from the app instance so every root reuses the plugin-owned cache, while `sharedFetchCache` deduplicates overlapping descriptor fetches across roots before React observers attach.
 - **Hooks**: `useHAI3()` for the app instance; `useAppSelector()` / `useAppDispatch()` for typed Redux bindings; `useTranslation()`, `useScreenTranslations()`, `useFormatters()`, `useTheme()` for i18n and presentation; MFE hooks including `useMfeBridge`, `useSharedProperty`, `useHostAction`, `useDomainExtensions`, `useRegisteredPackages` (passive enumeration of GTS packages discovered at runtime), and `useMountedExtensions` (per-domain mount-state subscription; for the screen domain it surfaces every mounted screen extension across all discovered packages) — typed wrappers over framework primitives
-- **Query hooks**: `useApiQuery()` for single-page declarative reads, `useApiSuspenseQuery()` for Suspense-driven single-page reads, `useApiInfiniteQuery()` for descriptor-driven paginated reads, `useApiSuspenseInfiniteQuery()` for Suspense-driven paginated reads, `useApiMutation()` for writes with optimistic updates via `QueryCache`, and `useQueryCache()` as the sanctioned imperative cache API. `QueryCache` exposes `get`, `getState`, `set`, `cancel`, `invalidate`, `invalidateMany`, and `remove`. The raw `QueryClient` stays internal, `useQueryClient` is NOT exported from `@cyberfabric/react`, and app/MFE code uses `QueryCache` rather than raw TanStack APIs.
+- **Query hooks**: `useApiQuery()` for single-page declarative reads, `useApiSuspenseQuery()` for Suspense-driven single-page reads, `useApiInfiniteQuery()` for descriptor-driven paginated reads, `useApiSuspenseInfiniteQuery()` for Suspense-driven paginated reads, `useApiMutation()` for writes with optimistic updates via `QueryCache`, and `useQueryCache()` as the sanctioned imperative cache API. `QueryCache` exposes `get`, `getState`, `set`, `cancel`, `invalidate`, `invalidateMany`, and `remove`. The raw `QueryClient` stays internal, `useQueryClient` is NOT exported from `@gears-frontx/react`, and app/MFE code uses `QueryCache` rather than raw TanStack APIs.
 - **Service descriptors**: Service descriptors are the only sanctioned source of query keys and cache metadata. `BaseApiService` descriptors feed `useApiQuery()`, `useApiMutation()`, and `QueryCache` directly.
 - **MFE rendering**: `ExtensionDomainSlot` is per-domain — it provides a single host element for the domain's mounted extensions. The slot does not dispatch mount/unmount actions; the host owns those dispatches through the registry. Multi-mount layouts are placed under the host element by the domain's mounter (specified in `cpt-frontx-feature-react-bindings`). Host bootstrap registers domains, extensions, and shared properties and returns screen extensions for route selection; MFE roots join the host's shared `QueryClient` via the shared-cache plugin without leaking cache metadata into L1 contracts. MFEs render inside Shadow DOM and do not inherit host React context directly.
 - **Error boundaries**: Per-MFE error boundaries preventing extension failures from crashing the host
@@ -589,7 +589,7 @@ Bridges the framework layer to React 19, providing the provider tree, hooks, and
 - Does NOT define the store, event bus, or action system — uses `cpt-frontx-component-framework`
 - Does NOT define UI component implementations — uses application/screenset local UI
 - Does NOT manage MFE loading or blob URL creation — uses `cpt-frontx-component-screensets` via framework
-- Does NOT own the caching library — declarative API contracts at L1 carry endpoint descriptors with transport metadata and cache hints; the `queryCache()` plugin (L2) owns the `QueryClient`; `@cyberfabric/react` (L3) maps descriptors to library-specific hooks.
+- Does NOT own the caching library — declarative API contracts at L1 carry endpoint descriptors with transport metadata and cache hints; the `queryCache()` plugin (L2) owns the `QueryClient`; `@gears-frontx/react` (L3) maps descriptors to library-specific hooks.
 
 ##### Related components (by ID)
 
@@ -602,7 +602,7 @@ Bridges the framework layer to React 19, providing the provider tree, hooks, and
 - `cpt-frontx-component-react` — used by: application renders UI within HAI3Provider
 - `cpt-frontx-component-studio` — uses: studio panel uses local UI primitives for its controls
 
-#### @cyberfabric/studio (Standalone)
+#### @gears-frontx/studio (Standalone)
 
 - [x] `p1` - **ID**: `cpt-frontx-component-studio`
 
@@ -628,7 +628,7 @@ Provides a development-time overlay for inspecting and tweaking theme, i18n, vie
 
 - `cpt-frontx-component-react` — used by: renders inside HAI3Provider context
 
-#### @cyberfabric/cli (Tooling)
+#### @gears-frontx/cli (Tooling)
 
 - [x] `p2` - **ID**: `cpt-frontx-component-cli`
 
@@ -646,7 +646,7 @@ Reduces boilerplate and enforces conventions by generating screen-sets, MFE pack
 
 ##### Responsibility boundaries
 
-- Does NOT depend on runtime `@cyberfabric/*` packages — generates code that imports them
+- Does NOT depend on runtime `@gears-frontx/*` packages — generates code that imports them
 - Does NOT run at application runtime — CLI tool only
 - Does NOT execute app business logic — it generates project assets and verification contracts, then delegates runtime execution to scaffolded package-manager scripts, Vitest, and CI
 - Does NOT manage build or deployment — delegates to Vite, package-manager scripts, and GitHub Actions
@@ -717,7 +717,7 @@ Stream descriptors extend the service to SSE: each `StreamDescriptor` carries a 
 - **Technology**: TypeScript abstract class
 - **Location**: `packages/screensets/src/mfe/mediator/types.ts`
 
-`ActionHandler` is the single public handler contract for both domain-side and extension-side action routing. It is an abstract class — not a function type — consistent with every other public component in `@cyberfabric/screensets` (`MfeHandler`, `MfeBridgeFactory`, `RuntimeCoordinator`, `ChildMfeBridge`). Consumers extend it and implement a single asynchronous `handleAction` operation that receives the action type identifier and an optional payload. No `CustomActionHandler` callback type or `ActionHandlerFn` alias exists in the public API. The signature shape is enumerated under `cpt-frontx-dod-mfe-registry-mediator-contract`.
+`ActionHandler` is the single public handler contract for both domain-side and extension-side action routing. It is an abstract class — not a function type — consistent with every other public component in `@gears-frontx/screensets` (`MfeHandler`, `MfeBridgeFactory`, `RuntimeCoordinator`, `ChildMfeBridge`). Consumers extend it and implement a single asynchronous `handleAction` operation that receives the action type identifier and an optional payload. No `CustomActionHandler` callback type or `ActionHandlerFn` alias exists in the public API. The signature shape is enumerated under `cpt-frontx-dod-mfe-registry-mediator-contract`.
 
 - [ ] `p1` - **ID**: `cpt-frontx-interface-actions-chains-mediator`
 - **Contract**: `cpt-frontx-interface-actions-chains-mediator`
@@ -754,14 +754,14 @@ The CLI package exposes a command-and-generated-files contract to scaffolded pro
 
 | Interface | Package | Description |
 |-----------|---------|-------------|
-| `cpt-frontx-interface-state` | `@cyberfabric/state` | Event-driven state management with EventBus, Redux-backed store, dynamic slice registration, and type-safe module augmentation |
-| `cpt-frontx-interface-screensets` | `@cyberfabric/screensets` | MFE type system, MfeRegistry, MfeHandler, MfeBridge, ExtensionDomainImplementation / ExtensionDomainImplementationFactory / DomainContext / ExtensionMounter / ContainerHooks / DomainLifecycleTrigger, MountStrategy abstract base + ConcurrentMountStrategy / OptionalMountStrategy / ExclusiveMountStrategy, Shadow DOM utilities, GTS validation plugin, action/property constants |
-| `cpt-frontx-interface-api` | `@cyberfabric/api` | Protocol-agnostic API layer with REST and SSE protocols, plugin chain, mock mode, type guards, endpoint/stream descriptors |
-| `cpt-frontx-interface-i18n` | `@cyberfabric/i18n` | 36-language i18n registry, locale-aware formatters, RTL support, language metadata |
-| `cpt-frontx-interface-framework` | `@cyberfabric/framework` | Plugin architecture with `createHAI3()` builder, presets, layout domain slices, effect coordination, re-exports all L1 APIs |
-| `cpt-frontx-interface-react` | `@cyberfabric/react` | HAI3Provider, typed hooks, MFE hooks (`useMfeBridge`, `useSharedProperty`, `useHostAction`, `useDomainExtensions`, `useRegisteredPackages`, `useMountedExtensions`), per-domain `ExtensionDomainSlot` (renders one root and calls `registry.getMounter(domainId).attach`/`detach`), re-exports all L2 APIs |
-| `cpt-frontx-interface-studio` | `@cyberfabric/studio` | Dev-only floating overlay with theme/language/mock controls, persistence, viewport clamping |
-| `cpt-frontx-interface-cli` | `@cyberfabric/cli` | Project scaffolding, code generation, migration runners, AI tool configuration sync, unit-test scaffold contract, and generated testing guidance |
+| `cpt-frontx-interface-state` | `@gears-frontx/state` | Event-driven state management with EventBus, Redux-backed store, dynamic slice registration, and type-safe module augmentation |
+| `cpt-frontx-interface-screensets` | `@gears-frontx/screensets` | MFE type system, MfeRegistry, MfeHandler, MfeBridge, ExtensionDomainImplementation / ExtensionDomainImplementationFactory / DomainContext / ExtensionMounter / ContainerHooks / DomainLifecycleTrigger, MountStrategy abstract base + ConcurrentMountStrategy / OptionalMountStrategy / ExclusiveMountStrategy, Shadow DOM utilities, GTS validation plugin, action/property constants |
+| `cpt-frontx-interface-api` | `@gears-frontx/api` | Protocol-agnostic API layer with REST and SSE protocols, plugin chain, mock mode, type guards, endpoint/stream descriptors |
+| `cpt-frontx-interface-i18n` | `@gears-frontx/i18n` | 36-language i18n registry, locale-aware formatters, RTL support, language metadata |
+| `cpt-frontx-interface-framework` | `@gears-frontx/framework` | Plugin architecture with `createHAI3()` builder, presets, layout domain slices, effect coordination, re-exports all L1 APIs |
+| `cpt-frontx-interface-react` | `@gears-frontx/react` | HAI3Provider, typed hooks, MFE hooks (`useMfeBridge`, `useSharedProperty`, `useHostAction`, `useDomainExtensions`, `useRegisteredPackages`, `useMountedExtensions`), per-domain `ExtensionDomainSlot` (renders one root and calls `registry.getMounter(domainId).attach`/`detach`), re-exports all L2 APIs |
+| `cpt-frontx-interface-studio` | `@gears-frontx/studio` | Dev-only floating overlay with theme/language/mock controls, persistence, viewport clamping |
+| `cpt-frontx-interface-cli` | `@gears-frontx/cli` | Project scaffolding, code generation, migration runners, AI tool configuration sync, unit-test scaffold contract, and generated testing guidance |
 
 **External Integration Contracts**
 
@@ -774,18 +774,18 @@ The CLI package exposes a command-and-generated-files contract to scaffolded pro
 
 | Source Package | Target Package | Interface Used | Purpose |
 |----------------|----------------|----------------|----------|
-| `@cyberfabric/framework` | `@cyberfabric/state` | Store, EventBus, Action, Effect APIs | State management and event-driven communication |
-| `@cyberfabric/framework` | `@cyberfabric/screensets` | MfeRegistry, MFE contracts | MFE registration and lifecycle management |
-| `@cyberfabric/framework` | `@cyberfabric/api` | ApiService factory, protocol registry | API service initialization and protocol adapter setup |
-| `@cyberfabric/framework` | `@cyberfabric/i18n` | i18n init, namespace loader, formatters | Internationalization setup and language management |
-| `@cyberfabric/react` | `@cyberfabric/framework` | Builder output, plugin context, layout slices | Provider tree construction and hook bindings |
+| `@gears-frontx/framework` | `@gears-frontx/state` | Store, EventBus, Action, Effect APIs | State management and event-driven communication |
+| `@gears-frontx/framework` | `@gears-frontx/screensets` | MfeRegistry, MFE contracts | MFE registration and lifecycle management |
+| `@gears-frontx/framework` | `@gears-frontx/api` | ApiService factory, protocol registry | API service initialization and protocol adapter setup |
+| `@gears-frontx/framework` | `@gears-frontx/i18n` | i18n init, namespace loader, formatters | Internationalization setup and language management |
+| `@gears-frontx/react` | `@gears-frontx/framework` | Builder output, plugin context, layout slices | Provider tree construction and hook bindings |
 
 **Dependency Rules**:
 - No circular dependencies (enforced by `dependency-cruiser`)
-- L1 packages have zero `@cyberfabric/*` dependencies
+- L1 packages have zero `@gears-frontx/*` dependencies
 - L2 depends only on L1; L3 depends only on L2
-- Standalone packages (`@cyberfabric/studio`, `@cyberfabric/cli`) sit outside the L1/L2/L3 dependency chain
-- Cross-package imports use workspace names (`@cyberfabric/…`), never `../packages/*/src/*`
+- Standalone packages (`@gears-frontx/studio`, `@gears-frontx/cli`) sit outside the L1/L2/L3 dependency chain
+- Cross-package imports use workspace names (`@gears-frontx/…`), never `../packages/*/src/*`
 
 ### 3.5 External Dependencies
 
@@ -793,15 +793,15 @@ The CLI package exposes a command-and-generated-files contract to scaffolded pro
 
 | Dependency | Version | Used By | Purpose |
 |-----------|---------|---------|---------|
-| `react` | ^19.0.0 | `@cyberfabric/react`, `@cyberfabric/studio` | UI rendering, hooks, concurrent features |
-| `react-dom` | ^19.0.0 | `@cyberfabric/react` | DOM mounting, Shadow DOM for MFE isolation |
+| `react` | ^19.0.0 | `@gears-frontx/react`, `@gears-frontx/studio` | UI rendering, hooks, concurrent features |
+| `react-dom` | ^19.0.0 | `@gears-frontx/react` | DOM mounting, Shadow DOM for MFE isolation |
 
 #### State Management
 
 | Dependency | Version | Used By | Purpose |
 |-----------|---------|---------|---------|
-| `@reduxjs/toolkit` | ^2.x | `@cyberfabric/state`, `@cyberfabric/framework` | Store creation, slice management, middleware |
-| `react-redux` | ^9.x | `@cyberfabric/react` | React bindings for Redux store |
+| `@reduxjs/toolkit` | ^2.x | `@gears-frontx/state`, `@gears-frontx/framework` | Store creation, slice management, middleware |
+| `react-redux` | ^9.x | `@gears-frontx/react` | React bindings for Redux store |
 
 #### Build Toolchain
 
@@ -820,13 +820,13 @@ The CLI package exposes a command-and-generated-files contract to scaffolded pro
 | `@radix-ui/*` | various | Local UI | Accessible headless UI primitives |
 | `lucide-react` | ^0.x | Local UI | Icon system |
 | `recharts` | ^2.x | Local UI | Chart components |
-| `i18next` | ^23.x | `@cyberfabric/i18n` | Translation runtime |
+| `i18next` | ^23.x | `@gears-frontx/i18n` | Translation runtime |
 
 #### HTTP & Networking
 
 | Dependency | Version | Used By | Purpose |
 |-----------|---------|---------|---------|
-| `axios` | ^1.x | `@cyberfabric/api` (peer) | HTTP client for REST protocol adapter |
+| `axios` | ^1.x | `@gears-frontx/api` (peer) | HTTP client for REST protocol adapter |
 
 ### 3.6 Interactions & Sequences
 
@@ -1145,10 +1145,10 @@ The CLI scaffolds projects with exact dependency versions matching its publicati
 #### Layer-Ordered Publishing
 
 Packages are published in strict layer order to maintain registry consistency:
-1. **L1 SDK**: `@cyberfabric/state`, `@cyberfabric/screensets`, `@cyberfabric/api`, `@cyberfabric/i18n`
-2. **L2 Framework**: `@cyberfabric/framework`
-3. **L3 React**: `@cyberfabric/react`
-4. **Standalone**: `@cyberfabric/studio`, `@cyberfabric/cli`
+1. **L1 SDK**: `@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, `@gears-frontx/i18n`
+2. **L2 Framework**: `@gears-frontx/framework`
+3. **L3 React**: `@gears-frontx/react`
+4. **Standalone**: `@gears-frontx/studio`, `@gears-frontx/cli`
 
 This ensures consumers can always resolve lower-layer dependencies before higher-layer packages that depend on them.
 
@@ -1166,7 +1166,7 @@ Packages are versioned independently within the `0.x` major. Each package can be
 4. Extension registration — MFE extensions registered and loaded
 5. `HAI3Provider` mounts — React tree renders with all contexts available
 
-**Module Augmentation Pattern**: Plugins extend framework types without modifying source files. They issue a TypeScript `declare module '@cyberfabric/state'` augmentation that adds their domain-specific slice key to the framework-declared `StoreState` interface. This provides type-safe access to the augmented slice across the entire application while keeping the state package unaware of domain-specific slices. See `cpt-frontx-fr-sdk-module-augmentation` for the contract; the augmentation pattern is also referenced from the per-package L1 contract DoDs.
+**Module Augmentation Pattern**: Plugins extend framework types without modifying source files. They issue a TypeScript `declare module '@gears-frontx/state'` augmentation that adds their domain-specific slice key to the framework-declared `StoreState` interface. This provides type-safe access to the augmented slice across the entire application while keeping the state package unaware of domain-specific slices. See `cpt-frontx-fr-sdk-module-augmentation` for the contract; the augmentation pattern is also referenced from the per-package L1 contract DoDs.
 
 **Build Orchestration**: The monorepo uses npm workspaces. Build order matters because higher layers import from lower layers' built output: `npm run build:packages` executes SDK → Framework → React → Studio → CLI sequentially.
 
@@ -1189,7 +1189,7 @@ Errors are classified by origin: **MFE loading** (`MfeLoadError` with typed caus
 
 ### 4.7 API Evolution
 
-All `@cyberfabric/*` packages follow semver within the 0.x major version. Breaking changes require a minor version bump with migration guidance.
+All `@gears-frontx/*` packages follow semver within the 0.x major version. Breaking changes require a minor version bump with migration guidance.
 
 ### 4.7b Documentation Strategy
 

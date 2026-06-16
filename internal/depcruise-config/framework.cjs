@@ -1,13 +1,13 @@
 /**
  * FrontX Dependency Cruiser Framework Configuration (L2)
- * Rules for @cyberfabric/framework package
+ * Rules for @gears-frontx/framework package
  *
  * Framework package CAN import:
- * - @cyberfabric/state, @cyberfabric/layout, @cyberfabric/api, @cyberfabric/i18n (SDK packages)
+ * - @gears-frontx/state, @gears-frontx/layout, @gears-frontx/api, @gears-frontx/i18n (SDK packages)
  *
  * Framework package CANNOT import:
- * - @cyberfabric/react (would create circular dependency)
- * - @cyberfabric/uicore (deprecated)
+ * - @gears-frontx/react (would create circular dependency)
+ * - @gears-frontx/uicore (deprecated)
  * - react, react-dom (framework is headless)
  */
 
@@ -22,8 +22,8 @@ module.exports = {
       name: 'framework-only-sdk-deps',
       severity: 'error',
       from: { path: '^packages/framework/src' },
-      to: { path: 'node_modules/@cyberfabric/(react|uicore)' },
-      comment: 'FRAMEWORK VIOLATION: Framework can only import SDK packages (@cyberfabric/state, layout, api, i18n).',
+      to: { path: 'node_modules/@gears-frontx/(react|uicore)' },
+      comment: 'FRAMEWORK VIOLATION: Framework can only import SDK packages (@gears-frontx/state, layout, api, i18n).',
     },
     {
       name: 'framework-no-react',

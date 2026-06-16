@@ -25,7 +25,7 @@ In FrontX's MFE system, type IDs are treated as **opaque strings**. The screense
 ### Correct Usage
 
 ```typescript
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 
 // ✅ Correct - calling plugin method
 const typeId = 'gts.hai3.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1';
@@ -319,7 +319,7 @@ const chain = {
 ### Example 1: Using Plugin Methods for Type Metadata
 
 ```typescript
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 
 function logTypeInfo(typeId: string) {
   // Use plugin to check validity

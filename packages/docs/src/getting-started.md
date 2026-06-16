@@ -6,7 +6,7 @@ Welcome to FrontX! This guide will help you get started with the framework.
 
 ```bash
 # Installation instructions coming soon
-npm install @cyberfabric/framework
+npm install @gears-frontx/framework
 ```
 
 ## Quick Start

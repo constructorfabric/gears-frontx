@@ -29,7 +29,7 @@ Check for violations in each category:
 ### Import Rules
 - [ ] Same package uses relative paths
 - [ ] Cross-branch uses @/ alias
-- [ ] Cross-package uses @cyberfabric/* names
+- [ ] Cross-package uses @gears-frontx/* names
 - [ ] No package internals imported
 - [ ] No circular dependencies
 

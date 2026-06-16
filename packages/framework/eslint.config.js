@@ -1,9 +1,9 @@
 /**
- * @cyberfabric/framework ESLint Configuration
+ * @gears-frontx/framework ESLint Configuration
  * Extends Framework layer config - can import SDK packages, no React
  */
 
-import { frameworkConfig } from '@cyberfabric/eslint-config/framework.js';
+import { frameworkConfig } from '@gears-frontx/eslint-config/framework.js';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [

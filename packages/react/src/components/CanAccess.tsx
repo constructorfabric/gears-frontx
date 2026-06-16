@@ -1,7 +1,7 @@
 // @cpt-FEATURE:cpt-frontx-feature-auth-plugin:p1
 // @cpt-flow:cpt-frontx-flow-auth-plugin-rbac-guard:p1
 import type { ReactElement } from 'react';
-import type { AccessRecord } from '@cyberfabric/framework';
+import type { AccessRecord } from '@gears-frontx/framework';
 import { useCanAccess } from '../hooks/useCanAccess';
 import type { CanAccessProps } from '../types';
 

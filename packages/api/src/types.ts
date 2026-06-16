@@ -1,5 +1,5 @@
 /**
- * @cyberfabric/api - Type Definitions
+ * @gears-frontx/api - Type Definitions
  *
  * Core types for FrontX API communication.
  * Supports REST, SSE, and mock protocols.
@@ -812,7 +812,7 @@ export abstract class SsePluginWithConfig<TConfig> implements SsePluginHooks {
  *
  * @example
  * ```typescript
- * import { RestProtocol, SseProtocol } from '@cyberfabric/api';
+ * import { RestProtocol, SseProtocol } from '@gears-frontx/api';
  * const protocolClass: ProtocolClass = RestProtocol;
  * apiRegistry.plugins.add(RestProtocol, plugin);
  * ```
@@ -855,7 +855,7 @@ export type ServiceConstructor<T = BaseApiService> = new () => T;
 /**
  * Cache hint options for endpoint descriptors.
  * These map directly to TanStack Query cache settings at the consumer layer (L2+),
- * but @cyberfabric/api has no dependency on TanStack — descriptors are plain objects.
+ * but @gears-frontx/api has no dependency on TanStack — descriptors are plain objects.
  */
 export interface EndpointOptions {
   /** How long (ms) data is considered fresh before a background refetch. */

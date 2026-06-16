@@ -174,7 +174,7 @@ FrontX defines a **three-stage development workflow** that maximizes AI efficien
 
 ```bash
 # Install FrontX CLI globally
-npm install -g @cyberfabric/cli
+npm install -g @gears-frontx/cli
 
 # Create a new project (full app with UI)
 frontx create my-app
@@ -195,7 +195,7 @@ frontx create my-sdk-package --layer sdk
 # Create a framework-layer package (depends on SDK packages only)
 frontx create my-framework-package --layer framework
 
-# Create a React-layer package (depends on @cyberfabric/framework)
+# Create a React-layer package (depends on @gears-frontx/framework)
 frontx create my-react-package --layer react
 ```
 
@@ -260,13 +260,13 @@ FrontX/                               # Repository root
 FrontX follows a layered architecture for maximum flexibility:
 
 ```
-L1 (SDK)        @cyberfabric/state, @cyberfabric/api, @cyberfabric/i18n, @cyberfabric/screensets
+L1 (SDK)        @gears-frontx/state, @gears-frontx/api, @gears-frontx/i18n, @gears-frontx/screensets
                 Zero cross-dependencies, no React, use anywhere
                     ↓
-L2 (Framework)  @cyberfabric/framework
+L2 (Framework)  @gears-frontx/framework
                 Plugin system, registries, composed from SDK
                     ↓
-L3 (React)      @cyberfabric/react
+L3 (React)      @gears-frontx/react
                 React bindings, hooks, providers
                     ↓
 L4 (App)        User application code
@@ -274,8 +274,8 @@ L4 (App)        User application code
 ```
 
 **Use Cases:**
-- **Full FrontX**: Import `@cyberfabric/react` for complete platform with UI
-- **Headless/External**: Import `@cyberfabric/framework` for screensets-only (no UI)
+- **Full FrontX**: Import `@gears-frontx/react` for complete platform with UI
+- **Headless/External**: Import `@gears-frontx/framework` for screensets-only (no UI)
 - **Custom Integration**: Import SDK packages directly for maximum control
 
 ### Creating a New Screen-Set
