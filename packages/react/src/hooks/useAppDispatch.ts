@@ -7,7 +7,7 @@
 // @cpt-dod:cpt-hai3-dod-react-bindings-redux-hooks:p1
 
 import { useDispatch } from 'react-redux';
-import type { AppDispatch } from '@hai3/framework';
+import type { AppDispatch } from '@gears-frontx/framework';
 
 /**
  * Type-safe dispatch hook.

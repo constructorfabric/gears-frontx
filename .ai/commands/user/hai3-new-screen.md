@@ -7,7 +7,7 @@ FORBIDDEN: Creating screen without reading target files first.
 
 ## AI WORKFLOW (REQUIRED)
 1) Read .ai/targets/SCREENSETS.md and .ai/targets/EVENTS.md before starting.
-2) Read `hai3.config.json` at project root to identify the configured `uikit` value.
+2) Read `frontx.config.json` at project root to identify the configured `uikit` value.
    - If a third-party package (not `shadcn` or `none`): read its exports to discover available components.
 3) Gather requirements from user (including UI sections).
 4) Present implementation plan and wait for approval.
@@ -29,7 +29,7 @@ Present the following to the user for approval:
 - **Screen name**: {screenName}
 - **Add to menu**: {Y/N}
 - **Component Plan**:
-  - REQUIRED: Use components from the configured UI kit (from hai3.config.json `uikit` field); create local only if missing.
+  - REQUIRED: Use components from the configured UI kit (from frontx.config.json `uikit` field); create local only if missing.
   - If uikit is a third-party package: import its components directly.
   - components/ui/: base UI primitives (shadcn components or custom)
   - screens/{screen}/components/: screen-specific components

@@ -10,15 +10,15 @@
 // @cpt-flow:cpt-hai3-flow-framework-composition-mfe-registration:p1
 // @cpt-dod:cpt-hai3-dod-framework-composition-mfe-plugin:p1
 
-import { eventBus } from '@hai3/state';
+import { eventBus } from '@gears-frontx/state';
 import { MfeEvents } from './constants';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
   type Extension,
   type ScreensetsRegistry,
-} from '@hai3/screensets';
+} from '@gears-frontx/screensets';
 
 // ============================================================================
 // Module-Level Registry Reference
@@ -66,7 +66,7 @@ export interface UnregisterExtensionPayload {
 // Module Augmentation for Type-Safe Events
 // ============================================================================
 
-declare module '@hai3/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'mfe/registerExtensionRequested': RegisterExtensionPayload;
     'mfe/unregisterExtensionRequested': UnregisterExtensionPayload;
@@ -85,8 +85,8 @@ declare module '@hai3/state' {
  *
  * @example
  * ```typescript
- * import { loadExtension } from '@hai3/framework';
- * loadExtension('gts.hai3.mfes.ext.extension.v1~my.extension.v1');
+ * import { loadExtension } from '@gears-frontx/framework';
+ * loadExtension('gts.frontx.mfes.ext.extension.v1~my.extension.v1');
  * ```
  */
 // @cpt-begin:cpt-hai3-flow-framework-composition-mfe-lifecycle:p1:inst-1
@@ -96,7 +96,7 @@ export function loadExtension(extensionId: string): void {
   // Call executeActionsChain fire-and-forget (no await)
   screensetsRegistry!.executeActionsChain({
     action: {
-      type: HAI3_ACTION_LOAD_EXT,
+      type: FRONTX_ACTION_LOAD_EXT,
       target: domainId,
       payload: { extensionId },
     },
@@ -116,8 +116,8 @@ export function loadExtension(extensionId: string): void {
  *
  * @example
  * ```typescript
- * import { mountExtension } from '@hai3/framework';
- * mountExtension('gts.hai3.mfes.ext.extension.v1~my.extension.v1');
+ * import { mountExtension } from '@gears-frontx/framework';
+ * mountExtension('gts.frontx.mfes.ext.extension.v1~my.extension.v1');
  * ```
  */
 // @cpt-begin:cpt-hai3-flow-framework-composition-mfe-lifecycle:p1:inst-2
@@ -127,7 +127,7 @@ export function mountExtension(extensionId: string): void {
   // Call executeActionsChain fire-and-forget (no await)
   screensetsRegistry!.executeActionsChain({
     action: {
-      type: HAI3_ACTION_MOUNT_EXT,
+      type: FRONTX_ACTION_MOUNT_EXT,
       target: domainId,
       payload: { extensionId },
     },
@@ -145,8 +145,8 @@ export function mountExtension(extensionId: string): void {
  *
  * @example
  * ```typescript
- * import { unmountExtension } from '@hai3/framework';
- * unmountExtension('gts.hai3.mfes.ext.extension.v1~my.extension.v1');
+ * import { unmountExtension } from '@gears-frontx/framework';
+ * unmountExtension('gts.frontx.mfes.ext.extension.v1~my.extension.v1');
  * ```
  */
 // @cpt-begin:cpt-hai3-flow-framework-composition-mfe-lifecycle:p1:inst-3
@@ -156,7 +156,7 @@ export function unmountExtension(extensionId: string): void {
   // Call executeActionsChain fire-and-forget (no await)
   screensetsRegistry!.executeActionsChain({
     action: {
-      type: HAI3_ACTION_UNMOUNT_EXT,
+      type: FRONTX_ACTION_UNMOUNT_EXT,
       target: domainId,
       payload: { extensionId },
     },
@@ -174,11 +174,11 @@ export function unmountExtension(extensionId: string): void {
  *
  * @example
  * ```typescript
- * import { registerExtension } from '@hai3/framework';
+ * import { registerExtension } from '@gears-frontx/framework';
  * const extension: Extension = {
- *   id: 'gts.hai3.mfes.ext.extension.v1~my.extension.v1',
- *   domain: 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1',
- *   entry: 'gts.hai3.mfes.mfe.entry.v1~my.entry.v1',
+ *   id: 'gts.frontx.mfes.ext.extension.v1~my.extension.v1',
+ *   domain: 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1',
+ *   entry: 'gts.frontx.mfes.mfe.entry.v1~my.entry.v1',
  * };
  * registerExtension(extension);
  * ```
@@ -197,8 +197,8 @@ export function registerExtension(extension: Extension): void {
  *
  * @example
  * ```typescript
- * import { unregisterExtension } from '@hai3/framework';
- * unregisterExtension('gts.hai3.mfes.ext.extension.v1~my.extension.v1');
+ * import { unregisterExtension } from '@gears-frontx/framework';
+ * unregisterExtension('gts.frontx.mfes.ext.extension.v1~my.extension.v1');
  * ```
  */
 export function unregisterExtension(extensionId: string): void {

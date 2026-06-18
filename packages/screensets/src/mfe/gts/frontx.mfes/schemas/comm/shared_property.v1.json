@@ -1,0 +1,12 @@
+{
+  "$id": "gts://gts.frontx.mfes.comm.shared_property.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "x-gts-ref": "/$id"
+    },
+    "value": {}
+  },
+  "required": ["id"]
+}

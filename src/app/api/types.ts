@@ -6,7 +6,7 @@
  * Application-specific types (copied from CLI template)
  */
 
-import type { Language } from '@hai3/react';
+import type { Language } from '@gears-frontx/react';
 
 /**
  * User Extra Properties

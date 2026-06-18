@@ -51,8 +51,8 @@ describe('applyMfeReplacements', () => {
   });
 
   it('should replace package scoped names', () => {
-    const result = applyMfeReplacements('@hai3/blank-mfe', 'contacts', 'Contacts', 3001);
-    assert.equal(result, '@hai3/contacts-mfe');
+    const result = applyMfeReplacements('@gears-frontx/blank-mfe', 'contacts', 'Contacts', 3001);
+    assert.equal(result, '@gears-frontx/contacts-mfe');
   });
 
   it('should replace port numbers', () => {
@@ -139,7 +139,7 @@ describe('buildMfeManifestsContent', () => {
 
   it('should include type imports', () => {
     const result = buildMfeManifestsContent([]);
-    assert.ok(result.includes("import type { Extension, JSONSchema, MfeEntry } from '@hai3/react';"));
+    assert.ok(result.includes("import type { Extension, JSONSchema, MfeEntry } from '@gears-frontx/react';"));
   });
 
   it('should export the MfeManifestConfig interface', () => {
@@ -309,7 +309,7 @@ describe('adaptMfeForCustomUikit', () => {
 /* ---------- Integration tests for generateScreenset() ---------- */
 
 const TEMPLATE_PKG_JSON = JSON.stringify({
-  name: '@hai3/blank-mfe',
+  name: '@gears-frontx/blank-mfe',
   scripts: { dev: 'vite --port 3099' },
   dependencies: {
     'react': '^19.0.0',
@@ -379,7 +379,7 @@ describe('generateScreenset() integration', () => {
     tempRoots.push(root);
     const config: Record<string, unknown> = { hai3: true };
     if (uikit !== undefined) config.uikit = uikit;
-    await fs.writeJSON(path.join(root, 'hai3.config.json'), config);
+    await fs.writeJSON(path.join(root, 'frontx.config.json'), config);
     return root;
   }
 
@@ -394,7 +394,7 @@ describe('generateScreenset() integration', () => {
     assert.ok(result.files.length > 0);
 
     const pkgJson = await fs.readJSON(path.join(result.mfePath, 'package.json'));
-    assert.equal(pkgJson.name, '@hai3/test-widget-mfe');
+    assert.equal(pkgJson.name, '@gears-frontx/test-widget-mfe');
     assert.match(pkgJson.scripts.dev, /--port 4001/);
     assert.ok(pkgJson.dependencies.tailwindcss, 'shadcn keeps tailwindcss');
     assert.ok(pkgJson.dependencies['tailwind-merge'], 'shadcn keeps tailwind-merge');

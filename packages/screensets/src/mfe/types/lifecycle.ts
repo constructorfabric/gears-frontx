@@ -10,7 +10,7 @@ import type { ActionsChain } from './actions-chain';
 
 /**
  * Represents a lifecycle event that can trigger actions chains
- * GTS Type: gts.hai3.mfes.lifecycle.stage.v1~
+ * GTS Type: gts.frontx.mfes.lifecycle.stage.v1~
  */
 export interface LifecycleStage {
   /** The GTS type ID for this lifecycle stage */
@@ -21,7 +21,7 @@ export interface LifecycleStage {
 
 /**
  * Binds a lifecycle stage to an actions chain
- * GTS Type: gts.hai3.mfes.lifecycle.hook.v1~
+ * GTS Type: gts.frontx.mfes.lifecycle.hook.v1~
  */
 export interface LifecycleHook {
   /** The lifecycle stage that triggers this hook */

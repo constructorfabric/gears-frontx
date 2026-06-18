@@ -58,7 +58,7 @@
 
 ### 1.1 Overview
 
-The CLI Tooling feature provides the `@hai3/cli` package — a standalone scaffolding tool that reduces boilerplate and enforces HAI3 architectural conventions across all project layers. It generates complete project structures, layout components, and AI assistant configurations from real project files used as build-time templates.
+The CLI Tooling feature provides the `@gears-frontx/cli` package — a standalone scaffolding tool that reduces boilerplate and enforces HAI3 architectural conventions across all project layers. It generates complete project structures, layout components, and AI assistant configurations from real project files used as build-time templates.
 
 Problem: Without tooling, developers must manually assemble multi-file project structures, navigate layer-specific package.json configurations, and keep AI assistant integration files in sync across Claude, Cursor, Windsurf, and GitHub Copilot. Inconsistencies accumulate quickly across teams.
 
@@ -116,7 +116,7 @@ Success criteria: A developer runs `hai3 create my-app`, selects or passes a sup
 **Actors**: `cpt-hai3-actor-developer`, `cpt-hai3-actor-cli`
 
 1. [x] - `p1` - Developer invokes `hai3 scaffold layout` from a HAI3 project directory, optionally with `--force` - `inst-invoke-scaffold-layout`
-2. [x] - `p1` - **IF** not inside a HAI3 project root (no `hai3.config.json`) **RETURN** validation error `NOT_IN_PROJECT` - `inst-check-project-root-scaffold`
+2. [x] - `p1` - **IF** not inside a HAI3 project root (no `frontx.config.json`) **RETURN** validation error `NOT_IN_PROJECT` - `inst-check-project-root-scaffold`
 3. [x] - `p1` - Read layout templates from the bundled CLI templates directory - `inst-read-layout-templates`
 4. [x] - `p1` - **IF** `--force` is false **AND** any target layout file already exists **THEN** skip existing files - `inst-check-force-flag`
 5. [x] - `p1` - Write layout component files to `src/app/layout/` inside the project root - `inst-write-layout-files`
@@ -131,8 +131,8 @@ Success criteria: A developer runs `hai3 create my-app`, selects or passes a sup
 1. [x] - `p1` - Developer invokes `hai3 update` with optional flags (`--alpha`, `--stable`, `--templates-only`, `--skip-ai-sync`) - `inst-invoke-update`
 2. [x] - `p1` - **IF** both `--alpha` and `--stable` are specified **RETURN** validation error `CONFLICTING_OPTIONS` - `inst-check-conflicting-update-flags`
 3. [x] - `p1` - Algorithm: resolve release channel using `cpt-hai3-algo-cli-tooling-detect-release-channel` - `inst-run-detect-channel`
-4. [x] - `p1` - **IF** `--templates-only` is not set **THEN** install `@hai3/cli@<tag>` globally using the detected project package manager; **IF** the manager is `yarn` **THEN** skip global CLI update with a warning because yarn global install is not managed by the command - `inst-update-cli-global`
-5. [x] - `p1` - **IF** `--templates-only` is not set **AND** inside a HAI3 project **THEN** locate all `@hai3/*` entries in project `package.json` and install each with the resolved tag - `inst-update-project-packages`
+4. [x] - `p1` - **IF** `--templates-only` is not set **THEN** install `@gears-frontx/cli@<tag>` globally using the detected project package manager; **IF** the manager is `yarn` **THEN** skip global CLI update with a warning because yarn global install is not managed by the command - `inst-update-cli-global`
+5. [x] - `p1` - **IF** `--templates-only` is not set **AND** inside a HAI3 project **THEN** locate all `@gears-frontx/*` entries in project `package.json` and install each with the resolved tag - `inst-update-project-packages`
 6. [x] - `p1` - **IF** inside a HAI3 project **THEN** sync templates using `cpt-hai3-algo-cli-tooling-sync-templates` - `inst-run-sync-templates`
 7. [x] - `p1` - **IF** inside a HAI3 project **AND** `--skip-ai-sync` is not set **THEN** execute `aiSyncCommand` with `detectPackages: true` - `inst-run-ai-sync-after-update`
 8. [x] - `p1` - **RETURN** `UpdateCommandResult` with flags for each step completed - `inst-return-update`
@@ -160,7 +160,7 @@ Success criteria: A developer runs `hai3 create my-app`, selects or passes a sup
 2. [x] - `p1` - **IF** not inside a HAI3 project root **RETURN** validation error `NOT_IN_PROJECT` - `inst-check-project-root-ai-sync`
 3. [x] - `p1` - **IF** `.ai/` directory does not exist **AND** not in `--diff` mode **THEN** create minimal `.ai/GUIDELINES.md` stub - `inst-create-ai-dir`
 4. [x] - `p1` - Read user custom rules from `.ai/rules/app.md` if the file exists - `inst-read-user-rules`
-5. [x] - `p1` - **IF** `--detect-packages` is set **THEN** scan `node_modules/@hai3/*/commands/*.md` for package command files, skipping `hai3dev-*` prefixed files - `inst-scan-package-commands`
+5. [x] - `p1` - **IF** `--detect-packages` is set **THEN** scan `node_modules/@gears-frontx/*/commands/*.md` for package command files, skipping `hai3dev-*` prefixed files - `inst-scan-package-commands`
 6. [x] - `p1` - **FOR EACH** target tool in resolved tool list: generate tool-specific configuration files using `cpt-hai3-algo-cli-tooling-generate-ai-config` - `inst-generate-per-tool`
 7. [x] - `p1` - **IF** `--diff` is set **THEN** print file-level diff summary to logger and **RETURN** without writing files - `inst-diff-mode`
 8. [x] - `p1` - Write generated configuration files to the project root - `inst-write-ai-configs`
@@ -201,11 +201,11 @@ Success criteria: A developer runs `hai3 create my-app`, selects or passes a sup
 **Actors**: `cpt-hai3-actor-build-system`, `cpt-hai3-actor-cli`
 
 1. [x] - `p1` - CI triggers `.github/workflows/cli-pr.yml` on pull request to `main`; job `cli-pr-e2e` starts on `ubuntu-latest` with Node 24.14.x and a matrix over `package-manager in [npm, pnpm, yarn]` - `inst-e2e-pr-trigger`
-2. [x] - `p1` - Build `@hai3/cli` via `npm run build --workspace=@hai3/cli` - `inst-e2e-pr-build-cli`
+2. [x] - `p1` - Build `@gears-frontx/cli` via `npm run build --workspace=@gears-frontx/cli` - `inst-e2e-pr-build-cli`
 3. [x] - `p1` - Algorithm: create harness using `cpt-hai3-algo-cli-tooling-e2e-harness-step` with suite name `pr` - `inst-e2e-pr-create-harness`
 4. [x] - `p1` - Run `hai3 create smoke-app --no-studio --uikit shadcn --package-manager <matrix package-manager>` in a temporary workspace - `inst-e2e-pr-create-app`
-5. [x] - `p1` - Assert scaffolded files exist: `hai3.config.json`, `package.json`, `.ai/GUIDELINES.md`, `src/app/layout/Layout.tsx`, `scripts/generate-mfe-manifests.ts` - `inst-e2e-pr-assert-files`
-6. [x] - `p1` - Assert generated `package.json` declares `packageManager`, manager-specific `engines`, manager-specific workspace/config files when applicable, and `hai3.config.json.packageManager` equals the selected manager - `inst-e2e-pr-assert-engines`
+5. [x] - `p1` - Assert scaffolded files exist: `frontx.config.json`, `package.json`, `.ai/GUIDELINES.md`, `src/app/layout/Layout.tsx`, `scripts/generate-mfe-manifests.ts` - `inst-e2e-pr-assert-files`
+6. [x] - `p1` - Assert generated `package.json` declares `packageManager`, manager-specific `engines`, manager-specific workspace/config files when applicable, and `frontx.config.json.packageManager` equals the selected manager - `inst-e2e-pr-assert-engines`
 7. [x] - `p1` - Run `git init` in generated project, then the manager-appropriate install command (`npm install --no-audit --no-fund`, `pnpm install --no-frozen-lockfile`, or `yarn install --no-immutable`) - `inst-e2e-pr-git-init-install`
 8. [x] - `p1` - Run manager-appropriate build and type-check commands on the generated project - `inst-e2e-pr-build-typecheck`
 9. [x] - `p1` - Run `hai3 validate components` on clean scaffold and assert exit code 0 - `inst-e2e-pr-validate-clean`
@@ -222,7 +222,7 @@ Success criteria: A developer runs `hai3 create my-app`, selects or passes a sup
 **Actors**: `cpt-hai3-actor-build-system`, `cpt-hai3-actor-cli`
 
 1. [x] - `p2` - CI triggers `.github/workflows/cli-nightly.yml` on schedule (daily 03:00 UTC) or manual dispatch - `inst-e2e-nightly-trigger`
-2. [x] - `p2` - Build `@hai3/cli` via `npm run build --workspace=@hai3/cli` - `inst-e2e-nightly-build-cli`
+2. [x] - `p2` - Build `@gears-frontx/cli` via `npm run build --workspace=@gears-frontx/cli` - `inst-e2e-nightly-build-cli`
 3. [x] - `p2` - Algorithm: create harness using `cpt-hai3-algo-cli-tooling-e2e-harness-step` with suite name `nightly` - `inst-e2e-nightly-create-harness`
 4. [x] - `p2` - Run `hai3 create nightly-app --no-studio --uikit shadcn --package-manager npm`, then install, build, and type-check - `inst-e2e-nightly-create-default`
 5. [x] - `p2` - Run `hai3 create nightly-pnpm --no-studio --uikit shadcn --package-manager pnpm` and `hai3 create nightly-yarn --no-studio --uikit shadcn --package-manager yarn`; assert manager-specific metadata/files, then install, build, and type-check using manager-appropriate commands
@@ -266,8 +266,8 @@ Constructs the complete set of `GeneratedFile` entries for a new HAI3 project fr
 11. [x] - `p1` - Copy user command stubs from `templates/.ai/commands/user/`
 12. [x] - `p1` - Copy `eslint-plugin-local/` and `scripts/` directories; **IF** `uikit === 'none'` exclude `scripts/generate-colors.ts`
 13. [x] - `p1` - Copy root config files: `CLAUDE.md`, `README.md`, `eslint.config.js`, `tsconfig.json`, `vite.config.ts`, `.dependency-cruiser.cjs`, `.pre-commit-config.yaml`, `.npmrc`, `.nvmrc`; **IF** `uikit === 'shadcn'` also include `postcss.config.js`
-14. [x] - `p1` - Generate `hai3.config.json` dynamically with `{ hai3: true, layer, uikit, packageManager }`; include `linkerMode: "node-modules"` when the selected manager is `yarn`
-15. [x] - `p1` - Generate `package.json` dynamically with resolved dependencies: always include core `@hai3/*` packages at `alpha` tag; include `@hai3/studio` in devDependencies only if `studio === true`; set manager-specific `packageManager`, centralized manager-specific `engines`, and `workspaces: ["eslint-plugin-local"]`
+14. [x] - `p1` - Generate `frontx.config.json` dynamically with `{ hai3: true, layer, uikit, packageManager }`; include `linkerMode: "node-modules"` when the selected manager is `yarn`
+15. [x] - `p1` - Generate `package.json` dynamically with resolved dependencies: always include core `@gears-frontx/*` packages at `alpha` tag; include `@gears-frontx/studio` in devDependencies only if `studio === true`; set manager-specific `packageManager`, centralized manager-specific `engines`, and `workspaces: ["eslint-plugin-local"]`
 16. [x] - `p1` - Generate manager-specific workspace/config files (`pnpm-workspace.yaml` for pnpm, `.yarnrc.yml` for yarn)
 17. [x] - `p1` - Rewrite npm-centric command snippets in generated text files to manager-specific commands using `cpt-hai3-algo-cli-tooling-package-manager-policy`
 18. [x] - `p1` - **RETURN** complete `GeneratedFile[]` array
@@ -279,7 +279,7 @@ Constructs the complete set of `GeneratedFile` entries for a new HAI3 project fr
 Provides package-manager-aware command generation, metadata parsing, engine policy, workspace-file generation, and npm-to-target-manager text transformation.
 
 1. [x] - `p1` - Parse `package.json.packageManager` values into `{ manager, version }`; reject unsupported manager identifiers - `inst-parse-package-manager-field`
-2. [x] - `p1` - Resolve package manager context with priority: explicit HAI3 config manager -> `package.json.packageManager` -> default `npm`; preserve legacy `hai3.config.json.packageManagerVersion` only as backwards-compatible fallback - `inst-detect-package-manager`
+2. [x] - `p1` - Resolve package manager context with priority: explicit HAI3 config manager -> `package.json.packageManager` -> default `npm`; preserve legacy `frontx.config.json.packageManagerVersion` only as backwards-compatible fallback - `inst-detect-package-manager`
 3. [x] - `p1` - Build `package.json.packageManager` values from a centralized policy that defines exact default versions per supported manager - `inst-build-package-manager-field`
 4. [x] - `p1` - Build manager-specific `engines` entries from the same centralized policy while keeping the Node engine range separate - `inst-build-package-manager-engines`
 5. [x] - `p1` - Build manager-specific shell commands for install, script execution, workspace script execution, package add/update, and global install where supported - `inst-build-package-manager-commands`
@@ -302,9 +302,9 @@ Selects the most specific command file variant for a given HAI3 architecture lay
 
 - [x] `p1` - **ID**: `cpt-hai3-algo-cli-tooling-detect-release-channel`
 
-Determines whether the globally installed `@hai3/cli` is on the `alpha` or `stable` channel.
+Determines whether the globally installed `@gears-frontx/cli` is on the `alpha` or `stable` channel.
 
-1. [x] - `p1` - **TRY** locate the current `@hai3/cli` `package.json` by walking upward from the executing module path until a package with `name: "@hai3/cli"` is found - `inst-read-cli-package-version`
+1. [x] - `p1` - **TRY** locate the current `@gears-frontx/cli` `package.json` by walking upward from the executing module path until a package with `name: "@gears-frontx/cli"` is found - `inst-read-cli-package-version`
 2. [x] - `p1` - Read the current CLI version string from that `package.json` - `inst-read-cli-version-string`
 3. [x] - `p1` - **IF** version string contains `-alpha`, `-beta`, or `-rc` **RETURN** `'alpha'` - `inst-check-prerelease-tag`
 4. [x] - `p1` - **RETURN** `'stable'` - `inst-return-stable`
@@ -316,7 +316,7 @@ Determines whether the globally installed `@hai3/cli` is on the `alpha` or `stab
 
 Updates project template-derived files (AI target docs, IDE configs, command adapters) from the currently installed CLI templates without overwriting user-owned source files.
 
-1. [x] - `p2` - Determine project layer from `hai3.config.json`; default to `'app'` if not present - `inst-read-project-layer`
+1. [x] - `p2` - Determine project layer from `frontx.config.json`; default to `'app'` if not present - `inst-read-project-layer`
 2. [x] - `p2` - **FOR EACH** `.ai/targets/*.md` file in the bundled templates: apply layer-aware filtering and overwrite the project file if applicable - `inst-sync-ai-targets`
 3. [x] - `p2` - **FOR EACH** IDE config directory (`.claude/`, `.cursor/`, `.windsurf/`): overwrite IDE config files from templates - `inst-sync-ide-configs`
 4. [x] - `p2` - Skip generation-only `src/app/App.no-*` and `src/app/main.no-uikit.tsx` template variants when syncing into existing projects, and remove stale copies if they exist - `inst-skip-variant-app-files`
@@ -341,7 +341,7 @@ Generates the IDE/AI-tool-specific configuration file and command adapter files 
 
 Writes adapter stub files for each discovered command into the target IDE commands directory. Implements a four-tier precedence hierarchy so project-level overrides take priority over framework defaults.
 
-1. [x] - `p1` - Scan command files from four sources: `hai3` level (`.ai/commands/`), `company` level (`.ai/company/commands/`), `project` level (`.ai/project/commands/`), and package level (from installed `@hai3/*` packages); skip filenames with `hai3dev-` prefix - `inst-scan-four-tiers`
+1. [x] - `p1` - Scan command files from four sources: `hai3` level (`.ai/commands/`), `company` level (`.ai/company/commands/`), `project` level (`.ai/project/commands/`), and package level (from installed `@gears-frontx/*` packages); skip filenames with `hai3dev-` prefix - `inst-scan-four-tiers`
 2. [x] - `p1` - Collect the union of all unique command base names across all tiers - `inst-collect-command-names`
 3. [x] - `p1` - **FOR EACH** command base name: resolve the source file by checking tiers in order `project → company → hai3 → package`; use the first match found - `inst-resolve-precedence`
 4. [x] - `p1` - Extract the command description from the resolved source file by matching the pattern `# hai3:<name> - <description>`; fall back to a name-derived description if the pattern is absent - `inst-extract-description`
@@ -357,7 +357,7 @@ Inspects TypeScript and TSX source files for four categories of architectural vi
 1. [x] - `p1` - **FOR EACH** `.ts` or `.tsx` file in the scan directory (excluding `node_modules/` and `dist/`): read file contents and determine file type (`Screen`, `UI component`, or general) - `inst-iterate-source-files`
 2. [x] - `p1` - **IF** file is a Screen file (ends with `Screen.tsx`): scan for `const <Name>: FC` declarations that are not the file's default export; **FOR EACH** match emit a violation of rule `inline-component` at the matched line - `inst-detect-inline-components`
 3. [x] - `p1` - **IF** file is a Screen file: scan for inline data arrays (variable declarations initialized to array literals containing 3 or more nested object literals); skip variables named `columns`, `options`, `items`, `routes`, `menu`, `tabs`, `steps`, `fields`; **FOR EACH** match emit a violation of rule `inline-data` - `inst-detect-inline-data`
-4. [x] - `p1` - **IF** file is a UI component file (path contains `/components/ui/`): scan for non-type imports from `@hai3/react` or `@hai3/framework`; **IF** found emit a violation of rule `ui-component-impurity` - `inst-detect-ui-component-impurity`
+4. [x] - `p1` - **IF** file is a UI component file (path contains `/components/ui/`): scan for non-type imports from `@gears-frontx/react` or `@gears-frontx/framework`; **IF** found emit a violation of rule `ui-component-impurity` - `inst-detect-ui-component-impurity`
 5. [x] - `p1` - **IF** file is NOT inside `components/ui/`: scan for `style={{` occurrences and emit a violation of rule `inline-style` for each; scan for hex color literals and emit a violation of rule `inline-style` for each - `inst-detect-inline-styles`
 6. [x] - `p1` - **RETURN** all collected `ComponentViolation` objects with file path, line number, rule name, message, severity, and suggestion - `inst-return-violations`
 
@@ -455,10 +455,10 @@ Tracks which migrations have been applied to a project, persisted in `.hai3/migr
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-cli-tooling-package`
 
-`@hai3/cli` is published as a workspace package with a `hai3` binary entry point. The package supports ESM environments (Node.js 18+) and exposes a dual programmatic API via `api.ts` for use by AI agents without interactive prompts.
+`@gears-frontx/cli` is published as a workspace package with a `hai3` binary entry point. The package supports ESM environments (Node.js 18+) and exposes a dual programmatic API via `api.ts` for use by AI agents without interactive prompts.
 
 **Implementation details**:
-- Package: `packages/cli/package.json` — `name: @hai3/cli`, `type: module`, `bin: { hai3: ./dist/index.js }`, `engines: { node: ">=18" }`
+- Package: `packages/cli/package.json` — `name: @gears-frontx/cli`, `type: module`, `bin: { hai3: ./dist/index.js }`, `engines: { node: ">=18" }`
 - Entry: `src/index.ts` — Commander.js program with all commands registered
 - Programmatic API: `src/api.ts` — exports `executeCommand`, `buildCommandContext`, `registry`, core types, `createCommand`, `updateCommand`, generator functions, and utility functions
 - Build: `tsup.config.ts` — ESM primary output; dual CJS/ESM exports for `api.ts`
@@ -557,7 +557,7 @@ The `copy-templates.ts` build script assembles the full template set into `packa
 - Command: `src/commands/ai/sync.ts` — `aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult>`
 - Tool outputs: `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/hai3.mdc`, `.windsurf/rules/hai3.md`
 - Command adapters written to: `.claude/commands/`, `.github/copilot-commands/`, `.cursor/commands/`, `.windsurf/workflows/`
-- Package scanning: reads `node_modules/@hai3/*/commands/*.md` when `--detect-packages` is set
+- Package scanning: reads `node_modules/@gears-frontx/*/commands/*.md` when `--detect-packages` is set
 
 **Implements**:
 - `cpt-hai3-flow-cli-tooling-ai-sync`
@@ -575,7 +575,7 @@ The `copy-templates.ts` build script assembles the full template set into `packa
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-cli-tooling-validate`
 
-`validateComponentsCommand` scans `.ts` / `.tsx` files and enforces four architectural rules: no inline FC components in Screen files, no inline data arrays in Screen files, no `@hai3/react` / `@hai3/framework` imports in `components/ui/` files, no `style={{}}` or hex color literals outside `components/ui/` folders. Violations carry file path, line number, rule name, message, severity, and a suggestion.
+`validateComponentsCommand` scans `.ts` / `.tsx` files and enforces four architectural rules: no inline FC components in Screen files, no inline data arrays in Screen files, no `@gears-frontx/react` / `@gears-frontx/framework` imports in `components/ui/` files, no `style={{}}` or hex color literals outside `components/ui/` folders. Violations carry file path, line number, rule name, message, severity, and a suggestion.
 
 **Implementation details**:
 - Command: `src/commands/validate/components.ts` — `validateComponentsCommand: CommandDefinition<ValidateComponentsArgs, ValidateComponentsResult>`
@@ -669,7 +669,7 @@ A non-required nightly/manual GitHub Actions workflow covers broader CLI scenari
 
 ## 6. Acceptance Criteria
 
-- [x] `hai3 create my-app` scaffolds a complete HAI3 application with correct `package.json`, `hai3.config.json`, `CLAUDE.md`, and all four AI tool configuration files
+- [x] `hai3 create my-app` scaffolds a complete HAI3 application with correct `package.json`, `frontx.config.json`, `CLAUDE.md`, and all four AI tool configuration files
 - [x] `hai3 create my-app --package-manager <npm|pnpm|yarn>` records the selected manager in generated metadata, emits manager-specific next-step commands, and generates required workspace/config files for the selected manager
 - [x] `hai3 create my-sdk --layer sdk` generates a minimal SDK-layer package with only sdk-applicable target files and command variants
 - [x] `hai3 scaffold layout` writes layout components to `src/app/layout/` inside an existing project; skips existing files unless `--force` is passed

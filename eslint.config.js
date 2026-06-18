@@ -1,7 +1,7 @@
 /**
  * HAI3 ESLint Configuration (Monorepo Root)
  *
- * This file contains the complete ESLint rules for the HAI3 monorepo:
+ * This file contains the complete ESLint rules for the Gears FrontX Monorepo:
  * - Standalone rules from packages/cli/template-sources/project/configs/eslint.config.js
  * - Monorepo-specific package boundary rules
  * - SDK/Framework package exceptions (unknown type is required for generic code)
@@ -25,6 +25,7 @@ export default [
       'packages/cli/template-sources/**', // CLI template sources (linted separately in standalone)
       'scripts/**', // Monorepo scripts
       '**/.vitepress/**',
+      '**/.__mf__temp/**', // Module federation build artifacts
       // Legacy config files (still used by dependency-cruiser)
       '.dependency-cruiser.cjs',
       '.husky/**',
@@ -41,7 +42,7 @@ export default [
         {
           patterns: [
             {
-              group: ['@hai3/*/src/**'],
+              group: ['@gears-frontx/*/src/**'],
               message:
                 'MONOREPO VIOLATION: Import from package root, not internal paths.',
             },
@@ -58,7 +59,7 @@ export default [
 
   // SDK packages: Allow unknown/object types (required for generic event bus, store, etc.)
   // These packages use generics and need flexible typing for consumer code to augment
-  // Layer enforcement: SDK packages cannot import other @hai3 packages or React
+  // Layer enforcement: SDK packages cannot import other @gears-frontx packages or React
   {
     files: [
       'packages/state/**/*.ts',
@@ -74,9 +75,9 @@ export default [
         {
           patterns: [
             {
-              group: ['@hai3/*'],
+              group: ['@gears-frontx/*'],
               message:
-                'SDK VIOLATION: SDK packages cannot import other @hai3 packages.',
+                'SDK VIOLATION: SDK packages cannot import other @gears-frontx packages.',
             },
             {
               group: ['react', 'react-dom', 'react/*'],
@@ -84,7 +85,7 @@ export default [
                 'SDK VIOLATION: SDK packages cannot import React.',
             },
             {
-              group: ['@hai3/*/src/**'],
+              group: ['@gears-frontx/*/src/**'],
               message:
                 'MONOREPO VIOLATION: Import from package root, not internal paths.',
             },
@@ -100,7 +101,7 @@ export default [
   },
 
   // Framework package: Allow unknown/object types (wraps SDK with plugin architecture)
-  // Layer enforcement: Framework cannot import @hai3/react or React
+  // Layer enforcement: Framework cannot import @gears-frontx/react or React
   // BUT keep Flux rules for effects files
   {
     files: ['packages/framework/**/*.ts'],
@@ -113,9 +114,9 @@ export default [
         {
           patterns: [
             {
-              group: ['@hai3/react', '@hai3/react/*'],
+              group: ['@gears-frontx/react', '@gears-frontx/react/*'],
               message:
-                'FRAMEWORK VIOLATION: Framework cannot import @hai3/react (circular dependency).',
+                'FRAMEWORK VIOLATION: Framework cannot import @gears-frontx/react (circular dependency).',
             },
             {
               group: ['react', 'react-dom', 'react/*'],
@@ -123,7 +124,7 @@ export default [
                 'FRAMEWORK VIOLATION: Framework cannot import React.',
             },
             {
-              group: ['@hai3/*/src/**'],
+              group: ['@gears-frontx/*/src/**'],
               message:
                 'MONOREPO VIOLATION: Import from package root, not internal paths.',
             },
@@ -148,9 +149,9 @@ export default [
         {
           patterns: [
             {
-              group: ['@hai3/react', '@hai3/react/*'],
+              group: ['@gears-frontx/react', '@gears-frontx/react/*'],
               message:
-                'FRAMEWORK VIOLATION: Framework cannot import @hai3/react (circular dependency).',
+                'FRAMEWORK VIOLATION: Framework cannot import @gears-frontx/react (circular dependency).',
             },
             {
               group: ['react', 'react-dom', 'react/*'],
@@ -158,7 +159,7 @@ export default [
                 'FRAMEWORK VIOLATION: Framework cannot import React.',
             },
             {
-              group: ['@hai3/*/src/**'],
+              group: ['@gears-frontx/*/src/**'],
               message:
                 'MONOREPO VIOLATION: Import from package root, not internal paths.',
             },
@@ -190,9 +191,9 @@ export default [
         {
           patterns: [
             {
-              group: ['@hai3/react', '@hai3/react/*'],
+              group: ['@gears-frontx/react', '@gears-frontx/react/*'],
               message:
-                'FRAMEWORK VIOLATION: Framework cannot import @hai3/react (circular dependency).',
+                'FRAMEWORK VIOLATION: Framework cannot import @gears-frontx/react (circular dependency).',
             },
             {
               group: ['react', 'react-dom', 'react/*'],
@@ -200,7 +201,7 @@ export default [
                 'FRAMEWORK VIOLATION: Framework cannot import React.',
             },
             {
-              group: ['@hai3/*/src/**'],
+              group: ['@gears-frontx/*/src/**'],
               message:
                 'MONOREPO VIOLATION: Import from package root, not internal paths.',
             },
@@ -216,7 +217,7 @@ export default [
   },
 
   // React package: Allow unknown types for hook generics
-  // Layer enforcement: React must import from @hai3/framework, not SDK packages directly
+  // Layer enforcement: React must import from @gears-frontx/framework, not SDK packages directly
   {
     files: ['packages/react/**/*.ts', 'packages/react/**/*.tsx'],
     rules: {
@@ -227,27 +228,27 @@ export default [
         {
           patterns: [
             {
-              group: ['@hai3/state', '@hai3/state/*'],
+              group: ['@gears-frontx/state', '@gears-frontx/state/*'],
               message:
-                'REACT VIOLATION: Import from @hai3/framework instead.',
+                'REACT VIOLATION: Import from @gears-frontx/framework instead.',
             },
             {
-              group: ['@hai3/screensets', '@hai3/screensets/*'],
+              group: ['@gears-frontx/screensets', '@gears-frontx/screensets/*'],
               message:
-                'REACT VIOLATION: Import from @hai3/framework instead.',
+                'REACT VIOLATION: Import from @gears-frontx/framework instead.',
             },
             {
-              group: ['@hai3/api', '@hai3/api/*'],
+              group: ['@gears-frontx/api', '@gears-frontx/api/*'],
               message:
-                'REACT VIOLATION: Import from @hai3/framework instead.',
+                'REACT VIOLATION: Import from @gears-frontx/framework instead.',
             },
             {
-              group: ['@hai3/i18n', '@hai3/i18n/*'],
+              group: ['@gears-frontx/i18n', '@gears-frontx/i18n/*'],
               message:
-                'REACT VIOLATION: Import from @hai3/framework instead.',
+                'REACT VIOLATION: Import from @gears-frontx/framework instead.',
             },
             {
-              group: ['@hai3/*/src/**'],
+              group: ['@gears-frontx/*/src/**'],
               message:
                 'MONOREPO VIOLATION: Import from package root, not internal paths.',
             },
@@ -286,7 +287,7 @@ export default [
     },
   },
 
-  // App: Layer enforcement for src/app/** (must use @hai3/react, not L1/L2 packages)
+  // App: Layer enforcement for src/app/** (must use @gears-frontx/react, not L1/L2 packages)
   {
     files: ['src/app/**/*.{ts,tsx}'],
     rules: {
@@ -296,42 +297,42 @@ export default [
         {
           patterns: [
             {
-              group: ['@hai3/framework', '@hai3/framework/*'],
+              group: ['@gears-frontx/framework', '@gears-frontx/framework/*'],
               message:
-                'LAYER VIOLATION: App-layer code must import from @hai3/react, not directly from @hai3/framework (Layer 2).',
+                'LAYER VIOLATION: App-layer code must import from @gears-frontx/react, not directly from @gears-frontx/framework (Layer 2).',
             },
             {
-              group: ['@hai3/state', '@hai3/state/*'],
+              group: ['@gears-frontx/state', '@gears-frontx/state/*'],
               message:
-                'LAYER VIOLATION: App-layer code must import from @hai3/react, not directly from @hai3/state (Layer 1).',
+                'LAYER VIOLATION: App-layer code must import from @gears-frontx/react, not directly from @gears-frontx/state (Layer 1).',
             },
             {
-              group: ['@hai3/api', '@hai3/api/*'],
+              group: ['@gears-frontx/api', '@gears-frontx/api/*'],
               message:
-                'LAYER VIOLATION: App-layer code must import from @hai3/react, not directly from @hai3/api (Layer 1).',
+                'LAYER VIOLATION: App-layer code must import from @gears-frontx/react, not directly from @gears-frontx/api (Layer 1).',
             },
             {
-              group: ['@hai3/i18n', '@hai3/i18n/*'],
+              group: ['@gears-frontx/i18n', '@gears-frontx/i18n/*'],
               message:
-                'LAYER VIOLATION: App-layer code must import from @hai3/react, not directly from @hai3/i18n (Layer 1).',
+                'LAYER VIOLATION: App-layer code must import from @gears-frontx/react, not directly from @gears-frontx/i18n (Layer 1).',
             },
             {
-              group: ['@hai3/screensets', '@hai3/screensets/*'],
+              group: ['@gears-frontx/screensets', '@gears-frontx/screensets/*'],
               message:
-                'LAYER VIOLATION: App-layer code must import from @hai3/react, not directly from @hai3/screensets (Layer 1).',
+                'LAYER VIOLATION: App-layer code must import from @gears-frontx/react, not directly from @gears-frontx/screensets (Layer 1).',
             },
             // Redux term bans - use HAI3 state terms instead
             {
               group: ['react-redux'],
               importNames: ['useDispatch'],
               message:
-                'REDUX VIOLATION: Do not use useDispatch from react-redux. Use useAppDispatch from @hai3/react instead.',
+                'REDUX VIOLATION: Do not use useDispatch from react-redux. Use useAppDispatch from @gears-frontx/react instead.',
             },
             {
               group: ['react-redux'],
               importNames: ['useSelector'],
               message:
-                'REDUX VIOLATION: Do not use useSelector from react-redux. Use useAppSelector from @hai3/react instead.',
+                'REDUX VIOLATION: Do not use useSelector from react-redux. Use useAppSelector from @gears-frontx/react instead.',
             },
           ],
         },
@@ -353,7 +354,7 @@ export default [
         {
           patterns: [
             {
-              group: ['@hai3/studio', '@hai3/studio/**'],
+              group: ['@gears-frontx/studio', '@gears-frontx/studio/**'],
               message:
                 'STUDIO VIOLATION: Studio should not be imported directly in app code. HAI3Provider auto-detects and loads Studio in development mode.',
             },

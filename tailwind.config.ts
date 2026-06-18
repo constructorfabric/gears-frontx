@@ -10,8 +10,8 @@ export default {
     // Monorepo: scan local package sources
     './packages/*/src/**/*.{js,ts,jsx,tsx}',
     './packages/*/dist/**/*.{js,mjs}',
-    // Standalone: scan installed @hai3 packages from node_modules
-    './node_modules/@hai3/*/dist/**/*.{js,mjs}',
+    // Standalone: scan installed @gears-frontx packages from node_modules
+    './node_modules/@gears-frontx/*/dist/**/*.{js,mjs}',
   ],
   safelist: [
     // RTL utilities used in package components

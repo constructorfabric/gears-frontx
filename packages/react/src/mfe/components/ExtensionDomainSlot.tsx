@@ -11,11 +11,11 @@
 // @cpt-dod:cpt-hai3-dod-react-bindings-extension-slot:p1
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { ScreensetsRegistry, ParentMfeBridge } from '@hai3/framework';
+import type { ScreensetsRegistry, ParentMfeBridge } from '@gears-frontx/framework';
 import {
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
-} from '@hai3/framework';
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
+} from '@gears-frontx/framework';
 
 /**
  * Props for ExtensionDomainSlot component
@@ -79,8 +79,8 @@ export interface ExtensionDomainSlotProps {
  * ```tsx
  * <ExtensionDomainSlot
  *   registry={registry}
- *   domainId="gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1"
- *   extensionId="gts.hai3.mfes.ext.extension.v1~myapp.sidebar.widget.v1"
+ *   domainId="gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1"
+ *   extensionId="gts.frontx.mfes.ext.extension.v1~myapp.sidebar.widget.v1"
  *   className="sidebar-slot"
  * />
  * ```
@@ -129,7 +129,7 @@ export function ExtensionDomainSlot(props: ExtensionDomainSlotProps): React.Reac
         // Container is provided by the domain's ContainerProvider (registered at domain registration time)
         await registry.executeActionsChain({
           action: {
-            type: HAI3_ACTION_MOUNT_EXT,
+            type: FRONTX_ACTION_MOUNT_EXT,
             target: domainId,
             payload: {
               extensionId,
@@ -144,7 +144,7 @@ export function ExtensionDomainSlot(props: ExtensionDomainSlotProps): React.Reac
           // Component was unmounted while mounting - clean up
           await registry.executeActionsChain({
             action: {
-              type: HAI3_ACTION_UNMOUNT_EXT,
+              type: FRONTX_ACTION_UNMOUNT_EXT,
               target: domainId,
               payload: {
                 extensionId,
@@ -208,7 +208,7 @@ export function ExtensionDomainSlot(props: ExtensionDomainSlotProps): React.Reac
         // Unmount extension asynchronously via actions chain
         void registry.executeActionsChain({
           action: {
-            type: HAI3_ACTION_UNMOUNT_EXT,
+            type: FRONTX_ACTION_UNMOUNT_EXT,
             target: domainId,
             payload: {
               extensionId,

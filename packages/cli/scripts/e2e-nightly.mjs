@@ -10,7 +10,7 @@ import { CLI_ENTRY, createHarness, shouldSkipInstall } from './e2e-lib.mjs';
 // @cpt-end:cpt-hai3-flow-cli-tooling-e2e-nightly:p2:inst-e2e-nightly-trigger
 
 // @cpt-begin:cpt-hai3-flow-cli-tooling-e2e-nightly:p2:inst-e2e-nightly-build-cli
-// @hai3/cli is built via npm run build --workspace=@hai3/cli before this script runs
+// @gears-frontx/cli is built via npm run build --workspace=@gears-frontx/cli before this script runs
 // @cpt-end:cpt-hai3-flow-cli-tooling-e2e-nightly:p2:inst-e2e-nightly-build-cli
 
 // @cpt-begin:cpt-hai3-flow-cli-tooling-e2e-nightly:p2:inst-e2e-nightly-create-harness
@@ -93,14 +93,14 @@ try {
     appPackageJson.engines?.npm === expectedManagerEngines.npm,
     `npm app should require npm ${expectedManagerEngines.npm}`
   );
-  const appConfig = harness.readJson(path.join(appRoot, 'hai3.config.json'));
+  const appConfig = harness.readJson(path.join(appRoot, 'frontx.config.json'));
   harness.assert(
     appConfig.packageManager === 'npm',
-    'npm app hai3.config.json must set packageManager to npm'
+    'npm app frontx.config.json must set packageManager to npm'
   );
   harness.assert(
     !('packageManagerVersion' in appConfig),
-    'npm app hai3.config.json must not include packageManagerVersion'
+    'npm app frontx.config.json must not include packageManagerVersion'
   );
   maybeInstallAndCheck(appRoot, 'npm', true);
   // @cpt-end:cpt-hai3-flow-cli-tooling-e2e-nightly:p2:inst-e2e-nightly-create-default
@@ -122,14 +122,14 @@ try {
     `pnpm app should require pnpm ${expectedManagerEngines.pnpm}`
   );
   harness.assertPathExists(path.join(pnpmRoot, 'pnpm-workspace.yaml'));
-  const pnpmConfig = harness.readJson(path.join(pnpmRoot, 'hai3.config.json'));
+  const pnpmConfig = harness.readJson(path.join(pnpmRoot, 'frontx.config.json'));
   harness.assert(
     pnpmConfig.packageManager === 'pnpm',
-    'pnpm app hai3.config.json must set packageManager to pnpm'
+    'pnpm app frontx.config.json must set packageManager to pnpm'
   );
   harness.assert(
     !('packageManagerVersion' in pnpmConfig),
-    'pnpm app hai3.config.json must not include packageManagerVersion'
+    'pnpm app frontx.config.json must not include packageManagerVersion'
   );
   maybeInstallAndCheck(pnpmRoot, 'pnpm', true);
 
@@ -150,14 +150,14 @@ try {
     `yarn app should require yarn ${expectedManagerEngines.yarn}`
   );
   harness.assertPathExists(path.join(yarnRoot, '.yarnrc.yml'));
-  const yarnConfig = harness.readJson(path.join(yarnRoot, 'hai3.config.json'));
+  const yarnConfig = harness.readJson(path.join(yarnRoot, 'frontx.config.json'));
   harness.assert(
     yarnConfig.packageManager === 'yarn',
-    'yarn app hai3.config.json must set packageManager to yarn'
+    'yarn app frontx.config.json must set packageManager to yarn'
   );
   harness.assert(
     !('packageManagerVersion' in yarnConfig),
-    'yarn app hai3.config.json must not include packageManagerVersion'
+    'yarn app frontx.config.json must not include packageManagerVersion'
   );
   maybeInstallAndCheck(yarnRoot, 'yarn', true);
 

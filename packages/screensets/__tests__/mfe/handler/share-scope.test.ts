@@ -65,7 +65,7 @@ function createTestSetup(
   }
 
   const manifest: MfManifest = {
-    id: `gts.hai3.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
+    id: `gts.frontx.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
     remoteEntry: remoteEntryUrl,
     remoteName,
     sharedDependencies: options.sharedDeps,
@@ -82,7 +82,7 @@ function createTestSetup(
     },
     createEntry(exposedModule: string, suffix: string): MfeEntryMF {
       return {
-        id: `gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.${suffix}.v1`,
+        id: `gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.${suffix}.v1`,
         manifest,
         exposedModule,
       };
@@ -100,7 +100,7 @@ describe('MfeHandlerMF - share scope construction and blob URL isolation', () =>
   let savedGlobal: FederationSharedMap | undefined;
 
   beforeEach(() => {
-    handler = new MfeHandlerMF('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~', { timeout: 5000, retries: 0 });
+    handler = new MfeHandlerMF('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~', { timeout: 5000, retries: 0 });
     mocks = setupBlobUrlLoaderMocks();
     savedGlobal = readFederationShared();
     clearFederationShared();
@@ -405,13 +405,13 @@ describe('MfeHandlerMF - share scope construction and blob URL isolation', () =>
       );
 
       const manifest: MfManifest = {
-        id: `gts.hai3.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
+        id: `gts.frontx.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
         remoteEntry: remoteEntryUrl,
         remoteName,
       };
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.missingexpose.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.missingexpose.v1',
         manifest,
         exposedModule: './NonExistent',
       };

@@ -37,7 +37,7 @@
 
 ## IMPORT RULES
 - Inside same package: relative paths.
-- SDK packages: @hai3/state, @hai3/api, @hai3/i18n, @hai3/events.
+- SDK packages: @gears-frontx/state, @gears-frontx/api, @gears-frontx/i18n, @gears-frontx/events.
 - External deps: lodash, @reduxjs/toolkit.
 - Index files: only when aggregating 3 or more exports.
 - Redux slices: import directly (no barrels).

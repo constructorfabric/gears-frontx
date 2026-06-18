@@ -1,6 +1,6 @@
 {
-  "name": "@hai3/eslint-config",
-  "version": "0.1.0-alpha.0",
+  "name": "@gears-frontx/eslint-config",
+  "version": "0.1.0",
   "description": "Layered ESLint configuration for HAI3 SDK architecture",
   "private": true,
   "type": "module",

@@ -55,8 +55,8 @@ Create `src/lifecycle.tsx`:
 
 ```typescript
 import React from 'react';
-import type { ChildMfeBridge } from '@hai3/react';
-import { ThemeAwareReactLifecycle } from '@hai3/screensets/mfe/handler';
+import type { ChildMfeBridge } from '@gears-frontx/react';
+import { ThemeAwareReactLifecycle } from '@gears-frontx/screensets/mfe/handler';
 import { YourScreen } from './screens/YourScreen';
 
 class Lifecycle extends ThemeAwareReactLifecycle {
@@ -135,7 +135,7 @@ npm run dev:all
 ### Issue: Redux/useSelector errors
 - MFE must use mock data (no Redux Provider in isolation)
 - Use `useState` for local state management
-- Do not import Redux hooks (@hai3/react)
+- Do not import Redux hooks (@gears-frontx/react)
 
 ## BEST PRACTICES
 

@@ -1,73 +1,73 @@
 {
   "manifest": {
-    "id": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
+    "id": "gts.frontx.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
     "remoteEntry": "http://localhost:3001/assets/remoteEntry.js",
     "remoteName": "demoMfe",
     "sharedDependencies": [
       { "name": "react", "requiredVersion": "^19.0.0", "chunkPath": "__federation_shared_react.js" },
       { "name": "react-dom", "requiredVersion": "^19.0.0", "chunkPath": "__federation_shared_react-dom.js" },
       { "name": "tailwindcss", "chunkPath": "__federation_shared_tailwindcss.js" },
-      { "name": "@hai3/react", "chunkPath": "__federation_shared_@hai3/react.js" },
-      { "name": "@hai3/framework", "chunkPath": "__federation_shared_@hai3/framework.js" },
-      { "name": "@hai3/state", "chunkPath": "__federation_shared_@hai3/state.js" },
-      { "name": "@hai3/screensets", "chunkPath": "__federation_shared_@hai3/screensets.js" },
-      { "name": "@hai3/api", "chunkPath": "__federation_shared_@hai3/api.js" },
-      { "name": "@hai3/i18n", "chunkPath": "__federation_shared_@hai3/i18n.js" },
+      { "name": "@gears-frontx/react", "chunkPath": "__federation_shared_@gears-frontx/react.js" },
+      { "name": "@gears-frontx/framework", "chunkPath": "__federation_shared_@gears-frontx/framework.js" },
+      { "name": "@gears-frontx/state", "chunkPath": "__federation_shared_@gears-frontx/state.js" },
+      { "name": "@gears-frontx/screensets", "chunkPath": "__federation_shared_@gears-frontx/screensets.js" },
+      { "name": "@gears-frontx/api", "chunkPath": "__federation_shared_@gears-frontx/api.js" },
+      { "name": "@gears-frontx/i18n", "chunkPath": "__federation_shared_@gears-frontx/i18n.js" },
       { "name": "@reduxjs/toolkit", "chunkPath": "__federation_shared_@reduxjs/toolkit.js" },
       { "name": "react-redux", "chunkPath": "__federation_shared_react-redux.js" }
     ]
   },
   "entries": [
     {
-      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.helloworld.v1",
+      "id": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~hai3.demo.mfe.helloworld.v1",
       "requiredProperties": [
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~",
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~"
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~",
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~"
       ],
       "actions": [],
       "domainActions": [],
-      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
+      "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
       "exposedModule": "./lifecycle-helloworld"
     },
     {
-      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.profile.v1",
+      "id": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~hai3.demo.mfe.profile.v1",
       "requiredProperties": [
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~",
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~"
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~",
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~"
       ],
       "actions": [],
       "domainActions": [],
-      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
+      "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
       "exposedModule": "./lifecycle-profile"
     },
     {
-      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.theme.v1",
+      "id": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~hai3.demo.mfe.theme.v1",
       "requiredProperties": [
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~",
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~"
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~",
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~"
       ],
       "actions": [],
       "domainActions": [],
-      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
+      "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
       "exposedModule": "./lifecycle-theme"
     },
     {
-      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.uikit.v1",
+      "id": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~hai3.demo.mfe.uikit.v1",
       "requiredProperties": [
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~",
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~"
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~",
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~"
       ],
       "actions": [],
       "domainActions": [],
-      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
+      "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
       "exposedModule": "./lifecycle-uikit"
     }
   ],
   "extensions": [
     {
-      "id": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.helloworld.v1",
-      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1",
-      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.helloworld.v1",
+      "id": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~hai3.demo.screens.helloworld.v1",
+      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1",
+      "entry": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~hai3.demo.mfe.helloworld.v1",
       "presentation": {
         "label": "Hello World",
         "icon": "lucide:globe",
@@ -76,9 +76,9 @@
       }
     },
     {
-      "id": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.profile.v1",
-      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1",
-      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.profile.v1",
+      "id": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~hai3.demo.screens.profile.v1",
+      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1",
+      "entry": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~hai3.demo.mfe.profile.v1",
       "presentation": {
         "label": "Profile",
         "icon": "lucide:user",
@@ -87,9 +87,9 @@
       }
     },
     {
-      "id": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.theme.v1",
-      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1",
-      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.theme.v1",
+      "id": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~hai3.demo.screens.theme.v1",
+      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1",
+      "entry": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~hai3.demo.mfe.theme.v1",
       "presentation": {
         "label": "Current Theme",
         "icon": "lucide:palette",
@@ -98,9 +98,9 @@
       }
     },
     {
-      "id": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.uikit.v1",
-      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1",
-      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.uikit.v1",
+      "id": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~hai3.demo.screens.uikit.v1",
+      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1",
+      "entry": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~hai3.demo.mfe.uikit.v1",
       "presentation": {
         "label": "UIKit Elements",
         "icon": "lucide:component",

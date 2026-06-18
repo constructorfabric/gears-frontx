@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HAI3Provider, apiRegistry, createHAI3App, MfeHandlerMF, gtsPlugin, HAI3_MFE_ENTRY_MF } from '@hai3/react';
+import { HAI3Provider, apiRegistry, createHAI3App, MfeHandlerMF, gtsPlugin, FRONTX_MFE_ENTRY_MF } from '@gears-frontx/react';
 import { Toaster } from '@/app/components/ui/sonner';
 import { AccountsApiService } from '@/app/api';
 import './globals.css'; // Global styles with CSS variables
@@ -25,7 +25,7 @@ apiRegistry.initialize({});
 const app = createHAI3App({
   microfrontends: {
     typeSystem: gtsPlugin,
-    mfeHandlers: [new MfeHandlerMF(HAI3_MFE_ENTRY_MF)],
+    mfeHandlers: [new MfeHandlerMF(FRONTX_MFE_ENTRY_MF)],
   },
 });
 

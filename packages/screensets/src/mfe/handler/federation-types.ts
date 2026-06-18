@@ -35,7 +35,7 @@ export type FederationPackageVersions = Record<string, FederationSharedEntry>;
 
 /**
  * The per-package map within a federation scope.
- * Keys are package names (e.g. 'react', '@hai3/react').
+ * Keys are package names (e.g. 'react', '@gears-frontx/react').
  */
 export type FederationScope = Record<string, FederationPackageVersions>;
 

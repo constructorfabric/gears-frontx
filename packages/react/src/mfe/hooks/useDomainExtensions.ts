@@ -13,7 +13,7 @@
 
 import { useSyncExternalStore, useCallback, useRef } from 'react';
 import { useHAI3 } from '../../HAI3Context';
-import type { Extension } from '@hai3/framework';
+import type { Extension } from '@gears-frontx/framework';
 
 // ============================================================================
 // Hook Implementation
@@ -31,7 +31,7 @@ import type { Extension } from '@hai3/framework';
  * @example
  * ```tsx
  * function SidebarExtensions() {
- *   const extensions = useDomainExtensions('gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1');
+ *   const extensions = useDomainExtensions('gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1');
  *
  *   return (
  *     <div>

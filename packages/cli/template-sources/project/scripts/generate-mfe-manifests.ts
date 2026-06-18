@@ -12,7 +12,7 @@ const OUTPUT_DIR = join(process.cwd(), 'src/app/mfe');
 const OUTPUT_FILE = join(OUTPUT_DIR, 'generated-mfe-manifests.ts');
 
 function typePreamble(): string {
-  return `import type { Extension, JSONSchema, MfeEntry } from '@hai3/react';
+  return `import type { Extension, JSONSchema, MfeEntry } from '@gears-frontx/react';
 
 export interface MfeManifestConfig {
   manifest: JSONSchema;

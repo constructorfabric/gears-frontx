@@ -4,12 +4,12 @@ import {
   useHAI3,
   useActivePackage,
   eventBus,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_SCREEN_DOMAIN,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_SCREEN_DOMAIN,
   type MenuState,
   type Extension,
   type ScreenExtension,
-} from '@hai3/react';
+} from '@gears-frontx/react';
 import * as lucideIcons from 'lucide-react';
 
 type LucideIcon = React.ComponentType<lucideIcons.LucideProps>;
@@ -52,15 +52,15 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
       if (activePackage) {
         const packageExts = screensetsRegistry.getExtensionsForPackage(activePackage);
         screenExts = packageExts.filter(
-          (ext: Extension) => ext.domain === HAI3_SCREEN_DOMAIN && 'presentation' in ext
+          (ext: Extension) => ext.domain === FRONTX_SCREEN_DOMAIN && 'presentation' in ext
         ) as ScreenExtension[];
       } else {
-        screenExts = screensetsRegistry.getExtensionsForDomain(HAI3_SCREEN_DOMAIN) as ScreenExtension[];
+        screenExts = screensetsRegistry.getExtensionsForDomain(FRONTX_SCREEN_DOMAIN) as ScreenExtension[];
       }
       const sorted = screenExts
         .sort((a, b) => (a.presentation.order ?? 999) - (b.presentation.order ?? 999));
       setExtensions(sorted);
-      setMountedId(screensetsRegistry.getMountedExtension(HAI3_SCREEN_DOMAIN));
+      setMountedId(screensetsRegistry.getMountedExtension(FRONTX_SCREEN_DOMAIN));
     };
 
     refresh();
@@ -77,8 +77,8 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
       if (!screensetsRegistry || extensionId === mountedId) return;
       await screensetsRegistry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
-          target: HAI3_SCREEN_DOMAIN,
+          type: FRONTX_ACTION_MOUNT_EXT,
+          target: FRONTX_SCREEN_DOMAIN,
           payload: { extensionId },
         },
       });

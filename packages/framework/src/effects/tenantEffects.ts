@@ -9,7 +9,7 @@
 // @cpt-state:cpt-hai3-state-framework-composition-tenant:p1
 // @cpt-dod:cpt-hai3-dod-framework-composition-app-config:p1
 
-import { eventBus, getStore } from '@hai3/state';
+import { eventBus, getStore } from '@gears-frontx/state';
 import { setTenant, clearTenant } from '../slices/tenantSlice';
 import type { Tenant } from '../layoutTypes';
 
@@ -37,7 +37,7 @@ export interface TenantClearedPayload {
 // Module Augmentation for Type-Safe Events
 // ============================================================================
 
-declare module '@hai3/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'app/tenant/changed': TenantChangedPayload;
     'app/tenant/cleared': TenantClearedPayload;

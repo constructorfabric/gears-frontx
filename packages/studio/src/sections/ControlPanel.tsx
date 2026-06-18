@@ -1,6 +1,6 @@
 // @cpt-dod:cpt-hai3-dod-studio-devtools-control-panel:p1
 import React from 'react';
-import { useTranslation } from '@hai3/react';
+import { useTranslation } from '@gears-frontx/react';
 import { MfePackageSelector } from './MfePackageSelector';
 import { ThemeSelector } from './ThemeSelector';
 import { LanguageSelector } from './LanguageSelector';

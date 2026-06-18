@@ -5,13 +5,13 @@
  *
  * A GTS package is the first two dot-segments of an entity's instance portion.
  * For example, in the entity ID:
- *   'gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.helloworld.v1'
+ *   'gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.demo.screens.helloworld.v1'
  *
  * The instance portion is the last tilde-delimited segment:
- *   'hai3.demo.screens.helloworld.v1'
+ *   'frontx.demo.screens.helloworld.v1'
  *
  * The GTS package is the first two dot-segments:
- *   'hai3.demo'
+ *   'frontx.demo'
  *
  * @packageDocumentation
  */
@@ -31,7 +31,7 @@
  * 4. Return the first two dot-segments joined by '.'
  *
  * @param entityId - A GTS entity ID (instance ID, not schema type ID)
- * @returns The GTS package string (e.g., 'hai3.demo')
+ * @returns The GTS package string (e.g., 'frontx.demo')
  *
  * @throws {Error} if the entity ID has fewer than 2 dot-segments in its instance portion
  * @throws {Error} if the entity ID contains no '~' delimiter (not a valid GTS ID)
@@ -40,16 +40,16 @@
  * @example
  * ```typescript
  * // Extension with derived type (3 tilde-segments)
- * extractGtsPackage('gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.helloworld.v1')
- * // Returns: 'hai3.demo'
+ * extractGtsPackage('gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.demo.screens.helloworld.v1')
+ * // Returns: 'frontx.demo'
  *
  * // Manifest with base type (2 tilde-segments)
- * extractGtsPackage('gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1')
- * // Returns: 'hai3.demo'
+ * extractGtsPackage('gts.frontx.mfes.mfe.mf_manifest.v1~frontx.demo.mfe.manifest.v1')
+ * // Returns: 'frontx.demo'
  *
  * // Entry with derived type (3 tilde-segments)
- * extractGtsPackage('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.helloworld.v1')
- * // Returns: 'hai3.demo'
+ * extractGtsPackage('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.helloworld.v1')
+ * // Returns: 'frontx.demo'
  * ```
  */
 // @cpt-begin:cpt-hai3-algo-screenset-registry-gts-package-discovery:p1:inst-1
@@ -86,7 +86,7 @@ export function extractGtsPackage(entityId: string): string {
       `extractGtsPackage: Entity ID has fewer than 2 dot-segments in its instance portion. ` +
       `Expected format 'vendor.package.rest.v1', got instance portion: '${instancePortion}' ` +
       `from entity ID: '${entityId}'. ` +
-      `A valid GTS package requires at least two dot-segments (e.g., 'hai3.demo').`
+      `A valid GTS package requires at least two dot-segments (e.g., 'frontx.demo').`
     );
   }
 

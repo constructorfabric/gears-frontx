@@ -4,7 +4,7 @@
  * Manages service registration, instantiation, and mock mode.
  * Services self-register via module augmentation.
  *
- * SDK Layer: L1 (Zero @hai3 dependencies)
+ * SDK Layer: L1 (Zero @gears-frontx dependencies)
  */
 
 // @cpt-dod:cpt-hai3-dod-api-communication-registry:p1
@@ -340,6 +340,6 @@ class ApiRegistryImpl implements IApiRegistry {
  * Use this instance throughout the application.
  *
  * For micro-frontend isolation, each micro-frontend should bundle its own
- * instance of @hai3/api package, which provides natural isolation.
+ * instance of @gears-frontx/api package, which provides natural isolation.
  */
 export const apiRegistry = new ApiRegistryImpl();

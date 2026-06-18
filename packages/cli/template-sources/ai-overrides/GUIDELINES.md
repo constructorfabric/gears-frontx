@@ -29,14 +29,14 @@
 ## REPO INVARIANTS
 - Event-driven architecture only (see EVENTS.md).
 - Registries follow Open/Closed; adding items must not modify registry root files.
-- App-level deps limited to: @hai3/react, the configured UI kit, react, react-dom.
+- App-level deps limited to: @gears-frontx/react, the configured UI kit, react, react-dom.
 - Cross-domain communication only via events.
 - No string literal identifiers; use constants or enums.
 - No any, no unknown in type definitions, no "as unknown as" casts.
 - REQUIRED: Use lodash for non-trivial object and array operations.
 
 ## UI KIT DISCOVERY (REQUIRED)
-- REQUIRED: Read `hai3.config.json` at project root to find `uikit` value.
+- REQUIRED: Read `frontx.config.json` at project root to find `uikit` value.
 - If `uikit` is `"shadcn"`: use local `components/ui/` (shadcn components already scaffolded).
 - If `uikit` is `"none"`: no UI library; create all components locally.
 - If `uikit` is any other value (e.g., `"@company/ui"`, `"@mui/material"`): it is a third-party npm UI library.
@@ -49,7 +49,7 @@
 ## IMPORT RULES
 - Inside same package: relative paths.
 - Cross-branch in app: @/ alias.
-- Cross-package: @hai3/framework, @hai3/react, the configured UI kit.
+- Cross-package: @gears-frontx/framework, @gears-frontx/react, the configured UI kit.
 - Index files: only when aggregating 3 or more exports.
 - Redux slices: import directly (no barrels).
 

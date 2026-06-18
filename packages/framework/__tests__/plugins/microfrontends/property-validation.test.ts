@@ -1,14 +1,14 @@
 /**
  * Tests for application-layer derived GTS schemas
  *
- * Verifies that the derived GTS schemas exported from @hai3/framework correctly
+ * Verifies that the derived GTS schemas exported from @gears-frontx/framework correctly
  * constrain property values via the GTS validation mechanism:
  * - Theme schema permits any non-empty string and rejects empty values
  * - Language schema permits the 36 supported locales and rejects others
  * - Extension screen schema defines the required presentation structure
  *
  * These tests live at L2 (framework) because the derived schemas encode
- * application-level decisions. The core GTS type system at L1 (@hai3/screensets)
+ * application-level decisions. The core GTS type system at L1 (@gears-frontx/screensets)
  * only knows about the base shared_property schema — it does not constrain
  * which specific themes or languages are valid.
  *
@@ -16,8 +16,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { GtsPlugin } from '@hai3/screensets/plugins/gts';
-import { HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE } from '@hai3/screensets';
+import { GtsPlugin } from '@gears-frontx/screensets/plugins/gts';
+import { FRONTX_SHARED_PROPERTY_THEME, FRONTX_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/screensets';
 import { themeSchema, languageSchema, extensionScreenSchema } from '../../../src/gts';
 
 /**
@@ -37,25 +37,25 @@ describe('application-layer derived GTS schemas', () => {
     const plugin = buildPluginWithDerivedSchemas();
 
     it('is accessible via getSchema using the theme property type ID', () => {
-      const schema = plugin.getSchema(HAI3_SHARED_PROPERTY_THEME);
+      const schema = plugin.getSchema(FRONTX_SHARED_PROPERTY_THEME);
       expect(schema).toBeDefined();
-      expect(schema?.$id).toBe(`gts://${HAI3_SHARED_PROPERTY_THEME}`);
+      expect(schema?.$id).toBe(`gts://${FRONTX_SHARED_PROPERTY_THEME}`);
     });
 
     it('constrains value to non-empty string (minLength: 1)', () => {
-      const schema = plugin.getSchema(HAI3_SHARED_PROPERTY_THEME);
+      const schema = plugin.getSchema(FRONTX_SHARED_PROPERTY_THEME);
       const properties = schema?.properties as Record<string, { type?: string; minLength?: number }>;
       expect(properties?.value?.type).toBe('string');
       expect(properties?.value?.minLength).toBe(1);
     });
 
     it('uses allOf derivation from base shared_property schema', () => {
-      const schema = plugin.getSchema(HAI3_SHARED_PROPERTY_THEME);
+      const schema = plugin.getSchema(FRONTX_SHARED_PROPERTY_THEME);
       expect(Array.isArray((schema as Record<string, unknown>).allOf)).toBe(true);
     });
 
     it('valid theme value "dark" passes validation via named instance pattern', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_THEME}hai3.mfes.comm.runtime.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_THEME}frontx.mfes.comm.runtime.v1`;
       plugin.register({ id: ephemeralId, value: 'dark' });
       const result = plugin.validateInstance(ephemeralId);
       expect(result.valid).toBe(true);
@@ -63,14 +63,14 @@ describe('application-layer derived GTS schemas', () => {
     });
 
     it('accepts any non-empty string as valid theme value', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_THEME}hai3.mfes.comm.runtime.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_THEME}frontx.mfes.comm.runtime.v1`;
       plugin.register({ id: ephemeralId, value: 'my-custom-theme' });
       const result = plugin.validateInstance(ephemeralId);
       expect(result.valid).toBe(true);
     });
 
     it('empty string theme value fails validation', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_THEME}hai3.mfes.comm.runtime.empty.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_THEME}frontx.mfes.comm.runtime.empty.v1`;
       plugin.register({ id: ephemeralId, value: '' });
       const result = plugin.validateInstance(ephemeralId);
       expect(result.valid).toBe(false);
@@ -82,25 +82,25 @@ describe('application-layer derived GTS schemas', () => {
     const plugin = buildPluginWithDerivedSchemas();
 
     it('is accessible via getSchema using the language property type ID', () => {
-      const schema = plugin.getSchema(HAI3_SHARED_PROPERTY_LANGUAGE);
+      const schema = plugin.getSchema(FRONTX_SHARED_PROPERTY_LANGUAGE);
       expect(schema).toBeDefined();
-      expect(schema?.$id).toBe(`gts://${HAI3_SHARED_PROPERTY_LANGUAGE}`);
+      expect(schema?.$id).toBe(`gts://${FRONTX_SHARED_PROPERTY_LANGUAGE}`);
     });
 
     it('constrains value to 36 enum strings', () => {
-      const schema = plugin.getSchema(HAI3_SHARED_PROPERTY_LANGUAGE);
+      const schema = plugin.getSchema(FRONTX_SHARED_PROPERTY_LANGUAGE);
       const properties = schema?.properties as Record<string, { type?: string; enum?: string[] }>;
       expect(properties?.value?.type).toBe('string');
       expect(properties?.value?.enum).toHaveLength(36);
     });
 
     it('uses allOf derivation from base shared_property schema', () => {
-      const schema = plugin.getSchema(HAI3_SHARED_PROPERTY_LANGUAGE);
+      const schema = plugin.getSchema(FRONTX_SHARED_PROPERTY_LANGUAGE);
       expect(Array.isArray((schema as Record<string, unknown>).allOf)).toBe(true);
     });
 
     it('valid language value "en" passes validation via named instance pattern', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_LANGUAGE}hai3.mfes.comm.runtime.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_LANGUAGE}frontx.mfes.comm.runtime.v1`;
       plugin.register({ id: ephemeralId, value: 'en' });
       const result = plugin.validateInstance(ephemeralId);
       expect(result.valid).toBe(true);
@@ -108,14 +108,14 @@ describe('application-layer derived GTS schemas', () => {
     });
 
     it('valid language value "fr" passes validation', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_LANGUAGE}hai3.mfes.comm.runtime.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_LANGUAGE}frontx.mfes.comm.runtime.v1`;
       plugin.register({ id: ephemeralId, value: 'fr' });
       const result = plugin.validateInstance(ephemeralId);
       expect(result.valid).toBe(true);
     });
 
     it('invalid language value "klingon" fails validation', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_LANGUAGE}hai3.mfes.comm.runtime.klingon.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_LANGUAGE}frontx.mfes.comm.runtime.klingon.v1`;
       plugin.register({ id: ephemeralId, value: 'klingon' });
       const result = plugin.validateInstance(ephemeralId);
       expect(result.valid).toBe(false);
@@ -123,7 +123,7 @@ describe('application-layer derived GTS schemas', () => {
     });
 
     it('invalid language value "invalid-lang" fails validation', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_LANGUAGE}hai3.mfes.comm.runtime.invalid.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_LANGUAGE}frontx.mfes.comm.runtime.invalid.v1`;
       plugin.register({ id: ephemeralId, value: 'invalid-lang' });
       const result = plugin.validateInstance(ephemeralId);
       expect(result.valid).toBe(false);
@@ -135,14 +135,14 @@ describe('application-layer derived GTS schemas', () => {
 
     it('has $id identifying it as a derived Extension type for the screen domain', () => {
       expect(extensionScreenSchema.$id).toBe(
-        'gts://gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~'
+        'gts://gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~'
       );
     });
 
     it('is accessible via getSchema after registration', () => {
-      const schema = plugin.getSchema('gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~');
+      const schema = plugin.getSchema('gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~');
       expect(schema).toBeDefined();
-      expect(schema?.$id).toBe('gts://gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~');
+      expect(schema?.$id).toBe('gts://gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~');
     });
 
     it('requires presentation property', () => {

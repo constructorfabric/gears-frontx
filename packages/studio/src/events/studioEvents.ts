@@ -40,9 +40,9 @@ export const StudioEvents = {
 
 /**
  * Module Augmentation
- * Extend EventPayloadMap from @hai3/state for type safety
+ * Extend EventPayloadMap from @gears-frontx/state for type safety
  */
-declare module '@hai3/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'studio/positionChanged': PositionChangedPayload;
     'studio/sizeChanged': SizeChangedPayload;

@@ -19,9 +19,9 @@ import {
   selectExtensionState,
   selectExtensionError,
 } from '../../../src/plugins/microfrontends';
-import { eventBus, resetStore } from '@hai3/state';
-import { gtsPlugin } from '@hai3/screensets/plugins/gts';
-import type { Extension } from '@hai3/screensets';
+import { eventBus, resetStore } from '@gears-frontx/state';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
+import type { Extension } from '@gears-frontx/screensets';
 import type { HAI3App } from '../../../src/types';
 
 describe('microfrontends plugin - Phase 13', () => {
@@ -82,12 +82,12 @@ describe('microfrontends plugin - Phase 13', () => {
       apps.push(app);
 
       // Mock getExtension to return extension (avoids GTS validation)
-      const testDomainId = 'gts.hai3.mfes.ext.domain.v1~test.app.test.domain.v1';
-      const testExtensionId = 'gts.hai3.mfes.ext.extension.v1~test.app.test.ext.v1';
+      const testDomainId = 'gts.frontx.mfes.ext.domain.v1~test.app.test.domain.v1';
+      const testExtensionId = 'gts.frontx.mfes.ext.extension.v1~test.app.test.ext.v1';
       const testExtension: Extension = {
         id: testExtensionId,
         domain: testDomainId,
-        entry: 'gts.hai3.mfes.mfe.entry.v1~test.app.test.entry.v1',
+        entry: 'gts.frontx.mfes.mfe.entry.v1~test.app.test.entry.v1',
       };
 
       vi.spyOn(app.screensetsRegistry, 'getExtension').mockReturnValue(testExtension);
@@ -98,7 +98,7 @@ describe('microfrontends plugin - Phase 13', () => {
 
       expect(spy).toHaveBeenCalledWith({
         action: {
-          type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1',
+          type: 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1',
           target: testDomainId,
           payload: { extensionId: testExtensionId },
         },
@@ -110,9 +110,9 @@ describe('microfrontends plugin - Phase 13', () => {
       const unsub = eventBus.on(MfeEvents.RegisterExtensionRequested, eventSpy);
 
       const testExtension: Extension = {
-        id: 'gts.hai3.mfes.ext.extension.v1~test.ext.v1',
-        domain: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1',
-        entry: 'gts.hai3.mfes.mfe.entry.v1~test.entry.v1',
+        id: 'gts.frontx.mfes.ext.extension.v1~test.ext.v1',
+        domain: 'gts.frontx.mfes.ext.domain.v1~test.domain.v1',
+        entry: 'gts.frontx.mfes.mfe.entry.v1~test.entry.v1',
       };
 
       // Use event bus directly (not the action, which is async)

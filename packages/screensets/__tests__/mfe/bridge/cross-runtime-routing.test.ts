@@ -17,7 +17,7 @@ describe('Cross-Runtime Action Chain Routing', () => {
 
   beforeEach(() => {
     childBridge = new ChildMfeBridgeImpl(
-      'gts.hai3.mfes.ext.domain.v1~parent.domain.v1',
+      'gts.frontx.mfes.ext.domain.v1~parent.domain.v1',
       'test-instance'
     );
     parentBridge = new ParentMfeBridgeImpl(childBridge);
@@ -32,20 +32,20 @@ describe('Cross-Runtime Action Chain Routing', () => {
       // Create handler
       const handler = new ChildDomainForwardingHandler(
         parentBridge,
-        'gts.hai3.mfes.ext.domain.v1~child.domain.v1'
+        'gts.frontx.mfes.ext.domain.v1~child.domain.v1'
       );
 
       // Act: Handle an action
       await handler.handleAction(
-        'gts.hai3.mfes.ext.action.v1~test.action.v1',
+        'gts.frontx.mfes.ext.action.v1~test.action.v1',
         { foo: 'bar' }
       );
 
       // Assert: sendActionsChain was called with correct chain
       expect(parentBridge.sendActionsChain).toHaveBeenCalledWith({
         action: {
-          type: 'gts.hai3.mfes.ext.action.v1~test.action.v1',
-          target: 'gts.hai3.mfes.ext.domain.v1~child.domain.v1',
+          type: 'gts.frontx.mfes.ext.action.v1~test.action.v1',
+          target: 'gts.frontx.mfes.ext.domain.v1~child.domain.v1',
           payload: { foo: 'bar' },
         },
       });
@@ -59,13 +59,13 @@ describe('Cross-Runtime Action Chain Routing', () => {
       // Create handler
       const handler = new ChildDomainForwardingHandler(
         parentBridge,
-        'gts.hai3.mfes.ext.domain.v1~child.domain.v1'
+        'gts.frontx.mfes.ext.domain.v1~child.domain.v1'
       );
 
       // Act & Assert: Should propagate error
       await expect(
         handler.handleAction(
-          'gts.hai3.mfes.ext.action.v1~test.action.v1',
+          'gts.frontx.mfes.ext.action.v1~test.action.v1',
           undefined
         )
       ).rejects.toThrow('Test error');
@@ -80,17 +80,17 @@ describe('Cross-Runtime Action Chain Routing', () => {
       childBridge.setChildDomainCallbacks(registerCallback, unregisterCallback);
 
       // Act: Register a child domain
-      childBridge.registerChildDomain('gts.hai3.mfes.ext.domain.v1~child.domain.v1');
+      childBridge.registerChildDomain('gts.frontx.mfes.ext.domain.v1~child.domain.v1');
 
       // Assert: Callback was called
-      expect(registerCallback).toHaveBeenCalledWith('gts.hai3.mfes.ext.domain.v1~child.domain.v1');
+      expect(registerCallback).toHaveBeenCalledWith('gts.frontx.mfes.ext.domain.v1~child.domain.v1');
       expect(registerCallback).toHaveBeenCalledTimes(1);
     });
 
     it('should throw if callback not wired', () => {
       // Act & Assert: Should throw error
       expect(() => {
-        childBridge.registerChildDomain('gts.hai3.mfes.ext.domain.v1~child.domain.v1');
+        childBridge.registerChildDomain('gts.frontx.mfes.ext.domain.v1~child.domain.v1');
       }).toThrow('registerChildDomain callback not wired');
     });
   });
@@ -101,20 +101,20 @@ describe('Cross-Runtime Action Chain Routing', () => {
       const registerCallback = vi.fn();
       const unregisterCallback = vi.fn();
       childBridge.setChildDomainCallbacks(registerCallback, unregisterCallback);
-      childBridge.registerChildDomain('gts.hai3.mfes.ext.domain.v1~child.domain.v1');
+      childBridge.registerChildDomain('gts.frontx.mfes.ext.domain.v1~child.domain.v1');
 
       // Act: Unregister the domain
-      childBridge.unregisterChildDomain('gts.hai3.mfes.ext.domain.v1~child.domain.v1');
+      childBridge.unregisterChildDomain('gts.frontx.mfes.ext.domain.v1~child.domain.v1');
 
       // Assert: Callback was called
-      expect(unregisterCallback).toHaveBeenCalledWith('gts.hai3.mfes.ext.domain.v1~child.domain.v1');
+      expect(unregisterCallback).toHaveBeenCalledWith('gts.frontx.mfes.ext.domain.v1~child.domain.v1');
       expect(unregisterCallback).toHaveBeenCalledTimes(1);
     });
 
     it('should no-op silently if callback is null', () => {
       // Act & Assert: Should not throw
       expect(() => {
-        childBridge.unregisterChildDomain('gts.hai3.mfes.ext.domain.v1~child.domain.v1');
+        childBridge.unregisterChildDomain('gts.frontx.mfes.ext.domain.v1~child.domain.v1');
       }).not.toThrow();
     });
   });
@@ -126,35 +126,35 @@ describe('Cross-Runtime Action Chain Routing', () => {
       const unregisterCallback = vi.fn();
       childBridge.setChildDomainCallbacks(registerCallback, unregisterCallback);
 
-      childBridge.registerChildDomain('gts.hai3.mfes.ext.domain.v1~child1.v1');
-      childBridge.registerChildDomain('gts.hai3.mfes.ext.domain.v1~child2.v1');
-      childBridge.registerChildDomain('gts.hai3.mfes.ext.domain.v1~child3.v1');
+      childBridge.registerChildDomain('gts.frontx.mfes.ext.domain.v1~child1.v1');
+      childBridge.registerChildDomain('gts.frontx.mfes.ext.domain.v1~child2.v1');
+      childBridge.registerChildDomain('gts.frontx.mfes.ext.domain.v1~child3.v1');
 
       // Act: Cleanup
       childBridge.cleanup();
 
       // Assert: All domains were unregistered
       expect(unregisterCallback).toHaveBeenCalledTimes(3);
-      expect(unregisterCallback).toHaveBeenCalledWith('gts.hai3.mfes.ext.domain.v1~child1.v1');
-      expect(unregisterCallback).toHaveBeenCalledWith('gts.hai3.mfes.ext.domain.v1~child2.v1');
-      expect(unregisterCallback).toHaveBeenCalledWith('gts.hai3.mfes.ext.domain.v1~child3.v1');
+      expect(unregisterCallback).toHaveBeenCalledWith('gts.frontx.mfes.ext.domain.v1~child1.v1');
+      expect(unregisterCallback).toHaveBeenCalledWith('gts.frontx.mfes.ext.domain.v1~child2.v1');
+      expect(unregisterCallback).toHaveBeenCalledWith('gts.frontx.mfes.ext.domain.v1~child3.v1');
     });
 
     it('should verify callbacks are called before being nulled', () => {
       // Setup: Register a child domain
       const unregisterCallback = vi.fn();
       childBridge.setChildDomainCallbacks(vi.fn(), unregisterCallback);
-      childBridge.registerChildDomain('gts.hai3.mfes.ext.domain.v1~child.v1');
+      childBridge.registerChildDomain('gts.frontx.mfes.ext.domain.v1~child.v1');
 
       // Act: Cleanup
       childBridge.cleanup();
 
       // Assert: Unregister was called (proves callback was still wired)
-      expect(unregisterCallback).toHaveBeenCalledWith('gts.hai3.mfes.ext.domain.v1~child.v1');
+      expect(unregisterCallback).toHaveBeenCalledWith('gts.frontx.mfes.ext.domain.v1~child.v1');
 
       // Verify subsequent registerChildDomain throws (proves callback is now null)
       expect(() => {
-        childBridge.registerChildDomain('gts.hai3.mfes.ext.domain.v1~new.domain.v1');
+        childBridge.registerChildDomain('gts.frontx.mfes.ext.domain.v1~new.domain.v1');
       }).toThrow('registerChildDomain callback not wired');
     });
 
@@ -163,8 +163,8 @@ describe('Cross-Runtime Action Chain Routing', () => {
       const registerCallback = vi.fn();
       const unregisterCallback = vi.fn();
       childBridge.setChildDomainCallbacks(registerCallback, unregisterCallback);
-      childBridge.registerChildDomain('gts.hai3.mfes.ext.domain.v1~child1.v1');
-      childBridge.registerChildDomain('gts.hai3.mfes.ext.domain.v1~child2.v1');
+      childBridge.registerChildDomain('gts.frontx.mfes.ext.domain.v1~child1.v1');
+      childBridge.registerChildDomain('gts.frontx.mfes.ext.domain.v1~child2.v1');
 
       // Act: Cleanup
       childBridge.cleanup();
@@ -204,7 +204,7 @@ describe('Cross-Runtime Action Chain Routing', () => {
       childBridge.setChildDomainCallbacks(registerCallback, unregisterCallback);
 
       // Register child domain
-      const childDomainId = 'gts.hai3.mfes.ext.domain.v1~child.domain.v1';
+      const childDomainId = 'gts.frontx.mfes.ext.domain.v1~child.domain.v1';
       childBridge.registerChildDomain(childDomainId);
 
       // Verify handler was registered
@@ -213,14 +213,14 @@ describe('Cross-Runtime Action Chain Routing', () => {
       // Act: Simulate parent mediator invoking the forwarding handler
       const handler = handlers.get(childDomainId);
       await handler.handleAction(
-        'gts.hai3.mfes.ext.action.v1~test.action.v1',
+        'gts.frontx.mfes.ext.action.v1~test.action.v1',
         { data: 'test' }
       );
 
       // Assert: Child registry received the action chain
       expect(childRegistryExecute).toHaveBeenCalledWith({
         action: {
-          type: 'gts.hai3.mfes.ext.action.v1~test.action.v1',
+          type: 'gts.frontx.mfes.ext.action.v1~test.action.v1',
           target: childDomainId,
           payload: { data: 'test' },
         },
@@ -239,7 +239,7 @@ describe('Cross-Runtime Action Chain Routing', () => {
       };
 
       childBridge.setChildDomainCallbacks(registerCallback, unregisterCallback);
-      const childDomainId = 'gts.hai3.mfes.ext.domain.v1~child.domain.v1';
+      const childDomainId = 'gts.frontx.mfes.ext.domain.v1~child.domain.v1';
       childBridge.registerChildDomain(childDomainId);
 
       // Verify handler is registered
@@ -268,14 +268,14 @@ describe('Cross-Runtime Action Chain Routing', () => {
       };
 
       childBridge.setChildDomainCallbacks(registerCallback, unregisterCallback);
-      childBridge.registerChildDomain('gts.hai3.mfes.ext.domain.v1~child.domain.v1');
+      childBridge.registerChildDomain('gts.frontx.mfes.ext.domain.v1~child.domain.v1');
 
       // Assert: Only child domain is tracked
       expect(childDomains.size).toBe(1);
-      expect(childDomains.has('gts.hai3.mfes.ext.domain.v1~child.domain.v1')).toBe(true);
+      expect(childDomains.has('gts.frontx.mfes.ext.domain.v1~child.domain.v1')).toBe(true);
 
       // Parent domain should NOT be in the set
-      expect(childDomains.has('gts.hai3.mfes.ext.domain.v1~parent.domain.v1')).toBe(false);
+      expect(childDomains.has('gts.frontx.mfes.ext.domain.v1~parent.domain.v1')).toBe(false);
     });
   });
 });

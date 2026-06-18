@@ -41,12 +41,12 @@ export interface FullPresetConfig {
  *
  * @example
  * ```typescript
- * import { MfeHandlerMF, HAI3_MFE_ENTRY_MF } from '@hai3/screensets/mfe/handler';
- * import { gtsPlugin } from '@hai3/screensets/plugins/gts';
+ * import { MfeHandlerMF, FRONTX_MFE_ENTRY_MF } from '@gears-frontx/screensets/mfe/handler';
+ * import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
  *
  * const app = createHAI3()
  *   .use(full({
- *     microfrontends: { typeSystem: gtsPlugin, mfeHandlers: [new MfeHandlerMF(HAI3_MFE_ENTRY_MF)] }
+ *     microfrontends: { typeSystem: gtsPlugin, mfeHandlers: [new MfeHandlerMF(FRONTX_MFE_ENTRY_MF)] }
  *   }))
  *   .build();
  * ```

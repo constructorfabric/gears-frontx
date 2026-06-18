@@ -77,7 +77,7 @@ describe('Bridge Implementation', () => {
 
       const chain: ActionsChain = {
         action: {
-          type: 'gts.hai3.mfes.comm.action.v1~test.action',
+          type: 'gts.frontx.mfes.comm.action.v1~test.action',
           target: 'test-domain',
         },
       };

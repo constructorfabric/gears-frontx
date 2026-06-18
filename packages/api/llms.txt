@@ -1,8 +1,8 @@
-# @hai3/api
+# @gears-frontx/api
 
 > API communication protocols and service registry for HAI3 SDK. Supports REST, SSE, and mock protocols.
 
-Part of the HAI3 SDK Layer (L1) - can be used independently without other @hai3 packages. Peer dependency on axios.
+Part of the HAI3 SDK Layer (L1) - can be used independently without other @gears-frontx packages. Peer dependency on axios.
 
 ## Core API
 
@@ -22,7 +22,7 @@ Part of the HAI3 SDK Layer (L1) - can be used independently without other @hai3 
 ## Quick Start
 
 ```typescript
-import { BaseApiService, RestProtocol, apiRegistry, MockMap } from '@hai3/api';
+import { BaseApiService, RestProtocol, apiRegistry, MockMap } from '@gears-frontx/api';
 
 // Define service
 class AccountsApiService extends BaseApiService {
@@ -35,7 +35,7 @@ class AccountsApiService extends BaseApiService {
 }
 
 // Module augmentation
-declare module '@hai3/api' {
+declare module '@gears-frontx/api' {
   interface ApiServicesMap {
     accounts: AccountsApiService;
   }

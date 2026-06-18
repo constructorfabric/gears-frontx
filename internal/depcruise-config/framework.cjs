@@ -1,13 +1,13 @@
 /**
  * HAI3 Dependency Cruiser Framework Configuration (L2)
- * Rules for @hai3/framework package
+ * Rules for @gears-frontx/framework package
  *
  * Framework package CAN import:
- * - @hai3/state, @hai3/layout, @hai3/api, @hai3/i18n (SDK packages)
+ * - @gears-frontx/state, @gears-frontx/layout, @gears-frontx/api, @gears-frontx/i18n (SDK packages)
  *
  * Framework package CANNOT import:
- * - @hai3/react (would create circular dependency)
- * - @hai3/uicore (deprecated)
+ * - @gears-frontx/react (would create circular dependency)
+ * - @gears-frontx/uicore (deprecated)
  * - react, react-dom (framework is headless)
  */
 
@@ -22,8 +22,8 @@ module.exports = {
       name: 'framework-only-sdk-deps',
       severity: 'error',
       from: { path: '^packages/framework/src' },
-      to: { path: 'node_modules/@hai3/(react|uicore)' },
-      comment: 'FRAMEWORK VIOLATION: Framework can only import SDK packages (@hai3/state, layout, api, i18n).',
+      to: { path: 'node_modules/@gears-frontx/(react|uicore)' },
+      comment: 'FRAMEWORK VIOLATION: Framework can only import SDK packages (@gears-frontx/state, layout, api, i18n).',
     },
     {
       name: 'framework-no-react',

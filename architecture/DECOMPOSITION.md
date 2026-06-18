@@ -170,7 +170,7 @@ The DESIGN is decomposed into 11 features aligned with package/module boundaries
 
 - **Scope**:
   - Blob URL creation from fetched source text
-  - Import specifier rewriting (bare `@hai3/*` → blob URLs)
+  - Import specifier rewriting (bare `@gears-frontx/*` → blob URLs)
   - Source text caching after first fetch
   - Recursive chain loading for transitive dependencies
   - Per-load import map management
@@ -532,7 +532,7 @@ The DESIGN is decomposed into 11 features aligned with package/module boundaries
   - [x] `p1` - `cpt-hai3-component-studio`
 
 - **API**:
-  - `import('@hai3/studio')` (dev-only dynamic import)
+  - `import('@gears-frontx/studio')` (dev-only dynamic import)
   - Studio panel toggle
 
 - **Sequences**:
@@ -662,12 +662,12 @@ The DESIGN is decomposed into 11 features aligned with package/module boundaries
 
 - [x] `p1` - **ID**: `cpt-hai3-feature-ui-libraries-choice`
 
-- **Purpose**: Provides a per-project UI strategy chosen at creation time. When running `hai3 create`, the developer selects a UI approach for the project: copy-owned shadcn/ui components, a third-party library (MUI, Ant Design, etc.), or fully custom components. The CLI reads `hai3.config.json` to determine the active UI kit and scaffolds accordingly.
+- **Purpose**: Provides a per-project UI strategy chosen at creation time. When running `hai3 create`, the developer selects a UI approach for the project: copy-owned shadcn/ui components, a third-party library (MUI, Ant Design, etc.), or fully custom components. The CLI reads `frontx.config.json` to determine the active UI kit and scaffolds accordingly.
 
 - **Depends On**: `cpt-hai3-feature-cli-tooling`
 
 - **Scope**:
-  - `hai3.config.json` `uikit` field supporting `"shadcn"`, `"none"`, or a third-party package name
+  - `frontx.config.json` `uikit` field supporting `"shadcn"`, `"none"`, or a third-party package name
   - CLI `hai3 create` scaffolding per UI kit type (shadcn components, bridge file, or empty uikit)
   - CLI `hai3 screenset` generation respecting the project's configured UI kit
   - UIKit bridge generation for third-party libraries
@@ -702,7 +702,7 @@ The DESIGN is decomposed into 11 features aligned with package/module boundaries
 - **API**:
   - `hai3 create` (UI kit selection prompt)
   - `hai3 screenset` (UI kit-aware generation)
-  - `hai3.config.json` `uikit` field
+  - `frontx.config.json` `uikit` field
 
 - **Sequences**:
   - None

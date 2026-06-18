@@ -7,8 +7,8 @@
 
 // @cpt-algo:cpt-hai3-algo-framework-composition-mock-toggle:p2
 
-import { eventBus, getStore } from '@hai3/state';
-import { apiRegistry, isMockPlugin, type ApiProtocol, type ApiPluginBase } from '@hai3/api';
+import { eventBus, getStore } from '@gears-frontx/state';
+import { apiRegistry, isMockPlugin, type ApiProtocol, type ApiPluginBase } from '@gears-frontx/api';
 import { setMockEnabled } from '../slices/mockSlice';
 
 // ============================================================================
@@ -47,7 +47,7 @@ export interface MockTogglePayload {
 // Module Augmentation for Type-Safe Events
 // ============================================================================
 
-declare module '@hai3/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'mock/toggle': MockTogglePayload;
   }
@@ -136,7 +136,7 @@ export function initMockEffects(): () => void {
  *
  * @example
  * ```typescript
- * import { toggleMockMode } from '@hai3/framework';
+ * import { toggleMockMode } from '@gears-frontx/framework';
  * toggleMockMode(true);  // Enable mock mode
  * toggleMockMode(false); // Disable mock mode
  * ```

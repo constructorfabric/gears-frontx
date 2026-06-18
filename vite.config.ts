@@ -84,7 +84,7 @@ export default defineConfig({
           }
 
           // Split framework and react packages into separate chunk
-          if (id.includes('@hai3/framework') || id.includes('@hai3/react')) {
+          if (id.includes('@gears-frontx/framework') || id.includes('@gears-frontx/react')) {
             return 'hai3-core';
           }
           // Split React and React DOM

@@ -13,9 +13,9 @@ import { DefaultScreensetsRegistry } from '../../../src/mfe/runtime/DefaultScree
 import { gtsPlugin } from '../../../src/mfe/plugins/gts';
 import { MfeError } from '../../../src/mfe/errors';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
 import type { ExtensionDomain, Extension, MfeEntry } from '../../../src/mfe/types';
 import type { ParentMfeBridge, MfeHandler } from '../../../src/mfe/handler/types';
@@ -63,69 +63,69 @@ describe('Extension Lifecycle Actions', () => {
 
   // Test domain with toggle semantics (supports mount + unmount)
   const toggleDomain: ExtensionDomain = {
-    id: 'gts.hai3.mfes.ext.domain.v1~test.lifecycle.toggle.domain.v1',
+    id: 'gts.frontx.mfes.ext.domain.v1~test.lifecycle.toggle.domain.v1',
     sharedProperties: [],
     actions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
     lifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
     extensionsLifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
   };
 
   // Test domain with swap semantics (supports mount but not unmount)
   const swapDomain: ExtensionDomain = {
-    id: 'gts.hai3.mfes.ext.domain.v1~test.lifecycle.swap.domain.v1',
+    id: 'gts.frontx.mfes.ext.domain.v1~test.lifecycle.swap.domain.v1',
     sharedProperties: [],
     actions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
     ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
     lifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
     extensionsLifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
   };
 
   const testEntry: MfeEntry = {
-    id: 'gts.hai3.mfes.mfe.entry.v1~test.lifecycle.actions.entry.v1',
+    id: 'gts.frontx.mfes.mfe.entry.v1~test.lifecycle.actions.entry.v1',
     requiredProperties: [],
     optionalProperties: [],
     actions: [],
     domainActions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
   };
 
   const testExtension1: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.lifecycle.actions.ext1.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.lifecycle.actions.ext1.v1',
     domain: toggleDomain.id,
     entry: testEntry.id,
   };
 
   const testExtension2: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.lifecycle.actions.ext2.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.lifecycle.actions.ext2.v1',
     domain: swapDomain.id,
     entry: testEntry.id,
   };
@@ -152,7 +152,7 @@ describe('Extension Lifecycle Actions', () => {
           mockContainerProvider
         );
 
-        await handler.handleAction(HAI3_ACTION_LOAD_EXT, {
+        await handler.handleAction(FRONTX_ACTION_LOAD_EXT, {
           extensionId: testExtension1.id,
         });
 
@@ -170,11 +170,11 @@ describe('Extension Lifecycle Actions', () => {
         );
 
         await expect(
-          handler.handleAction(HAI3_ACTION_LOAD_EXT, undefined)
+          handler.handleAction(FRONTX_ACTION_LOAD_EXT, undefined)
         ).rejects.toThrow(MfeError);
 
         await expect(
-          handler.handleAction(HAI3_ACTION_LOAD_EXT, undefined)
+          handler.handleAction(FRONTX_ACTION_LOAD_EXT, undefined)
         ).rejects.toThrow(/requires a payload/i);
       });
     });
@@ -190,7 +190,7 @@ describe('Extension Lifecycle Actions', () => {
           mockContainerProvider
         );
 
-        await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
+        await handler.handleAction(FRONTX_ACTION_MOUNT_EXT, {
           extensionId: testExtension1.id,
         });
 
@@ -208,7 +208,7 @@ describe('Extension Lifecycle Actions', () => {
         );
 
         await expect(
-          handler.handleAction(HAI3_ACTION_MOUNT_EXT, undefined)
+          handler.handleAction(FRONTX_ACTION_MOUNT_EXT, undefined)
         ).rejects.toThrow(MfeError);
       });
 
@@ -222,7 +222,7 @@ describe('Extension Lifecycle Actions', () => {
           mockContainerProvider
         );
 
-        await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
+        await handler.handleAction(FRONTX_ACTION_MOUNT_EXT, {
           extensionId: testExtension1.id,
         });
 
@@ -244,9 +244,9 @@ describe('Extension Lifecycle Actions', () => {
           mockContainerProvider
         );
 
-        const newExtId = 'gts.hai3.mfes.ext.extension.v1~test.lifecycle.actions.ext3.v1';
+        const newExtId = 'gts.frontx.mfes.ext.extension.v1~test.lifecycle.actions.ext3.v1';
 
-        await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
+        await handler.handleAction(FRONTX_ACTION_MOUNT_EXT, {
           extensionId: newExtId,
         });
 
@@ -274,7 +274,7 @@ describe('Extension Lifecycle Actions', () => {
           mockContainerProvider
         );
 
-        await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
+        await handler.handleAction(FRONTX_ACTION_MOUNT_EXT, {
           extensionId: testExtension2.id,
         });
 
@@ -292,7 +292,7 @@ describe('Extension Lifecycle Actions', () => {
           mockContainerProvider
         );
 
-        await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
+        await handler.handleAction(FRONTX_ACTION_MOUNT_EXT, {
           extensionId: testExtension2.id,
         });
 
@@ -311,7 +311,7 @@ describe('Extension Lifecycle Actions', () => {
           mockContainerProvider
         );
 
-        await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
+        await handler.handleAction(FRONTX_ACTION_MOUNT_EXT, {
           extensionId: testExtension2.id,
         });
 
@@ -355,12 +355,12 @@ describe('Extension Lifecycle Actions', () => {
           mockContainerProvider
         );
 
-        const ext1Id = 'gts.hai3.mfes.ext.extension.v1~test.concurrent.ext1.v1';
-        const ext2Id = 'gts.hai3.mfes.ext.extension.v1~test.concurrent.ext2.v1';
+        const ext1Id = 'gts.frontx.mfes.ext.extension.v1~test.concurrent.ext1.v1';
+        const ext2Id = 'gts.frontx.mfes.ext.extension.v1~test.concurrent.ext2.v1';
 
         // Fire two swaps concurrently
-        const swap1 = handler.handleAction(HAI3_ACTION_MOUNT_EXT, { extensionId: ext1Id });
-        const swap2 = handler.handleAction(HAI3_ACTION_MOUNT_EXT, { extensionId: ext2Id });
+        const swap1 = handler.handleAction(FRONTX_ACTION_MOUNT_EXT, { extensionId: ext1Id });
+        const swap2 = handler.handleAction(FRONTX_ACTION_MOUNT_EXT, { extensionId: ext2Id });
 
         await Promise.all([swap1, swap2]);
 
@@ -385,7 +385,7 @@ describe('Extension Lifecycle Actions', () => {
           mockContainerProvider
         );
 
-        await handler.handleAction(HAI3_ACTION_UNMOUNT_EXT, {
+        await handler.handleAction(FRONTX_ACTION_UNMOUNT_EXT, {
           extensionId: testExtension1.id,
         });
 
@@ -403,7 +403,7 @@ describe('Extension Lifecycle Actions', () => {
         );
 
         await expect(
-          handler.handleAction(HAI3_ACTION_UNMOUNT_EXT, undefined)
+          handler.handleAction(FRONTX_ACTION_UNMOUNT_EXT, undefined)
         ).rejects.toThrow(MfeError);
       });
     });
@@ -421,7 +421,7 @@ describe('Extension Lifecycle Actions', () => {
 
         // Should not throw for custom action types
         await expect(
-          handler.handleAction('gts.hai3.mfes.comm.action.v1~custom.action.v1', {
+          handler.handleAction('gts.frontx.mfes.comm.action.v1~custom.action.v1', {
             somePayload: 'value',
           })
         ).resolves.not.toThrow();
@@ -433,7 +433,7 @@ describe('Extension Lifecycle Actions', () => {
     it('should return currently mounted extension ID', async () => {
       // Register mock handler
       const mockHandler = {
-        handledBaseTypeId: 'gts.hai3.mfes.mfe.entry.v1~',
+        handledBaseTypeId: 'gts.frontx.mfes.mfe.entry.v1~',
         priority: 100,
         load: vi.fn().mockResolvedValue({
           mount: vi.fn().mockResolvedValue(undefined),
@@ -458,7 +458,7 @@ describe('Extension Lifecycle Actions', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: toggleDomain.id,
           payload: { extensionId: testExtension1.id },
         },
@@ -479,7 +479,7 @@ describe('Extension Lifecycle Actions', () => {
     it('should return undefined after unmounting', async () => {
       // Register mock handler
       const mockHandler = {
-        handledBaseTypeId: 'gts.hai3.mfes.mfe.entry.v1~',
+        handledBaseTypeId: 'gts.frontx.mfes.mfe.entry.v1~',
         priority: 100,
         load: vi.fn().mockResolvedValue({
           mount: vi.fn().mockResolvedValue(undefined),
@@ -501,7 +501,7 @@ describe('Extension Lifecycle Actions', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: toggleDomain.id,
           payload: { extensionId: testExtension1.id },
         },
@@ -513,7 +513,7 @@ describe('Extension Lifecycle Actions', () => {
       // Unmount
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_UNMOUNT_EXT,
+          type: FRONTX_ACTION_UNMOUNT_EXT,
           target: toggleDomain.id,
           payload: { extensionId: testExtension1.id },
         },
@@ -600,7 +600,7 @@ describe('Extension Lifecycle Actions', () => {
       );
 
       // Mount extension
-      await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
+      await handler.handleAction(FRONTX_ACTION_MOUNT_EXT, {
         extensionId: testExtension1.id,
       });
 
@@ -609,7 +609,7 @@ describe('Extension Lifecycle Actions', () => {
       expect(getContainerSpy).toHaveBeenCalledTimes(1);
 
       // Unmount extension
-      await handler.handleAction(HAI3_ACTION_UNMOUNT_EXT, {
+      await handler.handleAction(FRONTX_ACTION_UNMOUNT_EXT, {
         extensionId: testExtension1.id,
       });
 
@@ -632,7 +632,7 @@ describe('Extension Lifecycle Actions', () => {
       );
 
       // Mount first extension
-      await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
+      await handler.handleAction(FRONTX_ACTION_MOUNT_EXT, {
         extensionId: testExtension2.id,
       });
 
@@ -645,10 +645,10 @@ describe('Extension Lifecycle Actions', () => {
       getContainerSpy.mockClear();
       releaseContainerSpy.mockClear();
 
-      const testExtension3Id = 'gts.hai3.mfes.ext.extension.v1~test.lifecycle.actions.ext3.v1';
+      const testExtension3Id = 'gts.frontx.mfes.ext.extension.v1~test.lifecycle.actions.ext3.v1';
 
       // Mount second extension (should unmount first due to swap semantics)
-      await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
+      await handler.handleAction(FRONTX_ACTION_MOUNT_EXT, {
         extensionId: testExtension3Id,
       });
 
@@ -680,7 +680,7 @@ describe('Extension Lifecycle Actions', () => {
 
       // Attempt to mount (should propagate error)
       await expect(
-        handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
+        handler.handleAction(FRONTX_ACTION_MOUNT_EXT, {
           extensionId: testExtension1.id,
         })
       ).rejects.toThrow('Container creation failed');

@@ -4,7 +4,7 @@
  */
 // @cpt-algo:cpt-hai3-algo-ui-libraries-choice-theme-propagation:p1
 
-import type { ThemeConfig } from '@hai3/react';
+import type { ThemeConfig } from '@gears-frontx/react';
 import colors from './tailwindColors';
 import { hslToVar } from './utils';
 

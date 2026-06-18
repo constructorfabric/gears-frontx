@@ -6,7 +6,7 @@
  *
  * @example
  * ```typescript
- * import { executeCommand, commands } from '@hai3/cli';
+ * import { executeCommand, commands } from '@gears-frontx/cli';
  *
  * // Create a project programmatically
  * const result = await executeCommand(

@@ -10,7 +10,7 @@
 // @cpt-dod:cpt-hai3-dod-react-bindings-ref-container-provider:p1
 
 import type { RefObject } from 'react';
-import { ContainerProvider } from '@hai3/framework';
+import { ContainerProvider } from '@gears-frontx/framework';
 
 /**
  * Concrete ContainerProvider that wraps a React ref.

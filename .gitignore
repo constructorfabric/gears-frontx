@@ -52,3 +52,6 @@ packages/cli/template-sources/layout/
 
 # Local CLI e2e artifacts
 .artifacts/
+.__mf__temp/
+src/mfe_packages/*/__mf__temp/
+public/generated-mfe-manifests.json

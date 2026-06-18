@@ -1,8 +1,8 @@
 /**
- * Migration Helpers - Utilities for migrating from @hai3/uicore
+ * Migration Helpers - Utilities for migrating from @gears-frontx/uicore
  *
- * These helpers assist users migrating from the deprecated @hai3/uicore package
- * to the new SDK architecture (@hai3/framework, @hai3/screensets, @hai3/react).
+ * These helpers assist users migrating from the deprecated @gears-frontx/uicore package
+ * to the new SDK architecture (@gears-frontx/framework, @gears-frontx/screensets, @gears-frontx/react).
  *
  * Framework Layer: L2
  */
@@ -137,13 +137,13 @@ export function isDeprecationWarningsEnabled(): boolean {
  *
  * @example
  * ```typescript
- * import { createLegacySelector, selectMenuCollapsed } from '@hai3/framework';
+ * import { createLegacySelector, selectMenuCollapsed } from '@gears-frontx/framework';
  *
  * // Create a legacy selector
  * const selectMenuCollapsedLegacy = createLegacySelector(
  *   'uicore.menu.collapsed',
  *   selectMenuCollapsed,
- *   'Use selectMenuCollapsed from @hai3/framework'
+ *   'Use selectMenuCollapsed from @gears-frontx/framework'
  * );
  *
  * // In component (will show deprecation warning in dev)

@@ -22,7 +22,7 @@ export interface ThemeConfig {
 }
 
 /**
- * HAI3 project configuration stored in hai3.config.json
+ * HAI3 project configuration stored in frontx.config.json
  * This file serves as a project marker for CLI detection.
  */
 export interface Hai3Config {

@@ -1,6 +1,6 @@
 {
-  "name": "@hai3/studio",
-  "version": "0.4.0-alpha.1",
+  "name": "@gears-frontx/studio",
+  "version": "0.1.0",
   "description": "HAI3 Studio - Development studio overlay for HAI3 applications",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -59,7 +59,7 @@
     "tailwind-merge": "^2.6.0"
   },
   "peerDependencies": {
-    "@hai3/react": "*",
+    "@gears-frontx/react": "*",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },

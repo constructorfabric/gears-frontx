@@ -33,7 +33,7 @@ Browsers cache ES modules by URL identity — when multiple MFEs share dependenc
 ## Decision Drivers
 
 * Each MFE load must produce its own module-level state instances (EventBus, store, i18n) regardless of caching
-* The solution must not introduce `@hai3/*` dependencies into L1 packages (zero-dependency constraint)
+* The solution must not introduce `@gears-frontx/*` dependencies into L1 packages (zero-dependency constraint)
 * Blob URLs must never be revoked — `import()` resolves at parse time, not evaluation time, so early revocation causes load failures with top-level await
 
 ## Considered Options
@@ -87,8 +87,8 @@ Chosen option: "Fetch source text and create a unique Blob URL per MFE load via 
 ## More Information
 
 - The never-revoke rule: `URL.createObjectURL` returns a URL that persists until explicitly revoked. Because `import()` with top-level await may parse (and cache the URL reference) before the module body executes, revoking the blob URL before all dependent modules finish loading causes `ERR_FAILED` on subsequent imports of the same specifier
-- The `hai3-mfe-externalize` Vite plugin rewrites all `import { X } from '@hai3/...'` statements in MFE bundles to `const { X } = await importShared('@hai3/...')`, which is then intercepted by the blob loader to inject per-load instances
-- Related: ADR 0001 (Four-Layer SDK Architecture) — blob loader lives in `packages/screensets` (L1) and must not import other `@hai3/*` packages
+- The `hai3-mfe-externalize` Vite plugin rewrites all `import { X } from '@gears-frontx/...'` statements in MFE bundles to `const { X } = await importShared('@gears-frontx/...')`, which is then intercepted by the blob loader to inject per-load instances
+- Related: ADR 0001 (Four-Layer SDK Architecture) — blob loader lives in `packages/screensets` (L1) and must not import other `@gears-frontx/*` packages
 - Related: ADR 0002 (Event-Driven Flux Data Flow) — EventBus isolation is the primary motivation for per-MFE module scope
 
 ## Traceability

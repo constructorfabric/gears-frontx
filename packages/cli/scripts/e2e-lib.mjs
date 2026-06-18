@@ -177,5 +177,5 @@ export function createHarness(suiteName) {
 }
 
 export function shouldSkipInstall() {
-  return process.argv.includes('--skip-install') || process.env.HAI3_CLI_E2E_SKIP_INSTALL === '1';
+  return process.argv.includes('--skip-install') || process.env.FRONTX_CLI_E2E_SKIP_INSTALL === '1';
 }

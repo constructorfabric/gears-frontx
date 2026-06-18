@@ -27,7 +27,7 @@
   ],
   "ignoreDependencies": [
     "@types/*",
-    "@hai3/depcruise-config/*"
+    "@gears-frontx/depcruise-config/*"
   ],
   "ignoreBinaries": [
     "dot"

@@ -4,12 +4,12 @@
 import { useEffect, useRef } from 'react';
 import {
   eventBus,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_SCREEN_DOMAIN,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_SCREEN_DOMAIN,
   type ScreensetsRegistry,
   type Extension,
   type ScreenExtension,
-} from '@hai3/react';
+} from '@gears-frontx/react';
 import { loadStudioState } from '../utils/persistence';
 import { STORAGE_KEYS } from '../types';
 
@@ -67,7 +67,7 @@ export const useRestoreGtsPackage = (registry: ScreensetsRegistry | null | undef
       try {
         const extensions = registry.getExtensionsForPackage(activePackageId);
         const screenExtensions = extensions.filter(
-          (ext: Extension) => ext.domain === HAI3_SCREEN_DOMAIN && isScreenExtension(ext)
+          (ext: Extension) => ext.domain === FRONTX_SCREEN_DOMAIN && isScreenExtension(ext)
         ) as ScreenExtension[];
 
         if (screenExtensions.length === 0) return;
@@ -77,8 +77,8 @@ export const useRestoreGtsPackage = (registry: ScreensetsRegistry | null | undef
 
         await registry.executeActionsChain({
           action: {
-            type: HAI3_ACTION_MOUNT_EXT,
-            target: HAI3_SCREEN_DOMAIN,
+            type: FRONTX_ACTION_MOUNT_EXT,
+            target: FRONTX_SCREEN_DOMAIN,
             payload: { extensionId: firstExtension.id },
           },
         });

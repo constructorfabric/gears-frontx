@@ -9,17 +9,17 @@ The GTS plugin (`gtsPlugin`) is HAI3's default `TypeSystemPlugin` implementation
 ## Installation
 
 ```bash
-npm install @hai3/screensets @globaltypesystem/gts-ts
+npm install @gears-frontx/screensets @globaltypesystem/gts-ts
 ```
 
-The GTS plugin is included with `@hai3/screensets` and requires `@globaltypesystem/gts-ts` as a peer dependency.
+The GTS plugin is included with `@gears-frontx/screensets` and requires `@globaltypesystem/gts-ts` as a peer dependency.
 
 ## Basic Usage
 
 ### Building the Registry
 
 ```typescript
-import { screensetsRegistryFactory, gtsPlugin, ContainerProvider } from '@hai3/screensets';
+import { screensetsRegistryFactory, gtsPlugin, ContainerProvider } from '@gears-frontx/screensets';
 
 // Build the registry with GTS plugin at application wiring time
 const registry = screensetsRegistryFactory.build({ typeSystem: gtsPlugin });
@@ -45,7 +45,7 @@ The GTS plugin ships with all HAI3 first-class citizen schemas **built-in**. No 
 
 ```typescript
 // ✅ Correct - Build registry with factory
-import { screensetsRegistryFactory, gtsPlugin } from '@hai3/screensets';
+import { screensetsRegistryFactory, gtsPlugin } from '@gears-frontx/screensets';
 const registry = screensetsRegistryFactory.build({ typeSystem: gtsPlugin });
 registry.registerDomain(myDomain, containerProvider);
 
@@ -65,14 +65,14 @@ gts.<vendor>.<package>.<namespace>.<type>.v<MAJOR>[.<MINOR>]~
 
 **Schema IDs** end with `~`:
 ```
-gts.hai3.mfes.mfe.entry.v1~
-gts.hai3.mfes.ext.extension.v1~
+gts.frontx.mfes.mfe.entry.v1~
+gts.frontx.mfes.ext.extension.v1~
 ```
 
 **Instance IDs** do NOT end with `~`:
 ```
-gts.hai3.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1
-gts.hai3.mfes.ext.extension.v1~acme.analytics.extension.v1
+gts.frontx.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1
+gts.frontx.mfes.ext.extension.v1~acme.analytics.extension.v1
 ```
 
 ### Derived Types (Type Chaining)
@@ -80,15 +80,15 @@ gts.hai3.mfes.ext.extension.v1~acme.analytics.extension.v1
 Derived types include the base type ID as a prefix:
 
 ```
-Base:    gts.hai3.mfes.mfe.entry.v1~
-Derived: gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~
+Base:    gts.frontx.mfes.mfe.entry.v1~
+Derived: gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~
 ```
 
 For instances of derived types:
 
 ```
-Instance: gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1
-Schema:   gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~ (extracted automatically)
+Instance: gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1
+Schema:   gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~ (extracted automatically)
 ```
 
 ## Type ID Operations
@@ -97,7 +97,7 @@ Schema:   gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~ (extracted autom
 
 ```typescript
 // Check if a string is a valid GTS type ID
-if (gtsPlugin.isValidTypeId('gts.hai3.mfes.ext.extension.v1~')) {
+if (gtsPlugin.isValidTypeId('gts.frontx.mfes.ext.extension.v1~')) {
   console.log('Valid GTS type ID');
 }
 
@@ -112,7 +112,7 @@ gtsPlugin.isValidTypeId('gts.only.v1'); // false (missing segments)
 ```typescript
 // Parse a type ID to get its components
 const parsed = gtsPlugin.parseTypeId(
-  'gts.hai3.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1'
+  'gts.frontx.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1'
 );
 
 console.log(parsed);
@@ -132,7 +132,7 @@ For derived types, the `segments` array contains all chained segments:
 
 ```typescript
 const derivedParsed = gtsPlugin.parseTypeId(
-  'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~'
+  'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~'
 );
 
 console.log(derivedParsed.segments.length); // 2
@@ -149,10 +149,10 @@ Only vendor/dynamic schemas need registration (first-class schemas are built-in)
 ```typescript
 // Define a vendor-specific action schema
 const customActionSchema = {
-  "$id": "gts://gts.hai3.mfes.comm.action.v1~acme.analytics.comm.refresh.v1~",
+  "$id": "gts://gts.frontx.mfes.comm.action.v1~acme.analytics.comm.refresh.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "allOf": [
-    { "$ref": "gts://gts.hai3.mfes.comm.action.v1~" }
+    { "$ref": "gts://gts.frontx.mfes.comm.action.v1~" }
   ],
   "properties": {
     "payload": {
@@ -176,7 +176,7 @@ gtsPlugin.registerSchema(customActionSchema);
 
 ```typescript
 // Get a registered schema
-const schema = gtsPlugin.getSchema('gts.hai3.mfes.comm.action.v1~');
+const schema = gtsPlugin.getSchema('gts.frontx.mfes.comm.action.v1~');
 console.log(schema); // JSONSchema object
 ```
 
@@ -189,9 +189,9 @@ In GTS, entities (both schemas and instances) must be registered before validati
 ```typescript
 // 1. Register the instance
 const extension = {
-  id: 'gts.hai3.mfes.ext.extension.v1~acme.analytics.extension.v1',
-  domain: 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1',
-  entry: 'gts.hai3.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1',
+  id: 'gts.frontx.mfes.ext.extension.v1~acme.analytics.extension.v1',
+  domain: 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1',
+  entry: 'gts.frontx.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1',
 };
 
 gtsPlugin.register(extension);
@@ -212,7 +212,7 @@ if (!validation.valid) {
 GTS automatically extracts the schema ID from the instance ID:
 
 ```
-Instance ID: gts.hai3.mfes.ext.extension.v1~acme.analytics.extension.v1
+Instance ID: gts.frontx.mfes.ext.extension.v1~acme.analytics.extension.v1
              └─────────────────────────────┘
                     Schema ID (extracted automatically)
 ```
@@ -226,15 +226,15 @@ No need to specify the schema ID when validating - GTS figures it out.
 ```typescript
 // Check if a type derives from a base type
 const isMfEntry = gtsPlugin.isTypeOf(
-  'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
-  'gts.hai3.mfes.mfe.entry.v1~'
+  'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
+  'gts.frontx.mfes.mfe.entry.v1~'
 );
 console.log(isMfEntry); // true
 
 // Check exact match
 const isExactMfEntryMf = gtsPlugin.isTypeOf(
-  'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
-  'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~'
+  'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
+  'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~'
 );
 console.log(isExactMfEntryMf); // true
 ```
@@ -248,7 +248,7 @@ class MfeHandlerMF extends MfeHandler {
   constructor(typeSystem: TypeSystemPlugin) {
     super(
       typeSystem,
-      'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+      'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
       0 // priority
     );
   }
@@ -258,9 +258,9 @@ class MfeHandlerMF extends MfeHandler {
 }
 
 // Handler will match:
-// ✅ gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~ (exact)
-// ✅ gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.corp.mfe.entry_mf_acme.v1~ (derived)
-// ❌ gts.hai3.mfes.mfe.entry.v1~ (base type, not Module Federation entry)
+// ✅ gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~ (exact)
+// ✅ gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.corp.mfe.entry_mf_acme.v1~ (derived)
+// ❌ gts.frontx.mfes.mfe.entry.v1~ (base type, not Module Federation entry)
 ```
 
 ## Querying Type IDs
@@ -276,7 +276,7 @@ console.log(acmeActions);
 // Find all extension types
 const extensionTypes = gtsPlugin.query('gts.*.*.ext.extension.*');
 console.log(extensionTypes);
-// ['gts.hai3.mfes.ext.extension.v1~', ...]
+// ['gts.frontx.mfes.ext.extension.v1~', ...]
 ```
 
 ## Compatibility Checking
@@ -285,8 +285,8 @@ console.log(extensionTypes);
 
 ```typescript
 const compat = gtsPlugin.checkCompatibility(
-  'gts.hai3.mfes.mfe.entry.v1~',
-  'gts.hai3.mfes.mfe.entry.v2~'
+  'gts.frontx.mfes.mfe.entry.v1~',
+  'gts.frontx.mfes.mfe.entry.v2~'
 );
 
 console.log(compat);
@@ -307,13 +307,13 @@ console.log(compat);
 ```typescript
 // Get an attribute from a registered domain
 const result = gtsPlugin.getAttribute(
-  'gts.hai3.mfes.ext.domain.v1~acme.dashboard.layout.widget_slot.v1',
+  'gts.frontx.mfes.ext.domain.v1~acme.dashboard.layout.widget_slot.v1',
   'extensionsTypeId'
 );
 
 if (result.resolved) {
   console.log('Domain requires extension type:', result.value);
-  // e.g., 'gts.hai3.mfes.ext.extension.v1~acme.dashboard.ext.widget_extension.v1~'
+  // e.g., 'gts.frontx.mfes.ext.extension.v1~acme.dashboard.ext.widget_extension.v1~'
 } else {
   console.log('Attribute not found:', result.error);
 }
@@ -329,30 +329,30 @@ The GTS plugin comes with these schemas registered automatically:
 
 | Type | Schema ID |
 |------|-----------|
-| MfeEntry | `gts.hai3.mfes.mfe.entry.v1~` |
-| ExtensionDomain | `gts.hai3.mfes.ext.domain.v1~` |
-| Extension | `gts.hai3.mfes.ext.extension.v1~` |
-| SharedProperty | `gts.hai3.mfes.comm.shared_property.v1~` |
-| Action | `gts.hai3.mfes.comm.action.v1~` |
-| ActionsChain | `gts.hai3.mfes.comm.actions_chain.v1~` |
-| LifecycleStage | `gts.hai3.mfes.lifecycle.stage.v1~` |
-| LifecycleHook | `gts.hai3.mfes.lifecycle.hook.v1~` |
+| MfeEntry | `gts.frontx.mfes.mfe.entry.v1~` |
+| ExtensionDomain | `gts.frontx.mfes.ext.domain.v1~` |
+| Extension | `gts.frontx.mfes.ext.extension.v1~` |
+| SharedProperty | `gts.frontx.mfes.comm.shared_property.v1~` |
+| Action | `gts.frontx.mfes.comm.action.v1~` |
+| ActionsChain | `gts.frontx.mfes.comm.actions_chain.v1~` |
+| LifecycleStage | `gts.frontx.mfes.lifecycle.stage.v1~` |
+| LifecycleHook | `gts.frontx.mfes.lifecycle.hook.v1~` |
 
 ### Default Lifecycle Stages (4 instances)
 
 | Stage | Instance ID |
 |-------|-------------|
-| init | `gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1` |
-| activated | `gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1` |
-| deactivated | `gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1` |
-| destroyed | `gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1` |
+| init | `gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1` |
+| activated | `gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1` |
+| deactivated | `gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1` |
+| destroyed | `gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1` |
 
 ### Module Federation Types (2 schemas)
 
 | Type | Schema ID |
 |------|-----------|
-| MfManifest | `gts.hai3.mfes.mfe.mf_manifest.v1~` |
-| MfeEntryMF | `gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~` |
+| MfManifest | `gts.frontx.mfes.mfe.mf_manifest.v1~` |
+| MfeEntryMF | `gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~` |
 
 ## Common Patterns
 
@@ -387,11 +387,11 @@ async function validateAndRegisterExtension(
 // Define all your vendor schemas
 const vendorSchemas = {
   actionRefresh: {
-    "$id": "gts://gts.hai3.mfes.comm.action.v1~acme.analytics.comm.refresh.v1~",
+    "$id": "gts://gts.frontx.mfes.comm.action.v1~acme.analytics.comm.refresh.v1~",
     // ... schema definition
   },
   entryAcme: {
-    "$id": "gts://gts.hai3.mfes.mfe.entry.v1~acme.corp.mfe.entry_acme.v1~",
+    "$id": "gts://gts.frontx.mfes.mfe.entry.v1~acme.corp.mfe.entry_acme.v1~",
     // ... schema definition
   },
   // ... more schemas
@@ -443,7 +443,7 @@ Register vendor schemas once during application initialization:
 
 ```typescript
 // ✅ Good - Register once at startup
-import { screensetsRegistryFactory, gtsPlugin } from '@hai3/screensets';
+import { screensetsRegistryFactory, gtsPlugin } from '@gears-frontx/screensets';
 
 function initializeApp() {
   registerVendorSchemas(gtsPlugin);
@@ -475,7 +475,7 @@ const results = gtsPlugin.query('gts.*.*.*.*.*'); // Expensive!
 
 ```typescript
 // For custom configurations, create a new instance
-import { DefaultScreensetsRegistry, gtsPlugin } from '@hai3/screensets';
+import { DefaultScreensetsRegistry, gtsPlugin } from '@gears-frontx/screensets';
 
 const runtime = new DefaultScreensetsRegistry({
   typeSystem: gtsPlugin,
@@ -487,7 +487,7 @@ const runtime = new DefaultScreensetsRegistry({
 
 ```typescript
 // Check if a schema is registered
-const schema = gtsPlugin.getSchema('gts.hai3.mfes.ext.extension.v1~');
+const schema = gtsPlugin.getSchema('gts.frontx.mfes.ext.extension.v1~');
 console.log('Extension schema:', schema);
 
 // Query all registered types

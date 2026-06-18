@@ -35,7 +35,7 @@ import type { CustomActionHandler } from './extension-lifecycle-action-handler';
  *
  * @example
  * ```typescript
- * import { screensetsRegistryFactory, gtsPlugin } from '@hai3/screensets';
+ * import { screensetsRegistryFactory, gtsPlugin } from '@gears-frontx/screensets';
  *
  * const registry = screensetsRegistryFactory.build({ typeSystem: gtsPlugin });
  * registry.registerDomain(myDomain, containerProvider);
@@ -120,7 +120,7 @@ export abstract class ScreensetsRegistry {
    * Domains that do not include propertyId in their sharedProperties array are not updated.
    * If no registered domains declare the property, this is a silent no-op.
    *
-   * @param propertyId - Type ID of the shared property (e.g. HAI3_SHARED_PROPERTY_THEME)
+   * @param propertyId - Type ID of the shared property (e.g. FRONTX_SHARED_PROPERTY_THEME)
    * @param value - New property value
    * @throws if GTS validation fails — no domain receives the value in that case
    */
@@ -224,13 +224,13 @@ export abstract class ScreensetsRegistry {
    * The returned array is in discovery order (order of first extension registration
    * for each package).
    *
-   * @returns Array of GTS package strings (e.g., ['hai3.demo', 'hai3.other'])
+   * @returns Array of GTS package strings (e.g., ['frontx.demo', 'frontx.other'])
    *
    * @example
    * ```typescript
-   * // After registering extensions with IDs containing 'hai3.demo' package
+   * // After registering extensions with IDs containing 'frontx.demo' package
    * const packages = registry.getRegisteredPackages();
-   * // Returns: ['hai3.demo']
+   * // Returns: ['frontx.demo']
    * ```
    */
   abstract getRegisteredPackages(): string[];
@@ -240,15 +240,15 @@ export abstract class ScreensetsRegistry {
    *
    * Returns all registered extensions whose GTS package matches the given
    * packageId. The GTS package groups extensions by their shared two-segment
-   * prefix (e.g., 'hai3.demo').
+   * prefix (e.g., 'frontx.demo').
    *
-   * @param packageId - GTS package string (e.g., 'hai3.demo')
+   * @param packageId - GTS package string (e.g., 'frontx.demo')
    * @returns Array of extensions in the package (empty if package not tracked)
    *
    * @example
    * ```typescript
-   * // Get all extensions from the 'hai3.demo' package
-   * const extensions = registry.getExtensionsForPackage('hai3.demo');
+   * // Get all extensions from the 'frontx.demo' package
+   * const extensions = registry.getExtensionsForPackage('frontx.demo');
    * // Returns: [homeExtension, profileExtension, ...]
    * ```
    */
@@ -262,7 +262,7 @@ export abstract class ScreensetsRegistry {
    *
    * Usage pattern: mount via executeActionsChain(), then query the bridge:
    *
-   *   await registry.executeActionsChain({ action: { type: HAI3_ACTION_MOUNT_EXT, ... } });
+   *   await registry.executeActionsChain({ action: { type: FRONTX_ACTION_MOUNT_EXT, ... } });
    *   const bridge = registry.getParentBridge(extensionId);
    *
    * @param extensionId - ID of the extension

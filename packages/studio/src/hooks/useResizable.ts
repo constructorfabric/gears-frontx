@@ -2,7 +2,7 @@
 // @cpt-state:cpt-hai3-state-studio-devtools-resize:p1
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { clamp } from 'lodash';
-import { eventBus } from '@hai3/react';
+import { eventBus } from '@gears-frontx/react';
 import type { Size } from '../types';
 import { loadStudioState } from '../utils/persistence';
 import { STORAGE_KEYS, PANEL_CONSTRAINTS } from '../types';

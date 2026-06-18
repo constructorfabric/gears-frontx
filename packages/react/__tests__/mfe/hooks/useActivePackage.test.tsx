@@ -11,15 +11,15 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { HAI3Provider } from '../../../src/HAI3Provider';
 import { useActivePackage } from '../../../src/mfe/hooks/useActivePackage';
-import { createHAI3 } from '@hai3/framework';
-import { screensets } from '@hai3/framework';
-import { effects } from '@hai3/framework';
-import { microfrontends } from '@hai3/framework';
-import { HAI3_SCREEN_DOMAIN } from '@hai3/framework';
-import { gtsPlugin } from '@hai3/framework';
-import type { Extension, ExtensionDomain } from '@hai3/framework';
-import { ContainerProvider } from '@hai3/framework';
-import type { HAI3App } from '@hai3/framework';
+import { createHAI3 } from '@gears-frontx/framework';
+import { screensets } from '@gears-frontx/framework';
+import { effects } from '@gears-frontx/framework';
+import { microfrontends } from '@gears-frontx/framework';
+import { FRONTX_SCREEN_DOMAIN } from '@gears-frontx/framework';
+import { gtsPlugin } from '@gears-frontx/framework';
+import type { Extension, ExtensionDomain } from '@gears-frontx/framework';
+import { ContainerProvider } from '@gears-frontx/framework';
+import type { HAI3App } from '@gears-frontx/framework';
 
 // Mock Container Provider for React tests
 class TestContainerProvider extends ContainerProvider {
@@ -48,12 +48,12 @@ describe('useActivePackage hook - Phase 39.6', () => {
   });
 
   const mockScreenDomain: ExtensionDomain = {
-    id: HAI3_SCREEN_DOMAIN,
+    id: FRONTX_SCREEN_DOMAIN,
     sharedProperties: [],
     actions: [
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1',
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1',
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1',
     ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
@@ -62,21 +62,21 @@ describe('useActivePackage hook - Phase 39.6', () => {
   };
 
   const demoExtension: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.home.v1',
-    domain: HAI3_SCREEN_DOMAIN,
-    entry: 'gts.hai3.mfes.mfe.entry.v1~test.active.package.entry.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.demo.screens.home.v1',
+    domain: FRONTX_SCREEN_DOMAIN,
+    entry: 'gts.frontx.mfes.mfe.entry.v1~test.active.package.entry.v1',
   };
 
   const otherExtension: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.other.screens.profile.v1',
-    domain: HAI3_SCREEN_DOMAIN,
-    entry: 'gts.hai3.mfes.mfe.entry.v1~test.active.package.entry.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.other.screens.profile.v1',
+    domain: FRONTX_SCREEN_DOMAIN,
+    entry: 'gts.frontx.mfes.mfe.entry.v1~test.active.package.entry.v1',
   };
 
   /**
    * Helper: build app and mock mount-related methods to bypass
    * GTS validation while still dispatching store actions and tracking mount state.
-   * The hook subscribes to store changes and calls getMountedExtension(HAI3_SCREEN_DOMAIN).
+   * The hook subscribes to store changes and calls getMountedExtension(FRONTX_SCREEN_DOMAIN).
    */
   function buildApp(): HAI3App {
     const app = createHAI3()
@@ -102,23 +102,23 @@ describe('useActivePackage hook - Phase 39.6', () => {
     // Mock mount/unmount to track state and dispatch
     app.screensetsRegistry.executeActionsChain = vi.fn(async (chain) => {
       const action = chain.action;
-      if (action.type === 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1') {
+      if (action.type === 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1') {
         const payload = action.payload as { extensionId: string };
-        if (action.target === HAI3_SCREEN_DOMAIN) {
+        if (action.target === FRONTX_SCREEN_DOMAIN) {
           mountedExtensionId = payload.extensionId;
-          app.store.dispatch({ type: 'mfe/setExtensionMounted', payload: { extensionId: payload.extensionId, domainId: HAI3_SCREEN_DOMAIN } });
+          app.store.dispatch({ type: 'mfe/setExtensionMounted', payload: { extensionId: payload.extensionId, domainId: FRONTX_SCREEN_DOMAIN } });
         }
-      } else if (action.type === 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1') {
-        if (action.target === HAI3_SCREEN_DOMAIN) {
+      } else if (action.type === 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1') {
+        if (action.target === FRONTX_SCREEN_DOMAIN) {
           mountedExtensionId = undefined;
-          app.store.dispatch({ type: 'mfe/setExtensionUnmounted', payload: { domainId: HAI3_SCREEN_DOMAIN } });
+          app.store.dispatch({ type: 'mfe/setExtensionUnmounted', payload: { domainId: FRONTX_SCREEN_DOMAIN } });
         }
       }
     });
 
     // Mock getMountedExtension to return from our tracked state
     app.screensetsRegistry.getMountedExtension = vi.fn((domainId: string) => {
-      if (domainId === HAI3_SCREEN_DOMAIN) {
+      if (domainId === FRONTX_SCREEN_DOMAIN) {
         return mountedExtensionId;
       }
       return undefined;
@@ -142,15 +142,15 @@ describe('useActivePackage hook - Phase 39.6', () => {
       // Mount demo extension
       await app.screensetsRegistry.executeActionsChain({
         action: {
-          type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1',
-          target: HAI3_SCREEN_DOMAIN,
+          type: 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1',
+          target: FRONTX_SCREEN_DOMAIN,
           payload: { extensionId: demoExtension.id },
         },
       });
 
       const { result } = renderHook(() => useActivePackage(), { wrapper: buildWrapper(app) });
 
-      expect(result.current).toBe('hai3.demo');
+      expect(result.current).toBe('frontx.demo');
     });
 
     it('39.6.14 should return undefined when no screen extension is mounted', () => {
@@ -175,15 +175,15 @@ describe('useActivePackage hook - Phase 39.6', () => {
       await act(async () => {
         await app.screensetsRegistry.executeActionsChain({
           action: {
-            type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1',
-            target: HAI3_SCREEN_DOMAIN,
+            type: 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1',
+            target: FRONTX_SCREEN_DOMAIN,
             payload: { extensionId: demoExtension.id },
           },
         });
       });
 
       await waitFor(() => {
-        expect(result.current).toBe('hai3.demo');
+        expect(result.current).toBe('frontx.demo');
       });
     });
 
@@ -195,21 +195,21 @@ describe('useActivePackage hook - Phase 39.6', () => {
       // Mount demo extension
       await app.screensetsRegistry.executeActionsChain({
         action: {
-          type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1',
-          target: HAI3_SCREEN_DOMAIN,
+          type: 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1',
+          target: FRONTX_SCREEN_DOMAIN,
           payload: { extensionId: demoExtension.id },
         },
       });
 
       const { result } = renderHook(() => useActivePackage(), { wrapper: buildWrapper(app) });
 
-      expect(result.current).toBe('hai3.demo');
+      expect(result.current).toBe('frontx.demo');
 
       await act(async () => {
         await app.screensetsRegistry.executeActionsChain({
           action: {
-            type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1',
-            target: HAI3_SCREEN_DOMAIN,
+            type: 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1',
+            target: FRONTX_SCREEN_DOMAIN,
             payload: { extensionId: demoExtension.id },
           },
         });
@@ -228,22 +228,22 @@ describe('useActivePackage hook - Phase 39.6', () => {
       // Mount demo extension
       await app.screensetsRegistry.executeActionsChain({
         action: {
-          type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1',
-          target: HAI3_SCREEN_DOMAIN,
+          type: 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1',
+          target: FRONTX_SCREEN_DOMAIN,
           payload: { extensionId: demoExtension.id },
         },
       });
 
       const { result } = renderHook(() => useActivePackage(), { wrapper: buildWrapper(app) });
 
-      expect(result.current).toBe('hai3.demo');
+      expect(result.current).toBe('frontx.demo');
 
       await act(async () => {
         // Unmount demo
         await app.screensetsRegistry.executeActionsChain({
           action: {
-            type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1',
-            target: HAI3_SCREEN_DOMAIN,
+            type: 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1',
+            target: FRONTX_SCREEN_DOMAIN,
             payload: { extensionId: demoExtension.id },
           },
         });
@@ -251,15 +251,15 @@ describe('useActivePackage hook - Phase 39.6', () => {
         // Mount other
         await app.screensetsRegistry.executeActionsChain({
           action: {
-            type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1',
-            target: HAI3_SCREEN_DOMAIN,
+            type: 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1',
+            target: FRONTX_SCREEN_DOMAIN,
             payload: { extensionId: otherExtension.id },
           },
         });
       });
 
       await waitFor(() => {
-        expect(result.current).toBe('hai3.other');
+        expect(result.current).toBe('frontx.other');
       });
     });
   });

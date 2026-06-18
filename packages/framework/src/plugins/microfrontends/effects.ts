@@ -13,7 +13,7 @@
 // @cpt-flow:cpt-hai3-flow-framework-composition-teardown:p2
 // @cpt-dod:cpt-hai3-dod-framework-composition-mfe-plugin:p1
 
-import { eventBus, getStore } from '@hai3/state';
+import { eventBus, getStore } from '@gears-frontx/state';
 import { MfeEvents } from './constants';
 import {
   setExtensionRegistering,
@@ -21,7 +21,7 @@ import {
   setExtensionUnregistered,
   setExtensionError,
 } from './slice';
-import type { ScreensetsRegistry } from '@hai3/screensets';
+import type { ScreensetsRegistry } from '@gears-frontx/screensets';
 
 // ============================================================================
 // Effect Initialization

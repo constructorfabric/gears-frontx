@@ -26,7 +26,7 @@ date: 2025-12-21
 **ID**: `cpt-hai3-adr-four-layer-sdk-architecture`
 ## Context and Problem Statement
 
-HAI3 needed a modular architecture allowing users to pick individual SDK pieces while maintaining a cohesive framework, without imposing React on SDK consumers. The predecessor `@hai3/uicore` monolith bundled state, API, i18n, and UI concerns in a single package. This made it impossible to adopt individual capabilities independently, forced React on non-UI consumers, and created circular dependency risks as the codebase grew.
+HAI3 needed a modular architecture allowing users to pick individual SDK pieces while maintaining a cohesive framework, without imposing React on SDK consumers. The predecessor `@gears-frontx/uicore` monolith bundled state, API, i18n, and UI concerns in a single package. This made it impossible to adopt individual capabilities independently, forced React on non-UI consumers, and created circular dependency risks as the codebase grew.
 
 ## Decision Drivers
 
@@ -46,12 +46,12 @@ Chosen option: "Four-layer architecture with strict downward-only dependency dir
 
 ### Consequences
 
-* Good, because L1 packages are zero-dependency relative to other `@hai3/*` packages, enabling tree-shaking and independent adoption
+* Good, because L1 packages are zero-dependency relative to other `@gears-frontx/*` packages, enabling tree-shaking and independent adoption
 * Bad, because the repository contains more packages to maintain and build order must be respected during CI
 
 ### Confirmation
 
-`dependency-cruiser` rules enforce layer boundaries — any L1 package importing another `@hai3/*` package will fail the lint step. Verify by inspecting `packages/*/package.json` and confirming the `dependencies` field contains no `@hai3/*` entries for L1 packages (state, api, i18n, screensets).
+`dependency-cruiser` rules enforce layer boundaries — any L1 package importing another `@gears-frontx/*` package will fail the lint step. Verify by inspecting `packages/*/package.json` and confirming the `dependencies` field contains no `@gears-frontx/*` entries for L1 packages (state, api, i18n, screensets).
 
 ## Pros and Cons of the Options
 
@@ -72,7 +72,7 @@ Chosen option: "Four-layer architecture with strict downward-only dependency dir
 
 ## More Information
 
-- Layer definitions: L1 SDK (state, screensets, api, i18n) — zero `@hai3/*` dependencies; L2 Framework — composes all L1; L3 React — depends only on L2; Standalone — studio, cli outside the hierarchy
+- Layer definitions: L1 SDK (state, screensets, api, i18n) — zero `@gears-frontx/*` dependencies; L2 Framework — composes all L1; L3 React — depends only on L2; Standalone — studio, cli outside the hierarchy
 - Related: ADR 0005 (ESM-First Module Format) governs output format for all layers
 
 ## Traceability

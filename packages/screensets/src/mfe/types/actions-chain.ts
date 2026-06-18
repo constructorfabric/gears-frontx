@@ -10,7 +10,7 @@ import type { Action } from './action';
 
 /**
  * Defines a mediated chain of actions with success/failure branches
- * GTS Type: gts.hai3.mfes.comm.actions_chain.v1~
+ * GTS Type: gts.frontx.mfes.comm.actions_chain.v1~
  *
  * Contains actual Action INSTANCES (embedded objects).
  * ActionsChain is NOT referenced by other types, so it has NO id field.

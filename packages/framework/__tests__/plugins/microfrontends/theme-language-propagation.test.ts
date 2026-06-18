@@ -16,9 +16,9 @@ import { effects } from '../../../src/plugins/effects';
 import { themes } from '../../../src/plugins/themes';
 import { i18n } from '../../../src/plugins/i18n';
 import { microfrontends } from '../../../src/plugins/microfrontends';
-import { eventBus, resetStore } from '@hai3/state';
-import { HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE } from '@hai3/screensets';
-import { gtsPlugin } from '@hai3/screensets/plugins/gts';
+import { eventBus, resetStore } from '@gears-frontx/state';
+import { FRONTX_SHARED_PROPERTY_THEME, FRONTX_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/screensets';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 import type { HAI3App } from '../../../src/types';
 
 describe('Theme and Language Propagation - decouple-domain-contracts', () => {
@@ -60,7 +60,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
       eventBus.emit('theme/changed', { themeId: 'dark' });
 
       expect(setThemeSpy).toHaveBeenCalledWith({ '--color-bg': 'hsl(var(--primary))' });
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_THEME, 'dark');
+      expect(updateSpy).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_THEME, 'dark');
     });
 
     it('should not throw when theme/changed fires even if updateSharedProperty throws', () => {
@@ -155,7 +155,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_LANGUAGE, 'de');
+      expect(updateSpy).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_LANGUAGE, 'de');
     });
 
     it('should not throw when i18n/language/changed fires even if updateSharedProperty throws', async () => {

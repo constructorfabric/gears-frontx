@@ -10,9 +10,9 @@
 import type { MfeEntry } from '../types/mfe-entry';
 import type { ExtensionDomain } from '../types/extension-domain';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../constants';
 
 /**
@@ -49,9 +49,9 @@ export interface ContractValidationResult {
  * from rule 3 (domain.actions ⊆ entry.domainActions) validation.
  */
 const INFRASTRUCTURE_LIFECYCLE_ACTIONS = new Set<string>([
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 ]);
 
 /**

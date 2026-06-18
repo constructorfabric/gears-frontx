@@ -11,14 +11,14 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { HAI3Provider } from '../../../src/HAI3Provider';
 import { useRegisteredPackages } from '../../../src/mfe/hooks/useRegisteredPackages';
-import { createHAI3 } from '@hai3/framework';
-import { screensets } from '@hai3/framework';
-import { effects } from '@hai3/framework';
-import { microfrontends } from '@hai3/framework';
-import type { Extension, ExtensionDomain } from '@hai3/framework';
-import { gtsPlugin } from '@hai3/framework';
-import { ContainerProvider } from '@hai3/framework';
-import type { HAI3App } from '@hai3/framework';
+import { createHAI3 } from '@gears-frontx/framework';
+import { screensets } from '@gears-frontx/framework';
+import { effects } from '@gears-frontx/framework';
+import { microfrontends } from '@gears-frontx/framework';
+import type { Extension, ExtensionDomain } from '@gears-frontx/framework';
+import { gtsPlugin } from '@gears-frontx/framework';
+import { ContainerProvider } from '@gears-frontx/framework';
+import type { HAI3App } from '@gears-frontx/framework';
 
 // Mock Container Provider for React tests
 class TestContainerProvider extends ContainerProvider {
@@ -39,7 +39,7 @@ class TestContainerProvider extends ContainerProvider {
 }
 
 describe('useRegisteredPackages hook - Phase 39.6', () => {
-  const testDomainId = 'gts.hai3.mfes.ext.domain.v1~test.package.hooks.domain.v1';
+  const testDomainId = 'gts.frontx.mfes.ext.domain.v1~test.package.hooks.domain.v1';
 
   // Track app instances for cleanup
   const apps: HAI3App[] = [];
@@ -52,8 +52,8 @@ describe('useRegisteredPackages hook - Phase 39.6', () => {
     id: testDomainId,
     sharedProperties: [],
     actions: [
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1',
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1',
     ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
@@ -62,21 +62,21 @@ describe('useRegisteredPackages hook - Phase 39.6', () => {
   };
 
   const demoExtension1: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.package.hooks.domain.v1~hai3.demo.ext1.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.package.hooks.domain.v1~frontx.demo.ext1.v1',
     domain: testDomainId,
-    entry: 'gts.hai3.mfes.mfe.entry.v1~test.package.hooks.entry.v1',
+    entry: 'gts.frontx.mfes.mfe.entry.v1~test.package.hooks.entry.v1',
   };
 
   const demoExtension2: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.package.hooks.domain.v1~hai3.demo.ext2.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.package.hooks.domain.v1~frontx.demo.ext2.v1',
     domain: testDomainId,
-    entry: 'gts.hai3.mfes.mfe.entry.v1~test.package.hooks.entry.v1',
+    entry: 'gts.frontx.mfes.mfe.entry.v1~test.package.hooks.entry.v1',
   };
 
   const otherExtension: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.package.hooks.domain.v1~hai3.other.ext1.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.package.hooks.domain.v1~frontx.other.ext1.v1',
     domain: testDomainId,
-    entry: 'gts.hai3.mfes.mfe.entry.v1~test.package.hooks.entry.v1',
+    entry: 'gts.frontx.mfes.mfe.entry.v1~test.package.hooks.entry.v1',
   };
 
   /**
@@ -158,7 +158,7 @@ describe('useRegisteredPackages hook - Phase 39.6', () => {
       const { result } = renderHook(() => useRegisteredPackages(), { wrapper: buildWrapper(app) });
 
       expect(result.current).toHaveLength(1);
-      expect(result.current).toContain('hai3.demo');
+      expect(result.current).toContain('frontx.demo');
     });
 
     it('should return empty array when no extensions registered', () => {
@@ -188,7 +188,7 @@ describe('useRegisteredPackages hook - Phase 39.6', () => {
         expect(result.current).toHaveLength(1);
       });
 
-      expect(result.current).toContain('hai3.demo');
+      expect(result.current).toContain('frontx.demo');
     });
 
     it('should deduplicate packages from same package', async () => {
@@ -202,7 +202,7 @@ describe('useRegisteredPackages hook - Phase 39.6', () => {
       const { result } = renderHook(() => useRegisteredPackages(), { wrapper: buildWrapper(app) });
 
       expect(result.current).toHaveLength(1);
-      expect(result.current).toEqual(['hai3.demo']);
+      expect(result.current).toEqual(['frontx.demo']);
     });
 
     it('should return multiple packages from different packages', async () => {
@@ -216,8 +216,8 @@ describe('useRegisteredPackages hook - Phase 39.6', () => {
       const { result } = renderHook(() => useRegisteredPackages(), { wrapper: buildWrapper(app) });
 
       expect(result.current).toHaveLength(2);
-      expect(result.current).toContain('hai3.demo');
-      expect(result.current).toContain('hai3.other');
+      expect(result.current).toContain('frontx.demo');
+      expect(result.current).toContain('frontx.other');
     });
 
     it('should update when extension is unregistered', async () => {

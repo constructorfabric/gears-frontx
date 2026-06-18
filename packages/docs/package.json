@@ -1,6 +1,6 @@
 {
-  "name": "@hai3/docs",
-  "version": "0.4.0-alpha.0",
+  "name": "@gears-frontx/docs",
+  "version": "0.1.0",
   "description": "HAI3 documentation site - AI-driven product lifecycle and framework docs",
   "type": "module",
   "private": true,

@@ -1,10 +1,10 @@
-# @hai3/state
+# @gears-frontx/state
 
 State management for HAI3 applications - event bus, store, and slices.
 
 ## SDK Layer
 
-This package is part of the **SDK Layer (L1)** - zero @hai3 dependencies, can be used independently. Only peer dependency is `@reduxjs/toolkit`.
+This package is part of the **SDK Layer (L1)** - zero @gears-frontx dependencies, can be used independently. Only peer dependency is `@reduxjs/toolkit`.
 
 ## Terminology
 
@@ -21,7 +21,7 @@ This package is part of the **SDK Layer (L1)** - zero @hai3 dependencies, can be
 Type-safe event emission and subscription:
 
 ```typescript
-import { eventBus } from '@hai3/state';
+import { eventBus } from '@gears-frontx/state';
 
 // Subscribe to events
 const subscription = eventBus.on('user/loggedIn', (payload) => {
@@ -40,7 +40,7 @@ subscription.unsubscribe();
 HAI3's `createSlice` returns `{ slice, ...reducerFunctions }`:
 
 ```typescript
-import { createSlice, registerSlice, type ReducerPayload } from '@hai3/state';
+import { createSlice, registerSlice, type ReducerPayload } from '@gears-frontx/state';
 
 const { slice, setSelected, setLoading } = createSlice({
   name: 'chat/threads',
@@ -67,7 +67,7 @@ export { setSelected, setLoading };
 Effects subscribe to events and dispatch to reducers:
 
 ```typescript
-import { eventBus, type AppDispatch } from '@hai3/state';
+import { eventBus, type AppDispatch } from '@gears-frontx/state';
 import { setSelected } from './threadsSlice';
 
 export function initThreadsEffects(dispatch: AppDispatch): void {
@@ -82,7 +82,7 @@ export function initThreadsEffects(dispatch: AppDispatch): void {
 Extend `EventPayloadMap` and `RootState` for type safety:
 
 ```typescript
-declare module '@hai3/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'chat/threads/selected': { threadId: string };
   }

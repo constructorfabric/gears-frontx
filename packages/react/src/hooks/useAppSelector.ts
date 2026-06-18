@@ -7,7 +7,7 @@
 // @cpt-dod:cpt-hai3-dod-react-bindings-redux-hooks:p1
 
 import { useSelector, type TypedUseSelectorHook } from 'react-redux';
-import type { RootState } from '@hai3/framework';
+import type { RootState } from '@gears-frontx/framework';
 
 /**
  * Type-safe selector hook.

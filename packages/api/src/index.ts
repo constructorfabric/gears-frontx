@@ -1,5 +1,5 @@
 /**
- * @hai3/api - API Communication
+ * @gears-frontx/api - API Communication
  *
  * This package provides:
  * - API service interface and registry
@@ -7,7 +7,7 @@
  * - Plugin system for request/response modification
  * - Mock data support for testing
  *
- * SDK Layer: L1 (Zero @hai3 dependencies)
+ * SDK Layer: L1 (Zero @gears-frontx dependencies)
  */
 
 // @cpt-dod:cpt-hai3-dod-api-communication-public-api:p1

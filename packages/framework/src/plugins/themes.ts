@@ -9,13 +9,13 @@
 // @cpt-dod:cpt-hai3-dod-framework-composition-propagation:p1
 // @cpt-dod:cpt-hai3-dod-framework-composition-shared-property:p1
 
-import { eventBus } from '@hai3/state';
-import { HAI3_SHARED_PROPERTY_THEME } from '@hai3/screensets';
+import { eventBus } from '@gears-frontx/state';
+import { FRONTX_SHARED_PROPERTY_THEME } from '@gears-frontx/screensets';
 import type { HAI3Plugin, ChangeThemePayload, ThemePropagationFailedPayload } from '../types';
 import { createThemeRegistry } from '../registries/themeRegistry';
 
 // Define theme events for module augmentation
-declare module '@hai3/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'theme/changed': ChangeThemePayload;
     'theme/propagation/failed': ThemePropagationFailedPayload;
@@ -74,7 +74,7 @@ export function themes(): HAI3Plugin {
           if (themeConfig) {
             app.screensetsRegistry?.setTheme(themeConfig.variables);
           }
-          app.screensetsRegistry?.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, payload.themeId);
+          app.screensetsRegistry?.updateSharedProperty(FRONTX_SHARED_PROPERTY_THEME, payload.themeId);
         } catch (error) {
           console.error('[HAI3] Failed to propagate theme to MFE domains', error);
           eventBus.emit('theme/propagation/failed', { themeId: payload.themeId, error });

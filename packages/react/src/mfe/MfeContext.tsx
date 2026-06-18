@@ -4,14 +4,14 @@
  * Provides MFE bridge and metadata to child components.
  * Used by MFE components to access their runtime context.
  *
- * React Layer: L3 (Depends on @hai3/framework)
+ * React Layer: L3 (Depends on @gears-frontx/framework)
  */
 // @cpt-flow:cpt-hai3-flow-react-bindings-mfe-provider:p1
 // @cpt-algo:cpt-hai3-algo-react-bindings-mfe-context-guard:p1
 // @cpt-dod:cpt-hai3-dod-react-bindings-mfe-hooks:p1
 
 import { createContext, useContext } from 'react';
-import type { ChildMfeBridge } from '@hai3/framework';
+import type { ChildMfeBridge } from '@gears-frontx/framework';
 
 // ============================================================================
 // Context Value Types

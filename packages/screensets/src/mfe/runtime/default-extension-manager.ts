@@ -144,7 +144,7 @@ export class DefaultExtensionManager extends ExtensionManager {
     // we fire-and-forget and handle errors via onInitError callback
     this.triggerDomainOwnLifecycle(
       domain.id,
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1'
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1'
     ).catch(error => {
       const mfeError = error instanceof Error ? error : new Error(String(error));
       if (onInitError) {
@@ -180,7 +180,7 @@ export class DefaultExtensionManager extends ExtensionManager {
     // 2. Trigger 'destroyed' lifecycle stage for domain itself
     await this.triggerDomainOwnLifecycle(
       domainId,
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1'
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1'
     );
 
     // 3. Remove domain
@@ -280,7 +280,7 @@ export class DefaultExtensionManager extends ExtensionManager {
     // 8. Trigger 'init' lifecycle stage
     await this.triggerLifecycle(
       extension.id,
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1'
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1'
     );
   }
   // @cpt-end:cpt-hai3-algo-screenset-registry-extension-validation:p1:inst-1
@@ -307,7 +307,7 @@ export class DefaultExtensionManager extends ExtensionManager {
     // 2. Trigger 'destroyed' lifecycle stage
     await this.triggerLifecycle(
       extensionId,
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1'
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1'
     );
 
     // 3. Remove from registry
@@ -393,7 +393,7 @@ export class DefaultExtensionManager extends ExtensionManager {
     // from the chained ID automatically (same named instance pattern as actions chains).
     // The deterministic ephemeralId ensures each call overwrites the previous instance (no store growth).
     // No `type` field needed: the schema is resolved from the chained ID structure.
-    const ephemeralId = `${propertyId}hai3.mfes.comm.runtime.v1`;
+    const ephemeralId = `${propertyId}frontx.mfes.comm.runtime.v1`;
     this.typeSystem.register({ id: ephemeralId, value });
     const validation = this.typeSystem.validateInstance(ephemeralId);
     if (!validation.valid) {

@@ -39,8 +39,8 @@
 - REQUIRED: Register with apiRegistry.register(ServiceClass).
 - REQUIRED: Define TypeScript interfaces for all requests/responses.
 - FORBIDDEN: String domain constants for registration.
-- FORBIDDEN: Framework dependencies (@hai3/framework, @hai3/state).
-- FORBIDDEN: React dependencies (@hai3/react).
+- FORBIDDEN: Framework dependencies (@gears-frontx/framework, @gears-frontx/state).
+- FORBIDDEN: React dependencies (@gears-frontx/react).
 - FORBIDDEN: Event system integration (eventBus).
 - FORBIDDEN: Store/slice references.
 - SDK LAYER: Pure data layer only.

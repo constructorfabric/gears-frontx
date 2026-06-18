@@ -6,7 +6,7 @@
  * - Dynamic slice registration (registerSlice)
  * - Type-safe state access via module augmentation
  *
- * SDK Layer: L1 (Zero @hai3 dependencies)
+ * SDK Layer: L1 (Zero @gears-frontx dependencies)
  */
 
 import {

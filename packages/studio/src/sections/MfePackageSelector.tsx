@@ -6,11 +6,11 @@ import {
   useRegisteredPackages,
   useActivePackage,
   eventBus,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_SCREEN_DOMAIN,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_SCREEN_DOMAIN,
   type ScreenExtension,
   type Extension,
-} from '@hai3/react';
+} from '@gears-frontx/react';
 import { ButtonVariant } from '../uikit/types';
 import {
   DropdownMenu,
@@ -20,7 +20,7 @@ import {
 } from '../uikit/base/dropdown-menu';
 import { DropdownButton } from '../uikit/composite/DropdownButton';
 import { useStudioContext } from '../StudioProvider';
-import { useTranslation } from '@hai3/react';
+import { useTranslation } from '@gears-frontx/react';
 import { StudioEvents } from '../events/studioEvents';
 
 /**
@@ -61,7 +61,7 @@ export const MfePackageSelector: React.FC<MfePackageSelectorProps> = ({
 
     // Filter for screen-domain extensions
     const screenExtensions = extensions.filter(
-      (ext: Extension) => ext.domain === HAI3_SCREEN_DOMAIN && isScreenExtension(ext)
+      (ext: Extension) => ext.domain === FRONTX_SCREEN_DOMAIN && isScreenExtension(ext)
     ) as ScreenExtension[];
 
     if (screenExtensions.length === 0) {
@@ -76,8 +76,8 @@ export const MfePackageSelector: React.FC<MfePackageSelectorProps> = ({
     const firstExtension = screenExtensions[0];
     await registry.executeActionsChain({
       action: {
-        type: HAI3_ACTION_MOUNT_EXT,
-        target: HAI3_SCREEN_DOMAIN,
+        type: FRONTX_ACTION_MOUNT_EXT,
+        target: FRONTX_SCREEN_DOMAIN,
         payload: { extensionId: firstExtension.id },
       },
     });

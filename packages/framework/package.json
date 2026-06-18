@@ -1,6 +1,6 @@
 {
-  "name": "@hai3/framework",
-  "version": "0.4.0-alpha.2",
+  "name": "@gears-frontx/framework",
+  "version": "0.1.0",
   "description": "HAI3 framework integrating all SDK packages with plugin architecture",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -36,22 +36,22 @@
     "typescript": "^5.4.2"
   },
   "peerDependencies": {
-    "@hai3/state": "*",
-    "@hai3/screensets": "*",
-    "@hai3/api": "*",
-    "@hai3/i18n": "*"
+    "@gears-frontx/state": "*",
+    "@gears-frontx/screensets": "*",
+    "@gears-frontx/api": "*",
+    "@gears-frontx/i18n": "*"
   },
   "peerDependenciesMeta": {
-    "@hai3/state": {
+    "@gears-frontx/state": {
       "optional": false
     },
-    "@hai3/screensets": {
+    "@gears-frontx/screensets": {
       "optional": false
     },
-    "@hai3/api": {
+    "@gears-frontx/api": {
       "optional": false
     },
-    "@hai3/i18n": {
+    "@gears-frontx/i18n": {
       "optional": false
     }
   },

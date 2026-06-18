@@ -3,7 +3,7 @@
  * Replace with your mock responses.
  */
 
-import type { MockMap } from '@hai3/react';
+import type { MockMap } from '@gears-frontx/react';
 
 /**
  * Mock map for _Blank API service

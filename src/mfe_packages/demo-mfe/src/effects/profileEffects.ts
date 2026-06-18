@@ -5,7 +5,7 @@
  * Following flux architecture: Actions emit events → Effects listen → dispatch to store.
  */
 
-import { eventBus, apiRegistry, type AppDispatch } from '@hai3/react';
+import { eventBus, apiRegistry, type AppDispatch } from '@gears-frontx/react';
 import { AccountsApiService } from '../api/AccountsApiService';
 import { setUser, setLoading, setError } from '../slices/profileSlice';
 import '../events/profileEvents';

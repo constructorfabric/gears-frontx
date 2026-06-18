@@ -12,22 +12,22 @@ import os from 'os';
 import { loadConfig, findMonorepoRoot, getLocalPackageRef, CONFIG_FILE } from './project.js';
 
 describe('getLocalPackageRef', () => {
-  it('should convert @hai3/react to a file: reference', () => {
-    const result = getLocalPackageRef('@hai3/react', '/repo', '/repo/app');
+  it('should convert @gears-frontx/react to a file: reference', () => {
+    const result = getLocalPackageRef('@gears-frontx/react', '/repo', '/repo/app');
     assert.equal(result, 'file:../packages/react');
   });
 
-  it('should convert @hai3/framework to a file: reference', () => {
-    const result = getLocalPackageRef('@hai3/framework', '/repo', '/repo/app');
+  it('should convert @gears-frontx/framework to a file: reference', () => {
+    const result = getLocalPackageRef('@gears-frontx/framework', '/repo', '/repo/app');
     assert.equal(result, 'file:../packages/framework');
   });
 
   it('should handle nested project paths', () => {
-    const result = getLocalPackageRef('@hai3/state', '/repo', '/repo/projects/my-app');
+    const result = getLocalPackageRef('@gears-frontx/state', '/repo', '/repo/projects/my-app');
     assert.equal(result, 'file:../../packages/state');
   });
 
-  it('should return non-@hai3 packages unchanged', () => {
+  it('should return non-@gears-frontx packages unchanged', () => {
     assert.equal(getLocalPackageRef('react', '/repo', '/repo/app'), 'react');
     assert.equal(getLocalPackageRef('lodash', '/repo', '/repo/app'), 'lodash');
     assert.equal(getLocalPackageRef('@types/node', '/repo', '/repo/app'), '@types/node');
@@ -137,12 +137,12 @@ describe('findMonorepoRoot', () => {
   });
 
   after(async () => {
-    delete process.env.HAI3_MONOREPO_ROOT;
+    delete process.env.GEARS_FRONTX_MONOREPO_ROOT;
     await fs.remove(tmpDir);
   });
 
   it('should return null when no monorepo structure is found', async () => {
-    delete process.env.HAI3_MONOREPO_ROOT;
+    delete process.env.GEARS_FRONTX_MONOREPO_ROOT;
     const leaf = path.join(tmpDir, 'some', 'deep', 'path');
     await fs.ensureDir(leaf);
     const result = await findMonorepoRoot(leaf);
@@ -150,12 +150,12 @@ describe('findMonorepoRoot', () => {
   });
 
   it('should find monorepo root with packages/react and workspaces', async () => {
-    delete process.env.HAI3_MONOREPO_ROOT;
+    delete process.env.GEARS_FRONTX_MONOREPO_ROOT;
     const monoRoot = path.join(tmpDir, 'mono');
     await fs.ensureDir(path.join(monoRoot, 'packages', 'react'));
-    await fs.writeJson(path.join(monoRoot, 'packages', 'react', 'package.json'), { name: '@hai3/react' });
+    await fs.writeJson(path.join(monoRoot, 'packages', 'react', 'package.json'), { name: '@gears-frontx/react' });
     await fs.writeJson(path.join(monoRoot, 'package.json'), {
-      name: 'hai3-monorepo',
+      name: 'gears-frontx-monorepo',
       workspaces: ['packages/*'],
     });
 
@@ -166,24 +166,24 @@ describe('findMonorepoRoot', () => {
     assert.equal(result, monoRoot);
   });
 
-  it('should respect HAI3_MONOREPO_ROOT env variable', async () => {
+  it('should respect GEARS_FRONTX_MONOREPO_ROOT env variable', async () => {
     const monoRoot = path.join(tmpDir, 'env-mono');
     await fs.ensureDir(path.join(monoRoot, 'packages', 'react'));
-    await fs.writeJson(path.join(monoRoot, 'packages', 'react', 'package.json'), { name: '@hai3/react' });
+    await fs.writeJson(path.join(monoRoot, 'packages', 'react', 'package.json'), { name: '@gears-frontx/react' });
 
-    process.env.HAI3_MONOREPO_ROOT = monoRoot;
+    process.env.GEARS_FRONTX_MONOREPO_ROOT = monoRoot;
 
     const result = await findMonorepoRoot('/some/random/path');
     assert.equal(result, path.resolve(monoRoot));
 
-    delete process.env.HAI3_MONOREPO_ROOT;
+    delete process.env.GEARS_FRONTX_MONOREPO_ROOT;
   });
 
   it('should skip directories without workspaces containing packages/', async () => {
-    delete process.env.HAI3_MONOREPO_ROOT;
+    delete process.env.GEARS_FRONTX_MONOREPO_ROOT;
     const fakeRoot = path.join(tmpDir, 'fake-mono');
     await fs.ensureDir(path.join(fakeRoot, 'packages', 'react'));
-    await fs.writeJson(path.join(fakeRoot, 'packages', 'react', 'package.json'), { name: '@hai3/react' });
+    await fs.writeJson(path.join(fakeRoot, 'packages', 'react', 'package.json'), { name: '@gears-frontx/react' });
     await fs.writeJson(path.join(fakeRoot, 'package.json'), {
       name: 'not-a-monorepo',
       workspaces: ['apps/*'],

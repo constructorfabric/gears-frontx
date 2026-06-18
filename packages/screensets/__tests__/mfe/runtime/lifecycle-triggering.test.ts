@@ -13,9 +13,9 @@ import type { TypeSystemPlugin } from '../../../src/mfe/plugins/types';
 import type { ExtensionDomain, Extension, MfeEntry } from '../../../src/mfe/types';
 import type { MfeHandler } from '../../../src/mfe/handler/types';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
 import { MockContainerProvider } from '../test-utils';
 
@@ -24,47 +24,47 @@ describe('Lifecycle Stage Triggering', () => {
   let plugin: TypeSystemPlugin;
   let mockContainerProvider: MockContainerProvider;
 
-  const customStageId = 'gts.hai3.mfes.lifecycle.stage.v1~test.lifecycle.trigger.custom_stage.v1';
-  const initStageId = 'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1';
+  const customStageId = 'gts.frontx.mfes.lifecycle.stage.v1~test.lifecycle.trigger.custom_stage.v1';
+  const initStageId = 'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1';
 
   const testDomain: ExtensionDomain = {
-    id: 'gts.hai3.mfes.ext.domain.v1~test.lifecycle.trigger.domain.v1',
+    id: 'gts.frontx.mfes.ext.domain.v1~test.lifecycle.trigger.domain.v1',
     sharedProperties: [],
     actions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
     lifecycleStages: [
       initStageId,
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
       customStageId,
     ],
     extensionsLifecycleStages: [
       initStageId,
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
       customStageId,
     ],
   };
 
   const testEntry: MfeEntry = {
-    id: 'gts.hai3.mfes.mfe.entry.v1~test.lifecycle.trigger.entry.v1',
+    id: 'gts.frontx.mfes.mfe.entry.v1~test.lifecycle.trigger.entry.v1',
     requiredProperties: [],
     optionalProperties: [],
     actions: [],
     domainActions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
   };
 
   const testExtension: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.lifecycle.trigger.extension.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.lifecycle.trigger.extension.v1',
     domain: testDomain.id,
     entry: testEntry.id,
   };
@@ -85,13 +85,13 @@ describe('Lifecycle Stage Triggering', () => {
     });
     plugin.register(testDomain); // Register domain so it can be referenced in lifecycle hooks
     plugin.register({
-      id: 'gts.hai3.mfes.comm.action.v1~test.lifecycle.trigger.action.v1',
+      id: 'gts.frontx.mfes.comm.action.v1~test.lifecycle.trigger.action.v1',
     });
     plugin.register({
-      id: 'gts.hai3.mfes.comm.action.v1~test.lifecycle.hook1.v1',
+      id: 'gts.frontx.mfes.comm.action.v1~test.lifecycle.hook1.v1',
     });
     plugin.register({
-      id: 'gts.hai3.mfes.comm.action.v1~test.lifecycle.hook2.v1',
+      id: 'gts.frontx.mfes.comm.action.v1~test.lifecycle.hook2.v1',
     });
   });
 
@@ -105,7 +105,7 @@ describe('Lifecycle Stage Triggering', () => {
             stage: customStageId,
             actions_chain: {
               action: {
-                type: 'gts.hai3.mfes.comm.action.v1~test.lifecycle.trigger.action.v1',
+                type: 'gts.frontx.mfes.comm.action.v1~test.lifecycle.trigger.action.v1',
                 target: testDomain.id,
               },
             },
@@ -145,13 +145,13 @@ describe('Lifecycle Stage Triggering', () => {
     it('should execute hooks for all extensions in a domain', async () => {
       const ext1WithHooks: Extension = {
         ...testExtension,
-        id: 'gts.hai3.mfes.ext.extension.v1~test.lifecycle.trigger.ext1.v1',
+        id: 'gts.frontx.mfes.ext.extension.v1~test.lifecycle.trigger.ext1.v1',
         lifecycle: [
           {
             stage: customStageId,
             actions_chain: {
               action: {
-                type: 'gts.hai3.mfes.comm.action.v1~test.lifecycle.trigger.action.v1',
+                type: 'gts.frontx.mfes.comm.action.v1~test.lifecycle.trigger.action.v1',
                 target: testDomain.id,
               },
             },
@@ -161,13 +161,13 @@ describe('Lifecycle Stage Triggering', () => {
 
       const ext2WithHooks: Extension = {
         ...testExtension,
-        id: 'gts.hai3.mfes.ext.extension.v1~test.lifecycle.trigger.ext2.v1',
+        id: 'gts.frontx.mfes.ext.extension.v1~test.lifecycle.trigger.ext2.v1',
         lifecycle: [
           {
             stage: customStageId,
             actions_chain: {
               action: {
-                type: 'gts.hai3.mfes.comm.action.v1~test.lifecycle.trigger.action.v1',
+                type: 'gts.frontx.mfes.comm.action.v1~test.lifecycle.trigger.action.v1',
                 target: testDomain.id,
               },
             },
@@ -215,7 +215,7 @@ describe('Lifecycle Stage Triggering', () => {
             stage: customStageId,
             actions_chain: {
               action: {
-                type: 'gts.hai3.mfes.comm.action.v1~test.lifecycle.trigger.action.v1',
+                type: 'gts.frontx.mfes.comm.action.v1~test.lifecycle.trigger.action.v1',
                 target: testDomain.id,
               },
             },
@@ -291,7 +291,7 @@ describe('Lifecycle Stage Triggering', () => {
     it('should trigger activated stage during mountExtension', async () => {
       // Register domain with mock handler
       const mockHandler = {
-        handledBaseTypeId: 'gts.hai3.mfes.mfe.entry.v1~',
+        handledBaseTypeId: 'gts.frontx.mfes.mfe.entry.v1~',
         priority: 100,
         load: vi.fn().mockResolvedValue({
           mount: vi.fn().mockResolvedValue(undefined),
@@ -316,7 +316,7 @@ describe('Lifecycle Stage Triggering', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: testDomain.id,
           payload: { extensionId: testExtension.id },
         },
@@ -325,7 +325,7 @@ describe('Lifecycle Stage Triggering', () => {
       // Activated should have been triggered
       expect(spy).toHaveBeenCalledWith(
         testExtension.id,
-        'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1'
+        'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1'
       );
 
       spy.mockRestore();
@@ -334,7 +334,7 @@ describe('Lifecycle Stage Triggering', () => {
     it('should trigger deactivated stage during unmountExtension', async () => {
       // Register domain with mock handler
       const mockHandler = {
-        handledBaseTypeId: 'gts.hai3.mfes.mfe.entry.v1~',
+        handledBaseTypeId: 'gts.frontx.mfes.mfe.entry.v1~',
         priority: 100,
         load: vi.fn().mockResolvedValue({
           mount: vi.fn().mockResolvedValue(undefined),
@@ -356,7 +356,7 @@ describe('Lifecycle Stage Triggering', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: testDomain.id,
           payload: { extensionId: testExtension.id },
         },
@@ -368,7 +368,7 @@ describe('Lifecycle Stage Triggering', () => {
       // Unmount
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_UNMOUNT_EXT,
+          type: FRONTX_ACTION_UNMOUNT_EXT,
           target: testDomain.id,
           payload: { extensionId: testExtension.id },
         },
@@ -390,7 +390,7 @@ describe('Lifecycle Stage Triggering', () => {
       // Destroyed should have been triggered
       expect(spy).toHaveBeenCalledWith(
         testExtension.id,
-        'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1'
+        'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1'
       );
 
       // Extension should no longer be registered
@@ -400,8 +400,8 @@ describe('Lifecycle Stage Triggering', () => {
     });
 
     it('should execute hooks in declaration order', async () => {
-      const hook1ActionType = 'gts.hai3.mfes.comm.action.v1~test.lifecycle.hook1.v1';
-      const hook2ActionType = 'gts.hai3.mfes.comm.action.v1~test.lifecycle.hook2.v1';
+      const hook1ActionType = 'gts.frontx.mfes.comm.action.v1~test.lifecycle.hook1.v1';
+      const hook2ActionType = 'gts.frontx.mfes.comm.action.v1~test.lifecycle.hook2.v1';
 
       const extensionWithMultipleHooks: Extension = {
         ...testExtension,

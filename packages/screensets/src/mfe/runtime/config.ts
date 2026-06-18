@@ -29,7 +29,7 @@ export interface ScreensetsRegistryConfig {
    *
    * @example
    * ```typescript
-   * import { screensetsRegistryFactory, gtsPlugin } from '@hai3/screensets';
+   * import { screensetsRegistryFactory, gtsPlugin } from '@gears-frontx/screensets';
    *
    * // Build the registry with GTS plugin at application wiring time
    * const registry = screensetsRegistryFactory.build({ typeSystem: gtsPlugin });

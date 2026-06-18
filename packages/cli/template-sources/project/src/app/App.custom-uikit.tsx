@@ -7,9 +7,9 @@
  */
 
 import { useEffect } from 'react';
-import { useTheme } from '@hai3/react';
+import { useTheme } from '@gears-frontx/react';
 import { Layout } from '@/app/layout';
-import { StudioOverlay } from '@hai3/studio';
+import { StudioOverlay } from '@gears-frontx/studio';
 import { MfeScreenContainer } from '@/app/mfe/MfeScreenContainer';
 __LIBRARY_SYNC_IMPORT__
 

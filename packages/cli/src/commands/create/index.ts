@@ -86,7 +86,7 @@ export const createCommand: CommandDefinition<
     },
     {
       name: 'local',
-      description: 'Use local @hai3 packages from monorepo (file:) instead of npm; requires CLI run from linked monorepo or HAI3_MONOREPO_ROOT',
+      description: 'Use local @gears-frontx packages from monorepo (file:) instead of npm; requires CLI run from linked monorepo or GEARS_FRONTX_MONOREPO_ROOT',
       type: 'boolean',
     },
     {
@@ -340,17 +340,17 @@ export const createCommand: CommandDefinition<
     logger.info(`Creating project '${args.projectName}'...`);
     logger.newline();
 
-    // Resolve local packages when --local or HAI3_USE_LOCAL
-    const useLocal = args.local ?? (process.env.HAI3_USE_LOCAL === '1' || process.env.HAI3_USE_LOCAL === 'true');
+    // Resolve local packages when --local or GEARS_FRONTX_USE_LOCAL
+    const useLocal = args.local ?? (process.env.GEARS_FRONTX_USE_LOCAL === '1' || process.env.GEARS_FRONTX_USE_LOCAL === 'true');
     let monorepoRoot: string | null = null;
     if (useLocal) {
       monorepoRoot = await findMonorepoRoot(getTemplatesDir());
       if (!monorepoRoot) {
         logger.warn(
-          'Local packages requested but HAI3 monorepo root not found. Set HAI3_MONOREPO_ROOT or run from a linked CLI inside the monorepo. Using registry versions.'
+          'Local packages requested but Gears FrontX Monorepo root not found. Set GEARS_FRONTX_MONOREPO_ROOT or run from a linked CLI inside the monorepo. Using registry versions.'
         );
       } else {
-        logger.info('Using local @hai3 packages from monorepo (file:).');
+        logger.info('Using local @gears-frontx packages from monorepo (file:).');
       }
     }
 

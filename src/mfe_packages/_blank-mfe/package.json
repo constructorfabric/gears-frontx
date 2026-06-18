@@ -1,5 +1,5 @@
 {
-  "name": "@hai3/blank-mfe",
+  "name": "@gears-frontx/blank-mfe",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -11,7 +11,7 @@
   "dependencies": {
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "@hai3/react": "file:../../../packages/react",
+    "@gears-frontx/react": "file:../../../packages/react",
     "tailwindcss": "^3.4.17",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.6.0",
@@ -25,11 +25,11 @@
     "@types/react-dom": "19.0.3",
     "vite": "6.4.1",
     "typescript": "5.4.2",
-    "@hai3/framework": "file:../../../packages/framework",
-    "@hai3/state": "file:../../../packages/state",
-    "@hai3/screensets": "file:../../../packages/screensets",
-    "@hai3/api": "file:../../../packages/api",
-    "@hai3/i18n": "file:../../../packages/i18n",
+    "@gears-frontx/framework": "file:../../../packages/framework",
+    "@gears-frontx/state": "file:../../../packages/state",
+    "@gears-frontx/screensets": "file:../../../packages/screensets",
+    "@gears-frontx/api": "file:../../../packages/api",
+    "@gears-frontx/i18n": "file:../../../packages/i18n",
     "@reduxjs/toolkit": "^2.11.2",
     "react-redux": "^9.2.0"
   }

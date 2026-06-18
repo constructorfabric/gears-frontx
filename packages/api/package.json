@@ -1,6 +1,6 @@
 {
-  "name": "@hai3/api",
-  "version": "0.4.0-alpha.0",
+  "name": "@gears-frontx/api",
+  "version": "0.1.0",
   "description": "API communication protocols and service registry for HAI3 SDK",
   "type": "module",
   "main": "./dist/index.cjs",

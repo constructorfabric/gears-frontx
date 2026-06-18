@@ -1,10 +1,10 @@
-# @hai3/studio
+# @gears-frontx/studio
 
 Development tools overlay for HAI3 applications providing runtime controls and debugging capabilities.
 
 ## Overview
 
-`@hai3/studio` delivers a comprehensive development environment overlay that enables real-time application control without code changes. The package provides visual controls for theme switching, screen navigation, language testing, and API mode toggling, all accessible through a draggable, resizable panel that automatically tree-shakes out of production builds.
+`@gears-frontx/studio` delivers a comprehensive development environment overlay that enables real-time application control without code changes. The package provides visual controls for theme switching, screen navigation, language testing, and API mode toggling, all accessible through a draggable, resizable panel that automatically tree-shakes out of production builds.
 
 ## Purpose
 
@@ -87,7 +87,7 @@ The package imports UI components directly from UI Kit rather than using the com
 ## Installation
 
 ```bash
-npm install --save-dev @hai3/studio
+npm install --save-dev @gears-frontx/studio
 ```
 
 Install as a devDependency rather than a regular dependency to reinforce its development-only nature.
@@ -100,7 +100,7 @@ Studio provides full localization for 36 languages including English, Spanish, F
 
 Requires the following packages:
 
-- `@hai3/uicore` - Core framework for state management and events
+- `@gears-frontx/uicore` - Core framework for state management and events
 - `react` ^19.2.4 - React library
 - `react-dom` ^19.2.4 - React DOM renderer
 
@@ -124,8 +124,8 @@ Apache-2.0
 
 ## Related Packages
 
-- [`@hai3/uicore`](../uicore) - Core layout and state management
+- [`@gears-frontx/uicore`](../uicore) - Core layout and state management
 
 ## Contributing
 
-Studio is part of the HAI3 monorepo. See the main repository for contribution guidelines and development setup instructions.
+Studio is part of the Gears FrontX Monorepo. See the main repository for contribution guidelines and development setup instructions.

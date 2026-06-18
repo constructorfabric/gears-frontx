@@ -1,5 +1,5 @@
 {
-  "name": "@hai3/demo-mfe",
+  "name": "@gears-frontx/demo-mfe",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -11,7 +11,7 @@
   "dependencies": {
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "@hai3/react": "file:../../../packages/react",
+    "@gears-frontx/react": "file:../../../packages/react",
     "tailwindcss": "^3.4.17",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.6.0",

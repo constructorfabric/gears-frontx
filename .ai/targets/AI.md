@@ -28,7 +28,7 @@
 - DELEGATE: command routes to CLI.
 - LAYER: SDK architecture tier (sdk, framework, react, app).
   Commands and targets filtered by layer. Variants: .sdk.md, .framework.md, .react.md.
-  Fallback chain: react -> framework -> sdk -> base. Layer stored in hai3.config.json.
+  Fallback chain: react -> framework -> sdk -> base. Layer stored in frontx.config.json.
 
 ## RULE FORMAT
 Rules must follow one of these forms:

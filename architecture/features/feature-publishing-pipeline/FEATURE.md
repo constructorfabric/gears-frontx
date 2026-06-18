@@ -44,8 +44,8 @@
 
 ### 1.1 Overview
 
-Automated NPM package publishing pipeline for the HAI3 monorepo. When a pull request that
-bumps one or more `@hai3/*` package versions is merged to `main`, the CI/CD system detects
+Automated NPM package publishing pipeline for the Gears FrontX Monorepo. When a pull request that
+bumps one or more `@gears-frontx/*` package versions is merged to `main`, the CI/CD system detects
 which packages changed, builds them in strict layer order, verifies each version does not
 already exist on the NPM registry, and publishes affected packages with an appropriate dist-tag.
 
@@ -64,7 +64,7 @@ live under `packages/` in the monorepo root and are built via `npm run build:pac
 Guarantee that every version bump merged to `main` results in a correct, idempotent, and
 layer-ordered NPM publish with no human intervention after the PR merge.
 
-Success criteria: A PR that bumps `@hai3/state` from `0.3.0` to `0.4.0-alpha.0` triggers
+Success criteria: A PR that bumps `@gears-frontx/state` from `0.3.0` to `0.4.0-alpha.0` triggers
 exactly one publish of that version; subsequent re-runs of the same workflow skip it.
 
 ### 1.3 Actors
@@ -270,7 +270,7 @@ Describes the publishing state of a single package within one workflow run.
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-publishing-pipeline-metadata-contract`
 
-All `@hai3/*` packages include the required NPM publishing metadata in their `package.json`.
+All `@gears-frontx/*` packages include the required NPM publishing metadata in their `package.json`.
 Running `npm pack` on any package produces a tarball containing only `dist/` files plus any
 documented extras (README, CLAUDE.md), with no source TypeScript files.
 
@@ -306,7 +306,7 @@ documented extras (README, CLAUDE.md), with no source TypeScript files.
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-publishing-pipeline-version-alignment`
 
-All `@hai3/*` packages that are published together carry the same version string. A PR that
+All `@gears-frontx/*` packages that are published together carry the same version string. A PR that
 bumps versions bumps them uniformly (e.g., all go from `0.3.0` to `0.4.0-alpha.0`).
 
 **Implementation details**:
@@ -385,7 +385,7 @@ publishes. Packages whose version already exists on NPM are silently skipped.
 
 ## 6. Acceptance Criteria
 
-- [ ] A PR that bumps the version of a single `@hai3/*` package triggers exactly one successful `npm publish` for that package upon merge to `main`
+- [ ] A PR that bumps the version of a single `@gears-frontx/*` package triggers exactly one successful `npm publish` for that package upon merge to `main`
 - [ ] A PR that bumps versions in multiple packages across layers publishes them in layer order: L1 SDK first, CLI last
 - [ ] If a version already exists on NPM, the workflow skips that package, logs the skip reason, and continues with remaining packages
 - [ ] If any `npm publish` command fails after three attempts, the workflow exits immediately and does not publish subsequent packages
@@ -420,7 +420,7 @@ explicit dist-tags. This preserves `latest` for stable releases only.
 The current implementation is fail-fast: the first unrecoverable publish failure halts the
 entire run. This is intentional. If a lower-layer package fails to publish, allowing
 higher-layer packages to publish would produce an inconsistent registry state where consumers
-see a new `@hai3/framework` but cannot resolve its new `@hai3/state` dependency. Fail-fast
+see a new `@gears-frontx/framework` but cannot resolve its new `@gears-frontx/state` dependency. Fail-fast
 and the fixed layer order together guarantee registry consistency.
 
 ### Architecture Enforcement Connection

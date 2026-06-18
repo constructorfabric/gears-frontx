@@ -1,14 +1,14 @@
 /// <reference types="vite/client" />
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HAI3Provider, apiRegistry, createHAI3App, MfeHandlerMF, gtsPlugin, HAI3_MFE_ENTRY_MF } from '@hai3/react';
+import { HAI3Provider, apiRegistry, createHAI3App, MfeHandlerMF, gtsPlugin, FRONTX_MFE_ENTRY_MF } from '@gears-frontx/react';
 import { AccountsApiService } from '@/app/api';
 import './globals.css';
 import '@/app/events/bootstrapEvents'; // Register app-level events (type augmentation)
 import { registerBootstrapEffects } from '@/app/effects/bootstrapEffects'; // Register app-level effects
 import App from './App';
 
-import { hai3Themes, DEFAULT_THEME_ID } from '@/app/themes';
+import { frontxThemes, DEFAULT_THEME_ID } from '@/app/themes';
 
 // Register accounts service (application-level service for user info)
 apiRegistry.register(AccountsApiService);
@@ -21,7 +21,7 @@ apiRegistry.initialize({});
 const app = createHAI3App({
   microfrontends: {
     typeSystem: gtsPlugin,
-    mfeHandlers: [new MfeHandlerMF(HAI3_MFE_ENTRY_MF)],
+    mfeHandlers: [new MfeHandlerMF(FRONTX_MFE_ENTRY_MF)],
   },
 });
 
@@ -29,7 +29,7 @@ const app = createHAI3App({
 registerBootstrapEffects(app.store.dispatch);
 
 // Register all themes (provides CSS variables regardless of UI kit choice)
-for (const theme of hai3Themes) {
+for (const theme of frontxThemes) {
   app.themeRegistry.register(theme);
 }
 

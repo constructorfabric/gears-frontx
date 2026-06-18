@@ -1,5 +1,5 @@
 
-# @hai3/framework Guidelines (Canonical)
+# @gears-frontx/framework Guidelines (Canonical)
 
 ## AI WORKFLOW (REQUIRED)
 1) Summarize 3-6 rules from this file before making changes.
@@ -8,13 +8,13 @@
 ## SCOPE
 - Package: `packages/framework/`
 - Layer: L2 Framework (depends on all L1 SDK packages)
-- Peer dependencies: `@hai3/state`, `@hai3/screensets`, `@hai3/api`, `@hai3/i18n`
+- Peer dependencies: `@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, `@gears-frontx/i18n`
 
 ## CRITICAL RULES
 - Applications built by composing plugins via `createHAI3().use()`.
 - Use presets for common configurations (full, minimal, headless).
 - Access registries and actions through app instance.
-- NO React code in this package (React bindings in @hai3/react).
+- NO React code in this package (React bindings in @gears-frontx/react).
 - Plugin dependencies auto-resolved (order doesn't matter).
 
 ## PLUGIN COMPOSITION

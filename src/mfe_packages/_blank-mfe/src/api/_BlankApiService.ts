@@ -3,7 +3,7 @@
  * Replace '_Blank' with your screenset name.
  */
 
-import { BaseApiService, RestProtocol, RestMockPlugin } from '@hai3/react';
+import { BaseApiService, RestProtocol, RestMockPlugin } from '@gears-frontx/react';
 import { blankMockMap } from './mocks';
 
 /**

@@ -43,7 +43,7 @@ function createTestManifest(
   }
 
   const manifest: MfManifest = {
-    id: `gts.hai3.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
+    id: `gts.frontx.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
     remoteEntry: remoteEntryUrl,
     remoteName,
     ...options,
@@ -68,7 +68,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
   let mocks: ReturnType<typeof setupBlobUrlLoaderMocks>;
 
   beforeEach(() => {
-    handler = new MfeHandlerMF('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~', { timeout: 5000, retries: 0 });
+    handler = new MfeHandlerMF('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~', { timeout: 5000, retries: 0 });
     mocks = setupBlobUrlLoaderMocks();
   });
 
@@ -91,13 +91,13 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       registerSources(mocks.registerSource);
 
       const entry1: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart1.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart1.v1',
         manifest,
         exposedModule: './ChartWidget1',
       };
 
       const entry2: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart2.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart2.v1',
         manifest,
         exposedModule: './ChartWidget2',
       };
@@ -119,13 +119,13 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       registerSources(mocks.registerSource);
 
       const entry1: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart1.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart1.v1',
         manifest,
         exposedModule: './ChartWidget1',
       };
 
       const entry2: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart2.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart2.v1',
         manifest,
         exposedModule: './ChartWidget2',
       };
@@ -145,7 +145,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       registerSources(mocks.registerSource);
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart.v1',
         manifest,
         exposedModule: './ChartWidget',
       };
@@ -155,7 +155,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       // Create another entry with same manifest ID (string reference)
       const entry2: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart2.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart2.v1',
         manifest: manifest.id,
         exposedModule: './ChartWidget2',
       };
@@ -174,7 +174,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       registerSources(mocks.registerSource);
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart.v1',
         manifest,
         exposedModule: './ChartWidget',
       };
@@ -193,7 +193,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       registerSources(mocks.registerSource);
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart.v1',
         manifest,
         exposedModule: './ChartWidget',
       };
@@ -211,7 +211,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       // First, load with inline manifest to cache it
       const entry1: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart1.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart1.v1',
         manifest,
         exposedModule: './ChartWidget1',
       };
@@ -219,7 +219,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       // Now use type ID reference
       const entry2: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart2.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart2.v1',
         manifest: manifest.id,
         exposedModule: './ChartWidget2',
       };
@@ -237,17 +237,17 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const entries: MfeEntryMF[] = [
         {
-          id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart1.v1',
+          id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart1.v1',
           manifest,
           exposedModule: './ChartWidget1',
         },
         {
-          id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart2.v1',
+          id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart2.v1',
           manifest,
           exposedModule: './ChartWidget2',
         },
         {
-          id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart3.v1',
+          id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart3.v1',
           manifest,
           exposedModule: './ChartWidget3',
         },
@@ -261,12 +261,12 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
     it('17.2.4 - Clear error messaging if manifest resolution fails (missing inline fields)', async () => {
       const invalidManifest = {
-        id: 'gts.hai3.mfes.mfe.mf_manifest.v1~acme.analytics.manifest.v1',
+        id: 'gts.frontx.mfes.mfe.mf_manifest.v1~acme.analytics.manifest.v1',
         // Missing remoteEntry and remoteName
       } as MfManifest;
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart.v1',
         manifest: invalidManifest,
         exposedModule: './ChartWidget',
       };
@@ -277,8 +277,8 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
     it('17.2.4 - Clear error messaging if manifest resolution fails (type ID not found)', async () => {
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart.v1',
-        manifest: 'gts.hai3.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart.v1',
+        manifest: 'gts.frontx.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
         exposedModule: './ChartWidget',
       };
 
@@ -294,7 +294,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       } as MfManifest;
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart.v1',
         manifest: invalidManifest,
         exposedModule: './ChartWidget',
       };
@@ -305,13 +305,13 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
     it('17.2.4 - Clear error messaging for invalid manifest object (missing remoteName)', async () => {
       const invalidManifest = {
-        id: 'gts.hai3.mfes.mfe.mf_manifest.v1~acme.analytics.manifest.v1',
+        id: 'gts.frontx.mfes.mfe.mf_manifest.v1~acme.analytics.manifest.v1',
         remoteEntry: 'https://cdn.example.com/remoteEntry.js',
         // Missing remoteName
       } as MfManifest;
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart.v1',
         manifest: invalidManifest,
         exposedModule: './ChartWidget',
       };
@@ -331,12 +331,12 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const entries: MfeEntryMF[] = [
         {
-          id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart1.v1',
+          id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart1.v1',
           manifest,
           exposedModule: './ChartWidget1',
         },
         {
-          id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart2.v1',
+          id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart2.v1',
           manifest: manifest.id, // Reference by ID
           exposedModule: './ChartWidget2',
         },
@@ -358,17 +358,17 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const entries: MfeEntryMF[] = [
         {
-          id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart1.v1',
+          id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart1.v1',
           manifest,
           exposedModule: './Widget1',
         },
         {
-          id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart2.v1',
+          id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart2.v1',
           manifest,
           exposedModule: './Widget2',
         },
         {
-          id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart3.v1',
+          id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart3.v1',
           manifest,
           exposedModule: './Widget3',
         },
@@ -396,7 +396,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       registerSources(mocks.registerSource);
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart.v1',
         manifest,
         exposedModule: './ChartWidget',
       };
@@ -415,14 +415,14 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       registerSources(mocks.registerSource);
 
       const entry1: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart1.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart1.v1',
         manifest,
         exposedModule: './ChartWidget1',
       };
       await handler.load(entry1);
 
       const entry2: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.chart2.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.chart2.v1',
         manifest: manifest.id,
         exposedModule: './ChartWidget2',
       };
@@ -463,13 +463,13 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       );
 
       const manifest: MfManifest = {
-        id: `gts.hai3.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
+        id: `gts.frontx.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
         remoteEntry: remoteEntryUrl,
         remoteName,
       };
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.scoped.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.scoped.v1',
         manifest,
         exposedModule: './Widget',
       };
@@ -504,13 +504,13 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       mocks.registerSource(`${baseUrl}${depChunk}`, 'export const helper = () => {};');
 
       const manifest: MfManifest = {
-        id: `gts.hai3.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
+        id: `gts.frontx.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
         remoteEntry: remoteEntryUrl,
         remoteName,
       };
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.flat.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.flat.v1',
         manifest,
         exposedModule: './Widget',
       };
@@ -545,13 +545,13 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       );
 
       const manifest: MfManifest = {
-        id: `gts.hai3.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
+        id: `gts.frontx.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
         remoteEntry: remoteEntryUrl,
         remoteName,
       };
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.deep.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.deep.v1',
         manifest,
         exposedModule: './Widget',
       };

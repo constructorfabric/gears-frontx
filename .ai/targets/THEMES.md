@@ -7,11 +7,11 @@
 
 ## SCOPE
 - Theme objects and theme registration in packages and app code.
-- Theme type definitions are exported from @hai3/framework.
+- Theme type definitions are exported from @gears-frontx/framework.
 
 ## CRITICAL RULES
 - Theme objects are the single source of truth; no standalone CSS variables.
-- Theme shape MUST match the Theme interface from @hai3/framework.
+- Theme shape MUST match the Theme interface from @gears-frontx/framework.
 - Apps define themes in src/themes/**; screensets must not modify themes.
 - Theme registration MUST use app.themeRegistry.register(themeConfig).
 - FORBIDDEN: themeRegistry.register(id, theme) and createHAI3App({ themes: { applyFn } }).
@@ -20,7 +20,7 @@
 ## STOP CONDITIONS
 - Editing theme values inside screensets or feature modules.
 - Adding CSS variables that do not exist in the Theme interface.
-- Changing the Theme interface without a version bump in @hai3/framework.
+- Changing the Theme interface without a version bump in @gears-frontx/framework.
 
 ## PRE-DIFF CHECKLIST
 - [ ] Theme object matches contract exactly.

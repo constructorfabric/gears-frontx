@@ -59,16 +59,16 @@
 
 ### 1.1 Overview
 
-Framework Composition is the L2 layer that stitches together the four L1 SDK packages (`@hai3/state`, `@hai3/screensets`, `@hai3/api`, `@hai3/i18n`) into a cohesive, production-ready application framework. It does this through a plugin architecture centered on the `createHAI3()` builder: the host application chains `.use(plugin)` calls and calls `.build()` to produce an assembled `HAI3App` instance that owns a Redux store, theme registry, i18n registry, API registry, MFE-enabled screensets registry, and a complete set of typed actions.
+Framework Composition is the L2 layer that stitches together the four L1 SDK packages (`@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, `@gears-frontx/i18n`) into a cohesive, production-ready application framework. It does this through a plugin architecture centered on the `createHAI3()` builder: the host application chains `.use(plugin)` calls and calls `.build()` to produce an assembled `HAI3App` instance that owns a Redux store, theme registry, i18n registry, API registry, MFE-enabled screensets registry, and a complete set of typed actions.
 
 **Problem this solves**: Without this layer each application would manually wire state slices, event subscriptions, registries, and lifecycle hooks across four packages — a complex and error-prone process that produces inconsistent patterns across projects.
 
-**Primary value**: A single call to `createHAI3App()` (or a composed `.use()` chain) yields a framework instance that the React layer (`@hai3/react`) can consume directly, with all cross-cutting concerns (theme, language, MFE lifecycle, mock mode, layout state) already coordinated.
+**Primary value**: A single call to `createHAI3App()` (or a composed `.use()` chain) yields a framework instance that the React layer (`@gears-frontx/react`) can consume directly, with all cross-cutting concerns (theme, language, MFE lifecycle, mock mode, layout state) already coordinated.
 
 **Key assumptions**:
 - Applications run in a browser environment; no SSR.
 - Each plugin declares name and optional dependencies; the builder performs topological ordering.
-- The framework has no React dependency — all React integration lives in `@hai3/react` (L3).
+- The framework has no React dependency — all React integration lives in `@gears-frontx/react` (L3).
 
 ### 1.2 Purpose
 
@@ -261,7 +261,7 @@ Enable host applications to compose a fully-wired HAI3 framework instance by ass
 
 - [x] `p1` - **ID**: `cpt-hai3-algo-framework-composition-gts-validation`
 
-1. [ ] `p1` - Construct `ephemeralId` by appending the runtime suffix to the property type ID: `ephemeralId = "${propertyTypeId}hai3.mfes.comm.runtime.v1"` - `inst-build-ephemeral-id`
+1. [ ] `p1` - Construct `ephemeralId` by appending the runtime suffix to the property type ID: `ephemeralId = "${propertyTypeId}frontx.mfes.comm.runtime.v1"` - `inst-build-ephemeral-id`
 2. [ ] `p1` - Call `typeSystem.register({ id: ephemeralId, value })` to register the candidate instance in the GTS store (overwrites any prior registration for the same deterministic ID) - `inst-gts-register`
 3. [ ] `p1` - Call `typeSystem.validateInstance(ephemeralId)` to validate the value against the schema derived from the chained instance ID - `inst-gts-validate`
 4. [ ] `p1` - **IF** validation returns failure: **RETURN** throw error containing validation failure details - `inst-gts-reject`
@@ -379,7 +379,7 @@ Host applications can compose a HAI3 framework instance by chaining `.use(plugin
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-framework-composition-layout`
 
-The `layout()` plugin registers Redux slices for all seven layout domains (header, footer, menu, sidebar, screen, popup, overlay), subscribes to layout events on the event bus, and dispatches corresponding reducer actions to keep state consistent. The `screensets()` plugin registers the screen slice. All layout state types are exported from `@hai3/framework`.
+The `layout()` plugin registers Redux slices for all seven layout domains (header, footer, menu, sidebar, screen, popup, overlay), subscribes to layout events on the event bus, and dispatches corresponding reducer actions to keep state consistent. The `screensets()` plugin registers the screen slice. All layout state types are exported from `@gears-frontx/framework`.
 
 **Layout domains and their slices**:
 - `header`: `HeaderState` — user info, loading
@@ -434,8 +434,8 @@ The framework provides an event-driven API for configuring tenant, language, the
 When the host changes theme or language, the respective plugin propagates the new value to all registered MFE domains by calling `screensetsRegistry.updateSharedProperty()` with the appropriate shared property constant. Errors from the registry call are caught and logged; they never crash the host application. On initialization, the `themes()` plugin applies the first registered theme; the `i18n()` plugin loads English translations in the background.
 
 **Shared property constants**:
-- `HAI3_SHARED_PROPERTY_THEME` (`gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~`)
-- `HAI3_SHARED_PROPERTY_LANGUAGE` (`gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~`)
+- `HAI3_SHARED_PROPERTY_THEME` (`gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~`)
+- `HAI3_SHARED_PROPERTY_LANGUAGE` (`gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~`)
 
 **Implements**:
 - `cpt-hai3-flow-framework-composition-theme-propagation`
@@ -484,7 +484,7 @@ The `microfrontends()` plugin accepts `MicrofrontendsConfig` with required `type
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-framework-composition-shared-property`
 
-`ScreensetsRegistry.updateSharedProperty(propertyId, value)` is the sole write path for shared property values. The implementation validates the value against the GTS-derived schema before any propagation. Validation uses `typeSystem.register({ id: ephemeralId, value })` + `typeSystem.validateInstance(ephemeralId)` where `ephemeralId = "${propertyTypeId}hai3.mfes.comm.runtime.v1"`. If validation fails, the method throws and no domain receives the update. Only domains whose `sharedProperties` array includes `propertyId` receive the update. No matching domains is a silent no-op. The deprecated `updateDomainProperty()` and `updateDomainProperties()` methods do NOT exist on the abstract class or implementation.
+`ScreensetsRegistry.updateSharedProperty(propertyId, value)` is the sole write path for shared property values. The implementation validates the value against the GTS-derived schema before any propagation. Validation uses `typeSystem.register({ id: ephemeralId, value })` + `typeSystem.validateInstance(ephemeralId)` where `ephemeralId = "${propertyTypeId}frontx.mfes.comm.runtime.v1"`. If validation fails, the method throws and no domain receives the update. Only domains whose `sharedProperties` array includes `propertyId` receive the update. No matching domains is a silent no-op. The deprecated `updateDomainProperty()` and `updateDomainProperties()` methods do NOT exist on the abstract class or implementation.
 
 **Implements**:
 - `cpt-hai3-flow-framework-composition-shared-property-broadcast`
@@ -513,7 +513,7 @@ Three presets are provided as functions returning `HAI3Plugin[]`:
 - `minimal()` — `screensets` + `themes` only
 - `headless()` — `screensets` only
 
-All presets are exported from `@hai3/framework`. The `presets` object collects all three under named keys.
+All presets are exported from `@gears-frontx/framework`. The `presets` object collects all three under named keys.
 
 **Covers (PRD)**:
 - `cpt-hai3-fr-sdk-plugin-arch`
@@ -527,11 +527,11 @@ All presets are exported from `@hai3/framework`. The `presets` object collects a
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-framework-composition-reexports`
 
-`@hai3/framework` re-exports the public API of all four L1 packages so that consumers can import from a single entry point. Re-exported symbols include:
-- From `@hai3/state`: `eventBus`, `createStore`, `getStore`, `registerSlice`, `hasSlice`, `createSlice`, and all related types
-- From `@hai3/screensets`: `ScreensetsRegistry`, `screensetsRegistryFactory`, `MfeHandler`, `MfeBridgeFactory`, `LayoutDomain`, action/property constants, type contracts
-- From `@hai3/api`: `apiRegistry`, `BaseApiService`, `RestProtocol`, `SseProtocol`, mock plugins, type guards
-- From `@hai3/i18n`: `i18nRegistry`, `Language`, `SUPPORTED_LANGUAGES`, all formatters
+`@gears-frontx/framework` re-exports the public API of all four L1 packages so that consumers can import from a single entry point. Re-exported symbols include:
+- From `@gears-frontx/state`: `eventBus`, `createStore`, `getStore`, `registerSlice`, `hasSlice`, `createSlice`, and all related types
+- From `@gears-frontx/screensets`: `ScreensetsRegistry`, `screensetsRegistryFactory`, `MfeHandler`, `MfeBridgeFactory`, `LayoutDomain`, action/property constants, type contracts
+- From `@gears-frontx/api`: `apiRegistry`, `BaseApiService`, `RestProtocol`, `SseProtocol`, mock plugins, type guards
+- From `@gears-frontx/i18n`: `i18nRegistry`, `Language`, `SUPPORTED_LANGUAGES`, all formatters
 
 The framework does NOT export `createAction` to consumers; actions are handwritten functions.
 
@@ -541,7 +541,7 @@ The framework does NOT export `createAction` to consumers; actions are handwritt
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-framework-composition-derived-schemas`
 
-`@hai3/framework` exports three GTS derived schemas (`themeSchema`, `languageSchema`, `extensionScreenSchema`) for application-layer registration. These schemas encode application-level constraints — valid theme values, supported languages, screen extension presentation shape — and are NOT part of the core type system in `@hai3/screensets` (L1). The application registers them on the `TypeSystemPlugin` instance before constructing the HAI3 app via `gtsPlugin.registerSchema()`. This keeps the L1 SDK generic and allows projects to substitute custom schemas.
+`@gears-frontx/framework` exports three GTS derived schemas (`themeSchema`, `languageSchema`, `extensionScreenSchema`) for application-layer registration. These schemas encode application-level constraints — valid theme values, supported languages, screen extension presentation shape — and are NOT part of the core type system in `@gears-frontx/screensets` (L1). The application registers them on the `TypeSystemPlugin` instance before constructing the HAI3 app via `gtsPlugin.registerSchema()`. This keeps the L1 SDK generic and allows projects to substitute custom schemas.
 
 **Covers (PRD)**:
 - `cpt-hai3-fr-mfe-shared-property`
@@ -574,8 +574,8 @@ The framework does NOT export `createAction` to consumers; actions are handwritt
 - [x] `normalizeBase('/console/')` returns `'/console'`; `normalizeBase('')` returns `'/'`; `normalizeBase('console')` returns `'/console'`
 - [x] `stripBase('/console/dashboard', '/console')` returns `'/dashboard'`; `stripBase('/admin/x', '/console')` returns `null`; `stripBase('/console-admin', '/console')` returns `null`
 - [x] `createHAI3App()` uses the `full()` preset and returns a valid `HAI3App` without configuration
-- [x] `@hai3/framework` has no React import (enforced by `dependency-cruiser`)
-- [x] All layout domain types (`HeaderState`, `FooterState`, `MenuState`, `SidebarState`, `ScreenState`, `PopupState`, `OverlayState`) are exported from `@hai3/framework`
+- [x] `@gears-frontx/framework` has no React import (enforced by `dependency-cruiser`)
+- [x] All layout domain types (`HeaderState`, `FooterState`, `MenuState`, `SidebarState`, `ScreenState`, `PopupState`, `OverlayState`) are exported from `@gears-frontx/framework`
 
 ---
 

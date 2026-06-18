@@ -25,14 +25,14 @@
 ## REPO INVARIANTS
 - Event-driven architecture only (see EVENTS.md).
 - Registries follow Open/Closed; adding items must not modify registry root files.
-- SDK packages have ZERO @hai3 dependencies.
+- SDK packages have ZERO @gears-frontx dependencies.
 - No string literal identifiers; use constants or enums.
 - No any, no unknown in type definitions, no "as unknown as" casts.
 - REQUIRED: Use lodash for non-trivial object and array operations.
 
 ## IMPORT RULES
 - Inside same package: relative paths.
-- External deps: Only non-@hai3 packages (e.g., lodash, redux).
+- External deps: Only non-@gears-frontx packages (e.g., lodash, redux).
 - Index files: only when aggregating 3 or more exports.
 
 ## TYPE RULES
@@ -43,7 +43,7 @@
 
 ## STOP CONDITIONS
 - Modifying registry root files.
-- Adding @hai3 package dependencies (SDK layer must be self-contained).
+- Adding @gears-frontx package dependencies (SDK layer must be self-contained).
 - Bypassing rules in EVENTS.md.
 
 ## PRE-DIFF CHECKLIST
@@ -52,7 +52,7 @@
 - Registry root files unchanged.
 - Import paths follow Import Rules.
 - Types and dependents compile.
-- NO @hai3 dependencies in SDK packages.
+- NO @gears-frontx dependencies in SDK packages.
 
 ## BLOCKLIST
 - Telemetry or tracking code.
@@ -61,7 +61,7 @@
 - eslint-disable comments.
 - Barrel exports that hide real imports.
 - Native helpers where lodash equivalents exist.
-- @hai3 package imports (SDK layer restriction).
+- @gears-frontx package imports (SDK layer restriction).
 
 ## DOC STYLE
 - Short, technical, ASCII only.

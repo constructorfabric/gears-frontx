@@ -14,9 +14,9 @@ import type { ActionHandler } from '../mediator';
 import type { ParentMfeBridge } from '../handler/types';
 import type { ContainerProvider } from './container-provider';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../constants';
 import { MfeError } from '../errors';
 
@@ -29,9 +29,9 @@ import { MfeError } from '../errors';
  *   Used by sidebar, popup, and overlay domains.
  *
  * DomainSemantics is derived from the domain's `actions` array at handler construction time:
- * - If the domain's `actions` array does NOT include `HAI3_ACTION_UNMOUNT_EXT` -> 'swap'
+ * - If the domain's `actions` array does NOT include `FRONTX_ACTION_UNMOUNT_EXT` -> 'swap'
  *   (the domain cannot unmount, so mount must implicitly replace the current extension)
- * - If the domain's `actions` array includes `HAI3_ACTION_UNMOUNT_EXT` -> 'toggle'
+ * - If the domain's `actions` array includes `FRONTX_ACTION_UNMOUNT_EXT` -> 'toggle'
  *   (the domain supports explicit unmount, so mount does not implicitly replace)
  */
 type DomainSemantics = 'swap' | 'toggle';
@@ -112,14 +112,14 @@ export class ExtensionLifecycleActionHandler implements ActionHandler {
     payload: Record<string, unknown> | undefined
   ): Promise<void> {
     switch (actionTypeId) {
-      case HAI3_ACTION_LOAD_EXT: {
+      case FRONTX_ACTION_LOAD_EXT: {
         this.requirePayload(actionTypeId, payload);
         const extensionId = this.requireExtensionId(payload);
         await this.callbacks.loadExtension(extensionId);
         break;
       }
 
-      case HAI3_ACTION_MOUNT_EXT: {
+      case FRONTX_ACTION_MOUNT_EXT: {
         this.requirePayload(actionTypeId, payload);
         const extensionId = this.requireExtensionId(payload);
         if (this.domainSemantics === 'swap') {
@@ -132,7 +132,7 @@ export class ExtensionLifecycleActionHandler implements ActionHandler {
         break;
       }
 
-      case HAI3_ACTION_UNMOUNT_EXT: {
+      case FRONTX_ACTION_UNMOUNT_EXT: {
         this.requirePayload(actionTypeId, payload);
         const extensionId = this.requireExtensionId(payload);
         await this.callbacks.unmountExtension(extensionId);

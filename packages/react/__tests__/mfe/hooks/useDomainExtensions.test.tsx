@@ -11,14 +11,14 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { HAI3Provider } from '../../../src/HAI3Provider';
 import { useDomainExtensions } from '../../../src/mfe/hooks/useDomainExtensions';
-import { createHAI3 } from '@hai3/framework';
-import { screensets } from '@hai3/framework';
-import { effects } from '@hai3/framework';
-import { microfrontends } from '@hai3/framework';
-import type { Extension, ExtensionDomain } from '@hai3/framework';
-import { gtsPlugin } from '@hai3/framework';
-import { ContainerProvider } from '@hai3/framework';
-import type { HAI3App } from '@hai3/framework';
+import { createHAI3 } from '@gears-frontx/framework';
+import { screensets } from '@gears-frontx/framework';
+import { effects } from '@gears-frontx/framework';
+import { microfrontends } from '@gears-frontx/framework';
+import type { Extension, ExtensionDomain } from '@gears-frontx/framework';
+import { gtsPlugin } from '@gears-frontx/framework';
+import { ContainerProvider } from '@gears-frontx/framework';
+import type { HAI3App } from '@gears-frontx/framework';
 
 // Mock Container Provider for React tests
 class TestContainerProvider extends ContainerProvider {
@@ -39,8 +39,8 @@ class TestContainerProvider extends ContainerProvider {
 }
 
 describe('useDomainExtensions hook - Phase 21.7', () => {
-  const sidebarDomainId = 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1';
-  const popupDomainId = 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.popup.v1';
+  const sidebarDomainId = 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1';
+  const popupDomainId = 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.popup.v1';
 
   // Track app instances for cleanup
   const apps: HAI3App[] = [];
@@ -53,8 +53,8 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     id: sidebarDomainId,
     sharedProperties: [],
     actions: [
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1',
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1',
     ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
@@ -66,8 +66,8 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     id: popupDomainId,
     sharedProperties: [],
     actions: [
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1',
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1',
     ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
@@ -76,21 +76,21 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
   };
 
   const sidebarExtension1: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.sidebar.reg.ext1.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.sidebar.reg.ext1.v1',
     domain: sidebarDomainId,
-    entry: 'gts.hai3.mfes.mfe.entry.v1~test.sidebar.reg.entry.v1',
+    entry: 'gts.frontx.mfes.mfe.entry.v1~test.sidebar.reg.entry.v1',
   };
 
   const sidebarExtension2: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.sidebar.reg.ext2.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.sidebar.reg.ext2.v1',
     domain: sidebarDomainId,
-    entry: 'gts.hai3.mfes.mfe.entry.v1~test.sidebar.reg.entry.v1',
+    entry: 'gts.frontx.mfes.mfe.entry.v1~test.sidebar.reg.entry.v1',
   };
 
   const popupExtension: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.popup.reg.ext1.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.popup.reg.ext1.v1',
     domain: popupDomainId,
-    entry: 'gts.hai3.mfes.mfe.entry.v1~test.sidebar.reg.entry.v1',
+    entry: 'gts.frontx.mfes.mfe.entry.v1~test.sidebar.reg.entry.v1',
   };
 
   /**

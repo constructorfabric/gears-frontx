@@ -17,7 +17,7 @@
  * instance state (React fiber tree, hooks, etc.).
  */
 export interface SharedDependencyConfig {
-  /** Package name (e.g., 'react', 'lodash', '@hai3/screensets') */
+  /** Package name (e.g., 'react', 'lodash', '@gears-frontx/screensets') */
   name: string;
   /**
    * Semver range (e.g., '^18.0.0', '^4.17.0').
@@ -36,7 +36,7 @@ export interface SharedDependencyConfig {
 
 /**
  * Module Federation manifest containing shared configuration
- * GTS Type: gts.hai3.mfes.mfe.mf_manifest.v1~
+ * GTS Type: gts.frontx.mfes.mfe.mf_manifest.v1~
  */
 export interface MfManifest {
   /** The GTS type ID for this manifest */

@@ -1,7 +1,7 @@
 // @cpt-flow:cpt-hai3-flow-studio-devtools-mock-toggle:p1
 // @cpt-dod:cpt-hai3-dod-studio-devtools-control-panel:p1
 import React from 'react';
-import { useTranslation, useAppSelector, toggleMockMode, type MockState } from '@hai3/react';
+import { useTranslation, useAppSelector, toggleMockMode, type MockState } from '@gears-frontx/react';
 import { Switch } from '../uikit/base/switch';
 
 /**

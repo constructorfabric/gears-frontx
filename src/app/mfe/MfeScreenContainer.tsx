@@ -6,7 +6,7 @@
  */
 
 import { useRef, useEffect } from 'react';
-import { useHAI3 } from '@hai3/react';
+import { useHAI3 } from '@gears-frontx/react';
 import { bootstrapMFE } from './bootstrap';
 
 /**

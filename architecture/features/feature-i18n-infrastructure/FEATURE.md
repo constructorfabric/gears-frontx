@@ -43,7 +43,7 @@
 
 ### 1.1 Overview
 
-Internationalization Infrastructure provides the foundational i18n layer for the entire HAI3 system. It covers 36 built-in language configurations, locale-aware formatting utilities, a hybrid two-tier namespace model for translations, and lazy on-demand chunk loading per namespace. The package is an L1 SDK concern with zero `@hai3/*` dependencies, consumed by `@hai3/framework` (which initializes and propagates language state) and by `@hai3/react` (which exposes `useTranslation()` and `useFormatters()` hooks).
+Internationalization Infrastructure provides the foundational i18n layer for the entire HAI3 system. It covers 36 built-in language configurations, locale-aware formatting utilities, a hybrid two-tier namespace model for translations, and lazy on-demand chunk loading per namespace. The package is an L1 SDK concern with zero `@gears-frontx/*` dependencies, consumed by `@gears-frontx/framework` (which initializes and propagates language state) and by `@gears-frontx/react` (which exposes `useTranslation()` and `useFormatters()` hooks).
 
 Problem: Translation files historically load monolithically, wasting bandwidth; locale-aware formatting logic is duplicated across screens; there is no consistent namespace pattern to colocate screen translations with screen components.
 
@@ -134,7 +134,7 @@ Success criteria: Application initial bundle contains no translation JSON beyond
 
 **Actors**: `cpt-hai3-actor-screenset-author`
 
-1. [x] `p1` - Caller imports a formatter function from `@hai3/i18n` (e.g. `formatDate`, `formatCurrency`) — `inst-import-formatter`
+1. [x] `p1` - Caller imports a formatter function from `@gears-frontx/i18n` (e.g. `formatDate`, `formatCurrency`) — `inst-import-formatter`
 2. [x] `p1` - Formatter calls `getLocale()` which reads `i18nRegistry.getLanguage() ?? Language.English` — `inst-get-locale`
 3. [x] `p1` - Formatter constructs the appropriate `Intl` object (`Intl.DateTimeFormat`, `Intl.NumberFormat`, `Intl.RelativeTimeFormat`, or `Intl.Collator`) with the resolved locale — `inst-construct-intl`
 4. [x] `p2` - IF input value is null, undefined, or invalid (NaN, invalid Date): formatter returns `''` without throwing — `inst-graceful-invalid`
@@ -254,7 +254,7 @@ Tracks the loaded/unloaded state per `(namespace, language)` pair.
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-i18n-infrastructure-language-support`
 
-`@hai3/i18n` exports the `Language` enum with exactly 36 members covering Western European, Eastern European, Middle East/North Africa (RTL), Asian, Nordic, and other major language groups. The `SUPPORTED_LANGUAGES` array provides `LanguageMetadata` for each, and `getRTLLanguages()` returns the four RTL language codes (Arabic, Hebrew, Persian, Urdu). The singleton `i18nRegistry` is initialized with `defaultLanguage: English` and `fallbackLanguage: English`. `createI18nRegistry(config)` allows consumers to construct a custom instance.
+`@gears-frontx/i18n` exports the `Language` enum with exactly 36 members covering Western European, Eastern European, Middle East/North Africa (RTL), Asian, Nordic, and other major language groups. The `SUPPORTED_LANGUAGES` array provides `LanguageMetadata` for each, and `getRTLLanguages()` returns the four RTL language codes (Arabic, Hebrew, Persian, Urdu). The singleton `i18nRegistry` is initialized with `defaultLanguage: English` and `fallbackLanguage: English`. `createI18nRegistry(config)` allows consumers to construct a custom instance.
 
 **Implements**:
 - `cpt-hai3-flow-i18n-infrastructure-language-activation`
@@ -273,7 +273,7 @@ Tracks the loaded/unloaded state per `(namespace, language)` pair.
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-i18n-infrastructure-formatters`
 
-All ten formatter functions (`formatDate`, `formatTime`, `formatDateTime`, `formatRelative`, `formatNumber`, `formatPercent`, `formatCompact`, `formatCurrency`, `compareStrings`, `createCollator`) are implemented and exported from `@hai3/i18n`. Each uses `i18nRegistry.getLanguage() ?? Language.English` as the locale source. Invalid inputs return `''` without throwing. All public API signatures use explicit TypeScript types; no `any` in public surface. `DateFormatStyle`, `TimeFormatStyle`, `DateInput`, and the `Formatters` aggregate interface are exported.
+All ten formatter functions (`formatDate`, `formatTime`, `formatDateTime`, `formatRelative`, `formatNumber`, `formatPercent`, `formatCompact`, `formatCurrency`, `compareStrings`, `createCollator`) are implemented and exported from `@gears-frontx/i18n`. Each uses `i18nRegistry.getLanguage() ?? Language.English` as the locale source. Invalid inputs return `''` without throwing. All public API signatures use explicit TypeScript types; no `any` in public surface. `DateFormatStyle`, `TimeFormatStyle`, `DateInput`, and the `Formatters` aggregate interface are exported.
 
 **Implements**:
 - `cpt-hai3-flow-i18n-infrastructure-formatter-usage`
@@ -334,7 +334,7 @@ The `I18nRegistryImpl` enforces a two-tier namespace convention: `screenset.{id}
 
 ## 6. Acceptance Criteria
 
-- [x] `@hai3/i18n` has zero `@hai3/*` runtime dependencies; `npm ls` shows no cross-SDK imports
+- [x] `@gears-frontx/i18n` has zero `@gears-frontx/*` runtime dependencies; `npm ls` shows no cross-SDK imports
 - [x] `Language` enum has exactly 36 members; `SUPPORTED_LANGUAGES` has exactly 36 entries; `getRTLLanguages()` returns exactly `['ar', 'he', 'fa', 'ur']`
 - [x] `i18nRegistry.setLanguage(Language.Arabic)` sets `document.documentElement.dir` to `'rtl'` and `document.documentElement.lang` to `'ar'`
 - [x] Calling `loadLanguage(language)` does NOT invoke any loader whose namespace starts with `'screen.'` or `'screenset.'`
@@ -346,4 +346,4 @@ The `I18nRegistryImpl` enforces a two-tier namespace convention: `screenset.{id}
 - [x] `formatCurrency(1234.56, 'EUR')` returns a locale-appropriate currency string (symbol position and decimal separators match the active language)
 - [x] Navigating to a screen twice triggers the screen's translation loader at most once (cache hit on second navigation)
 - [x] `npx tsc --noEmit` passes with no errors in `packages/i18n/`
-- [x] All formatter functions are individually importable from `@hai3/i18n` (tree-shaking verified by bundle analysis)
+- [x] All formatter functions are individually importable from `@gears-frontx/i18n` (tree-shaking verified by bundle analysis)

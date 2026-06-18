@@ -1,5 +1,5 @@
 /**
- * @hai3/state - Type Definitions
+ * @gears-frontx/state - Type Definitions
  *
  * Core types for the HAI3 Flux dataflow pattern.
  * Combines event system and store types into a unified package.
@@ -22,13 +22,13 @@ import type { PayloadAction, Reducer, UnknownAction } from '@reduxjs/toolkit';
  * - **HAI3 Action**: Function that emits events via eventBus.emit()
  * - **ReducerPayload**: The payload shape received by reducers in createSlice
  *
- * Redux is an internal implementation detail of @hai3/state.
+ * Redux is an internal implementation detail of @gears-frontx/state.
  *
  * @template T - The payload type
  *
  * @example
  * ```typescript
- * import { createSlice, type ReducerPayload } from '@hai3/state';
+ * import { createSlice, type ReducerPayload } from '@gears-frontx/state';
  *
  * const menuSlice = createSlice({
  *   name: 'uicore/menu',
@@ -58,7 +58,7 @@ export type ReducerPayload<T> = PayloadAction<T>;
  *
  * @example
  * ```typescript
- * declare module '@hai3/state' {
+ * declare module '@gears-frontx/state' {
  *   interface EventPayloadMap {
  *     'chat/threads/selected': { threadId: string };
  *     'chat/messages/received': { message: Message };
@@ -216,7 +216,7 @@ export type PayloadOf<K extends EventKey> = EventPayloadMap[K];
  *
  * @example
  * ```typescript
- * declare module '@hai3/state' {
+ * declare module '@gears-frontx/state' {
  *   interface EventPayloadMap {
  *     'app/initialized': void;
  *   }
@@ -240,7 +240,7 @@ export type VoidPayload = void;
  * @example
  * ```typescript
  * // In your screenset code
- * declare module '@hai3/state' {
+ * declare module '@gears-frontx/state' {
  *   interface RootState {
  *     'chat/threads': ThreadsState;
  *     'chat/messages': MessagesState;

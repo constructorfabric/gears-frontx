@@ -49,7 +49,7 @@
 ## Invariants
 - REQUIRED: Event-driven architecture only.
 - REQUIRED: Registries follow Open/Closed principle.
-- REQUIRED: App deps limited to @hai3/react, react, react-dom (use local UI).
+- REQUIRED: App deps limited to @gears-frontx/react, react, react-dom (use local UI).
 - REQUIRED: Cross-domain communication via events only.
 - FORBIDDEN: String literals for IDs.
 - FORBIDDEN: any type or unsafe casts.

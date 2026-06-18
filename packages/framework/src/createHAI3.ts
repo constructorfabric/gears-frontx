@@ -15,8 +15,8 @@
 // @cpt-flow:cpt-hai3-flow-framework-composition-teardown:p2
 // @cpt-dod:cpt-hai3-dod-framework-composition-builder:p1
 
-import { getStore, registerSlice } from '@hai3/state';
-import type { EffectInitializer } from '@hai3/state';
+import { getStore, registerSlice } from '@gears-frontx/state';
+import type { EffectInitializer } from '@gears-frontx/state';
 import type {
   HAI3Config,
   HAI3Plugin,
@@ -28,7 +28,7 @@ import type {
   RegisterableSlice,
   ThemeRegistry,
 } from './types';
-import { apiRegistry } from '@hai3/api';
+import { apiRegistry } from '@gears-frontx/api';
 
 // ============================================================================
 // Plugin Resolution

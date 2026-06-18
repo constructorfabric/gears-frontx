@@ -21,10 +21,10 @@ describe('Error Handling', () => {
 
   describe('11.3.1 Bundle load failure scenario', () => {
     it('should throw MfeLoadError when manifest is not found', async () => {
-      const handler = new MfeHandlerMF('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~', { retries: 0 });
+      const handler = new MfeHandlerMF('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~', { retries: 0 });
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.v1',
         manifest: 'missing-manifest-id',
         exposedModule: './Widget',
         requiredProperties: [],
@@ -37,10 +37,10 @@ describe('Error Handling', () => {
     });
 
     it('should throw MfeLoadError when module does not implement lifecycle interface', async () => {
-      const handler = new MfeHandlerMF('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~', { retries: 0 });
+      const handler = new MfeHandlerMF('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~', { retries: 0 });
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.v1',
         manifest: 'test-manifest',
         exposedModule: './InvalidWidget',
         requiredProperties: [],
@@ -62,13 +62,13 @@ describe('Error Handling', () => {
 
       const error = new ContractValidationError(
         errors,
-        'gts.hai3.mfes.mfe.entry.v1~test.entry.v1',
-        'gts.hai3.mfes.ext.domain.v1~test.domain.v1'
+        'gts.frontx.mfes.mfe.entry.v1~test.entry.v1',
+        'gts.frontx.mfes.ext.domain.v1~test.domain.v1'
       );
 
       expect(error.code).toBe('CONTRACT_VALIDATION_ERROR');
-      expect(error.entryTypeId).toBe('gts.hai3.mfes.mfe.entry.v1~test.entry.v1');
-      expect(error.domainTypeId).toBe('gts.hai3.mfes.ext.domain.v1~test.domain.v1');
+      expect(error.entryTypeId).toBe('gts.frontx.mfes.mfe.entry.v1~test.entry.v1');
+      expect(error.domainTypeId).toBe('gts.frontx.mfes.ext.domain.v1~test.domain.v1');
       expect(error.errors).toHaveLength(2);
       expect(error.message).toContain('missing_property');
       expect(error.message).toContain('unsupported_action');
@@ -78,7 +78,7 @@ describe('Error Handling', () => {
   describe('11.3.3 Action handler error scenario', () => {
     it('should create ChainExecutionError with execution path', () => {
       const failedAction: Action = {
-        type: 'gts.hai3.mfes.mfe.action.v1~test.action.v1',
+        type: 'gts.frontx.mfes.mfe.action.v1~test.action.v1',
         target: 'test-domain',
         payload: {},
       };
@@ -161,10 +161,10 @@ describe('Error Handling', () => {
     });
 
     it('should integrate retry with MfeHandlerMF', async () => {
-      const handler = new MfeHandlerMF('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~', { retries: 2 });
+      const handler = new MfeHandlerMF('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~', { retries: 2 });
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.v1',
         manifest: 'missing-manifest',
         exposedModule: './Widget',
         requiredProperties: [],

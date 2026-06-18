@@ -3,7 +3,7 @@
 // @cpt-dod:cpt-hai3-dod-studio-devtools-persistence:p1
 // @cpt-dod:cpt-hai3-dod-studio-devtools-conditional-loading:p1
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { I18nRegistry, Language, i18nRegistry, useHAI3 } from '@hai3/react';
+import { I18nRegistry, Language, i18nRegistry, useHAI3 } from '@gears-frontx/react';
 import { saveStudioState, loadStudioState } from './utils/persistence';
 import { STORAGE_KEYS } from './types';
 import { initPersistenceEffects } from './effects/persistenceEffects';
