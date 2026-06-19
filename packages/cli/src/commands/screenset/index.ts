@@ -143,12 +143,12 @@ export const screensetCreateCommand: CommandDefinition<
     const config = configResult.config;
     if (!config.uikit) {
       throw new Error(
-        'Missing "uikit" field in hai3.config.json. Recreate the project with `hai3 create` or add a "uikit" field ("shadcn", "none", or an npm package name).'
+        'Missing "uikit" field in frontx.config.json. Recreate the project with `hai3 create` or add a "uikit" field ("shadcn", "none", or an npm package name).'
       );
     }
     if (isCustomUikit(config.uikit) && !isValidPackageName(config.uikit)) {
       throw new Error(
-        `Invalid "uikit" value in hai3.config.json: "${config.uikit}" is not a valid npm package name.`
+        `Invalid "uikit" value in frontx.config.json: "${config.uikit}" is not a valid npm package name.`
       );
     }
     // @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-2

@@ -1,4 +1,4 @@
-# Contributing to Cyber Ware FrontX
+# Contributing to Gears FrontX
 
 > **TARGET AUDIENCE:** Humans
 > **PURPOSE:** Contribution guidelines and workflow for developers

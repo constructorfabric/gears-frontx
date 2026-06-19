@@ -133,7 +133,7 @@ describe('ScreensetsRegistry - Phase 4', () => {
     it('should accept optional mfeHandler', () => {
       const mockHandler = {
         bridgeFactory: {} as unknown,
-        handledBaseTypeId: 'gts.hai3.screensets.mfe.entry.v1~',
+        handledBaseTypeId: 'gts.frontx.screensets.mfe.entry.v1~',
         load: async () => ({ lifecycle: {} as unknown, entry: {} as unknown, unload: () => {} }),
       };
       const registryConfig: ScreensetsRegistryConfig = {
@@ -157,7 +157,7 @@ describe('ScreensetsRegistry - Phase 4', () => {
     it('should register handler if provided in config', () => {
       const mockHandler = {
         bridgeFactory: {} as unknown,
-        handledBaseTypeId: 'gts.hai3.screensets.mfe.entry.v1~',
+        handledBaseTypeId: 'gts.frontx.screensets.mfe.entry.v1~',
         priority: 10,
         load: async () => ({ lifecycle: {} as unknown, entry: {} as unknown, unload: () => {} }),
       };
@@ -177,7 +177,7 @@ describe('ScreensetsRegistry - Phase 4', () => {
       const registry = new DefaultScreensetsRegistry(createTestConfig());
 
       const validDomain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
         actions: [],
         extensionsActions: [],
@@ -196,9 +196,9 @@ describe('ScreensetsRegistry - Phase 4', () => {
 
       // Register domain with the action in its supported actions
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.screensets.ext.action.v1~test.action.v1~'],
+        actions: ['gts.frontx.screensets.ext.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -207,8 +207,8 @@ describe('ScreensetsRegistry - Phase 4', () => {
       registry.registerDomain(domain, mockContainerProvider);
 
       const validAction: Action = {
-        type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
-        target: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        type: 'gts.frontx.screensets.ext.action.v1~test.action.v1~',
+        target: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
       };
 
       const chain: ActionsChain = {
@@ -246,9 +246,9 @@ describe('ScreensetsRegistry - Phase 4', () => {
 
       // Register domain with the action in its supported actions
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.screensets.ext.action.v1~test.action.v1~'],
+        actions: ['gts.frontx.screensets.ext.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -258,8 +258,8 @@ describe('ScreensetsRegistry - Phase 4', () => {
       registry.registerDomain(domain, mockContainerProvider);
 
       const actionWithPayload: Action = {
-        type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
-        target: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        type: 'gts.frontx.screensets.ext.action.v1~test.action.v1~',
+        target: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         payload: { data: 'test' },
       };
 
@@ -297,8 +297,8 @@ describe('ScreensetsRegistry - Phase 4', () => {
       const registry = new DefaultScreensetsRegistry(registryConfig);
 
       const actionWithInvalidPayload: Action = {
-        type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
-        target: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        type: 'gts.frontx.screensets.ext.action.v1~test.action.v1~',
+        target: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         payload: { data: 123 }, // Invalid
       };
 
@@ -315,9 +315,9 @@ describe('ScreensetsRegistry - Phase 4', () => {
 
       // Register domain with the action in its supported actions
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.screensets.ext.action.v1~test.action.v1~'],
+        actions: ['gts.frontx.screensets.ext.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -327,8 +327,8 @@ describe('ScreensetsRegistry - Phase 4', () => {
       registry.registerDomain(domain, mockContainerProvider);
 
       const actionWithoutPayload: Action = {
-        type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
-        target: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        type: 'gts.frontx.screensets.ext.action.v1~test.action.v1~',
+        target: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
       };
 
       const chain: ActionsChain = {
@@ -346,7 +346,7 @@ describe('ScreensetsRegistry - Phase 4', () => {
       const registry = new DefaultScreensetsRegistry(createTestConfig());
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
         actions: [],
         extensionsActions: [],

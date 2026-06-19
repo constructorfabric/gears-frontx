@@ -57,8 +57,8 @@ export function validateExtensionType(
 
     // 2. Validate the registered instance by its instance ID
     // gts-ts extracts the schema ID from the instance ID automatically:
-    // - Instance ID: gts.hai3.mfes.ext.extension.v1~acme.widget.v1
-    // - Schema ID:   gts.hai3.mfes.ext.extension.v1~ (extracted automatically)
+    // - Instance ID: gts.frontx.mfes.ext.extension.v1~acme.widget.v1
+    // - Schema ID:   gts.frontx.mfes.ext.extension.v1~ (extracted automatically)
     const validationResult = plugin.validateInstance(extension.id);
     if (!validationResult.valid) {
       return validationResult;

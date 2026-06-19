@@ -1,7 +1,7 @@
 /**
  * HAI3 Provider - Main provider component for HAI3 applications
  *
- * React Layer: L3 (Depends on @hai3/framework)
+ * React Layer: L3 (Depends on @gears-frontx/framework)
  */
 // @cpt-flow:cpt-hai3-flow-react-bindings-bootstrap-provider:p1
 // @cpt-algo:cpt-hai3-algo-react-bindings-resolve-app:p1
@@ -10,8 +10,8 @@
 
 import React, { useMemo, useEffect } from 'react';
 import { Provider as ReduxProvider } from 'react-redux';
-import { createHAI3App } from '@hai3/framework';
-import type { HAI3App } from '@hai3/framework';
+import { createHAI3App } from '@gears-frontx/framework';
+import type { HAI3App } from '@gears-frontx/framework';
 import { HAI3Context } from './HAI3Context';
 import { MfeProvider } from './mfe/MfeProvider';
 import type { HAI3ProviderProps } from './types';

@@ -17,10 +17,10 @@
  * payloads pure data (no DOM references).
  *
  * Concrete implementations:
- * - RefContainerProvider (@hai3/react) wraps a React ref for React-rendered domains
+ * - RefContainerProvider (@gears-frontx/react) wraps a React ref for React-rendered domains
  * - Custom domains can provide their own implementations
  *
- * Exported from @hai3/screensets for consumer implementations.
+ * Exported from @gears-frontx/screensets for consumer implementations.
  */
 export abstract class ContainerProvider {
   /**

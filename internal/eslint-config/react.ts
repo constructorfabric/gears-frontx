@@ -1,14 +1,14 @@
 /**
  * HAI3 ESLint React Configuration (L3)
- * Rules for @hai3/react package
+ * Rules for @gears-frontx/react package
  *
  * React package CAN import:
- * - @hai3/framework (wires everything together)
- * - @hai3/i18n (only for Language enum re-export due to isolatedModules)
+ * - @gears-frontx/framework (wires everything together)
+ * - @gears-frontx/i18n (only for Language enum re-export due to isolatedModules)
  * - react, react-dom (React adapter)
  *
  * React package CANNOT import:
- * - @hai3/state, @hai3/screensets, @hai3/api (use framework re-exports)
+ * - @gears-frontx/state, @gears-frontx/screensets, @gears-frontx/api (use framework re-exports)
  */
 
 import type { ConfigArray } from 'typescript-eslint';
@@ -39,16 +39,16 @@ export const reactConfig: ConfigArray = [
         {
           patterns: [
             {
-              group: ['@hai3/state', '@hai3/state/*'],
-              message: 'REACT VIOLATION: Import from @hai3/framework instead. React package uses framework re-exports.',
+              group: ['@gears-frontx/state', '@gears-frontx/state/*'],
+              message: 'REACT VIOLATION: Import from @gears-frontx/framework instead. React package uses framework re-exports.',
             },
             {
-              group: ['@hai3/screensets', '@hai3/screensets/*'],
-              message: 'REACT VIOLATION: Import from @hai3/framework instead. React package uses framework re-exports.',
+              group: ['@gears-frontx/screensets', '@gears-frontx/screensets/*'],
+              message: 'REACT VIOLATION: Import from @gears-frontx/framework instead. React package uses framework re-exports.',
             },
             {
-              group: ['@hai3/api', '@hai3/api/*'],
-              message: 'REACT VIOLATION: Import from @hai3/framework instead. React package uses framework re-exports.',
+              group: ['@gears-frontx/api', '@gears-frontx/api/*'],
+              message: 'REACT VIOLATION: Import from @gears-frontx/framework instead. React package uses framework re-exports.',
             },
           ],
         },

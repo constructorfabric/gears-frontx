@@ -5,7 +5,7 @@
  * and registers API services. This module is imported once (as a side effect)
  * by ThemeAwareReactLifecycle, which provides the HAI3Provider to all screens.
  *
- * The MFE bundles its own copy of @hai3/react, giving it isolated singletons:
+ * The MFE bundles its own copy of @gears-frontx/react, giving it isolated singletons:
  * - eventBus (no cross-MFE event leakage)
  * - apiRegistry (isolated service instances)
  * - storeInstance (isolated Redux store)
@@ -13,7 +13,7 @@
 // @cpt-dod:cpt-hai3-dod-mfe-isolation-internal-dataflow:p1
 // @cpt-flow:cpt-hai3-flow-mfe-isolation-mfe-bootstrap:p1
 
-import { createHAI3, registerSlice, apiRegistry, effects, mock } from '@hai3/react';
+import { createHAI3, registerSlice, apiRegistry, effects, mock } from '@gears-frontx/react';
 import { profileSlice } from './slices/profileSlice';
 import { initProfileEffects } from './effects/profileEffects';
 import { AccountsApiService } from './api/AccountsApiService';

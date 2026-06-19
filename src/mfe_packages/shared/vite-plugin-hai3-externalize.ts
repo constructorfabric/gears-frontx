@@ -48,7 +48,7 @@ export function hai3MfeExternalize(options: Hai3MfeExternalizeOptions): Plugin {
    * Extract the package name from a __federation_shared_* bundle key.
    * Handles both:
    *   assets/__federation_shared_react-DMgTugcw.js  → react
-   *   assets/__federation_shared_@hai3/react-BYlz3jvo.js → @hai3/react
+   *   assets/__federation_shared_@gears-frontx/react-BYlz3jvo.js → @gears-frontx/react
    */
   function extractPackageNameFromFederationKey(bundleKey: string): string | null {
     const match = /__federation_shared_(.+)-[A-Za-z0-9_-]{8}\.js$/.exec(bundleKey);
@@ -138,7 +138,7 @@ export function hai3MfeExternalize(options: Hai3MfeExternalizeOptions): Plugin {
       // the bundled chunk it imports. This distinguishes thin re-export wrappers
       // (like __federation_shared_react.js at 0.27 kB) from large chunks that contain
       // a package's full source AND happen to import a bundled sub-module
-      // (like __federation_shared_@hai3/react.js at 22 kB importing jsx-runtime.js).
+      // (like __federation_shared_@gears-frontx/react.js at 22 kB importing jsx-runtime.js).
       //
       // Additionally, when multiple thin wrappers claim the same bundled chunk (e.g.,
       // both react and react-redux import index-MCx4YXC7.js), the SMALLEST wrapper wins.
@@ -147,7 +147,7 @@ export function hai3MfeExternalize(options: Hai3MfeExternalizeOptions): Plugin {
       //   __federation_shared_react.js (0.27 kB) imports index-MCx4YXC7.js (100 kB)
       //   → thin wrapper (268 < 102400) → react owns index-MCx4YXC7.js
       //
-      //   __federation_shared_@hai3/react.js (22 kB) imports jsx-runtime.js (5 kB)
+      //   __federation_shared_@gears-frontx/react.js (22 kB) imports jsx-runtime.js (5 kB)
       //   → NOT a thin wrapper (22576 > 5120) → jsx-runtime.js is NOT remapped
 
       // bundledChunkToPackage: baseName → packageName

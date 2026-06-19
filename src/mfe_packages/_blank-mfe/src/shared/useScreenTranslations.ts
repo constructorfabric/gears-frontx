@@ -5,7 +5,7 @@
  * `import.meta.glob('./i18n/*.json')` (Vite-compatible glob).
  *
  * The hook:
- * 1. Gets current language from bridge.getProperty(HAI3_SHARED_PROPERTY_LANGUAGE)
+ * 1. Gets current language from bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE)
  * 2. Builds module key from language (e.g., './i18n/en.json')
  * 3. Dynamically imports the module
  * 4. Returns t(key) function that looks up key in loaded translations
@@ -19,8 +19,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { ChildMfeBridge } from '@hai3/react';
-import { HAI3_SHARED_PROPERTY_LANGUAGE } from '@hai3/react';
+import type { ChildMfeBridge } from '@gears-frontx/react';
+import { FRONTX_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/react';
 
 interface TranslationJsonModule {
   default: Record<string, string>;
@@ -90,12 +90,12 @@ export function useScreenTranslations(
   // Subscribe to language property changes
   useEffect(() => {
     // Get initial language
-    const initialProperty = bridge.getProperty(HAI3_SHARED_PROPERTY_LANGUAGE);
+    const initialProperty = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
     const lang = initialProperty && typeof initialProperty.value === 'string' ? initialProperty.value : 'en';
     loadTranslations(lang);
 
     // Subscribe to language changes
-    const unsubscribe = bridge.subscribeToProperty(HAI3_SHARED_PROPERTY_LANGUAGE, (property) => {
+    const unsubscribe = bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, (property) => {
       if (typeof property.value === 'string' && property.value !== currentLanguageRef.current) {
         loadTranslations(property.value);
       }

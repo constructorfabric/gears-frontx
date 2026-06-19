@@ -10,7 +10,7 @@
  *
  * NOTE: Translations are NOT handled by this plugin. Screensets register
  * their translations directly with i18nRegistry via framework re-exports.
- * This maintains clean separation: @hai3/screensets has zero knowledge of i18n.
+ * This maintains clean separation: @gears-frontx/screensets has zero knowledge of i18n.
  */
 
 import { screenSlice, screenActions } from '../slices';
@@ -49,7 +49,7 @@ export function screensets(_config?: ScreensetsConfig): HAI3Plugin<ScreensetsCon
       // Note: In Vite apps, this is handled by glob imports in user code
       // Translation wiring is NOT done here.
       // Screensets register translations directly with i18nRegistry.
-      // This keeps @hai3/screensets free of i18n dependencies.
+      // This keeps @gears-frontx/screensets free of i18n dependencies.
     },
   };
 }

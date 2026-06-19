@@ -2,11 +2,11 @@
  * TextLoader Component - Prevents flash of untranslated content
  *
  * This component is part of your application's L4 layer (user code).
- * It was moved from @hai3/react to allow direct dependency on UI components.
+ * It was moved from @gears-frontx/react to allow direct dependency on UI components.
  */
 
 import React from 'react';
-import { useTranslation } from '@hai3/react';
+import { useTranslation } from '@gears-frontx/react';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 export interface TextLoaderProps {

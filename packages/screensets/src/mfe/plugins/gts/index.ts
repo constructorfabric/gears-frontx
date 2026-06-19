@@ -7,8 +7,8 @@
  * GTS-Native Validation Model (named instance pattern):
  * - All runtime entities (schemas AND instances) must be registered with gtsStore
  * - Validation happens on registered instances by their instance ID
- * - Schema IDs end with `~` (e.g., `gts.hai3.mfes.ext.extension.v1~`)
- * - Instance IDs do NOT end with `~` (e.g., `gts.hai3.mfes.ext.extension.v1~acme.widget.v1`)
+ * - Schema IDs end with `~` (e.g., `gts.frontx.mfes.ext.extension.v1~`)
+ * - Instance IDs do NOT end with `~` (e.g., `gts.frontx.mfes.ext.extension.v1~acme.widget.v1`)
  * - gts-ts extracts the schema ID from the chained instance ID automatically
  * - No `type` field is needed or supported — the schema is always resolved from the chained ID
  * - gts-ts uses Ajv INTERNALLY - we do NOT need Ajv as a direct dependency
@@ -51,7 +51,7 @@ export class GtsPlugin implements TypeSystemPlugin {
     this.gtsStore = new GtsStore();
 
     // Load and register all first-class citizen schemas from JSON files (13 schemas)
-    // These schemas are stored in packages/screensets/src/mfe/gts/hai3.mfe/schemas/
+    // These schemas are stored in packages/screensets/src/mfe/gts/frontx.mfe/schemas/
     const schemas = loadSchemas();
     for (const schema of schemas) {
       const entity: JsonEntity = createJsonEntity(schema);
@@ -59,7 +59,7 @@ export class GtsPlugin implements TypeSystemPlugin {
     }
 
     // Load and register default lifecycle stage instances from JSON files (4 instances)
-    // These instances are stored in packages/screensets/src/mfe/gts/hai3.mfe/instances/lifecycle-stages/
+    // These instances are stored in packages/screensets/src/mfe/gts/frontx.mfe/instances/lifecycle-stages/
     const lifecycleStages = loadLifecycleStages();
     for (const instance of lifecycleStages) {
       const entity: JsonEntity = createJsonEntity(instance);
@@ -67,7 +67,7 @@ export class GtsPlugin implements TypeSystemPlugin {
     }
 
     // Load and register base action instances from JSON files (3 instances)
-    // These instances are stored in packages/screensets/src/mfe/gts/hai3.mfe/instances/ext/
+    // These instances are stored in packages/screensets/src/mfe/gts/frontx.mfe/instances/ext/
     const baseActions = loadBaseActions();
     for (const action of baseActions) {
       const entity: JsonEntity = createJsonEntity(action);
@@ -111,8 +111,8 @@ export class GtsPlugin implements TypeSystemPlugin {
   validateInstance(instanceId: string): ValidationResult {
     // GtsStore.validateInstance takes the instance ID (NOT schema ID).
     // gts-ts extracts the schema ID from the chained instance ID automatically:
-    // - Instance ID: gts.hai3.mfes.ext.extension.v1~acme.widget.v1
-    // - Schema ID:   gts.hai3.mfes.ext.extension.v1~ (extracted automatically)
+    // - Instance ID: gts.frontx.mfes.ext.extension.v1~acme.widget.v1
+    // - Schema ID:   gts.frontx.mfes.ext.extension.v1~ (extracted automatically)
     // All callers must use the named instance pattern (chained GTS IDs only).
     const result: GtsValidationResult = this.gtsStore.validateInstance(instanceId);
     if (result.ok) {
@@ -134,8 +134,8 @@ export class GtsPlugin implements TypeSystemPlugin {
 
   isTypeOf(typeId: string, baseTypeId: string): boolean {
     // GTS type derivation: derived types include the base type ID as a prefix
-    // e.g., 'gts.hai3.mfes.mfe.entry.v1~acme.corp.mfe.entry_acme.v1~'
-    // is derived from 'gts.hai3.mfes.mfe.entry.v1~'
+    // e.g., 'gts.frontx.mfes.mfe.entry.v1~acme.corp.mfe.entry_acme.v1~'
+    // is derived from 'gts.frontx.mfes.mfe.entry.v1~'
     return typeId.startsWith(baseTypeId) || typeId === baseTypeId;
   }
 }
@@ -146,7 +146,7 @@ export class GtsPlugin implements TypeSystemPlugin {
  *
  * @example
  * ```typescript
- * import { gtsPlugin, screensetsRegistryFactory } from '@hai3/screensets';
+ * import { gtsPlugin, screensetsRegistryFactory } from '@gears-frontx/screensets';
  *
  * // Build the registry with GTS plugin at application wiring time
  * const registry = screensetsRegistryFactory.build({ typeSystem: gtsPlugin });

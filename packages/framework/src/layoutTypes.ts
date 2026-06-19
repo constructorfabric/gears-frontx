@@ -5,7 +5,7 @@
  * Defined here in framework to avoid circular dependencies between
  * framework/react/uicore packages.
  *
- * At runtime, these types are satisfied by @hai3/framework slice implementations.
+ * At runtime, these types are satisfied by @gears-frontx/framework slice implementations.
  */
 // @cpt-dod:cpt-hai3-dod-framework-composition-layout:p1
 

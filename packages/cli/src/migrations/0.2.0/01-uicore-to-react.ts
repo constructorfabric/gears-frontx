@@ -2,22 +2,22 @@
 /**
  * Transform: uicore-to-react
  *
- * Transforms @hai3/uicore imports to @hai3/react
+ * Transforms @gears-frontx/uicore imports to @gears-frontx/react
  *
- * Before: import { RootState } from '@hai3/uicore';
- * After:  import { RootState } from '@hai3/react';
+ * Before: import { RootState } from '@gears-frontx/uicore';
+ * After:  import { RootState } from '@gears-frontx/react';
  */
 
 import type { SourceFile } from 'ts-morph';
 import type { Transform, TransformChange, TransformResult } from '../types.js';
 
-const SOURCE_MODULE = '@hai3/uicore';
-const TARGET_MODULE = '@hai3/react';
+const SOURCE_MODULE = '@gears-frontx/uicore';
+const TARGET_MODULE = '@gears-frontx/react';
 
 // @cpt-begin:cpt-hai3-algo-cli-tooling-apply-migration:p2:inst-apply-transforms
 export const uicoreToReactTransform: Transform = {
   id: 'uicore-to-react',
-  name: 'Update @hai3/uicore to @hai3/react',
+  name: 'Update @gears-frontx/uicore to @gears-frontx/react',
   description: `Transforms ${SOURCE_MODULE} imports to ${TARGET_MODULE}`,
 
   canApply(sourceFile: SourceFile): boolean {

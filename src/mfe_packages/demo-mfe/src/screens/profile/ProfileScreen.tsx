@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { ChildMfeBridge } from '@hai3/react';
-import { HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE, useAppSelector } from '@hai3/react';
+import type { ChildMfeBridge } from '@gears-frontx/react';
+import { FRONTX_SHARED_PROPERTY_THEME, FRONTX_SHARED_PROPERTY_LANGUAGE, useAppSelector } from '@gears-frontx/react';
 import { Card, CardContent, CardFooter } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
@@ -50,24 +50,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ bridge }) => {
   // Subscribe to theme and language domain properties
   useEffect(() => {
     // Read initial property values
-    const initialTheme = bridge.getProperty(HAI3_SHARED_PROPERTY_THEME);
+    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
     if (initialTheme && typeof initialTheme.value === 'string') {
       setTheme(initialTheme.value);
     }
-    const initialLang = bridge.getProperty(HAI3_SHARED_PROPERTY_LANGUAGE);
+    const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
     if (initialLang && typeof initialLang.value === 'string') {
       setLanguage(initialLang.value);
     }
 
     // Subscribe to theme domain property
-    const themeUnsubscribe = bridge.subscribeToProperty(HAI3_SHARED_PROPERTY_THEME, (property) => {
+    const themeUnsubscribe = bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_THEME, (property) => {
       if (typeof property.value === 'string') {
         setTheme(property.value);
       }
     });
 
     // Subscribe to language domain property
-    const languageUnsubscribe = bridge.subscribeToProperty(HAI3_SHARED_PROPERTY_LANGUAGE, (property) => {
+    const languageUnsubscribe = bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, (property) => {
       if (typeof property.value === 'string') {
         setLanguage(property.value);
         const rootNode = containerRef.current?.getRootNode();

@@ -88,7 +88,7 @@ describe('isValidPackageName', () => {
   });
 
   it('should accept valid scoped names', () => {
-    assert.equal(isValidPackageName('@hai3/cli'), true);
+    assert.equal(isValidPackageName('@gears-frontx/cli'), true);
     assert.equal(isValidPackageName('@my-org/my-package'), true);
   });
 

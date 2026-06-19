@@ -1,5 +1,5 @@
 
-# @hai3/react Guidelines (Canonical)
+# @gears-frontx/react Guidelines (Canonical)
 
 ## AI WORKFLOW (REQUIRED)
 1) Summarize 3-6 rules from this file before making changes.
@@ -7,8 +7,8 @@
 
 ## SCOPE
 - Package: `packages/react/`
-- Layer: L3 React (depends on @hai3/framework)
-- Peer dependencies: `@hai3/framework`, `react`, `react-redux`
+- Layer: L3 React (depends on @gears-frontx/framework)
+- Peer dependencies: `@gears-frontx/framework`, `react`, `react-redux`
 
 ## CRITICAL RULES
 - All apps wrapped with `<HAI3Provider>`.

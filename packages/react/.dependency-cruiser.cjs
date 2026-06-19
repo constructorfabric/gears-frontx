@@ -1,9 +1,9 @@
 /**
- * @hai3/react Dependency Cruiser Configuration
+ * @gears-frontx/react Dependency Cruiser Configuration
  * Extends React layer config - can import framework and React
  */
 
-const reactConfig = require('@hai3/depcruise-config/react.cjs');
+const reactConfig = require('@gears-frontx/depcruise-config/react.cjs');
 
 module.exports = {
   forbidden: reactConfig.forbidden,

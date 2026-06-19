@@ -12,9 +12,9 @@ import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import { MfeHandlerMF } from '../../../src/mfe/handler/mf-handler';
 import type { ExtensionDomain, Extension, MfeEntry, MfeEntryMF } from '../../../src/mfe/types';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
 import { EntryTypeNotHandledError } from '../../../src/mfe/errors';
 import { MockContainerProvider } from '../test-utils';
@@ -24,45 +24,45 @@ describe('Entry Type Validation (Phase 32.3)', () => {
   let mockContainerProvider: MockContainerProvider;
 
   const testDomain: ExtensionDomain = {
-    id: 'gts.hai3.mfes.ext.domain.v1~test.entryval.reg.domain.v1',
+    id: 'gts.frontx.mfes.ext.domain.v1~test.entryval.reg.domain.v1',
     sharedProperties: [],
     actions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
     lifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
     extensionsLifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
   };
 
   // Entry that does NOT derive from MfeEntryMF (base MfeEntry only)
   const nonMfEntry: MfeEntry = {
-    id: 'gts.hai3.mfes.mfe.entry.v1~test.entryval.reg.nonmf.v1',
+    id: 'gts.frontx.mfes.mfe.entry.v1~test.entryval.reg.nonmf.v1',
     requiredProperties: [],
     optionalProperties: [],
     actions: [],
     domainActions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
   };
 
   // Entry that derives from MfeEntryMF (valid for MfeHandlerMF)
   const mfEntry: MfeEntryMF = {
-    id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.entryval.reg.mfentry.v1',
+    id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.entryval.reg.mfentry.v1',
     manifest: {
-      id: 'gts.hai3.mfes.mfe.mf_manifest.v1~test.entryval.reg.manifest.v1',
+      id: 'gts.frontx.mfes.mfe.mf_manifest.v1~test.entryval.reg.manifest.v1',
       remoteEntry: 'https://cdn.example.com/remoteEntry.js',
       remoteName: 'testRemote',
     },
@@ -71,9 +71,9 @@ describe('Entry Type Validation (Phase 32.3)', () => {
     optionalProperties: [],
     actions: [],
     domainActions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
   };
 
@@ -89,7 +89,7 @@ describe('Entry Type Validation (Phase 32.3)', () => {
 
   it('32.3.2 - should throw EntryTypeNotHandledError when handler cannot handle entry type', async () => {
     // Create registry with MfeHandlerMF registered
-    const handler = new MfeHandlerMF('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~', { timeout: 5000, retries: 0 });
+    const handler = new MfeHandlerMF('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~', { timeout: 5000, retries: 0 });
     const registry = new DefaultScreensetsRegistry({
       typeSystem: gtsPlugin,
       mfeHandlers: [handler],
@@ -100,7 +100,7 @@ describe('Entry Type Validation (Phase 32.3)', () => {
 
     // Attempt to register extension with non-MF entry type
     const extension: Extension = {
-      id: 'gts.hai3.mfes.ext.extension.v1~test.entryval.reg.extnonmf.v1',
+      id: 'gts.frontx.mfes.ext.extension.v1~test.entryval.reg.extnonmf.v1',
       domain: testDomain.id,
       entry: nonMfEntry.id,
     };
@@ -113,7 +113,7 @@ describe('Entry Type Validation (Phase 32.3)', () => {
 
   it('32.3.3 - should succeed when handler can handle the entry type', async () => {
     // Create registry with MfeHandlerMF registered
-    const handler = new MfeHandlerMF('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~', { timeout: 5000, retries: 0 });
+    const handler = new MfeHandlerMF('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~', { timeout: 5000, retries: 0 });
     const registry = new DefaultScreensetsRegistry({
       typeSystem: gtsPlugin,
       mfeHandlers: [handler],
@@ -124,7 +124,7 @@ describe('Entry Type Validation (Phase 32.3)', () => {
 
     // Register extension with MfeEntryMF-derived entry type
     const extension: Extension = {
-      id: 'gts.hai3.mfes.ext.extension.v1~test.entryval.reg.extmf.v1',
+      id: 'gts.frontx.mfes.ext.extension.v1~test.entryval.reg.extmf.v1',
       domain: testDomain.id,
       entry: mfEntry.id,
     };
@@ -150,7 +150,7 @@ describe('Entry Type Validation (Phase 32.3)', () => {
 
     // Register extension with non-MF entry type -- should succeed since no handlers
     const extension: Extension = {
-      id: 'gts.hai3.mfes.ext.extension.v1~test.entryval.reg.extnohdl.v1',
+      id: 'gts.frontx.mfes.ext.extension.v1~test.entryval.reg.extnohdl.v1',
       domain: testDomain.id,
       entry: nonMfEntry.id,
     };

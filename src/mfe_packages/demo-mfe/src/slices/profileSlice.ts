@@ -5,7 +5,7 @@
  * Follows the HAI3 flux architecture: reducers own state, effects dispatch here.
  */
 
-import { createSlice, type ReducerPayload } from '@hai3/react';
+import { createSlice, type ReducerPayload } from '@gears-frontx/react';
 import type { ApiUser } from '../api/types';
 
 /**
@@ -51,7 +51,7 @@ export { setUser, setLoading, setError };
  * Registers the 'demo/profile' slice into the global RootState type.
  * This allows useAppSelector(state => state['demo/profile']) to be type-safe.
  */
-declare module '@hai3/react' {
+declare module '@gears-frontx/react' {
   interface RootState {
     'demo/profile': ProfileState;
   }

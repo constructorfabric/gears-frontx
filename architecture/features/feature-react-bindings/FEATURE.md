@@ -60,9 +60,9 @@
 
 React Bindings is the L3 boundary that exposes the HAI3 framework to React 19 applications. It converts the framework's plain-object output (`HAI3App`) into React context, typed hooks, and MFE rendering components, forming the primary developer-facing API surface of the entire system.
 
-Problem: The framework layer (`@hai3/framework`) is deliberately React-agnostic. Application developers need typed React hooks, a root provider that wires Redux and i18n into the React tree, and components that can mount MFE extensions with CSS isolation — without importing directly from L1/L2 packages.
+Problem: The framework layer (`@gears-frontx/framework`) is deliberately React-agnostic. Application developers need typed React hooks, a root provider that wires Redux and i18n into the React tree, and components that can mount MFE extensions with CSS isolation — without importing directly from L1/L2 packages.
 
-Primary value: One import (`@hai3/react`) gives developers access to the full HAI3 surface in a React-idiomatic way while preserving the strict layer hierarchy.
+Primary value: One import (`@gears-frontx/react`) gives developers access to the full HAI3 surface in a React-idiomatic way while preserving the strict layer hierarchy.
 
 Key assumptions:
 - The consuming application runs React 19.
@@ -71,9 +71,9 @@ Key assumptions:
 
 ### 1.2 Purpose
 
-Bridge `@hai3/framework` to React 19 by providing the provider tree, typed hooks, and MFE rendering components that application developers interact with directly. Keep all React-specific code confined to L3, preserving framework-agnosticism of L1 and L2.
+Bridge `@gears-frontx/framework` to React 19 by providing the provider tree, typed hooks, and MFE rendering components that application developers interact with directly. Keep all React-specific code confined to L3, preserving framework-agnosticism of L1 and L2.
 
-Success criteria: Developers can wrap their application with `<HAI3Provider>`, access typed Redux state, translations, theme, shared properties, and domain extensions solely through hooks exported from `@hai3/react`, with no need to import from `@hai3/framework` or lower layers.
+Success criteria: Developers can wrap their application with `<HAI3Provider>`, access typed Redux state, translations, theme, shared properties, and domain extensions solely through hooks exported from `@gears-frontx/react`, with no need to import from `@gears-frontx/framework` or lower layers.
 
 ### 1.3 Actors
 
@@ -117,7 +117,7 @@ Success criteria: Developers can wrap their application with `<HAI3Provider>`, a
 **Actors**: `cpt-hai3-actor-developer`, `cpt-hai3-actor-runtime`
 
 1. [x] - `p1` - Developer calls `useAppSelector(selectorFn)` inside a component tree wrapped by `HAI3Provider` - `inst-call-selector`
-2. [x] - `p1` - Hook delegates to `react-redux` `useSelector` typed against `RootState` from `@hai3/framework` - `inst-delegate-selector`
+2. [x] - `p1` - Hook delegates to `react-redux` `useSelector` typed against `RootState` from `@gears-frontx/framework` - `inst-delegate-selector`
 3. [x] - `p1` - Runtime returns the slice of state selected by `selectorFn` - `inst-return-state`
 4. [x] - `p1` - Component re-renders when selected value changes - `inst-rerender-on-change`
 
@@ -130,7 +130,7 @@ Success criteria: Developers can wrap their application with `<HAI3Provider>`, a
 **Actors**: `cpt-hai3-actor-developer`, `cpt-hai3-actor-runtime`
 
 1. [x] - `p1` - Developer calls `useAppDispatch()` inside a component tree wrapped by `HAI3Provider` - `inst-call-dispatch`
-2. [x] - `p1` - Hook delegates to `react-redux` `useDispatch` and casts return type to `AppDispatch` from `@hai3/framework` - `inst-delegate-dispatch`
+2. [x] - `p1` - Hook delegates to `react-redux` `useDispatch` and casts return type to `AppDispatch` from `@gears-frontx/framework` - `inst-delegate-dispatch`
 3. [x] - `p1` - Developer uses returned `dispatch` function to dispatch typed Redux actions - `inst-use-dispatch`
 
 ---
@@ -430,7 +430,7 @@ Tracks per-language load state for `useScreenTranslations`.
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-react-bindings-redux-hooks`
 
-`useAppSelector` is a `TypedUseSelectorHook<RootState>` wrapping `react-redux` `useSelector`. `useAppDispatch` wraps `react-redux` `useDispatch` and casts the return type to `AppDispatch`. Both hooks require `HAI3Provider` in the ancestor tree. Neither hook imports directly from `@hai3/state`.
+`useAppSelector` is a `TypedUseSelectorHook<RootState>` wrapping `react-redux` `useSelector`. `useAppDispatch` wraps `react-redux` `useDispatch` and casts the return type to `AppDispatch`. Both hooks require `HAI3Provider` in the ancestor tree. Neither hook imports directly from `@gears-frontx/state`.
 
 **Implements**:
 - `cpt-hai3-flow-react-bindings-use-selector`
@@ -451,7 +451,7 @@ Tracks per-language load state for `useScreenTranslations`.
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-react-bindings-translation-hook`
 
-`useTranslation` returns `{ t, language, setLanguage, isRTL }`. It subscribes to `i18nRegistry` version via `useSyncExternalStore` so components re-render on language changes. `setLanguage` dispatches `app.actions.setLanguage` which propagates to MFEs via the event bus. The hook never imports from `@hai3/i18n` directly.
+`useTranslation` returns `{ t, language, setLanguage, isRTL }`. It subscribes to `i18nRegistry` version via `useSyncExternalStore` so components re-render on language changes. `setLanguage` dispatches `app.actions.setLanguage` which propagates to MFEs via the event bus. The hook never imports from `@gears-frontx/i18n` directly.
 
 **Implements**:
 - `cpt-hai3-flow-react-bindings-use-translation`
@@ -511,7 +511,7 @@ Tracks per-language load state for `useScreenTranslations`.
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-react-bindings-formatters-hook`
 
-`useFormatters` returns a memoized `Formatters` object containing all locale-aware formatter functions from `@hai3/framework`. It internally calls `useTranslation()` to subscribe to language changes. The returned object is re-created only when `language` changes, preventing unnecessary re-renders from unrelated state updates.
+`useFormatters` returns a memoized `Formatters` object containing all locale-aware formatter functions from `@gears-frontx/framework`. It internally calls `useTranslation()` to subscribe to language changes. The returned object is re-created only when `language` changes, preventing unnecessary re-renders from unrelated state updates.
 
 **Implements**:
 - `cpt-hai3-flow-react-bindings-use-formatters`
@@ -598,7 +598,7 @@ All five MFE-scoped hooks (`useMfeBridge`, `useMfeContext`, `useSharedProperty`,
 
 - [x] `p1` - **ID**: `cpt-hai3-dod-react-bindings-ref-container-provider`
 
-`RefContainerProvider` is a concrete `ContainerProvider` (from `@hai3/framework`) that wraps a React `RefObject<HTMLDivElement>`. It implements `getContainer(extensionId)` by returning `ref.current`, throwing if the ref is not yet attached. `releaseContainer` is a no-op because React manages the ref lifecycle. This class bridges React DOM refs to the framework's container abstraction without introducing React into the framework layer.
+`RefContainerProvider` is a concrete `ContainerProvider` (from `@gears-frontx/framework`) that wraps a React `RefObject<HTMLDivElement>`. It implements `getContainer(extensionId)` by returning `ref.current`, throwing if the ref is not yet attached. `releaseContainer` is a no-op because React manages the ref lifecycle. This class bridges React DOM refs to the framework's container abstraction without introducing React into the framework layer.
 
 **Implements**:
 - (supports `cpt-hai3-flow-react-bindings-extension-domain-slot` via container injection)
@@ -617,7 +617,7 @@ All five MFE-scoped hooks (`useMfeBridge`, `useMfeContext`, `useSharedProperty`,
 
 - [x] `p2` - **ID**: `cpt-hai3-dod-react-bindings-event-payload-map`
 
-`@hai3/react` re-declares `EventPayloadMap` as an interface extending `FrameworkEventPayloadMap` from `@hai3/framework`. This creates a TypeScript declaration site at L3 that application code can augment using `declare module '@hai3/react'`, avoiding direct imports from L1 (`@hai3/state`). The `eventBus` instance is re-exported with the augmented type so that event bus calls in application code are type-safe against both framework and application events.
+`@gears-frontx/react` re-declares `EventPayloadMap` as an interface extending `FrameworkEventPayloadMap` from `@gears-frontx/framework`. This creates a TypeScript declaration site at L3 that application code can augment using `declare module '@gears-frontx/react'`, avoiding direct imports from L1 (`@gears-frontx/state`). The `eventBus` instance is re-exported with the augmented type so that event bus calls in application code are type-safe against both framework and application events.
 
 **Implements**:
 - (architectural pattern, no specific flow)
@@ -648,6 +648,6 @@ All five MFE-scoped hooks (`useMfeBridge`, `useMfeContext`, `useSharedProperty`,
 - [x]All three observation hooks return referentially stable arrays when the underlying data has not changed
 - [x]MFE-scoped hooks throw descriptive errors when called outside `MfeProvider`
 - [x]`useHAI3` throws descriptive error when called outside `HAI3Provider`
-- [x]`@hai3/react` imports ZERO `@hai3/state`, `@hai3/screensets`, `@hai3/api`, or `@hai3/i18n` packages directly (enforced by dependency-cruiser)
+- [x]`@gears-frontx/react` imports ZERO `@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, or `@gears-frontx/i18n` packages directly (enforced by dependency-cruiser)
 - [x]All components accept `ref` as a prop (React 19 pattern; no `forwardRef`)
 - [x]TypeScript strict mode passes with zero `@ts-ignore` suppressions in source files

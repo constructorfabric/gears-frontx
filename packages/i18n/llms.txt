@@ -1,8 +1,8 @@
-# @hai3/i18n
+# @gears-frontx/i18n
 
 > Internationalization with 36 languages, namespace support, lazy loading, and RTL detection for HAI3 SDK.
 
-Part of the HAI3 SDK Layer (L1) - can be used independently without other @hai3 packages. Zero dependencies.
+Part of the HAI3 SDK Layer (L1) - can be used independently without other @gears-frontx packages. Zero dependencies.
 
 ## Core API
 
@@ -20,7 +20,7 @@ Part of the HAI3 SDK Layer (L1) - can be used independently without other @hai3 
 ## Quick Start
 
 ```typescript
-import { i18nRegistry, Language, I18nRegistryImpl } from '@hai3/i18n';
+import { i18nRegistry, Language, I18nRegistryImpl } from '@gears-frontx/i18n';
 
 // Register translations directly
 i18nRegistry.register('common', Language.English, {
@@ -45,5 +45,5 @@ const isRTL = i18nRegistry.isRTL();
 
 ## Optional
 
-- [Migration Guide](https://hai3.dev/docs/i18n/migration): Migrating from @hai3/uicore
+- [Migration Guide](https://hai3.dev/docs/i18n/migration): Migrating from @gears-frontx/uicore
 - [RTL Support](https://hai3.dev/docs/i18n/rtl): Right-to-left language handling

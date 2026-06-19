@@ -9,7 +9,7 @@
 // @cpt-dod:cpt-hai3-dod-react-bindings-screen-translation-hook:p1
 
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
-import type { TranslationMap, TranslationLoader } from '@hai3/framework';
+import type { TranslationMap, TranslationLoader } from '@gears-frontx/framework';
 import { useHAI3 } from '../HAI3Context';
 import type { UseScreenTranslationsReturn } from '../types';
 

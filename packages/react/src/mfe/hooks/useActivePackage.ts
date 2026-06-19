@@ -13,7 +13,7 @@
 
 import { useSyncExternalStore, useCallback, useRef } from 'react';
 import { useHAI3 } from '../../HAI3Context';
-import { extractGtsPackage, HAI3_SCREEN_DOMAIN } from '@hai3/framework';
+import { extractGtsPackage, FRONTX_SCREEN_DOMAIN } from '@gears-frontx/framework';
 
 // ============================================================================
 // Hook Implementation
@@ -80,7 +80,7 @@ export function useActivePackage(): string | undefined {
 
   const getSnapshot = useCallback(() => {
     // @cpt-begin:cpt-hai3-flow-react-bindings-use-active-package:p1:inst-get-mounted-extension
-    const mountedExtensionId = registry.getMountedExtension(HAI3_SCREEN_DOMAIN);
+    const mountedExtensionId = registry.getMountedExtension(FRONTX_SCREEN_DOMAIN);
     // @cpt-end:cpt-hai3-flow-react-bindings-use-active-package:p1:inst-get-mounted-extension
 
     // @cpt-begin:cpt-hai3-flow-react-bindings-use-active-package:p1:inst-return-undefined-active

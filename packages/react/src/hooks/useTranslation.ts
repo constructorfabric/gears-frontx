@@ -7,7 +7,7 @@
 // @cpt-dod:cpt-hai3-dod-react-bindings-translation-hook:p1
 
 import { useMemo, useCallback, useSyncExternalStore } from 'react';
-import type { Language } from '@hai3/framework';
+import type { Language } from '@gears-frontx/framework';
 import { useHAI3 } from '../HAI3Context';
 import type { UseTranslationReturn } from '../types';
 

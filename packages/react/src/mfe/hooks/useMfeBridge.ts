@@ -10,7 +10,7 @@
 // @cpt-dod:cpt-hai3-dod-react-bindings-mfe-hooks:p1
 
 import { useMfeContext } from '../MfeContext';
-import type { ChildMfeBridge } from '@hai3/framework';
+import type { ChildMfeBridge } from '@gears-frontx/framework';
 
 // ============================================================================
 // Hook Implementation

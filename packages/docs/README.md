@@ -1,4 +1,4 @@
-# @hai3/docs
+# @gears-frontx/docs
 
 HAI3 Documentation Site - AI-driven product lifecycle and framework documentation.
 

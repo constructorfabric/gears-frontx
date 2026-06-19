@@ -1,7 +1,7 @@
 /**
  * Backward Compatibility Exports
  *
- * These exports provide backward compatibility with @hai3/uicore API.
+ * These exports provide backward compatibility with @gears-frontx/uicore API.
  * They are singletons that mirror the old API.
  *
  * NOTE: These are exported for migration convenience but may be deprecated

@@ -1,6 +1,6 @@
 {
-  "name": "@hai3/react",
-  "version": "0.4.0-alpha.2",
+  "name": "@gears-frontx/react",
+  "version": "0.1.0",
   "description": "React bindings and hooks for HAI3 framework",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -45,12 +45,12 @@
     "jsdom": "^25.0.1"
   },
   "peerDependencies": {
-    "@hai3/framework": "*",
+    "@gears-frontx/framework": "*",
     "react": "^19.2.4",
     "react-redux": ">=8.0.0"
   },
   "peerDependenciesMeta": {
-    "@hai3/framework": {
+    "@gears-frontx/framework": {
       "optional": false
     },
     "react": {

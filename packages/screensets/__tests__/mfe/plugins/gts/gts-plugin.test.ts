@@ -3,10 +3,10 @@
  *
  * Tests for the GTS Type System Plugin implementation.
  * These tests verify the TypeSystemPlugin interface implementation
- * using only the core schemas that ship with @hai3/screensets.
+ * using only the core schemas that ship with @gears-frontx/screensets.
  *
  * NOTE: Tests for application-layer derived schemas (theme, language,
- * extension_screen) live in @hai3/framework because those schemas are
+ * extension_screen) live in @gears-frontx/framework because those schemas are
  * registered at the application layer, not here at L1.
  *
  * NOTE: Named-instance runtime validation mechanics (register() call shape,
@@ -15,16 +15,16 @@
 
 import { describe, it, expect } from 'vitest';
 import { gtsPlugin, GtsPlugin } from '../../../../src/mfe/plugins/gts/index';
-import { HAI3_CORE_TYPE_IDS } from '../../../../src/mfe/init';
+import { FRONTX_CORE_TYPE_IDS } from '../../../../src/mfe/init';
 
 describe('GTS Plugin', () => {
   describe('schema registration and validation', () => {
     const plugin = new GtsPlugin();
 
     it('has all core schemas registered', () => {
-      const schema = plugin.getSchema(HAI3_CORE_TYPE_IDS.mfeEntry);
+      const schema = plugin.getSchema(FRONTX_CORE_TYPE_IDS.mfeEntry);
       expect(schema).toBeDefined();
-      expect(schema?.$id).toBe('gts://gts.hai3.mfes.mfe.entry.v1~');
+      expect(schema?.$id).toBe('gts://gts.frontx.mfes.mfe.entry.v1~');
     });
 
     it('validates instance with required fields', () => {
@@ -32,7 +32,7 @@ describe('GTS Plugin', () => {
       // 1. Register the instance
       // 2. Validate by instance ID only
       const instance = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~test.app.mfe.test_entry.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~test.app.mfe.test_entry.v1',
         requiredProperties: [],
         actions: [],
         domainActions: [],
@@ -50,7 +50,7 @@ describe('GTS Plugin', () => {
       // 1. Register the instance
       // 2. Validate by instance ID only
       const instance = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~test.app.mfe.invalid_entry.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~test.app.mfe.invalid_entry.v1',
         requiredProperties: [],
         // Missing: actions, domainActions
       };
@@ -90,7 +90,7 @@ describe('GTS Plugin', () => {
     });
 
     it('singleton has all schemas registered', () => {
-      const schema = gtsPlugin.getSchema(HAI3_CORE_TYPE_IDS.mfeEntry);
+      const schema = gtsPlugin.getSchema(FRONTX_CORE_TYPE_IDS.mfeEntry);
       expect(schema).toBeDefined();
     });
   });
@@ -100,32 +100,32 @@ describe('GTS Plugin', () => {
 
     it('same type returns true', () => {
       const result = plugin.isTypeOf(
-        'gts.hai3.mfes.mfe.entry.v1~',
-        'gts.hai3.mfes.mfe.entry.v1~'
+        'gts.frontx.mfes.mfe.entry.v1~',
+        'gts.frontx.mfes.mfe.entry.v1~'
       );
       expect(result).toBe(true);
     });
 
     it('derived type returns true for base type', () => {
       const result = plugin.isTypeOf(
-        'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
-        'gts.hai3.mfes.mfe.entry.v1~'
+        'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
+        'gts.frontx.mfes.mfe.entry.v1~'
       );
       expect(result).toBe(true);
     });
 
     it('base type returns false for derived type', () => {
       const result = plugin.isTypeOf(
-        'gts.hai3.mfes.mfe.entry.v1~',
-        'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~'
+        'gts.frontx.mfes.mfe.entry.v1~',
+        'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~'
       );
       expect(result).toBe(false);
     });
 
     it('different types return false', () => {
       const result = plugin.isTypeOf(
-        'gts.hai3.mfes.ext.domain.v1~',
-        'gts.hai3.mfes.mfe.entry.v1~'
+        'gts.frontx.mfes.ext.domain.v1~',
+        'gts.frontx.mfes.mfe.entry.v1~'
       );
       expect(result).toBe(false);
     });
@@ -133,7 +133,7 @@ describe('GTS Plugin', () => {
 
   describe('shared property base schema', () => {
     it('base schema has value property (unconstrained)', () => {
-      const schema = gtsPlugin.getSchema('gts.hai3.mfes.comm.shared_property.v1~');
+      const schema = gtsPlugin.getSchema('gts.frontx.mfes.comm.shared_property.v1~');
       expect(schema).toBeDefined();
       const properties = schema?.properties as Record<string, unknown>;
       expect(properties).toHaveProperty('value');
@@ -141,14 +141,14 @@ describe('GTS Plugin', () => {
     });
 
     it('base schema does NOT have supportedValues property', () => {
-      const schema = gtsPlugin.getSchema('gts.hai3.mfes.comm.shared_property.v1~');
+      const schema = gtsPlugin.getSchema('gts.frontx.mfes.comm.shared_property.v1~');
       expect(schema).toBeDefined();
       const properties = schema?.properties as Record<string, unknown>;
       expect(properties).not.toHaveProperty('supportedValues');
     });
 
     it('base schema requires only id', () => {
-      const schema = gtsPlugin.getSchema('gts.hai3.mfes.comm.shared_property.v1~');
+      const schema = gtsPlugin.getSchema('gts.frontx.mfes.comm.shared_property.v1~');
       expect(schema).toBeDefined();
       expect(schema?.required).toEqual(['id']);
       expect(schema?.required).not.toContain('supportedValues');
@@ -158,7 +158,7 @@ describe('GTS Plugin', () => {
 
   describe('extension presentation metadata', () => {
     it('base extension schema does NOT include presentation field', () => {
-      const schema = gtsPlugin.getSchema('gts.hai3.mfes.ext.extension.v1~');
+      const schema = gtsPlugin.getSchema('gts.frontx.mfes.ext.extension.v1~');
       expect(schema).toBeDefined();
       expect(schema?.properties).not.toHaveProperty('presentation');
     });

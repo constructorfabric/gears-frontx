@@ -127,7 +127,7 @@ const [open, setOpen] = useState(false);
 
 ### Read state
 ```typescript
-import { useAppSelector } from '@hai3/react';
+import { useAppSelector } from '@gears-frontx/react';
 
 const MyComponent = () => {
   const collapsed = useAppSelector(state => state['layout/menu'].collapsed);
@@ -138,7 +138,7 @@ const MyComponent = () => {
 
 ### Use event-driven actions (recommended)
 ```typescript
-import { useHAI3Actions } from '@hai3/react';
+import { useHAI3Actions } from '@gears-frontx/react';
 
 const MyComponent = () => {
   const { toggleMenu } = useHAI3Actions();

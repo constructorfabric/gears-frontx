@@ -19,10 +19,10 @@ import {
   screensetsRegistryFactory,
   type MfeHandler,
   type TypeSystemPlugin,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
-} from '@hai3/screensets';
-import { getStore } from '@hai3/state';
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
+} from '@gears-frontx/screensets';
+import { getStore } from '@gears-frontx/state';
 import type { HAI3Plugin } from '../../types';
 import { mfeSlice, setExtensionMounted, setExtensionUnmounted } from './slice';
 import { initMfeEffects } from './effects';
@@ -72,14 +72,14 @@ export interface MicrofrontendsConfig {
  *
  * @example
  * ```typescript
- * import { createHAI3, microfrontends } from '@hai3/framework';
- * import { MfeHandlerMF, HAI3_MFE_ENTRY_MF } from '@hai3/screensets/mfe/handler';
- * import { gtsPlugin } from '@hai3/screensets/plugins/gts';
+ * import { createHAI3, microfrontends } from '@gears-frontx/framework';
+ * import { MfeHandlerMF, FRONTX_MFE_ENTRY_MF } from '@gears-frontx/screensets/mfe/handler';
+ * import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
  *
  * const app = createHAI3()
  *   .use(microfrontends({
  *     typeSystem: gtsPlugin,
- *     mfeHandlers: [new MfeHandlerMF(HAI3_MFE_ENTRY_MF)],
+ *     mfeHandlers: [new MfeHandlerMF(FRONTX_MFE_ENTRY_MF)],
  *   }))
  *   .build();
  *
@@ -109,14 +109,14 @@ export function microfrontends(config: MicrofrontendsConfig): HAI3Plugin {
     await originalExecuteActionsChain(chain);
     // After successful execution, dispatch store updates for mount/unmount
     const actionType = chain.action?.type;
-    if (actionType === HAI3_ACTION_MOUNT_EXT) {
+    if (actionType === FRONTX_ACTION_MOUNT_EXT) {
       const store = getStore();
       const domainId = chain.action!.target;
       const extensionId = chain.action!.payload?.extensionId as string;
       if (domainId && extensionId) {
         store.dispatch(setExtensionMounted({ domainId, extensionId }));
       }
-    } else if (actionType === HAI3_ACTION_UNMOUNT_EXT) {
+    } else if (actionType === FRONTX_ACTION_UNMOUNT_EXT) {
       const store = getStore();
       const domainId = chain.action!.target;
       if (domainId) {
@@ -210,10 +210,10 @@ export {
 
 // Re-export HAI3 layout domain constants and MfeEvents
 export {
-  HAI3_POPUP_DOMAIN,
-  HAI3_SIDEBAR_DOMAIN,
-  HAI3_SCREEN_DOMAIN,
-  HAI3_OVERLAY_DOMAIN,
+  FRONTX_POPUP_DOMAIN,
+  FRONTX_SIDEBAR_DOMAIN,
+  FRONTX_SCREEN_DOMAIN,
+  FRONTX_OVERLAY_DOMAIN,
   MfeEvents,
 } from './constants';
 

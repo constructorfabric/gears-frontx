@@ -6,16 +6,16 @@
  * This file is imported in main.tsx via MfeScreenContainer.
  */
 
-import type { HAI3App } from '@hai3/react';
+import type { HAI3App } from '@gears-frontx/react';
 import {
   screenDomain,
   sidebarDomain,
   popupDomain,
   overlayDomain,
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_SHARED_PROPERTY_THEME,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
   RefContainerProvider,
-} from '@hai3/react';
+} from '@gears-frontx/react';
 
 /**
  * DetachedContainerProvider for domains without a visible host element.
@@ -60,8 +60,8 @@ export async function bootstrapMFE(
 
   // Initialize shared properties (theme and language)
   const currentThemeId = app.themeRegistry?.getCurrent()?.id ?? 'default';
-  screensetsRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, currentThemeId);
-  screensetsRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_LANGUAGE, 'en');
+  screensetsRegistry.updateSharedProperty(FRONTX_SHARED_PROPERTY_THEME, currentThemeId);
+  screensetsRegistry.updateSharedProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, 'en');
 
   // Standalone: no mfe.json or extensions registered here.
   // Register your MFE manifests and extensions, then mount as needed.

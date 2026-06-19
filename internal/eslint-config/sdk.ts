@@ -1,9 +1,9 @@
 /**
  * HAI3 ESLint SDK Configuration (L1)
- * Rules for SDK packages: @hai3/state, @hai3/layout, @hai3/api, @hai3/i18n
+ * Rules for SDK packages: @gears-frontx/state, @gears-frontx/layout, @gears-frontx/api, @gears-frontx/i18n
  *
  * SDK packages MUST have:
- * - ZERO @hai3/* dependencies (complete isolation)
+ * - ZERO @gears-frontx/* dependencies (complete isolation)
  * - NO React dependencies (framework-agnostic)
  */
 
@@ -22,8 +22,8 @@ export const sdkConfig: ConfigArray = [
         {
           patterns: [
             {
-              group: ['@hai3/*'],
-              message: 'SDK VIOLATION: SDK packages cannot import other @hai3 packages. SDK packages must have ZERO @hai3 dependencies.',
+              group: ['@gears-frontx/*'],
+              message: 'SDK VIOLATION: SDK packages cannot import other @gears-frontx packages. SDK packages must have ZERO @gears-frontx dependencies.',
             },
             {
               group: ['react', 'react-dom', 'react/*'],

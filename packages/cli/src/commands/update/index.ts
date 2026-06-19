@@ -56,7 +56,7 @@ function detectCurrentChannel(): 'alpha' | 'stable' {
       if (fs.pathExistsSync(packageJsonPath)) {
         const packageJson = fs.readJsonSync(packageJsonPath);
         // @cpt-begin:cpt-hai3-algo-cli-tooling-detect-release-channel:p1:inst-read-cli-version-string
-        if (packageJson.name === '@hai3/cli' && typeof packageJson.version === 'string') {
+        if (packageJson.name === '@gears-frontx/cli' && typeof packageJson.version === 'string') {
           version = packageJson.version;
           break;
         }
@@ -172,7 +172,7 @@ export const updateCommand: CommandDefinition<
       // Update CLI
       logger.info('Checking for CLI updates...');
       try {
-        const cliUpdateTarget = `@hai3/cli${tag}`;
+        const cliUpdateTarget = `@gears-frontx/cli${tag}`;
         const globalInstallCmd = getGlobalInstallCommand(
           packageManagerCtx.manager,
           cliUpdateTarget
@@ -185,10 +185,10 @@ export const updateCommand: CommandDefinition<
         } else {
           execSync(globalInstallCmd, { stdio: 'pipe' });
           cliUpdated = true;
-          logger.success(`@hai3/cli updated (${channel})`);
+          logger.success(`@gears-frontx/cli updated (${channel})`);
         }
       } catch {
-        logger.info('@hai3/cli is already up to date');
+        logger.info('@gears-frontx/cli is already up to date');
       }
       // @cpt-end:cpt-hai3-flow-cli-tooling-update-project:p1:inst-update-cli-global
 
@@ -203,14 +203,14 @@ export const updateCommand: CommandDefinition<
 
         const hai3Packages: string[] = [];
 
-        // Find all @hai3/* packages
+        // Find all @gears-frontx/* packages
         for (const dep of Object.keys(packageJson.dependencies || {})) {
-          if (dep.startsWith('@hai3/')) {
+          if (dep.startsWith('@gears-frontx/')) {
             hai3Packages.push(dep);
           }
         }
         for (const dep of Object.keys(packageJson.devDependencies || {})) {
-          if (dep.startsWith('@hai3/')) {
+          if (dep.startsWith('@gears-frontx/')) {
             hai3Packages.push(dep);
           }
         }

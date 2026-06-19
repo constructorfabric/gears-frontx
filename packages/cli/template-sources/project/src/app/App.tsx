@@ -24,7 +24,7 @@
  */
 
 import { Layout } from '@/app/layout';
-import { StudioOverlay } from '@hai3/studio';
+import { StudioOverlay } from '@gears-frontx/studio';
 import { MfeScreenContainer } from '@/app/mfe/MfeScreenContainer';
 
 function App() {

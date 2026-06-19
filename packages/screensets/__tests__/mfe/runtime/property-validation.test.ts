@@ -11,7 +11,7 @@
  *
  * NOTE: Tests that verify enum-level constraints (e.g. "dark" is valid, "neon" is invalid)
  * require application-specific derived schemas (theme.v1, language.v1). Those schemas
- * live in @hai3/framework and are tested in framework/property-validation tests.
+ * live in @gears-frontx/framework and are tested in framework/property-validation tests.
  *
  * This file uses a simple inline-registered test schema to keep the structural
  * tests self-contained and free of L1→L2 dependencies.
@@ -29,11 +29,11 @@ import { MockContainerProvider } from '../test-utils';
  * Only permits "allowed-value" — used to verify the structural mechanics
  * of updateSharedProperty without requiring the application-layer derived schemas.
  */
-const TEST_PROPERTY_TYPE_ID = 'gts.hai3.mfes.comm.shared_property.v1~hai3.test.prop.color.v1~';
+const TEST_PROPERTY_TYPE_ID = 'gts.frontx.mfes.comm.shared_property.v1~frontx.test.prop.color.v1~';
 const testPropertySchema: JSONSchema = {
   $id: `gts://${TEST_PROPERTY_TYPE_ID}`,
   $schema: 'https://json-schema.org/draft/2020-12/schema',
-  allOf: [{ $ref: 'gts://gts.hai3.mfes.comm.shared_property.v1~' }],
+  allOf: [{ $ref: 'gts://gts.frontx.mfes.comm.shared_property.v1~' }],
   properties: {
     value: { type: 'string', enum: ['allowed-value', 'other-allowed'] },
   },
@@ -45,12 +45,12 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
   let testDomain: ExtensionDomain;
   let mockContainerProvider: MockContainerProvider;
 
-  const DOMAIN_ID = 'gts.hai3.mfes.ext.domain.v1~hai3.test.validation.slot.v1';
+  const DOMAIN_ID = 'gts.frontx.mfes.ext.domain.v1~frontx.test.validation.slot.v1';
 
   beforeEach(() => {
     gtsPlugin = new GtsPlugin();
     // Register a simple inline test schema so updateSharedProperty can validate
-    // without requiring the application-layer derived schemas from @hai3/framework.
+    // without requiring the application-layer derived schemas from @gears-frontx/framework.
     gtsPlugin.registerSchema(testPropertySchema);
 
     registry = new DefaultScreensetsRegistry({ typeSystem: gtsPlugin });
@@ -63,10 +63,10 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
       extensionsActions: [],
       defaultActionTimeout: 5000,
       lifecycleStages: [
-        'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+        'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
       ],
       extensionsLifecycleStages: [
-        'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+        'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
       ],
     };
 
@@ -96,7 +96,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
       // - NO type field
       expect(registerSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: `${TEST_PROPERTY_TYPE_ID}hai3.mfes.comm.runtime.v1`,
+          id: `${TEST_PROPERTY_TYPE_ID}frontx.mfes.comm.runtime.v1`,
           value: 'allowed-value',
         })
       );
@@ -114,8 +114,8 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
       registry.updateSharedProperty(TEST_PROPERTY_TYPE_ID, 'allowed-value');
 
       const callArg = registerSpy.mock.calls[0]?.[0] as Record<string, unknown>;
-      // The id must use the named instance suffix "hai3.mfes.comm.runtime.v1"
-      expect(String(callArg.id)).toContain('hai3.mfes.comm.runtime.v1');
+      // The id must use the named instance suffix "frontx.mfes.comm.runtime.v1"
+      expect(String(callArg.id)).toContain('frontx.mfes.comm.runtime.v1');
       // The id must NOT use the old anonymous instance suffix "__runtime"
       expect(String(callArg.id)).not.toMatch(/__runtime$/);
 
@@ -125,16 +125,16 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
     it('validation is performed once per call even with multiple declaring domains', () => {
       // Register a second domain that also declares the property
       const domain2: ExtensionDomain = {
-        id: 'gts.hai3.mfes.ext.domain.v1~hai3.test.validation2.slot.v1',
+        id: 'gts.frontx.mfes.ext.domain.v1~frontx.test.validation2.slot.v1',
         sharedProperties: [TEST_PROPERTY_TYPE_ID],
         actions: [],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         ],
         extensionsLifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         ],
       };
       registry.registerDomain(domain2, mockContainerProvider);
@@ -145,7 +145,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
 
       // validateInstance should be called exactly once — not once per matching domain
       const validationCallsForProp = validateSpy.mock.calls.filter(
-        ([id]) => String(id).includes('hai3.mfes.comm.runtime.v1')
+        ([id]) => String(id).includes('frontx.mfes.comm.runtime.v1')
       );
       expect(validationCallsForProp).toHaveLength(1);
 

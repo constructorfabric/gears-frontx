@@ -37,7 +37,7 @@ describe('Runtime Coordination', () => {
     });
 
     // Test entry type ID (stored separately from bridge)
-    testEntryTypeId = 'gts.hai3.mfes.mfe.entry.v1~test.entry.v1';
+    testEntryTypeId = 'gts.frontx.mfes.mfe.entry.v1~test.entry.v1';
 
     // Create mock bridge
     mockBridge = {
@@ -88,8 +88,8 @@ describe('Runtime Coordination', () => {
     });
 
     it('should allow registering multiple bridges for same container', () => {
-      const entryTypeId1 = 'gts.hai3.mfes.mfe.entry.v1~test.entry1.v1';
-      const entryTypeId2 = 'gts.hai3.mfes.mfe.entry.v1~test.entry2.v1';
+      const entryTypeId1 = 'gts.frontx.mfes.mfe.entry.v1~test.entry1.v1';
+      const entryTypeId2 = 'gts.frontx.mfes.mfe.entry.v1~test.entry2.v1';
       const bridge1: ParentMfeBridge = {
         dispose: () => {},
       };
@@ -119,7 +119,7 @@ describe('Runtime Coordination', () => {
         bridges: new Map([[testEntryTypeId, mockBridge]]),
       };
 
-      const newEntryTypeId = 'gts.hai3.mfes.mfe.entry.v1~test.new.v1';
+      const newEntryTypeId = 'gts.frontx.mfes.mfe.entry.v1~test.new.v1';
       const newBridge: ParentMfeBridge = {
         dispose: () => {},
       };
@@ -314,8 +314,8 @@ describe('Runtime Coordination', () => {
       const runtime1 = new DefaultScreensetsRegistry({ typeSystem: gtsPlugin });
       const runtime2 = new DefaultScreensetsRegistry({ typeSystem: gtsPlugin });
 
-      const entryTypeId1 = 'gts.hai3.mfes.mfe.entry.v1~test.entry1.v1';
-      const entryTypeId2 = 'gts.hai3.mfes.mfe.entry.v1~test.entry2.v1';
+      const entryTypeId1 = 'gts.frontx.mfes.mfe.entry.v1~test.entry1.v1';
+      const entryTypeId2 = 'gts.frontx.mfes.mfe.entry.v1~test.entry2.v1';
 
       const bridge1: ParentMfeBridge = {
         dispose: () => {},

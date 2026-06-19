@@ -1,13 +1,13 @@
 /**
  * HAI3 Context - React context for HAI3 application
  *
- * React Layer: L3 (Depends on @hai3/framework)
+ * React Layer: L3 (Depends on @gears-frontx/framework)
  */
 // @cpt-flow:cpt-hai3-flow-react-bindings-use-hai3:p2
 // @cpt-algo:cpt-hai3-algo-react-bindings-mfe-context-guard:p1
 
 import { createContext, useContext } from 'react';
-import type { HAI3App } from '@hai3/framework';
+import type { HAI3App } from '@gears-frontx/framework';
 
 // ============================================================================
 // Context Definition

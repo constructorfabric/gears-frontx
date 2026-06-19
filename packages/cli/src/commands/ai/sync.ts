@@ -274,7 +274,7 @@ ${userRules}
 // @cpt-end:cpt-hai3-algo-cli-tooling-generate-ai-config:p1:inst-generate-copilot
 
 /**
- * Generate .cursor/rules/hai3.mdc
+ * Generate .cursor/rules/frontx.mdc
  */
 // @cpt-begin:cpt-hai3-algo-cli-tooling-generate-ai-config:p1:inst-generate-cursor
 async function generateCursorRules(
@@ -300,26 +300,26 @@ ${userRules}
   }
 
   const dir = path.join(projectRoot, '.cursor', 'rules');
-  const filePath = path.join(dir, 'hai3.mdc');
+  const filePath = path.join(dir, 'frontx.mdc');
   let oldContent: string | null = null;
   if (await fs.pathExists(filePath)) {
     oldContent = await fs.readFile(filePath, 'utf-8');
   }
 
   if (options.showDiff && options.logger) {
-    const changed = showDiff('.cursor/rules/hai3.mdc', oldContent, content, options.logger);
-    return { file: '.cursor/rules/hai3.mdc', changed };
+    const changed = showDiff('.cursor/rules/frontx.mdc', oldContent, content, options.logger);
+    return { file: '.cursor/rules/frontx.mdc', changed };
   }
 
   await fs.ensureDir(dir);
   await fs.writeFile(filePath, content);
-  return { file: '.cursor/rules/hai3.mdc', changed: oldContent !== content };
+  return { file: '.cursor/rules/frontx.mdc', changed: oldContent !== content };
 }
 
 // @cpt-end:cpt-hai3-algo-cli-tooling-generate-ai-config:p1:inst-generate-cursor
 
 /**
- * Generate .windsurf/rules/hai3.md
+ * Generate .windsurf/rules/frontx.md
  */
 // @cpt-begin:cpt-hai3-algo-cli-tooling-generate-ai-config:p1:inst-generate-windsurf
 async function generateWindsurfRules(
@@ -343,32 +343,32 @@ ${userRules}
   }
 
   const dir = path.join(projectRoot, '.windsurf', 'rules');
-  const filePath = path.join(dir, 'hai3.md');
+  const filePath = path.join(dir, 'frontx.md');
   let oldContent: string | null = null;
   if (await fs.pathExists(filePath)) {
     oldContent = await fs.readFile(filePath, 'utf-8');
   }
 
   if (options.showDiff && options.logger) {
-    const changed = showDiff('.windsurf/rules/hai3.md', oldContent, content, options.logger);
-    return { file: '.windsurf/rules/hai3.md', changed };
+    const changed = showDiff('.windsurf/rules/frontx.md', oldContent, content, options.logger);
+    return { file: '.windsurf/rules/frontx.md', changed };
   }
 
   await fs.ensureDir(dir);
   await fs.writeFile(filePath, content);
-  return { file: '.windsurf/rules/hai3.md', changed: oldContent !== content };
+  return { file: '.windsurf/rules/frontx.md', changed: oldContent !== content };
 }
 
 // @cpt-end:cpt-hai3-algo-cli-tooling-generate-ai-config:p1:inst-generate-windsurf
 
 /**
- * Scan installed @hai3 packages for commands
+ * Scan installed @gears-frontx packages for commands
  */
 async function scanPackageCommands(
   projectRoot: string
 ): Promise<{ package: string; commandPath: string; name: string }[]> {
   const commands: { package: string; commandPath: string; name: string }[] = [];
-  const nodeModulesDir = path.join(projectRoot, 'node_modules', '@hai3');
+  const nodeModulesDir = path.join(projectRoot, 'node_modules', '@gears-frontx');
 
   if (!(await fs.pathExists(nodeModulesDir))) {
     return commands;
@@ -387,7 +387,7 @@ async function scanPackageCommands(
       if (entry.name.startsWith('hai3dev-')) continue;
 
       commands.push({
-        package: `@hai3/${pkg}`,
+        package: `@gears-frontx/${pkg}`,
         commandPath: path.join(commandsDir, entry.name),
         name: entry.name,
       });
@@ -561,7 +561,7 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
     {
       name: 'detect-packages',
       shortName: 'd',
-      description: 'Detect installed @hai3 packages and include their CLAUDE.md',
+      description: 'Detect installed @gears-frontx packages and include their CLAUDE.md',
       type: 'boolean',
       defaultValue: false,
     },
@@ -704,7 +704,7 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
         );
         commandsGenerated += cursorCount;
         toolsUpdated.push('Cursor');
-        logger.log(`  ✓ Cursor: .cursor/rules/hai3.mdc + ${cursorCount} command adapters`);
+        logger.log(`  ✓ Cursor: .cursor/rules/frontx.mdc + ${cursorCount} command adapters`);
       } else {
         toolsUpdated.push('Cursor');
       }
@@ -723,7 +723,7 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
         );
         commandsGenerated += windsurfCount;
         toolsUpdated.push('Windsurf');
-        logger.log(`  ✓ Windsurf: .windsurf/rules/hai3.md + ${windsurfCount} workflow adapters`);
+        logger.log(`  ✓ Windsurf: .windsurf/rules/frontx.md + ${windsurfCount} workflow adapters`);
       } else {
         toolsUpdated.push('Windsurf');
       }
@@ -732,7 +732,7 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
 
     // Report detected packages
     if (detectPackages) {
-      const nodeModulesDir = path.join(projectRoot!, 'node_modules', '@hai3');
+      const nodeModulesDir = path.join(projectRoot!, 'node_modules', '@gears-frontx');
       if (await fs.pathExists(nodeModulesDir)) {
         const packages = await fs.readdir(nodeModulesDir);
         const packageDocs: string[] = [];
@@ -740,13 +740,13 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
         for (const pkg of packages) {
           const claudeMdPath = path.join(nodeModulesDir, pkg, 'CLAUDE.md');
           if (await fs.pathExists(claudeMdPath)) {
-            packageDocs.push(`@hai3/${pkg}`);
+            packageDocs.push(`@gears-frontx/${pkg}`);
           }
         }
 
         if (packageDocs.length > 0) {
           logger.newline();
-          logger.log(`Detected ${packageDocs.length} @hai3 packages with documentation:`);
+          logger.log(`Detected ${packageDocs.length} @gears-frontx packages with documentation:`);
           for (const pkg of packageDocs) {
             logger.log(`  • ${pkg}`);
           }

@@ -8,7 +8,7 @@
 
 /**
  * An action with target, self-identifying type, and optional payload
- * GTS Type: gts.hai3.mfes.comm.action.v1~
+ * GTS Type: gts.frontx.mfes.comm.action.v1~
  */
 export interface Action {
   /** Self-reference to this action's type ID */

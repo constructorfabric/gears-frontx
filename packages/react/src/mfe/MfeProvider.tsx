@@ -4,7 +4,7 @@
  * Wraps MFE components with bridge and metadata.
  * Used by the MFE mounting system.
  *
- * React Layer: L3 (Depends on @hai3/framework)
+ * React Layer: L3 (Depends on @gears-frontx/framework)
  */
 // @cpt-flow:cpt-hai3-flow-react-bindings-mfe-provider:p1
 // @cpt-dod:cpt-hai3-dod-react-bindings-mfe-hooks:p1

@@ -5,7 +5,7 @@
  * Application-specific service (copied from CLI template)
  */
 
-import { BaseApiService, RestProtocol, RestMockPlugin } from '@hai3/react';
+import { BaseApiService, RestProtocol, RestMockPlugin } from '@gears-frontx/react';
 import type { GetCurrentUserResponse } from './types';
 import { accountsMockMap } from './mocks';
 

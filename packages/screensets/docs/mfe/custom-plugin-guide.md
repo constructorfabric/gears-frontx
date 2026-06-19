@@ -59,8 +59,8 @@ import type {
   ValidationResult,
   CompatibilityResult,
   AttributeResult,
-} from '@hai3/screensets';
-import type { JSONSchema } from '@hai3/screensets/types';
+} from '@gears-frontx/screensets';
+import type { JSONSchema } from '@gears-frontx/screensets/types';
 
 export class CustomPlugin implements TypeSystemPlugin {
   readonly name = 'custom';
@@ -377,8 +377,8 @@ export const customPlugin = createCustomPlugin();
 Here's an example of wrapping the GTS plugin with logging:
 
 ```typescript
-import { gtsPlugin } from '@hai3/screensets/plugins/gts';
-import type { TypeSystemPlugin } from '@hai3/screensets';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
+import type { TypeSystemPlugin } from '@gears-frontx/screensets';
 
 export class LoggingPluginWrapper implements TypeSystemPlugin {
   constructor(
@@ -417,7 +417,7 @@ export class LoggingPluginWrapper implements TypeSystemPlugin {
 }
 
 // Usage
-import { DefaultScreensetsRegistry, gtsPlugin } from '@hai3/screensets';
+import { DefaultScreensetsRegistry, gtsPlugin } from '@gears-frontx/screensets';
 
 const loggedPlugin = new LoggingPluginWrapper(gtsPlugin, myLogger);
 
@@ -567,7 +567,7 @@ describe('CustomPlugin', () => {
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { DefaultScreensetsRegistry } from '@hai3/screensets';
+import { DefaultScreensetsRegistry } from '@gears-frontx/screensets';
 import { createCustomPlugin } from './custom-plugin';
 
 describe('CustomPlugin Integration', () => {

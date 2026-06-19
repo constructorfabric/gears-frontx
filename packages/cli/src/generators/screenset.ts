@@ -70,10 +70,10 @@ export function applyMfeReplacements(content: string, name: string, namePascal: 
     .replace(/\/api\/blank/g, `/api/${nameKebab}`)
     // Federation name: blankMfe → contactsMfe
     .replace(/blankMfe/g, `${name}Mfe`)
-    // Package name: @hai3/blank-mfe → @hai3/contacts-mfe
-    .replace(/@hai3\/blank-mfe/g, `@hai3/${nameKebab}-mfe`)
-    // GTS IDs: hai3.blank. → hai3.contacts. (always lowercase)
-    .replace(/hai3\.blank\./g, `hai3.${name.toLowerCase()}.`)
+    // Package name: @gears-frontx/blank-mfe → @gears-frontx/contacts-mfe
+    .replace(/@gears-frontx\/blank-mfe/g, `@gears-frontx/${nameKebab}-mfe`)
+    // GTS IDs: frontx.blank. → frontx.contacts. (always lowercase)
+    .replace(/hai3\.blank\./g, `frontx.${name.toLowerCase()}.`)
     // Remote entry port: localhost:3099 → localhost:{port}
     .replace(/localhost:3099/g, `localhost:${port}`)
     // Port in scripts: --port 3099 → --port {port}
@@ -246,7 +246,7 @@ export function buildMfeManifestsContent(mfePackages: string[]): string {
 // Do not edit manually!
 // Regenerate: npm run generate:mfe-manifests
 ${importBlock}
-import type { Extension, JSONSchema, MfeEntry } from '@hai3/react';
+import type { Extension, JSONSchema, MfeEntry } from '@gears-frontx/react';
 
 export interface MfeManifestConfig {
   manifest: JSONSchema;

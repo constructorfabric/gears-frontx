@@ -8,7 +8,7 @@
  */
 
 import { trim } from 'lodash';
-import { eventBus, setUser, setHeaderLoading, apiRegistry, type AppDispatch, type HeaderUser } from '@hai3/react';
+import { eventBus, setUser, setHeaderLoading, apiRegistry, type AppDispatch, type HeaderUser } from '@gears-frontx/react';
 import { AccountsApiService, type ApiUser } from '@/app/api';
 
 /**

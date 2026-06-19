@@ -6,8 +6,8 @@
  * Keys are full URL patterns (including baseURL path).
  */
 
-import type { MockMap } from '@hai3/react';
-import { Language } from '@hai3/react';
+import type { MockMap } from '@gears-frontx/react';
+import { Language } from '@gears-frontx/react';
 import { UserRole, type ApiUser, type GetCurrentUserResponse } from './types';
 
 /**
@@ -15,7 +15,7 @@ import { UserRole, type ApiUser, type GetCurrentUserResponse } from './types';
  */
 const mockUser: ApiUser = {
   id: 'mock-user-001',
-  email: 'demo@hai3.org',
+  email: 'demo@frontx.org',
   firstName: 'Demo',
   lastName: 'User',
   role: UserRole.Admin,

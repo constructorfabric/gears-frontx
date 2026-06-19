@@ -9,7 +9,7 @@
 // @cpt-state:cpt-hai3-state-framework-composition-mfe-mount:p1
 // @cpt-dod:cpt-hai3-dod-framework-composition-mfe-plugin:p1
 
-import { createSlice, type ReducerPayload } from '@hai3/state';
+import { createSlice, type ReducerPayload } from '@gears-frontx/state';
 
 // ============================================================================
 // State Types

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppSelector, type HeaderState } from '@hai3/react';
+import { useAppSelector, type HeaderState } from '@gears-frontx/react';
 
 export interface HeaderProps {
   children?: React.ReactNode;

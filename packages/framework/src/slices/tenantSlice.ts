@@ -1,6 +1,6 @@
 // @cpt-state:cpt-hai3-state-framework-composition-tenant:p1
 // @cpt-dod:cpt-hai3-dod-framework-composition-app-config:p1
-import { createSlice, type ReducerPayload } from '@hai3/state';
+import { createSlice, type ReducerPayload } from '@gears-frontx/state';
 import type { TenantState, Tenant } from '../layoutTypes';
 
 /**

@@ -2,14 +2,14 @@
 # hai3:new-component - Add New UI Component
 
 ## AI WORKFLOW (REQUIRED)
-1) Read `hai3.config.json` at project root to identify the configured `uikit` value.
+1) Read `frontx.config.json` at project root to identify the configured `uikit` value.
 2) Check if the configured UI kit or existing project components cover the need (see CHECK EXISTING COMPONENTS).
 3) Gather requirements from user.
 4) Confirm implementation plan with user.
 5) Apply implementation directly.
 
 ## CHECK EXISTING COMPONENTS FIRST
-- REQUIRED: Read `hai3.config.json` to find the `uikit` value.
+- REQUIRED: Read `frontx.config.json` to find the `uikit` value.
 - If uikit is a third-party package (not `shadcn` or `none`): read its exports from `node_modules/<package>/` to check for existing components.
 - REQUIRED: Before creating a new component, scan the project AND the configured UI library for existing equivalents.
 - REQUIRED: Reuse existing components if equivalent exists.

@@ -1,10 +1,10 @@
-# @hai3/api
+# @gears-frontx/api
 
 API communication protocols and service registry for HAI3 applications.
 
 ## SDK Layer
 
-This package is part of the **SDK Layer (L1)** - it has zero @hai3 dependencies and can be used independently. It has `axios` as a peer dependency.
+This package is part of the **SDK Layer (L1)** - it has zero @gears-frontx dependencies and can be used independently. It has `axios` as a peer dependency.
 
 ## Core Concepts
 
@@ -13,7 +13,7 @@ This package is part of the **SDK Layer (L1)** - it has zero @hai3 dependencies 
 Abstract base class for domain-specific API services:
 
 ```typescript
-import { BaseApiService, RestProtocol } from '@hai3/api';
+import { BaseApiService, RestProtocol } from '@gears-frontx/api';
 
 class AccountsApiService extends BaseApiService {
   constructor() {
@@ -38,7 +38,7 @@ class AccountsApiService extends BaseApiService {
 Central registry for all API services:
 
 ```typescript
-import { apiRegistry } from '@hai3/api';
+import { apiRegistry } from '@gears-frontx/api';
 
 // Register service with class reference (type-safe)
 apiRegistry.register(AccountsApiService);
@@ -53,7 +53,7 @@ const user = await accounts.getCurrentUser();
 Configure mocks via RestMockPlugin using the `registerPlugin()` pattern. Framework controls mock plugin activation via the Mock API toggle.
 
 ```typescript
-import { BaseApiService, RestProtocol, RestMockPlugin } from '@hai3/api';
+import { BaseApiService, RestProtocol, RestMockPlugin } from '@gears-frontx/api';
 
 // Register mock plugins in service constructor
 // Framework activates/deactivates based on mock mode state
@@ -87,7 +87,7 @@ apiRegistry.plugins.add(RestProtocol, new RestMockPlugin({
 Create plugins by extending ApiPluginBase or ApiPlugin<TConfig>:
 
 ```typescript
-import { ApiPlugin, ApiPluginBase, ApiRequestContext, ApiResponseContext } from '@hai3/api';
+import { ApiPlugin, ApiPluginBase, ApiRequestContext, ApiResponseContext } from '@gears-frontx/api';
 
 // Simple plugin (no config)
 class LoggingPlugin extends ApiPluginBase {
@@ -129,7 +129,7 @@ apiRegistry.plugins.add(new LoggingPlugin());
 HTTP REST API calls via axios:
 
 ```typescript
-import { RestProtocol } from '@hai3/api';
+import { RestProtocol } from '@gears-frontx/api';
 
 const restProtocol = new RestProtocol({
   timeout: 30000,
@@ -143,13 +143,13 @@ const restProtocol = new RestProtocol({
 Mock mode is controlled centrally by the framework via the `toggleMockMode()` action. Services register mock plugins using `registerPlugin()`, and the framework activates/deactivates them based on mock mode state.
 
 ```typescript
-// In @hai3/framework - toggle mock mode (used by HAI3 Studio)
-import { toggleMockMode } from '@hai3/framework';
+// In @gears-frontx/framework - toggle mock mode (used by HAI3 Studio)
+import { toggleMockMode } from '@gears-frontx/framework';
 toggleMockMode(true);  // Enable all mock plugins
 toggleMockMode(false); // Disable all mock plugins
 
 // Custom mock plugins must be marked with MOCK_PLUGIN symbol
-import { ApiPluginBase, MOCK_PLUGIN } from '@hai3/api';
+import { ApiPluginBase, MOCK_PLUGIN } from '@gears-frontx/api';
 
 class CustomMockPlugin extends ApiPluginBase {
   static readonly [MOCK_PLUGIN] = true;  // Required for framework to identify as mock plugin
@@ -157,7 +157,7 @@ class CustomMockPlugin extends ApiPluginBase {
 }
 
 // Check if a plugin is a mock plugin
-import { isMockPlugin } from '@hai3/api';
+import { isMockPlugin } from '@gears-frontx/api';
 if (isMockPlugin(plugin)) {
   console.log('This is a mock plugin');
 }
@@ -177,7 +177,7 @@ if (isMockPlugin(plugin)) {
 Plugins can retry failed requests with optional modifications using `ApiPluginErrorContext`:
 
 ```typescript
-import { RestPluginWithConfig, ApiPluginErrorContext } from '@hai3/api';
+import { RestPluginWithConfig, ApiPluginErrorContext } from '@gears-frontx/api';
 
 interface AuthConfig {
   getToken: () => string | null;

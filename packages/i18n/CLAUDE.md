@@ -1,4 +1,4 @@
-# @hai3/i18n
+# @gears-frontx/i18n
 
 Internationalization (i18n) system for HAI3 applications with 36 supported languages.
 
@@ -13,7 +13,7 @@ This package is part of the **SDK Layer (L1)** - it has zero dependencies and ca
 Central registry for translations:
 
 ```typescript
-import { i18nRegistry, Language } from '@hai3/i18n';
+import { i18nRegistry, Language } from '@gears-frontx/i18n';
 
 // Register translations directly
 i18nRegistry.register('common', Language.English, {
@@ -44,7 +44,7 @@ const screenTitle = i18nRegistry.t('screen.demo.home:title');
 ### Language Management
 
 ```typescript
-import { i18nRegistry, Language } from '@hai3/i18n';
+import { i18nRegistry, Language } from '@gears-frontx/i18n';
 
 // Set current language (async - loads translations)
 await i18nRegistry.setLanguage(Language.Spanish);
@@ -62,7 +62,7 @@ const isArabicRTL = i18nRegistry.isRTL(Language.Arabic); // For specific languag
 36 languages including RTL support:
 
 ```typescript
-import { Language, SUPPORTED_LANGUAGES, getRTLLanguages } from '@hai3/i18n';
+import { Language, SUPPORTED_LANGUAGES, getRTLLanguages } from '@gears-frontx/i18n';
 
 // Language enum
 Language.English    // 'en'
@@ -76,7 +76,7 @@ const rtlLangs = getRTLLanguages();
 // ['ar', 'he', 'fa', 'ur']
 
 // Get language metadata
-import { getLanguageMetadata } from '@hai3/i18n';
+import { getLanguageMetadata } from '@gears-frontx/i18n';
 const arabic = getLanguageMetadata(Language.Arabic);
 // { code: 'ar', name: 'Arabic', nativeName: 'العربية', rtl: true }
 ```
@@ -86,7 +86,7 @@ const arabic = getLanguageMetadata(Language.Arabic);
 Create loaders for screenset translations:
 
 ```typescript
-import { I18nRegistryImpl, Language } from '@hai3/i18n';
+import { I18nRegistryImpl, Language } from '@gears-frontx/i18n';
 
 const screenTranslations = I18nRegistryImpl.createLoader({
   [Language.English]: () => import('./i18n/en.json'),

@@ -1,7 +1,7 @@
 /**
  * HAI3 Dependency Cruiser Configuration (Monorepo Root)
  *
- * This file contains the complete dependency rules for the HAI3 monorepo:
+ * This file contains the complete dependency rules for the Gears FrontX Monorepo:
  * - Standalone rules from packages/cli/template-sources/project/configs/.dependency-cruiser.cjs
  * - Monorepo-specific package boundary rules
  *
@@ -41,7 +41,7 @@ module.exports = {
       severity: 'error',
       from: { path: '^packages/react/' },
       to: { path: '^packages/(state|screensets|api|i18n)/' },
-      comment: 'LAYER VIOLATION: React (L3) cannot import SDK (L1) directly. Use @hai3/framework re-exports.'
+      comment: 'LAYER VIOLATION: React (L3) cannot import SDK (L1) directly. Use @gears-frontx/framework re-exports.'
     },
     {
       name: 'packages-no-src-import',

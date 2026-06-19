@@ -1,14 +1,14 @@
 /**
  * HAI3 Dependency Cruiser React Configuration (L3)
- * Rules for @hai3/react package
+ * Rules for @gears-frontx/react package
  *
  * React package CAN import:
- * - @hai3/framework (wires everything together)
+ * - @gears-frontx/framework (wires everything together)
  * - react, react-dom (React adapter)
  *
  * React package CANNOT import:
- * - @hai3/state, @hai3/screensets, @hai3/api, @hai3/i18n (use framework re-exports)
- * - @hai3/uicore (deprecated)
+ * - @gears-frontx/state, @gears-frontx/screensets, @gears-frontx/api, @gears-frontx/i18n (use framework re-exports)
+ * - @gears-frontx/uicore (deprecated)
  */
 
 const base = require('./base.cjs');
@@ -22,15 +22,15 @@ module.exports = {
       name: 'react-only-framework-dep',
       severity: 'error',
       from: { path: '^packages/react/src' },
-      to: { path: 'node_modules/@hai3/(state|screensets|api|i18n)' },
-      comment: 'REACT VIOLATION: React package imports SDK via @hai3/framework, not directly. Use framework re-exports.',
+      to: { path: 'node_modules/@gears-frontx/(state|screensets|api|i18n)' },
+      comment: 'REACT VIOLATION: React package imports SDK via @gears-frontx/framework, not directly. Use framework re-exports.',
     },
     {
       name: 'react-no-uicore',
       severity: 'error',
       from: { path: '^packages/react/src' },
-      to: { path: 'node_modules/@hai3/uicore' },
-      comment: 'REACT VIOLATION: @hai3/uicore is deprecated. Use @hai3/framework and @hai3/react.',
+      to: { path: 'node_modules/@gears-frontx/uicore' },
+      comment: 'REACT VIOLATION: @gears-frontx/uicore is deprecated. Use @gears-frontx/framework and @gears-frontx/react.',
     },
   ],
   options: base.options,

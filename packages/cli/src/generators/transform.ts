@@ -122,7 +122,7 @@ export function transformContent(
   const targetCamel = toCamelCase(targetScreensetId);
 
   // Use unique placeholders to avoid double-replacement
-  const PLACEHOLDER_PREFIX = '___HAI3_TRANSFORM___';
+  const PLACEHOLDER_PREFIX = '___FRONTX_TRANSFORM___';
   const placeholders = {
     targetCamel: `${PLACEHOLDER_PREFIX}CAMEL${PLACEHOLDER_PREFIX}`,
     targetPascal: `${PLACEHOLDER_PREFIX}PASCAL${PLACEHOLDER_PREFIX}`,

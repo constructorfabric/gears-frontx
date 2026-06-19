@@ -1,7 +1,7 @@
 /**
  * Type System Plugin for MFE contracts
  *
- * The @hai3/screensets package treats type IDs as OPAQUE STRINGS.
+ * The @gears-frontx/screensets package treats type IDs as OPAQUE STRINGS.
  * All type ID understanding (parsing, format validation, building) is delegated to the plugin.
  *
  * @packageDocumentation
@@ -57,7 +57,7 @@ export interface ValidationResult {
  * @example
  * ```typescript
  * // Using the GTS plugin (default)
- * import { screensetsRegistryFactory, gtsPlugin } from '@hai3/screensets';
+ * import { screensetsRegistryFactory, gtsPlugin } from '@gears-frontx/screensets';
  *
  * const registry = screensetsRegistryFactory.build({ typeSystem: gtsPlugin });
  * registry.registerDomain(myDomain, containerProvider);
@@ -103,12 +103,12 @@ export interface TypeSystemPlugin {
    * All instances use the **named instance pattern** — the schema is extracted from
    * the chained instance ID automatically. No explicit `type` field is needed or supported.
    *
-   * - Example: `{ id: "gts.hai3.mfes.ext.extension.v1~acme.widget.v1", ... }`
-   * - Schema resolved: `gts.hai3.mfes.ext.extension.v1~`
+   * - Example: `{ id: "gts.frontx.mfes.ext.extension.v1~acme.widget.v1", ... }`
+   * - Schema resolved: `gts.frontx.mfes.ext.extension.v1~`
    *
    * For ephemeral runtime validation (e.g., shared property values), construct a
    * chained instance ID that encodes the schema:
-   * - Example: `{ id: "${propertyTypeId}hai3.mfes.comm.runtime.v1", value: "dark" }`
+   * - Example: `{ id: "${propertyTypeId}frontx.mfes.comm.runtime.v1", value: "dark" }`
    * - Schema resolved: `${propertyTypeId}` (the derived shared property schema)
    *
    * @param entity - The GTS entity to register (must have an `id` field)
@@ -121,8 +121,8 @@ export interface TypeSystemPlugin {
    *
    * gts-ts extracts the schema from the chained instance ID automatically
    * (named instance pattern — see register() for details):
-   * - Instance ID: `gts.hai3.mfes.ext.extension.v1~acme.widget.v1`
-   * - Schema ID:   `gts.hai3.mfes.ext.extension.v1~`
+   * - Instance ID: `gts.frontx.mfes.ext.extension.v1~acme.widget.v1`
+   * - Schema ID:   `gts.frontx.mfes.ext.extension.v1~`
    *
    * @param instanceId - The instance ID (does NOT end with ~)
    * @returns Validation result

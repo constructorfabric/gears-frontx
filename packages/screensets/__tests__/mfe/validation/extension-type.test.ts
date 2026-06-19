@@ -83,15 +83,15 @@ function createMockPlugin(
 describe('validateExtensionType', () => {
   // Schema/Type IDs (end with ~) - used for extensionsTypeId references
   const DERIVED_WIDGET_EXTENSION_TYPE =
-    'gts.hai3.screensets.ext.extension.v1~acme.dashboard.ext.widget_extension.v1~';
+    'gts.frontx.screensets.ext.extension.v1~acme.dashboard.ext.widget_extension.v1~';
 
   // Instance IDs (do NOT end with ~)
   const WIDGET_EXTENSION_INSTANCE =
-    'gts.hai3.screensets.ext.extension.v1~acme.dashboard.ext.widget_extension.v1~acme.analytics.v1';
-  const DOMAIN_ID = 'gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.widget_slot.v1';
+    'gts.frontx.screensets.ext.extension.v1~acme.dashboard.ext.widget_extension.v1~acme.analytics.v1';
+  const DOMAIN_ID = 'gts.frontx.screensets.ext.domain.v1~acme.dashboard.layout.widget_slot.v1';
   const ENTRY_ID =
-    'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1';
-  const BASE_EXTENSION_INSTANCE = 'gts.hai3.screensets.ext.extension.v1~acme.generic.extension.v1';
+    'gts.frontx.screensets.mfe.entry.v1~frontx.screensets.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1';
+  const BASE_EXTENSION_INSTANCE = 'gts.frontx.screensets.ext.extension.v1~acme.generic.extension.v1';
 
   describe('successful validation scenarios', () => {
     it('should pass when domain does not specify extensionsTypeId', () => {
@@ -179,7 +179,7 @@ describe('validateExtensionType', () => {
 
       // Instance ID for an extension that derives from an unrelated type (not widget_extension)
       const UNRELATED_EXTENSION_INSTANCE =
-        'gts.hai3.screensets.ext.extension.v1~acme.other.ext.unrelated.v1~acme.other.instance.v1';
+        'gts.frontx.screensets.ext.extension.v1~acme.other.ext.unrelated.v1~acme.other.instance.v1';
 
       const domain: ExtensionDomain = {
         id: DOMAIN_ID,

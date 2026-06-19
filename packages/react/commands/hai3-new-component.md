@@ -7,7 +7,7 @@
 3) Implement.
 
 ## CHECK EXISTING COMPONENTS FIRST
-- REQUIRED: Read `hai3.config.json` to find the `uikit` value.
+- REQUIRED: Read `frontx.config.json` to find the `uikit` value.
 - If uikit is a third-party package (not `shadcn` or `none`): read its exports from `node_modules/<package>/` to check for existing components.
 - REQUIRED: Before creating a new component, scan the project AND the configured UI library for existing equivalents.
 - REQUIRED: Reuse existing components if equivalent exists.

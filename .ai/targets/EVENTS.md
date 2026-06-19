@@ -73,7 +73,7 @@
   grep -R "getState.*app\\.|getState\\(\\).*\\." src "*Actions.ts"
 
 ## MFE RUNTIME ISOLATION
-- Each MFE gets its own isolated instances of @hai3/react even when listed in sharedDependencies.
+- Each MFE gets its own isolated instances of @gears-frontx/react even when listed in sharedDependencies.
 - `singleton: false` (the default for MfeHandlerMF) causes the federation runtime to evaluate the shared code independently per MFE. Shared code is downloaded once but evaluated per MFE, so module-level singletons (eventBus, apiRegistry, store) are independent per MFE.
 - This gives each MFE its own isolated eventBus, apiRegistry, and store singletons.
 - MFE-internal events never cross runtime boundaries.

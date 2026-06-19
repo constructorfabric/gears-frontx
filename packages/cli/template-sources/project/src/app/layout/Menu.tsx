@@ -10,7 +10,7 @@ import {
   useAppSelector,
   eventBus,
   type MenuState,
-} from '@hai3/react';
+} from '@gears-frontx/react';
 import {
   Sidebar,
   SidebarContent,

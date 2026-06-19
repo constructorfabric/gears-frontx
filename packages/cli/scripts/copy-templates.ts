@@ -189,7 +189,7 @@ Use \`.ai/${relativePath}\` as the single source of truth.
 }
 
 /**
- * Bundle commands from @hai3 packages into CLI templates
+ * Bundle commands from @gears-frontx packages into CLI templates
  * These are the actual command files (not adapters) that ship with each package
  * Scans packages/[pkg]/commands/[cmd].md and copies ALL variants to a commands-bundle directory
  * The variant selection happens at project creation time, not at CLI build time
@@ -317,7 +317,7 @@ async function generateIdeRules(templatesDir: string): Promise<void> {
   // CLAUDE.md at project root
   const guidelinesPointer = `REQUIRED: Read \`.ai/GUIDELINES.md\` before implementing any code changes. Follow its ROUTING section to find the correct target file.
 
-REQUIRED: When creating or modifying UI components, check the configured UI kit (\`hai3.config.json\` → \`uikit\`) and use its components. Read \`.ai/targets/UIKIT.md\` if it exists.`;
+REQUIRED: When creating or modifying UI components, check the configured UI kit (\`frontx.config.json\` → \`uikit\`) and use its components. Read \`.ai/targets/UIKIT.md\` if it exists.`;
 
   const claudeMdContent = `# CLAUDE.md
 
@@ -336,7 +336,7 @@ alwaysApply: true
 
 ${guidelinesPointer}
 `;
-  await fs.writeFile(path.join(cursorRulesDir, 'hai3.mdc'), cursorRuleContent);
+  await fs.writeFile(path.join(cursorRulesDir, 'frontx.mdc'), cursorRuleContent);
 
   // Windsurf rules
   const windsurfRulesDir = path.join(templatesDir, '.windsurf', 'rules');
@@ -347,7 +347,7 @@ trigger: always_on
 
 ${guidelinesPointer}
 `;
-  await fs.writeFile(path.join(windsurfRulesDir, 'hai3.md'), windsurfRuleContent);
+  await fs.writeFile(path.join(windsurfRulesDir, 'frontx.md'), windsurfRuleContent);
 
   // GitHub Copilot instructions
   const githubDir = path.join(templatesDir, '.github');
@@ -372,7 +372,7 @@ For detailed guidance, use these resources:
 2. **REQUIRED**: Event-driven architecture only (dispatch events, handle in actions)
 3. **FORBIDDEN**: Direct slice dispatch from UI components
 4. **FORBIDDEN**: Hardcoded colors or inline styles
-5. **REQUIRED**: Use the configured UI kit for all UI (check \`hai3.config.json\` \`uikit\` field)
+5. **REQUIRED**: Use the configured UI kit for all UI (check \`frontx.config.json\` \`uikit\` field)
 6. **REQUIRED**: Run \`npm run arch:check\` before committing
 
 ## Available Commands
@@ -766,7 +766,7 @@ async function copyTemplates() {
     .map((f) => f.relativePath);
   const adapterCounts = await generateCommandAdapters(standaloneCommands, TEMPLATES_DIR);
 
-  // Bundle ALL command variants from @hai3 packages (packages/*/commands/)
+  // Bundle ALL command variants from @gears-frontx packages (packages/*/commands/)
   // Variant selection happens at project creation time
   const packageCounts = await bundlePackageCommands(TEMPLATES_DIR);
 
@@ -787,8 +787,8 @@ async function copyTemplates() {
   // Generate IDE rules (CLAUDE.md, .cursor/rules/, .windsurf/rules/, .github/copilot-instructions.md)
   await generateIdeRules(TEMPLATES_DIR);
   console.log('  ✓ CLAUDE.md (pointer to .ai/GUIDELINES.md)');
-  console.log('  ✓ .cursor/rules/hai3.mdc (pointer)');
-  console.log('  ✓ .windsurf/rules/hai3.md (pointer)');
+  console.log('  ✓ .cursor/rules/frontx.mdc (pointer)');
+  console.log('  ✓ .windsurf/rules/frontx.md (pointer)');
   console.log('  ✓ .github/copilot-instructions.md (GitHub Copilot)');
   // @cpt-end:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-copy-ide-adapters
 
@@ -822,8 +822,8 @@ async function copyTemplates() {
     stage2: {
       generated: [
         'CLAUDE.md',
-        '.cursor/rules/hai3.mdc',
-        '.windsurf/rules/hai3.md',
+        '.cursor/rules/frontx.mdc',
+        '.windsurf/rules/frontx.md',
         ...standaloneCommandFiles.map((f) => `.claude/commands/${path.basename(f)}`),
       ],
     },

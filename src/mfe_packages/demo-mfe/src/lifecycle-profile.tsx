@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ChildMfeBridge } from '@hai3/react';
+import type { ChildMfeBridge } from '@gears-frontx/react';
 import { ThemeAwareReactLifecycle } from './shared/ThemeAwareReactLifecycle';
 import { ProfileScreen } from './screens/profile/ProfileScreen';
 

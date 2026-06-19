@@ -1,9 +1,9 @@
 /**
  * HAI3 Dependency Cruiser SDK Configuration (L1)
- * Rules for SDK packages: @hai3/state, @hai3/layout, @hai3/api, @hai3/i18n
+ * Rules for SDK packages: @gears-frontx/state, @gears-frontx/layout, @gears-frontx/api, @gears-frontx/i18n
  *
  * SDK packages MUST have:
- * - ZERO @hai3/* dependencies (complete isolation)
+ * - ZERO @gears-frontx/* dependencies (complete isolation)
  * - NO React dependencies (framework-agnostic)
  */
 
@@ -18,8 +18,8 @@ module.exports = {
       name: 'sdk-no-hai3-imports',
       severity: 'error',
       from: { path: '^packages/(state|screensets|api|i18n)/src' },
-      to: { path: 'node_modules/@hai3/' },
-      comment: 'SDK VIOLATION: SDK packages must have ZERO @hai3 dependencies. Each SDK package is completely isolated.',
+      to: { path: 'node_modules/@gears-frontx/' },
+      comment: 'SDK VIOLATION: SDK packages must have ZERO @gears-frontx dependencies. Each SDK package is completely isolated.',
     },
     {
       name: 'sdk-no-react',

@@ -1,10 +1,10 @@
-# @hai3/cli
+# @gears-frontx/cli
 
 Command-line interface for scaffolding and managing HAI3 framework projects.
 
 ## Overview
 
-`@hai3/cli` provides a comprehensive set of commands for creating new HAI3 applications, generating screensets, managing project structure, and maintaining framework dependencies. The CLI streamlines project setup and ongoing development by automating common tasks and enforcing framework conventions.
+`@gears-frontx/cli` provides a comprehensive set of commands for creating new HAI3 applications, generating screensets, managing project structure, and maintaining framework dependencies. The CLI streamlines project setup and ongoing development by automating common tasks and enforcing framework conventions.
 
 ## Purpose
 
@@ -29,7 +29,7 @@ Update the CLI itself and all HAI3 framework packages to their latest versions. 
 ### Global Installation (Recommended)
 
 ```bash
-npm install -g @hai3/cli
+npm install -g @gears-frontx/cli
 ```
 
 Global installation makes the `hai3` command available system-wide for creating new projects anywhere on your system.
@@ -37,7 +37,7 @@ Global installation makes the `hai3` command available system-wide for creating 
 ### Project-Level Installation
 
 ```bash
-npm install --save-dev @hai3/cli
+npm install --save-dev @gears-frontx/cli
 ```
 
 Install as a dev dependency when using CLI commands within project scripts or when global installation isn't preferred.
@@ -54,7 +54,7 @@ Creates a new HAI3 project or SDK layer package with the specified name.
 - `-l, --layer <type>` - Create a package for a specific SDK layer (`sdk`, `framework`, `react`, or `app`)
 - `--uikit <type>` - UI components: `shadcn` for shadcn/ui, `none` for no UI library, or an npm package name (e.g. `@mui/material`, `antd`)
 - `--studio` / `--no-studio` - Include or exclude Studio package
-- `--local` - Use local @hai3 packages from monorepo (file:) instead of npm; requires CLI run from linked monorepo or `HAI3_MONOREPO_ROOT`
+- `--local` - Use local @gears-frontx packages from monorepo (file:) instead of npm; requires CLI run from linked monorepo or `GEARS_FRONTX_MONOREPO_ROOT`
 - `--package-manager` - Package manager to use (`npm`, `pnpm`, `yarn`)
 
 **Interactive (when `--layer` not specified):**
@@ -63,7 +63,7 @@ Creates a new HAI3 project or SDK layer package with the specified name.
 - Package manager selection (`npm` default, `pnpm`, `yarn`)
 
 **Output (App project — default):**
-- Vite + React + TypeScript project with `hai3.config.json` (uikit, etc.)
+- Vite + React + TypeScript project with `frontx.config.json` (uikit, etc.)
 - HAI3 framework packages installed and configured
 - Build and dev scripts; layout/components scaffolded per UI kit choice
 
@@ -136,7 +136,7 @@ Syncs AI assistant configuration files from `.ai/GUIDELINES.md` and `.ai/command
 
 **Options:**
 - `-t, --tool <tool>` - Tool to sync: `claude`, `copilot`, `cursor`, `windsurf`, or `all` (default: `all`)
-- `-d, --detect-packages` - Detect installed @hai3 packages and merge their configs
+- `-d, --detect-packages` - Detect installed @gears-frontx packages and merge their configs
 - `--diff` - Show diff of changes without writing files
 
 **Generated:** `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/hai3.mdc`, `.windsurf/rules/hai3.md`, and command adapters.
@@ -161,7 +161,7 @@ Generated projects include scripts for development server, production builds, ty
 
 ## UI Kit Options
 
-At project creation, you choose how UI components are provided. The choice is stored in `hai3.config.json` and used by the CLI when scaffolding layout and screensets.
+At project creation, you choose how UI components are provided. The choice is stored in `frontx.config.json` and used by the CLI when scaffolding layout and screensets.
 
 ### Shadcn (`shadcn`)
 
@@ -215,10 +215,10 @@ HAI3 uses a 3-layer SDK architecture. When building custom packages that extend 
 # SDK layer - pure TypeScript, no HAI3 dependencies
 hai3 create my-contracts --layer=sdk
 
-# Framework layer - depends on @hai3/events, @hai3/store
+# Framework layer - depends on @gears-frontx/events, @gears-frontx/store
 hai3 create my-store-extension --layer=framework
 
-# React layer - depends on @hai3/framework + React
+# React layer - depends on @gears-frontx/framework + React
 hai3 create my-hooks --layer=react
 ```
 
@@ -229,8 +229,8 @@ Each layer has specific peer dependency requirements enforced by the generated c
 | Layer | Allowed Dependencies |
 |-------|---------------------|
 | SDK | None (pure TypeScript) |
-| Framework | `@hai3/events`, `@hai3/store` |
-| React | `@hai3/framework`, `react`, `react-dom` |
+| Framework | `@gears-frontx/events`, `@gears-frontx/store` |
+| React | `@gears-frontx/framework`, `react`, `react-dom` |
 
 ### Generated Package Structure
 
@@ -263,7 +263,7 @@ The AI tools will warn you if you attempt to import from a higher layer (e.g., i
 
 ## Implementing Custom UI Components
 
-When using `--uikit=none` or a third-party package, you get placeholder layout components to implement with your UI library. Use HAI3's Redux hooks (`useAppSelector`, `useAppDispatch`) from `@hai3/react` for state, and respect the theme via CSS variables or Tailwind tokens (`bg-background`, `text-foreground`, `border-border`, or `var(--background)` etc.).
+When using `--uikit=none` or a third-party package, you get placeholder layout components to implement with your UI library. Use HAI3's Redux hooks (`useAppSelector`, `useAppDispatch`) from `@gears-frontx/react` for state, and respect the theme via CSS variables or Tailwind tokens (`bg-background`, `text-foreground`, `border-border`, or `var(--background)` etc.).
 
 ## Advanced Usage
 
@@ -272,7 +272,7 @@ When using `--uikit=none` or a third-party package, you get placeholder layout c
 The CLI exposes a programmatic API for build scripts and automation. Use `executeCommand` with the registered command and options; set `interactive: false` for non-interactive runs.
 
 ```typescript
-import { executeCommand, commands } from '@hai3/cli';
+import { executeCommand, commands } from '@gears-frontx/cli';
 
 // Create a new project
 const result = await executeCommand(
@@ -314,5 +314,5 @@ Apache-2.0
 
 ## Related Packages
 
-- [`@hai3/uicore`](../uicore) — Core framework types and selectors
-- [`@hai3/studio`](../studio) — Development tools overlay (optional)
+- [`@gears-frontx/uicore`](../uicore) — Core framework types and selectors
+- [`@gears-frontx/studio`](../studio) — Development tools overlay (optional)

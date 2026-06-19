@@ -5,10 +5,10 @@
  * Tests that the SDK layer packages follow the 3-layer architecture
  *
  * These tests verify:
- * - SDK packages (L1) have ZERO @hai3 dependencies
+ * - SDK packages (L1) have ZERO @gears-frontx dependencies
  * - Framework package (L2) only imports SDK packages
  * - React package (L3) only imports framework
- * - No package depends on deprecated packages (@hai3/uikit-contracts, @hai3/uicore, @hai3/layout)
+ * - No package depends on deprecated packages (@gears-frontx/uikit-contracts, @gears-frontx/uicore, @gears-frontx/layout)
  * - Layer configs include all parent layer rules
  */
 
@@ -58,31 +58,31 @@ function getHai3Dependencies(pkg: PackageJson): string[] {
     ...pkg.dependencies,
     ...pkg.peerDependencies,
   };
-  return Object.keys(allDeps).filter((dep) => dep.startsWith('@hai3/'));
+  return Object.keys(allDeps).filter((dep) => dep.startsWith('@gears-frontx/'));
 }
 
-// SDK packages that should have ZERO @hai3 dependencies
-// Note: @hai3/events + @hai3/store were consolidated into @hai3/state
-// Note: @hai3/layout was deleted, layout slices now in @hai3/framework
+// SDK packages that should have ZERO @gears-frontx dependencies
+// Note: @gears-frontx/events + @gears-frontx/store were consolidated into @gears-frontx/state
+// Note: @gears-frontx/layout was deleted, layout slices now in @gears-frontx/framework
 const SDK_PACKAGES = ['state', 'api', 'i18n', 'screensets'];
 
 // Framework can only import these SDK packages
 const ALLOWED_SDK_DEPS = [
-  '@hai3/state',      // Consolidated from @hai3/events + @hai3/store
-  '@hai3/api',
-  '@hai3/i18n',
-  '@hai3/screensets', // Screenset contracts and registry
+  '@gears-frontx/state',      // Consolidated from @gears-frontx/events + @gears-frontx/store
+  '@gears-frontx/api',
+  '@gears-frontx/i18n',
+  '@gears-frontx/screensets', // Screenset contracts and registry
 ];
 
 // Deprecated packages that should not be imported
 const DEPRECATED_PACKAGES = [
-  '@hai3/uikit-contracts',  // Theme types now in @hai3/framework
-  '@hai3/uicore',           // Consolidated into @hai3/framework
-  '@hai3/layout',           // Layout slices now in @hai3/framework
+  '@gears-frontx/uikit-contracts',  // Theme types now in @gears-frontx/framework
+  '@gears-frontx/uicore',           // Consolidated into @gears-frontx/framework
+  '@gears-frontx/layout',           // Layout slices now in @gears-frontx/framework
 ];
 
 /**
- * Test: SDK packages have zero @hai3 dependencies
+ * Test: SDK packages have zero @gears-frontx dependencies
  */
 function testSdkZeroDependencies(): TestResult[] {
   const results: TestResult[] = [];
@@ -93,7 +93,7 @@ function testSdkZeroDependencies(): TestResult[] {
 
     if (!pkg) {
       results.push({
-        name: `SDK @hai3/${pkgName}: Zero @hai3 deps`,
+        name: `SDK @gears-frontx/${pkgName}: Zero @gears-frontx deps`,
         passed: true,
         message: `Package not yet created (will be created in Phase 3)`,
         skipped: true,
@@ -105,11 +105,11 @@ function testSdkZeroDependencies(): TestResult[] {
     const passed = hai3Deps.length === 0;
 
     results.push({
-      name: `SDK @hai3/${pkgName}: Zero @hai3 deps`,
+      name: `SDK @gears-frontx/${pkgName}: Zero @gears-frontx deps`,
       passed,
       message: passed
-        ? 'No @hai3 dependencies found'
-        : `Found @hai3 dependencies: ${hai3Deps.join(', ')}`,
+        ? 'No @gears-frontx dependencies found'
+        : `Found @gears-frontx dependencies: ${hai3Deps.join(', ')}`,
     });
   }
 
@@ -162,7 +162,7 @@ function testReactOnlyFrameworkDep(): TestResult {
   }
 
   const hai3Deps = getHai3Dependencies(pkg);
-  const invalidDeps = hai3Deps.filter((dep) => dep !== '@hai3/framework');
+  const invalidDeps = hai3Deps.filter((dep) => dep !== '@gears-frontx/framework');
   const passed = invalidDeps.length === 0;
 
   return {
@@ -187,7 +187,7 @@ function testNoDeprecatedDependencies(): TestResult[] {
 
     if (!pkg) {
       results.push({
-        name: `@hai3/${pkgName}: No deprecated deps`,
+        name: `@gears-frontx/${pkgName}: No deprecated deps`,
         passed: true,
         message: 'Package not yet created',
         skipped: true,
@@ -202,7 +202,7 @@ function testNoDeprecatedDependencies(): TestResult[] {
     const passed = deprecatedDeps.length === 0;
 
     results.push({
-      name: `@hai3/${pkgName}: No deprecated deps`,
+      name: `@gears-frontx/${pkgName}: No deprecated deps`,
       passed,
       message: passed
         ? 'No deprecated dependencies'

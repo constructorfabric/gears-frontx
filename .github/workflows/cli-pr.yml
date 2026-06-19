@@ -42,11 +42,11 @@ jobs:
         run: npm run build:packages
 
       - name: Run CLI PR E2E
-        run: npm run test:e2e:pr --workspace=@hai3/cli
+        run: npm run test:e2e:pr --workspace=@gears-frontx/cli
         env:
           CLI_E2E_ARTIFACT_DIR: .artifacts/cli-e2e/pr
-          HAI3_USE_LOCAL: '1'
-          HAI3_MONOREPO_ROOT: ${{ github.workspace }}
+          GEARS_FRONTX_USE_LOCAL: '1'
+          GEARS_FRONTX_MONOREPO_ROOT: ${{ github.workspace }}
           CLI_E2E_PM: ${{ matrix.package-manager }}
 
       - name: Upload CLI E2E artifacts

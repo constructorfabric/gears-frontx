@@ -17,7 +17,7 @@ date: 2025-11-18
 - [Pros and Cons of the Options](#pros-and-cons-of-the-options)
   - [Keep dev tools inside the uicore package behind a flag](#keep-dev-tools-inside-the-uicore-package-behind-a-flag)
   - [Implement dev tools as a browser extension](#implement-dev-tools-as-a-browser-extension)
-  - [Standalone `@hai3/studio` workspace package with conditional import guarded by `import.meta.env.DEV`](#standalone-hai3studio-workspace-package-with-conditional-import-guarded-by-importmetaenvdev)
+  - [Standalone `@gears-frontx/studio` workspace package with conditional import guarded by `import.meta.env.DEV`](#standalone-gears-frontxstudio-workspace-package-with-conditional-import-guarded-by-importmetaenvdev)
 - [More Information](#more-information)
 - [Traceability](#traceability)
 
@@ -37,11 +37,11 @@ Footer-based dev tools lacked space and could not be excluded from production bu
 
 * Keep dev tools inside the uicore package behind a flag
 * Implement dev tools as a browser extension
-* Standalone `@hai3/studio` workspace package with conditional import guarded by `import.meta.env.DEV`
+* Standalone `@gears-frontx/studio` workspace package with conditional import guarded by `import.meta.env.DEV`
 
 ## Decision Outcome
 
-Chosen option: "Standalone `@hai3/studio` workspace package with conditional import guarded by `import.meta.env.DEV`", because Vite eliminates the entire conditional branch at build time, guaranteeing zero production overhead, while the floating glassmorphic overlay provides a modern developer UX without consuming viewport space.
+Chosen option: "Standalone `@gears-frontx/studio` workspace package with conditional import guarded by `import.meta.env.DEV`", because Vite eliminates the entire conditional branch at build time, guaranteeing zero production overhead, while the floating glassmorphic overlay provides a modern developer UX without consuming viewport space.
 
 ### Consequences
 
@@ -50,7 +50,7 @@ Chosen option: "Standalone `@hai3/studio` workspace package with conditional imp
 
 ### Confirmation
 
-`packages/studio/` exists as a standalone workspace package. Its `package.json` carries no `@hai3/*` dependencies — Studio reads from store selectors and dispatches through the standard event flow. Studio is imported in host apps exclusively inside an `if (import.meta.env.DEV)` block. Settings are persisted to `localStorage`.
+`packages/studio/` exists as a standalone workspace package. Its `package.json` carries no `@gears-frontx/*` dependencies — Studio reads from store selectors and dispatches through the standard event flow. Studio is imported in host apps exclusively inside an `if (import.meta.env.DEV)` block. Settings are persisted to `localStorage`.
 
 ## Pros and Cons of the Options
 
@@ -64,14 +64,14 @@ Chosen option: "Standalone `@hai3/studio` workspace package with conditional imp
 * Good, because completely separate from the application bundle regardless of environment
 * Bad, because installation friction for every developer; extension must be kept in sync with framework internals
 
-### Standalone `@hai3/studio` workspace package with conditional import guarded by `import.meta.env.DEV`
+### Standalone `@gears-frontx/studio` workspace package with conditional import guarded by `import.meta.env.DEV`
 
 * Good, because Vite tree-shakes the entire branch in production builds with no configuration required
 * Bad, because the floating overlay can obscure application UI during development sessions
 
 ## More Information
 
-The `@hai3/studio` package deliberately has no `@hai3/*` framework dependencies to enable independent evolution. It accesses framework state through store selectors rather than importing framework internals directly.
+The `@gears-frontx/studio` package deliberately has no `@gears-frontx/*` framework dependencies to enable independent evolution. It accesses framework state through store selectors rather than importing framework internals directly.
 
 ## Traceability
 

@@ -19,7 +19,7 @@ Ask user for:
 ### 1.1 Create Service
 File: src/screensets/{screenset}/api/{Name}ApiService.ts
 ```typescript
-import { BaseApiService, apiRegistry } from '@hai3/api';
+import { BaseApiService, apiRegistry } from '@gears-frontx/api';
 import { SCREENSET_ID } from '../ids';
 
 export const DOMAIN = `${SCREENSET_ID}:serviceName` as const;
@@ -34,7 +34,7 @@ class {Name}ApiService extends BaseApiService {
 
 apiRegistry.register(DOMAIN, {Name}ApiService);
 
-declare module '@hai3/api' {
+declare module '@gears-frontx/api' {
   interface ApiServicesMap {
     [DOMAIN]: {Name}ApiService;
   }
@@ -44,7 +44,7 @@ declare module '@hai3/api' {
 ### 1.2 Create Mocks
 File: src/screensets/{screenset}/api/mocks.ts
 ```typescript
-import type { MockMap } from '@hai3/api';
+import type { MockMap } from '@gears-frontx/api';
 
 export const mockMap = {
   'GET /endpoint': () => ({ data: mockData }),

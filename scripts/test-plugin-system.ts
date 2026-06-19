@@ -17,7 +17,7 @@ import {
   routing,
   i18n,
   effects,
-} from '@hai3/framework';
+} from '@gears-frontx/framework';
 
 // ============================================================================
 // Test Utilities

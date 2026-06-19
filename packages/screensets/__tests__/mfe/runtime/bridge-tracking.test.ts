@@ -43,18 +43,18 @@ describe('ScreensetsRegistry - Bridge Tracking', () => {
 
     it('should safely dispose after domain registration', () => {
       const testDomain: ExtensionDomain = {
-        id: 'gts.hai3.mfes.ext.domain.v1~test.bridge.tracking.domain.v1',
+        id: 'gts.frontx.mfes.ext.domain.v1~test.bridge.tracking.domain.v1',
         sharedProperties: [],
         actions: [],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
         ],
         extensionsLifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
         ],
       };
 

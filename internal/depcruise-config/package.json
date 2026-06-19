@@ -1,6 +1,6 @@
 {
-  "name": "@hai3/depcruise-config",
-  "version": "0.1.0-alpha.0",
+  "name": "@gears-frontx/depcruise-config",
+  "version": "0.1.0",
   "description": "Layered dependency-cruiser configuration for HAI3 SDK architecture",
   "private": true,
   "type": "commonjs",

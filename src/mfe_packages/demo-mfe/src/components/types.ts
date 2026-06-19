@@ -9,7 +9,7 @@
 
 /**
  * Text Direction Type
- * Compatible with @hai3/i18n TextDirection enum values.
+ * Compatible with @gears-frontx/i18n TextDirection enum values.
  */
 export type TextDirection = 'ltr' | 'rtl';
 

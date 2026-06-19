@@ -1,6 +1,6 @@
 {
-  "name": "@hai3/cli",
-  "version": "0.4.0-alpha.2",
+  "name": "@gears-frontx/cli",
+  "version": "0.1.5",
   "description": "HAI3 CLI - Project scaffolding and screenset management tools",
   "type": "module",
   "bin": {

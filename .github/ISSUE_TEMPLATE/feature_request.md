@@ -24,13 +24,13 @@ Provide concrete examples of how this feature would be used:
 
 ## Affected Package(s)
 Which HAI3 package(s) would this impact?
-- [ ] @hai3/framework
-- [ ] @hai3/react
-- [ ] @hai3/screensets
-- [ ] @hai3/cli
-- [ ] @hai3/i18n
-- [ ] @hai3/state
-- [ ] @hai3/studio
+- [ ] @gears-frontx/framework
+- [ ] @gears-frontx/react
+- [ ] @gears-frontx/screensets
+- [ ] @gears-frontx/cli
+- [ ] @gears-frontx/i18n
+- [ ] @gears-frontx/state
+- [ ] @gears-frontx/studio
 
 ## Alternative Solutions
 Have you considered any alternative approaches or workarounds?

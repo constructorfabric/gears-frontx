@@ -1,5 +1,5 @@
 /**
- * @hai3/framework - Type Definitions
+ * @gears-frontx/framework - Type Definitions
  *
  * Core types for HAI3 framework with plugin architecture.
  * Integrates all SDK packages into a cohesive framework.
@@ -12,21 +12,21 @@
 // Type Imports from SDK Packages
 // ============================================================================
 
-// From @hai3/state
+// From @gears-frontx/state
 import type {
   HAI3Store as StoreType,
   EffectInitializer,
-} from '@hai3/state';
+} from '@gears-frontx/state';
 
 import type { Reducer } from '@reduxjs/toolkit';
 
-// From @hai3/api
-import type { ApiRegistry } from '@hai3/api';
+// From @gears-frontx/api
+import type { ApiRegistry } from '@gears-frontx/api';
 
-// From @hai3/i18n
-import type { I18nRegistry } from '@hai3/i18n';
+// From @gears-frontx/i18n
+import type { I18nRegistry } from '@gears-frontx/i18n';
 
-// Re-export HAI3Store from @hai3/store for framework consumers
+// Re-export HAI3Store from @gears-frontx/store for framework consumers
 export type HAI3Store = StoreType;
 
 // ============================================================================
@@ -105,7 +105,7 @@ export interface RegisterableSlice {
  *
  * @example
  * ```typescript
- * declare module '@hai3/framework' {
+ * declare module '@gears-frontx/framework' {
  *   interface HAI3Actions {
  *     myCustomAction: (payload: MyPayload) => void;
  *   }
@@ -156,7 +156,7 @@ export interface HAI3Actions {
   loadExtension: (extensionId: string) => void;
   mountExtension: (extensionId: string) => void;
   unmountExtension: (extensionId: string) => void;
-  registerExtension: (extension: import('@hai3/screensets').Extension) => void;
+  registerExtension: (extension: import('@gears-frontx/screensets').Extension) => void;
   unregisterExtension: (extensionId: string) => void;
 }
 
@@ -352,7 +352,7 @@ export interface ThemeRegistry {
  * When the microfrontends plugin is used, this registry is available.
  * It provides MFE capabilities: registerDomain(), registerExtension(), etc.
  */
-export type MfeScreensetsRegistry = import('@hai3/screensets').ScreensetsRegistry;
+export type MfeScreensetsRegistry = import('@gears-frontx/screensets').ScreensetsRegistry;
 
 /**
  * HAI3 App Interface

@@ -1,5 +1,5 @@
 // @cpt-algo:cpt-hai3-algo-studio-devtools-persistence-init:p1
-import { eventBus } from '@hai3/react';
+import { eventBus } from '@gears-frontx/react';
 import { StudioEvents } from '../events/studioEvents';
 import { saveStudioState } from '../utils/persistence';
 import { STORAGE_KEYS } from '../types';

@@ -10,7 +10,7 @@ FORBIDDEN: Creating screenset manually or by copying peers.
 ## AI WORKFLOW (REQUIRED)
 1) Check prerequisites above.
 2) Read .ai/targets/SCREENSETS.md and .ai/targets/EVENTS.md before starting.
-3) Read `hai3.config.json` at project root to identify the configured `uikit` value.
+3) Read `frontx.config.json` at project root to identify the configured `uikit` value.
    - If a third-party package (not `shadcn` or `none`): read its exports to discover available components.
 4) Gather requirements from user (including UI sections).
 5) Present implementation plan and wait for approval.
@@ -32,7 +32,7 @@ Present the following to the user for approval:
 - **Category**: {category}
 - **Initial screens**: {screens}
 - **Component Plan**:
-  - REQUIRED: Use components from the configured UI kit (from hai3.config.json `uikit` field); create local only if missing.
+  - REQUIRED: Use components from the configured UI kit (from frontx.config.json `uikit` field); create local only if missing.
   - If uikit is a third-party package: import its components directly (e.g., `import { Button } from '@mui/material'`).
   - components/ui/: base UI primitives (shadcn components or custom)
   - components/: multi-screen shared components

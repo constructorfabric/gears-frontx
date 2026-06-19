@@ -11,8 +11,8 @@ export default defineConfig({
   sourcemap: true,
   splitting: false,
   external: [
-    // All @hai3 packages - peer dependencies
-    '@hai3/framework',
+    // All @gears-frontx packages - peer dependencies
+    '@gears-frontx/framework',
     // React ecosystem
     'react',
     'react-dom',

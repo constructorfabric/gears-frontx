@@ -28,13 +28,13 @@ Why would this change be beneficial? What problems does it solve?
 
 ## Affected Components
 Which HAI3 components or packages are affected?
-- [ ] Core Framework (@hai3/framework)
-- [ ] React Integration (@hai3/react)
-- [ ] Screensets (@hai3/screensets)
-- [ ] CLI (@hai3/cli)
-- [ ] Internationalization (@hai3/i18n)
-- [ ] State Management (@hai3/state)
-- [ ] Studio (@hai3/studio)
+- [ ] Core Framework (@gears-frontx/framework)
+- [ ] React Integration (@gears-frontx/react)
+- [ ] Screensets (@gears-frontx/screensets)
+- [ ] CLI (@gears-frontx/cli)
+- [ ] Internationalization (@gears-frontx/i18n)
+- [ ] State Management (@gears-frontx/state)
+- [ ] Studio (@gears-frontx/studio)
 - [ ] Multiple packages
 
 ## Breaking Changes

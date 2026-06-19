@@ -10,7 +10,7 @@ import { CLI_ENTRY, createHarness, shouldSkipInstall } from './e2e-lib.mjs';
 // @cpt-end:cpt-hai3-flow-cli-tooling-e2e-pr:p1:inst-e2e-pr-trigger
 
 // @cpt-begin:cpt-hai3-flow-cli-tooling-e2e-pr:p1:inst-e2e-pr-build-cli
-// @hai3/cli is built via npm run build --workspace=@hai3/cli before this script runs
+// @gears-frontx/cli is built via npm run build --workspace=@gears-frontx/cli before this script runs
 // @cpt-end:cpt-hai3-flow-cli-tooling-e2e-pr:p1:inst-e2e-pr-build-cli
 
 // @cpt-begin:cpt-hai3-flow-cli-tooling-e2e-pr:p1:inst-e2e-pr-create-harness
@@ -106,7 +106,7 @@ try {
   // @cpt-end:cpt-hai3-flow-cli-tooling-e2e-pr:p1:inst-e2e-pr-create-app
 
   // @cpt-begin:cpt-hai3-flow-cli-tooling-e2e-pr:p1:inst-e2e-pr-assert-files
-  harness.assertPathExists(path.join(projectRoot, 'hai3.config.json'));
+  harness.assertPathExists(path.join(projectRoot, 'frontx.config.json'));
   harness.assertPathExists(path.join(projectRoot, 'package.json'));
   harness.assertPathExists(path.join(projectRoot, '.ai', 'GUIDELINES.md'));
   harness.assertPathExists(path.join(projectRoot, 'src', 'app', 'layout', 'Layout.tsx'));
@@ -133,14 +133,14 @@ try {
   if (packageManager === 'yarn') {
     harness.assertPathExists(path.join(projectRoot, '.yarnrc.yml'));
   }
-  const hai3Config = harness.readJson(path.join(projectRoot, 'hai3.config.json'));
+  const hai3Config = harness.readJson(path.join(projectRoot, 'frontx.config.json'));
   harness.assert(
     hai3Config.packageManager === packageManager,
-    `Generated hai3.config.json must set packageManager to ${packageManager}`
+    `Generated frontx.config.json must set packageManager to ${packageManager}`
   );
   harness.assert(
     !('packageManagerVersion' in hai3Config),
-    'Generated hai3.config.json must not include packageManagerVersion'
+    'Generated frontx.config.json must not include packageManagerVersion'
   );
   const readmeContent = fs.readFileSync(path.join(projectRoot, 'README.md'), 'utf8');
   harness.assert(

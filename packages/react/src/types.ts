@@ -1,10 +1,10 @@
 /**
- * @hai3/react - Type Definitions
+ * @gears-frontx/react - Type Definitions
  *
  * Core types for HAI3 React bindings.
  * Provides type-safe hooks and components.
  *
- * Now using real imports from @hai3/framework since packages are built together.
+ * Now using real imports from @gears-frontx/framework since packages are built together.
  */
 
 import type { ReactNode } from 'react';
@@ -14,7 +14,7 @@ import type {
   RootState,
   Language,
   Formatters,
-} from '@hai3/framework';
+} from '@gears-frontx/framework';
 import type { MfeContextValue } from './mfe/MfeContext';
 
 // Re-export imported types for convenience
@@ -24,10 +24,10 @@ export type { HAI3Config, HAI3App };
 // Type Aliases
 // ============================================================================
 
-// From @hai3/store
+// From @gears-frontx/store
 type Selector<TResult, TState = RootState> = (state: TState) => TResult;
 
-// Language is imported from @hai3/framework
+// Language is imported from @gears-frontx/framework
 type TranslationParams = Record<string, string | number | boolean>;
 
 // ============================================================================
@@ -133,6 +133,6 @@ export interface UseThemeReturn {
 /**
  * useFormatters Hook Return Type
  * Locale-aware formatters (locale from i18nRegistry.getLanguage()).
- * References @hai3/i18n Formatters so signatures stay in sync.
+ * References @gears-frontx/i18n Formatters so signatures stay in sync.
  */
 export type UseFormattersReturn = Formatters;

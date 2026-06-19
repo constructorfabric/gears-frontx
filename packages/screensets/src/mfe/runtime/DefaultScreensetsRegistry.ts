@@ -45,7 +45,7 @@ import { RuntimeBridgeFactory } from './runtime-bridge-factory';
 import { DefaultRuntimeBridgeFactory } from './default-runtime-bridge-factory';
 import { ExtensionLifecycleActionHandler, type ExtensionLifecycleCallbacks, type CustomActionHandler } from './extension-lifecycle-action-handler';
 import type { ContainerProvider } from './container-provider';
-import { HAI3_ACTION_UNMOUNT_EXT } from '../constants';
+import { FRONTX_ACTION_UNMOUNT_EXT } from '../constants';
 import { EntryTypeNotHandledError } from '../errors';
 import { extractGtsPackage } from '../gts/extract-package';
 
@@ -132,7 +132,7 @@ export class DefaultScreensetsRegistry extends ScreensetsRegistry {
 
   /**
    * GTS package to extension ID mappings.
-   * Key: GTS package string (e.g., 'hai3.demo')
+   * Key: GTS package string (e.g., 'frontx.demo')
    * Value: Set of extension IDs belonging to that package
    * INTERNAL: Packages are auto-discovered during extension registration.
    */
@@ -278,7 +278,7 @@ export class DefaultScreensetsRegistry extends ScreensetsRegistry {
     // Step 2: Determine domain semantics based on actions array
     // If unmount_ext is NOT supported, use 'swap' semantics (screen domain)
     // If unmount_ext IS supported, use 'toggle' semantics (sidebar/popup/overlay)
-    const supportsUnmount = domain.actions.includes(HAI3_ACTION_UNMOUNT_EXT);
+    const supportsUnmount = domain.actions.includes(FRONTX_ACTION_UNMOUNT_EXT);
     const domainSemantics = supportsUnmount ? 'toggle' : 'swap';
 
     // Step 3: Create lifecycle callbacks that route through OperationSerializer to MountManager
@@ -592,7 +592,7 @@ export class DefaultScreensetsRegistry extends ScreensetsRegistry {
    * Get all extensions registered for a specific GTS package.
    * Returns empty array if the package is not tracked.
    *
-   * @param packageId - GTS package string (e.g., 'hai3.demo')
+   * @param packageId - GTS package string (e.g., 'frontx.demo')
    * @returns Array of extensions in the package
    */
   getExtensionsForPackage(packageId: string): Extension[] {

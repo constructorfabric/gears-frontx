@@ -367,7 +367,7 @@ Source: ATAM utility tree approach (mapping business goals to quality attribute 
 
 Given the HAI3 architecture (4-layer SDK, event-driven, plugin-first composition, microfrontend isolation):
 
-1. Does this design respect the layer boundary constraints? (No React below L3, SDK packages have zero @hai3 dependencies)
+1. Does this design respect the layer boundary constraints? (No React below L3, SDK packages have zero @gears-frontx dependencies)
 2. Does cross-component communication go through the event bus, or does the design introduce direct coupling?
 3. If this involves a registry, does it follow the Open/Closed principle -- can items be added without modifying registry root files?
 4. How does this interact with the plugin system? Can it be composed via `.use()` and `.build()`?

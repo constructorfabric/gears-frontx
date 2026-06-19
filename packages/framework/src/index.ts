@@ -1,5 +1,5 @@
 /**
- * @hai3/framework - HAI3 Framework Package
+ * @gears-frontx/framework - HAI3 Framework Package
  *
  * This package provides:
  * - Plugin architecture for composable HAI3 applications
@@ -44,10 +44,10 @@ export {
   selectExtensionState,
   selectRegisteredExtensions,
   selectExtensionError,
-  HAI3_POPUP_DOMAIN,
-  HAI3_SIDEBAR_DOMAIN,
-  HAI3_SCREEN_DOMAIN,
-  HAI3_OVERLAY_DOMAIN,
+  FRONTX_POPUP_DOMAIN,
+  FRONTX_SIDEBAR_DOMAIN,
+  FRONTX_SCREEN_DOMAIN,
+  FRONTX_OVERLAY_DOMAIN,
   // Base ExtensionDomain constants
   screenDomain,
   sidebarDomain,
@@ -55,26 +55,26 @@ export {
   overlayDomain,
 } from './plugins';
 
-// MFE Type Constants (re-exported from @hai3/screensets for convenience)
+// MFE Type Constants (re-exported from @gears-frontx/screensets for convenience)
 export {
-  HAI3_SCREEN_EXTENSION_TYPE,
-  HAI3_MFE_ENTRY_MF,
-} from '@hai3/screensets';
+  FRONTX_SCREEN_EXTENSION_TYPE,
+  FRONTX_MFE_ENTRY_MF,
+} from '@gears-frontx/screensets';
 
-// MFE Action Constants (re-exported from @hai3/screensets for convenience)
+// MFE Action Constants (re-exported from @gears-frontx/screensets for convenience)
 export {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
-} from '@hai3/screensets';
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
+} from '@gears-frontx/screensets';
 
-// MFE Shared Property Constants (re-exported from @hai3/screensets for convenience)
+// MFE Shared Property Constants (re-exported from @gears-frontx/screensets for convenience)
 export {
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
-} from '@hai3/screensets';
+  FRONTX_SHARED_PROPERTY_THEME,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
+} from '@gears-frontx/screensets';
 
-// MFE Types (re-exported from @hai3/screensets for convenience)
+// MFE Types (re-exported from @gears-frontx/screensets for convenience)
 export type {
   ChildMfeBridge,
   ParentMfeBridge,
@@ -98,9 +98,9 @@ export type {
   UnmountExtPayload,
   ScreensetsRegistryConfig,
   TypeSystemPlugin,
-} from '@hai3/screensets';
+} from '@gears-frontx/screensets';
 
-// MFE Abstract Classes (re-exported from @hai3/screensets for convenience)
+// MFE Abstract Classes (re-exported from @gears-frontx/screensets for convenience)
 export {
   MfeHandler,
   MfeBridgeFactory,
@@ -108,21 +108,21 @@ export {
   ScreensetsRegistryFactory,
   screensetsRegistryFactory,
   ContainerProvider,
-} from '@hai3/screensets';
+} from '@gears-frontx/screensets';
 
-// MFE Concrete Implementations (re-exported from @hai3/screensets subpath exports)
-export { MfeHandlerMF } from '@hai3/screensets/mfe/handler';
-export { gtsPlugin } from '@hai3/screensets/plugins/gts';
+// MFE Concrete Implementations (re-exported from @gears-frontx/screensets subpath exports)
+export { MfeHandlerMF } from '@gears-frontx/screensets/mfe/handler';
+export { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 
 // GTS Derived Schemas (application-layer registration)
 export { themeSchema, languageSchema, extensionScreenSchema } from './gts';
 
-// MFE Utilities (re-exported from @hai3/screensets for convenience)
+// MFE Utilities (re-exported from @gears-frontx/screensets for convenience)
 export {
   createShadowRoot,
   injectCssVariables,
   extractGtsPackage,
-} from '@hai3/screensets';
+} from '@gears-frontx/screensets';
 
 // MFE Plugin Types
 export type {
@@ -177,8 +177,8 @@ export type {
 // Re-exports from SDK packages for convenience
 // ============================================================================
 
-// From @hai3/state (unified Flux dataflow pattern)
-export { eventBus, createStore, getStore, registerSlice, hasSlice, createSlice } from '@hai3/state';
+// From @gears-frontx/state (unified Flux dataflow pattern)
+export { eventBus, createStore, getStore, registerSlice, hasSlice, createSlice } from '@gears-frontx/state';
 export type {
   EventBus,
   ReducerPayload,
@@ -189,15 +189,15 @@ export type {
   AppDispatch,
   SliceObject,
   EffectInitializer,
-} from '@hai3/state';
+} from '@gears-frontx/state';
 
 // Re-export HAI3Store from types (wrapped version)
 export type { HAI3Store } from './types';
 
-// From @hai3/screensets (contracts only - SDK Layer L1)
-export { LayoutDomain } from '@hai3/screensets';
+// From @gears-frontx/screensets (contracts only - SDK Layer L1)
+export { LayoutDomain } from '@gears-frontx/screensets';
 
-// Layout slices (owned by @hai3/framework)
+// Layout slices (owned by @gears-frontx/framework)
 export {
   layoutReducer,
   layoutDomainReducers,
@@ -315,7 +315,7 @@ export {
 } from './effects/mockEffects';
 export type { MockTogglePayload } from './effects/mockEffects';
 
-// From @hai3/api
+// From @gears-frontx/api
 export {
   apiRegistry,
   BaseApiService,
@@ -340,7 +340,7 @@ export {
   // Mock plugin identification
   MOCK_PLUGIN,
   isMockPlugin,
-} from '@hai3/api';
+} from '@gears-frontx/api';
 export type {
   MockMap,
   ApiServiceConfig,
@@ -371,16 +371,16 @@ export type {
   RestMockConfig,
   SseMockConfig,
   SseMockEvent,
-} from '@hai3/api';
+} from '@gears-frontx/api';
 
 
 // NOTE: AccountsApiService, ACCOUNTS_DOMAIN, and account types (ApiUser, UserRole, etc.)
 // have been moved to CLI templates. They are now generated by `hai3 scaffold layout`
 // and should be imported from user code (e.g., @/layout/api or @/api).
 
-// From @hai3/i18n
-export { i18nRegistry, I18nRegistryImpl, createI18nRegistry, Language, SUPPORTED_LANGUAGES, getLanguageMetadata, TextDirection, LanguageDisplayMode } from '@hai3/i18n';
-export type { I18nConfig, TranslationLoader, TranslationMap, TranslationDictionary, LanguageMetadata, I18nRegistry as I18nRegistryType } from '@hai3/i18n';
+// From @gears-frontx/i18n
+export { i18nRegistry, I18nRegistryImpl, createI18nRegistry, Language, SUPPORTED_LANGUAGES, getLanguageMetadata, TextDirection, LanguageDisplayMode } from '@gears-frontx/i18n';
+export type { I18nConfig, TranslationLoader, TranslationMap, TranslationDictionary, LanguageMetadata, I18nRegistry as I18nRegistryType } from '@gears-frontx/i18n';
 
 // Formatters (locale from i18nRegistry.getLanguage())
 export {
@@ -397,12 +397,12 @@ export {
   type DateFormatStyle,
   type TimeFormatStyle,
   type DateInput,
-} from '@hai3/i18n';
-export type { Formatters } from '@hai3/i18n';
+} from '@gears-frontx/i18n';
+export type { Formatters } from '@gears-frontx/i18n';
 
 // Backward compatibility aliases
-// I18nRegistry type (capital I) - alias for consistency with old @hai3/uicore API
-export { I18nRegistryImpl as I18nRegistry } from '@hai3/i18n';
+// I18nRegistry type (capital I) - alias for consistency with old @gears-frontx/uicore API
+export { I18nRegistryImpl as I18nRegistry } from '@gears-frontx/i18n';
 
 // Backward compatibility constants
 export {
@@ -410,7 +410,7 @@ export {
 } from './compat';
 
 // ============================================================================
-// Migration Helpers (for @hai3/uicore backward compatibility)
+// Migration Helpers (for @gears-frontx/uicore backward compatibility)
 // ============================================================================
 
 export {

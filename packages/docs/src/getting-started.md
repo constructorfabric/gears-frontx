@@ -6,7 +6,7 @@ Welcome to HAI3! This guide will help you get started with the framework.
 
 ```bash
 # Installation instructions coming soon
-npm install @hai3/framework
+npm install @gears-frontx/framework
 ```
 
 ## Quick Start

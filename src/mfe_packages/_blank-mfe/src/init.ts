@@ -5,7 +5,7 @@
 // @cpt-dod:cpt-hai3-dod-mfe-isolation-internal-dataflow:p1
 // @cpt-flow:cpt-hai3-flow-mfe-isolation-mfe-bootstrap:p1
 
-import { createHAI3, registerSlice, apiRegistry, effects, mock } from '@hai3/react';
+import { createHAI3, registerSlice, apiRegistry, effects, mock } from '@gears-frontx/react';
 import { homeSlice } from './slices/homeSlice';
 import { initHomeEffects } from './effects/homeEffects';
 import { _BlankApiService } from './api/_BlankApiService';

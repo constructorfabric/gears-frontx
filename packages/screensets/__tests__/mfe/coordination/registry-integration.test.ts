@@ -20,14 +20,14 @@ function createMockPlugin(): TypeSystemPlugin {
   const registeredEntities = new Map<string, unknown>();
 
   const coreTypeIds = [
-    'gts.hai3.mfes.mfe.entry.v1~',
-    'gts.hai3.mfes.ext.domain.v1~',
-    'gts.hai3.mfes.ext.extension.v1~',
-    'gts.hai3.mfes.comm.shared_property.v1~',
-    'gts.hai3.mfes.comm.action.v1~',
-    'gts.hai3.mfes.comm.actions_chain.v1~',
-    'gts.hai3.mfes.lifecycle.stage.v1~',
-    'gts.hai3.mfes.lifecycle.hook.v1~',
+    'gts.frontx.mfes.mfe.entry.v1~',
+    'gts.frontx.mfes.ext.domain.v1~',
+    'gts.frontx.mfes.ext.extension.v1~',
+    'gts.frontx.mfes.comm.shared_property.v1~',
+    'gts.frontx.mfes.comm.action.v1~',
+    'gts.frontx.mfes.comm.actions_chain.v1~',
+    'gts.frontx.mfes.lifecycle.stage.v1~',
+    'gts.frontx.mfes.lifecycle.hook.v1~',
   ];
 
   for (const typeId of coreTypeIds) {
@@ -127,7 +127,7 @@ describe('Runtime Coordinator Integration - Task 8.4.8', () => {
       expect(() => {
         const mockContainerProvider = new MockContainerProvider();
         registry.registerDomain({
-          id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
+          id: 'gts.frontx.mfes.ext.domain.v1~test.domain.v1~',
           sharedProperties: [],
           actions: [],
           extensionsActions: [],

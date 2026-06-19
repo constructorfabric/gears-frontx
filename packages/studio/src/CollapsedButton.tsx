@@ -1,7 +1,7 @@
 // @cpt-flow:cpt-hai3-flow-studio-devtools-drag-button:p1
 // @cpt-dod:cpt-hai3-dod-studio-devtools-panel-overlay:p1
 import React, { useRef } from 'react';
-import { useTranslation } from '@hai3/react';
+import { useTranslation } from '@gears-frontx/react';
 import { useDraggable } from './hooks/useDraggable';
 import { BUTTON_SIZE, STORAGE_KEYS } from './types';
 import { GlassmorphicButton } from './uikit/composite/GlassmorphicButton';

@@ -9,17 +9,17 @@
  * MFE packages from src/mfe_packages/.
  */
 
-import type { Extension, HAI3App, JSONSchema, MfeEntry, ScreenExtension } from '@hai3/react';
+import type { Extension, HAI3App, JSONSchema, MfeEntry, ScreenExtension } from '@gears-frontx/react';
 import {
   screenDomain,
   sidebarDomain,
   popupDomain,
   overlayDomain,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_SHARED_PROPERTY_THEME,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
   RefContainerProvider,
-} from '@hai3/react';
+} from '@gears-frontx/react';
 import { MFE_MANIFESTS } from './generated-mfe-manifests';
 
 interface MfeManifestConfig {
@@ -79,8 +79,8 @@ export async function bootstrapMFE(
 
   // Step 2: Initialize domain shared properties
   const currentThemeId = app.themeRegistry.getCurrent()?.id ?? 'default';
-  screensetsRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, currentThemeId);
-  screensetsRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_LANGUAGE, 'en');
+  screensetsRegistry.updateSharedProperty(FRONTX_SHARED_PROPERTY_THEME, currentThemeId);
+  screensetsRegistry.updateSharedProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, 'en');
 
   // Step 3: Guard — no manifests generated yet
   if (MFE_MANIFESTS.length === 0) {
@@ -129,7 +129,7 @@ export async function bootstrapMFE(
 
   await screensetsRegistry.executeActionsChain({
     action: {
-      type: HAI3_ACTION_MOUNT_EXT,
+      type: FRONTX_ACTION_MOUNT_EXT,
       target: screenDomain.id,
       payload: { extensionId: targetExtId },
     },
@@ -151,7 +151,7 @@ export async function bootstrapMFE(
   screensetsRegistry.executeActionsChain = (async (chain: Parameters<typeof origExecuteActionsChain>[0]) => {
     await origExecuteActionsChain(chain);
     if (
-      chain.action.type === HAI3_ACTION_MOUNT_EXT &&
+      chain.action.type === FRONTX_ACTION_MOUNT_EXT &&
       chain.action.target === screenDomain.id
     ) {
       const extensionId = chain.action.payload?.extensionId as string | undefined;
@@ -169,7 +169,7 @@ export async function bootstrapMFE(
     if (ext) {
       screensetsRegistry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: screenDomain.id,
           payload: { extensionId: ext.id },
         },

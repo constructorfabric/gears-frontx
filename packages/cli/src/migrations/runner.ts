@@ -90,7 +90,7 @@ export async function getMigrationStatus(
     const pkg = await fs.readJson(pkgPath);
     // Check for HAI3 packages
     const hai3Deps = Object.keys(pkg.dependencies || {}).filter((d) =>
-      d.startsWith('@hai3/')
+      d.startsWith('@gears-frontx/')
     );
     if (hai3Deps.length > 0) {
       const firstDep = pkg.dependencies[hai3Deps[0]];

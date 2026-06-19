@@ -1,4 +1,4 @@
-import { createSlice, type ReducerPayload } from '@hai3/state';
+import { createSlice, type ReducerPayload } from '@gears-frontx/state';
 
 /**
  * Mock slice for managing mock mode state

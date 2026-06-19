@@ -56,7 +56,7 @@ The isolation is achieved through five coordinated responsibilities:
 4. **Share scope construction** — per-load `get()` closures written to `globalThis.__federation_shared__` intercept the federation runtime's `importShared()` and redirect it through the blob URL chain.
 5. **Vite externalize plugin** — at build time, the `hai3-mfe-externalize` plugin transforms all bundled-package imports in code-split chunks to `importShared()` calls, and renames shared dependency chunks to deterministic filenames so manifest `chunkPath` values remain stable across rebuilds.
 
-The MFE-internal dataflow completes the isolation: each MFE creates its own `HAI3App` with an isolated Redux store and EventBus via the blob-URL-evaluated `@hai3/react`; no direct `react-redux` or `@reduxjs/toolkit` imports are permitted.
+The MFE-internal dataflow completes the isolation: each MFE creates its own `HAI3App` with an isolated Redux store and EventBus via the blob-URL-evaluated `@gears-frontx/react`; no direct `react-redux` or `@reduxjs/toolkit` imports are permitted.
 
 **Primary value**: MFEs maintain fully independent module-level state — React fiber trees, hooks, stores — regardless of shared dependencies.
 
@@ -439,7 +439,7 @@ Each MFE package bootstraps its own isolated `HAI3App` and exposes it for use by
 - [x] The `hai3-mfe-externalize` plugin does not modify any imports during `vite dev` (build-only operation)
 - [x] After `vite build`, all `__federation_shared_<pkg>-<hash>.js` chunks are renamed to `__federation_shared_<pkg>.js` and all referencing chunks are updated accordingly
 - [x] After `vite build`, code-split chunks that previously imported from bundled CJS wrappers instead contain `importShared('<pkg>')` calls via the federation fn-import chunk
-- [x] MFE `init.ts` files contain no direct imports from `react-redux`, `redux`, or `@reduxjs/toolkit`; all store access goes through `@hai3/react` APIs
+- [x] MFE `init.ts` files contain no direct imports from `react-redux`, `redux`, or `@reduxjs/toolkit`; all store access goes through `@gears-frontx/react` APIs
 
 ---
 
@@ -449,7 +449,7 @@ Each MFE package bootstraps its own isolated `HAI3App` and exposes it for use by
 
 **Per-load map vs. handler-level source cache**: The `blobUrlMap` is intentionally scoped to a single load because each MFE must get a unique `URL.createObjectURL()` result (even from the same source text) to achieve a fresh module evaluation. The `sourceTextCache` is intentionally handler-level to avoid redundant network fetches across multiple loads that share a dependency version.
 
-**Thin-wrapper heuristic in the externalize plugin**: Federation shared chunks come in two shapes: (a) a thin re-export wrapper (e.g., `__federation_shared_react.js` at ~0.27 KB wrapping the ~100 KB React bundle), and (b) a large package chunk that happens to import a smaller sub-module (e.g., `__federation_shared_@hai3/react.js` at 22 KB importing `jsx-runtime.js` at 5 KB). The heuristic — "thin wrapper wins ownership of bundled sub-chunks; when two thin wrappers compete, the smallest one wins" — correctly identifies the primary bundled copy of a shared package without AST parsing.
+**Thin-wrapper heuristic in the externalize plugin**: Federation shared chunks come in two shapes: (a) a thin re-export wrapper (e.g., `__federation_shared_react.js` at ~0.27 KB wrapping the ~100 KB React bundle), and (b) a large package chunk that happens to import a smaller sub-module (e.g., `__federation_shared_@gears-frontx/react.js` at 22 KB importing `jsx-runtime.js` at 5 KB). The heuristic — "thin wrapper wins ownership of bundled sub-chunks; when two thin wrappers compete, the smallest one wins" — correctly identifies the primary bundled copy of a shared package without AST parsing.
 
 **CSP compatibility**: The isolation mechanism uses `Blob` objects and `URL.createObjectURL`, not `eval()` or `new Function()`. The only required CSP directive addition is `blob:` in `script-src`. The `cpt-hai3-nfr-sec-csp-blob` requirement is satisfied by construction.
 

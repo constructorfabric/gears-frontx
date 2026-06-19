@@ -43,7 +43,7 @@ Sub-questions:
 
 **Out of scope**: Architecture review (covered by the `architecture-critic` agent). Designing the actual agent prompt (this exploration provides decision-support material). CI/CD pipeline integration. Test framework authoring (the QA agent validates, it does not write persistent test suites).
 
-**Constraints**: The agent operates within the HAI3 monorepo as a Claude Code subagent. It has access to Chrome DevTools MCP tools, Bash, file reading tools, and potentially Playwright MCP. It replaces the current `chrome-devtools-runtime-tester` and `implementation-reviewer` agents.
+**Constraints**: The agent operates within the Gears FrontX Monorepo as a Claude Code subagent. It has access to Chrome DevTools MCP tools, Bash, file reading tools, and potentially Playwright MCP. It replaces the current `chrome-devtools-runtime-tester` and `implementation-reviewer` agents.
 
 ---
 
