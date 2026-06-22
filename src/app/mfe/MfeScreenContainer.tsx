@@ -12,14 +12,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  useHAI3,
+  useFrontX,
   ExtensionDomainSlot,
   screenDomain,
 } from '@gears-frontx/react';
 import { bootstrapMFE } from './bootstrap';
 
 export function MfeScreenContainer() {
-  const app = useHAI3();
+  const app = useFrontX();
   const bootstrappedRef = useRef(false);
   const [bootstrapped, setBootstrapped] = useState(false);
 

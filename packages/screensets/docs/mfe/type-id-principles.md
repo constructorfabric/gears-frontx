@@ -28,7 +28,7 @@ In FrontX's MFE system, type IDs are treated as **opaque strings**. The screense
 import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 
 // ✅ Correct - calling plugin method
-const typeId = 'gts.hai3.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1';
+const typeId = 'gts.frontx.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1';
 const parsed = gtsPlugin.parseTypeId(typeId);
 console.log('Vendor:', parsed.vendor);
 console.log('Package:', parsed.package);
@@ -50,7 +50,7 @@ if (result.resolved) {
 
 ```typescript
 // ❌ Wrong - manual parsing
-const typeId = 'gts.hai3.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1';
+const typeId = 'gts.frontx.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1';
 const parts = typeId.split('.');
 const vendor = parts[1];  // Fragile and breaks abstraction
 
@@ -122,24 +122,24 @@ gts.<vendor>.<package>.<namespace>.<type>.v<MAJOR>[.<MINOR>]~
 
 **Schema IDs** end with `~`:
 ```typescript
-const schemaId = 'gts.hai3.mfes.mfe.entry.v1~';
+const schemaId = 'gts.frontx.mfes.mfe.entry.v1~';
 ```
 
 **Instance IDs** do NOT end with `~`:
 ```typescript
-const instanceId = 'gts.hai3.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1';
+const instanceId = 'gts.frontx.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1';
 ```
 
 ### parseTypeId() Result Structure (GTS)
 
 ```typescript
 const parsed = gtsPlugin.parseTypeId(
-  'gts.hai3.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1'
+  'gts.frontx.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1'
 );
 
 // Result:
 {
-  vendor: 'hai3',
+  vendor: 'frontx',
   package: 'mfes',
   namespace: 'mfe',
   type: 'entry',
@@ -195,7 +195,7 @@ interface ActionsChain {
 // ✅ Correct - Action instances in chain
 const chain: ActionsChain = {
   action: {
-    type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.fetch_data.v1',
+    type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.fetch_data.v1',
     target: extensionId,
     payload: {
       datasetId: 'sales-q4',
@@ -204,7 +204,7 @@ const chain: ActionsChain = {
   },
   next: {
     action: {
-      type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.render_chart.v1',
+      type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.render_chart.v1',
       target: extensionId,
       payload: {
         chartType: 'line',
@@ -213,7 +213,7 @@ const chain: ActionsChain = {
   },
   fallback: {
     action: {
-      type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.show_error.v1',
+      type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.show_error.v1',
       target: extensionId,
       payload: {
         message: 'Failed to load data',
@@ -231,16 +231,16 @@ await runtime.executeActionsChain(chain);
 ```typescript
 // ❌ Wrong - Type ID references instead of Action instances
 const chain = {
-  action: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.fetch_data.v1',
+  action: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.fetch_data.v1',
   next: {
-    action: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.render_chart.v1',
+    action: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.render_chart.v1',
   },
 };
 
 // ❌ Wrong - Missing required Action fields
 const chain = {
   action: {
-    type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.fetch_data.v1',
+    type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.fetch_data.v1',
     // Missing 'target' field!
   },
 };
@@ -248,7 +248,7 @@ const chain = {
 // ❌ Wrong - Payload outside Action
 const chain = {
   action: {
-    type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.fetch_data.v1',
+    type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.fetch_data.v1',
     target: extensionId,
   },
   payload: { datasetId: 'sales-q4' }, // Wrong - should be in action.payload
@@ -264,7 +264,7 @@ Actions are registered using their `type` field as the entity identifier:
 ```typescript
 // Action instance
 const action: Action = {
-  type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.refresh.v1',
+  type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.refresh.v1',
   target: extensionId,
   payload: {
     forced: true,
@@ -302,7 +302,7 @@ The `type` field IS the action's identity. The Action schema annotates `type` wi
 // ✅ Correct - ActionsChain with no id
 const chain: ActionsChain = {
   action: {
-    type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.refresh.v1',
+    type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.refresh.v1',
     target: extensionId,
   },
 };
@@ -337,12 +337,12 @@ function logTypeInfo(typeId: string) {
   console.log('  Version:', `v${parsed.verMajor}${parsed.verMinor ? `.${parsed.verMinor}` : ''}`);
 
   // Use plugin to check type hierarchy
-  const isMfeEntry = gtsPlugin.isTypeOf(typeId, 'gts.hai3.mfes.mfe.entry.v1~');
+  const isMfeEntry = gtsPlugin.isTypeOf(typeId, 'gts.frontx.mfes.mfe.entry.v1~');
   console.log('  Is MFE Entry:', isMfeEntry);
 }
 
 // Usage
-logTypeInfo('gts.hai3.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1');
+logTypeInfo('gts.frontx.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1');
 ```
 
 ### Example 2: Building Action Chains Correctly
@@ -352,7 +352,7 @@ function createDataFlowChain(extensionId: string, datasetId: string): ActionsCha
   return {
     // First: Fetch data
     action: {
-      type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.fetch_data.v1',
+      type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.fetch_data.v1',
       target: extensionId,
       payload: { datasetId },
       timeout: 10000,
@@ -360,13 +360,13 @@ function createDataFlowChain(extensionId: string, datasetId: string): ActionsCha
     next: {
       // On success: Process data
       action: {
-        type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.process_data.v1',
+        type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.process_data.v1',
         target: extensionId,
       },
       next: {
         // On success: Render chart
         action: {
-          type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.render_chart.v1',
+          type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.render_chart.v1',
           target: extensionId,
           payload: {
             chartType: 'line',
@@ -376,7 +376,7 @@ function createDataFlowChain(extensionId: string, datasetId: string): ActionsCha
       fallback: {
         // Processing failed
         action: {
-          type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.show_error.v1',
+          type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.show_error.v1',
           target: extensionId,
           payload: {
             message: 'Failed to process data',
@@ -387,7 +387,7 @@ function createDataFlowChain(extensionId: string, datasetId: string): ActionsCha
     fallback: {
       // Fetch failed
       action: {
-        type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.show_error.v1',
+        type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.show_error.v1',
         target: extensionId,
         payload: {
           message: 'Failed to fetch data',
@@ -434,7 +434,7 @@ async function validateExtensionType(
 
 ```typescript
 // ❌ Wrong
-const typeId = 'gts.hai3.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1';
+const typeId = 'gts.frontx.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1';
 const version = typeId.match(/v(\d+)/)[1];
 
 // ✅ Correct
@@ -447,13 +447,13 @@ const version = parsed.verMajor;
 ```typescript
 // ❌ Wrong
 const chain = {
-  action: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.refresh.v1',
+  action: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.refresh.v1',
 };
 
 // ✅ Correct
 const chain: ActionsChain = {
   action: {
-    type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.refresh.v1',
+    type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.refresh.v1',
     target: extensionId,
   },
 };

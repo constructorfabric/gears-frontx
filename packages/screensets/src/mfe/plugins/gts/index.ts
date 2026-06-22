@@ -6,9 +6,9 @@
  *
  * GTS-Native Validation Model (named instance pattern):
  * - Schemas are registered via `registerSchema()` — they define types.
- *   Schema IDs end with `~` (e.g., `gts.hai3.mfes.ext.extension.v1~`).
+ *   Schema IDs end with `~` (e.g., `gts.frontx.mfes.ext.extension.v1~`).
  * - Instances are registered via `register()` — they are values of some type.
- *   Instance IDs do NOT end with `~` (e.g., `gts.hai3.mfes.ext.extension.v1~acme.widget.v1`).
+ *   Instance IDs do NOT end with `~` (e.g., `gts.frontx.mfes.ext.extension.v1~acme.widget.v1`).
  * - `register()` validates the instance against its schema automatically and
  *   throws on failure. Invalid instances are never visible to lookups — the
  *   type system is the authority on correctness.
@@ -51,7 +51,7 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
 
     // Load and register all first-class citizen schemas from JSON files
     // 13 schemas total: 8 core + 2 MF-specific + 3 extension action schemas
-    // These schemas are stored in packages/screensets/src/mfe/gts/hai3.mfes/schemas/
+    // These schemas are stored in packages/screensets/src/mfe/gts/frontx.mfes/schemas/
     const schemas = loadSchemas();
     for (const schema of schemas) {
       const entity: JsonEntity = createJsonEntity(schema);
@@ -59,7 +59,7 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
     }
 
     // Load and register default lifecycle stage instances from JSON files (4 instances)
-    // These instances are stored in packages/screensets/src/mfe/gts/hai3.mfe/instances/lifecycle-stages/
+    // These instances are stored in packages/screensets/src/mfe/gts/frontx.mfe/instances/lifecycle-stages/
     const lifecycleStages = loadLifecycleStages();
     for (const instance of lifecycleStages) {
       const entity: JsonEntity = createJsonEntity(instance);
@@ -109,8 +109,8 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    * whatever `gts-ts` accepts is accepted, whatever it rejects is rejected.
    *
    * Named instance pattern: the schema is resolved from the chained instance
-   * ID automatically (`gts.hai3.mfes.ext.extension.v1~acme.widget.v1` →
-   * schema `gts.hai3.mfes.ext.extension.v1~`). For anonymous instances
+   * ID automatically (`gts.frontx.mfes.ext.extension.v1~acme.widget.v1` →
+   * schema `gts.frontx.mfes.ext.extension.v1~`). For anonymous instances
    * (e.g., action payloads with no `id`), gts-ts uses the `type` field to
    * resolve the schema.
    *
@@ -163,8 +163,8 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
 
   isTypeOf(typeId: string, baseTypeId: string): boolean {
     // GTS type derivation: derived types include the base type ID as a prefix
-    // e.g., 'gts.hai3.mfes.mfe.entry.v1~acme.corp.mfe.entry_acme.v1~'
-    // is derived from 'gts.hai3.mfes.mfe.entry.v1~'
+    // e.g., 'gts.frontx.mfes.mfe.entry.v1~acme.corp.mfe.entry_acme.v1~'
+    // is derived from 'gts.frontx.mfes.mfe.entry.v1~'
     return typeId.startsWith(baseTypeId) || typeId === baseTypeId;
   }
 }

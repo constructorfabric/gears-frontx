@@ -9,9 +9,9 @@
 
 // @cpt-begin:cpt-frontx-dod-react-bindings-provider:p1:inst-react-testing-reexports
 export {
-  bootstrapHAI3QueryClient,
-  resolveHAI3QueryClient,
-  useOptionalHAI3QueryClient,
+  bootstrapFrontXQueryClient,
+  resolveFrontXQueryClient,
+  useOptionalFrontXQueryClient,
 } from './queryClient';
 
 /** App-layer tests must import this from `@gears-frontx/react/testing`, not `@gears-frontx/framework/testing`. */

@@ -620,7 +620,7 @@ The type system provides protocol-specific plugin base classes and type guards t
 - `ApiPlugin<TConfig>`: extends `ApiPluginBase` with typed `config` constructor parameter
 - `RestPlugin` / `RestPluginWithConfig<TConfig>`: implement `RestPluginHooks` (not extending `ApiPluginBase` to avoid signature conflicts)
 - `SsePlugin` / `SsePluginWithConfig<TConfig>`: implement `SsePluginHooks`
-- `MOCK_PLUGIN`: `Symbol.for('hai3:plugin:mock')` — stable cross-realm identity
+- `MOCK_PLUGIN`: `Symbol.for('frontx:plugin:mock')` — stable cross-realm identity
 - `isMockPlugin(plugin)`: reads `constructor[MOCK_PLUGIN]`; does not use `instanceof`
 - `isShortCircuit`, `isRestShortCircuit`, `isSseShortCircuit`: structural type guards
 - `ProtocolPluginType<T>`: conditional type extracting plugin hook type from `ApiProtocol<TPlugin>`
@@ -704,7 +704,7 @@ Plugins in `RestProtocol` receive the full URL (`baseURL + relativeUrl`) in `Res
 
 ### MOCK_PLUGIN Symbol Identity
 
-`Symbol.for('hai3:plugin:mock')` is used (not `Symbol()`) so that the symbol is stable across module boundaries and iframe contexts. Any plugin class can be marked as a mock plugin by declaring `static readonly [MOCK_PLUGIN] = true` on its constructor, without inheriting from a specific base class. The `isMockPlugin` guard checks the constructor, not the instance, so subclasses inherit the mark automatically.
+`Symbol.for('frontx:plugin:mock')` is used (not `Symbol()`) so that the symbol is stable across module boundaries and iframe contexts. Any plugin class can be marked as a mock plugin by declaring `static readonly [MOCK_PLUGIN] = true` on its constructor, without inheriting from a specific base class. The `isMockPlugin` guard checks the constructor, not the instance, so subclasses inherit the mark automatically.
 
 ### No Mock State in @gears-frontx/api
 

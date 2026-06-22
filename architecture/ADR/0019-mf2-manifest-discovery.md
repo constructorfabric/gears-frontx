@@ -65,7 +65,7 @@ Chosen option: "`@module-federation/vite` with `mf-manifest.json` declarative di
 * Bad, because the handler must rewrite bare specifiers in shared dependency source text at runtime to construct per-load blob URLs (added complexity compared to MF 2.0's built-in share scope resolution)
 * Bad, because shared dependencies require a separate build step (standalone ESM via esbuild) managed by the `frontx-mf-gts` Vite plugin
 * Bad, because the `mf-manifest.json` formal specification is still being finalized ([module-federation/core#2496](https://github.com/module-federation/core/issues/2496)). Mitigation: the manifest reader is isolated behind the MfeHandler abstraction — schema changes only require updating the manifest parsing logic, not the blob URL isolation pipeline
-* Good, because the custom `hai3-mfe-externalize` plugin (374 lines) is replaced by `frontx-mf-gts` which handles both standalone ESM builds and manifest enrichment (output to `{outDir}/mfe-manifest.json`) in a single `closeBundle` hook
+* Good, because the custom `frontx-mfe-externalize` plugin (374 lines) is replaced by `frontx-mf-gts` which handles both standalone ESM builds and manifest enrichment (output to `{outDir}/mfe-manifest.json`) in a single `closeBundle` hook
 * Neutral, because MF 2.0's shared dep mechanism (share scopes, version-first strategy, singleton mode) is unused — the plugin and handler implement their own sharing/isolation via standalone ESMs and blob URLs
 * Neutral, because `@module-federation/vite` configuration is similar to the previous plugin, limiting the learning curve
 * Neutral, because if `@module-federation/vite` is deprecated or the manifest schema changes incompatibly, the MfeHandler abstraction allows creating a new handler implementation without affecting the registry, bridge, or mediator layers
@@ -78,7 +78,7 @@ The decision is confirmed when: (1) MFE `vite.config.ts` files use `@module-fede
 
 ### `@originjs/vite-plugin-federation` with `remoteEntry.js` source text parsing
 
-Use the community Vite MF 1.0 plugin. Metadata discovery requires fetching `remoteEntry.js` as text and parsing it with regex to extract the `moduleMap` callback body, expose chunk filenames, and CSS paths. A custom build-time plugin (`hai3-mfe-externalize`) is needed to transform shared imports in code-split chunks.
+Use the community Vite MF 1.0 plugin. Metadata discovery requires fetching `remoteEntry.js` as text and parsing it with regex to extract the `moduleMap` callback body, expose chunk filenames, and CSS paths. A custom build-time plugin (`frontx-mfe-externalize`) is needed to transform shared imports in code-split chunks.
 
 * Good, because it is a proven approach with existing test coverage
 * Neutral, because blob URL isolation works correctly with this approach

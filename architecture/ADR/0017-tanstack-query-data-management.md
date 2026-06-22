@@ -18,7 +18,7 @@ date: 2026-03-17
   - [Adopt TanStack Query with endpoint descriptors, a headless L2 runtime, and L3 React bindings](#adopt-tanstack-query-with-endpoint-descriptors-a-headless-l2-runtime-and-l3-react-bindings)
   - [Adopt @tanstack/react-query at L3 with per-MFE query key factories](#adopt-tanstackreact-query-at-l3-with-per-mfe-query-key-factories)
   - [Adopt RTK Query leveraging the existing Redux store](#adopt-rtk-query-leveraging-the-existing-redux-store)
-  - [Build a custom query/cache layer inside @gears-frontx/react](#build-a-custom-querycache-layer-inside-cyberfabricreact)
+  - [Build a custom query/cache layer inside @gears-frontx/react](#build-a-custom-querycache-layer-inside-gears-frontxreact)
   - [Keep Flux-only pattern with CLI boilerplate generators](#keep-flux-only-pattern-with-cli-boilerplate-generators)
 - [More Information](#more-information)
   - [Why `queryCache()` is a framework plugin, not an API plugin](#why-querycache-is-a-framework-plugin-not-an-api-plugin)
@@ -135,7 +135,7 @@ Confirmed when:
 * `useApiStream(descriptor, options?)` accepts a `StreamDescriptor<TEvent>` and returns `ApiStreamResult<TEvent>` (FrontX-owned type) with automatic connect/disconnect lifecycle, `'latest'`/`'accumulate'` modes, and `{ data, events, status, error, disconnect }`
 * `QueryCache.get`, `getState`, `set`, `cancel`, `invalidate`, `invalidateMany`, `remove` accept `EndpointDescriptor | QueryKey` (descriptor extracts `.key` internally)
 * `ApiQueryResult<TData>`, `ApiSuspenseQueryResult<TData>`, `ApiInfiniteQueryResult<TPage>`, `ApiSuspenseInfiniteQueryResult<TPage>`, and `ApiMutationResult<TData>` are FrontX-owned types exposing only the fields MFEs use instead of TanStack result objects directly: query result types expose read state (`data`, `error`, `isLoading`, `isFetching`, `isError`, `refetch`, pagination helpers), while mutation results expose mutation helpers (`mutate`, `mutateAsync`, `isPending`, `reset`, `data`, `error`)
-* `HAI3Provider` resolves the shared `QueryClient` from the framework plugin instead of creating its own cache runtime
+* `Gears FrontXProvider` resolves the shared `QueryClient` from the framework plugin instead of creating its own cache runtime
 * The `queryOptions` re-export is removed from `@gears-frontx/react` public API
 * `UseApiQueryOptions` type alias is removed from `@gears-frontx/react` public API
 * Separately mounted MFEs receive the same host-owned shared `QueryClient` because `queryCache()` stores it and `queryCacheShared()` joins that existing client without mutating L1 mount contracts
@@ -279,7 +279,7 @@ L3  @gears-frontx/react        useApiQuery(descriptor) / useApiSuspenseQuery(des
                         useApiStream(descriptor) — SSE lifecycle management
                         @tanstack/react-query as peer dependency
                         Maps descriptors -> TanStack hooks using the shared QueryClient
-                        HAI3Provider resolves the shared QueryClient instead of creating its own cache runtime
+                        Gears FrontXProvider resolves the shared QueryClient instead of creating its own cache runtime
 ```
 
 ## Traceability

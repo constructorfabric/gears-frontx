@@ -5,7 +5,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { formatCurrency, Language, type TranslationMap } from '@gears-frontx/framework';
 import {
-  HAI3Context,
+  FrontXContext,
   useAppDispatch,
   useFormatters,
   useScreenTranslations,
@@ -105,7 +105,7 @@ function createApp() {
     i18nRegistry,
     store,
     themeRegistry,
-  } as unknown as import('@gears-frontx/framework').HAI3App;
+  } as unknown as import('@gears-frontx/framework').FrontXApp;
 
   return {
     app,
@@ -116,12 +116,12 @@ function createApp() {
   };
 }
 
-function createWrapper(app: import('@gears-frontx/framework').HAI3App) {
+function createWrapper(app: import('@gears-frontx/framework').FrontXApp) {
   return function Wrapper({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
-      <HAI3Context.Provider value={app}>
+      <FrontXContext.Provider value={app}>
         <ReduxProvider store={app.store}>{children}</ReduxProvider>
-      </HAI3Context.Provider>
+      </FrontXContext.Provider>
     );
   };
 }

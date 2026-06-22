@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { createHAI3 } from '../../../src/createHAI3';
+import { createFrontX } from '../../../src/createFrontX';
 import { effects } from '../../../src/plugins/effects';
 import {
   microfrontends,
@@ -22,13 +22,13 @@ import {
 } from '../../../src/plugins/microfrontends';
 import { eventBus, resetStore } from '@gears-frontx/state';
 import {
-  HAI3_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
   mfeRegistryFactory,
   type Extension,
   type MfeRegistry,
 } from '@gears-frontx/screensets';
 import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
-import type { HAI3App } from '../../../src/types';
+import type { FrontXApp } from '../../../src/types';
 
 /**
  * The Phase 13 mount-sync suites only exercise a handful of MfeRegistry
@@ -52,7 +52,7 @@ function asMfeRegistry(stub: MountSyncRegistry): MfeRegistry {
 }
 
 describe('microfrontends plugin - Phase 13', () => {
-  let apps: HAI3App[] = [];
+  let apps: FrontXApp[] = [];
 
   afterEach(() => {
     apps.forEach((app) => {
@@ -88,7 +88,7 @@ describe('microfrontends plugin - Phase 13', () => {
     });
 
     it('should make MFE actions available on app.actions', () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();
@@ -103,18 +103,18 @@ describe('microfrontends plugin - Phase 13', () => {
 
   describe('13.8.2 - MFE lifecycle actions call executeActionsChain', () => {
     it('should call executeActionsChain for loadExtension', async () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();
       apps.push(app);
 
-      const testDomainId = 'gts.hai3.mfes.ext.domain.v1~test.app.test.domain.v1';
-      const testExtensionId = 'gts.hai3.mfes.ext.extension.v1~test.app.test.ext.v1';
+      const testDomainId = 'gts.frontx.mfes.ext.domain.v1~test.app.test.domain.v1';
+      const testExtensionId = 'gts.frontx.mfes.ext.extension.v1~test.app.test.ext.v1';
       const testExtension: Extension = {
         id: testExtensionId,
         domain: testDomainId,
-        entry: 'gts.hai3.mfes.mfe.entry.v1~test.app.test.entry.v1',
+        entry: 'gts.frontx.mfes.mfe.entry.v1~test.app.test.entry.v1',
       };
 
       const registry = app.mfeRegistry;
@@ -130,7 +130,7 @@ describe('microfrontends plugin - Phase 13', () => {
       await vi.waitFor(() => {
         expect(spy).toHaveBeenCalledWith({
           action: {
-            type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
+            type: 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~',
             target: testDomainId,
             payload: { subject: testExtensionId },
           },
@@ -139,18 +139,18 @@ describe('microfrontends plugin - Phase 13', () => {
     });
 
     it('should throw when unmountExtension resolves a domain that is not registered on the registry', () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();
       apps.push(app);
 
-      const testDomainId = 'gts.hai3.mfes.ext.domain.v1~test.app.test.domain.v1';
-      const testExtensionId = 'gts.hai3.mfes.ext.extension.v1~test.app.test.ext.v1';
+      const testDomainId = 'gts.frontx.mfes.ext.domain.v1~test.app.test.domain.v1';
+      const testExtensionId = 'gts.frontx.mfes.ext.extension.v1~test.app.test.ext.v1';
       const testExtension: Extension = {
         id: testExtensionId,
         domain: testDomainId,
-        entry: 'gts.hai3.mfes.mfe.entry.v1~test.app.test.entry.v1',
+        entry: 'gts.frontx.mfes.mfe.entry.v1~test.app.test.entry.v1',
       };
 
       const registry = app.mfeRegistry;
@@ -162,7 +162,7 @@ describe('microfrontends plugin - Phase 13', () => {
       expect(() => {
         unmountExtension(testExtensionId);
       }).toThrow(
-        /domain 'gts\.hai3\.mfes\.ext\.domain\.v1~test\.app\.test\.domain\.v1' is not registered.*extension 'gts\.hai3\.mfes\.ext\.extension\.v1~test\.app\.test\.ext\.v1'/
+        /domain 'gts\.frontx\.mfes\.ext\.domain\.v1~test\.app\.test\.domain\.v1' is not registered.*extension 'gts\.frontx\.mfes\.ext\.extension\.v1~test\.app\.test\.ext\.v1'/
       );
       expect(chainSpy).not.toHaveBeenCalled();
     });
@@ -172,9 +172,9 @@ describe('microfrontends plugin - Phase 13', () => {
       const unsub = eventBus.on(MfeEvents.RegisterExtensionRequested, eventSpy);
 
       const testExtension: Extension = {
-        id: 'gts.hai3.mfes.ext.extension.v1~test.ext.v1',
-        domain: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1',
-        entry: 'gts.hai3.mfes.mfe.entry.v1~test.entry.v1',
+        id: 'gts.frontx.mfes.ext.extension.v1~test.ext.v1',
+        domain: 'gts.frontx.mfes.ext.domain.v1~test.domain.v1',
+        entry: 'gts.frontx.mfes.mfe.entry.v1~test.entry.v1',
       };
 
       // Use event bus directly (not the action, which is async)
@@ -188,7 +188,7 @@ describe('microfrontends plugin - Phase 13', () => {
 
   describe('13.8.3 - MFE slice (registration only)', () => {
     it('should initialize MFE slice in store', () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();
@@ -201,7 +201,7 @@ describe('microfrontends plugin - Phase 13', () => {
     });
 
     it('should track registration state via selectors', () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();
@@ -231,18 +231,18 @@ describe('microfrontends plugin - Phase 13', () => {
 
       vi.spyOn(mfeRegistryFactory, 'build').mockReturnValue(asMfeRegistry(fakeRegistry));
 
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();
       apps.push(app);
 
-      const domainId = 'gts.hai3.mfes.ext.domain.v1~test.app.test.domain.v1';
-      const requestedExtensionId = 'gts.hai3.mfes.ext.extension.v1~test.app.requested.ext.v1';
+      const domainId = 'gts.frontx.mfes.ext.domain.v1~test.app.test.domain.v1';
+      const requestedExtensionId = 'gts.frontx.mfes.ext.extension.v1~test.app.requested.ext.v1';
 
       await app.mfeRegistry?.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: domainId,
           payload: { subject: requestedExtensionId },
         },
@@ -256,7 +256,7 @@ describe('microfrontends plugin - Phase 13', () => {
       const fakeRegistry: MountSyncRegistry = {
         typeSystem: gtsPlugin,
         executeActionsChain: vi.fn().mockImplementation(async (chain: { action: { target: string } }) => {
-          mountedByDomain.set(chain.action.target, ['gts.hai3.mfes.ext.extension.v1~test.app.fallback.ext.v1']);
+          mountedByDomain.set(chain.action.target, ['gts.frontx.mfes.ext.extension.v1~test.app.fallback.ext.v1']);
         }),
         getMountedExtensions: vi.fn((domainId: string) => mountedByDomain.get(domainId) ?? []),
         registerExtension: vi.fn().mockResolvedValue(undefined),
@@ -265,19 +265,19 @@ describe('microfrontends plugin - Phase 13', () => {
 
       vi.spyOn(mfeRegistryFactory, 'build').mockReturnValue(asMfeRegistry(fakeRegistry));
 
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();
       apps.push(app);
 
-      const domainId = 'gts.hai3.mfes.ext.domain.v1~test.app.test.domain.v1';
-      const requestedExtensionId = 'gts.hai3.mfes.ext.extension.v1~test.app.requested.ext.v1';
-      const fallbackExtensionId = 'gts.hai3.mfes.ext.extension.v1~test.app.fallback.ext.v1';
+      const domainId = 'gts.frontx.mfes.ext.domain.v1~test.app.test.domain.v1';
+      const requestedExtensionId = 'gts.frontx.mfes.ext.extension.v1~test.app.requested.ext.v1';
+      const fallbackExtensionId = 'gts.frontx.mfes.ext.extension.v1~test.app.fallback.ext.v1';
 
       await app.mfeRegistry?.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: domainId,
           payload: { subject: requestedExtensionId },
         },
@@ -294,9 +294,9 @@ describe('microfrontends plugin - Phase 13', () => {
           action: { target: string };
           next?: { action: { target: string } };
         }) => {
-          mountedByDomain.set(chain.action.target, ['gts.hai3.mfes.ext.extension.v1~test.app.root.ext.v1']);
+          mountedByDomain.set(chain.action.target, ['gts.frontx.mfes.ext.extension.v1~test.app.root.ext.v1']);
           if (chain.next) {
-            mountedByDomain.set(chain.next.action.target, ['gts.hai3.mfes.ext.extension.v1~test.app.next.ext.v1']);
+            mountedByDomain.set(chain.next.action.target, ['gts.frontx.mfes.ext.extension.v1~test.app.next.ext.v1']);
           }
         }),
         getMountedExtensions: vi.fn((domainId: string) => mountedByDomain.get(domainId) ?? []),
@@ -306,34 +306,34 @@ describe('microfrontends plugin - Phase 13', () => {
 
       vi.spyOn(mfeRegistryFactory, 'build').mockReturnValue(asMfeRegistry(fakeRegistry));
 
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();
       apps.push(app);
 
-      const rootDomainId = 'gts.hai3.mfes.ext.domain.v1~test.app.root.domain.v1';
-      const nextDomainId = 'gts.hai3.mfes.ext.domain.v1~test.app.next.domain.v1';
-      const rootExtensionId = 'gts.hai3.mfes.ext.extension.v1~test.app.requested.root.v1';
-      const nextExtensionId = 'gts.hai3.mfes.ext.extension.v1~test.app.requested.next.v1';
+      const rootDomainId = 'gts.frontx.mfes.ext.domain.v1~test.app.root.domain.v1';
+      const nextDomainId = 'gts.frontx.mfes.ext.domain.v1~test.app.next.domain.v1';
+      const rootExtensionId = 'gts.frontx.mfes.ext.extension.v1~test.app.requested.root.v1';
+      const nextExtensionId = 'gts.frontx.mfes.ext.extension.v1~test.app.requested.next.v1';
 
       await app.mfeRegistry?.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: rootDomainId,
           payload: { subject: rootExtensionId },
         },
         next: {
           action: {
-            type: HAI3_ACTION_MOUNT_EXT,
+            type: FRONTX_ACTION_MOUNT_EXT,
             target: nextDomainId,
             payload: { subject: nextExtensionId },
           },
         },
       });
 
-      expect(selectMountedExtensions(app.store.getState(), rootDomainId)).toEqual(['gts.hai3.mfes.ext.extension.v1~test.app.root.ext.v1']);
-      expect(selectMountedExtensions(app.store.getState(), nextDomainId)).toEqual(['gts.hai3.mfes.ext.extension.v1~test.app.next.ext.v1']);
+      expect(selectMountedExtensions(app.store.getState(), rootDomainId)).toEqual(['gts.frontx.mfes.ext.extension.v1~test.app.root.ext.v1']);
+      expect(selectMountedExtensions(app.store.getState(), nextDomainId)).toEqual(['gts.frontx.mfes.ext.extension.v1~test.app.next.ext.v1']);
     });
 
     it('does not dispatch mount sync for fallback-only domains that were never executed', async () => {
@@ -341,7 +341,7 @@ describe('microfrontends plugin - Phase 13', () => {
       const fakeRegistry: MountSyncRegistry = {
         typeSystem: gtsPlugin,
         executeActionsChain: vi.fn().mockImplementation(async (chain: { action: { target: string } }) => {
-          mountedByDomain.set(chain.action.target, ['gts.hai3.mfes.ext.extension.v1~test.app.root.ext.v1']);
+          mountedByDomain.set(chain.action.target, ['gts.frontx.mfes.ext.extension.v1~test.app.root.ext.v1']);
         }),
         getMountedExtensions: vi.fn((domainId: string) => mountedByDomain.get(domainId) ?? []),
         registerExtension: vi.fn().mockResolvedValue(undefined),
@@ -350,15 +350,15 @@ describe('microfrontends plugin - Phase 13', () => {
 
       vi.spyOn(mfeRegistryFactory, 'build').mockReturnValue(asMfeRegistry(fakeRegistry));
 
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();
       apps.push(app);
 
-      const rootDomainId = 'gts.hai3.mfes.ext.domain.v1~test.app.root.domain.v1';
-      const fallbackDomainId = 'gts.hai3.mfes.ext.domain.v1~test.app.fallback.domain.v1';
-      const rootExtensionId = 'gts.hai3.mfes.ext.extension.v1~test.app.requested.root.v1';
+      const rootDomainId = 'gts.frontx.mfes.ext.domain.v1~test.app.root.domain.v1';
+      const fallbackDomainId = 'gts.frontx.mfes.ext.domain.v1~test.app.fallback.domain.v1';
+      const rootExtensionId = 'gts.frontx.mfes.ext.extension.v1~test.app.requested.root.v1';
       let notificationCount = 0;
       const unsubscribe = app.store.subscribe(() => {
         notificationCount += 1;
@@ -366,21 +366,21 @@ describe('microfrontends plugin - Phase 13', () => {
 
       await app.mfeRegistry?.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: rootDomainId,
           payload: { subject: rootExtensionId },
         },
         fallback: {
           action: {
-            type: HAI3_ACTION_MOUNT_EXT,
+            type: FRONTX_ACTION_MOUNT_EXT,
             target: fallbackDomainId,
-            payload: { subject: 'gts.hai3.mfes.ext.extension.v1~test.app.requested.fallback.v1' },
+            payload: { subject: 'gts.frontx.mfes.ext.extension.v1~test.app.requested.fallback.v1' },
           },
         },
       });
       unsubscribe();
 
-      expect(selectMountedExtensions(app.store.getState(), rootDomainId)).toEqual(['gts.hai3.mfes.ext.extension.v1~test.app.root.ext.v1']);
+      expect(selectMountedExtensions(app.store.getState(), rootDomainId)).toEqual(['gts.frontx.mfes.ext.extension.v1~test.app.root.ext.v1']);
       expect(selectMountedExtensions(app.store.getState(), fallbackDomainId)).toEqual([]);
       expect(notificationCount).toBe(1);
     });
@@ -388,7 +388,7 @@ describe('microfrontends plugin - Phase 13', () => {
 
   describe('13.8.8 - plugin lifecycle wiring', () => {
     it('initializes MFE effects on init so bus events invoke the registry', async () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();
@@ -401,9 +401,9 @@ describe('microfrontends plugin - Phase 13', () => {
         .mockResolvedValue(undefined);
 
       const extension: Extension = {
-        id: 'gts.hai3.mfes.ext.extension.v1~test.app.init.ext.v1',
-        domain: 'gts.hai3.mfes.ext.domain.v1~test.app.init.domain.v1',
-        entry: 'gts.hai3.mfes.mfe.entry.v1~test.app.init.entry.v1',
+        id: 'gts.frontx.mfes.ext.extension.v1~test.app.init.ext.v1',
+        domain: 'gts.frontx.mfes.ext.domain.v1~test.app.init.domain.v1',
+        entry: 'gts.frontx.mfes.mfe.entry.v1~test.app.init.entry.v1',
       };
       eventBus.emit(MfeEvents.RegisterExtensionRequested, { extension });
 
@@ -414,7 +414,7 @@ describe('microfrontends plugin - Phase 13', () => {
 
     it('tears down MFE effects on destroy so the bus no longer drives the registry', async () => {
       // Fresh app so we control its destroy ordering independently of afterEach.
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();
@@ -429,9 +429,9 @@ describe('microfrontends plugin - Phase 13', () => {
 
       eventBus.emit(MfeEvents.RegisterExtensionRequested, {
         extension: {
-          id: 'gts.hai3.mfes.ext.extension.v1~test.app.post-destroy.ext.v1',
-          domain: 'gts.hai3.mfes.ext.domain.v1~test.app.post-destroy.domain.v1',
-          entry: 'gts.hai3.mfes.mfe.entry.v1~test.app.post-destroy.entry.v1',
+          id: 'gts.frontx.mfes.ext.extension.v1~test.app.post-destroy.ext.v1',
+          domain: 'gts.frontx.mfes.ext.domain.v1~test.app.post-destroy.domain.v1',
+          entry: 'gts.frontx.mfes.mfe.entry.v1~test.app.post-destroy.entry.v1',
         },
       });
 

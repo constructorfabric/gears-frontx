@@ -62,7 +62,7 @@ export default [
 
   // SDK packages: Allow unknown/object types (required for generic event bus, store, etc.)
   // These packages use generics and need flexible typing for consumer code to augment
-  // Layer enforcement: SDK packages cannot import other @hai3 packages or React
+  // Layer enforcement: SDK packages cannot import other @gears-frontx packages or React
   {
     files: [
       'packages/state/**/*.ts',
@@ -80,7 +80,7 @@ export default [
             {
               group: ['@gears-frontx/*'],
               message:
-                'SDK VIOLATION: SDK packages cannot import other @hai3 packages.',
+                'SDK VIOLATION: SDK packages cannot import other @gears-frontx packages.',
             },
             {
               group: ['react', 'react-dom', 'react/*'],
@@ -383,7 +383,7 @@ export default [
             {
               group: ['@gears-frontx/studio', '@gears-frontx/studio/**'],
               message:
-                'STUDIO VIOLATION: Studio should not be imported directly in app code. HAI3Provider auto-detects and loads Studio in development mode.',
+                'STUDIO VIOLATION: Studio should not be imported directly in app code. FrontXProvider auto-detects and loads Studio in development mode.',
             },
           ],
         },

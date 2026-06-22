@@ -69,7 +69,7 @@ The isolation is achieved through five coordinated responsibilities:
 4. **Per-load shared dep blob URLs** — shared deps are blob-URL'd BEFORE the expose chain; for each shared dep declared in the manifest, the cached source text has its bare specifiers rewritten to other shared dep blob URLs (respecting dependency order), then a fresh blob URL is created; each load creates fresh blob URLs from cached source text, producing unique module evaluations.
 5. **Build-time standalone ESM generation and manifest enrichment** — at build time, `@module-federation/vite` is used ONLY for expose compilation and `mf-manifest.json` generation (CSS assets, expose chunk paths); shared dependency handling is disabled (`shared: {}`); shared deps are externalized via `build.rollupOptions.external` so bare specifiers are preserved in output; the `frontx-mf-gts` Vite plugin builds standalone ESM modules for each shared dep (from `node_modules` via esbuild) and writes the enriched manifest to `{outDir}/mfe-manifest.json` with manifest metadata, shared dep info (`chunkPath`, `version`, `unwrapKey`), and per-entry `exposeAssets`; `{outDir}/mfe-manifest.json` is the complete self-contained build-output contract per MFE; source `mfe.json` is never modified by the build.
 
-The MFE-internal dataflow completes the isolation: each MFE creates its own `HAI3App` with an isolated store via the blob-URL-evaluated `@gears-frontx/react`; no direct `react-redux` or `@reduxjs/toolkit` imports are permitted.
+The MFE-internal dataflow completes the isolation: each MFE creates its own `Gears FrontXApp` with an isolated store via the blob-URL-evaluated `@gears-frontx/react`; no direct `react-redux` or `@reduxjs/toolkit` imports are permitted.
 
 **Primary value**: MFEs maintain fully independent module-level state — React fiber trees, hooks, stores — regardless of shared dependencies.
 
@@ -168,9 +168,9 @@ Enable multiple independently deployed MFE bundles to coexist in the same browse
 
 1. [x] - `p1` - The MFE's `init.ts` module is evaluated as a module-level side effect when the expose chunk is first imported — `inst-init-side-effect`
 2. [x] - `p1` - `init.ts` calls `apiRegistry.register()` and `apiRegistry.initialize()` to register API services before the store is built — `inst-register-api`
-3. [x] - `p1` - `createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build()` creates a minimal `HAI3App` with an isolated store singleton and joins the host-owned QueryClient — `inst-create-mfe-app`
+3. [x] - `p1` - `createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build()` creates a minimal `Gears FrontXApp` with an isolated store singleton and joins the host-owned QueryClient — `inst-create-mfe-app`
 4. [x] - `p1` - `registerSlice(slice, effectInitializer)` wires domain state into the MFE-local store — `inst-register-slice`
-5. [x] - `p1` - `mfeApp` is exported for use by lifecycle React components as the `<HAI3Provider app={mfeApp}>` prop — `inst-export-mfe-app`
+5. [x] - `p1` - `mfeApp` is exported for use by lifecycle React components as the `<Gears FrontXProvider app={mfeApp}>` prop — `inst-export-mfe-app`
 6. [x] - `p1` - **IF** any lifecycle component imports `react-redux`, `redux`, or `@reduxjs/toolkit` directly, the architecture constraint is violated — `inst-no-direct-redux`
 
 ---
@@ -418,7 +418,7 @@ The cache is bounded via an `LruCache<string, Promise<string>>` wrapper with a f
 **Implementation details**:
 - File: `packages/screensets/src/mfe/handler/mf-handler.ts`
 - Key types: `LoadBlobState` (per-load, includes `sharedDepBlobUrls`), `ManifestCache`, `MfeLoaderConfig`
-- Constructor: `MfeHandlerMF(handledBaseTypeId: string, config?: MfeLoaderConfig)` — does NOT take `typeSystem`; the registry owns type hierarchy checks. Consumer passes the GTS base type ID constant (e.g., `HAI3_MFE_ENTRY_MF`) at instantiation.
+- Constructor: `MfeHandlerMF(handledBaseTypeId: string, config?: MfeLoaderConfig)` — does NOT take `typeSystem`; the registry owns type hierarchy checks. Consumer passes the GTS base type ID constant (e.g., `Gears FrontX_MFE_ENTRY_MF`) at instantiation.
 - Public entry: `MfeHandlerMF.load(entry: MfeEntryMF): Promise<MfeEntryLifecycle<ChildMfeBridge>>`
 - Shared dep isolation is achieved through blob URL evaluation of standalone ESMs
 
@@ -484,12 +484,12 @@ The cache is bounded via an `LruCache<string, Promise<string>>` wrapper with a f
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-internal-dataflow`
 
-Each MFE package bootstraps its own isolated `HAI3App` and exposes it for use by lifecycle React components. No direct Redux imports appear in MFE source code.
+Each MFE package bootstraps its own isolated `Gears FrontXApp` and exposes it for use by lifecycle React components. No direct Redux imports appear in MFE source code.
 
 **Implementation details**:
 - Files: `src/mfe_packages/<mfe-name>/src/init.ts` (module-level bootstrap)
-- Pattern: `createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build()` — `queryCacheShared()` joins the host `queryCache()` runtime; do not use `queryCache()` in MFE `init.ts`
-- MFE lifecycle components wrap their React tree in `<HAI3Provider app={mfeApp}>`
+- Pattern: `createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build()` — `queryCacheShared()` joins the host `queryCache()` runtime; do not use `queryCache()` in MFE `init.ts`
+- MFE lifecycle components wrap their React tree in `<Gears FrontXProvider app={mfeApp}>`
 
 **Implements**:
 - `cpt-frontx-flow-mfe-isolation-mfe-bootstrap`
@@ -506,7 +506,7 @@ Each MFE package bootstraps its own isolated `HAI3App` and exposes it for use by
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-mfmanifest-type`
 
-The `MfManifest` TypeScript interface and the GTS schema `mf_manifest.v1.json` (registered as `gts://gts.hai3.mfes.mfe.mf_manifest.v1~`) are updated to include the fields produced by the `frontx-mf-gts` Vite plugin. There is no envelope field, no version detection, and no backward compatibility path. The GTS schema `mf_manifest.v1.json` keeps its current identifier — "v1" is simply the schema's stable ID, not a version in a backward-compat sense.
+The `MfManifest` TypeScript interface and the GTS schema `mf_manifest.v1.json` (registered as `gts://gts.frontx.mfes.mfe.mf_manifest.v1~`) are updated to include the fields produced by the `frontx-mf-gts` Vite plugin. There is no envelope field, no version detection, and no backward compatibility path. The GTS schema `mf_manifest.v1.json` keeps its current identifier — "v1" is simply the schema's stable ID, not a version in a backward-compat sense.
 
 Key fields set by the `frontx-mf-gts` plugin (from the handler's perspective):
 - `metaData.publicPath: string` — the base URL for resolving chunk paths at runtime
@@ -545,7 +545,7 @@ Key fields set by the `frontx-mf-gts` plugin (from the handler's perspective):
 
 **Entry action field semantics**: The `actions` array on `MfeEntry` declares the action types this entry is capable of **receiving and executing** — the mediator dispatches an extension-targeted action to the entry only when `action.type` appears in this array. Lifecycle actions targeting the domain are routed by the domain's per-action-type `ActionHandler` instances to all mounted extensions independently of `entry.actions`. The `domainActions` array on `MfeEntry` declares the action types the **parent domain must support** for this entry to be injectable — it is consulted by contract validation at registration time (Rule 3: `entry.domainActions ⊆ domain.actions`, with infrastructure lifecycle actions exempt), not at dispatch time.
 
-Action target contract enforcement is two-layered: (1) **GTS schema validation** — each action schema constrains its `target` field via `x-gts-ref`; lifecycle action schemas restrict `target` to domain IDs only; custom MFE action schemas restrict `target` to specific extension IDs; the mediator validates each action instance against its schema before routing, and invalid targets are rejected by the type system. (2) **Runtime entry declaration validation** — before dispatching an extension-targeted action, the mediator confirms that the target entry's `actions` array contains the action type; undeclared actions fail the chain with an error naming the action type and entry ID. This ensures an entry receives only the actions it explicitly opts into, even when the enclosing domain supports a broader action set. Infrastructure lifecycle actions (`HAI3_ACTION_LOAD_EXT`, `HAI3_ACTION_MOUNT_EXT`, `HAI3_ACTION_UNMOUNT_EXT`) target domains, not extensions, and are exempt from this runtime check. GTS alone is NOT sufficient — schema validation enforces schema/target shape; runtime entry validation enforces per-entry opt-in.
+Action target contract enforcement is two-layered: (1) **GTS schema validation** — each action schema constrains its `target` field via `x-gts-ref`; lifecycle action schemas restrict `target` to domain IDs only; custom MFE action schemas restrict `target` to specific extension IDs; the mediator validates each action instance against its schema before routing, and invalid targets are rejected by the type system. (2) **Runtime entry declaration validation** — before dispatching an extension-targeted action, the mediator confirms that the target entry's `actions` array contains the action type; undeclared actions fail the chain with an error naming the action type and entry ID. This ensures an entry receives only the actions it explicitly opts into, even when the enclosing domain supports a broader action set. Infrastructure lifecycle actions (`Gears FrontX_ACTION_LOAD_EXT`, `Gears FrontX_ACTION_MOUNT_EXT`, `Gears FrontX_ACTION_UNMOUNT_EXT`) target domains, not extensions, and are exempt from this runtime check. GTS alone is NOT sufficient — schema validation enforces schema/target shape; runtime entry validation enforces per-entry opt-in.
 
 **Implements**:
 - `cpt-frontx-flow-mfe-registry-register-extension-handler`
@@ -560,12 +560,12 @@ Action target contract enforcement is two-layered: (1) **GTS schema validation**
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-author-state-lifecycle`
 
-The MFE entry's `mount(container, bridge, mountContext?)` is the only place per-instance state is constructed; the matching `unmount(container)` is the only place that state is torn down. Module-scope state established when the bundle first evaluates (the `HAI3App` instance built in `init.ts`, plugin registrations, module-level singletons and caches) persists for the lifetime of the load — the host neither resets it nor offers an API to reset it, because never-revoke (`cpt-frontx-fr-blob-no-revoke`) makes any such reset unsafe.
+The MFE entry's `mount(container, bridge, mountContext?)` is the only place per-instance state is constructed; the matching `unmount(container)` is the only place that state is torn down. Module-scope state established when the bundle first evaluates (the `Gears FrontXApp` instance built in `init.ts`, plugin registrations, module-level singletons and caches) persists for the lifetime of the load — the host neither resets it nor offers an API to reset it, because never-revoke (`cpt-frontx-fr-blob-no-revoke`) makes any such reset unsafe.
 
 **Implementation details**:
 - Each `mount()` call creates an independent set of resources: React root via `createRoot(container)`, `bridge.subscribeToProperty()` subscriptions, `bridge.registerActionHandler()` registrations, timers, `MutationObserver` / `IntersectionObserver` instances, DOM nodes attached to `container`.
 - The matching `unmount()` call MUST tear those resources down: unsubscribe property subscriptions, cancel timers, call `root.unmount()` on the React root, disconnect observers, remove DOM nodes from `container`, drop references to the bridge.
-- `unmount()` MUST NOT touch module-level singletons (the `HAI3App` instance, plugin registrations, blob URLs, module-scope caches).
+- `unmount()` MUST NOT touch module-level singletons (the `Gears FrontXApp` instance, plugin registrations, blob URLs, module-scope caches).
 - An MFE that needs fresh module-scope state per use case keeps that state at instance scope inside `mount()`, not at module scope in `init.ts`. "Cycle the MFE" is therefore an MFE-author operation realised by unregistering and re-registering with a fresh ID — this triggers a new load and a new module evaluation — not a host-side reset hook.
 
 **Covers (PRD)**:
@@ -605,34 +605,34 @@ The MFE entry's `mount(container, bridge, mountContext?)` is the only place per-
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-lazy-import-abi`
 
-Vendor MFEs are expected to use dynamic `import()` calls (lazy chunks, code-split routes, on-demand components) — FrontX is a meta-framework for SaaS platforms extensible by external vendor MFEs at runtime, and vendor authors cannot be told to avoid lazy loading. The isolation pipeline MUST therefore handle dynamic `import()` calls inside vendor source so lazy chunks are resolved through the same blob URL chain as the entry chunk. This responsibility is split between a build-time transform (in the `frontx-mf-gts` Vite plugin) and a runtime resolver (on `MfeHandlerMF`), connected through a stable runtime ABI named `__hai3_lazy`.
+Vendor MFEs are expected to use dynamic `import()` calls (lazy chunks, code-split routes, on-demand components) — FrontX is a meta-framework for SaaS platforms extensible by external vendor MFEs at runtime, and vendor authors cannot be told to avoid lazy loading. The isolation pipeline MUST therefore handle dynamic `import()` calls inside vendor source so lazy chunks are resolved through the same blob URL chain as the entry chunk. This responsibility is split between a build-time transform (in the `frontx-mf-gts` Vite plugin) and a runtime resolver (on `MfeHandlerMF`), connected through a stable runtime ABI named `__frontx_lazy`.
 
-**Plugin (build-time)** — `frontx-mf-gts` Vite plugin uses Vite's `transform` hook (a stable public API that operates on the module AST, not on emitted code) to rewrite every dynamic `import('<relative-path>')` call in vendor MFE TypeScript/JavaScript source to `__hai3_lazy('<relative-path>')`. The transform:
+**Plugin (build-time)** — `frontx-mf-gts` Vite plugin uses Vite's `transform` hook (a stable public API that operates on the module AST, not on emitted code) to rewrite every dynamic `import('<relative-path>')` call in vendor MFE TypeScript/JavaScript source to `__frontx_lazy('<relative-path>')`. The transform:
 
-- Rewrites string-literal paths: `import('./X.js')` → `__hai3_lazy('./X.js')`.
-- Rewrites template-literal paths whose template is constant (no embedded expressions): ``import(`./X.js`)`` → ``__hai3_lazy(`./X.js`)``.
+- Rewrites string-literal paths: `import('./X.js')` → `__frontx_lazy('./X.js')`.
+- Rewrites template-literal paths whose template is constant (no embedded expressions): ``import(`./X.js`)`` → ``__frontx_lazy(`./X.js`)``.
 - Rewrites simple concatenations of string constants (e.g., `import('./' + name + '.js')` where `name` is a string-literal constant) up to a documented limit; the limit is the static reachability of the path expression at transform time.
 - Patterns the transform cannot handle (fully runtime-computed paths from request data, paths constructed from non-string constants, paths involving dynamic property lookup) MUST be flagged with a build-time error so vendors know to refactor; the plugin MUST NOT emit silently-broken output that would fail at runtime with an unhelpful diagnostic.
 - The transform is applied only to vendor MFE source (modules under the MFE's `src/`), not to host source and not to standalone-ESM shared dep bundles produced by the plugin's own esbuild step.
 
-**Handler (runtime)** — `MfeHandlerMF` provides a runtime function `__hai3_lazy.load(relativePath)` (or equivalent module-scoped identifier) injected into the evaluated MFE module's scope alongside the existing blob URL chain plumbing. The function:
+**Handler (runtime)** — `MfeHandlerMF` provides a runtime function `__frontx_lazy.load(relativePath)` (or equivalent module-scoped identifier) injected into the evaluated MFE module's scope alongside the existing blob URL chain plumbing. The function:
 
 1. Resolves `relativePath` against `manifest.metaData.publicPath` to obtain the absolute URL of the lazy chunk.
 2. Fetches the lazy chunk's source text through the existing handler-level `sourceTextCache` (URL-keyed; reused across loads), so the same chunk fetched in two loads pays one network request.
-3. Recursively rewrites bare specifiers in the fetched source against the parent load's `sharedDepBlobUrls` (mirrors the entry-chunk rewriting pass) so that `import "react"` inside a lazy chunk resolves to the parent load's React blob URL, not to an unresolved bare specifier; the rewriter also recursively transforms any nested `__hai3_lazy()` calls inside the lazy chunk so a lazy chunk that itself lazy-imports another chunk participates in the same chain.
-4. Creates a per-load blob URL for the rewritten lazy-chunk source — the blob URL is registered in the parent load's `LoadBlobState.blobUrlMap` so the blob URL is owned by the same load as the entry chunk, never revoked (per `cpt-frontx-fr-blob-no-revoke`), and reused across repeated `__hai3_lazy.load()` calls for the same relative path within the same load.
-5. Returns the blob URL string. The caller's transformed code is `__hai3_lazy('<path>')`, which the runtime wires to evaluate as `import(<blob URL string>)` — i.e., the runtime helper returns the URL and the caller's `import()` semantics are preserved end-to-end. Lazy semantics are therefore unchanged from the vendor author's perspective: the call returns a `Promise<Module>` that resolves when the lazy chunk has been parsed and evaluated.
+3. Recursively rewrites bare specifiers in the fetched source against the parent load's `sharedDepBlobUrls` (mirrors the entry-chunk rewriting pass) so that `import "react"` inside a lazy chunk resolves to the parent load's React blob URL, not to an unresolved bare specifier; the rewriter also recursively transforms any nested `__frontx_lazy()` calls inside the lazy chunk so a lazy chunk that itself lazy-imports another chunk participates in the same chain.
+4. Creates a per-load blob URL for the rewritten lazy-chunk source — the blob URL is registered in the parent load's `LoadBlobState.blobUrlMap` so the blob URL is owned by the same load as the entry chunk, never revoked (per `cpt-frontx-fr-blob-no-revoke`), and reused across repeated `__frontx_lazy.load()` calls for the same relative path within the same load.
+5. Returns the blob URL string. The caller's transformed code is `__frontx_lazy('<path>')`, which the runtime wires to evaluate as `import(<blob URL string>)` — i.e., the runtime helper returns the URL and the caller's `import()` semantics are preserved end-to-end. Lazy semantics are therefore unchanged from the vendor author's perspective: the call returns a `Promise<Module>` that resolves when the lazy chunk has been parsed and evaluated.
 
 **Properties**:
 
 - **Lazy semantics preserved** — chunks are fetched on demand at first invocation, not eagerly at parent-chunk load time; the vendor's existing lazy-import architecture (route-level code splitting, lazy component imports) keeps working without source changes.
 - **Per-load isolation preserved** — each load owns its own lazy-chunk blob URLs in the same `LoadBlobState.blobUrlMap` that holds the entry-chunk blob URLs; sibling extensions sharing an entry get distinct lazy-chunk blob URLs (a consequence of distinct parent loads per `extension.id` per `cpt-frontx-dod-mfe-isolation-handler-load-cache`).
 - **`sourceTextCache` reuse** — the URL-keyed source text cache is reused for lazy chunks across loads; the same chunk URL fetched by two different parent loads pays one network request, then each parent load creates its own blob URL from the cached text.
-- **Vendor contract** — FrontX-compatible MFEs must be built with `frontx-mf-gts` (or an equivalent build pipeline that produces the same `__hai3_lazy()` call shape at the source level). The plugin's AST transform enforces the contract automatically; vendors do not need to know the runtime ABI exists in order to publish a working MFE.
+- **Vendor contract** — FrontX-compatible MFEs must be built with `frontx-mf-gts` (or an equivalent build pipeline that produces the same `__frontx_lazy()` call shape at the source level). The plugin's AST transform enforces the contract automatically; vendors do not need to know the runtime ABI exists in order to publish a working MFE.
 
 **Implementation details**:
 - Plugin file: `packages/screensets/src/build/mf-gts.ts` — adds a Vite `transform` hook registered for vendor MFE source files; integration with the existing `closeBundle` hook is read-only on the existing manifest enrichment side.
-- Handler file: `packages/screensets/src/mfe/handler/mf-handler.ts` — adds a private `__hai3_lazy.load(path)` resolver bound into the per-load scope; the resolver shares the same `sourceTextCache`, `sharedDepBlobUrls`, `blobUrlMap`, and rewrite plumbing already used for the entry chunk.
+- Handler file: `packages/screensets/src/mfe/handler/mf-handler.ts` — adds a private `__frontx_lazy.load(path)` resolver bound into the per-load scope; the resolver shares the same `sourceTextCache`, `sharedDepBlobUrls`, `blobUrlMap`, and rewrite plumbing already used for the entry chunk.
 
 **Covers (PRD)**:
 - `cpt-frontx-fr-blob-no-revoke` (lazy-chunk blob URLs participate in the never-revoke invariant)
@@ -671,7 +671,7 @@ The `frontx-mf-gts` plugin MUST configure `build.rollupOptions.output.manualChun
 
 - [x] **AC-1: Source text sharing** — shared dep source text is fetched at most once per `name@version` across ALL runtimes (host and MFEs), in any load order; the browser Network tab shows a single request for each shared dep regardless of how many runtimes consume it
 - [x] **AC-2: Instance isolation** — each runtime gets its own isolated instance of every shared library; `Object.is(runtimeA_React, runtimeB_React)` is `false` for any two runtimes that both load `react`
-- [x] **AC-3: Manifest as source of truth** — enriched `{outDir}/mfe-manifest.json` (registered as `gts.hai3.mfes.mfe.mf_manifest.v1~` GTS entities) declares shared dependencies with their versions; the handler reads `shared[].name`, `shared[].version`, `shared[].chunkPath`, and `shared[].unwrapKey` from the manifest to drive source text sharing and blob URL evaluation
+- [x] **AC-3: Manifest as source of truth** — enriched `{outDir}/mfe-manifest.json` (registered as `gts.frontx.mfes.mfe.mf_manifest.v1~` GTS entities) declares shared dependencies with their versions; the handler reads `shared[].name`, `shared[].version`, `shared[].chunkPath`, and `shared[].unwrapKey` from the manifest to drive source text sharing and blob URL evaluation
 - [x] **AC-4: GTS validation** — manifest instances are validated by the GTS plugin; MFEs render with correct GTS type IDs (domain ID, instance ID) visible in the runtime Bridge Info
 - [x] **AC-5: Version separation** — different versions of the same shared package produce separate downloads and separate isolated instances; `react@18` and `react@19` from different MFEs are NOT shared
 - [x] **AC-6: Shared properties** — shared properties (theme, language) reach child runtimes via the bridge; child MFE components display the host-set theme and language values
@@ -691,7 +691,7 @@ The `frontx-mf-gts` plugin MUST configure `build.rollupOptions.output.manualChun
 - [x] The `frontx-mf-gts` plugin writes the enriched manifest to `{outDir}/mfe-manifest.json`: `manifest.shared[].chunkPath` set to MFE-relative paths (`shared/{name}.js`); the handler resolves against `publicPath` and deduplicates via `sharedDepTextCache` keyed by `name@version`; source `mfe.json` is never modified
 - [x] MFE `vite.config.ts` uses `shared: {}` (empty) and `build.rollupOptions.external` for shared deps; expose chunks contain bare specifiers for shared deps
 - [x] MFE `init.ts` files contain no direct imports from `react-redux`, `redux`, or `@reduxjs/toolkit`
-- [x] Each MFE entry's `mount()` and `unmount()` are paired: every resource created in `mount()` (React root, `bridge.subscribeToProperty` returns, `bridge.registerActionHandler` registrations, timers, observers, DOM nodes) is disposed in the matching `unmount()`; no `unmount()` mutates module-level singletons (`HAI3App`, plugin registrations, module-scope caches)
+- [x] Each MFE entry's `mount()` and `unmount()` are paired: every resource created in `mount()` (React root, `bridge.subscribeToProperty` returns, `bridge.registerActionHandler` registrations, timers, observers, DOM nodes) is disposed in the matching `unmount()`; no `unmount()` mutates module-level singletons (`Gears FrontXApp`, plugin registrations, module-scope caches)
 - [x] `MfeHandlerMF` declares a `static` load-result cache keyed by the extension instance ID; the cache survives handler-instance disposal (verified: nested-app registry teardown does not invalidate cache entries — a second mount of the same extension instance under a fresh handler instance hits the cache and reuses the same blob URLs); two extensions registered against the same `MfeEntry` definition populate distinct cache entries with distinct blob URLs (verified by mounting two extensions whose entry is identical and asserting `Object.is(lifecycle_a, lifecycle_b) === false` and that their blob URLs are disjoint)
 - [x] `frontx-mf-gts` plugin configures `build.rollupOptions.output.manualChunks` so each `exposedModule` from `mfe.json` is emitted as its own chunk; each lifecycle chunk preserves a clean `export default` shape with no namespace-alias rewrite
 

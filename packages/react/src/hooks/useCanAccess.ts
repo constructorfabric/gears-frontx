@@ -5,9 +5,9 @@ import type {
   AccessQuery,
   AccessRecord,
   AuthRuntime,
-  HAI3App,
+  FrontXApp,
 } from '@gears-frontx/framework';
-import { useHAI3 } from '../HAI3Context';
+import { useFrontX } from '../FrontXContext';
 import type { UseCanAccessResult } from '../types';
 
 /**
@@ -40,12 +40,12 @@ function accessQueryKey(query: AccessQuery): string {
   return JSON.stringify([action, resource, normalizedRecord]);
 }
 
-type HAI3AuthAppContract = HAI3App & {
+type FrontXAuthAppContract = FrontXApp & {
   auth?: AuthRuntime;
 };
 
-function getAuthRuntime(app: HAI3App): AuthRuntime | null {
-  return (app as HAI3AuthAppContract).auth ?? null;
+function getAuthRuntime(app: FrontXApp): AuthRuntime | null {
+  return (app as FrontXAuthAppContract).auth ?? null;
 }
 
 /**
@@ -65,7 +65,7 @@ function getAuthRuntime(app: HAI3App): AuthRuntime | null {
 export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
   query: AccessQuery<TRecord>,
 ): UseCanAccessResult {
-  const app = useHAI3();
+  const app = useFrontX();
 
   // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-stable-key
   const stableKey = accessQueryKey(query as AccessQuery);

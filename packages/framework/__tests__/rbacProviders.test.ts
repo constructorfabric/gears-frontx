@@ -8,7 +8,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createHAI3 } from '../src/createHAI3';
+import { createFrontX } from '../src/createFrontX';
 import { auth } from '../src/plugins/auth';
 import type {
   AccessDecision,
@@ -42,7 +42,7 @@ type Auth0Claims = {
 const ownedApps: Array<{ destroy: () => void }> = [];
 
 function buildApp(provider: AuthProvider) {
-  const app = createHAI3().use(auth({ provider })).build();
+  const app = createFrontX().use(auth({ provider })).build();
   ownedApps.push(app);
   return app;
 }

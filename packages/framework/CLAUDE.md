@@ -15,9 +15,9 @@ This package is part of the **Framework Layer (L2)** - it depends on SDK package
 Build applications by composing plugins:
 
 ```typescript
-import { createHAI3, screensets, themes, layout, microfrontends, i18n } from '@gears-frontx/framework';
+import { createGears FrontX, screensets, themes, layout, microfrontends, i18n } from '@gears-frontx/framework';
 
-const app = createHAI3()
+const app = createGears FrontX()
   .use(screensets())
   .use(themes())
   .use(layout())
@@ -31,17 +31,17 @@ const app = createHAI3()
 Pre-configured plugin combinations:
 
 ```typescript
-import { createHAI3App, presets } from '@gears-frontx/framework';
+import { createGears FrontXApp, presets } from '@gears-frontx/framework';
 
 // Full preset (default) - all plugins including MFE support
-const fullApp = createHAI3App();
+const fullApp = createGears FrontXApp();
 
 // Or explicitly use presets
-const minimalApp = createHAI3()
+const minimalApp = createGears FrontX()
   .use(presets.minimal())  // screensets + themes only
   .build();
 
-const headlessApp = createHAI3()
+const headlessApp = createGears FrontX()
   .use(presets.headless()) // screensets only
   .build();
 ```
@@ -65,10 +65,10 @@ const headlessApp = createHAI3()
 The `queryCache()` plugin owns the shared **headless TanStack Query `QueryClient`** (`@tanstack/query-core` peer) and bridges it to L1 transport dedup: it **retains** the global `sharedFetchCache` from `@gears-frontx/api` for the app lifetime and **keeps it aligned** with Flux-driven cache events. It's included in the `full()` preset by default:
 
 ```typescript
-import { createHAI3App } from '@gears-frontx/framework';
+import { createGears FrontXApp } from '@gears-frontx/framework';
 
 // Full preset includes queryCache plugin automatically
-const app = createHAI3App();
+const app = createGears FrontXApp();
 
 // The plugin attaches the shared QueryClient to the app for React bindings
 // and shared child roots via queryCacheShared().
@@ -83,9 +83,9 @@ const app = createHAI3App();
 For custom plugin compositions:
 
 ```typescript
-import { createHAI3, queryCache } from '@gears-frontx/framework';
+import { createGears FrontX, queryCache } from '@gears-frontx/framework';
 
-const app = createHAI3()
+const app = createGears FrontX()
   .use(queryCache({ staleTime: 60_000, gcTime: 600_000 }))
   .build();
 ```
@@ -105,10 +105,10 @@ The plugin:
 The `mock()` plugin provides centralized mock mode control. It's included in the `full()` preset by default, so apps don't need manual setup:
 
 ```typescript
-import { createHAI3App } from '@gears-frontx/framework';
+import { createGears FrontXApp } from '@gears-frontx/framework';
 
 // Full preset includes mock plugin automatically
-const app = createHAI3App();
+const app = createGears FrontXApp();
 
 // Toggle mock mode via actions (used by FrontX Studio ApiModeToggle)
 app.actions.toggleMockMode(true);  // Activates all registered mock plugins
@@ -118,9 +118,9 @@ app.actions.toggleMockMode(false); // Deactivates all registered mock plugins
 For custom plugin compositions:
 
 ```typescript
-import { createHAI3, effects, mock } from '@gears-frontx/framework';
+import { createGears FrontX, effects, mock } from '@gears-frontx/framework';
 
-const app = createHAI3()
+const app = createGears FrontX()
   .use(effects())  // Required dependency
   .use(mock())     // Automatic mock mode control
   .build();
@@ -130,16 +130,16 @@ Services register mock plugins using `registerPlugin()` in their constructor. Th
 
 ### Built Application
 
-After calling `.build()`, access registries and actions through `app.*`. The MFE-enabled `screensetsRegistry` is available when the build includes `microfrontends()` (for example, `createHAI3App()`):
+After calling `.build()`, access registries and actions through `app.*`. The MFE-enabled `screensetsRegistry` is available when the build includes `microfrontends()` (for example, `createGears FrontXApp()`):
 
 ```typescript
-const app = createHAI3App(); // Full preset includes microfrontends()
+const app = createGears FrontXApp(); // Full preset includes microfrontends()
 
 // Access MFE-enabled registry
 app.screensetsRegistry.registerDomain(screenDomain, containerProvider);
 await app.screensetsRegistry.registerExtension(homeExtension);
 await app.screensetsRegistry.executeActionsChain({
-  action: { type: HAI3_ACTION_MOUNT_EXT, target: 'screen', payload: { subject: 'home' } }
+  action: { type: Gears FrontX_ACTION_MOUNT_EXT, target: 'screen', payload: { subject: 'home' } }
 });
 
 // Access other registries
@@ -221,10 +221,10 @@ const error = selectExtensionError(state, 'home');
 
 ```typescript
 import {
-  HAI3_SCREEN_DOMAIN,
-  HAI3_SIDEBAR_DOMAIN,
-  HAI3_POPUP_DOMAIN,
-  HAI3_OVERLAY_DOMAIN,
+  Gears FrontX_SCREEN_DOMAIN,
+  Gears FrontX_SIDEBAR_DOMAIN,
+  Gears FrontX_POPUP_DOMAIN,
+  Gears FrontX_OVERLAY_DOMAIN,
   screenDomain,
   sidebarDomain,
   popupDomain,
@@ -232,10 +232,10 @@ import {
 } from '@gears-frontx/framework';
 
 // String constants (GTS instance IDs)
-HAI3_SCREEN_DOMAIN   // 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1'
-HAI3_SIDEBAR_DOMAIN  // 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1'
-HAI3_POPUP_DOMAIN    // 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.popup.v1'
-HAI3_OVERLAY_DOMAIN  // 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.overlay.v1'
+Gears FrontX_SCREEN_DOMAIN   // 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1'
+Gears FrontX_SIDEBAR_DOMAIN  // 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1'
+Gears FrontX_POPUP_DOMAIN    // 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.popup.v1'
+Gears FrontX_OVERLAY_DOMAIN  // 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.overlay.v1'
 
 // Domain objects (ExtensionDomain interface: id, actions, extensionsActions,
 // sharedProperties, defaultActionTimeout, lifecycleStages, extensionsLifecycleStages,
@@ -250,21 +250,21 @@ overlayDomain  // overlay: toggle semantics (load_ext, mount_ext, unmount_ext)
 
 ```typescript
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
+  Gears FrontX_ACTION_LOAD_EXT,
+  Gears FrontX_ACTION_MOUNT_EXT,
+  Gears FrontX_ACTION_UNMOUNT_EXT,
+  Gears FrontX_SHARED_PROPERTY_THEME,
+  Gears FrontX_SHARED_PROPERTY_LANGUAGE,
 } from '@gears-frontx/framework';
 
 // Action IDs
-HAI3_ACTION_LOAD_EXT     // 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~'
-HAI3_ACTION_MOUNT_EXT    // 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~'
-HAI3_ACTION_UNMOUNT_EXT  // 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~'
+Gears FrontX_ACTION_LOAD_EXT     // 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~'
+Gears FrontX_ACTION_MOUNT_EXT    // 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~'
+Gears FrontX_ACTION_UNMOUNT_EXT  // 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1~'
 
 // Shared property IDs
-HAI3_SHARED_PROPERTY_THEME    // 'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~'
-HAI3_SHARED_PROPERTY_LANGUAGE // 'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~'
+Gears FrontX_SHARED_PROPERTY_THEME    // 'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~'
+Gears FrontX_SHARED_PROPERTY_LANGUAGE // 'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~'
 ```
 
 ## Creating Custom Plugins
@@ -272,9 +272,9 @@ HAI3_SHARED_PROPERTY_LANGUAGE // 'gts.hai3.mfes.comm.shared_property.v1~hai3.mfe
 Extend FrontX with custom functionality:
 
 ```typescript
-import type { HAI3Plugin } from '@gears-frontx/framework';
+import type { Gears FrontXPlugin } from '@gears-frontx/framework';
 
-export function myPlugin(): HAI3Plugin {
+export function myPlugin(): Gears FrontXPlugin {
   return {
     name: 'my-plugin',
     dependencies: ['screensets'], // Optional dependencies
@@ -296,8 +296,8 @@ export function myPlugin(): HAI3Plugin {
 
 ## Key Rules
 
-1. **Use presets for common cases** - `createHAI3App()` for full apps with MFE support
-2. **Compose plugins for customization** - Use `createHAI3().use()` pattern
+1. **Use presets for common cases** - `createGears FrontXApp()` for full apps with MFE support
+2. **Compose plugins for customization** - Use `createGears FrontX().use()` pattern
 3. **Dependencies are auto-resolved** - Plugin order doesn't matter
 4. **Access via app instance** - All registries and actions on `app.*`
 5. **NO React in this package** - Framework is headless, use @gears-frontx/react for React bindings
@@ -333,8 +333,8 @@ const menu = useAppSelector((state: RootStateWithLayout) => state.layout.menu);
 ## Exports
 
 ### Core
-- `createHAI3` - App builder factory
-- `createHAI3App` - Convenience function (full preset)
+- `createGears FrontX` - App builder factory
+- `createGears FrontXApp` - Convenience function (full preset)
 - `presets` - Available presets (full, minimal, headless)
 
 ### Plugins
@@ -344,7 +344,7 @@ const menu = useAppSelector((state: RootStateWithLayout) => state.layout.menu);
 - `createThemeRegistry` - Theme registry factory
 
 ### Types
-- `HAI3Config`, `HAI3Plugin`, `HAI3App`, `HAI3AppBuilder`
+- `Gears FrontXConfig`, `Gears FrontXPlugin`, `Gears FrontXApp`, `Gears FrontXAppBuilder`
 - `PluginFactory`, `PluginProvides`, `PluginLifecycle`
 - `Preset`, `Presets`, `ScreensetsConfig`
 - All re-exported types from SDK packages

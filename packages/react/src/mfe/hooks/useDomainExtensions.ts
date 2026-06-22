@@ -12,7 +12,7 @@
 // @cpt-dod:cpt-frontx-dod-react-bindings-observation-hooks:p1
 
 import { useSyncExternalStore, useCallback, useRef } from 'react';
-import { useHAI3 } from '../../HAI3Context';
+import { useFrontX } from '../../FrontXContext';
 import type { Extension } from '@gears-frontx/framework';
 
 // ============================================================================
@@ -31,7 +31,7 @@ import type { Extension } from '@gears-frontx/framework';
  * @example
  * ```tsx
  * function SidebarExtensions() {
- *   const extensions = useDomainExtensions('gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1');
+ *   const extensions = useDomainExtensions('gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1');
  *
  *   return (
  *     <div>
@@ -46,7 +46,7 @@ import type { Extension } from '@gears-frontx/framework';
 // @cpt-begin:cpt-frontx-flow-react-bindings-use-domain-extensions:p1:inst-call-domain-extensions
 // @cpt-begin:cpt-frontx-dod-react-bindings-observation-hooks:p1:inst-call-domain-extensions
 export function useDomainExtensions(domainId: string): Extension[] {
-  const app = useHAI3();
+  const app = useFrontX();
   const registry = app.mfeRegistry;
 
   // @cpt-begin:cpt-frontx-flow-react-bindings-use-domain-extensions:p1:inst-guard-registry
@@ -54,7 +54,7 @@ export function useDomainExtensions(domainId: string): Extension[] {
   if (!registry) {
     throw new Error(
       'useDomainExtensions requires the microfrontends plugin. ' +
-      'Add microfrontends() to your HAI3 app configuration.'
+      'Add microfrontends() to your Gears FrontX app configuration.'
     );
   }
   // @cpt-end:cpt-frontx-flow-react-bindings-use-domain-extensions:p1:inst-guard-registry

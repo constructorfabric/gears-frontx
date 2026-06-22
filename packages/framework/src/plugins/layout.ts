@@ -11,7 +11,7 @@
 
 import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
 import { eventBus } from '@gears-frontx/state';
-import type { HAI3Plugin, ShowPopupPayload } from '../types';
+import type { FrontXPlugin, ShowPopupPayload } from '../types';
 import {
   headerSlice,
   footerSlice,
@@ -82,7 +82,7 @@ function toggleSidebarCollapsed(payload: { collapsed: boolean }): void {
 
 /**
  * Wrapper for setHeaderVisible - no-op since HeaderState doesn't have visible field.
- * Kept for backward compatibility with HAI3Actions interface.
+ * Kept for backward compatibility with FrontXActions interface.
  */
 function setHeaderVisible(_visible: boolean): void {
   // No-op: HeaderState doesn't have visible field
@@ -95,13 +95,13 @@ function setHeaderVisible(_visible: boolean): void {
  *
  * @example
  * ```typescript
- * const app = createHAI3()
+ * const app = createFrontX()
  *   .use(layout())
  *   .build();
  * ```
  */
 // @cpt-begin:cpt-frontx-dod-framework-composition-layout:p1:inst-1
-export function layout(): HAI3Plugin {
+export function layout(): FrontXPlugin {
 
   return {
     name: 'layout',

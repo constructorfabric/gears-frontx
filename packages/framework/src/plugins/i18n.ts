@@ -11,8 +11,8 @@
 
 import { eventBus } from '@gears-frontx/state';
 import { i18nRegistry as singletonI18nRegistry, Language } from '@gears-frontx/i18n';
-import { HAI3_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/screensets';
-import type { HAI3Plugin, SetLanguagePayload, LanguagePropagationFailedPayload } from '../types';
+import { FRONTX_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/screensets';
+import type { FrontXPlugin, SetLanguagePayload, LanguagePropagationFailedPayload } from '../types';
 
 // Define i18n events for module augmentation
 declare module '@gears-frontx/state' {
@@ -48,7 +48,7 @@ function setLanguage(payload: SetLanguagePayload): void {
  * app.actions.setLanguage({ language: 'de' });
  * ```
  */
-export function i18n(): HAI3Plugin {
+export function i18n(): FrontXPlugin {
   // Use the singleton i18n registry - user translations register to this
   const i18nRegistry = singletonI18nRegistry;
   let languageChangedSubscription: ReturnType<typeof eventBus.on> | undefined;
@@ -76,11 +76,11 @@ export function i18n(): HAI3Plugin {
           await i18nRegistry.setLanguage(payload.language as Language);
           try {
             app.mfeRegistry?.updateSharedProperty(
-              HAI3_SHARED_PROPERTY_LANGUAGE,
+              FRONTX_SHARED_PROPERTY_LANGUAGE,
               payload.language
             );
           } catch (error) {
-            console.error('[HAI3] Failed to propagate language to MFE domains', error);
+            console.error('[Gears FrontX] Failed to propagate language to MFE domains', error);
             eventBus.emit('i18n/propagation/failed', { language: payload.language, error });
           }
         }
@@ -89,7 +89,7 @@ export function i18n(): HAI3Plugin {
       // Bootstrap: Set initial language to trigger translation loading
       // Run async without blocking - translations load in background
       i18nRegistry.setLanguage(Language.English).catch((err: Error) => {
-        console.warn('[HAI3] Failed to load initial translations:', err);
+        console.warn('[Gears FrontX] Failed to load initial translations:', err);
       });
     },
     onDestroy() {

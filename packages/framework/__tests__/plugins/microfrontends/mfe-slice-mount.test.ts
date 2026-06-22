@@ -23,26 +23,26 @@ import {
 } from '../../../src/plugins/microfrontends';
 
 const SCREEN_DOMAIN_ID =
-  'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1';
+  'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1';
 const SIDEBAR_DOMAIN_ID =
-  'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1';
+  'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1';
 const POPUP_DOMAIN_ID =
-  'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.popup.v1';
+  'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.popup.v1';
 const WIDGETS_DOMAIN_ID =
-  'gts.hai3.mfes.ext.domain.v1~hai3.widgets.area.main.v1';
+  'gts.frontx.mfes.ext.domain.v1~frontx.widgets.area.main.v1';
 
 const HOME_EXTENSION_ID =
-  'gts.hai3.mfes.ext.extension.v1~test.app.home.v1';
+  'gts.frontx.mfes.ext.extension.v1~test.app.home.v1';
 const SETTINGS_EXTENSION_ID =
-  'gts.hai3.mfes.ext.extension.v1~test.app.settings.v1';
+  'gts.frontx.mfes.ext.extension.v1~test.app.settings.v1';
 const REPLACEMENT_EXTENSION_ID =
-  'gts.hai3.mfes.ext.extension.v1~test.app.replacement.v1';
+  'gts.frontx.mfes.ext.extension.v1~test.app.replacement.v1';
 const WIDGET_ALPHA_ID =
-  'gts.hai3.mfes.ext.extension.v1~hai3.widgets.fixture_a.widget_alpha.v1';
+  'gts.frontx.mfes.ext.extension.v1~frontx.widgets.fixture_a.widget_alpha.v1';
 const WIDGET_BETA_ID =
-  'gts.hai3.mfes.ext.extension.v1~hai3.widgets.fixture_a.widget_beta.v1';
+  'gts.frontx.mfes.ext.extension.v1~frontx.widgets.fixture_a.widget_beta.v1';
 const WIDGET_B_ID =
-  'gts.hai3.mfes.ext.extension.v1~hai3.widgets.fixture_b.widget_main.v1';
+  'gts.frontx.mfes.ext.extension.v1~frontx.widgets.fixture_b.widget_main.v1';
 
 function emptyState(): MfeState {
   return { registrationStates: {}, errors: {}, mountedExtensions: {} };

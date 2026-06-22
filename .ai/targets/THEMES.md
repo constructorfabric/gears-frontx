@@ -14,7 +14,7 @@
 - Theme shape MUST match the Theme interface from @gears-frontx/framework.
 - Apps define themes in src/themes/**; screensets must not modify themes.
 - Theme registration MUST use app.themeRegistry.register(themeConfig).
-- FORBIDDEN: themeRegistry.register(id, theme) and createHAI3App({ themes: { applyFn } }).
+- FORBIDDEN: themeRegistry.register(id, theme) and createGears FrontXApp({ themes: { applyFn } }).
 - Themes must support light and dark variants, use rem units, and meet WCAG contrast >= 4.5:1.
 
 ## STOP CONDITIONS

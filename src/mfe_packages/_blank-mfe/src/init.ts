@@ -4,14 +4,14 @@
  * Cache/runtime note:
  * - The host app owns the shared runtime via queryCache().
  * - Child apps join that shared QueryClient via queryCacheShared().
- * - Do not add queryCache(), createHAI3App(), or QueryClientProvider here.
+ * - Do not add queryCache(), createFrontXApp(), or QueryClientProvider here.
  */
 // @cpt-dod:cpt-frontx-dod-mfe-isolation-internal-dataflow:p1
 // @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-blank-mfe-tests:p1
 // @cpt-flow:cpt-frontx-flow-mfe-isolation-mfe-bootstrap:p1
 
 import {
-  createHAI3,
+  createFrontX,
   registerSlice,
   apiRegistry,
   effects,
@@ -29,7 +29,7 @@ apiRegistry.initialize();
 
 // Create only the local MFE app shell.
 // queryCacheShared() joins the host-owned QueryClient without reconfiguring it.
-const mfeApp = createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build();
+const mfeApp = createFrontX().use(effects()).use(queryCacheShared()).use(mock()).build();
 
 // Register slices with effects (needs store from build())
 registerSlice(homeSlice, initHomeEffects);

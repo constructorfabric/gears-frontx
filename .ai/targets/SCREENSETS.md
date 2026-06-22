@@ -39,18 +39,18 @@
 - DETECT: grep -rn "Object\\.defineProperty.*reducer" src/screensets
 
 ## MFE STATE MANAGEMENT
-- REQUIRED: Create FrontX app via `createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build()` from `@gears-frontx/react`. The host owns the shared QueryClient via `queryCache()`; MFEs must join it with `queryCacheShared()` so query hooks resolve the same cache (see `src/mfe_packages/_blank-mfe/src/init.ts`).
+- REQUIRED: Create FrontX app via `createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build()` from `@gears-frontx/react`. The host owns the shared QueryClient via `queryCache()`; MFEs must join it with `queryCacheShared()` so query hooks resolve the same cache (see `src/mfe_packages/_blank-mfe/src/init.ts`).
 - REQUIRED: Register API services BEFORE .build() — mock plugin syncs during build, services must exist.
 - REQUIRED: Register slices AFTER .build() — registerSlice() needs the store created by build.
-- REQUIRED: Wrap React tree in <HAI3Provider app={mfeApp}> from @gears-frontx/react.
+- REQUIRED: Wrap React tree in <Gears FrontXProvider app={mfeApp}> from @gears-frontx/react.
 - REQUIRED: registerSlice() and createSlice() from @gears-frontx/react for slice management.
 - FORBIDDEN: Direct `useQueryClient()` in MFE screen code; use `@gears-frontx/react` query hooks and follow `.ai/targets/REACT.md` for restricted cache access.
-- FORBIDDEN: `queryCache()`, `createHAI3App()`, or `QueryClientProvider` in MFE bootstrap — the host configures the shared query runtime; MFE init only joins via `queryCacheShared()`.
+- FORBIDDEN: `queryCache()`, `createGears FrontXApp()`, or `QueryClientProvider` in MFE bootstrap — the host configures the shared query runtime; MFE init only joins via `queryCacheShared()`.
 - REQUIRED: Shared init.ts module for idempotent MFE bootstrap (module-level side effect).
-- REQUIRED: init.ts ordering: `apiRegistry.register()` → `apiRegistry.initialize()` → `createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build()` → `registerSlice()` (when slices exist).
+- REQUIRED: init.ts ordering: `apiRegistry.register()` → `apiRegistry.initialize()` → `createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build()` → `registerSlice()` (when slices exist).
 - REQUIRED: Module augmentation for RootState on @gears-frontx/react (not @gears-frontx/state).
 - FORBIDDEN: Direct react-redux, redux, or @reduxjs/toolkit imports in MFE code.
-- FORBIDDEN: createHAI3App() or full preset in MFE (heavyweight, not needed).
+- FORBIDDEN: createGears FrontXApp() or full preset in MFE (heavyweight, not needed).
 
 ## DRAFT ENTITY PATTERN
 - REQUIRED: Create draft entities locally before backend save.
@@ -72,7 +72,7 @@
 - DETECT: grep -R "['\"] [A-Za-z].* " src/screensets
 
 ## MFE LOCALIZATION RULES
-- REQUIRED: Subscribe to language domain property via bridge.subscribeToProperty(HAI3_SHARED_PROPERTY_LANGUAGE, callback).
+- REQUIRED: Subscribe to language domain property via bridge.subscribeToProperty(Gears FrontX_SHARED_PROPERTY_LANGUAGE, callback).
 - REQUIRED: Load translations from MFE-local files using import.meta.glob pattern.
 - REQUIRED: Place translations in local i18n folders (src/mfe_packages/*/src/screens/*/i18n/).
 - FORBIDDEN: I18nRegistry.createLoader (host-level API, not available in MFEs).
@@ -182,7 +182,7 @@
 - REQUIRED: `build.modulePreload: false` in every MFE vite.config.ts. Vite's modulePreload injects a `__vitePreload` helper that resolves chunk URLs against the page origin (host), not the MFE server origin, causing 404s in cross-origin MFE loading.
 - REQUIRED: `build.target: 'esnext'` for top-level await support (federation runtime uses it).
 - NOTE: `build.cssCodeSplit` may remain enabled; `MfeHandlerMF` reads the remote's CSS metadata and injects emitted styles into the mount target before lifecycle mount.
-- REQUIRED: Register `@originjs/vite-plugin-federation` (`federation()`) and `hai3MfeExternalize({ shared })` from `src/mfe_packages/shared/vite-plugin-frontx-externalize.ts` with the **same** `shared` dependency list. Federation only rewrites expose entries; the externalize plugin rewrites imports in code-split chunks so shared packages load via `importShared()`.
+- REQUIRED: Register `@originjs/vite-plugin-federation` (`federation()`) and `frontxMfeExternalize({ shared })` from `src/mfe_packages/shared/vite-plugin-frontx-externalize.ts` with the **same** `shared` dependency list. Federation only rewrites expose entries; the externalize plugin rewrites imports in code-split chunks so shared packages load via `importShared()`.
 - REFERENCE: See `src/mfe_packages/_blank-mfe/vite.config.ts` for canonical MFE vite configuration.
 
 ## MFE LIFECYCLE ARCHITECTURE
@@ -208,8 +208,8 @@
 - [ ] MFE integration uses TypeSystemPlugin abstraction (gtsPlugin default).
 - [ ] Type IDs are opaque - call plugin.parseTypeId() for metadata.
 - [ ] Contract validation via plugin.validateInstance() after plugin.register().
-- [ ] MFE uses `createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build()` + HAI3Provider (no direct Redux; no `queryCache()` in MFE init).
+- [ ] MFE uses `createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build()` + Gears FrontXProvider (no direct Redux; no `queryCache()` in MFE init).
 - [ ] MFE API services are local (not imported from host).
 - [ ] MFE events use mfe/ prefix convention.
 - [ ] MFE init.ts creates app, registers slices, registers API services.
-- [ ] MFE vite.config matches canonical setup: `modulePreload: false`, `target: 'esnext'`, `federation()` + `hai3MfeExternalize` with identical `shared` arrays.
+- [ ] MFE vite.config matches canonical setup: `modulePreload: false`, `target: 'esnext'`, `federation()` + `frontxMfeExternalize` with identical `shared` arrays.

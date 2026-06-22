@@ -30,7 +30,7 @@ import { useMfeContext } from '../MfeContext';
  * @example
  * ```tsx
  * function MyMfeComponent() {
- *   const requestNavigation = useHostAction('gts.hai3.mfes.comm.action.v1~myapp.navigate.v1');
+ *   const requestNavigation = useHostAction('gts.frontx.mfes.comm.action.v1~myapp.navigate.v1');
  *
  *   const handleClick = () => {
  *     requestNavigation({ path: '/dashboard' });

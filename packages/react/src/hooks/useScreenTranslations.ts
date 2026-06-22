@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import type { TranslationMap, TranslationLoader } from '@gears-frontx/framework';
-import { useHAI3 } from '../HAI3Context';
+import { useFrontX } from '../FrontXContext';
 import type { UseScreenTranslationsReturn } from '../types';
 
 // Re-export TranslationMap for consumers who need it
@@ -72,7 +72,7 @@ export function useScreenTranslations(
   screenId: string,
   translations: TranslationMap | TranslationLoader
 ): UseScreenTranslationsReturn {
-  const app = useHAI3();
+  const app = useFrontX();
   const { i18nRegistry } = app;
 
   // Track loading state per language to handle language changes

@@ -11,19 +11,19 @@
  * action handlers and controlled mount-set mutations.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createHAI3 } from '../../../createHAI3';
+import { createFrontX } from '../../../createFrontX';
 import { microfrontends, addExtensionMounted } from '../index';
 import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 import { themeSchema, languageSchema, extensionScreenSchema } from '../../../gts';
 import { loadLayoutDomains } from '../gts/loader';
-import type { HAI3App } from '../../../types';
+import type { FrontXApp } from '../../../types';
 import {
   ConcurrentMountStrategy,
   ExtensionDomainImplementation,
   ExtensionDomainImplementationFactory,
   ActionHandler,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
   ExtensionMounter,
 } from '@gears-frontx/screensets';
 import type {
@@ -72,11 +72,11 @@ class NoOpDomainImpl extends ExtensionDomainImplementation {
     const fakeMounter = new FakeMounter();
     this.strategy = new ConcurrentMountStrategy(fakeMounter, hooks);
     ctx.registerHandler(
-      HAI3_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
       ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as ActionPayload))
     );
     ctx.registerHandler(
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
       ActionHandler.fromFunction((_t, p) => this.strategy.unmount!(p as ActionPayload))
     );
   }
@@ -103,11 +103,11 @@ class ThrowingDomainImpl extends ExtensionDomainImplementation {
     const fakeMounter = new FakeMounter();
     this.strategy = new ConcurrentMountStrategy(fakeMounter, hooks);
     ctx.registerHandler(
-      HAI3_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
       ActionHandler.fromFunction(async () => { throw new Error('handler intentionally throws'); })
     );
     ctx.registerHandler(
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
       ActionHandler.fromFunction((_t, p) => this.strategy.unmount!(p as ActionPayload))
     );
   }
@@ -131,15 +131,15 @@ const [domainA, domainB] = loadLayoutDomains(); // sidebar, popup
 const DOMAIN_A = domainA.id;
 const DOMAIN_B = domainB.id;
 
-let app: HAI3App;
+let app: FrontXApp;
 
-function buildApp(): HAI3App {
+function buildApp(): FrontXApp {
   // GTS schemas must be registered on the singleton before building the app.
   gtsPlugin.registerSchema(themeSchema);
   gtsPlugin.registerSchema(languageSchema);
   gtsPlugin.registerSchema(extensionScreenSchema);
 
-  return createHAI3()
+  return createFrontX()
         .use(microfrontends({ typeSystem: gtsPlugin }))
     .build();
 }
@@ -165,7 +165,7 @@ describe('microfrontends plugin — sync-diff dispatch wrapper', () => {
 
     await registry.executeActionsChain({
       action: {
-        type: HAI3_ACTION_MOUNT_EXT,
+        type: FRONTX_ACTION_MOUNT_EXT,
         target: DOMAIN_A,
         payload: { subject: 'test-ext-a' },
       },
@@ -189,7 +189,7 @@ describe('microfrontends plugin — sync-diff dispatch wrapper', () => {
 
     await registry.executeActionsChain({
       action: {
-        type: HAI3_ACTION_MOUNT_EXT,
+        type: FRONTX_ACTION_MOUNT_EXT,
         target: DOMAIN_A,
         payload: { subject: 'ext-a1' },
       },
@@ -245,7 +245,7 @@ describe('microfrontends plugin — sync-diff dispatch wrapper', () => {
     try {
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: DOMAIN_B,
           payload: { subject: 'ext-that-fails' },
         },

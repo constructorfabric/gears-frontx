@@ -20,10 +20,10 @@ describe('Error Handling', () => {
 
   describe('11.3.1 Bundle load failure scenario', () => {
     it('should throw MfeLoadError when manifest is not found', async () => {
-      const handler = new MfeHandlerMF('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~', { retries: 0 });
+      const handler = new MfeHandlerMF('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~', { retries: 0 });
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.v1',
         manifest: 'missing-manifest-id',
         exposedModule: './Widget',
         exposeAssets: { js: { sync: [], async: [] }, css: { sync: [], async: [] } },
@@ -37,10 +37,10 @@ describe('Error Handling', () => {
     });
 
     it('should throw MfeLoadError when manifest reference is not cached', async () => {
-      const handler = new MfeHandlerMF('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~', { retries: 0 });
+      const handler = new MfeHandlerMF('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~', { retries: 0 });
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.v1',
         manifest: 'test-manifest',
         exposedModule: './InvalidWidget',
         exposeAssets: { js: { sync: [], async: [] }, css: { sync: [], async: [] } },
@@ -57,7 +57,7 @@ describe('Error Handling', () => {
   describe('11.3.3 Action handler error scenario', () => {
     it('should create ChainExecutionError with execution path', () => {
       const failedAction: Action = {
-        type: 'gts.hai3.mfes.mfe.action.v1~test.action.v1',
+        type: 'gts.frontx.mfes.mfe.action.v1~test.action.v1',
         target: 'test-domain',
         payload: {},
       };
@@ -150,10 +150,10 @@ describe('Error Handling', () => {
     });
 
     it('should integrate retry with MfeHandlerMF', async () => {
-      const handler = new MfeHandlerMF('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~', { retries: 2 });
+      const handler = new MfeHandlerMF('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~', { retries: 2 });
 
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.v1',
         manifest: 'missing-manifest',
         exposedModule: './Widget',
         exposeAssets: { js: { sync: [], async: [] }, css: { sync: [], async: [] } },

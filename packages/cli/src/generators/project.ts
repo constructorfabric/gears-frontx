@@ -277,7 +277,7 @@ function generateCustomUikitThemes(uikit: string): GeneratedFile[] {
       path: 'src/app/themes/themes.ts',
       content: `import type { ThemeConfig } from '@gears-frontx/react';
 
-export const hai3Themes: ThemeConfig[] = [
+export const frontxThemes: ThemeConfig[] = [
   ${themeEntries.join(',\n  ')},
 ];
 
@@ -294,7 +294,7 @@ export const DEFAULT_THEME_ID = '${cssAlias.themes.find((t) => t.default)?.id ??
     // index.ts — barrel export
     themeFiles.push({
       path: 'src/app/themes/index.ts',
-      content: `export { hai3Themes, DEFAULT_THEME_ID } from './themes';\n`,
+      content: `export { frontxThemes, DEFAULT_THEME_ID } from './themes';\n`,
     });
   } else {
     // Unknown library — generate generic themes with inline values
@@ -307,7 +307,7 @@ export const DEFAULT_THEME_ID = '${cssAlias.themes.find((t) => t.default)?.id ??
 
     themeFiles.push({
       path: 'src/app/themes/index.ts',
-      content: `export { hai3Themes, DEFAULT_THEME_ID } from './adapter';\n`,
+      content: `export { frontxThemes, DEFAULT_THEME_ID } from './adapter';\n`,
     });
   }
 
@@ -410,7 +410,7 @@ function applyAppPlaceholders(content: string, uikit: string): string {
     );
     content = content.replace(
       '__LIBRARY_SYNC_EFFECT__',
-      '    // TODO: Sync HAI3 theme to your library\'s theme API\n    // e.g., yourLibrary.setTheme(currentTheme);'
+      '    // TODO: Sync Gears FrontX theme to your library\'s theme API\n    // e.g., yourLibrary.setTheme(currentTheme);'
     );
     // For unknown libraries, initializeThemeSystem doesn't exist — replace with no-op
     content = content.replace(
@@ -800,7 +800,7 @@ ${varsBlock}
 
   return `import type { ThemeConfig } from '@gears-frontx/react';
 
-export const hai3Themes: ThemeConfig[] = [
+export const frontxThemes: ThemeConfig[] = [
   ${themeBlocks.join(',\n  ')},
 ];
 
@@ -850,7 +850,7 @@ async function generateThemeFiles(uikit: string): Promise<GeneratedFile[]> {
     });
     files.push({
       path: 'src/app/themes/index.ts',
-      content: `export { hai3Themes, DEFAULT_THEME_ID } from './adapter';\n`,
+      content: `export { frontxThemes, DEFAULT_THEME_ID } from './adapter';\n`,
     });
   }
 

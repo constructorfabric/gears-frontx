@@ -34,7 +34,7 @@ How does TanStack Query v5 work architecturally, and how does it integrate into 
 
 **Out of scope:** TanStack Query v4 or older, comparison with SWR or other data-fetching libraries, React Server Components integration specifics, TanStack Router integration.
 
-**Constraints:** HAI3 already has `@gears-frontx/api` (BaseApiService, RestProtocol, plugin system) and `@gears-frontx/state` (Redux via RTK, EventBus). Any integration must coexist with these, not replace them.
+**Constraints:** Gears FrontX already has `@gears-frontx/api` (BaseApiService, RestProtocol, plugin system) and `@gears-frontx/state` (Redux via RTK, EventBus). Any integration must coexist with these, not replace them.
 
 ## Findings
 
@@ -202,7 +202,7 @@ queryClient.unmount()
 - `InfiniteQueryObserver` and `QueriesObserver` (for parallel queries) are also available headlessly.
 - `queryClient.fetchQuery()` and `queryClient.prefetchQuery()` work without observers for imperative one-shot fetches.
 
-This means query-core could be used at the SDK/framework layer (L1/L2 in HAI3 terms) without introducing a React dependency.
+This means query-core could be used at the SDK/framework layer (L1/L2 in Gears FrontX terms) without introducing a React dependency.
 
 **Confidence:** Corroborated -- verified from QueryObserver source code and QueryClient API.
 
@@ -275,11 +275,11 @@ The two are complementary, not competitive:
 - TanStack Query manages the lifecycle of data fetched from the server: when to fetch, when to refetch, when to invalidate, what to cache, and for how long.
 - Redux/Zustand manages application state that is local to the client: UI toggles, selected items, form state, user preferences, navigation state.
 
-In HAI3's architecture, `@gears-frontx/state` uses Redux for client state with an EventBus for cross-domain communication. The API services in `@gears-frontx/api` handle transport (protocols, plugins, auth, retry). TanStack Query would sit between these layers -- consuming the API service methods as `queryFn` implementations while managing cache, deduplication, and refetch logic that currently does not exist in the architecture.
+In Gears FrontX's architecture, `@gears-frontx/state` uses Redux for client state with an EventBus for cross-domain communication. The API services in `@gears-frontx/api` handle transport (protocols, plugins, auth, retry). TanStack Query would sit between these layers -- consuming the API service methods as `queryFn` implementations while managing cache, deduplication, and refetch logic that currently does not exist in the architecture.
 
 The overlap zone is "server data stored in Redux slices." If a Redux slice currently stores API response data (e.g., a list of threads fetched from the server), TanStack Query could take over that responsibility. The Redux slice would then only hold client-derived state (e.g., which thread is selected), while TanStack Query holds the server-fetched thread list.
 
-**Confidence:** Substantiated -- this is the documented and widely practiced integration pattern. The HAI3-specific observations are based on reading the current `@gears-frontx/state` and `@gears-frontx/api` source code.
+**Confidence:** Substantiated -- this is the documented and widely practiced integration pattern. The Gears FrontX-specific observations are based on reading the current `@gears-frontx/state` and `@gears-frontx/api` source code.
 
 ## Key takeaways
 
@@ -311,11 +311,11 @@ A plugin chain can transform a request/response in a standard way. It cannot mea
 
 **Verdict:** Plugin pattern is wrong here. Plugins are for composable behaviors in a uniform lifecycle, not for swapping fundamental paradigms.
 
-#### Option B: HAI3-owned factory (re-export queryOptions)
+#### Option B: Gears FrontX-owned factory (re-export queryOptions)
 
-Replace TanStack's `queryOptions` re-export with a HAI3-owned factory function. MFEs keep per-feature query modules but import from `@gears-frontx/react`.
+Replace TanStack's `queryOptions` re-export with a Gears FrontX-owned factory function. MFEs keep per-feature query modules but import from `@gears-frontx/react`.
 
-This reduces the type leak (HAI3 owns the option and result types) but does not solve the core problem: every MFE still carries manual key factories, `queryFn` wrappers, and TanStack-shaped option objects in those modules. With hundreds of MFEs, a library swap still means editing hundreds of files. The abstraction hides the library name but not its shape.
+This reduces the type leak (Gears FrontX owns the option and result types) but does not solve the core problem: every MFE still carries manual key factories, `queryFn` wrappers, and TanStack-shaped option objects in those modules. With hundreds of MFEs, a library swap still means editing hundreds of files. The abstraction hides the library name but not its shape.
 
 **Verdict:** Necessary but insufficient. Owning the types is a good step, but doesn't eliminate per-MFE coupling.
 
@@ -359,12 +359,12 @@ Replacing the server-state stack spans L1 transport dedup, the L2 plugin, and L3
 
 **Why not a RestPlugin (L1 request chain)?** TanStack operates as a long-lived observer/subscription system: components subscribe, receive reactive updates, trigger background refetches, GC on unsubscribe. The `RestPlugin` lifecycle (`onRequest → onResponse → onError`) is one-shot per request — it cannot model subscriptions, deduplication, or stale-while-revalidate.
 
-**Confidence:** High — analysis based on direct inspection of HAI3 codebase patterns, TanStack Query API surface, Apollo Client API surface, and SWR API surface. The fundamental shape differences between libraries are well-documented.
+**Confidence:** High — analysis based on direct inspection of Gears FrontX codebase patterns, TanStack Query API surface, Apollo Client API surface, and SWR API surface. The fundamental shape differences between libraries are well-documented.
 
 ## Open questions
 
 1. **Bundle size precision.** Exact minified+gzipped sizes for v5.90.x could not be verified from primary sources during this research. A local `npm pack` or bundlephobia check would provide exact numbers.
-2. **SSE integration pattern.** HAI3 has `SseProtocol` in its API layer. How TanStack Query integrates with long-lived SSE connections (pushing data into cache via `setQueryData`) needs prototyping to validate.
+2. **SSE integration pattern.** Gears FrontX has `SseProtocol` in its API layer. How TanStack Query integrates with long-lived SSE connections (pushing data into cache via `setQueryData`) needs prototyping to validate.
 3. ~~**AbortSignal passthrough.** The current `BaseApiService` / `RestProtocol` does not appear to accept an `AbortSignal` parameter.~~ **Resolved:** AbortSignal support was added to `RestProtocol` via `RestRequestOptions { signal? }`. See feature-request-lifecycle FEATURE.md.
 4. **DevTools.** TanStack Query has a dedicated `@tanstack/react-query-devtools` package. Its value for debugging cache state during development was not investigated.
 5. ~~**`queryOptions` factory placement.** Where `queryOptions` definitions live in the architecture (colocated with services? separate query layer?) affects maintainability.~~ **Resolved:** Endpoint descriptors on `BaseApiService` replace `queryOptions` factories entirely. No separate query layer beyond the service is needed. See ADR-0017.

@@ -1,9 +1,9 @@
 {
-  "$id": "gts://gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~",
+  "$id": "gts://gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "Screen Extension Schema (Derived). A derived Extension type for the screen domain that adds presentation metadata for navigation menu integration.",
   "allOf": [
-    { "$ref": "gts://gts.hai3.mfes.ext.extension.v1~" }
+    { "$ref": "gts://gts.frontx.mfes.ext.extension.v1~" }
   ],
   "properties": {
     "presentation": {

@@ -592,7 +592,7 @@ interface ImportExpressionNode extends AstNode {
 
 /**
  * AST-level rewriter that converts dynamic `import('<relative-path>')` calls
- * into `__hai3_lazy('<relative-path>')` calls in compiled MFE chunks.
+ * into `__frontx_lazy('<relative-path>')` calls in compiled MFE chunks.
  *
  * Operates on Rollup-emitted output (post-bundle) rather than on TypeScript
  * source. Rationale: a source-level transform would replace `import('./X')`
@@ -687,7 +687,7 @@ class LazyImportTransformer {
     const sorted = [...this.replacements].sort((a, b) => b.start - a.start);
     let out = code;
     for (const r of sorted) {
-      out = out.slice(0, r.start) + '__hai3_lazy' + out.slice(r.end);
+      out = out.slice(0, r.start) + '__frontx_lazy' + out.slice(r.end);
     }
     return out;
   }
@@ -707,7 +707,7 @@ class LazyImportTransformer {
  * bootstrap, virtual expose maps, the share-load helper indirection. The
  * lazy-import transform MUST skip these chunks: their `import()` calls are
  * federation's internal protocol (share loading, container init), not
- * vendor lazy chunks. Substituting `__hai3_lazy` for `import` there would
+ * vendor lazy chunks. Substituting `__frontx_lazy` for `import` there would
  * silently break federation's share/remote-entry mechanics.
  *
  * Kept in lockstep with `@module-federation/vite`'s
@@ -813,7 +813,7 @@ export function frontxMfGts(): Plugin {
 
     // ── Lazy-import AST transform (build-time half of ADR-0022) ─────────
     // Rewrites every dynamic `import('<rel>')` in compiled MFE chunks to
-    // `__hai3_lazy('<rel>')`. The handler-side `__hai3_lazy` runtime
+    // `__frontx_lazy('<rel>')`. The handler-side `__frontx_lazy` runtime
     // resolver then fetches the lazy chunk, rewrites its bare specifiers
     // against the parent load's `sharedDepBlobUrls`, and mints a per-load
     // blob URL — preserving per-load isolation for lazy chunks.
@@ -833,7 +833,7 @@ export function frontxMfGts(): Plugin {
       // helpers) whose dynamic-import calls are part of federation's
       // internal protocol, NOT vendor lazy loading. Transforming them
       // would replace federation's `import()` runtime hooks with a
-      // `__hai3_lazy` identifier federation has no awareness of, breaking
+      // `__frontx_lazy` identifier federation has no awareness of, breaking
       // federation's share-init and remote-entry mechanics.
       if (isFederationControlChunk(chunk.fileName)) return null;
 
@@ -847,7 +847,7 @@ export function frontxMfGts(): Plugin {
       console.log(
         `[frontx-mf-gts] transformed ${result.count} dynamic import(s) in ${chunk.fileName}`
       );
-      // No source map emitted: the byte-for-byte replacements (`import` → `__hai3_lazy`)
+      // No source map emitted: the byte-for-byte replacements (`import` → `__frontx_lazy`)
       // shift offsets by a constant 5 per call. Downstream sourcemap accuracy
       // for those exact lines degrades to the nearest preceding token — an
       // acceptable trade since the transformed sites are FrontX runtime

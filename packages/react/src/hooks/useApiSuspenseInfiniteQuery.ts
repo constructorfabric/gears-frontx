@@ -12,10 +12,10 @@ import type { ApiSuspenseInfiniteQueryResult } from '../types';
 import type {
   ApiInfiniteQueryOptions,
 } from './useApiInfiniteQuery';
-import { useHAI3SuspenseInfiniteQuery } from '../queryClient';
+import { useFrontXSuspenseInfiniteQuery } from '../queryClient';
 
 export function useApiSuspenseInfiniteQuery<TPage = unknown, TError = Error>(
   options: ApiInfiniteQueryOptions<TPage>
 ): ApiSuspenseInfiniteQueryResult<TPage, TError> {
-  return useHAI3SuspenseInfiniteQuery<TPage, TError>(options);
+  return useFrontXSuspenseInfiniteQuery<TPage, TError>(options);
 }

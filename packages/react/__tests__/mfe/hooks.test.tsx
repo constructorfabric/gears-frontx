@@ -24,7 +24,7 @@ import type { ChildMfeBridge } from '@gears-frontx/framework';
 // ============================================================================
 
 const mockBridge: ChildMfeBridge = {
-  domainId: 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1',
+  domainId: 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1',
   instanceId: 'test-instance-123',
   executeActionsChain: vi.fn().mockResolvedValue(undefined),
   subscribeToProperty: vi.fn().mockReturnValue(() => {}),
@@ -123,15 +123,15 @@ describe('MfeContext', () => {
       vi.mocked(mockBridge.subscribeToProperty).mockReturnValueOnce(unsubscribe);
 
       const { result, unmount } = renderHook(
-        () => useSharedProperty('gts.hai3.mfes.comm.shared_property.v1~test.user_data.v1'),
+        () => useSharedProperty('gts.frontx.mfes.comm.shared_property.v1~test.user_data.v1'),
         { wrapper }
       );
 
       // Returns undefined when bridge.getProperty() returns undefined
       expect(result.current).toBeUndefined();
-      expect(mockBridge.getProperty).toHaveBeenCalledWith('gts.hai3.mfes.comm.shared_property.v1~test.user_data.v1');
+      expect(mockBridge.getProperty).toHaveBeenCalledWith('gts.frontx.mfes.comm.shared_property.v1~test.user_data.v1');
       expect(mockBridge.subscribeToProperty).toHaveBeenCalledWith(
-        'gts.hai3.mfes.comm.shared_property.v1~test.user_data.v1',
+        'gts.frontx.mfes.comm.shared_property.v1~test.user_data.v1',
         expect.any(Function)
       );
 
@@ -146,7 +146,7 @@ describe('MfeContext', () => {
       const wrapper = createWrapper(mockMfeContextValue, store);
 
       const { result } = renderHook(
-        () => useHostAction('gts.hai3.mfes.comm.action.v1~test.navigate.v1'),
+        () => useHostAction('gts.frontx.mfes.comm.action.v1~test.navigate.v1'),
         { wrapper }
       );
 
@@ -158,7 +158,7 @@ describe('MfeContext', () => {
       const wrapper = createWrapper(mockMfeContextValue, store);
 
       const { result } = renderHook(
-        () => useHostAction('gts.hai3.mfes.comm.action.v1~test.navigate.v1'),
+        () => useHostAction('gts.frontx.mfes.comm.action.v1~test.navigate.v1'),
         { wrapper }
       );
 
@@ -168,7 +168,7 @@ describe('MfeContext', () => {
       // Should call bridge.executeActionsChain with proper structure
       expect(mockBridge.executeActionsChain).toHaveBeenCalledWith({
         action: {
-          type: 'gts.hai3.mfes.comm.action.v1~test.navigate.v1',
+          type: 'gts.frontx.mfes.comm.action.v1~test.navigate.v1',
           target: mockBridge.domainId,
           payload: { path: '/dashboard' },
         },

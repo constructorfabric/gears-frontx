@@ -55,7 +55,7 @@ export interface MfeProviderProps {
 // @cpt-begin:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-mfe-query-client
 export const MfeProvider: React.FC<MfeProviderProps> = ({ value, children }) => {
   // MfeProvider only supplies the bridge context. Shared cache depends on
-  // plugin-owned QueryClient reuse across each MFE root's HAI3Provider.
+  // plugin-owned QueryClient reuse across each MFE root's FrontXProvider.
   return (
     <MfeContext.Provider value={value}>
       {children}

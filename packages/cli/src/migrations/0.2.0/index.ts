@@ -19,7 +19,7 @@ export const migration020: Migration = {
   version: '0.2.0',
   name: 'SDK Architecture Migration',
   description:
-    'Updates HAI3 projects from legacy package structure to SDK architecture. ' +
+    'Updates Gears FrontX projects from legacy package structure to SDK architecture. ' +
     'Transforms @gears-frontx/uicore to @gears-frontx/react, @gears-frontx/uikit-contracts to @gears-frontx/react, ' +
     'and updates module augmentation targets.',
   transforms: [

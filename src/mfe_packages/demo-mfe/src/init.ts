@@ -14,7 +14,7 @@
 // @cpt-flow:cpt-frontx-flow-mfe-isolation-mfe-bootstrap:p1
 
 import {
-  createHAI3,
+  createFrontX,
   apiRegistry,
   effects,
   mock,
@@ -29,6 +29,6 @@ apiRegistry.initialize();
 
 // Create the MFE-local app shell only.
 // queryCacheShared() joins the host-owned QueryClient without reconfiguring it.
-const mfeApp = createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build();
+const mfeApp = createFrontX().use(effects()).use(queryCacheShared()).use(mock()).build();
 
 export { mfeApp };

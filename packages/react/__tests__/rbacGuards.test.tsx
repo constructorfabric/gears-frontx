@@ -19,7 +19,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
-import { createHAI3, auth } from '@gears-frontx/framework';
+import { createFrontX, auth } from '@gears-frontx/framework';
 import type {
   AuthProvider,
   AuthContext,
@@ -29,7 +29,7 @@ import type {
   AuthSession,
   AuthTransition,
 } from '@gears-frontx/framework';
-import { HAI3Provider } from '../src/HAI3Provider';
+import { FrontXProvider } from '../src/FrontXProvider';
 import { useCanAccess } from '../src/hooks/useCanAccess';
 import { CanAccess } from '../src/components/CanAccess';
 
@@ -37,7 +37,7 @@ import { CanAccess } from '../src/components/CanAccess';
 // Helpers
 // ============================================================================
 
-const ownedApps: import('@gears-frontx/framework').HAI3App[] = [];
+const ownedApps: import('@gears-frontx/framework').FrontXApp[] = [];
 
 afterEach(() => {
   ownedApps.forEach((a) => a.destroy());
@@ -66,21 +66,21 @@ function makeProviderWithoutCanAccess(): AuthProvider {
   };
 }
 
-function buildApp(provider: AuthProvider): import('@gears-frontx/framework').HAI3App {
-  const app = createHAI3().use(auth({ provider })).build();
+function buildApp(provider: AuthProvider): import('@gears-frontx/framework').FrontXApp {
+  const app = createFrontX().use(auth({ provider })).build();
   ownedApps.push(app);
   return app;
 }
 
-function buildAppNoAuth(): import('@gears-frontx/framework').HAI3App {
-  const app = createHAI3().build();
+function buildAppNoAuth(): import('@gears-frontx/framework').FrontXApp {
+  const app = createFrontX().build();
   ownedApps.push(app);
   return app;
 }
 
-function makeWrapper(app: import('@gears-frontx/framework').HAI3App) {
+function makeWrapper(app: import('@gears-frontx/framework').FrontXApp) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return <HAI3Provider app={app}>{children}</HAI3Provider>;
+    return <FrontXProvider app={app}>{children}</FrontXProvider>;
   };
 }
 
@@ -344,13 +344,13 @@ describe('CanAccess', () => {
     const app = buildApp(provider);
 
     render(
-      <HAI3Provider app={app}>
+      <FrontXProvider app={app}>
         <CanAccess
           query={QUERY_READ}
           allowed={<span data-testid="allowed">yes</span>}
           denied={<span data-testid="denied">no</span>}
         />
-      </HAI3Provider>,
+      </FrontXProvider>,
     );
 
     expect(screen.getByTestId('denied')).toBeTruthy();
@@ -362,14 +362,14 @@ describe('CanAccess', () => {
     const app = buildApp(provider);
 
     render(
-      <HAI3Provider app={app}>
+      <FrontXProvider app={app}>
         <CanAccess
           query={QUERY_READ}
           allowed={<span data-testid="allowed">yes</span>}
           denied={<span data-testid="denied">no</span>}
           loading={<span data-testid="loading">…</span>}
         />
-      </HAI3Provider>,
+      </FrontXProvider>,
     );
 
     expect(screen.getByTestId('loading')).toBeTruthy();
@@ -382,13 +382,13 @@ describe('CanAccess', () => {
     const app = buildApp(provider);
 
     render(
-      <HAI3Provider app={app}>
+      <FrontXProvider app={app}>
         <CanAccess
           query={QUERY_READ}
           allowed={<span data-testid="allowed">yes</span>}
           denied={<span data-testid="denied">no</span>}
         />
-      </HAI3Provider>,
+      </FrontXProvider>,
     );
 
     await waitFor(() => expect(screen.queryByTestId('allowed')).toBeTruthy());
@@ -400,13 +400,13 @@ describe('CanAccess', () => {
     const app = buildApp(provider);
 
     render(
-      <HAI3Provider app={app}>
+      <FrontXProvider app={app}>
         <CanAccess
           query={QUERY_READ}
           allowed={<span data-testid="allowed">yes</span>}
           denied={<span data-testid="denied">no</span>}
         />
-      </HAI3Provider>,
+      </FrontXProvider>,
     );
 
     await waitFor(() => {
@@ -420,12 +420,12 @@ describe('CanAccess', () => {
     const app = buildApp(provider);
 
     const { container } = render(
-      <HAI3Provider app={app}>
+      <FrontXProvider app={app}>
         <CanAccess
           query={QUERY_READ}
           allowed={<span data-testid="allowed">yes</span>}
         />
-      </HAI3Provider>,
+      </FrontXProvider>,
     );
 
     await waitFor(() => expect(screen.queryByTestId('allowed')).toBeNull());
@@ -437,13 +437,13 @@ describe('CanAccess', () => {
     const app = buildApp(provider);
 
     render(
-      <HAI3Provider app={app}>
+      <FrontXProvider app={app}>
         <CanAccess
           query={QUERY_WITH_RECORD}
           allowed={<span data-testid="allowed">yes</span>}
           denied={<span data-testid="denied">no</span>}
         />
-      </HAI3Provider>,
+      </FrontXProvider>,
     );
 
     await waitFor(() => expect(screen.getByTestId('allowed')).toBeTruthy());

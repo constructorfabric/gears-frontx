@@ -1,7 +1,7 @@
 /**
  * @fileoverview Prevent hardcoded array literals as query cache keys.
  *
- * HAI3 derives cache keys automatically from endpoint descriptors.
+ * Gears FrontX derives cache keys automatically from endpoint descriptors.
  * Passing raw arrays to QueryCache methods (get, set, invalidate, etc.)
  * decouples the call site from the service definition and breaks when
  * service paths change.
@@ -12,7 +12,7 @@
  * invalidateMany({ queryKey: [...] }) is exempt — prefix-based invalidation
  * requires a partial key array by design.
  *
- * @author HAI3 Team
+ * @author Gears FrontX Team
  */
 
 import type { Rule } from 'eslint';

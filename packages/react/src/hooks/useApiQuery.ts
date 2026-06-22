@@ -1,7 +1,7 @@
 /**
  * useApiQuery - Declarative data fetching hook
  *
- * Accepts an EndpointDescriptor from @gears-frontx/api and returns a HAI3-owned
+ * Accepts an EndpointDescriptor from @gears-frontx/api and returns a Gears FrontX-owned
  * ApiQueryResult. AbortSignal for request cancellation is threaded automatically
  * through the shared QueryClient integration.
  *
@@ -16,7 +16,7 @@
 
 import type { EndpointDescriptor } from '@gears-frontx/framework';
 import type { ApiQueryResult } from '../types';
-import { useHAI3Query } from '../queryClient';
+import { useFrontXQuery } from '../queryClient';
 
 /** Per-call cache overrides. Cascade: these > descriptor > plugin defaults. */
 export interface ApiQueryOverrides {
@@ -31,6 +31,6 @@ export function useApiQuery<TData = unknown, TError = Error>(
   descriptor: EndpointDescriptor<TData>,
   overrides?: ApiQueryOverrides
 ): ApiQueryResult<TData, TError> {
-  return useHAI3Query(descriptor, overrides);
+  return useFrontXQuery(descriptor, overrides);
 }
 // @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-use-query

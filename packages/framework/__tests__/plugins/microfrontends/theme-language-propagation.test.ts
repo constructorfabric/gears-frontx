@@ -10,18 +10,18 @@
  */
 
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { createHAI3 } from '../../../src/createHAI3';
+import { createFrontX } from '../../../src/createFrontX';
 import { effects } from '../../../src/plugins/effects';
 import { themes } from '../../../src/plugins/themes';
 import { i18n } from '../../../src/plugins/i18n';
 import { microfrontends } from '../../../src/plugins/microfrontends';
 import { eventBus, resetStore } from '@gears-frontx/state';
-import { HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/screensets';
+import { FRONTX_SHARED_PROPERTY_THEME, FRONTX_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/screensets';
 import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
-import type { HAI3App } from '../../../src/types';
+import type { FrontXApp } from '../../../src/types';
 
 describe('Theme and Language Propagation - decouple-domain-contracts', () => {
-  let apps: HAI3App[] = [];
+  let apps: FrontXApp[] = [];
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -39,7 +39,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
 
   describe('theme propagation via themes() plugin', () => {
     it('should call setTheme and updateSharedProperty when theme/changed event fires', () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(themes())
         .use(microfrontends({ typeSystem: gtsPlugin }))
@@ -58,11 +58,11 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
       eventBus.emit('theme/changed', { themeId: 'dark' });
 
       expect(setThemeSpy).toHaveBeenCalledWith({ '--color-bg': 'hsl(var(--primary))' });
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_THEME, 'dark');
+      expect(updateSpy).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_THEME, 'dark');
     });
 
     it('should not throw when theme/changed fires even if updateSharedProperty throws', () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(themes())
         .use(microfrontends({ typeSystem: gtsPlugin }))
@@ -79,7 +79,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
     });
 
     it('should emit theme/propagation/failed when updateSharedProperty throws', () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(themes())
         .use(microfrontends({ typeSystem: gtsPlugin }))
@@ -103,7 +103,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
     });
 
     it('should still apply the theme even if updateSharedProperty throws', () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(themes())
         .use(microfrontends({ typeSystem: gtsPlugin }))
@@ -128,7 +128,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
     });
 
     it('should unsubscribe theme propagation when the plugin app is destroyed', () => {
-      const firstApp = createHAI3()
+      const firstApp = createFrontX()
         .use(effects())
         .use(themes())
         .use(microfrontends({ typeSystem: gtsPlugin }))
@@ -138,7 +138,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
       firstApp.destroy();
       apps = apps.filter((app) => app !== firstApp);
 
-      const secondApp = createHAI3()
+      const secondApp = createFrontX()
         .use(effects())
         .use(themes())
         .use(microfrontends({ typeSystem: gtsPlugin }))
@@ -149,14 +149,14 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
 
       eventBus.emit('theme/changed', { themeId: 'dark' });
 
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_THEME, 'dark');
+      expect(updateSpy).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_THEME, 'dark');
       expect(updateSpy).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('language propagation via i18n() plugin', () => {
     it('should call updateSharedProperty with language when i18n/language/changed event fires', async () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(i18n())
         .use(microfrontends({ typeSystem: gtsPlugin }))
@@ -172,12 +172,12 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
       // than by a fixed microtask count that would break if the handler's
       // async chain grows or shrinks.
       await vi.waitFor(() => {
-        expect(updateSpy).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_LANGUAGE, 'de');
+        expect(updateSpy).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_LANGUAGE, 'de');
       });
     });
 
     it('should not throw when i18n/language/changed fires even if updateSharedProperty throws', async () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(i18n())
         .use(microfrontends({ typeSystem: gtsPlugin }))
@@ -218,7 +218,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
     });
 
     it('should emit i18n/propagation/failed when updateSharedProperty throws', async () => {
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(i18n())
         .use(microfrontends({ typeSystem: gtsPlugin }))
@@ -244,7 +244,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
     });
 
     it('should unsubscribe language propagation when the plugin app is destroyed', async () => {
-      const firstApp = createHAI3()
+      const firstApp = createFrontX()
         .use(effects())
         .use(i18n())
         .use(microfrontends({ typeSystem: gtsPlugin }))
@@ -254,7 +254,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
       firstApp.destroy();
       apps = apps.filter((app) => app !== firstApp);
 
-      const secondApp = createHAI3()
+      const secondApp = createFrontX()
         .use(effects())
         .use(i18n())
         .use(microfrontends({ typeSystem: gtsPlugin }))
@@ -266,7 +266,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
       eventBus.emit('i18n/language/changed', { language: 'de' });
 
       await vi.waitFor(() => {
-        expect(updateSpy).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_LANGUAGE, 'de');
+        expect(updateSpy).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_LANGUAGE, 'de');
       });
       expect(updateSpy).toHaveBeenCalledTimes(1);
     });
@@ -275,7 +275,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
   describe('soft dependency: mfeRegistry undefined (no microfrontends plugin)', () => {
     it('themes() plugin works correctly and applies theme when mfeRegistry is absent', () => {
       // Build without microfrontends plugin — mfeRegistry will be undefined
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(themes())
         .build();
@@ -298,7 +298,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
 
     it('i18n() plugin works correctly and sets language when mfeRegistry is absent', async () => {
       // Build without microfrontends plugin — mfeRegistry will be undefined
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(i18n())
         .build();
@@ -334,7 +334,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
   describe('microfrontends() plugin no longer owns propagation', () => {
     it('should not call updateSharedProperty from microfrontends onInit for theme events', () => {
       // Build with only microfrontends (no themes plugin) — propagation must not occur
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();
@@ -350,7 +350,7 @@ describe('Theme and Language Propagation - decouple-domain-contracts', () => {
 
     it('should not call updateSharedProperty from microfrontends onInit for language events', async () => {
       // Build with only microfrontends (no i18n plugin) — propagation must not occur
-      const app = createHAI3()
+      const app = createFrontX()
         .use(effects())
         .use(microfrontends({ typeSystem: gtsPlugin }))
         .build();

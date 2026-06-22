@@ -29,7 +29,7 @@ import {
   type RestRequestContext,
   type RestResponseContext,
 } from '@gears-frontx/api';
-import type { HAI3Plugin } from '../types';
+import type { FrontXPlugin } from '../types';
 
 export type AuthRuntime = {
   provider: AuthProvider;
@@ -87,14 +87,14 @@ export type AuthPluginConfig = {
   provider: AuthProvider;
   /**
    * Optional transport binder.
-   * If omitted, the default `hai3ApiTransport()` binding is used.
+   * If omitted, the default `frontxApiTransport()` binding is used.
    */
   transport?: AuthTransportBinder;
   /**
    * Configuration for the default @gears-frontx/api binding.
    * Ignored when `transport` is provided.
    */
-  hai3Api?: Hai3ApiAuthTransportConfig;
+  frontxApi?: Hai3ApiAuthTransportConfig;
 };
 
 // ---------------------------------------------------------------------------
@@ -506,10 +506,10 @@ class AuthRestPlugin extends RestPlugin {
 
     // @cpt-begin:cpt-frontx-flow-auth-plugin-session-attach:p1:inst-cookie-credentials
     if (session.kind === 'cookie') {
-      if (!shouldIncludeCredentials(ctx.url, this.config.hai3Api?.allowedCookieOrigins)) return ctx;
+      if (!shouldIncludeCredentials(ctx.url, this.config.frontxApi?.allowedCookieOrigins)) return ctx;
 
       const next: RestRequestContext = { ...ctx, withCredentials: true };
-      const csrfHeaderName = this.config.hai3Api?.csrfHeaderName;
+      const csrfHeaderName = this.config.frontxApi?.csrfHeaderName;
       if (csrfHeaderName && session.csrfToken) {
         return {
           ...next,
@@ -606,11 +606,11 @@ class AuthRestPlugin extends RestPlugin {
 }
 
 // @cpt-begin:cpt-frontx-flow-auth-plugin-refresh-retry:p1:inst-plugin-factory
-export function hai3ApiTransport(): AuthTransportBinder {
+export function frontxApiTransport(): AuthTransportBinder {
   return (args) => {
     const restPlugin = new AuthRestPlugin({
       provider: args.provider,
-      hai3Api: {
+      frontxApi: {
         allowedCookieOrigins: args.allowedCookieOrigins,
         csrfHeaderName: args.csrfHeaderName,
       },
@@ -631,11 +631,11 @@ export function hai3ApiTransport(): AuthTransportBinder {
  * Wires a headless AuthProvider into @gears-frontx/api protocol plugins and exposes `app.auth`.
  *
  * **Scope:** REST transport only. SSE (Server-Sent Events) auth is out-of-scope for the
- * default `hai3ApiTransport()` binding. SSE connections requiring auth should use a custom
+ * default `frontxApiTransport()` binding. SSE connections requiring auth should use a custom
  * transport binder via the `transport` option.
  */
-export function auth(config: AuthPluginConfig): HAI3Plugin {
-  const transport = config.transport ?? hai3ApiTransport();
+export function auth(config: AuthPluginConfig): FrontXPlugin {
+  const transport = config.transport ?? frontxApiTransport();
   let binding: AuthTransportBinding | null = null;
   const caps = buildCapabilities(config.provider);
 
@@ -676,8 +676,8 @@ export function auth(config: AuthPluginConfig): HAI3Plugin {
     onInit(app) {
       binding = transport({
         provider: config.provider,
-        allowedCookieOrigins: config.hai3Api?.allowedCookieOrigins,
-        csrfHeaderName: config.hai3Api?.csrfHeaderName,
+        allowedCookieOrigins: config.frontxApi?.allowedCookieOrigins,
+        csrfHeaderName: config.frontxApi?.csrfHeaderName,
         addRestPlugin: (plugin) => app.apiRegistry.plugins.add(RestProtocol, plugin),
         removeRestPlugin: (pluginClass) => app.apiRegistry.plugins.remove(RestProtocol, pluginClass),
       });
@@ -700,7 +700,7 @@ export function auth(config: AuthPluginConfig): HAI3Plugin {
 // @cpt-end:cpt-frontx-dod-auth-plugin:p1:inst-module
 
 declare module '../types' {
-  interface HAI3AppRuntimeExtensions {
+  interface FrontXAppRuntimeExtensions {
     auth?: AuthRuntime;
   }
 }

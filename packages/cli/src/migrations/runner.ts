@@ -417,7 +417,7 @@ export function formatResult(result: MigrationResult): string {
   const lines: string[] = [];
   lines.push('');
   lines.push('='.repeat(60));
-  lines.push(`  HAI3 Migration Report`);
+  lines.push(`  Gears FrontX Migration Report`);
   lines.push('='.repeat(60));
   lines.push(`  Migration: ${result.migrationId}`);
   lines.push(`  Applied: ${result.appliedAt}`);

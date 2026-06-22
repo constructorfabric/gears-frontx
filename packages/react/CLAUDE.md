@@ -8,43 +8,43 @@ This package is part of the **React Layer (L3)** - it depends only on @gears-fro
 
 ## Core Concepts
 
-### HAI3Provider
+### Gears FrontXProvider
 
-Wrap your app with HAI3Provider to enable all hooks:
+Wrap your app with Gears FrontXProvider to enable all hooks:
 
 ```tsx
-import { HAI3Provider } from '@gears-frontx/react';
+import { Gears FrontXProvider } from '@gears-frontx/react';
 
 function App() {
   return (
-    <HAI3Provider>
+    <Gears FrontXProvider>
       <YourApp />
-    </HAI3Provider>
+    </Gears FrontXProvider>
   );
 }
 
 // With configuration
-<HAI3Provider config={{ devMode: true }}>
+<Gears FrontXProvider config={{ devMode: true }}>
   <YourApp />
-</HAI3Provider>
+</Gears FrontXProvider>
 
 // With pre-built app (host-style shell; host typically also uses queryCache() — see REACT.md)
-const app = createHAI3().use(screensets()).build();
-<HAI3Provider app={app}>
+const app = createGears FrontX().use(screensets()).build();
+<Gears FrontXProvider app={app}>
   <YourApp />
-</HAI3Provider>
+</Gears FrontXProvider>
 
 // Child MFE app — canonical bootstrap matches src/mfe_packages/*/init.ts and .ai/targets/SCREENSETS.md:
-// apiRegistry.register / initialize before .build; createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build();
+// apiRegistry.register / initialize before .build; createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build();
 // registerSlice after .build when slices exist.
-const mfeApp = createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build();
-<HAI3Provider app={mfeApp}>
+const mfeApp = createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build();
+<Gears FrontXProvider app={mfeApp}>
   <YourApp />
-</HAI3Provider>
+</Gears FrontXProvider>
 ```
 
 The shared `QueryClient` is created and owned by the `queryCache()` framework plugin at L2.
-`HAI3Provider` resolves that client from the app instance — it does not create its own `QueryClient`.
+`Gears FrontXProvider` resolves that client from the app instance — it does not create its own `QueryClient`.
 
 When the host uses `queryCache()` and the child MFE app uses `queryCacheShared()` (with `effects()` and `mock()` on the same chain as in repo MFE inits), both roots join the same shared `QueryClient` while keeping separate React trees. `ThemeAwareReactLifecycle` relies on that shared plugin-owned client through the app instance. If the shared client is missing for a mounted MFE, the lifecycle now fails explicitly instead of silently falling back.
 
@@ -240,18 +240,18 @@ Access the MFE bridge for child MFEs:
 
 ```tsx
 import { useMfeBridge } from '@gears-frontx/react';
-import { HAI3_ACTION_LOAD_EXT, HAI3_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
+import { Gears FrontX_ACTION_LOAD_EXT, Gears FrontX_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
 
 function MyExtension() {
   const bridge = useMfeBridge();
 
   // Execute actions chain on parent
   await bridge.executeActionsChain({
-    action: { type: HAI3_ACTION_LOAD_EXT, target: 'screen', payload: { extensionId: 'other' } }
+    action: { type: Gears FrontX_ACTION_LOAD_EXT, target: 'screen', payload: { extensionId: 'other' } }
   });
 
   // Get shared property
-  const theme = bridge.getProperty(HAI3_SHARED_PROPERTY_THEME);
+  const theme = bridge.getProperty(Gears FrontX_SHARED_PROPERTY_THEME);
 }
 ```
 
@@ -260,10 +260,10 @@ function MyExtension() {
 Subscribe to shared property changes:
 
 ```tsx
-import { useSharedProperty, HAI3_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
+import { useSharedProperty, Gears FrontX_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
 
 function ThemedComponent() {
-  const theme = useSharedProperty(HAI3_SHARED_PROPERTY_THEME);
+  const theme = useSharedProperty(Gears FrontX_SHARED_PROPERTY_THEME);
 
   return <div style={{ backgroundColor: theme?.primaryColor }}>...</div>;
 }
@@ -274,10 +274,10 @@ function ThemedComponent() {
 Invoke actions on the host application:
 
 ```tsx
-import { useHostAction, HAI3_ACTION_LOAD_EXT } from '@gears-frontx/react';
+import { useHostAction, Gears FrontX_ACTION_LOAD_EXT } from '@gears-frontx/react';
 
 function MyExtension() {
-  const loadExtension = useHostAction(HAI3_ACTION_LOAD_EXT);
+  const loadExtension = useHostAction(Gears FrontX_ACTION_LOAD_EXT);
 
   const handleClick = () => {
     loadExtension({ extensionId: 'other' });
@@ -414,7 +414,7 @@ function Layout() {
 
 ## Key Rules
 
-1. **Wrap with HAI3Provider** - Required for all hooks to work
+1. **Wrap with Gears FrontXProvider** - Required for all hooks to work
 2. **Use hooks for state access** - Don't import selectors directly from @gears-frontx/framework
 3. **Use endpoint descriptors for data** - `useApiQuery(service.endpoint)` for REST, `useApiStream(service.stream)` for SSE — not `queryOptions()` or manual key factories
 4. **Service is the cache contract** - The service IS the data layer; cache keys are derived automatically
@@ -438,7 +438,7 @@ This allows users to import everything from `@gears-frontx/react` without needin
 ## Exports
 
 ### Components
-- `HAI3Provider` - Main context provider
+- `Gears FrontXProvider` - Main context provider
 - `MfeProvider` - MFE context provider
 - `ExtensionDomainSlot` - Domain slot renderer
 - `RefContainerProvider` - Container reference provider
@@ -462,14 +462,14 @@ This allows users to import everything from `@gears-frontx/react` without needin
 - `useActivePackage` - Subscribe to active GTS package
 
 ### Context
-- `HAI3Context` - React context (for advanced use)
+- `Gears FrontXContext` - React context (for advanced use)
 - `MfeContext` - MFE context (for advanced use)
 
 ### Types
-- `HAI3ProviderProps`
-- `ApiQueryResult<TData>` - HAI3-owned query result type (data, error, isLoading, refetch, etc.)
-- `ApiMutationResult<TData>` - HAI3-owned mutation result type (mutateAsync, isPending, error, reset, etc.)
-- `ApiStreamResult<TEvent>` - HAI3-owned stream result type (data, events, status, error, disconnect)
+- `Gears FrontXProviderProps`
+- `ApiQueryResult<TData>` - Gears FrontX-owned query result type (data, error, isLoading, refetch, etc.)
+- `ApiMutationResult<TData>` - Gears FrontX-owned mutation result type (mutateAsync, isPending, error, reset, etc.)
+- `ApiStreamResult<TEvent>` - Gears FrontX-owned stream result type (data, events, status, error, disconnect)
 - `ApiStreamOptions` - Stream hook options (mode, enabled)
 - `QueryCache` - Restricted cache interface (accepts descriptors or raw keys)
 - `MutationCallbackContext` - Context with queryCache injected into mutation callbacks

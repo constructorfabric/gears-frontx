@@ -6,9 +6,9 @@ Part of the FrontX React Layer (L3) - depends on @gears-frontx/framework. Peer d
 
 ## Core API
 
-- [HAI3Provider](https://frontx.dev/docs/react/provider): Root context provider
+- [Gears FrontXProvider](https://frontx.dev/docs/react/provider): Root context provider
 - [MFE Components](https://frontx.dev/docs/react/mfe): ExtensionDomainSlot, MfeProvider, RefContainerProvider
-- `HAI3Provider` resolves the shared `QueryClient` from `queryCache()` / `queryCacheShared()` through the app instance; mounted MFEs reuse the host cache by building their local app with `queryCacheShared()`, which joins the same shared `QueryClient` without mutating L1 contracts
+- `Gears FrontXProvider` resolves the shared `QueryClient` from `queryCache()` / `queryCacheShared()` through the app instance; mounted MFEs reuse the host cache by building their local app with `queryCacheShared()`, which joins the same shared `QueryClient` without mutating L1 contracts
 
 ## Hooks
 
@@ -33,16 +33,16 @@ Part of the FrontX React Layer (L3) - depends on @gears-frontx/framework. Peer d
 ## Quick Start
 
 ```tsx
-import { HAI3Provider, useTranslation, useFrontX } from '@gears-frontx/react';
+import { Gears FrontXProvider, useTranslation, useFrontX } from '@gears-frontx/react';
 
 // Wrap app with provider
 function App() {
   return (
-    <HAI3Provider>
+    <Gears FrontXProvider>
       <Layout>
         <MainScreen />
       </Layout>
-    </HAI3Provider>
+    </Gears FrontXProvider>
   );
 }
 
@@ -81,15 +81,15 @@ function LayoutScreen() {
 ### Using MFE Bridge
 
 ```tsx
-import { useMfeBridge, useSharedProperty, HAI3_ACTION_LOAD_EXT, HAI3_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
+import { useMfeBridge, useSharedProperty, Gears FrontX_ACTION_LOAD_EXT, Gears FrontX_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
 
 function MyExtension() {
   const bridge = useMfeBridge();
-  const theme = useSharedProperty(HAI3_SHARED_PROPERTY_THEME);
+  const theme = useSharedProperty(Gears FrontX_SHARED_PROPERTY_THEME);
 
   const handleAction = async () => {
     await bridge.executeActionsChain({
-      action: { type: HAI3_ACTION_LOAD_EXT, target: 'screen', payload: { extensionId: 'other' } }
+      action: { type: Gears FrontX_ACTION_LOAD_EXT, target: 'screen', payload: { extensionId: 'other' } }
     });
   };
 

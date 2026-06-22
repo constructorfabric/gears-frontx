@@ -6,7 +6,7 @@
 
 ## SCOPE
 - Package: `packages/auth/`
-- Layer: L1 SDK (zero @hai3 dependencies)
+- Layer: L1 SDK (zero @gears-frontx dependencies)
 - Purpose: headless authentication contract (types only)
 
 ## CRITICAL RULES

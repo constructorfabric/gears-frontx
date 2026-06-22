@@ -19,7 +19,7 @@
  *   - `.includes(actionId)` / `.startsWith(...)` / `.endsWith(...)`
  *   - `id === otherId`
  *
- * @author HAI3 Team
+ * @author Gears FrontX Team
  */
 
 import type { Rule } from 'eslint';
@@ -39,7 +39,7 @@ const TRANSFORM_METHODS = new Set([
 /** Substring markers that indicate GTS format knowledge in literals/regex source */
 const GTS_MARKER_SUBSTRINGS = [
   'gts:', // URI scheme prefix (matches `gts://` in both plain strings and regex `gts:\\/\\/`)
-  'gts.', // Entity ID prefix (matches `gts.hai3.mfes...`)
+  'gts.', // Entity ID prefix (matches `gts.frontx.mfes...`)
   String.raw`gts\.`, // Regex-escaped entity ID prefix (matches `/gts\./` literal in regex source)
 ];
 

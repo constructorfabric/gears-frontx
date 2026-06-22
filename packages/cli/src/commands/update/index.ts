@@ -196,7 +196,7 @@ export const updateCommand: CommandDefinition<
       // If inside a project, update project packages
       if (projectRoot) {
         logger.newline();
-        logger.info('Updating project HAI3 packages...');
+        logger.info('Updating project Gears FrontX packages...');
 
         const packageJsonPath = path.join(projectRoot, 'package.json');
         const packageJson = await fs.readJson(packageJsonPath);
@@ -217,7 +217,7 @@ export const updateCommand: CommandDefinition<
 
         if (frontxPackages.length > 0) {
           const packagesToUpdate = [...new Set(frontxPackages)];
-          logger.info(`Found ${packagesToUpdate.length} HAI3 packages to update`);
+          logger.info(`Found ${packagesToUpdate.length} Gears FrontX packages to update`);
 
           try {
             // Install each package with the appropriate tag
@@ -234,7 +234,7 @@ export const updateCommand: CommandDefinition<
             logger.warn('Failed to update some packages');
           }
         } else {
-          logger.info('No HAI3 packages found in project');
+          logger.info('No Gears FrontX packages found in project');
         }
       } else {
         logger.newline();

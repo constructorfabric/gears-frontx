@@ -10,9 +10,9 @@ import React from 'react';
 import { QueryClient } from '@tanstack/react-query';
 import { vi } from 'vitest';
 import {
-  createHAI3,
-  createHAI3App,
-  HAI3Provider,
+  createFrontX,
+  createFrontXApp,
+  FrontXProvider,
   queryCache,
   queryCacheShared,
   RestEndpointProtocol,
@@ -24,7 +24,7 @@ import {
   type StreamDescriptor,
 } from '@gears-frontx/react';
 
-const APP_QUERY_CLIENT_SYMBOL = Symbol.for('hai3:query-cache:app-client');
+const APP_QUERY_CLIENT_SYMBOL = Symbol.for('frontx:query-cache:app-client');
 
 /**
  * Apps created during a test are registered here so the per-file `afterEach`
@@ -32,7 +32,7 @@ const APP_QUERY_CLIENT_SYMBOL = Symbol.for('hai3:query-cache:app-client');
  * file in its own worker, each worker gets its own module instance, so this
  * array is isolated per file.
  */
-export const ownedApps: import('@gears-frontx/framework').HAI3App[] = [];
+export const ownedApps: import('@gears-frontx/framework').FrontXApp[] = [];
 
 // ============================================================================
 // QueryClient factories
@@ -71,14 +71,14 @@ export function buildMutationCacheTestQueryClient(): QueryClient {
 // ============================================================================
 
 export function attachQueryClient(
-  app: import('@gears-frontx/framework').HAI3App,
+  app: import('@gears-frontx/framework').FrontXApp,
   client: QueryClient
-): import('@gears-frontx/framework').HAI3App {
+): import('@gears-frontx/framework').FrontXApp {
   Reflect.set(app as object, APP_QUERY_CLIENT_SYMBOL, client);
   return app;
 }
 
-export function getAttachedQueryClient(app: import('@gears-frontx/framework').HAI3App): QueryClient {
+export function getAttachedQueryClient(app: import('@gears-frontx/framework').FrontXApp): QueryClient {
   const queryClient = Reflect.get(app as object, APP_QUERY_CLIENT_SYMBOL) as QueryClient | undefined;
   if (!queryClient) {
     throw new Error('expected app query client');
@@ -86,14 +86,14 @@ export function getAttachedQueryClient(app: import('@gears-frontx/framework').HA
   return queryClient;
 }
 
-export function buildAppWithQueryClient(client: QueryClient): import('@gears-frontx/framework').HAI3App {
-  const app = attachQueryClient(createHAI3App(), client);
+export function buildAppWithQueryClient(client: QueryClient): import('@gears-frontx/framework').FrontXApp {
+  const app = attachQueryClient(createFrontXApp(), client);
   ownedApps.push(app);
   return app;
 }
 
-export function buildPresetApp(): import('@gears-frontx/framework').HAI3App {
-  const app = createHAI3App();
+export function buildPresetApp(): import('@gears-frontx/framework').FrontXApp {
+  const app = createFrontXApp();
   ownedApps.push(app);
   return app;
 }
@@ -101,8 +101,8 @@ export function buildPresetApp(): import('@gears-frontx/framework').HAI3App {
 /** Host + child pattern keeps `retainSharedFetchCache()` active (real queryCache wiring). */
 export function buildHostAppWithQueryCache(
   staleTime: number
-): import('@gears-frontx/framework').HAI3App {
-  const app = createHAI3()
+): import('@gears-frontx/framework').FrontXApp {
+  const app = createFrontX()
     .use(
       queryCache({
         staleTime,
@@ -115,8 +115,8 @@ export function buildHostAppWithQueryCache(
   return app;
 }
 
-export function buildChildAppWithQueryCacheShared(): import('@gears-frontx/framework').HAI3App {
-  const app = createHAI3().use(queryCacheShared()).build();
+export function buildChildAppWithQueryCacheShared(): import('@gears-frontx/framework').FrontXApp {
+  const app = createFrontX().use(queryCacheShared()).build();
   ownedApps.push(app);
   return app;
 }
@@ -132,7 +132,7 @@ export function buildChildAppWithQueryCacheShared(): import('@gears-frontx/frame
 export function makeQueryWrapper(client: QueryClient) {
   const app = buildAppWithQueryClient(client);
   return function QueryWrapper({ children }: { children: React.ReactNode }) {
-    return <HAI3Provider app={app}>{children}</HAI3Provider>;
+    return <FrontXProvider app={app}>{children}</FrontXProvider>;
   };
 }
 
@@ -140,9 +140,9 @@ export function makeSuspenseQueryWrapper(client: QueryClient) {
   const app = buildAppWithQueryClient(client);
   return function SuspenseQueryWrapper({ children }: { children: React.ReactNode }) {
     return (
-      <HAI3Provider app={app}>
+      <FrontXProvider app={app}>
         <React.Suspense fallback={<div>loading</div>}>{children}</React.Suspense>
-      </HAI3Provider>
+      </FrontXProvider>
     );
   };
 }
@@ -212,7 +212,7 @@ export function makeStreamDescriptor<TEvent>(config: {
  */
 export function makeMockBridge(): ChildMfeBridge {
   return {
-    domainId: 'gts.hai3.mfes.ext.domain.v1~test.isolation.v1',
+    domainId: 'gts.frontx.mfes.ext.domain.v1~test.isolation.v1',
     instanceId: 'isolation-test',
     executeActionsChain: vi.fn().mockResolvedValue(undefined),
     subscribeToProperty: vi.fn().mockReturnValue(() => undefined),
@@ -225,6 +225,6 @@ export function makeContextValue(id: string): MfeContextValue {
   return {
     bridge: makeMockBridge(),
     extensionId: id,
-    domainId: 'gts.hai3.mfes.ext.domain.v1~test.isolation.v1',
+    domainId: 'gts.frontx.mfes.ext.domain.v1~test.isolation.v1',
   };
 }

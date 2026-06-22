@@ -99,7 +99,7 @@ Success criteria: A developer can toggle theme, language, and API mock mode in u
 1. [ ] `p1` - Studio User presses `Shift+\`` (Backquote) — `inst-keyboard-shortcut`
 2. [ ] `p1` - **IF** panel is currently collapsed **THEN** expand panel, show `StudioPanel`, hide `CollapsedButton` — `inst-expand-on-shortcut`
 3. [ ] `p1` - **IF** panel is currently expanded **THEN** collapse panel, hide `StudioPanel`, show `CollapsedButton` — `inst-collapse-on-shortcut`
-4. [ ] `p1` - Collapsed state is saved to `hai3:studio:collapsed` in localStorage — `inst-persist-collapsed`
+4. [ ] `p1` - Collapsed state is saved to `frontx:studio:collapsed` in localStorage — `inst-persist-collapsed`
 5. [ ] `p1` - **RETURN** focus to the previously focused element — `inst-restore-focus`
 
 ---
@@ -119,7 +119,7 @@ Success criteria: A developer can toggle theme, language, and API mock mode in u
    - [x] `p1` - Set panel position state to clamped value — `inst-set-position`
    - [x] `p1` - Emit `studio/positionChanged` event with new position — `inst-emit-position`
 5. [ ] `p1` - On `mouseup`, `isDragging` transitions to `false`; cursor reverts to `grab` — `inst-mouseup`
-6. [ ] `p1` - Persistence effect receives `studio/positionChanged` and writes position to `hai3:studio:position` — `inst-persist-panel-pos`
+6. [ ] `p1` - Persistence effect receives `studio/positionChanged` and writes position to `frontx:studio:position` — `inst-persist-panel-pos`
 
 ---
 
@@ -131,7 +131,7 @@ Success criteria: A developer can toggle theme, language, and API mock mode in u
 
 1. [ ] `p1` - Studio User presses mouse button down on `CollapsedButton` — `inst-button-mousedown`
 2. [ ] `p1` - Record drag start cursor position — `inst-record-start-pos`
-3. [ ] `p1` - `useDraggable` hook activates with `storageKey = hai3:studio:buttonPosition` — `inst-button-draggable`
+3. [ ] `p1` - `useDraggable` hook activates with `storageKey = frontx:studio:buttonPosition` — `inst-button-draggable`
 4. [ ] `p1` - On `mouseup`, compute total cursor displacement from start position — `inst-compute-displacement`
 5. [ ] `p1` - **IF** displacement is less than 5px in both axes — `inst-click-threshold`
    - [x] `p1` - Treat interaction as a click: call `toggleCollapsed()` to expand the panel — `inst-toggle-on-click`
@@ -140,7 +140,7 @@ Success criteria: A developer can toggle theme, language, and API mock mode in u
    - [x] `p1` - Treat interaction as a drag: follow cursor with viewport clamping — `inst-drag-button`
    - [x] `p1` - Emit `studio/buttonPositionChanged` with new position — `inst-emit-button-pos`
    - [x] `p1` - Panel does NOT expand — `inst-no-expand-on-drag`
-7. [ ] `p1` - Persistence effect receives `studio/buttonPositionChanged` and writes to `hai3:studio:buttonPosition` — `inst-persist-button-pos`
+7. [ ] `p1` - Persistence effect receives `studio/buttonPositionChanged` and writes to `frontx:studio:buttonPosition` — `inst-persist-button-pos`
 
 ---
 
@@ -159,7 +159,7 @@ Success criteria: A developer can toggle theme, language, and API mock mode in u
    - [x] `p1` - Clamp height to `[400, 800]` px — `inst-clamp-height`
    - [x] `p1` - Set size state; emit `studio/sizeChanged` with new size — `inst-emit-size`
 5. [ ] `p1` - On `mouseup`, cursor and text selection restored — `inst-resize-mouseup`
-6. [ ] `p1` - Persistence effect receives `studio/sizeChanged` and writes size to `hai3:studio:size` — `inst-persist-size`
+6. [ ] `p1` - Persistence effect receives `studio/sizeChanged` and writes size to `frontx:studio:size` — `inst-persist-size`
 
 ---
 
@@ -174,7 +174,7 @@ Success criteria: A developer can toggle theme, language, and API mock mode in u
 3. [ ] `p1` - Studio User selects a theme — `inst-select-theme`
 4. [ ] `p1` - `ThemeSelector` calls `setTheme(themeId)` — `inst-call-set-theme`
 5. [ ] `p1` - Framework emits `theme/changed` event with `{ themeId }` — `inst-theme-event`
-6. [ ] `p1` - Persistence effect subscribes to `theme/changed`; writes `themeId` to `hai3:studio:theme` — `inst-persist-theme`
+6. [ ] `p1` - Persistence effect subscribes to `theme/changed`; writes `themeId` to `frontx:studio:theme` — `inst-persist-theme`
 7. [ ] `p1` - Application theme updates immediately — `inst-theme-applied`
 
 ---
@@ -191,7 +191,7 @@ Success criteria: A developer can toggle theme, language, and API mock mode in u
 4. [ ] `p1` - Studio User selects a language — `inst-select-lang`
 5. [ ] `p1` - `LanguageSelector` calls `setLanguage(languageCode)` — `inst-call-set-lang`
 6. [ ] `p1` - Framework emits `i18n/language/changed` event with `{ language }` — `inst-lang-event`
-7. [ ] `p1` - Persistence effect subscribes to `i18n/language/changed`; writes `language` to `hai3:studio:language` — `inst-persist-lang`
+7. [ ] `p1` - Persistence effect subscribes to `i18n/language/changed`; writes `language` to `frontx:studio:language` — `inst-persist-lang`
 8. [ ] `p1` - Application language updates immediately — `inst-lang-applied`
 
 ---
@@ -206,7 +206,7 @@ Success criteria: A developer can toggle theme, language, and API mock mode in u
 2. [ ] `p1` - `ApiModeToggle` reads current mock state from Redux via `useAppSelector` — `inst-read-mock-state`
 3. [ ] `p1` - `ApiModeToggle` calls `toggleMockMode(newEnabled)` — `inst-call-toggle-mock`
 4. [ ] `p1` - Framework emits `mock/toggle` event with `{ enabled }` — `inst-mock-event`
-5. [ ] `p1` - Persistence effect subscribes to `mock/toggle`; writes `enabled` to `hai3:studio:mockEnabled` — `inst-persist-mock`
+5. [ ] `p1` - Persistence effect subscribes to `mock/toggle`; writes `enabled` to `frontx:studio:mockEnabled` — `inst-persist-mock`
 6. [ ] `p1` - All API services switch between real and mock responses — `inst-api-switched`
 
 ---
@@ -218,11 +218,11 @@ Success criteria: A developer can toggle theme, language, and API mock mode in u
 **Actors**: `cpt-frontx-actor-runtime`, `cpt-frontx-actor-framework-plugin`
 
 1. [ ] `p1` - `StudioProvider` mounts; `useRestoreStudioSettings()` effect runs once — `inst-restore-effect`
-2. [ ] `p1` - Read `hai3:studio:theme` from localStorage — `inst-read-theme`
+2. [ ] `p1` - Read `frontx:studio:theme` from localStorage — `inst-read-theme`
 3. [ ] `p1` - **IF** value is a non-empty string, emit `theme/changed` with `{ themeId }` — `inst-restore-theme`
-4. [ ] `p1` - Read `hai3:studio:language` from localStorage — `inst-read-lang`
+4. [ ] `p1` - Read `frontx:studio:language` from localStorage — `inst-read-lang`
 5. [ ] `p1` - **IF** value is a non-empty string, emit `i18n/language/changed` with `{ language }` — `inst-restore-lang`
-6. [ ] `p1` - Read `hai3:studio:mockEnabled` from localStorage — `inst-read-mock`
+6. [ ] `p1` - Read `frontx:studio:mockEnabled` from localStorage — `inst-read-mock`
 7. [ ] `p1` - **IF** value is a boolean, emit `mock/toggle` with `{ enabled }` — `inst-restore-mock`
 
 ---
@@ -252,7 +252,7 @@ Success criteria: A developer can toggle theme, language, and API mock mode in u
 
 1. [ ] `p1` - Host application wraps Studio import with `import.meta.env.DEV` guard — `inst-dev-guard`
 2. [ ] `p1` - **IF** `import.meta.env.DEV` is true: dynamically import `StudioOverlay` from `@gears-frontx/studio` — `inst-dev-import`
-3. [ ] `p1` - Mount `StudioOverlay` inside `StudioProvider` beneath `HAI3Provider` — `inst-mount-overlay`
+3. [ ] `p1` - Mount `StudioOverlay` inside `StudioProvider` beneath `Gears FrontXProvider` — `inst-mount-overlay`
 4. [ ] `p1` - **IF** `import.meta.env.DEV` is false: Vite tree-shakes the entire conditional branch and `@gears-frontx/studio` package — `inst-treeshake`
 5. [ ] `p1` - Production bundle contains zero Studio code and zero Studio UIKit imports — `inst-zero-prod-footprint`
 
@@ -291,12 +291,12 @@ Used when no stored position exists in localStorage:
 
 Called once when `StudioProvider` mounts via `initPersistenceEffects()`:
 
-1. [ ] `p1` - Subscribe `studio/positionChanged` → write payload `position` to `hai3:studio:position` — `inst-sub-position`
-2. [ ] `p1` - Subscribe `studio/sizeChanged` → write payload `size` to `hai3:studio:size` — `inst-sub-size`
-3. [ ] `p1` - Subscribe `studio/buttonPositionChanged` → write payload `position` to `hai3:studio:buttonPosition` — `inst-sub-button-pos`
-4. [ ] `p1` - Subscribe `theme/changed` → write payload `themeId` to `hai3:studio:theme` — `inst-sub-theme`
-5. [ ] `p1` - Subscribe `i18n/language/changed` → write payload `language` to `hai3:studio:language` — `inst-sub-lang`
-6. [ ] `p1` - Subscribe `mock/toggle` → write payload `enabled` to `hai3:studio:mockEnabled` — `inst-sub-mock`
+1. [ ] `p1` - Subscribe `studio/positionChanged` → write payload `position` to `frontx:studio:position` — `inst-sub-position`
+2. [ ] `p1` - Subscribe `studio/sizeChanged` → write payload `size` to `frontx:studio:size` — `inst-sub-size`
+3. [ ] `p1` - Subscribe `studio/buttonPositionChanged` → write payload `position` to `frontx:studio:buttonPosition` — `inst-sub-button-pos`
+4. [ ] `p1` - Subscribe `theme/changed` → write payload `themeId` to `frontx:studio:theme` — `inst-sub-theme`
+5. [ ] `p1` - Subscribe `i18n/language/changed` → write payload `language` to `frontx:studio:language` — `inst-sub-lang`
+6. [ ] `p1` - Subscribe `mock/toggle` → write payload `enabled` to `frontx:studio:mockEnabled` — `inst-sub-mock`
 7. [ ] `p1` - **RETURN** cleanup function that calls `.unsubscribe()` on all six subscriptions — `inst-return-cleanup`
 
 ---
@@ -354,7 +354,7 @@ Prevents dropdowns from being clipped by the glassmorphic panel's `backdrop-filt
 3. [ ] `p1` - **FROM** `COLLAPSED` **TO** `EXPANDED` **WHEN** Studio User clicks `CollapsedButton` without dragging (displacement < 5px) — `inst-expand-via-click`
 4. [ ] `p1` - **FROM** `COLLAPSED` **TO** `EXPANDED` **WHEN** Studio User presses `Shift+\`` — `inst-expand-via-kbd`
 5. [ ] `p1` - **FROM** any state **TO** same state (no transition) **WHEN** Studio User drags `CollapsedButton` (displacement ≥ 5px) — `inst-drag-no-transition`
-6. [ ] `p1` - Visibility state is persisted to `hai3:studio:collapsed` on every transition — `inst-persist-visibility`
+6. [ ] `p1` - Visibility state is persisted to `frontx:studio:collapsed` on every transition — `inst-persist-visibility`
 
 ---
 
@@ -455,7 +455,7 @@ Applies independently to both `StudioPanel` and `CollapsedButton` draggables:
 All Studio control panel settings (theme, language, mock mode) and all UI state (panel position, panel size, collapsed state, button position) are persisted to localStorage on change and restored on Studio mount. All persistence logic lives exclusively inside `@gears-frontx/studio`.
 
 **Implementation details**:
-- Storage keys under prefix `hai3:studio:` — see `STORAGE_KEYS` in `packages/studio/src/types.ts`
+- Storage keys under prefix `frontx:studio:` — see `STORAGE_KEYS` in `packages/studio/src/types.ts`
 - `initPersistenceEffects()` registers six event subscriptions in `StudioProvider` mount effect; returns cleanup
 - `useRestoreStudioSettings()` runs once on mount; emits `theme/changed`, `i18n/language/changed`, `mock/toggle` if values exist
 - `StudioProvider` initializes `collapsed` state from `loadStudioState(STORAGE_KEYS.COLLAPSED, false)`
@@ -571,17 +571,17 @@ Studio panel toggling is accessible via `Shift+\`` keyboard shortcut using `e.co
 
 ### Storage Key Namespace
 
-All localStorage keys use the prefix `hai3:studio:`. Current keys defined in `STORAGE_KEYS`:
+All localStorage keys use the prefix `frontx:studio:`. Current keys defined in `STORAGE_KEYS`:
 
 | Key | Value stored |
 |-----|-------------|
-| `hai3:studio:position` | `{ x: number, y: number }` — panel position |
-| `hai3:studio:size` | `{ width: number, height: number }` — panel size |
-| `hai3:studio:collapsed` | `boolean` — panel collapsed state |
-| `hai3:studio:buttonPosition` | `{ x: number, y: number }` — collapsed button position |
-| `hai3:studio:theme` | `string` — theme ID |
-| `hai3:studio:language` | `string` — language code |
-| `hai3:studio:mockEnabled` | `boolean` — mock API enabled state |
+| `frontx:studio:position` | `{ x: number, y: number }` — panel position |
+| `frontx:studio:size` | `{ width: number, height: number }` — panel size |
+| `frontx:studio:collapsed` | `boolean` — panel collapsed state |
+| `frontx:studio:buttonPosition` | `{ x: number, y: number }` — collapsed button position |
+| `frontx:studio:theme` | `string` — theme ID |
+| `frontx:studio:language` | `string` — language code |
+| `frontx:studio:mockEnabled` | `boolean` — mock API enabled state |
 
 ### Studio Event Namespace
 
@@ -611,7 +611,7 @@ Following screenset conventions:
 
 ### Dependency Boundary
 
-`@gears-frontx/studio` depends on `@gears-frontx/react` (for hooks, `eventBus`, `HAI3Provider` context). UI components are supplied from Studio local `packages/studio/src/uikit/`. Dependencies are direct compile-time, tree-shaken in production because the entire Studio conditional branch is eliminated. Studio does NOT depend on `@gears-frontx/framework` or any L1 package directly.
+`@gears-frontx/studio` depends on `@gears-frontx/react` (for hooks, `eventBus`, `Gears FrontXProvider` context). UI components are supplied from Studio local `packages/studio/src/uikit/`. Dependencies are direct compile-time, tree-shaken in production because the entire Studio conditional branch is eliminated. Studio does NOT depend on `@gears-frontx/framework` or any L1 package directly.
 
 ### i18n Self-Registration
 

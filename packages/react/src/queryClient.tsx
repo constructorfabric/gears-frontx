@@ -20,7 +20,7 @@ import {
 import {
   subscribeQueryCacheRuntimeChanged,
   type EndpointDescriptor,
-  type HAI3App,
+  type FrontXApp,
 } from '@gears-frontx/framework';
 import type { ApiQueryOverrides } from './hooks/useApiQuery';
 import type {
@@ -37,17 +37,17 @@ import { createQueryCache, type MutationCallbackContext, type QueryCacheKey } fr
 // @cpt-flow:cpt-frontx-flow-request-lifecycle-use-api-mutation:p2
 
 // @cpt-begin:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-react-query-client-symbols
-const APP_QUERY_CLIENT_SYMBOL = Symbol.for('hai3:query-cache:app-client');
-const APP_QUERY_CLIENT_RESOLVER_SYMBOL = Symbol.for('hai3:query-cache:app-client-resolver');
-const APP_QUERY_CLIENT_ACTIVATOR_SYMBOL = Symbol.for('hai3:query-cache:app-client-activator');
+const APP_QUERY_CLIENT_SYMBOL = Symbol.for('frontx:query-cache:app-client');
+const APP_QUERY_CLIENT_RESOLVER_SYMBOL = Symbol.for('frontx:query-cache:app-client-resolver');
+const APP_QUERY_CLIENT_ACTIVATOR_SYMBOL = Symbol.for('frontx:query-cache:app-client-activator');
 
-type QueryClientApp = HAI3App & {
+type QueryClientApp = FrontXApp & {
   [APP_QUERY_CLIENT_SYMBOL]?: QueryClient;
   [APP_QUERY_CLIENT_RESOLVER_SYMBOL]?: () => QueryClient | undefined;
   [APP_QUERY_CLIENT_ACTIVATOR_SYMBOL]?: () => QueryClient | undefined;
 };
 
-const HAI3QueryClientContext = createContext<QueryClient | undefined>(undefined);
+const FrontXQueryClientContext = createContext<QueryClient | undefined>(undefined);
 // @cpt-end:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-react-query-client-symbols
 
 // @cpt-begin:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-resolve-app-query-client
@@ -56,22 +56,22 @@ type RuntimeAwareEndpointDescriptor<TData> = EndpointDescriptor<TData> & {
 };
 
 type AppResolvedQueryClient = {
-  app: HAI3App;
+  app: FrontXApp;
   queryClient: QueryClient;
 };
 
 const useCommitEffect = typeof globalThis.window === 'undefined' ? useEffect : useLayoutEffect;
 
-export function resolveHAI3QueryClient(app: HAI3App): QueryClient | undefined {
+export function resolveFrontXQueryClient(app: FrontXApp): QueryClient | undefined {
   const clientApp = app as QueryClientApp;
   return clientApp[APP_QUERY_CLIENT_SYMBOL] ?? clientApp[APP_QUERY_CLIENT_RESOLVER_SYMBOL]?.();
 }
 
-export function hasHAI3QueryClientActivator(app: HAI3App): boolean {
+export function hasFrontXQueryClientActivator(app: FrontXApp): boolean {
   return typeof (app as QueryClientApp)[APP_QUERY_CLIENT_ACTIVATOR_SYMBOL] === 'function';
 }
 
-export function activateHAI3QueryClient(app: HAI3App): QueryClient | undefined {
+export function activateFrontXQueryClient(app: FrontXApp): QueryClient | undefined {
   const clientApp = app as QueryClientApp;
   return clientApp[APP_QUERY_CLIENT_SYMBOL] ?? clientApp[APP_QUERY_CLIENT_ACTIVATOR_SYMBOL]?.();
 }
@@ -83,10 +83,10 @@ export function activateHAI3QueryClient(app: HAI3App): QueryClient | undefined {
  * Use from non-React code (e.g. MFE actions); in components prefer `useQueryCache().invalidate`.
  */
 export async function invalidateQueryCacheForApp(
-  app: HAI3App,
+  app: FrontXApp,
   target: EndpointDescriptor<unknown> | QueryCacheKey
 ): Promise<void> {
-  const queryClient = resolveHAI3QueryClient(app) ?? activateHAI3QueryClient(app);
+  const queryClient = resolveFrontXQueryClient(app) ?? activateFrontXQueryClient(app);
   if (!queryClient) {
     throw new Error(
       '[invalidateQueryCacheForApp] No QueryClient on app. Ensure queryCache() or queryCacheShared() is in the plugin chain.'
@@ -96,14 +96,14 @@ export async function invalidateQueryCacheForApp(
 }
 
 /** Resolves the app-bound QueryClient without triggering plugin activation during render. */
-export function bootstrapHAI3QueryClient(app: HAI3App): QueryClient | undefined {
-  return resolveHAI3QueryClient(app);
+export function bootstrapFrontXQueryClient(app: FrontXApp): QueryClient | undefined {
+  return resolveFrontXQueryClient(app);
 }
 // @cpt-end:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-imperative-cache-bootstrap
 
 // @cpt-begin:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-use-bootstrapped-query-client
-export function useBootstrappedHAI3QueryClient(app: HAI3App): QueryClient | undefined {
-  const fromApp = useMemo(() => bootstrapHAI3QueryClient(app), [app]);
+export function useBootstrappedFrontXQueryClient(app: FrontXApp): QueryClient | undefined {
+  const fromApp = useMemo(() => bootstrapFrontXQueryClient(app), [app]);
   const [eventResolvedClient, setEventResolvedClient] = useState<AppResolvedQueryClient | undefined>(
     undefined
   );
@@ -111,12 +111,12 @@ export function useBootstrappedHAI3QueryClient(app: HAI3App): QueryClient | unde
     fromApp ?? (eventResolvedClient?.app === app ? eventResolvedClient.queryClient : undefined);
 
   useCommitEffect(() => {
-    if (fromApp || !hasHAI3QueryClientActivator(app)) {
+    if (fromApp || !hasFrontXQueryClientActivator(app)) {
       return;
     }
 
     const tryResolveQueryClient = () => {
-      const nextQueryClient = resolveHAI3QueryClient(app) ?? activateHAI3QueryClient(app);
+      const nextQueryClient = resolveFrontXQueryClient(app) ?? activateFrontXQueryClient(app);
       if (nextQueryClient) {
         setEventResolvedClient((current) => {
           if (current?.app === app && current.queryClient === nextQueryClient) {
@@ -147,8 +147,8 @@ export function useBootstrappedHAI3QueryClient(app: HAI3App): QueryClient | unde
 }
 // @cpt-end:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-use-bootstrapped-query-client
 
-// @cpt-begin:cpt-frontx-dod-request-lifecycle-query-provider:p2:inst-hai3-query-client-provider
-export function HAI3QueryClientProvider({
+// @cpt-begin:cpt-frontx-dod-request-lifecycle-query-provider:p2:inst-frontx-query-client-provider
+export function FrontXQueryClientProvider({
   queryClient,
   children,
 }: Readonly<{
@@ -157,30 +157,30 @@ export function HAI3QueryClientProvider({
 }>) {
   if (!queryClient) {
     return (
-      <HAI3QueryClientContext.Provider value={undefined}>
+      <FrontXQueryClientContext.Provider value={undefined}>
         <QueryClientContext.Provider value={undefined}>{children}</QueryClientContext.Provider>
-      </HAI3QueryClientContext.Provider>
+      </FrontXQueryClientContext.Provider>
     );
   }
 
   return (
-    <HAI3QueryClientContext.Provider value={queryClient}>
+    <FrontXQueryClientContext.Provider value={queryClient}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </HAI3QueryClientContext.Provider>
+    </FrontXQueryClientContext.Provider>
   );
 }
-// @cpt-end:cpt-frontx-dod-request-lifecycle-query-provider:p2:inst-hai3-query-client-provider
+// @cpt-end:cpt-frontx-dod-request-lifecycle-query-provider:p2:inst-frontx-query-client-provider
 
 // @cpt-begin:cpt-frontx-dod-request-lifecycle-query-provider:p2:inst-query-client-context-hooks
-export function useOptionalHAI3QueryClient(): QueryClient | undefined {
-  return useContext(HAI3QueryClientContext);
+export function useOptionalFrontXQueryClient(): QueryClient | undefined {
+  return useContext(FrontXQueryClientContext);
 }
 
-export function useRequiredHAI3QueryClient(): QueryClient {
-  const queryClient = useOptionalHAI3QueryClient();
+export function useRequiredFrontXQueryClient(): QueryClient {
+  const queryClient = useOptionalFrontXQueryClient();
   if (!queryClient) {
     throw new Error(
-      '[HAI3Provider] No query cache available. Add queryCache() or queryCacheShared() to your plugin composition.'
+      '[FrontXProvider] No query cache available. Add queryCache() or queryCacheShared() to your plugin composition.'
     );
   }
 
@@ -231,12 +231,12 @@ function fetchDescriptor<TData>(
 }
 // @cpt-end:implement-endpoint-descriptors:p3:inst-descriptor-fetch-stale-helpers
 
-// @cpt-begin:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-hai3-use-query
-export function useHAI3Query<TData = unknown, TError = Error>(
+// @cpt-begin:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-frontx-use-query
+export function useFrontXQuery<TData = unknown, TError = Error>(
   descriptor: EndpointDescriptor<TData>,
   overrides?: ApiQueryOverrides
 ) {
-  const queryClient = useRequiredHAI3QueryClient();
+  const queryClient = useRequiredFrontXQueryClient();
   const staleTime = resolveFetchStaleTime(queryClient, descriptor, overrides?.staleTime);
   const result = useQuery<TData, TError>({
     queryKey: descriptor.key as unknown[],
@@ -254,14 +254,14 @@ export function useHAI3Query<TData = unknown, TError = Error>(
     refetch: result.refetch,
   };
 }
-// @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-hai3-use-query
+// @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-frontx-use-query
 
-// @cpt-begin:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-hai3-use-suspense-query
-export function useHAI3SuspenseQuery<TData = unknown, TError = Error>(
+// @cpt-begin:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-frontx-use-suspense-query
+export function useFrontXSuspenseQuery<TData = unknown, TError = Error>(
   descriptor: EndpointDescriptor<TData>,
   overrides?: ApiQueryOverrides
 ) {
-  const queryClient = useRequiredHAI3QueryClient();
+  const queryClient = useRequiredFrontXQueryClient();
   const staleTime = resolveFetchStaleTime(queryClient, descriptor, overrides?.staleTime);
   const result = useSuspenseQuery<TData, TError>({
     queryKey: descriptor.key as unknown[],
@@ -279,13 +279,13 @@ export function useHAI3SuspenseQuery<TData = unknown, TError = Error>(
     },
   };
 }
-// @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-hai3-use-suspense-query
+// @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-frontx-use-suspense-query
 
-// @cpt-begin:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-hai3-use-infinite-query
-export function useHAI3InfiniteQuery<TPage = unknown, TError = Error>(
+// @cpt-begin:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-frontx-use-infinite-query
+export function useFrontXInfiniteQuery<TPage = unknown, TError = Error>(
   options: ApiInfiniteQueryOptions<TPage>
 ) {
-  const queryClient = useRequiredHAI3QueryClient();
+  const queryClient = useRequiredFrontXQueryClient();
   const result = useInfiniteQuery<
     TPage,
     TError,
@@ -352,13 +352,13 @@ export function useHAI3InfiniteQuery<TPage = unknown, TError = Error>(
     },
   };
 }
-// @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-hai3-use-infinite-query
+// @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-frontx-use-infinite-query
 
-// @cpt-begin:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-hai3-use-suspense-infinite-query
-export function useHAI3SuspenseInfiniteQuery<TPage = unknown, TError = Error>(
+// @cpt-begin:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-frontx-use-suspense-infinite-query
+export function useFrontXSuspenseInfiniteQuery<TPage = unknown, TError = Error>(
   options: ApiInfiniteQueryOptions<TPage>
 ) {
-  const queryClient = useRequiredHAI3QueryClient();
+  const queryClient = useRequiredFrontXQueryClient();
   const result = useSuspenseInfiniteQuery<
     TPage,
     TError,
@@ -423,10 +423,10 @@ export function useHAI3SuspenseInfiniteQuery<TPage = unknown, TError = Error>(
     },
   };
 }
-// @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-hai3-use-suspense-infinite-query
+// @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-frontx-use-suspense-infinite-query
 
-// @cpt-begin:cpt-frontx-flow-request-lifecycle-use-api-mutation:p2:inst-delegate-hai3-use-mutation
-export function useHAI3Mutation<
+// @cpt-begin:cpt-frontx-flow-request-lifecycle-use-api-mutation:p2:inst-delegate-frontx-use-mutation
+export function useFrontXMutation<
   TData = unknown,
   TError = Error,
   TVariables = void,
@@ -435,7 +435,7 @@ export function useHAI3Mutation<
   options: UseApiMutationOptions<TData, TError, TVariables, TContext>,
   callbackCtx: MutationCallbackContext
 ) {
-  useRequiredHAI3QueryClient();
+  useRequiredFrontXQueryClient();
 
   const latestRef = React.useRef({ options, callbackCtx });
   latestRef.current = { options, callbackCtx };
@@ -533,4 +533,4 @@ export function useHAI3Mutation<
     reset: mutation.reset,
   };
 }
-// @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-mutation:p2:inst-delegate-hai3-use-mutation
+// @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-mutation:p2:inst-delegate-frontx-use-mutation

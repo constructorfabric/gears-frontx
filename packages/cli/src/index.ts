@@ -169,7 +169,7 @@ const scaffoldCmd = program
 // frontx scaffold layout
 scaffoldCmd
   .command('layout')
-  .description('Generate HAI3 layout components in your project')
+  .description('Generate Gears FrontX layout components in your project')
   .option('-f, --force', 'Overwrite existing layout files')
   .action(async (options: Record<string, unknown>) => {
     const result = await executeCommand(

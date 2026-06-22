@@ -60,8 +60,8 @@ type CacheRemoveEvent = {
   source?: string;
 };
 
-const QUERY_CLIENT_BROADCAST_TARGET = Symbol.for('hai3:query-cache:broadcast-target');
-const QUERY_CLIENT_BROADCAST_COUNTER = Symbol.for('hai3:query-cache:broadcast-counter');
+const QUERY_CLIENT_BROADCAST_TARGET = Symbol.for('frontx:query-cache:broadcast-target');
+const QUERY_CLIENT_BROADCAST_COUNTER = Symbol.for('frontx:query-cache:broadcast-counter');
 
 type QueryClientWithMetadata = QueryClient & {
   [QUERY_CLIENT_BROADCAST_TARGET]?: string;

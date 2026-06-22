@@ -81,7 +81,7 @@ export abstract class ActionHandler {
    *
    * @example
    * ```typescript
-   * ctx.registerHandler(HAI3_ACTION_MOUNT_EXT,
+   * ctx.registerHandler(FRONTX_ACTION_MOUNT_EXT,
    *   ActionHandler.fromFunction((_t, p) => strategy.mount(p as ActionPayload)));
    * ```
    */

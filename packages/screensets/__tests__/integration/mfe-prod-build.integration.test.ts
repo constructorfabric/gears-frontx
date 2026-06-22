@@ -248,7 +248,7 @@ describe('MfeHandlerMF + production _blank-mfe build', () => {
     }
 
     const handler = new MfeHandlerMF(
-      'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+      'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
       { timeout: 30_000, retries: 0 }
     );
 
@@ -275,7 +275,7 @@ describe('MfeHandlerMF + production _blank-mfe build', () => {
 
   it('parses bare side-effect imports from minified and multiline sources', () => {
     const handler = new MfeHandlerMF(
-      'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+      'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
       { timeout: 30_000, retries: 0 }
     );
     type MfeHandlerMFInternal = Record<string, (source: string, chunkFilename: string) => string[]>;

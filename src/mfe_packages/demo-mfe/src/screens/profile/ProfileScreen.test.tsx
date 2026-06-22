@@ -1,8 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
-  HAI3_SHARED_PROPERTY_LANGUAGE,
-  HAI3_SHARED_PROPERTY_THEME,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_SHARED_PROPERTY_THEME,
   TextDirection,
 } from '@gears-frontx/react';
 import { createMfeBridgeFixture } from '@frontx-test-utils/createMfeBridgeFixture';
@@ -107,8 +107,8 @@ async function setupProfileScreen(options?: {
     domainId: 'profile-domain',
     instanceId: 'profile-screen',
     initialProperties: {
-      [HAI3_SHARED_PROPERTY_THEME]: 'corporate',
-      [HAI3_SHARED_PROPERTY_LANGUAGE]: 'sv',
+      [FRONTX_SHARED_PROPERTY_THEME]: 'corporate',
+      [FRONTX_SHARED_PROPERTY_LANGUAGE]: 'sv',
     },
   });
   const { container, unmount } = render(<ProfileScreen bridge={bridgeFixture.bridge} />);
@@ -167,8 +167,8 @@ describe('ProfileScreen', () => {
     const { bridgeFixture } = await setupProfileScreen();
 
     await waitFor(() => {
-      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_THEME, expect.any(Function));
-      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_LANGUAGE, expect.any(Function));
+      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_THEME, expect.any(Function));
+      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_LANGUAGE, expect.any(Function));
     });
   });
 
@@ -198,7 +198,7 @@ describe('ProfileScreen', () => {
     const { host, bridgeFixture } = await setupProfileScreen();
 
     await act(async () => {
-      bridgeFixture.setProperty(HAI3_SHARED_PROPERTY_LANGUAGE, 'ar');
+      bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, 'ar');
     });
 
     await waitFor(() => {

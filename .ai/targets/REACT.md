@@ -3,7 +3,7 @@
 
 ## AI WORKFLOW (REQUIRED)
 1) Summarize 3-6 rules from this file before making changes.
-2) STOP if you bypass HAI3Provider or use hooks outside provider.
+2) STOP if you bypass Gears FrontXProvider or use hooks outside provider.
 
 ## SCOPE
 - Package: `packages/react/`
@@ -11,7 +11,7 @@
 - Peer dependencies: `@gears-frontx/framework`, `react`, `react-redux`
 
 ## CRITICAL RULES
-- All apps wrapped with `<HAI3Provider>`.
+- All apps wrapped with `<Gears FrontXProvider>`.
 - Use provided hooks for state access (not raw react-redux).
 - Use `QueryCache` access via `useQueryCache()` or `useApiMutation()` callback context; do not expose raw `QueryClient` to app or MFE code.
 - `useApiQuery` and `useApiMutation` accept endpoint descriptors from services, NOT TanStack-specific options.
@@ -21,34 +21,34 @@
 
 ## PROVIDER SETUP
 ```tsx
-// REQUIRED: Wrap app with HAI3Provider
+// REQUIRED: Wrap app with Gears FrontXProvider
 function App() {
   return (
-    <HAI3Provider>
+    <Gears FrontXProvider>
       <Layout>
         <AppRouter fallback={<Loading />} />
       </Layout>
-    </HAI3Provider>
+    </Gears FrontXProvider>
   );
 }
 
 // OPTIONAL: With configuration
-<HAI3Provider config={{ devMode: true }}>
+<Gears FrontXProvider config={{ devMode: true }}>
   <AppRouter fallback={<Loading />} />
-</HAI3Provider>
+</Gears FrontXProvider>
 
 // OPTIONAL: With pre-built app — register queryCache() before .build() so the app
-// carries the shared QueryClient; HAI3Provider resolves it and mounts QueryClientProvider.
-import { createHAI3, queryCache, screensets } from '@gears-frontx/react';
-const app = createHAI3().use(queryCache()).use(screensets()).build();
-<HAI3Provider app={app}>
+// carries the shared QueryClient; Gears FrontXProvider resolves it and mounts QueryClientProvider.
+import { createGears FrontX, queryCache, screensets } from '@gears-frontx/react';
+const app = createGears FrontX().use(queryCache()).use(screensets()).build();
+<Gears FrontXProvider app={app}>
   <AppRouter fallback={<Loading />} />
-</HAI3Provider>
+</Gears FrontXProvider>
 
 // OPTIONAL: Separately mounted MFE roots — same chain as src/mfe_packages/*/init.ts (SCREENSETS.md).
 // apiRegistry before .build (mock syncs at build); registerSlice after .build when you have slices.
 import {
-  createHAI3,
+  createGears FrontX,
   apiRegistry,
   effects,
   mock,
@@ -57,18 +57,18 @@ import {
 } from '@gears-frontx/react';
 apiRegistry.register(MyApiService);
 apiRegistry.initialize();
-const mfeApp = createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build();
+const mfeApp = createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build();
 registerSlice(mySlice, initMyEffects);
-<HAI3Provider app={mfeApp}>
+<Gears FrontXProvider app={mfeApp}>
   <AppRouter fallback={<Loading />} />
-</HAI3Provider>
+</Gears FrontXProvider>
 ```
 
 ## AVAILABLE HOOKS
 
 | Hook | Purpose | Returns |
 |------|---------|---------|
-| `useHAI3()` | Access app instance | HAI3App |
+| `useGears FrontX()` | Access app instance | Gears FrontXApp |
 | `useAppDispatch()` | Typed dispatch | AppDispatch |
 | `useAppSelector()` | Typed selector | Selected state |
 | `useTranslation()` | Translation utilities | `{ t, language, setLanguage, isRTL }` |
@@ -132,7 +132,7 @@ const { data } = useApiQuery(service.getConfig, { staleTime: 0 });
 ```
 
 ## STOP CONDITIONS
-- Using hooks outside HAI3Provider.
+- Using hooks outside Gears FrontXProvider.
 - Using raw react-redux instead of provided hooks.
 - Exposing TanStack `useQueryClient()` directly to app or MFE code.
 - Importing `queryOptions` from `@tanstack/react-query` or `@gears-frontx/react` in MFE code.
@@ -141,7 +141,7 @@ const { data } = useApiQuery(service.getConfig, { staleTime: 0 });
 - Forgetting TextLoader wrapper for translations.
 
 ## PRE-DIFF CHECKLIST
-- [ ] App wrapped with HAI3Provider.
+- [ ] App wrapped with Gears FrontXProvider.
 - [ ] Using provided hooks (not raw react-redux).
 - [ ] Data fetching uses `useApiQuery(service.endpoint)` with endpoint descriptors, not `queryOptions()`.
 - [ ] No manual query key factories outside service descriptors.

@@ -54,7 +54,7 @@ Minimize the panel to a circular button in the bottom-right corner when screen s
 
 ### Automatic Loading (Recommended)
 
-HAI3Provider automatically detects studio package installation and loads it in development mode only. No explicit imports or configuration required - install the package and it activates automatically in development.
+Gears FrontXProvider automatically detects studio package installation and loads it in development mode only. No explicit imports or configuration required - install the package and it activates automatically in development.
 
 ### Manual Integration (Advanced)
 
@@ -64,7 +64,7 @@ For custom loading scenarios, import the StudioOverlay component directly and co
 
 ### Tree-Shaking
 
-Studio code automatically eliminates from production bundles through conditional imports. HAI3Provider uses lazy loading with environment checks to ensure zero studio code reaches production.
+Studio code automatically eliminates from production bundles through conditional imports. Gears FrontXProvider uses lazy loading with environment checks to ensure zero studio code reaches production.
 
 ### Bundle Verification
 

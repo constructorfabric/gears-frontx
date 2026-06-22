@@ -46,7 +46,7 @@ const myScreenset: ScreensetDefinition = {
 ## MENU ICON RULES
 - REQUIRED: MenuItem.icon is Iconify string ID (e.g., "lucide:home", "lucide:palette").
 - REQUIRED: Menu.tsx uses Icon component from @iconify/react to render icons.
-- REQUIRED: App logo icons (HAI3LogoIcon) imported directly from @/app/icons/.
+- REQUIRED: App logo icons (Gears FrontXLogoIcon) imported directly from @/app/icons/.
 - FORBIDDEN: React.ComponentType in MenuItem.icon (causes serialization warnings).
 
 ## SELECTOR USAGE

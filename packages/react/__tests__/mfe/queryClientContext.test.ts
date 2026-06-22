@@ -2,10 +2,10 @@ import React from 'react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { act, waitFor } from '@testing-library/react';
 import {
-  createHAI3,
+  createFrontX,
   type ChildMfeBridge,
   type EndpointDescriptor,
-  type HAI3App,
+  type FrontXApp,
   queryCache,
   queryCacheShared,
   resetSharedQueryClient,
@@ -16,9 +16,9 @@ import {
   useQueryCache,
 } from '@gears-frontx/react';
 import {
-  bootstrapHAI3QueryClient,
-  resolveHAI3QueryClient,
-  useOptionalHAI3QueryClient,
+  bootstrapFrontXQueryClient,
+  resolveFrontXQueryClient,
+  useOptionalFrontXQueryClient,
 } from '@gears-frontx/react/testing';
 
 afterEach(() => {
@@ -26,8 +26,8 @@ afterEach(() => {
 });
 
 /** Minimal real app: failure-path test only needs an app without shared QueryClient wiring. */
-function createMinimalHai3App(): HAI3App {
-  return createHAI3().build();
+function createMinimalHai3App(): FrontXApp {
+  return createFrontX().build();
 }
 
 function makeScreenMountBridgeStub(): ChildMfeBridge {
@@ -48,7 +48,7 @@ function QueryCacheProbe({ onRender }: { onRender: (value: unknown) => void }) {
 }
 
 function OptionalQueryClientProbe({ onRender }: { onRender: (value: unknown) => void }) {
-  const queryClient = useOptionalHAI3QueryClient();
+  const queryClient = useOptionalFrontXQueryClient();
   onRender(queryClient?.getQueryData(['probe']));
   return null;
 }
@@ -72,7 +72,7 @@ function ApiQueryLateJoinProbe({
 
 class TestLifecycle extends ThemeAwareReactLifecycle {
   constructor(
-    app: HAI3App,
+    app: FrontXApp,
     private readonly onRender: (value: unknown) => void
   ) {
     super(app);
@@ -85,7 +85,7 @@ class TestLifecycle extends ThemeAwareReactLifecycle {
 
 class OptionalQueryClientLifecycle extends ThemeAwareReactLifecycle {
   constructor(
-    app: HAI3App,
+    app: FrontXApp,
     private readonly onRender: (value: unknown) => void
   ) {
     super(app);
@@ -98,7 +98,7 @@ class OptionalQueryClientLifecycle extends ThemeAwareReactLifecycle {
 
 class ApiQueryLateJoinLifecycle extends ThemeAwareReactLifecycle {
   constructor(
-    app: HAI3App,
+    app: FrontXApp,
     private readonly onRender: (r: { data: unknown; isLoading: boolean }) => void
   ) {
     super(app);
@@ -111,9 +111,9 @@ class ApiQueryLateJoinLifecycle extends ThemeAwareReactLifecycle {
 
 describe('MFE shared QueryClient join', () => {
   it('resolves the shared QueryClient at mount when the child app built before the host', async () => {
-    const childApp = createHAI3().use(queryCacheShared()).build();
-    const hostApp = createHAI3().use(queryCache()).build();
-    const hostClient = resolveHAI3QueryClient(hostApp);
+    const childApp = createFrontX().use(queryCacheShared()).build();
+    const hostApp = createFrontX().use(queryCache()).build();
+    const hostClient = resolveFrontXQueryClient(hostApp);
     if (!hostClient) {
       throw new Error('expected host query client');
     }
@@ -148,14 +148,14 @@ describe('MFE shared QueryClient join', () => {
   });
 
   it('keeps the joined QueryClient readable after immediate host app teardown following mount', async () => {
-    const hostApp = createHAI3().use(queryCache()).build();
-    const hostClient = resolveHAI3QueryClient(hostApp);
+    const hostApp = createFrontX().use(queryCache()).build();
+    const hostClient = resolveFrontXQueryClient(hostApp);
     if (!hostClient) {
       throw new Error('expected host query client');
     }
     hostClient.setQueryData(['probe'], 'shared-query-client');
 
-    const childApp = createHAI3().use(queryCacheShared()).build();
+    const childApp = createFrontX().use(queryCacheShared()).build();
 
     let observedValue: unknown;
     const lifecycle = new TestLifecycle(childApp, (value) => {
@@ -189,8 +189,8 @@ describe('MFE shared QueryClient join', () => {
   });
 
   it('reads the app QueryClient through the first React commit', async () => {
-    const app = createHAI3().use(queryCache()).build();
-    const sharedClient = resolveHAI3QueryClient(app);
+    const app = createFrontX().use(queryCache()).build();
+    const sharedClient = resolveFrontXQueryClient(app);
     if (!sharedClient) {
       throw new Error('expected app query client');
     }
@@ -227,23 +227,23 @@ describe('MFE shared QueryClient join', () => {
   });
 
   it('does not activate queryCacheShared() from render bootstrap', async () => {
-    const childApp = createHAI3().use(queryCacheShared()).build();
-    const hostApp = createHAI3().use(queryCache()).build();
+    const childApp = createFrontX().use(queryCacheShared()).build();
+    const hostApp = createFrontX().use(queryCache()).build();
 
-    expect(bootstrapHAI3QueryClient(childApp)).toBeUndefined();
-    expect(resolveHAI3QueryClient(childApp)).toBeUndefined();
+    expect(bootstrapFrontXQueryClient(childApp)).toBeUndefined();
+    expect(resolveFrontXQueryClient(childApp)).toBeUndefined();
 
     act(() => {
       hostApp.destroy();
     });
 
-    expect(bootstrapHAI3QueryClient(childApp)).toBeUndefined();
+    expect(bootstrapFrontXQueryClient(childApp)).toBeUndefined();
 
     childApp.destroy();
   });
 
   it('useApiQuery resolves after the host runtime appears when the MFE mounted first', async () => {
-    const childApp = createHAI3().use(queryCacheShared()).build();
+    const childApp = createFrontX().use(queryCacheShared()).build();
 
     let last: { data: unknown; isLoading: boolean } | undefined;
     const lifecycle = new ApiQueryLateJoinLifecycle(childApp, (r) => {
@@ -264,9 +264,9 @@ describe('MFE shared QueryClient join', () => {
 
     expect(last).toBeUndefined();
 
-    let hostApp!: HAI3App;
+    let hostApp!: FrontXApp;
     await act(async () => {
-      hostApp = createHAI3().use(queryCache()).build();
+      hostApp = createFrontX().use(queryCache()).build();
     });
 
     await waitFor(() => {
@@ -282,7 +282,7 @@ describe('MFE shared QueryClient join', () => {
   });
 
   it('waits for the host runtime when it appears after the mounted MFE renders', async () => {
-    const childApp = createHAI3().use(queryCacheShared()).build();
+    const childApp = createFrontX().use(queryCacheShared()).build();
 
     let observedValue: unknown = 'initial';
     const lifecycle = new OptionalQueryClientLifecycle(childApp, (value) => {
@@ -301,14 +301,14 @@ describe('MFE shared QueryClient join', () => {
       );
     });
 
-    // HAI3Provider defers the subtree until the shared client joins, so the probe
+    // FrontXProvider defers the subtree until the shared client joins, so the probe
     // does not mount (and does not observe undefined) until the host exists.
     expect(observedValue).toBe('initial');
 
-    let hostApp!: HAI3App;
+    let hostApp!: FrontXApp;
     await act(async () => {
-      hostApp = createHAI3().use(queryCache()).build();
-      const hostClient = resolveHAI3QueryClient(hostApp);
+      hostApp = createFrontX().use(queryCache()).build();
+      const hostClient = resolveFrontXQueryClient(hostApp);
       if (!hostClient) {
         throw new Error('expected host query client');
       }
@@ -344,7 +344,7 @@ describe('MFE shared QueryClient join', () => {
           );
         });
       }).toThrow(
-        '[HAI3Provider] Mounted MFEs require queryCacheShared() in the child app and queryCache() in the host app before loading the MFE app.'
+        '[FrontXProvider] Mounted MFEs require queryCacheShared() in the child app and queryCache() in the host app before loading the MFE app.'
       );
     } finally {
       minimalApp.destroy();

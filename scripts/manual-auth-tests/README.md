@@ -35,7 +35,7 @@ node scripts/manual-auth-tests/abort.mjs
 ```ts
 use(auth({
   provider,
-  hai3Api: {
+  frontxApi: {
     allowedCookieOrigins: ['http://localhost:4010'],
     csrfHeaderName: 'x-csrf-token',
   },

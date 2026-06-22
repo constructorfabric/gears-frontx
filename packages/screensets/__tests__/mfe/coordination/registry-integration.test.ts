@@ -12,49 +12,49 @@ import { WeakMapRuntimeCoordinator } from '../../../src/mfe/coordination/weak-ma
 import type { RuntimeConnection, RuntimeCoordinator } from '../../../src/mfe/coordination/types';
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
 import type { Extension, ExtensionDomain, MfeEntry } from '../../../src/mfe/types';
 import { MockDomainFactory, createMockTypeSystemPlugin, makeMfeHandlerDouble } from '../../../__test-utils__';
 
 const toggleDomain: ExtensionDomain = {
-  id: 'gts.hai3.mfes.ext.domain.v1~test.coordinator.integration.domain.v1',
+  id: 'gts.frontx.mfes.ext.domain.v1~test.coordinator.integration.domain.v1',
   sharedProperties: [],
   actions: [
-    HAI3_ACTION_LOAD_EXT,
-    HAI3_ACTION_MOUNT_EXT,
-    HAI3_ACTION_UNMOUNT_EXT,
+    FRONTX_ACTION_LOAD_EXT,
+    FRONTX_ACTION_MOUNT_EXT,
+    FRONTX_ACTION_UNMOUNT_EXT,
   ],
   extensionsActions: [],
   defaultActionTimeout: 5000,
   lifecycleStages: [
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
   ],
   extensionsLifecycleStages: [
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
   ],
 };
 
 const testEntry: MfeEntry = {
-  id: 'gts.hai3.mfes.mfe.entry.v1~test.coordinator.integration.entry.v1',
+  id: 'gts.frontx.mfes.mfe.entry.v1~test.coordinator.integration.entry.v1',
   requiredProperties: [],
   optionalProperties: [],
   actions: [],
   domainActions: [
-    HAI3_ACTION_LOAD_EXT,
-    HAI3_ACTION_MOUNT_EXT,
-    HAI3_ACTION_UNMOUNT_EXT,
+    FRONTX_ACTION_LOAD_EXT,
+    FRONTX_ACTION_MOUNT_EXT,
+    FRONTX_ACTION_UNMOUNT_EXT,
   ],
 };
 
 const testExtension: Extension = {
-  id: 'gts.hai3.mfes.ext.extension.v1~test.coordinator.integration.extension.v1',
+  id: 'gts.frontx.mfes.ext.extension.v1~test.coordinator.integration.extension.v1',
   domain: toggleDomain.id,
   entry: testEntry.id,
 };
@@ -81,7 +81,7 @@ describe('Runtime Coordinator Integration - Task 8.4.8', () => {
         typeSystem,
         mfeHandlers: [
           makeMfeHandlerDouble({
-            handledBaseTypeId: 'gts.hai3.mfes.mfe.entry.v1~',
+            handledBaseTypeId: 'gts.frontx.mfes.mfe.entry.v1~',
             priority: 100,
           }),
         ],
@@ -96,7 +96,7 @@ describe('Runtime Coordinator Integration - Task 8.4.8', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: toggleDomain.id,
           payload: { subject: testExtension.id },
         },
@@ -112,7 +112,7 @@ describe('Runtime Coordinator Integration - Task 8.4.8', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_UNMOUNT_EXT,
+          type: FRONTX_ACTION_UNMOUNT_EXT,
           target: toggleDomain.id,
           payload: { subject: testExtension.id },
         },
@@ -131,7 +131,7 @@ describe('Runtime Coordinator Integration - Task 8.4.8', () => {
 
       // Verify no global pollution
       const globalObj = globalThis as Record<string, unknown>;
-      expect(globalObj.__hai3_runtime_connections).toBeUndefined();
+      expect(globalObj.__frontx_runtime_connections).toBeUndefined();
       expect(globalObj.__mfe_registry).toBeUndefined();
       expect(globalObj.__screensets_coordinator).toBeUndefined();
     });

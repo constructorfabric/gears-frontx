@@ -264,7 +264,7 @@ This is a manual developer process using the external shadcn CLI — not impleme
 4. [x] - `p1` - **IF** UI kit type is `third-party`: the UIKit bridge file is responsible for mapping shadcn CSS variable values to the third-party library's theming API (e.g., MUI `createTheme`, Ant Design `ConfigProvider`) — this mapping is defined in the bridge template - `inst-theme-propagation-4`
 5. [x] - `p1` - **IF** UI kit type is `none`: the MFE developer is responsible for consuming the CSS variables in custom components; the scaffolded `uikit/` directory includes a `theme.css` file with variable forwarding - `inst-theme-propagation-5`
 6. [x] - `p1` - Theme token changes propagate to all UI kit types through the CSS cascade without requiring re-initialization - `inst-theme-propagation-6` <!-- N/A for CLI: inherent CSS cascade behavior -->
-7. [x] - `p1` - Build the `adapter.ts` content for unknown UI libraries: assembles `hai3Themes` export with `ThemeConfig[]` entries containing inline HSL variable values for default light and dark themes - `inst-theme-adapter-build`
+7. [x] - `p1` - Build the `adapter.ts` content for unknown UI libraries: assembles `frontxThemes` export with `ThemeConfig[]` entries containing inline HSL variable values for default light and dark themes - `inst-theme-adapter-build`
 8. [x] - `p1` - Generate `globals.css` for custom UI kit projects: **IF** bridge is a known css-alias bridge filter CSS `@import` lines that resolve to missing files, then prepend remaining imports and a `./themes/bridge.css` import; **IF** bridge is unknown generate generic `:root` CSS variables with fallback HSL values - `inst-theme-custom-globals-css`
 
 ---

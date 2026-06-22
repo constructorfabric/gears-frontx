@@ -160,7 +160,7 @@ Success criteria: A developer runs `frontx create my-app`, selects or passes a s
 2. [x] - `p1` - **IF** not inside a FrontX project root **RETURN** validation error `NOT_IN_PROJECT` - `inst-check-project-root-ai-sync`
 3. [x] - `p1` - **IF** `.ai/` directory does not exist **AND** not in `--diff` mode **THEN** create minimal `.ai/GUIDELINES.md` stub - `inst-create-ai-dir`
 4. [x] - `p1` - Read user custom rules from `.ai/rules/app.md` if the file exists - `inst-read-user-rules`
-5. [x] - `p1` - **IF** `--detect-packages` is set **THEN** scan `node_modules/@gears-frontx/*/commands/*.md` for package command files, skipping `hai3dev-*` prefixed files - `inst-scan-package-commands`
+5. [x] - `p1` - **IF** `--detect-packages` is set **THEN** scan `node_modules/@gears-frontx/*/commands/*.md` for package command files, skipping `frontxdev-*` prefixed files - `inst-scan-package-commands`
 6. [x] - `p1` - **FOR EACH** target tool in resolved tool list: generate tool-specific configuration files using `cpt-frontx-algo-cli-tooling-generate-ai-config` - `inst-generate-per-tool`
 7. [x] - `p1` - **IF** `--diff` is set **THEN** print file-level diff summary to logger and **RETURN** without writing files - `inst-diff-mode`
 8. [x] - `p1` - Write generated configuration files to the project root - `inst-write-ai-configs`
@@ -188,7 +188,7 @@ Success criteria: A developer runs `frontx create my-app`, selects or passes a s
 
 1. [x] - `p2` - Developer invokes `frontx migrate [targetVersion]` with optional flags (`--dry-run`, `--list`, `--status`, `--path`, `--include`, `--exclude`) - `inst-invoke-migrate`
 2. [x] - `p2` - **IF** `--list` is set **THEN** print all registered migrations and **RETURN** - `inst-handle-list`
-3. [x] - `p2` - **IF** `--status` is set **THEN** load `.hai3/migrations.json` and print applied and pending migrations, **RETURN** - `inst-handle-status`
+3. [x] - `p2` - **IF** `--status` is set **THEN** load `.frontx/migrations.json` and print applied and pending migrations, **RETURN** - `inst-handle-status`
 4. [x] - `p2` - Algorithm: resolve pending migrations using `cpt-frontx-algo-cli-tooling-resolve-pending-migrations` - `inst-run-resolve-pending`
 5. [x] - `p2` - **IF** `--dry-run` is set **THEN** preview each pending migration via `previewMigration()` and print report without writing files - `inst-dry-run-preview`
 6. [x] - `p2` - **IF** not dry-run **THEN** apply each pending migration in version order using `cpt-frontx-algo-cli-tooling-apply-migration`; stop on first failure - `inst-apply-migrations`
@@ -266,7 +266,7 @@ Constructs the complete set of `GeneratedFile` entries for a new FrontX project 
 11. [x] - `p1` - Copy user command stubs from `templates/.ai/commands/user/`
 12. [x] - `p1` - Copy `eslint-plugin-local/` and `scripts/` directories; **IF** `uikit === 'none'` exclude `scripts/generate-colors.ts`
 13. [x] - `p1` - Copy root config files: `CLAUDE.md`, `README.md`, `eslint.config.js`, `tsconfig.json`, `vite.config.ts`, `.dependency-cruiser.cjs`, `.pre-commit-config.yaml`, `.npmrc`, `.nvmrc`; **IF** `uikit === 'shadcn'` also include `postcss.config.js`
-14. [x] - `p1` - Generate `frontx.config.json` dynamically with `{ hai3: true, layer, uikit, packageManager }`; include `linkerMode: "node-modules"` when the selected manager is `yarn`
+14. [x] - `p1` - Generate `frontx.config.json` dynamically with `{ frontx: true, layer, uikit, packageManager }`; include `linkerMode: "node-modules"` when the selected manager is `yarn`
 15. [x] - `p1` - Generate `package.json` dynamically with resolved dependencies: always include core `@gears-frontx/*` packages at `alpha` tag; include `@gears-frontx/studio` in devDependencies only if `studio === true`; set manager-specific `packageManager`, centralized manager-specific `engines`, and `workspaces: ["eslint-plugin-local"]`
 16. [x] - `p1` - Generate manager-specific workspace/config files (`pnpm-workspace.yaml` for pnpm, `.yarnrc.yml` for yarn)
 17. [x] - `p1` - Rewrite npm-centric command snippets in generated text files to manager-specific commands using `cpt-frontx-algo-cli-tooling-package-manager-policy`
@@ -331,8 +331,8 @@ Generates the IDE/AI-tool-specific configuration file and command adapter files 
 
 1. [x] - `p1` - For `claude`: write `CLAUDE.md` with a reference to `.ai/GUIDELINES.md`; append user rules section if `.ai/rules/app.md` exists; generate command adapter files in `.claude/commands/` using `cpt-frontx-algo-cli-tooling-generate-command-adapters` - `inst-generate-claude`
 2. [x] - `p1` - For `copilot`: write `.github/copilot-instructions.md` with architecture quick-reference and available commands section; append user rules if present; generate command adapters in `.github/copilot-commands/` - `inst-generate-copilot`
-3. [x] - `p1` - For `cursor`: write `.cursor/rules/hai3.mdc` with frontmatter `alwaysApply: true`; append user rules if present; generate command adapters in `.cursor/commands/` - `inst-generate-cursor`
-4. [x] - `p1` - For `windsurf`: write `.windsurf/rules/hai3.md` with frontmatter `trigger: always_on`; append user rules if present; generate workflow adapters in `.windsurf/workflows/` - `inst-generate-windsurf`
+3. [x] - `p1` - For `cursor`: write `.cursor/rules/frontx.mdc` with frontmatter `alwaysApply: true`; append user rules if present; generate command adapters in `.cursor/commands/` - `inst-generate-cursor`
+4. [x] - `p1` - For `windsurf`: write `.windsurf/rules/frontx.md` with frontmatter `trigger: always_on`; append user rules if present; generate workflow adapters in `.windsurf/workflows/` - `inst-generate-windsurf`
 5. [x] - `p1` - **RETURN** `{ file: string, changed: boolean }` for the primary configuration file - `inst-return-ai-config`
 
 ### Generate Command Adapters
@@ -341,10 +341,10 @@ Generates the IDE/AI-tool-specific configuration file and command adapter files 
 
 Writes adapter stub files for each discovered command into the target IDE commands directory. Implements a four-tier precedence hierarchy so project-level overrides take priority over framework defaults.
 
-1. [x] - `p1` - Scan command files from four sources: `frontx` level (`.ai/commands/`), `company` level (`.ai/company/commands/`), `project` level (`.ai/project/commands/`), and package level (from installed `@gears-frontx/*` packages); skip filenames with `hai3dev-` prefix - `inst-scan-four-tiers`
+1. [x] - `p1` - Scan command files from four sources: `frontx` level (`.ai/commands/`), `company` level (`.ai/company/commands/`), `project` level (`.ai/project/commands/`), and package level (from installed `@gears-frontx/*` packages); skip filenames with `frontxdev-` prefix - `inst-scan-four-tiers`
 2. [x] - `p1` - Collect the union of all unique command base names across all tiers - `inst-collect-command-names`
-3. [x] - `p1` - **FOR EACH** command base name: resolve the source file by checking tiers in order `project → company → hai3 → package`; use the first match found - `inst-resolve-precedence`
-4. [x] - `p1` - Extract the command description from the resolved source file by matching the pattern `# hai3:<name> - <description>`; fall back to a name-derived description if the pattern is absent - `inst-extract-description`
+3. [x] - `p1` - **FOR EACH** command base name: resolve the source file by checking tiers in order `project → company → frontx → package`; use the first match found - `inst-resolve-precedence`
+4. [x] - `p1` - Extract the command description from the resolved source file by matching the pattern `# frontx:<name> - <description>`; fall back to a name-derived description if the pattern is absent - `inst-extract-description`
 5. [x] - `p1` - Write an adapter file to the target directory with the description as frontmatter and a single line referencing the canonical `.ai/` path - `inst-write-adapter`
 6. [x] - `p1` - **RETURN** the count of adapter files written - `inst-return-adapter-count`
 
@@ -367,7 +367,7 @@ Inspects TypeScript and TSX source files for four categories of architectural vi
 
 Determines which registered migrations have not yet been applied to the project.
 
-1. [x] - `p2` - Load `.hai3/migrations.json` from the target path; **IF** file does not exist treat applied list as empty - `inst-load-tracker`
+1. [x] - `p2` - Load `.frontx/migrations.json` from the target path; **IF** file does not exist treat applied list as empty - `inst-load-tracker`
 2. [x] - `p2` - Collect all migration IDs in the loaded tracker's `applied` list - `inst-collect-applied-ids`
 3. [x] - `p2` - **FOR EACH** migration in the global `getMigrations()` registry: **IF** its ID is not in applied IDs, add it to the pending list - `inst-filter-pending`
 4. [x] - `p2` - **IF** `targetVersion` is specified, exclude pending migrations whose `version` is greater than `targetVersion` - `inst-filter-by-target-version`
@@ -384,7 +384,7 @@ Applies a single versioned migration to the target project using ts-morph AST tr
 2. [x] - `p2` - Initialise a ts-morph `Project` with `allowJs: true` and `noEmit: true`; add source files matching the include glob patterns relative to target path; exclude files matching the exclude patterns - `inst-init-ts-morph`
 3. [x] - `p2` - **FOR EACH** source file: **FOR EACH** transform in migration.transforms: **IF** `transform.canApply(sourceFile)` is true **THEN** call `transform.apply(sourceFile)` and accumulate changes, warnings, and errors - `inst-apply-transforms`
 4. [x] - `p2` - Call `project.save()` to flush all modified source files to disk - `inst-save-project`
-5. [x] - `p2` - Update `.hai3/migrations.json` tracker by appending a new `AppliedMigration` record with migration ID, timestamp, files modified count, and per-transform statistics - `inst-update-tracker`
+5. [x] - `p2` - Update `.frontx/migrations.json` tracker by appending a new `AppliedMigration` record with migration ID, timestamp, files modified count, and per-transform statistics - `inst-update-tracker`
 6. [x] - `p2` - **RETURN** `MigrationResult` with success flag, counts, per-file details, warnings, and errors - `inst-return-migration-result`
 
 ### Build CLI Templates at Build Time
@@ -399,7 +399,7 @@ The `copy-templates.ts` script assembles the complete templates directory inside
 4. [x] - `p1` - Copy GUIDELINES variants (`.sdk.md`, `.framework.md`, `.md`) into `templates/.ai/` - `inst-copy-guidelines-variants`
 5. [x] - `p1` - Bundle command files from `.ai/commands/` into `templates/commands-bundle/` with layer suffixes preserved (`.sdk.md`, `.framework.md`, `.react.md`, `.md`) - `inst-bundle-commands`
 6. [x] - `p1` - Copy IDE adapter directories (`.claude/`, `.cursor/`, `.windsurf/`) into templates - `inst-copy-ide-adapters`
-7. [x] - `p1` - Generate IDE rules files for supported tools (`CLAUDE.md`, `.cursor/rules/hai3.mdc`, `.windsurf/rules/hai3.md`, `.github/copilot-instructions.md`)
+7. [x] - `p1` - Generate IDE rules files for supported tools (`CLAUDE.md`, `.cursor/rules/frontx.mdc`, `.windsurf/rules/frontx.md`, `.github/copilot-instructions.md`)
 8. [x] - `p1` - Log generated adapter and bundled-command counts for traceability during template assembly
 
 ### Execute E2E Harness Step
@@ -440,9 +440,9 @@ Represents the runtime state of any CLI command from invocation through completi
 
 - [x] `p2` - **ID**: `cpt-frontx-state-cli-tooling-migration-tracker`
 
-Tracks which migrations have been applied to a project, persisted in `.hai3/migrations.json`.
+Tracks which migrations have been applied to a project, persisted in `.frontx/migrations.json`.
 
-1. [x] - `p2` - **FROM** ABSENT **TO** EMPTY **WHEN** `.hai3/migrations.json` is read but does not exist — in-memory tracker initialised with `{ version: '1.0.0', applied: [] }` - `inst-tracker-init`
+1. [x] - `p2` - **FROM** ABSENT **TO** EMPTY **WHEN** `.frontx/migrations.json` is read but does not exist — in-memory tracker initialised with `{ version: '1.0.0', applied: [] }` - `inst-tracker-init`
 2. [x] - `p2` - **FROM** EMPTY **TO** HAS_APPLIED **WHEN** a migration result is saved with at least one modified file — tracker `applied` list gains one entry - `inst-tracker-first-entry`
 3. [x] - `p2` - **FROM** HAS_APPLIED **TO** HAS_APPLIED **WHEN** another migration is applied — new entry appended to `applied` list - `inst-tracker-append-entry`
 4. [x] - `p2` - **FROM** any state **TO** same state with NO_OP **WHEN** a migration already present in `applied` is re-submitted — runner logs a warning and returns a failed result without modifying the tracker - `inst-tracker-idempotent`
@@ -458,7 +458,7 @@ Tracks which migrations have been applied to a project, persisted in `.hai3/migr
 `@gears-frontx/cli` is published as a workspace package with a `frontx` binary entry point. The package supports ESM environments (Node.js 18+) and exposes a dual programmatic API via `api.ts` for use by AI agents without interactive prompts.
 
 **Implementation details**:
-- Package: `packages/cli/package.json` — `name: @gears-frontx/cli`, `type: module`, `bin: { hai3: ./dist/index.js }`, `engines: { node: ">=18" }`
+- Package: `packages/cli/package.json` — `name: @gears-frontx/cli`, `type: module`, `bin: { frontx: ./dist/index.js }`, `engines: { node: ">=18" }`
 - Entry: `src/index.ts` — Commander.js program with all commands registered
 - Programmatic API: `src/api.ts` — exports `executeCommand`, `buildCommandContext`, `registry`, core types, `createCommand`, `updateCommand`, generator functions, and utility functions
 - Build: `tsup.config.ts` — ESM primary output; dual CJS/ESM exports for `api.ts`
@@ -512,7 +512,7 @@ The `copy-templates.ts` build script assembles the full template set into `packa
 - Layer package generator: `src/generators/layerPackage.ts` — `generateLayerPackage({ packageName, layer })`
 - Package manager policy: `src/core/packageManager.ts` — centralized exact/default PM versions, minimum engine ranges, command builders, workspace-file helpers, and npm-snippet transformation
 - Templates dir: `src/core/templates.ts` — `getTemplatesDir()` resolves to `packages/cli/templates/` from the installed package location
-- IDE rule outputs: `CLAUDE.md`, `.cursor/rules/hai3.mdc`, `.windsurf/rules/hai3.md`, and `.github/copilot-instructions.md`
+- IDE rule outputs: `CLAUDE.md`, `.cursor/rules/frontx.mdc`, `.windsurf/rules/frontx.md`, and `.github/copilot-instructions.md`
 
 **Implements**:
 - `cpt-frontx-algo-cli-tooling-generate-project`
@@ -551,11 +551,11 @@ The `copy-templates.ts` build script assembles the full template set into `packa
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-cli-tooling-ai-sync`
 
-`aiSyncCommand` generates IDE-specific rule files and command adapter stubs for Claude Code, GitHub Copilot, Cursor, and Windsurf. Supports four-tier command precedence (project > company > hai3 > packages). Preserves user custom rules from `.ai/rules/app.md` across syncs. Supports `--diff` preview mode. Emits package-manager-aware architecture-check command hints in generated tool instructions.
+`aiSyncCommand` generates IDE-specific rule files and command adapter stubs for Claude Code, GitHub Copilot, Cursor, and Windsurf. Supports four-tier command precedence (project > company > frontx > packages). Preserves user custom rules from `.ai/rules/app.md` across syncs. Supports `--diff` preview mode. Emits package-manager-aware architecture-check command hints in generated tool instructions.
 
 **Implementation details**:
 - Command: `src/commands/ai/sync.ts` — `aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult>`
-- Tool outputs: `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/hai3.mdc`, `.windsurf/rules/hai3.md`
+- Tool outputs: `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/frontx.mdc`, `.windsurf/rules/frontx.md`
 - Command adapters written to: `.claude/commands/`, `.github/copilot-commands/`, `.cursor/commands/`, `.windsurf/workflows/`
 - Package scanning: reads `node_modules/@gears-frontx/*/commands/*.md` when `--detect-packages` is set
 
@@ -597,13 +597,13 @@ The `copy-templates.ts` build script assembles the full template set into `packa
 
 - [x] `p2` - **ID**: `cpt-frontx-dod-cli-tooling-migrations`
 
-`migrateCommand` applies versioned codemods using ts-morph AST transforms. Migrations are idempotent — a migration already recorded in `.hai3/migrations.json` is skipped. Supports dry-run mode, status listing, version-targeted runs, and configurable glob patterns.
+`migrateCommand` applies versioned codemods using ts-morph AST transforms. Migrations are idempotent — a migration already recorded in `.frontx/migrations.json` is skipped. Supports dry-run mode, status listing, version-targeted runs, and configurable glob patterns.
 
 **Implementation details**:
 - Command: `src/commands/migrate/index.ts` — `migrateCommand: CommandDefinition<MigrateCommandArgs, MigrationResult[]>`
 - Runner: `src/migrations/runner.ts` — `runMigrations()`, `applyMigration()`, `previewMigration()`, `getMigrationStatus()`
 - Registry: `src/migrations/registry.ts` — `getMigrations()` returns all registered `Migration` objects
-- Tracker: `.hai3/migrations.json` — `MigrationTracker` schema with `version: '1.0.0'` and `applied: AppliedMigration[]`
+- Tracker: `.frontx/migrations.json` — `MigrationTracker` schema with `version: '1.0.0'` and `applied: AppliedMigration[]`
 - Bundled migrations: `src/migrations/0.2.0/` — three transforms: uicore-to-react import rewrites, uikit-contracts-to-uikit rewrites, module augmentation updates
 - Types: `src/migrations/types.ts` — `Migration`, `Transform`, `MigrationResult`, `MigrationTracker`, `AppliedMigration`
 
@@ -673,15 +673,15 @@ A non-required nightly/manual GitHub Actions workflow covers broader CLI scenari
 - [x] `frontx create my-app --package-manager <npm|pnpm|yarn>` records the selected manager in generated metadata, emits manager-specific next-step commands, and generates required workspace/config files for the selected manager
 - [x] `frontx create my-sdk --layer sdk` generates a minimal SDK-layer package with only sdk-applicable target files and command variants
 - [x] `frontx scaffold layout` writes layout components to `src/app/layout/` inside an existing project; skips existing files unless `--force` is passed
-- [x] `frontx ai sync` regenerates `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/hai3.mdc`, `.windsurf/rules/hai3.md`, and command adapters; preserves `.ai/rules/app.md` content across runs
+- [x] `frontx ai sync` regenerates `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/frontx.mdc`, `.windsurf/rules/frontx.md`, and command adapters; preserves `.ai/rules/app.md` content across runs
 - [x] `frontx ai sync --diff` prints a change summary without writing files
 - [x] `frontx validate components` exits with code 0 when no violations are found and code 1 when any `error`-severity violation is present
-- [x] `frontx migrate --dry-run` previews changes without modifying source files and without updating `.hai3/migrations.json`
+- [x] `frontx migrate --dry-run` previews changes without modifying source files and without updating `.frontx/migrations.json`
 - [x] `frontx migrate` is idempotent: running it twice does not re-apply an already applied migration
 - [x] `frontx update --alpha` and `frontx update --stable` cannot be combined; the command exits with `CONFLICTING_OPTIONS` when both flags are present
 - [x] `frontx update` auto-detects the current release channel from the currently running CLI package version, not from an npm-specific global listing
 - [x] Template-derived docs and scripts emitted by `frontx create` or `frontx update --templates-only` contain concrete manager-specific commands for npm, pnpm, and yarn
-- [x] CLI build generates IDE rules files (`CLAUDE.md`, `.cursor/rules/hai3.mdc`, `.windsurf/rules/hai3.md`, `.github/copilot-instructions.md`) and command adapters in `packages/cli/templates/`
+- [x] CLI build generates IDE rules files (`CLAUDE.md`, `.cursor/rules/frontx.mdc`, `.windsurf/rules/frontx.md`, `.github/copilot-instructions.md`) and command adapters in `packages/cli/templates/`
 - [x] `executeCommand(createCommand, args, { interactive: false, answers })` returns `{ success: true, data }` without prompts — programmatic API is fully functional
 - [x] `selectCommandVariant` returns `null` for any command that has no applicable variant for the given layer, ensuring layer packages do not receive irrelevant commands
 - [x] `.github/workflows/cli-pr.yml` defines required job `cli-pr-e2e` on `ubuntu-latest` with Node 24.14.x; runs a matrix across `npm`, `pnpm`, and `yarn`; exercises create, git init, manager-specific install, build, type-check, validate positive + negative, scaffold layout, and ai sync

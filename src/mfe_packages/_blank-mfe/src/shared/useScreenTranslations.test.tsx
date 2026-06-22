@@ -1,7 +1,7 @@
 // @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-blank-mfe-tests:p1
 import { act, renderHook, waitFor } from '@testing-library/react';
 import {
-  HAI3_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
   type ChildMfeBridge,
   type SharedProperty,
 } from '@gears-frontx/react';
@@ -19,7 +19,7 @@ function makeBridge(language: string): ChildMfeBridge {
     domainId: 'test-domain',
     instanceId: 'test-instance',
     getProperty: vi.fn(() => ({
-      id: HAI3_SHARED_PROPERTY_LANGUAGE,
+      id: FRONTX_SHARED_PROPERTY_LANGUAGE,
       value: language,
     })),
     subscribeToProperty: vi.fn(() => vi.fn()),
@@ -91,7 +91,7 @@ describe('useScreenTranslations', () => {
       domainId: 'test-domain',
       instanceId: 'test-instance',
       getProperty: vi.fn(() => ({
-        id: HAI3_SHARED_PROPERTY_LANGUAGE,
+        id: FRONTX_SHARED_PROPERTY_LANGUAGE,
         value: 'en',
       })),
       subscribeToProperty: vi.fn(
@@ -115,7 +115,7 @@ describe('useScreenTranslations', () => {
 
     await act(async () => {
       subscriptionCallback?.({
-        id: HAI3_SHARED_PROPERTY_LANGUAGE,
+        id: FRONTX_SHARED_PROPERTY_LANGUAGE,
         value: 'fr',
       });
     });
@@ -131,7 +131,7 @@ describe('useScreenTranslations', () => {
     // Repeating the same language should not trigger another import.
     await act(async () => {
       subscriptionCallback?.({
-        id: HAI3_SHARED_PROPERTY_LANGUAGE,
+        id: FRONTX_SHARED_PROPERTY_LANGUAGE,
         value: 'fr',
       });
     });
@@ -147,7 +147,7 @@ describe('useScreenTranslations', () => {
       domainId: 'test-domain',
       instanceId: 'test-instance',
       getProperty: vi.fn(() => ({
-        id: HAI3_SHARED_PROPERTY_LANGUAGE,
+        id: FRONTX_SHARED_PROPERTY_LANGUAGE,
         value: 'en',
       })),
       subscribeToProperty: vi.fn(() => unsubscribe),

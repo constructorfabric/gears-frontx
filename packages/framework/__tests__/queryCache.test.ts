@@ -23,7 +23,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { QueryClient } from '@tanstack/query-core';
 import { getSharedFetchCache, resetSharedFetchCache } from '@gears-frontx/api';
-import { createHAI3 } from '../src/createHAI3';
+import { createFrontX } from '../src/createFrontX';
 import { queryCache, queryCacheShared } from '../src/plugins/queryCache';
 import {
   resetSharedQueryClient,
@@ -36,7 +36,7 @@ import {
 } from '../src/testing';
 import { eventBus, resetStore } from '@gears-frontx/state';
 import { MockEvents } from '../src/effects/mockEffects';
-import type { HAI3App, HAI3Plugin } from '../src/types';
+import type { FrontXApp, FrontXPlugin } from '../src/types';
 
 // ============================================================================
 // Test helpers
@@ -46,8 +46,8 @@ import type { HAI3App, HAI3Plugin } from '../src/types';
  * Real minimal app from the builder — queryCache onInit/onDestroy only attach
  * symbol metadata; no package plugins are registered.
  */
-function stubApp(): HAI3App {
-  return createHAI3().build();
+function stubApp(): FrontXApp {
+  return createFrontX().build();
 }
 
 /**
@@ -170,7 +170,7 @@ afterEach(() => {
 
 describe('queryCache() — plugin shape', () => {
   it('returns an object with name "queryCache"', () => {
-    const plugin: HAI3Plugin = queryCache();
+    const plugin: FrontXPlugin = queryCache();
     expect(plugin.name).toBe('queryCache');
   });
 
@@ -222,7 +222,7 @@ describe('queryCache() — plugin shape', () => {
 
   it('queryCacheShared() joins the shared QueryClient', () => {
     const hostPlugin = queryCache();
-    const sharedPlugin: HAI3Plugin = queryCacheShared();
+    const sharedPlugin: FrontXPlugin = queryCacheShared();
 
     expect(sharedPlugin.name).toBe('queryCacheShared');
 
@@ -239,7 +239,7 @@ describe('queryCache() — plugin shape', () => {
 
   it('queryCacheShared() joins a host QueryClient created with custom config', () => {
     const hostPlugin = queryCache({ staleTime: 60_000 });
-    const sharedPlugin: HAI3Plugin = queryCacheShared();
+    const sharedPlugin: FrontXPlugin = queryCacheShared();
 
     hostPlugin.onInit?.(stubApp());
     sharedPlugin.onInit?.(stubApp());
@@ -252,13 +252,13 @@ describe('queryCache() — plugin shape', () => {
   });
 
   it('queryCacheShared() can build before the host runtime and join later', async () => {
-    const childApp = createHAI3().use(queryCacheShared()).build();
+    const childApp = createFrontX().use(queryCacheShared()).build();
 
     expect(peekAppQueryClient(childApp)).toBeUndefined();
     expect(peekAppQueryClientResolver(childApp)?.()).toBeUndefined();
     expect(typeof peekAppQueryClientActivator(childApp)).toBe('function');
 
-    const hostApp = createHAI3().use(queryCache()).build();
+    const hostApp = createFrontX().use(queryCache()).build();
     const sharedClient = peekAppQueryClientActivator(childApp)?.();
 
     const hostClient = peekAppQueryClient(hostApp);
@@ -293,7 +293,7 @@ describe('queryCache() — plugin shape', () => {
     expect(() => {
       conflicting.onInit?.(stubApp());
     }).toThrow(
-      '[HAI3] queryCache() received a config that conflicts with the existing shared QueryClient.'
+      '[Gears FrontX] queryCache() received a config that conflicts with the existing shared QueryClient.'
     );
 
     hostPlugin.onDestroy?.(stubApp());
@@ -301,7 +301,7 @@ describe('queryCache() — plugin shape', () => {
 
   it('builder skips duplicate queryCache() registrations without leaking shared retainers', async () => {
     const firstCache = getSharedFetchCache();
-    const app = createHAI3().use(queryCache()).use(queryCache()).build();
+    const app = createFrontX().use(queryCache()).use(queryCache()).build();
 
     app.destroy();
     await flushQueryCacheClear();
@@ -312,7 +312,7 @@ describe('queryCache() — plugin shape', () => {
 
   it('builder skips duplicate queryCacheShared() registrations without leaking shared retainers', async () => {
     const firstCache = getSharedFetchCache();
-    const app = createHAI3()
+    const app = createFrontX()
       .use(queryCache())
       .use(queryCacheShared())
       .use(queryCacheShared())
@@ -572,7 +572,7 @@ describe('queryCache() — MockEvents.Toggle clears the cache', () => {
       expect(clearSpy).toHaveBeenCalledTimes(1);
       expect(sharedClearSpy).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[HAI3] Failed to clear query cache after mock toggle',
+        '[Gears FrontX] Failed to clear query cache after mock toggle',
         expect.any(Error)
       );
 
@@ -1231,7 +1231,7 @@ describe('queryCache() — onDestroy cleanup', () => {
       expect(cancelQueriesSpy).toHaveBeenCalledTimes(1);
       expect(clearSpy).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[HAI3] Failed to destroy query cache runtime',
+        '[Gears FrontX] Failed to destroy query cache runtime',
         expect.any(Error)
       );
       expect(client.getQueryData(['stale'])).toBeUndefined();

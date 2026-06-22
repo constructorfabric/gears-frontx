@@ -1,6 +1,6 @@
 /**
  * @gears-frontx/api Dependency Cruiser Configuration
- * Extends SDK layer config - enforces zero @hai3 dependencies and no React
+ * Extends SDK layer config - enforces zero @gears-frontx dependencies and no React
  */
 
 const sdkConfig = require('@gears-frontx/depcruise-config/sdk.cjs');

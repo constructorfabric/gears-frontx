@@ -1,7 +1,7 @@
 {
   "name": "@gears-frontx/auth",
   "version": "0.2.0-alpha.0",
-  "description": "Headless authentication contract and types for HAI3 SDK",
+  "description": "Headless authentication contract and types for Gears FrontX SDK",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -37,12 +37,12 @@
     "access": "public"
   },
   "keywords": [
-    "hai3",
+    "frontx",
     "auth",
     "authentication",
     "authorization",
     "typescript"
   ],
-  "author": "HAI3",
+  "author": "Gears FrontX",
   "license": "Apache-2.0"
 }

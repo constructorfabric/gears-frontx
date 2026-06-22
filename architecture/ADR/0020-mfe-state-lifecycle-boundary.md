@@ -32,7 +32,7 @@ decision-makers: FrontX core team
 
 ## Context and Problem Statement
 
-ADR-0004 (`cpt-frontx-adr-blob-url-mfe-isolation`) establishes per-MFE isolation by minting a fresh blob URL per `load()`. That decision is silent on what happens *after* load: the same loaded lifecycle is cached on `extensionState` and reused across `mount() / unmount() / mount()` cycles, so module-scope state (the `HAI3App` instance, plugin registrations, store singletons, registered effects) survives every remount within a session. `MountExtSwapHandler`'s A→B→A path makes this concrete and reproducible — the second mount of A reuses the same module graph and only gets a fresh React tree in a new Shadow DOM container.
+ADR-0004 (`cpt-frontx-adr-blob-url-mfe-isolation`) establishes per-MFE isolation by minting a fresh blob URL per `load()`. That decision is silent on what happens *after* load: the same loaded lifecycle is cached on `extensionState` and reused across `mount() / unmount() / mount()` cycles, so module-scope state (the `Gears FrontXApp` instance, plugin registrations, store singletons, registered effects) survives every remount within a session. `MountExtSwapHandler`'s A→B→A path makes this concrete and reproducible — the second mount of A reuses the same module graph and only gets a fresh React tree in a new Shadow DOM container.
 
 Two product-shaped expectations land on this single mechanism:
 
@@ -80,7 +80,7 @@ This boundary is recorded in `architecture/features/feature-mfe-isolation/FEATUR
 
 * `MfeHandlerMF` and `DefaultMountManager` remain unchanged — no new API for cache clear / blob URL release / fresh-load-on-unmount.
 * MFE entries pair every resource constructed in `mount()` with a teardown in `unmount()`, including: React root, `bridge.subscribeToProperty` returns, `bridge.registerActionHandler` registrations, timers, observers, DOM nodes attached to `container`. Verified by AC-8 (Mount/unmount instance hygiene) in feature-mfe-isolation.
-* No `unmount()` mutates module-level singletons (the `HAI3App` instance, plugin registrations, blob URLs, module-scope caches) — verified by structural acceptance criterion in feature-mfe-isolation.
+* No `unmount()` mutates module-level singletons (the `Gears FrontXApp` instance, plugin registrations, blob URLs, module-scope caches) — verified by structural acceptance criterion in feature-mfe-isolation.
 
 ## Pros and Cons of the Options
 

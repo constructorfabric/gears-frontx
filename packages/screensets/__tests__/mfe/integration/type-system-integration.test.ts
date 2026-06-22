@@ -3,7 +3,7 @@ import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry'
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { TypeSystemPlugin, JSONSchema } from '../../../src/mfe/plugins/types';
 import type { MfeRegistry } from '../../../src/mfe/runtime';
-import { HAI3_SCREEN_EXTENSION_TYPE } from '../../../src/mfe/constants';
+import { FRONTX_SCREEN_EXTENSION_TYPE } from '../../../src/mfe/constants';
 
 // This suite exercises the GTS type-system plugin wired into
 // DefaultMfeRegistry entirely in-memory — no real DOM, no network,
@@ -34,20 +34,20 @@ describe('In-memory type-system integration (DefaultMfeRegistry + GTS plugin)', 
     it('should check type hierarchy relationships', () => {
       // Base type matches itself
       expect(runtime.typeSystem.isTypeOf(
-        'gts.hai3.mfes.mfe.entry.v1~',
-        'gts.hai3.mfes.mfe.entry.v1~'
+        'gts.frontx.mfes.mfe.entry.v1~',
+        'gts.frontx.mfes.mfe.entry.v1~'
       )).toBe(true);
 
       // Derived type matches base
       expect(runtime.typeSystem.isTypeOf(
-        'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
-        'gts.hai3.mfes.mfe.entry.v1~'
+        'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
+        'gts.frontx.mfes.mfe.entry.v1~'
       )).toBe(true);
 
       // Base type does not match derived
       expect(runtime.typeSystem.isTypeOf(
-        'gts.hai3.mfes.mfe.entry.v1~',
-        'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~'
+        'gts.frontx.mfes.mfe.entry.v1~',
+        'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~'
       )).toBe(false);
     });
 
@@ -55,13 +55,13 @@ describe('In-memory type-system integration (DefaultMfeRegistry + GTS plugin)', 
       // First-class schemas should be available. The registry's typeSystem is
       // schema-agnostic (TypeSystemPlugin<unknown>); this suite wires the GTS
       // plugin, so view the schemas as JSONSchema for the GTS-specific assertions.
-      const entrySchema = runtime.typeSystem.getSchema('gts.hai3.mfes.mfe.entry.v1~') as JSONSchema | undefined;
+      const entrySchema = runtime.typeSystem.getSchema('gts.frontx.mfes.mfe.entry.v1~') as JSONSchema | undefined;
       expect(entrySchema).toBeDefined();
-      expect(entrySchema?.$id).toContain('gts.hai3.mfes.mfe.entry.v1~');
+      expect(entrySchema?.$id).toContain('gts.frontx.mfes.mfe.entry.v1~');
 
-      const domainSchema = runtime.typeSystem.getSchema('gts.hai3.mfes.ext.domain.v1~') as JSONSchema | undefined;
+      const domainSchema = runtime.typeSystem.getSchema('gts.frontx.mfes.ext.domain.v1~') as JSONSchema | undefined;
       expect(domainSchema).toBeDefined();
-      expect(domainSchema?.$id).toContain('gts.hai3.mfes.ext.domain.v1~');
+      expect(domainSchema?.$id).toContain('gts.frontx.mfes.ext.domain.v1~');
     });
   });
 
@@ -77,8 +77,8 @@ describe('In-memory type-system integration (DefaultMfeRegistry + GTS plugin)', 
       for (let i = 0; i < iterations; i++) {
         expect(
           runtime.typeSystem.isTypeOf(
-            'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
-            'gts.hai3.mfes.mfe.entry.v1~'
+            'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
+            'gts.frontx.mfes.mfe.entry.v1~'
           )
         ).toBe(true);
       }
@@ -109,7 +109,7 @@ describe('In-memory type-system integration (DefaultMfeRegistry + GTS plugin)', 
       expect(customRuntime.typeSystem.version).toBe('1.0.0');
 
       // Standard operations should still work
-      const schema = customRuntime.typeSystem.getSchema('gts.hai3.mfes.ext.domain.v1~');
+      const schema = customRuntime.typeSystem.getSchema('gts.frontx.mfes.ext.domain.v1~');
       expect(schema).toBeDefined();
     });
   });
@@ -126,23 +126,23 @@ describe('In-memory type-system integration (DefaultMfeRegistry + GTS plugin)', 
       // This check uses string prefix matching — no schema registration needed
       expect(
         runtime.typeSystem.isTypeOf(
-          HAI3_SCREEN_EXTENSION_TYPE,
-          'gts.hai3.mfes.ext.extension.v1~'
+          FRONTX_SCREEN_EXTENSION_TYPE,
+          'gts.frontx.mfes.ext.extension.v1~'
         )
       ).toBe(true);
 
       // Base extension type does NOT derive from screen extension type
       expect(
         runtime.typeSystem.isTypeOf(
-          'gts.hai3.mfes.ext.extension.v1~',
-          HAI3_SCREEN_EXTENSION_TYPE
+          'gts.frontx.mfes.ext.extension.v1~',
+          FRONTX_SCREEN_EXTENSION_TYPE
         )
       ).toBe(false);
     });
 
     it('should have base extension schema without presentation field', () => {
       // Verify base extension schema does NOT have presentation
-      const baseSchema = runtime.typeSystem.getSchema('gts.hai3.mfes.ext.extension.v1~') as JSONSchema | undefined;
+      const baseSchema = runtime.typeSystem.getSchema('gts.frontx.mfes.ext.extension.v1~') as JSONSchema | undefined;
       expect(baseSchema).toBeDefined();
 
       // Base schema should NOT have presentation in required or properties

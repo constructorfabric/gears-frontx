@@ -60,7 +60,7 @@ Success criteria: A developer runs `frontx create`, receives the standard Vitest
 
 - **PRD**: [PRD.md](../../PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
-- **Related feature**: [FEATURE.md](/home/viktor/HAI3/architecture/features/feature-cli-tooling/FEATURE.md) — `cpt-frontx-feature-cli-tooling`
+- **Related feature**: [FEATURE.md](/home/viktor/Gears FrontX/architecture/features/feature-cli-tooling/FEATURE.md) — `cpt-frontx-feature-cli-tooling`
 - **PRD requirements**: `cpt-frontx-fr-cli-commands`, `cpt-frontx-fr-cli-templates`, `cpt-frontx-fr-cli-skills`, `cpt-frontx-fr-cli-e2e-verification`, `cpt-frontx-fr-ai-agent-integration`
 - **PRD NFRs**: `cpt-frontx-nfr-maint-arch-enforcement`
 - **Design components**: `cpt-frontx-component-cli`

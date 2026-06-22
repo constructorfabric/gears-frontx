@@ -75,10 +75,10 @@ export default new Lifecycle();
 
 ## CACHE SETUP
 
-- Host apps already own the shared server-state runtime via `createHAI3App()`.
+- Host apps already own the shared server-state runtime via `createGears FrontXApp()`.
 - `ThemeAwareReactLifecycle` receives that host-owned runtime automatically during `mount_ext`.
 - Use endpoint descriptors with `useApiQuery(service.descriptor)` and `useApiMutation({ endpoint: service.descriptor })`.
-- Do not add `queryCache()`, `createHAI3App()`, `QueryClientProvider`, or `useQueryClient()` inside the MFE package.
+- Do not add `queryCache()`, `createGears FrontXApp()`, `QueryClientProvider`, or `useQueryClient()` inside the MFE package.
 - If you run an MFE outside the host shell, query hooks will not have the host cache/runtime unless you build a dedicated standalone harness.
 
 ## ADDING TO dev:all COMMAND
@@ -175,7 +175,7 @@ To isolate cache, use a different `baseURL`.
 ❌ **DON'T:**
 - Add standalone modules with query key factories or `queryOptions()` alongside the service
 - Import `queryOptions` from `@tanstack/react-query` or `@gears-frontx/react`
-- Add `queryCache()`, `createHAI3App()`, or `QueryClientProvider` inside the MFE bootstrap
+- Add `queryCache()`, `createGears FrontXApp()`, or `QueryClientProvider` inside the MFE bootstrap
 - Import Redux hooks directly
 - Use vite build && vite preview in dev mode
 - Create complex state management in MFE

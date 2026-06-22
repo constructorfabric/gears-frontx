@@ -21,11 +21,11 @@ import {
   type ActionsChain,
   type MfeHandler,
   type TypeSystemPlugin,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '@gears-frontx/screensets';
 import { getStore } from '@gears-frontx/state';
-import type { HAI3Plugin } from '../../types';
+import type { FrontXPlugin } from '../../types';
 import { mfeSlice, addExtensionMounted, removeExtensionMounted } from './slice';
 import { initMfeEffects } from './effects';
 import {
@@ -63,7 +63,7 @@ function collectLifecycleDomains(chain: ActionsChain): string[] {
     const actionType = link.action?.type;
     const domainId = link.action?.target;
     if (
-      (actionType === HAI3_ACTION_MOUNT_EXT || actionType === HAI3_ACTION_UNMOUNT_EXT) &&
+      (actionType === FRONTX_ACTION_MOUNT_EXT || actionType === FRONTX_ACTION_UNMOUNT_EXT) &&
       domainId
     ) {
       domains.add(domainId);
@@ -121,7 +121,7 @@ function collectLifecycleDomains(chain: ActionsChain): string[] {
 // @cpt-begin:cpt-frontx-flow-framework-composition-mfe-lifecycle:p1:inst-1
 // @cpt-begin:cpt-frontx-state-framework-composition-mfe-mount:p1:inst-1
 // @cpt-begin:cpt-frontx-dod-framework-composition-mfe-plugin:p1:inst-1
-export function microfrontends(config: MicrofrontendsConfig): HAI3Plugin {
+export function microfrontends(config: MicrofrontendsConfig): FrontXPlugin {
   // Build the MfeRegistry instance with provided TypeSystemPlugin and optional handlers
   // This registry handles all MFE lifecycle: domains, extensions, actions, etc.
   // TypeSystemPlugin binding happens here at application wiring level.
@@ -268,10 +268,10 @@ export {
 
 // Re-export FrontX layout domain constants and MfeEvents
 export {
-  HAI3_POPUP_DOMAIN,
-  HAI3_SIDEBAR_DOMAIN,
-  HAI3_SCREEN_DOMAIN,
-  HAI3_OVERLAY_DOMAIN,
+  FRONTX_POPUP_DOMAIN,
+  FRONTX_SIDEBAR_DOMAIN,
+  FRONTX_SCREEN_DOMAIN,
+  FRONTX_OVERLAY_DOMAIN,
   MfeEvents,
 } from './constants';
 

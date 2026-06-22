@@ -110,7 +110,7 @@ export abstract class MfeRegistry {
    * Domains that do not include propertyId in their sharedProperties array are not updated.
    * If no registered domains declare the property, this is a silent no-op.
    *
-   * @param propertyId - Type ID of the shared property (e.g. HAI3_SHARED_PROPERTY_THEME)
+   * @param propertyId - Type ID of the shared property (e.g. FRONTX_SHARED_PROPERTY_THEME)
    * @param value - New property value
    * @throws if GTS validation fails — no domain receives the value in that case
    */
@@ -195,7 +195,7 @@ export abstract class MfeRegistry {
   /**
    * Get all extensions registered for a specific GTS package.
    *
-   * @param packageId - GTS package string (e.g., 'hai3.demo')
+   * @param packageId - GTS package string (e.g., 'frontx.demo')
    * @returns Array of extensions in the package (empty if package not tracked)
    */
   abstract getExtensionsForPackage(packageId: string): Extension[];

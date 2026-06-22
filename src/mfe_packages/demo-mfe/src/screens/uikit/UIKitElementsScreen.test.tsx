@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { HAI3_SHARED_PROPERTY_LANGUAGE, HAI3_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
+import { FRONTX_SHARED_PROPERTY_LANGUAGE, FRONTX_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
 import { createMfeBridgeFixture } from '@frontx-test-utils/createMfeBridgeFixture';
 import { mockShadowHost } from '@frontx-test-utils/mockShadowHost';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -43,8 +43,8 @@ async function setupUIKitElementsScreen() {
     domainId: 'uikit-domain',
     instanceId: 'uikit-screen',
     initialProperties: {
-      [HAI3_SHARED_PROPERTY_THEME]: 'ocean',
-      [HAI3_SHARED_PROPERTY_LANGUAGE]: 'de',
+      [FRONTX_SHARED_PROPERTY_THEME]: 'ocean',
+      [FRONTX_SHARED_PROPERTY_LANGUAGE]: 'de',
     },
   });
 
@@ -89,8 +89,8 @@ describe('UIKitElementsScreen bridge wiring smoke', () => {
     const { bridgeFixture } = await setupUIKitElementsScreen();
 
     await waitFor(() => {
-      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_THEME, expect.any(Function));
-      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_LANGUAGE, expect.any(Function));
+      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_THEME, expect.any(Function));
+      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_LANGUAGE, expect.any(Function));
     });
   });
 
@@ -98,7 +98,7 @@ describe('UIKitElementsScreen bridge wiring smoke', () => {
     const { host, bridgeFixture } = await setupUIKitElementsScreen();
 
     await act(async () => {
-      bridgeFixture.setProperty(HAI3_SHARED_PROPERTY_LANGUAGE, 'ar');
+      bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, 'ar');
     });
 
     await waitFor(() => {

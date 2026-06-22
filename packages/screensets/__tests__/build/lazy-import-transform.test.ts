@@ -5,7 +5,7 @@
  * (`cpt-frontx-dod-mfe-isolation-lazy-import-abi`).
  *
  * The transform is a pure function (string in → string out) that rewrites
- * dynamic `import('<rel>')` calls to `__hai3_lazy('<rel>')` in compiled MFE
+ * dynamic `import('<rel>')` calls to `__frontx_lazy('<rel>')` in compiled MFE
  * chunks. Tests verify shape coverage (string literal, template literal,
  * concatenation), build-time error on non-static patterns, and no-op fast
  * path when the chunk has no dynamic imports.
@@ -29,11 +29,11 @@ function neverError(message: string): never {
 }
 
 describe('transformLazyImports (ADR-0022 plugin half)', () => {
-  it('rewrites string-literal dynamic import to __hai3_lazy', () => {
+  it('rewrites string-literal dynamic import to __frontx_lazy', () => {
     const code = `const x = import('./X.js');`;
     const result = transformLazyImports(code, parse, neverError, 'chunk.js');
     expect(result).not.toBeNull();
-    expect(result!.code).toBe(`const x = __hai3_lazy('./X.js');`);
+    expect(result!.code).toBe(`const x = __frontx_lazy('./X.js');`);
     expect(result!.count).toBe(1);
   });
 
@@ -41,7 +41,7 @@ describe('transformLazyImports (ADR-0022 plugin half)', () => {
     const code = 'const x = import(`./X.js`);';
     const result = transformLazyImports(code, parse, neverError, 'chunk.js');
     expect(result).not.toBeNull();
-    expect(result!.code).toBe('const x = __hai3_lazy(`./X.js`);');
+    expect(result!.code).toBe('const x = __frontx_lazy(`./X.js`);');
     expect(result!.count).toBe(1);
   });
 
@@ -54,9 +54,9 @@ describe('transformLazyImports (ADR-0022 plugin half)', () => {
     const result = transformLazyImports(code, parse, neverError, 'chunk.js');
     expect(result).not.toBeNull();
     expect(result!.count).toBe(3);
-    expect(result!.code).toContain(`__hai3_lazy('./A.js')`);
-    expect(result!.code).toContain(`__hai3_lazy('./B.js')`);
-    expect(result!.code).toContain(`__hai3_lazy('./C.js')`);
+    expect(result!.code).toContain(`__frontx_lazy('./A.js')`);
+    expect(result!.code).toContain(`__frontx_lazy('./B.js')`);
+    expect(result!.code).toContain(`__frontx_lazy('./C.js')`);
     expect(result!.code).not.toContain(`import('./A.js')`);
   });
 
@@ -93,7 +93,7 @@ describe('transformLazyImports (ADR-0022 plugin half)', () => {
     const result = transformLazyImports(code, parse, neverError, 'chunk.js');
     expect(result).not.toBeNull();
     expect(result!.code).toContain(`import { y } from './Y.js';`);
-    expect(result!.code).toContain(`__hai3_lazy('./Z.js')`);
+    expect(result!.code).toContain(`__frontx_lazy('./Z.js')`);
     expect(result!.count).toBe(1);
   });
 
@@ -101,7 +101,7 @@ describe('transformLazyImports (ADR-0022 plugin half)', () => {
     const code = `const x = import('./' + 'X' + '.js');`;
     const result = transformLazyImports(code, parse, neverError, 'chunk.js');
     expect(result).not.toBeNull();
-    expect(result!.code).toBe(`const x = __hai3_lazy('./' + 'X' + '.js');`);
+    expect(result!.code).toBe(`const x = __frontx_lazy('./' + 'X' + '.js');`);
     expect(result!.count).toBe(1);
   });
 

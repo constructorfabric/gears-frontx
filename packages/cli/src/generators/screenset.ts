@@ -72,8 +72,8 @@ export function applyMfeReplacements(content: string, name: string, namePascal: 
     .replace(/blankMfe/g, `${name}Mfe`)
     // Package name: @gears-frontx/blank-mfe → @gears-frontx/contacts-mfe
     .replace(/@gears-frontx\/blank-mfe/g, `@gears-frontx/${nameKebab}-mfe`)
-    // GTS IDs: hai3.blank. → hai3.contacts. (always lowercase)
-    .replace(/hai3\.blank\./g, `hai3.${name.toLowerCase()}.`)
+    // GTS IDs: frontx.blank. → frontx.contacts. (always lowercase)
+    .replace(/frontx\.blank\./g, `frontx.${name.toLowerCase()}.`)
     // Remote entry port: localhost:3099 → localhost:{port}
     .replace(/localhost:3099/g, `localhost:${port}`)
     // Port in scripts: --port 3099 → --port {port}

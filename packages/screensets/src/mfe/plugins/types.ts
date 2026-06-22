@@ -119,12 +119,12 @@ export interface TypeSystemPlugin<TSchema = unknown> {
    *
    * Named instance pattern: the schema is resolved from the chained instance
    * ID automatically.
-   * - Example: `{ id: "gts.hai3.mfes.ext.extension.v1~acme.widget.v1", ... }`
-   * - Schema resolved: `gts.hai3.mfes.ext.extension.v1~`
+   * - Example: `{ id: "gts.frontx.mfes.ext.extension.v1~acme.widget.v1", ... }`
+   * - Schema resolved: `gts.frontx.mfes.ext.extension.v1~`
    *
    * For ephemeral runtime validation (e.g., shared property values), construct
    * a chained instance ID that encodes the schema:
-   * - Example: `{ id: "${propertyTypeId}hai3.mfes.comm.runtime.v1", value: "dark" }`
+   * - Example: `{ id: "${propertyTypeId}frontx.mfes.comm.runtime.v1", value: "dark" }`
    * - Schema resolved: `${propertyTypeId}` (the derived shared property schema)
    *
    * For anonymous instances (no `id` field — used by action payloads), the

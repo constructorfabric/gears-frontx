@@ -37,7 +37,7 @@
 
 FrontX is a four-layer monorepo architecture that separates concerns vertically by abstraction level and horizontally by domain. The lowest layer (L1 SDK) provides framework-agnostic primitives for state, API communication, localization, and screen-set contracts. The middle layer (L2 Framework) composes these primitives through a plugin system. The upper layer (L3 React) binds the framework to React 19. Standalone packages (`@gears-frontx/studio`, `@gears-frontx/cli`) operate outside the layer hierarchy with minimal coupling, while UI implementation remains app-owned.
 
-This layering enforces a strict dependency direction: higher layers depend on lower layers, never the reverse. L1 packages have zero cross-dependencies, meaning any SDK package can be used in isolation — in a Node.js CLI, a web worker, or a non-React rendering engine. The plugin architecture at L2 means the framework never needs modification to add capabilities; all extensions compose through `createHAI3().use(plugin).build()`.
+This layering enforces a strict dependency direction: higher layers depend on lower layers, never the reverse. L1 packages have zero cross-dependencies, meaning any SDK package can be used in isolation — in a Node.js CLI, a web worker, or a non-React rendering engine. The plugin architecture at L2 means the framework never needs modification to add capabilities; all extensions compose through `createGears FrontX().use(plugin).build()`.
 
 The architecture is event-driven throughout. Components communicate exclusively through a typed event bus. The data flow follows a fixed sequence — Action → Event → Effect → Reducer → Store — enforced by convention and tooling. This eliminates ad-hoc state mutations, makes the system traceable, and enables microfrontend isolation where each MFE has its own internal data flow that connects to the host only through declared shared properties and events.
 
@@ -76,7 +76,7 @@ Requirements that significantly influence architecture decisions.
 |-------------|------------------|
 | `cpt-frontx-fr-sdk-flat-packages` | Four separate L1 packages with independent `package.json`; npm workspaces for monorepo orchestration |
 | `cpt-frontx-fr-sdk-layer-deps` | Strict layer dependency graph enforced by `dependency-cruiser` rules: L3→L2→L1 only |
-| `cpt-frontx-fr-sdk-plugin-arch` | `createHAI3()` builder at L2 with `use()` chaining; each plugin receives `HAI3PluginContext` |
+| `cpt-frontx-fr-sdk-plugin-arch` | `createGears FrontX()` builder at L2 with `use()` chaining; each plugin receives `Gears FrontXPluginContext` |
 | `cpt-frontx-fr-sdk-action-pattern` | All mutations flow through `createAction()` → eventBus dispatch → effect handler → Redux reducer |
 | `cpt-frontx-fr-mfe-dynamic-registration` | Runtime MFE registration via `mfeRegistryFactory.build()` with handler injection |
 | `cpt-frontx-fr-blob-fresh-eval` | Blob URL isolation: each MFE bundle fetched, rewritten, and evaluated in a fresh blob context |
@@ -94,11 +94,11 @@ Requirements that significantly influence architecture decisions.
 | `cpt-frontx-fr-sdk-screensets-package` | `@gears-frontx/screensets` exports full MFE type system, registry, handler, bridge, and constants with zero `@gears-frontx/*` deps |
 | `cpt-frontx-fr-sdk-api-package` | `@gears-frontx/api` exports `BaseApiService`, REST/SSE protocols, mock plugins, `apiRegistry`, and type guards; only `axios` as peer dep |
 | `cpt-frontx-fr-sdk-i18n-package` | `@gears-frontx/i18n` exports I18nRegistry, Language enum, formatters, and metadata utilities with zero dependencies |
-| `cpt-frontx-fr-sdk-framework-layer` | `@gears-frontx/framework` wires SDK capabilities; depends only on SDK packages, provides `createHAI3()` and `createHAI3App()` |
-| `cpt-frontx-fr-sdk-react-layer` | `@gears-frontx/react` depends only on `@gears-frontx/framework`; provides `HAI3Provider` and typed hooks; no layout components |
+| `cpt-frontx-fr-sdk-framework-layer` | `@gears-frontx/framework` wires SDK capabilities; depends only on SDK packages, provides `createGears FrontX()` and `createGears FrontXApp()` |
+| `cpt-frontx-fr-sdk-react-layer` | `@gears-frontx/react` depends only on `@gears-frontx/framework`; provides `Gears FrontXProvider` and typed hooks; no layout components |
 | `cpt-frontx-fr-sdk-module-augmentation` | TypeScript module augmentation for `EventPayloadMap` and `RootState` extensibility; custom events type-safe |
 | `cpt-frontx-fr-appconfig-tenant` | `Tenant` type with `{ id: string }`; tenant change events via event bus (`app/tenant/changed`, `app/tenant/cleared`) |
-| `cpt-frontx-fr-appconfig-router-config` | `HAI3Config.routerMode` supporting `'browser'`, `'hash'`, `'memory'` routing strategies |
+| `cpt-frontx-fr-appconfig-router-config` | `Gears FrontXConfig.routerMode` supporting `'browser'`, `'hash'`, `'memory'` routing strategies |
 | `cpt-frontx-fr-appconfig-layout-visibility` | Imperative actions (`setFooterVisible`, `setMenuVisible`, `setSidebarVisible`) control layout region visibility |
 | `cpt-frontx-fr-sse-mock-mode` | `SseMockPlugin` short-circuits `EventSource` creation; returns `MockEventSource` for dev/test environments |
 | `cpt-frontx-fr-sse-protocol-registry` | `BaseApiService` uses protocol registry; protocols registered by constructor name via type-safe `protocol<T>()` |
@@ -117,7 +117,7 @@ Requirements that significantly influence architecture decisions.
 | `cpt-frontx-fr-blob-per-load-map` | Blob URL mapping scoped per MFE load; different loads have independent instances preventing cross-load reuse |
 | `cpt-frontx-fr-externalize-filenames` | Shared dependency standalone ESM files use deterministic filenames without content hashes for stable MFE manifests |
 | `cpt-frontx-fr-externalize-build-only` | `rollupOptions.external` externalizes shared dependencies at `vite build` only; during `vite dev`, imports resolve through standard Vite dev server resolution; `frontx-mf-gts` plugin builds standalone ESMs only in the `closeBundle` production hook |
-| `cpt-frontx-fr-dataflow-internal-app` | Each MFE creates isolated `HAI3App` via `createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build()` with `HAI3Provider` (shared QueryClient owned by host) |
+| `cpt-frontx-fr-dataflow-internal-app` | Each MFE creates isolated `Gears FrontXApp` via `createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build()` with `Gears FrontXProvider` (shared QueryClient owned by host) |
 | `cpt-frontx-fr-sharescope-construction` | `MfeHandlerMF` fetches standalone ESM source text for each shared dep (deduplicated via `sharedDepTextCache` keyed by `name@version` across all runtimes), rewrites bare specifiers between shared deps to blob URLs, and creates per-load blob URLs for isolation; no `createInstance()`, no `FederationHost`, no `__mf_init__` globals, no `globalThis.__federation_shared__` |
 | `cpt-frontx-fr-sharescope-concurrent` | Each load creates independent shared dep blob URLs captured by its own `LoadBlobState`; `sharedDepTextCache` deduplicates source text (keyed by `name@version`); per-load blob URLs ensure concurrent loads get isolated module evaluations with no cross-load reuse |
 | `cpt-frontx-fr-broadcast-matching` | `updateSharedProperty()` propagates only to domains declaring the property in their `sharedProperties` array |
@@ -146,8 +146,8 @@ Requirements that significantly influence architecture decisions.
 | `cpt-frontx-fr-api-request-cancellation` | `RestProtocol` HTTP methods accept optional `AbortSignal` via `RestRequestOptions`; aborted requests bypass `onError` plugin chain |
 | `cpt-frontx-fr-api-endpoint-descriptors` | `BaseApiService` exposes registered protocols via `protocol()`. `RestEndpointProtocol` provides `query()`, `queryWith()`, `mutation()`, and `SseStreamProtocol` provides `stream()` returning descriptor objects; cache keys derive from `[baseURL, 'GET', path]` for static reads, `[baseURL, 'GET', resolvedPath, params]` for parameterized reads, `[baseURL, method, path]` for writes, and `[baseURL, 'SSE', path]` for streams |
 | `cpt-frontx-fr-framework-query-cache-plugin` | `queryCache(config?)` owns the host shared `QueryClient`; `queryCacheShared()` joins it for child apps; cache clears on mock toggle, handles `cache/invalidate`/`cache/set`/`cache/remove`, and keeps `sharedFetchCache` in sync |
-| `cpt-frontx-fr-react-query-hooks` | `useApiQuery`, `useApiMutation`, `useApiStream`, `useQueryCache` hooks consume descriptors; HAI3-owned result types; no `queryOptions` re-export |
-| `cpt-frontx-fr-react-query-client-sharing` | `HAI3Provider` resolves the shared `QueryClient` from the app instance; separately mounted MFEs receive the same host client through `queryCache()` / `queryCacheShared()` shared-client reuse rather than L1 token plumbing, and expose only the restricted `QueryCache` interface |
+| `cpt-frontx-fr-react-query-hooks` | `useApiQuery`, `useApiMutation`, `useApiStream`, `useQueryCache` hooks consume descriptors; Gears FrontX-owned result types; no `queryOptions` re-export |
+| `cpt-frontx-fr-react-query-client-sharing` | `Gears FrontXProvider` resolves the shared `QueryClient` from the app instance; separately mounted MFEs receive the same host client through `queryCache()` / `queryCacheShared()` shared-client reuse rather than L1 token plumbing, and expose only the restricted `QueryCache` interface |
 | `cpt-frontx-fr-manifest-generation-script` | Generation script is a temporary static aggregator that writes the aggregated `generated-mfe-manifests.json` to a public asset path at build time; it reads each MFE's `{outDir}/mfe-manifest.json` (produced by the `frontx-mf-gts` plugin) with `--base-url` for environment-specific `publicPath`; the aggregator passes the optional `domains[]` array through verbatim (transport-only — no enrichment, no validation, no shape derivation) so MFE-declared `ExtensionDomain` instances reach the host bootstrap unchanged; the host bootstrap (and any nested FrontX app instance) fetches the aggregated manifest at runtime from that public-asset URL — script builds json, json is read at runtime; the public-asset URL is a temporary substitute for an eventual backend API, and replacing it is a one-line URL change in the host bootstrap fetch — same enriched manifest shape, different transport |
 
 #### NFR Allocation
@@ -182,10 +182,10 @@ Requirements that significantly influence architecture decisions.
 │          (Host app using @gears-frontx/* packages)           │
 ├─────────────────────────────────────────────────────┤
 │ L3  @gears-frontx/react                                      │
-│     HAI3Provider · hooks · MFE components            │
+│     Gears FrontXProvider · hooks · MFE components            │
 ├─────────────────────────────────────────────────────┤
 │ L2  @gears-frontx/framework                                  │
-│     createHAI3() · plugins · layout slices           │
+│     createGears FrontX() · plugins · layout slices           │
 ├────────┬────────┬──────────┬────────────────────────┤
 │ L1     │ L1     │ L1       │ L1                      │
 │ state  │ screen │ api      │ i18n                    │
@@ -237,9 +237,9 @@ Standalone packages (`@gears-frontx/studio`, `@gears-frontx/cli`) exist outside 
 
 **ADRs**: `cpt-frontx-adr-plugin-based-framework-composition`
 
-All framework capabilities are delivered through plugins. The framework core (`createHAI3()`) is a minimal builder that assembles a plugin chain. Each plugin implements the `HAI3Plugin` interface with an `init(context: HAI3PluginContext)` method. Plugins register slices, effects, event listeners, and UI extensions through the context object.
+All framework capabilities are delivered through plugins. The framework core (`createGears FrontX()`) is a minimal builder that assembles a plugin chain. Each plugin implements the `Gears FrontXPlugin` interface with an `init(context: Gears FrontXPluginContext)` method. Plugins register slices, effects, event listeners, and UI extensions through the context object.
 
-The host application composes its feature set by chaining `.use()` calls: `createHAI3().use(microfrontends()).use(myDomainPlugin()).build()`. No framework source code needs modification to add capabilities.
+The host application composes its feature set by chaining `.use()` calls: `createGears FrontX().use(microfrontends()).use(myDomainPlugin()).build()`. No framework source code needs modification to add capabilities.
 
 #### Self-Registering Registries
 
@@ -356,7 +356,7 @@ All direct runtime dependencies MUST use MIT, Apache-2.0, or BSD-compatible lice
 | Event | A typed message on the event bus; carries a name and payload | `packages/state/src/eventBus.ts` |
 | Action | A domain operation that dispatches events; created via `createAction()` | `packages/state/src/actions.ts` |
 | Effect | An event handler that performs side effects and dispatches reducers | `packages/state/src/effects.ts` |
-| Plugin | A framework extension implementing `HAI3Plugin` interface | `packages/framework/src/plugin.ts` |
+| Plugin | A framework extension implementing `Gears FrontXPlugin` interface | `packages/framework/src/plugin.ts` |
 | SharedProperty | A typed value bridging host and MFE state; validated at boundaries | `packages/framework/src/sharedProperty.ts` |
 | ProjectTestingConvention | Generated project contract that defines the canonical unit-test command and baseline Vitest scaffold expectations | Generated `package.json`, Vitest config, and CLI template metadata |
 | ProjectTestingGuidance | Editable project AI guidance describing when generated code needs unit tests and how the standard workflow is executed | Generated `.ai/project/GUIDELINES.md` and `.ai/project/targets/UNIT_TESTING.md` |
@@ -379,7 +379,7 @@ All direct runtime dependencies MUST use MIT, Apache-2.0, or BSD-compatible lice
 │                                                           │
 │  ┌─────────┐  ┌──────────────┐  ┌──────────────────────┐ │
 │  │ @gears-frontx/  │  │  @gears-frontx/react │  │  app-owned UI        │ │
-│  │ studio  │  │  HAI3Provider │  │  components          │ │
+│  │ studio  │  │  Gears FrontXProvider │  │  components          │ │
 │  └─────────┘  │  hooks        │  └──────────────────────┘ │
 │               │  ExtensionDomainSlot │                   │
 │               └──────┬───────┘                            │
@@ -387,7 +387,7 @@ All direct runtime dependencies MUST use MIT, Apache-2.0, or BSD-compatible lice
 │               ┌──────▼───────┐                            │
 │               │ @gears-frontx/       │                            │
 │               │ framework    │                            │
-│               │ createHAI3() │                            │
+│               │ createGears FrontX() │                            │
 │               │ plugins      │                            │
 │               └──┬──┬──┬──┬─┘                            │
 │           depends│  │  │  │on                             │
@@ -455,9 +455,9 @@ Defines the contract between the host application and microfrontend extensions. 
 - **Import rewriting**: Transforms bare import specifiers for all declared shared dependencies (both `@gears-frontx/*` and third-party) in MFE bundles to blob URL references for runtime resolution
 - **Recursive chain loading**: Resolves transitive dependencies by recursively blob-loading imported modules
 
-**Per-app boundary.** `ScreensetsRegistry` is per FrontX app instance. Every FrontX app — the root host application AND any nested app created by an MFE that needs to own its own extension domains — uses the same `createHAI3()` primitive and owns its own registry, store, mediator, event bus, and lifecycle trigger. There is no shared registry across the app tree. An app's registry holds only the domains and extensions registered against THAT app; a parent app's registry never sees a nested app's mount state. Cross-app chain delivery between apps is an internal routing concern (described in §3.6 Extension Action Delivery), not a registry-sharing concern.
+**Per-app boundary.** `ScreensetsRegistry` is per FrontX app instance. Every FrontX app — the root host application AND any nested app created by an MFE that needs to own its own extension domains — uses the same `createGears FrontX()` primitive and owns its own registry, store, mediator, event bus, and lifecycle trigger. There is no shared registry across the app tree. An app's registry holds only the domains and extensions registered against THAT app; a parent app's registry never sees a nested app's mount state. Cross-app chain delivery between apps is an internal routing concern (described in §3.6 Extension Action Delivery), not a registry-sharing concern.
 
-**Layout taxonomy is opt-in.** The framework does NOT enforce a layout taxonomy. Projects MAY use the shipped `LayoutDomain` / `HAI3_*_DOMAIN` convenience constants, MAY define entirely custom domains, MAY mix the two. Domain registration is an L4 (application) concern: the framework provides the `ExtensionDomain` mechanism and ships a set of conventional domain IDs; choosing which domains to register, with which mount strategies, is the application's call.
+**Layout taxonomy is opt-in.** The framework does NOT enforce a layout taxonomy. Projects MAY use the shipped `LayoutDomain` / `Gears FrontX_*_DOMAIN` convenience constants, MAY define entirely custom domains, MAY mix the two. Domain registration is an L4 (application) concern: the framework provides the `ExtensionDomain` mechanism and ships a set of conventional domain IDs; choosing which domains to register, with which mount strategies, is the application's call.
 
 ##### Responsibility boundaries
 
@@ -466,7 +466,7 @@ Defines the contract between the host application and microfrontend extensions. 
 - Does NOT depend on any other `@gears-frontx/*` package
 - Does NOT handle CSS isolation (Shadow DOM) — delegated to rendering layer
 - Does NOT know how containers are created, positioned, or styled — container lifecycle lives on the implementation side; the framework receives opaque `Element` references through the mounter and uses them as host elements only
-- Does NOT enforce a layout-domain taxonomy — the shipped `LayoutDomain` enum / `HAI3_*_DOMAIN` constants are conveniences, and projects MAY register entirely custom domains or mix custom and shipped
+- Does NOT enforce a layout-domain taxonomy — the shipped `LayoutDomain` enum / `Gears FrontX_*_DOMAIN` constants are conveniences, and projects MAY register entirely custom domains or mix custom and shipped
 - Mount handlers are the cardinality strategy classes; the per-domain mounter is the only public mount facade
 
 ##### Related components (by ID)
@@ -541,15 +541,15 @@ Composes L1 SDK packages into a cohesive application framework through a plugin 
 
 ##### Responsibility scope
 
-- **Builder API**: `createHAI3()` returns a builder with `.use(plugin)` chaining and `.build()` finalization
-- **Plugin system**: `HAI3Plugin` interface with `init(context: HAI3PluginContext)`; context provides access to store, event bus, registries
+- **Builder API**: `createGears FrontX()` returns a builder with `.use(plugin)` chaining and `.build()` finalization
+- **Plugin system**: `Gears FrontXPlugin` interface with `init(context: Gears FrontXPluginContext)`; context provides access to store, event bus, registries
 - **Layout orchestration**: Layout slices (menu, header, footer, sidebars, overlay, popups) managed as Redux state
 - **Configuration management**: `AppConfig` with tenant settings, router config, layout visibility, theme — propagated via `app/*` events
 - **MFE lifecycle plugin**: `microfrontends()` plugin handles MFE registration, theme propagation, i18n forwarding, shared property bridge, and per-domain mount-state mirroring within its app. The plugin's MFE slice tracks the per-domain set of currently mounted extensions for THIS app and exposes a typed selector for it. The plugin's chain-completion sync wrapper reconciles the slice against the registry's mount-set after each lifecycle action chain by emitting per-extension state events. There is no scalar mount slot. Cross-runtime extension discovery — including nested-app discovery — is content-addressed by the extension's `domain` GTS instance ID: every FrontX app's `microfrontends()` plugin reads `MfManifest` entities from the GTS runtime store and filters them by its own app's registered-domain-IDs view, so an MFE's source-tree location is independent of which runtime owns its target domain
 - **Shared property system**: `setSharedProperty()` / `getSharedProperty()` with validation via GTS plugin
 - **SDK re-exports**: Re-exports L1 public API so consumers can import from `@gears-frontx/framework` as a convenience
 
-**Per-app boundary.** `createHAI3()` is the same primitive at every level of the app tree. The root host is the root FrontX app; any nested app created by an MFE that needs its own extension domains uses the SAME `createHAI3()` builder and ends up with its OWN store, event bus, MFE slice, mediator, and lifecycle trigger. Each app's `microfrontends()` plugin tracks only the extensions mounted in THAT app's registry. Architecturally there is no privileged "host" app — the root is just the outermost app, and nested apps are identical in shape and capability.
+**Per-app boundary.** `createGears FrontX()` is the same primitive at every level of the app tree. The root host is the root FrontX app; any nested app created by an MFE that needs its own extension domains uses the SAME `createGears FrontX()` builder and ends up with its OWN store, event bus, MFE slice, mediator, and lifecycle trigger. Each app's `microfrontends()` plugin tracks only the extensions mounted in THAT app's registry. Architecturally there is no privileged "host" app — the root is just the outermost app, and nested apps are identical in shape and capability.
 
 ##### Responsibility boundaries
 
@@ -576,13 +576,13 @@ Bridges the framework layer to React 19, providing the provider tree, hooks, and
 
 ##### Responsibility scope
 
-- **HAI3Provider**: Root provider component that wraps the application with Redux store, i18n context, theme, framework context, and an internal `QueryClientProvider` bridge. `HAI3Provider` does not create a TanStack client; `queryCache()` is the sole owner of the host shared `QueryClient`, while `queryCacheShared()` lets child apps join that client. The provider resolves the client from the app instance so every root reuses the plugin-owned cache, while `sharedFetchCache` deduplicates overlapping descriptor fetches across roots before React observers attach.
-- **Hooks**: `useHAI3()` for the app instance; `useAppSelector()` / `useAppDispatch()` for typed Redux bindings; `useTranslation()`, `useScreenTranslations()`, `useFormatters()`, `useTheme()` for i18n and presentation; MFE hooks including `useMfeBridge`, `useSharedProperty`, `useHostAction`, `useDomainExtensions`, `useRegisteredPackages` (passive enumeration of GTS packages discovered at runtime), and `useMountedExtensions` (per-domain mount-state subscription; for the screen domain it surfaces every mounted screen extension across all discovered packages) — typed wrappers over framework primitives
+- **Gears FrontXProvider**: Root provider component that wraps the application with Redux store, i18n context, theme, framework context, and an internal `QueryClientProvider` bridge. `Gears FrontXProvider` does not create a TanStack client; `queryCache()` is the sole owner of the host shared `QueryClient`, while `queryCacheShared()` lets child apps join that client. The provider resolves the client from the app instance so every root reuses the plugin-owned cache, while `sharedFetchCache` deduplicates overlapping descriptor fetches across roots before React observers attach.
+- **Hooks**: `useGears FrontX()` for the app instance; `useAppSelector()` / `useAppDispatch()` for typed Redux bindings; `useTranslation()`, `useScreenTranslations()`, `useFormatters()`, `useTheme()` for i18n and presentation; MFE hooks including `useMfeBridge`, `useSharedProperty`, `useHostAction`, `useDomainExtensions`, `useRegisteredPackages` (passive enumeration of GTS packages discovered at runtime), and `useMountedExtensions` (per-domain mount-state subscription; for the screen domain it surfaces every mounted screen extension across all discovered packages) — typed wrappers over framework primitives
 - **Query hooks**: `useApiQuery()` for single-page declarative reads, `useApiSuspenseQuery()` for Suspense-driven single-page reads, `useApiInfiniteQuery()` for descriptor-driven paginated reads, `useApiSuspenseInfiniteQuery()` for Suspense-driven paginated reads, `useApiMutation()` for writes with optimistic updates via `QueryCache`, and `useQueryCache()` as the sanctioned imperative cache API. `QueryCache` exposes `get`, `getState`, `set`, `cancel`, `invalidate`, `invalidateMany`, and `remove`. The raw `QueryClient` stays internal, `useQueryClient` is NOT exported from `@gears-frontx/react`, and app/MFE code uses `QueryCache` rather than raw TanStack APIs.
 - **Service descriptors**: Service descriptors are the only sanctioned source of query keys and cache metadata. `BaseApiService` descriptors feed `useApiQuery()`, `useApiMutation()`, and `QueryCache` directly.
 - **MFE rendering**: `ExtensionDomainSlot` is per-domain — it provides a single host element for the domain's mounted extensions. The slot does not dispatch mount/unmount actions; the host owns those dispatches through the registry. Multi-mount layouts are placed under the host element by the domain's mounter (specified in `cpt-frontx-feature-react-bindings`). Host bootstrap registers domains, extensions, and shared properties and returns screen extensions for route selection; MFE roots join the host's shared `QueryClient` via the shared-cache plugin without leaking cache metadata into L1 contracts. MFEs render inside Shadow DOM and do not inherit host React context directly.
 - **Error boundaries**: Per-MFE error boundaries preventing extension failures from crashing the host
-- **Initialization sequence**: Orchestrates `themeRegistry → mfeRegistryFactory.build() → domain registration → HAI3Provider`
+- **Initialization sequence**: Orchestrates `themeRegistry → mfeRegistryFactory.build() → domain registration → Gears FrontXProvider`
 
 ##### Responsibility boundaries
 
@@ -599,7 +599,7 @@ Bridges the framework layer to React 19, providing the provider tree, hooks, and
 
 ##### Related components (by ID)
 
-- `cpt-frontx-component-react` — used by: application renders UI within HAI3Provider
+- `cpt-frontx-component-react` — used by: application renders UI within Gears FrontXProvider
 - `cpt-frontx-component-studio` — uses: studio panel uses local UI primitives for its controls
 
 #### @gears-frontx/studio (Standalone)
@@ -626,7 +626,7 @@ Provides a development-time overlay for inspecting and tweaking theme, i18n, vie
 
 ##### Related components (by ID)
 
-- `cpt-frontx-component-react` — used by: renders inside HAI3Provider context
+- `cpt-frontx-component-react` — used by: renders inside Gears FrontXProvider context
 
 #### @gears-frontx/cli (Tooling)
 
@@ -662,11 +662,11 @@ FrontX is a frontend framework; all API contracts are TypeScript interfaces cons
 > **Note**: Interface signatures below are structural summaries for architecture reference. The canonical source is the TypeScript source file listed in each `Location` field.
 
 - [x] `p1` - **ID**: `cpt-frontx-interface-plugin`
-- **Contract**: cpt-frontx-contract-hai3-plugin
+- **Contract**: cpt-frontx-contract-frontx-plugin
 - **Technology**: TypeScript interface
 - **Location**: `packages/framework/src/plugin.ts`
 
-`HAI3Plugin` is the framework's plugin contract: each plugin carries a `name` and an `init(context)` method (synchronous or asynchronous). `HAI3PluginContext` is the construction-time bundle the framework supplies to every plugin; it exposes the shared Redux store, the event bus, and registration entry points for slices and effects. Method-level shapes are specified in `cpt-frontx-feature-framework-composition` (DoD `cpt-frontx-dod-framework-composition-builder`).
+`Gears FrontXPlugin` is the framework's plugin contract: each plugin carries a `name` and an `init(context)` method (synchronous or asynchronous). `Gears FrontXPluginContext` is the construction-time bundle the framework supplies to every plugin; it exposes the shared Redux store, the event bus, and registration entry points for slices and effects. Method-level shapes are specified in `cpt-frontx-feature-framework-composition` (DoD `cpt-frontx-dod-framework-composition-builder`).
 
 - [x] `p1` - **ID**: `cpt-frontx-interface-event-bus`
 - **Contract**: cpt-frontx-contract-event-bus
@@ -733,7 +733,7 @@ Domain registration semantics — including the per-registration context, the im
 - **Technology**: JSON / TypeScript interface
 - **Location**: `mfe.json` (MFE package root), bootstrap loader (`src/app/mfe/bootstrap.ts`)
 
-`mfe.json` carries an optional top-level `schemas` array of inline GTS JSON Schema objects. Each element is a standard JSON Schema with a GTS `$id` (e.g., `gts://gts.hai3.mfes.comm.action.v1~vendor.action.refresh.v1~`). The parent registers all schemas with the type system before registering any entries or extensions, ensuring GTS validation is available for all action types declared in `actions`. The contract is a single envelope with three peer arrays — `schemas`, `entries`, `extensions` — at the top level. The full registration sequence is enumerated under `cpt-frontx-dod-mfe-registry-mfe-schema-registration`.
+`mfe.json` carries an optional top-level `schemas` array of inline GTS JSON Schema objects. Each element is a standard JSON Schema with a GTS `$id` (e.g., `gts://gts.frontx.mfes.comm.action.v1~vendor.action.refresh.v1~`). The parent registers all schemas with the type system before registering any entries or extensions, ensuring GTS validation is available for all action types declared in `actions`. The contract is a single envelope with three peer arrays — `schemas`, `entries`, `extensions` — at the top level. The full registration sequence is enumerated under `cpt-frontx-dod-mfe-registry-mfe-schema-registration`.
 
 **GTS identifier conventions used in the manifest and at runtime.** Schema `$id` fields in JSON Schema definitions use the `gts://...~` URL form — the `gts://` prefix is mandatory there. Runtime IDs (the `Action.type` field, instance IDs, target identifiers, `domainId` and `instanceId` arguments to bridge operations) use the same canonical identifier WITHOUT the `gts://` prefix. Schema identifiers always end with a trailing `~`; instance identifiers do not. Each `~`-separated segment denotes a chain link (inheritance for schemas, anchoring for instances).
 
@@ -758,8 +758,8 @@ The CLI package exposes a command-and-generated-files contract to scaffolded pro
 | `cpt-frontx-interface-screensets` | `@gears-frontx/screensets` | MFE type system, MfeRegistry, MfeHandler, MfeBridge, ExtensionDomainImplementation / ExtensionDomainImplementationFactory / DomainContext / ExtensionMounter / ContainerHooks / DomainLifecycleTrigger, MountStrategy abstract base + ConcurrentMountStrategy / OptionalMountStrategy / ExclusiveMountStrategy, Shadow DOM utilities, GTS validation plugin, action/property constants |
 | `cpt-frontx-interface-api` | `@gears-frontx/api` | Protocol-agnostic API layer with REST and SSE protocols, plugin chain, mock mode, type guards, endpoint/stream descriptors |
 | `cpt-frontx-interface-i18n` | `@gears-frontx/i18n` | 36-language i18n registry, locale-aware formatters, RTL support, language metadata |
-| `cpt-frontx-interface-framework` | `@gears-frontx/framework` | Plugin architecture with `createHAI3()` builder, presets, layout domain slices, effect coordination, re-exports all L1 APIs |
-| `cpt-frontx-interface-react` | `@gears-frontx/react` | HAI3Provider, typed hooks, MFE hooks (`useMfeBridge`, `useSharedProperty`, `useHostAction`, `useDomainExtensions`, `useRegisteredPackages`, `useMountedExtensions`), per-domain `ExtensionDomainSlot` (renders one root and calls `registry.getMounter(domainId).attach`/`detach`), re-exports all L2 APIs |
+| `cpt-frontx-interface-framework` | `@gears-frontx/framework` | Plugin architecture with `createGears FrontX()` builder, presets, layout domain slices, effect coordination, re-exports all L1 APIs |
+| `cpt-frontx-interface-react` | `@gears-frontx/react` | Gears FrontXProvider, typed hooks, MFE hooks (`useMfeBridge`, `useSharedProperty`, `useHostAction`, `useDomainExtensions`, `useRegisteredPackages`, `useMountedExtensions`), per-domain `ExtensionDomainSlot` (renders one root and calls `registry.getMounter(domainId).attach`/`detach`), re-exports all L2 APIs |
 | `cpt-frontx-interface-studio` | `@gears-frontx/studio` | Dev-only floating overlay with theme/language/mock controls, persistence, viewport clamping |
 | `cpt-frontx-interface-cli` | `@gears-frontx/cli` | Project scaffolding, code generation, migration runners, AI tool configuration sync, unit-test scaffold contract, and generated testing guidance |
 
@@ -841,12 +841,12 @@ The CLI package exposes a command-and-generated-files contract to scaffolded pro
 ```mermaid
 sequenceDiagram
     participant App as Host App
-    participant Builder as createHAI3()
+    participant Builder as createGears FrontX()
     participant Plugin as Plugins
     participant Registry as Registries
-    participant Provider as HAI3Provider
+    participant Provider as Gears FrontXProvider
 
-    App->>Builder: createHAI3()
+    App->>Builder: createGears FrontX()
     App->>Builder: .use(microfrontends())
     App->>Builder: .use(domainPlugin())
     App->>Builder: .build()
@@ -854,13 +854,13 @@ sequenceDiagram
     Plugin->>Registry: registerSlice(), registerEffect()
     Plugin->>Registry: mfeRegistry.register()
     Builder-->>App: { store, config, registries }
-    App->>Provider: <HAI3Provider config={...}>
+    App->>Provider: <Gears FrontXProvider config={...}>
     Provider->>Registry: themeRegistry init
     Provider->>Registry: mfeRegistryFactory.build()
     Provider-->>App: Application rendered
 ```
 
-**Description**: The host application creates a framework instance via the builder, chains plugins, and calls `.build()`. Each plugin initializes by registering its slices, effects, and registry entries through the context. The built configuration is passed to `HAI3Provider`, which orchestrates the initialization sequence: theme registry → screen-sets registry (with MFE handlers) → domain registration → render.
+**Description**: The host application creates a framework instance via the builder, chains plugins, and calls `.build()`. Each plugin initializes by registering its slices, effects, and registry entries through the context. The built configuration is passed to `Gears FrontXProvider`, which orchestrates the initialization sequence: theme registry → screen-sets registry (with MFE handlers) → domain registration → render.
 
 #### Screen-Set Data Flow
 
@@ -1100,7 +1100,7 @@ sequenceDiagram
 
     RootApp->>RootReg: registerDomain(...) and register Parent MFE as extension
     RootApp->>ParentMfe: mount via Root's mounter
-    ParentMfe->>NestedApp: createHAI3().use(microfrontends()).build()
+    ParentMfe->>NestedApp: createGears FrontX().use(microfrontends()).build()
     NestedApp->>NestedReg: own registry / store / mediator / event bus / lifecycle trigger
     ParentMfe->>NestedReg: registerDomain(nestedDomain, factory) for its OWN domains
     ParentMfe->>NestedReg: register Leaf MFE entries / extensions
@@ -1109,7 +1109,7 @@ sequenceDiagram
     Note over RootReg,NestedReg: Root Registry never sees nestedDomain or Leaf MFE.<br/>Each registry holds only the extensions registered against ITS app.
 ```
 
-**Description**: A Parent MFE that needs to own its own extension domains creates its own FrontX app on mount via the SAME `createHAI3()` primitive the root host uses. The nested app gets its own registry, store, mediator, event bus, and lifecycle trigger — architecturally identical to the root. The Parent MFE registers its own domain schemas and domain instances, registers leaf MFE entries and extensions, and dispatches mount chains against its own registry. The root app's registry sees the Parent MFE only as one mounted extension; the nested app's domains and the leaf MFEs registered under them are invisible to the root. Mount machinery, mount-set state, slice mirroring, and chain validation are entirely per-app: each app independently runs its own diff dispatch and its own cross-validation pass at registration. Cross-app chain delivery between the root and the nested app (when needed) follows the routing described in `cpt-frontx-seq-cross-app-chain-delivery`.
+**Description**: A Parent MFE that needs to own its own extension domains creates its own FrontX app on mount via the SAME `createGears FrontX()` primitive the root host uses. The nested app gets its own registry, store, mediator, event bus, and lifecycle trigger — architecturally identical to the root. The Parent MFE registers its own domain schemas and domain instances, registers leaf MFE entries and extensions, and dispatches mount chains against its own registry. The root app's registry sees the Parent MFE only as one mounted extension; the nested app's domains and the leaf MFEs registered under them are invisible to the root. Mount machinery, mount-set state, slice mirroring, and chain validation are entirely per-app: each app independently runs its own diff dispatch and its own cross-validation pass at registration. Cross-app chain delivery between the root and the nested app (when needed) follows the routing described in `cpt-frontx-seq-cross-app-chain-delivery`.
 
 ### 3.7 Database schemas & tables
 
@@ -1164,7 +1164,7 @@ Packages are versioned independently within the `0.x` major. Each package can be
 2. `mfeRegistryFactory.build()` — screen-set definitions with MFE handlers wired
 3. Domain registration — domain plugins register their domains with the registry; the registration semantics (factory contract, cardinality choice, cross-validation) are specified in `cpt-frontx-feature-mfe-registry`
 4. Extension registration — MFE extensions registered and loaded
-5. `HAI3Provider` mounts — React tree renders with all contexts available
+5. `Gears FrontXProvider` mounts — React tree renders with all contexts available
 
 **Module Augmentation Pattern**: Plugins extend framework types without modifying source files. They issue a TypeScript `declare module '@gears-frontx/state'` augmentation that adds their domain-specific slice key to the framework-declared `StoreState` interface. This provides type-safe access to the augmented slice across the entire application while keeping the state package unaware of domain-specific slices. See `cpt-frontx-fr-sdk-module-augmentation` for the contract; the augmentation pattern is also referenced from the per-package L1 contract DoDs.
 

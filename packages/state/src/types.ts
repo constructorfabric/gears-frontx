@@ -264,7 +264,7 @@ export interface RootState {
 /**
  * App Dispatch Type
  * The dispatch function type for the FrontX store.
- * Aliases Redux `Dispatch<UnknownAction>` so `HAI3Store` is structurally compatible with
+ * Aliases Redux `Dispatch<UnknownAction>` so `FrontXStore` is structurally compatible with
  * `Store` (e.g. react-redux `Provider`) while keeping the same call shape for effects.
  */
 export type AppDispatch = Dispatch<UnknownAction>;
@@ -365,7 +365,7 @@ export type EffectInitializerWithCleanup = (dispatch: AppDispatch) => EffectClea
  *
  * @template TState - The state type (defaults to RootState)
  */
-export interface HAI3Store<TState = RootState> {
+export interface FrontXStore<TState = RootState> {
   /** Get current state */
   getState: () => TState;
   /** Dispatch an action */

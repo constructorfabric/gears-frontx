@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { HAI3_SHARED_PROPERTY_LANGUAGE, HAI3_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
+import { FRONTX_SHARED_PROPERTY_LANGUAGE, FRONTX_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
 import { createMfeBridgeFixture } from '@frontx-test-utils/createMfeBridgeFixture';
 import { mockShadowHost } from '@frontx-test-utils/mockShadowHost';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,8 +18,8 @@ async function setupCurrentThemeScreen() {
     domainId: 'theme-domain',
     instanceId: 'theme-screen',
     initialProperties: {
-      [HAI3_SHARED_PROPERTY_THEME]: 'solarized',
-      [HAI3_SHARED_PROPERTY_LANGUAGE]: 'fr',
+      [FRONTX_SHARED_PROPERTY_THEME]: 'solarized',
+      [FRONTX_SHARED_PROPERTY_LANGUAGE]: 'fr',
     },
   });
   const { container, unmount } = render(<CurrentThemeScreen bridge={bridgeFixture.bridge} />);
@@ -60,8 +60,8 @@ describe('CurrentThemeScreen', () => {
     const { bridgeFixture } = await setupCurrentThemeScreen();
 
     await waitFor(() => {
-      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_THEME, expect.any(Function));
-      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_LANGUAGE, expect.any(Function));
+      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_THEME, expect.any(Function));
+      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_LANGUAGE, expect.any(Function));
     });
   });
 
@@ -69,7 +69,7 @@ describe('CurrentThemeScreen', () => {
     const { host, bridgeFixture } = await setupCurrentThemeScreen();
 
     await act(async () => {
-      bridgeFixture.setProperty(HAI3_SHARED_PROPERTY_LANGUAGE, 'ar');
+      bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, 'ar');
     });
 
     await waitFor(() => {

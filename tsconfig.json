@@ -25,6 +25,8 @@
       "@gears-frontx/react/*": ["./packages/react/src/*"],
       "@gears-frontx/studio": ["./packages/studio/src/index.ts"],
       "@gears-frontx/studio/*": ["./packages/studio/src/*"],
+      "@gears-frontx/auth": ["./packages/auth/src/index.ts"],
+      "@gears-frontx/auth/*": ["./packages/auth/src/*"],
       "@gears-frontx/cli": ["./packages/cli/src/index.ts"],
       "@gears-frontx/cli/*": ["./packages/cli/src/*"],
       "@frontx-test-utils/*": ["./src/__test-utils__/*"]

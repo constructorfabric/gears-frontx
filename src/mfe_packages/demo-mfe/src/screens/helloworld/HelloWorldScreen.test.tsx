@@ -1,10 +1,10 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_SCREEN_DOMAIN,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
-  HAI3_SHARED_PROPERTY_THEME,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_SCREEN_DOMAIN,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_SHARED_PROPERTY_THEME,
   TextDirection,
 } from '@gears-frontx/react';
 import { createMfeBridgeFixture } from '@frontx-test-utils/createMfeBridgeFixture';
@@ -34,8 +34,8 @@ async function setupHelloWorldScreen() {
     instanceId: 'hello-world',
     executeActionsChain,
     initialProperties: {
-      [HAI3_SHARED_PROPERTY_THEME]: expectedTheme,
-      [HAI3_SHARED_PROPERTY_LANGUAGE]: expectedLanguage,
+      [FRONTX_SHARED_PROPERTY_THEME]: expectedTheme,
+      [FRONTX_SHARED_PROPERTY_LANGUAGE]: expectedLanguage,
     },
   });
 
@@ -80,8 +80,8 @@ describe('HelloWorldScreen', () => {
     const { bridgeFixture } = await setupHelloWorldScreen();
 
     await waitFor(() => {
-      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_THEME, expect.any(Function));
-      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_LANGUAGE, expect.any(Function));
+      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_THEME, expect.any(Function));
+      expect(bridgeFixture.subscribeToProperty).toHaveBeenCalledWith(FRONTX_SHARED_PROPERTY_LANGUAGE, expect.any(Function));
     });
   });
 
@@ -89,7 +89,7 @@ describe('HelloWorldScreen', () => {
     const { host, bridgeFixture } = await setupHelloWorldScreen();
 
     await act(async () => {
-      bridgeFixture.setProperty(HAI3_SHARED_PROPERTY_LANGUAGE, 'ar');
+      bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, 'ar');
     });
 
     await waitFor(() => {
@@ -109,8 +109,8 @@ describe('HelloWorldScreen', () => {
       expect(executeActionsChain).toHaveBeenCalledTimes(1);
       expect(executeActionsChain).toHaveBeenCalledWith({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
-          target: HAI3_SCREEN_DOMAIN,
+          type: FRONTX_ACTION_MOUNT_EXT,
+          target: FRONTX_SCREEN_DOMAIN,
           payload: { subject: THEME_EXTENSION_ID },
         },
       });
@@ -128,8 +128,8 @@ describe('HelloWorldScreen', () => {
       expect(executeActionsChain).toHaveBeenCalledTimes(1);
       expect(executeActionsChain).toHaveBeenCalledWith({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
-          target: HAI3_SCREEN_DOMAIN,
+          type: FRONTX_ACTION_MOUNT_EXT,
+          target: FRONTX_SCREEN_DOMAIN,
           payload: { subject: PROFILE_EXTENSION_ID },
         },
         next: {

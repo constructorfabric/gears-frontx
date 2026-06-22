@@ -14,7 +14,7 @@ import { DefaultActionsChainsMediator } from '../../../src/mfe/mediator/actions-
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import type { TypeSystemPlugin, ValidationResult, JSONSchema } from '../../../src/mfe/plugins/types';
 import { MockDomainFactory } from '../../../__test-utils__';
-import { HAI3_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
+import { FRONTX_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
 
 describe('Bridge Implementation', () => {
   describe('ChildMfeBridge', () => {
@@ -83,7 +83,7 @@ describe('Bridge Implementation', () => {
 
       const chain: ActionsChain = {
         action: {
-          type: 'gts.hai3.mfes.comm.action.v1~test.action',
+          type: 'gts.frontx.mfes.comm.action.v1~test.action',
           target: 'test-domain',
         },
       };
@@ -523,14 +523,14 @@ describe('Bridge Implementation', () => {
       const registered = new Map<string, unknown>();
 
       for (const id of [
-        'gts.hai3.mfes.mfe.entry.v1~',
-        'gts.hai3.mfes.ext.domain.v1~',
-        'gts.hai3.mfes.ext.extension.v1~',
-        'gts.hai3.mfes.comm.shared_property.v1~',
-        'gts.hai3.mfes.comm.action.v1~',
-        'gts.hai3.mfes.comm.actions_chain.v1~',
-        'gts.hai3.mfes.lifecycle.stage.v1~',
-        'gts.hai3.mfes.lifecycle.hook.v1~',
+        'gts.frontx.mfes.mfe.entry.v1~',
+        'gts.frontx.mfes.ext.domain.v1~',
+        'gts.frontx.mfes.ext.extension.v1~',
+        'gts.frontx.mfes.comm.shared_property.v1~',
+        'gts.frontx.mfes.comm.action.v1~',
+        'gts.frontx.mfes.comm.actions_chain.v1~',
+        'gts.frontx.mfes.lifecycle.stage.v1~',
+        'gts.frontx.mfes.lifecycle.hook.v1~',
       ]) {
         schemas.set(id, { $id: `gts://${id}`, type: 'object' });
       }
@@ -576,7 +576,7 @@ describe('Bridge Implementation', () => {
       }
     }
 
-    const ACTION_TYPE_SPY = 'gts.hai3.mfes.comm.action.v1~test.spy.v1~';
+    const ACTION_TYPE_SPY = 'gts.frontx.mfes.comm.action.v1~test.spy.v1~';
 
     describe('Registration via setRegisterActionHandlerCallback', () => {
       it('should invoke the wired callback with the provided actionTypeId and handler', () => {
@@ -622,9 +622,9 @@ describe('Bridge Implementation', () => {
     });
 
     describe('Full pipeline: bridge → mediator → handler invocation', () => {
-      const EXTENSION_ID = 'gts.hai3.mfes.ext.extension.v1~test.ext.v1~test.ext.handler.v1';
-      const DOMAIN_ID = 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~';
-      const ACTION_TYPE = 'gts.hai3.mfes.comm.action.v1~test.custom.v1~';
+      const EXTENSION_ID = 'gts.frontx.mfes.ext.extension.v1~test.ext.v1~test.ext.handler.v1';
+      const DOMAIN_ID = 'gts.frontx.mfes.ext.domain.v1~test.domain.v1~';
+      const ACTION_TYPE = 'gts.frontx.mfes.comm.action.v1~test.custom.v1~';
 
       let plugin: TypeSystemPlugin;
       let registry: DefaultMfeRegistry;
@@ -648,7 +648,7 @@ describe('Bridge Implementation', () => {
           // mount_ext satisfies the ExclusiveMountStrategy cardinality matrix
           // (REQUIRED). The test does not exercise mount semantics; the
           // declaration is plumbing so the domain can be registered.
-          actions: [HAI3_ACTION_MOUNT_EXT],
+          actions: [FRONTX_ACTION_MOUNT_EXT],
           // Extension-targeted actions are resolved via extensionHandlers map; the domain
           // must be registered so the mediator can look up defaultActionTimeout.
           extensionsActions: [ACTION_TYPE],
@@ -719,10 +719,10 @@ describe('Bridge Implementation', () => {
       // constraints on action schemas reject wrong targets at validation time.
       // This is the actual contract enforcement mechanism — no manual includes() needed.
 
-      const PROFILE_EXT_ID = 'gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.profile.v1';
-      const HELLOWORLD_EXT_ID = 'gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.helloworld.v1';
-      const SCREEN_DOMAIN_ID = 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1';
-      const REFRESH_ACTION = 'gts.hai3.mfes.comm.action.v1~hai3.demo.action.refresh_profile.v1~';
+      const PROFILE_EXT_ID = 'gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.demo.screens.profile.v1';
+      const HELLOWORLD_EXT_ID = 'gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.demo.screens.helloworld.v1';
+      const SCREEN_DOMAIN_ID = 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1';
+      const REFRESH_ACTION = 'gts.frontx.mfes.comm.action.v1~frontx.demo.action.refresh_profile.v1~';
 
       let gtsPlugin: import('../../../src/mfe/plugins/gts').GtsPlugin;
       let gtsMediator: DefaultActionsChainsMediator;
@@ -744,7 +744,7 @@ describe('Bridge Implementation', () => {
         // Register the screen-extension derived schema (profile/helloworld instance
         // IDs resolve to this schema via their chained parent segment).
         gtsPlugin.registerSchema({
-          $id: 'gts://gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~',
+          $id: 'gts://gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~',
           $schema: 'https://json-schema.org/draft/2020-12/schema',
           type: 'object',
           properties: {
@@ -757,7 +757,7 @@ describe('Bridge Implementation', () => {
 
         // Register the refresh_profile action schema (constrains target to profile extension only)
         gtsPlugin.registerSchema({
-          $id: 'gts://gts.hai3.mfes.comm.action.v1~hai3.demo.action.refresh_profile.v1~',
+          $id: 'gts://gts.frontx.mfes.comm.action.v1~frontx.demo.action.refresh_profile.v1~',
           $schema: 'https://json-schema.org/draft/2020-12/schema',
           type: 'object',
           properties: {
@@ -773,7 +773,7 @@ describe('Bridge Implementation', () => {
         const domain = {
           id: SCREEN_DOMAIN_ID,
           sharedProperties: [],
-          actions: ['gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~'],
+          actions: ['gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~'],
           extensionsActions: [],
           defaultActionTimeout: 5000,
           lifecycleStages: [],
@@ -784,12 +784,12 @@ describe('Bridge Implementation', () => {
         gtsPlugin.register({
           id: PROFILE_EXT_ID,
           domain: SCREEN_DOMAIN_ID,
-          entry: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.profile.v1',
+          entry: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.profile.v1',
         });
         gtsPlugin.register({
           id: HELLOWORLD_EXT_ID,
           domain: SCREEN_DOMAIN_ID,
-          entry: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.helloworld.v1',
+          entry: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.helloworld.v1',
         });
       });
 
@@ -821,14 +821,14 @@ describe('Bridge Implementation', () => {
         const spy = new SpyHandler();
         gtsMediator.registerHandler(
           PROFILE_EXT_ID,
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~',
           spy,
           SCREEN_DOMAIN_ID
         );
 
         const result = await gtsMediator.executeActionsChain({
           action: {
-            type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+            type: 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~',
             target: PROFILE_EXT_ID,
             payload: { subject: PROFILE_EXT_ID },
           },
@@ -848,13 +848,13 @@ describe('Bridge Implementation', () => {
         const mountHandler = new SpyHandler();
         gtsMediator.registerHandler(
           SCREEN_DOMAIN_ID,
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~',
           mountHandler
         );
 
         const result = await gtsMediator.executeActionsChain({
           action: {
-            type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+            type: 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~',
             target: SCREEN_DOMAIN_ID,
             payload: { subject: PROFILE_EXT_ID },
           },

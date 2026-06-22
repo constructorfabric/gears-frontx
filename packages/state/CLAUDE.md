@@ -119,7 +119,7 @@ declare module '@gears-frontx/state' {
 - `RootState` - Augmentable root state interface
 - `AppDispatch` - Dispatch type for effects
 - `EffectInitializer` - Effect initializer function type
-- `HAI3Store` - Store type
+- `Gears FrontXStore` - Store type
 - `SliceObject<TState>` - Slice interface (name + reducer)
 - `EventBus` - EventBus interface
 - `Subscription` - Subscription with unsubscribe method

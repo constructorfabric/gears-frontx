@@ -41,7 +41,7 @@ function ControlPanel() {
 - Subscribes to the active package via `useActivePackage()`
 - Disabled when only one package is registered
 - On package change: finds all screen extensions for the package, sorts by `presentation.order`, and mounts the first one
-- Uses `registry.executeActionsChain()` with `HAI3_ACTION_MOUNT_EXT` to mount the extension
+- Uses `registry.executeActionsChain()` with `Gears FrontX_ACTION_MOUNT_EXT` to mount the extension
 
 ### ThemeSelector
 

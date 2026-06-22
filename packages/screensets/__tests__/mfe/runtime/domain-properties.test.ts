@@ -15,7 +15,7 @@ import { MfeRegistry } from '../../../src/mfe/runtime';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import type { ExtensionDomain } from '../../../src/mfe/types';
 import type { TypeSystemPlugin, ValidationResult, JSONSchema } from '../../../src/mfe/plugins/types';
-import { HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
+import { FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
 import { MockDomainFactory } from '../../../__test-utils__';
 
 // Create a lenient mock plugin for testing domain properties
@@ -25,14 +25,14 @@ function createMockPlugin(): TypeSystemPlugin {
 
   // Add first-class citizen schemas
   const coreTypeIds = [
-    'gts.hai3.mfes.mfe.entry.v1~',
-    'gts.hai3.mfes.ext.domain.v1~',
-    'gts.hai3.mfes.ext.extension.v1~',
-    'gts.hai3.mfes.comm.shared_property.v1~',
-    'gts.hai3.mfes.comm.action.v1~',
-    'gts.hai3.mfes.comm.actions_chain.v1~',
-    'gts.hai3.mfes.lifecycle.stage.v1~',
-    'gts.hai3.mfes.lifecycle.hook.v1~',
+    'gts.frontx.mfes.mfe.entry.v1~',
+    'gts.frontx.mfes.ext.domain.v1~',
+    'gts.frontx.mfes.ext.extension.v1~',
+    'gts.frontx.mfes.comm.shared_property.v1~',
+    'gts.frontx.mfes.comm.action.v1~',
+    'gts.frontx.mfes.comm.actions_chain.v1~',
+    'gts.frontx.mfes.lifecycle.stage.v1~',
+    'gts.frontx.mfes.lifecycle.hook.v1~',
   ];
 
   for (const typeId of coreTypeIds) {
@@ -81,9 +81,9 @@ describe('MfeRegistry - Domain Properties', () => {
   let registry: MfeRegistry;
   let testDomain: ExtensionDomain;
   let mockContainerProvider: MockDomainFactory;
-  const DOMAIN_ID = 'gts.hai3.mfes.ext.domain.v1~hai3.test.widget.slot.v1';
-  const THEME_PROPERTY_ID = 'gts.hai3.mfes.comm.shared_property.v1~acme.ui.theme.v1';
-  const USER_PROPERTY_ID = 'gts.hai3.mfes.comm.shared_property.v1~acme.auth.user.v1';
+  const DOMAIN_ID = 'gts.frontx.mfes.ext.domain.v1~frontx.test.widget.slot.v1';
+  const THEME_PROPERTY_ID = 'gts.frontx.mfes.comm.shared_property.v1~acme.ui.theme.v1';
+  const USER_PROPERTY_ID = 'gts.frontx.mfes.comm.shared_property.v1~acme.auth.user.v1';
 
   beforeEach(() => {
     registry = new DefaultMfeRegistry({
@@ -94,14 +94,14 @@ describe('MfeRegistry - Domain Properties', () => {
     testDomain = {
       id: DOMAIN_ID,
       sharedProperties: [THEME_PROPERTY_ID, USER_PROPERTY_ID],
-      actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+      actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
       extensionsActions: [],
       defaultActionTimeout: 5000,
       lifecycleStages: [
-        'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+        'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
       ],
       extensionsLifecycleStages: [
-        'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+        'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
       ],
     };
 
@@ -118,7 +118,7 @@ describe('MfeRegistry - Domain Properties', () => {
     });
 
     it('should be a silent no-op when no domains declare the property', () => {
-      const unknownPropertyId = 'gts.hai3.mfes.comm.shared_property.v1~acme.unknown.v1';
+      const unknownPropertyId = 'gts.frontx.mfes.comm.shared_property.v1~acme.unknown.v1';
 
       expect(() => {
         registry.updateSharedProperty(unknownPropertyId, 'some-value');
@@ -173,20 +173,20 @@ describe('MfeRegistry - Domain Properties', () => {
 
   describe('Broadcast semantics — multiple declaring domains', () => {
     let domain2: ExtensionDomain;
-    const DOMAIN2_ID = 'gts.hai3.mfes.ext.domain.v1~hai3.test.other.slot.v1';
+    const DOMAIN2_ID = 'gts.frontx.mfes.ext.domain.v1~frontx.test.other.slot.v1';
 
     beforeEach(() => {
       domain2 = {
         id: DOMAIN2_ID,
         sharedProperties: [THEME_PROPERTY_ID],
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         ],
         extensionsLifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         ],
       };
 
@@ -221,7 +221,7 @@ describe('MfeRegistry - Domain Properties', () => {
   });
 
   describe('Late-registration limitation', () => {
-    const DOMAIN3_ID = 'gts.hai3.mfes.ext.domain.v1~hai3.test.late.slot.v1';
+    const DOMAIN3_ID = 'gts.frontx.mfes.ext.domain.v1~frontx.test.late.slot.v1';
 
     it('late-registered domain does NOT retroactively receive prior broadcast values', () => {
       // Broadcast BEFORE domain3 is registered
@@ -231,14 +231,14 @@ describe('MfeRegistry - Domain Properties', () => {
       const domain3: ExtensionDomain = {
         id: DOMAIN3_ID,
         sharedProperties: [THEME_PROPERTY_ID],
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         ],
         extensionsLifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         ],
       };
       registry.registerDomain(domain3, mockContainerProvider.prepareForDomain(domain3));
@@ -254,14 +254,14 @@ describe('MfeRegistry - Domain Properties', () => {
       const domain3: ExtensionDomain = {
         id: DOMAIN3_ID,
         sharedProperties: [THEME_PROPERTY_ID],
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         ],
         extensionsLifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         ],
       };
       registry.registerDomain(domain3, mockContainerProvider.prepareForDomain(domain3));

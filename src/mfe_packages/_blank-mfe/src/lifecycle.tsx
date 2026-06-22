@@ -7,7 +7,7 @@ import { HomeScreen } from './screens/home/HomeScreen';
 class BlankMfeLifecycle extends ThemeAwareReactLifecycle {
   constructor() {
     // ThemeAwareReactLifecycle consumes the host handoff and passes the
-    // shared server-state runtime into HAI3Provider for this mounted root.
+    // shared server-state runtime into FrontXProvider for this mounted root.
     super(mfeApp);
   }
 

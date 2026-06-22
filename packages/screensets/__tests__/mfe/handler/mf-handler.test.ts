@@ -36,7 +36,7 @@ function buildManifest(
   } = {}
 ): MfManifest {
   return {
-    id: options.id ?? `gts.hai3.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
+    id: options.id ?? `gts.frontx.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
     name: remoteName,
     metaData: {
       name: remoteName,
@@ -113,7 +113,7 @@ function createTestSetup(
       chunkSource: options.chunkSources?.[exposedModule],
     });
     return {
-      id: `gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.${suffix}.v1`,
+      id: `gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.${suffix}.v1`,
       manifest,
       exposedModule,
       exposeAssets,
@@ -145,7 +145,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
   let mocks: ReturnType<typeof setupBlobUrlLoaderMocks>;
 
   beforeEach(() => {
-    handler = new MfeHandlerMF('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~', { timeout: 5000, retries: 0 });
+    handler = new MfeHandlerMF('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~', { timeout: 5000, retries: 0 });
     mocks = setupBlobUrlLoaderMocks();
   });
 
@@ -209,7 +209,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         registerSource: mocks.registerSource,
       });
       const entry2: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.acme.chart2.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.acme.chart2.v1',
         manifest: manifest.id,
         exposedModule: './ChartWidget2',
         exposeAssets: exposeAssets2,
@@ -257,7 +257,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         registerSource: mocks.registerSource,
       });
       const entry2: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.acme.chart.ref2.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.acme.chart.ref2.v1',
         manifest: manifest.id,
         exposedModule: './ChartWidget2',
         exposeAssets: exposeAssets2,
@@ -298,8 +298,8 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         registerSource: mocks.registerSource,
       });
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.notcached.v1',
-        manifest: 'gts.hai3.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.notcached.v1',
+        manifest: 'gts.frontx.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
         exposedModule: './ChartWidget',
         exposeAssets,
         requiredProperties: [],
@@ -331,7 +331,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         registerSource: mocks.registerSource,
       });
       const entry2: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.acme.int.chart2.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.acme.int.chart2.v1',
         manifest: manifest.id,
         exposedModule: './ChartWidget2',
         exposeAssets: exposeAssets2,
@@ -370,7 +370,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       mocks.registerSource(`${baseUrl}expose-Widget2.js`, createExposeChunkSource());
 
       const entry1: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.cache1.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.cache1.v1',
         manifest,
         exposedModule: './Widget1',
         exposeAssets: { js: { sync: ['expose-Widget1.js'], async: [] }, css: { sync: [], async: [] } },
@@ -379,7 +379,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         domainActions: [],
       };
       const entry2: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.cache2.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.cache2.v1',
         manifest,
         exposedModule: './Widget2',
         exposeAssets: { js: { sync: ['expose-Widget2.js'], async: [] }, css: { sync: [], async: [] } },
@@ -424,7 +424,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         registerSource: mocks.registerSource,
       });
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.acme.sharedmf.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.acme.sharedmf.v1',
         manifest,
         exposedModule: './ChartWidget',
         exposeAssets,
@@ -452,7 +452,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         registerSource: mocks.registerSource,
       });
       const entry2: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.acme.tidref2.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.acme.tidref2.v1',
         manifest: manifest.id,
         exposedModule: './ChartWidget2',
         exposeAssets: exposeAssets2,
@@ -491,7 +491,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.scoped.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.scoped.v1',
         manifest,
         exposedModule: './Widget',
         exposeAssets: {
@@ -527,7 +527,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.flat.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.flat.v1',
         manifest,
         exposedModule: './Widget',
         exposeAssets: {
@@ -565,7 +565,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.deep.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.deep.v1',
         manifest,
         exposedModule: './Widget',
         exposeAssets: {
@@ -598,7 +598,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.minified.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.minified.v1',
         manifest,
         exposedModule: './Widget',
         exposeAssets: {
@@ -625,7 +625,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.styled.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.styled.v1',
         manifest,
         exposedModule: './Widget',
         exposeAssets: {
@@ -649,14 +649,14 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         registerActionHandler: () => undefined,
       });
 
-      const styleElement = shadowRoot.getElementById('__hai3-mfe-runtime-style-0');
+      const styleElement = shadowRoot.getElementById('__frontx-mfe-runtime-style-0');
       expect(styleElement).toBeInstanceOf(HTMLLinkElement);
       expect((styleElement as HTMLLinkElement | null)?.rel).toBe('stylesheet');
       expect((styleElement as HTMLLinkElement | null)?.href).toBe(
         `${baseUrl}${cssFile}`
       );
-      expect(shadowRoot.querySelectorAll('link[id^="__hai3-mfe-runtime-style-"]')).toHaveLength(1);
-      expect(shadowRoot.querySelector('style[id^="__hai3-mfe-runtime-style-"]')).toBeNull();
+      expect(shadowRoot.querySelectorAll('link[id^="__frontx-mfe-runtime-style-"]')).toHaveLength(1);
+      expect(shadowRoot.querySelector('style[id^="__frontx-mfe-runtime-style-"]')).toBeNull();
     });
 
     it('reuses stylesheet link ids instead of duplicating them on repeated mount', async () => {
@@ -668,7 +668,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.styled-repeat.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.styled-repeat.v1',
         manifest,
         exposedModule: './Widget',
         exposeAssets: {
@@ -695,7 +695,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       await lifecycle.mount(shadowRoot, bridge);
       await lifecycle.mount(shadowRoot, bridge);
 
-      expect(shadowRoot.querySelectorAll('link[id="__hai3-mfe-runtime-style-0"]')).toHaveLength(1);
+      expect(shadowRoot.querySelectorAll('link[id="__frontx-mfe-runtime-style-0"]')).toHaveLength(1);
     });
 
     it('removes injected remote stylesheets before unmount', async () => {
@@ -708,7 +708,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         `export default {
           mount: () => {},
           unmount: (container) => {
-            if (container.querySelector('link[id^="__hai3-mfe-runtime-style-"], style[id^="__hai3-mfe-runtime-style-"]')) {
+            if (container.querySelector('link[id^="__frontx-mfe-runtime-style-"], style[id^="__frontx-mfe-runtime-style-"]')) {
               throw new Error('runtime stylesheet cleanup should happen before unmount');
             }
           }
@@ -717,7 +717,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.styled-unmount.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.styled-unmount.v1',
         manifest,
         exposedModule: './Widget',
         exposeAssets: {
@@ -742,10 +742,10 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         registerActionHandler: () => undefined,
       });
 
-      expect(shadowRoot.getElementById('__hai3-mfe-runtime-style-0')).toBeTruthy();
+      expect(shadowRoot.getElementById('__frontx-mfe-runtime-style-0')).toBeTruthy();
 
       await expect(lifecycle.unmount(shadowRoot)).resolves.toBeUndefined();
-      expect(shadowRoot.getElementById('__hai3-mfe-runtime-style-0')).toBeNull();
+      expect(shadowRoot.getElementById('__frontx-mfe-runtime-style-0')).toBeNull();
     });
   });
 
@@ -762,7 +762,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.manifestchunk.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.manifestchunk.v1',
         manifest,
         exposedModule: './Widget',
         // exposeAssets.js.sync[0] dictates exactly which chunk is fetched
@@ -790,7 +790,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.publicpath.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.publicpath.v1',
         manifest,
         exposedModule: './Widget',
         exposeAssets: {
@@ -819,7 +819,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.cssmanifest.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.cssmanifest.v1',
         manifest,
         exposedModule: './Widget',
         exposeAssets: {
@@ -843,7 +843,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
         registerActionHandler: () => undefined,
       });
 
-      const link = shadowRoot.getElementById('__hai3-mfe-runtime-style-0') as HTMLLinkElement;
+      const link = shadowRoot.getElementById('__frontx-mfe-runtime-style-0') as HTMLLinkElement;
       expect(link).toBeTruthy();
       expect(link.href).toBe(`${baseUrl}${cssPath}`);
     });
@@ -851,7 +851,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
     it('throws MfeLoadError when exposeAssets.js.sync is empty', async () => {
       const manifest = buildManifest('emptyExposeRemote');
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.emptyexpose.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.emptyexpose.v1',
         manifest,
         exposedModule: './Widget',
         exposeAssets: {
@@ -876,7 +876,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
       const manifest = buildManifest(remoteName);
       const entry: MfeEntryMF = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.multicss.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.multicss.v1',
         manifest,
         exposedModule: './Widget',
         exposeAssets: {
@@ -901,7 +901,7 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       });
 
       // sync and async CSS are both injected (3 total)
-      const links = shadowRoot.querySelectorAll('link[id^="__hai3-mfe-runtime-style-"]');
+      const links = shadowRoot.querySelectorAll('link[id^="__frontx-mfe-runtime-style-"]');
       expect(links).toHaveLength(3);
     });
   });
@@ -936,7 +936,7 @@ describe('MfeHandlerMF - Process-Wide Load Cache', () => {
   beforeEach(() => {
     resetStaticLoadCache();
     handler = new MfeHandlerMF(
-      'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+      'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
       { timeout: 5000, retries: 0 }
     );
     mocks = setupBlobUrlLoaderMocks();
@@ -988,7 +988,7 @@ describe('MfeHandlerMF - Process-Wide Load Cache', () => {
     // nested-app registry teardown that destroys MfeHandlerMF instances
     // between navigate cycles.
     const replacementHandler = new MfeHandlerMF(
-      'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+      'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
       { timeout: 5000, retries: 0 }
     );
 
@@ -1016,8 +1016,8 @@ describe('MfeHandlerMF - Process-Wide Load Cache', () => {
       registerSource: mocks.registerSource,
     });
     const entry: MfeEntryMF = {
-      id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.cache.fail.v1',
-      manifest: 'gts.hai3.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
+      id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.cache.fail.v1',
+      manifest: 'gts.frontx.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
       exposedModule: './Widget',
       exposeAssets,
       requiredProperties: [],
@@ -1083,7 +1083,7 @@ describe('MfeHandlerMF - Extension-Instance-ID Cache Key', () => {
   beforeEach(() => {
     resetStaticLoadCache();
     handler = new MfeHandlerMF(
-      'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+      'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
       { timeout: 5000, retries: 0 }
     );
     mocks = setupBlobUrlLoaderMocks();
@@ -1182,8 +1182,8 @@ describe('MfeHandlerMF - Extension-Instance-ID Cache Key', () => {
       registerSource: mocks.registerSource,
     });
     const entry: MfeEntryMF = {
-      id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.ext.fail.v1',
-      manifest: 'gts.hai3.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
+      id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.ext.fail.v1',
+      manifest: 'gts.frontx.mfes.mfe.mf_manifest.v1~missing.manifest.v1',
       exposedModule: './Widget',
       exposeAssets,
       requiredProperties: [],

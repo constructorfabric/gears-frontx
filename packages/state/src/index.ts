@@ -25,7 +25,7 @@ import type {
   RootState,
   AppDispatch,
   EffectInitializer,
-  HAI3Store,
+  FrontXStore,
   SliceObject,
   EventBus,
   EventHandler,
@@ -41,7 +41,7 @@ export type {
   AppDispatch,
   EffectInitializer,
   // For store/slice
-  HAI3Store,
+  FrontXStore,
   SliceObject,
   // For event subscriptions
   EventBus,

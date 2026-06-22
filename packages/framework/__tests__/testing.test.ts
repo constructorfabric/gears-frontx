@@ -25,7 +25,7 @@ describe('TestContainerProvider (factory adapter)', () => {
   it('prepareForDomain returns the factory instance for chaining', () => {
     const provider = new TestContainerProvider();
     const declaration = {
-      id: 'gts.hai3.mfes.ext.domain.v1~test.app.domain.v1',
+      id: 'gts.frontx.mfes.ext.domain.v1~test.app.domain.v1',
       sharedProperties: [],
       actions: [],
       extensionsActions: [],

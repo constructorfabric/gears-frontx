@@ -12,21 +12,21 @@ export type { JSONSchema, TypeSystemPlugin } from './plugins';
 
 // FrontX Type Constants
 export {
-  HAI3_SCREEN_EXTENSION_TYPE,
-  HAI3_MFE_ENTRY_MF,
+  FRONTX_SCREEN_EXTENSION_TYPE,
+  FRONTX_MFE_ENTRY_MF,
 } from './constants';
 
 // FrontX Action Constants
 export {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from './constants';
 
 // FrontX Shared Property Constants
 export {
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_SHARED_PROPERTY_THEME,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
 } from './constants';
 
 // TypeScript Interfaces

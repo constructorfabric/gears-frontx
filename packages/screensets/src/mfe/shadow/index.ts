@@ -45,7 +45,7 @@ export function createShadowRoot(
   }
 
   // Inject isolation styles automatically (idempotent)
-  const isolationStyleId = '__hai3-shadow-isolation__';
+  const isolationStyleId = '__frontx-shadow-isolation__';
   if (!shadowRoot.getElementById(isolationStyleId)) {
     const styleElement = document.createElement('style');
     styleElement.id = isolationStyleId;
@@ -80,7 +80,7 @@ export function injectCssVariables(
   shadowRoot: ShadowRoot,
   variables: Record<string, string>
 ): void {
-  const styleId = '__hai3-css-variables__';
+  const styleId = '__frontx-css-variables__';
   let styleElement = shadowRoot.getElementById(styleId) as HTMLStyleElement | null;
 
   if (!styleElement) {

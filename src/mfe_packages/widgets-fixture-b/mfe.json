@@ -1,26 +1,26 @@
 {
   "manifest": {
-    "id": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.widgets.fixture_b.manifest.v1",
+    "id": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.widgets.fixture_b.manifest.v1",
     "remoteEntry": "http://localhost:3202/assets/remoteEntry.js"
   },
   "entries": [
     {
-      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.widgets.fixture_b.entry.v1",
+      "id": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.widgets.fixture_b.entry.v1",
       "requiredProperties": [],
       "actions": [],
       "domainActions": [
-        "gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~",
-        "gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~"
+        "gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~",
+        "gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1~"
       ],
-      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.widgets.fixture_b.manifest.v1",
+      "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.widgets.fixture_b.manifest.v1",
       "exposedModule": "./lifecycle"
     }
   ],
   "extensions": [
     {
-      "id": "gts.hai3.mfes.ext.extension.v1~hai3.widgets.fixture_b.widget.v1",
-      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.widgets.area.main.v1",
-      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.widgets.fixture_b.entry.v1"
+      "id": "gts.frontx.mfes.ext.extension.v1~frontx.widgets.fixture_b.widget.v1",
+      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.widgets.area.main.v1",
+      "entry": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.widgets.fixture_b.entry.v1"
     }
   ]
 }

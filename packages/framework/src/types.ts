@@ -14,7 +14,7 @@
 
 // From @gears-frontx/state
 import type {
-  HAI3Store as StoreType,
+  FrontXStore as StoreType,
   EffectInitializer,
 } from '@gears-frontx/state';
 
@@ -27,7 +27,7 @@ import type { ApiRegistry } from '@gears-frontx/api';
 import type { I18nRegistry } from '@gears-frontx/i18n';
 
 // Re-export FrontXStore from @gears-frontx/store for framework consumers
-export type HAI3Store = StoreType;
+export type FrontXStore = StoreType;
 
 // ============================================================================
 // FrontX Configuration
@@ -42,7 +42,7 @@ export type RouterMode = 'browser' | 'hash' | 'memory';
  * FrontX Application Configuration
  * Configuration options for creating a FrontX application.
  */
-export interface HAI3Config {
+export interface FrontXConfig {
   /** Application name */
   name?: string;
   /** Enable development mode */
@@ -114,7 +114,7 @@ export interface RegisterableSlice {
  *
  * Design: Interface (not type) enables TypeScript declaration merging.
  */
-export interface HAI3Actions {
+export interface FrontXActions {
   // ==========================================================================
   // Theme actions (from themes plugin)
   // ==========================================================================
@@ -163,18 +163,18 @@ export interface PluginProvides {
   registries?: Record<string, unknown>;
   /**
    * Runtime app surface extensions.
-   * Use module augmentation to extend `HAI3AppRuntimeExtensions`.
+   * Use module augmentation to extend `FrontXAppRuntimeExtensions`.
    *
    * This is the non-special-case way for plugins to expose runtime APIs
    * on the built `app` instance (e.g. `app.auth`, `app.queryClient`).
    */
-  app?: Partial<HAI3AppRuntimeExtensions>;
+  app?: Partial<FrontXAppRuntimeExtensions>;
   /** Redux slices to register */
   slices?: RegisterableSlice[];
   /** Effect initializers to register */
   effects?: EffectInitializer[];
   /** Actions provided by the plugin (subset of FrontXActions) */
-  actions?: Partial<HAI3Actions>;
+  actions?: Partial<FrontXActions>;
 }
 
 /**
@@ -188,21 +188,21 @@ export interface PluginLifecycle {
    * @param app - The app builder instance
    * @param config - Plugin configuration
    */
-  onRegister?(app: HAI3AppBuilder, config: unknown): void;
+  onRegister?(app: FrontXAppBuilder, config: unknown): void;
 
   /**
    * Called after all plugins registered, before app starts.
    *
    * @param app - The built app instance
    */
-  onInit?(app: HAI3App): void | Promise<void>;
+  onInit?(app: FrontXApp): void | Promise<void>;
 
   /**
    * Called when app is destroyed.
    *
    * @param app - The app instance
    */
-  onDestroy?(app: HAI3App): void;
+  onDestroy?(app: FrontXApp): void;
 }
 
 /**
@@ -230,7 +230,7 @@ export interface PluginLifecycle {
  * };
  * ```
  */
-export interface HAI3Plugin<TConfig = unknown> extends PluginLifecycle {
+export interface FrontXPlugin<TConfig = unknown> extends PluginLifecycle {
   /** Unique plugin identifier */
   name: string;
 
@@ -250,7 +250,7 @@ export interface HAI3Plugin<TConfig = unknown> extends PluginLifecycle {
  *
  * @template TConfig - Plugin configuration type
  */
-export type PluginFactory<TConfig = unknown> = (config?: TConfig) => HAI3Plugin<TConfig>;
+export type PluginFactory<TConfig = unknown> = (config?: TConfig) => FrontXPlugin<TConfig>;
 
 // ============================================================================
 // App Builder Interface
@@ -268,7 +268,7 @@ export type PluginFactory<TConfig = unknown> = (config?: TConfig) => HAI3Plugin<
  *   .build();
  * ```
  */
-export interface HAI3AppBuilder {
+export interface FrontXAppBuilder {
   /**
    * Add a plugin to the application.
    *
@@ -278,7 +278,7 @@ export interface HAI3AppBuilder {
    * @param plugin - Plugin instance, plugin factory, or an array of plugins (e.g. a preset)
    * @returns Builder for chaining
    */
-  use(plugin: HAI3Plugin | PluginFactory | HAI3Plugin[]): HAI3AppBuilder;
+  use(plugin: FrontXPlugin | PluginFactory | FrontXPlugin[]): FrontXAppBuilder;
 
   /**
    * Add multiple plugins at once.
@@ -286,7 +286,7 @@ export interface HAI3AppBuilder {
    * @param plugins - Array of plugins or factories
    * @returns Builder for chaining
    */
-  useAll(plugins: Array<HAI3Plugin | PluginFactory>): HAI3AppBuilder;
+  useAll(plugins: Array<FrontXPlugin | PluginFactory>): FrontXAppBuilder;
 
   /**
    * Build the application.
@@ -294,7 +294,7 @@ export interface HAI3AppBuilder {
    *
    * @returns The built FrontX application
    */
-  build(): HAI3App;
+  build(): FrontXApp;
 }
 
 // ============================================================================
@@ -364,7 +364,7 @@ export interface ThemeRegistry {
  * non-empty (satisfies `no-empty-interface` / `no-empty-object-type`)
  * without affecting consumers — it is optional and typed as `never`.
  */
-export interface HAI3AppRuntimeExtensions {
+export interface FrontXAppRuntimeExtensions {
   readonly __frontxPluginExtensible?: never;
 }
 
@@ -388,12 +388,12 @@ export interface HAI3AppRuntimeExtensions {
  * }
  * ```
  */
-export interface HAI3App extends HAI3AppRuntimeExtensions {
+export interface FrontXApp extends FrontXAppRuntimeExtensions {
   /** Application configuration */
-  config: HAI3Config;
+  config: FrontXConfig;
 
   /** Redux store */
-  store: HAI3Store;
+  store: FrontXStore;
 
   /** Theme registry */
   themeRegistry: ThemeRegistry;
@@ -408,7 +408,7 @@ export interface HAI3App extends HAI3AppRuntimeExtensions {
   mfeRegistry?: import('@gears-frontx/screensets').MfeRegistry;
 
   /** All registered actions (type-safe via FrontXActions interface) */
-  actions: HAI3Actions;
+  actions: FrontXActions;
 
   /** Destroy the application and cleanup resources */
   destroy(): void;
@@ -434,7 +434,7 @@ export interface HAI3App extends HAI3AppRuntimeExtensions {
  * const app = createFrontXApp({ devMode: true });
  * ```
  */
-export type CreateHAI3App = (config?: HAI3Config) => HAI3App;
+export type CreateFrontXApp = (config?: FrontXConfig) => FrontXApp;
 
 /**
  * Create FrontX Function Signature
@@ -449,7 +449,7 @@ export type CreateHAI3App = (config?: HAI3Config) => HAI3App;
  *   .build();
  * ```
  */
-export type CreateHAI3 = () => HAI3AppBuilder;
+export type CreateFrontX = () => FrontXAppBuilder;
 
 // ============================================================================
 // Preset Types
@@ -466,7 +466,7 @@ export type CreateHAI3 = () => HAI3AppBuilder;
  * ];
  * ```
  */
-export type Preset = () => HAI3Plugin[];
+export type Preset = () => FrontXPlugin[];
 
 /**
  * Presets Collection

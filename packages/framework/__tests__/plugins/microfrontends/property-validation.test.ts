@@ -17,7 +17,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { GtsPlugin } from '@gears-frontx/screensets/plugins/gts';
-import { HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/screensets';
+import { FRONTX_SHARED_PROPERTY_THEME, FRONTX_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/screensets';
 import type { JSONSchema } from '@gears-frontx/screensets';
 import { themeSchema, languageSchema, extensionScreenSchema } from '../../../src/gts';
 
@@ -50,13 +50,13 @@ describe('application-layer derived GTS schemas', () => {
     const plugin = buildPluginWithDerivedSchemas();
 
     it('is accessible via getSchema using the theme property type ID', () => {
-      const schema = plugin.getSchema(HAI3_SHARED_PROPERTY_THEME);
+      const schema = plugin.getSchema(FRONTX_SHARED_PROPERTY_THEME);
       expect(schema).toBeDefined();
-      expect(schema?.$id).toBe(`gts://${HAI3_SHARED_PROPERTY_THEME}`);
+      expect(schema?.$id).toBe(`gts://${FRONTX_SHARED_PROPERTY_THEME}`);
     });
 
     it('constrains value to non-empty string (minLength: 1)', () => {
-      const schema = plugin.getSchema(HAI3_SHARED_PROPERTY_THEME);
+      const schema = plugin.getSchema(FRONTX_SHARED_PROPERTY_THEME);
       const valueSchema = getValuePropertySchema(schema);
       expect(valueSchema.type).toBe('string');
       // minLength is a JSON-schema keyword not in the narrowed JSONSchema type;
@@ -65,25 +65,25 @@ describe('application-layer derived GTS schemas', () => {
     });
 
     it('uses allOf derivation from base shared_property schema', () => {
-      const schema = plugin.getSchema(HAI3_SHARED_PROPERTY_THEME);
+      const schema = plugin.getSchema(FRONTX_SHARED_PROPERTY_THEME);
       expect(schema?.allOf).toBeDefined();
       expect(Array.isArray(schema?.allOf)).toBe(true);
     });
 
     it('valid theme value "dark" passes validation via named instance pattern', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_THEME}hai3.mfes.comm.runtime.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_THEME}frontx.mfes.comm.runtime.v1`;
       expect(() => plugin.register({ id: ephemeralId, value: 'dark' })).not.toThrow();
     });
 
     it('accepts any non-empty string as valid theme value', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_THEME}hai3.mfes.comm.runtime.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_THEME}frontx.mfes.comm.runtime.v1`;
       expect(() =>
         plugin.register({ id: ephemeralId, value: 'my-custom-theme' })
       ).not.toThrow();
     });
 
     it('empty string theme value fails validation', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_THEME}hai3.mfes.comm.runtime.empty.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_THEME}frontx.mfes.comm.runtime.empty.v1`;
       expect(() => plugin.register({ id: ephemeralId, value: '' })).toThrow(
         /GTS validation failed/
       );
@@ -94,13 +94,13 @@ describe('application-layer derived GTS schemas', () => {
     const plugin = buildPluginWithDerivedSchemas();
 
     it('is accessible via getSchema using the language property type ID', () => {
-      const schema = plugin.getSchema(HAI3_SHARED_PROPERTY_LANGUAGE);
+      const schema = plugin.getSchema(FRONTX_SHARED_PROPERTY_LANGUAGE);
       expect(schema).toBeDefined();
-      expect(schema?.$id).toBe(`gts://${HAI3_SHARED_PROPERTY_LANGUAGE}`);
+      expect(schema?.$id).toBe(`gts://${FRONTX_SHARED_PROPERTY_LANGUAGE}`);
     });
 
     it('constrains value to 36 enum strings', () => {
-      const schema = plugin.getSchema(HAI3_SHARED_PROPERTY_LANGUAGE);
+      const schema = plugin.getSchema(FRONTX_SHARED_PROPERTY_LANGUAGE);
       const valueSchema = getValuePropertySchema(schema);
       expect(valueSchema.type).toBe('string');
       expect(valueSchema.enum).toBeDefined();
@@ -109,30 +109,30 @@ describe('application-layer derived GTS schemas', () => {
     });
 
     it('uses allOf derivation from base shared_property schema', () => {
-      const schema = plugin.getSchema(HAI3_SHARED_PROPERTY_LANGUAGE);
+      const schema = plugin.getSchema(FRONTX_SHARED_PROPERTY_LANGUAGE);
       expect(schema?.allOf).toBeDefined();
       expect(Array.isArray(schema?.allOf)).toBe(true);
     });
 
     it('valid language value "en" passes validation via named instance pattern', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_LANGUAGE}hai3.mfes.comm.runtime.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_LANGUAGE}frontx.mfes.comm.runtime.v1`;
       expect(() => plugin.register({ id: ephemeralId, value: 'en' })).not.toThrow();
     });
 
     it('valid language value "fr" passes validation', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_LANGUAGE}hai3.mfes.comm.runtime.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_LANGUAGE}frontx.mfes.comm.runtime.v1`;
       expect(() => plugin.register({ id: ephemeralId, value: 'fr' })).not.toThrow();
     });
 
     it('invalid language value "klingon" fails validation', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_LANGUAGE}hai3.mfes.comm.runtime.klingon.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_LANGUAGE}frontx.mfes.comm.runtime.klingon.v1`;
       expect(() => plugin.register({ id: ephemeralId, value: 'klingon' })).toThrow(
         /GTS validation failed/
       );
     });
 
     it('invalid language value "invalid-lang" fails validation', () => {
-      const ephemeralId = `${HAI3_SHARED_PROPERTY_LANGUAGE}hai3.mfes.comm.runtime.invalid.v1`;
+      const ephemeralId = `${FRONTX_SHARED_PROPERTY_LANGUAGE}frontx.mfes.comm.runtime.invalid.v1`;
       expect(() =>
         plugin.register({ id: ephemeralId, value: 'invalid-lang' })
       ).toThrow(/GTS validation failed/);
@@ -144,14 +144,14 @@ describe('application-layer derived GTS schemas', () => {
 
     it('has $id identifying it as a derived Extension type for the screen domain', () => {
       expect(extensionScreenSchema.$id).toBe(
-        'gts://gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~'
+        'gts://gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~'
       );
     });
 
     it('is accessible via getSchema after registration', () => {
-      const schema = plugin.getSchema('gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~');
+      const schema = plugin.getSchema('gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~');
       expect(schema).toBeDefined();
-      expect(schema?.$id).toBe('gts://gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~');
+      expect(schema?.$id).toBe('gts://gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~');
     });
 
     it('requires presentation property', () => {

@@ -11,9 +11,9 @@ import type { MfeEntry } from '../../../src/mfe/types/mfe-entry';
 import type { ExtensionDomain } from '../../../src/mfe/types/extension-domain';
 import { validateContract, formatContractErrors } from '../../../src/mfe/validation/contract';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
 
 describe('Contract Matching Validation', () => {
@@ -30,11 +30,11 @@ describe('Contract Matching Validation', () => {
       };
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~hai3.layout.sidebar.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~frontx.layout.sidebar.v1~',
         sharedProperties: ['user', 'theme', 'locale', 'timezone'],
         actions: ['load_ext', 'unload_ext', 'refresh'],
         extensionsActions: ['update_data', 'request_navigation'],
-        extensionsTypeId: 'gts.hai3.mfes.ext.extension.v1~acme.test.ext.custom_extension.v1~',
+        extensionsTypeId: 'gts.frontx.mfes.ext.extension.v1~acme.test.ext.custom_extension.v1~',
         defaultActionTimeout: 5000,
         lifecycleStages: ['init', 'activated', 'deactivated', 'destroyed'],
         extensionsLifecycleStages: ['init', 'activated', 'deactivated', 'destroyed'],
@@ -55,7 +55,7 @@ describe('Contract Matching Validation', () => {
       };
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~hai3.layout.sidebar.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~frontx.layout.sidebar.v1~',
         sharedProperties: ['user', 'theme'],
         actions: ['load_ext'],
         extensionsActions: ['update_data'],
@@ -82,7 +82,7 @@ describe('Contract Matching Validation', () => {
       };
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~hai3.layout.sidebar.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~frontx.layout.sidebar.v1~',
         sharedProperties: ['user'],
         actions: ['load_ext'],
         // Domain requires two action types from entries, but entry only supports one
@@ -111,7 +111,7 @@ describe('Contract Matching Validation', () => {
       };
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~hai3.layout.sidebar.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~frontx.layout.sidebar.v1~',
         sharedProperties: ['user'],
         actions: ['load_ext'],
         extensionsActions: ['update_data'],
@@ -140,7 +140,7 @@ describe('Contract Matching Validation', () => {
       };
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~hai3.layout.sidebar.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~frontx.layout.sidebar.v1~',
         sharedProperties: ['user', 'theme'],
         actions: ['load_ext'],
         extensionsActions: ['update_data'],
@@ -167,7 +167,7 @@ describe('Contract Matching Validation', () => {
       };
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~hai3.layout.sidebar.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~frontx.layout.sidebar.v1~',
         sharedProperties: ['user'],
         actions: ['load_ext'],
         extensionsActions: ['update_data', 'delete_data'],
@@ -196,7 +196,7 @@ describe('Contract Matching Validation', () => {
       };
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~hai3.layout.sidebar.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~frontx.layout.sidebar.v1~',
         sharedProperties: [],
         actions: [],
         extensionsActions: [],
@@ -220,9 +220,9 @@ describe('Contract Matching Validation', () => {
       };
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~hai3.layout.screen.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~frontx.layout.screen.v1~',
         sharedProperties: [],
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: ['init', 'activated', 'deactivated', 'destroyed'],
@@ -245,9 +245,9 @@ describe('Contract Matching Validation', () => {
       };
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~hai3.layout.screen.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~frontx.layout.screen.v1~',
         sharedProperties: [],
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: ['init', 'activated', 'deactivated', 'destroyed'],
@@ -271,9 +271,9 @@ describe('Contract Matching Validation', () => {
       };
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~hai3.layout.screen.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~frontx.layout.screen.v1~',
         sharedProperties: [],
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'custom_action_id'],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, 'custom_action_id'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: ['init', 'activated', 'deactivated', 'destroyed'],
@@ -294,11 +294,11 @@ describe('Contract Matching Validation', () => {
         id: 'gts.acme.mfe.widget.v1~',
         requiredProperties: [],
         actions: [],
-        domainActions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
+        domainActions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT],
       };
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~hai3.layout.screen.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~frontx.layout.screen.v1~',
         sharedProperties: [],
         actions: [],
         extensionsActions: [],

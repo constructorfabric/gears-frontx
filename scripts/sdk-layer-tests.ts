@@ -106,15 +106,15 @@ function testSdkZeroDependencies(): TestResult[] {
       continue;
     }
 
-    const hai3Deps = getHai3Dependencies(pkg);
-    const passed = hai3Deps.length === 0;
+    const frontxDeps = getHai3Dependencies(pkg);
+    const passed = frontxDeps.length === 0;
 
     results.push({
       name: `SDK @gears-frontx/${pkgName}: Zero @gears-frontx deps`,
       passed,
       message: passed
         ? 'No @gears-frontx dependencies found'
-        : `Found @gears-frontx dependencies: ${hai3Deps.join(', ')}`,
+        : `Found @gears-frontx dependencies: ${frontxDeps.join(', ')}`,
     });
   }
 
@@ -137,15 +137,15 @@ function testFrameworkOnlySdkDeps(): TestResult {
     };
   }
 
-  const hai3Deps = getHai3Dependencies(pkg);
-  const invalidDeps = hai3Deps.filter((dep) => !ALLOWED_SDK_DEPS.includes(dep));
+  const frontxDeps = getHai3Dependencies(pkg);
+  const invalidDeps = frontxDeps.filter((dep) => !ALLOWED_SDK_DEPS.includes(dep));
   const passed = invalidDeps.length === 0;
 
   return {
     name: 'Framework: Only SDK dependencies',
     passed,
     message: passed
-      ? `Valid deps: ${hai3Deps.join(', ') || 'none'}`
+      ? `Valid deps: ${frontxDeps.join(', ') || 'none'}`
       : `Invalid deps: ${invalidDeps.join(', ')}`,
   };
 }
@@ -166,15 +166,15 @@ function testReactOnlyFrameworkDep(): TestResult {
     };
   }
 
-  const hai3Deps = getHai3Dependencies(pkg);
-  const invalidDeps = hai3Deps.filter((dep) => dep !== '@gears-frontx/framework');
+  const frontxDeps = getHai3Dependencies(pkg);
+  const invalidDeps = frontxDeps.filter((dep) => dep !== '@gears-frontx/framework');
   const passed = invalidDeps.length === 0;
 
   return {
     name: 'React: Only framework dependency',
     passed,
     message: passed
-      ? `Valid deps: ${hai3Deps.join(', ') || 'none'}`
+      ? `Valid deps: ${frontxDeps.join(', ') || 'none'}`
       : `Invalid deps: ${invalidDeps.join(', ')}`,
   };
 }
@@ -200,8 +200,8 @@ function testNoDeprecatedDependencies(): TestResult[] {
       continue;
     }
 
-    const hai3Deps = getHai3Dependencies(pkg);
-    const deprecatedDeps = hai3Deps.filter((dep) =>
+    const frontxDeps = getHai3Dependencies(pkg);
+    const deprecatedDeps = frontxDeps.filter((dep) =>
       DEPRECATED_PACKAGES.includes(dep)
     );
     const passed = deprecatedDeps.length === 0;

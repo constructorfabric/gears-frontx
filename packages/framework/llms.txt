@@ -6,8 +6,8 @@ Part of the FrontX Framework Layer (L2) - depends on all SDK packages (@gears-fr
 
 ## Core API
 
-- [createHAI3](https://frontx.dev/docs/framework/create): App builder with plugin composition
-- [createHAI3App](https://frontx.dev/docs/framework/app): Convenience function (full preset with MFE)
+- [createGears FrontX](https://frontx.dev/docs/framework/create): App builder with plugin composition
+- [createGears FrontXApp](https://frontx.dev/docs/framework/app): Convenience function (full preset with MFE)
 - [presets](https://frontx.dev/docs/framework/presets): Pre-configured plugin combinations (full, minimal, headless)
 
 ## Available Plugins
@@ -25,10 +25,10 @@ Part of the FrontX Framework Layer (L2) - depends on all SDK packages (@gears-fr
 ## Quick Start
 
 ```typescript
-import { createHAI3, screensets, themes, layout, microfrontends, i18n } from '@gears-frontx/framework';
+import { createGears FrontX, screensets, themes, layout, microfrontends, i18n } from '@gears-frontx/framework';
 
 // Compose plugins
-const app = createHAI3()
+const app = createGears FrontX()
   .use(screensets())
   .use(themes())
   .use(layout())
@@ -37,8 +37,8 @@ const app = createHAI3()
   .build();
 
 // Or use preset (equivalent to above)
-import { createHAI3App } from '@gears-frontx/framework';
-const app = createHAI3App();
+import { createGears FrontXApp } from '@gears-frontx/framework';
+const app = createGears FrontXApp();
 
 // Access MFE-enabled registry
 app.screensetsRegistry.registerDomain(screenDomain);
@@ -85,10 +85,10 @@ import {
 
 ```typescript
 import {
-  HAI3_SCREEN_DOMAIN,   // 'screen'
-  HAI3_SIDEBAR_DOMAIN,  // 'sidebar'
-  HAI3_POPUP_DOMAIN,    // 'popup'
-  HAI3_OVERLAY_DOMAIN,  // 'overlay'
+  Gears FrontX_SCREEN_DOMAIN,   // 'screen'
+  Gears FrontX_SIDEBAR_DOMAIN,  // 'sidebar'
+  Gears FrontX_POPUP_DOMAIN,    // 'popup'
+  Gears FrontX_OVERLAY_DOMAIN,  // 'overlay'
   screenDomain,         // ExtensionDomain object
   sidebarDomain,        // ExtensionDomain object
   popupDomain,          // ExtensionDomain object
@@ -100,9 +100,9 @@ import {
 
 ```typescript
 import {
-  HAI3_ACTION_LOAD_EXT,     // 'hai3.action.load_ext'
-  HAI3_ACTION_MOUNT_EXT,    // 'hai3.action.mount_ext'
-  HAI3_ACTION_UNMOUNT_EXT,  // 'hai3.action.unmount_ext'
+  Gears FrontX_ACTION_LOAD_EXT,     // 'frontx.action.load_ext'
+  Gears FrontX_ACTION_MOUNT_EXT,    // 'frontx.action.mount_ext'
+  Gears FrontX_ACTION_UNMOUNT_EXT,  // 'frontx.action.unmount_ext'
 } from '@gears-frontx/framework';
 ```
 
@@ -110,18 +110,18 @@ import {
 
 ```typescript
 import {
-  HAI3_SHARED_PROPERTY_THEME,     // 'hai3.shared.theme'
-  HAI3_SHARED_PROPERTY_LANGUAGE,  // 'hai3.shared.language'
+  Gears FrontX_SHARED_PROPERTY_THEME,     // 'frontx.shared.theme'
+  Gears FrontX_SHARED_PROPERTY_LANGUAGE,  // 'frontx.shared.language'
 } from '@gears-frontx/framework';
 ```
 
 ## Plugin Composition Pattern
 
 ```typescript
-import { createHAI3, screensets, microfrontends } from '@gears-frontx/framework';
+import { createGears FrontX, screensets, microfrontends } from '@gears-frontx/framework';
 
 // MFE-enabled app
-const app = createHAI3()
+const app = createGears FrontX()
   .use(screensets())      // Provides screensetsRegistry (MFE-enabled)
   .use(microfrontends())  // Provides MFE actions and domain management
   .build();

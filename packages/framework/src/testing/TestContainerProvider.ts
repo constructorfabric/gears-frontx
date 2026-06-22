@@ -19,8 +19,8 @@ import {
   ConcurrentMountStrategy,
   ExclusiveMountStrategy,
   ActionHandler,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
   type ContainerHooks,
   type DomainContext,
   type ExtensionDomain,
@@ -71,8 +71,8 @@ export class TestContainerProvider extends ExtensionDomainImplementationFactory 
       throw new Error('TestContainerProvider.build called without prepareForDomain');
     }
     const actions = declaration.actions ?? [];
-    const hasMount = actions.includes(HAI3_ACTION_MOUNT_EXT);
-    const hasUnmount = actions.includes(HAI3_ACTION_UNMOUNT_EXT);
+    const hasMount = actions.includes(FRONTX_ACTION_MOUNT_EXT);
+    const hasUnmount = actions.includes(FRONTX_ACTION_UNMOUNT_EXT);
     const container = this.mockContainer;
     const hooks: ContainerHooks = {
       create: () => container,
@@ -84,11 +84,11 @@ export class TestContainerProvider extends ExtensionDomainImplementationFactory 
       const strategy = new ConcurrentMountStrategy(ctx.mounter, hooks);
       strategies.push(strategy);
       ctx.registerHandler(
-        HAI3_ACTION_MOUNT_EXT,
+        FRONTX_ACTION_MOUNT_EXT,
         ActionHandler.fromFunction((_t, p) => strategy.mount(p as ActionPayload))
       );
       ctx.registerHandler(
-        HAI3_ACTION_UNMOUNT_EXT,
+        FRONTX_ACTION_UNMOUNT_EXT,
         ActionHandler.fromFunction((_t, p) => strategy.unmount!(p as ActionPayload))
       );
     } else if (hasMount) {
@@ -98,7 +98,7 @@ export class TestContainerProvider extends ExtensionDomainImplementationFactory 
       const strategy = new ExclusiveMountStrategy(ctx.mounter, hooks, this._registry, declaration.id);
       strategies.push(strategy);
       ctx.registerHandler(
-        HAI3_ACTION_MOUNT_EXT,
+        FRONTX_ACTION_MOUNT_EXT,
         ActionHandler.fromFunction((_t, p) => strategy.mount(p as ActionPayload))
       );
     }

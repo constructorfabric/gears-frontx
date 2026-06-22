@@ -69,7 +69,7 @@ export interface ExtensionDomainSlotProps {
  * ```tsx
  * <ExtensionDomainSlot
  *   registry={registry}
- *   domainId={HAI3_SCREEN_DOMAIN}
+ *   domainId={FRONTX_SCREEN_DOMAIN}
  *   loadingComponent={<Loading />}
  *   onAttached={(root) => console.log('Root attached:', root)}
  * />

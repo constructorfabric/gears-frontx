@@ -95,7 +95,7 @@ FrontX solves these by enforcing a proven architectural model with four isolated
 | Screenset | Vertical slice: group of related screens + translations + API services + state, self-contained and deployable independently. |
 | Extension / MFE Entry | Loaded microfrontend (via Module Federation) bound to an extension domain; exposes actions and properties for host app communication. |
 | Extension Domain | Contract definition for a category of extensions: shared properties, action types the domain can receive and execute, action types an extension's entry must support to be injectable, lifecycle. |
-| Plugin | Framework-level feature (screensets, themes, i18n, routing, effects, microfrontends, layout) composed via `.use()` on `createHAI3` builder. |
+| Plugin | Framework-level feature (screensets, themes, i18n, routing, effects, microfrontends, layout) composed via `.use()` on `createGears FrontX` builder. |
 | Shared Property | Observable value broadcast to all extensions (e.g., theme, language). Propagated by owning plugin. |
 | Studio | Standalone dev tools overlay (theme selector, language picker, API mode toggle, floating panel). Only loaded in `import.meta.env.DEV`. |
 | UI Kit | Component library: per-project choice at creation (local components, shadcn, or third-party). |
@@ -147,7 +147,7 @@ FrontX solves these by enforcing a proven architectural model with four isolated
 
 **ID**: `cpt-frontx-actor-host-app`
 
-**Role**: Initializes FrontX via `createHAI3().use(...).build()`, registers screensets, provides `HAI3Provider` to React tree, emits configuration events (tenant, language, theme).
+**Role**: Initializes FrontX via `createGears FrontX().use(...).build()`, registers screensets, provides `Gears FrontXProvider` to React tree, emits configuration events (tenant, language, theme).
 
 #### Build System
 
@@ -234,7 +234,7 @@ packages/           -- Published @gears-frontx/* packages
   api/              -- L1 SDK: REST/SSE protocols, plugin system
   i18n/             -- L1 SDK: 36-language i18n, formatters
   framework/        -- L2: Plugin architecture, layout slices
-  react/            -- L3: HAI3Provider, hooks, MFE components
+  react/            -- L3: Gears FrontXProvider, hooks, MFE components
   studio/           -- Dev: Floating overlay with controls
   cli/              -- Tool: Scaffolding CLI
   docs/             -- VitePress documentation site
@@ -260,7 +260,7 @@ src/                -- Demo host application + MFE packages
 - Internationalization — 36 languages, RTL support, namespace-based translations, lazy loading, locale-aware formatters
 - Plugin architecture — Composable plugins, presets (full, minimal)
 - Layout state — 6 domain slices (header, footer, menu, sidebar, popup, overlay), tenant, mock
-- React integration — HAI3Provider, typed hooks, MFE hooks
+- React integration — Gears FrontXProvider, typed hooks, MFE hooks
 - UI component library — shadcn/ui + Radix UI primitives, variant system, theming
 - Developer studio — Runtime overlay with MFE package selector, theme/language/API mode toggles
 - CLI tooling — Project scaffolding, screenset generation, migration runners, AI tool sync
@@ -302,7 +302,7 @@ The system MUST provide 4 flat SDK packages (`@gears-frontx/state`, `@gears-fron
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-sdk-state-interface`
 
-`@gears-frontx/state` MUST export EventBus (singleton + interface), `createStore`, `getStore`, `registerSlice`, `unregisterSlice`, `hasSlice`, `getRegisteredSlices`, `resetStore`, `createSlice`, and types `ReducerPayload`, `EventPayloadMap`, `RootState`, `AppDispatch`, `EffectInitializer`, `HAI3Store`, `SliceObject`, `EventHandler`, `Subscription`.
+`@gears-frontx/state` MUST export EventBus (singleton + interface), `createStore`, `getStore`, `registerSlice`, `unregisterSlice`, `hasSlice`, `getRegisteredSlices`, `resetStore`, `createSlice`, and types `ReducerPayload`, `EventPayloadMap`, `RootState`, `AppDispatch`, `EffectInitializer`, `Gears FrontXStore`, `SliceObject`, `EventHandler`, `Subscription`.
 
 **Rationale**: Complete state management foundation for event-driven Flux architecture.
 **Actors**: `cpt-frontx-actor-developer`
@@ -347,7 +347,7 @@ The system MUST use consistent FrontX Flux terminology: Action (emits events), E
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-sdk-framework-layer`
 
-`@gears-frontx/framework` MUST depend only on SDK packages (state, screensets, api, i18n), MUST NOT depend on React, and MUST provide layout domain state types, registries, effect coordination, `createHAI3()` builder, and `createHAI3App()` convenience function.
+`@gears-frontx/framework` MUST depend only on SDK packages (state, screensets, api, i18n), MUST NOT depend on React, and MUST provide layout domain state types, registries, effect coordination, `createGears FrontX()` builder, and `createGears FrontXApp()` convenience function.
 
 **Rationale**: Framework wires SDK capabilities into composable plugins without React coupling.
 **Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-framework-plugin`
@@ -365,7 +365,7 @@ Actions MUST be handwritten pure functions that emit events via `eventBus.emit()
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-sdk-plugin-arch`
 
-`@gears-frontx/framework` MUST provide a plugin-based architecture via `createHAI3()` builder with `.use()` and `.build()`. Plugins MUST declare name, optional dependencies, and optional provides. Presets MUST include `full()`, `minimal()`.
+`@gears-frontx/framework` MUST provide a plugin-based architecture via `createGears FrontX()` builder with `.use()` and `.build()`. Plugins MUST declare name, optional dependencies, and optional provides. Presets MUST include `full()`, `minimal()`.
 
 **Rationale**: Composable feature set; applications only pay for what they use.
 **Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-framework-plugin`
@@ -374,7 +374,7 @@ Actions MUST be handwritten pure functions that emit events via `eventBus.emit()
 
 - [x] `p2` - **ID**: `cpt-frontx-fr-sdk-react-layer`
 
-`@gears-frontx/react` MUST depend only on `@gears-frontx/framework`, MUST provide `HAI3Provider` and hooks (`useAppDispatch`, `useAppSelector`, `useTranslation`, `useNavigation`, `useTheme`, `useFormatters`), and MUST NOT contain layout components or UI kit dependencies.
+`@gears-frontx/react` MUST depend only on `@gears-frontx/framework`, MUST provide `Gears FrontXProvider` and hooks (`useAppDispatch`, `useAppSelector`, `useTranslation`, `useNavigation`, `useTheme`, `useFormatters`), and MUST NOT contain layout components or UI kit dependencies.
 
 **Rationale**: Thin React binding; keeps React-specific code isolated from framework logic.
 **Actors**: `cpt-frontx-actor-developer`
@@ -421,7 +421,7 @@ The system MUST support event-driven configuration for tenant, language, theme, 
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-appconfig-router-config`
 
-The system MUST provide router mode configuration via `HAI3Config.routerMode` supporting `'browser'` (default), `'hash'`, and `'memory'` types.
+The system MUST provide router mode configuration via `Gears FrontXConfig.routerMode` supporting `'browser'` (default), `'hash'`, and `'memory'` types.
 
 **Rationale**: Different deployment environments require different routing strategies.
 **Actors**: `cpt-frontx-actor-host-app`
@@ -537,7 +537,7 @@ The system MUST support dynamic registration of MFE extensions and domains at ru
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-mfe-theme-propagation`
 
-The `themes()` plugin MUST call `mfeRegistry?.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, themeId)` in its `theme/changed` event handler, wrapped in try/catch.
+The `themes()` plugin MUST call `mfeRegistry?.updateSharedProperty(Gears FrontX_SHARED_PROPERTY_THEME, themeId)` in its `theme/changed` event handler, wrapped in try/catch.
 
 **Rationale**: Theme changes must propagate to all MFE extensions. Owned by themes plugin, not microfrontends.
 **Actors**: `cpt-frontx-actor-framework-plugin`
@@ -546,7 +546,7 @@ The `themes()` plugin MUST call `mfeRegistry?.updateSharedProperty(HAI3_SHARED_P
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-mfe-i18n-propagation`
 
-The `i18n()` plugin MUST call `mfeRegistry?.updateSharedProperty(HAI3_SHARED_PROPERTY_LANGUAGE, language)` in its `i18n/language/changed` event handler, wrapped in try/catch.
+The `i18n()` plugin MUST call `mfeRegistry?.updateSharedProperty(Gears FrontX_SHARED_PROPERTY_LANGUAGE, language)` in its `i18n/language/changed` event handler, wrapped in try/catch.
 
 **Rationale**: Language changes must propagate to all MFE extensions. Owned by i18n plugin, not microfrontends.
 **Actors**: `cpt-frontx-actor-framework-plugin`
@@ -669,7 +669,7 @@ The build system MUST emit a per-environment registration manifest that lets eve
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-dataflow-internal-app`
 
-Each MFE package MUST create a minimal HAI3App via `createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build()` (host owns `queryCache()`; MFE joins the shared QueryClient) and use `HAI3Provider` to provide store context.
+Each MFE package MUST create a minimal Gears FrontXApp via `createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build()` (host owns `queryCache()`; MFE joins the shared QueryClient) and use `Gears FrontXProvider` to provide store context.
 
 **Rationale**: MFEs need isolated Redux store via FrontX framework, not direct Redux access.
 **Actors**: `cpt-frontx-actor-microfrontend`
@@ -738,7 +738,7 @@ GTS validation MUST occur before propagation. If validation fails, the property 
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-validation-gts`
 
-The system MUST validate shared property values by calling `typeSystem.register({ id: ephemeralId, value })`, where `ephemeralId = "${propertyTypeId}hai3.mfes.comm.runtime.v1"`. `register()` registers the ephemeral instance AND validates it against the schema derived from the chained instance ID in a single call; IF the value does not conform, `register()` throws a plain `Error` with a rich diagnostic (instance JSON, resolved schema JSON, failure reason) and propagation is blocked.
+The system MUST validate shared property values by calling `typeSystem.register({ id: ephemeralId, value })`, where `ephemeralId = "${propertyTypeId}frontx.mfes.comm.runtime.v1"`. `register()` registers the ephemeral instance AND validates it against the schema derived from the chained instance ID in a single call; IF the value does not conform, `register()` throws a plain `Error` with a rich diagnostic (instance JSON, resolved schema JSON, failure reason) and propagation is blocked.
 
 **Rationale**: Single-call GTS registration-with-validation; schema-validation failures surface as thrown errors, not structured result objects.
 **Actors**: `cpt-frontx-actor-gts-plugin`
@@ -950,7 +950,7 @@ The system MUST provide a `toggleMockMode` action via `mock()` plugin that activ
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-mfe-plugin`
 
-The system MUST provide a `microfrontends()` framework plugin with actions (`loadExtension`, `mountExtension`, `unmountExtension`, `registerExtension`, `unregisterExtension`) and domain constants (`HAI3_SCREEN_DOMAIN`, `HAI3_SIDEBAR_DOMAIN`, `HAI3_POPUP_DOMAIN`, `HAI3_OVERLAY_DOMAIN`). The plugin MUST orchestrate MFE loading via blob URL isolation, propagate theme and i18n changes to mounted extensions, and bridge shared properties between host and MFE.
+The system MUST provide a `microfrontends()` framework plugin with actions (`loadExtension`, `mountExtension`, `unmountExtension`, `registerExtension`, `unregisterExtension`) and domain constants (`Gears FrontX_SCREEN_DOMAIN`, `Gears FrontX_SIDEBAR_DOMAIN`, `Gears FrontX_POPUP_DOMAIN`, `Gears FrontX_OVERLAY_DOMAIN`). The plugin MUST orchestrate MFE loading via blob URL isolation, propagate theme and i18n changes to mounted extensions, and bridge shared properties between host and MFE.
 
 **Rationale**: Core orchestration plugin that integrates MFE lifecycle management, theme/i18n propagation, and shared property bridging into the framework's plugin chain.
 **Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-framework-plugin`
@@ -1098,7 +1098,7 @@ A single FrontX project MUST support multiple independent production screensets 
 
 - [x] `p2` - **ID**: `cpt-frontx-fr-framework-query-cache-plugin`
 
-`@gears-frontx/framework` MUST provide a `queryCache(config?)` framework plugin that creates and owns the shared `QueryClient` from `@tanstack/query-core`, plus a `queryCacheShared()` join path for child apps that must reuse the existing host `QueryClient`. The host plugin MUST associate that client with the app instance through internal query-cache wiring (well-known symbols used only between the plugin, framework internals, and `@gears-frontx/react` resolution — not a supported public field or method on `HAI3App` for holding or reaching the raw `QueryClient`), accept configurable defaults (`staleTime`, `gcTime`, `refetchOnWindowFocus`), clear the cache on `MockEvents.Toggle`, handle `cache/invalidate`, `cache/set`, and `cache/remove` events from L2 Flux effects, keep the L1 `sharedFetchCache` in sync for cross-root reads, and clean up on `app.destroy()`. The host plugin MUST be included in the `full()` preset.
+`@gears-frontx/framework` MUST provide a `queryCache(config?)` framework plugin that creates and owns the shared `QueryClient` from `@tanstack/query-core`, plus a `queryCacheShared()` join path for child apps that must reuse the existing host `QueryClient`. The host plugin MUST associate that client with the app instance through internal query-cache wiring (well-known symbols used only between the plugin, framework internals, and `@gears-frontx/react` resolution — not a supported public field or method on `Gears FrontXApp` for holding or reaching the raw `QueryClient`), accept configurable defaults (`staleTime`, `gcTime`, `refetchOnWindowFocus`), clear the cache on `MockEvents.Toggle`, handle `cache/invalidate`, `cache/set`, and `cache/remove` events from L2 Flux effects, keep the L1 `sharedFetchCache` in sync for cross-root reads, and clean up on `app.destroy()`. The host plugin MUST be included in the `full()` preset.
 
 **Rationale**: Centralizes cache infrastructure management in the framework's plugin system, following the same pattern as `mock()` and `themes()`. Imperative cache use outside React is limited to L2 effects and the sanctioned `QueryCache` surface exposed through L3 hooks — there is no supported standalone non-React or test-only API that reads the `QueryClient` off the app instance. Cache defaults remain configurable at the framework level.
 **Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-runtime`
@@ -1107,7 +1107,7 @@ A single FrontX project MUST support multiple independent production screensets 
 
 - [x] `p2` - **ID**: `cpt-frontx-fr-react-query-hooks`
 
-`@gears-frontx/react` MUST export `useApiQuery`, `useApiSuspenseQuery`, `useApiInfiniteQuery`, `useApiSuspenseInfiniteQuery`, `useApiMutation`, `useApiStream`, and `useQueryCache` hooks. `useApiQuery` MUST accept an `EndpointDescriptor` (from a declarative contract such as `RestEndpointProtocol.query()`) and return `ApiQueryResult<TData>` (HAI3-owned type) with automatic caching, request deduplication, stale-while-revalidate, background refetch on window focus, and request cancellation on unmount. `useApiSuspenseQuery` MUST accept the same `EndpointDescriptor` contract as `useApiQuery`, require a surrounding Suspense boundary for the initial load, and return `ApiSuspenseQueryResult<TData>` (HAI3-owned type) with `data`, `isFetching`, and `refetch`. `useApiInfiniteQuery` MUST accept descriptor-driven pagination inputs `{ initialPage, getNextPage, getPreviousPage? }`, where each page is an `EndpointDescriptor`, and return `ApiInfiniteQueryResult<TPage>` (HAI3-owned type) with grouped page data plus `hasNextPage`, `hasPreviousPage`, `fetchNextPage`, and `fetchPreviousPage`. `useApiSuspenseInfiniteQuery` MUST accept the same descriptor-driven pagination inputs as `useApiInfiniteQuery`, require a surrounding Suspense boundary for the initial load, and return `ApiSuspenseInfiniteQueryResult<TPage>` (HAI3-owned type) with grouped page data plus `hasNextPage`, `hasPreviousPage`, `fetchNextPage`, and `fetchPreviousPage`. `useApiMutation` MUST accept `{ endpoint: MutationDescriptor, onMutate?, onSuccess?, onError?, onSettled? }` and return `ApiMutationResult<TData>` (HAI3-owned type) with support for optimistic updates via `onMutate` with rollback on error. `useApiStream` MUST accept a `StreamDescriptor<TEvent>` (from a declarative contract such as `SseStreamProtocol.stream()`) and return `ApiStreamResult<TEvent>` (HAI3-owned type) with connection lifecycle management, `'latest'`/`'accumulate'` modes, and `{ data, events, status, error, disconnect }`. `useQueryCache` MUST expose the sanctioned imperative cache API accepting `EndpointDescriptor | QueryKey` for inspection, invalidation, and targeted cache writes without exposing the raw cache client. `queryOptions` MUST NOT be re-exported. `UseApiQueryOptions` type MUST NOT exist.
+`@gears-frontx/react` MUST export `useApiQuery`, `useApiSuspenseQuery`, `useApiInfiniteQuery`, `useApiSuspenseInfiniteQuery`, `useApiMutation`, `useApiStream`, and `useQueryCache` hooks. `useApiQuery` MUST accept an `EndpointDescriptor` (from a declarative contract such as `RestEndpointProtocol.query()`) and return `ApiQueryResult<TData>` (Gears FrontX-owned type) with automatic caching, request deduplication, stale-while-revalidate, background refetch on window focus, and request cancellation on unmount. `useApiSuspenseQuery` MUST accept the same `EndpointDescriptor` contract as `useApiQuery`, require a surrounding Suspense boundary for the initial load, and return `ApiSuspenseQueryResult<TData>` (Gears FrontX-owned type) with `data`, `isFetching`, and `refetch`. `useApiInfiniteQuery` MUST accept descriptor-driven pagination inputs `{ initialPage, getNextPage, getPreviousPage? }`, where each page is an `EndpointDescriptor`, and return `ApiInfiniteQueryResult<TPage>` (Gears FrontX-owned type) with grouped page data plus `hasNextPage`, `hasPreviousPage`, `fetchNextPage`, and `fetchPreviousPage`. `useApiSuspenseInfiniteQuery` MUST accept the same descriptor-driven pagination inputs as `useApiInfiniteQuery`, require a surrounding Suspense boundary for the initial load, and return `ApiSuspenseInfiniteQueryResult<TPage>` (Gears FrontX-owned type) with grouped page data plus `hasNextPage`, `hasPreviousPage`, `fetchNextPage`, and `fetchPreviousPage`. `useApiMutation` MUST accept `{ endpoint: MutationDescriptor, onMutate?, onSuccess?, onError?, onSettled? }` and return `ApiMutationResult<TData>` (Gears FrontX-owned type) with support for optimistic updates via `onMutate` with rollback on error. `useApiStream` MUST accept a `StreamDescriptor<TEvent>` (from a declarative contract such as `SseStreamProtocol.stream()`) and return `ApiStreamResult<TEvent>` (Gears FrontX-owned type) with connection lifecycle management, `'latest'`/`'accumulate'` modes, and `{ data, events, status, error, disconnect }`. `useQueryCache` MUST expose the sanctioned imperative cache API accepting `EndpointDescriptor | QueryKey` for inspection, invalidation, and targeted cache writes without exposing the raw cache client. `queryOptions` MUST NOT be re-exported. `UseApiQueryOptions` type MUST NOT exist.
 
 **Rationale**: Eliminates per-endpoint boilerplate for component-level reads and writes while keeping MFEs library-agnostic — they consume descriptors, not TanStack-specific types.
 **Actors**: `cpt-frontx-actor-screenset-author`, `cpt-frontx-actor-developer`
@@ -1116,9 +1116,9 @@ A single FrontX project MUST support multiple independent production screensets 
 
 - [x] `p2` - **ID**: `cpt-frontx-fr-react-query-client-sharing`
 
-`HAI3Provider` MUST resolve the shared `QueryClient` from the `queryCache()` / `queryCacheShared()` plugin pipeline instead of creating its own cache runtime. When used inside separately mounted MFE React roots, the host MUST own the shared `QueryClient` through `queryCache()` and child roots MUST join it through `queryCacheShared()` without mutating L1 action or mount contracts. The child React lifecycle MUST rely on that shared plugin-owned client before the first commit. Each MFE retains its own `apiRegistry` and service instances — the descriptor's `fetch` uses the local service, but the shared client and L1 `sharedFetchCache` coordinate deduplication across roots. MFEs MUST NOT access the native cache client directly — cache operations are available only through the `QueryCache` interface (`get`, `getState`, `set`, `cancel`, `invalidate`, `invalidateMany`, `remove`) which accepts `EndpointDescriptor | QueryKey`. Cache keys are derived automatically from `[baseURL, 'GET', path]` for static endpoints, `[baseURL, 'GET', resolvedPath, params]` for parameterized endpoints, `[baseURL, method, path]` for writes, and `[baseURL, 'SSE', path]` for streams — MFEs sharing the same derived key share cache entries; MFEs wanting isolated cache use a different `baseURL`.
+`Gears FrontXProvider` MUST resolve the shared `QueryClient` from the `queryCache()` / `queryCacheShared()` plugin pipeline instead of creating its own cache runtime. When used inside separately mounted MFE React roots, the host MUST own the shared `QueryClient` through `queryCache()` and child roots MUST join it through `queryCacheShared()` without mutating L1 action or mount contracts. The child React lifecycle MUST rely on that shared plugin-owned client before the first commit. Each MFE retains its own `apiRegistry` and service instances — the descriptor's `fetch` uses the local service, but the shared client and L1 `sharedFetchCache` coordinate deduplication across roots. MFEs MUST NOT access the native cache client directly — cache operations are available only through the `QueryCache` interface (`get`, `getState`, `set`, `cancel`, `invalidate`, `invalidateMany`, `remove`) which accepts `EndpointDescriptor | QueryKey`. Cache keys are derived automatically from `[baseURL, 'GET', path]` for static endpoints, `[baseURL, 'GET', resolvedPath, params]` for parameterized endpoints, `[baseURL, method, path]` for writes, and `[baseURL, 'SSE', path]` for streams — MFEs sharing the same derived key share cache entries; MFEs wanting isolated cache use a different `baseURL`.
 
-**Rationale**: MFEs render in separate React roots, so they cannot share the cache through React-context inheritance alone. The `queryCache()` plugin owns the shared TanStack `QueryClient` and makes it available to `HAI3Provider` through internal app wiring. The restricted `QueryCache` interface prevents uncontrolled cross-MFE cache tampering. Cache key derivation from `baseURL` gives MFEs natural opt-in/opt-out control over shared caching.
+**Rationale**: MFEs render in separate React roots, so they cannot share the cache through React-context inheritance alone. The `queryCache()` plugin owns the shared TanStack `QueryClient` and makes it available to `Gears FrontXProvider` through internal app wiring. The restricted `QueryCache` interface prevents uncontrolled cross-MFE cache tampering. Cache key derivation from `baseURL` gives MFEs natural opt-in/opt-out control over shared caching.
 **Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-runtime`
 ### 5.21 Documentation
 
@@ -1139,7 +1139,7 @@ The system MUST provide: (1) a getting-started guide enabling a new developer to
 
 - [x] `p1` - **ID**: `cpt-frontx-nfr-perf-lazy-loading`
 
-All screen extensions MUST be lazy-loaded via dynamic `import()`. MFE bundles MUST be fetched on-demand when an action whose `type` matches the `HAI3_ACTION_LOAD_EXT` GTS schema type ID is executed.
+All screen extensions MUST be lazy-loaded via dynamic `import()`. MFE bundles MUST be fetched on-demand when an action whose `type` matches the `Gears FrontX_ACTION_LOAD_EXT` GTS schema type ID is executed.
 
 **Threshold**: Screen load time < 400ms on 4G connection.
 **Rationale**: Initial bundle must not include all screens; on-demand loading reduces time-to-interactive.
@@ -1376,7 +1376,7 @@ Non-production screensets MUST NOT be included in the production build's module 
 
 **Type**: TypeScript ES module
 **Stability**: stable
-**Description**: Plugin architecture with `createHAI3()` builder, presets, layout domain slices, effect coordination, re-exports all L1 APIs.
+**Description**: Plugin architecture with `createGears FrontX()` builder, presets, layout domain slices, effect coordination, re-exports all L1 APIs.
 **Breaking Change Policy**: Major version bump required.
 
 #### @gears-frontx/react
@@ -1385,7 +1385,7 @@ Non-production screensets MUST NOT be included in the production build's module 
 
 **Type**: TypeScript ES module (React 19+)
 **Stability**: stable
-**Description**: HAI3Provider, typed hooks, MFE hooks, ExtensionDomainSlot, RefContainerProvider, re-exports all L2 APIs.
+**Description**: Gears FrontXProvider, typed hooks, MFE hooks, ExtensionDomainSlot, RefContainerProvider, re-exports all L2 APIs.
 **Breaking Change Policy**: Major version bump required.
 
 #### @gears-frontx/studio

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 import { apiRegistry } from '@gears-frontx/api';
-import { createHAI3 } from '@gears-frontx/framework';
+import { createFrontX } from '@gears-frontx/framework';
 import { auth } from '@gears-frontx/framework';
 
 import { DummyJsonService } from './dummyjson-service.mjs';
@@ -44,7 +44,7 @@ const provider = {
   },
 };
 
-createHAI3().use(auth({ provider })).build();
+createFrontX().use(auth({ provider })).build();
 
 const ac = new AbortController();
 const p = svc.me({ signal: ac.signal });

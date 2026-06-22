@@ -37,7 +37,7 @@ The new MFE MUST have in its folder `src/mfe_packages/{name}-mfe/`:
 ```json
 {
   "manifest": {
-    "id": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.notifications.mfe.manifest.v1",
+    "id": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.notifications.mfe.manifest.v1",
     "remoteEntry": "http://localhost:3020/assets/remoteEntry.js"
   },
   "entries": [

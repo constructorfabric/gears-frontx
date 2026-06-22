@@ -9,11 +9,11 @@
  * JSON.
  *
  * Relationship to string constants:
- * - HAI3_SCREEN_DOMAIN, HAI3_SIDEBAR_DOMAIN, etc. (in constants.ts) are
+ * - FRONTX_SCREEN_DOMAIN, FRONTX_SIDEBAR_DOMAIN, etc. (in constants.ts) are
  *   domain ID strings used as action targets in executeActionsChain() calls.
  * - screenDomain, sidebarDomain, etc. (here) are full ExtensionDomain objects
  *   whose .id fields reference the same domain ID strings.
- * - Consumers use HAI3_SCREEN_DOMAIN for action targets and screenDomain
+ * - Consumers use FRONTX_SCREEN_DOMAIN for action targets and screenDomain
  *   for registerDomain().
  *
  * Domain Action Support Matrix (from mfe-ext-lifecycle-actions.md):
@@ -25,18 +25,18 @@
 
 import type { ExtensionDomain } from '@gears-frontx/screensets';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
-  HAI3_SCREEN_EXTENSION_TYPE,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
+  FRONTX_SHARED_PROPERTY_THEME,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_SCREEN_EXTENSION_TYPE,
 } from '@gears-frontx/screensets';
 import {
-  HAI3_SCREEN_DOMAIN,
-  HAI3_SIDEBAR_DOMAIN,
-  HAI3_POPUP_DOMAIN,
-  HAI3_OVERLAY_DOMAIN,
+  FRONTX_SCREEN_DOMAIN,
+  FRONTX_SIDEBAR_DOMAIN,
+  FRONTX_POPUP_DOMAIN,
+  FRONTX_OVERLAY_DOMAIN,
 } from './constants';
 
 /**
@@ -46,7 +46,7 @@ import {
  * at app startup and remains alive until the app itself is torn down.
  */
 const INIT_ONLY_LIFECYCLE_STAGES: readonly string[] = [
-  'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+  'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
 ];
 
 /**
@@ -55,10 +55,10 @@ const INIT_ONLY_LIFECYCLE_STAGES: readonly string[] = [
  * shown/hidden/destroyed during the application lifespan.
  */
 const DEFAULT_LIFECYCLE_STAGES: readonly string[] = [
-  'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-  'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-  'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-  'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+  'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+  'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+  'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+  'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
 ];
 
 /**
@@ -75,14 +75,14 @@ const DEFAULT_LIFECYCLE_STAGES: readonly string[] = [
  */
 // @cpt-begin:cpt-frontx-dod-framework-composition-mfe-plugin:p1:inst-1
 export const screenDomain: ExtensionDomain = {
-  id: HAI3_SCREEN_DOMAIN,
-  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+  id: FRONTX_SCREEN_DOMAIN,
+  actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
   extensionsActions: [],
-  sharedProperties: [HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE],
+  sharedProperties: [FRONTX_SHARED_PROPERTY_THEME, FRONTX_SHARED_PROPERTY_LANGUAGE],
   defaultActionTimeout: 30000,
   lifecycleStages: [...INIT_ONLY_LIFECYCLE_STAGES],
   extensionsLifecycleStages: [...DEFAULT_LIFECYCLE_STAGES],
-  extensionsTypeId: HAI3_SCREEN_EXTENSION_TYPE,
+  extensionsTypeId: FRONTX_SCREEN_EXTENSION_TYPE,
   lifecycle: undefined,
 };
 
@@ -94,10 +94,10 @@ export const screenDomain: ExtensionDomain = {
  * 3 actions: load_ext, mount_ext, unmount_ext.
  */
 export const sidebarDomain: ExtensionDomain = {
-  id: HAI3_SIDEBAR_DOMAIN,
-  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
+  id: FRONTX_SIDEBAR_DOMAIN,
+  actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT],
   extensionsActions: [],
-  sharedProperties: [HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE],
+  sharedProperties: [FRONTX_SHARED_PROPERTY_THEME, FRONTX_SHARED_PROPERTY_LANGUAGE],
   defaultActionTimeout: 30000,
   lifecycleStages: [...DEFAULT_LIFECYCLE_STAGES],
   extensionsLifecycleStages: [...DEFAULT_LIFECYCLE_STAGES],
@@ -112,10 +112,10 @@ export const sidebarDomain: ExtensionDomain = {
  * 3 actions: load_ext, mount_ext, unmount_ext.
  */
 export const popupDomain: ExtensionDomain = {
-  id: HAI3_POPUP_DOMAIN,
-  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
+  id: FRONTX_POPUP_DOMAIN,
+  actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT],
   extensionsActions: [],
-  sharedProperties: [HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE],
+  sharedProperties: [FRONTX_SHARED_PROPERTY_THEME, FRONTX_SHARED_PROPERTY_LANGUAGE],
   defaultActionTimeout: 30000,
   lifecycleStages: [...DEFAULT_LIFECYCLE_STAGES],
   extensionsLifecycleStages: [...DEFAULT_LIFECYCLE_STAGES],
@@ -130,10 +130,10 @@ export const popupDomain: ExtensionDomain = {
  * 3 actions: load_ext, mount_ext, unmount_ext.
  */
 export const overlayDomain: ExtensionDomain = {
-  id: HAI3_OVERLAY_DOMAIN,
-  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
+  id: FRONTX_OVERLAY_DOMAIN,
+  actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT],
   extensionsActions: [],
-  sharedProperties: [HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE],
+  sharedProperties: [FRONTX_SHARED_PROPERTY_THEME, FRONTX_SHARED_PROPERTY_LANGUAGE],
   defaultActionTimeout: 30000,
   lifecycleStages: [...DEFAULT_LIFECYCLE_STAGES],
   extensionsLifecycleStages: [...DEFAULT_LIFECYCLE_STAGES],

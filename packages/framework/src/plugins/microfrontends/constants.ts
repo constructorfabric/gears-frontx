@@ -16,25 +16,25 @@
  * Popup domain instance ID.
  * Extension domain for popup/modal dialogs.
  */
-export const HAI3_POPUP_DOMAIN = 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.popup.v1';
+export const FRONTX_POPUP_DOMAIN = 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.popup.v1';
 
 /**
  * Sidebar domain instance ID.
  * Extension domain for collapsible side panels.
  */
-export const HAI3_SIDEBAR_DOMAIN = 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1';
+export const FRONTX_SIDEBAR_DOMAIN = 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1';
 
 /**
  * Screen domain instance ID.
  * Extension domain for main content area screens.
  */
-export const HAI3_SCREEN_DOMAIN = 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1';
+export const FRONTX_SCREEN_DOMAIN = 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1';
 
 /**
  * Overlay domain instance ID.
  * Extension domain for full-screen overlays.
  */
-export const HAI3_OVERLAY_DOMAIN = 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.overlay.v1';
+export const FRONTX_OVERLAY_DOMAIN = 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.overlay.v1';
 
 // ============================================================================
 // MFE Event Names

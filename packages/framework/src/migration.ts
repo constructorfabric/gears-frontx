@@ -160,7 +160,7 @@ export function createLegacySelector<TState, TResult>(
       const newPath = STATE_PATH_MAPPING[legacyPath as keyof typeof STATE_PATH_MAPPING] ?? 'unknown';
       const hint = migrationHint ?? `Use the new state path: ${newPath}`;
       console.warn(
-        `[HAI3 Migration] Deprecated selector accessing "${legacyPath}". ${hint}`
+        `[Gears FrontX Migration] Deprecated selector accessing "${legacyPath}". ${hint}`
       );
     }
     return newSelector(state);

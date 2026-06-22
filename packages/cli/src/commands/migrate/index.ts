@@ -192,7 +192,7 @@ export const migrateCommand: CommandDefinition<
       const status = await getMigrationStatus(targetPath);
 
       if (status.currentVersion) {
-        logger.log(`  Current HAI3 Version: ${status.currentVersion}`);
+        logger.log(`  Current Gears FrontX Version: ${status.currentVersion}`);
         logger.newline();
       }
 

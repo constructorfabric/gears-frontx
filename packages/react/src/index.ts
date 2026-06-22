@@ -2,7 +2,7 @@
  * @gears-frontx/react - React Bindings
  *
  * This package provides:
- * - HAI3Provider context provider
+ * - FrontXProvider context provider
  * - Type-safe hooks for state and actions
  * - MFE context, hooks, and components
  *
@@ -13,8 +13,8 @@
 // Provider
 // ============================================================================
 
-export { HAI3Provider } from './HAI3Provider';
-export { HAI3Context, useHAI3 } from './HAI3Context';
+export { FrontXProvider } from './FrontXProvider';
+export { FrontXContext, useFrontX } from './FrontXContext';
 export { invalidateQueryCacheForApp } from './queryClient';
 export { CanAccess } from './components/CanAccess';
 export type { CanAccessProps } from './types';
@@ -83,8 +83,8 @@ export type {
 // ============================================================================
 
 export type {
-  HAI3ProviderProps,
-  UseHAI3Return,
+  FrontXProviderProps,
+  UseFrontXReturn,
   UseAppSelector,
   UseAppDispatchReturn,
   UseTranslationReturn,
@@ -108,8 +108,8 @@ export type {
 
 export {
   // Core
-  createHAI3,
-  createHAI3App,
+  createFrontX,
+  createFrontXApp,
   presets,
 
   // Backward compatibility constants
@@ -211,7 +211,7 @@ export {
 
   // Auth
   auth,
-  hai3ApiTransport,
+  frontxApiTransport,
 
   // API
   apiRegistry,
@@ -254,10 +254,10 @@ export { Language, TextDirection, LanguageDisplayMode } from '@gears-frontx/fram
 // Re-export types from @gears-frontx/framework
 export type {
   // Config
-  HAI3Config,
-  HAI3Plugin,
-  HAI3AppBuilder,
-  HAI3App,
+  FrontXConfig,
+  FrontXPlugin,
+  FrontXAppBuilder,
+  FrontXApp,
   // Endpoint descriptors — L3 components import from @gears-frontx/react
   EndpointOptions,
   EndpointDescriptor,
@@ -304,7 +304,7 @@ export type {
   RootState,
   AppDispatch,
   SliceObject,
-  HAI3Store,
+  FrontXStore,
   ReducerPayload,
 
   // Layout
@@ -406,10 +406,10 @@ export {
 
 // MFE Domain constants
 export {
-  HAI3_POPUP_DOMAIN,
-  HAI3_SIDEBAR_DOMAIN,
-  HAI3_SCREEN_DOMAIN,
-  HAI3_OVERLAY_DOMAIN,
+  FRONTX_POPUP_DOMAIN,
+  FRONTX_SIDEBAR_DOMAIN,
+  FRONTX_SCREEN_DOMAIN,
+  FRONTX_OVERLAY_DOMAIN,
   // Base ExtensionDomain constants
   screenDomain,
   sidebarDomain,
@@ -419,21 +419,21 @@ export {
 
 // MFE Type constants
 export {
-  HAI3_SCREEN_EXTENSION_TYPE,
-  HAI3_MFE_ENTRY_MF,
+  FRONTX_SCREEN_EXTENSION_TYPE,
+  FRONTX_MFE_ENTRY_MF,
 } from '@gears-frontx/framework';
 
 // MFE Action constants
 export {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '@gears-frontx/framework';
 
 // MFE Shared Property constants
 export {
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_SHARED_PROPERTY_THEME,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
 } from '@gears-frontx/framework';
 
 // MFE Types

@@ -142,8 +142,8 @@ Success criteria: Any `@gears-frontx/state` consumer can emit and receive typed 
 
 1. [x] `p1` - Framework plugin calls `createStore(initialReducers)` with its static layout reducers - `inst-call-create-store`
 2. [x] `p1` - Runtime creates a Redux Toolkit store via `configureStore` using the combined static reducers - `inst-configure-rtk-store`
-3. [x] `p1` - Runtime wraps the RTK store in a typed `HAI3Store<RootState>` facade exposing `getState`, `dispatch`, `subscribe`, `replaceReducer` - `inst-wrap-store`
-4. [x] `p1` - RETURN `HAI3Store` instance to the framework plugin - `inst-return-store`
+3. [x] `p1` - Runtime wraps the RTK store in a typed `Gears FrontXStore<RootState>` facade exposing `getState`, `dispatch`, `subscribe`, `replaceReducer` - `inst-wrap-store`
+4. [x] `p1` - RETURN `Gears FrontXStore` instance to the framework plugin - `inst-return-store`
 5. [x] `p1` - Subsequent calls to `getStore()` by any module return the same instance without re-creation - `inst-get-store-singleton`
 
 ---
@@ -346,7 +346,7 @@ The `eventBus` singleton provides type-safe event emission and subscription. Emi
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-state-management-store-factory`
 
-`createStore(initialReducers)` produces a `HAI3Store<RootState>` wrapping a Redux Toolkit store configured with the provided static reducers. `getStore()` returns the same instance without re-creating it; if no instance exists it auto-creates an empty store. The `HAI3Store` facade exposes `getState`, `dispatch`, `subscribe`, and `replaceReducer`. Redux internals (`EnhancedStore`, `configureStore`, `combineReducers`) are not re-exported.
+`createStore(initialReducers)` produces a `Gears FrontXStore<RootState>` wrapping a Redux Toolkit store configured with the provided static reducers. `getStore()` returns the same instance without re-creating it; if no instance exists it auto-creates an empty store. The `Gears FrontXStore` facade exposes `getState`, `dispatch`, `subscribe`, and `replaceReducer`. Redux internals (`EnhancedStore`, `configureStore`, `combineReducers`) are not re-exported.
 
 **Implements**:
 - `cpt-frontx-flow-state-management-store-init`

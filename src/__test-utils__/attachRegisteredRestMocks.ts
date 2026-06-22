@@ -21,7 +21,7 @@ export type ApiServiceWithPlugins = {
   getPlugins(): Iterable<readonly [ApiProtocol, Iterable<ApiPluginBase>]>;
 };
 
-const MOCK_PLUGIN = Symbol.for('hai3:plugin:mock');
+const MOCK_PLUGIN = Symbol.for('frontx:plugin:mock');
 
 function isWiringRestProtocol(protocol: ApiProtocol): protocol is WiringRestProtocol {
   return (

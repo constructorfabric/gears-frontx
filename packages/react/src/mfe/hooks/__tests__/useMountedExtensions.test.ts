@@ -11,8 +11,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import React from 'react';
 import { useMountedExtensions } from '../useMountedExtensions';
-import { HAI3Context } from '../../../HAI3Context';
-import type { HAI3App } from '@gears-frontx/framework';
+import { FrontXContext } from '../../../FrontXContext';
+import type { FrontXApp } from '@gears-frontx/framework';
 import type { Extension } from '@gears-frontx/framework';
 
 // ─── Mock extension factory ───────────────────────────────────────────────────
@@ -74,7 +74,7 @@ class MockApp {
 
 function renderWithApp(mockApp: MockApp, domainId: string) {
   const wrapper = ({ children }: { children: React.ReactNode }) =>
-    React.createElement(HAI3Context.Provider, { value: mockApp as unknown as HAI3App }, children);
+    React.createElement(FrontXContext.Provider, { value: mockApp as unknown as FrontXApp }, children);
 
   return renderHook(() => useMountedExtensions(domainId), { wrapper });
 }
@@ -108,10 +108,10 @@ describe('useMountedExtensions', () => {
     const appWithoutRegistry = {
       store: mockApp.store,
       mfeRegistry: undefined,
-    } as unknown as HAI3App;
+    } as unknown as FrontXApp;
 
     const wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(HAI3Context.Provider, { value: appWithoutRegistry }, children);
+      React.createElement(FrontXContext.Provider, { value: appWithoutRegistry }, children);
 
     expect(() =>
       renderHook(() => useMountedExtensions(DOMAIN), { wrapper })

@@ -28,7 +28,7 @@ import type { SliceObject } from './types';
  * @template TReducers - The reducer functions type
  * @template TName - The slice name type
  */
-export type HAI3SliceResult<
+export type FrontXSliceResult<
   TState,
   TReducers extends SliceCaseReducers<TState>,
   TName extends string = string
@@ -81,7 +81,7 @@ export function createSlice<
   TName extends string = string
 >(
   options: CreateSliceOptions<TState, TReducers, TName>
-): HAI3SliceResult<TState, TReducers, TName> {
+): FrontXSliceResult<TState, TReducers, TName> {
   // Create RTK slice internally
   const rtkSlice = rtkCreateSlice(options);
 
@@ -91,7 +91,7 @@ export function createSlice<
       name: rtkSlice.name,
       reducer: rtkSlice.reducer,
     } as SliceObject<TState>,
-  } as HAI3SliceResult<TState, TReducers, TName>;
+  } as FrontXSliceResult<TState, TReducers, TName>;
 
   // Spread reducer functions at top level
   const reducerFns = rtkSlice.actions as Record<string, unknown>;

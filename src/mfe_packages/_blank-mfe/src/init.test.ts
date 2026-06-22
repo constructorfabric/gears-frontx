@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const build = vi.fn();
 const use = vi.fn();
-const createHAI3 = vi.fn(() => ({
+const createFrontX = vi.fn(() => ({
   use,
 }));
 const registerSlice = vi.fn();
@@ -13,7 +13,7 @@ const queryCacheShared = vi.fn(() => 'query-cache-shared-plugin');
 const mock = vi.fn(() => 'mock-plugin');
 
 vi.mock('@gears-frontx/react', () => ({
-  createHAI3,
+  createFrontX,
   registerSlice,
   apiRegistry: {
     register,
@@ -58,7 +58,7 @@ describe('_blank-mfe init', () => {
 
     expect(register).toHaveBeenCalledTimes(1);
     expect(initialize).toHaveBeenCalledTimes(1);
-    expect(createHAI3).toHaveBeenCalledTimes(1);
+    expect(createFrontX).toHaveBeenCalledTimes(1);
     expect(effects).toHaveBeenCalledTimes(1);
     expect(queryCacheShared).toHaveBeenCalledTimes(1);
     expect(mock).toHaveBeenCalledTimes(1);

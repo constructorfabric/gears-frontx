@@ -89,7 +89,7 @@ All mount-related state and machinery is per-registry. Each FrontX app independe
 
 #### Per-app boundaries
 
-Every FrontX app instance — including any MFE that owns extensions domains — uses the same `createHAI3()` primitive and owns its own registry, store, mediator, event bus, and lifecycle trigger. The host is the root FrontX app; nested apps are architecturally identical. There is no shared registry across the tree; chain delivery between apps is an internal routing concern, not a registry-sharing concern.
+Every FrontX app instance — including any MFE that owns extensions domains — uses the same `createGears FrontX()` primitive and owns its own registry, store, mediator, event bus, and lifecycle trigger. The host is the root FrontX app; nested apps are architecturally identical. There is no shared registry across the tree; chain delivery between apps is an internal routing concern, not a registry-sharing concern.
 
 #### Layout Conventions
 

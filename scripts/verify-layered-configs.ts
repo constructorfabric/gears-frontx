@@ -178,12 +178,12 @@ function verifySdkRestrictions(): TestResult[] {
   try {
     const sdkConfig = require(join(DEPCRUISE_CONFIG_DIR, 'sdk.cjs'));
 
-    // Check for sdk-no-hai3-imports rule
+    // Check for sdk-no-frontx-imports rule
     const hasNoHai3Rule = sdkConfig.forbidden.some(
-      (rule: { name: string }) => rule.name === 'sdk-no-hai3-imports'
+      (rule: { name: string }) => rule.name === 'sdk-no-frontx-imports'
     );
     results.push({
-      name: 'SDK config: Has sdk-no-hai3-imports rule',
+      name: 'SDK config: Has sdk-no-frontx-imports rule',
       passed: hasNoHai3Rule,
       message: hasNoHai3Rule ? 'Rule present' : 'Rule missing',
     });

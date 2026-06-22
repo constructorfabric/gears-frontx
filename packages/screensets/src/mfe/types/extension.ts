@@ -26,7 +26,7 @@ export interface ExtensionPresentation {
 
 /**
  * Binds an MFE entry to an extension domain
- * GTS Type: gts.hai3.mfes.ext.extension.v1~
+ * GTS Type: gts.frontx.mfes.ext.extension.v1~
  *
  * Domain-specific fields are defined in derived Extension types.
  * If domain.extensionsTypeId is specified, extension must use a type deriving from it.
@@ -45,7 +45,7 @@ export interface Extension {
 
 /**
  * Screen Extension (derived from Extension)
- * GTS Type: gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~
+ * GTS Type: gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~
  *
  * Extends the base Extension type with presentation metadata required for screen domain.
  * Screen domain sets extensionsTypeId to reference this derived type, so all screen

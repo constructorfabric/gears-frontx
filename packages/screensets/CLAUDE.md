@@ -19,7 +19,7 @@ This package is part of the **SDK Layer (L1)** - it has **ZERO dependencies** an
 | `MfeHandler` | Abstract class: Handler for MFE lifecycle (load, mount, unmount) |
 | `MfeBridgeFactory` | Abstract class: Factory for creating MFE bridges |
 | `LayoutDomain` | Enum: Layout domain identifiers (header, footer, menu, sidebar, screen, popup, overlay) |
-| Action/Property Constants | `HAI3_ACTION_*`, `HAI3_SHARED_PROPERTY_*` |
+| Action/Property Constants | `Gears FrontX_ACTION_*`, `Gears FrontX_SHARED_PROPERTY_*` |
 | `TypeSystemPlugin` | Interface: Type validation plugin (e.g., GTS) |
 | Shadow DOM Utilities | `createShadowRoot`, `injectCssVariables` |
 
@@ -42,7 +42,7 @@ The MFE-enabled registry manages domains and extensions with full lifecycle supp
 ```typescript
 import {
   ScreensetsRegistry, ExtensionDomain, Extension,
-  HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT,
+  Gears FrontX_ACTION_LOAD_EXT, Gears FrontX_ACTION_MOUNT_EXT, Gears FrontX_ACTION_UNMOUNT_EXT,
 } from '@gears-frontx/screensets';
 
 // Register domain (requires containerProvider) and extension
@@ -51,26 +51,26 @@ await registry.registerExtension(homeExtension);
 
 // Load, mount, unmount via executeActionsChain (the public API)
 await registry.executeActionsChain({
-  action: { type: HAI3_ACTION_LOAD_EXT, target: screenDomainId, payload: { subject: 'ext-id' } }
+  action: { type: Gears FrontX_ACTION_LOAD_EXT, target: screenDomainId, payload: { subject: 'ext-id' } }
 });
 await registry.executeActionsChain({
-  action: { type: HAI3_ACTION_MOUNT_EXT, target: screenDomainId, payload: { subject: 'ext-id' } }
+  action: { type: Gears FrontX_ACTION_MOUNT_EXT, target: screenDomainId, payload: { subject: 'ext-id' } }
 });
 await registry.executeActionsChain({
-  action: { type: HAI3_ACTION_UNMOUNT_EXT, target: screenDomainId, payload: { subject: 'ext-id' } }
+  action: { type: Gears FrontX_ACTION_UNMOUNT_EXT, target: screenDomainId, payload: { subject: 'ext-id' } }
 });
 ```
 
-**NOTE**: `loadExtension()`, `mountExtension()`, `unmountExtension()` are NOT public methods on `ScreensetsRegistry`. They are internal to `MountManager`. All lifecycle operations go through `executeActionsChain()` with the appropriate `HAI3_ACTION_*` type.
+**NOTE**: `loadExtension()`, `mountExtension()`, `unmountExtension()` are NOT public methods on `ScreensetsRegistry`. They are internal to `MountManager`. All lifecycle operations go through `executeActionsChain()` with the appropriate `Gears FrontX_ACTION_*` type.
 
 ### Extension Lifecycle
 
 Extensions follow a strict lifecycle managed by the registry via actions chains:
 
 1. **Register**: `registry.registerExtension(extension)` -- add extension definition
-2. **Load**: `executeActionsChain({ action: { type: HAI3_ACTION_LOAD_EXT, ... } })` -- fetch and initialize code
-3. **Mount**: `executeActionsChain({ action: { type: HAI3_ACTION_MOUNT_EXT, ... } })` -- render into Shadow DOM
-4. **Unmount**: `executeActionsChain({ action: { type: HAI3_ACTION_UNMOUNT_EXT, ... } })` -- remove from domain
+2. **Load**: `executeActionsChain({ action: { type: Gears FrontX_ACTION_LOAD_EXT, ... } })` -- fetch and initialize code
+3. **Mount**: `executeActionsChain({ action: { type: Gears FrontX_ACTION_MOUNT_EXT, ... } })` -- render into Shadow DOM
+4. **Unmount**: `executeActionsChain({ action: { type: Gears FrontX_ACTION_UNMOUNT_EXT, ... } })` -- remove from domain
 5. **Unregister**: `registry.unregisterExtension(extensionId)` -- remove extension definition
 
 Each stage supports lifecycle hooks and actions chains with success/fallback branching.
@@ -114,16 +114,16 @@ import { ParentMfeBridge, ChildMfeBridge } from '@gears-frontx/screensets';
 
 // Example: child MFE executes an actions chain
 await bridge.executeActionsChain({
-  action: { type: HAI3_ACTION_MOUNT_EXT, target: 'screen', payload: { subject: 'other' } }
+  action: { type: Gears FrontX_ACTION_MOUNT_EXT, target: 'screen', payload: { subject: 'other' } }
 });
 
 // Example: child MFE subscribes to theme changes
-const unsubscribe = bridge.subscribeToProperty(HAI3_SHARED_PROPERTY_THEME, (value) => {
+const unsubscribe = bridge.subscribeToProperty(Gears FrontX_SHARED_PROPERTY_THEME, (value) => {
   console.log('Theme changed:', value);
 });
 
 // Example: child MFE reads current theme
-const theme = bridge.getProperty(HAI3_SHARED_PROPERTY_THEME);
+const theme = bridge.getProperty(Gears FrontX_SHARED_PROPERTY_THEME);
 ```
 
 ## Action Constants
@@ -132,15 +132,15 @@ FrontX defines standard actions for extension lifecycle:
 
 ```typescript
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  Gears FrontX_ACTION_LOAD_EXT,
+  Gears FrontX_ACTION_MOUNT_EXT,
+  Gears FrontX_ACTION_UNMOUNT_EXT,
 } from '@gears-frontx/screensets';
 
 // Action IDs
-HAI3_ACTION_LOAD_EXT     // 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~'
-HAI3_ACTION_MOUNT_EXT    // 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~'
-HAI3_ACTION_UNMOUNT_EXT  // 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~'
+Gears FrontX_ACTION_LOAD_EXT     // 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~'
+Gears FrontX_ACTION_MOUNT_EXT    // 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~'
+Gears FrontX_ACTION_UNMOUNT_EXT  // 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1~'
 ```
 
 ## Shared Property Constants
@@ -149,13 +149,13 @@ FrontX defines standard shared properties for cross-MFE communication:
 
 ```typescript
 import {
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
+  Gears FrontX_SHARED_PROPERTY_THEME,
+  Gears FrontX_SHARED_PROPERTY_LANGUAGE,
 } from '@gears-frontx/screensets';
 
 // Property IDs
-HAI3_SHARED_PROPERTY_THEME    // 'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~'
-HAI3_SHARED_PROPERTY_LANGUAGE // 'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~'
+Gears FrontX_SHARED_PROPERTY_THEME    // 'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~'
+Gears FrontX_SHARED_PROPERTY_LANGUAGE // 'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~'
 ```
 
 ## Layout Domains
@@ -227,7 +227,7 @@ Returns all registered GTS packages in discovery order:
 
 ```typescript
 const packages = registry.getRegisteredPackages();
-// Returns: ['hai3.demo', 'hai3.other', ...]
+// Returns: ['frontx.demo', 'frontx.other', ...]
 ```
 
 ### getExtensionsForPackage(packageId)
@@ -235,7 +235,7 @@ const packages = registry.getRegisteredPackages();
 Returns all extensions belonging to a specific GTS package:
 
 ```typescript
-const demoExtensions = registry.getExtensionsForPackage('hai3.demo');
+const demoExtensions = registry.getExtensionsForPackage('frontx.demo');
 // Returns: [homeExtension, profileExtension, ...]
 ```
 
@@ -246,8 +246,8 @@ Utility function to extract the GTS package from any entity ID:
 ```typescript
 import { extractGtsPackage } from '@gears-frontx/screensets';
 
-const pkg = extractGtsPackage('gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.home.v1');
-// Returns: 'hai3.demo'
+const pkg = extractGtsPackage('gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.demo.screens.home.v1');
+// Returns: 'frontx.demo'
 ```
 
 Packages are tracked automatically when extensions are registered. There is no explicit package registration. When the last extension for a package is unregistered, the package is removed from the list.

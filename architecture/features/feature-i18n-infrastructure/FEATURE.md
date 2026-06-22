@@ -59,7 +59,7 @@ Success criteria: Application initial bundle contains no translation JSON beyond
 
 ### 1.3 Actors
 
-- `cpt-frontx-actor-developer` — Platform engineer who wires the i18n plugin into `createHAI3()` and selects the initial language.
+- `cpt-frontx-actor-developer` — Platform engineer who wires the i18n plugin into `createGears FrontX()` and selects the initial language.
 - `cpt-frontx-actor-screenset-author` — Developer who registers translation loaders per screenset/screen and authors JSON translation files.
 
 ### 1.4 References

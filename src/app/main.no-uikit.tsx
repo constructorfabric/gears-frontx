@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HAI3Provider, apiRegistry, createHAI3App } from '@gears-frontx/react';
+import { FrontXProvider, apiRegistry, createFrontXApp } from '@gears-frontx/react';
 import { AccountsApiService } from '@/app/api';
 import '@/app/events/bootstrapEvents'; // Register app-level events (type augmentation)
 import { registerBootstrapEffects } from '@/app/effects/bootstrapEffects'; // Register app-level effects
@@ -15,7 +15,7 @@ apiRegistry.initialize({});
 
 // Create FrontX app instance (no theme support when using --uikit none)
 // No UI component library included
-const app = createHAI3App();
+const app = createFrontXApp();
 
 // Register app-level effects (pass store dispatch)
 registerBootstrapEffects(app.store.dispatch);
@@ -40,8 +40,8 @@ registerBootstrapEffects(app.store.dispatch);
  */
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HAI3Provider app={app}>
+    <FrontXProvider app={app}>
       <App />
-    </HAI3Provider>
+    </FrontXProvider>
   </StrictMode>
 );

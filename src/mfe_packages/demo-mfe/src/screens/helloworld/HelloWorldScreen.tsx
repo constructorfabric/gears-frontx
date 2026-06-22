@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { ChildMfeBridge } from '@gears-frontx/react';
-import { HAI3_ACTION_MOUNT_EXT, HAI3_SCREEN_DOMAIN, HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/react';
+import { FRONTX_ACTION_MOUNT_EXT, FRONTX_SCREEN_DOMAIN, FRONTX_SHARED_PROPERTY_THEME, FRONTX_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
@@ -45,24 +45,24 @@ export const HelloWorldScreen: React.FC<HelloWorldScreenProps> = ({ bridge }) =>
 
   useEffect(() => {
     // Read initial property values
-    const initialTheme = bridge.getProperty(HAI3_SHARED_PROPERTY_THEME);
+    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
     if (initialTheme && typeof initialTheme.value === 'string') {
       setTheme(initialTheme.value);
     }
-    const initialLang = bridge.getProperty(HAI3_SHARED_PROPERTY_LANGUAGE);
+    const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
     if (initialLang && typeof initialLang.value === 'string') {
       setLanguage(initialLang.value);
     }
 
     // Subscribe to theme domain property
-    const themeUnsubscribe = bridge.subscribeToProperty(HAI3_SHARED_PROPERTY_THEME, (property) => {
+    const themeUnsubscribe = bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_THEME, (property) => {
       if (typeof property.value === 'string') {
         setTheme(property.value);
       }
     });
 
     // Subscribe to language domain property
-    const languageUnsubscribe = bridge.subscribeToProperty(HAI3_SHARED_PROPERTY_LANGUAGE, (property) => {
+    const languageUnsubscribe = bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, (property) => {
       if (typeof property.value === 'string') {
         setLanguage(property.value);
         const rootNode = containerRef.current?.getRootNode();
@@ -84,8 +84,8 @@ export const HelloWorldScreen: React.FC<HelloWorldScreenProps> = ({ bridge }) =>
   const handleGoToTheme = useCallback(async () => {
     await bridge.executeActionsChain({
       action: {
-        type: HAI3_ACTION_MOUNT_EXT,
-        target: HAI3_SCREEN_DOMAIN,
+        type: FRONTX_ACTION_MOUNT_EXT,
+        target: FRONTX_SCREEN_DOMAIN,
         payload: { subject: THEME_EXTENSION_ID },
       },
     });
@@ -99,8 +99,8 @@ export const HelloWorldScreen: React.FC<HelloWorldScreenProps> = ({ bridge }) =>
   const handleOpenProfileAndRefresh = useCallback(async () => {
     await bridge.executeActionsChain({
       action: {
-        type: HAI3_ACTION_MOUNT_EXT,
-        target: HAI3_SCREEN_DOMAIN,
+        type: FRONTX_ACTION_MOUNT_EXT,
+        target: FRONTX_SCREEN_DOMAIN,
         payload: { subject: PROFILE_EXTENSION_ID },
       },
       next: {

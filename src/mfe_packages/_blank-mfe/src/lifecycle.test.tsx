@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import {
-  HAI3_SHARED_PROPERTY_LANGUAGE,
-  HAI3_SHARED_PROPERTY_THEME,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_SHARED_PROPERTY_THEME,
 } from '@gears-frontx/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMfeBridgeFixture } from '../../../__test-utils__/createMfeBridgeFixture';
@@ -91,8 +91,8 @@ describe('blank-mfe lifecycle', () => {
       domainId: 'blank-domain',
       instanceId: 'blank-instance',
       initialProperties: {
-        [HAI3_SHARED_PROPERTY_THEME]: 'blank-theme',
-        [HAI3_SHARED_PROPERTY_LANGUAGE]: 'en',
+        [FRONTX_SHARED_PROPERTY_THEME]: 'blank-theme',
+        [FRONTX_SHARED_PROPERTY_LANGUAGE]: 'en',
       },
     });
 

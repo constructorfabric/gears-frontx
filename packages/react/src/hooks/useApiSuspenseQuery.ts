@@ -11,13 +11,13 @@
 import type { EndpointDescriptor } from '@gears-frontx/framework';
 import type { ApiSuspenseQueryResult } from '../types';
 import type { ApiQueryOverrides } from './useApiQuery';
-import { useHAI3SuspenseQuery } from '../queryClient';
+import { useFrontXSuspenseQuery } from '../queryClient';
 
 // @cpt-begin:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-use-suspense-query
 export function useApiSuspenseQuery<TData = unknown, TError = Error>(
   descriptor: EndpointDescriptor<TData>,
   overrides?: ApiQueryOverrides
 ): ApiSuspenseQueryResult<TData, TError> {
-  return useHAI3SuspenseQuery<TData, TError>(descriptor, overrides);
+  return useFrontXSuspenseQuery<TData, TError>(descriptor, overrides);
 }
 // @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-query:p2:inst-delegate-use-suspense-query

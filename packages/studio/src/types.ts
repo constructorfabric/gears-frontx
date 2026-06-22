@@ -49,7 +49,7 @@ export const BUTTON_SIZE = {
 /**
  * LocalStorage key prefix for Studio
  */
-export const STORAGE_PREFIX = 'hai3:studio:' as const;
+export const STORAGE_PREFIX = 'frontx:studio:' as const;
 
 /**
  * LocalStorage keys (composable with shared prefix)

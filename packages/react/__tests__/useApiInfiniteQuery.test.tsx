@@ -14,7 +14,7 @@ import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { describe, it, expect, expectTypeOf, vi, afterEach } from 'vitest';
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { eventBus, resetSharedFetchCache, resetSharedQueryClient } from '@gears-frontx/framework';
-import { HAI3Provider } from '@gears-frontx/react';
+import { FrontXProvider } from '@gears-frontx/react';
 import { useApiInfiniteQuery } from '../src/hooks/useApiInfiniteQuery';
 import { useApiSuspenseInfiniteQuery } from '../src/hooks/useApiSuspenseInfiniteQuery';
 import {
@@ -323,13 +323,13 @@ describe('useApiSuspenseInfiniteQuery', () => {
 
     try {
       render(
-        <HAI3Provider app={app}>
+        <FrontXProvider app={app}>
           <TestErrorBoundary onError={onError}>
             <React.Suspense fallback={<div>loading</div>}>
               <Probe />
             </React.Suspense>
           </TestErrorBoundary>
-        </HAI3Provider>
+        </FrontXProvider>
       );
 
       await waitFor(() =>

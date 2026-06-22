@@ -8,7 +8,7 @@ export { i18n } from './i18n';
 export { effects } from './effects';
 export {
   auth,
-  hai3ApiTransport,
+  frontxApiTransport,
   type AuthPluginConfig,
   type AuthRuntime,
   type AuthTransportBinding,
@@ -42,10 +42,10 @@ export {
   type UnregisterExtensionPayload,
   type MicrofrontendsConfig,
   // FrontX layout domain constants
-  HAI3_POPUP_DOMAIN,
-  HAI3_SIDEBAR_DOMAIN,
-  HAI3_SCREEN_DOMAIN,
-  HAI3_OVERLAY_DOMAIN,
+  FRONTX_POPUP_DOMAIN,
+  FRONTX_SIDEBAR_DOMAIN,
+  FRONTX_SCREEN_DOMAIN,
+  FRONTX_OVERLAY_DOMAIN,
   // Base ExtensionDomain constants
   screenDomain,
   sidebarDomain,

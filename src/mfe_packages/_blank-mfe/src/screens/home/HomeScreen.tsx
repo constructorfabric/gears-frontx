@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { ChildMfeBridge } from '@gears-frontx/react';
 import {
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_SHARED_PROPERTY_THEME,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
   useApiQuery,
   apiRegistry,
 } from '@gears-frontx/react';
@@ -61,18 +61,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
 
   useEffect(() => {
     // Read initial property values
-    const initialTheme = bridge.getProperty(HAI3_SHARED_PROPERTY_THEME);
+    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
     if (initialTheme && typeof initialTheme.value === 'string') {
       setTheme(initialTheme.value);
     }
-    const initialLang = bridge.getProperty(HAI3_SHARED_PROPERTY_LANGUAGE);
+    const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
     if (initialLang && typeof initialLang.value === 'string') {
       setLanguage(initialLang.value);
     }
 
     // Subscribe to theme domain property
     const themeUnsubscribe = bridge.subscribeToProperty(
-      HAI3_SHARED_PROPERTY_THEME,
+      FRONTX_SHARED_PROPERTY_THEME,
       (property) => {
         if (typeof property.value === 'string') {
           setTheme(property.value);
@@ -82,7 +82,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
 
     // Subscribe to language domain property
     const languageUnsubscribe = bridge.subscribeToProperty(
-      HAI3_SHARED_PROPERTY_LANGUAGE,
+      FRONTX_SHARED_PROPERTY_LANGUAGE,
       (property) => {
         if (typeof property.value === 'string') {
           setLanguage(property.value);

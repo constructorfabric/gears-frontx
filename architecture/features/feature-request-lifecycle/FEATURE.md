@@ -14,7 +14,7 @@
   - [Flow 3 — Declarative Mutation via useApiMutation Hook](#flow-3--declarative-mutation-via-useapimutation-hook)
   - [Flow 6 — Declarative SSE Stream via useApiStream Hook](#flow-6--declarative-sse-stream-via-useapistream-hook)
   - [Flow 5 — Cross-Feature Orchestration via Flux (Escape Hatch)](#flow-5--cross-feature-orchestration-via-flux-escape-hatch)
-  - [Flow 4 — Shared QueryClient Lifecycle in HAI3Provider](#flow-4--shared-queryclient-lifecycle-in-hai3provider)
+  - [Flow 4 — Shared QueryClient Lifecycle in Gears FrontXProvider](#flow-4--shared-queryclient-lifecycle-in-gears-frontxprovider)
 - [3. Processes / Business Logic (CDSL)](#3-processes--business-logic-cdsl)
   - [Algorithm 1 — AbortSignal Threading in RestProtocol](#algorithm-1--abortsignal-threading-in-restprotocol)
   - [Algorithm 2 — CanceledError Detection and Bypass](#algorithm-2--cancelederror-detection-and-bypass)
@@ -181,14 +181,14 @@ Success criteria: A developer can fetch data with `useApiQuery` and submit chang
 
 ---
 
-### Flow 4 — Shared QueryClient Lifecycle in HAI3Provider
+### Flow 4 — Shared QueryClient Lifecycle in Gears FrontXProvider
 
 - [x] `p2` - **ID**: `cpt-frontx-flow-request-lifecycle-query-client-lifecycle`
 
 **Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-runtime`
 
 1. [x] - `p2` - The `queryCache()` framework plugin creates or joins a shared `QueryClient` with configurable defaults during `onInit` and attaches it to the app instance for internal React consumption — `inst-create-query-client`
-2. [x] - `p2` - `HAI3Provider` resolves that shared `QueryClient` from the app instance and mounts `QueryClientProvider` directly around children — `inst-render-query-provider`
+2. [x] - `p2` - `Gears FrontXProvider` resolves that shared `QueryClient` from the app instance and mounts `QueryClientProvider` directly around children — `inst-render-query-provider`
 3. [x] - `p2` - IF MFE mode, the host uses `queryCache()` and mounted MFE apps use `queryCacheShared()` so both roots join the same host-owned `QueryClient` before rendering — shared cache across all MFEs, each using its own `apiRegistry` as `queryFn` — `inst-mfe-query-client`
 4. [x] - `p2` - The `queryCache()` plugin listens for `MockEvents.Toggle` and clears cache on mock mode changes — `inst-mock-cache-clear`
 5. [x] - `p2` - The `queryCache()` plugin listens for `cache/invalidate`, `cache/set`, and `cache/remove` from L2 (Flux effects or other producers): each handler updates the shared `QueryClient` and invalidates matching entries in the L1 `sharedFetchCache` where applicable (so cross-root descriptor dedupe does not serve stale windows) — `inst-flux-cache-invalidate`
@@ -241,10 +241,10 @@ Success criteria: A developer can fetch data with `useApiQuery` and submit chang
 1. [x] - `p2` - The `queryCache()` plugin creates `QueryClient` with defaults merged from plugin config — `inst-create-in-plugin`
 2. [x] - `p2` - Set `staleTime` to `config.staleTime ?? 30_000` (avoid immediate refetch on re-mount) — `inst-stale-time`
 3. [x] - `p2` - Set `gcTime` to `config.gcTime ?? 300_000` (garbage-collect unused cache entries) — `inst-gc-time`
-4. [x] - `p2` - Set `retry` to 0 (HAI3 has its own retry plugin system; avoid double retry) — `inst-no-retry`
+4. [x] - `p2` - Set `retry` to 0 (Gears FrontX has its own retry plugin system; avoid double retry) — `inst-no-retry`
 5. [x] - `p2` - Set `refetchOnWindowFocus` to `config.refetchOnWindowFocus ?? true` (refresh stale data on tab switch) — `inst-refetch-focus`
 6. [x] - `p2` - Attach the shared `QueryClient` to the app instance behind an internal symbol so React bindings can resolve it without exposing a public runtime abstraction — `inst-expose-client`
-7. [x] - `p2` - `HAI3Provider` reads the attached `QueryClient` through its internal resolver — `inst-provider-reads-client`
+7. [x] - `p2` - `Gears FrontXProvider` reads the attached `QueryClient` through its internal resolver — `inst-provider-reads-client`
 8. [x] - `p2` - RETURN: React hooks and `QueryCache` operate on the shared `QueryClient`, while the raw client stays internal to framework/react internals — `inst-return-client`
 9. [x] - `p2` - During plugin init, `retainSharedFetchCache()` enables shared-fetch teardown coordination; cache event handlers keep TanStack state and `sharedFetchCache` consistent — `inst-shared-fetch-retain`
 
@@ -349,7 +349,7 @@ The system **MUST** support request cancellation via `AbortSignal` in `RestProto
 
 - [x] `p2` - **ID**: `cpt-frontx-dod-request-lifecycle-query-provider`
 
-The system **MUST** provide a `queryCache()` framework plugin at L2 that owns the shared `QueryClient`, and `HAI3Provider` at L3 that consumes that client internally. The client is shared across all MFEs even though each MFE renders in its own React root.
+The system **MUST** provide a `queryCache()` framework plugin at L2 that owns the shared `QueryClient`, and `Gears FrontXProvider` at L3 that consumes that client internally. The client is shared across all MFEs even though each MFE renders in its own React root.
 
 **Implementation details**:
 
@@ -360,9 +360,9 @@ The system **MUST** provide a `queryCache()` framework plugin at L2 that owns th
 - Config: Default `staleTime: 30_000`, `gcTime: 300_000`, `retry: 0`, `refetchOnWindowFocus: true` — overridable via `queryCache({ staleTime: 60_000 })`
 - Plugin attaches the shared `QueryClient` to the app instance, registers event listeners for `MockEvents.Toggle`, `cache/invalidate`, `cache/set`, and `cache/remove`, and shared invalidation also clears the L1 `sharedFetchCache`
 - Plugin is included in the `full()` preset
-- Component: `HAI3Provider` in `packages/react/src/HAI3Provider.tsx` — resolves the attached `QueryClient` from the app instance and mounts `QueryClientProvider` directly around children
+- Component: `Gears FrontXProvider` in `packages/react/src/Gears FrontXProvider.tsx` — resolves the attached `QueryClient` from the app instance and mounts `QueryClientProvider` directly around children
 - Shared client join: `queryCache()` stores the host-owned `QueryClient` on a symbol-backed `globalThis` slot; `queryCacheShared()` joins that existing client for MFE/local child apps without creating a second client
-- MFE lifecycle: MFE roots join the shared host client by building their local app with `queryCacheShared()` before rendering their own `HAI3Provider`
+- MFE lifecycle: MFE roots join the shared host client by building their local app with `queryCacheShared()` before rendering their own `Gears FrontXProvider`
 
 **Implements**:
 - `cpt-frontx-flow-request-lifecycle-query-client-lifecycle`
@@ -382,7 +382,7 @@ The system **MUST** provide a `queryCache()` framework plugin at L2 that owns th
 
 - [x] `p2` - **ID**: `cpt-frontx-dod-request-lifecycle-use-api-query`
 
-The system **MUST** export a `useApiQuery` hook from `@gears-frontx/react` that accepts an `EndpointDescriptor` from a service class, delegates to the underlying caching library, and returns a HAI3-owned `ApiQueryResult<TData>`. The same declarative query surface **MUST** also export `useApiSuspenseQuery`, `useApiInfiniteQuery`, and `useApiSuspenseInfiniteQuery` for Suspense-driven single-page reads and descriptor-driven paginated reads.
+The system **MUST** export a `useApiQuery` hook from `@gears-frontx/react` that accepts an `EndpointDescriptor` from a service class, delegates to the underlying caching library, and returns a Gears FrontX-owned `ApiQueryResult<TData>`. The same declarative query surface **MUST** also export `useApiSuspenseQuery`, `useApiInfiniteQuery`, and `useApiSuspenseInfiniteQuery` for Suspense-driven single-page reads and descriptor-driven paginated reads.
 
 **Implementation details**:
 
@@ -398,10 +398,10 @@ The system **MUST** export a `useApiQuery` hook from `@gears-frontx/react` that 
 - `useApiSuspenseQuery` uses the same `descriptor.key` and `descriptor.fetch({ signal })` wiring as `useApiQuery`, but returns only the resolved Suspense-safe surface
 - `useApiInfiniteQuery` uses `initialPage.key` as the shared cache identity, fetches each page through `descriptor.fetch({ signal })`, and resolves adjacent pages through descriptor-returning callbacks
 - `useApiSuspenseInfiniteQuery` uses the same descriptor-driven pagination model as `useApiInfiniteQuery` while allowing the initial load/error path to flow through Suspense and error boundaries
-- Returns `ApiQueryResult<TData>` — HAI3-owned type exposing only `data`, `error`, `isLoading`, `isFetching`, `isError`, `refetch`
-- Returns `ApiSuspenseQueryResult<TData>` — HAI3-owned type exposing only `data`, `isFetching`, `refetch`
-- Returns `ApiInfiniteQueryResult<TPage>` — HAI3-owned type exposing only `data`, `error`, `isLoading`, `isFetching`, `isError`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage`, `isFetchingPreviousPage`, `fetchNextPage`, `fetchPreviousPage`, `refetch`
-- Returns `ApiSuspenseInfiniteQueryResult<TPage>` — HAI3-owned type exposing only `data`, `isFetching`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage`, `isFetchingPreviousPage`, `fetchNextPage`, `fetchPreviousPage`, `refetch`
+- Returns `ApiQueryResult<TData>` — Gears FrontX-owned type exposing only `data`, `error`, `isLoading`, `isFetching`, `isError`, `refetch`
+- Returns `ApiSuspenseQueryResult<TData>` — Gears FrontX-owned type exposing only `data`, `isFetching`, `refetch`
+- Returns `ApiInfiniteQueryResult<TPage>` — Gears FrontX-owned type exposing only `data`, `error`, `isLoading`, `isFetching`, `isError`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage`, `isFetchingPreviousPage`, `fetchNextPage`, `fetchPreviousPage`, `refetch`
+- Returns `ApiSuspenseInfiniteQueryResult<TPage>` — Gears FrontX-owned type exposing only `data`, `isFetching`, `hasNextPage`, `hasPreviousPage`, `isFetchingNextPage`, `isFetchingPreviousPage`, `fetchNextPage`, `fetchPreviousPage`, `refetch`
 - Does NOT re-export `queryOptions` or TanStack-specific types
 - Cache configuration cascade: component call overrides > descriptor defaults > framework defaults
 - `RestEndpointProtocol` consults the L1 `sharedFetchCache` when available so overlapping descriptor fetches across separate roots can reuse the same in-flight request/result window
@@ -429,7 +429,7 @@ The system **MUST** export a `useApiMutation` hook from `@gears-frontx/react` th
 - Hook: `useApiMutation` in `packages/react/src/hooks/useApiMutation.ts`
 - Type: `QueryCache` interface with `get<T>(descriptorOrKey)`, `getState<TData, TError>(descriptorOrKey)`, `set<T>(descriptorOrKey, dataOrUpdater)`, `cancel(descriptorOrKey)`, `invalidate(descriptorOrKey)`, `invalidateMany(filters)`, `remove(descriptorOrKey)` — accepts `EndpointDescriptor` (extracts `.key`) or raw `QueryKey`. Wraps the active shared `QueryClient` internally, never exposed to MFEs as a raw caching-library client. `set` accepts both a value and an updater function for atomic read-modify-write.
 - Signature: accepts `{ endpoint: MutationDescriptor, onMutate?, onSuccess?, onError?, onSettled? }` — each callback receives `{ queryCache }` as an additional final parameter
-- Returns `ApiMutationResult<TData>` — HAI3-owned type exposing `mutate`, `mutateAsync`, `isPending`, `error`, `data`, `reset`
+- Returns `ApiMutationResult<TData>` — Gears FrontX-owned type exposing `mutate`, `mutateAsync`, `isPending`, `error`, `data`, `reset`
 - The caching library client is used internally only and is NOT re-exported from `@gears-frontx/react` — MFEs interact with the cache through `QueryCache` exposed by `useQueryCache()` and in mutation callbacks
 
 **Implements**:
@@ -450,7 +450,7 @@ The system **MUST** export a `useApiMutation` hook from `@gears-frontx/react` th
 
 - [x] `p2` - **ID**: `cpt-frontx-dod-request-lifecycle-use-api-stream`
 
-The system **MUST** export a `useApiStream` hook from `@gears-frontx/react` that accepts a `StreamDescriptor<TEvent>` from a service class, manages the SSE connection lifecycle (connect on mount, disconnect on unmount), and returns a HAI3-owned `ApiStreamResult<TEvent>`.
+The system **MUST** export a `useApiStream` hook from `@gears-frontx/react` that accepts a `StreamDescriptor<TEvent>` from a service class, manages the SSE connection lifecycle (connect on mount, disconnect on unmount), and returns a Gears FrontX-owned `ApiStreamResult<TEvent>`.
 
 **Implementation details**:
 
@@ -458,7 +458,7 @@ The system **MUST** export a `useApiStream` hook from `@gears-frontx/react` that
 - Signature: accepts `StreamDescriptor<TEvent>` (from a declarative contract such as `SseStreamProtocol.stream()`) and optional `ApiStreamOptions { mode?, enabled? }`
 - `mode: 'latest'` (default) — `data` holds the most recent event; `mode: 'accumulate'` — `events` holds all received events in order
 - `enabled: false` defers connection (status stays `'idle'`); when toggled to `true`, connects
-- Returns `ApiStreamResult<TEvent>` — HAI3-owned type exposing `data`, `events`, `status`, `error`, `disconnect`
+- Returns `ApiStreamResult<TEvent>` — Gears FrontX-owned type exposing `data`, `events`, `status`, `error`, `disconnect`
 - `status` is a `StreamStatus`: `'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'`
 - Cleans up (disconnects) on unmount and on descriptor key change
 - Does NOT integrate with `QueryCache` (streaming data is not query-cached; see Known Gap in Additional Context)
@@ -484,7 +484,7 @@ The system **MUST** export a `useApiStream` hook from `@gears-frontx/react` that
 - [x] `queryCache()` framework plugin creates and owns a shared `QueryClient` with configurable defaults
 - [x] `queryCache()` plugin is included in the `full()` preset
 - [x] `queryCache()` plugin clears cache on `MockEvents.Toggle` (including `sharedFetchCache`), listens for `cache/invalidate`, `cache/set`, and `cache/remove`, mirrors them into the TanStack-backed runtime, and invalidates matching `sharedFetchCache` keys; on destroy it tears down queries and calls `releaseSharedFetchCache()`
-- [x] `HAI3Provider` resolves the shared `QueryClient` from the app instance (not creating its own) and mounts `QueryClientProvider`
+- [x] `Gears FrontXProvider` resolves the shared `QueryClient` from the app instance (not creating its own) and mounts `QueryClientProvider`
 - [x] All MFEs share the host's `QueryClient` via `queryCache()` / `queryCacheShared()` shared-client reuse — overlapping descriptor keys are deduplicated across MFE boundaries, including cross-root in-flight fetch reuse through `sharedFetchCache`
 - [x] For identical in-flight descriptor keys observed across host and child roots, exactly one underlying transport request executes; all observers resolve from the shared request/result window
 - [x] `useApiQuery(service.endpoint)` accepts an `EndpointDescriptor` and returns `ApiQueryResult { data, isLoading, error }` with automatic cancellation on unmount
@@ -508,9 +508,9 @@ The system **MUST** export a `useApiStream` hook from `@gears-frontx/react` that
 - [x] MFEs do not use standalone query key factories or `queryOptions()` outside descriptors — the service IS the data layer
 - [x] Per-endpoint cache options (`staleTime`, `gcTime`) are set on the descriptor via the declarative REST contract (for example `this.protocol(RestEndpointProtocol).query('/path', { staleTime, gcTime })`)
 - [x] Cache configuration follows three-tier cascade: component call overrides > descriptor defaults > framework defaults
-- [x] `ApiQueryResult<TData>`, `ApiSuspenseQueryResult<TData>`, `ApiInfiniteQueryResult<TPage>`, `ApiSuspenseInfiniteQueryResult<TPage>`, and `ApiMutationResult<TData>` are HAI3-owned types — not TanStack-specific types
+- [x] `ApiQueryResult<TData>`, `ApiSuspenseQueryResult<TData>`, `ApiInfiniteQueryResult<TPage>`, `ApiSuspenseInfiniteQueryResult<TPage>`, and `ApiMutationResult<TData>` are Gears FrontX-owned types — not TanStack-specific types
 - [x] `queryOptions` is NOT re-exported from `@gears-frontx/react` — endpoint descriptors replace it
-- [x] Cross-feature mutations use the Flux pattern with event-based cache updates at L2: Flux effects emit `cache/invalidate` (most common), or `cache/set` / `cache/remove` when imperative cache writes or evictions are required; the `queryCache()` framework plugin registers EventBus listeners during `onInit` (not in `HAI3Provider`) and keeps TanStack query state and L1 `sharedFetchCache` aligned for each payload
+- [x] Cross-feature mutations use the Flux pattern with event-based cache updates at L2: Flux effects emit `cache/invalidate` (most common), or `cache/set` / `cache/remove` when imperative cache writes or evictions are required; the `queryCache()` framework plugin registers EventBus listeners during `onInit` (not in `Gears FrontXProvider`) and keeps TanStack query state and L1 `sharedFetchCache` aligned for each payload
 - [x] Mock mode continues to work: `RestMockPlugin` short-circuits regardless of `signal` presence
 - [x] `MockEvents.Toggle` and `app.destroy()` teardown cancel in-flight work, clear runtime cache entries, clear matching `sharedFetchCache` windows, and release retained shared-cache coordination before the next root attaches
 - [x] `@gears-frontx/api` remains at zero `@gears-frontx/*` dependencies (AbortSignal is a browser API)
@@ -534,7 +534,7 @@ The system **MUST** export a `useApiStream` hook from `@gears-frontx/react` that
 
 ### TanStack Query Retry Disabled by Default
 
-TanStack Query's built-in retry is set to 0 because HAI3 already provides retry via the `onError` plugin chain with `ApiPluginErrorContext.retry()`. Enabling both would cause double retries — the plugin retries the Axios call, and TanStack retries the entire `queryFn`. Consumers can re-enable TanStack retry per-query if they opt out of plugin-level retry.
+TanStack Query's built-in retry is set to 0 because Gears FrontX already provides retry via the `onError` plugin chain with `ApiPluginErrorContext.retry()`. Enabling both would cause double retries — the plugin retries the Axios call, and TanStack retries the entire `queryFn`. Consumers can re-enable TanStack retry per-query if they opt out of plugin-level retry.
 
 ### Event-Driven Pattern Coexistence
 
@@ -607,7 +607,7 @@ L2 Flux effects coordinate with the shared `QueryClient` (via the `queryCache()`
 - **`cache/set`** — applies a value or updater through `QueryClient.setQueryData(...)` (skipped for same-`source` local broadcasts) and invalidates that `queryKey` in **`sharedFetchCache`**.
 - **`cache/remove`** — removes the entry via `QueryClient.removeQueries(...)` (same local-broadcast skip) and invalidates that key in **`sharedFetchCache`**.
 
-This is handled entirely at L2 — no React listener needed. Previously, a synchronous listener inside `HAI3Provider` (L3) handled only invalidation. Centralizing **invalidate / set / remove** in the plugin eliminates bootstrap races and keeps descriptor-level dedupe coherent across MFE boundaries.
+This is handled entirely at L2 — no React listener needed. Previously, a synchronous listener inside `Gears FrontXProvider` (L3) handled only invalidation. Centralizing **invalidate / set / remove** in the plugin eliminates bootstrap races and keeps descriptor-level dedupe coherent across MFE boundaries.
 
 On **`MockEvents.Toggle`**, the plugin aborts in-flight queries, clears the runtime cache, and clears **`sharedFetchCache`**. On **`app.destroy()`**, it tears down the runtime and calls **`releaseSharedFetchCache()`** after cancel/clear completes, matching **`retainSharedFetchCache()`** at init.
 

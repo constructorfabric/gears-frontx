@@ -138,10 +138,10 @@ const MyComponent = () => {
 
 ### Use event-driven actions (recommended)
 ```typescript
-import { useHAI3Actions } from '@gears-frontx/react';
+import { useGears FrontXActions } from '@gears-frontx/react';
 
 const MyComponent = () => {
-  const { toggleMenu } = useHAI3Actions();
+  const { toggleMenu } = useGears FrontXActions();
   return <button onClick={toggleMenu}>Toggle Menu</button>;
 };
 ```

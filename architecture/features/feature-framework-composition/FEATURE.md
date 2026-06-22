@@ -50,7 +50,7 @@
   - [MFE Effects Initialization Exception](#mfe-effects-initialization-exception)
   - [Shared Property Late Registration Limitation](#shared-property-late-registration-limitation)
   - [Single Write Path for Shared Properties](#single-write-path-for-shared-properties)
-  - [HAI3Config Fields](#hai3config-fields)
+  - [Gears FrontXConfig Fields](#gears-frontxconfig-fields)
 
 <!-- /toc -->
 
@@ -63,11 +63,11 @@
 
 ### 1.1 Overview
 
-Framework Composition is the L2 layer that stitches together the four L1 SDK packages (`@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, `@gears-frontx/i18n`) into a cohesive, production-ready application framework. It does this through a plugin architecture centered on the `createHAI3()` builder: the host application chains `.use(plugin)` calls and calls `.build()` to produce an assembled `HAI3App` instance that owns a Redux store, theme registry, i18n registry, API registry, MFE-enabled screensets registry, and a complete set of typed actions.
+Framework Composition is the L2 layer that stitches together the four L1 SDK packages (`@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, `@gears-frontx/i18n`) into a cohesive, production-ready application framework. It does this through a plugin architecture centered on the `createGears FrontX()` builder: the host application chains `.use(plugin)` calls and calls `.build()` to produce an assembled `Gears FrontXApp` instance that owns a Redux store, theme registry, i18n registry, API registry, MFE-enabled screensets registry, and a complete set of typed actions.
 
 **Problem this solves**: Without this layer each application would manually wire state slices, event subscriptions, registries, and lifecycle hooks across four packages — a complex and error-prone process that produces inconsistent patterns across projects.
 
-**Primary value**: A single call to `createHAI3App()` (or a composed `.use()` chain) yields a framework instance that the React layer (`@gears-frontx/react`) can consume directly, with all cross-cutting concerns (theme, language, MFE lifecycle, mock mode, layout state) already coordinated.
+**Primary value**: A single call to `createGears FrontXApp()` (or a composed `.use()` chain) yields a framework instance that the React layer (`@gears-frontx/react`) can consume directly, with all cross-cutting concerns (theme, language, MFE lifecycle, mock mode, layout state) already coordinated.
 
 **Key assumptions**:
 - Applications run in a browser environment; no SSR.
@@ -108,7 +108,7 @@ Enable host applications to compose a fully-wired FrontX framework instance by a
 
 **Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-runtime`
 
-1. [ ] `p1` - Host calls `createHAI3(config?)` to obtain a builder instance - `inst-create-builder`
+1. [ ] `p1` - Host calls `createGears FrontX(config?)` to obtain a builder instance - `inst-create-builder`
 2. [ ] `p1` - Host chains one or more `.use(plugin)` calls, each appending a resolved plugin to the pending list - `inst-use-plugin`
 3. [ ] `p1` - **IF** a plugin with the same name is already registered **RETURN** silently (skip duplicate) - `inst-dedup-plugin`
 4. [ ] `p1` - Host calls `.build()`, which triggers dependency resolution via topological sort - `inst-build`
@@ -116,9 +116,9 @@ Enable host applications to compose a fully-wired FrontX framework instance by a
 6. [ ] `p1` - Aggregate all `provides.registries`, `provides.slices`, `provides.effects`, and `provides.actions` from all plugins - `inst-aggregate-provides`
 7. [ ] `p1` - Obtain or create the shared Redux store; register all aggregated slices via `registerSlice()` - `inst-create-store`
 8. [ ] `p1` - **FOR EACH** aggregated effect initializer: invoke with `store.dispatch` - `inst-init-effects`
-9. [ ] `p1` - Assemble the `HAI3App` object from aggregated registries, store, and actions - `inst-assemble-app`
+9. [ ] `p1` - Assemble the `Gears FrontXApp` object from aggregated registries, store, and actions - `inst-assemble-app`
 10. [ ] `p1` - **FOR EACH** plugin in dependency order: invoke `onInit(app)` if present - `inst-on-init`
-11. [ ] `p1` - **RETURN** the fully assembled `HAI3App` - `inst-return-app`
+11. [ ] `p1` - **RETURN** the fully assembled `Gears FrontXApp` - `inst-return-app`
 
 ### Plugin Registration with Dependency Enforcement
 
@@ -139,10 +139,10 @@ Enable host applications to compose a fully-wired FrontX framework instance by a
 
 **Actors**: `cpt-frontx-actor-host-app`
 
-1. [ ] `p1` - Host calls `createHAI3App(config?)` - `inst-call-createapp`
-2. [ ] `p1` - `createHAI3App` delegates to `createHAI3(config).useAll(full(presetConfig)).build()` - `inst-delegate-full`
+1. [ ] `p1` - Host calls `createGears FrontXApp(config?)` - `inst-call-createapp`
+2. [ ] `p1` - `createGears FrontXApp` delegates to `createGears FrontX(config).useAll(full(presetConfig)).build()` - `inst-delegate-full`
 3. [ ] `p1` - `full()` preset returns the canonical plugin set: `effects`, `screensets`, `themes`, `layout`, `i18n`, `queryCache`, `mock`, `microfrontends` - `inst-full-plugin-set`
-4. [ ] `p1` - **RETURN** fully assembled `HAI3App` - `inst-return-full-app`
+4. [ ] `p1` - **RETURN** fully assembled `Gears FrontXApp` - `inst-return-full-app`
 
 ### Theme Change and MFE Propagation
 
@@ -154,7 +154,7 @@ Enable host applications to compose a fully-wired FrontX framework instance by a
 2. [ ] `p1` - Action emits `theme/changed` event on the event bus - `inst-emit-theme-changed`
 3. [ ] `p1` - The `themes` plugin's `onInit` handler receives the event - `inst-themes-plugin-handler`
 4. [ ] `p1` - Handler calls `themeRegistry.apply(themeId)` to update the in-process theme - `inst-apply-theme`
-5. [ ] `p1` - **TRY** call `mfeRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, themeId)` to broadcast to all MFE domains - `inst-broadcast-theme`
+5. [ ] `p1` - **TRY** call `mfeRegistry.updateSharedProperty(Gears FrontX_SHARED_PROPERTY_THEME, themeId)` to broadcast to all MFE domains - `inst-broadcast-theme`
 6. [ ] `p1` - **CATCH** log error `"[FrontX] Failed to propagate theme to MFE domains"` without re-throwing - `inst-catch-theme-error`
 
 ### Language Change and MFE Propagation
@@ -167,7 +167,7 @@ Enable host applications to compose a fully-wired FrontX framework instance by a
 2. [ ] `p1` - Action emits `i18n/language/changed` event on the event bus - `inst-emit-lang-changed`
 3. [ ] `p1` - The `i18n` plugin's `onInit` handler receives the event - `inst-i18n-plugin-handler`
 4. [ ] `p1` - Handler calls `i18nRegistry.setLanguage(language)` asynchronously - `inst-set-language`
-5. [ ] `p1` - **TRY** call `mfeRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_LANGUAGE, language)` to broadcast to all MFE domains - `inst-broadcast-lang`
+5. [ ] `p1` - **TRY** call `mfeRegistry.updateSharedProperty(Gears FrontX_SHARED_PROPERTY_LANGUAGE, language)` to broadcast to all MFE domains - `inst-broadcast-lang`
 6. [ ] `p1` - **CATCH** log error `"[FrontX] Failed to propagate language to MFE domains"` without re-throwing - `inst-catch-lang-error`
 
 ### MFE Extension Registration
@@ -190,12 +190,12 @@ Enable host applications to compose a fully-wired FrontX framework instance by a
 **Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-microfrontend`
 
 1. [ ] `p1` - Host calls `app.actions.loadExtension(extensionId)` - `inst-call-load-ext`
-2. [ ] `p1` - Action resolves the domain ID from the registered extension; calls `mfeRegistry.executeActionsChain` with `gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~` — fire-and-forget - `inst-execute-load-chain`
+2. [ ] `p1` - Action resolves the domain ID from the registered extension; calls `mfeRegistry.executeActionsChain` with `gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~` — fire-and-forget - `inst-execute-load-chain`
 3. [ ] `p1` - Host calls `app.actions.mountExtension(extensionId)` - `inst-call-mount-ext`
-4. [ ] `p1` - Action resolves domain ID; calls `executeActionsChain` with `gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~` - `inst-execute-mount-chain`
+4. [ ] `p1` - Action resolves domain ID; calls `executeActionsChain` with `gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~` - `inst-execute-mount-chain`
 5. [ ] `p1` - On chain completion (success or failure), the plugin's sync wrapper runs `cpt-frontx-algo-framework-composition-mount-set-diff-dispatch`: it snapshots `getMountedExtensions(domainId)` before and after the chain, computes `added = after \ before` and `removed = before \ after`, and dispatches one `addExtensionMounted({ domainId, extensionId })` per element of `added` and one `removeExtensionMounted({ domainId, extensionId })` per element of `removed` to the MFE slice. There is no scalar `setExtensionMounted` reducer - `inst-dispatch-mount-diff`
 6. [ ] `p2` - Host calls `app.actions.unmountExtension(extensionId)` - `inst-call-unmount-ext`
-7. [ ] `p2` - Action resolves domain ID; calls `executeActionsChain` with `gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~` - `inst-execute-unmount-chain`
+7. [ ] `p2` - Action resolves domain ID; calls `executeActionsChain` with `gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1~` - `inst-execute-unmount-chain`
 8. [ ] `p2` - On chain completion the same set-diff dispatch in step 5 fires for the unmount action — the removed extension produces a `removeExtensionMounted({ domainId, extensionId })` reducer call. There is no scalar `setExtensionUnmounted` reducer - `inst-dispatch-unmount-diff`
 
 ### Shared Property Broadcast
@@ -265,7 +265,7 @@ Enable host applications to compose a fully-wired FrontX framework instance by a
 
 - [x] `p1` - **ID**: `cpt-frontx-algo-framework-composition-gts-validation`
 
-1. [ ] `p1` - Construct `ephemeralId` by appending the runtime suffix to the property type ID: `ephemeralId = "${propertyTypeId}hai3.mfes.comm.runtime.v1"` - `inst-build-ephemeral-id`
+1. [ ] `p1` - Construct `ephemeralId` by appending the runtime suffix to the property type ID: `ephemeralId = "${propertyTypeId}frontx.mfes.comm.runtime.v1"` - `inst-build-ephemeral-id`
 2. [ ] `p1` - Call `typeSystem.register({ id: ephemeralId, value })`; `register()` both registers the candidate instance (overwriting any prior registration for the same deterministic ID) AND validates it against the schema derived from the chained instance ID in a single call - `inst-gts-register`
 3. [ ] `p1` - **IF** the value does not conform to the schema, `register()` throws a plain `Error` whose message carries instance JSON, resolved schema JSON, and the failure reason; the caller re-throws and propagation is blocked - `inst-gts-reject`
 4. [ ] `p1` - **IF** `register()` returns normally: propagation may proceed - `inst-gts-accept`
@@ -276,7 +276,7 @@ Enable host applications to compose a fully-wired FrontX framework instance by a
 
 - [x] `p1` - **ID**: `cpt-frontx-algo-framework-composition-base-path`
 
-1. [ ] `p1` - Receive raw `base` string from `HAI3Config`; **IF** empty or undefined **RETURN** `"/"` - `inst-empty-base`
+1. [ ] `p1` - Receive raw `base` string from `Gears FrontXConfig`; **IF** empty or undefined **RETURN** `"/"` - `inst-empty-base`
 2. [ ] `p1` - **IF** `base` does not start with `"/"`: prepend `"/"` - `inst-add-leading-slash`
 3. [ ] `p1` - **IF** normalized value is not `"/"` AND ends with `"/"`: remove trailing slash - `inst-remove-trailing-slash`
 4. [ ] `p1` - **RETURN** normalized base path - `inst-return-base`
@@ -361,7 +361,7 @@ Tracked in `state.mfe.mountedExtensions[domainId]` as a per-domain insertion-ord
 
 - [x] `p1` - **ID**: `cpt-frontx-state-framework-composition-builder`
 
-Lifecycle state of the `HAI3AppBuilder` instance.
+Lifecycle state of the `Gears FrontXAppBuilder` instance.
 
 1. [ ] `p1` - **FROM** `composing` (initial) **TO** `composing` **WHEN** `.use(plugin)` is called — builder returns `this` for chaining - `inst-composing`
 2. [ ] `p1` - **FROM** `composing` **TO** `built` **WHEN** `.build()` is called and succeeds - `inst-built`
@@ -385,16 +385,16 @@ Tracked in `state.tenant`.
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-framework-composition-builder`
 
-Host applications can compose a FrontX framework instance by chaining `.use(plugin)` calls on the builder returned by `createHAI3()` and calling `.build()`. The builder resolves plugin dependencies topologically, aggregates all slice/effect/action/registry contributions, creates the Redux store, and returns a `HAI3App` with fully initialized registries and actions. Duplicate plugins (same name) are silently ignored. Circular dependencies throw immediately. Missing dependencies throw in `strictMode` or warn otherwise.
+Host applications can compose a FrontX framework instance by chaining `.use(plugin)` calls on the builder returned by `createGears FrontX()` and calling `.build()`. The builder resolves plugin dependencies topologically, aggregates all slice/effect/action/registry contributions, creates the Redux store, and returns a `Gears FrontXApp` with fully initialized registries and actions. Duplicate plugins (same name) are silently ignored. Circular dependencies throw immediately. Missing dependencies throw in `strictMode` or warn otherwise.
 
-**Per-app boundaries**: `createHAI3()` is the same primitive at every level of the architecture — the root host application and any nested MFE that needs to own extension domains both invoke it identically. Each FrontX app instance produced by `.build()` owns its own registry, store, mediator, event bus, and lifecycle trigger. Architecturally there is no "host"-only path: the root host is simply the outermost FrontX app, and a nested MFE that calls `createHAI3()` becomes another FrontX app peer in the tree, with its own isolated runtime boundary. Cross-app coordination is an internal routing concern of the framework, not a registry-sharing concern.
+**Per-app boundaries**: `createGears FrontX()` is the same primitive at every level of the architecture — the root host application and any nested MFE that needs to own extension domains both invoke it identically. Each FrontX app instance produced by `.build()` owns its own registry, store, mediator, event bus, and lifecycle trigger. Architecturally there is no "host"-only path: the root host is simply the outermost FrontX app, and a nested MFE that calls `createGears FrontX()` becomes another FrontX app peer in the tree, with its own isolated runtime boundary. Cross-app coordination is an internal routing concern of the framework, not a registry-sharing concern.
 
 **API surface**:
-- `createHAI3(config?: HAI3Config): HAI3AppBuilder`
-- `HAI3AppBuilder.use(plugin): HAI3AppBuilder`
-- `HAI3AppBuilder.useAll(plugins): HAI3AppBuilder`
-- `HAI3AppBuilder.build(): HAI3App`
-- `createHAI3App(config?: HAI3AppConfig): HAI3App` (convenience, uses `full()` preset)
+- `createGears FrontX(config?: Gears FrontXConfig): Gears FrontXAppBuilder`
+- `Gears FrontXAppBuilder.use(plugin): Gears FrontXAppBuilder`
+- `Gears FrontXAppBuilder.useAll(plugins): Gears FrontXAppBuilder`
+- `Gears FrontXAppBuilder.build(): Gears FrontXApp`
+- `createGears FrontXApp(config?: Gears FrontXAppConfig): Gears FrontXApp` (convenience, uses `full()` preset)
 
 **Implements**:
 - `cpt-frontx-flow-framework-composition-app-bootstrap`
@@ -444,7 +444,7 @@ The `layout()` plugin registers Redux slices for all six layout domains (header,
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-framework-composition-app-config`
 
-The framework provides an event-driven API for configuring tenant, language, theme, and navigation. All configuration changes propagate via the event bus rather than direct state mutation. The `Tenant` type has shape `{ id: string }` and tenant state is typed `Tenant | null`. Router mode is configurable via `HAI3Config.routerMode` (`'browser'` | `'hash'` | `'memory'`). Base path normalization handles leading slash insertion, trailing slash removal, and empty-string-to-root conversion.
+The framework provides an event-driven API for configuring tenant, language, theme, and navigation. All configuration changes propagate via the event bus rather than direct state mutation. The `Tenant` type has shape `{ id: string }` and tenant state is typed `Tenant | null`. Router mode is configurable via `Gears FrontXConfig.routerMode` (`'browser'` | `'hash'` | `'memory'`). Base path normalization handles leading slash insertion, trailing slash removal, and empty-string-to-root conversion.
 
 **Events**:
 - `app/tenant/changed` → `setTenant(tenant)` in tenant slice
@@ -476,8 +476,8 @@ The framework provides an event-driven API for configuring tenant, language, the
 When the host changes theme or language, the respective plugin propagates the new value to all registered MFE domains by calling `mfeRegistry.updateSharedProperty()` with the appropriate shared property constant. Errors from the registry call are caught and logged; they never crash the host application. On initialization, the `themes()` plugin applies the first registered theme; the `i18n()` plugin loads English translations in the background.
 
 **Shared property constants**:
-- `HAI3_SHARED_PROPERTY_THEME` (`gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~`)
-- `HAI3_SHARED_PROPERTY_LANGUAGE` (`gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~`)
+- `Gears FrontX_SHARED_PROPERTY_THEME` (`gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~`)
+- `Gears FrontX_SHARED_PROPERTY_LANGUAGE` (`gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~`)
 
 **Implements**:
 - `cpt-frontx-flow-framework-composition-theme-propagation`
@@ -518,10 +518,10 @@ The plugin wires MFE lifecycle actions (`loadExtension`, `mountExtension`, `unmo
 **`mfe.json` registration order at host bootstrap**: for each `MfManifest` in the aggregated manifest the host bootstrap registers the package's entities into the GTS runtime store in this order — schemas → `MfManifest` entity → MFE-declared `domains[]` → entries → extensions. The `domains[]` step registers each `ExtensionDomain` instance from `MfManifest.domains` opaquely between the `MfManifest` entity and entries; placing the step here ensures that subsequent entry/extension registrations — and the content-addressed extension discovery filter (`cpt-frontx-algo-framework-composition-content-addressed-discovery`) — can resolve their target domain by GTS instance ID against entities already present in the store. `domains[]` is OPTIONAL per MFE: MFEs that do not own `ExtensionDomain` instances omit the field, and the bootstrap iterates an empty list with no side effects. Domain ownership semantics (which FrontX app calls `registerDomain` with the implementation factory) are unchanged by this registration step — host bootstrap only seeds the GTS runtime store, while the owning app picks up the domain instance by GTS instance ID and takes ownership through `cpt-frontx-flow-mfe-registry-register-domain`.
 
 **Domain constants** (GTS instance IDs):
-- `HAI3_SCREEN_DOMAIN` — main content area
-- `HAI3_SIDEBAR_DOMAIN` — collapsible side panel
-- `HAI3_POPUP_DOMAIN` — modal dialogs
-- `HAI3_OVERLAY_DOMAIN` — full-screen overlay
+- `Gears FrontX_SCREEN_DOMAIN` — main content area
+- `Gears FrontX_SIDEBAR_DOMAIN` — collapsible side panel
+- `Gears FrontX_POPUP_DOMAIN` — modal dialogs
+- `Gears FrontX_OVERLAY_DOMAIN` — full-screen overlay
 
 **Implements**:
 - `cpt-frontx-flow-framework-composition-mfe-registration`
@@ -545,7 +545,7 @@ The plugin wires MFE lifecycle actions (`loadExtension`, `mountExtension`, `unmo
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-framework-composition-shared-property`
 
-`MfeRegistry.updateSharedProperty(propertyId, value)` is the sole write path for shared property values. The implementation validates the value against the GTS-derived schema before any propagation. Validation is performed by `typeSystem.register({ id: ephemeralId, value })` — a single call that registers the ephemeral instance AND validates it against the schema derived from the chained instance ID — where `ephemeralId = "${propertyTypeId}hai3.mfes.comm.runtime.v1"`. If the value does not conform to the schema, `register()` throws a plain `Error` with a rich diagnostic (instance JSON, resolved schema JSON, failure reason) and no domain receives the update. Only domains whose `sharedProperties` array includes `propertyId` receive the update. No matching domains is a silent no-op. The deprecated `updateDomainProperty()` and `updateDomainProperties()` methods do NOT exist on the abstract class or implementation.
+`MfeRegistry.updateSharedProperty(propertyId, value)` is the sole write path for shared property values. The implementation validates the value against the GTS-derived schema before any propagation. Validation is performed by `typeSystem.register({ id: ephemeralId, value })` — a single call that registers the ephemeral instance AND validates it against the schema derived from the chained instance ID — where `ephemeralId = "${propertyTypeId}frontx.mfes.comm.runtime.v1"`. If the value does not conform to the schema, `register()` throws a plain `Error` with a rich diagnostic (instance JSON, resolved schema JSON, failure reason) and no domain receives the update. Only domains whose `sharedProperties` array includes `propertyId` receive the update. No matching domains is a silent no-op. The deprecated `updateDomainProperty()` and `updateDomainProperties()` methods do NOT exist on the abstract class or implementation.
 
 **Implements**:
 - `cpt-frontx-flow-framework-composition-shared-property-broadcast`
@@ -569,7 +569,7 @@ The plugin wires MFE lifecycle actions (`loadExtension`, `mountExtension`, `unmo
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-framework-composition-presets`
 
-Three presets are provided as functions returning `HAI3Plugin[]`:
+Three presets are provided as functions returning `Gears FrontXPlugin[]`:
 - `full(config?)` — all plugins (`effects`, `themes`, `layout`, `i18n`, `queryCache`, `mock`, `microfrontends`)
 - `minimal()` — `themes` only
 
@@ -620,20 +620,20 @@ The framework does NOT export `createAction` to consumers; actions are handwritt
 
 ## 6. Acceptance Criteria
 
-- [x] `createHAI3().use(pluginA()).use(pluginB()).build()` produces a `HAI3App` with `store`, `themeRegistry`, `i18nRegistry`, `apiRegistry`, `mfeRegistry`, and `actions` all populated
+- [x] `createGears FrontX().use(pluginA()).use(pluginB()).build()` produces a `Gears FrontXApp` with `store`, `themeRegistry`, `i18nRegistry`, `apiRegistry`, `mfeRegistry`, and `actions` all populated
 - [x] Plugin dependency ordering is enforced: if `pluginB` declares `dependencies: ['pluginA']`, `pluginA.onInit` is always called before `pluginB.onInit` regardless of `.use()` call order
 - [x] Registering the same plugin name twice results in only one plugin in the resolved list (second is silently ignored)
 - [x] A circular dependency between two plugins throws an error during `.build()`
-- [x] `app.actions.changeTheme({ themeId: 'dark' })` calls `themeRegistry.apply('dark')` AND calls `mfeRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, 'dark')` when the `microfrontends()` plugin is registered
+- [x] `app.actions.changeTheme({ themeId: 'dark' })` calls `themeRegistry.apply('dark')` AND calls `mfeRegistry.updateSharedProperty(Gears FrontX_SHARED_PROPERTY_THEME, 'dark')` when the `microfrontends()` plugin is registered
 - [x] Errors thrown by `mfeRegistry.updateSharedProperty()` in theme/language propagation are caught and logged; the host application continues without crash
-- [x] `mfeRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, 'invalid-theme')` throws a GTS validation error; no domain subscriber receives the value
-- [x] `mfeRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, 'dark')` propagates to all domains declaring the property; domains not declaring it receive no update
+- [x] `mfeRegistry.updateSharedProperty(Gears FrontX_SHARED_PROPERTY_THEME, 'invalid-theme')` throws a GTS validation error; no domain subscriber receives the value
+- [x] `mfeRegistry.updateSharedProperty(Gears FrontX_SHARED_PROPERTY_THEME, 'dark')` propagates to all domains declaring the property; domains not declaring it receive no update
 - [x] `app.actions.registerExtension(ext)` transitions `state.mfe.registrationStates[ext.id]` from `'unregistered'` → `'registering'` → `'registered'`
 - [x] A failing `mfeRegistry.registerExtension()` call transitions state to `'error'` with the error message recorded
 - [x] Slice `mountedExtensions[domainId]` is `[]` immediately after `registerDomain` returns; subsequent successful mount chains append the extension's `subject` to `state.mfe.mountedExtensions[domainId]` (insertion-ordered string array) via `addExtensionMounted` (append-if-absent); subsequent successful unmount chains remove the named ID via `removeExtensionMounted` (no-op-if-absent); the slice never holds `undefined` for a registered domain. Multi-mount domains backed by `ConcurrentMountStrategy` accumulate multiple IDs in the array; concurrent mount chains for the same multi-mount domain converge to `registry.getMountedExtensions(domainId)` because the reducers are idempotent
 - [x] `normalizeBase('/console/')` returns `'/console'`; `normalizeBase('')` returns `'/'`; `normalizeBase('console')` returns `'/console'`
 - [x] `stripBase('/console/dashboard', '/console')` returns `'/dashboard'`; `stripBase('/admin/x', '/console')` returns `null`; `stripBase('/console-admin', '/console')` returns `null`
-- [x] `createHAI3App()` uses the `full()` preset and returns a valid `HAI3App` without configuration
+- [x] `createGears FrontXApp()` uses the `full()` preset and returns a valid `Gears FrontXApp` without configuration
 - [x] `@gears-frontx/framework` has no React import (enforced by `dependency-cruiser`)
 - [x] All layout domain types (`HeaderState`, `FooterState`, `MenuState`, `SidebarState`, `PopupState`, `OverlayState`) are exported from `@gears-frontx/framework`
 
@@ -663,7 +663,7 @@ The broadcast model is fire-and-forget: `updateSharedProperty()` propagates only
 
 Shared properties are global — a property ID means the same thing across all domains that declare it, so writes are not domain-targeted. `updateSharedProperty(propertyId, value)` is the only write path; per ADR `cpt-frontx-adr-global-shared-property-broadcast`, propagation is determined by each domain's `sharedProperties` declaration.
 
-### HAI3Config Fields
+### Gears FrontXConfig Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|

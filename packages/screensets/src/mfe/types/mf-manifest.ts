@@ -106,7 +106,7 @@ export interface MfManifestMetaData {
  *
  * Per-module expose chunk paths are stored separately on MfeEntryMF.exposeAssets.
  *
- * GTS Type: gts.hai3.mfes.mfe.mf_manifest.v1~
+ * GTS Type: gts.frontx.mfes.mfe.mf_manifest.v1~
  */
 export interface MfManifest {
   /** The GTS type ID for this manifest. */

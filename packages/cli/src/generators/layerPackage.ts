@@ -435,7 +435,7 @@ dist/
     path: 'README.md',
     content: `# ${packageName}
 
-A HAI3 ${layer}-layer package.
+A Gears FrontX ${layer}-layer package.
 
 ## Installation
 
@@ -462,8 +462,8 @@ ${getRunScriptCommand(packageManager, 'type-check')}  # TypeScript check
 
 ## Layer: ${layer}
 
-This package follows HAI3's ${layer}-layer architecture conventions:
-${layer === 'sdk' ? '- No HAI3 package dependencies\n- No React dependencies' : ''}${layer === 'framework' ? '- Can depend on SDK packages (@gears-frontx/state, @gears-frontx/screensets, @gears-frontx/api, @gears-frontx/i18n)\n- No React dependencies' : ''}${layer === 'react' ? '- Can depend on Framework packages (@gears-frontx/framework)\n- React peer dependency' : ''}
+This package follows Gears FrontX's ${layer}-layer architecture conventions:
+${layer === 'sdk' ? '- No Gears FrontX package dependencies\n- No React dependencies' : ''}${layer === 'framework' ? '- Can depend on SDK packages (@gears-frontx/state, @gears-frontx/screensets, @gears-frontx/api, @gears-frontx/i18n)\n- No React dependencies' : ''}${layer === 'react' ? '- Can depend on Framework packages (@gears-frontx/framework)\n- React peer dependency' : ''}
 
 ## License
 

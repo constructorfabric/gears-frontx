@@ -36,32 +36,32 @@ Replace all placeholder IDs with your actual GTS IDs. The placeholders are marke
 
 **Manifest ID Pattern:**
 ```
-gts.hai3.mfes.mfe.mf_manifest.v1~[YOUR_ORG].[YOUR_APP].mfe.[YOUR_MFE_NAME].manifest.v1
+gts.frontx.mfes.mfe.mf_manifest.v1~[YOUR_ORG].[YOUR_APP].mfe.[YOUR_MFE_NAME].manifest.v1
 ```
 
 Example:
 ```
-gts.hai3.mfes.mfe.mf_manifest.v1~acme.crm.mfe.customer.manifest.v1
+gts.frontx.mfes.mfe.mf_manifest.v1~acme.crm.mfe.customer.manifest.v1
 ```
 
 **Entry ID Pattern:**
 ```
-gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~[YOUR_ORG].[YOUR_APP].mfe.[YOUR_MFE_NAME].[YOUR_SCREEN_NAME].v1
+gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~[YOUR_ORG].[YOUR_APP].mfe.[YOUR_MFE_NAME].[YOUR_SCREEN_NAME].v1
 ```
 
 Example:
 ```
-gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.crm.mfe.customer.details.v1
+gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.crm.mfe.customer.details.v1
 ```
 
 **Extension ID Pattern:**
 ```
-gts.hai3.mfes.ext.extension.v1~[YOUR_ORG].[YOUR_APP].ext.[YOUR_SCREEN_NAME]_screen.v1
+gts.frontx.mfes.ext.extension.v1~[YOUR_ORG].[YOUR_APP].ext.[YOUR_SCREEN_NAME]_screen.v1
 ```
 
 Example:
 ```
-gts.hai3.mfes.ext.extension.v1~acme.crm.ext.customer_details_screen.v1
+gts.frontx.mfes.ext.extension.v1~acme.crm.ext.customer_details_screen.v1
 ```
 
 **Update the `remoteEntry` URL:**

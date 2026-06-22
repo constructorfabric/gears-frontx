@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ChildMfeBridge } from '@gears-frontx/react';
-import { HAI3_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/react';
+import { FRONTX_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useScreenTranslations } from './useScreenTranslations';
 
@@ -27,7 +27,7 @@ type LanguageProperty = {
 };
 
 function languageProperty(value: string | undefined): LanguageProperty {
-  return { id: HAI3_SHARED_PROPERTY_LANGUAGE, value };
+  return { id: FRONTX_SHARED_PROPERTY_LANGUAGE, value };
 }
 
 describe('useScreenTranslations', () => {

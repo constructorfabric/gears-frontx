@@ -84,7 +84,7 @@ describe('isMockPlugin', () => {
     });
 
     it('should be registered with Symbol.for for cross-realm compatibility', () => {
-      expect(MOCK_PLUGIN).toBe(Symbol.for('hai3:plugin:mock'));
+      expect(MOCK_PLUGIN).toBe(Symbol.for('frontx:plugin:mock'));
     });
 
     it('should be present on RestMockPlugin class', () => {

@@ -1,6 +1,6 @@
 # @gears-frontx/auth
 
-Headless authentication contract for HAI3.
+Headless authentication contract for Gears FrontX.
 
 This package only defines types and the `AuthProvider` contract. It does not ship UI, routing, or network interception logic.
 
@@ -17,12 +17,12 @@ Optional surface:
 - `login()`, `handleCallback()`, `refresh()`
 - `getIdentity()`, `getPermissions()`, `canAccess()`
 
-## HAI3 Integration
+## Gears FrontX Integration
 
 Use the framework `auth()` plugin to bind your `AuthProvider` into `@gears-frontx/api` REST requests (bearer tokens and cookie-session).
 
 ```ts
-import { createHAI3 } from '@gears-frontx/framework';
+import { createGears FrontX } from '@gears-frontx/framework';
 import { auth } from '@gears-frontx/framework';
 import type { AuthProvider } from '@gears-frontx/auth';
 
@@ -38,16 +38,16 @@ const provider: AuthProvider = {
   },
 };
 
-const app = createHAI3()
+const app = createGears FrontX()
   .use(auth({ provider }))
   .build();
 ```
 
-## Local Development (Using A Local HAI3 Checkout)
+## Local Development (Using A Local Gears FrontX Checkout)
 
-If you are testing changes made locally in the HAI3 monorepo, you can install the packages into a separate consumer app via `file:` dependencies.
+If you are testing changes made locally in the Gears FrontX monorepo, you can install the packages into a separate consumer app via `file:` dependencies.
 
-1. Build packages in the HAI3 repo first (exports point to `dist/`):
+1. Build packages in the Gears FrontX repo first (exports point to `dist/`):
 
 ```bash
 cd /path/to/frontx

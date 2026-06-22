@@ -22,33 +22,33 @@ import {
   makeMfeHandlerDouble,
 } from '../../../__test-utils__';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
 
 // ---------------------------------------------------------------------------
 // Test fixtures
 // ---------------------------------------------------------------------------
 
-const DOMAIN_ID = 'gts.hai3.mfes.ext.domain.v1~hai3.test.mount_context.domain.v1';
-const ENTRY_ID = 'gts.hai3.mfes.mfe.entry.v1~hai3.test.mount_context.entry.v1';
-const EXT_ID = 'gts.hai3.mfes.ext.extension.v1~hai3.test.mount_context.ext.v1';
+const DOMAIN_ID = 'gts.frontx.mfes.ext.domain.v1~frontx.test.mount_context.domain.v1';
+const ENTRY_ID = 'gts.frontx.mfes.mfe.entry.v1~frontx.test.mount_context.entry.v1';
+const EXT_ID = 'gts.frontx.mfes.ext.extension.v1~frontx.test.mount_context.ext.v1';
 const testDomain: ExtensionDomain = {
   id: DOMAIN_ID,
   sharedProperties: [],
-  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
+  actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT],
   extensionsActions: [],
   defaultActionTimeout: 5000,
   lifecycleStages: [
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
   ],
   extensionsLifecycleStages: [
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
   ],
 };
 
@@ -57,7 +57,7 @@ const testEntry: MfeEntry = {
   requiredProperties: [],
   optionalProperties: [],
   actions: [],
-  domainActions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
+  domainActions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT],
 };
 
 const testExtension: Extension = {
@@ -102,7 +102,7 @@ describe('DefaultMountManager — mount context forwarding', () => {
       .fn<(entry: MfeEntry) => Promise<MfeEntryLifecycle<ChildMfeBridge>>>()
       .mockResolvedValue(mockLifecycle);
     const testHandler = makeMfeHandlerDouble({
-      handledBaseTypeId: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+      handledBaseTypeId: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
       priority: 0,
       load: loadMock,
     });

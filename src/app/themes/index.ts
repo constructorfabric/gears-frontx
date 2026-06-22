@@ -9,7 +9,7 @@ import { draculaLargeTheme } from './dracula-large';
 
 export { DEFAULT_THEME_ID };
 
-export const hai3Themes: ThemeConfig[] = [
+export const frontxThemes: ThemeConfig[] = [
   defaultTheme,
   darkTheme,
   lightTheme,

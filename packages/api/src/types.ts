@@ -56,7 +56,7 @@ export type JsonCompatible = JsonValue | object;
  * }
  * ```
  */
-export const MOCK_PLUGIN = Symbol.for('hai3:plugin:mock');
+export const MOCK_PLUGIN = Symbol.for('frontx:plugin:mock');
 
 /**
  * Mock Plugin Type Guard
@@ -262,7 +262,7 @@ export interface ApiResponseContext {
  *       return {
  *         shortCircuit: {
  *           status: 200,
- *           headers: { 'x-hai3-short-circuit': 'true' },
+ *           headers: { 'x-frontx-short-circuit': 'true' },
  *           data: mockData
  *         }
  *       };

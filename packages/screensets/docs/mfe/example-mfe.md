@@ -39,10 +39,10 @@ import type { JSONSchema } from '@gears-frontx/screensets/types';
  * Custom action for data updates
  */
 export const dataUpdatedActionSchema: JSONSchema = {
-  "$id": "gts://gts.hai3.mfes.comm.action.v1~acme.analytics.comm.data_updated.v1~",
+  "$id": "gts://gts.frontx.mfes.comm.action.v1~acme.analytics.comm.data_updated.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "allOf": [
-    { "$ref": "gts://gts.hai3.mfes.comm.action.v1~" }
+    { "$ref": "gts://gts.frontx.mfes.comm.action.v1~" }
   ],
   "properties": {
     "payload": {
@@ -64,10 +64,10 @@ export const dataUpdatedActionSchema: JSONSchema = {
  * Custom entry type with analytics-specific contract
  */
 export const analyticsEntrySchema: JSONSchema = {
-  "$id": "gts://gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.analytics.mfe.entry_analytics.v1~",
+  "$id": "gts://gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.analytics.mfe.entry_analytics.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "allOf": [
-    { "$ref": "gts://gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~" }
+    { "$ref": "gts://gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~" }
   ],
   "properties": {
     "analyticsConfig": {
@@ -90,10 +90,10 @@ export const analyticsEntrySchema: JSONSchema = {
  * Theme shared property
  */
 export const themePropertySchema: JSONSchema = {
-  "$id": "gts://gts.hai3.mfes.comm.shared_property.v1~acme.analytics.theme.v1~",
+  "$id": "gts://gts.frontx.mfes.comm.shared_property.v1~acme.analytics.theme.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "allOf": [
-    { "$ref": "gts://gts.hai3.mfes.comm.shared_property.v1~" }
+    { "$ref": "gts://gts.frontx.mfes.comm.shared_property.v1~" }
   ],
   "properties": {
     "value": {
@@ -111,10 +111,10 @@ export const themePropertySchema: JSONSchema = {
  * Manifest for analytics MFE
  */
 export const analyticsManifestSchema: JSONSchema = {
-  "$id": "gts://gts.hai3.mfes.mfe.mf_manifest.v1~acme.analytics.manifest.v1~",
+  "$id": "gts://gts.frontx.mfes.mfe.mf_manifest.v1~acme.analytics.manifest.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "allOf": [
-    { "$ref": "gts://gts.hai3.mfes.mfe.mf_manifest.v1~" }
+    { "$ref": "gts://gts.frontx.mfes.mfe.mf_manifest.v1~" }
   ]
 };
 ```
@@ -125,20 +125,20 @@ export const analyticsManifestSchema: JSONSchema = {
 // Type IDs (reference only - no runtime generation)
 export const TYPE_IDS = {
   // Actions (instance IDs - no trailing ~)
-  DATA_UPDATED: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.data_updated.v1',
-  REFRESH_REQUEST: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.refresh_request.v1',
+  DATA_UPDATED: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.data_updated.v1',
+  REFRESH_REQUEST: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.refresh_request.v1',
 
   // Shared Properties
-  THEME: 'gts.hai3.mfes.comm.shared_property.v1~acme.analytics.theme.v1',
+  THEME: 'gts.frontx.mfes.comm.shared_property.v1~acme.analytics.theme.v1',
 
   // Entry
-  ANALYTICS_ENTRY_MF: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.analytics.mfe.entry_analytics.v1',
+  ANALYTICS_ENTRY_MF: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.analytics.mfe.entry_analytics.v1',
 
   // Extension
-  ANALYTICS_EXTENSION: 'gts.hai3.mfes.ext.extension.v1~acme.analytics.extension.v1',
+  ANALYTICS_EXTENSION: 'gts.frontx.mfes.ext.extension.v1~acme.analytics.extension.v1',
 
   // Manifest
-  ANALYTICS_MANIFEST: 'gts.hai3.mfes.mfe.mf_manifest.v1~acme.analytics.manifest.v1',
+  ANALYTICS_MANIFEST: 'gts.frontx.mfes.mfe.mf_manifest.v1~acme.analytics.manifest.v1',
 } as const;
 ```
 
@@ -425,7 +425,7 @@ export async function registerAnalyticsMfe(runtime: ScreensetsRegistry) {
     id: `${TYPE_IDS.ANALYTICS_EXTENSION}~acme.analytics.sidebar_widget.v1`,
 
     // Bind to sidebar domain
-    domain: 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1',
+    domain: 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1',
 
     // Reference the entry
     entry: entry.id,
@@ -433,7 +433,7 @@ export async function registerAnalyticsMfe(runtime: ScreensetsRegistry) {
     // Lifecycle hooks
     lifecycle: [
       {
-        stage: 'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+        stage: 'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         actions_chain: {
           action: {
             type: TYPE_IDS.DATA_UPDATED,
@@ -455,7 +455,7 @@ export async function registerAnalyticsMfe(runtime: ScreensetsRegistry) {
   // Step 6: Mount via actions chain (auto-loads if needed)
   await runtime.executeActionsChain({
     action: {
-      type: 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+      type: 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~',
       target: extension.domain,
       payload: { subject: extension.id },
     },
@@ -493,25 +493,25 @@ const containerProvider = new SidebarContainerProvider();
 
 // Register sidebar domain first (with container provider)
 await registry.registerDomain({
-  id: 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1',
+  id: 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1',
   sharedProperties: [
-    'gts.hai3.mfes.comm.shared_property.v1~acme.analytics.theme.v1',
+    'gts.frontx.mfes.comm.shared_property.v1~acme.analytics.theme.v1',
   ],
   actions: [
-    'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
+    'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~',
   ],
   extensionsActions: [
-    'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.data_updated.v1~',
+    'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.data_updated.v1~',
   ],
   defaultActionTimeout: 5000,
   lifecycleStages: [
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
   ],
   extensionsLifecycleStages: [
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
   ],
 }, containerProvider);
 
@@ -524,7 +524,7 @@ await registerAnalyticsMfe(runtime);
 ```typescript
 // Update theme for all domains that declare this shared property
 runtime.updateSharedProperty(
-  'gts.hai3.mfes.comm.shared_property.v1~acme.analytics.theme.v1',
+  'gts.frontx.mfes.comm.shared_property.v1~acme.analytics.theme.v1',
   {
     mode: 'dark',
     primaryColor: '#00aaff',
@@ -542,7 +542,7 @@ Type IDs are string constants - never parsed manually:
 
 ```typescript
 // ✅ Correct - using constants
-const THEME_TYPE_ID = 'gts.hai3.mfes.comm.shared_property.v1~acme.analytics.theme.v1';
+const THEME_TYPE_ID = 'gts.frontx.mfes.comm.shared_property.v1~acme.analytics.theme.v1';
 
 // ✅ Correct - calling plugin when metadata needed
 const parsed = gtsPlugin.parseTypeId(THEME_TYPE_ID);
@@ -593,7 +593,7 @@ Hooks trigger action chains at lifecycle stages:
 ```typescript
 lifecycle: [
   {
-    stage: 'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+    stage: 'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
     actions_chain: {
       action: {
         type: TYPE_IDS.DATA_UPDATED,
@@ -624,7 +624,7 @@ describe('Analytics MFE', () => {
   it('should register schemas successfully', () => {
     gtsPlugin.registerSchema(dataUpdatedActionSchema);
     const schema = gtsPlugin.getSchema(
-      'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.data_updated.v1~'
+      'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.data_updated.v1~'
     );
     expect(schema).toBeDefined();
   });

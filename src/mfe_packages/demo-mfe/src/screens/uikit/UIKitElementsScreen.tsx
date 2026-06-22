@@ -13,7 +13,7 @@
 
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { ChildMfeBridge } from '@gears-frontx/react';
-import { HAI3_SHARED_PROPERTY_LANGUAGE, HAI3_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
+import { FRONTX_SHARED_PROPERTY_LANGUAGE, FRONTX_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
 import { useScreenTranslations } from '../../shared/useScreenTranslations';
 import { CategoryMenu } from './components/CategoryMenu';
 import { Card, CardContent } from '../../components/ui/card';
@@ -82,11 +82,11 @@ export const UIKitElementsScreen: React.FC<UIKitElementsScreenProps> = ({ bridge
   // Handle theme subscription; language + direction come from useScreenTranslations
   useEffect(() => {
     // Read initial property values
-    const initialTheme = bridge.getProperty(HAI3_SHARED_PROPERTY_THEME);
+    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
     if (initialTheme && typeof initialTheme.value === 'string') {
       setTheme(initialTheme.value);
     }
-    const initialLang = bridge.getProperty(HAI3_SHARED_PROPERTY_LANGUAGE);
+    const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
     if (initialLang && typeof initialLang.value === 'string') {
       setLanguage(initialLang.value);
       const rootNode = containerRef.current?.getRootNode();
@@ -98,14 +98,14 @@ export const UIKitElementsScreen: React.FC<UIKitElementsScreenProps> = ({ bridge
     }
 
     // Subscribe to theme domain property
-    const themeUnsubscribe = bridge.subscribeToProperty(HAI3_SHARED_PROPERTY_THEME, (property) => {
+    const themeUnsubscribe = bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_THEME, (property) => {
       if (typeof property.value === 'string') {
         setTheme(property.value);
       }
     });
 
     // Subscribe to language domain property
-    const languageUnsubscribe = bridge.subscribeToProperty(HAI3_SHARED_PROPERTY_LANGUAGE, (property) => {
+    const languageUnsubscribe = bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, (property) => {
       if (typeof property.value === 'string') {
         setLanguage(property.value);
         const rootNode = containerRef.current?.getRootNode();

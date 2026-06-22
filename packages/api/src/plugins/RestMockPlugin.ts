@@ -101,7 +101,7 @@ export class RestMockPlugin extends RestPluginWithConfig<RestMockConfig> {
       return {
         shortCircuit: {
           status: 200,
-          headers: { 'x-hai3-short-circuit': 'true' },
+          headers: { 'x-frontx-short-circuit': 'true' },
           data: mockData,
         },
       };

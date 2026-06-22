@@ -31,9 +31,9 @@ import type { ContainerHooks, MountStrategy, ActionPayload } from '../src/mfe/ru
 import type { DomainContext } from '../src/mfe/runtime/DomainContext';
 import { ActionHandler } from '../src/mfe/mediator/types';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../src/mfe/constants/index';
 import type { ExtensionDomain } from '../src/mfe/types';
 import type { MfeRegistry } from '../src/mfe/runtime/MfeRegistry';
@@ -162,18 +162,18 @@ export class MockDomainFactory extends ExtensionDomainImplementationFactory {
       destroy: (extensionId: string) => this.releaseContainer(extensionId),
     };
 
-    const hasUnmount = declaration.actions.includes(HAI3_ACTION_UNMOUNT_EXT);
+    const hasUnmount = declaration.actions.includes(FRONTX_ACTION_UNMOUNT_EXT);
 
     let strategy: MountStrategy;
     if (hasUnmount) {
       // Domains that declare unmount_ext use ConcurrentMountStrategy.
       const concurrent = new ConcurrentMountStrategy(ctx.mounter, hooks);
       ctx.registerHandler(
-        HAI3_ACTION_MOUNT_EXT,
+        FRONTX_ACTION_MOUNT_EXT,
         ActionHandler.fromFunction((_t, p) => concurrent.mount(p as ActionPayload))
       );
       ctx.registerHandler(
-        HAI3_ACTION_UNMOUNT_EXT,
+        FRONTX_ACTION_UNMOUNT_EXT,
         ActionHandler.fromFunction((_t, p) => concurrent.unmount!(p as ActionPayload))
       );
       strategy = concurrent;
@@ -188,7 +188,7 @@ export class MockDomainFactory extends ExtensionDomainImplementationFactory {
       }
       const exclusive = new ExclusiveMountStrategy(ctx.mounter, hooks, registry, declaration.id);
       ctx.registerHandler(
-        HAI3_ACTION_MOUNT_EXT,
+        FRONTX_ACTION_MOUNT_EXT,
         ActionHandler.fromFunction((_t, p) => exclusive.mount(p as ActionPayload))
       );
       strategy = exclusive;
@@ -200,9 +200,9 @@ export class MockDomainFactory extends ExtensionDomainImplementationFactory {
       // registry (load_ext). This satisfies the cross-validation requirement
       // that every declared action has a handler.
       const alreadyHandled = new Set([
-        HAI3_ACTION_LOAD_EXT,   // pre-populated by DefaultMfeRegistry
-        HAI3_ACTION_MOUNT_EXT,  // registered by strategy above
-        ...(hasUnmount ? [HAI3_ACTION_UNMOUNT_EXT] : []),
+        FRONTX_ACTION_LOAD_EXT,   // pre-populated by DefaultMfeRegistry
+        FRONTX_ACTION_MOUNT_EXT,  // registered by strategy above
+        ...(hasUnmount ? [FRONTX_ACTION_UNMOUNT_EXT] : []),
       ]);
       for (const actionType of declaration.actions) {
         if (!alreadyHandled.has(actionType)) {
