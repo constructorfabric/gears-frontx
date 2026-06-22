@@ -32,8 +32,8 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 **Decomposition strategy.** Each feature is a cohesive component/subsystem slice with loose coupling to its neighbours, sized so its dependencies form an acyclic graph with the foundations at the roots. Surviving Pillar-1 features (extraction + boundary-hardening of shipping runtime/type-system/API code) are kept distinct in nature from the greenfield Pillar-2/3 features; the two are never mixed in one feature.
 
 **Three pillars.**
-- **Pillar 1 — Core Framework** (`@cyberfabric/mfes`, `@cyberfabric/gts-plugin`, `@cyberfabric/api`): F2 type-substrate port, F4 registry & handler resolution, F3 GTS default type-system provider, F5 discovery & lazy-import loading, F6 host–MFE communication, F7 extension-domain governance, F8 runtime isolation, F9 API protocol surface.
-- **Pillar 2 — CLI** (`@cyberfabric/cli`): F10 template externalization & source-spec resolution, F11 template manifest contract, F12 two-namespace commands & scaffolding, F13 composed-template resolution & provenance, F14 upgrade change-set engine.
+- **Pillar 1 — Core Framework** (`@gears-frontx/mfes`, `@gears-frontx/gts-plugin`, `@gears-frontx/api`): F2 type-substrate port, F4 registry & handler resolution, F3 GTS default type-system provider, F5 discovery & lazy-import loading, F6 host–MFE communication, F7 extension-domain governance, F8 runtime isolation, F9 API protocol surface.
+- **Pillar 2 — CLI** (`@gears-frontx/cli`): F10 template externalization & source-spec resolution, F11 template manifest contract, F12 two-namespace commands & scaffolding, F13 composed-template resolution & provenance, F14 upgrade change-set engine.
 - **Pillar 3 — AI Tooling** (`cyber-pilot-kit-frontx`): F15 kit packaging & base content, F16 template AI-extension contract & discovery/activation, F17 AI-driven upgrade orchestration.
 - **Cross-cutting:** F1 ecosystem distribution & versioning policy governs all published artifacts.
 
@@ -56,7 +56,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 - **Scope**:
   - Opaque Schema identity surface on the runtime.
   - The injected type-substrate port contract (validate, type-of/hierarchy resolution) the runtime calls.
-  - Extraction of the port out of `packages/screensets` into `@cyberfabric/mfes`.
+  - Extraction of the port out of `packages/screensets` into `@gears-frontx/mfes`.
   - Hardening MFES-1/4/5 boundaries.
 
 - **Out of scope**:
@@ -151,12 +151,12 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-gts-type-provider`
 
-- **Purpose**: Supply the ecosystem's default, injectable type-system provider (`@cyberfabric/gts-plugin`) implementing the runtime's opaque type-substrate port over a concrete type-definition specification, owning the infrastructure schemas + default lifecycle instances and providing schema validation and type-of resolution.
+- **Purpose**: Supply the ecosystem's default, injectable type-system provider (`@gears-frontx/gts-plugin`) implementing the runtime's opaque type-substrate port over a concrete type-definition specification, owning the infrastructure schemas + default lifecycle instances and providing schema validation and type-of resolution.
 
 - **Depends On**: `cpt-frontx-feature-type-substrate-port`
 
 - **Scope**:
-  - The `@cyberfabric/gts-plugin` provider implementing `TypeSystemPlugin`.
+  - The `@gears-frontx/gts-plugin` provider implementing `TypeSystemPlugin`.
   - Registration of infrastructure schemas + default lifecycle instances at construction.
   - Schema validation + type-of/hierarchy resolution.
   - Extraction out of `packages/screensets`.
@@ -382,7 +382,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 - [ ] `p2` - **ID**: `cpt-frontx-feature-api-protocol-surface`
 
-- **Purpose**: Provide a protocol-separated, solution-agnostic API surface (`@cyberfabric/api`): request/response and streaming behind a common abstract `ApiProtocol` with descriptor-based endpoints + auto-derived cache keys, a generic plugin short-circuit, and a realm-scoped retainer-counted shared fetch cache that lets independently bundled units reuse in-flight and cached results.
+- **Purpose**: Provide a protocol-separated, solution-agnostic API surface (`@gears-frontx/api`): request/response and streaming behind a common abstract `ApiProtocol` with descriptor-based endpoints + auto-derived cache keys, a generic plugin short-circuit, and a realm-scoped retainer-counted shared fetch cache that lets independently bundled units reuse in-flight and cached results.
 
 - **Depends On**: None
 
@@ -467,7 +467,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-template-resolution`
 
-- **Purpose**: Make the CLI (`@cyberfabric/cli`) bundle no template and resolve each template from an external source by versioned source-spec (`host:owner/repo@ref`) at runtime into a tracked local inventory — install, local list, and local update bounded to that inventory, never disturbing scaffolded projects.
+- **Purpose**: Make the CLI (`@gears-frontx/cli`) bundle no template and resolve each template from an external source by versioned source-spec (`host:owner/repo@ref`) at runtime into a tracked local inventory — install, local list, and local update bounded to that inventory, never disturbing scaffolded projects.
 
 - **Depends On**: None
 

@@ -34,7 +34,7 @@
 
 ### 1.1 Overview
 
-The CLI (`@cyberfabric/cli`) bundles no template and resolves each template from an external source by versioned source-spec (`host:owner/repo@ref`) at runtime into a tracked local inventory, providing install, list, and bounded local update operations that never disturb already-scaffolded projects.
+The CLI (`@gears-frontx/cli`) bundles no template and resolves each template from an external source by versioned source-spec (`host:owner/repo@ref`) at runtime into a tracked local inventory, providing install, list, and bounded local update operations that never disturb already-scaffolded projects.
 
 ### 1.2 Purpose
 

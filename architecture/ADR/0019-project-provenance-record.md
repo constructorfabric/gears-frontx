@@ -26,7 +26,7 @@ date: 2026-06-05
 
 ## Context and Problem Statement
 
-The CLI (`cpt-frontx-component-cli`, the `@cyberfabric/cli` package) scaffolds a project from a template and, later, can upgrade that project to a newer version of the same template as a reviewable change set (`cpt-frontx-fr-cli-project-upgrade-changeset`). An upgrade can only compute what to apply if it knows what the project was scaffolded from. The project-provenance contract (`cpt-frontx-contract-project-provenance`) requires that each scaffolded project record which template and which template version it originated from. What should a scaffolded project record about its origin, and where should that record live, so that a later upgrade can diff the project's origin against a newer template version?
+The CLI (`cpt-frontx-component-cli`, the `@gears-frontx/cli` package) scaffolds a project from a template and, later, can upgrade that project to a newer version of the same template as a reviewable change set (`cpt-frontx-fr-cli-project-upgrade-changeset`). An upgrade can only compute what to apply if it knows what the project was scaffolded from. The project-provenance contract (`cpt-frontx-contract-project-provenance`) requires that each scaffolded project record which template and which template version it originated from. What should a scaffolded project record about its origin, and where should that record live, so that a later upgrade can diff the project's origin against a newer template version?
 
 ## Decision Drivers
 

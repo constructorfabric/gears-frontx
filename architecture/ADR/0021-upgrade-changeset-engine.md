@@ -39,7 +39,7 @@ A project scaffolded from a template at one version must be able to adopt a newe
 
 ## Considered Options
 
-* **Single change-set engine in the CLI; AI orchestrates and enriches it** — one engine in the `@cyberfabric/cli` package computes a template-version-diff change set, presents it for approval, applies it non-destructively, and supports rollback; the AI upgrade workflow invokes this engine and enriches the experience (change analysis, downstream-impact assessment) alongside it.
+* **Single change-set engine in the CLI; AI orchestrates and enriches it** — one engine in the `@gears-frontx/cli` package computes a template-version-diff change set, presents it for approval, applies it non-destructively, and supports rollback; the AI upgrade workflow invokes this engine and enriches the experience (change analysis, downstream-impact assessment) alongside it.
 * **Split engines: a CLI engine and a separate AI engine** — the CLI carries one diff-and-apply implementation and the AI workflow carries its own, each computing and applying upgrades independently.
 * **AI-only engine** — the diff-and-apply capability lives entirely in the AI workflow; the CLI exposes no standalone upgrade engine and an upgrade requires the AI agent.
 
@@ -62,7 +62,7 @@ The scope of this decision is the upgrade engine's unit and ownership and its re
 
 ### Confirmation
 
-Compliance is confirmed by continuous-integration checks on the CLI package: a fixture project at an older template version is upgraded toward a newer version and the check asserts (a) the engine produces an approvable change set and writes nothing to project files until approval, (b) declining the change set leaves the project byte-for-byte unchanged, (c) applying the approved change set then rolling it back restores the pre-upgrade project state, and (d) the AI orchestration path drives the same engine rather than a second implementation. Design and code review confirm the diff-and-apply computation exists in exactly one place in the `@cyberfabric/cli` package and that the AI workflow calls into it.
+Compliance is confirmed by continuous-integration checks on the CLI package: a fixture project at an older template version is upgraded toward a newer version and the check asserts (a) the engine produces an approvable change set and writes nothing to project files until approval, (b) declining the change set leaves the project byte-for-byte unchanged, (c) applying the approved change set then rolling it back restores the pre-upgrade project state, and (d) the AI orchestration path drives the same engine rather than a second implementation. Design and code review confirm the diff-and-apply computation exists in exactly one place in the `@gears-frontx/cli` package and that the AI workflow calls into it.
 
 ## Pros and Cons of the Options
 

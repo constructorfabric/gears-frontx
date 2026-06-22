@@ -40,7 +40,7 @@ status: final
 
 ### 1.1 Architectural Vision
 
-The FrontX ecosystem is delivered as a set of independently published, independently versioned artifacts, each owning a single concern and integrating with the others only through narrow, explicit contracts. These artifacts are organized into three co-equal pillars: a **Core Framework** of npm packages (the MFE Runtime `@cyberfabric/mfes`, the Type System plugin `@cyberfabric/gts-plugin`, and the API Protocol Surface `@cyberfabric/api`), a **CLI** (`@cyberfabric/cli`) that drives the template and project lifecycle, and an **AI Tooling Framework** (`cyber-pilot-kit-frontx`) that delivers ecosystem fluency to AI agents. Per-concern independent versioning, governed by a matched major/minor distribution policy, lets each artifact evolve on its own cadence while consuming applications upgrade on theirs rather than in lockstep (`cpt-frontx-fr-versioned-platform-evolution`, `cpt-frontx-nfr-evolvability`).
+The FrontX ecosystem is delivered as a set of independently published, independently versioned artifacts, each owning a single concern and integrating with the others only through narrow, explicit contracts. These artifacts are organized into three co-equal pillars: a **Core Framework** of npm packages (the MFE Runtime `@gears-frontx/mfes`, the Type System plugin `@gears-frontx/gts-plugin`, and the API Protocol Surface `@gears-frontx/api`), a **CLI** (`@gears-frontx/cli`) that drives the template and project lifecycle, and an **AI Tooling Framework** (`cyber-pilot-kit-frontx`) that delivers ecosystem fluency to AI agents. Per-concern independent versioning, governed by a matched major/minor distribution policy, lets each artifact evolve on its own cadence while consuming applications upgrade on theirs rather than in lockstep (`cpt-frontx-fr-versioned-platform-evolution`, `cpt-frontx-nfr-evolvability`).
 
 The technical approach centers on an agnostic, narrowly contracted substrate. The Core Framework reasons about microfrontends, type identifiers, and extension domains through injected ports and opaque identifiers rather than concrete formats or solution vocabulary, so an application composes against a stable surface regardless of its UI stack, type-definition specification, or layout vocabulary (`cpt-frontx-fr-ui-framework-agnostic`, `cpt-frontx-fr-mfe-runtime-registration`). The runtime admits units only after type validation, places them into governed extension domains under explicit cardinality and admission rules, mediates host-microfrontend communication through a narrow capability bridge, and isolates loaded units - realizing a default-deny security posture (`cpt-frontx-fr-mfe-type-validation`, `cpt-frontx-nfr-security`). The CLI resolves templates by versioned source-spec at runtime and bundles none, keeping the command surface fully decoupled from the content it scaffolds and applying project upgrades as reviewable, non-destructive change sets (`cpt-frontx-fr-cli-template-install`, `cpt-frontx-fr-cli-project-upgrade-changeset`). The AI Tooling Framework ships only base ecosystem capabilities and gains template-specific expertise through bundled extensions discovered and activated automatically (`cpt-frontx-fr-ai-frontx-skills`, `cpt-frontx-fr-ai-extension-discovery-activation`).
 
@@ -141,12 +141,12 @@ The ecosystem layers run from the agnostic runtime substrate up to the tooling t
 graph TD
     subgraph Tooling[Tooling layer]
         KIT["AI Tooling Framework (cyber-pilot-kit-frontx)"]
-        CLI["CLI (@cyberfabric/cli)"]
+        CLI["CLI (@gears-frontx/cli)"]
     end
     subgraph Core[Core Framework layer]
-        API["API Protocol Surface (@cyberfabric/api)"]
-        GTS["Type System provider (@cyberfabric/gts-plugin)"]
-        MFES["MFE Runtime substrate (@cyberfabric/mfes)"]
+        API["API Protocol Surface (@gears-frontx/api)"]
+        GTS["Type System provider (@gears-frontx/gts-plugin)"]
+        MFES["MFE Runtime substrate (@gears-frontx/mfes)"]
     end
     KIT --> CLI
     GTS -- "type-substrate port" --> MFES
@@ -158,9 +158,9 @@ graph TD
 | Layer | Responsibility | Technology |
 |-------|---------------|------------|
 | Presentation | Application and microfrontend UI; chosen freely per unit, not constrained by the platform | Any UI framework (React, Vue, Svelte, vanilla JavaScript); TypeScript |
-| Application (Tooling) | Template and project lifecycle (install, scaffold, compose, upgrade) and AI-agent orchestration over it | Node.js CLI (`@cyberfabric/cli`); Cypilot kit (`cyber-pilot-kit-frontx`); GitHub source registry; npm package registry |
-| Domain (Type System) | Concrete type-definition provider behind the runtime's opaque type-substrate port; infrastructure schemas and validation | TypeScript type-system plugin (`@cyberfabric/gts-plugin`) over a concrete type-definition specification |
-| Infrastructure (Runtime substrate) | Agnostic registration, on-demand loading, extension-domain governance, mediation, isolation, and protocol-separated service access | TypeScript runtime (`@cyberfabric/mfes`) with module-federation runtime and lazy import; API Protocol Surface (`@cyberfabric/api`) with a transport peer dependency |
+| Application (Tooling) | Template and project lifecycle (install, scaffold, compose, upgrade) and AI-agent orchestration over it | Node.js CLI (`@gears-frontx/cli`); Cypilot kit (`cyber-pilot-kit-frontx`); GitHub source registry; npm package registry |
+| Domain (Type System) | Concrete type-definition provider behind the runtime's opaque type-substrate port; infrastructure schemas and validation | TypeScript type-system plugin (`@gears-frontx/gts-plugin`) over a concrete type-definition specification |
+| Infrastructure (Runtime substrate) | Agnostic registration, on-demand loading, extension-domain governance, mediation, isolation, and protocol-separated service access | TypeScript runtime (`@gears-frontx/mfes`) with module-federation runtime and lazy import; API Protocol Surface (`@gears-frontx/api`) with a transport peer dependency |
 
 ## 2. Principles & Constraints
 
@@ -214,7 +214,7 @@ The boundary rules below are forward-looking target-governance constraints on th
 
 - [ ] `p2` - **ID**: `cpt-frontx-constraint-mfes-no-type-format-literals`
 
-The MFE Runtime (`@cyberfabric/mfes`) contains no type-system-format string literals. Type identifiers are opaque strings to the runtime; any concrete type-format vocabulary belongs to the type-system plugin or to consumers. This keeps the runtime independent of any single type-definition specification.
+The MFE Runtime (`@gears-frontx/mfes`) contains no type-system-format string literals. Type identifiers are opaque strings to the runtime; any concrete type-format vocabulary belongs to the type-system plugin or to consumers. This keeps the runtime independent of any single type-definition specification.
 
 **ADRs**: `cpt-frontx-adr-core-package-boundaries`
 
@@ -254,7 +254,7 @@ The runtime's schema surface is opaque, exposing only a stable identifier. Forma
 
 - [ ] `p2` - **ID**: `cpt-frontx-constraint-gts-plugin-owns-infra-schemas`
 
-The type-system plugin (`@cyberfabric/gts-plugin`) owns the ecosystem's infrastructure schemas and the default lifecycle instances, registering them as the concrete provider behind the runtime's opaque type-substrate port.
+The type-system plugin (`@gears-frontx/gts-plugin`) owns the ecosystem's infrastructure schemas and the default lifecycle instances, registering them as the concrete provider behind the runtime's opaque type-substrate port.
 
 **ADRs**: `cpt-frontx-adr-gts-default-type-system`
 
@@ -270,7 +270,7 @@ The type-system plugin owns no solution-specific schemas. Application- and templ
 
 - [ ] `p2` - **ID**: `cpt-frontx-constraint-api-no-solution-content`
 
-The API Protocol Surface (`@cyberfabric/api`) contains no solution-specific content — such as concrete endpoints, auth wiring, request stand-ins, or any other application-specific plugin — and ships no application-specific plugin of its own. The surface provides protocol-separated request and stream primitives, a generic plugin extension point, and a short-circuit capability; solution behavior is supplied by consumers through that extension point.
+The API Protocol Surface (`@gears-frontx/api`) contains no solution-specific content — such as concrete endpoints, auth wiring, request stand-ins, or any other application-specific plugin — and ships no application-specific plugin of its own. The surface provides protocol-separated request and stream primitives, a generic plugin extension point, and a short-circuit capability; solution behavior is supplied by consumers through that extension point.
 
 **ADRs**: `cpt-frontx-adr-protocol-separated-api`
 
@@ -278,7 +278,7 @@ The API Protocol Surface (`@cyberfabric/api`) contains no solution-specific cont
 
 - [ ] `p2` - **ID**: `cpt-frontx-constraint-cli-template-independence`
 
-The CLI (`@cyberfabric/cli`) has zero dependency on any template. It resolves templates by source-spec at runtime and bundles none, so the command surface is fully decoupled from the content it scaffolds.
+The CLI (`@gears-frontx/cli`) has zero dependency on any template. It resolves templates by source-spec at runtime and bundles none, so the command surface is fully decoupled from the content it scaffolds.
 
 **ADRs**: `cpt-frontx-adr-template-externalization-resolution`
 
@@ -300,14 +300,14 @@ The ecosystem's core entities span the three pillars: the runtime substrate's re
 
 | Entity | Description | Schema |
 |--------|-------------|--------|
-| MfeEntry | A registered microfrontend's record in the runtime registry — its identity, resolved handler, and the metadata needed to load and mount it on demand. | TypeScript — `@cyberfabric/mfes` |
-| Extension | A unit a microfrontend contributes for placement into an extension domain, admitted only on a matched contract. | TypeScript — `@cyberfabric/mfes` |
-| ExtensionDomain | A named, application-defined placement region governed by a mount strategy and a cardinality rule that decide which and how many occupants it admits. | TypeScript — `@cyberfabric/mfes` |
-| Action | A single mediated capability invocation exchanged between a microfrontend and the host. | TypeScript — `@cyberfabric/mfes` |
-| ActionsChain | An ordered composition of Actions executed as one mediated unit. | TypeScript — `@cyberfabric/mfes` |
-| LifecycleStage | A defined stage in a unit's runtime lifecycle, modelled by the type substrate as one of the default infrastructure instances. | TypeScript/GTS — `@cyberfabric/gts-plugin` |
-| Schema | A type-definition identity the runtime carries opaquely; its concrete shape and validation are owned by the type-system provider. | Opaque identity in `@cyberfabric/mfes`; concrete shape in `@cyberfabric/gts-plugin` (GTS) |
-| ApiService | A protocol-separated service surface a unit calls for request/response or streaming, with auto-derived cache keys over a realm-shared fetch cache. | TypeScript — `@cyberfabric/api` |
+| MfeEntry | A registered microfrontend's record in the runtime registry — its identity, resolved handler, and the metadata needed to load and mount it on demand. | TypeScript — `@gears-frontx/mfes` |
+| Extension | A unit a microfrontend contributes for placement into an extension domain, admitted only on a matched contract. | TypeScript — `@gears-frontx/mfes` |
+| ExtensionDomain | A named, application-defined placement region governed by a mount strategy and a cardinality rule that decide which and how many occupants it admits. | TypeScript — `@gears-frontx/mfes` |
+| Action | A single mediated capability invocation exchanged between a microfrontend and the host. | TypeScript — `@gears-frontx/mfes` |
+| ActionsChain | An ordered composition of Actions executed as one mediated unit. | TypeScript — `@gears-frontx/mfes` |
+| LifecycleStage | A defined stage in a unit's runtime lifecycle, modelled by the type substrate as one of the default infrastructure instances. | TypeScript/GTS — `@gears-frontx/gts-plugin` |
+| Schema | A type-definition identity the runtime carries opaquely; its concrete shape and validation are owned by the type-system provider. | Opaque identity in `@gears-frontx/mfes`; concrete shape in `@gears-frontx/gts-plugin` (GTS) |
+| ApiService | A protocol-separated service surface a unit calls for request/response or streaming, with auto-derived cache keys over a realm-shared fetch cache. | TypeScript — `@gears-frontx/api` |
 | Template | An externally hosted, versioned scaffolding unit resolved by source-spec at runtime and bundled into no tool; a project template may compose microfrontend templates by reference. | Target — template repository content; format owned by `cpt-frontx-adr-source-spec-syntax` |
 | TemplateManifest | The descriptor every publishable template exposes in a defined shape, produced at pre-publish validation and consumed at install and scaffold. | Target — manifest file; shape owned by `cpt-frontx-adr-template-manifest-contract` |
 | ProjectProvenance | The record written into a scaffolded project capturing the originating template and template version, so a later upgrade can determine what to apply. | Target — provenance record; shape owned by `cpt-frontx-adr-project-provenance-record` |
@@ -337,12 +337,12 @@ The ecosystem is composed of independently published, independently versioned ar
 ```mermaid
 graph TD
     subgraph Pillar1[Pillar 1 — Core Framework]
-        MFES[mfe-runtime: cyberfabric/mfes]
-        GTS[type-system-plugin: cyberfabric/gts-plugin]
-        API[api-surface: cyberfabric/api]
+        MFES[mfe-runtime: gears-frontx/mfes]
+        GTS[type-system-plugin: gears-frontx/gts-plugin]
+        API[api-surface: gears-frontx/api]
     end
     subgraph Pillar2[Pillar 2 — CLI]
-        CLI[cli: cyberfabric/cli]
+        CLI[cli: gears-frontx/cli]
     end
     subgraph Pillar3[Pillar 3 — AI Tooling]
         KIT[ai-tooling-kit: cyber-pilot-kit-frontx]
@@ -355,7 +355,7 @@ graph TD
 
 - [ ] `p2` - **ID**: `cpt-frontx-component-mfe-runtime`
 
-Concrete artifact: `@cyberfabric/mfes`.
+Concrete artifact: `@gears-frontx/mfes`.
 
 ##### Why this component exists
 
@@ -384,7 +384,7 @@ Applications need to gain user-facing functionality from independently developed
 
 - [ ] `p2` - **ID**: `cpt-frontx-component-type-system-plugin`
 
-Concrete artifact: `@cyberfabric/gts-plugin`.
+Concrete artifact: `@gears-frontx/gts-plugin`.
 
 ##### Why this component exists
 
@@ -410,7 +410,7 @@ The MFE Runtime treats types opaquely and needs a concrete provider to give type
 
 - [ ] `p2` - **ID**: `cpt-frontx-component-api-surface`
 
-Concrete artifact: `@cyberfabric/api`.
+Concrete artifact: `@gears-frontx/api`.
 
 ##### Why this component exists
 
@@ -435,7 +435,7 @@ Composed applications and their microfrontends issue request/response and stream
 
 - [ ] `p2` - **ID**: `cpt-frontx-component-cli`
 
-Concrete artifact: `@cyberfabric/cli`.
+Concrete artifact: `@gears-frontx/cli`.
 
 ##### Why this component exists
 
@@ -487,14 +487,14 @@ AI agents working in a FrontX project need ecosystem fluency from session start 
 
 ### 3.3 API Contracts
 
-This section documents the ecosystem's public interfaces and external integration contracts by shape, stability, and owning decision record. Full request/response specifications and endpoint enumerations are owned by downstream FEATURE specs and the interfaces' own declarations, not inlined here (INT-DESIGN-NO-001). The API Protocol Surface (`@cyberfabric/api`) is intentionally below this altitude — it maps to no public interface and is anchored only by `cpt-frontx-adr-protocol-separated-api` and `cpt-frontx-adr-short-circuit-and-shared-fetch-cache`; no `interface` ID is introduced for it.
+This section documents the ecosystem's public interfaces and external integration contracts by shape, stability, and owning decision record. Full request/response specifications and endpoint enumerations are owned by downstream FEATURE specs and the interfaces' own declarations, not inlined here (INT-DESIGN-NO-001). The API Protocol Surface (`@gears-frontx/api`) is intentionally below this altitude — it maps to no public interface and is anchored only by `cpt-frontx-adr-protocol-separated-api` and `cpt-frontx-adr-short-circuit-and-shared-fetch-cache`; no `interface` ID is introduced for it.
 
 #### MFE Runtime interface
 
 Covers `cpt-frontx-interface-mfe-runtime` (PRD §7.1).
 
-- **Technology**: TypeScript library API — `@cyberfabric/mfes`
-- **Location**: public entry of `@cyberfabric/mfes` (TypeScript declarations)
+- **Technology**: TypeScript library API — `@gears-frontx/mfes`
+- **Location**: public entry of `@gears-frontx/mfes` (TypeScript declarations)
 - **Shape**: the registry facade for microfrontend registration and on-demand loading, extension-domain governance under mount-strategy and cardinality rules, and the mediated host–microfrontend communication surface — exposed while reasoning about types only by opaque identity.
 - **Stability**: unstable; incompatible changes to the public surface require a major version bump under the matched-version distribution policy, with minor and patch preserving compatibility.
 - **ADRs**: `cpt-frontx-adr-core-package-boundaries`, `cpt-frontx-adr-mfe-registry-facade`
@@ -503,8 +503,8 @@ Covers `cpt-frontx-interface-mfe-runtime` (PRD §7.1).
 
 Covers `cpt-frontx-interface-type-system` (PRD §7.1).
 
-- **Technology**: TypeScript library API — `@cyberfabric/gts-plugin` implementing the runtime's type-substrate port
-- **Location**: public entry of `@cyberfabric/gts-plugin` (TypeScript declarations)
+- **Technology**: TypeScript library API — `@gears-frontx/gts-plugin` implementing the runtime's type-substrate port
+- **Location**: public entry of `@gears-frontx/gts-plugin` (TypeScript declarations)
 - **Shape**: the injectable provider of the runtime's opaque type-substrate port — schema validation, type-of resolution, and the infrastructure schemas and default lifecycle instances — letting an application register additional type definitions at runtime.
 - **Stability**: unstable; incompatible changes to the public surface require a major version bump under the matched-version distribution policy.
 - **ADRs**: `cpt-frontx-adr-core-package-boundaries`, `cpt-frontx-adr-type-system-plugin-opaque-schema`, `cpt-frontx-adr-gts-default-type-system`
@@ -513,8 +513,8 @@ Covers `cpt-frontx-interface-type-system` (PRD §7.1).
 
 Covers `cpt-frontx-interface-cli` (PRD §7.1).
 
-- **Technology**: command-line interface — `@cyberfabric/cli`
-- **Location**: command surface of `@cyberfabric/cli`
+- **Technology**: command-line interface — `@gears-frontx/cli`
+- **Location**: command surface of `@gears-frontx/cli`
 - **Shape**: the command surface that drives the template and project lifecycle — install, list, update, and pre-publish validation of templates; project and microfrontend scaffolding with composed-template resolution; provenance recording; and reviewable change-set upgrades — organized into project-level and microfrontend-level namespaces sharing one resolver.
 - **Stability**: unstable; incompatible changes to the command surface require a major version bump under the matched-version distribution policy.
 - **ADRs**: `cpt-frontx-adr-matched-version-artifact-distribution`, `cpt-frontx-adr-two-namespace-architecture`
@@ -545,13 +545,13 @@ The ecosystem's artifacts integrate only through narrow, explicit contracts; the
 
 | Dependency Module | Interface Used | Purpose |
 |-------------------|----------------|---------|
-| `@cyberfabric/mfes` → `@cyberfabric/gts-plugin` | type-substrate port (plugin interface, injected at registry construction) | The runtime reasons about types only by opaque identity and delegates all schema, validation, and hierarchy resolution to the injected provider (`cpt-frontx-adr-type-system-plugin-opaque-schema`, `cpt-frontx-adr-gts-default-type-system`). |
-| `@cyberfabric/api` | none (intra-ecosystem) | Standalone Core Framework surface consumed directly by applications and microfrontends; holds no dependency on any other ecosystem package. |
-| `@cyberfabric/cli` | none (intra-ecosystem) | Standalone; operates on externally resolved templates that target the Core Framework, with no compile-time coupling to any ecosystem package (`cpt-frontx-adr-template-externalization-resolution`). |
+| `@gears-frontx/mfes` → `@gears-frontx/gts-plugin` | type-substrate port (plugin interface, injected at registry construction) | The runtime reasons about types only by opaque identity and delegates all schema, validation, and hierarchy resolution to the injected provider (`cpt-frontx-adr-type-system-plugin-opaque-schema`, `cpt-frontx-adr-gts-default-type-system`). |
+| `@gears-frontx/api` | none (intra-ecosystem) | Standalone Core Framework surface consumed directly by applications and microfrontends; holds no dependency on any other ecosystem package. |
+| `@gears-frontx/cli` | none (intra-ecosystem) | Standalone; operates on externally resolved templates that target the Core Framework, with no compile-time coupling to any ecosystem package (`cpt-frontx-adr-template-externalization-resolution`). |
 | `cyber-pilot-kit-frontx` | CLI command surface (orchestration, not a package dependency) | Standalone delivery unit; orchestrates and enriches the CLI's change-set engine through its command surface rather than linking to it (`cpt-frontx-adr-ai-driven-upgrade-orchestration`). |
 
 **Dependency Rules**:
-- No circular dependencies. The graph is acyclic: the only package edge is `@cyberfabric/mfes` → `@cyberfabric/gts-plugin` through the type-substrate port; every other artifact is standalone.
+- No circular dependencies. The graph is acyclic: the only package edge is `@gears-frontx/mfes` → `@gears-frontx/gts-plugin` through the type-substrate port; every other artifact is standalone.
 - Inter-component integration goes through the type-substrate port, the published interfaces of §3.3, or the CLI command surface — never through internal types of another package.
 - Only the Type System plugin is permitted to bind a concrete type-definition specification; the runtime stays format-agnostic behind the port (MFES-4, MFES-5).
 - The AI Tooling Framework coordinates with the CLI by orchestrating its public command surface, not by linking its engine (`cpt-frontx-adr-ai-driven-upgrade-orchestration`).
@@ -564,25 +564,25 @@ The ecosystem depends on a small set of external systems and third-party librari
 
 | Dependency Module | Interface Used | Purpose | Owning Component |
 |-------------------|----------------|---------|------------------|
-| `@globaltypesystem/gts-ts` | concrete type-definition specification API | Supplies the concrete type system the plugin registers behind the runtime's opaque type-substrate port; confined to the plugin so the runtime stays format-agnostic. | `@cyberfabric/gts-plugin` |
+| `@globaltypesystem/gts-ts` | concrete type-definition specification API | Supplies the concrete type system the plugin registers behind the runtime's opaque type-substrate port; confined to the plugin so the runtime stays format-agnostic. | `@gears-frontx/gts-plugin` |
 
 #### Module Federation runtime
 
 | Dependency Module | Interface Used | Purpose | Owning Component |
 |-------------------|----------------|---------|------------------|
-| Module Federation runtime | module-federation load/share API | Loads independently built microfrontends on demand and shares runtime singletons, behind the lazy-import ABI separation that keeps the runtime ABI distinct from the template-bound build (`cpt-frontx-adr-lazy-import-abi`, `cpt-frontx-adr-mf-manifest-discovery`). | `@cyberfabric/mfes` |
+| Module Federation runtime | module-federation load/share API | Loads independently built microfrontends on demand and shares runtime singletons, behind the lazy-import ABI separation that keeps the runtime ABI distinct from the template-bound build (`cpt-frontx-adr-lazy-import-abi`, `cpt-frontx-adr-mf-manifest-discovery`). | `@gears-frontx/mfes` |
 
 #### Transport library (API peer)
 
 | Dependency Module | Interface Used | Purpose | Owning Component |
 |-------------------|----------------|---------|------------------|
-| axios | HTTP transport client | Provides the request/response transport behind the protocol-separated surface; declared as a peer dependency so the surface carries no hard runtime coupling to a specific transport (`cpt-frontx-adr-protocol-separated-api`). | `@cyberfabric/api` |
+| axios | HTTP transport client | Provides the request/response transport behind the protocol-separated surface; declared as a peer dependency so the surface carries no hard runtime coupling to a specific transport (`cpt-frontx-adr-protocol-separated-api`). | `@gears-frontx/api` |
 
 #### GitHub source registry
 
 | Dependency Module | Interface Used | Purpose | Owning Component |
 |-------------------|----------------|---------|------------------|
-| GitHub source registry (`cpt-frontx-actor-github`) | versioned source-spec fetch | Hosts the project and microfrontend templates and the AI Tooling Framework; the CLI resolves and fetches them by versioned source-spec at runtime (`cpt-frontx-adr-template-externalization-resolution`, `cpt-frontx-adr-source-spec-syntax`). | `@cyberfabric/cli` (and the Cypilot integration for the kit) |
+| GitHub source registry (`cpt-frontx-actor-github`) | versioned source-spec fetch | Hosts the project and microfrontend templates and the AI Tooling Framework; the CLI resolves and fetches them by versioned source-spec at runtime (`cpt-frontx-adr-template-externalization-resolution`, `cpt-frontx-adr-source-spec-syntax`). | `@gears-frontx/cli` (and the Cypilot integration for the kit) |
 
 #### npm package registry
 
@@ -617,8 +617,8 @@ The sequences below trace the ecosystem's critical interaction paths across the 
 ```mermaid
 sequenceDiagram
     participant App as Host application
-    participant Reg as MfeRegistry (@cyberfabric/mfes)
-    participant TS as Type System plugin (@cyberfabric/gts-plugin)
+    participant Reg as MfeRegistry (@gears-frontx/mfes)
+    participant TS as Type System plugin (@gears-frontx/gts-plugin)
     participant Dom as Extension domain
     App->>Reg: register microfrontend (manifest-resolved entry)
     Reg->>TS: validate entry & extensions against type definitions
@@ -648,7 +648,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Dev as Project Developer
-    participant CLI as CLI (@cyberfabric/cli)
+    participant CLI as CLI (@gears-frontx/cli)
     participant GH as GitHub source registry
     participant Proj as Scaffolded project
     participant Kit as AI Tooling Framework (cyber-pilot-kit-frontx)
@@ -680,7 +680,7 @@ sequenceDiagram
 sequenceDiagram
     participant AI as AI agent (AI Tooling Framework)
     participant Prov as Project provenance
-    participant Eng as Change-set engine (@cyberfabric/cli)
+    participant Eng as Change-set engine (@gears-frontx/cli)
     participant Dev as Project Developer
     participant Proj as Project files
     AI->>Prov: read originating template + version
@@ -712,7 +712,7 @@ sequenceDiagram
     participant TDev as Template Developer
     participant GH as GitHub source registry
     participant PDev as Project Developer
-    participant CLI as CLI (@cyberfabric/cli)
+    participant CLI as CLI (@gears-frontx/cli)
     participant Kit as AI Tooling Framework (cyber-pilot-kit-frontx)
     participant Agent as AI agent
     TDev->>GH: publish template with bundled AI extension (extension contract)

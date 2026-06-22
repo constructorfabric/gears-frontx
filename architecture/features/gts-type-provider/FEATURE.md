@@ -30,7 +30,7 @@
 
 ### 1.1 Overview
 
-The GTS Default Type-System Provider (`@cyberfabric/gts-plugin` — target) implements the MFE Runtime's opaque type-substrate port over the Global Type System (GTS) specification, owning the ecosystem's infrastructure schemas and default lifecycle instances, and supplying schema validation and type-of hierarchy resolution ready to use immediately after construction.
+The GTS Default Type-System Provider (`@gears-frontx/gts-plugin` — target) implements the MFE Runtime's opaque type-substrate port over the Global Type System (GTS) specification, owning the ecosystem's infrastructure schemas and default lifecycle instances, and supplying schema validation and type-of hierarchy resolution ready to use immediately after construction.
 
 ### 1.2 Purpose
 

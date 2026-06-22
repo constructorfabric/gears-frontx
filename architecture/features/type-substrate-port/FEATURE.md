@@ -23,7 +23,7 @@ slug: type-substrate-port
 - [4. States (CDSL)](#4-states-cdsl)
   - [Schema Registration Lifecycle](#schema-registration-lifecycle)
 - [5. Definitions of Done](#5-definitions-of-done)
-  - [Port Contract Extraction into @cyberfabric/mfes](#port-contract-extraction-into-cyberfabricmfes)
+  - [Port Contract Extraction into @gears-frontx/mfes](#port-contract-extraction-into-gears-frontxmfes)
   - [Opaque Boundary Enforcement](#opaque-boundary-enforcement)
   - [Validation and Hierarchy Delegation](#validation-and-hierarchy-delegation)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
@@ -41,7 +41,7 @@ Defines and extracts the MFE Runtime's opaque type-substrate port — the narrow
 
 ### 1.2 Purpose
 
-The MFE Runtime must validate microfrontends and their extensions against type definitions and resolve type hierarchies for handler selection, yet it must carry no concrete type-format knowledge. This feature establishes the opaque port contract that makes this possible — `TypeSystemPlugin` — and extracts it from `packages/screensets` into the published `@cyberfabric/mfes` package, hardening the MFES-1, MFES-4, and MFES-5 boundaries so they are CI-enforceable invariants.
+The MFE Runtime must validate microfrontends and their extensions against type definitions and resolve type hierarchies for handler selection, yet it must carry no concrete type-format knowledge. This feature establishes the opaque port contract that makes this possible — `TypeSystemPlugin` — and extracts it from `packages/screensets` into the published `@gears-frontx/mfes` package, hardening the MFES-1, MFES-4, and MFES-5 boundaries so they are CI-enforceable invariants.
 
 **Requirements**: `cpt-frontx-fr-application-type-definitions`, `cpt-frontx-fr-mfe-type-validation`
 
@@ -153,11 +153,11 @@ Include when entities have explicit lifecycle states.
 
 Specific implementation tasks derived from flows and algorithms above.
 
-### Port Contract Extraction into @cyberfabric/mfes
+### Port Contract Extraction into @gears-frontx/mfes
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-type-substrate-port-port-contract-extraction`
 
-The system **MUST** define and ship the `TypeSystemPlugin` port contract in `@cyberfabric/mfes`, extracted from `packages/screensets/src/mfe/plugins/types.ts`, so the opaque type-substrate port is the sole published surface that MFE Runtime consumers depend on.
+The system **MUST** define and ship the `TypeSystemPlugin` port contract in `@gears-frontx/mfes`, extracted from `packages/screensets/src/mfe/plugins/types.ts`, so the opaque type-substrate port is the sole published surface that MFE Runtime consumers depend on.
 
 **Implements**:
 - `cpt-frontx-flow-type-substrate-port-register-validate`
@@ -198,7 +198,7 @@ The system **MUST** delegate every schema validation and type-hierarchy-resoluti
 
 ## 6. Acceptance Criteria
 
-- [ ] The `TypeSystemPlugin` port contract is published from `@cyberfabric/mfes` (target: extracted from `packages/screensets/src/mfe/plugins/types.ts`)
+- [ ] The `TypeSystemPlugin` port contract is published from `@gears-frontx/mfes` (target: extracted from `packages/screensets/src/mfe/plugins/types.ts`)
 - [ ] A CI boundary check on MFE runtime source returns 0 hits for any concrete type-definition format literals, schema field access beyond identifier, or format-specific imports
 - [ ] A conforming `TypeSystemPlugin` implementation can be injected into the runtime without any runtime modification
 - [ ] The runtime correctly rejects a microfrontend whose declared type identifier fails port validation, surfacing port-supplied error details to the caller

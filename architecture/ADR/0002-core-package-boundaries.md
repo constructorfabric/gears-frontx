@@ -81,7 +81,7 @@ Architecture review confirms each concern's responsibilities stay within its bou
 
 ## More Information
 
-The present concrete instantiation of the Core Framework concerns is `@cyberfabric/mfes` (runtime), `@cyberfabric/gts-plugin` (type-system provider), and `@cyberfabric/api` (protocol surface); this mapping is descriptive and non-binding. The boundary constraints governing these concerns are defined in DESIGN §2.2; the CLI and AI-tooling boundary rules (`cpt-frontx-constraint-cli-template-independence`, `cpt-frontx-constraint-kit-prefixed-resource-ids`) belong to other pillars and are outside this decision's scope.
+The present concrete instantiation of the Core Framework concerns is `@gears-frontx/mfes` (runtime), `@gears-frontx/gts-plugin` (type-system provider), and `@gears-frontx/api` (protocol surface); this mapping is descriptive and non-binding. The boundary constraints governing these concerns are defined in DESIGN §2.2; the CLI and AI-tooling boundary rules (`cpt-frontx-constraint-cli-template-independence`, `cpt-frontx-constraint-kit-prefixed-resource-ids`) belong to other pillars and are outside this decision's scope.
 
 **Scope of impact.** This decision governs only the partition of the Core Framework into runtime, type-system provider, and protocol surface, and the boundary constraints between them. It does not decide the internal structure of any concern, the concrete type-definition specification (a separate decision), or distribution and versioning (decided in `cpt-frontx-adr-matched-version-artifact-distribution`).
 

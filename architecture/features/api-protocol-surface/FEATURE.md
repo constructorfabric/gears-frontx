@@ -29,7 +29,7 @@
 
 ### 1.1 Overview
 
-The API Protocol Surface provides the `@cyberfabric/api` package — a protocol-separated, solution-agnostic surface that exposes request/response and streaming communication behind a common abstract `ApiProtocol`, a generic plugin short-circuit mechanism, and a realm-shared retainer-counted fetch cache that lets independently bundled units reuse in-flight and cached results. This surface sits intentionally **below** interface altitude per DESIGN §3.3; it maps to no PRD §7.1 public interface, covers **no PRD `fr`**, and declares **no `interface` ID**.
+The API Protocol Surface provides the `@gears-frontx/api` package — a protocol-separated, solution-agnostic surface that exposes request/response and streaming communication behind a common abstract `ApiProtocol`, a generic plugin short-circuit mechanism, and a realm-shared retainer-counted fetch cache that lets independently bundled units reuse in-flight and cached results. This surface sits intentionally **below** interface altitude per DESIGN §3.3; it maps to no PRD §7.1 public interface, covers **no PRD `fr`**, and declares **no `interface` ID**.
 
 ### 1.2 Purpose
 
@@ -217,5 +217,5 @@ The system **MUST** implement a shared fetch cache stored on the realm global vi
 - [ ] Concurrent consumers of the same cache key share a single in-flight fetch; when all consumers abort and no retainer holds the cache, the shared fetch is cancelled.
 - [ ] `retainSharedFetchCache` increments the retainer count and returns the cache; `releaseSharedFetchCache` decrements the count and tears down the cache when it reaches zero.
 - [ ] Cache keys are auto-derived from the processed request identity (method, URL, headers, params, body, credentials); no call site defines a cache key manually.
-- [ ] No solution-specific content — concrete endpoints, auth wiring, or application-specific plugins — appears anywhere in `@cyberfabric/api`; the surface ships no application-specific plugin of its own.
+- [ ] No solution-specific content — concrete endpoints, auth wiring, or application-specific plugins — appears anywhere in `@gears-frontx/api`; the surface ships no application-specific plugin of its own.
 - [ ] The transport is declared as a peer dependency; the package carries no runtime `dependencies` on data-fetching or state-management libraries.

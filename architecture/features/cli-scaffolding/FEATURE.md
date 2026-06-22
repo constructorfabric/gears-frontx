@@ -32,7 +32,7 @@
 
 ### 1.1 Overview
 
-Organizes the CLI command surface of `@cyberfabric/cli` into a project-level namespace and a microfrontend-level namespace that share one resolver, and drives project and microfrontend scaffolding from those namespaces. The namespace organization is the CLI's public interface (`cpt-frontx-interface-cli`). All CDSL behavior is target (GREENFIELD — grounded in `cpt-frontx-adr-two-namespace-architecture` and DESIGN §3.3).
+Organizes the CLI command surface of `@gears-frontx/cli` into a project-level namespace and a microfrontend-level namespace that share one resolver, and drives project and microfrontend scaffolding from those namespaces. The namespace organization is the CLI's public interface (`cpt-frontx-interface-cli`). All CDSL behavior is target (GREENFIELD — grounded in `cpt-frontx-adr-two-namespace-architecture` and DESIGN §3.3).
 
 ### 1.2 Purpose
 
@@ -194,7 +194,7 @@ Internal system functions and procedures called by actor flows above.
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-cli-scaffolding-namespace-surface`
 
-The system **MUST** expose a project-level namespace and a microfrontend-level namespace as the two first-class command namespaces of `@cyberfabric/cli`, with both namespaces routing through the one shared resolver and no second resolution path existing.
+The system **MUST** expose a project-level namespace and a microfrontend-level namespace as the two first-class command namespaces of `@gears-frontx/cli`, with both namespaces routing through the one shared resolver and no second resolution path existing.
 
 **Implements**:
 - `cpt-frontx-flow-cli-scaffolding-scaffold-project`
@@ -245,7 +245,7 @@ The system **MUST** scaffold a microfrontend from a resolved microfrontend templ
 ## 6. Acceptance Criteria
 
 - [ ] `architecture/features/cli-scaffolding/FEATURE.md` exists with all template sections in order.
-- [ ] The CLI command surface exposes a project-level namespace and a microfrontend-level namespace as the two first-class namespaces of `@cyberfabric/cli`. (`target`)
+- [ ] The CLI command surface exposes a project-level namespace and a microfrontend-level namespace as the two first-class namespaces of `@gears-frontx/cli`. (`target`)
 - [ ] Both namespaces route through the one shared resolver; no second resolver path exists. (`target`)
 - [ ] A developer can scaffold a project by invoking the project-level namespace scaffold command with a valid template reference and target directory. (`target`)
 - [ ] A developer can scaffold a microfrontend by invoking the microfrontend-level namespace scaffold command with a valid template reference and target directory. (`target`)

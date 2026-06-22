@@ -82,7 +82,7 @@ Each published artifact carries its own semantic version and changelog, and a br
 
 ## More Information
 
-The present concrete instantiation of this pattern is four npm packages (`@cyberfabric/mfes`, `@cyberfabric/gts-plugin`, `@cyberfabric/api`, `@cyberfabric/cli`) distributed through the package registry, plus one Cypilot kit (`cyber-pilot-kit-frontx`) distributed through the Cypilot kit system. This set is descriptive and non-binding: adding or removing an artifact requires no amendment to this decision, because the decision names the distribution pattern, not its instantiation. The package-registry distribution touchpoint is traced as `cpt-frontx-contract-package-registry-distribution`.
+The present concrete instantiation of this pattern is four npm packages (`@gears-frontx/mfes`, `@gears-frontx/gts-plugin`, `@gears-frontx/api`, `@gears-frontx/cli`) distributed through the package registry, plus one Cypilot kit (`cyber-pilot-kit-frontx`) distributed through the Cypilot kit system. This set is descriptive and non-binding: adding or removing an artifact requires no amendment to this decision, because the decision names the distribution pattern, not its instantiation. The package-registry distribution touchpoint is traced as `cpt-frontx-contract-package-registry-distribution`.
 
 **Review trigger.** Revisit this decision if a future requirement demands a single atomic ecosystem version (for example, a certification regime that versions the whole platform as one unit), which would invalidate the independence rationale.
 
