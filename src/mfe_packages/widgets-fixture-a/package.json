@@ -21,7 +21,7 @@
     "@types/react-dom": "19.0.3",
     "@vitejs/plugin-react": "4.3.4",
     "@module-federation/vite": "^1.14.2",
-    "vite": "6.4.2",
+    "vite": "6.4.3",
     "typescript": "5.4.2",
     "@gears-frontx/framework": "file:../../../packages/framework",
     "@gears-frontx/state": "file:../../../packages/state",

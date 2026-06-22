@@ -37,7 +37,7 @@
     "lint": "npm run lint:deps && npm run build --workspace=eslint-plugin-local && eslint . --max-warnings 0",
     "preview": "vite preview",
     "type-check": "npm run type-check:all",
-    "type-check:host": "npm run generate:mfe-manifests && tsc --noEmit",
+    "type-check:host": "tsc --noEmit",
     "type-check:all": "npm run type-check:host && npm run type-check:packages && npm run type-check:packages:test && npm run type-check:mfe",
     "type-check:packages": "npm run type-check:packages:sdk && npm run type-check:packages:framework && npm run type-check:packages:react && npm run type-check:packages:studio && npm run type-check:packages:cli",
     "type-check:packages:sdk": "npm run type-check --workspace=@gears-frontx/state --workspace=@gears-frontx/screensets --workspace=@gears-frontx/api --workspace=@gears-frontx/auth --workspace=@gears-frontx/i18n",
@@ -169,7 +169,7 @@
     "tsx": "4.20.6",
     "typescript": "5.4.2",
     "typescript-eslint": "8.32.1",
-    "vite": "6.4.2",
+    "vite": "6.4.3",
     "vitest": "4.1.4"
   }
 }
