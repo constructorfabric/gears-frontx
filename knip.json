@@ -27,7 +27,7 @@
   ],
   "ignoreDependencies": [
     "@types/*",
-    "@cyberfabric/depcruise-config/*"
+    "@gears-frontx/depcruise-config/*"
   ],
   "ignoreBinaries": [
     "dot"

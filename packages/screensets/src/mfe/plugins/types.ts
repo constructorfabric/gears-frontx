@@ -1,7 +1,7 @@
 /**
  * Type System Plugin for MFE contracts
  *
- * The @cyberfabric/screensets package treats type IDs as OPAQUE STRINGS.
+ * The @gears-frontx/screensets package treats type IDs as OPAQUE STRINGS.
  * All type ID understanding (parsing, format validation, building) is delegated to the plugin.
  *
  * @packageDocumentation
@@ -56,7 +56,7 @@ export interface JSONSchema {
  *
  * TEMPORARY DEFAULT: `TSchema` defaults to `unknown` to keep this change
  * minimal and non-breaking — many schema-agnostic consumers (registry,
- * mediator, config, framework wiring, @cyberfabric/react bindings) spell
+ * mediator, config, framework wiring, @gears-frontx/react bindings) spell
  * `TypeSystemPlugin` with no type argument. A deliberate stopgap ahead of the
  * in-flight template/framework separation, to be removed/updated there so
  * every consumer states its schema shape explicitly. It is `unknown`, NOT
@@ -119,12 +119,12 @@ export interface TypeSystemPlugin<TSchema = unknown> {
    *
    * Named instance pattern: the schema is resolved from the chained instance
    * ID automatically.
-   * - Example: `{ id: "gts.hai3.mfes.ext.extension.v1~acme.widget.v1", ... }`
-   * - Schema resolved: `gts.hai3.mfes.ext.extension.v1~`
+   * - Example: `{ id: "gts.frontx.mfes.ext.extension.v1~acme.widget.v1", ... }`
+   * - Schema resolved: `gts.frontx.mfes.ext.extension.v1~`
    *
    * For ephemeral runtime validation (e.g., shared property values), construct
    * a chained instance ID that encodes the schema:
-   * - Example: `{ id: "${propertyTypeId}hai3.mfes.comm.runtime.v1", value: "dark" }`
+   * - Example: `{ id: "${propertyTypeId}frontx.mfes.comm.runtime.v1", value: "dark" }`
    * - Schema resolved: `${propertyTypeId}` (the derived shared property schema)
    *
    * For anonymous instances (no `id` field — used by action payloads), the

@@ -1,14 +1,14 @@
-# @cyberfabric/react
+# @gears-frontx/react
 
 > React bindings, hooks, and components for FrontX SDK. Provides type-safe integration with React applications including MFE (Microfrontend) support.
 
-Part of the FrontX React Layer (L3) - depends on @cyberfabric/framework. Peer dependency on react and react-dom.
+Part of the FrontX React Layer (L3) - depends on @gears-frontx/framework. Peer dependency on react and react-dom.
 
 ## Core API
 
-- [HAI3Provider](https://frontx.dev/docs/react/provider): Root context provider
+- [Gears FrontXProvider](https://frontx.dev/docs/react/provider): Root context provider
 - [MFE Components](https://frontx.dev/docs/react/mfe): ExtensionDomainSlot, MfeProvider, RefContainerProvider
-- `HAI3Provider` resolves the shared `QueryClient` from `queryCache()` / `queryCacheShared()` through the app instance; mounted MFEs reuse the host cache by building their local app with `queryCacheShared()`, which joins the same shared `QueryClient` without mutating L1 contracts
+- `Gears FrontXProvider` resolves the shared `QueryClient` from `queryCache()` / `queryCacheShared()` through the app instance; mounted MFEs reuse the host cache by building their local app with `queryCacheShared()`, which joins the same shared `QueryClient` without mutating L1 contracts
 
 ## Hooks
 
@@ -33,16 +33,16 @@ Part of the FrontX React Layer (L3) - depends on @cyberfabric/framework. Peer de
 ## Quick Start
 
 ```tsx
-import { HAI3Provider, useTranslation, useFrontX } from '@cyberfabric/react';
+import { Gears FrontXProvider, useTranslation, useFrontX } from '@gears-frontx/react';
 
 // Wrap app with provider
 function App() {
   return (
-    <HAI3Provider>
+    <Gears FrontXProvider>
       <Layout>
         <MainScreen />
       </Layout>
-    </HAI3Provider>
+    </Gears FrontXProvider>
   );
 }
 
@@ -64,7 +64,7 @@ function MyComponent() {
 ### Using ExtensionDomainSlot
 
 ```tsx
-import { ExtensionDomainSlot } from '@cyberfabric/react';
+import { ExtensionDomainSlot } from '@gears-frontx/react';
 
 function LayoutScreen() {
   return (
@@ -81,15 +81,15 @@ function LayoutScreen() {
 ### Using MFE Bridge
 
 ```tsx
-import { useMfeBridge, useSharedProperty, HAI3_ACTION_LOAD_EXT, HAI3_SHARED_PROPERTY_THEME } from '@cyberfabric/react';
+import { useMfeBridge, useSharedProperty, Gears FrontX_ACTION_LOAD_EXT, Gears FrontX_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
 
 function MyExtension() {
   const bridge = useMfeBridge();
-  const theme = useSharedProperty(HAI3_SHARED_PROPERTY_THEME);
+  const theme = useSharedProperty(Gears FrontX_SHARED_PROPERTY_THEME);
 
   const handleAction = async () => {
     await bridge.executeActionsChain({
-      action: { type: HAI3_ACTION_LOAD_EXT, target: 'screen', payload: { extensionId: 'other' } }
+      action: { type: Gears FrontX_ACTION_LOAD_EXT, target: 'screen', payload: { extensionId: 'other' } }
     });
   };
 
@@ -100,7 +100,7 @@ function MyExtension() {
 ### Subscribing to Domain Extensions
 
 ```tsx
-import { useDomainExtensions } from '@cyberfabric/react';
+import { useDomainExtensions } from '@gears-frontx/react';
 
 function ScreenList() {
   const screenExtensions = useDomainExtensions('screen');

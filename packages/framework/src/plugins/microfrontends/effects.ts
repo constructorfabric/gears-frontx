@@ -13,7 +13,7 @@
 // @cpt-flow:cpt-frontx-flow-framework-composition-teardown:p2
 // @cpt-dod:cpt-frontx-dod-framework-composition-mfe-plugin:p1
 
-import { eventBus, getStore } from '@cyberfabric/state';
+import { eventBus, getStore } from '@gears-frontx/state';
 import { MfeEvents } from './constants';
 import {
   setExtensionRegistering,
@@ -21,7 +21,7 @@ import {
   setExtensionUnregistered,
   setExtensionError,
 } from './slice';
-import type { MfeRegistry } from '@cyberfabric/screensets';
+import type { MfeRegistry } from '@gears-frontx/screensets';
 
 // ============================================================================
 // Effect Initialization

@@ -8,12 +8,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import { ExtensionDomainSlot, type ExtensionDomainSlotProps } from '../ExtensionDomainSlot';
-import { ExtensionMounter } from '@cyberfabric/framework';
-import { MfeRegistry } from '@cyberfabric/framework';
-import type { ActionsChain, ExtensionDomain, Extension } from '@cyberfabric/framework';
-import type { ExtensionDomainImplementationFactory } from '@cyberfabric/framework';
-import type { ParentMfeBridge } from '@cyberfabric/framework';
-import type { TypeSystemPlugin } from '@cyberfabric/framework';
+import { ExtensionMounter } from '@gears-frontx/framework';
+import { MfeRegistry } from '@gears-frontx/framework';
+import type { ActionsChain, ExtensionDomain, Extension } from '@gears-frontx/framework';
+import type { ExtensionDomainImplementationFactory } from '@gears-frontx/framework';
+import type { ParentMfeBridge } from '@gears-frontx/framework';
+import type { TypeSystemPlugin } from '@gears-frontx/framework';
 
 // ─── FakeMounter ─────────────────────────────────────────────────────────────
 

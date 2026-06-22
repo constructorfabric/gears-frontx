@@ -126,7 +126,7 @@ Verify the design artifacts state compliance with established patterns from [.ai
 
 - Event-driven communication vs. direct coupling
 - Registry Open/Closed pattern
-- Layer boundary constraints (no React below L3, SDK packages have zero @cyberfabric dependencies)
+- Layer boundary constraints (no React below L3, SDK packages have zero @gears-frontx dependencies)
 - Plugin-first composition (`.use()` and `.build()`)
 
 When the design diverges from existing patterns, check whether the divergence is acknowledged and justified.

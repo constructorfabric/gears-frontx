@@ -1,6 +1,6 @@
 // @cpt-dod:cpt-frontx-dod-studio-devtools-control-panel:p1
 import React from 'react';
-import { useTranslation } from '@cyberfabric/react';
+import { useTranslation } from '@gears-frontx/react';
 import { ThemeSelector } from './ThemeSelector';
 import { LanguageSelector } from './LanguageSelector';
 import { ApiModeToggle } from './ApiModeToggle';

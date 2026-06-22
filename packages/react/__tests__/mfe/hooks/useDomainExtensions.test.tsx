@@ -8,9 +8,9 @@
 
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { HAI3Provider, useDomainExtensions } from '@cyberfabric/react';
+import { FrontXProvider, useDomainExtensions } from '@gears-frontx/react';
 import {
-  createHAI3,
+  createFrontX,
   effects,
   gtsPlugin,
   microfrontends,
@@ -18,15 +18,15 @@ import {
   TestContainerProvider,
   type Extension,
   type ExtensionDomain,
-  type HAI3App,
-} from '@cyberfabric/framework';
+  type FrontXApp,
+} from '@gears-frontx/framework';
 
 describe('useDomainExtensions hook - Phase 21.7', () => {
-  const sidebarDomainId = 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1';
-  const popupDomainId = 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.popup.v1';
+  const sidebarDomainId = 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1';
+  const popupDomainId = 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.popup.v1';
 
   // Track app instances for cleanup
-  const apps: HAI3App[] = [];
+  const apps: FrontXApp[] = [];
   afterEach(() => {
     apps.forEach((app) => {
       app.destroy();
@@ -38,8 +38,8 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     id: sidebarDomainId,
     sharedProperties: [],
     actions: [
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~',
     ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
@@ -51,8 +51,8 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     id: popupDomainId,
     sharedProperties: [],
     actions: [
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~',
     ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
@@ -61,21 +61,21 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
   };
 
   const sidebarExtension1: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.sidebar.reg.ext1.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.sidebar.reg.ext1.v1',
     domain: sidebarDomainId,
-    entry: 'gts.hai3.mfes.mfe.entry.v1~test.sidebar.reg.entry.v1',
+    entry: 'gts.frontx.mfes.mfe.entry.v1~test.sidebar.reg.entry.v1',
   };
 
   const sidebarExtension2: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.sidebar.reg.ext2.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.sidebar.reg.ext2.v1',
     domain: sidebarDomainId,
-    entry: 'gts.hai3.mfes.mfe.entry.v1~test.sidebar.reg.entry.v1',
+    entry: 'gts.frontx.mfes.mfe.entry.v1~test.sidebar.reg.entry.v1',
   };
 
   const popupExtension: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.popup.reg.ext1.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.popup.reg.ext1.v1',
     domain: popupDomainId,
-    entry: 'gts.hai3.mfes.mfe.entry.v1~test.sidebar.reg.entry.v1',
+    entry: 'gts.frontx.mfes.mfe.entry.v1~test.sidebar.reg.entry.v1',
   };
 
   /**
@@ -85,8 +85,8 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
    * so we mock the registration methods to populate query results and dispatch
    * an action to trigger store subscribers.
    */
-  function buildApp(): HAI3App {
-    const app = createHAI3()
+  function buildApp(): FrontXApp {
+    const app = createFrontX()
       .use(effects())
       .use(queryCache())
       .use(microfrontends({ typeSystem: gtsPlugin }))
@@ -130,9 +130,9 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     return app;
   }
 
-  function buildWrapper(app: HAI3App) {
+  function buildWrapper(app: FrontXApp) {
     return ({ children }: { children: React.ReactNode }) => (
-      <HAI3Provider app={app}>{children}</HAI3Provider>
+      <FrontXProvider app={app}>{children}</FrontXProvider>
     );
   }
 

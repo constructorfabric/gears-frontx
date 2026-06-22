@@ -7,8 +7,8 @@
 // @cpt-dod:cpt-frontx-dod-react-bindings-translation-hook:p1
 
 import { useMemo, useCallback, useSyncExternalStore } from 'react';
-import type { Language } from '@cyberfabric/framework';
-import { useHAI3 } from '../HAI3Context';
+import type { Language } from '@gears-frontx/framework';
+import { useFrontX } from '../FrontXContext';
 import type { UseTranslationReturn } from '../types';
 
 /**
@@ -32,7 +32,7 @@ import type { UseTranslationReturn } from '../types';
 // @cpt-begin:cpt-frontx-dod-react-bindings-translation-hook:p1:inst-call-translation
 export function useTranslation(): UseTranslationReturn {
   // @cpt-begin:cpt-frontx-flow-react-bindings-use-translation:p1:inst-read-i18n-registry
-  const app = useHAI3();
+  const app = useFrontX();
   const { i18nRegistry } = app;
   // @cpt-end:cpt-frontx-flow-react-bindings-use-translation:p1:inst-read-i18n-registry
 

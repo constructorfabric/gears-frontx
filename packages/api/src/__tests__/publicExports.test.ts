@@ -103,9 +103,9 @@ describe('package barrel exports', () => {
 
 describe('SHARED_FETCH_CACHE_SYMBOL / SHARED_FETCH_CACHE_RETAINERS_SYMBOL', () => {
   it('uses Symbol.for so separate bundles converge on the same slot', () => {
-    expect(SHARED_FETCH_CACHE_SYMBOL).toBe(Symbol.for('hai3:fetch-cache'));
+    expect(SHARED_FETCH_CACHE_SYMBOL).toBe(Symbol.for('frontx:fetch-cache'));
     expect(SHARED_FETCH_CACHE_RETAINERS_SYMBOL).toBe(
-      Symbol.for('hai3:fetch-cache-retainers')
+      Symbol.for('frontx:fetch-cache-retainers')
     );
     expect(typeof SHARED_FETCH_CACHE_SYMBOL).toBe('symbol');
     expect(typeof SHARED_FETCH_CACHE_RETAINERS_SYMBOL).toBe('symbol');

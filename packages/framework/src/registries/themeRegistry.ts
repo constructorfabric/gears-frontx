@@ -35,14 +35,14 @@ export function createThemeRegistry(): ThemeRegistry {
   function applyCSSVariables(variables: Record<string, string>): void {
     if (typeof document === 'undefined') return;
 
-    const existing = document.getElementById('hai3-theme-vars');
+    const existing = document.getElementById('frontx-theme-vars');
     let styleEl: HTMLStyleElement;
     if (existing instanceof HTMLStyleElement) {
       styleEl = existing;
     } else {
       existing?.remove();
       styleEl = document.createElement('style');
-      styleEl.id = 'hai3-theme-vars';
+      styleEl.id = 'frontx-theme-vars';
       document.head.appendChild(styleEl);
     }
 

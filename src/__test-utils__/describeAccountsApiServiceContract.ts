@@ -1,4 +1,4 @@
-import type { EndpointDescriptor } from '@cyberfabric/react';
+import type { EndpointDescriptor } from '@gears-frontx/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   attachRegisteredRestMocks,

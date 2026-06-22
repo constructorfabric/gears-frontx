@@ -8,10 +8,10 @@
 // @cpt-dod:cpt-frontx-dod-request-lifecycle-use-api-query:p2
 // @cpt-flow:cpt-frontx-flow-request-lifecycle-use-api-query:p2
 
-import type { EndpointDescriptor } from '@cyberfabric/framework';
+import type { EndpointDescriptor } from '@gears-frontx/framework';
 import type { ApiInfiniteQueryResult } from '../types';
 import type { ApiQueryOverrides } from './useApiQuery';
-import { useHAI3InfiniteQuery } from '../queryClient';
+import { useFrontXInfiniteQuery } from '../queryClient';
 
 export interface ApiInfiniteQueryPageContext<TPage> {
   page: TPage;
@@ -44,5 +44,5 @@ export interface ApiInfiniteQueryOptions<TPage> extends ApiQueryOverrides {
 export function useApiInfiniteQuery<TPage = unknown, TError = Error>(
   options: ApiInfiniteQueryOptions<TPage>
 ): ApiInfiniteQueryResult<TPage, TError> {
-  return useHAI3InfiniteQuery<TPage, TError>(options);
+  return useFrontXInfiniteQuery<TPage, TError>(options);
 }

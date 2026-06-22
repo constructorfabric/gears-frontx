@@ -21,7 +21,7 @@ import {
   formatCurrency as formatCurrencyFn,
   compareStrings as compareStringsFn,
   createCollator as createCollatorFn,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 import type { UseFormattersReturn } from '../types';
 import { useTranslation } from './useTranslation';
 

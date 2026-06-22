@@ -92,8 +92,8 @@ describe('applyMfeReplacements', () => {
   });
 
   it('should replace package scoped names', () => {
-    const result = applyMfeReplacements('@cyberfabric/blank-mfe', 'contacts', 'Contacts', 3001);
-    expect(result).toBe('@cyberfabric/contacts-mfe');
+    const result = applyMfeReplacements('@gears-frontx/blank-mfe', 'contacts', 'Contacts', 3001);
+    expect(result).toBe('@gears-frontx/contacts-mfe');
   });
 
   it('should replace port numbers', () => {
@@ -366,7 +366,7 @@ describe('generateScreenset() integration', () => {
     expect(result.files.length > 0).toBeTruthy();
 
     const pkgJson = await fs.readJSON(joinUnderRoot(mfeRoot, 'package.json'));
-    expect(pkgJson.name).toBe('@cyberfabric/test-widget-mfe');
+    expect(pkgJson.name).toBe('@gears-frontx/test-widget-mfe');
     expect(pkgJson.scripts.dev).toMatch(/--port 4001/);
     expect(pkgJson.dependencies.tailwindcss, 'shadcn keeps tailwindcss').toBeTruthy();
     expect(pkgJson.dependencies['tailwind-merge'], 'shadcn keeps tailwind-merge').toBeTruthy();

@@ -1,5 +1,5 @@
 // @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-blank-mfe-tests:p1
-import type { ApiPluginBase, ApiProtocol } from '@cyberfabric/react';
+import type { ApiPluginBase, ApiProtocol } from '@gears-frontx/react';
 import { describe, expect, it } from 'vitest';
 import { attachRegisteredRestMocks } from '@frontx-test-utils/attachRegisteredRestMocks';
 import { _BlankApiService } from './_BlankApiService';

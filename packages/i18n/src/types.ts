@@ -1,5 +1,5 @@
 /**
- * @cyberfabric/i18n - Type Definitions
+ * @gears-frontx/i18n - Type Definitions
  *
  * Core types for FrontX internationalization.
  * Supports 36 languages with RTL support.
@@ -133,7 +133,7 @@ export interface TranslationDictionary {
 /**
  * Translation Loader Function
  * Returns translations for a given language using dynamic import.
- * Accepts both Language enum and string for compatibility with @cyberfabric/layout.
+ * Accepts both Language enum and string for compatibility with @gears-frontx/layout.
  *
  * @example
  * ```typescript

@@ -36,11 +36,11 @@
 
 ### 1.1 Overview
 
-The Auth Plugin wires a headless `AuthProvider` from `@cyberfabric/auth` into the `@cyberfabric/api` REST transport layer and exposes an `app.auth` runtime surface on the `HAI3App` instance. It attaches session credentials to outgoing requests, intercepts 401 responses to trigger token refresh, and deduplicates concurrent refresh calls. Scope is REST-only; SSE auth is out-of-scope for the default binding.
+The Auth Plugin wires a headless `AuthProvider` from `@gears-frontx/auth` into the `@gears-frontx/api` REST transport layer and exposes an `app.auth` runtime surface on the `Gears FrontXApp` instance. It attaches session credentials to outgoing requests, intercepts 401 responses to trigger token refresh, and deduplicates concurrent refresh calls. Scope is REST-only; SSE auth is out-of-scope for the default binding.
 
 ### 1.2 Purpose
 
-Enable applications to integrate authentication transparently into the HTTP transport without coupling service code to auth concerns. The plugin manages session header injection, refresh-retry lifecycle, and binding teardown as a first-class HAI3 plugin.
+Enable applications to integrate authentication transparently into the HTTP transport without coupling service code to auth concerns. The plugin manages session header injection, refresh-retry lifecycle, and binding teardown as a first-class Gears FrontX plugin.
 
 ### 1.3 Actors
 
@@ -51,8 +51,8 @@ Enable applications to integrate authentication transparently into the HTTP tran
 ### 1.4 References
 
 - Overall Design: [DESIGN.md](../../DESIGN.md)
-- Auth SDK: `@cyberfabric/auth`
-- API SDK: `@cyberfabric/api` (RestPlugin, RestProtocol)
+- Auth SDK: `@gears-frontx/auth`
+- API SDK: `@gears-frontx/api` (RestPlugin, RestProtocol)
 
 ---
 
@@ -92,7 +92,7 @@ Enable applications to integrate authentication transparently into the HTTP tran
 
 **Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-runtime`
 
-1. [ ] `p1` - `auth(config)` plugin factory is called; selects transport (custom or default `hai3ApiTransport()`) - `inst-plugin-factory`
+1. [ ] `p1` - `auth(config)` plugin factory is called; selects transport (custom or default `frontxApiTransport()`) - `inst-plugin-factory`
 2. [ ] `p1` - `provides.app.auth` object is assembled delegating all AuthProvider methods - `inst-provides`
 3. [ ] `p1` - `onInit(app)` binds the transport binder; adds the `AuthRestPlugin` to the API registry - `inst-on-init`
 4. [ ] `p1` - `onDestroy(_app)` removes the REST plugin, calls `provider.destroy?.()` if present, and nulls the binding - `inst-on-destroy`
@@ -181,7 +181,7 @@ Tracked as `AuthRestPlugin.refreshPromise: Promise<AuthSession | null> | null`.
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-auth-plugin`
 
-`auth(config)` is a valid `HAI3Plugin` that when composed with `createHAI3()` exposes `app.auth` with all `AuthProvider` methods delegated. Session credentials are injected into REST requests transparently. 401 responses trigger a single shared refresh; concurrent 401s await the same promise. Transport is removed on `app.destroy()`.
+`auth(config)` is a valid `Gears FrontXPlugin` that when composed with `createGears FrontX()` exposes `app.auth` with all `AuthProvider` methods delegated. Session credentials are injected into REST requests transparently. 401 responses trigger a single shared refresh; concurrent 401s await the same promise. Transport is removed on `app.destroy()`.
 
 **Implements**:
 - `cpt-frontx-flow-auth-plugin-session-attach`

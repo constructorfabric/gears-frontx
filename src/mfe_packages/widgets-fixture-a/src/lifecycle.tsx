@@ -14,7 +14,7 @@
  */
 import React from 'react';
 import {
-  createHAI3,
+  createFrontX,
   effects,
   queryCacheShared,
   mock,
@@ -22,12 +22,12 @@ import {
   ThemeAwareReactLifecycle,
   type ChildMfeBridge,
   type JsonObject,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 
 const PING_ACTION_TYPE =
-  'gts.hai3.mfes.comm.action.v1~hai3.widgets.test.widget_ping.v1~';
+  'gts.frontx.mfes.comm.action.v1~frontx.widgets.test.widget_ping.v1~';
 
-const fixtureApp = createHAI3()
+const fixtureApp = createFrontX()
   .use(effects())
   .use(queryCacheShared())
   .use(mock())

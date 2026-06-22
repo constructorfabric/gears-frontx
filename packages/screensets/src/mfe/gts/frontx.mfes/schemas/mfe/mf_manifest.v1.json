@@ -1,0 +1,74 @@
+{
+  "$id": "gts://gts.frontx.mfes.mfe.mf_manifest.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "x-gts-ref": "/$id"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable MFE name, matches metaData.name."
+    },
+    "metaData": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "buildInfo": {
+          "type": "object",
+          "properties": {
+            "buildVersion": { "type": "string" },
+            "buildName": { "type": "string" }
+          },
+          "required": ["buildVersion", "buildName"]
+        },
+        "remoteEntry": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "path": { "type": "string" },
+            "type": { "type": "string", "enum": ["module", "global"] }
+          },
+          "required": ["name", "path", "type"]
+        },
+        "globalName": { "type": "string" },
+        "publicPath": { "type": "string" }
+      },
+      "required": ["name", "type", "buildInfo", "remoteEntry", "publicPath"]
+    },
+    "shared": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "npm package name (e.g. 'react', '@gears-frontx/screensets')."
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Concrete version resolved from node_modules (e.g. '19.2.4'). Same name+version across MFEs means same source text — the handler's sourceTextCache deduplicates."
+          },
+          "chunkPath": {
+            "type": "string",
+            "minLength": 1,
+            "description": "URL or host-relative path to the standalone ESM file for this dependency (e.g. '/shared/react.js')."
+          },
+          "unwrapKey": {
+            "description": "Named export key to unwrap the module from the chunk. Null when the chunk exports the module directly.",
+            "oneOf": [
+              { "type": "string", "minLength": 1 },
+              { "type": "null" }
+            ]
+          }
+        },
+        "required": ["name", "version", "chunkPath", "unwrapKey"]
+      }
+    }
+  },
+  "required": ["id", "name", "metaData", "shared"]
+}

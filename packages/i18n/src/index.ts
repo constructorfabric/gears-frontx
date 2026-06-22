@@ -1,5 +1,5 @@
 /**
- * @cyberfabric/i18n - Internationalization
+ * @gears-frontx/i18n - Internationalization
  *
  * This package provides:
  * - Language enum with 36 supported languages
@@ -7,7 +7,7 @@
  * - RTL support for Arabic, Hebrew, Persian, Urdu
  * - Lazy loading with dynamic imports
  *
- * SDK Layer: L1 (Zero @cyberfabric dependencies)
+ * SDK Layer: L1 (Zero @gears-frontx dependencies)
  */
 
 // Re-export enums and constants

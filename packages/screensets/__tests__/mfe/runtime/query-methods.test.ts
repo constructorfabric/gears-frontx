@@ -11,7 +11,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { ExtensionDomain, Extension, ScreenExtension } from '../../../src/mfe/types';
-import { HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
+import { FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
 import { MockDomainFactory } from '../../../__test-utils__';
 
 describe('MfeRegistry Query Methods', () => {
@@ -20,25 +20,25 @@ describe('MfeRegistry Query Methods', () => {
   let typeSystem: GtsPlugin;
 
   const testDomain: ExtensionDomain = {
-    id: 'gts.hai3.mfes.ext.domain.v1~test.testorg.query.domain.v1',
+    id: 'gts.frontx.mfes.ext.domain.v1~test.testorg.query.domain.v1',
     sharedProperties: [],
-    actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+    actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
     extensionsActions: [],
     defaultActionTimeout: 5000,
     lifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
     extensionsLifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
   };
 
   const testEntry = {
-    id: 'gts.hai3.mfes.mfe.entry.v1~test.testorg.query.entry.v1',
+    id: 'gts.frontx.mfes.mfe.entry.v1~test.testorg.query.entry.v1',
     requiredProperties: [],
     optionalProperties: [],
     actions: [],
@@ -46,7 +46,7 @@ describe('MfeRegistry Query Methods', () => {
   };
 
   const testExtension: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.testorg.query.extension.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.testorg.query.extension.v1',
     domain: testDomain.id,
     entry: testEntry.id,
   };
@@ -82,7 +82,7 @@ describe('MfeRegistry Query Methods', () => {
 
     it('should return extension with presentation metadata', async () => {
       const extensionWithPresentation: ScreenExtension = {
-        id: 'gts.hai3.mfes.ext.extension.v1~test.testorg.query.with_presentation.v1',
+        id: 'gts.frontx.mfes.ext.extension.v1~test.testorg.query.with_presentation.v1',
         domain: testDomain.id,
         entry: testEntry.id,
         presentation: {
@@ -126,7 +126,7 @@ describe('MfeRegistry Query Methods', () => {
   describe('getExtensionsForDomain', () => {
     it('should return all extensions for a domain', async () => {
       const testExtension2: Extension = {
-        id: 'gts.hai3.mfes.ext.extension.v1~test.testorg.query.extension2.v1',
+        id: 'gts.frontx.mfes.ext.extension.v1~test.testorg.query.extension2.v1',
         domain: testDomain.id,
         entry: testEntry.id,
       };

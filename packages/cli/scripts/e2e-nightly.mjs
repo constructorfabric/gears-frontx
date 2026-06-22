@@ -10,7 +10,7 @@ import { CLI_ENTRY, createHarness, shouldSkipInstall } from './e2e-lib.mjs';
 // @cpt-end:cpt-frontx-flow-cli-tooling-e2e-nightly:p2:inst-e2e-nightly-trigger
 
 // @cpt-begin:cpt-frontx-flow-cli-tooling-e2e-nightly:p2:inst-e2e-nightly-build-cli
-// @cyberfabric/cli is built via npm run build --workspace=@cyberfabric/cli before this script runs
+// @gears-frontx/cli is built via npm run build --workspace=@gears-frontx/cli before this script runs
 // @cpt-end:cpt-frontx-flow-cli-tooling-e2e-nightly:p2:inst-e2e-nightly-build-cli
 
 // @cpt-begin:cpt-frontx-flow-cli-tooling-e2e-nightly:p2:inst-e2e-nightly-create-harness

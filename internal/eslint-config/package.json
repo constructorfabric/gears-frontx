@@ -1,5 +1,5 @@
 {
-  "name": "@cyberfabric/eslint-config",
+  "name": "@gears-frontx/eslint-config",
   "version": "0.2.0-alpha.0",
   "description": "Layered ESLint configuration for FrontX SDK architecture",
   "private": true,

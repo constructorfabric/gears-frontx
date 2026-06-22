@@ -11,7 +11,7 @@ type ActionPayload = Record<string, string | number | boolean | null>;
 const superMountSpy = vi.fn();
 const fetchUserSpy = vi.fn();
 
-vi.mock('@cyberfabric/react', () => ({
+vi.mock('@gears-frontx/react', () => ({
   ActionHandler: class ActionHandler {
     static {
       void 0;
@@ -117,7 +117,7 @@ describe('demo-mfe lifecycles', () => {
     ];
 
     expect(actionId).toBe(
-      'gts.hai3.mfes.comm.action.v1~hai3.demo.action.refresh_profile.v1~'
+      'gts.frontx.mfes.comm.action.v1~frontx.demo.action.refresh_profile.v1~'
     );
 
     await expect(handler.handleAction(actionId, undefined)).resolves.toBeUndefined();

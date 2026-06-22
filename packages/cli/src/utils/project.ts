@@ -65,7 +65,7 @@ export function resolvePathUnderProjectRoot(
 }
 
 /**
- * Check if a directory has @cyberfabric/* dependencies in package.json
+ * Check if a directory has @gears-frontx/* dependencies in package.json
  */
 async function hasHai3Dependencies(dir: string): Promise<boolean> {
   const packageJsonPath = path.join(dir, 'package.json');
@@ -78,14 +78,14 @@ async function hasHai3Dependencies(dir: string): Promise<boolean> {
       ...packageJson.dependencies,
       ...packageJson.devDependencies,
     };
-    return Object.keys(allDeps).some((dep) => dep.startsWith('@cyberfabric/'));
+    return Object.keys(allDeps).some((dep) => dep.startsWith('@gears-frontx/'));
   } catch {
     return false;
   }
 }
 
 /**
- * Find FrontX project root by looking for frontx.config.json or package.json with @cyberfabric/* deps
+ * Find FrontX project root by looking for frontx.config.json or package.json with @gears-frontx/* deps
  * Traverses parent directories until found or reaches filesystem root
  */
 export async function findProjectRoot(
@@ -100,7 +100,7 @@ export async function findProjectRoot(
     if (await fs.pathExists(configPath)) {
       return currentDir;
     }
-    // Fallback: check for package.json with @cyberfabric/* dependencies
+    // Fallback: check for package.json with @gears-frontx/* dependencies
     if (await hasHai3Dependencies(currentDir)) {
       return currentDir;
     }
@@ -244,12 +244,12 @@ export async function findMonorepoRoot(fromPath: string): Promise<string | null>
   return null;
 }
 
-const CURRENT_FRONTX_PACKAGE_SCOPE = '@cyberfabric/';
+const CURRENT_FRONTX_PACKAGE_SCOPE = '@gears-frontx/';
 const TEMPLATE_PROJECT_TSCONFIG_SEGMENT = 'template-sources/project/configs/tsconfig.json';
 
 /**
- * Resolve a @cyberfabric package name to a file: URL path relative to projectPath.
- * e.g. '@cyberfabric/react' with monorepoRoot /repo and projectPath /repo/app
+ * Resolve a @gears-frontx package name to a file: URL path relative to projectPath.
+ * e.g. '@gears-frontx/react' with monorepoRoot /repo and projectPath /repo/app
  * returns 'file:../packages/react'.
  */
 export function getLocalPackageRef(
@@ -313,7 +313,7 @@ export function rewriteTsconfigPackagePaths(
   }
 
   // Standalone preset tsconfig files are JSONC and often have no package aliases.
-  // Avoid strict JSON parsing unless there is actually a @cyberfabric path to rewrite.
+  // Avoid strict JSON parsing unless there is actually a @gears-frontx path to rewrite.
   if (!nextContent.includes(CURRENT_FRONTX_PACKAGE_SCOPE)) {
     return nextContent;
   }

@@ -12,8 +12,8 @@ export default defineConfig({
   sourcemap: true,
   splitting: false,
   external: [
-    // All @cyberfabric packages - peer dependencies
-    '@cyberfabric/framework',
+    // All @gears-frontx packages - peer dependencies
+    '@gears-frontx/framework',
     // React ecosystem
     'react',
     'react-dom',

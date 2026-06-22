@@ -102,7 +102,7 @@ export function createScreensetConfig(options: ScreensetConfigOptions = {}): Con
       },
     }] : []),
 
-    // UI components: Presentational components only (no @cyberfabric/react business logic)
+    // UI components: Presentational components only (no @gears-frontx/react business logic)
     ...(localPlugin ? [{
       files: ['src/components/ui/**/*.{ts,tsx}', 'src/mfe_packages/*/src/components/ui/**/*.{ts,tsx}'],
       rules: {

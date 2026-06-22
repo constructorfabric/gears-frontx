@@ -1,12 +1,12 @@
 /**
- * @fileoverview UI components in components/ui/ must be presentational only - no @cyberfabric/react imports
+ * @fileoverview UI components in components/ui/ must be presentational only - no @gears-frontx/react imports
  * @author FrontX Team
  */
 
 import type { Rule } from 'eslint';
 import type { ImportDeclaration } from 'estree';
 
-const BUSINESS_LOGIC_PACKAGES = ['@cyberfabric/react', '@cyberfabric/framework'];
+const BUSINESS_LOGIC_PACKAGES = ['@gears-frontx/react', '@gears-frontx/framework'];
 
 const rule: Rule.RuleModule = {
   meta: {
@@ -18,7 +18,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       noBusinessLogicImport:
-        'UI components in components/ui/ cannot import from @cyberfabric/react or @cyberfabric/framework (except types). ' +
+        'UI components in components/ui/ cannot import from @gears-frontx/react or @gears-frontx/framework (except types). ' +
         'UI components must be purely presentational (value/onChange pattern, no hooks). ' +
         'Move to screens/{screen}/components/ if business logic is needed.',
     },
@@ -41,7 +41,7 @@ const rule: Rule.RuleModule = {
         if (BUSINESS_LOGIC_PACKAGES.includes(importSource)) {
           const sourceText = context.getSourceCode().getText(node);
 
-          // Allow: import type { ... } from '@cyberfabric/react'
+          // Allow: import type { ... } from '@gears-frontx/react'
           if (sourceText.startsWith('import type')) {
             return;
           }

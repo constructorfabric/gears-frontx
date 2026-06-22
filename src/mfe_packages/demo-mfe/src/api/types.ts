@@ -3,10 +3,10 @@
  * Type definitions for accounts service endpoints
  *
  * MFE-local types (mirrored from host's src/app/api/types.ts).
- * The MFE bundles its own copy of @cyberfabric/react and cannot import from the host.
+ * The MFE bundles its own copy of @gears-frontx/react and cannot import from the host.
  */
 
-import type { Language } from '@cyberfabric/react';
+import type { Language } from '@gears-frontx/react';
 
 /**
  * User Extra Properties

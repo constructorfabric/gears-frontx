@@ -5,7 +5,7 @@
  * Defined here in framework to avoid circular dependencies between
  * framework/react/uicore packages.
  *
- * At runtime, these types are satisfied by @cyberfabric/framework slice implementations.
+ * At runtime, these types are satisfied by @gears-frontx/framework slice implementations.
  */
 // @cpt-dod:cpt-frontx-dod-framework-composition-layout:p1
 

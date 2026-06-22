@@ -440,13 +440,13 @@ ${userRules}
 // @cpt-end:cpt-frontx-algo-cli-tooling-generate-ai-config:p1:inst-generate-windsurf
 
 /**
- * Scan installed @cyberfabric packages for commands
+ * Scan installed @gears-frontx packages for commands
  */
 async function scanPackageCommands(
   projectRoot: string
 ): Promise<{ package: string; commandPath: string; name: string }[]> {
   const commands: { package: string; commandPath: string; name: string }[] = [];
-  const nodeModulesDir = path.join(projectRoot, 'node_modules', '@cyberfabric');
+  const nodeModulesDir = path.join(projectRoot, 'node_modules', '@gears-frontx');
 
   if (!(await fs.pathExists(nodeModulesDir))) {
     return commands;
@@ -465,7 +465,7 @@ async function scanPackageCommands(
       if (entry.name.startsWith('frontxdev-')) continue;
 
       commands.push({
-        package: `@cyberfabric/${pkg}`,
+        package: `@gears-frontx/${pkg}`,
         commandPath: path.join(commandsDir, entry.name),
         name: entry.name,
       });
@@ -639,7 +639,7 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
     {
       name: 'detect-packages',
       shortName: 'd',
-      description: 'Detect installed @cyberfabric packages and include their CLAUDE.md',
+      description: 'Detect installed @gears-frontx packages and include their CLAUDE.md',
       type: 'boolean',
       defaultValue: false,
     },
@@ -863,7 +863,7 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
 
     // Report detected packages
     if (detectPackages) {
-      const nodeModulesDir = path.join(projectRoot!, 'node_modules', '@cyberfabric');
+      const nodeModulesDir = path.join(projectRoot!, 'node_modules', '@gears-frontx');
       if (await fs.pathExists(nodeModulesDir)) {
         const packages = await fs.readdir(nodeModulesDir);
         const packageDocs: string[] = [];
@@ -871,13 +871,13 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
         for (const pkg of packages) {
           const claudeMdPath = path.join(nodeModulesDir, pkg, 'CLAUDE.md');
           if (await fs.pathExists(claudeMdPath)) {
-            packageDocs.push(`@cyberfabric/${pkg}`);
+            packageDocs.push(`@gears-frontx/${pkg}`);
           }
         }
 
         if (packageDocs.length > 0) {
           logger.newline();
-          logger.log(`Detected ${packageDocs.length} @cyberfabric packages with documentation:`);
+          logger.log(`Detected ${packageDocs.length} @gears-frontx packages with documentation:`);
           for (const pkg of packageDocs) {
             logger.log(`  • ${pkg}`);
           }

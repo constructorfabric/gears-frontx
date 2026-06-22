@@ -53,13 +53,13 @@ Problem: Without a shared event bus and store abstraction every package would im
 
 Primary value: A single, predictable channel for all cross-domain communication and a dynamically extensible store that any plugin or screenset can contribute slices to at runtime.
 
-Key assumptions: Consumers operate in a browser or Node.js ESM environment. Redux Toolkit is a peer dependency; no other `@cyberfabric/*` package is required.
+Key assumptions: Consumers operate in a browser or Node.js ESM environment. Redux Toolkit is a peer dependency; no other `@gears-frontx/*` package is required.
 
 ### 1.2 Purpose
 
 Provide the event bus, store factory, slice factory, and effect system that every higher FrontX layer depends on, without coupling to React, the framework, or any other SDK package.
 
-Success criteria: Any `@cyberfabric/state` consumer can emit and receive typed events, register slices dynamically, and wire effects — all with compile-time type safety and zero `@cyberfabric/*` transitive dependencies.
+Success criteria: Any `@gears-frontx/state` consumer can emit and receive typed events, register slices dynamically, and wire effects — all with compile-time type safety and zero `@gears-frontx/*` transitive dependencies.
 
 ### 1.3 Actors
 
@@ -89,10 +89,10 @@ Success criteria: Any `@cyberfabric/state` consumer can emit and receive typed e
 
 **Actors**: `cpt-frontx-actor-developer`
 
-**Pre-condition**: `@cyberfabric/state` is installed. The developer is authoring a screenset module.
+**Pre-condition**: `@gears-frontx/state` is installed. The developer is authoring a screenset module.
 
-1. [x] `p1` - Developer declares a `module '@cyberfabric/state'` block augmenting `EventPayloadMap` with screenset-specific event keys and payload shapes - `inst-augment-event-map`
-2. [x] `p1` - Developer declares a `module '@cyberfabric/state'` block augmenting `RootState` with screenset-specific slice key-to-state mappings - `inst-augment-root-state`
+1. [x] `p1` - Developer declares a `module '@gears-frontx/state'` block augmenting `EventPayloadMap` with screenset-specific event keys and payload shapes - `inst-augment-event-map`
+2. [x] `p1` - Developer declares a `module '@gears-frontx/state'` block augmenting `RootState` with screenset-specific slice key-to-state mappings - `inst-augment-root-state`
 3. [x] `p1` - TypeScript compiler merges the declarations into the base interfaces, making new event keys available to `eventBus.emit()` and `eventBus.on()` without explicit casting - `inst-ts-merge`
 4. [x] `p1` - Developer calls `eventBus.on('screenset/domain/eventName', handler)` with full payload type inference - `inst-subscribe-typed`
 5. [x] `p1` - RETURN subscription object containing `unsubscribe()` - `inst-return-subscription`
@@ -142,8 +142,8 @@ Success criteria: Any `@cyberfabric/state` consumer can emit and receive typed e
 
 1. [x] `p1` - Framework plugin calls `createStore(initialReducers)` with its static layout reducers - `inst-call-create-store`
 2. [x] `p1` - Runtime creates a Redux Toolkit store via `configureStore` using the combined static reducers - `inst-configure-rtk-store`
-3. [x] `p1` - Runtime wraps the RTK store in a typed `HAI3Store<RootState>` facade exposing `getState`, `dispatch`, `subscribe`, `replaceReducer` - `inst-wrap-store`
-4. [x] `p1` - RETURN `HAI3Store` instance to the framework plugin - `inst-return-store`
+3. [x] `p1` - Runtime wraps the RTK store in a typed `Gears FrontXStore<RootState>` facade exposing `getState`, `dispatch`, `subscribe`, `replaceReducer` - `inst-wrap-store`
+4. [x] `p1` - RETURN `Gears FrontXStore` instance to the framework plugin - `inst-return-store`
 5. [x] `p1` - Subsequent calls to `getStore()` by any module return the same instance without re-creation - `inst-get-store-singleton`
 
 ---
@@ -346,7 +346,7 @@ The `eventBus` singleton provides type-safe event emission and subscription. Emi
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-state-management-store-factory`
 
-`createStore(initialReducers)` produces a `HAI3Store<RootState>` wrapping a Redux Toolkit store configured with the provided static reducers. `getStore()` returns the same instance without re-creating it; if no instance exists it auto-creates an empty store. The `HAI3Store` facade exposes `getState`, `dispatch`, `subscribe`, and `replaceReducer`. Redux internals (`EnhancedStore`, `configureStore`, `combineReducers`) are not re-exported.
+`createStore(initialReducers)` produces a `Gears FrontXStore<RootState>` wrapping a Redux Toolkit store configured with the provided static reducers. `getStore()` returns the same instance without re-creating it; if no instance exists it auto-creates an empty store. The `Gears FrontXStore` facade exposes `getState`, `dispatch`, `subscribe`, and `replaceReducer`. Redux internals (`EnhancedStore`, `configureStore`, `combineReducers`) are not re-exported.
 
 **Implements**:
 - `cpt-frontx-flow-state-management-store-init`
@@ -435,7 +435,7 @@ The `eventBus` singleton provides type-safe event emission and subscription. Emi
 
 - [x] `p2` - **ID**: `cpt-frontx-dod-state-management-module-augmentation`
 
-`EventPayloadMap` and `RootState` are declared as empty TypeScript interfaces (not types) so consumers can extend them via `declare module '@cyberfabric/state'`. Augmented event keys are enforced at the call sites of `eventBus.emit()` and `eventBus.on()` — the compiler rejects unknown keys and mismatched payloads. Augmented `RootState` keys are available to `getStore().getState()` selectors with correct type inference.
+`EventPayloadMap` and `RootState` are declared as empty TypeScript interfaces (not types) so consumers can extend them via `declare module '@gears-frontx/state'`. Augmented event keys are enforced at the call sites of `eventBus.emit()` and `eventBus.on()` — the compiler rejects unknown keys and mismatched payloads. Augmented `RootState` keys are available to `getStore().getState()` selectors with correct type inference.
 
 **Implements**:
 - `cpt-frontx-flow-state-management-type-augmentation`
@@ -476,7 +476,7 @@ The `eventBus` singleton provides type-safe event emission and subscription. Emi
 
 - [x] `p2` - **ID**: `cpt-frontx-dod-state-management-flux-terminology`
 
-The public API of `@cyberfabric/state` uses FrontX Flux terminology exclusively. Types are named `ReducerPayload` (not `PayloadAction`), `EffectInitializer` (not middleware or thunk), `EventHandler` (not listener or observer), `Subscription` (not unsubscribe token). The terms `action creator`, `dispatch`, or any Redux Toolkit internal type are not part of the exported public surface. `ReducerPayload<T>` is a transparent alias for RTK's `PayloadAction<T>`; the alias is the only publicly exported name.
+The public API of `@gears-frontx/state` uses FrontX Flux terminology exclusively. Types are named `ReducerPayload` (not `PayloadAction`), `EffectInitializer` (not middleware or thunk), `EventHandler` (not listener or observer), `Subscription` (not unsubscribe token). The terms `action creator`, `dispatch`, or any Redux Toolkit internal type are not part of the exported public surface. `ReducerPayload<T>` is a transparent alias for RTK's `PayloadAction<T>`; the alias is the only publicly exported name.
 
 **Implements**:
 - `cpt-frontx-flow-state-management-flux-dataflow`
@@ -497,7 +497,7 @@ The public API of `@cyberfabric/state` uses FrontX Flux terminology exclusively.
 
 ## 6. Acceptance Criteria
 
-- [ ] `@cyberfabric/state` has no `@cyberfabric/*` entries in `dependencies` or `peerDependencies`; the only peer is `@reduxjs/toolkit`
+- [ ] `@gears-frontx/state` has no `@gears-frontx/*` entries in `dependencies` or `peerDependencies`; the only peer is `@reduxjs/toolkit`
 - [ ] `eventBus.emit(unknownKey, ...)` produces a TypeScript compile error when the key is not declared in `EventPayloadMap`
 - [ ] `eventBus.on(eventKey, handler)` infers the correct payload type from `EventPayloadMap` without explicit annotation
 - [ ] `registerSlice({ name: 'a/b/c', reducer })` throws at runtime with a message identifying the invalid format
@@ -505,5 +505,5 @@ The public API of `@cyberfabric/state` uses FrontX Flux terminology exclusively.
 - [ ] `createSlice(options)` returns `{ slice, ...reducerFunctions }` where `slice` has only `name` and `reducer`; no `.actions` property is present on the returned object
 - [ ] `resetStore()` followed by `getStore()` returns a fresh empty store with no previously registered slices
 - [ ] `unregisterSlice(name)` on an unregistered slice emits a console warning and does not throw
-- [ ] Redux internals (`combineReducers`, `configureStore`, `PayloadAction`, `EnhancedStore`) are not re-exported from `@cyberfabric/state`'s public index
+- [ ] Redux internals (`combineReducers`, `configureStore`, `PayloadAction`, `EnhancedStore`) are not re-exported from `@gears-frontx/state`'s public index
 - [ ] All source files in `packages/state/src/` compile under `tsc --noEmit` with `"strict": true`; no `any`, `@ts-ignore`, or `as unknown as` casts in production code

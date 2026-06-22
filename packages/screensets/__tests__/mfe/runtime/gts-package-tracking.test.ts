@@ -12,9 +12,9 @@ import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry'
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { ExtensionDomain, Extension, MfeEntry } from '../../../src/mfe/types';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
 import { MockDomainFactory } from '../../../__test-utils__';
 
@@ -24,55 +24,55 @@ describe('GTS Package Tracking - Phase 39.6', () => {
   let typeSystem: GtsPlugin;
 
   const testDomain: ExtensionDomain = {
-    id: 'gts.hai3.mfes.ext.domain.v1~test.package.tracking.domain.v1',
+    id: 'gts.frontx.mfes.ext.domain.v1~test.package.tracking.domain.v1',
     sharedProperties: [],
     actions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
     lifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
     extensionsLifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
   };
 
   const testEntry: MfeEntry = {
-    id: 'gts.hai3.mfes.mfe.entry.v1~test.package.tracking.entry.v1',
+    id: 'gts.frontx.mfes.mfe.entry.v1~test.package.tracking.entry.v1',
     requiredProperties: [],
     optionalProperties: [],
     actions: [],
     domainActions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
   };
 
-  // Extensions from hai3.demo package
+  // Extensions from frontx.demo package
   const demoExtension1: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~hai3.demo.screens.ext1.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~frontx.demo.screens.ext1.v1',
     domain: testDomain.id,
     entry: testEntry.id,
   };
 
   const demoExtension2: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~hai3.demo.screens.ext2.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~frontx.demo.screens.ext2.v1',
     domain: testDomain.id,
     entry: testEntry.id,
   };
 
-  // Extension from hai3.other package
+  // Extension from frontx.other package
   const otherExtension: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~hai3.other.screens.ext1.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~frontx.other.screens.ext1.v1',
     domain: testDomain.id,
     entry: testEntry.id,
   };
@@ -95,15 +95,15 @@ describe('GTS Package Tracking - Phase 39.6', () => {
       expect(packages).toEqual([]);
     });
 
-    it('39.6.6 should return package when extension with hai3.demo is registered', async () => {
+    it('39.6.6 should return package when extension with frontx.demo is registered', async () => {
       // Register domain first
       registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
-      // Register extension from hai3.demo
+      // Register extension from frontx.demo
       await registry.registerExtension(demoExtension1);
 
       const packages = registry.getRegisteredPackages();
-      expect(packages).toEqual(['hai3.demo']);
+      expect(packages).toEqual(['frontx.demo']);
     });
 
     it('39.6.7 should return both packages when extensions from different packages are registered', async () => {
@@ -115,7 +115,7 @@ describe('GTS Package Tracking - Phase 39.6', () => {
       await registry.registerExtension(otherExtension);
 
       const packages = registry.getRegisteredPackages();
-      expect(packages).toEqual(['hai3.demo', 'hai3.other']);
+      expect(packages).toEqual(['frontx.demo', 'frontx.other']);
     });
 
     it('39.6.8 should return only one entry when 2 extensions from SAME package are registered (deduplication)', async () => {
@@ -127,7 +127,7 @@ describe('GTS Package Tracking - Phase 39.6', () => {
       await registry.registerExtension(demoExtension2);
 
       const packages = registry.getRegisteredPackages();
-      expect(packages).toEqual(['hai3.demo']);
+      expect(packages).toEqual(['frontx.demo']);
       expect(packages.length).toBe(1);
     });
   });
@@ -142,12 +142,12 @@ describe('GTS Package Tracking - Phase 39.6', () => {
       await registry.registerExtension(demoExtension2);
       await registry.registerExtension(otherExtension);
 
-      const demoExtensions = registry.getExtensionsForPackage('hai3.demo');
+      const demoExtensions = registry.getExtensionsForPackage('frontx.demo');
       expect(demoExtensions).toHaveLength(2);
       expect(demoExtensions.map(e => e.id)).toContain(demoExtension1.id);
       expect(demoExtensions.map(e => e.id)).toContain(demoExtension2.id);
 
-      const otherExtensions = registry.getExtensionsForPackage('hai3.other');
+      const otherExtensions = registry.getExtensionsForPackage('frontx.other');
       expect(otherExtensions).toHaveLength(1);
       expect(otherExtensions[0].id).toBe(otherExtension.id);
     });
@@ -156,11 +156,11 @@ describe('GTS Package Tracking - Phase 39.6', () => {
       // Register domain first
       registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
-      // Register extension from hai3.demo
+      // Register extension from frontx.demo
       await registry.registerExtension(demoExtension1);
 
       // Query for a package that has no extensions
-      const extensions = registry.getExtensionsForPackage('hai3.unknown');
+      const extensions = registry.getExtensionsForPackage('frontx.unknown');
       expect(extensions).toEqual([]);
     });
   });
@@ -176,23 +176,23 @@ describe('GTS Package Tracking - Phase 39.6', () => {
       await registry.registerExtension(otherExtension);
 
       // Verify initial state
-      expect(registry.getRegisteredPackages()).toEqual(['hai3.demo', 'hai3.other']);
-      expect(registry.getExtensionsForPackage('hai3.demo')).toHaveLength(2);
+      expect(registry.getRegisteredPackages()).toEqual(['frontx.demo', 'frontx.other']);
+      expect(registry.getExtensionsForPackage('frontx.demo')).toHaveLength(2);
 
-      // Unregister one extension from hai3.demo
+      // Unregister one extension from frontx.demo
       await registry.unregisterExtension(demoExtension1.id);
 
       // Package should still exist with 1 extension
-      expect(registry.getRegisteredPackages()).toEqual(['hai3.demo', 'hai3.other']);
-      expect(registry.getExtensionsForPackage('hai3.demo')).toHaveLength(1);
-      expect(registry.getExtensionsForPackage('hai3.demo')[0].id).toBe(demoExtension2.id);
+      expect(registry.getRegisteredPackages()).toEqual(['frontx.demo', 'frontx.other']);
+      expect(registry.getExtensionsForPackage('frontx.demo')).toHaveLength(1);
+      expect(registry.getExtensionsForPackage('frontx.demo')[0].id).toBe(demoExtension2.id);
 
-      // Unregister last extension from hai3.demo
+      // Unregister last extension from frontx.demo
       await registry.unregisterExtension(demoExtension2.id);
 
       // Package should be removed
-      expect(registry.getRegisteredPackages()).toEqual(['hai3.other']);
-      expect(registry.getExtensionsForPackage('hai3.demo')).toEqual([]);
+      expect(registry.getRegisteredPackages()).toEqual(['frontx.other']);
+      expect(registry.getExtensionsForPackage('frontx.demo')).toEqual([]);
     });
   });
 
@@ -206,7 +206,7 @@ describe('GTS Package Tracking - Phase 39.6', () => {
       await registry.registerExtension(otherExtension);
 
       // Verify packages are tracked
-      expect(registry.getRegisteredPackages()).toEqual(['hai3.demo', 'hai3.other']);
+      expect(registry.getRegisteredPackages()).toEqual(['frontx.demo', 'frontx.other']);
 
       // Dispose registry
       registry.dispose();

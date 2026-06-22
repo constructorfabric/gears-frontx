@@ -11,7 +11,7 @@ const {
   invalidateQueryCacheForApp: vi.fn(),
 }));
 
-vi.mock('@cyberfabric/react', () => ({
+vi.mock('@gears-frontx/react', () => ({
   apiRegistry: {
     getService,
   },

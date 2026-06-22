@@ -31,7 +31,7 @@ import { useMfeContext } from '../MfeContext';
  * @example
  * ```tsx
  * function MyMfeComponent() {
- *   const userData = useSharedProperty('gts.hai3.mfes.comm.shared_property.v1~myapp.user_data.v1');
+ *   const userData = useSharedProperty('gts.frontx.mfes.comm.shared_property.v1~myapp.user_data.v1');
  *
  *   return <div>User: {userData?.name}</div>;
  * }

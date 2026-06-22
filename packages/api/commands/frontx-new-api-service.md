@@ -39,8 +39,8 @@
 - REQUIRED: Register with apiRegistry.register(ServiceClass).
 - REQUIRED: Define TypeScript interfaces for all requests/responses.
 - FORBIDDEN: String domain constants for registration.
-- FORBIDDEN: Framework dependencies (@cyberfabric/framework, @cyberfabric/state).
-- FORBIDDEN: React dependencies (@cyberfabric/react).
+- FORBIDDEN: Framework dependencies (@gears-frontx/framework, @gears-frontx/state).
+- FORBIDDEN: React dependencies (@gears-frontx/react).
 - FORBIDDEN: Event system integration (eventBus).
 - FORBIDDEN: Store/slice references.
 - SDK LAYER: Pure data layer only.

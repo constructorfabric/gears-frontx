@@ -40,7 +40,7 @@ REQUIRED: All checks must pass.
 ## COMMON FIXES
 - Direct dispatch: BAD dispatch(setMenuItems(items)) -> GOOD navigateToScreen(screenId)
 - Hardcoded colors: BAD style with inline color -> GOOD className="text-primary"
-- Import violations: BAD import from '@cyberfabric/react/src/Foo' -> GOOD import from '@cyberfabric/react'
+- Import violations: BAD import from '@gears-frontx/react/src/Foo' -> GOOD import from '@gears-frontx/react'
 - String literals: BAD screenId: 'dashboard' -> GOOD export const DASHBOARD_SCREEN_ID = 'dashboard'
 - Inline component: Extract to screens/screen/components/ per SCREENSETS.md
 - Inline style: BAD style with inline padding -> GOOD className="p-2" (except in components/ui/)

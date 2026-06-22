@@ -1,5 +1,5 @@
 /**
- * MFE Module - MFE context and hooks for @cyberfabric/react
+ * MFE Module - MFE context and hooks for @gears-frontx/react
  *
  * Provides React integration for MFE components.
  */

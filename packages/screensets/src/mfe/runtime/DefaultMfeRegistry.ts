@@ -46,7 +46,7 @@ import { OperationSerializer } from './operation-serializer';
 import { RuntimeBridgeFactory } from './runtime-bridge-factory';
 import { DefaultRuntimeBridgeFactory } from './default-runtime-bridge-factory';
 import { LoadExtHandler } from './extension-lifecycle-action-handler';
-import { HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT } from '../constants';
+import { FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT } from '../constants';
 import { EntryTypeNotHandledError } from '../errors';
 import { extractGtsPackage } from '../gts/extract-package';
 import type { ExtensionDomainImplementationFactory } from './ExtensionDomainImplementationFactory';
@@ -312,7 +312,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
     // Step 3: Build DomainContext and pre-populate LoadExtHandler.
     const ctx = new InvalidatableDomainContext(mounter, lifecycleTrigger);
     ctx.prepopulateHandler(
-      HAI3_ACTION_LOAD_EXT,
+      FRONTX_ACTION_LOAD_EXT,
       new LoadExtHandler(this.operationSerializer, this.mountManager)
     );
 
@@ -359,7 +359,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
     // Step 8: Fire-and-forget 'init' lifecycle stage (errors logged to console.error).
     this.triggerDomainOwnLifecycleStageInternal(
       declaration.id,
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1'
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1'
     ).catch(error => {
       console.error('[DefaultMfeRegistry] Domain init error:', error, { domainId: declaration.id });
     });
@@ -418,21 +418,21 @@ export class DefaultMfeRegistry extends MfeRegistry {
     const declaredActions = declaration.actions;
 
     // Enforce REQUIRED actions in declaration.
-    if (requireMount && !declaredActions.includes(HAI3_ACTION_MOUNT_EXT)) {
+    if (requireMount && !declaredActions.includes(FRONTX_ACTION_MOUNT_EXT)) {
       throw new Error(
-        `Domain '${declaration.id}': ${strategyName} requires '${HAI3_ACTION_MOUNT_EXT}' in declaration.actions.`
+        `Domain '${declaration.id}': ${strategyName} requires '${FRONTX_ACTION_MOUNT_EXT}' in declaration.actions.`
       );
     }
-    if (requireUnmount && !declaredActions.includes(HAI3_ACTION_UNMOUNT_EXT)) {
+    if (requireUnmount && !declaredActions.includes(FRONTX_ACTION_UNMOUNT_EXT)) {
       throw new Error(
-        `Domain '${declaration.id}': ${strategyName} requires '${HAI3_ACTION_UNMOUNT_EXT}' in declaration.actions.`
+        `Domain '${declaration.id}': ${strategyName} requires '${FRONTX_ACTION_UNMOUNT_EXT}' in declaration.actions.`
       );
     }
 
     // Enforce FORBIDDEN actions in declaration.
-    if (forbidUnmount && declaredActions.includes(HAI3_ACTION_UNMOUNT_EXT)) {
+    if (forbidUnmount && declaredActions.includes(FRONTX_ACTION_UNMOUNT_EXT)) {
       throw new Error(
-        `Domain '${declaration.id}': ${strategyName} forbids '${HAI3_ACTION_UNMOUNT_EXT}' in declaration.actions.`
+        `Domain '${declaration.id}': ${strategyName} forbids '${FRONTX_ACTION_UNMOUNT_EXT}' in declaration.actions.`
       );
     }
 
@@ -450,7 +450,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
     // Every handler registered via ctx.registerHandler must be in
     // declaration.actions. Per the spec (inst-enforce-no-extra-handlers), this
     // check is scoped to handlers REGISTERED by the factory, not handlers
-    // PREPOPULATED by the registry itself (e.g., HAI3_ACTION_LOAD_EXT supplied
+    // PREPOPULATED by the registry itself (e.g., FRONTX_ACTION_LOAD_EXT supplied
     // by LoadExtHandler injection). The registry-supplied handlers are infrastructure
     // and need not appear in declaration.actions for every domain.
     const prepopulated = ctx.getPrepopulatedActionTypes();

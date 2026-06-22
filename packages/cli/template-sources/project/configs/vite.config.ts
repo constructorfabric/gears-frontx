@@ -54,7 +54,7 @@ export default defineConfig({
           }
 
           // Split framework and react packages into separate chunk
-          if (id.includes('@cyberfabric/framework') || id.includes('@cyberfabric/react')) {
+          if (id.includes('@gears-frontx/framework') || id.includes('@gears-frontx/react')) {
             return 'frontx-core';
           }
         },

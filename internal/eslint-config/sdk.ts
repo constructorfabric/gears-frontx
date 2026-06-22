@@ -1,9 +1,9 @@
 /**
  * FrontX ESLint SDK Configuration (L1)
- * Rules for SDK packages: @cyberfabric/state, @cyberfabric/layout, @cyberfabric/api, @cyberfabric/i18n
+ * Rules for SDK packages: @gears-frontx/state, @gears-frontx/layout, @gears-frontx/api, @gears-frontx/i18n
  *
  * SDK packages MUST have:
- * - ZERO @cyberfabric/* dependencies (complete isolation)
+ * - ZERO @gears-frontx/* dependencies (complete isolation)
  * - NO React dependencies (framework-agnostic)
  */
 
@@ -22,8 +22,8 @@ export const sdkConfig: ConfigArray = [
         {
           patterns: [
             {
-              group: ['@cyberfabric/*'],
-              message: 'SDK VIOLATION: SDK packages cannot import other @cyberfabric packages. SDK packages must have ZERO @cyberfabric dependencies.',
+              group: ['@gears-frontx/*'],
+              message: 'SDK VIOLATION: SDK packages cannot import other @gears-frontx packages. SDK packages must have ZERO @gears-frontx dependencies.',
             },
             {
               group: ['react', 'react-dom', 'react/*'],

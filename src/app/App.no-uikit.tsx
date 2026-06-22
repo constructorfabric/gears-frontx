@@ -7,7 +7,7 @@
  */
 
 import { Layout } from '@/app/layout';
-import { StudioOverlay } from '@cyberfabric/studio';
+import { StudioOverlay } from '@gears-frontx/studio';
 import { MfeScreenContainer } from '@/app/mfe/MfeScreenContainer';
 
 function App() {

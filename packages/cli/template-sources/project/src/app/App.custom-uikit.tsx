@@ -7,9 +7,9 @@
  */
 
 import { useEffect } from 'react';
-import { useTheme } from '@cyberfabric/react';
+import { useTheme } from '@gears-frontx/react';
 import { Layout } from '@/app/layout';
-import { StudioOverlay } from '@cyberfabric/studio';
+import { StudioOverlay } from '@gears-frontx/studio';
 import { MfeScreenContainer } from '@/app/mfe/MfeScreenContainer';
 __LIBRARY_SYNC_IMPORT__
 

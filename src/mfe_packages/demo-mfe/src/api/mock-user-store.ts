@@ -2,7 +2,7 @@
  * Runtime mock state consumed by `mocks.ts` and shipped with the service bundle.
  * Keep reusable test fixtures and reset helpers in `__test-utils__/`.
  */
-import { Language } from '@cyberfabric/react';
+import { Language } from '@gears-frontx/react';
 import { UserRole, type ApiUser } from './types';
 
 export const createDefaultAccountsMockUser = (): ApiUser => ({

@@ -11,7 +11,7 @@
  *
  * NOTE: Tests that verify enum-level constraints (e.g. "dark" is valid, "neon" is invalid)
  * require application-specific derived schemas (theme.v1, language.v1). Those schemas
- * live in @cyberfabric/framework and are tested in framework/property-validation tests.
+ * live in @gears-frontx/framework and are tested in framework/property-validation tests.
  *
  * This file uses a simple inline-registered test schema to keep the structural
  * tests self-contained and free of L1→L2 dependencies.
@@ -22,7 +22,7 @@ import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry'
 import { GtsPlugin } from '../../../src/mfe/plugins/gts/index';
 import type { JSONSchema } from '../../../src/mfe/plugins/types';
 import type { ExtensionDomain } from '../../../src/mfe/types';
-import { HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
+import { FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT } from '../../../src/mfe/constants';
 import { MockDomainFactory } from '../../../__test-utils__';
 
 /**
@@ -30,11 +30,11 @@ import { MockDomainFactory } from '../../../__test-utils__';
  * Only permits "allowed-value" — used to verify the structural mechanics
  * of updateSharedProperty without requiring the application-layer derived schemas.
  */
-const TEST_PROPERTY_TYPE_ID = 'gts.hai3.mfes.comm.shared_property.v1~hai3.test.prop.color.v1~';
+const TEST_PROPERTY_TYPE_ID = 'gts.frontx.mfes.comm.shared_property.v1~frontx.test.prop.color.v1~';
 const testPropertySchema: JSONSchema = {
   $id: `gts://${TEST_PROPERTY_TYPE_ID}`,
   $schema: 'https://json-schema.org/draft/2020-12/schema',
-  allOf: [{ $ref: 'gts://gts.hai3.mfes.comm.shared_property.v1~' }],
+  allOf: [{ $ref: 'gts://gts.frontx.mfes.comm.shared_property.v1~' }],
   properties: {
     value: { type: 'string', enum: ['allowed-value', 'other-allowed'] },
   },
@@ -46,12 +46,12 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
   let testDomain: ExtensionDomain;
   let mockContainerProvider: MockDomainFactory;
 
-  const DOMAIN_ID = 'gts.hai3.mfes.ext.domain.v1~hai3.test.validation.slot.v1';
+  const DOMAIN_ID = 'gts.frontx.mfes.ext.domain.v1~frontx.test.validation.slot.v1';
 
   beforeEach(() => {
     gtsPlugin = new GtsPlugin();
     // Register a simple inline test schema so updateSharedProperty can validate
-    // without requiring the application-layer derived schemas from @cyberfabric/framework.
+    // without requiring the application-layer derived schemas from @gears-frontx/framework.
     gtsPlugin.registerSchema(testPropertySchema);
 
     registry = new DefaultMfeRegistry({ typeSystem: gtsPlugin });
@@ -60,14 +60,14 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
     testDomain = {
       id: DOMAIN_ID,
       sharedProperties: [TEST_PROPERTY_TYPE_ID],
-      actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+      actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
       extensionsActions: [],
       defaultActionTimeout: 5000,
       lifecycleStages: [
-        'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+        'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
       ],
       extensionsLifecycleStages: [
-        'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+        'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
       ],
     };
 
@@ -98,7 +98,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
       // - NO type field
       expect(registerSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: `${TEST_PROPERTY_TYPE_ID}hai3.mfes.comm.runtime.v1`,
+          id: `${TEST_PROPERTY_TYPE_ID}frontx.mfes.comm.runtime.v1`,
           value: 'allowed-value',
         })
       );
@@ -116,8 +116,8 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
       registry.updateSharedProperty(TEST_PROPERTY_TYPE_ID, 'allowed-value');
 
       const callArg = registerSpy.mock.calls[0]?.[0] as Record<string, unknown>;
-      // The id must use the named instance suffix "hai3.mfes.comm.runtime.v1"
-      expect(String(callArg.id)).toContain('hai3.mfes.comm.runtime.v1');
+      // The id must use the named instance suffix "frontx.mfes.comm.runtime.v1"
+      expect(String(callArg.id)).toContain('frontx.mfes.comm.runtime.v1');
       // The id must NOT use the old anonymous instance suffix "__runtime"
       expect(String(callArg.id)).not.toMatch(/__runtime$/);
 
@@ -127,16 +127,16 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
     it('validation is performed once per call even with multiple declaring domains', () => {
       // Register a second domain that also declares the property
       const domain2: ExtensionDomain = {
-        id: 'gts.hai3.mfes.ext.domain.v1~hai3.test.validation2.slot.v1',
+        id: 'gts.frontx.mfes.ext.domain.v1~frontx.test.validation2.slot.v1',
         sharedProperties: [TEST_PROPERTY_TYPE_ID],
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         ],
         extensionsLifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         ],
       };
       registry.registerDomain(domain2, mockContainerProvider.prepareForDomain(domain2));
@@ -152,7 +152,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
           typeof entity === 'object' &&
           entity !== null &&
           'id' in entity &&
-          String((entity as { id: unknown }).id).includes('hai3.mfes.comm.runtime.v1')
+          String((entity as { id: unknown }).id).includes('frontx.mfes.comm.runtime.v1')
       );
       expect(ephemeralRegisterCalls).toHaveLength(1);
 

@@ -40,12 +40,12 @@ gts.<vendor>.<package>.<namespace>.<type>.v<MAJOR>[.<MINOR>]~
 
 **Schema IDs** end with `~`:
 ```
-gts.hai3.mfes.mfe.entry.v1~
+gts.frontx.mfes.mfe.entry.v1~
 ```
 
 **Instance IDs** do NOT end with `~`:
 ```
-gts.hai3.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1
+gts.frontx.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1
 ```
 
 ### Contract Matching
@@ -61,7 +61,7 @@ For an MFE to mount in a domain, three rules must ALL be true:
 ### 1. Install Dependencies
 
 ```bash
-npm install @cyberfabric/screensets @globaltypesystem/gts-ts
+npm install @gears-frontx/screensets @globaltypesystem/gts-ts
 ```
 
 ### 2. Import Core Types
@@ -76,8 +76,8 @@ import type {
   Action,
   ActionsChain,
   ChildMfeBridge,
-} from '@cyberfabric/screensets';
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+} from '@gears-frontx/screensets';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 ```
 
 ### 3. Understand the Entry Type Hierarchy
@@ -93,30 +93,30 @@ MfeEntry (abstract base)
 ### Basic MFE Entry (Pure Contract)
 
 ```typescript
-import type { MfeEntry } from '@cyberfabric/screensets';
+import type { MfeEntry } from '@gears-frontx/screensets';
 
 const myEntry: MfeEntry = {
   // Instance ID (does NOT end with ~)
-  id: 'gts.hai3.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1',
+  id: 'gts.frontx.mfes.mfe.entry.v1~acme.analytics.mfe.chart.v1',
 
   // Properties this MFE requires from the domain
   requiredProperties: [
-    'gts.hai3.mfes.comm.shared_property.v1~acme.analytics.theme.v1',
+    'gts.frontx.mfes.comm.shared_property.v1~acme.analytics.theme.v1',
   ],
 
   // Properties this MFE optionally uses
   optionalProperties: [
-    'gts.hai3.mfes.comm.shared_property.v1~acme.analytics.user_context.v1',
+    'gts.frontx.mfes.comm.shared_property.v1~acme.analytics.user_context.v1',
   ],
 
   // Actions this MFE can send to the domain
   actions: [
-    'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.data_ready.v1',
+    'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.data_ready.v1',
   ],
 
   // Actions this MFE can receive from the domain
   domainActions: [
-    'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.refresh.v1',
+    'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.refresh.v1',
   ],
 };
 ```
@@ -126,13 +126,13 @@ const myEntry: MfeEntry = {
 For Module Federation deployments, use `MfeEntryMF` which extends `MfeEntry` with manifest info:
 
 ```typescript
-import type { MfeEntryMF, MfManifest } from '@cyberfabric/screensets';
+import type { MfeEntryMF, MfManifest } from '@gears-frontx/screensets';
 
 // Define the manifest (can be inline or referenced)
 // MfManifest is enriched at build time by the frontx-mf-gts plugin.
 // Shared deps are derived automatically from rollupOptions.external.
 const manifest: MfManifest = {
-  id: 'gts.hai3.mfes.mfe.mf_manifest.v1~acme.analytics.manifest.v1',
+  id: 'gts.frontx.mfes.mfe.mf_manifest.v1~acme.analytics.manifest.v1',
   name: 'analyticsWidget',
   metaData: {
     name: 'analyticsWidget',
@@ -150,7 +150,7 @@ const manifest: MfManifest = {
 
 const mfEntry: MfeEntryMF = {
   // All fields from MfeEntry
-  id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
+  id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
   requiredProperties: [...],
   optionalProperties: [...],
   actions: [...],
@@ -167,26 +167,26 @@ const mfEntry: MfeEntryMF = {
 An Extension binds an MFE Entry to a Domain:
 
 ```typescript
-import type { Extension } from '@cyberfabric/screensets';
+import type { Extension } from '@gears-frontx/screensets';
 
 const myExtension: Extension = {
   // Instance ID (does NOT end with ~)
-  id: 'gts.hai3.mfes.ext.extension.v1~acme.analytics.extension.v1',
+  id: 'gts.frontx.mfes.ext.extension.v1~acme.analytics.extension.v1',
 
   // Domain this extension mounts in
-  domain: 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1',
+  domain: 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1',
 
   // Entry that defines the MFE contract
-  entry: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
+  entry: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
 
   // Optional: Lifecycle hooks
   lifecycle: [
     {
-      stage: 'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+      stage: 'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
       actions_chain: {
         action: {
-          type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.load_data.v1',
-          target: 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1',
+          type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.load_data.v1',
+          target: 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1',
         },
       },
     },
@@ -201,10 +201,10 @@ If the domain specifies `extensionsTypeId`, you must use a derived Extension typ
 ```typescript
 // First, register the derived Extension schema
 const widgetExtensionSchema = {
-  "$id": "gts://gts.hai3.mfes.ext.extension.v1~acme.dashboard.ext.widget_extension.v1~",
+  "$id": "gts://gts.frontx.mfes.ext.extension.v1~acme.dashboard.ext.widget_extension.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "allOf": [
-    { "$ref": "gts://gts.hai3.mfes.ext.extension.v1~" }
+    { "$ref": "gts://gts.frontx.mfes.ext.extension.v1~" }
   ],
   "properties": {
     "title": { "type": "string" },
@@ -218,9 +218,9 @@ gtsPlugin.registerSchema(widgetExtensionSchema);
 
 // Then create extensions with domain-specific fields
 const widgetExtension: Extension = {
-  id: 'gts.hai3.mfes.ext.extension.v1~acme.dashboard.ext.widget_extension.v1~acme.analytics.v1',
-  domain: 'gts.hai3.mfes.ext.domain.v1~acme.dashboard.layout.widget_slot.v1',
-  entry: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
+  id: 'gts.frontx.mfes.ext.extension.v1~acme.dashboard.ext.widget_extension.v1~acme.analytics.v1',
+  domain: 'gts.frontx.mfes.ext.domain.v1~acme.dashboard.layout.widget_slot.v1',
+  entry: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
 
   // Domain-specific fields (defined in derived schema)
   title: 'Analytics Dashboard',
@@ -238,10 +238,10 @@ Actions use a derived Action type with vendor-specific payload schema:
 ```typescript
 // Define the action schema
 const dataUpdatedSchema = {
-  "$id": "gts://gts.hai3.mfes.comm.action.v1~acme.analytics.comm.data_updated.v1~",
+  "$id": "gts://gts.frontx.mfes.comm.action.v1~acme.analytics.comm.data_updated.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "allOf": [
-    { "$ref": "gts://gts.hai3.mfes.comm.action.v1~" }
+    { "$ref": "gts://gts.frontx.mfes.comm.action.v1~" }
   ],
   "properties": {
     "payload": {
@@ -264,8 +264,8 @@ gtsPlugin.registerSchema(dataUpdatedSchema);
 
 // Create action instances
 const action: Action = {
-  type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.data_updated.v1',
-  target: 'gts.hai3.mfes.ext.extension.v1~acme.dashboard.extension.v1',
+  type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.data_updated.v1',
+  target: 'gts.frontx.mfes.ext.extension.v1~acme.dashboard.extension.v1',
   payload: {
     datasetId: 'sales-q4',
     metrics: ['revenue', 'conversions'],
@@ -281,24 +281,24 @@ const action: Action = {
 Actions can be chained with success (`next`) and failure (`fallback`) paths:
 
 ```typescript
-import type { ActionsChain } from '@cyberfabric/screensets';
+import type { ActionsChain } from '@gears-frontx/screensets';
 
 const chain: ActionsChain = {
   action: {
-    type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.fetch_data.v1',
+    type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.fetch_data.v1',
     target: extensionId,
   },
   next: {
     // Execute on success
     action: {
-      type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.render_chart.v1',
+      type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.render_chart.v1',
       target: extensionId,
     },
   },
   fallback: {
     // Execute on failure (including timeout)
     action: {
-      type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.show_error.v1',
+      type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.show_error.v1',
       target: extensionId,
     },
   },
@@ -310,13 +310,13 @@ const chain: ActionsChain = {
 MFEs receive a `ChildMfeBridge` for communicating with the host:
 
 ```typescript
-import type { ChildMfeBridge, MfeEntryLifecycle } from '@cyberfabric/screensets';
+import type { ChildMfeBridge, MfeEntryLifecycle } from '@gears-frontx/screensets';
 
 export const ChartWidget: MfeEntryLifecycle = {
   async mount(container: Element, bridge: ChildMfeBridge) {
     // Subscribe to shared properties
     bridge.subscribeToProperty(
-      'gts.hai3.mfes.comm.shared_property.v1~acme.analytics.theme.v1',
+      'gts.frontx.mfes.comm.shared_property.v1~acme.analytics.theme.v1',
       (property) => {
         console.log('Theme updated:', property.value);
       }
@@ -324,13 +324,13 @@ export const ChartWidget: MfeEntryLifecycle = {
 
     // Get property synchronously
     const theme = bridge.getProperty(
-      'gts.hai3.mfes.comm.shared_property.v1~acme.analytics.theme.v1'
+      'gts.frontx.mfes.comm.shared_property.v1~acme.analytics.theme.v1'
     );
 
     // Send action chain to domain
     await bridge.sendActionsChain({
       action: {
-        type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.data_ready.v1',
+        type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.data_ready.v1',
         target: bridge.domainId,
         payload: { status: 'loaded' },
       },
@@ -352,16 +352,16 @@ export const ChartWidget: MfeEntryLifecycle = {
 
 FrontX provides 4 default lifecycle stages:
 
-1. **init** - `gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1`
+1. **init** - `gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1`
    - Triggered: After extension registration
 
-2. **activated** - `gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1`
+2. **activated** - `gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1`
    - Triggered: After mount to DOM
 
-3. **deactivated** - `gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1`
+3. **deactivated** - `gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1`
    - Triggered: After unmount from DOM
 
-4. **destroyed** - `gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1`
+4. **destroyed** - `gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1`
    - Triggered: Before unregistration
 
 ### Defining Custom Lifecycle Stages
@@ -370,16 +370,16 @@ Domains can define custom stages:
 
 ```typescript
 const customDomain: ExtensionDomain = {
-  id: 'gts.hai3.mfes.ext.domain.v1~acme.dashboard.layout.widget_slot.v1',
+  id: 'gts.frontx.mfes.ext.domain.v1~acme.dashboard.layout.widget_slot.v1',
   // ... other fields
   extensionsLifecycleStages: [
     // Default stages
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     // Custom stage
-    'gts.hai3.mfes.lifecycle.stage.v1~acme.dashboard.lifecycle.refresh.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~acme.dashboard.lifecycle.refresh.v1',
   ],
 };
 ```
@@ -388,26 +388,26 @@ const customDomain: ExtensionDomain = {
 
 ```typescript
 const extensionWithHooks: Extension = {
-  id: 'gts.hai3.mfes.ext.extension.v1~acme.analytics.extension.v1',
-  domain: 'gts.hai3.mfes.ext.domain.v1~acme.dashboard.layout.widget_slot.v1',
-  entry: 'gts.hai3.mfes.mfe.entry.v1~acme.analytics.entry.v1',
+  id: 'gts.frontx.mfes.ext.extension.v1~acme.analytics.extension.v1',
+  domain: 'gts.frontx.mfes.ext.domain.v1~acme.dashboard.layout.widget_slot.v1',
+  entry: 'gts.frontx.mfes.mfe.entry.v1~acme.analytics.entry.v1',
 
   lifecycle: [
     {
-      stage: 'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+      stage: 'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
       actions_chain: {
         action: {
-          type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.initialize.v1',
-          target: 'gts.hai3.mfes.ext.extension.v1~acme.analytics.extension.v1',
+          type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.initialize.v1',
+          target: 'gts.frontx.mfes.ext.extension.v1~acme.analytics.extension.v1',
         },
       },
     },
     {
-      stage: 'gts.hai3.mfes.lifecycle.stage.v1~acme.dashboard.lifecycle.refresh.v1',
+      stage: 'gts.frontx.mfes.lifecycle.stage.v1~acme.dashboard.lifecycle.refresh.v1',
       actions_chain: {
         action: {
-          type: 'gts.hai3.mfes.comm.action.v1~acme.analytics.comm.reload_data.v1',
-          target: 'gts.hai3.mfes.ext.extension.v1~acme.analytics.extension.v1',
+          type: 'gts.frontx.mfes.comm.action.v1~acme.analytics.comm.reload_data.v1',
+          target: 'gts.frontx.mfes.ext.extension.v1~acme.analytics.extension.v1',
         },
       },
     },
@@ -420,7 +420,7 @@ const extensionWithHooks: Extension = {
 Extensions can be registered at any time during runtime:
 
 ```typescript
-import { ContainerProvider } from '@cyberfabric/screensets';
+import { ContainerProvider } from '@gears-frontx/screensets';
 
 // Define a ContainerProvider for your domain
 class WidgetContainerProvider extends ContainerProvider {
@@ -447,7 +447,7 @@ await runtime.registerExtension(myExtension);
 // Mount via actions chain (auto-loads if needed, container from provider)
 await runtime.executeActionsChain({
   action: {
-    type: HAI3_ACTION_MOUNT_EXT,
+    type: Gears FrontX_ACTION_MOUNT_EXT,
     target: myExtension.domain,
     payload: { extensionId: myExtension.id },
   },
@@ -459,7 +459,7 @@ const bridge = runtime.getParentBridge(myExtension.id);
 // Later: unmount via actions chain (keeps extension registered and bundle loaded)
 await runtime.executeActionsChain({
   action: {
-    type: HAI3_ACTION_UNMOUNT_EXT,
+    type: Gears FrontX_ACTION_UNMOUNT_EXT,
     target: myExtension.domain,
     payload: { extensionId: myExtension.id },
   },
@@ -513,7 +513,7 @@ Implement this class to control where extensions mount in your application.
 
 ### 4. Performance
 
-- Use `executeActionsChain()` with `HAI3_ACTION_LOAD_EXT` for hover-to-load UX
+- Use `executeActionsChain()` with `Gears FrontX_ACTION_LOAD_EXT` for hover-to-load UX
 - Minimize shared dependency versions for better code sharing
 - Keep MFE bundles small (lazy load heavy dependencies)
 

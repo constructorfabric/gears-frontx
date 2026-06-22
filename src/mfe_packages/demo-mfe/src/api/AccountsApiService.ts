@@ -2,7 +2,7 @@
  * Accounts Domain - API Service
  * Service for accounts domain (users, tenants, authentication, permissions)
  *
- * MFE-local service. The MFE bundles its own copy of @cyberfabric/react and registers
+ * MFE-local service. The MFE bundles its own copy of @gears-frontx/react and registers
  * services into its own isolated apiRegistry instance.
  */
 
@@ -13,7 +13,7 @@ import {
   RestEndpointProtocol,
   RestProtocol,
   RestMockPlugin,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import type { GetCurrentUserResponse } from './types';
 import { accountsMockMap } from './mocks';
 

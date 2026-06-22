@@ -6,7 +6,7 @@
  * Framework Layer: L2
  */
 
-import type { HAI3Plugin } from '../types';
+import type { FrontXPlugin } from '../types';
 
 /**
  * Effects plugin factory.
@@ -18,13 +18,13 @@ import type { HAI3Plugin } from '../types';
  *
  * @example
  * ```typescript
- * const app = createHAI3()
+ * const app = createFrontX()
  *   .use(effects())
  *   .build();
  * ```
  */
 // @cpt-begin:cpt-frontx-flow-framework-composition-full-preset:p1:inst-1
-export function effects(): HAI3Plugin {
+export function effects(): FrontXPlugin {
   return {
     name: 'effects',
     dependencies: [],

@@ -1,7 +1,7 @@
 {
   "schemas": [
     {
-      "$id": "gts://gts.hai3.mfes.comm.action.v1~hai3.demo.action.refresh_profile.v1~",
+      "$id": "gts://gts.frontx.mfes.comm.action.v1~frontx.demo.action.refresh_profile.v1~",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
@@ -9,7 +9,7 @@
           "x-gts-ref": "/$id"
         },
         "target": {
-          "x-gts-ref": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.profile.v1"
+          "x-gts-ref": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.demo.screens.profile.v1"
         },
         "payload": {
           "type": "object"
@@ -26,95 +26,95 @@
     }
   ],
   "manifest": {
-    "id": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
+    "id": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.demo.mfe.manifest.v1",
     "remoteEntry": "http://localhost:3001/assets/remoteEntry.js"
   },
   "domains": [
     {
-      "id": "gts.hai3.mfes.ext.domain.v1~hai3.widgets.area.main.v1",
+      "id": "gts.frontx.mfes.ext.domain.v1~frontx.widgets.area.main.v1",
       "sharedProperties": [],
       "actions": [
-        "gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~",
-        "gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~",
-        "gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~"
+        "gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~",
+        "gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~",
+        "gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1~"
       ],
       "extensionsActions": [],
       "defaultActionTimeout": 5000,
       "lifecycleStages": [
-        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1",
-        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1",
-        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1",
-        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1"
+        "gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1",
+        "gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1",
+        "gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1",
+        "gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1"
       ],
       "extensionsLifecycleStages": [
-        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1",
-        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1",
-        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1",
-        "gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1"
+        "gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1",
+        "gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1",
+        "gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1",
+        "gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1"
       ]
     }
   ],
   "entries": [
     {
-      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.helloworld.v1",
+      "id": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.helloworld.v1",
       "requiredProperties": [
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~",
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~"
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~",
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~"
       ],
       "actions": [],
       "domainActions": [],
-      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
+      "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.demo.mfe.manifest.v1",
       "exposedModule": "./lifecycle-helloworld"
     },
     {
-      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.profile.v1",
+      "id": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.profile.v1",
       "requiredProperties": [
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~",
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~"
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~",
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~"
       ],
       "actions": [
-        "gts.hai3.mfes.comm.action.v1~hai3.demo.action.refresh_profile.v1~"
+        "gts.frontx.mfes.comm.action.v1~frontx.demo.action.refresh_profile.v1~"
       ],
       "domainActions": [],
-      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
+      "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.demo.mfe.manifest.v1",
       "exposedModule": "./lifecycle-profile"
     },
     {
-      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.theme.v1",
+      "id": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.theme.v1",
       "requiredProperties": [
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~",
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~"
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~",
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~"
       ],
       "actions": [],
       "domainActions": [],
-      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
+      "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.demo.mfe.manifest.v1",
       "exposedModule": "./lifecycle-theme"
     },
     {
-      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.widgets_host.v1",
+      "id": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.widgets_host.v1",
       "requiredProperties": [],
       "actions": [],
       "domainActions": [],
-      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
+      "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.demo.mfe.manifest.v1",
       "exposedModule": "./lifecycle-widgets-host"
     },
     {
-      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.uikit.v1",
+      "id": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.uikit.v1",
       "requiredProperties": [
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~",
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~"
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~",
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~"
       ],
       "actions": [],
       "domainActions": [],
-      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.demo.mfe.manifest.v1",
+      "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.demo.mfe.manifest.v1",
       "exposedModule": "./lifecycle-uikit"
     }
   ],
   "extensions": [
     {
-      "id": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.widgets.host.screen.v1",
-      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1",
-      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.widgets_host.v1",
+      "id": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.widgets.host.screen.v1",
+      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1",
+      "entry": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.widgets_host.v1",
       "presentation": {
         "label": "Widgets Host",
         "icon": "lucide:layout-grid",
@@ -123,9 +123,9 @@
       }
     },
     {
-      "id": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.helloworld.v1",
-      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1",
-      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.helloworld.v1",
+      "id": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.demo.screens.helloworld.v1",
+      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1",
+      "entry": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.helloworld.v1",
       "presentation": {
         "label": "Hello World",
         "icon": "lucide:globe",
@@ -134,9 +134,9 @@
       }
     },
     {
-      "id": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.profile.v1",
-      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1",
-      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.profile.v1",
+      "id": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.demo.screens.profile.v1",
+      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1",
+      "entry": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.profile.v1",
       "presentation": {
         "label": "Profile",
         "icon": "lucide:user",
@@ -145,9 +145,9 @@
       }
     },
     {
-      "id": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.theme.v1",
-      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1",
-      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.theme.v1",
+      "id": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.demo.screens.theme.v1",
+      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1",
+      "entry": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.theme.v1",
       "presentation": {
         "label": "Current Theme",
         "icon": "lucide:palette",
@@ -156,9 +156,9 @@
       }
     },
     {
-      "id": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.uikit.v1",
-      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1",
-      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.demo.mfe.uikit.v1",
+      "id": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.demo.screens.uikit.v1",
+      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1",
+      "entry": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.demo.mfe.uikit.v1",
       "presentation": {
         "label": "UIKit Elements",
         "icon": "lucide:component",

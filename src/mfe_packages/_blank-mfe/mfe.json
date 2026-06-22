@@ -1,26 +1,26 @@
 {
   "manifest": {
-    "id": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.blank.mfe.manifest.v1",
+    "id": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.blank.mfe.manifest.v1",
     "remoteEntry": "http://localhost:3099/assets/remoteEntry.js"
   },
   "entries": [
     {
-      "id": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.blank.mfe.home.v1",
+      "id": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.blank.mfe.home.v1",
       "requiredProperties": [
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~",
-        "gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~"
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~",
+        "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~"
       ],
       "actions": [],
       "domainActions": [],
-      "manifest": "gts.hai3.mfes.mfe.mf_manifest.v1~hai3.blank.mfe.manifest.v1",
+      "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.blank.mfe.manifest.v1",
       "exposedModule": "./lifecycle"
     }
   ],
   "extensions": [
     {
-      "id": "gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.blank.screens.home.v1",
-      "domain": "gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1",
-      "entry": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~hai3.blank.mfe.home.v1",
+      "id": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.blank.screens.home.v1",
+      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1",
+      "entry": "gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.blank.mfe.home.v1",
       "presentation": {
         "label": "Blank Home",
         "icon": "lucide:home",

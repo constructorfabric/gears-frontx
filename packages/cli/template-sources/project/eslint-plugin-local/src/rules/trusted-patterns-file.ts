@@ -29,7 +29,7 @@
  * The set of files this rule applies to is configured in the monorepo's
  * `eslint.config.js` via a `files` glob.
  *
- * @author HAI3 Team
+ * @author Gears FrontX Team
  */
 
 import type { Rule } from 'eslint';

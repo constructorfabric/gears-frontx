@@ -14,7 +14,7 @@
 
 ## ROUTING
 
-### SDK Layer (L1) - Zero @cyberfabric dependencies
+### SDK Layer (L1) - Zero @gears-frontx dependencies
 - packages/state -> .ai/targets/STORE.md
 - packages/screensets -> .ai/targets/LAYOUT.md
 - packages/api -> .ai/targets/API.md
@@ -43,7 +43,7 @@
 ## REPO INVARIANTS
 - Event-driven architecture only (see EVENTS.md).
 - Registries follow Open/Closed; adding items must not modify registry root files.
-- App-level deps limited to: @cyberfabric/react, react, react-dom. Standalone projects must also declare peer deps explicitly: @cyberfabric/framework, @cyberfabric/api, @cyberfabric/i18n, @cyberfabric/screensets, @cyberfabric/state.
+- App-level deps limited to: @gears-frontx/react, react, react-dom. Standalone projects must also declare peer deps explicitly: @gears-frontx/framework, @gears-frontx/api, @gears-frontx/i18n, @gears-frontx/screensets, @gears-frontx/state.
 - MFE UI autonomy: MFEs own their UI components locally (e.g., components/ui/). No shared UI kit required.
 - Cross-domain communication only via events.
 - Public system contracts must not carry tooling metadata; keep tooling and runtime handoff state internal; do not export internal-only Flux event names used for L2/L3 wiring (narrow subscribe helpers are OK).
@@ -54,7 +54,7 @@
 ## IMPORT RULES
 - Inside same package: relative paths.
 - Cross-branch in app: @/ alias.
-- Cross-package: @cyberfabric/framework, @cyberfabric/react. Use local components/ui/ for UI.
+- Cross-package: @gears-frontx/framework, @gears-frontx/react. Use local components/ui/ for UI.
 - Index files: only when aggregating 3 or more exports.
 - Redux slices: import directly (no barrels).
 

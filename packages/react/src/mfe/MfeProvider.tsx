@@ -9,7 +9,7 @@
  * (same query key) are deduplicated and cached once across MFE boundaries.
  * Each MFE still uses its own apiRegistry and service instances in queryFn.
  *
- * React Layer: L3 (Depends on @cyberfabric/framework)
+ * React Layer: L3 (Depends on @gears-frontx/framework)
  */
 // @cpt-flow:cpt-frontx-flow-react-bindings-mfe-provider:p1
 // @cpt-dod:cpt-frontx-dod-react-bindings-mfe-hooks:p1
@@ -55,7 +55,7 @@ export interface MfeProviderProps {
 // @cpt-begin:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-mfe-query-client
 export const MfeProvider: React.FC<MfeProviderProps> = ({ value, children }) => {
   // MfeProvider only supplies the bridge context. Shared cache depends on
-  // plugin-owned QueryClient reuse across each MFE root's HAI3Provider.
+  // plugin-owned QueryClient reuse across each MFE root's FrontXProvider.
   return (
     <MfeContext.Provider value={value}>
       {children}

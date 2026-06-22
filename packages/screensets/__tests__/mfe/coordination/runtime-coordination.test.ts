@@ -46,7 +46,7 @@ describe('Runtime Coordination', () => {
     });
 
     // Test entry type ID (stored separately from bridge)
-    testEntryTypeId = 'gts.hai3.mfes.mfe.entry.v1~test.entry.v1';
+    testEntryTypeId = 'gts.frontx.mfes.mfe.entry.v1~test.entry.v1';
 
     // Create mock bridge
     mockBridge = createMockBridge('test-instance-1');
@@ -95,8 +95,8 @@ describe('Runtime Coordination', () => {
     });
 
     it('should allow registering multiple bridges for same container', () => {
-      const entryTypeId1 = 'gts.hai3.mfes.mfe.entry.v1~test.entry1.v1';
-      const entryTypeId2 = 'gts.hai3.mfes.mfe.entry.v1~test.entry2.v1';
+      const entryTypeId1 = 'gts.frontx.mfes.mfe.entry.v1~test.entry1.v1';
+      const entryTypeId2 = 'gts.frontx.mfes.mfe.entry.v1~test.entry2.v1';
       const bridge1 = createMockBridge('test-instance-bridge-1');
       const bridge2 = createMockBridge('test-instance-bridge-2');
 
@@ -122,7 +122,7 @@ describe('Runtime Coordination', () => {
         bridges: new Map([[testEntryTypeId, mockBridge]]),
       };
 
-      const newEntryTypeId = 'gts.hai3.mfes.mfe.entry.v1~test.new.v1';
+      const newEntryTypeId = 'gts.frontx.mfes.mfe.entry.v1~test.new.v1';
       const newBridge = createMockBridge('test-instance-new');
 
       const connection2: RuntimeConnection = {
@@ -221,7 +221,7 @@ describe('Runtime Coordination', () => {
   });
 
   describe('No window global pollution', () => {
-    it('should not add any __hai3_* properties to window', () => {
+    it('should not add any __frontx_* properties to window', () => {
       const connection: RuntimeConnection = {
         hostRuntime: mockRuntime,
         bridges: new Map([[testEntryTypeId, mockBridge]]),
@@ -231,14 +231,14 @@ describe('Runtime Coordination', () => {
 
       // Check window object for any FrontX-related globals
       const windowKeys = Object.keys(window);
-      const hai3Globals = windowKeys.filter(
+      const frontxGlobals = windowKeys.filter(
         (key) =>
-          key.startsWith('__hai3') ||
-          key.startsWith('_hai3') ||
-          key.includes('hai3')
+          key.startsWith('__frontx') ||
+          key.startsWith('_frontx') ||
+          key.includes('frontx')
       );
 
-      expect(hai3Globals).toEqual([]);
+      expect(frontxGlobals).toEqual([]);
     });
 
     it('should not be accessible via window object', () => {
@@ -250,9 +250,9 @@ describe('Runtime Coordination', () => {
       coordinator.register(container, connection);
 
       // Try to access via various window properties
-      expect(Reflect.get(globalThis, '__hai3_runtime')).toBeUndefined();
-      expect(Reflect.get(globalThis, '__hai3_connections')).toBeUndefined();
-      expect(Reflect.get(globalThis, 'hai3Runtime')).toBeUndefined();
+      expect(Reflect.get(globalThis, '__frontx_runtime')).toBeUndefined();
+      expect(Reflect.get(globalThis, '__frontx_connections')).toBeUndefined();
+      expect(Reflect.get(globalThis, 'frontxRuntime')).toBeUndefined();
       expect(Reflect.get(globalThis, 'runtimeConnections')).toBeUndefined();
     });
   });
@@ -323,8 +323,8 @@ describe('Runtime Coordination', () => {
       const runtime1 = new DefaultMfeRegistry({ typeSystem });
       const runtime2 = new DefaultMfeRegistry({ typeSystem });
 
-      const entryTypeId1 = 'gts.hai3.mfes.mfe.entry.v1~test.entry1.v1';
-      const entryTypeId2 = 'gts.hai3.mfes.mfe.entry.v1~test.entry2.v1';
+      const entryTypeId1 = 'gts.frontx.mfes.mfe.entry.v1~test.entry1.v1';
+      const entryTypeId2 = 'gts.frontx.mfes.mfe.entry.v1~test.entry2.v1';
 
       const bridge1 = createMockBridge('test-instance-multi-1');
       const bridge2 = createMockBridge('test-instance-multi-2');

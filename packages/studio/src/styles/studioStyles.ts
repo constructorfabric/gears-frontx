@@ -12,11 +12,11 @@
 // @cpt-dod:cpt-frontx-dod-studio-devtools-panel-overlay:p1
 // @cpt-algo:cpt-frontx-algo-studio-devtools-portal-management:p1
 
-const STUDIO_STYLE_ID = 'hai3-studio-styles';
+const STUDIO_STYLE_ID = 'frontx-studio-styles';
 
 export const STUDIO_CSS = /* css */ `
 /* ============================================================
-   HAI3 Studio — Self-contained utility styles
+   Gears FrontX Studio — Self-contained utility styles
    ============================================================ */
 
 /* --- Base normalization (Preflight may be absent in no-uikit hosts) ---
@@ -246,12 +246,12 @@ export const STUDIO_CSS = /* css */ `
 .data-\\[state\\=unchecked\\]\\:translate-x-0[data-state=unchecked] { transform: translateX(0); }
 
 /* --- Radix animation (minimal enter/exit for dropdown) --- */
-@keyframes hai3-fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes hai3-fade-out { from { opacity: 1; } to { opacity: 0; } }
-@keyframes hai3-zoom-in { from { transform: scale(0.95); } to { transform: scale(1); } }
-@keyframes hai3-zoom-out { from { transform: scale(1); } to { transform: scale(0.95); } }
-.data-\\[state\\=open\\]\\:animate-in[data-state=open] { animation: hai3-fade-in 150ms ease-out, hai3-zoom-in 150ms ease-out; }
-.data-\\[state\\=closed\\]\\:animate-out[data-state=closed] { animation: hai3-fade-out 100ms ease-in, hai3-zoom-out 100ms ease-in; animation-fill-mode: forwards; }
+@keyframes frontx-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes frontx-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes frontx-zoom-in { from { transform: scale(0.95); } to { transform: scale(1); } }
+@keyframes frontx-zoom-out { from { transform: scale(1); } to { transform: scale(0.95); } }
+.data-\\[state\\=open\\]\\:animate-in[data-state=open] { animation: frontx-fade-in 150ms ease-out, frontx-zoom-in 150ms ease-out; }
+.data-\\[state\\=closed\\]\\:animate-out[data-state=closed] { animation: frontx-fade-out 100ms ease-in, frontx-zoom-out 100ms ease-in; animation-fill-mode: forwards; }
 
 /* --- Studio portal: scoped dropdown color overrides ---
    Dropdown content portaled here inherits host-app Tailwind utilities that

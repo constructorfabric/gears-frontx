@@ -1,5 +1,5 @@
 
-# @cyberfabric/framework Guidelines (Canonical)
+# @gears-frontx/framework Guidelines (Canonical)
 
 ## AI WORKFLOW (REQUIRED)
 1) Summarize 3-6 rules from this file before making changes.
@@ -8,19 +8,19 @@
 ## SCOPE
 - Package: `packages/framework/`
 - Layer: L2 Framework (depends on all L1 SDK packages)
-- Peer dependencies: `@cyberfabric/state`, `@cyberfabric/screensets`, `@cyberfabric/api`, `@cyberfabric/i18n`, `@cyberfabric/auth`, `@tanstack/query-core`
+- Peer dependencies: `@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, `@gears-frontx/i18n`, `@gears-frontx/auth`, `@tanstack/query-core`
 
 ## CRITICAL RULES
-- Applications built by composing plugins via `createHAI3().use()`.
+- Applications built by composing plugins via `createGears FrontX().use()`.
 - Use presets for common configurations (full, minimal, headless).
 - Access registries and actions through app instance.
-- NO React code in this package (React bindings in @cyberfabric/react).
+- NO React code in this package (React bindings in @gears-frontx/react).
 - Plugin dependencies auto-resolved (order doesn't matter).
 
 ## PLUGIN COMPOSITION
 ```typescript
 // GOOD: Compose plugins
-const app = createHAI3()
+const app = createGears FrontX()
   .use(screensets())
   .use(themes())
   .use(layout())
@@ -29,7 +29,7 @@ const app = createHAI3()
   .build();
 
 // GOOD: Use preset shorthand
-const app = createHAI3App(); // Full preset
+const app = createGears FrontXApp(); // Full preset
 
 // BAD: Manual configuration without plugins
 const store = configureStore({ ... }); // FORBIDDEN
@@ -45,7 +45,7 @@ const store = configureStore({ ... }); // FORBIDDEN
 | `microfrontends()` | `screensetsRegistry` (MFE-enabled), MFE actions, selectors, domain constants | screensets |
 | `i18n()` | i18nRegistry, setLanguage | - |
 | `effects()` | Core effect coordination | - |
-| `auth()` | app.auth (AuthRuntime), transport binding into REST plugin chain | @cyberfabric/auth |
+| `auth()` | app.auth (AuthRuntime), transport binding into REST plugin chain | @gears-frontx/auth |
 | `queryCache()` | Host-owned shared TanStack `QueryClient` (headless `@tanstack/query-core`), Flux `cache/*` bridge, mock teardown, L1 `sharedFetchCache` retain/release and invalidation sync | - |
 | `queryCacheShared()` | Joins the host `QueryClient` from `queryCache()` for MFE or other child roots (no second client) | host `queryCache()` (child may `.build()` first; attaches when host runtime appears) |
 | `mock()` | mockSlice, `toggleMockMode` | effects |
@@ -53,7 +53,7 @@ const store = configureStore({ ... }); // FORBIDDEN
 ## AUTH PLUGIN
 
 - `auth()` exposes `app.auth` runtime methods from the `AuthProvider`.
-- Default transport binder: `hai3ApiTransport()` registers `AuthRestPlugin` via `apiRegistry.plugins.add(RestProtocol, plugin)`.
+- Default transport binder: `frontxApiTransport()` registers `AuthRestPlugin` via `apiRegistry.plugins.add(RestProtocol, plugin)`.
 - Bearer sessions: inject `Authorization: Bearer <token>`.
 - Cookie sessions: set `withCredentials: true` (+ optional CSRF header) for relative URLs and allowlisted origins.
 - 401 retry: calls `provider.refresh()` once (`retryCount === 0`), deduplicates concurrent refreshes, retries with refreshed credentials.
@@ -63,15 +63,15 @@ Public helpers related to query cache: `subscribeQueryCacheRuntimeChanged` (obse
 
 ## QUERY CACHE: HOST VS CHILD
 
-- **Host app** (shell): include `queryCache()` once. It owns the shared `QueryClient`, wires `cache/invalidate`, `cache/set`, `cache/remove` to the client and transport dedup, and attaches the client to the built app for `@cyberfabric/react`.
-- **Child root** (e.g. extension bundle with its own `createHAI3().build()`): use `queryCacheShared()` instead of a second `queryCache()`. It reuses the host client so observers and invalidation stay unified.
+- **Host app** (shell): include `queryCache()` once. It owns the shared `QueryClient`, wires `cache/invalidate`, `cache/set`, `cache/remove` to the client and transport dedup, and attaches the client to the built app for `@gears-frontx/react`.
+- **Child root** (e.g. extension bundle with its own `createGears FrontX().build()`): use `queryCacheShared()` instead of a second `queryCache()`. It reuses the host client so observers and invalidation stay unified.
 - **Load order:** The child app may be built before the host shell; the shared `QueryClient` is wired once the host initializes `queryCache()`. Use `subscribeQueryCacheRuntimeChanged` when you need to run logic on attach or clear.
 - **Rule:** Do not stack two `queryCache()` instances for the same logical app; use `queryCache()` + `queryCacheShared()` for host/child splits.
 
 ## CUSTOM PLUGINS
 ```typescript
 // GOOD: Follow plugin contract
-export function myPlugin(): HAI3Plugin {
+export function myPlugin(): Gears FrontXPlugin {
   return {
     name: 'my-plugin',
     dependencies: ['screensets'],
@@ -97,6 +97,6 @@ export function myPlugin(): HAI3Plugin {
 
 ## PRE-DIFF CHECKLIST
 - [ ] Using plugin composition (not manual setup).
-- [ ] Custom plugins follow HAI3Plugin contract.
+- [ ] Custom plugins follow Gears FrontXPlugin contract.
 - [ ] Plugin dependencies declared (not implicit).
 - [ ] No React code in framework package.

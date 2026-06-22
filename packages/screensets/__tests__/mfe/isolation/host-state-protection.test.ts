@@ -12,9 +12,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
 import type { Extension, ExtensionDomain, MfeEntry } from '../../../src/mfe/types';
 import type {
@@ -26,19 +26,19 @@ import type { JSONSchema } from '../../../src/mfe/plugins/types';
 import { MockDomainFactory, makeMfeHandlerDouble } from '../../../__test-utils__';
 
 const DOMAIN_ID =
-  'gts.hai3.mfes.ext.domain.v1~hai3.test.host_state_protection.domain.v1';
+  'gts.frontx.mfes.ext.domain.v1~frontx.test.host_state_protection.domain.v1';
 const ENTRY_ID =
-  'gts.hai3.mfes.mfe.entry.v1~hai3.test.host_state_protection.entry.v1';
+  'gts.frontx.mfes.mfe.entry.v1~frontx.test.host_state_protection.entry.v1';
 const EXTENSION_ID =
-  'gts.hai3.mfes.ext.extension.v1~hai3.test.host_state_protection.ext.v1';
+  'gts.frontx.mfes.ext.extension.v1~frontx.test.host_state_protection.ext.v1';
 const TEST_PROPERTY_TYPE_ID =
-  'gts.hai3.mfes.comm.shared_property.v1~hai3.test.host_state_protection.theme.v1~';
+  'gts.frontx.mfes.comm.shared_property.v1~frontx.test.host_state_protection.theme.v1~';
 const THEME_DARK = 'dark';
 
 const testPropertySchema: JSONSchema = {
   $id: `gts://${TEST_PROPERTY_TYPE_ID}`,
   $schema: 'https://json-schema.org/draft/2020-12/schema',
-  allOf: [{ $ref: 'gts://gts.hai3.mfes.comm.shared_property.v1~' }],
+  allOf: [{ $ref: 'gts://gts.frontx.mfes.comm.shared_property.v1~' }],
   properties: {
     value: { type: 'string', enum: [THEME_DARK, 'light'] },
   },
@@ -47,18 +47,18 @@ const testPropertySchema: JSONSchema = {
 const testDomain: ExtensionDomain = {
   id: DOMAIN_ID,
   sharedProperties: [TEST_PROPERTY_TYPE_ID],
-  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
+  actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT],
   extensionsActions: [],
   defaultActionTimeout: 5000,
   lifecycleStages: [
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
   ],
   extensionsLifecycleStages: [
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-    'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+    'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
   ],
 };
 
@@ -67,7 +67,7 @@ const testEntry: MfeEntry = {
   requiredProperties: [],
   optionalProperties: [],
   actions: [],
-  domainActions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
+  domainActions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT],
 };
 
 const testExtension: Extension = {
@@ -110,7 +110,7 @@ describe('Host State Protection', () => {
       .fn<(entry: MfeEntry) => Promise<MfeEntryLifecycle<ChildMfeBridge>>>()
       .mockResolvedValue(mockLifecycle);
     const mockHandler = makeMfeHandlerDouble({
-      handledBaseTypeId: 'gts.hai3.mfes.mfe.entry.v1~',
+      handledBaseTypeId: 'gts.frontx.mfes.mfe.entry.v1~',
       priority: 100,
       load: loadMock,
     });
@@ -128,7 +128,7 @@ describe('Host State Protection', () => {
 
     await registry.executeActionsChain({
       action: {
-        type: HAI3_ACTION_LOAD_EXT,
+        type: FRONTX_ACTION_LOAD_EXT,
         target: DOMAIN_ID,
         payload: { subject: EXTENSION_ID },
       },
@@ -136,7 +136,7 @@ describe('Host State Protection', () => {
 
     await registry.executeActionsChain({
       action: {
-        type: HAI3_ACTION_MOUNT_EXT,
+        type: FRONTX_ACTION_MOUNT_EXT,
         target: DOMAIN_ID,
         payload: { subject: EXTENSION_ID },
       },
@@ -215,7 +215,7 @@ describe('Host State Protection', () => {
 
     await registry.executeActionsChain({
       action: {
-        type: HAI3_ACTION_UNMOUNT_EXT,
+        type: FRONTX_ACTION_UNMOUNT_EXT,
         target: DOMAIN_ID,
         payload: { subject: EXTENSION_ID },
       },

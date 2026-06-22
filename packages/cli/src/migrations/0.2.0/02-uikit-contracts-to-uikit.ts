@@ -2,22 +2,22 @@
 /**
  * Transform: uikit-contracts-to-react
  *
- * Transforms @cyberfabric/uikit-contracts imports to @cyberfabric/react
+ * Transforms @gears-frontx/uikit-contracts imports to @gears-frontx/react
  *
- * Before: import { ButtonVariant } from '@cyberfabric/uikit-contracts';
- * After:  import { ButtonVariant } from '@cyberfabric/react';
+ * Before: import { ButtonVariant } from '@gears-frontx/uikit-contracts';
+ * After:  import { ButtonVariant } from '@gears-frontx/react';
  */
 
 import type { SourceFile } from 'ts-morph';
 import type { Transform, TransformChange, TransformResult } from '../types.js';
 
-const SOURCE_MODULE = '@cyberfabric/uikit-contracts';
-const TARGET_MODULE = '@cyberfabric/react';
+const SOURCE_MODULE = '@gears-frontx/uikit-contracts';
+const TARGET_MODULE = '@gears-frontx/react';
 
 // @cpt-begin:cpt-frontx-algo-cli-tooling-apply-migration:p2:inst-apply-transforms
 export const uikitContractsToUikitTransform: Transform = {
   id: 'uikit-contracts-to-react',
-  name: 'Update @cyberfabric/uikit-contracts to @cyberfabric/react',
+  name: 'Update @gears-frontx/uikit-contracts to @gears-frontx/react',
   description: `Transforms ${SOURCE_MODULE} imports to ${TARGET_MODULE}`,
 
   canApply(sourceFile: SourceFile): boolean {

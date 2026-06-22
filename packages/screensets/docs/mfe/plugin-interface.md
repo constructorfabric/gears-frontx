@@ -58,8 +58,8 @@ interface TypeSystemPlugin {
    * For instances, the entity must have an `id` field containing the instance ID.
    *
    * gts-ts uses the instance ID to automatically determine the schema:
-   * - Instance ID: `gts.hai3.mfes.ext.extension.v1~acme.ext.widget.v1`
-   * - Schema ID:   `gts.hai3.mfes.ext.extension.v1~` (extracted automatically)
+   * - Instance ID: `gts.frontx.mfes.ext.extension.v1~acme.ext.widget.v1`
+   * - Schema ID:   `gts.frontx.mfes.ext.extension.v1~` (extracted automatically)
    *
    * @param entity - The GTS entity to register (must have an `id` field)
    */
@@ -70,8 +70,8 @@ interface TypeSystemPlugin {
    * The instance must be registered first via register().
    *
    * gts-ts extracts the schema ID from the instance ID automatically:
-   * - Instance ID: `gts.hai3.mfes.ext.extension.v1~acme.ext.widget.v1`
-   * - Schema ID:   `gts.hai3.mfes.ext.extension.v1~`
+   * - Instance ID: `gts.frontx.mfes.ext.extension.v1~acme.ext.widget.v1`
+   * - Schema ID:   `gts.frontx.mfes.ext.extension.v1~`
    *
    * @param instanceId - The instance ID (does NOT end with ~)
    * @returns Validation result
@@ -225,7 +225,7 @@ Used for dynamic schema resolution. This method is **REQUIRED** - all plugins mu
 ### Building the Registry
 
 ```typescript
-import { screensetsRegistryFactory, gtsPlugin } from '@cyberfabric/screensets';
+import { screensetsRegistryFactory, gtsPlugin } from '@gears-frontx/screensets';
 
 // Build the registry with GTS plugin at application wiring time
 const registry = screensetsRegistryFactory.build({ typeSystem: gtsPlugin });
@@ -237,7 +237,7 @@ registry.registerDomain(myDomain, containerProvider);
 ### Registering and Validating Entities
 
 ```typescript
-import { screensetsRegistryFactory, gtsPlugin } from '@cyberfabric/screensets';
+import { screensetsRegistryFactory, gtsPlugin } from '@gears-frontx/screensets';
 
 const registry = screensetsRegistryFactory.build({ typeSystem: gtsPlugin });
 
@@ -280,7 +280,7 @@ const actionTypes = runtime.typeSystem.query(
 // Check if an entry type derives from MfeEntryMF
 const isMfEntry = runtime.typeSystem.isTypeOf(
   entryTypeId,
-  'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~'
+  'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~'
 );
 ```
 
@@ -304,26 +304,26 @@ The GTS plugin ships with these schemas built-in (no registration needed):
 
 ### Core Types (8 schemas)
 
-1. **MfeEntry** - `gts.hai3.mfes.mfe.entry.v1~`
-2. **ExtensionDomain** - `gts.hai3.mfes.ext.domain.v1~`
-3. **Extension** - `gts.hai3.mfes.ext.extension.v1~`
-4. **SharedProperty** - `gts.hai3.mfes.comm.shared_property.v1~`
-5. **Action** - `gts.hai3.mfes.comm.action.v1~`
-6. **ActionsChain** - `gts.hai3.mfes.comm.actions_chain.v1~`
-7. **LifecycleStage** - `gts.hai3.mfes.lifecycle.stage.v1~`
-8. **LifecycleHook** - `gts.hai3.mfes.lifecycle.hook.v1~`
+1. **MfeEntry** - `gts.frontx.mfes.mfe.entry.v1~`
+2. **ExtensionDomain** - `gts.frontx.mfes.ext.domain.v1~`
+3. **Extension** - `gts.frontx.mfes.ext.extension.v1~`
+4. **SharedProperty** - `gts.frontx.mfes.comm.shared_property.v1~`
+5. **Action** - `gts.frontx.mfes.comm.action.v1~`
+6. **ActionsChain** - `gts.frontx.mfes.comm.actions_chain.v1~`
+7. **LifecycleStage** - `gts.frontx.mfes.lifecycle.stage.v1~`
+8. **LifecycleHook** - `gts.frontx.mfes.lifecycle.hook.v1~`
 
 ### Default Lifecycle Stages (4 instances)
 
-1. **init** - `gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1`
-2. **activated** - `gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1`
-3. **deactivated** - `gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1`
-4. **destroyed** - `gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1`
+1. **init** - `gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1`
+2. **activated** - `gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1`
+3. **deactivated** - `gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1`
+4. **destroyed** - `gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1`
 
 ### Module Federation Types (2 schemas)
 
-1. **MfManifest** - `gts.hai3.mfes.mfe.mf_manifest.v1~`
-2. **MfeEntryMF** - `gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~`
+1. **MfManifest** - `gts.frontx.mfes.mfe.mf_manifest.v1~`
+2. **MfeEntryMF** - `gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~`
 
 ## Intentionally Omitted Methods
 
@@ -408,7 +408,7 @@ The GTS plugin ships with all FrontX first-class citizen schemas built-in. You n
 
 ### Instance ID Convention
 
-- **Schema IDs** end with `~`: `gts.hai3.mfes.ext.extension.v1~`
-- **Instance IDs** do NOT end with `~`: `gts.hai3.mfes.ext.extension.v1~acme.ext.widget.v1`
+- **Schema IDs** end with `~`: `gts.frontx.mfes.ext.extension.v1~`
+- **Instance IDs** do NOT end with `~`: `gts.frontx.mfes.ext.extension.v1~acme.ext.widget.v1`
 
 The plugin automatically extracts the schema ID from chained instance IDs.

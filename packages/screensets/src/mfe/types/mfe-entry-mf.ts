@@ -11,7 +11,7 @@ import type { MfManifest, MfManifestAssets } from './mf-manifest';
 
 /**
  * Module Federation 2.0 implementation of MfeEntry
- * GTS Type: gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~
+ * GTS Type: gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~
  */
 export interface MfeEntryMF extends MfeEntry {
   /**

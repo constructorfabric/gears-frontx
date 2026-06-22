@@ -21,7 +21,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import {
-  createHAI3,
+  createFrontX,
   effects,
   microfrontends,
   queryCacheShared,
@@ -31,9 +31,9 @@ import {
   ExtensionDomainImplementation,
   ExtensionDomainImplementationFactory,
   ActionHandler,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
-  HAI3_MFE_ENTRY_MF,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
+  FRONTX_MFE_ENTRY_MF,
   MfeHandlerMF,
   ExtensionDomainSlot,
   ThemeAwareReactLifecycle,
@@ -47,13 +47,13 @@ import {
   type MfManifest,
   type MfeEntryMF,
   type JSONSchema,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 
 const WIDGETS_DOMAIN_ID =
-  'gts.hai3.mfes.ext.domain.v1~hai3.widgets.area.main.v1';
+  'gts.frontx.mfes.ext.domain.v1~frontx.widgets.area.main.v1';
 
 const WIDGET_PING_ACTION_TYPE =
-  'gts.hai3.mfes.comm.action.v1~hai3.widgets.test.widget_ping.v1~';
+  'gts.frontx.mfes.comm.action.v1~frontx.widgets.test.widget_ping.v1~';
 
 interface MfeManifestConfig {
   manifest: MfManifest;
@@ -86,13 +86,13 @@ class WidgetsDomainImpl extends ExtensionDomainImplementation {
     super();
     this.strategy = new ConcurrentMountStrategy(ctx.mounter, hooks);
     ctx.registerHandler(
-      HAI3_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
       ActionHandler.fromFunction((_t, p) =>
         this.strategy.mount(p as ActionPayload),
       ),
     );
     ctx.registerHandler(
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
       ActionHandler.fromFunction((_t, p) =>
         this.strategy.unmount!(p as ActionPayload),
       ),
@@ -110,12 +110,12 @@ class WidgetsDomainFactory extends ExtensionDomainImplementationFactory {
   }
 }
 
-function createWidgetsHostApp(): ReturnType<ReturnType<typeof createHAI3>['build']> {
-  return createHAI3()
+function createWidgetsHostApp(): ReturnType<ReturnType<typeof createFrontX>['build']> {
+  return createFrontX()
     .use(effects())
         .use(microfrontends({
       typeSystem: gtsPlugin,
-      mfeHandlers: [new MfeHandlerMF(HAI3_MFE_ENTRY_MF)],
+      mfeHandlers: [new MfeHandlerMF(FRONTX_MFE_ENTRY_MF)],
     }))
     .use(queryCacheShared())
     .use(mock())
@@ -233,7 +233,7 @@ function WidgetsHostScreen(): React.ReactElement {
       registry
         .executeActionsChain({
           action: {
-            type: HAI3_ACTION_MOUNT_EXT,
+            type: FRONTX_ACTION_MOUNT_EXT,
             target: WIDGETS_DOMAIN_ID,
             payload: { subject: ext.id },
           },

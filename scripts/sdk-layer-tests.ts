@@ -5,10 +5,10 @@
  * Tests that the SDK layer packages follow the 3-layer architecture
  *
  * These tests verify:
- * - SDK packages (L1) have ZERO @cyberfabric dependencies
+ * - SDK packages (L1) have ZERO @gears-frontx dependencies
  * - Framework package (L2) only imports SDK packages
  * - React package (L3) only imports framework
- * - No package depends on deprecated packages (@cyberfabric/uikit-contracts, @cyberfabric/uicore, @cyberfabric/layout)
+ * - No package depends on deprecated packages (@gears-frontx/uikit-contracts, @gears-frontx/uicore, @gears-frontx/layout)
  * - Layer configs include all parent layer rules
  */
 
@@ -76,7 +76,7 @@ function getHai3Dependencies(pkg: PackageJson): string[] {
     ...pkg.peerDependencies,
     ...pkg.devDependencies,
   };
-  return Object.keys(allDeps).filter((dep) => dep.startsWith('@cyberfabric/'));
+  return Object.keys(allDeps).filter((dep) => dep.startsWith('@gears-frontx/'));
 }
 
 // Layer partitioning — re-exposed under the historic names used in this file
@@ -87,7 +87,7 @@ const ALLOWED_SDK_DEPS = LAYER_CONSTANTS.ALLOWED_FRAMEWORK_SDK_DEPS;
 const DEPRECATED_PACKAGES = LAYER_CONSTANTS.DEPRECATED_PACKAGES;
 
 /**
- * Test: SDK packages have zero @cyberfabric dependencies
+ * Test: SDK packages have zero @gears-frontx dependencies
  */
 function testSdkZeroDependencies(): TestResult[] {
   const results: TestResult[] = [];
@@ -98,7 +98,7 @@ function testSdkZeroDependencies(): TestResult[] {
 
     if (!pkg) {
       results.push({
-        name: `SDK @cyberfabric/${pkgName}: Zero @cyberfabric deps`,
+        name: `SDK @gears-frontx/${pkgName}: Zero @gears-frontx deps`,
         passed: true,
         message: `Package not yet created (will be created in Phase 3)`,
         skipped: true,
@@ -106,15 +106,15 @@ function testSdkZeroDependencies(): TestResult[] {
       continue;
     }
 
-    const hai3Deps = getHai3Dependencies(pkg);
-    const passed = hai3Deps.length === 0;
+    const frontxDeps = getHai3Dependencies(pkg);
+    const passed = frontxDeps.length === 0;
 
     results.push({
-      name: `SDK @cyberfabric/${pkgName}: Zero @cyberfabric deps`,
+      name: `SDK @gears-frontx/${pkgName}: Zero @gears-frontx deps`,
       passed,
       message: passed
-        ? 'No @cyberfabric dependencies found'
-        : `Found @cyberfabric dependencies: ${hai3Deps.join(', ')}`,
+        ? 'No @gears-frontx dependencies found'
+        : `Found @gears-frontx dependencies: ${frontxDeps.join(', ')}`,
     });
   }
 
@@ -137,15 +137,15 @@ function testFrameworkOnlySdkDeps(): TestResult {
     };
   }
 
-  const hai3Deps = getHai3Dependencies(pkg);
-  const invalidDeps = hai3Deps.filter((dep) => !ALLOWED_SDK_DEPS.includes(dep));
+  const frontxDeps = getHai3Dependencies(pkg);
+  const invalidDeps = frontxDeps.filter((dep) => !ALLOWED_SDK_DEPS.includes(dep));
   const passed = invalidDeps.length === 0;
 
   return {
     name: 'Framework: Only SDK dependencies',
     passed,
     message: passed
-      ? `Valid deps: ${hai3Deps.join(', ') || 'none'}`
+      ? `Valid deps: ${frontxDeps.join(', ') || 'none'}`
       : `Invalid deps: ${invalidDeps.join(', ')}`,
   };
 }
@@ -166,15 +166,15 @@ function testReactOnlyFrameworkDep(): TestResult {
     };
   }
 
-  const hai3Deps = getHai3Dependencies(pkg);
-  const invalidDeps = hai3Deps.filter((dep) => dep !== '@cyberfabric/framework');
+  const frontxDeps = getHai3Dependencies(pkg);
+  const invalidDeps = frontxDeps.filter((dep) => dep !== '@gears-frontx/framework');
   const passed = invalidDeps.length === 0;
 
   return {
     name: 'React: Only framework dependency',
     passed,
     message: passed
-      ? `Valid deps: ${hai3Deps.join(', ') || 'none'}`
+      ? `Valid deps: ${frontxDeps.join(', ') || 'none'}`
       : `Invalid deps: ${invalidDeps.join(', ')}`,
   };
 }
@@ -192,7 +192,7 @@ function testNoDeprecatedDependencies(): TestResult[] {
 
     if (!pkg) {
       results.push({
-        name: `@cyberfabric/${pkgName}: No deprecated deps`,
+        name: `@gears-frontx/${pkgName}: No deprecated deps`,
         passed: true,
         message: 'Package not yet created',
         skipped: true,
@@ -200,14 +200,14 @@ function testNoDeprecatedDependencies(): TestResult[] {
       continue;
     }
 
-    const hai3Deps = getHai3Dependencies(pkg);
-    const deprecatedDeps = hai3Deps.filter((dep) =>
+    const frontxDeps = getHai3Dependencies(pkg);
+    const deprecatedDeps = frontxDeps.filter((dep) =>
       DEPRECATED_PACKAGES.includes(dep)
     );
     const passed = deprecatedDeps.length === 0;
 
     results.push({
-      name: `@cyberfabric/${pkgName}: No deprecated deps`,
+      name: `@gears-frontx/${pkgName}: No deprecated deps`,
       passed,
       message: passed
         ? 'No deprecated dependencies'

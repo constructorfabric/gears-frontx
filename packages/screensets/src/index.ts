@@ -1,5 +1,5 @@
 /**
- * @cyberfabric/screensets
+ * @gears-frontx/screensets
  *
  * Pure TypeScript contracts and registry for FrontX screenset management.
  * This package has ZERO dependencies - SDK Layer (L1).
@@ -7,12 +7,12 @@
  * Screensets are FrontX's first-class citizen - self-contained vertical slices
  * that can be composed into applications or injected into external platforms.
  *
- * NOTE: Translations are NOT part of this package. Use @cyberfabric/i18n for translations.
+ * NOTE: Translations are NOT part of this package. Use @gears-frontx/i18n for translations.
  * Screensets register translations directly with i18nRegistry via framework.
  *
  * @example
  * ```typescript
- * import { LayoutDomain } from '@cyberfabric/screensets';
+ * import { LayoutDomain } from '@gears-frontx/screensets';
  *
  * // LayoutDomain is used by framework layout slices
  * const visibleDomains = [
@@ -75,17 +75,17 @@ export { ActionHandler } from './mfe';
 
 // FrontX Action Constants
 export {
-  HAI3_SCREEN_EXTENSION_TYPE,
-  HAI3_MFE_ENTRY_MF,
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_SCREEN_EXTENSION_TYPE,
+  FRONTX_MFE_ENTRY_MF,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from './mfe';
 
 // FrontX Shared Property Constants
 export {
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_SHARED_PROPERTY_THEME,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
 } from './mfe';
 
 // MFE Runtime (MfeRegistry - the MFE-enabled registry)
@@ -118,4 +118,4 @@ export { createShadowRoot, injectCssVariables } from './mfe';
 export { extractGtsPackage } from './mfe';
 
 // NOTE: GTS Plugin is NOT re-exported here to avoid pulling in @globaltypesystem/gts-ts
-// for consumers who don't need it. Import directly from '@cyberfabric/screensets/plugins/gts'
+// for consumers who don't need it. Import directly from '@gears-frontx/screensets/plugins/gts'

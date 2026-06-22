@@ -32,7 +32,7 @@ decision-makers: FrontX core team
 
 ## Context and Problem Statement
 
-ADR-0004 (`cpt-frontx-adr-blob-url-mfe-isolation`) establishes per-MFE isolation by minting a fresh blob URL per `load()`. That decision is silent on what happens *after* load: the same loaded lifecycle is cached on `extensionState` and reused across `mount() / unmount() / mount()` cycles, so module-scope state (the `HAI3App` instance, plugin registrations, store singletons, registered effects) survives every remount within a session. `MountExtSwapHandler`'s A→B→A path makes this concrete and reproducible — the second mount of A reuses the same module graph and only gets a fresh React tree in a new Shadow DOM container.
+ADR-0004 (`cpt-frontx-adr-blob-url-mfe-isolation`) establishes per-MFE isolation by minting a fresh blob URL per `load()`. That decision is silent on what happens *after* load: the same loaded lifecycle is cached on `extensionState` and reused across `mount() / unmount() / mount()` cycles, so module-scope state (the `Gears FrontXApp` instance, plugin registrations, store singletons, registered effects) survives every remount within a session. `MountExtSwapHandler`'s A→B→A path makes this concrete and reproducible — the second mount of A reuses the same module graph and only gets a fresh React tree in a new Shadow DOM container.
 
 Two product-shaped expectations land on this single mechanism:
 
@@ -80,7 +80,7 @@ This boundary is recorded in `architecture/features/feature-mfe-isolation/FEATUR
 
 * `MfeHandlerMF` and `DefaultMountManager` remain unchanged — no new API for cache clear / blob URL release / fresh-load-on-unmount.
 * MFE entries pair every resource constructed in `mount()` with a teardown in `unmount()`, including: React root, `bridge.subscribeToProperty` returns, `bridge.registerActionHandler` registrations, timers, observers, DOM nodes attached to `container`. Verified by AC-8 (Mount/unmount instance hygiene) in feature-mfe-isolation.
-* No `unmount()` mutates module-level singletons (the `HAI3App` instance, plugin registrations, blob URLs, module-scope caches) — verified by structural acceptance criterion in feature-mfe-isolation.
+* No `unmount()` mutates module-level singletons (the `Gears FrontXApp` instance, plugin registrations, blob URLs, module-scope caches) — verified by structural acceptance criterion in feature-mfe-isolation.
 
 ## Pros and Cons of the Options
 
@@ -138,7 +138,7 @@ This decision should be revisited when:
 ## More Information
 
 - Operational impact (OPS): Not applicable — purely an in-browser host/author contract.
-- Origin: CodeRabbit comment on PR #276 (MF 2.0 migration) in `cyberfabric/cyberware-frontx`; the resolution thread captures the full analysis including the §1a / §1b / §1c argument from the original CodeRabbit response and the per-mount-growth counter from the resolution. Canonical write-up adopted into mfe-implementation from upstream PR #285 (`cyberfabric/cyberware-frontx`).
+- Origin: CodeRabbit comment on PR #276 (MF 2.0 migration) in `gears-frontx/gears-frontx`; the resolution thread captures the full analysis including the §1a / §1b / §1c argument from the original CodeRabbit response and the per-mount-growth counter from the resolution. Canonical write-up adopted into mfe-implementation from upstream PR #285 (`gears-frontx/gears-frontx`).
 - Heap-snapshot study (deferred follow-up): a single DevTools heap-snapshot run on a representative session, intended as a sanity check on the per-load bound rather than as sizing input for an opt-in flag. Lower priority than the artifact updates; runs whenever a mount-heavy regression is suspected.
 - FrontX shared-deps note: FrontX does not use MF 2.0's `singleton: true` shared-scope sharing — the standard MF runtime caveat that "shared singletons survive a force-reload" does not apply here; FrontX shared deps are externalized at build time and re-minted as fresh blob URLs per load (`cpt-frontx-fr-blob-fresh-eval`).
 - Related: ADR-0004 (`cpt-frontx-adr-blob-url-mfe-isolation`) — establishes the per-load blob URL mechanism that this decision builds on. The "Bad, because blob URLs accumulate" consequence in ADR-0004 is narrowed by this decision: per-load growth is the only growth dimension, and it is catalog-bounded.

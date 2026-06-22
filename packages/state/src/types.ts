@@ -1,5 +1,5 @@
 /**
- * @cyberfabric/state - Type Definitions
+ * @gears-frontx/state - Type Definitions
  *
  * Core types for the FrontX Flux dataflow pattern.
  * Combines event system and store types into a unified package.
@@ -23,13 +23,13 @@ import type { Observable } from 'redux';
  * - **FrontX Action**: Function that emits events via eventBus.emit()
  * - **ReducerPayload**: The payload shape received by reducers in createSlice
  *
- * Redux is an internal implementation detail of @cyberfabric/state.
+ * Redux is an internal implementation detail of @gears-frontx/state.
  *
  * @template T - The payload type
  *
  * @example
  * ```typescript
- * import { createSlice, type ReducerPayload } from '@cyberfabric/state';
+ * import { createSlice, type ReducerPayload } from '@gears-frontx/state';
  *
  * const menuSlice = createSlice({
  *   name: 'uicore/menu',
@@ -59,7 +59,7 @@ export type ReducerPayload<T> = PayloadAction<T>;
  *
  * @example
  * ```typescript
- * declare module '@cyberfabric/state' {
+ * declare module '@gears-frontx/state' {
  *   interface EventPayloadMap {
  *     'chat/threads/selected': { threadId: string };
  *     'chat/messages/received': { message: Message };
@@ -217,7 +217,7 @@ export type PayloadOf<K extends EventKey> = EventPayloadMap[K];
  *
  * @example
  * ```typescript
- * declare module '@cyberfabric/state' {
+ * declare module '@gears-frontx/state' {
  *   interface EventPayloadMap {
  *     'app/initialized': void;
  *   }
@@ -241,7 +241,7 @@ export type VoidPayload = void;
  * @example
  * ```typescript
  * // In your screenset code
- * declare module '@cyberfabric/state' {
+ * declare module '@gears-frontx/state' {
  *   interface RootState {
  *     'chat/threads': ThreadsState;
  *     'chat/messages': MessagesState;
@@ -264,7 +264,7 @@ export interface RootState {
 /**
  * App Dispatch Type
  * The dispatch function type for the FrontX store.
- * Aliases Redux `Dispatch<UnknownAction>` so `HAI3Store` is structurally compatible with
+ * Aliases Redux `Dispatch<UnknownAction>` so `FrontXStore` is structurally compatible with
  * `Store` (e.g. react-redux `Provider`) while keeping the same call shape for effects.
  */
 export type AppDispatch = Dispatch<UnknownAction>;
@@ -365,7 +365,7 @@ export type EffectInitializerWithCleanup = (dispatch: AppDispatch) => EffectClea
  *
  * @template TState - The state type (defaults to RootState)
  */
-export interface HAI3Store<TState = RootState> {
+export interface FrontXStore<TState = RootState> {
   /** Get current state */
   getState: () => TState;
   /** Dispatch an action */

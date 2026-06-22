@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { eventBus, resetStore } from '@cyberfabric/state';
-import { createHAI3 } from '../src/createHAI3';
-import { createHAI3App } from '../src/createHAI3App';
+import { eventBus, resetStore } from '@gears-frontx/state';
+import { createFrontX } from '../src/createFrontX';
+import { createFrontXApp } from '../src/createFrontXApp';
 import { presets } from '../src/presets';
 import { effects } from '../src/plugins/effects';
 import { i18n } from '../src/plugins/i18n';
@@ -10,13 +10,13 @@ import { mock } from '../src/plugins/mock';
 import { queryCache } from '../src/plugins/queryCache';
 import { themes } from '../src/plugins/themes';
 import { resetSharedQueryClient } from '../src/testing';
-import type { HAI3Actions, HAI3App, HAI3Plugin } from '../src/types';
+import type { FrontXActions, FrontXApp, FrontXPlugin } from '../src/types';
 
-type ActionName = keyof HAI3Actions;
+type ActionName = keyof FrontXActions;
 
-type ActionsView = Partial<HAI3Actions>;
+type ActionsView = Partial<FrontXActions>;
 
-function getActionsView(app: HAI3App): ActionsView {
+function getActionsView(app: FrontXApp): ActionsView {
   return app.actions as ActionsView;
 }
 
@@ -32,7 +32,7 @@ function assertMissingAction(actions: ActionsView, name: ActionName): void {
 }
 
 describe('plugin system contract', () => {
-  let apps: HAI3App[] = [];
+  let apps: FrontXApp[] = [];
 
   afterEach(() => {
     apps.forEach((app) => {
@@ -45,7 +45,7 @@ describe('plugin system contract', () => {
     resetSharedQueryClient();
   });
 
-  function track(app: HAI3App): HAI3App {
+  function track(app: FrontXApp): FrontXApp {
     apps.push(app);
     return app;
   }
@@ -53,7 +53,7 @@ describe('plugin system contract', () => {
   describe('preset surfaces', () => {
     it('minimal preset exposes themes only', () => {
       const app = track(
-        createHAI3()
+        createFrontX()
           .use(presets.minimal())
           .build()
       );
@@ -65,8 +65,8 @@ describe('plugin system contract', () => {
       assertMissingAction(actions, 'setLanguage');
     });
 
-    it('createHAI3App follows the full preset contract', () => {
-      const app = track(createHAI3App());
+    it('createFrontXApp follows the full preset contract', () => {
+      const app = track(createFrontXApp());
       const actions = getActionsView(app);
 
       expect(app.themeRegistry).toBeDefined();
@@ -92,35 +92,35 @@ describe('plugin system contract', () => {
 
   describe('dependency resolution', () => {
     it('composition order does not matter when declared dependencies are present', () => {
-      const providerPlugin: HAI3Plugin = { name: 'provider', dependencies: [], provides: {} };
-      const consumerPlugin: HAI3Plugin = { name: 'consumer', dependencies: ['provider'], provides: {} };
+      const providerPlugin: FrontXPlugin = { name: 'provider', dependencies: [], provides: {} };
+      const consumerPlugin: FrontXPlugin = { name: 'consumer', dependencies: ['provider'], provides: {} };
 
-      expect(() => track(createHAI3().use(providerPlugin).use(consumerPlugin).build())).not.toThrow();
-      expect(() => track(createHAI3().use(consumerPlugin).use(providerPlugin).build())).not.toThrow();
+      expect(() => track(createFrontX().use(providerPlugin).use(consumerPlugin).build())).not.toThrow();
+      expect(() => track(createFrontX().use(consumerPlugin).use(providerPlugin).build())).not.toThrow();
     });
 
     it('succeeds when plugins are registered out of dependency order', () => {
-      const providerPlugin: HAI3Plugin = { name: 'provider', dependencies: [], provides: {} };
-      const consumerPlugin: HAI3Plugin = { name: 'consumer', dependencies: ['provider'], provides: {} };
+      const providerPlugin: FrontXPlugin = { name: 'provider', dependencies: [], provides: {} };
+      const consumerPlugin: FrontXPlugin = { name: 'consumer', dependencies: ['provider'], provides: {} };
 
-      expect(() => track(createHAI3().use(consumerPlugin).use(providerPlugin).build())).not.toThrow();
+      expect(() => track(createFrontX().use(consumerPlugin).use(providerPlugin).build())).not.toThrow();
     });
   });
 
   describe('negative paths', () => {
     it('strictMode throws when a plugin dependency is missing', () => {
-      const plugin: HAI3Plugin = { name: 'test', dependencies: ['missing'], provides: {} };
+      const plugin: FrontXPlugin = { name: 'test', dependencies: ['missing'], provides: {} };
 
       expect(() => {
-        createHAI3({ strictMode: true }).use(plugin).build();
+        createFrontX({ strictMode: true }).use(plugin).build();
       }).toThrowError(/requires "missing"/);
     });
 
     it('non-strict mode warns and still builds when a dependency is missing', () => {
-      const plugin: HAI3Plugin = { name: 'test', dependencies: ['missing'], provides: {} };
+      const plugin: FrontXPlugin = { name: 'test', dependencies: ['missing'], provides: {} };
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       try {
-        track(createHAI3().use(plugin).build());
+        track(createFrontX().use(plugin).build());
 
         expect(warnSpy).toHaveBeenCalledWith(
           expect.stringMatching(/requires "missing"/)
@@ -131,11 +131,11 @@ describe('plugin system contract', () => {
     });
 
     it('detects circular dependencies between plugins', () => {
-      const providerPlugin: HAI3Plugin = { name: 'provider', dependencies: ['consumer'], provides: {} };
-      const consumerPlugin: HAI3Plugin = { name: 'consumer', dependencies: ['provider'], provides: {} };
+      const providerPlugin: FrontXPlugin = { name: 'provider', dependencies: ['consumer'], provides: {} };
+      const consumerPlugin: FrontXPlugin = { name: 'consumer', dependencies: ['provider'], provides: {} };
 
       expect(() => {
-        createHAI3()
+        createFrontX()
           .use(providerPlugin)
           .use(consumerPlugin)
           .build();
@@ -143,10 +143,10 @@ describe('plugin system contract', () => {
     });
 
     it('skips duplicate plugin registrations silently', () => {
-      const plugin: HAI3Plugin = { name: 'test', dependencies: [], provides: {} };
+      const plugin: FrontXPlugin = { name: 'test', dependencies: [], provides: {} };
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       try {
-        track(createHAI3().use(plugin).use(plugin).build());
+        track(createFrontX().use(plugin).use(plugin).build());
         expect(warnSpy).not.toHaveBeenCalled();
       } finally {
         warnSpy.mockRestore();
@@ -154,10 +154,10 @@ describe('plugin system contract', () => {
     });
 
     it('emits a duplicate-registration warning in devMode', () => {
-      const plugin: HAI3Plugin = { name: 'test', dependencies: [], provides: {} };
+      const plugin: FrontXPlugin = { name: 'test', dependencies: [], provides: {} };
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       try {
-        track(createHAI3({ devMode: true }).use(plugin).use(plugin).build());
+        track(createFrontX({ devMode: true }).use(plugin).use(plugin).build());
         expect(warnSpy).toHaveBeenCalledWith(expect.stringMatching(/already registered/));
       } finally {
         warnSpy.mockRestore();

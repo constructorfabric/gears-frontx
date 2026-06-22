@@ -15,7 +15,7 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { eventBus, resetSharedFetchCache, resetSharedQueryClient } from '@cyberfabric/framework';
+import { eventBus, resetSharedFetchCache, resetSharedQueryClient } from '@gears-frontx/framework';
 import { useApiMutation } from '../src/hooks/useApiMutation';
 import { createQueryCache, type MutationCallbackContext } from '../src/hooks/QueryCache';
 import {

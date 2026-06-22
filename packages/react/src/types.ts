@@ -1,33 +1,33 @@
 /**
- * @cyberfabric/react - Type Definitions
+ * @gears-frontx/react - Type Definitions
  *
  * Core types for FrontX React bindings.
  * Provides type-safe hooks and components.
  *
- * Now using real imports from @cyberfabric/framework since packages are built together.
+ * Now using real imports from @gears-frontx/framework since packages are built together.
  */
 
 import type { ReactNode } from 'react';
 import type {
-  HAI3Config,
-  HAI3App,
+  FrontXConfig,
+  FrontXApp,
   RootState,
   Language,
   Formatters,
   AccessQuery,
   AccessRecord,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 import type { MfeContextValue } from './mfe/MfeContext';
 
 // Re-export imported types for convenience
-export type { HAI3Config, HAI3App };
+export type { FrontXConfig, FrontXApp };
 
 // ============================================================================
 // API Hook Result Types
 // ============================================================================
 
 /**
- * HAI3-owned query result type.
+ * Gears FrontX-owned query result type.
  * Returned by useApiQuery — callers depend on this contract, not on TanStack internals.
  */
 // @cpt-FEATURE:implement-endpoint-descriptors:p3
@@ -43,7 +43,7 @@ export interface ApiQueryResult<TData, TError = Error> {
 // @cpt-end:implement-endpoint-descriptors:p3:inst-api-query-result
 
 /**
- * HAI3-owned suspense query result type.
+ * Gears FrontX-owned suspense query result type.
  * Returned by useApiSuspenseQuery — callers depend on this contract, not on TanStack internals.
  */
 // @cpt-begin:cpt-frontx-dod-request-lifecycle-use-api-query:p2:inst-suspense-query-result
@@ -56,7 +56,7 @@ export interface ApiSuspenseQueryResult<TData, TError = Error> {
 // @cpt-end:cpt-frontx-dod-request-lifecycle-use-api-query:p2:inst-suspense-query-result
 
 /**
- * HAI3-owned infinite query result type.
+ * Gears FrontX-owned infinite query result type.
  * Returned by useApiInfiniteQuery for descriptor-driven pagination.
  */
 // @cpt-begin:cpt-frontx-dod-request-lifecycle-use-api-query:p2:inst-infinite-query-result
@@ -77,7 +77,7 @@ export interface ApiInfiniteQueryResult<TPage, TError = Error> {
 // @cpt-end:cpt-frontx-dod-request-lifecycle-use-api-query:p2:inst-infinite-query-result
 
 /**
- * HAI3-owned suspense infinite query result type.
+ * Gears FrontX-owned suspense infinite query result type.
  * Returned by useApiSuspenseInfiniteQuery for descriptor-driven pagination.
  */
 // @cpt-begin:cpt-frontx-dod-request-lifecycle-use-api-query:p2:inst-suspense-infinite-query-result
@@ -96,7 +96,7 @@ export interface ApiSuspenseInfiniteQueryResult<TPage, TError = Error> {
 // @cpt-end:cpt-frontx-dod-request-lifecycle-use-api-query:p2:inst-suspense-infinite-query-result
 
 /**
- * HAI3-owned mutation result type.
+ * Gears FrontX-owned mutation result type.
  * Returned by useApiMutation — callers depend on this contract, not on TanStack internals.
  */
 // @cpt-begin:implement-endpoint-descriptors:p3:inst-api-mutation-result
@@ -114,10 +114,10 @@ export interface ApiMutationResult<TData, TError = Error, TVariables = void> {
 // Type Aliases
 // ============================================================================
 
-// From @cyberfabric/store
+// From @gears-frontx/store
 type Selector<TResult, TState = RootState> = (state: TState) => TResult;
 
-// Language is imported from @cyberfabric/framework
+// Language is imported from @gears-frontx/framework
 type TranslationParams = Record<string, string | number | boolean>;
 
 // ============================================================================
@@ -151,13 +151,13 @@ type TranslationParams = Record<string, string | number | boolean>;
  * </FrontXProvider>
  * ```
  */
-export interface HAI3ProviderProps {
+export interface FrontXProviderProps {
   /** Child components */
   children: ReactNode;
   /** FrontX configuration */
-  config?: HAI3Config;
+  config?: FrontXConfig;
   /** Pre-built FrontX app instance (optional) */
-  app?: HAI3App;
+  app?: FrontXApp;
   /** MFE bridge context (for MFE components) */
   mfeBridge?: MfeContextValue;
 }
@@ -170,7 +170,7 @@ export interface HAI3ProviderProps {
  * useFrontX Hook Return Type
  * Returns the FrontX app instance from context.
  */
-export type UseHAI3Return = HAI3App;
+export type UseFrontXReturn = FrontXApp;
 
 /**
  * useAppSelector Hook
@@ -228,7 +228,7 @@ export interface UseThemeReturn {
 /**
  * useFormatters Hook Return Type
  * Locale-aware formatters (locale from i18nRegistry.getLanguage()).
- * References @cyberfabric/i18n Formatters so signatures stay in sync.
+ * References @gears-frontx/i18n Formatters so signatures stay in sync.
  */
 export type UseFormattersReturn = Formatters;
 

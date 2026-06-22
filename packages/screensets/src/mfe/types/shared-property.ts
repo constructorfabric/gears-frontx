@@ -8,7 +8,7 @@
 
 /**
  * Defines a shared property instance passed from host to MFE
- * GTS Type: gts.hai3.mfes.comm.shared_property.v1~
+ * GTS Type: gts.frontx.mfes.comm.shared_property.v1~
  */
 export interface SharedProperty {
   /** The GTS type ID for this shared property */

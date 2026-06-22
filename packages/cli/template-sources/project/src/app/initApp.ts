@@ -1,20 +1,20 @@
 /**
  * Shared application initialization for all main.tsx template variants.
  *
- * Registers GTS schemas, API services, and creates the HAI3 app instance.
+ * Registers GTS schemas, API services, and creates the Gears FrontX app instance.
  * Each main variant imports this and only adds variant-specific rendering.
  */
 // @ts-nocheck — Template source: `@/` imports resolve in generated apps, not in this package tree.
 import {
   apiRegistry,
-  createHAI3App,
+  createFrontXApp,
   MfeHandlerMF,
   gtsPlugin,
-  HAI3_MFE_ENTRY_MF,
+  FRONTX_MFE_ENTRY_MF,
   themeSchema,
   languageSchema,
   extensionScreenSchema,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import { AccountsApiService } from '@/app/api';
 import '@/app/events/bootstrapEvents';
 import { registerBootstrapEffects } from '@/app/effects/bootstrapEffects';
@@ -30,12 +30,12 @@ apiRegistry.register(AccountsApiService);
 // Initialize API services
 apiRegistry.initialize({});
 
-// Create HAI3 app instance
+// Create Gears FrontX app instance
 // Register MfeHandlerMF to enable Module Federation MFE loading
-const app = createHAI3App({
+const app = createFrontXApp({
   microfrontends: {
     typeSystem: gtsPlugin,
-    mfeHandlers: [new MfeHandlerMF(HAI3_MFE_ENTRY_MF)],
+    mfeHandlers: [new MfeHandlerMF(FRONTX_MFE_ENTRY_MF)],
   },
 });
 

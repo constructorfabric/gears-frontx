@@ -53,7 +53,7 @@ Chosen option: "Builder pattern with plugin chain and Symbol-based identificatio
 
 ### Confirmation
 
-`packages/framework/src/plugin.ts` defines the `HAI3Plugin` interface with `init(context: HAI3PluginContext)`. `packages/framework/src/createHAI3.ts` implements the builder with `.use()` and `.build()`. The mock plugin exports `MOCK_PLUGIN` Symbol and `MockPlugin` class in `packages/framework/src/plugins/mock/`.
+`packages/framework/src/plugin.ts` defines the `Gears FrontXPlugin` interface with `init(context: Gears FrontXPluginContext)`. `packages/framework/src/createGears FrontX.ts` implements the builder with `.use()` and `.build()`. The mock plugin exports `MOCK_PLUGIN` Symbol and `MockPlugin` class in `packages/framework/src/plugins/mock/`.
 
 ## Pros and Cons of the Options
 
@@ -79,7 +79,7 @@ Chosen option: "Builder pattern with plugin chain and Symbol-based identificatio
 
 ## More Information
 
-- `HAI3PluginContext` exposes `registerSlice()`, `registerEffect()`, and `on()` (EventBus subscription) as the three extension surfaces available to plugins
+- `Gears FrontXPluginContext` exposes `registerSlice()`, `registerEffect()`, and `on()` (EventBus subscription) as the three extension surfaces available to plugins
 - Related: ADR 0002 (Event-Driven Flux Data Flow) — plugins register effects and event listeners through the same context
 - Related: ADR 0001 (Four-Layer SDK Architecture) — framework is L2, plugins may compose any L1 package through the context
 
@@ -94,4 +94,4 @@ This decision directly addresses:
 * `cpt-frontx-fr-mock-toggle` — Mock mode controlled via MockPlugin through builder chain
 * `cpt-frontx-principle-plugin-first-composition` — Architectural principle requiring all framework features to be delivered as plugins
 * `cpt-frontx-component-framework` — Framework component boundary in the layer diagram
-* `cpt-frontx-interface-plugin` — Formal HAI3Plugin interface definition
+* `cpt-frontx-interface-plugin` — Formal Gears FrontXPlugin interface definition

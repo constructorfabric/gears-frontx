@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createHAI3 } from '../../../src/createHAI3';
+import { createFrontX } from '../../../src/createFrontX';
 import { effects } from '../../../src/plugins/effects';
 import {
   microfrontends,
@@ -20,14 +20,14 @@ import {
   selectExtensionState,
   selectRegisteredExtensions,
 } from '../../../src/plugins/microfrontends';
-import { eventBus, resetStore } from '@cyberfabric/state';
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
-import type { MfeRegistry } from '@cyberfabric/screensets';
-import type { Extension, ExtensionDomain } from '@cyberfabric/framework';
+import { eventBus, resetStore } from '@gears-frontx/state';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
+import type { MfeRegistry } from '@gears-frontx/screensets';
+import type { Extension, ExtensionDomain } from '@gears-frontx/framework';
 import { TestContainerProvider } from '../../../src/testing/TestContainerProvider';
-import type { HAI3App } from '../../../src/types';
+import type { FrontXApp } from '../../../src/types';
 
-function getMfeRegistry(app: HAI3App): MfeRegistry {
+function getMfeRegistry(app: FrontXApp): MfeRegistry {
   if (!app.mfeRegistry) {
     throw new Error('Expected microfrontends plugin to provide mfeRegistry');
   }
@@ -36,7 +36,7 @@ function getMfeRegistry(app: HAI3App): MfeRegistry {
 }
 
 async function waitForExtensionState(
-  app: HAI3App,
+  app: FrontXApp,
   extensionId: string,
   expectedState: ReturnType<typeof selectExtensionState>,
 ): Promise<void> {
@@ -46,7 +46,7 @@ async function waitForExtensionState(
 }
 
 async function waitForRegisteredExtensions(
-  app: HAI3App,
+  app: FrontXApp,
   predicate: (registered: string[]) => void,
 ): Promise<void> {
   await vi.waitFor(() => {
@@ -55,7 +55,7 @@ async function waitForRegisteredExtensions(
 }
 
 describe('dynamic registration - Phase 20', () => {
-  let apps: HAI3App[] = [];
+  let apps: FrontXApp[] = [];
 
   afterEach(() => {
     // Cleanup all apps created in tests
@@ -75,11 +75,11 @@ describe('dynamic registration - Phase 20', () => {
   const DEFAULT_DOMAIN_ACTION_TIMEOUT_MS = 5_000;
 
   const mockDomain: ExtensionDomain = {
-    id: 'gts.hai3.mfes.ext.domain.v1~test.app.test.domain.v1',
+    id: 'gts.frontx.mfes.ext.domain.v1~test.app.test.domain.v1',
     sharedProperties: [],
     actions: [
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
-      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~',
+      'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~',
     ],
     extensionsActions: [],
     defaultActionTimeout: DEFAULT_DOMAIN_ACTION_TIMEOUT_MS,
@@ -88,9 +88,9 @@ describe('dynamic registration - Phase 20', () => {
   };
 
   const mockExtension: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.app.test.extension.v1',
-    domain: 'gts.hai3.mfes.ext.domain.v1~test.app.test.domain.v1',
-    entry: 'gts.hai3.mfes.mfe.entry.v1~test.app.test.entry.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.app.test.extension.v1',
+    domain: 'gts.frontx.mfes.ext.domain.v1~test.app.test.domain.v1',
+    entry: 'gts.frontx.mfes.mfe.entry.v1~test.app.test.entry.v1',
   };
 
   describe('20.5.1 - registerExtension action emits event', () => {
@@ -123,7 +123,7 @@ describe('dynamic registration - Phase 20', () => {
 
   describe('20.5.2 - registerExtension effect calls runtime', () => {
     it('should dispatch setExtensionRegistering and setExtensionRegistered on success', async () => {
-      const app = createHAI3().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
+      const app = createFrontX().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
       const mfeRegistry = getMfeRegistry(app);
       apps.push(app);
 
@@ -149,7 +149,7 @@ describe('dynamic registration - Phase 20', () => {
     });
 
     it('should dispatch setExtensionError on failure', async () => {
-      const app = createHAI3().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
+      const app = createFrontX().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
       const mfeRegistry = getMfeRegistry(app);
       apps.push(app);
 
@@ -196,7 +196,7 @@ describe('dynamic registration - Phase 20', () => {
     });
 
     it('should call runtime.unregisterExtension', async () => {
-      const app = createHAI3().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
+      const app = createFrontX().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
       const mfeRegistry = getMfeRegistry(app);
       apps.push(app);
 
@@ -220,7 +220,7 @@ describe('dynamic registration - Phase 20', () => {
 
   describe('20.5.6 - slice state transitions', () => {
     it('should transition through registration states', async () => {
-      const app = createHAI3().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
+      const app = createFrontX().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
       const mfeRegistry = getMfeRegistry(app);
       apps.push(app);
 
@@ -251,7 +251,7 @@ describe('dynamic registration - Phase 20', () => {
 
   describe('20.5.7 - selectExtensionState selector', () => {
     it('should return unregistered for unknown extension', () => {
-      const app = createHAI3().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
+      const app = createFrontX().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
       apps.push(app);
       const state = app.store.getState();
 
@@ -259,7 +259,7 @@ describe('dynamic registration - Phase 20', () => {
     });
 
     it('should return correct state for known extension', async () => {
-      const app = createHAI3().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
+      const app = createFrontX().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
       const mfeRegistry = getMfeRegistry(app);
       apps.push(app);
 
@@ -277,7 +277,7 @@ describe('dynamic registration - Phase 20', () => {
 
   describe('20.5.8 - selectRegisteredExtensions selector', () => {
     it('should return empty array when no extensions registered', () => {
-      const app = createHAI3().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
+      const app = createFrontX().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
       apps.push(app);
       const state = app.store.getState();
 
@@ -285,7 +285,7 @@ describe('dynamic registration - Phase 20', () => {
     });
 
     it('should return array of registered extension IDs', async () => {
-      const app = createHAI3().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
+      const app = createFrontX().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
       const mfeRegistry = getMfeRegistry(app);
       apps.push(app);
 
@@ -293,8 +293,8 @@ describe('dynamic registration - Phase 20', () => {
       const testContainerProvider = new TestContainerProvider();
       mfeRegistry.registerDomain(mockDomain, testContainerProvider.setRegistry(mfeRegistry).prepareForDomain(mockDomain));
 
-      const ext1 = { ...mockExtension, id: 'gts.hai3.mfes.ext.extension.v1~test.app.test.ext1.v1' };
-      const ext2 = { ...mockExtension, id: 'gts.hai3.mfes.ext.extension.v1~test.app.test.ext2.v1' };
+      const ext1 = { ...mockExtension, id: 'gts.frontx.mfes.ext.extension.v1~test.app.test.ext1.v1' };
+      const ext2 = { ...mockExtension, id: 'gts.frontx.mfes.ext.extension.v1~test.app.test.ext2.v1' };
 
       registerExtension(ext1);
       registerExtension(ext2);
@@ -313,7 +313,7 @@ describe('dynamic registration - Phase 20', () => {
     });
 
     it('should not include unregistered or error state extensions', async () => {
-      const app = createHAI3().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
+      const app = createFrontX().use(effects()).use(microfrontends({ typeSystem: gtsPlugin })).build();
       const mfeRegistry = getMfeRegistry(app);
       apps.push(app);
 
@@ -321,8 +321,8 @@ describe('dynamic registration - Phase 20', () => {
       mfeRegistry.registerDomain(mockDomain, testContainerProvider.setRegistry(mfeRegistry).prepareForDomain(mockDomain));
 
       // Mock one success and one failure
-      const ext1 = { ...mockExtension, id: 'gts.hai3.mfes.ext.extension.v1~test.app.test.ext1.v1' };
-      const ext2 = { ...mockExtension, id: 'gts.hai3.mfes.ext.extension.v1~test.app.test.ext2.v1' };
+      const ext1 = { ...mockExtension, id: 'gts.frontx.mfes.ext.extension.v1~test.app.test.ext1.v1' };
+      const ext2 = { ...mockExtension, id: 'gts.frontx.mfes.ext.extension.v1~test.app.test.ext2.v1' };
 
       let callCount = 0;
       mfeRegistry.registerExtension = vi.fn().mockImplementation(async () => {

@@ -413,7 +413,7 @@ describe('aiSyncCommand', () => {
       '# Unit Testing\n\n## COVERAGE RULES\n- keep tests focused\n'
     );
 
-    const packageDir = path.join(projectRoot, 'node_modules', '@cyberfabric', 'mock-package');
+    const packageDir = path.join(projectRoot, 'node_modules', '@gears-frontx', 'mock-package');
     const pkgCommandsDir = path.join(packageDir, 'commands');
     await fs.ensureDir(pkgCommandsDir);
     await fs.writeFile(
@@ -476,7 +476,7 @@ describe('aiSyncCommand', () => {
       'Unit testing guidance is present but missing expected Vitest EXECUTION/ENVIRONMENT sections.'
     );
     expect(logger.log).toHaveBeenCalledWith(
-      'Detected 1 @cyberfabric packages with documentation:'
+      'Detected 1 @gears-frontx packages with documentation:'
     );
   });
 });

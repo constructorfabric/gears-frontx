@@ -4,8 +4,8 @@
  * This migration updates FrontX projects from the legacy package structure
  * to the new SDK architecture:
  *
- * - @cyberfabric/uicore -> @cyberfabric/react
- * - @cyberfabric/uikit-contracts -> @cyberfabric/react
+ * - @gears-frontx/uicore -> @gears-frontx/react
+ * - @gears-frontx/uikit-contracts -> @gears-frontx/react
  * - Module augmentations updated
  */
 
@@ -19,8 +19,8 @@ export const migration020: Migration = {
   version: '0.2.0',
   name: 'SDK Architecture Migration',
   description:
-    'Updates HAI3 projects from legacy package structure to SDK architecture. ' +
-    'Transforms @cyberfabric/uicore to @cyberfabric/react, @cyberfabric/uikit-contracts to @cyberfabric/react, ' +
+    'Updates Gears FrontX projects from legacy package structure to SDK architecture. ' +
+    'Transforms @gears-frontx/uicore to @gears-frontx/react, @gears-frontx/uikit-contracts to @gears-frontx/react, ' +
     'and updates module augmentation targets.',
   transforms: [
     uicoreToReactTransform,

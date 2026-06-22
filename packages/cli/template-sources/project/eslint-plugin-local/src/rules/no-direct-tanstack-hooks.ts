@@ -1,12 +1,12 @@
 /**
  * @fileoverview Prevent direct use of @tanstack/react-query hooks in app code.
  *
- * HAI3 wraps TanStack Query behind useApiQuery, useApiInfiniteQuery,
+ * Gears FrontX wraps TanStack Query behind useApiQuery, useApiInfiniteQuery,
  * useApiSuspenseInfiniteQuery, useApiMutation, useApiStream, and useQueryCache.
  * Direct imports bypass descriptor-based cache keys,
  * the restricted QueryCache interface, and abort/cancellation wiring.
  *
- * @author HAI3 Team
+ * @author Gears FrontX Team
  */
 
 import type { Rule } from 'eslint';
@@ -30,18 +30,18 @@ const rule: Rule.RuleModule = {
     type: 'problem',
     docs: {
       description:
-        'Prevent direct use of @tanstack/react-query hooks. Use HAI3 wrappers from @cyberfabric/react instead.',
+        'Prevent direct use of @tanstack/react-query hooks. Use Gears FrontX wrappers from @gears-frontx/react instead.',
       category: 'Data Layer',
       recommended: true,
     },
     messages: {
       noDirectHook:
         'QUERY VIOLATION: Do not import {{name}} from @tanstack/react-query. ' +
-        'Use {{replacement}} from @cyberfabric/react instead. ' +
-        'HAI3 wrappers enforce descriptor-based cache keys and prevent raw QueryClient leakage.',
+        'Use {{replacement}} from @gears-frontx/react instead. ' +
+        'Gears FrontX wrappers enforce descriptor-based cache keys and prevent raw QueryClient leakage.',
       noDirectType:
         'QUERY VIOLATION: Do not import {{name}} from @tanstack/react-query. ' +
-        'Use the equivalent type from @cyberfabric/react (e.g., ApiQueryResult, ApiMutationResult, QueryCache).',
+        'Use the equivalent type from @gears-frontx/react (e.g., ApiQueryResult, ApiMutationResult, QueryCache).',
     },
     schema: [],
   },
@@ -91,7 +91,7 @@ function getReplacementHint(name: string): string | null {
     case 'useQueryClient':
       return 'useQueryCache';
     case 'QueryClientProvider':
-      return 'HAI3Provider (which includes QueryClientProvider)';
+      return 'FrontXProvider (which includes QueryClientProvider)';
     case 'useInfiniteQuery':
       return 'useApiInfiniteQuery';
     case 'useSuspenseInfiniteQuery':

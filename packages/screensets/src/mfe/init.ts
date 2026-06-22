@@ -13,23 +13,23 @@
  *
  * These types define the core MFE contract model and are built into the GTS plugin.
  */
-export const HAI3_CORE_TYPE_IDS = {
+export const FRONTX_CORE_TYPE_IDS = {
   /** Pure contract type (abstract base) */
-  mfeEntry: 'gts.hai3.mfes.mfe.entry.v1~',
+  mfeEntry: 'gts.frontx.mfes.mfe.entry.v1~',
   /** Extension point contract */
-  extensionDomain: 'gts.hai3.mfes.ext.domain.v1~',
+  extensionDomain: 'gts.frontx.mfes.ext.domain.v1~',
   /** Extension binding */
-  extension: 'gts.hai3.mfes.ext.extension.v1~',
+  extension: 'gts.frontx.mfes.ext.extension.v1~',
   /** Property definition */
-  sharedProperty: 'gts.hai3.mfes.comm.shared_property.v1~',
+  sharedProperty: 'gts.frontx.mfes.comm.shared_property.v1~',
   /** Action type with target and self-id */
-  action: 'gts.hai3.mfes.comm.action.v1~',
+  action: 'gts.frontx.mfes.comm.action.v1~',
   /** Action chain for mediation */
-  actionsChain: 'gts.hai3.mfes.comm.actions_chain.v1~',
+  actionsChain: 'gts.frontx.mfes.comm.actions_chain.v1~',
   /** Lifecycle event type */
-  lifecycleStage: 'gts.hai3.mfes.lifecycle.stage.v1~',
+  lifecycleStage: 'gts.frontx.mfes.lifecycle.stage.v1~',
   /** Lifecycle stage to actions chain binding */
-  lifecycleHook: 'gts.hai3.mfes.lifecycle.hook.v1~',
+  lifecycleHook: 'gts.frontx.mfes.lifecycle.hook.v1~',
 } as const;
 
 /**
@@ -38,15 +38,15 @@ export const HAI3_CORE_TYPE_IDS = {
  * These are the default lifecycle stages that FrontX provides.
  * Domains and extensions can define additional custom lifecycle stages.
  */
-export const HAI3_LIFECYCLE_STAGE_IDS = {
+export const FRONTX_LIFECYCLE_STAGE_IDS = {
   /** Triggered after extension registration */
-  init: 'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+  init: 'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
   /** Triggered after extension mount */
-  activated: 'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
+  activated: 'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
   /** Triggered after extension unmount */
-  deactivated: 'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
+  deactivated: 'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
   /** Triggered before extension unregistration */
-  destroyed: 'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+  destroyed: 'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
 } as const;
 
 /**
@@ -54,11 +54,11 @@ export const HAI3_LIFECYCLE_STAGE_IDS = {
  *
  * These types are specific to Module Federation-based MFE loading.
  */
-export const HAI3_MF_TYPE_IDS = {
+export const FRONTX_MF_TYPE_IDS = {
   /** Module Federation manifest (standalone) */
-  mfManifest: 'gts.hai3.mfes.mfe.mf_manifest.v1~',
+  mfManifest: 'gts.frontx.mfes.mfe.mf_manifest.v1~',
   /** Module Federation entry (derived from MfeEntry) */
-  mfeEntryMf: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+  mfeEntryMf: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
 } as const;
 
 /**

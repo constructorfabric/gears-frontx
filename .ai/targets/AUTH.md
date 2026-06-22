@@ -1,4 +1,4 @@
-# @cyberfabric/auth Guidelines (Canonical)
+# @gears-frontx/auth Guidelines (Canonical)
 
 ## AI WORKFLOW (REQUIRED)
 1) Summarize 3-6 rules from this file before making changes.
@@ -6,12 +6,12 @@
 
 ## SCOPE
 - Package: `packages/auth/`
-- Layer: L1 SDK (zero @hai3 dependencies)
+- Layer: L1 SDK (zero @gears-frontx dependencies)
 - Purpose: headless authentication contract (types only)
 
 ## CRITICAL RULES
 - REQUIRED: Only TypeScript interfaces and type aliases. No runtime code.
-- REQUIRED: No React, no @cyberfabric/framework, no @cyberfabric/api imports.
+- REQUIRED: No React, no @gears-frontx/framework, no @gears-frontx/api imports.
 - REQUIRED: AuthProvider contract is the single extension point.
 - REQUIRED: Session mechanism via `AuthSession.kind` discriminant (bearer | cookie | custom).
 - REQUIRED: All provider methods accept optional `AuthContext` with AbortSignal.
@@ -49,9 +49,9 @@
 
 ## STOP CONDITIONS
 - Adding runtime code (classes, functions, side effects).
-- Adding @cyberfabric/* or third-party dependencies.
+- Adding @gears-frontx/* or third-party dependencies.
 - Adding React components or hooks.
-- Adding HTTP/transport logic (belongs in @cyberfabric/framework auth plugin).
+- Adding HTTP/transport logic (belongs in @gears-frontx/framework auth plugin).
 - Modifying AuthProvider required methods (breaking change).
 
 ## PRE-DIFF CHECKLIST

@@ -12,7 +12,7 @@ How does RTK Query (`@reduxjs/toolkit/query`) compare with TanStack Query v5 acr
 
 **Out of scope:** SWR, Apollo Client, other data-fetching libraries. Implementation details of how either library would integrate with `BaseApiService` (covered in the [existing TanStack exploration](./2026-03-17-tanstack-query-integration-research.md)).
 
-**Constraints:** HAI3 uses `@reduxjs/toolkit@2.11.2` as a devDependency in `@cyberfabric/state` and `@cyberfabric/react`. The store is a single global instance created via `createStore()` in `@cyberfabric/state` with dynamic slice registration. All MFEs share the host's `QueryClient` for cross-MFE cache deduplication (see `HAI3Provider.tsx` and `MfeProvider.tsx`). Redux state uses a `screensetId/domain` namespace convention for MFE isolation.
+**Constraints:** Gears FrontX uses `@reduxjs/toolkit@2.11.2` as a devDependency in `@gears-frontx/state` and `@gears-frontx/react`. The store is a single global instance created via `createStore()` in `@gears-frontx/state` with dynamic slice registration. All MFEs share the host's `QueryClient` for cross-MFE cache deduplication (see `Gears FrontXProvider.tsx` and `MfeProvider.tsx`). Redux state uses a `screensetId/domain` namespace convention for MFE isolation.
 
 ## Findings
 
@@ -25,7 +25,7 @@ RTK Query is included in the `@reduxjs/toolkit` package and exposed via two entr
 
 The [official RTK Query overview](https://redux-toolkit.js.org/rtk-query/overview) states the incremental cost when already using Redux Toolkit: **~9 kB for RTK Query core + ~2 kB for the React hooks** (minified + gzipped). Adding endpoint definitions contributes only the code inside the definition itself, typically a few bytes per endpoint.
 
-For comparison, TanStack Query v5 (`@tanstack/react-query`) adds ~13-14 kB minified + gzipped as a new dependency. Since HAI3 already ships `@reduxjs/toolkit`, RTK Query would add zero new packages -- only the additional entry point import (~11 kB incremental). TanStack Query adds a new package dependency (~13 kB) but has zero runtime dependencies of its own.
+For comparison, TanStack Query v5 (`@tanstack/react-query`) adds ~13-14 kB minified + gzipped as a new dependency. Since Gears FrontX already ships `@reduxjs/toolkit`, RTK Query would add zero new packages -- only the additional entry point import (~11 kB incremental). TanStack Query adds a new package dependency (~13 kB) but has zero runtime dependencies of its own.
 
 The difference is small in absolute terms (~2 kB). The meaningful distinction is dependency count: RTK Query adds zero new dependencies; TanStack Query adds one.
 
@@ -111,7 +111,7 @@ No generated hooks -- you call `useQuery` or `useMutation` directly with options
 
 **Trade-off.** RTK Query's `createApi` produces a single source of truth for all endpoints with auto-generated hooks. This is more structured but requires all endpoints to be defined upfront (or injected via `injectEndpoints`). TanStack Query is more flexible -- queries can be defined anywhere -- but lacks a centralized endpoint registry.
 
-In HAI3's context, the existing `BaseApiService` / `RestProtocol` layer already serves as the centralized API definition. Both libraries would wrap these service methods. RTK Query's `fetchBaseQuery` would need to be replaced with a custom `baseQuery` that delegates to the existing service layer, or each endpoint would use `queryFn` instead of `query`.
+In Gears FrontX's context, the existing `BaseApiService` / `RestProtocol` layer already serves as the centralized API definition. Both libraries would wrap these service methods. RTK Query's `fetchBaseQuery` would need to be replaced with a custom `baseQuery` that delegates to the existing service layer, or each endpoint would use `queryFn` instead of `query`.
 
 **Confidence:** Substantiated -- based on official documentation for both libraries.
 
@@ -124,21 +124,21 @@ RTK Query requires a Redux store. Each `createApi` call generates:
 
 This means RTK Query's cache lives inside the Redux store. All cache reads and writes are Redux actions visible in Redux DevTools. This is an advantage for debugging and for code that already interacts with Redux state.
 
-In HAI3, the store is created via `createStore()` in `@cyberfabric/state` (L1). Adding RTK Query's reducer and middleware would require modifying the store creation logic. Since `@cyberfabric/state` is an L1 package with zero `@hai3` dependencies, adding RTK Query integration here would keep it at L1 (RTK is already a peer dependency). However, RTK Query's `createApi` with React hooks comes from `@reduxjs/toolkit/query/react`, which has a React dependency -- this would need to live at L3.
+In Gears FrontX, the store is created via `createStore()` in `@gears-frontx/state` (L1). Adding RTK Query's reducer and middleware would require modifying the store creation logic. Since `@gears-frontx/state` is an L1 package with zero `@gears-frontx` dependencies, adding RTK Query integration here would keep it at L1 (RTK is already a peer dependency). However, RTK Query's `createApi` with React hooks comes from `@reduxjs/toolkit/query/react`, which has a React dependency -- this would need to live at L3.
 
-**Coupling concern.** RTK Query tightly couples data fetching to the Redux store. If HAI3 ever moved away from Redux for client state, RTK Query would also need to be replaced. TanStack Query is independent of the client state manager -- it can coexist with Redux, Zustand, or no state manager at all.
+**Coupling concern.** RTK Query tightly couples data fetching to the Redux store. If Gears FrontX ever moved away from Redux for client state, RTK Query would also need to be replaced. TanStack Query is independent of the client state manager -- it can coexist with Redux, Zustand, or no state manager at all.
 
-**HAI3-specific observation.** The current store uses dynamic slice registration (`registerSlice`). RTK Query's reducer would need to be registered as a static reducer during store creation, or the store creation logic would need modification to accommodate the API slice's reducer and middleware. The current `createStore` function accepts `initialReducers` but does not expose middleware configuration.
+**Gears FrontX-specific observation.** The current store uses dynamic slice registration (`registerSlice`). RTK Query's reducer would need to be registered as a static reducer during store creation, or the store creation logic would need modification to accommodate the API slice's reducer and middleware. The current `createStore` function accepts `initialReducers` but does not expose middleware configuration.
 
-**Confidence:** Substantiated -- based on RTK Query architecture and reading the HAI3 `@cyberfabric/state` store implementation.
+**Confidence:** Substantiated -- based on RTK Query architecture and reading the Gears FrontX `@gears-frontx/state` store implementation.
 
 ### 7. MFE isolation
 
 This is where the architectural fit diverges significantly.
 
-**TanStack Query.** All MFEs share the host's `QueryClient` from `HAI3Provider`. Cache is keyed by query key, decoupled from which service instance fetches the data. When two MFEs use the same query key, only one HTTP request fires. Each MFE still uses its own `apiRegistry` and service instances in `queryFn` — the shared cache works because all MFEs share the same auth and base URL for overlapping endpoints. This is the current HAI3 architecture: shared cache with separated API services.
+**TanStack Query.** All MFEs share the host's `QueryClient` from `Gears FrontXProvider`. Cache is keyed by query key, decoupled from which service instance fetches the data. When two MFEs use the same query key, only one HTTP request fires. Each MFE still uses its own `apiRegistry` and service instances in `queryFn` — the shared cache works because all MFEs share the same auth and base URL for overlapping endpoints. This is the current Gears FrontX architecture: shared cache with separated API services.
 
-**RTK Query.** Cache lives in the Redux store. RTK Query's `createApi` requires defining all endpoints statically with a single `baseQuery` function. In HAI3, each MFE has its own isolated `apiRegistry` and service instances (via Module Federation bundle isolation). To share a cache across MFEs with RTK Query, all endpoint definitions would need to live in a shared `createApi` — but the `baseQuery` can only delegate to one service layer. Since each MFE has its own service instances, a service-bridge abstraction would be needed to resolve the correct service instance per request context. This negates RTK Query's simplicity.
+**RTK Query.** Cache lives in the Redux store. RTK Query's `createApi` requires defining all endpoints statically with a single `baseQuery` function. In Gears FrontX, each MFE has its own isolated `apiRegistry` and service instances (via Module Federation bundle isolation). To share a cache across MFEs with RTK Query, all endpoint definitions would need to live in a shared `createApi` — but the `baseQuery` can only delegate to one service layer. Since each MFE has its own service instances, a service-bridge abstraction would be needed to resolve the correct service instance per request context. This negates RTK Query's simplicity.
 
 Alternative approaches have their own issues:
 
@@ -199,15 +199,15 @@ Summary matrix against ADR-0017 decision drivers:
 - RTK Query's incremental bundle cost (~11 kB) is comparable to TanStack Query (~13 kB), with the advantage of adding zero new package dependencies since `@reduxjs/toolkit` is already present. (Substantiated)
 - RTK Query and TanStack Query have near-parity on core data-fetching features: caching, deduplication, stale-while-revalidate, polling, prefetching, and optimistic updates. The approaches differ in API design but achieve equivalent outcomes. (Corroborated)
 - RTK Query lacks infinite queries, automatic request cancellation on unmount, React Suspense integration, offline mutation support, and structural sharing -- all present in TanStack Query v5. (Substantiated -- based on TanStack's comparison table, cross-referenced with RTK Query docs)
-- RTK Query's most significant gap for HAI3 is the conflict between its static `createApi`/`baseQuery` model and HAI3's per-MFE separated API services. HAI3 needs shared cache with separated API — TanStack Query achieves this trivially because `queryFn` is per-call (each MFE wraps its own service), while the `QueryClient` cache is shared. RTK Query's `baseQuery` is defined once per `createApi`, making it impossible to route to per-MFE service instances without a custom bridge. (Corroborated)
+- RTK Query's most significant gap for Gears FrontX is the conflict between its static `createApi`/`baseQuery` model and Gears FrontX's per-MFE separated API services. Gears FrontX needs shared cache with separated API — TanStack Query achieves this trivially because `queryFn` is per-call (each MFE wraps its own service), while the `QueryClient` cache is shared. RTK Query's `baseQuery` is defined once per `createApi`, making it impossible to route to per-MFE service instances without a custom bridge. (Corroborated)
 - RTK Query's cache lives in the Redux store, providing Redux DevTools visibility and traceability. This is an advantage for debugging but creates tight coupling between data fetching and the state management layer. (Substantiated)
 
 ## Open questions
 
 1. **Auto-cancellation verification.** The TanStack comparison table marks RTK Query as lacking "Query Cancellation." RTK Query does expose `AbortSignal` in `BaseQueryApi`. The exact behavior on component unmount (whether in-flight requests are auto-aborted) should be verified with a prototype, as the comparison table may be referring specifically to auto-cancellation rather than signal availability.
-2. **Store modification scope.** If RTK Query were adopted, how much modification to `@cyberfabric/state`'s `createStore()` would be needed to accommodate the API reducer and middleware? The current API does not expose middleware configuration.
+2. **Store modification scope.** If RTK Query were adopted, how much modification to `@gears-frontx/state`'s `createStore()` would be needed to accommodate the API reducer and middleware? The current API does not expose middleware configuration.
 3. **Tag invalidation cross-MFE.** If a shared `createApi` with `injectEndpoints` were used, would tag invalidation from one MFE unintentionally refetch queries in another MFE? This would need testing.
-4. **OpenAPI codegen value.** RTK Query supports generating endpoint definitions from OpenAPI schemas. If HAI3's backend exposes OpenAPI specs, this could reduce boilerplate significantly. The value depends on whether such specs exist.
+4. **OpenAPI codegen value.** RTK Query supports generating endpoint definitions from OpenAPI schemas. If Gears FrontX's backend exposes OpenAPI specs, this could reduce boilerplate significantly. The value depends on whether such specs exist.
 5. **TanStack comparison table bias.** The feature comparison table is maintained by the TanStack team. Independent verification of each "No" for RTK Query would strengthen confidence, particularly for query cancellation and offline mutations.
 
 ## Sources
@@ -220,5 +220,5 @@ Summary matrix against ADR-0017 decision drivers:
 6. [Expose "abort" from useQuery hook -- GitHub Issue #3218](https://github.com/reduxjs/redux-toolkit/issues/3218) -- request for component-level cancellation API
 7. [TanStack Query vs RTK Query comparison gist](https://gist.github.com/mptorz/eacb002c6584e0b0ab3f55194d11ac29) -- community-maintained feature matrix
 8. [Code Splitting -- Redux Toolkit docs](https://redux-toolkit.js.org/rtk-query/usage/code-splitting) -- `injectEndpoints` pattern for code splitting
-9. [2026-03-17 TanStack Query Integration Research](./2026-03-17-tanstack-query-integration-research.md) -- prior HAI3 exploration covering TanStack Query v5 architecture and bundle size
+9. [2026-03-17 TanStack Query Integration Research](./2026-03-17-tanstack-query-integration-research.md) -- prior Gears FrontX exploration covering TanStack Query v5 architecture and bundle size
 10. [ADR-0017: Adopt TanStack Query for Declarative Data Management](../ADR/0017-tanstack-query-data-management.md) -- the decision record this exploration supports

@@ -90,7 +90,7 @@ export async function getMigrationStatus(
     const pkg = await fs.readJson(pkgPath);
     // Check for FrontX packages
     const frontxDeps = Object.keys(pkg.dependencies || {}).filter((d) =>
-      d.startsWith('@cyberfabric/')
+      d.startsWith('@gears-frontx/')
     );
     if (frontxDeps.length > 0) {
       const firstDep = pkg.dependencies[frontxDeps[0]];
@@ -417,7 +417,7 @@ export function formatResult(result: MigrationResult): string {
   const lines: string[] = [];
   lines.push('');
   lines.push('='.repeat(60));
-  lines.push(`  HAI3 Migration Report`);
+  lines.push(`  Gears FrontX Migration Report`);
   lines.push('='.repeat(60));
   lines.push(`  Migration: ${result.migrationId}`);
   lines.push(`  Applied: ${result.appliedAt}`);

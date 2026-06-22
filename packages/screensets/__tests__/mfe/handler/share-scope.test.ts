@@ -47,7 +47,7 @@ function buildManifest(
   shared: MfManifestShared[] = []
 ): MfManifest {
   return {
-    id: `gts.hai3.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
+    id: `gts.frontx.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
     name: remoteName,
     metaData: {
       name: remoteName,
@@ -89,7 +89,7 @@ function buildEntry(
 ): MfeEntryMF {
   return {
     ...MFE_ENTRY_CONTRACT,
-    id: `gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.${suffix}.v1`,
+    id: `gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.${suffix}.v1`,
     manifest,
     exposedModule: './Widget1',
     exposeAssets: {
@@ -108,7 +108,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
   let mocks: ReturnType<typeof setupBlobUrlLoaderMocks>;
 
   beforeEach(() => {
-    handler = new MfeHandlerMF('gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~', { timeout: 5000, retries: 0 });
+    handler = new MfeHandlerMF('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~', { timeout: 5000, retries: 0 });
     mocks = setupBlobUrlLoaderMocks();
   });
 
@@ -140,13 +140,13 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
     it('normalizes scoped package names: @scope/pkg → scope-pkg.js', async () => {
       const remoteName = 'scopedDepRemote';
       const baseUrl = `${TEST_BASE_URL}/${remoteName}/`;
-      // @cyberfabric/screensets → cyberfabric-screensets.js
-      const sharedDepUrl = `${baseUrl}shared/cyberfabric-screensets.js`;
+      // @gears-frontx/screensets → gears-frontx-screensets.js
+      const sharedDepUrl = `${baseUrl}shared/gears-frontx-screensets.js`;
 
       mocks.registerSource(sharedDepUrl, createSharedDepSource());
       mocks.registerSource(`${baseUrl}expose-Widget1.js`, createExposeChunkSource());
 
-      const manifest = buildManifest(remoteName, [sharedDep(remoteName, '@cyberfabric/screensets', '1.0.0')]);
+      const manifest = buildManifest(remoteName, [sharedDep(remoteName, '@gears-frontx/screensets', '1.0.0')]);
       const entry = buildEntry(remoteName, 'scoped-dep.entry', 'expose-Widget1.js', manifest);
 
       await handler.load(entry, entry.id);
@@ -468,11 +468,11 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const entry2 = buildEntry(remoteName, 'subpath-iso.entry.b', 'expose-Widget1.js', manifest);
 
       const handler1 = new MfeHandlerMF(
-        'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+        'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
         { timeout: 5000, retries: 0 }
       );
       const handler2 = new MfeHandlerMF(
-        'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
+        'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~',
         { timeout: 5000, retries: 0 }
       );
 
@@ -554,14 +554,14 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
 
       const entry1: MfeEntryMF = {
         ...MFE_ENTRY_CONTRACT,
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.iso1.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.iso1.v1',
         manifest,
         exposedModule: './Widget1',
         exposeAssets: { js: { sync: ['expose-Widget1.js'], async: [] }, css: { sync: [], async: [] } },
       };
       const entry2: MfeEntryMF = {
         ...MFE_ENTRY_CONTRACT,
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.iso2.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.iso2.v1',
         manifest,
         exposedModule: './Widget2',
         exposeAssets: { js: { sync: ['expose-Widget2.js'], async: [] }, css: { sync: [], async: [] } },
@@ -632,7 +632,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const manifest = buildManifest('missingExposeRemote');
       const entry: MfeEntryMF = {
         ...MFE_ENTRY_CONTRACT,
-        id: 'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~test.missingexpose.v1',
+        id: 'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~test.missingexpose.v1',
         manifest,
         exposedModule: './NonExistent',
         exposeAssets: {

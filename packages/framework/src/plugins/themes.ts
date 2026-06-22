@@ -9,13 +9,13 @@
 // @cpt-dod:cpt-frontx-dod-framework-composition-propagation:p1
 // @cpt-dod:cpt-frontx-dod-framework-composition-shared-property:p1
 
-import { eventBus } from '@cyberfabric/state';
-import { HAI3_SHARED_PROPERTY_THEME } from '@cyberfabric/screensets';
-import type { HAI3Plugin, ChangeThemePayload, ThemePropagationFailedPayload } from '../types';
+import { eventBus } from '@gears-frontx/state';
+import { FRONTX_SHARED_PROPERTY_THEME } from '@gears-frontx/screensets';
+import type { FrontXPlugin, ChangeThemePayload, ThemePropagationFailedPayload } from '../types';
 import { createThemeRegistry } from '../registries/themeRegistry';
 
 // Define theme events for module augmentation
-declare module '@cyberfabric/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'theme/changed': ChangeThemePayload;
     'theme/propagation/failed': ThemePropagationFailedPayload;
@@ -46,7 +46,7 @@ function changeTheme(payload: ChangeThemePayload): void {
  * app.actions.changeTheme({ themeId: 'dark' });
  * ```
  */
-export function themes(): HAI3Plugin {
+export function themes(): FrontXPlugin {
   const themeRegistry = createThemeRegistry();
   let themeChangedSubscription: ReturnType<typeof eventBus.on> | undefined;
 
@@ -74,9 +74,9 @@ export function themes(): HAI3Plugin {
           if (themeConfig) {
             app.mfeRegistry?.setTheme(themeConfig.variables);
           }
-          app.mfeRegistry?.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, payload.themeId);
+          app.mfeRegistry?.updateSharedProperty(FRONTX_SHARED_PROPERTY_THEME, payload.themeId);
         } catch (error) {
-          console.error('[HAI3] Failed to propagate theme to MFE domains', error);
+          console.error('[Gears FrontX] Failed to propagate theme to MFE domains', error);
           eventBus.emit('theme/propagation/failed', { themeId: payload.themeId, error });
         }
       });

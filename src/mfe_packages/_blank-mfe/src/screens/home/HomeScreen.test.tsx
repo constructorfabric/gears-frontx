@@ -1,9 +1,9 @@
 // @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-blank-mfe-tests:p1
 import { act, render, screen, within } from '@testing-library/react';
 import {
-  HAI3_SHARED_PROPERTY_LANGUAGE,
-  HAI3_SHARED_PROPERTY_THEME,
-} from '@cyberfabric/react';
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_SHARED_PROPERTY_THEME,
+} from '@gears-frontx/react';
 import { createMfeBridgeFixture } from '@frontx-test-utils/createMfeBridgeFixture';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,8 +17,8 @@ const {
   useScreenTranslationsMock: vi.fn(),
 }));
 
-vi.mock('@cyberfabric/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@cyberfabric/react')>();
+vi.mock('@gears-frontx/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@gears-frontx/react')>();
   return {
     ...actual,
     apiRegistry: {
@@ -70,8 +70,8 @@ describe('HomeScreen', () => {
       domainId: TEST_DOMAIN_ID,
       instanceId: TEST_INSTANCE_ID,
       initialProperties: {
-        [HAI3_SHARED_PROPERTY_THEME]: TEST_THEME,
-        [HAI3_SHARED_PROPERTY_LANGUAGE]: TEST_LANGUAGE,
+        [FRONTX_SHARED_PROPERTY_THEME]: TEST_THEME,
+        [FRONTX_SHARED_PROPERTY_LANGUAGE]: TEST_LANGUAGE,
       },
     });
 
@@ -99,8 +99,8 @@ describe('HomeScreen', () => {
       domainId: TEST_DOMAIN_ID,
       instanceId: TEST_INSTANCE_ID,
       initialProperties: {
-        [HAI3_SHARED_PROPERTY_THEME]: TEST_THEME,
-        [HAI3_SHARED_PROPERTY_LANGUAGE]: TEST_LANGUAGE,
+        [FRONTX_SHARED_PROPERTY_THEME]: TEST_THEME,
+        [FRONTX_SHARED_PROPERTY_LANGUAGE]: TEST_LANGUAGE,
       },
     });
 
@@ -116,8 +116,8 @@ describe('HomeScreen', () => {
       domainId: TEST_DOMAIN_ID,
       instanceId: TEST_INSTANCE_ID,
       initialProperties: {
-        [HAI3_SHARED_PROPERTY_THEME]: TEST_THEME,
-        [HAI3_SHARED_PROPERTY_LANGUAGE]: TEST_LANGUAGE,
+        [FRONTX_SHARED_PROPERTY_THEME]: TEST_THEME,
+        [FRONTX_SHARED_PROPERTY_LANGUAGE]: TEST_LANGUAGE,
       },
     });
 
@@ -139,8 +139,8 @@ describe('HomeScreen', () => {
       domainId: TEST_DOMAIN_ID,
       instanceId: TEST_INSTANCE_ID,
       initialProperties: {
-        [HAI3_SHARED_PROPERTY_THEME]: TEST_THEME,
-        [HAI3_SHARED_PROPERTY_LANGUAGE]: TEST_LANGUAGE,
+        [FRONTX_SHARED_PROPERTY_THEME]: TEST_THEME,
+        [FRONTX_SHARED_PROPERTY_LANGUAGE]: TEST_LANGUAGE,
       },
     });
 
@@ -155,8 +155,8 @@ describe('HomeScreen', () => {
       domainId: TEST_DOMAIN_ID,
       instanceId: TEST_INSTANCE_ID,
       initialProperties: {
-        [HAI3_SHARED_PROPERTY_THEME]: TEST_THEME,
-        [HAI3_SHARED_PROPERTY_LANGUAGE]: TEST_LANGUAGE,
+        [FRONTX_SHARED_PROPERTY_THEME]: TEST_THEME,
+        [FRONTX_SHARED_PROPERTY_LANGUAGE]: TEST_LANGUAGE,
       },
     });
     const host = document.createElement('div');
@@ -174,8 +174,8 @@ describe('HomeScreen', () => {
     expect(shadowQueries.getByText(TEST_LANGUAGE)).toBeTruthy();
 
     act(() => {
-      bridgeFixture.setProperty(HAI3_SHARED_PROPERTY_THEME, 'updated-theme');
-      bridgeFixture.setProperty(HAI3_SHARED_PROPERTY_LANGUAGE, 'ar');
+      bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_THEME, 'updated-theme');
+      bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, 'ar');
     });
 
     expect(shadowQueries.getByText('updated-theme')).toBeTruthy();
@@ -183,7 +183,7 @@ describe('HomeScreen', () => {
     expect(host.dir).toBe('rtl');
 
     act(() => {
-      bridgeFixture.setProperty(HAI3_SHARED_PROPERTY_LANGUAGE, 'en');
+      bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, 'en');
     });
 
     expect(shadowQueries.getByText('en')).toBeTruthy();

@@ -1,9 +1,9 @@
 /**
  * FrontX Dependency Cruiser SDK Configuration (L1)
- * Rules for SDK packages: @cyberfabric/state, @cyberfabric/layout, @cyberfabric/api, @cyberfabric/i18n
+ * Rules for SDK packages: @gears-frontx/state, @gears-frontx/layout, @gears-frontx/api, @gears-frontx/i18n
  *
  * SDK packages MUST have:
- * - ZERO @cyberfabric/* dependencies (complete isolation)
+ * - ZERO @gears-frontx/* dependencies (complete isolation)
  * - NO React dependencies (framework-agnostic)
  */
 
@@ -21,11 +21,11 @@ module.exports = {
 
     // ============ SDK ISOLATION RULES ============
     {
-      name: 'sdk-no-cyberfabric-imports',
+      name: 'sdk-no-gears-frontx-imports',
       severity: 'error',
       from: { path: SDK_SRC_PATTERN },
-      to: { path: 'node_modules/@cyberfabric/' },
-      comment: 'SDK VIOLATION: SDK packages must have ZERO @cyberfabric dependencies. Each SDK package is completely isolated.',
+      to: { path: 'node_modules/@gears-frontx/' },
+      comment: 'SDK VIOLATION: SDK packages must have ZERO @gears-frontx dependencies. Each SDK package is completely isolated.',
     },
     {
       name: 'sdk-no-react',

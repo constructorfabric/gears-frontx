@@ -18,7 +18,7 @@
 // @cpt-dod:cpt-frontx-dod-react-bindings-extension-slot:p1
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { MfeRegistry } from '@cyberfabric/framework';
+import type { MfeRegistry } from '@gears-frontx/framework';
 
 /**
  * Props for ExtensionDomainSlot component
@@ -69,7 +69,7 @@ export interface ExtensionDomainSlotProps {
  * ```tsx
  * <ExtensionDomainSlot
  *   registry={registry}
- *   domainId={HAI3_SCREEN_DOMAIN}
+ *   domainId={FRONTX_SCREEN_DOMAIN}
  *   loadingComponent={<Loading />}
  *   onAttached={(root) => console.log('Root attached:', root)}
  * />

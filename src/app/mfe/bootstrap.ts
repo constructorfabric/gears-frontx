@@ -19,17 +19,17 @@ import {
   ExclusiveMountStrategy,
   OptionalMountStrategy,
   ActionHandler,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
+  FRONTX_SHARED_PROPERTY_THEME,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
   screenDomain,
   sidebarDomain,
   popupDomain,
   overlayDomain,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import type {
-  HAI3App,
+  FrontXApp,
   Extension,
   ExtensionDomain,
   MfManifest,
@@ -40,7 +40,7 @@ import type {
   DomainContext,
   ActionPayload,
   MountStrategy,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 
 const MFE_MANIFESTS_URL = '/generated-mfe-manifests.json';
 
@@ -97,7 +97,7 @@ class ScreenDomainImpl extends ExtensionDomainImplementation {
     super();
     this.strategy = new ExclusiveMountStrategy(ctx.mounter, hooks, registry, domainId);
     ctx.registerHandler(
-      HAI3_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
       ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as ActionPayload)),
     );
   }
@@ -114,11 +114,11 @@ class OptionalDomainImpl extends ExtensionDomainImplementation {
     super();
     this.strategy = new OptionalMountStrategy(ctx.mounter, hooks, registry, domainId);
     ctx.registerHandler(
-      HAI3_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
       ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as ActionPayload)),
     );
     ctx.registerHandler(
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
       ActionHandler.fromFunction((_t, p) => this.strategy.unmount!(p as ActionPayload)),
     );
   }
@@ -301,7 +301,7 @@ async function registerMfePackage(
  * @param app - FrontX application instance
  */
 // @cpt-begin:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-bootstrap-mfe
-export async function bootstrapMFE(app: HAI3App): Promise<void> {
+export async function bootstrapMFE(app: FrontXApp): Promise<void> {
   const registry = app.mfeRegistry;
   if (!registry) {
     throw new Error('[MFE Bootstrap] mfeRegistry is not available on app instance');
@@ -313,9 +313,9 @@ export async function bootstrapMFE(app: HAI3App): Promise<void> {
   registry.registerDomain(overlayDomain, new OptionalDomainFactory(registry, overlayDomain.id));
 
   const currentThemeId = app.themeRegistry?.getCurrent()?.id ?? 'default';
-  registry.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, currentThemeId);
+  registry.updateSharedProperty(FRONTX_SHARED_PROPERTY_THEME, currentThemeId);
   const derivedLanguage = app.i18nRegistry.getLanguage();
-  registry.updateSharedProperty(HAI3_SHARED_PROPERTY_LANGUAGE, derivedLanguage ?? 'en');
+  registry.updateSharedProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, derivedLanguage ?? 'en');
 
   console.info(`[MFE Bootstrap] Fetching MFE manifests from ${MFE_MANIFESTS_URL}`);
   const response = await fetch(MFE_MANIFESTS_URL);

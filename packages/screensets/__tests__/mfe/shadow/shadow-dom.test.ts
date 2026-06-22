@@ -36,7 +36,7 @@ describe('Shadow DOM Utilities', () => {
     it('43.2.1: should inject isolation styles automatically', () => {
       const shadowRoot = createShadowRoot(container);
 
-      const isolationStyle = shadowRoot.getElementById('__hai3-shadow-isolation__') as HTMLStyleElement;
+      const isolationStyle = shadowRoot.getElementById('__frontx-shadow-isolation__') as HTMLStyleElement;
       expect(isolationStyle).toBeDefined();
       expect(isolationStyle.textContent).toContain(':host');
       expect(isolationStyle.textContent).toContain('all: initial');
@@ -49,20 +49,20 @@ describe('Shadow DOM Utilities', () => {
 
       expect(shadowRoot1).toBe(shadowRoot2);
 
-      const isolationStyles = shadowRoot1.querySelectorAll('#__hai3-shadow-isolation__');
+      const isolationStyles = shadowRoot1.querySelectorAll('#__frontx-shadow-isolation__');
       expect(isolationStyles.length).toBe(1);
     });
 
     it('43.2.3: should inject isolation styles into pre-existing shadow root', () => {
       // Manually create shadow root without isolation
       const manualShadowRoot = container.attachShadow({ mode: 'open' });
-      expect(manualShadowRoot.getElementById('__hai3-shadow-isolation__')).toBeNull();
+      expect(manualShadowRoot.getElementById('__frontx-shadow-isolation__')).toBeNull();
 
       // Call createShadowRoot on element with existing shadow root
       const shadowRoot = createShadowRoot(container);
 
       expect(shadowRoot).toBe(manualShadowRoot);
-      const isolationStyle = shadowRoot.getElementById('__hai3-shadow-isolation__') as HTMLStyleElement;
+      const isolationStyle = shadowRoot.getElementById('__frontx-shadow-isolation__') as HTMLStyleElement;
       expect(isolationStyle).toBeDefined();
       expect(isolationStyle.textContent).toContain('all: initial');
       expect(isolationStyle.textContent).toContain('display: block');
@@ -129,7 +129,7 @@ describe('Shadow DOM Utilities', () => {
 
       injectCssVariables(shadowRoot, variables);
 
-      const styleElement = shadowRoot.getElementById('__hai3-css-variables__') as HTMLStyleElement;
+      const styleElement = shadowRoot.getElementById('__frontx-css-variables__') as HTMLStyleElement;
       expect(styleElement).toBeDefined();
       expect(styleElement.textContent).toContain('--primary-color: hsl(var(--primary))');
       expect(styleElement.textContent).toContain('--font-family: Arial, sans-serif');
@@ -143,7 +143,7 @@ describe('Shadow DOM Utilities', () => {
 
       injectCssVariables(shadowRoot, variables);
 
-      const styleElement = shadowRoot.getElementById('__hai3-css-variables__') as HTMLStyleElement;
+      const styleElement = shadowRoot.getElementById('__frontx-css-variables__') as HTMLStyleElement;
       expect(styleElement.textContent).toContain(':host');
       expect(styleElement.textContent).toContain('--spacing: 16px');
       expect(styleElement.textContent).toContain('--radius: 4px');
@@ -159,11 +159,11 @@ describe('Shadow DOM Utilities', () => {
       };
 
       injectCssVariables(shadowRoot, variables1);
-      let styleElement = shadowRoot.getElementById('__hai3-css-variables__') as HTMLStyleElement;
+      let styleElement = shadowRoot.getElementById('__frontx-css-variables__') as HTMLStyleElement;
       expect(styleElement.textContent).toContain('--color: red');
 
       injectCssVariables(shadowRoot, variables2);
-      styleElement = shadowRoot.getElementById('__hai3-css-variables__') as HTMLStyleElement;
+      styleElement = shadowRoot.getElementById('__frontx-css-variables__') as HTMLStyleElement;
       expect(styleElement.textContent).toContain('--color: blue');
       expect(styleElement.textContent).toContain('--size: large');
       expect(styleElement.textContent).not.toContain('--color: red');
@@ -174,8 +174,8 @@ describe('Shadow DOM Utilities', () => {
 
       injectCssVariables(shadowRoot, variables);
 
-      const styleElement = shadowRoot.getElementById('__hai3-css-variables__') as HTMLStyleElement;
-      // The isolation styles (all: initial, display: block) are now in __hai3-shadow-isolation__
+      const styleElement = shadowRoot.getElementById('__frontx-css-variables__') as HTMLStyleElement;
+      // The isolation styles (all: initial, display: block) are now in __frontx-shadow-isolation__
       // This test verifies that injectCssVariables() only handles CSS variables
       expect(styleElement.textContent).toContain('--theme: dark');
       expect(styleElement.textContent).toContain(':host');
@@ -184,7 +184,7 @@ describe('Shadow DOM Utilities', () => {
     it('should handle empty variables', () => {
       injectCssVariables(shadowRoot, {});
 
-      const styleElement = shadowRoot.getElementById('__hai3-css-variables__') as HTMLStyleElement;
+      const styleElement = shadowRoot.getElementById('__frontx-css-variables__') as HTMLStyleElement;
       expect(styleElement).toBeDefined();
       expect(styleElement.textContent).toContain(':host');
     });
@@ -194,10 +194,10 @@ describe('Shadow DOM Utilities', () => {
       const variables2 = { '--color': 'blue' };
 
       injectCssVariables(shadowRoot, variables1);
-      const styleElement1 = shadowRoot.getElementById('__hai3-css-variables__');
+      const styleElement1 = shadowRoot.getElementById('__frontx-css-variables__');
 
       injectCssVariables(shadowRoot, variables2);
-      const styleElement2 = shadowRoot.getElementById('__hai3-css-variables__');
+      const styleElement2 = shadowRoot.getElementById('__frontx-css-variables__');
 
       expect(styleElement1).toBe(styleElement2);
     });
@@ -317,7 +317,7 @@ describe('Shadow DOM Utilities', () => {
       expect(container.shadowRoot).toBe(shadowRoot);
 
       // Verify CSS variables
-      const varsStyle = shadowRoot.getElementById('__hai3-css-variables__') as HTMLStyleElement;
+      const varsStyle = shadowRoot.getElementById('__frontx-css-variables__') as HTMLStyleElement;
       expect(varsStyle).toBeDefined();
       expect(varsStyle.textContent).toContain('--primary-color: hsl(var(--primary))');
 

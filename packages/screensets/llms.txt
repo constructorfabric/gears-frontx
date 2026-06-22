@@ -1,8 +1,8 @@
-# @cyberfabric/screensets
+# @gears-frontx/screensets
 
 > Pure TypeScript contracts and MFE (Microfrontend) runtime for FrontX SDK. Manages extension domains, lifecycle, and coordination.
 
-Part of the FrontX SDK Layer (L1) - ZERO dependencies. Can be used independently without other @cyberfabric packages.
+Part of the FrontX SDK Layer (L1) - ZERO dependencies. Can be used independently without other @gears-frontx packages.
 
 ## Core API
 
@@ -28,23 +28,23 @@ import {
   ScreensetsRegistry,
   ExtensionDomain,
   Extension,
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_SHARED_PROPERTY_THEME,
-} from '@cyberfabric/screensets';
+  Gears FrontX_ACTION_LOAD_EXT,
+  Gears FrontX_ACTION_MOUNT_EXT,
+  Gears FrontX_SHARED_PROPERTY_THEME,
+} from '@gears-frontx/screensets';
 
 // Define domain
 const screenDomain: ExtensionDomain = {
   id: 'screen',
   domainType: 'primary',
-  allowedTypes: ['hai3.screen'],
+  allowedTypes: ['frontx.screen'],
 };
 
 // Define extension
 const homeExtension: Extension = {
   id: 'home',
-  extensionType: 'hai3.screen',
-  extensionsTypeId: 'hai3.mfes~mfe.ext',
+  extensionType: 'frontx.screen',
+  extensionsTypeId: 'frontx.mfes~mfe.ext',
   title: 'Home',
   presentation: {
     route: '/home',
@@ -82,19 +82,19 @@ Each stage supports lifecycle hooks and actions chains for custom behavior.
 
 ```typescript
 import {
-  HAI3_ACTION_LOAD_EXT,      // 'hai3.action.load_ext'
-  HAI3_ACTION_MOUNT_EXT,     // 'hai3.action.mount_ext'
-  HAI3_ACTION_UNMOUNT_EXT,   // 'hai3.action.unmount_ext'
-} from '@cyberfabric/screensets';
+  Gears FrontX_ACTION_LOAD_EXT,      // 'frontx.action.load_ext'
+  Gears FrontX_ACTION_MOUNT_EXT,     // 'frontx.action.mount_ext'
+  Gears FrontX_ACTION_UNMOUNT_EXT,   // 'frontx.action.unmount_ext'
+} from '@gears-frontx/screensets';
 ```
 
 ## Shared Property Constants
 
 ```typescript
 import {
-  HAI3_SHARED_PROPERTY_THEME,     // 'hai3.shared.theme'
-  HAI3_SHARED_PROPERTY_LANGUAGE,  // 'hai3.shared.language'
-} from '@cyberfabric/screensets';
+  Gears FrontX_SHARED_PROPERTY_THEME,     // 'frontx.shared.theme'
+  Gears FrontX_SHARED_PROPERTY_LANGUAGE,  // 'frontx.shared.language'
+} from '@gears-frontx/screensets';
 ```
 
 ## GTS Type System
@@ -102,7 +102,7 @@ import {
 FrontX uses GTS (Global Type System) for runtime type validation. Import from subpath to avoid dependency bloat:
 
 ```typescript
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 
 const registry = screensetsRegistryFactory({
   typeSystemPlugin: gtsPlugin,
@@ -110,14 +110,14 @@ const registry = screensetsRegistryFactory({
 ```
 
 GTS Type IDs:
-- Namespace: `hai3.mfes` (plural)
+- Namespace: `frontx.mfes` (plural)
 - Schema IDs end with `~`, instance IDs do NOT
 - 4 namespaces: `mfe`, `ext`, `comm`, `lifecycle`
 
 Example type IDs:
-- `hai3.mfes~mfe.ext` - Extension schema
-- `hai3.mfes~mfe.domain` - Domain schema
-- `hai3.mfes~lifecycle.stage` - Lifecycle stage schema
+- `frontx.mfes~mfe.ext` - Extension schema
+- `frontx.mfes~mfe.domain` - Domain schema
+- `frontx.mfes~lifecycle.stage` - Lifecycle stage schema
 
 ## Layout Domains
 
@@ -125,10 +125,10 @@ Example type IDs:
 
 | Domain | Type | Allowed Extensions |
 |--------|------|-------------------|
-| `screen` | primary | `hai3.screen` |
-| `sidebar` | supplementary | `hai3.sidebar` |
-| `popup` | overlay | `hai3.popup` |
-| `overlay` | overlay | `hai3.overlay` |
+| `screen` | primary | `frontx.screen` |
+| `sidebar` | supplementary | `frontx.sidebar` |
+| `popup` | overlay | `frontx.popup` |
+| `overlay` | overlay | `frontx.overlay` |
 | `header` | structural | (managed by framework) |
 | `footer` | structural | (managed by framework) |
 | `menu` | structural | (managed by framework) |
@@ -136,7 +136,7 @@ Example type IDs:
 ## LayoutDomain Enum
 
 ```typescript
-import { LayoutDomain } from '@cyberfabric/screensets';
+import { LayoutDomain } from '@gears-frontx/screensets';
 
 LayoutDomain.Header    // 'header'
 LayoutDomain.Footer    // 'footer'

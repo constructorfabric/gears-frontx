@@ -1,4 +1,4 @@
-# @cyberfabric/studio
+# @gears-frontx/studio
 
 FrontX Studio overlay package for runtime inspection and control of MFE applications.
 
@@ -25,7 +25,7 @@ This package is part of the **Studio Layer (L4)** - it provides developer toolin
 Displays a dropdown of registered GTS packages and allows switching between them by mounting the first screen extension of the selected package.
 
 ```tsx
-import { MfePackageSelector } from '@cyberfabric/studio';
+import { MfePackageSelector } from '@gears-frontx/studio';
 
 function ControlPanel() {
   return (
@@ -41,7 +41,7 @@ function ControlPanel() {
 - Subscribes to the active package via `useActivePackage()`
 - Disabled when only one package is registered
 - On package change: finds all screen extensions for the package, sorts by `presentation.order`, and mounts the first one
-- Uses `registry.executeActionsChain()` with `HAI3_ACTION_MOUNT_EXT` to mount the extension
+- Uses `registry.executeActionsChain()` with `Gears FrontX_ACTION_MOUNT_EXT` to mount the extension
 
 ### ThemeSelector
 
@@ -59,5 +59,5 @@ Toggle switch for switching between mock and live API modes. Uses `useApiMode()`
 
 1. **Developer tooling only** - Studio is for development inspection, not production features
 2. **Overlay pattern** - Studio renders as a fixed overlay on top of the application
-3. **React-only** - Studio is built with React and depends on `@cyberfabric/react` hooks
+3. **React-only** - Studio is built with React and depends on `@gears-frontx/react` hooks
 4. **No direct state mutation** - All state changes go through registry and hooks

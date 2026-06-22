@@ -15,9 +15,9 @@ import {
 import type { ContainerHooks, ActionPayload, MountStrategy } from '../mount-strategy';
 import { ActionHandler } from '../../mediator/types';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../../constants/index';
 import { ExtensionMounter } from '../ExtensionMounter';
 
@@ -62,7 +62,7 @@ const DOMAIN_EXCL_ID = 'test.domain.exclusive.v1';
 function makeConcurrentDomain(id: string = DOMAIN_ID): ExtensionDomain {
   return {
     id,
-    actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
+    actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT],
     extensionsActions: [],
     sharedProperties: [],
     defaultActionTimeout: 5000,
@@ -76,7 +76,7 @@ function makeExclusiveDomain(id: string = DOMAIN_EXCL_ID): ExtensionDomain {
   return {
     id,
     // ExclusiveMountStrategy REQUIRES mount_ext, FORBIDS unmount_ext
-    actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+    actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
     extensionsActions: [],
     sharedProperties: [],
     defaultActionTimeout: 5000,
@@ -108,13 +108,13 @@ class ConcurrentDomainImpl extends ExtensionDomainImplementation {
     // Strategy captures ctx.mounter in its constructor private field — survives invalidation.
     this.capturedStrategy = new ConcurrentMountStrategy(ctx.mounter, hooks);
     ctx.registerHandler(
-      HAI3_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
       ActionHandler.fromFunction((_t, p) =>
         this.capturedStrategy.mount(p as ActionPayload)
       )
     );
     ctx.registerHandler(
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
       ActionHandler.fromFunction((_t, p) =>
         this.capturedStrategy.unmount!(p as ActionPayload)
       )
@@ -153,7 +153,7 @@ class ExclusiveDomainImpl extends ExtensionDomainImplementation {
     const hooks = new TestHooks();
     this.strategy = new ExclusiveMountStrategy(ctx.mounter, hooks, registry, DOMAIN_EXCL_ID);
     ctx.registerHandler(
-      HAI3_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
       ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as ActionPayload))
     );
     // Intentionally NO unmount handler — ExclusiveMountStrategy forbids unmount_ext.
@@ -177,7 +177,7 @@ class ExclusiveDomainFactory extends ExtensionDomainImplementationFactory {
 class FailingAfterHandlerFactory extends ExtensionDomainImplementationFactory {
   build(ctx: DomainContext): ExtensionDomainImplementation {
     ctx.registerHandler(
-      HAI3_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
       ActionHandler.fromFunction(async () => {})
     );
     throw new Error('factory.build intentional failure');
@@ -205,7 +205,7 @@ describe('DefaultMfeRegistry', () => {
       const reg = freshRegistry();
       const illegalDomain: ExtensionDomain = {
         ...makeExclusiveDomain(),
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT],
       } as unknown as ExtensionDomain;
       expect(() => reg.registerDomain(illegalDomain, new ExclusiveDomainFactory(reg))).toThrow();
     });
@@ -214,7 +214,7 @@ describe('DefaultMfeRegistry', () => {
       const reg = freshRegistry();
       const illegalDomain: ExtensionDomain = {
         ...makeExclusiveDomain(),
-        actions: [HAI3_ACTION_LOAD_EXT], // missing mount_ext
+        actions: [FRONTX_ACTION_LOAD_EXT], // missing mount_ext
       } as unknown as ExtensionDomain;
       expect(() => reg.registerDomain(illegalDomain, new ExclusiveDomainFactory(reg))).toThrow();
     });
@@ -223,7 +223,7 @@ describe('DefaultMfeRegistry', () => {
       const reg = freshRegistry();
       const illegalDomain: ExtensionDomain = {
         ...makeConcurrentDomain(),
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT], // missing unmount_ext
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT], // missing unmount_ext
       } as unknown as ExtensionDomain;
       expect(() => reg.registerDomain(illegalDomain, new ConcurrentDomainFactory())).toThrow();
     });

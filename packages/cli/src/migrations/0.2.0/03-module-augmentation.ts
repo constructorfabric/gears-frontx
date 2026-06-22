@@ -2,18 +2,18 @@
 /**
  * Transform: module-augmentation
  *
- * Transforms module augmentation declarations from @cyberfabric/uicore to @cyberfabric/react
+ * Transforms module augmentation declarations from @gears-frontx/uicore to @gears-frontx/react
  *
- * Before: declare module '@cyberfabric/uicore' { interface RootState {...} }
- * After:  declare module '@cyberfabric/react' { interface RootState {...} }
+ * Before: declare module '@gears-frontx/uicore' { interface RootState {...} }
+ * After:  declare module '@gears-frontx/react' { interface RootState {...} }
  */
 
 import { SyntaxKind } from 'ts-morph';
 import type { SourceFile } from 'ts-morph';
 import type { Transform, TransformChange, TransformResult } from '../types.js';
 
-const SOURCE_MODULE = '@cyberfabric/uicore';
-const TARGET_MODULE = '@cyberfabric/react';
+const SOURCE_MODULE = '@gears-frontx/uicore';
+const TARGET_MODULE = '@gears-frontx/react';
 
 // @cpt-begin:cpt-frontx-algo-cli-tooling-apply-migration:p2:inst-apply-transforms
 export const moduleAugmentationTransform: Transform = {
@@ -23,7 +23,7 @@ export const moduleAugmentationTransform: Transform = {
 
   canApply(sourceFile: SourceFile): boolean {
     const fileText = sourceFile.getFullText();
-    // Look for declare module '@cyberfabric/uicore' pattern
+    // Look for declare module '@gears-frontx/uicore' pattern
     return fileText.includes(`declare module '${SOURCE_MODULE}'`) ||
            fileText.includes(`declare module "${SOURCE_MODULE}"`);
   },

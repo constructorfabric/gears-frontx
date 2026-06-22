@@ -2,7 +2,7 @@
  * SSE Protocol
  * Handles Server-Sent Events communication using EventSource API
  *
- * SDK Layer: L1 (Zero @cyberfabric dependencies)
+ * SDK Layer: L1 (Zero @gears-frontx dependencies)
  */
 
 // @cpt-dod:cpt-frontx-dod-api-communication-sse-protocol:p1

@@ -14,10 +14,10 @@ export default defineConfig({
   // plugin singletons (globalThis + WeakMaps) relative to `dist/index.js`.
   splitting: true,
   external: [
-    '@cyberfabric/state',
-    '@cyberfabric/screensets',
-    '@cyberfabric/api',
-    '@cyberfabric/i18n',
+    '@gears-frontx/state',
+    '@gears-frontx/screensets',
+    '@gears-frontx/api',
+    '@gears-frontx/i18n',
     '@reduxjs/toolkit',
     'react',
     'vitest',

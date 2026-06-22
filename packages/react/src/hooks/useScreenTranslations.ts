@@ -9,8 +9,8 @@
 // @cpt-dod:cpt-frontx-dod-react-bindings-screen-translation-hook:p1
 
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
-import type { TranslationMap, TranslationLoader } from '@cyberfabric/framework';
-import { useHAI3 } from '../HAI3Context';
+import type { TranslationMap, TranslationLoader } from '@gears-frontx/framework';
+import { useFrontX } from '../FrontXContext';
 import type { UseScreenTranslationsReturn } from '../types';
 
 // Re-export TranslationMap for consumers who need it
@@ -72,7 +72,7 @@ export function useScreenTranslations(
   screenId: string,
   translations: TranslationMap | TranslationLoader
 ): UseScreenTranslationsReturn {
-  const app = useHAI3();
+  const app = useFrontX();
   const { i18nRegistry } = app;
 
   // Track loading state per language to handle language changes

@@ -1,6 +1,6 @@
 import React from 'react';
-import type { ChildMfeBridge, JsonObject } from '@cyberfabric/react';
-import { ActionHandler, ThemeAwareReactLifecycle } from '@cyberfabric/react';
+import type { ChildMfeBridge, JsonObject } from '@gears-frontx/react';
+import { ActionHandler, ThemeAwareReactLifecycle } from '@gears-frontx/react';
 import { mfeApp } from './init';
 import { ProfileScreen } from './screens/profile/ProfileScreen';
 import { fetchUser } from './actions/profileActions';

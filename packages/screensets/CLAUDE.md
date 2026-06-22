@@ -1,4 +1,4 @@
-# @cyberfabric/screensets
+# @gears-frontx/screensets
 
 Pure TypeScript contracts and MFE (Microfrontend) runtime for FrontX applications.
 
@@ -19,16 +19,16 @@ This package is part of the **SDK Layer (L1)** - it has **ZERO dependencies** an
 | `MfeHandler` | Abstract class: Handler for MFE lifecycle (load, mount, unmount) |
 | `MfeBridgeFactory` | Abstract class: Factory for creating MFE bridges |
 | `LayoutDomain` | Enum: Layout domain identifiers (header, footer, menu, sidebar, screen, popup, overlay) |
-| Action/Property Constants | `HAI3_ACTION_*`, `HAI3_SHARED_PROPERTY_*` |
+| Action/Property Constants | `Gears FrontX_ACTION_*`, `Gears FrontX_SHARED_PROPERTY_*` |
 | `TypeSystemPlugin` | Interface: Type validation plugin (e.g., GTS) |
 | Shadow DOM Utilities | `createShadowRoot`, `injectCssVariables` |
 
 ## What This Package Does NOT Contain
 
-- **NO concrete MFE implementations** - Use `MfeHandlerMF` from `@cyberfabric/screensets/mfe/handler` subpath
-- **NO GTS plugin in main export** - Import from `@cyberfabric/screensets/plugins/gts` to avoid pulling @globaltypesystem/gts-ts
-- **NO translation types** - Use `@cyberfabric/i18n` for translation types
-- **NO Redux slices** - Layout state management is in `@cyberfabric/framework`
+- **NO concrete MFE implementations** - Use `MfeHandlerMF` from `@gears-frontx/screensets/mfe/handler` subpath
+- **NO GTS plugin in main export** - Import from `@gears-frontx/screensets/plugins/gts` to avoid pulling @globaltypesystem/gts-ts
+- **NO translation types** - Use `@gears-frontx/i18n` for translation types
+- **NO Redux slices** - Layout state management is in `@gears-frontx/framework`
 - **NO dependencies** - Pure TypeScript, zero runtime dependencies
 
 ## MFE Architecture
@@ -42,8 +42,8 @@ The MFE-enabled registry manages domains and extensions with full lifecycle supp
 ```typescript
 import {
   ScreensetsRegistry, ExtensionDomain, Extension,
-  HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT,
-} from '@cyberfabric/screensets';
+  Gears FrontX_ACTION_LOAD_EXT, Gears FrontX_ACTION_MOUNT_EXT, Gears FrontX_ACTION_UNMOUNT_EXT,
+} from '@gears-frontx/screensets';
 
 // Register domain (requires containerProvider) and extension
 registry.registerDomain(screenDomain, containerProvider);
@@ -51,26 +51,26 @@ await registry.registerExtension(homeExtension);
 
 // Load, mount, unmount via executeActionsChain (the public API)
 await registry.executeActionsChain({
-  action: { type: HAI3_ACTION_LOAD_EXT, target: screenDomainId, payload: { subject: 'ext-id' } }
+  action: { type: Gears FrontX_ACTION_LOAD_EXT, target: screenDomainId, payload: { subject: 'ext-id' } }
 });
 await registry.executeActionsChain({
-  action: { type: HAI3_ACTION_MOUNT_EXT, target: screenDomainId, payload: { subject: 'ext-id' } }
+  action: { type: Gears FrontX_ACTION_MOUNT_EXT, target: screenDomainId, payload: { subject: 'ext-id' } }
 });
 await registry.executeActionsChain({
-  action: { type: HAI3_ACTION_UNMOUNT_EXT, target: screenDomainId, payload: { subject: 'ext-id' } }
+  action: { type: Gears FrontX_ACTION_UNMOUNT_EXT, target: screenDomainId, payload: { subject: 'ext-id' } }
 });
 ```
 
-**NOTE**: `loadExtension()`, `mountExtension()`, `unmountExtension()` are NOT public methods on `ScreensetsRegistry`. They are internal to `MountManager`. All lifecycle operations go through `executeActionsChain()` with the appropriate `HAI3_ACTION_*` type.
+**NOTE**: `loadExtension()`, `mountExtension()`, `unmountExtension()` are NOT public methods on `ScreensetsRegistry`. They are internal to `MountManager`. All lifecycle operations go through `executeActionsChain()` with the appropriate `Gears FrontX_ACTION_*` type.
 
 ### Extension Lifecycle
 
 Extensions follow a strict lifecycle managed by the registry via actions chains:
 
 1. **Register**: `registry.registerExtension(extension)` -- add extension definition
-2. **Load**: `executeActionsChain({ action: { type: HAI3_ACTION_LOAD_EXT, ... } })` -- fetch and initialize code
-3. **Mount**: `executeActionsChain({ action: { type: HAI3_ACTION_MOUNT_EXT, ... } })` -- render into Shadow DOM
-4. **Unmount**: `executeActionsChain({ action: { type: HAI3_ACTION_UNMOUNT_EXT, ... } })` -- remove from domain
+2. **Load**: `executeActionsChain({ action: { type: Gears FrontX_ACTION_LOAD_EXT, ... } })` -- fetch and initialize code
+3. **Mount**: `executeActionsChain({ action: { type: Gears FrontX_ACTION_MOUNT_EXT, ... } })` -- render into Shadow DOM
+4. **Unmount**: `executeActionsChain({ action: { type: Gears FrontX_ACTION_UNMOUNT_EXT, ... } })` -- remove from domain
 5. **Unregister**: `registry.unregisterExtension(extensionId)` -- remove extension definition
 
 Each stage supports lifecycle hooks and actions chains with success/fallback branching.
@@ -80,7 +80,7 @@ Each stage supports lifecycle hooks and actions chains with success/fallback bra
 The `MfeHandler` abstract class defines the interface for loading and executing MFE entry points:
 
 ```typescript
-import { MfeHandler, MfeEntry } from '@cyberfabric/screensets';
+import { MfeHandler, MfeEntry } from '@gears-frontx/screensets';
 
 // Concrete implementation (typically internal or from framework)
 class MyMfeHandler extends MfeHandler {
@@ -97,7 +97,7 @@ class MyMfeHandler extends MfeHandler {
 Bridges provide communication between parent (host) and child (MFE) applications:
 
 ```typescript
-import { ParentMfeBridge, ChildMfeBridge } from '@cyberfabric/screensets';
+import { ParentMfeBridge, ChildMfeBridge } from '@gears-frontx/screensets';
 
 // Parent bridge (in host app) - obtained via registry.getParentBridge(extensionId)
 // ParentMfeBridge has:
@@ -114,16 +114,16 @@ import { ParentMfeBridge, ChildMfeBridge } from '@cyberfabric/screensets';
 
 // Example: child MFE executes an actions chain
 await bridge.executeActionsChain({
-  action: { type: HAI3_ACTION_MOUNT_EXT, target: 'screen', payload: { subject: 'other' } }
+  action: { type: Gears FrontX_ACTION_MOUNT_EXT, target: 'screen', payload: { subject: 'other' } }
 });
 
 // Example: child MFE subscribes to theme changes
-const unsubscribe = bridge.subscribeToProperty(HAI3_SHARED_PROPERTY_THEME, (value) => {
+const unsubscribe = bridge.subscribeToProperty(Gears FrontX_SHARED_PROPERTY_THEME, (value) => {
   console.log('Theme changed:', value);
 });
 
 // Example: child MFE reads current theme
-const theme = bridge.getProperty(HAI3_SHARED_PROPERTY_THEME);
+const theme = bridge.getProperty(Gears FrontX_SHARED_PROPERTY_THEME);
 ```
 
 ## Action Constants
@@ -132,15 +132,15 @@ FrontX defines standard actions for extension lifecycle:
 
 ```typescript
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
-} from '@cyberfabric/screensets';
+  Gears FrontX_ACTION_LOAD_EXT,
+  Gears FrontX_ACTION_MOUNT_EXT,
+  Gears FrontX_ACTION_UNMOUNT_EXT,
+} from '@gears-frontx/screensets';
 
 // Action IDs
-HAI3_ACTION_LOAD_EXT     // 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~'
-HAI3_ACTION_MOUNT_EXT    // 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~'
-HAI3_ACTION_UNMOUNT_EXT  // 'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~'
+Gears FrontX_ACTION_LOAD_EXT     // 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~'
+Gears FrontX_ACTION_MOUNT_EXT    // 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~'
+Gears FrontX_ACTION_UNMOUNT_EXT  // 'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1~'
 ```
 
 ## Shared Property Constants
@@ -149,13 +149,13 @@ FrontX defines standard shared properties for cross-MFE communication:
 
 ```typescript
 import {
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
-} from '@cyberfabric/screensets';
+  Gears FrontX_SHARED_PROPERTY_THEME,
+  Gears FrontX_SHARED_PROPERTY_LANGUAGE,
+} from '@gears-frontx/screensets';
 
 // Property IDs
-HAI3_SHARED_PROPERTY_THEME    // 'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~'
-HAI3_SHARED_PROPERTY_LANGUAGE // 'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~'
+Gears FrontX_SHARED_PROPERTY_THEME    // 'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~'
+Gears FrontX_SHARED_PROPERTY_LANGUAGE // 'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~'
 ```
 
 ## Layout Domains
@@ -173,7 +173,7 @@ FrontX defines 7 layout domains that extensions can target:
 | `overlay` | Full-screen overlays |
 
 ```typescript
-import { LayoutDomain } from '@cyberfabric/screensets';
+import { LayoutDomain } from '@gears-frontx/screensets';
 
 // Use in domain definitions
 const visibleDomains = [LayoutDomain.Header, LayoutDomain.Menu, LayoutDomain.Screen];
@@ -184,7 +184,7 @@ const visibleDomains = [LayoutDomain.Header, LayoutDomain.Menu, LayoutDomain.Scr
 The `TypeSystemPlugin` interface enables runtime type validation:
 
 ```typescript
-import { TypeSystemPlugin } from '@cyberfabric/screensets';
+import { TypeSystemPlugin } from '@gears-frontx/screensets';
 
 const myTypeSystem: TypeSystemPlugin = {
   validate(schema, data) {
@@ -197,7 +197,7 @@ const myTypeSystem: TypeSystemPlugin = {
 FrontX provides a GTS (Global Type System) plugin for JSON Schema validation. Import from the subpath to avoid dependency bloat:
 
 ```typescript
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
 ```
 
 ## Shadow DOM Utilities
@@ -205,7 +205,7 @@ import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
 Utilities for creating isolated MFE rendering contexts:
 
 ```typescript
-import { createShadowRoot, injectCssVariables } from '@cyberfabric/screensets';
+import { createShadowRoot, injectCssVariables } from '@gears-frontx/screensets';
 
 // Create shadow root
 const shadowRoot = createShadowRoot(container, { mode: 'open' });
@@ -227,7 +227,7 @@ Returns all registered GTS packages in discovery order:
 
 ```typescript
 const packages = registry.getRegisteredPackages();
-// Returns: ['hai3.demo', 'hai3.other', ...]
+// Returns: ['frontx.demo', 'frontx.other', ...]
 ```
 
 ### getExtensionsForPackage(packageId)
@@ -235,7 +235,7 @@ const packages = registry.getRegisteredPackages();
 Returns all extensions belonging to a specific GTS package:
 
 ```typescript
-const demoExtensions = registry.getExtensionsForPackage('hai3.demo');
+const demoExtensions = registry.getExtensionsForPackage('frontx.demo');
 // Returns: [homeExtension, profileExtension, ...]
 ```
 
@@ -244,10 +244,10 @@ const demoExtensions = registry.getExtensionsForPackage('hai3.demo');
 Utility function to extract the GTS package from any entity ID:
 
 ```typescript
-import { extractGtsPackage } from '@cyberfabric/screensets';
+import { extractGtsPackage } from '@gears-frontx/screensets';
 
-const pkg = extractGtsPackage('gts.hai3.mfes.ext.extension.v1~hai3.screensets.layout.screen.v1~hai3.demo.screens.home.v1');
-// Returns: 'hai3.demo'
+const pkg = extractGtsPackage('gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.demo.screens.home.v1');
+// Returns: 'frontx.demo'
 ```
 
 Packages are tracked automatically when extensions are registered. There is no explicit package registration. When the last extension for a package is unregistered, the package is removed from the list.
@@ -255,16 +255,16 @@ Packages are tracked automatically when extensions are registered. There is no e
 ## Key Rules
 
 1. **This package is contracts + runtime** - Abstract classes, interfaces, and MFE-enabled registry
-2. **ZERO dependencies** - Keep it pure TypeScript, no @cyberfabric inter-dependencies
+2. **ZERO dependencies** - Keep it pure TypeScript, no @gears-frontx inter-dependencies
 3. **Registry is MFE-enabled** - Manages domains, extensions, lifecycle, and coordination
 4. **Concrete implementations are internal** - Use framework re-exports or subpath imports
-5. **GTS plugin is opt-in** - Import from `@cyberfabric/screensets/plugins/gts` to avoid dependency bloat
-6. **Import layout state from @cyberfabric/framework** - HeaderState, MenuState, slices are there
+5. **GTS plugin is opt-in** - Import from `@gears-frontx/screensets/plugins/gts` to avoid dependency bloat
+6. **Import layout state from @gears-frontx/framework** - HeaderState, MenuState, slices are there
 
 ## Package Relationship
 
 ```
-@cyberfabric/screensets (SDK L1)           @cyberfabric/framework (L2)
+@gears-frontx/screensets (SDK L1)           @gears-frontx/framework (L2)
 ├── Contracts (types, abstract)  ─> ├── Re-exports contracts
 ├── ScreensetsRegistry (MFE)     ─> ├── Re-exports registry
 ├── MfeHandler (abstract)        ─> ├── MfeHandlerMF (concrete)
@@ -272,7 +272,7 @@ Packages are tracked automatically when extensions are registered. There is no e
 └── ZERO dependencies               ├── Layout state shapes
                                     ├── Layout slices
                                     ├── MFE plugin (microfrontends())
-                                    └── i18nRegistry (from @cyberfabric/i18n)
+                                    └── i18nRegistry (from @gears-frontx/i18n)
 ```
 
 ## Migration from Legacy Screensets

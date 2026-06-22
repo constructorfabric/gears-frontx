@@ -150,7 +150,7 @@ Notes:
 
 - FORBIDDEN in Phase 1: React bindings, routes, UI helpers.
 - FORBIDDEN in Phase 1: TanStack Query integration.
-- Rationale: keep `@hai3/auth` core framework-agnostic and transport-agnostic; React and Query belong in separate layers/packages.
+- Rationale: keep `@gears-frontx/auth` core framework-agnostic and transport-agnostic; React and Query belong in separate layers/packages.
 
 ### Phase 2 - Framework integration surface
 
@@ -164,7 +164,7 @@ Expected output:
 - framework changes only
 - no auth business logic yet
 
-### Phase 3 - HAI3 API transport adapter
+### Phase 3 - Gears FrontX API transport adapter
 
 Goal:
 
@@ -181,7 +181,7 @@ Expected output:
 Additional requirement for cookie-session turnkey:
 
 - If REST requires credentials, the adapter must be able to enable `withCredentials` per request globally without per-service protocol construction changes.
-- This likely requires a minimal `@hai3/api` change (types + RestProtocol request config).
+- This likely requires a minimal `@gears-frontx/api` change (types + RestProtocol request config).
 
 ### Phase 4 - Auth runtime plugin
 
@@ -230,7 +230,7 @@ The reviewer must check:
 
 1. No router/UI semantics leaked into core auth contract
 2. No React dependency leaked below React layer
-3. No token ownership moved into `@hai3/api`
+3. No token ownership moved into `@gears-frontx/api`
 4. `canAccess` remains primary authz API
 5. Query integration remains optional
 6. Cookie-session limitations are explicit, not hidden
@@ -273,7 +273,7 @@ We will manually validate:
 Use this prompt as the starting point:
 
 ```text
-You are implementing AuthProvider for HAI3.
+You are implementing AuthProvider for Gears FrontX.
 
 Read first:
 - AGENTS.md
@@ -289,7 +289,7 @@ Constraints:
 - Report exact files to edit before editing them.
 - Keep TanStack Query integration optional.
 - Keep AuthProvider core independent from React and independent from any single HTTP client.
-- Use @hai3/api transport hooks when available; otherwise work through the adapter contract.
+- Use @gears-frontx/api transport hooks when available; otherwise work through the adapter contract.
 
 Your current task is:
 [PASTE SCOPED TASK HERE]
@@ -319,7 +319,7 @@ Questions for the external agent:
 
 ## Confirmed project decisions
 
-1. A dedicated package name `@hai3/auth` is acceptable.
+1. A dedicated package name `@gears-frontx/auth` is acceptable.
 2. Cookie-session must work in the first release without requiring the developer to manually set `withCredentials` on each REST service.
 3. Reviewer prompts must always specify:
 - target agent
@@ -351,7 +351,7 @@ Allowed write scope:
 Forbidden scope:
 - packages/api/src/BaseApiService.ts
 - packages/api/src/apiRegistry.ts
-- packages/framework/src/createHAI3.ts
+- packages/framework/src/createGears FrontX.ts
 - packages/react/**
 
 Requirements:

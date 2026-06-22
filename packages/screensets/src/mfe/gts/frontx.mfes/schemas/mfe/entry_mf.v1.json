@@ -1,0 +1,42 @@
+{
+  "$id": "gts://gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    { "$ref": "gts://gts.frontx.mfes.mfe.entry.v1~" }
+  ],
+  "properties": {
+    "manifest": {
+      "x-gts-ref": "gts.frontx.mfes.mfe.mf_manifest.v1~*",
+      "$comment": "Reference to MfManifest type ID or inline manifest object containing package-level Module Federation config"
+    },
+    "exposedModule": {
+      "type": "string",
+      "minLength": 1,
+      "$comment": "Module Federation exposed module name (e.g., './lifecycle')"
+    },
+    "exposeAssets": {
+      "type": "object",
+      "$comment": "Per-module chunk assets for this specific exposed module, split per exposed module by the host manifest pipeline at registration time",
+      "properties": {
+        "js": {
+          "type": "object",
+          "properties": {
+            "sync": { "type": "array", "items": { "type": "string" } },
+            "async": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["sync", "async"]
+        },
+        "css": {
+          "type": "object",
+          "properties": {
+            "sync": { "type": "array", "items": { "type": "string" } },
+            "async": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["sync", "async"]
+        }
+      },
+      "required": ["js", "css"]
+    }
+  },
+  "required": ["manifest", "exposedModule", "exposeAssets"]
+}

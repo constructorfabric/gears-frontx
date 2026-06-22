@@ -2,22 +2,22 @@
 /**
  * Transform: uicore-to-react
  *
- * Transforms @cyberfabric/uicore imports to @cyberfabric/react
+ * Transforms @gears-frontx/uicore imports to @gears-frontx/react
  *
- * Before: import { RootState } from '@cyberfabric/uicore';
- * After:  import { RootState } from '@cyberfabric/react';
+ * Before: import { RootState } from '@gears-frontx/uicore';
+ * After:  import { RootState } from '@gears-frontx/react';
  */
 
 import type { SourceFile } from 'ts-morph';
 import type { Transform, TransformChange, TransformResult } from '../types.js';
 
-const SOURCE_MODULE = '@cyberfabric/uicore';
-const TARGET_MODULE = '@cyberfabric/react';
+const SOURCE_MODULE = '@gears-frontx/uicore';
+const TARGET_MODULE = '@gears-frontx/react';
 
 // @cpt-begin:cpt-frontx-algo-cli-tooling-apply-migration:p2:inst-apply-transforms
 export const uicoreToReactTransform: Transform = {
   id: 'uicore-to-react',
-  name: 'Update @cyberfabric/uicore to @cyberfabric/react',
+  name: 'Update @gears-frontx/uicore to @gears-frontx/react',
   description: `Transforms ${SOURCE_MODULE} imports to ${TARGET_MODULE}`,
 
   canApply(sourceFile: SourceFile): boolean {

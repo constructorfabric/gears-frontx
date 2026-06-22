@@ -1,10 +1,10 @@
 /**
- * @cyberfabric/screensets - Type Definitions
+ * @gears-frontx/screensets - Type Definitions
  *
  * Pure TypeScript contracts for FrontX MFE (Microfrontend) management.
  * This package has ZERO dependencies - pure types and contracts only.
  *
- * NOTE: Layout state shapes (HeaderState, MenuState, etc.) are in @cyberfabric/framework
+ * NOTE: Layout state shapes (HeaderState, MenuState, etc.) are in @gears-frontx/framework
  */
 
 // ============================================================================

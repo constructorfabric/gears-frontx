@@ -1,8 +1,8 @@
 /**
- * Migration Helpers - Utilities for migrating from @cyberfabric/uicore
+ * Migration Helpers - Utilities for migrating from @gears-frontx/uicore
  *
- * These helpers assist users migrating from the deprecated @cyberfabric/uicore package
- * to the new SDK architecture (@cyberfabric/framework, @cyberfabric/screensets, @cyberfabric/react).
+ * These helpers assist users migrating from the deprecated @gears-frontx/uicore package
+ * to the new SDK architecture (@gears-frontx/framework, @gears-frontx/screensets, @gears-frontx/react).
  *
  * Framework Layer: L2
  */
@@ -134,13 +134,13 @@ export function isDeprecationWarningsEnabled(): boolean {
  *
  * @example
  * ```typescript
- * import { createLegacySelector, selectMenuCollapsed } from '@cyberfabric/framework';
+ * import { createLegacySelector, selectMenuCollapsed } from '@gears-frontx/framework';
  *
  * // Create a legacy selector
  * const selectMenuCollapsedLegacy = createLegacySelector(
  *   'uicore.menu.collapsed',
  *   selectMenuCollapsed,
- *   'Use selectMenuCollapsed from @cyberfabric/framework'
+ *   'Use selectMenuCollapsed from @gears-frontx/framework'
  * );
  *
  * // In component (will show deprecation warning in dev)
@@ -160,7 +160,7 @@ export function createLegacySelector<TState, TResult>(
       const newPath = STATE_PATH_MAPPING[legacyPath as keyof typeof STATE_PATH_MAPPING] ?? 'unknown';
       const hint = migrationHint ?? `Use the new state path: ${newPath}`;
       console.warn(
-        `[HAI3 Migration] Deprecated selector accessing "${legacyPath}". ${hint}`
+        `[Gears FrontX Migration] Deprecated selector accessing "${legacyPath}". ${hint}`
       );
     }
     return newSelector(state);

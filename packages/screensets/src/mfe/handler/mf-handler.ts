@@ -40,7 +40,7 @@ import {
   importBlobModule,
 } from './mf-dynamic-module-ops';
 
-const RUNTIME_STYLE_ID_PREFIX = '__hai3-mfe-runtime-style-';
+const RUNTIME_STYLE_ID_PREFIX = '__frontx-mfe-runtime-style-';
 
 /**
  * Per-load shared state for blob URL chain creation.
@@ -60,7 +60,7 @@ interface LoadBlobState {
   readonly sharedDepBlobUrls: Map<string, string>;
   /**
    * Entry-chunk path (relative to `baseUrl`) for this load. Used as the
-   * resolution base when `__hai3_lazy('<rel>')` is invoked at runtime:
+   * resolution base when `__frontx_lazy('<rel>')` is invoked at runtime:
    * Rollup emits dynamic-import paths relative to the importing chunk's
    * directory, and every MFE chunk in a Vite build lives in the same
    * output directory as the entry chunk, so the entry chunk's path is
@@ -68,11 +68,11 @@ interface LoadBlobState {
    */
   readonly entryChunkFilename: string;
   /**
-   * Blob URL of the per-load `__hai3_lazy` loader stub module. Lazily
-   * minted on the first chunk that contains a `__hai3_lazy(` call and
+   * Blob URL of the per-load `__frontx_lazy` loader stub module. Lazily
+   * minted on the first chunk that contains a `__frontx_lazy(` call and
    * reused for every subsequent chunk in the same load. Closed over this
    * load's resolver in the host-side global registry — sibling loads get
-   * distinct stub URLs so a chunk's `__hai3_lazy(./X)` call routes back
+   * distinct stub URLs so a chunk's `__frontx_lazy(./X)` call routes back
    * to the parent load that owns it.
    *
    * Mutable: this is the single field in `LoadBlobState` that the chain
@@ -86,7 +86,7 @@ interface LoadBlobState {
 
 /**
  * Host-side registry of per-load lazy resolvers. Loader-stub modules call
- * `globalThis.__HAI3_LAZY__.resolve(loaderId, path)` to reach the resolver
+ * `globalThis.__FRONTX_LAZY__.resolve(loaderId, path)` to reach the resolver
  * that owns their load's blob URL chain — the loader stub itself can't
  * reach handler methods directly because it evaluates inside its own blob
  * URL realm.
@@ -94,7 +94,7 @@ interface LoadBlobState {
  * IDs are minted by {@link LazyLoaderRegistry.register}; lifetimes follow
  * the parent load (page lifetime per ADR-0004's never-revoke invariant).
  *
- * The registry is exposed once on `globalThis.__HAI3_LAZY__` so every blob
+ * The registry is exposed once on `globalThis.__FRONTX_LAZY__` so every blob
  * URL realm in the host can reach it. The exposure is narrow: a single
  * read-only `resolve(id, path)` method — no leakage of handler internals.
  */
@@ -110,9 +110,9 @@ class LazyLoaderRegistry {
     const inst = new LazyLoaderRegistry();
     this.instance = inst;
     const host = globalThis as unknown as {
-      __HAI3_LAZY__?: { resolve(id: string, path: string): Promise<string> };
+      __FRONTX_LAZY__?: { resolve(id: string, path: string): Promise<string> };
     };
-    host.__HAI3_LAZY__ = {
+    host.__FRONTX_LAZY__ = {
       resolve: (id, path) => inst.resolve(id, path),
     };
     return inst;
@@ -128,7 +128,7 @@ class LazyLoaderRegistry {
     const resolver = this.resolvers.get(id);
     if (!resolver) {
       return Promise.reject(
-        new Error(`__hai3_lazy: no resolver registered for loader id '${id}'`)
+        new Error(`__frontx_lazy: no resolver registered for loader id '${id}'`)
       );
     }
     return resolver(path);
@@ -758,15 +758,15 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // the pre-built shared dep blob URL map.
     rewritten = this.rewriteBareSpecifiers(rewritten, loadState.sharedDepBlobUrls);
 
-    // Inject the per-load `__hai3_lazy` loader stub at the top of the chunk
+    // Inject the per-load `__frontx_lazy` loader stub at the top of the chunk
     // when the chunk references it. The stub is the runtime half of ADR-0022:
     // a build-time AST transform rewrote every dynamic `import('./X')` to
-    // `__hai3_lazy('./X')`; the loader stub closes over this load's resolver
+    // `__frontx_lazy('./X')`; the loader stub closes over this load's resolver
     // and routes those calls through the parent load's blob URL chain so
     // lazy chunks inherit the same `sharedDepBlobUrls` as the entry chunk.
-    if (rewritten.includes('__hai3_lazy(')) {
+    if (rewritten.includes('__frontx_lazy(')) {
       const loaderUrl = this.ensureLazyLoaderUrl(loadState);
-      rewritten = `import{__hai3_lazy}from${JSON.stringify(loaderUrl)};\n${rewritten}`;
+      rewritten = `import{__frontx_lazy}from${JSON.stringify(loaderUrl)};\n${rewritten}`;
     }
 
     const blob = new Blob([rewritten], { type: 'text/javascript' });
@@ -777,11 +777,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   // ---- Lazy-import ABI runtime resolver (ADR-0022) ----
 
   /**
-   * Mint (lazily) and return this load's `__hai3_lazy` loader stub blob URL.
+   * Mint (lazily) and return this load's `__frontx_lazy` loader stub blob URL.
    *
-   * The stub is a tiny ESM module that re-exports a `__hai3_lazy` function
+   * The stub is a tiny ESM module that re-exports a `__frontx_lazy` function
    * closed over this load's resolver id. Vendor MFE chunks transformed by
-   * the build plugin reference `__hai3_lazy` as an imported binding from
+   * the build plugin reference `__frontx_lazy` as an imported binding from
    * this stub URL — that import is injected at the top of every chunk that
    * uses the identifier (see {@link createBlobUrlChainInternal}).
    *
@@ -795,15 +795,15 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     const registry = LazyLoaderRegistry.ensureExposed();
     const loaderId = registry.register((path) => this.resolveLazyChunk(path, loadState));
 
-    // The stub uses `globalThis.__HAI3_LAZY__.resolve` (exposed by
+    // The stub uses `globalThis.__FRONTX_LAZY__.resolve` (exposed by
     // {@link LazyLoaderRegistry}) to reach the host-side resolver. Returning
     // a `Promise<Module>` mirrors the original `import()` semantic so the
-    // caller's transformed code (`__hai3_lazy('./X').then(m => m.X)`) keeps
+    // caller's transformed code (`__frontx_lazy('./X').then(m => m.X)`) keeps
     // working unchanged.
     const stubSource =
       `const __id=${JSON.stringify(loaderId)};\n` +
-      `export const __hai3_lazy=async(p)=>{` +
-      `const u=await globalThis.__HAI3_LAZY__.resolve(__id,p);` +
+      `export const __frontx_lazy=async(p)=>{` +
+      `const u=await globalThis.__FRONTX_LAZY__.resolve(__id,p);` +
       `return import(u);` +
       `};\n`;
 
@@ -816,7 +816,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   /**
    * Resolve a vendor-relative lazy-import path to a per-load blob URL.
    *
-   * The vendor's compiled chunk emits `__hai3_lazy('./LayoutElements-X.js')`
+   * The vendor's compiled chunk emits `__frontx_lazy('./LayoutElements-X.js')`
    * (sibling chunk reference — Rollup constant-folds the path to a hashed
    * filename relative to the importing chunk's directory). All MFE chunks
    * share a single output directory, so the path resolves to a filename
@@ -824,9 +824,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    *
    * The chunk is then funneled through {@link createBlobUrlChain}, which
    * fetches its source (via the URL-keyed `sourceTextCache`), recursively
-   * rewrites bare specifiers + nested `__hai3_lazy()` calls (the static-
+   * rewrites bare specifiers + nested `__frontx_lazy()` calls (the static-
    * chain path takes care of both), mints a blob URL in this load's
-   * `blobUrlMap`, and returns. Subsequent `__hai3_lazy(...)` calls for the
+   * `blobUrlMap`, and returns. Subsequent `__frontx_lazy(...)` calls for the
    * same path within the same load reuse the cached blob URL.
    */
   private async resolveLazyChunk(
@@ -850,7 +850,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     const blobUrl = loadState.blobUrlMap.get(filename);
     if (blobUrl === undefined) {
       throw new MfeLoadError(
-        `__hai3_lazy: failed to mint blob URL for lazy chunk '${relPath}'`,
+        `__frontx_lazy: failed to mint blob URL for lazy chunk '${relPath}'`,
         loadState.entryId
       );
     }
@@ -947,7 +947,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    *
    * Matches all relative imports (both './' and '../' prefixed) and resolves
    * them relative to the importing chunk's path. For example, a chunk at
-   * '__federation_shared_@cyberfabric/react.js' importing '../runtime.js' resolves
+   * '__federation_shared_@gears-frontx/react.js' importing '../runtime.js' resolves
    * to 'runtime.js' (relative to baseUrl).
    */
   // @cpt-algo:cpt-frontx-algo-mfe-isolation-parse-imports:p1
@@ -1121,7 +1121,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     );
 
     // Dynamic `import('<rel>')` calls are NOT rewritten here. A build-time
-    // AST transform converts every dynamic import to `__hai3_lazy('<rel>')`
+    // AST transform converts every dynamic import to `__frontx_lazy('<rel>')`
     // (ADR-0022);
     // the loader stub injected by `createBlobUrlChainInternal` routes those
     // calls through `resolveLazyChunk`, which mints per-load blob URLs that
@@ -1138,7 +1138,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * Resolve a relative import path against the importing chunk's filename.
    *
    * Uses URL resolution to correctly handle '../' traversals. For example:
-   *  - resolveRelativePath('__federation_shared_@cyberfabric/react.js', '../runtime.js')
+   *  - resolveRelativePath('__federation_shared_@gears-frontx/react.js', '../runtime.js')
    *    → 'runtime.js'
    *  - resolveRelativePath('expose-Widget1.js', './dep.js')
    *    → 'dep.js'
@@ -1166,7 +1166,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 // ---------------------------------------------------------------------------
 
 const __mfParseHandler = new MfeHandlerMF(
-  'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~'
+  'gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~'
 );
 
 /** @internal Unit tests */

@@ -42,7 +42,7 @@ function getMonorepoPostChecks(): ArchCheck[] {
 function validateMonorepoArchitecture(): ValidationResult {
   // Order: monorepo (clean build) -> standalone -> monorepo post (unused)
   const allChecks = [...getMonorepoChecks(), ...getStandaloneChecks(), ...getMonorepoPostChecks()];
-  return runValidation(allChecks, 'HAI3 Monorepo Architecture Validation');
+  return runValidation(allChecks, 'Gears FrontX Monorepo Architecture Validation');
 }
 
 // Main execution

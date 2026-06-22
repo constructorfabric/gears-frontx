@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HAI3Provider, apiRegistry, createHAI3App, MfeHandlerMF, gtsPlugin, HAI3_MFE_ENTRY_MF, themeSchema, languageSchema, extensionScreenSchema } from '@cyberfabric/react';
+import { FrontXProvider, apiRegistry, createFrontXApp, MfeHandlerMF, gtsPlugin, FRONTX_MFE_ENTRY_MF, themeSchema, languageSchema, extensionScreenSchema } from '@gears-frontx/react';
 import { Toaster } from '@/app/components/ui/sonner';
 import { AccountsApiService } from '@/app/api';
 import './globals.css'; // Global styles with CSS variables
@@ -19,7 +19,7 @@ import { draculaLargeTheme } from '@/app/themes/dracula-large';
 // Register application-specific GTS schemas before constructing the FrontX app.
 // These derived schemas encode application-level constraints (valid theme names,
 // supported languages, screen extension shape) and are not part of the core
-// type system in @cyberfabric/screensets.
+// type system in @gears-frontx/screensets.
 gtsPlugin.registerSchema(themeSchema);
 gtsPlugin.registerSchema(languageSchema);
 gtsPlugin.registerSchema(extensionScreenSchema);
@@ -32,10 +32,10 @@ apiRegistry.initialize({});
 
 // Create FrontX app instance
 // Register MfeHandlerMF to enable Module Federation MFE loading
-const app = createHAI3App({
+const app = createFrontXApp({
   microfrontends: {
     typeSystem: gtsPlugin,
-    mfeHandlers: [new MfeHandlerMF(HAI3_MFE_ENTRY_MF)],
+    mfeHandlers: [new MfeHandlerMF(FRONTX_MFE_ENTRY_MF)],
   },
 });
 
@@ -68,9 +68,9 @@ app.themeRegistry.apply(DEFAULT_THEME_ID);
  */
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HAI3Provider app={app}>
+    <FrontXProvider app={app}>
       <App />
       <Toaster />
-    </HAI3Provider>
+    </FrontXProvider>
   </StrictMode>
 );

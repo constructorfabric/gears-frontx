@@ -10,7 +10,7 @@ import type { MfeRegistryConfig } from '../../src/mfe/runtime/config';
 import type { TypeSystemPlugin } from '../../src/mfe/plugins/types';
 import type { MfeHandler } from '../../src/mfe/handler/types';
 import type { ExtensionDomain, Action, ActionsChain } from '../../src/mfe/types';
-import { HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT } from '../../src/mfe/constants';
+import { FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT } from '../../src/mfe/constants';
 import { MockDomainFactory, createMockTypeSystemPlugin } from '../../__test-utils__';
 
 describe('MfeRegistry - Phase 4', () => {
@@ -44,7 +44,7 @@ describe('MfeRegistry - Phase 4', () => {
     it('should accept optional mfeHandlers', () => {
       const mockHandler = {
         bridgeFactory: {} as unknown,
-        handledBaseTypeId: 'gts.hai3.screensets.mfe.entry.v1~',
+        handledBaseTypeId: 'gts.frontx.screensets.mfe.entry.v1~',
         load: async () => ({ lifecycle: {} as unknown, entry: {} as unknown, unload: () => {} }),
       } as unknown as MfeHandler;
       const registryConfig: MfeRegistryConfig = {
@@ -68,7 +68,7 @@ describe('MfeRegistry - Phase 4', () => {
     it('should register handler if provided in config', () => {
       const mockHandler = {
         bridgeFactory: {} as unknown,
-        handledBaseTypeId: 'gts.hai3.screensets.mfe.entry.v1~',
+        handledBaseTypeId: 'gts.frontx.screensets.mfe.entry.v1~',
         priority: 10,
         load: async () => ({ lifecycle: {} as unknown, entry: {} as unknown, unload: () => {} }),
       };
@@ -88,9 +88,9 @@ describe('MfeRegistry - Phase 4', () => {
       const registry = new DefaultMfeRegistry(createTestConfig());
 
       const validDomain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -111,9 +111,9 @@ describe('MfeRegistry - Phase 4', () => {
 
       // Register domain with the action in its supported actions
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.screensets.ext.action.v1~test.action.v1~'],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, 'gts.frontx.screensets.ext.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -122,8 +122,8 @@ describe('MfeRegistry - Phase 4', () => {
       registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const validAction: Action = {
-        type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
-        target: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        type: 'gts.frontx.screensets.ext.action.v1~test.action.v1~',
+        target: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
       };
 
       const chain: ActionsChain = {
@@ -163,9 +163,9 @@ describe('MfeRegistry - Phase 4', () => {
 
       // Register domain with the action in its supported actions
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.screensets.ext.action.v1~test.action.v1~'],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, 'gts.frontx.screensets.ext.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -176,8 +176,8 @@ describe('MfeRegistry - Phase 4', () => {
       registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const actionWithPayload: Action = {
-        type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
-        target: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        type: 'gts.frontx.screensets.ext.action.v1~test.action.v1~',
+        target: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         payload: { data: 'test' },
       };
 
@@ -214,8 +214,8 @@ describe('MfeRegistry - Phase 4', () => {
       const registry = new DefaultMfeRegistry(registryConfig);
 
       const actionWithInvalidPayload: Action = {
-        type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
-        target: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        type: 'gts.frontx.screensets.ext.action.v1~test.action.v1~',
+        target: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         payload: { data: 123 }, // Invalid
       };
 
@@ -235,9 +235,9 @@ describe('MfeRegistry - Phase 4', () => {
 
       // Register domain with the action in its supported actions
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, 'gts.hai3.screensets.ext.action.v1~test.action.v1~'],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, 'gts.frontx.screensets.ext.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
@@ -248,8 +248,8 @@ describe('MfeRegistry - Phase 4', () => {
       registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const actionWithoutPayload: Action = {
-        type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
-        target: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        type: 'gts.frontx.screensets.ext.action.v1~test.action.v1~',
+        target: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
       };
 
       const chain: ActionsChain = {
@@ -265,9 +265,9 @@ describe('MfeRegistry - Phase 4', () => {
       const registry = new DefaultMfeRegistry(createTestConfig());
 
       const domain: ExtensionDomain = {
-        id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
+        id: 'gts.frontx.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT],
+        actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],

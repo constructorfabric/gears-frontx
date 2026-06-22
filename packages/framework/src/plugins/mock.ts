@@ -9,7 +9,7 @@
  * Apps don't need to manually call registerSlice(mockSlice) or initMockEffects().
  */
 
-import type { HAI3Plugin } from '../types';
+import type { FrontXPlugin } from '../types';
 import { mockSlice } from '../slices/mockSlice';
 import { initMockEffects, toggleMockMode } from '../effects/mockEffects';
 
@@ -51,7 +51,7 @@ export interface MockPluginConfig {
  *
  * @example
  * ```typescript
- * const app = createHAI3()
+ * const app = createFrontX()
  *   .use(effects())
  *   .use(mock())  // Automatic mock mode support (enabled in dev)
  *   .build();
@@ -61,7 +61,7 @@ export interface MockPluginConfig {
  * ```
  */
 // @cpt-begin:cpt-frontx-algo-framework-composition-mock-toggle:p2:inst-1
-export function mock(config?: MockPluginConfig): HAI3Plugin {
+export function mock(config?: MockPluginConfig): FrontXPlugin {
   let cleanup: (() => void) | null = null;
 
   return {

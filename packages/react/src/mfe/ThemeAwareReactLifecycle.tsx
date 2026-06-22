@@ -3,13 +3,13 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import type {
-  HAI3App,
+  FrontXApp,
   MfeEntryLifecycle,
   ChildMfeBridge,
   MfeMountContext,
-} from '@cyberfabric/framework';
-import { HAI3Provider } from '../HAI3Provider';
-import { hasHAI3QueryClientActivator, resolveHAI3QueryClient } from '../queryClient';
+} from '@gears-frontx/framework';
+import { FrontXProvider } from '../FrontXProvider';
+import { hasFrontXQueryClientActivator, resolveFrontXQueryClient } from '../queryClient';
 
 interface ProviderMountOptions {
   mfeBridge?: {
@@ -20,7 +20,7 @@ interface ProviderMountOptions {
 }
 
 function resolveProviderMountOptions(
-  app: HAI3App,
+  app: FrontXApp,
   bridge: ChildMfeBridge,
   mountContext?: MfeMountContext
 ): ProviderMountOptions {
@@ -30,11 +30,11 @@ function resolveProviderMountOptions(
 
   if (
     isMountedMfe &&
-    !resolveHAI3QueryClient(app) &&
-    !hasHAI3QueryClientActivator(app)
+    !resolveFrontXQueryClient(app) &&
+    !hasFrontXQueryClientActivator(app)
   ) {
     throw new Error(
-      '[HAI3Provider] Mounted MFEs require queryCacheShared() in the child app and queryCache() in the host app before loading the MFE app.'
+      '[FrontXProvider] Mounted MFEs require queryCacheShared() in the child app and queryCache() in the host app before loading the MFE app.'
     );
   }
 
@@ -47,7 +47,7 @@ function resolveProviderMountOptions(
 }
 
 interface MountRuntimeAwareProviderProps {
-  readonly app: HAI3App;
+  readonly app: FrontXApp;
   readonly mfeBridge?: Readonly<{
     readonly bridge: ChildMfeBridge;
     readonly extensionId: string;
@@ -62,9 +62,9 @@ function MountRuntimeAwareProvider({
   children,
 }: Readonly<MountRuntimeAwareProviderProps>): React.JSX.Element {
   return (
-    <HAI3Provider app={app} mfeBridge={mfeBridge}>
+    <FrontXProvider app={app} mfeBridge={mfeBridge}>
       {children}
-    </HAI3Provider>
+    </FrontXProvider>
   );
 }
 
@@ -91,7 +91,7 @@ function MountRuntimeAwareProvider({
 export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<ChildMfeBridge> {
   private root: Root | null = null;
 
-  constructor(private readonly app: HAI3App) { }
+  constructor(private readonly app: FrontXApp) { }
 
   mount(container: Element | ShadowRoot, bridge: ChildMfeBridge, mountContext?: MfeMountContext): void {
     if (container instanceof ShadowRoot) {

@@ -1,5 +1,5 @@
 {
-  "name": "@cyberfabric/{{mfeName}}-mfe",
+  "name": "@gears-frontx/{{mfeName}}-mfe",
   "private": true,
   "version": "0.2.0-alpha.0",
   "type": "module",
@@ -15,8 +15,8 @@
   "dependencies": {
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "@cyberfabric/react": "file:../../../packages/react",
-    "@cyberfabric/state": "file:../../../packages/state",
+    "@gears-frontx/react": "file:../../../packages/react",
+    "@gears-frontx/state": "file:../../../packages/state",
     "@tanstack/query-core": "5.90.20",
     "@tanstack/react-query": "5.90.21",
     "tailwindcss": "^3.4.17"
@@ -29,7 +29,7 @@
     "@types/react": "19.0.8",
     "@types/react-dom": "19.0.3",
     "jsdom": "26.1.0",
-    "vite": "6.4.2",
+    "vite": "6.4.3",
     "vitest": "4.1.4",
     "typescript": "5.4.2"
   }

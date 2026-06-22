@@ -2,16 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 
 const mockBootstrapMFE = vi.fn();
-const mockUseHAI3 = vi.fn();
+const mockUseFrontX = vi.fn();
 const mockScreenDomain = { id: 'screen-domain' };
 
 vi.mock('./bootstrap', () => ({
   bootstrapMFE: (...args: never[]) => mockBootstrapMFE(...args),
 }));
 
-vi.mock('@cyberfabric/react', async (importOriginal) => ({
+vi.mock('@gears-frontx/react', async (importOriginal) => ({
   ...(await importOriginal<Record<string, never>>()),
-  useHAI3: () => mockUseHAI3(),
+  useFrontX: () => mockUseFrontX(),
   screenDomain: mockScreenDomain,
   ExtensionDomainSlot: ({
     registry,
@@ -36,7 +36,7 @@ describe('MfeScreenContainer', () => {
 
   beforeEach(() => {
     app = { mfeRegistry: {} };
-    mockUseHAI3.mockReturnValue(app);
+    mockUseFrontX.mockReturnValue(app);
     mockBootstrapMFE.mockReset();
     mockBootstrapMFE.mockResolvedValue(undefined);
   });

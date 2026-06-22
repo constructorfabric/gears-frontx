@@ -1,5 +1,5 @@
 {
-  "name": "@cyberfabric/depcruise-config",
+  "name": "@gears-frontx/depcruise-config",
   "version": "0.2.0-alpha.0",
   "description": "Layered dependency-cruiser configuration for FrontX SDK architecture",
   "private": true,

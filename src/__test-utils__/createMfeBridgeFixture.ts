@@ -1,4 +1,4 @@
-import type { ChildMfeBridge, SharedProperty } from '@cyberfabric/react';
+import type { ChildMfeBridge, SharedProperty } from '@gears-frontx/react';
 import { vi, type Mock } from 'vitest';
 
 // @cpt-dod:cpt-frontx-dod-react-bindings-mfe-hooks:p1

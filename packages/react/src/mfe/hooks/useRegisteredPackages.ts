@@ -12,7 +12,7 @@
 // @cpt-dod:cpt-frontx-dod-react-bindings-observation-hooks:p1
 
 import { useSyncExternalStore, useCallback, useRef } from 'react';
-import { useHAI3 } from '../../HAI3Context';
+import { useFrontX } from '../../FrontXContext';
 
 // ============================================================================
 // Hook Implementation
@@ -57,7 +57,7 @@ import { useHAI3 } from '../../HAI3Context';
 // @cpt-begin:cpt-frontx-flow-react-bindings-use-registered-packages:p1:inst-call-registered-packages
 // @cpt-begin:cpt-frontx-dod-react-bindings-observation-hooks:p1:inst-call-registered-packages
 export function useRegisteredPackages(): string[] {
-  const app = useHAI3();
+  const app = useFrontX();
   const registry = app.mfeRegistry;
 
   // @cpt-begin:cpt-frontx-flow-react-bindings-use-registered-packages:p1:inst-guard-registry-packages
@@ -65,7 +65,7 @@ export function useRegisteredPackages(): string[] {
   if (!registry) {
     throw new Error(
       'useRegisteredPackages requires the microfrontends plugin. ' +
-      'Add microfrontends() to your HAI3 app configuration.'
+      'Add microfrontends() to your Gears FrontX app configuration.'
     );
   }
   // @cpt-end:cpt-frontx-flow-react-bindings-use-registered-packages:p1:inst-guard-registry-packages

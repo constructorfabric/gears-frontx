@@ -1,5 +1,5 @@
 /**
- * Unit tests for the @cyberfabric/framework/testing subpath.
+ * Unit tests for the @gears-frontx/framework/testing subpath.
  *
  * Scope: pure-unit coverage for utilities that live at L2 and do not cross
  * package boundaries.
@@ -25,7 +25,7 @@ describe('TestContainerProvider (factory adapter)', () => {
   it('prepareForDomain returns the factory instance for chaining', () => {
     const provider = new TestContainerProvider();
     const declaration = {
-      id: 'gts.hai3.mfes.ext.domain.v1~test.app.domain.v1',
+      id: 'gts.frontx.mfes.ext.domain.v1~test.app.domain.v1',
       sharedProperties: [],
       actions: [],
       extensionsActions: [],

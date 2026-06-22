@@ -1,8 +1,8 @@
-# @cyberfabric/api
+# @gears-frontx/api
 
 > API communication protocols and service registry for FrontX SDK. Supports REST, SSE, and mock protocols.
 
-Part of the FrontX SDK Layer (L1) - can be used independently without other @cyberfabric packages. Peer dependency on axios.
+Part of the FrontX SDK Layer (L1) - can be used independently without other @gears-frontx packages. Peer dependency on axios.
 
 ## Core API
 
@@ -22,7 +22,7 @@ Part of the FrontX SDK Layer (L1) - can be used independently without other @cyb
 ## Quick Start
 
 ```typescript
-import { BaseApiService, RestProtocol, apiRegistry, MockMap } from '@cyberfabric/api';
+import { BaseApiService, RestProtocol, apiRegistry, MockMap } from '@gears-frontx/api';
 
 // Define service
 class AccountsApiService extends BaseApiService {
@@ -35,7 +35,7 @@ class AccountsApiService extends BaseApiService {
 }
 
 // Module augmentation
-declare module '@cyberfabric/api' {
+declare module '@gears-frontx/api' {
   interface ApiServicesMap {
     accounts: AccountsApiService;
   }

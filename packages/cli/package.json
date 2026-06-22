@@ -1,6 +1,6 @@
 {
-  "name": "@cyberfabric/cli",
-  "version": "0.2.0-alpha.4",
+  "name": "@gears-frontx/cli",
+  "version": "0.2.0-alpha.0",
   "description": "FrontX CLI - Project scaffolding and screenset management tools",
   "type": "module",
   "bin": {
@@ -44,13 +44,13 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cyberfabric/frontx.git",
+    "url": "https://github.com/gears-frontx/frontx.git",
     "directory": "packages/cli"
   },
   "bugs": {
-    "url": "https://github.com/cyberfabric/frontx/issues"
+    "url": "https://github.com/gears-frontx/frontx/issues"
   },
-  "homepage": "https://github.com/cyberfabric/frontx#readme",
+  "homepage": "https://github.com/gears-frontx/frontx#readme",
   "publishConfig": {
     "access": "public"
   },

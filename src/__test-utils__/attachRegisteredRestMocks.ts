@@ -1,7 +1,7 @@
 // @cpt-dod:cpt-frontx-dod-api-communication-rest-mock-plugin:p2
 
 // @cpt-begin:cpt-frontx-dod-api-communication-rest-mock-plugin:p2:inst-attach-rest-mocks
-import type { ApiPluginBase, ApiProtocol } from '@cyberfabric/react';
+import type { ApiPluginBase, ApiProtocol } from '@gears-frontx/react';
 
 type ProtocolRestProbe = {
   plugins?: {
@@ -21,7 +21,7 @@ export type ApiServiceWithPlugins = {
   getPlugins(): Iterable<readonly [ApiProtocol, Iterable<ApiPluginBase>]>;
 };
 
-const MOCK_PLUGIN = Symbol.for('hai3:plugin:mock');
+const MOCK_PLUGIN = Symbol.for('frontx:plugin:mock');
 
 function isWiringRestProtocol(protocol: ApiProtocol): protocol is WiringRestProtocol {
   return (

@@ -6,7 +6,7 @@
  * - Dynamic slice registration (registerSlice)
  * - Type-safe state access via module augmentation
  *
- * SDK Layer: L1 (Zero @cyberfabric dependencies)
+ * SDK Layer: L1 (Zero @gears-frontx dependencies)
  */
 
 import {
@@ -16,7 +16,7 @@ import {
   type EnhancedStore,
   type UnknownAction,
 } from '@reduxjs/toolkit';
-import type { RootState, AppDispatch, SliceObject, EffectInitializer, HAI3Store } from './types';
+import type { RootState, AppDispatch, SliceObject, EffectInitializer, FrontXStore } from './types';
 
 // ============================================================================
 // Store State
@@ -61,7 +61,7 @@ const effectCleanups: Map<string, () => void> = new Map();
 // @cpt-state:cpt-frontx-state-state-management-store-lifecycle:p1
 export function createStore(
   initialReducers: Record<string, Reducer> = {}
-): HAI3Store<RootState> {
+): FrontXStore<RootState> {
   staticReducers = { ...initialReducers };
 
   const rootReducer = Object.keys(staticReducers).length > 0
@@ -74,11 +74,11 @@ export function createStore(
 
   // Create typed wrapper - RootState is extended via module augmentation
   const instance = storeInstance!;
-  const store: HAI3Store<RootState> = {
+  const store: FrontXStore<RootState> = {
     getState: () => instance.getState() as RootState,
     dispatch: instance.dispatch as AppDispatch,
     subscribe: instance.subscribe,
-    replaceReducer: instance.replaceReducer as HAI3Store<RootState>['replaceReducer'],
+    replaceReducer: instance.replaceReducer as FrontXStore<RootState>['replaceReducer'],
     [Symbol.observable]: () => instance[Symbol.observable](),
   };
 
@@ -91,7 +91,7 @@ export function createStore(
  *
  * @returns The FrontX store instance
  */
-export function getStore(): HAI3Store<RootState> {
+export function getStore(): FrontXStore<RootState> {
   if (!storeInstance) {
     return createStore();
   }
@@ -101,7 +101,7 @@ export function getStore(): HAI3Store<RootState> {
     getState: () => instance.getState() as RootState,
     dispatch: instance.dispatch,
     subscribe: instance.subscribe,
-    replaceReducer: instance.replaceReducer as HAI3Store<RootState>['replaceReducer'],
+    replaceReducer: instance.replaceReducer as FrontXStore<RootState>['replaceReducer'],
     [Symbol.observable]: () => instance[Symbol.observable](),
   };
 }

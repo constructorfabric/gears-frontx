@@ -10,8 +10,8 @@
 
 const DEFAULT_SHARED_FETCH_STALE_TIME = 30_000;
 
-export const SHARED_FETCH_CACHE_SYMBOL = Symbol.for('hai3:fetch-cache');
-export const SHARED_FETCH_CACHE_RETAINERS_SYMBOL = Symbol.for('hai3:fetch-cache-retainers');
+export const SHARED_FETCH_CACHE_SYMBOL = Symbol.for('frontx:fetch-cache');
+export const SHARED_FETCH_CACHE_RETAINERS_SYMBOL = Symbol.for('frontx:fetch-cache-retainers');
 
 export interface SharedFetchCacheFetchOptions {
   signal?: AbortSignal;

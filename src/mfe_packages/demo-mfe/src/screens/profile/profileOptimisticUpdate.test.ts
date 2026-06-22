@@ -1,4 +1,4 @@
-import { Language } from '@cyberfabric/react';
+import { Language } from '@gears-frontx/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { GetCurrentUserResponse } from '../../api/types';
 import { UserRole } from '../../api/types';

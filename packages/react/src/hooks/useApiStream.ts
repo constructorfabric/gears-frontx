@@ -1,7 +1,7 @@
 /**
  * useApiStream - Declarative SSE streaming hook
  *
- * Accepts a StreamDescriptor from @cyberfabric/api and manages the EventSource
+ * Accepts a StreamDescriptor from @gears-frontx/api and manages the EventSource
  * lifecycle: connects on mount, disconnects on unmount/descriptor change.
  * Returns the latest event, accumulated events, connection status, and
  * a manual disconnect function.
@@ -23,7 +23,7 @@
 // @cpt-FEATURE:cpt-frontx-fr-sse-stream-descriptors:p3
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import type { StreamDescriptor, StreamStatus } from '@cyberfabric/framework';
+import type { StreamDescriptor, StreamStatus } from '@gears-frontx/framework';
 
 /** Configuration options for useApiStream. */
 export interface ApiStreamOptions {

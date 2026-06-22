@@ -1,10 +1,10 @@
-# @cyberfabric/studio
+# @gears-frontx/studio
 
 Development tools overlay for FrontX applications providing runtime controls and debugging capabilities.
 
 ## Overview
 
-`@cyberfabric/studio` delivers a comprehensive development environment overlay that enables real-time application control without code changes. The package provides visual controls for theme switching, screen navigation, language testing, and API mode toggling, all accessible through a draggable, resizable panel that automatically tree-shakes out of production builds.
+`@gears-frontx/studio` delivers a comprehensive development environment overlay that enables real-time application control without code changes. The package provides visual controls for theme switching, screen navigation, language testing, and API mode toggling, all accessible through a draggable, resizable panel that automatically tree-shakes out of production builds.
 
 ## Purpose
 
@@ -54,7 +54,7 @@ Minimize the panel to a circular button in the bottom-right corner when screen s
 
 ### Automatic Loading (Recommended)
 
-HAI3Provider automatically detects studio package installation and loads it in development mode only. No explicit imports or configuration required - install the package and it activates automatically in development.
+Gears FrontXProvider automatically detects studio package installation and loads it in development mode only. No explicit imports or configuration required - install the package and it activates automatically in development.
 
 ### Manual Integration (Advanced)
 
@@ -64,7 +64,7 @@ For custom loading scenarios, import the StudioOverlay component directly and co
 
 ### Tree-Shaking
 
-Studio code automatically eliminates from production bundles through conditional imports. HAI3Provider uses lazy loading with environment checks to ensure zero studio code reaches production.
+Studio code automatically eliminates from production bundles through conditional imports. Gears FrontXProvider uses lazy loading with environment checks to ensure zero studio code reaches production.
 
 ### Bundle Verification
 
@@ -87,7 +87,7 @@ The package imports UI components directly from UI Kit rather than using the com
 ## Installation
 
 ```bash
-npm install --save-dev @cyberfabric/studio
+npm install --save-dev @gears-frontx/studio
 ```
 
 Install as a devDependency rather than a regular dependency to reinforce its development-only nature.
@@ -100,7 +100,7 @@ Studio provides full localization for 36 languages including English, Spanish, F
 
 Requires the following packages:
 
-- `@cyberfabric/uicore` - Core framework for state management and events
+- `@gears-frontx/uicore` - Core framework for state management and events
 - `react` ^19.2.4 - React library
 - `react-dom` ^19.2.4 - React DOM renderer
 
@@ -124,7 +124,7 @@ Apache-2.0
 
 ## Related Packages
 
-- [`@cyberfabric/uicore`](../uicore) - Core layout and state management
+- [`@gears-frontx/uicore`](../uicore) - Core layout and state management
 
 ## Contributing
 

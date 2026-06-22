@@ -35,7 +35,7 @@ FrontX's multi-team MFE model requires that independently deployed MFE packages 
 ## Decision Drivers
 
 * **(P0)** Each MFE load must produce its own module-level state instances (EventBus, store, i18n) regardless of caching — per-MFE isolation is non-negotiable
-* **(P1)** The solution must not introduce `@cyberfabric/*` dependencies into L1 packages (zero-dependency constraint)
+* **(P1)** The solution must not introduce `@gears-frontx/*` dependencies into L1 packages (zero-dependency constraint)
 * **(P1)** The isolation mechanism must be compatible with top-level await and ES module parse-time resolution semantics — early resource revocation during async evaluation causes load failures
 
 ## Considered Options
@@ -105,8 +105,8 @@ This decision should be revisited when:
 - The never-revoke rule: `URL.createObjectURL` returns a URL that persists until explicitly revoked. Because `import()` with top-level await may parse (and cache the URL reference) before the module body executes, revoking the blob URL before all dependent modules finish loading causes `ERR_FAILED` on subsequent imports of the same specifier
 - Related: ADR 0019 (`cpt-frontx-adr-mf2-manifest-discovery`) — governs the build plugin and metadata discovery mechanism that feeds chunk URLs into the blob URL isolation pipeline
 - Related: ADR 0020 (`cpt-frontx-adr-mfe-state-lifecycle-boundary`) — extends this decision with the host/author state-lifecycle contract; narrows the "blob URLs accumulate" consequence to per-load (catalog-bounded) by ruling out per-mount fresh-load mechanisms
-- Related: ADR 0022 (`cpt-frontx-adr-lazy-import-abi`) — extends the blob URL chain to dynamic `import()` calls via a plugin AST transform + handler runtime resolver (`__hai3_lazy`); lazy chunks inherit the parent load's `sharedDepBlobUrls`, preserving per-load isolation for lazy-loaded code
-- Related: ADR 0001 (Four-Layer SDK Architecture) — blob loader lives in `packages/screensets` (L1) and must not import other `@cyberfabric/*` packages
+- Related: ADR 0022 (`cpt-frontx-adr-lazy-import-abi`) — extends the blob URL chain to dynamic `import()` calls via a plugin AST transform + handler runtime resolver (`__frontx_lazy`); lazy chunks inherit the parent load's `sharedDepBlobUrls`, preserving per-load isolation for lazy-loaded code
+- Related: ADR 0001 (Four-Layer SDK Architecture) — blob loader lives in `packages/screensets` (L1) and must not import other `@gears-frontx/*` packages
 - Related: ADR 0002 (Event-Driven Flux Data Flow) — EventBus isolation is the primary motivation for per-MFE module scope
 - Learning curve: blob URL isolation with import specifier rewriting is a non-standard pattern; developers debugging MFE loading issues should understand that blob URLs produce opaque identifiers in browser DevTools and that source text is fetched separately from module evaluation
 - Evolution path: if browsers add native module isolation scopes, the blob URL mechanism becomes unnecessary — the MfeHandler abstraction allows replacing the isolation strategy without affecting the registry, bridge, or mediator layers

@@ -101,7 +101,7 @@ export const updateLayoutCommand: CommandDefinition<
     }
 
     logger.newline();
-    logger.info('Updating layout components from HAI3 layout templates...');
+    logger.info('Updating layout components from Gears FrontX layout templates...');
     logger.newline();
 
     // Generate files from template

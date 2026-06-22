@@ -56,7 +56,7 @@ function detectCurrentChannel(): 'alpha' | 'stable' {
       if (fs.pathExistsSync(packageJsonPath)) {
         const packageJson = fs.readJsonSync(packageJsonPath);
         // @cpt-begin:cpt-frontx-algo-cli-tooling-detect-release-channel:p1:inst-read-cli-version-string
-        if (packageJson.name === '@cyberfabric/cli' && typeof packageJson.version === 'string') {
+        if (packageJson.name === '@gears-frontx/cli' && typeof packageJson.version === 'string') {
           version = packageJson.version;
           break;
         }
@@ -172,7 +172,7 @@ export const updateCommand: CommandDefinition<
       // Update CLI
       logger.info('Checking for CLI updates...');
       try {
-        const cliUpdateTarget = `@cyberfabric/cli${tag}`;
+        const cliUpdateTarget = `@gears-frontx/cli${tag}`;
         const globalInstallCmd = getGlobalInstallCommand(
           packageManagerCtx.manager,
           cliUpdateTarget
@@ -185,10 +185,10 @@ export const updateCommand: CommandDefinition<
         } else {
           execSync(globalInstallCmd, { stdio: 'pipe' });
           cliUpdated = true;
-          logger.success(`@cyberfabric/cli updated (${channel})`);
+          logger.success(`@gears-frontx/cli updated (${channel})`);
         }
       } catch {
-        logger.info('@cyberfabric/cli is already up to date');
+        logger.info('@gears-frontx/cli is already up to date');
       }
       // @cpt-end:cpt-frontx-flow-cli-tooling-update-project:p1:inst-update-cli-global
 
@@ -196,28 +196,28 @@ export const updateCommand: CommandDefinition<
       // If inside a project, update project packages
       if (projectRoot) {
         logger.newline();
-        logger.info('Updating project HAI3 packages...');
+        logger.info('Updating project Gears FrontX packages...');
 
         const packageJsonPath = path.join(projectRoot, 'package.json');
         const packageJson = await fs.readJson(packageJsonPath);
 
         const frontxPackages: string[] = [];
 
-        // Find all @cyberfabric/* packages
+        // Find all @gears-frontx/* packages
         for (const dep of Object.keys(packageJson.dependencies || {})) {
-          if (dep.startsWith('@cyberfabric/')) {
+          if (dep.startsWith('@gears-frontx/')) {
             frontxPackages.push(dep);
           }
         }
         for (const dep of Object.keys(packageJson.devDependencies || {})) {
-          if (dep.startsWith('@cyberfabric/')) {
+          if (dep.startsWith('@gears-frontx/')) {
             frontxPackages.push(dep);
           }
         }
 
         if (frontxPackages.length > 0) {
           const packagesToUpdate = [...new Set(frontxPackages)];
-          logger.info(`Found ${packagesToUpdate.length} HAI3 packages to update`);
+          logger.info(`Found ${packagesToUpdate.length} Gears FrontX packages to update`);
 
           try {
             // Install each package with the appropriate tag
@@ -234,7 +234,7 @@ export const updateCommand: CommandDefinition<
             logger.warn('Failed to update some packages');
           }
         } else {
-          logger.info('No HAI3 packages found in project');
+          logger.info('No Gears FrontX packages found in project');
         }
       } else {
         logger.newline();

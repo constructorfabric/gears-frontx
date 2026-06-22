@@ -1,5 +1,5 @@
 /**
- * @cyberfabric/state - FrontX State Management
+ * @gears-frontx/state - FrontX State Management
  *
  * Provides:
  * - Type-safe event bus for pub/sub communication
@@ -25,7 +25,7 @@ import type {
   RootState,
   AppDispatch,
   EffectInitializer,
-  HAI3Store,
+  FrontXStore,
   SliceObject,
   EventBus,
   EventHandler,
@@ -41,7 +41,7 @@ export type {
   AppDispatch,
   EffectInitializer,
   // For store/slice
-  HAI3Store,
+  FrontXStore,
   SliceObject,
   // For event subscriptions
   EventBus,
@@ -51,7 +51,7 @@ export type {
 
 /**
  * Public augmentation site for application and package events.
- * Consumers augment `@cyberfabric/state`, not the internal `./types` module.
+ * Consumers augment `@gears-frontx/state`, not the internal `./types` module.
  */
 export interface EventPayloadMap extends InternalEventPayloadMap {}
 

@@ -1,5 +1,5 @@
 
-# @cyberfabric/state Guidelines (Canonical)
+# @gears-frontx/state Guidelines (Canonical)
 
 ## AI WORKFLOW (REQUIRED)
 1) Summarize 3-6 rules from this file before making changes.
@@ -7,10 +7,10 @@
 
 ## SCOPE
 - Package: `packages/state/` (part of the unified Flux dataflow pattern)
-- Layer: L1 SDK (zero @cyberfabric dependencies)
+- Layer: L1 SDK (zero @gears-frontx dependencies)
 - Peer dependency: `@reduxjs/toolkit`
 
-> **Note:** @cyberfabric/state consolidates the former @cyberfabric/events and @cyberfabric/store packages into a single unified Flux dataflow package.
+> **Note:** @gears-frontx/state consolidates the former @gears-frontx/events and @gears-frontx/store packages into a single unified Flux dataflow package.
 
 ## CRITICAL RULES
 - Dynamic slice registration via `registerSlice()` (not manual configureStore).
@@ -39,7 +39,7 @@ configureStore({ reducer: { threads: threadsSlice.reducer } }); // FORBIDDEN
 ## MODULE AUGMENTATION
 ```typescript
 // REQUIRED: Type-safe state access
-declare module '@cyberfabric/state' {
+declare module '@gears-frontx/state' {
   interface RootState {
     [SLICE_KEY]: ThreadsState;
   }
@@ -49,7 +49,7 @@ declare module '@cyberfabric/state' {
 ## STOP CONDITIONS
 - Editing `createStore()` implementation.
 - Bypassing `registerSlice()` for manual reducer injection.
-- Creating global slices (except layout domains in @cyberfabric/framework).
+- Creating global slices (except layout domains in @gears-frontx/framework).
 - Hardcoding slice names without screenset ID prefix.
 
 ## PRE-DIFF CHECKLIST

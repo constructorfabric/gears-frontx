@@ -1,7 +1,7 @@
 /**
  * useApiMutation - Declarative mutation hook with restricted QueryCache injection
  *
- * Accepts { endpoint: MutationDescriptor, callbacks } and returns a HAI3-owned
+ * Accepts { endpoint: MutationDescriptor, callbacks } and returns a Gears FrontX-owned
  * ApiMutationResult. Supports optimistic updates, rollback, and cache invalidation
  * through the QueryCache interface injected into each callback.
  *
@@ -21,10 +21,10 @@
 // @cpt-state:cpt-frontx-state-request-lifecycle-mutation:p2
 // @cpt-FEATURE:implement-endpoint-descriptors:p3
 
-import type { MutationDescriptor } from '@cyberfabric/framework';
+import type { MutationDescriptor } from '@gears-frontx/framework';
 import type { MutationCallbackContext } from './QueryCache';
 import type { ApiMutationResult } from '../types';
-import { useHAI3Mutation, useRequiredHAI3QueryClient } from '../queryClient';
+import { useFrontXMutation, useRequiredFrontXQueryClient } from '../queryClient';
 import { createQueryCache } from './QueryCache';
 import { useMemo } from 'react';
 
@@ -64,9 +64,9 @@ export function useApiMutation<
 >(
   options: UseApiMutationOptions<TData, TError, TVariables, TContext>
 ): ApiMutationResult<TData, TError, TVariables> {
-  const queryClient = useRequiredHAI3QueryClient();
+  const queryClient = useRequiredFrontXQueryClient();
   const queryCache = useMemo(() => createQueryCache(queryClient), [queryClient]);
   const callbackCtx: MutationCallbackContext = useMemo(() => ({ queryCache }), [queryCache]);
-  return useHAI3Mutation<TData, TError, TVariables, TContext>(options, callbackCtx);
+  return useFrontXMutation<TData, TError, TVariables, TContext>(options, callbackCtx);
 }
 // @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-mutation:p2:inst-delegate-use-mutation

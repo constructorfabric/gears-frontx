@@ -275,9 +275,9 @@ function generateCustomUikitThemes(uikit: string): GeneratedFile[] {
 
     themeFiles.push({
       path: 'src/app/themes/themes.ts',
-      content: `import type { ThemeConfig } from '@cyberfabric/react';
+      content: `import type { ThemeConfig } from '@gears-frontx/react';
 
-export const hai3Themes: ThemeConfig[] = [
+export const frontxThemes: ThemeConfig[] = [
   ${themeEntries.join(',\n  ')},
 ];
 
@@ -294,7 +294,7 @@ export const DEFAULT_THEME_ID = '${cssAlias.themes.find((t) => t.default)?.id ??
     // index.ts — barrel export
     themeFiles.push({
       path: 'src/app/themes/index.ts',
-      content: `export { hai3Themes, DEFAULT_THEME_ID } from './themes';\n`,
+      content: `export { frontxThemes, DEFAULT_THEME_ID } from './themes';\n`,
     });
   } else {
     // Unknown library — generate generic themes with inline values
@@ -307,7 +307,7 @@ export const DEFAULT_THEME_ID = '${cssAlias.themes.find((t) => t.default)?.id ??
 
     themeFiles.push({
       path: 'src/app/themes/index.ts',
-      content: `export { hai3Themes, DEFAULT_THEME_ID } from './adapter';\n`,
+      content: `export { frontxThemes, DEFAULT_THEME_ID } from './adapter';\n`,
     });
   }
 
@@ -410,7 +410,7 @@ function applyAppPlaceholders(content: string, uikit: string): string {
     );
     content = content.replace(
       '__LIBRARY_SYNC_EFFECT__',
-      '    // TODO: Sync HAI3 theme to your library\'s theme API\n    // e.g., yourLibrary.setTheme(currentTheme);'
+      '    // TODO: Sync Gears FrontX theme to your library\'s theme API\n    // e.g., yourLibrary.setTheme(currentTheme);'
     );
     // For unknown libraries, initializeThemeSystem doesn't exist — replace with no-op
     content = content.replace(
@@ -456,7 +456,7 @@ function rewriteCyberfabricDepsToLocalRefs(
 
     const nextDeps: Record<string, string> = {};
     for (const [name, value] of Object.entries(deps)) {
-      nextDeps[name] = name.startsWith('@cyberfabric/')
+      nextDeps[name] = name.startsWith('@gears-frontx/')
         ? getLocalPackageRef(name, monorepoRoot, projectPath)
         : value;
     }
@@ -798,9 +798,9 @@ ${varsBlock}
   }`;
   });
 
-  return `import type { ThemeConfig } from '@cyberfabric/react';
+  return `import type { ThemeConfig } from '@gears-frontx/react';
 
-export const hai3Themes: ThemeConfig[] = [
+export const frontxThemes: ThemeConfig[] = [
   ${themeBlocks.join(',\n  ')},
 ];
 
@@ -850,7 +850,7 @@ async function generateThemeFiles(uikit: string): Promise<GeneratedFile[]> {
     });
     files.push({
       path: 'src/app/themes/index.ts',
-      content: `export { hai3Themes, DEFAULT_THEME_ID } from './adapter';\n`,
+      content: `export { frontxThemes, DEFAULT_THEME_ID } from './adapter';\n`,
     });
   }
 
@@ -966,13 +966,13 @@ export function buildPackageJson(input: PackageJsonInput): string {
   const resolvedUikit = normalizeUikit(uikit);
 
   const dependencies: Record<string, string> = {
-    '@cyberfabric/react': 'alpha',
-    '@cyberfabric/framework': 'alpha',
-    '@cyberfabric/api': 'alpha',
-    '@cyberfabric/auth': 'alpha',
-    '@cyberfabric/i18n': 'alpha',
-    '@cyberfabric/screensets': 'alpha',
-    '@cyberfabric/state': 'alpha',
+    '@gears-frontx/react': 'alpha',
+    '@gears-frontx/framework': 'alpha',
+    '@gears-frontx/api': 'alpha',
+    '@gears-frontx/auth': 'alpha',
+    '@gears-frontx/i18n': 'alpha',
+    '@gears-frontx/screensets': 'alpha',
+    '@gears-frontx/state': 'alpha',
     '@hookform/resolvers': '5.2.2',
     '@iconify/react': '5.0.2',
     '@radix-ui/react-avatar': '1.1.10',
@@ -999,7 +999,7 @@ export function buildPackageJson(input: PackageJsonInput): string {
 
   // @cpt-begin:cpt-frontx-algo-unit-test-generation-and-agent-verification-scaffold-tests:p1:inst-add-package-json-entries
   const devDependencies: Record<string, string> = {
-    '@cyberfabric/cli': 'alpha',
+    '@gears-frontx/cli': 'alpha',
     '@j178/prek': '0.2.25',
     '@types/node': '^24.9.1',
     '@types/lodash': '4.17.20',
@@ -1029,7 +1029,7 @@ export function buildPackageJson(input: PackageJsonInput): string {
   };
 
   if (studio) {
-    devDependencies['@cyberfabric/studio'] = 'alpha';
+    devDependencies['@gears-frontx/studio'] = 'alpha';
   }
 
   if (resolvedUikit !== 'shadcn') {
@@ -1053,7 +1053,7 @@ export function buildPackageJson(input: PackageJsonInput): string {
       const out: Record<string, string> = {};
       for (const [name, value] of Object.entries(deps)) {
         out[name] =
-          name.startsWith('@cyberfabric/') ? getLocalPackageRef(name, monorepoRoot, projectPath) : value;
+          name.startsWith('@gears-frontx/') ? getLocalPackageRef(name, monorepoRoot, projectPath) : value;
       }
       return out;
     };
@@ -1077,10 +1077,11 @@ export function buildPackageJson(input: PackageJsonInput): string {
     workspaces: [...STANDALONE_APP_WORKSPACES],
     scripts: {
       'generate:mfe-manifests': 'tsx scripts/generate-mfe-manifests.ts',
-      dev: 'tsx scripts/generate-mfe-manifests.ts && vite',
-      'dev:all': 'tsx scripts/generate-mfe-manifests.ts && tsx scripts/dev-all.ts',
+      'build:mfes': 'tsx scripts/build-mfes.ts',
+      dev: 'tsx scripts/build-mfes.ts && tsx scripts/generate-mfe-manifests.ts && vite',
+      'dev:all': 'tsx scripts/build-mfes.ts && tsx scripts/generate-mfe-manifests.ts && tsx scripts/dev-all.ts',
       'check:mcp': 'tsx scripts/check-mcp.ts',
-      build: 'tsx scripts/generate-mfe-manifests.ts && vite build',
+      build: 'tsx scripts/build-mfes.ts && tsx scripts/generate-mfe-manifests.ts && vite build',
       preview: 'vite preview',
       test: 'vitest run',
       'test:unit': 'vitest --run --passWithNoTests=false',

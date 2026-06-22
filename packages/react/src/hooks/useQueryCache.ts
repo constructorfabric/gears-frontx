@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { createQueryCache } from './QueryCache';
-import { useOptionalHAI3QueryClient } from '../queryClient';
+import { useOptionalFrontXQueryClient } from '../queryClient';
 
 /**
  * Exposes the sanctioned imperative cache API for app and MFE code without
@@ -12,11 +12,11 @@ import { useOptionalHAI3QueryClient } from '../queryClient';
  * - useQueryCache() for controlled imperative cache inspection and invalidation
  */
 export function useQueryCache() {
-  const queryClient = useOptionalHAI3QueryClient();
+  const queryClient = useOptionalFrontXQueryClient();
 
   if (!queryClient) {
     throw new Error(
-      '[HAI3Provider] No query cache available. Add queryCache() or queryCacheShared() to your plugin composition.'
+      '[FrontXProvider] No query cache available. Add queryCache() or queryCacheShared() to your plugin composition.'
     );
   }
 

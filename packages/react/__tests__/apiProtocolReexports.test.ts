@@ -6,7 +6,7 @@ import {
   SseStreamProtocol,
 } from '../src';
 
-describe('@cyberfabric/react API protocol re-exports', () => {
+describe('@gears-frontx/react API protocol re-exports', () => {
   it('re-exports descriptor protocol classes needed by MFE-local services', async () => {
     const rest = new RestProtocol();
     rest.initialize({ baseURL: '/api' });

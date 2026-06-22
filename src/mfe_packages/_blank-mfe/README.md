@@ -23,7 +23,7 @@ cp -r src/mfe_packages/_blank-mfe src/mfe_packages/your-mfe-name
 ### 2. Update Package Metadata
 
 Edit `package.json`:
-- Change `"name"` from `"@cyberfabric/blank-mfe"` to `"@cyberfabric/your-mfe-name"`
+- Change `"name"` from `"@gears-frontx/blank-mfe"` to `"@gears-frontx/your-mfe-name"`
 - Change the port in the `"dev"` and `"preview"` scripts (e.g., from `3099` to your chosen port)
 
 Edit `vite.config.ts`:
@@ -36,32 +36,32 @@ Replace all placeholder IDs with your actual GTS IDs. The placeholders are marke
 
 **Manifest ID Pattern:**
 ```
-gts.hai3.mfes.mfe.mf_manifest.v1~[YOUR_ORG].[YOUR_APP].mfe.[YOUR_MFE_NAME].manifest.v1
+gts.frontx.mfes.mfe.mf_manifest.v1~[YOUR_ORG].[YOUR_APP].mfe.[YOUR_MFE_NAME].manifest.v1
 ```
 
 Example:
 ```
-gts.hai3.mfes.mfe.mf_manifest.v1~acme.crm.mfe.customer.manifest.v1
+gts.frontx.mfes.mfe.mf_manifest.v1~acme.crm.mfe.customer.manifest.v1
 ```
 
 **Entry ID Pattern:**
 ```
-gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~[YOUR_ORG].[YOUR_APP].mfe.[YOUR_MFE_NAME].[YOUR_SCREEN_NAME].v1
+gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~[YOUR_ORG].[YOUR_APP].mfe.[YOUR_MFE_NAME].[YOUR_SCREEN_NAME].v1
 ```
 
 Example:
 ```
-gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~acme.crm.mfe.customer.details.v1
+gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~acme.crm.mfe.customer.details.v1
 ```
 
 **Extension ID Pattern:**
 ```
-gts.hai3.mfes.ext.extension.v1~[YOUR_ORG].[YOUR_APP].ext.[YOUR_SCREEN_NAME]_screen.v1
+gts.frontx.mfes.ext.extension.v1~[YOUR_ORG].[YOUR_APP].ext.[YOUR_SCREEN_NAME]_screen.v1
 ```
 
 Example:
 ```
-gts.hai3.mfes.ext.extension.v1~acme.crm.ext.customer_details_screen.v1
+gts.frontx.mfes.ext.extension.v1~acme.crm.ext.customer_details_screen.v1
 ```
 
 **Update the `remoteEntry` URL:**
@@ -111,7 +111,7 @@ If you want to run the MFE locally for development:
 
 2. Add dev scripts to root `package.json`:
 ```json
-"dev:mfe:your-name": "npm run dev --workspace=@cyberfabric/your-mfe-name",
+"dev:mfe:your-name": "npm run dev --workspace=@gears-frontx/your-mfe-name",
 "dev:all": "concurrently \"npm run dev\" \"npm run dev:mfe:your-name\""
 ```
 
@@ -125,7 +125,7 @@ npm install
 In the host app's MFE bootstrap file (e.g., `src/app/mfe/bootstrap.ts`):
 
 ```typescript
-import yourMfeConfig from '@cyberfabric/your-mfe-name/mfe.json';
+import yourMfeConfig from '@gears-frontx/your-mfe-name/mfe.json';
 
 // Register manifest
 runtime.registerManifest(yourMfeConfig.manifest);
@@ -241,8 +241,8 @@ If you see "Shared module not available" errors:
 
 ### Type Errors
 
-If TypeScript cannot resolve `@cyberfabric/*` imports:
-- Ensure `@cyberfabric/react` is in `dependencies`
+If TypeScript cannot resolve `@gears-frontx/*` imports:
+- Ensure `@gears-frontx/react` is in `dependencies`
 - Run `npm install` to symlink workspace packages
 
 ### Style Issues

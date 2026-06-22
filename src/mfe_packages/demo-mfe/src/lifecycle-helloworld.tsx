@@ -1,6 +1,6 @@
 import React from 'react';
-import type { ChildMfeBridge } from '@cyberfabric/react';
-import { ThemeAwareReactLifecycle } from '@cyberfabric/react';
+import type { ChildMfeBridge } from '@gears-frontx/react';
+import { ThemeAwareReactLifecycle } from '@gears-frontx/react';
 import { mfeApp } from './init';
 import { HelloWorldScreen } from './screens/helloworld/HelloWorldScreen';
 

@@ -5,7 +5,7 @@
  * and registers API services. This module is imported once (as a side effect)
  * by ThemeAwareReactLifecycle, which provides the FrontXProvider to all screens.
  *
- * The MFE bundles its own copy of @cyberfabric/react, giving it isolated singletons:
+ * The MFE bundles its own copy of @gears-frontx/react, giving it isolated singletons:
  * - eventBus (no cross-MFE event leakage)
  * - apiRegistry (isolated service instances)
  * - storeInstance (isolated Redux store)
@@ -14,12 +14,12 @@
 // @cpt-flow:cpt-frontx-flow-mfe-isolation-mfe-bootstrap:p1
 
 import {
-  createHAI3,
+  createFrontX,
   apiRegistry,
   effects,
   mock,
   queryCacheShared,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import { AccountsApiService } from './api/AccountsApiService';
 
 // Register API services BEFORE build — mock plugin syncs during build(),
@@ -29,6 +29,6 @@ apiRegistry.initialize();
 
 // Create the MFE-local app shell only.
 // queryCacheShared() joins the host-owned QueryClient without reconfiguring it.
-const mfeApp = createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build();
+const mfeApp = createFrontX().use(effects()).use(queryCacheShared()).use(mock()).build();
 
 export { mfeApp };

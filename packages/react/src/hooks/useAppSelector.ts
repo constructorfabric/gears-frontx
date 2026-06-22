@@ -7,7 +7,7 @@
 // @cpt-dod:cpt-frontx-dod-react-bindings-redux-hooks:p1
 
 import { useSelector, type TypedUseSelectorHook } from 'react-redux';
-import type { RootState } from '@cyberfabric/framework';
+import type { RootState } from '@gears-frontx/framework';
 
 /**
  * Type-safe selector hook.

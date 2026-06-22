@@ -18,15 +18,15 @@ import {
   peekSharedFetchCache,
   releaseSharedFetchCache,
   retainSharedFetchCache,
-} from '@cyberfabric/api';
+} from '@gears-frontx/api';
 import { QueryClient } from '@tanstack/query-core';
-import { eventBus, type Subscription } from '@cyberfabric/state';
-import type { HAI3App, HAI3Plugin } from '../types';
+import { eventBus, type Subscription } from '@gears-frontx/state';
+import type { FrontXApp, FrontXPlugin } from '../types';
 import { MockEvents } from '../effects/mockEffects';
 
 const QUERY_CACHE_RUNTIME_CHANGED_EVENT = 'cache/runtime/changed' as const;
 
-declare module '@cyberfabric/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'cache/runtime/changed': CacheRuntimeChangedPayload;
     'cache/invalidate': CacheInvalidatePayload;
@@ -64,30 +64,30 @@ interface CacheRemovePayload extends CacheEventBase {
   queryKey: QueryCacheKey;
 }
 
-const SHARED_QUERY_CLIENT_SYMBOL = Symbol.for('hai3:query-cache:shared-client');
-const SHARED_QUERY_CLIENT_RETAINERS_SYMBOL = Symbol.for('hai3:query-cache:shared-client-retainers');
-const SHARED_QUERY_CLIENT_CONFIG_SYMBOL = Symbol.for('hai3:query-cache:shared-client-config');
+const SHARED_QUERY_CLIENT_SYMBOL = Symbol.for('frontx:query-cache:shared-client');
+const SHARED_QUERY_CLIENT_RETAINERS_SYMBOL = Symbol.for('frontx:query-cache:shared-client-retainers');
+const SHARED_QUERY_CLIENT_CONFIG_SYMBOL = Symbol.for('frontx:query-cache:shared-client-config');
 const SHARED_QUERY_CLIENT_TEARDOWN_TOKEN_SYMBOL = Symbol.for(
-  'hai3:query-cache:shared-client-teardown-token'
+  'frontx:query-cache:shared-client-teardown-token'
 );
-const QUERY_CLIENT_BROADCAST_TARGET_SYMBOL = Symbol.for('hai3:query-cache:broadcast-target');
-const QUERY_CLIENT_BROADCAST_COUNTER_SYMBOL = Symbol.for('hai3:query-cache:broadcast-counter');
-const APP_QUERY_CLIENT_SYMBOL = Symbol.for('hai3:query-cache:app-client');
-const APP_QUERY_CLIENT_RESOLVER_SYMBOL = Symbol.for('hai3:query-cache:app-client-resolver');
-const APP_QUERY_CLIENT_ACTIVATOR_SYMBOL = Symbol.for('hai3:query-cache:app-client-activator');
-const DUPLICATE_PLUGIN_CLEANUP_SYMBOL = Symbol.for('hai3:plugin:duplicate-cleanup');
+const QUERY_CLIENT_BROADCAST_TARGET_SYMBOL = Symbol.for('frontx:query-cache:broadcast-target');
+const QUERY_CLIENT_BROADCAST_COUNTER_SYMBOL = Symbol.for('frontx:query-cache:broadcast-counter');
+const APP_QUERY_CLIENT_SYMBOL = Symbol.for('frontx:query-cache:app-client');
+const APP_QUERY_CLIENT_RESOLVER_SYMBOL = Symbol.for('frontx:query-cache:app-client-resolver');
+const APP_QUERY_CLIENT_ACTIVATOR_SYMBOL = Symbol.for('frontx:query-cache:app-client-activator');
+const DUPLICATE_PLUGIN_CLEANUP_SYMBOL = Symbol.for('frontx:plugin:duplicate-cleanup');
 
 type QueryClientWithMetadata = QueryClient & {
   [QUERY_CLIENT_BROADCAST_TARGET_SYMBOL]?: string;
 };
 
-type QueryClientApp = HAI3App & {
+type QueryClientApp = FrontXApp & {
   [APP_QUERY_CLIENT_SYMBOL]?: QueryClient;
   [APP_QUERY_CLIENT_RESOLVER_SYMBOL]?: () => QueryClient | undefined;
   [APP_QUERY_CLIENT_ACTIVATOR_SYMBOL]?: () => QueryClient | undefined;
 };
 
-type QueryCachePlugin = HAI3Plugin & {
+type QueryCachePlugin = FrontXPlugin & {
   [DUPLICATE_PLUGIN_CLEANUP_SYMBOL]?: () => void;
 };
 
@@ -210,11 +210,11 @@ function ensureQueryClientBroadcastTarget(queryClient: QueryClient): string {
   return broadcastTarget;
 }
 
-function attachQueryClientToApp(app: HAI3App, queryClient: QueryClient): void {
+function attachQueryClientToApp(app: FrontXApp, queryClient: QueryClient): void {
   (app as QueryClientApp)[APP_QUERY_CLIENT_SYMBOL] = queryClient;
 }
 
-function detachQueryClientFromApp(app: HAI3App, queryClient: QueryClient): void {
+function detachQueryClientFromApp(app: FrontXApp, queryClient: QueryClient): void {
   const clientApp = app as QueryClientApp;
   if (clientApp[APP_QUERY_CLIENT_SYMBOL] === queryClient) {
     delete clientApp[APP_QUERY_CLIENT_SYMBOL];
@@ -222,24 +222,24 @@ function detachQueryClientFromApp(app: HAI3App, queryClient: QueryClient): void 
 }
 
 function attachQueryClientResolverToApp(
-  app: HAI3App,
+  app: FrontXApp,
   resolver: () => QueryClient | undefined
 ): void {
   (app as QueryClientApp)[APP_QUERY_CLIENT_RESOLVER_SYMBOL] = resolver;
 }
 
-function detachQueryClientResolverFromApp(app: HAI3App): void {
+function detachQueryClientResolverFromApp(app: FrontXApp): void {
   delete (app as QueryClientApp)[APP_QUERY_CLIENT_RESOLVER_SYMBOL];
 }
 
 function attachQueryClientActivatorToApp(
-  app: HAI3App,
+  app: FrontXApp,
   activator: () => QueryClient | undefined
 ): void {
   (app as QueryClientApp)[APP_QUERY_CLIENT_ACTIVATOR_SYMBOL] = activator;
 }
 
-function detachQueryClientActivatorFromApp(app: HAI3App): void {
+function detachQueryClientActivatorFromApp(app: FrontXApp): void {
   delete (app as QueryClientApp)[APP_QUERY_CLIENT_ACTIVATOR_SYMBOL];
 }
 
@@ -276,7 +276,7 @@ function getSharedQueryClient(config?: QueryCacheConfig): QueryClient {
   const existingConfig = host[SHARED_QUERY_CLIENT_CONFIG_SYMBOL];
   if (existingConfig && !isSameQueryCacheConfig(existingConfig, resolvedConfig)) {
     throw new Error(
-      '[HAI3] queryCache() received a config that conflicts with the existing shared QueryClient.'
+      '[Gears FrontX] queryCache() received a config that conflicts with the existing shared QueryClient.'
     );
   }
 
@@ -305,7 +305,7 @@ function retainExistingSharedQueryClient(): QueryClient {
   const queryClient = host[SHARED_QUERY_CLIENT_SYMBOL];
   if (!queryClient) {
     throw new Error(
-      '[HAI3] queryCacheShared() requires an existing host queryCache() runtime.'
+      '[Gears FrontX] queryCacheShared() requires an existing host queryCache() runtime.'
     );
   }
 
@@ -546,7 +546,7 @@ function createCacheEffects(queryClient: QueryClient): () => void {
           peekSharedFetchCache()?.clear();
         },
       },
-      '[HAI3] Failed to clear query cache after mock toggle'
+      '[Gears FrontX] Failed to clear query cache after mock toggle'
     );
   });
 
@@ -640,7 +640,7 @@ function retainCacheEffects(queryClient: QueryClient): () => void {
 // @cpt-begin:cpt-frontx-algo-request-lifecycle-query-client-defaults:p2:inst-create-in-plugin
 // @cpt-begin:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-create-query-client
 // @cpt-begin:cpt-frontx-dod-request-lifecycle-query-provider:p2:inst-plugin-factory
-export function queryCache(config?: QueryCacheConfig): HAI3Plugin {
+export function queryCache(config?: QueryCacheConfig): FrontXPlugin {
   let queryClient: QueryClient | undefined;
   let cleanup: (() => void) | null = null;
   let sharedFetchCacheRetained = false;
@@ -718,7 +718,7 @@ export function queryCache(config?: QueryCacheConfig): HAI3Plugin {
               releasePluginSharedFetchCacheRetainer();
             },
           },
-          '[HAI3] Failed to destroy query cache runtime'
+          '[Gears FrontX] Failed to destroy query cache runtime'
         );
         return;
       }
@@ -734,13 +734,13 @@ export function queryCache(config?: QueryCacheConfig): HAI3Plugin {
 // @cpt-end:cpt-frontx-dod-request-lifecycle-query-provider:p2:inst-plugin-factory
 // @cpt-end:implement-endpoint-descriptors:p2:inst-2
 
-export function queryCacheShared(): HAI3Plugin {
+export function queryCacheShared(): FrontXPlugin {
   let queryClient: QueryClient | undefined;
   let cleanup: (() => void) | null = null;
   let sharedFetchCacheRetained = false;
   let sharedRetainerReleased = false;
 
-  function ensureSharedQueryClient(app: HAI3App): QueryClient | undefined {
+  function ensureSharedQueryClient(app: FrontXApp): QueryClient | undefined {
     if (queryClient) {
       attachQueryClientToApp(app, queryClient);
       return queryClient;
@@ -828,7 +828,7 @@ function releasePluginRetainer(): { released: boolean; isLastRetainer: boolean; 
               releasePluginSharedFetchCacheRetainer();
             },
           },
-          '[HAI3] Failed to destroy shared query cache runtime'
+          '[Gears FrontX] Failed to destroy shared query cache runtime'
         );
         return;
       }

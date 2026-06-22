@@ -10,9 +10,9 @@ import { MfeRegistry } from '../../../src/mfe/runtime/MfeRegistry';
 import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { ExtensionDomain, Extension, MfeEntry } from '../../../src/mfe/types';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
 import { MockDomainFactory, makeMfeHandlerDouble, type TestDoubleMfeHandler } from '../../../__test-utils__';
 
@@ -22,41 +22,41 @@ describe('Dynamic Registration', () => {
   let typeSystem: GtsPlugin;
 
   const testDomain: ExtensionDomain = {
-    id: 'gts.hai3.mfes.ext.domain.v1~test.dynamic.reg.domain.v1',
+    id: 'gts.frontx.mfes.ext.domain.v1~test.dynamic.reg.domain.v1',
     sharedProperties: [],
     actions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
     lifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
     extensionsLifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
   };
 
   const testEntry: MfeEntry = {
-    id: 'gts.hai3.mfes.mfe.entry.v1~test.dynamic.reg.entry.v1',
+    id: 'gts.frontx.mfes.mfe.entry.v1~test.dynamic.reg.entry.v1',
     requiredProperties: [],
     optionalProperties: [],
     actions: [],
     domainActions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
   };
 
   const testExtension: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~test.dynamic.reg.extension.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~test.dynamic.reg.extension.v1',
     domain: testDomain.id,
     entry: testEntry.id,
   };
@@ -163,7 +163,7 @@ describe('Dynamic Registration', () => {
       await expect(
         registry.executeActionsChain({
           action: {
-            type: HAI3_ACTION_LOAD_EXT,
+            type: FRONTX_ACTION_LOAD_EXT,
             target: testDomain.id,
             payload: { subject: 'nonexistent' },
           },
@@ -182,7 +182,7 @@ describe('Dynamic Registration', () => {
         unmount: vi.fn().mockResolvedValue(undefined),
       };
       const mockHandler = makeMfeHandlerDouble({
-        handledBaseTypeId: 'gts.hai3.mfes.mfe.entry.v1~',
+        handledBaseTypeId: 'gts.frontx.mfes.mfe.entry.v1~',
         priority: 100,
         load: vi.fn().mockResolvedValue(mockLifecycle),
       });
@@ -207,7 +207,7 @@ describe('Dynamic Registration', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: testDomain.id,
           payload: { subject: testExtension.id },
         },
@@ -215,7 +215,7 @@ describe('Dynamic Registration', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_UNMOUNT_EXT,
+          type: FRONTX_ACTION_UNMOUNT_EXT,
           target: testDomain.id,
           payload: { subject: testExtension.id },
         },
@@ -223,7 +223,7 @@ describe('Dynamic Registration', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: testDomain.id,
           payload: { subject: testExtension.id },
         },
@@ -240,7 +240,7 @@ describe('Dynamic Registration', () => {
         unmount: vi.fn().mockResolvedValue(undefined),
       };
       const mockHandler = makeMfeHandlerDouble({
-        handledBaseTypeId: 'gts.hai3.mfes.mfe.entry.v1~',
+        handledBaseTypeId: 'gts.frontx.mfes.mfe.entry.v1~',
         priority: 100,
         load: vi.fn().mockResolvedValue(mockLifecycle),
       });
@@ -263,7 +263,7 @@ describe('Dynamic Registration', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: testDomain.id,
           payload: { subject: testExtension.id },
         },
@@ -286,7 +286,7 @@ describe('Dynamic Registration', () => {
       };
 
       mockHandler = makeMfeHandlerDouble({
-        handledBaseTypeId: 'gts.hai3.mfes.mfe.entry.v1~',
+        handledBaseTypeId: 'gts.frontx.mfes.mfe.entry.v1~',
         priority: 0,
         load: vi.fn().mockResolvedValue(mockLifecycle),
       });
@@ -312,7 +312,7 @@ describe('Dynamic Registration', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: testDomain.id,
           payload: { subject: testExtension.id },
         },
@@ -347,7 +347,7 @@ describe('Dynamic Registration', () => {
       await expect(
         registry.executeActionsChain({
           action: {
-            type: HAI3_ACTION_MOUNT_EXT,
+            type: FRONTX_ACTION_MOUNT_EXT,
             target: testDomain.id,
             payload: { subject: 'nonexistent' },
           },
@@ -379,7 +379,7 @@ describe('Dynamic Registration', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: testDomain.id,
           payload: { subject: testExtension.id },
         },
@@ -387,7 +387,7 @@ describe('Dynamic Registration', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_UNMOUNT_EXT,
+          type: FRONTX_ACTION_UNMOUNT_EXT,
           target: testDomain.id,
           payload: { subject: testExtension.id },
         },
@@ -401,7 +401,7 @@ describe('Dynamic Registration', () => {
       // Verify bundle is still loaded by re-mounting quickly (should not call load again)
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: testDomain.id,
           payload: { subject: testExtension.id },
         },
@@ -423,7 +423,7 @@ describe('Dynamic Registration', () => {
       };
 
       mockHandler = makeMfeHandlerDouble({
-        handledBaseTypeId: 'gts.hai3.mfes.mfe.entry.v1~',
+        handledBaseTypeId: 'gts.frontx.mfes.mfe.entry.v1~',
         priority: 0,
         load: vi.fn().mockResolvedValue(mockLifecycle),
       });
@@ -449,7 +449,7 @@ describe('Dynamic Registration', () => {
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: testDomain.id,
           payload: { subject: testExtension.id },
         },
@@ -491,14 +491,14 @@ describe('Dynamic Registration', () => {
 
       // Create new extension with same ID but different entry
       const newEntry: MfeEntry = {
-        id: 'gts.hai3.mfes.mfe.entry.v1~test.dynamic.reg.entry.v2',
+        id: 'gts.frontx.mfes.mfe.entry.v1~test.dynamic.reg.entry.v2',
         requiredProperties: [],
         optionalProperties: [],
         actions: [],
         domainActions: [
-          HAI3_ACTION_LOAD_EXT,
-          HAI3_ACTION_MOUNT_EXT,
-          HAI3_ACTION_UNMOUNT_EXT,
+          FRONTX_ACTION_LOAD_EXT,
+          FRONTX_ACTION_MOUNT_EXT,
+          FRONTX_ACTION_UNMOUNT_EXT,
         ],
       };
       typeSystem.register(newEntry);

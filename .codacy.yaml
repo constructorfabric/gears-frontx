@@ -93,7 +93,7 @@ exclude_paths:
   # app pins the actual version. Exact pinning in peer deps would force
   # consumers to match our installed version, defeating the peer mechanism.
   #
-  # Every @cyberfabric/* package in this repo uses ranged peer deps (>= or ^)
+  # Every @gears-frontx/* package in this repo uses ranged peer deps (>= or ^)
   # consistently — the rule fires on all of them and the exclusion is applied
   # repo-wide so all packages are treated uniformly. Loss: this specific rule
   # no longer audits our package.json files. Kept: all other Codacy checks

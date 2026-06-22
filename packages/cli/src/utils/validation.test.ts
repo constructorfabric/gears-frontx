@@ -86,7 +86,7 @@ describe('isValidPackageName', () => {
   });
 
   it('should accept valid scoped names', () => {
-    expect(isValidPackageName('@cyberfabric/cli')).toBe(true);
+    expect(isValidPackageName('@gears-frontx/cli')).toBe(true);
     expect(isValidPackageName('@my-org/my-package')).toBe(true);
   });
 

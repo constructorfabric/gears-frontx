@@ -1,20 +1,20 @@
 /**
- * @cyberfabric/react - React Bindings
+ * @gears-frontx/react - React Bindings
  *
  * This package provides:
- * - HAI3Provider context provider
+ * - FrontXProvider context provider
  * - Type-safe hooks for state and actions
  * - MFE context, hooks, and components
  *
- * Layer: L3 (Depends on @cyberfabric/framework)
+ * Layer: L3 (Depends on @gears-frontx/framework)
  */
 
 // ============================================================================
 // Provider
 // ============================================================================
 
-export { HAI3Provider } from './HAI3Provider';
-export { HAI3Context, useHAI3 } from './HAI3Context';
+export { FrontXProvider } from './FrontXProvider';
+export { FrontXContext, useFrontX } from './FrontXContext';
 export { invalidateQueryCacheForApp } from './queryClient';
 export { CanAccess } from './components/CanAccess';
 export type { CanAccessProps } from './types';
@@ -83,8 +83,8 @@ export type {
 // ============================================================================
 
 export type {
-  HAI3ProviderProps,
-  UseHAI3Return,
+  FrontXProviderProps,
+  UseFrontXReturn,
   UseAppSelector,
   UseAppDispatchReturn,
   UseTranslationReturn,
@@ -100,16 +100,16 @@ export type {
 } from './types';
 
 // ============================================================================
-// Re-exports from @cyberfabric/framework for convenience
+// Re-exports from @gears-frontx/framework for convenience
 // ============================================================================
 
-// These re-exports allow users to import everything from @cyberfabric/react
-// without needing to import from @cyberfabric/framework directly
+// These re-exports allow users to import everything from @gears-frontx/react
+// without needing to import from @gears-frontx/framework directly
 
 export {
   // Core
-  createHAI3,
-  createHAI3App,
+  createFrontX,
+  createFrontXApp,
   presets,
 
   // Backward compatibility constants
@@ -211,7 +211,7 @@ export {
 
   // Auth
   auth,
-  hai3ApiTransport,
+  frontxApiTransport,
 
   // API
   apiRegistry,
@@ -246,19 +246,19 @@ export {
   createI18nRegistry,
   SUPPORTED_LANGUAGES,
   getLanguageMetadata,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
-// Re-export i18n types from @cyberfabric/framework (correct layer access)
-export { Language, TextDirection, LanguageDisplayMode } from '@cyberfabric/framework';
+// Re-export i18n types from @gears-frontx/framework (correct layer access)
+export { Language, TextDirection, LanguageDisplayMode } from '@gears-frontx/framework';
 
-// Re-export types from @cyberfabric/framework
+// Re-export types from @gears-frontx/framework
 export type {
   // Config
-  HAI3Config,
-  HAI3Plugin,
-  HAI3AppBuilder,
-  HAI3App,
-  // Endpoint descriptors — L3 components import from @cyberfabric/react
+  FrontXConfig,
+  FrontXPlugin,
+  FrontXAppBuilder,
+  FrontXApp,
+  // Endpoint descriptors — L3 components import from @gears-frontx/react
   EndpointOptions,
   EndpointDescriptor,
   ParameterizedEndpointDescriptor,
@@ -304,7 +304,7 @@ export type {
   RootState,
   AppDispatch,
   SliceObject,
-  HAI3Store,
+  FrontXStore,
   ReducerPayload,
 
   // Layout
@@ -375,17 +375,17 @@ export type {
   TranslationDictionary,
   LanguageMetadata,
   I18nRegistryType,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // ============================================================================
-// MFE Re-exports from @cyberfabric/framework (Layering Compliance)
+// MFE Re-exports from @gears-frontx/framework (Layering Compliance)
 // ============================================================================
 
 // MFE Plugin factories
 export {
   microfrontends,
   mock,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // MFE Action functions
 export {
@@ -394,7 +394,7 @@ export {
   unmountExtension,
   registerExtension,
   unregisterExtension,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // MFE Selectors
 export {
@@ -402,39 +402,39 @@ export {
   selectRegisteredExtensions,
   selectExtensionError,
   selectMountedExtensions,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // MFE Domain constants
 export {
-  HAI3_POPUP_DOMAIN,
-  HAI3_SIDEBAR_DOMAIN,
-  HAI3_SCREEN_DOMAIN,
-  HAI3_OVERLAY_DOMAIN,
+  FRONTX_POPUP_DOMAIN,
+  FRONTX_SIDEBAR_DOMAIN,
+  FRONTX_SCREEN_DOMAIN,
+  FRONTX_OVERLAY_DOMAIN,
   // Base ExtensionDomain constants
   screenDomain,
   sidebarDomain,
   popupDomain,
   overlayDomain,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // MFE Type constants
 export {
-  HAI3_SCREEN_EXTENSION_TYPE,
-  HAI3_MFE_ENTRY_MF,
-} from '@cyberfabric/framework';
+  FRONTX_SCREEN_EXTENSION_TYPE,
+  FRONTX_MFE_ENTRY_MF,
+} from '@gears-frontx/framework';
 
 // MFE Action constants
 export {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
-} from '@cyberfabric/framework';
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
+} from '@gears-frontx/framework';
 
 // MFE Shared Property constants
 export {
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
-} from '@cyberfabric/framework';
+  FRONTX_SHARED_PROPERTY_THEME,
+  FRONTX_SHARED_PROPERTY_LANGUAGE,
+} from '@gears-frontx/framework';
 
 // MFE Types
 export type {
@@ -464,7 +464,7 @@ export type {
   MfManifestBuildInfo,
   MfManifestShared,
   MfManifestAssets,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // MFE Abstract classes
 export {
@@ -483,26 +483,26 @@ export {
   ConcurrentMountStrategy,
   OptionalMountStrategy,
   ExclusiveMountStrategy,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 export type {
   ContainerHooks,
   DomainContext,
   ActionPayload,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // MFE Concrete implementations
-export { MfeHandlerMF, gtsPlugin } from '@cyberfabric/framework';
+export { MfeHandlerMF, gtsPlugin } from '@gears-frontx/framework';
 
 // GTS Derived Schemas (application-layer registration)
-export { themeSchema, languageSchema, extensionScreenSchema } from '@cyberfabric/framework';
+export { themeSchema, languageSchema, extensionScreenSchema } from '@gears-frontx/framework';
 
 // MFE Utilities
 export {
   createShadowRoot,
   injectCssVariables,
   extractGtsPackage,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // MFE Plugin types
 export type {
@@ -510,21 +510,21 @@ export type {
   ExtensionRegistrationState,
   RegisterExtensionPayload,
   UnregisterExtensionPayload,
-} from '@cyberfabric/framework';
+} from '@gears-frontx/framework';
 
 // ============================================================================
 // Module Augmentation Support - EventPayloadMap Re-declaration
 // ============================================================================
 
 /**
- * Re-declare EventPayloadMap to enable module augmentation on @cyberfabric/react
+ * Re-declare EventPayloadMap to enable module augmentation on @gears-frontx/react
  *
- * This creates a new declaration site in @cyberfabric/react that TypeScript can augment.
- * App-layer code can now use `declare module '@cyberfabric/react'` instead of importing
+ * This creates a new declaration site in @gears-frontx/react that TypeScript can augment.
+ * App-layer code can now use `declare module '@gears-frontx/react'` instead of importing
  * from L1 packages directly, maintaining proper layer architecture.
  *
  * ARCHITECTURE: This pattern allows L3+ code to augment event types without
- * violating layer boundaries by importing from L1 (@cyberfabric/state).
+ * violating layer boundaries by importing from L1 (@gears-frontx/state).
  *
  * IMPORTANT: We must also re-export eventBus with the augmented type to ensure
  * type safety. The eventBus instance uses this augmented EventPayloadMap.
@@ -532,9 +532,9 @@ export type {
  * @example
  * ```typescript
  * // In app-layer code (e.g., src/app/events/bootstrapEvents.ts)
- * import '@cyberfabric/react';
+ * import '@gears-frontx/react';
  *
- * declare module '@cyberfabric/react' {
+ * declare module '@gears-frontx/react' {
  *   interface EventPayloadMap {
  *     'app/user/fetch': void;
  *     'app/user/loaded': { user: ApiUser };
@@ -542,8 +542,8 @@ export type {
  * }
  * ```
  */
-import type { EventPayloadMap as FrameworkEventPayloadMap, EventBus } from '@cyberfabric/framework';
-import { eventBus as frameworkEventBus } from '@cyberfabric/framework';
+import type { EventPayloadMap as FrameworkEventPayloadMap, EventBus } from '@gears-frontx/framework';
+import { eventBus as frameworkEventBus } from '@gears-frontx/framework';
 
 // @cpt-dod:cpt-frontx-dod-react-bindings-event-payload-map:p2
 // @cpt-begin:cpt-frontx-dod-react-bindings-event-payload-map:p2:inst-event-payload-map
@@ -551,7 +551,7 @@ export interface EventPayloadMap extends FrameworkEventPayloadMap { }
 
 /**
  * Re-export eventBus with augmented EventPayloadMap type.
- * This ensures that code importing eventBus from @cyberfabric/react gets
+ * This ensures that code importing eventBus from @gears-frontx/react gets
  * type-safe access to both framework events and app-layer augmented events.
  */
 export const eventBus: EventBus<EventPayloadMap> = frameworkEventBus as EventBus<EventPayloadMap>;

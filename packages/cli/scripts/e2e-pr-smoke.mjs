@@ -9,7 +9,7 @@ import { CLI_ENTRY, createHarness, shouldSkipInstall } from './e2e-lib.mjs';
 // @cpt-end:cpt-frontx-flow-cli-tooling-e2e-pr:p1:inst-e2e-pr-trigger
 
 // @cpt-begin:cpt-frontx-flow-cli-tooling-e2e-pr:p1:inst-e2e-pr-build-cli
-// @cyberfabric/cli is built via npm run build --workspace=@cyberfabric/cli before this script runs
+// @gears-frontx/cli is built via npm run build --workspace=@gears-frontx/cli before this script runs
 // @cpt-end:cpt-frontx-flow-cli-tooling-e2e-pr:p1:inst-e2e-pr-build-cli
 
 // @cpt-begin:cpt-frontx-flow-cli-tooling-e2e-pr:p1:inst-e2e-pr-create-harness
@@ -165,9 +165,9 @@ try {
     `Generated project engines must require ${packageManager} ${expectedManagerEngines[packageManager]}`
   );
   harness.assert(
-    typeof packageJson.dependencies?.['@cyberfabric/react'] === 'string' &&
-      packageJson.dependencies['@cyberfabric/react'].startsWith('file:'),
-    'PR smoke generated project must use local @cyberfabric packages from the checked-out monorepo'
+    typeof packageJson.dependencies?.['@gears-frontx/react'] === 'string' &&
+      packageJson.dependencies['@gears-frontx/react'].startsWith('file:'),
+    'PR smoke generated project must use local @gears-frontx packages from the checked-out monorepo'
   );
   if (packageManager === 'pnpm') {
     harness.assertPathExists(path.join(projectRoot, 'pnpm-workspace.yaml'));

@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   useAppSelector,
-  useHAI3,
+  useFrontX,
   useMountedExtensions,
   eventBus,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_SCREEN_DOMAIN,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_SCREEN_DOMAIN,
   type MenuState,
   type ScreenExtension,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import * as lucideIcons from 'lucide-react';
 
 type LucideIcon = React.ComponentType<lucideIcons.LucideProps>;
@@ -34,7 +34,7 @@ const COLLAPSED_WIDTH = 56;
 
 export const Menu: React.FC<MenuProps> = ({ children }) => {
   const menuState = useAppSelector((state) => state['layout/menu'] as MenuState | undefined);
-  const app = useHAI3();
+  const app = useFrontX();
   const { mfeRegistry } = app;
 
   const collapsed = menuState?.collapsed ?? false;
@@ -42,7 +42,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   // Currently-mounted screen extension (subscribes to store changes; no polling).
   // Index 0 is meaningful because the host registers the screen domain with
   // ExclusiveMountStrategy (single mount per domain).
-  const mountedScreens = useMountedExtensions(HAI3_SCREEN_DOMAIN);
+  const mountedScreens = useMountedExtensions(FRONTX_SCREEN_DOMAIN);
   const mountedId = mountedScreens[0]?.id;
 
   const [extensions, setExtensions] = useState<ScreenExtension[]>([]);
@@ -51,7 +51,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
     if (!mfeRegistry) return;
 
     const refresh = () => {
-      const screenExts = mfeRegistry.getExtensionsForDomain(HAI3_SCREEN_DOMAIN) as ScreenExtension[];
+      const screenExts = mfeRegistry.getExtensionsForDomain(FRONTX_SCREEN_DOMAIN) as ScreenExtension[];
       const sorted = screenExts
         .sort((a, b) => (a.presentation.order ?? 999) - (b.presentation.order ?? 999));
       setExtensions(sorted);
@@ -71,8 +71,8 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
       if (!mfeRegistry || extensionId === mountedId) return;
       await mfeRegistry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
-          target: HAI3_SCREEN_DOMAIN,
+          type: FRONTX_ACTION_MOUNT_EXT,
+          target: FRONTX_SCREEN_DOMAIN,
           payload: { subject: extensionId },
         },
       });

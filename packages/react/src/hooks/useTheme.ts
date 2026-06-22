@@ -7,7 +7,7 @@
 // @cpt-dod:cpt-frontx-dod-react-bindings-theme-hook:p1
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import { useHAI3 } from '../HAI3Context';
+import { useFrontX } from '../FrontXContext';
 import type { UseThemeReturn } from '../types';
 
 /**
@@ -37,7 +37,7 @@ import type { UseThemeReturn } from '../types';
 // @cpt-begin:cpt-frontx-dod-react-bindings-theme-hook:p1:inst-call-theme
 export function useTheme(): UseThemeReturn {
   // @cpt-begin:cpt-frontx-flow-react-bindings-use-theme:p1:inst-read-theme-registry
-  const app = useHAI3();
+  const app = useFrontX();
   const { themeRegistry } = app;
   // @cpt-end:cpt-frontx-flow-react-bindings-use-theme:p1:inst-read-theme-registry
 

@@ -7,15 +7,15 @@
  */
 import React from 'react';
 import {
-  createHAI3,
+  createFrontX,
   effects,
   queryCacheShared,
   mock,
   ThemeAwareReactLifecycle,
   type ChildMfeBridge,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 
-const fixtureApp = createHAI3()
+const fixtureApp = createFrontX()
   .use(effects())
   .use(queryCacheShared())
   .use(mock())

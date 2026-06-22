@@ -10,7 +10,7 @@
 ## Imports
 - Same package: BAD import from '../src/Foo' -> GOOD import from './Foo'.
 - Cross-branch app: BAD import from '../../core/layout' -> GOOD import from '@/core/layout'.
-- Cross-package: BAD import from '@cyberfabric/react/src/internal' -> GOOD import from '@cyberfabric/react'.
+- Cross-package: BAD import from '@gears-frontx/react/src/internal' -> GOOD import from '@gears-frontx/react'.
 
 ## Components
 - REQUIRED: Check existing UI components (components/ui/) first; create new only if missing.
@@ -27,7 +27,7 @@
 ## Registry
 - REQUIRED: export const MY_DOMAIN = 'my-domain'.
 - REQUIRED: class MyService extends BaseApiService.
-- REQUIRED: declare module '@cyberfabric/api' { interface ApiServicesMap }.
+- REQUIRED: declare module '@gears-frontx/api' { interface ApiServicesMap }.
 - REQUIRED: apiRegistry.register(MY_DOMAIN, MyService).
 
 ## Styling
@@ -51,7 +51,7 @@
 ## Invariants
 - REQUIRED: Event-driven architecture only.
 - REQUIRED: Registries follow Open/Closed principle.
-- REQUIRED: App deps limited to @cyberfabric/react, react, react-dom.
+- REQUIRED: App deps limited to @gears-frontx/react, react, react-dom.
 - REQUIRED: Cross-domain communication via events only.
 - FORBIDDEN: String literals for IDs.
 - FORBIDDEN: any type or unsafe casts.

@@ -47,7 +47,7 @@ jobs:
 
     # Consumer packages (framework, react, studio, cli) resolve workspace deps
     # via their sibling packages' `dist/` types. A fresh `npm ci` has no dist,
-    # so `type-check:packages:*` fails to resolve `@cyberfabric/*` imports.
+    # so `type-check:packages:*` fails to resolve `@gears-frontx/*` imports.
     # Build the packages first so tsc can resolve types across workspaces.
     - name: Build workspace packages
       run: npm run build:packages

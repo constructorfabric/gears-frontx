@@ -37,9 +37,9 @@ import type { MountStrategy } from './mount-strategy';
  *   constructor(ctx: DomainContext, hooks: ContainerHooks) {
  *     super();
  *     this.strategy = new ConcurrentMountStrategy(ctx.mounter, hooks);
- *     ctx.registerHandler(HAI3_ACTION_MOUNT_EXT,
+ *     ctx.registerHandler(FRONTX_ACTION_MOUNT_EXT,
  *       ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as ActionPayload)));
- *     ctx.registerHandler(HAI3_ACTION_UNMOUNT_EXT,
+ *     ctx.registerHandler(FRONTX_ACTION_UNMOUNT_EXT,
  *       ActionHandler.fromFunction((_t, p) => this.strategy.unmount!(p as ActionPayload)));
  *   }
  *

@@ -15,8 +15,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient } from '@tanstack/react-query';
-import { eventBus, resetSharedFetchCache, resetSharedQueryClient } from '@cyberfabric/framework';
-import { HAI3Provider, useApiQuery } from '@cyberfabric/react';
+import { eventBus, resetSharedFetchCache, resetSharedQueryClient } from '@gears-frontx/framework';
+import { FrontXProvider, useApiQuery } from '@gears-frontx/react';
 import {
   ownedApps,
   buildTestQueryClient,
@@ -224,7 +224,7 @@ describe('useApiQuery', () => {
 
     const firstRender = renderHook(
       () => useApiQuery<string>(descriptor),
-      { wrapper: ({ children }) => <HAI3Provider app={hostApp}>{children}</HAI3Provider> }
+      { wrapper: ({ children }) => <FrontXProvider app={hostApp}>{children}</FrontXProvider> }
     );
     await waitFor(() => expect(firstRender.result.current.data).toBe('first'));
     firstRender.unmount();
@@ -235,7 +235,7 @@ describe('useApiQuery', () => {
 
     const secondRender = renderHook(
       () => useApiQuery<string>(descriptor),
-      { wrapper: ({ children }) => <HAI3Provider app={childApp}>{children}</HAI3Provider> }
+      { wrapper: ({ children }) => <FrontXProvider app={childApp}>{children}</FrontXProvider> }
     );
     await waitFor(() => expect(secondRender.result.current.data).toBe('second'));
 
@@ -256,7 +256,7 @@ describe('useApiQuery', () => {
 
     const firstRender = renderHook(
       () => useApiQuery<string>(descriptor, { staleTime: 0 }),
-      { wrapper: ({ children }) => <HAI3Provider app={hostApp}>{children}</HAI3Provider> }
+      { wrapper: ({ children }) => <FrontXProvider app={hostApp}>{children}</FrontXProvider> }
     );
     await waitFor(() => expect(firstRender.result.current.data).toBe('first'));
     firstRender.unmount();
@@ -265,7 +265,7 @@ describe('useApiQuery', () => {
 
     const secondRender = renderHook(
       () => useApiQuery<string>(descriptor, { staleTime: 0 }),
-      { wrapper: ({ children }) => <HAI3Provider app={childApp}>{children}</HAI3Provider> }
+      { wrapper: ({ children }) => <FrontXProvider app={childApp}>{children}</FrontXProvider> }
     );
     await waitFor(() => expect(secondRender.result.current.data).toBe('second'));
 

@@ -180,7 +180,7 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
 
 - **Scope**:
   - Blob URL creation from fetched source text
-  - Bare specifier rewriting for all declared shared deps (`@cyberfabric/*` and third-party like `react`, `react-dom`, `@reduxjs/toolkit`) → per-load blob URLs
+  - Bare specifier rewriting for all declared shared deps (`@gears-frontx/*` and third-party like `react`, `react-dom`, `@reduxjs/toolkit`) → per-load blob URLs
   - Cross-runtime source text deduplication via `sharedDepTextCache` keyed by `name@version`
   - Recursive chain loading for transitive dependencies
   - Per-load import map management
@@ -375,13 +375,13 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
 - **Depends On**: `cpt-frontx-feature-state-management`, `cpt-frontx-feature-mfe-registry`, `cpt-frontx-feature-api-communication`, `cpt-frontx-feature-i18n-infrastructure`
 
 - **Scope**:
-  - `createHAI3()` builder with `.use(plugin).build()` chaining
-  - `HAI3Plugin` interface and `HAI3PluginContext`
+  - `createGears FrontX()` builder with `.use(plugin).build()` chaining
+  - `Gears FrontXPlugin` interface and `Gears FrontXPluginContext`
   - Layout slices (menu, header, footer, sidebars, overlay, popups)
   - `AppConfig` with tenant settings, router config, layout visibility
   - `app/*` event API for configuration propagation
   - `microfrontends()` plugin with MFE lifecycle actions
-  - Domain constants (`HAI3_SCREEN_DOMAIN`, `HAI3_SIDEBAR_DOMAIN`, `HAI3_POPUP_DOMAIN`, `HAI3_OVERLAY_DOMAIN`)
+  - Domain constants (`Gears FrontX_SCREEN_DOMAIN`, `Gears FrontX_SIDEBAR_DOMAIN`, `Gears FrontX_POPUP_DOMAIN`, `Gears FrontX_OVERLAY_DOMAIN`)
   - Theme propagation to MFEs via `themes()` plugin
   - Language propagation to MFEs via `i18n()` plugin
   - `updateSharedProperty()` global broadcast
@@ -435,7 +435,7 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
   - [x] `p1` - `cpt-frontx-component-framework`
 
 - **API**:
-  - `createHAI3()` / `.use()` / `.build()`
+  - `createGears FrontX()` / `.use()` / `.build()`
   - `microfrontends()` / `themes()` / `i18n()` / `effects()` / `mock()` / `queryCache()` / `queryCacheShared()` plugins
   - `setSharedProperty()` / `getSharedProperty()`
   - `AppConfig` type
@@ -457,9 +457,9 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
 - **Depends On**: `cpt-frontx-feature-framework-composition`
 
 - **Scope**:
-  - `HAI3Provider` root component (Redux store, i18n, theme, framework context)
+  - `Gears FrontXProvider` root component (Redux store, i18n, theme, framework context)
   - Resolves the shared `QueryClient` from the app when built with `queryCache()` or `queryCacheShared()` (host vs child join path); does not instantiate its own TanStack client
-  - Typed hooks: `useHAI3()`, `useAppSelector()`, `useAppDispatch()`, `useTranslation()`, `useScreenTranslations()`, `useFormatters()`, `useTheme()`, `useMfeBridge()`, `useSharedProperty()`, `useHostAction()`, and related MFE hooks
+  - Typed hooks: `useGears FrontX()`, `useAppSelector()`, `useAppDispatch()`, `useTranslation()`, `useScreenTranslations()`, `useFormatters()`, `useTheme()`, `useMfeBridge()`, `useSharedProperty()`, `useHostAction()`, and related MFE hooks
   - `ExtensionDomainSlot` host renderer with RefContainerProvider-backed container coordination
   - Per-MFE React error boundaries
   - Initialization sequence orchestration
@@ -493,11 +493,11 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
   - [x] `p1` - `cpt-frontx-component-react`
 
 - **API**:
-  - `<HAI3Provider>` (with optional internal query provider when `queryCache()` / `queryCacheShared()` registered)
+  - `<Gears FrontXProvider>` (with optional internal query provider when `queryCache()` / `queryCacheShared()` registered)
   - `<ExtensionDomainSlot>`
   - `<RefContainerProvider>`
   - `<Screen>`
-  - `useHAI3()` / `useAppSelector()` / `useAppDispatch()` / `useTranslation()` / `useScreenTranslations()` / `useFormatters()` / `useTheme()` / `useMfeBridge()` / `useSharedProperty()` / `useHostAction()` — plus descriptor-driven `useApiQuery()` / `useApiSuspenseQuery()` / `useApiInfiniteQuery()` / `useApiSuspenseInfiniteQuery()` / `useApiMutation()` / `useApiStream()` / `useQueryCache()` (see [2.12](#212-request-lifecycle--query-integration--high))
+  - `useGears FrontX()` / `useAppSelector()` / `useAppDispatch()` / `useTranslation()` / `useScreenTranslations()` / `useFormatters()` / `useTheme()` / `useMfeBridge()` / `useSharedProperty()` / `useHostAction()` — plus descriptor-driven `useApiQuery()` / `useApiSuspenseQuery()` / `useApiInfiniteQuery()` / `useApiSuspenseInfiniteQuery()` / `useApiMutation()` / `useApiStream()` / `useQueryCache()` (see [2.12](#212-request-lifecycle--query-integration--high))
 
 - **Sequences**:
 
@@ -549,7 +549,7 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
   - [x] `p1` - `cpt-frontx-component-studio`
 
 - **API**:
-  - `import('@cyberfabric/studio')` (dev-only dynamic import)
+  - `import('@gears-frontx/studio')` (dev-only dynamic import)
   - Studio panel toggle
 
 - **Sequences**:
@@ -740,18 +740,18 @@ The DESIGN is decomposed into 13 features aligned with package/module boundaries
   - `AbortSignal` threading through `RestProtocol` and plugin chain
   - `RestRequestOptions` pattern for HTTP method extensibility
   - `CanceledError` detection and plugin chain bypass
-  - `EndpointDescriptor<TData>`, `MutationDescriptor<TData, TVariables>`, and `StreamDescriptor<TEvent>` types at L1 (`@cyberfabric/api`)
+  - `EndpointDescriptor<TData>`, `MutationDescriptor<TData, TVariables>`, and `StreamDescriptor<TEvent>` types at L1 (`@gears-frontx/api`)
   - `RestEndpointProtocol.query(path)`, `queryWith(pathFn)`, `mutation(method, path)`, and `SseStreamProtocol.stream(path)` — cache keys derived from `[baseURL, 'GET', path]` for static reads, `[baseURL, 'GET', resolvedPath, params]` for parameterized reads, `[baseURL, method, path]` for writes, and `[baseURL, 'SSE', path]` for streams
   - `queryCache()` framework plugin at L2 — creates and owns the host shared `QueryClient`, handles `MockEvents.Toggle` cache clear, handles `cache/invalidate` / `cache/set` / `cache/remove` events from Flux effects, keeps the L1 `sharedFetchCache` in sync, and attaches the client to the app instance for internal React consumption
   - `queryCacheShared()` framework plugin at L2 — required for separately mounted child roots (including MFE apps): joins the existing host `QueryClient` from `queryCache()` without creating a second client; may register before the host runtime and attach when the host initializes
-  - `HAI3Provider` resolves the shared `QueryClient` from the app instance for both `queryCache()` and `queryCacheShared()` compositions (not creating its own)
+  - `Gears FrontXProvider` resolves the shared `QueryClient` from the app instance for both `queryCache()` and `queryCacheShared()` compositions (not creating its own)
   - Restricted `QueryCache` interface (`get`, `getState`, `set` with updater, `cancel`, `invalidate`, `invalidateMany`, `remove`) accepts `EndpointDescriptor | QueryKey` — exposed via `useQueryCache()` and injected into mutation callbacks
-  - `useApiQuery(descriptor)` hook for declarative single-page reads — returns `ApiQueryResult<TData>` (HAI3-owned type)
-  - `useApiSuspenseQuery(descriptor)` hook for Suspense-driven single-page reads — returns `ApiSuspenseQueryResult<TData>` (HAI3-owned type)
-  - `useApiInfiniteQuery({ initialPage, getNextPage, getPreviousPage? })` hook for descriptor-driven paginated reads — returns `ApiInfiniteQueryResult<TPage>` (HAI3-owned type)
-  - `useApiSuspenseInfiniteQuery({ initialPage, getNextPage, getPreviousPage? })` hook for Suspense-driven paginated reads — returns `ApiSuspenseInfiniteQueryResult<TPage>` (HAI3-owned type)
-  - `useApiMutation({ endpoint, ... })` hook for declarative writes — returns `ApiMutationResult<TData>` (HAI3-owned type)
-  - `useApiStream(descriptor, options?)` hook for declarative SSE streaming — returns `ApiStreamResult<TEvent>` (HAI3-owned type) with `'latest'`/`'accumulate'` modes and automatic connect/disconnect lifecycle
+  - `useApiQuery(descriptor)` hook for declarative single-page reads — returns `ApiQueryResult<TData>` (Gears FrontX-owned type)
+  - `useApiSuspenseQuery(descriptor)` hook for Suspense-driven single-page reads — returns `ApiSuspenseQueryResult<TData>` (Gears FrontX-owned type)
+  - `useApiInfiniteQuery({ initialPage, getNextPage, getPreviousPage? })` hook for descriptor-driven paginated reads — returns `ApiInfiniteQueryResult<TPage>` (Gears FrontX-owned type)
+  - `useApiSuspenseInfiniteQuery({ initialPage, getNextPage, getPreviousPage? })` hook for Suspense-driven paginated reads — returns `ApiSuspenseInfiniteQueryResult<TPage>` (Gears FrontX-owned type)
+  - `useApiMutation({ endpoint, ... })` hook for declarative writes — returns `ApiMutationResult<TData>` (Gears FrontX-owned type)
+  - `useApiStream(descriptor, options?)` hook for declarative SSE streaming — returns `ApiStreamResult<TEvent>` (Gears FrontX-owned type) with `'latest'`/`'accumulate'` modes and automatic connect/disconnect lifecycle
   - Event-based cache updates for L2 Flux effects (`cache/invalidate`, `cache/set`, and `cache/remove` handled by the host `queryCache()` plugin; joined child apps reuse the same client)
   - Flux escape hatch for cross-feature orchestration
 

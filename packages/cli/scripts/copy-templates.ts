@@ -194,7 +194,7 @@ Use \`.ai/${relativePath}\` as the single source of truth.
 }
 
 /**
- * Bundle commands from @cyberfabric packages into CLI templates
+ * Bundle commands from @gears-frontx packages into CLI templates
  * These are the actual command files (not adapters) that ship with each package
  * Scans packages/[pkg]/commands/[cmd].md and copies ALL variants to a commands-bundle directory
  * The variant selection happens at project creation time, not at CLI build time
@@ -612,7 +612,15 @@ async function copyTemplates() {
   const mfeSrc = path.join(PROJECT_ROOT, 'src/app/mfe');
   const mfeDest = path.join(TEMPLATES_DIR, 'src/app/mfe');
   if (await fs.pathExists(mfeSrc)) {
-    await fs.copy(mfeSrc, mfeDest);
+    // Per ADR cpt-frontx-adr-mf2-manifest-discovery, manifests are aggregated to
+    // `public/generated-mfe-manifests.json` at build time and fetched at runtime —
+    // framework code is decoupled from build-time `import` semantics. Ship only the
+    // runtime-fetch contract: the `.json` placeholder + its `.json.d.ts` type decl.
+    // Never ship a `generated-mfe-manifests.ts` (a dead pre-ADR import file); exclude
+    // it defensively so a dirty working tree cannot leak it into scaffolded projects.
+    await fs.copy(mfeSrc, mfeDest, {
+      filter: (src) => path.basename(src) !== 'generated-mfe-manifests.ts',
+    });
     const mfeFileCount = await countFiles(mfeDest);
     console.log(`  ✓ src/app/mfe/ (${mfeFileCount} files from monorepo)`);
   }
@@ -626,6 +634,22 @@ async function copyTemplates() {
     await fs.ensureDir(path.dirname(generatorDest));
     await fs.copy(generatorSrc, generatorDest);
     console.log('  ✓ scripts/generate-mfe-manifests.ts (from monorepo)');
+  }
+  // Copy scripts/build-mfes.ts and scripts/lib/mfe-tools.ts from monorepo
+  // (must run before generate-mfe-manifests to produce dist/mfe-manifest.json per MFE).
+  const buildMfesSrc = path.join(PROJECT_ROOT, 'scripts/build-mfes.ts');
+  const buildMfesDest = path.join(TEMPLATES_DIR, 'scripts/build-mfes.ts');
+  if (await fs.pathExists(buildMfesSrc)) {
+    await fs.ensureDir(path.dirname(buildMfesDest));
+    await fs.copy(buildMfesSrc, buildMfesDest);
+    console.log('  ✓ scripts/build-mfes.ts (from monorepo)');
+  }
+  const mfeToolsSrc = path.join(PROJECT_ROOT, 'scripts/lib/mfe-tools.ts');
+  const mfeToolsDest = path.join(TEMPLATES_DIR, 'scripts/lib/mfe-tools.ts');
+  if (await fs.pathExists(mfeToolsSrc)) {
+    await fs.ensureDir(path.dirname(mfeToolsDest));
+    await fs.copy(mfeToolsSrc, mfeToolsDest);
+    console.log('  ✓ scripts/lib/mfe-tools.ts (from monorepo)');
   }
   // @cpt-end:cpt-frontx-dod-cli-tooling-templates:p1:inst-mfe-manifest-generator-script
 
@@ -816,7 +840,7 @@ async function copyTemplates() {
     .map((f) => f.relativePath);
   const adapterCounts = await generateCommandAdapters(standaloneCommands, TEMPLATES_DIR);
 
-  // Bundle ALL command variants from @cyberfabric packages (packages/*/commands/)
+  // Bundle ALL command variants from @gears-frontx packages (packages/*/commands/)
   // Variant selection happens at project creation time
   const packageCounts = await bundlePackageCommands(TEMPLATES_DIR);
 

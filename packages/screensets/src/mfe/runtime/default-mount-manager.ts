@@ -293,7 +293,7 @@ export class DefaultMountManager extends MountManager {
       // Trigger 'activated' lifecycle stage
       await this.triggerLifecycle(
         extensionId,
-        'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1'
+        'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1'
       );
 
       return parentBridge;
@@ -328,7 +328,7 @@ export class DefaultMountManager extends MountManager {
     // Trigger 'deactivated' lifecycle stage
     await this.triggerLifecycle(
       extensionId,
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1'
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1'
     );
 
     try {

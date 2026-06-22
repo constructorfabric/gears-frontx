@@ -1,15 +1,15 @@
-# Exploration: AuthProvider Architecture For HAI3
+# Exploration: AuthProvider Architecture For Gears FrontX
 
 Date: 2026-03-27
 
 ## Research question
 
-How should HAI3 implement an `AuthProvider` that is:
+How should Gears FrontX implement an `AuthProvider` that is:
 
-- plugin-first for HAI3 consumers
+- plugin-first for Gears FrontX consumers
 - minimal but sufficient for full authentication and future RBAC
 - transport-agnostic
-- compatible with `@hai3/api` today
+- compatible with `@gears-frontx/api` today
 - compatible with the `feat/request-cancellation` branch where request cancellation and TanStack Query integration were added
 
 ## Scope
@@ -17,8 +17,8 @@ How should HAI3 implement an `AuthProvider` that is:
 In scope:
 
 - AuthProvider contract design
-- HAI3 plugin integration shape
-- transport integration strategy for `@hai3/api` and custom developer-provided clients
+- Gears FrontX plugin integration shape
+- transport integration strategy for `@gears-frontx/api` and custom developer-provided clients
 - implications of the `feat/request-cancellation` branch
 - developer experience for bearer token, cookie session, OAuth/OIDC, and custom auth flows
 
@@ -46,9 +46,9 @@ Not suitable to copy directly:
 - UI-coupled error payload semantics
 - admin-resource-centric naming assumptions
 
-### 2. HAI3 already has the right low-level extension points in `@hai3/api`
+### 2. Gears FrontX already has the right low-level extension points in `@gears-frontx/api`
 
-Current `@hai3/api` already supports:
+Current `@gears-frontx/api` already supports:
 
 - protocol-global plugins via `apiRegistry.plugins.add(...)`
 - instance-local plugins per protocol instance
@@ -58,9 +58,9 @@ Current `@hai3/api` already supports:
 
 This means AuthProvider should not re-invent HTTP interception. It should own auth state and policy, then bind that policy into transport adapters.
 
-### 3. `@hai3/api` must remain token-agnostic
+### 3. `@gears-frontx/api` must remain token-agnostic
 
-The architecture already states that `@hai3/api` does not manage authentication tokens and relies on interceptors configured by the consumer. This boundary is correct and should be preserved.
+The architecture already states that `@gears-frontx/api` does not manage authentication tokens and relies on interceptors configured by the consumer. This boundary is correct and should be preserved.
 
 Implication:
 
@@ -83,11 +83,11 @@ Implication:
 
 - AuthProvider core must not depend on TanStack Query
 - optional query integration is valuable when available
-- transport integration must still target `@hai3/api` or a custom transport adapter
+- transport integration must still target `@gears-frontx/api` or a custom transport adapter
 
-### 5. Current HAI3 framework extensibility is incomplete
+### 5. Current Gears FrontX framework extensibility is incomplete
 
-`PluginProvides.registries` is generic, but `createHAI3().build()` materializes only hardcoded fields into the built `app`.
+`PluginProvides.registries` is generic, but `createGears FrontX().build()` materializes only hardcoded fields into the built `app`.
 
 This means a new plugin-provided runtime surface such as `auth` is not naturally exposed on `app` today.
 
@@ -130,15 +130,15 @@ Confirmed v1 requirement:
 
 2. `TransportAdapter`
 - binds the provider into request/connection transports
-- HAI3 adapter for `@hai3/api`
+- Gears FrontX adapter for `@gears-frontx/api`
 - custom adapter for developer-provided HTTP clients
 
 3. `QueryAdapter` (optional)
 - integrates with TanStack Query when `queryCache()` and descriptor-based APIs are used
 - handles cache invalidation and cancellation-aware bootstrap/read patterns
 
-4. `auth()` HAI3 plugin
-- binds the provider into HAI3 runtime
+4. `auth()` Gears FrontX plugin
+- binds the provider into Gears FrontX runtime
 - registers auth state slice and actions if needed
 - exposes the auth runtime through a non-special-case extension surface
 
@@ -174,7 +174,7 @@ Capabilities:
 
 RBAC is not implemented yet, so the contract should not hardcode a roles-first model.
 
-`canAccess(query)` lets HAI3 evolve toward:
+`canAccess(query)` lets Gears FrontX evolve toward:
 
 - role-based checks
 - permission-based checks
@@ -208,20 +208,20 @@ Developers should configure three separate concerns:
 
 ## Recommendations before implementation
 
-1. Add a generic `HAI3App` extension surface before shipping AuthProvider.
+1. Add a generic `Gears FrontXApp` extension surface before shipping AuthProvider.
 2. Treat TanStack Query integration as optional.
 3. Keep AuthProvider core independent from React.
-4. Keep `@hai3/api` token-agnostic.
+4. Keep `@gears-frontx/api` token-agnostic.
 5. Explicitly document the current cookie-session limitation for REST.
 
 ## Open questions
 
-1. Should HAI3 standardize an auth runtime shape on `app.auth`, or expose plugin extensions through a generic `app.extensions` bag?
+1. Should Gears FrontX standardize an auth runtime shape on `app.auth`, or expose plugin extensions through a generic `app.extensions` bag?
 2. Should the first release support remote authorization checks in `canAccess`, or only local claim/role evaluation?
 
 ## Confirmed decisions
 
-1. A dedicated package name `@hai3/auth` is acceptable.
+1. A dedicated package name `@gears-frontx/auth` is acceptable.
 2. The first release must support the full cookie-session developer experience:
 - no per-service manual `RestProtocol({ withCredentials: true })` requirement
 - credentials policy must be enabled by the auth integration itself or by framework/API infrastructure added for that purpose
@@ -231,8 +231,8 @@ Developers should configure three separate concerns:
 - https://marmelab.com/react-admin/Authentication.html
 - https://marmelab.com/react-admin/AuthProviderWriting.html
 - https://marmelab.com/react-admin/AuthProviderList.html
-- https://github.com/tscbmstubp/HAI3/tree/feat/request-cancellation
-- https://github.com/tscbmstubp/HAI3/blob/feat/request-cancellation/packages/api/src/protocols/RestProtocol.ts
-- https://github.com/tscbmstubp/HAI3/blob/feat/request-cancellation/packages/api/src/BaseApiService.ts
-- https://github.com/tscbmstubp/HAI3/blob/feat/request-cancellation/packages/framework/src/plugins/queryCache.ts
-- https://github.com/tscbmstubp/HAI3/blob/feat/request-cancellation/packages/react/src/hooks/useApiQuery.ts
+- https://github.com/tscbmstubp/Gears FrontX/tree/feat/request-cancellation
+- https://github.com/tscbmstubp/Gears FrontX/blob/feat/request-cancellation/packages/api/src/protocols/RestProtocol.ts
+- https://github.com/tscbmstubp/Gears FrontX/blob/feat/request-cancellation/packages/api/src/BaseApiService.ts
+- https://github.com/tscbmstubp/Gears FrontX/blob/feat/request-cancellation/packages/framework/src/plugins/queryCache.ts
+- https://github.com/tscbmstubp/Gears FrontX/blob/feat/request-cancellation/packages/react/src/hooks/useApiQuery.ts

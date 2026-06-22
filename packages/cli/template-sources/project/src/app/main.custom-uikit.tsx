@@ -1,15 +1,15 @@
 /// <reference types="vite/client" />
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HAI3Provider } from '@cyberfabric/react';
+import { FrontXProvider } from '@gears-frontx/react';
 import './globals.css';
 import App from './App';
 import { app } from './initApp';
 
-import { hai3Themes, DEFAULT_THEME_ID } from '@/app/themes';
+import { frontxThemes, DEFAULT_THEME_ID } from '@/app/themes';
 
 // Register all themes from the custom UI kit bridge
-for (const theme of hai3Themes) {
+for (const theme of frontxThemes) {
   app.themeRegistry.register(theme);
 }
 
@@ -18,8 +18,8 @@ app.themeRegistry.apply(DEFAULT_THEME_ID);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HAI3Provider app={app}>
+    <FrontXProvider app={app}>
       <App />
-    </HAI3Provider>
+    </FrontXProvider>
   </StrictMode>
 );

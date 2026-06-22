@@ -13,19 +13,19 @@
  */
 
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { eventBus, resetStore } from '@cyberfabric/state';
-import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
-import type { TypeSystemPlugin, JSONSchema } from '@cyberfabric/screensets';
-import { createHAI3 } from '../../src/createHAI3';
+import { eventBus, resetStore } from '@gears-frontx/state';
+import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
+import type { TypeSystemPlugin, JSONSchema } from '@gears-frontx/screensets';
+import { createFrontX } from '../../src/createFrontX';
 import { microfrontends } from '../../src/plugins/microfrontends';
 import { loadLayoutDomains } from '../../src/plugins/microfrontends/gts/loader';
 import { themeSchema, languageSchema, extensionScreenSchema } from '../../src/gts';
-import type { MfeRegistry } from '@cyberfabric/framework';
+import type { MfeRegistry } from '@gears-frontx/framework';
 import { TestContainerProvider } from '../../src/testing/TestContainerProvider';
 import { resetSharedQueryClient } from '../../src/testing';
-import type { HAI3App } from '../../src/types';
+import type { FrontXApp } from '../../src/types';
 
-function getAppMfeRegistry(app: HAI3App): MfeRegistry {
+function getAppMfeRegistry(app: FrontXApp): MfeRegistry {
   const registry = app.mfeRegistry;
   if (!registry) {
     throw new Error('expected mfeRegistry on app');
@@ -35,7 +35,7 @@ function getAppMfeRegistry(app: HAI3App): MfeRegistry {
 
 describe('microfrontends plugin - Phase 7.9', () => {
   const [sidebarDomain, popupDomain, screenDomain, overlayDomain] = loadLayoutDomains();
-  let apps: HAI3App[] = [];
+  let apps: FrontXApp[] = [];
   // NOTE: We deliberately reuse the module-scoped `gtsPlugin` singleton across
   // every test in this file. The `mfeRegistryFactory` is itself a
   // process-wide singleton that caches the very first TypeSystemPlugin it was
@@ -65,8 +65,8 @@ describe('microfrontends plugin - Phase 7.9', () => {
     resetSharedQueryClient();
   });
 
-  function buildApp(): HAI3App {
-    const app = createHAI3()
+  function buildApp(): FrontXApp {
+    const app = createFrontX()
       .use(microfrontends({ typeSystem }))
       .build();
     apps.push(app);
@@ -204,7 +204,7 @@ describe('microfrontends plugin - Phase 7.9', () => {
 
       expect(
         registry.getDomain(
-          'gts.hai3.mfes.ext.domain.v1~unknown.domain.v1'
+          'gts.frontx.mfes.ext.domain.v1~unknown.domain.v1'
         )
       ).toBeUndefined();
     });
@@ -216,14 +216,14 @@ describe('microfrontends plugin - Phase 7.9', () => {
       const registry = getAppMfeRegistry(app);
 
       const coreSchemas = [
-        'gts.hai3.mfes.mfe.entry.v1~',
-        'gts.hai3.mfes.ext.domain.v1~',
-        'gts.hai3.mfes.ext.extension.v1~',
-        'gts.hai3.mfes.comm.shared_property.v1~',
-        'gts.hai3.mfes.comm.action.v1~',
-        'gts.hai3.mfes.comm.actions_chain.v1~',
-        'gts.hai3.mfes.lifecycle.stage.v1~',
-        'gts.hai3.mfes.lifecycle.hook.v1~',
+        'gts.frontx.mfes.mfe.entry.v1~',
+        'gts.frontx.mfes.ext.domain.v1~',
+        'gts.frontx.mfes.ext.extension.v1~',
+        'gts.frontx.mfes.comm.shared_property.v1~',
+        'gts.frontx.mfes.comm.action.v1~',
+        'gts.frontx.mfes.comm.actions_chain.v1~',
+        'gts.frontx.mfes.lifecycle.stage.v1~',
+        'gts.frontx.mfes.lifecycle.hook.v1~',
       ];
 
       for (const schemaId of coreSchemas) {
@@ -239,13 +239,13 @@ describe('microfrontends plugin - Phase 7.9', () => {
 
       // registry.typeSystem is schema-agnostic (TypeSystemPlugin<unknown>); this
       // app wires the GTS plugin, so view the schemas as JSONSchema here.
-      const entrySchema = registry.typeSystem.getSchema('gts.hai3.mfes.mfe.entry.v1~') as JSONSchema | undefined;
+      const entrySchema = registry.typeSystem.getSchema('gts.frontx.mfes.mfe.entry.v1~') as JSONSchema | undefined;
       expect(entrySchema).toBeDefined();
-      expect(entrySchema?.$id).toContain('gts.hai3.mfes.mfe.entry.v1~');
+      expect(entrySchema?.$id).toContain('gts.frontx.mfes.mfe.entry.v1~');
 
-      const domainSchema = registry.typeSystem.getSchema('gts.hai3.mfes.ext.domain.v1~') as JSONSchema | undefined;
+      const domainSchema = registry.typeSystem.getSchema('gts.frontx.mfes.ext.domain.v1~') as JSONSchema | undefined;
       expect(domainSchema).toBeDefined();
-      expect(domainSchema?.$id).toContain('gts.hai3.mfes.ext.domain.v1~');
+      expect(domainSchema?.$id).toContain('gts.frontx.mfes.ext.domain.v1~');
     });
 
     it('returns undefined for non-existent schemas', () => {
@@ -259,10 +259,10 @@ describe('microfrontends plugin - Phase 7.9', () => {
 
   describe('7.9.5 - JSON instance loading works correctly', () => {
     it('loads base domain instances from JSON with expected ids', () => {
-      expect(sidebarDomain.id).toContain('hai3.screensets.layout.sidebar');
-      expect(popupDomain.id).toContain('hai3.screensets.layout.popup');
-      expect(screenDomain.id).toContain('hai3.screensets.layout.screen');
-      expect(overlayDomain.id).toContain('hai3.screensets.layout.overlay');
+      expect(sidebarDomain.id).toContain('frontx.screensets.layout.sidebar');
+      expect(popupDomain.id).toContain('frontx.screensets.layout.popup');
+      expect(screenDomain.id).toContain('frontx.screensets.layout.screen');
+      expect(overlayDomain.id).toContain('frontx.screensets.layout.overlay');
     });
 
     it('validates the loaded domain instance when registered', () => {
@@ -281,10 +281,10 @@ describe('microfrontends plugin - Phase 7.9', () => {
       expect(sidebarDomain.lifecycleStages.length).toBe(4);
 
       const stageIds = sidebarDomain.lifecycleStages;
-      expect(stageIds).toContain('gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1');
-      expect(stageIds).toContain('gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1');
-      expect(stageIds).toContain('gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1');
-      expect(stageIds).toContain('gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1');
+      expect(stageIds).toContain('gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1');
+      expect(stageIds).toContain('gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1');
+      expect(stageIds).toContain('gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1');
+      expect(stageIds).toContain('gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1');
     });
 
     it('loads base actions from JSON', () => {
@@ -292,16 +292,16 @@ describe('microfrontends plugin - Phase 7.9', () => {
       expect(Array.isArray(sidebarDomain.actions)).toBe(true);
       expect(sidebarDomain.actions.length).toBe(3);
 
-      expect(sidebarDomain.actions).toContain('gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~');
-      expect(sidebarDomain.actions).toContain('gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~');
-      expect(sidebarDomain.actions).toContain('gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~');
+      expect(sidebarDomain.actions).toContain('gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~');
+      expect(sidebarDomain.actions).toContain('gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~');
+      expect(sidebarDomain.actions).toContain('gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1~');
     });
 
     it('handles screen domain with swap semantics (load_ext + mount_ext, no unmount_ext)', () => {
       expect(screenDomain.actions.length).toBe(2);
-      expect(screenDomain.actions).toContain('gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~');
-      expect(screenDomain.actions).toContain('gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~');
-      expect(screenDomain.actions).not.toContain('gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~');
+      expect(screenDomain.actions).toContain('gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~');
+      expect(screenDomain.actions).toContain('gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~');
+      expect(screenDomain.actions).not.toContain('gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1~');
     });
   });
 
@@ -310,15 +310,15 @@ describe('microfrontends plugin - Phase 7.9', () => {
       const domain = sidebarDomain;
 
       expect(domain).toMatchObject({
-        id: 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1',
+        id: 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.sidebar.v1',
         sharedProperties: [
-          'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~',
-          'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~',
+          'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~',
+          'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~',
         ],
         actions: [
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1~',
         ],
         extensionsActions: [],
         defaultActionTimeout: 30000,
@@ -331,15 +331,15 @@ describe('microfrontends plugin - Phase 7.9', () => {
       const domain = popupDomain;
 
       expect(domain).toMatchObject({
-        id: 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.popup.v1',
+        id: 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.popup.v1',
         sharedProperties: [
-          'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~',
-          'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~',
+          'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~',
+          'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~',
         ],
         actions: [
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1~',
         ],
         extensionsActions: [],
         defaultActionTimeout: 30000,
@@ -352,14 +352,14 @@ describe('microfrontends plugin - Phase 7.9', () => {
       const domain = screenDomain;
 
       expect(domain).toMatchObject({
-        id: 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.screen.v1',
+        id: 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1',
         sharedProperties: [
-          'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~',
-          'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~',
+          'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~',
+          'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~',
         ],
         actions: [
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~',
         ],
         extensionsActions: [],
         defaultActionTimeout: 30000,
@@ -373,15 +373,15 @@ describe('microfrontends plugin - Phase 7.9', () => {
       const domain = overlayDomain;
 
       expect(domain).toMatchObject({
-        id: 'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.overlay.v1',
+        id: 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.overlay.v1',
         sharedProperties: [
-          'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.theme.v1~',
-          'gts.hai3.mfes.comm.shared_property.v1~hai3.mfes.comm.language.v1~',
+          'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~',
+          'gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~',
         ],
         actions: [
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
-          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.mount_ext.v1~',
+          'gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.unmount_ext.v1~',
         ],
         extensionsActions: [],
         defaultActionTimeout: 30000,

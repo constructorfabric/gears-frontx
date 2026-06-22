@@ -5,8 +5,8 @@ import { TextLoader } from './TextLoader';
 
 const mockUseTranslation = vi.fn();
 
-vi.mock('@cyberfabric/react', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@cyberfabric/react')>()),
+vi.mock('@gears-frontx/react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@gears-frontx/react')>()),
   useTranslation: () => mockUseTranslation(),
 }));
 

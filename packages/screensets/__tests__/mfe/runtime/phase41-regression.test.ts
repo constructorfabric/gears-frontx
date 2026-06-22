@@ -12,9 +12,9 @@ import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import { MockDomainFactory } from '../../../__test-utils__';
 import type { ExtensionDomain, Extension, MfeEntry } from '../../../src/mfe/types';
 import {
-  HAI3_ACTION_LOAD_EXT,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_ACTION_UNMOUNT_EXT,
+  FRONTX_ACTION_LOAD_EXT,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
 
 describe('Phase 41 Regression Tests', () => {
@@ -24,41 +24,41 @@ describe('Phase 41 Regression Tests', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   const testDomain: ExtensionDomain = {
-    id: 'gts.hai3.mfes.ext.domain.v1~hai3.test.phase41.domain.v1',
+    id: 'gts.frontx.mfes.ext.domain.v1~frontx.test.phase41.domain.v1',
     sharedProperties: [],
     actions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
     extensionsActions: [],
     defaultActionTimeout: 3000,
     lifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
     extensionsLifecycleStages: [
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.deactivated.v1',
-      'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.destroyed.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1',
+      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1',
     ],
   };
 
   const testEntry: MfeEntry = {
-    id: 'gts.hai3.mfes.mfe.entry.v1~hai3.test.phase41.entry.v1',
+    id: 'gts.frontx.mfes.mfe.entry.v1~frontx.test.phase41.entry.v1',
     requiredProperties: [],
     optionalProperties: [],
     actions: [],
     domainActions: [
-      HAI3_ACTION_LOAD_EXT,
-      HAI3_ACTION_MOUNT_EXT,
-      HAI3_ACTION_UNMOUNT_EXT,
+      FRONTX_ACTION_LOAD_EXT,
+      FRONTX_ACTION_MOUNT_EXT,
+      FRONTX_ACTION_UNMOUNT_EXT,
     ],
   };
 
   const testExtension: Extension = {
-    id: 'gts.hai3.mfes.ext.extension.v1~hai3.test.phase41.ext.v1',
+    id: 'gts.frontx.mfes.ext.extension.v1~frontx.test.phase41.ext.v1',
     domain: testDomain.id,
     entry: testEntry.id,
   };
@@ -94,7 +94,7 @@ describe('Phase 41 Regression Tests', () => {
       registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register a derived action type schema, then an instance of it.
-      const actionTypeId = 'gts.hai3.mfes.comm.action.v1~hai3.test.phase41.action_to_domain.v1~';
+      const actionTypeId = 'gts.frontx.mfes.comm.action.v1~frontx.test.phase41.action_to_domain.v1~';
       gtsPlugin.registerSchema({
         $id: `gts://${actionTypeId}`,
         $schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -102,7 +102,7 @@ describe('Phase 41 Regression Tests', () => {
       });
 
       const actionInstance = {
-        id: 'gts.hai3.mfes.comm.action.v1~hai3.test.phase41.action_to_domain.v1~instance.v1',
+        id: 'gts.frontx.mfes.comm.action.v1~frontx.test.phase41.action_to_domain.v1~instance.v1',
         type: actionTypeId,
         target: testDomain.id,
         payload: {},
@@ -120,7 +120,7 @@ describe('Phase 41 Regression Tests', () => {
       await registry.registerExtension(testExtension);
 
       // Register a derived action type schema, then an instance of it.
-      const actionTypeId = 'gts.hai3.mfes.comm.action.v1~hai3.test.phase41.action_to_ext.v1~';
+      const actionTypeId = 'gts.frontx.mfes.comm.action.v1~frontx.test.phase41.action_to_ext.v1~';
       gtsPlugin.registerSchema({
         $id: `gts://${actionTypeId}`,
         $schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -128,7 +128,7 @@ describe('Phase 41 Regression Tests', () => {
       });
 
       const actionInstance = {
-        id: 'gts.hai3.mfes.comm.action.v1~hai3.test.phase41.action_to_ext.v1~instance.v1',
+        id: 'gts.frontx.mfes.comm.action.v1~frontx.test.phase41.action_to_ext.v1~instance.v1',
         type: actionTypeId,
         target: testExtension.id,
         payload: {},
@@ -145,11 +145,11 @@ describe('Phase 41 Regression Tests', () => {
       registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Execute actions chain that will fail (target non-existent extension)
-      const nonExistentExtensionId = 'gts.hai3.mfes.ext.extension.v1~hai3.test.phase41.nonexistent.v1';
+      const nonExistentExtensionId = 'gts.frontx.mfes.ext.extension.v1~frontx.test.phase41.nonexistent.v1';
 
       await registry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
+          type: FRONTX_ACTION_MOUNT_EXT,
           target: testDomain.id,
           payload: { subject: nonExistentExtensionId },
         },
@@ -166,13 +166,13 @@ describe('Phase 41 Regression Tests', () => {
       registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Execute actions chain that will fail
-      const nonExistentExtensionId = 'gts.hai3.mfes.ext.extension.v1~hai3.test.phase41.nonexistent.v1';
+      const nonExistentExtensionId = 'gts.frontx.mfes.ext.extension.v1~frontx.test.phase41.nonexistent.v1';
 
       // Assert the promise resolves (does not reject)
       await expect(
         registry.executeActionsChain({
           action: {
-            type: HAI3_ACTION_MOUNT_EXT,
+            type: FRONTX_ACTION_MOUNT_EXT,
             target: testDomain.id,
             payload: { subject: nonExistentExtensionId },
           },
@@ -186,26 +186,26 @@ describe('Phase 41 Regression Tests', () => {
       // Register a custom action as a SCHEMA (type ID ends with ~) so GTS accepts it.
       // Actions must be schemas; registering as instances (no trailing ~) causes GTS to
       // reject validation with "not a schema".
-      const customActionSchemaId = 'gts.hai3.mfes.comm.action.v1~hai3.test.phase41.custom_action.v1~';
+      const customActionSchemaId = 'gts.frontx.mfes.comm.action.v1~frontx.test.phase41.custom_action.v1~';
       gtsPlugin.registerSchema({
         $id: `gts://${customActionSchemaId}`,
         $schema: 'https://json-schema.org/draft/2020-12/schema',
         type: 'object',
       });
 
-      // Register domain with a custom action (HAI3_ACTION_MOUNT_EXT is required by
+      // Register domain with a custom action (FRONTX_ACTION_MOUNT_EXT is required by
       // ExclusiveMountStrategy; asPermissive() registers the no-op for customActionSchemaId).
       const customDomain: ExtensionDomain = {
-        id: 'gts.hai3.mfes.ext.domain.v1~hai3.test.phase41.custom_domain.v1',
+        id: 'gts.frontx.mfes.ext.domain.v1~frontx.test.phase41.custom_domain.v1',
         sharedProperties: [],
-        actions: [HAI3_ACTION_MOUNT_EXT, customActionSchemaId],
+        actions: [FRONTX_ACTION_MOUNT_EXT, customActionSchemaId],
         extensionsActions: [],
         defaultActionTimeout: 3000,
         lifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         ],
         extensionsLifecycleStages: [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
         ],
       };
       gtsPlugin.register(customDomain);

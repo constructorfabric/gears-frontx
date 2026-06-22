@@ -7,7 +7,7 @@
 // @cpt-flow:cpt-frontx-flow-framework-composition-full-preset:p1
 // @cpt-dod:cpt-frontx-dod-framework-composition-presets:p1
 
-import type { HAI3Plugin, Presets } from '../types';
+import type { FrontXPlugin, Presets } from '../types';
 import { themes } from '../plugins/themes';
 import { layout } from '../plugins/layout';
 import { i18n } from '../plugins/i18n';
@@ -43,8 +43,8 @@ export interface FullPresetConfig {
  *
  * @example
  * ```typescript
- * import { MfeHandlerMF, FrontX_MFE_ENTRY_MF } from '@cyberfabric/screensets/mfe/handler';
- * import { gtsPlugin } from '@cyberfabric/screensets/plugins/gts';
+ * import { MfeHandlerMF, FrontX_MFE_ENTRY_MF } from '@gears-frontx/screensets/mfe/handler';
+ * import { gtsPlugin } from '@gears-frontx/screensets/plugins/gts';
  *
  * const app = createFrontX()
  *   .use(full({
@@ -55,8 +55,8 @@ export interface FullPresetConfig {
  */
 // @cpt-begin:cpt-frontx-flow-framework-composition-full-preset:p1:inst-1
 // @cpt-begin:cpt-frontx-dod-framework-composition-presets:p1:inst-1
-export function full(config?: FullPresetConfig): HAI3Plugin[] {
-  const plugins: HAI3Plugin[] = [
+export function full(config?: FullPresetConfig): FrontXPlugin[] {
+  const plugins: FrontXPlugin[] = [
     effects(),
     themes(),
     layout(),
@@ -81,7 +81,7 @@ export function full(config?: FullPresetConfig): HAI3Plugin[] {
  * Includes:
  * - themes (theme registry, changeTheme action)
  */
-export function minimal(): HAI3Plugin[] {
+export function minimal(): FrontXPlugin[] {
   return [
     themes(),
   ];

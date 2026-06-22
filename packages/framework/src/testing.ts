@@ -1,5 +1,5 @@
 /**
- * Test-only entry for @cyberfabric/framework.
+ * Test-only entry for @gears-frontx/framework.
  *
  * Utilities here are intended for Vitest (or similar) teardown between cases.
  * `resetSharedQueryClient` is also re-exported from the package root when

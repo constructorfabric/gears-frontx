@@ -3,7 +3,7 @@
  * Replace with your mock responses.
  */
 
-import type { MockMap } from '@cyberfabric/react';
+import type { MockMap } from '@gears-frontx/react';
 import type { GetBlankStatusResponse } from './types';
 
 /**

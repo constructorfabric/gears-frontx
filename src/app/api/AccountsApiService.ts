@@ -8,7 +8,7 @@ import {
   RestEndpointProtocol,
   RestProtocol,
   RestMockPlugin,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import type { GetCurrentUserResponse } from './types';
 import { accountsMockMap } from './mocks';
 

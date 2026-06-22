@@ -38,7 +38,7 @@ jobs:
         run: npm run build:packages
 
       - name: Run CLI nightly E2E
-        run: npm run test:e2e:nightly --workspace=@cyberfabric/cli
+        run: npm run test:e2e:nightly --workspace=@gears-frontx/cli
         env:
           CLI_E2E_ARTIFACT_DIR: .artifacts/cli-e2e/nightly
           FRONTX_USE_LOCAL: '1'

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HAI3Provider } from '@cyberfabric/react';
+import { FrontXProvider } from '@gears-frontx/react';
 import { Toaster } from 'sonner';
 import './globals.css'; // Global styles with CSS variables
 import App from './App';
@@ -36,9 +36,9 @@ app.themeRegistry.apply(DEFAULT_THEME_ID);
  */
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HAI3Provider app={app}>
+    <FrontXProvider app={app}>
       <App />
       <Toaster />
-    </HAI3Provider>
+    </FrontXProvider>
   </StrictMode>
 );

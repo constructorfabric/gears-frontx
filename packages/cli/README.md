@@ -1,10 +1,10 @@
-# @cyberfabric/cli
+# @gears-frontx/cli
 
 Command-line interface for scaffolding and managing FrontX framework projects.
 
 ## Overview
 
-`@cyberfabric/cli` provides a comprehensive set of commands for creating new FrontX applications, generating screensets, managing project structure, and maintaining framework dependencies. The CLI streamlines project setup and ongoing development by automating common tasks and enforcing framework conventions.
+`@gears-frontx/cli` provides a comprehensive set of commands for creating new FrontX applications, generating screensets, managing project structure, and maintaining framework dependencies. The CLI streamlines project setup and ongoing development by automating common tasks and enforcing framework conventions.
 
 ## Purpose
 
@@ -29,7 +29,7 @@ Update the CLI itself and all FrontX framework packages to their latest versions
 ### Global Installation (Recommended)
 
 ```bash
-npm install -g @cyberfabric/cli
+npm install -g @gears-frontx/cli
 ```
 
 Global installation makes the `frontx` command available system-wide for creating new projects anywhere on your system.
@@ -37,7 +37,7 @@ Global installation makes the `frontx` command available system-wide for creatin
 ### Project-Level Installation
 
 ```bash
-npm install --save-dev @cyberfabric/cli
+npm install --save-dev @gears-frontx/cli
 ```
 
 Install as a dev dependency when using CLI commands within project scripts or when global installation isn't preferred.
@@ -54,7 +54,7 @@ Creates a new FrontX project or SDK layer package with the specified name.
 - `-l, --layer <type>` - Create a package for a specific SDK layer (`sdk`, `framework`, `react`, or `app`)
 - `--uikit <type>` - UI components: `shadcn` for shadcn/ui, `none` for no UI library, or an npm package name (e.g. `@mui/material`, `antd`)
 - `--studio` / `--no-studio` - Include or exclude Studio package
-- `--local` - Use local @cyberfabric packages from monorepo (file:) instead of npm; requires CLI run from linked monorepo or `FRONTX_MONOREPO_ROOT`
+- `--local` - Use local @gears-frontx packages from monorepo (file:) instead of npm; requires CLI run from linked monorepo or `FRONTX_MONOREPO_ROOT`
 - `--package-manager` - Package manager to use (`npm`, `pnpm`, `yarn`)
 
 **Interactive (when `--layer` not specified):**
@@ -136,7 +136,7 @@ Syncs AI assistant configuration files from `.ai/GUIDELINES.md` and `.ai/command
 
 **Options:**
 - `-t, --tool <tool>` - Tool to sync: `claude`, `copilot`, `cursor`, `windsurf`, or `all` (default: `all`)
-- `-d, --detect-packages` - Detect installed @cyberfabric packages and merge their configs
+- `-d, --detect-packages` - Detect installed @gears-frontx packages and merge their configs
 - `--diff` - Show diff of changes without writing files
 
 **Generated:** `CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/frontx.mdc`, `.windsurf/rules/frontx.md`, and command adapters.
@@ -215,10 +215,10 @@ FrontX uses a 3-layer SDK architecture. When building custom packages that exten
 # SDK layer - pure TypeScript, no FrontX dependencies
 frontx create my-contracts --layer=sdk
 
-# Framework layer - depends on SDK packages such as @cyberfabric/state and @cyberfabric/screensets
+# Framework layer - depends on SDK packages such as @gears-frontx/state and @gears-frontx/screensets
 frontx create my-store-extension --layer=framework
 
-# React layer - depends on @cyberfabric/framework + React
+# React layer - depends on @gears-frontx/framework + React
 frontx create my-hooks --layer=react
 ```
 
@@ -229,8 +229,8 @@ Each layer has specific peer dependency requirements enforced by the generated c
 | Layer | Allowed Dependencies |
 |-------|---------------------|
 | SDK | None (pure TypeScript) |
-| Framework | `@cyberfabric/state`, `@cyberfabric/screensets`, `@cyberfabric/api`, `@cyberfabric/i18n` |
-| React | `@cyberfabric/framework`, `react`, `react-dom` |
+| Framework | `@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, `@gears-frontx/i18n` |
+| React | `@gears-frontx/framework`, `react`, `react-dom` |
 
 ### Generated Package Structure
 
@@ -263,7 +263,7 @@ The AI tools will warn you if you attempt to import from a higher layer (e.g., i
 
 ## Implementing Custom UI Components
 
-When using `--uikit=none` or a third-party package, you get placeholder layout components to implement with your UI library. Use FrontX's Redux hooks (`useAppSelector`, `useAppDispatch`) from `@cyberfabric/react` for state, and respect the theme via CSS variables or Tailwind tokens (`bg-background`, `text-foreground`, `border-border`, or `var(--background)` etc.).
+When using `--uikit=none` or a third-party package, you get placeholder layout components to implement with your UI library. Use FrontX's Redux hooks (`useAppSelector`, `useAppDispatch`) from `@gears-frontx/react` for state, and respect the theme via CSS variables or Tailwind tokens (`bg-background`, `text-foreground`, `border-border`, or `var(--background)` etc.).
 
 ## Advanced Usage
 
@@ -272,7 +272,7 @@ When using `--uikit=none` or a third-party package, you get placeholder layout c
 The CLI exposes a programmatic API for build scripts and automation. Use `executeCommand` with the registered command and options; set `interactive: false` for non-interactive runs.
 
 ```typescript
-import { executeCommand, commands } from '@cyberfabric/cli';
+import { executeCommand, commands } from '@gears-frontx/cli';
 
 // Create a new project
 const result = await executeCommand(
@@ -314,5 +314,5 @@ Apache-2.0
 
 ## Related Packages
 
-- [`@cyberfabric/uicore`](../uicore) — Core framework types and selectors
-- [`@cyberfabric/studio`](../studio) — Development tools overlay (optional)
+- [`@gears-frontx/uicore`](../uicore) — Core framework types and selectors
+- [`@gears-frontx/studio`](../studio) — Development tools overlay (optional)

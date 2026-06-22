@@ -1,10 +1,10 @@
-# @cyberfabric/state
+# @gears-frontx/state
 
 State management for FrontX applications - event bus, store, and slices.
 
 ## SDK Layer
 
-This package is part of the **SDK Layer (L1)** - zero @cyberfabric dependencies, can be used independently. Only peer dependency is `@reduxjs/toolkit`.
+This package is part of the **SDK Layer (L1)** - zero @gears-frontx dependencies, can be used independently. Only peer dependency is `@reduxjs/toolkit`.
 
 ## Terminology
 
@@ -21,7 +21,7 @@ This package is part of the **SDK Layer (L1)** - zero @cyberfabric dependencies,
 Type-safe event emission and subscription:
 
 ```typescript
-import { eventBus } from '@cyberfabric/state';
+import { eventBus } from '@gears-frontx/state';
 
 // Subscribe to events
 const subscription = eventBus.on('user/loggedIn', (payload) => {
@@ -40,7 +40,7 @@ subscription.unsubscribe();
 FrontX's `createSlice` returns `{ slice, ...reducerFunctions }`:
 
 ```typescript
-import { createSlice, registerSlice, type ReducerPayload } from '@cyberfabric/state';
+import { createSlice, registerSlice, type ReducerPayload } from '@gears-frontx/state';
 
 const { slice, setSelected, setLoading } = createSlice({
   name: 'chat/threads',
@@ -67,7 +67,7 @@ export { setSelected, setLoading };
 Effects subscribe to events and dispatch to reducers:
 
 ```typescript
-import { eventBus, type AppDispatch } from '@cyberfabric/state';
+import { eventBus, type AppDispatch } from '@gears-frontx/state';
 import { setSelected } from './threadsSlice';
 
 export function initThreadsEffects(dispatch: AppDispatch): void {
@@ -82,7 +82,7 @@ export function initThreadsEffects(dispatch: AppDispatch): void {
 Extend `EventPayloadMap` and `RootState` for type safety:
 
 ```typescript
-declare module '@cyberfabric/state' {
+declare module '@gears-frontx/state' {
   interface EventPayloadMap {
     'chat/threads/selected': { threadId: string };
   }
@@ -119,7 +119,7 @@ declare module '@cyberfabric/state' {
 - `RootState` - Augmentable root state interface
 - `AppDispatch` - Dispatch type for effects
 - `EffectInitializer` - Effect initializer function type
-- `HAI3Store` - Store type
+- `Gears FrontXStore` - Store type
 - `SliceObject<TState>` - Slice interface (name + reducer)
 - `EventBus` - EventBus interface
 - `Subscription` - Subscription with unsubscribe method

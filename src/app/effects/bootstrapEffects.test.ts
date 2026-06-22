@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Language, setHeaderLoading, setUser } from '@cyberfabric/react';
+import { Language, setHeaderLoading, setUser } from '@gears-frontx/react';
 import { UserRole } from '@/app/api/types';
 
 type BootstrapUserSnapshot = {
@@ -39,7 +39,7 @@ function mockConsoleWarn() {
   return warnSpy;
 }
 
-vi.mock('@cyberfabric/react', async (importOriginal) => ({
+vi.mock('@gears-frontx/react', async (importOriginal) => ({
   ...(await importOriginal()),
   eventBus: {
     on: vi.fn((eventName: string, handler: BootstrapEventHandler) => {

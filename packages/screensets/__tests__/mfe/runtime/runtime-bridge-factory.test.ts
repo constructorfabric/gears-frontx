@@ -19,7 +19,7 @@ describe('Runtime Bridge Factory', () => {
 
   beforeEach(() => {
     const domain: ExtensionDomain = {
-      id: 'gts.hai3.mfes.ext.domain.v1~test.domain',
+      id: 'gts.frontx.mfes.ext.domain.v1~test.domain',
       sharedProperties: ['prop1', 'prop2', 'prop3'],
       actions: [],
       extensionsActions: [],
@@ -50,7 +50,7 @@ describe('Runtime Bridge Factory', () => {
       const { parentBridge, childBridge } = bridgeFactory.createBridge(
         domainState,
         'test-extension',
-        'gts.hai3.mfes.mfe.entry.v1~test.entry',
+        'gts.frontx.mfes.mfe.entry.v1~test.entry',
         [],
         async () => {},
         () => {},
@@ -61,7 +61,7 @@ describe('Runtime Bridge Factory', () => {
 
       expect(parentBridge).toBeDefined();
       expect(childBridge).toBeDefined();
-      expect(childBridge.domainId).toBe('gts.hai3.mfes.ext.domain.v1~test.domain');
+      expect(childBridge.domainId).toBe('gts.frontx.mfes.ext.domain.v1~test.domain');
       expect(childBridge.instanceId).toContain('test-extension');
     });
 
@@ -69,7 +69,7 @@ describe('Runtime Bridge Factory', () => {
       const { childBridge } = bridgeFactory.createBridge(
         domainState,
         'test-extension',
-        'gts.hai3.mfes.mfe.entry.v1~test.entry',
+        'gts.frontx.mfes.mfe.entry.v1~test.entry',
         [],
         async () => {},
         () => {},
@@ -89,7 +89,7 @@ describe('Runtime Bridge Factory', () => {
       const { parentBridge } = bridgeFactory.createBridge(
         domainState,
         'test-extension',
-        'gts.hai3.mfes.mfe.entry.v1~test.entry',
+        'gts.frontx.mfes.mfe.entry.v1~test.entry',
         [],
         async () => {},
         () => {},
@@ -116,7 +116,7 @@ describe('Runtime Bridge Factory', () => {
       const { childBridge } = bridgeFactory.createBridge(
         domainState,
         'test-extension',
-        'gts.hai3.mfes.mfe.entry.v1~test.entry',
+        'gts.frontx.mfes.mfe.entry.v1~test.entry',
         [],
         async () => {},
         () => {},
@@ -148,7 +148,7 @@ describe('Runtime Bridge Factory', () => {
       const { parentBridge } = bridgeFactory.createBridge(
         domainState,
         'test-extension',
-        'gts.hai3.mfes.mfe.entry.v1~test.entry',
+        'gts.frontx.mfes.mfe.entry.v1~test.entry',
         [],
         async () => {},
         () => {},
@@ -175,7 +175,7 @@ describe('Runtime Bridge Factory', () => {
       const { parentBridge } = bridgeFactory.createBridge(
         domainState,
         'test-extension',
-        'gts.hai3.mfes.mfe.entry.v1~test.entry',
+        'gts.frontx.mfes.mfe.entry.v1~test.entry',
         [],
         async () => {},
         () => {},
@@ -198,7 +198,7 @@ describe('Runtime Bridge Factory', () => {
         const { parentBridge } = bridgeFactory.createBridge(
           domainState,
           `test-extension-${i}`,
-          'gts.hai3.mfes.mfe.entry.v1~test.entry',
+          'gts.frontx.mfes.mfe.entry.v1~test.entry',
           [],
           async () => {},
           () => {},
@@ -227,7 +227,7 @@ describe('Runtime Bridge Factory', () => {
       const { parentBridge } = bridgeFactory.createBridge(
         domainState,
         'test-extension',
-        'gts.hai3.mfes.mfe.entry.v1~test.entry',
+        'gts.frontx.mfes.mfe.entry.v1~test.entry',
         [],
         async () => {},
         () => {},
@@ -251,7 +251,7 @@ describe('Runtime Bridge Factory', () => {
       const { parentBridge: bridge1 } = bridgeFactory.createBridge(
         domainState,
         'extension-1',
-        'gts.hai3.mfes.mfe.entry.v1~test.entry',
+        'gts.frontx.mfes.mfe.entry.v1~test.entry',
         [],
         async () => {},
         () => {},
@@ -263,7 +263,7 @@ describe('Runtime Bridge Factory', () => {
       const { parentBridge: bridge2 } = bridgeFactory.createBridge(
         domainState,
         'extension-2',
-        'gts.hai3.mfes.mfe.entry.v1~test.entry',
+        'gts.frontx.mfes.mfe.entry.v1~test.entry',
         [],
         async () => {},
         () => {},

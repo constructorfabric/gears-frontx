@@ -10,7 +10,7 @@ import {
   RestEndpointProtocol,
   RestProtocol,
   RestMockPlugin,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import type { GetBlankStatusResponse } from './types';
 import { blankMockMap } from './mocks';
 

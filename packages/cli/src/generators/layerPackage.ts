@@ -66,17 +66,17 @@ function getLayerDependencies(layer: LayerType): {
       return {
         dependencies: {},
         peerDependencies: {
-          '@cyberfabric/state': 'alpha',
-          '@cyberfabric/screensets': 'alpha',
-          '@cyberfabric/api': 'alpha',
-          '@cyberfabric/i18n': 'alpha',
+          '@gears-frontx/state': 'alpha',
+          '@gears-frontx/screensets': 'alpha',
+          '@gears-frontx/api': 'alpha',
+          '@gears-frontx/i18n': 'alpha',
         },
         devDependencies: {
           ...eslintDevDeps,
-          '@cyberfabric/state': 'alpha',
-          '@cyberfabric/screensets': 'alpha',
-          '@cyberfabric/api': 'alpha',
-          '@cyberfabric/i18n': 'alpha',
+          '@gears-frontx/state': 'alpha',
+          '@gears-frontx/screensets': 'alpha',
+          '@gears-frontx/api': 'alpha',
+          '@gears-frontx/i18n': 'alpha',
           typescript: '^5.4.0',
           tsup: '^8.0.0',
         },
@@ -87,14 +87,14 @@ function getLayerDependencies(layer: LayerType): {
       return {
         dependencies: {},
         peerDependencies: {
-          '@cyberfabric/framework': 'alpha',
+          '@gears-frontx/framework': 'alpha',
           react: '^19.2.4',
           'react-dom': '^19.2.4',
         },
         devDependencies: {
           ...eslintDevDeps,
           'eslint-plugin-react-hooks': '^5.0.0',
-          '@cyberfabric/framework': 'alpha',
+          '@gears-frontx/framework': 'alpha',
           '@types/react': '^19.0.0',
           '@types/react-dom': '^19.0.0',
           react: '^19.2.4',
@@ -115,7 +115,7 @@ function getLayerDependencies(layer: LayerType): {
 
 /**
  * Get ESLint config content for a layer
- * Generates self-contained configs that don't depend on @cyberfabric/eslint-config
+ * Generates self-contained configs that don't depend on @gears-frontx/eslint-config
  */
 function getEslintConfig(layer: LayerType): string {
   const baseConfig = `import js from '@eslint/js';
@@ -206,7 +206,7 @@ export default [
           patterns: [
             {
               group: ['react', 'react-dom', 'react/*', 'react-dom/*'],
-              message: 'Framework layer cannot import React directly. Use @cyberfabric/react for React bindings.',
+              message: 'Framework layer cannot import React directly. Use @gears-frontx/react for React bindings.',
             },
           ],
         },
@@ -336,7 +336,7 @@ export async function generateLayerPackage(input: LayerPackageInput): Promise<Ge
       const out: Record<string, string> = {};
       for (const [name, value] of Object.entries(packages)) {
         out[name] =
-          name.startsWith('@cyberfabric/') ? getLocalPackageRef(name, monorepoRoot, projectPath) : value;
+          name.startsWith('@gears-frontx/') ? getLocalPackageRef(name, monorepoRoot, projectPath) : value;
       }
       return out;
     };
@@ -435,7 +435,7 @@ dist/
     path: 'README.md',
     content: `# ${packageName}
 
-A HAI3 ${layer}-layer package.
+A Gears FrontX ${layer}-layer package.
 
 ## Installation
 
@@ -462,8 +462,8 @@ ${getRunScriptCommand(packageManager, 'type-check')}  # TypeScript check
 
 ## Layer: ${layer}
 
-This package follows HAI3's ${layer}-layer architecture conventions:
-${layer === 'sdk' ? '- No HAI3 package dependencies\n- No React dependencies' : ''}${layer === 'framework' ? '- Can depend on SDK packages (@cyberfabric/state, @cyberfabric/screensets, @cyberfabric/api, @cyberfabric/i18n)\n- No React dependencies' : ''}${layer === 'react' ? '- Can depend on Framework packages (@cyberfabric/framework)\n- React peer dependency' : ''}
+This package follows Gears FrontX's ${layer}-layer architecture conventions:
+${layer === 'sdk' ? '- No Gears FrontX package dependencies\n- No React dependencies' : ''}${layer === 'framework' ? '- Can depend on SDK packages (@gears-frontx/state, @gears-frontx/screensets, @gears-frontx/api, @gears-frontx/i18n)\n- No React dependencies' : ''}${layer === 'react' ? '- Can depend on Framework packages (@gears-frontx/framework)\n- React peer dependency' : ''}
 
 ## License
 

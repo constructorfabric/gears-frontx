@@ -14,7 +14,7 @@
 import { afterEach, vi } from 'vitest';
 import { trim } from 'lodash';
 import { cleanup as cleanupReactRendering } from '@testing-library/react';
-import type { JsonValue } from '@cyberfabric/react';
+import type { JsonValue } from '@gears-frontx/react';
 
 const ORIGINAL_FETCH_DESCRIPTOR = Object.getOwnPropertyDescriptor(
   globalThis,

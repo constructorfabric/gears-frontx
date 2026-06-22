@@ -8,14 +8,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   useAppSelector,
-  useHAI3,
+  useFrontX,
   useMountedExtensions,
   eventBus,
-  HAI3_ACTION_MOUNT_EXT,
-  HAI3_SCREEN_DOMAIN,
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_SCREEN_DOMAIN,
   type MenuState,
   type ScreenExtension,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import {
   Sidebar,
   SidebarContent,
@@ -26,8 +26,8 @@ import {
   SidebarHeader,
 } from '@/app/components/ui/sidebar';
 import { Icon } from '@iconify/react';
-import { HAI3LogoIcon } from '@/app/icons/HAI3LogoIcon';
-import { HAI3LogoTextIcon } from '@/app/icons/HAI3LogoTextIcon';
+import { FrontXLogoIcon } from '@/app/icons/FrontXLogoIcon';
+import { FrontXLogoTextIcon } from '@/app/icons/FrontXLogoTextIcon';
 
 export interface MenuProps {
   children?: React.ReactNode;
@@ -35,7 +35,7 @@ export interface MenuProps {
 
 export const Menu: React.FC<MenuProps> = ({ children }) => {
   const menuState = useAppSelector((state) => state['layout/menu'] as MenuState | undefined);
-  const app = useHAI3();
+  const app = useFrontX();
   const { mfeRegistry } = app;
 
   const collapsed = menuState?.collapsed ?? false;
@@ -43,7 +43,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   // Currently-mounted screen extension (subscribes to store changes; no polling).
   // Index 0 is meaningful because the host registers the screen domain with
   // ExclusiveMountStrategy in `bootstrap.ts` (single mount per domain).
-  const mountedScreens = useMountedExtensions(HAI3_SCREEN_DOMAIN);
+  const mountedScreens = useMountedExtensions(FRONTX_SCREEN_DOMAIN);
   const mountedId = mountedScreens[0]?.id;
 
   const [extensions, setExtensions] = useState<ScreenExtension[]>([]);
@@ -52,7 +52,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
     if (!mfeRegistry) return;
 
     const refresh = () => {
-      const screenExts = mfeRegistry.getExtensionsForDomain(HAI3_SCREEN_DOMAIN) as ScreenExtension[];
+      const screenExts = mfeRegistry.getExtensionsForDomain(FRONTX_SCREEN_DOMAIN) as ScreenExtension[];
       const sorted = screenExts
         .sort((a, b) => (a.presentation.order ?? 999) - (b.presentation.order ?? 999));
       setExtensions(sorted);
@@ -72,8 +72,8 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
       if (!mfeRegistry) return;
       await mfeRegistry.executeActionsChain({
         action: {
-          type: HAI3_ACTION_MOUNT_EXT,
-          target: HAI3_SCREEN_DOMAIN,
+          type: FRONTX_ACTION_MOUNT_EXT,
+          target: FRONTX_SCREEN_DOMAIN,
           payload: { subject: extensionId },
         },
       });
@@ -85,8 +85,8 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
     <Sidebar collapsed={collapsed}>
       {/* Logo/Brand area with collapse button */}
       <SidebarHeader
-        logo={<HAI3LogoIcon />}
-        logoText={!collapsed ? <HAI3LogoTextIcon /> : undefined}
+        logo={<FrontXLogoIcon />}
+        logoText={!collapsed ? <FrontXLogoTextIcon /> : undefined}
         collapsed={collapsed}
         onClick={handleToggleCollapse}
       />
@@ -96,7 +96,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
         <SidebarMenu>
           {extensions.length === 0 ? (
             <div className="px-3 py-4 text-sm text-muted-foreground">
-              No screens yet. Create a screenset with <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">hai3 screenset create</code> or add MFE packages.
+              No screens yet. Create a screenset with <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">frontx screenset create</code> or add MFE packages.
             </div>
           ) : (
             extensions.map((ext) => {

@@ -4,14 +4,14 @@
  * Provides MFE bridge and metadata to child components.
  * Used by MFE components to access their runtime context.
  *
- * React Layer: L3 (Depends on @cyberfabric/framework)
+ * React Layer: L3 (Depends on @gears-frontx/framework)
  */
 // @cpt-flow:cpt-frontx-flow-react-bindings-mfe-provider:p1
 // @cpt-algo:cpt-frontx-algo-react-bindings-mfe-context-guard:p1
 // @cpt-dod:cpt-frontx-dod-react-bindings-mfe-hooks:p1
 
 import { createContext, useContext } from 'react';
-import type { ChildMfeBridge } from '@cyberfabric/framework';
+import type { ChildMfeBridge } from '@gears-frontx/framework';
 
 // ============================================================================
 // Context Value Types

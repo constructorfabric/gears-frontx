@@ -36,13 +36,13 @@ describe('MFE Error Classes', () => {
       it('should instantiate with entryTypeId', () => {
         const error = new MfeLoadError(
           'Network timeout',
-          'gts.hai3.mfes.mfe.entry.v1~test.entry.v1'
+          'gts.frontx.mfes.mfe.entry.v1~test.entry.v1'
         );
 
         expect(error).toBeInstanceOf(MfeError);
         expect(error.name).toBe('MfeLoadError');
         expect(error.code).toBe('MFE_LOAD_ERROR');
-        expect(error.entryTypeId).toBe('gts.hai3.mfes.mfe.entry.v1~test.entry.v1');
+        expect(error.entryTypeId).toBe('gts.frontx.mfes.mfe.entry.v1~test.entry.v1');
         expect(error.message).toContain('Network timeout');
         expect(error.cause).toBeUndefined();
       });
@@ -62,15 +62,15 @@ describe('MFE Error Classes', () => {
     describe('ExtensionTypeError', () => {
       it('should instantiate with extension and base type IDs', () => {
         const error = new ExtensionTypeError(
-          'gts.hai3.mfes.ext.extension.v1~test.extension.v1',
-          'gts.hai3.mfes.ext.extension.v1~test.base.v1'
+          'gts.frontx.mfes.ext.extension.v1~test.extension.v1',
+          'gts.frontx.mfes.ext.extension.v1~test.base.v1'
         );
 
         expect(error).toBeInstanceOf(MfeError);
         expect(error.name).toBe('ExtensionTypeError');
         expect(error.code).toBe('EXTENSION_TYPE_ERROR');
-        expect(error.extensionTypeId).toBe('gts.hai3.mfes.ext.extension.v1~test.extension.v1');
-        expect(error.requiredBaseTypeId).toBe('gts.hai3.mfes.ext.extension.v1~test.base.v1');
+        expect(error.extensionTypeId).toBe('gts.frontx.mfes.ext.extension.v1~test.extension.v1');
+        expect(error.requiredBaseTypeId).toBe('gts.frontx.mfes.ext.extension.v1~test.base.v1');
         expect(error.message).toContain('does not derive from');
       });
     });
@@ -78,7 +78,7 @@ describe('MFE Error Classes', () => {
     describe('ChainExecutionError', () => {
       it('should instantiate with chain execution context', () => {
         const failedAction: Action = {
-          type: 'gts.hai3.mfes.comm.action.v1~test.action.v1',
+          type: 'gts.frontx.mfes.comm.action.v1~test.action.v1',
           target: 'test-domain',
         };
 
@@ -108,15 +108,15 @@ describe('MFE Error Classes', () => {
     describe('MfeTypeConformanceError', () => {
       it('should instantiate with type conformance details', () => {
         const error = new MfeTypeConformanceError(
-          'gts.hai3.mfes.ext.extension.v1~test.extension.v1',
-          'gts.hai3.mfes.ext.extension.v1~'
+          'gts.frontx.mfes.ext.extension.v1~test.extension.v1',
+          'gts.frontx.mfes.ext.extension.v1~'
         );
 
         expect(error).toBeInstanceOf(MfeError);
         expect(error.name).toBe('MfeTypeConformanceError');
         expect(error.code).toBe('MFE_TYPE_CONFORMANCE_ERROR');
-        expect(error.typeId).toBe('gts.hai3.mfes.ext.extension.v1~test.extension.v1');
-        expect(error.expectedBaseType).toBe('gts.hai3.mfes.ext.extension.v1~');
+        expect(error.typeId).toBe('gts.frontx.mfes.ext.extension.v1~test.extension.v1');
+        expect(error.expectedBaseType).toBe('gts.frontx.mfes.ext.extension.v1~');
         expect(error.message).toContain('does not conform to');
       });
     });
@@ -125,15 +125,15 @@ describe('MFE Error Classes', () => {
       it('should instantiate with action and domain type IDs', () => {
         const error = new UnsupportedDomainActionError(
           'Action not supported by domain',
-          'gts.hai3.mfes.comm.action.v1~test.action.v1',
-          'gts.hai3.mfes.ext.domain.v1~test.domain.v1'
+          'gts.frontx.mfes.comm.action.v1~test.action.v1',
+          'gts.frontx.mfes.ext.domain.v1~test.domain.v1'
         );
 
         expect(error).toBeInstanceOf(MfeError);
         expect(error.name).toBe('UnsupportedDomainActionError');
         expect(error.code).toBe('UNSUPPORTED_DOMAIN_ACTION');
-        expect(error.actionTypeId).toBe('gts.hai3.mfes.comm.action.v1~test.action.v1');
-        expect(error.domainTypeId).toBe('gts.hai3.mfes.ext.domain.v1~test.domain.v1');
+        expect(error.actionTypeId).toBe('gts.frontx.mfes.comm.action.v1~test.action.v1');
+        expect(error.domainTypeId).toBe('gts.frontx.mfes.ext.domain.v1~test.domain.v1');
         expect(error.message).toBe('Action not supported by domain');
       });
     });
@@ -141,13 +141,13 @@ describe('MFE Error Classes', () => {
     describe('UnsupportedLifecycleStageError', () => {
       it('should instantiate with lifecycle stage details', () => {
         const supportedStages = [
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
-          'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.activated.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1',
         ];
 
         const error = new UnsupportedLifecycleStageError(
           'Lifecycle stage not supported',
-          'gts.hai3.mfes.lifecycle.stage.v1~test.custom_stage.v1',
+          'gts.frontx.mfes.lifecycle.stage.v1~test.custom_stage.v1',
           'entity-id',
           supportedStages
         );
@@ -155,7 +155,7 @@ describe('MFE Error Classes', () => {
         expect(error).toBeInstanceOf(MfeError);
         expect(error.name).toBe('UnsupportedLifecycleStageError');
         expect(error.code).toBe('UNSUPPORTED_LIFECYCLE_STAGE');
-        expect(error.stageId).toBe('gts.hai3.mfes.lifecycle.stage.v1~test.custom_stage.v1');
+        expect(error.stageId).toBe('gts.frontx.mfes.lifecycle.stage.v1~test.custom_stage.v1');
         expect(error.entityId).toBe('entity-id');
         expect(error.supportedStages).toEqual(supportedStages);
         expect(error.message).toBe('Lifecycle stage not supported');
@@ -167,28 +167,28 @@ describe('MFE Error Classes', () => {
     it('should format MfeLoadError messages with entry context', () => {
       const error = new MfeLoadError(
         'Script load timeout',
-        'gts.hai3.mfes.mfe.entry.v1~test.entry.v1'
+        'gts.frontx.mfes.mfe.entry.v1~test.entry.v1'
       );
 
-      expect(error.message).toContain("Failed to load MFE 'gts.hai3.mfes.mfe.entry.v1~test.entry.v1'");
+      expect(error.message).toContain("Failed to load MFE 'gts.frontx.mfes.mfe.entry.v1~test.entry.v1'");
       expect(error.message).toContain('Script load timeout');
     });
 
     it('should format ExtensionTypeError with type hierarchy context', () => {
       const error = new ExtensionTypeError(
-        'gts.hai3.mfes.ext.extension.v1~acme.widget.v1',
-        'gts.hai3.mfes.ext.extension.v1~acme.base_widget.v1'
+        'gts.frontx.mfes.ext.extension.v1~acme.widget.v1',
+        'gts.frontx.mfes.ext.extension.v1~acme.base_widget.v1'
       );
 
       expect(error.message).toContain('Extension type');
-      expect(error.message).toContain('gts.hai3.mfes.ext.extension.v1~acme.widget.v1');
+      expect(error.message).toContain('gts.frontx.mfes.ext.extension.v1~acme.widget.v1');
       expect(error.message).toContain('does not derive from');
-      expect(error.message).toContain('gts.hai3.mfes.ext.extension.v1~acme.base_widget.v1');
+      expect(error.message).toContain('gts.frontx.mfes.ext.extension.v1~acme.base_widget.v1');
     });
 
     it('should format ChainExecutionError with execution path', () => {
       const action: Action = {
-        type: 'gts.hai3.mfes.comm.action.v1~test.action.v1',
+        type: 'gts.frontx.mfes.comm.action.v1~test.action.v1',
         target: 'test-domain',
       };
 
@@ -200,7 +200,7 @@ describe('MFE Error Classes', () => {
       );
 
       expect(error.message).toContain('Actions chain execution failed');
-      expect(error.message).toContain('gts.hai3.mfes.comm.action.v1~test.action.v1');
+      expect(error.message).toContain('gts.frontx.mfes.comm.action.v1~test.action.v1');
       expect(error.message).toContain('Handler threw TypeError');
     });
 

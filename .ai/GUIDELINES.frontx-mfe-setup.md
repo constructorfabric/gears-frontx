@@ -128,7 +128,7 @@ This starts:
 ### Wrong Pattern (Redux hooks in MFE)
 ```tsx
 // ❌ FAILS - Redux context not available
-import { useAppSelector } from '@cyberfabric/react';
+import { useAppSelector } from '@gears-frontx/react';
 
 export const MyComponent = () => {
   const data = useAppSelector(state => state.myData); // ❌ Error!

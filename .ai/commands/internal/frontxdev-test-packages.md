@@ -28,7 +28,7 @@ Test affected functionality in browser.
 ## STEP 4: Verify Package Exports
 Check that all public exports are accessible:
 ```bash
-node -e "const pkg = require('@cyberfabric/uicore'); console.log(Object.keys(pkg))"
+node -e "const pkg = require('@gears-frontx/uicore'); console.log(Object.keys(pkg))"
 ```
 
 ## RULES

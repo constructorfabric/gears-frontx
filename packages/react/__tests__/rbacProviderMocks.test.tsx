@@ -12,7 +12,7 @@
 import React from 'react';
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { auth, createHAI3 } from '@cyberfabric/framework';
+import { auth, createFrontX } from '@gears-frontx/framework';
 import type {
   AccessDecision,
   AccessQuery,
@@ -22,10 +22,10 @@ import type {
   AuthProvider,
   AuthSession,
   AuthTransition,
-  HAI3App,
-} from '@cyberfabric/framework';
+  FrontXApp,
+} from '@gears-frontx/framework';
 import { CanAccess } from '../src/components/CanAccess';
-import { HAI3Provider } from '../src/HAI3Provider';
+import { FrontXProvider } from '../src/FrontXProvider';
 import { useCanAccess } from '../src/hooks/useCanAccess';
 
 type DeferredGate = {
@@ -56,7 +56,7 @@ const KEYCLOAK_READ_ROLE = 'invoice:read';
 const KEYCLOAK_DELETE_ROLE = 'invoice:delete';
 const AUTH0_READ_PERMISSION = 'invoice:read';
 
-const ownedApps: HAI3App[] = [];
+const ownedApps: FrontXApp[] = [];
 
 afterEach(() => {
   ownedApps.forEach((app) => app.destroy());
@@ -73,15 +73,15 @@ function createDeferredGate(): DeferredGate {
   return { promise, resolve };
 }
 
-function buildApp(provider: AuthProvider): HAI3App {
-  const app = createHAI3().use(auth({ provider })).build();
+function buildApp(provider: AuthProvider): FrontXApp {
+  const app = createFrontX().use(auth({ provider })).build();
   ownedApps.push(app);
   return app;
 }
 
-function makeWrapper(app: HAI3App) {
+function makeWrapper(app: FrontXApp) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return <HAI3Provider app={app}>{children}</HAI3Provider>;
+    return <FrontXProvider app={app}>{children}</FrontXProvider>;
   };
 }
 
@@ -197,13 +197,13 @@ describe('provider-mock RBAC demos', () => {
     );
 
     render(
-      <HAI3Provider app={app}>
+      <FrontXProvider app={app}>
         <CanAccess
           query={{ action: ACTION_READ, resource: RESOURCE_INVOICE }}
           allowed={<span data-testid="keycloak-allowed">allowed</span>}
           denied={<span data-testid="keycloak-denied">denied</span>}
         />
-      </HAI3Provider>,
+      </FrontXProvider>,
     );
 
     await waitFor(() => expect(screen.getByTestId('keycloak-allowed')).toBeTruthy());
@@ -223,13 +223,13 @@ describe('provider-mock RBAC demos', () => {
     );
 
     render(
-      <HAI3Provider app={app}>
+      <FrontXProvider app={app}>
         <CanAccess
           query={{ action: ACTION_DELETE, resource: RESOURCE_INVOICE }}
           allowed={<span data-testid="keycloak-allowed">allowed</span>}
           denied={<span data-testid="keycloak-denied">denied</span>}
         />
-      </HAI3Provider>,
+      </FrontXProvider>,
     );
 
     await waitFor(() => expect(screen.getByTestId('keycloak-denied')).toBeTruthy());
@@ -250,14 +250,14 @@ describe('provider-mock RBAC demos', () => {
     );
 
     render(
-      <HAI3Provider app={app}>
+      <FrontXProvider app={app}>
         <CanAccess
           query={{ action: ACTION_READ, resource: RESOURCE_INVOICE }}
           allowed={<span data-testid="auth0-allowed">allowed</span>}
           denied={<span data-testid="auth0-denied">denied</span>}
           loading={<span data-testid="auth0-loading">loading</span>}
         />
-      </HAI3Provider>,
+      </FrontXProvider>,
     );
 
     expect(screen.getByTestId('auth0-loading')).toBeTruthy();
@@ -285,13 +285,13 @@ describe('provider-mock RBAC demos', () => {
     );
 
     render(
-      <HAI3Provider app={app}>
+      <FrontXProvider app={app}>
         <CanAccess
           query={{ action: ACTION_READ, resource: RESOURCE_INVOICE }}
           allowed={<span data-testid="error-allowed">allowed</span>}
           denied={<span data-testid="error-denied">denied</span>}
         />
-      </HAI3Provider>,
+      </FrontXProvider>,
     );
 
     await waitFor(() => expect(screen.getByTestId('error-denied')).toBeTruthy());

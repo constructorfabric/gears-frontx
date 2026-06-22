@@ -15,12 +15,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { apiRegistry, RestProtocol } from '@cyberfabric/api';
-import { createStore } from '@cyberfabric/state';
-import type { RestPlugin, RestPluginHooks, RestRequestContext } from '@cyberfabric/api';
-import type { AccessEvaluation, AuthProvider, AuthSession } from '@cyberfabric/auth';
-import { createHAI3 } from '../src/createHAI3';
-import { auth, hai3ApiTransport } from '../src/plugins/auth';
+import { apiRegistry, RestProtocol } from '@gears-frontx/api';
+import { createStore } from '@gears-frontx/state';
+import type { RestPlugin, RestPluginHooks, RestRequestContext } from '@gears-frontx/api';
+import type { AccessEvaluation, AuthProvider, AuthSession } from '@gears-frontx/auth';
+import { createFrontX } from '../src/createFrontX';
+import { auth, frontxApiTransport } from '../src/plugins/auth';
 import type { AuthTransportBinder } from '../src/plugins/auth';
 
 /** Concrete auth transport plugins implement hooks; `RestPlugin` instance type omits optional hook keys. */
@@ -58,12 +58,12 @@ function makeNullSessionProvider(): AuthProvider {
   };
 }
 
-/** Use hai3ApiTransport directly to capture the internal plugin instance. */
+/** Use frontxApiTransport directly to capture the internal plugin instance. */
 function capturePlugin(
   provider: AuthProvider,
   opts?: { allowedCookieOrigins?: string[]; csrfHeaderName?: string },
 ): AuthRestPlugin {
-  const binder = hai3ApiTransport();
+  const binder = frontxApiTransport();
   let captured: AuthRestPlugin | null = null;
 
   binder({
@@ -333,7 +333,7 @@ describe('auth plugin', () => {
       const customBinder: AuthTransportBinder = vi.fn().mockReturnValue({ destroy: vi.fn() });
       const provider = makeBearerProvider('tok');
 
-      const app = createHAI3().use(auth({ provider, transport: customBinder })).build();
+      const app = createFrontX().use(auth({ provider, transport: customBinder })).build();
 
       expect(customBinder).toHaveBeenCalledTimes(1);
       expect(customBinder).toHaveBeenCalledWith(expect.objectContaining({ provider }));
@@ -348,7 +348,7 @@ describe('auth plugin', () => {
       };
       const provider = makeBearerProvider('tok');
 
-      const app = createHAI3().use(auth({ provider, transport: customBinder })).build();
+      const app = createFrontX().use(auth({ provider, transport: customBinder })).build();
 
       expect(apiRegistry.plugins.getAll(RestProtocol)).toHaveLength(0);
 
@@ -358,7 +358,7 @@ describe('auth plugin', () => {
     it('default binding registers one RestPlugin in apiRegistry when no custom binder given', () => {
       const provider = makeBearerProvider('tok');
 
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       expect(apiRegistry.plugins.getAll(RestProtocol)).toHaveLength(1);
 
@@ -372,7 +372,7 @@ describe('auth plugin', () => {
   describe('app.auth surface', () => {
     it('is defined on the built app', () => {
       const provider = makeBearerProvider('tok');
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       expect(app.auth).toBeDefined();
 
@@ -381,7 +381,7 @@ describe('auth plugin', () => {
 
     it('exposes provider reference via app.auth.provider', () => {
       const provider = makeBearerProvider('tok');
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       expect(app.auth?.provider).toBe(provider);
 
@@ -390,7 +390,7 @@ describe('auth plugin', () => {
 
     it('app.auth.getSession delegates to provider.getSession', async () => {
       const provider = makeBearerProvider('tok');
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
       const ctx = {};
 
       await app.auth?.getSession(ctx);
@@ -402,7 +402,7 @@ describe('auth plugin', () => {
 
     it('app.auth.checkAuth delegates to provider.checkAuth', async () => {
       const provider = makeBearerProvider('tok');
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       await app.auth?.checkAuth();
 
@@ -413,7 +413,7 @@ describe('auth plugin', () => {
 
     it('app.auth.logout delegates to provider.logout', async () => {
       const provider = makeBearerProvider('tok');
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       await app.auth?.logout();
 
@@ -429,7 +429,7 @@ describe('auth plugin', () => {
         canAccess: vi.fn().mockResolvedValue('allow'),
         subscribe: vi.fn().mockReturnValue(unsubscribe),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const decision = await app.auth?.canAccess?.({ action: 'read', resource: 'x' });
       expect(decision).toBe('allow');
@@ -448,7 +448,7 @@ describe('auth plugin', () => {
     it('calls provider.destroy() when app.destroy() is called', () => {
       const destroyFn = vi.fn();
       const provider: AuthProvider = { ...makeBearerProvider('tok'), destroy: destroyFn };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       app.destroy();
 
@@ -457,7 +457,7 @@ describe('auth plugin', () => {
 
     it('does not throw when provider has no destroy method', () => {
       const provider = makeBearerProvider('tok'); // no destroy
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       expect(() => {
         app.destroy();
@@ -675,7 +675,7 @@ describe('auth plugin', () => {
   // -------------------------------------------------------------------------
   describe('auth capabilities', () => {
     it('sets all flags false for a minimal provider', () => {
-      const app = createHAI3().use(auth({ provider: makeNullSessionProvider() })).build();
+      const app = createFrontX().use(auth({ provider: makeNullSessionProvider() })).build();
 
       expect(app.auth?.capabilities.hasCanAccess).toBe(false);
       expect(app.auth?.capabilities.hasCanAccessMany).toBe(false);
@@ -694,7 +694,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         canAccess: vi.fn().mockResolvedValue('allow'),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       expect(app.auth?.capabilities.hasCanAccess).toBe(true);
       app.destroy();
@@ -707,7 +707,7 @@ describe('auth plugin', () => {
         subscribe: vi.fn().mockReturnValue(vi.fn()),
         getPermissions: vi.fn().mockResolvedValue({ roles: [] }),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       expect(app.auth?.capabilities.hasRefresh).toBe(true);
       expect(app.auth?.capabilities.hasSubscribe).toBe(true);
@@ -723,7 +723,7 @@ describe('auth plugin', () => {
         canAccess: vi.fn().mockResolvedValue('allow'),
         evaluateAccess: vi.fn().mockResolvedValue({ decision: 'allow' }),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       expect(app.auth?.capabilities.hasCanAccess).toBe(true);
       expect(app.auth?.capabilities.hasEvaluateAccess).toBe(true);
@@ -743,7 +743,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         canAccess: vi.fn().mockResolvedValue('allow'),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const decision = await app.auth!.canAccess({ action: 'read', resource: 'doc' });
 
@@ -753,7 +753,7 @@ describe('auth plugin', () => {
 
     it('returns deny when provider has no canAccess', async () => {
       const provider = makeBearerProvider('tok'); // no canAccess
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const decision = await app.auth!.canAccess({ action: 'read', resource: 'doc' });
 
@@ -766,7 +766,7 @@ describe('auth plugin', () => {
         ...makeNullSessionProvider(),
         canAccess: vi.fn().mockResolvedValue('allow'),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const decision = await app.auth!.canAccess({ action: 'read', resource: 'doc' });
 
@@ -781,7 +781,7 @@ describe('auth plugin', () => {
         getSession: vi.fn().mockRejectedValue(new Error('session error')),
         canAccess: vi.fn().mockResolvedValue('allow'),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const decision = await app.auth!.canAccess({ action: 'read', resource: 'doc' });
 
@@ -795,7 +795,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         canAccess: vi.fn().mockRejectedValue(new Error('pdp error')),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const decision = await app.auth!.canAccess({ action: 'read', resource: 'doc' });
 
@@ -808,7 +808,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         canAccess: vi.fn().mockResolvedValue('maybe' as unknown as 'allow' | 'deny'),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const decision = await app.auth!.canAccess({ action: 'read', resource: 'doc' });
 
@@ -821,7 +821,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         canAccess: vi.fn().mockResolvedValue('allow'),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const decision = await app.auth!.canAccess({ action: '', resource: 'doc' });
 
@@ -835,7 +835,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         canAccess: vi.fn().mockResolvedValue('allow'),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const decision = await app.auth!.canAccess({ action: 'read', resource: '' });
 
@@ -849,7 +849,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         canAccess: vi.fn().mockRejectedValue(new Error('unexpected')),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       await expect(app.auth!.canAccess({ action: 'read', resource: 'doc' })).resolves.toBe('deny');
       app.destroy();
@@ -865,7 +865,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         evaluateAccess: vi.fn().mockResolvedValue({ decision: 'allow', reason: 'allowed' }),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
 
@@ -875,7 +875,7 @@ describe('auth plugin', () => {
 
     it('returns deny+unsupported when provider lacks evaluateAccess', async () => {
       const provider = makeBearerProvider('tok'); // no evaluateAccess
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
 
@@ -889,7 +889,7 @@ describe('auth plugin', () => {
         ...makeNullSessionProvider(),
         evaluateAccess: vi.fn().mockResolvedValue({ decision: 'allow' }),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
 
@@ -905,7 +905,7 @@ describe('auth plugin', () => {
         getSession: vi.fn().mockRejectedValue(new Error('session error')),
         evaluateAccess: vi.fn().mockResolvedValue({ decision: 'allow' }),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
 
@@ -919,7 +919,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         evaluateAccess: vi.fn().mockRejectedValue(new Error('pdp error')),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
 
@@ -933,7 +933,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         evaluateAccess: vi.fn().mockResolvedValue({} as unknown as { decision: 'allow' | 'deny' }),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
 
@@ -950,7 +950,7 @@ describe('auth plugin', () => {
           constraints: { field: 'tenantId', op: 'eq', value: 'acme' },
         } as unknown as AccessEvaluation),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
 
@@ -966,7 +966,7 @@ describe('auth plugin', () => {
           reason: { code: 'wrong_reason' },
         } as unknown as AccessEvaluation),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
 
@@ -982,7 +982,7 @@ describe('auth plugin', () => {
           meta: ['policy-meta'],
         } as unknown as AccessEvaluation),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const result = await app.auth!.evaluateAccess({ action: 'read', resource: 'doc' });
 
@@ -1013,7 +1013,7 @@ describe('auth plugin', () => {
           },
         } as AccessEvaluation),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       await expect(
         app.auth!.evaluateAccess({ action: 'read', resource: 'doc' }),
@@ -1044,7 +1044,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         evaluateAccess: vi.fn().mockResolvedValue({ decision: 'allow' }),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const result = await app.auth!.evaluateAccess({ action: '', resource: 'doc' });
 
@@ -1063,7 +1063,7 @@ describe('auth plugin', () => {
           return Promise.reject(new Error('aborted'));
         }),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const result = await app.auth!.evaluateAccess(
         { action: 'read', resource: 'doc' },
@@ -1085,7 +1085,7 @@ describe('auth plugin', () => {
           return Promise.reject(timeoutErr);
         }),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const result = await app.auth!.evaluateAccess(
         { action: 'read', resource: 'doc' },
@@ -1102,7 +1102,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         evaluateAccess: vi.fn().mockRejectedValue(new Error('unexpected')),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       await expect(
         app.auth!.evaluateAccess({ action: 'read', resource: 'doc' }),
@@ -1122,7 +1122,7 @@ describe('auth plugin', () => {
 
     it('returns empty array for empty input', async () => {
       const provider = makeBearerProvider('tok');
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.canAccessMany([]);
 
@@ -1132,7 +1132,7 @@ describe('auth plugin', () => {
 
     it('returns all deny when provider lacks canAccess and canAccessMany', async () => {
       const provider = makeBearerProvider('tok'); // no access methods
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.canAccessMany(queries);
 
@@ -1148,7 +1148,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         canAccess: canAccessFn,
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.canAccessMany(queries);
 
@@ -1163,7 +1163,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         canAccessMany: canAccessManyFn,
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.canAccessMany(queries);
 
@@ -1182,7 +1182,7 @@ describe('auth plugin', () => {
         canAccess: canAccessFn,
         canAccessMany: canAccessManyFn,
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const malformed = [{ action: '', resource: 'doc' }, { action: 'read', resource: 'doc' }];
       const results = await app.auth!.canAccessMany(malformed);
@@ -1197,7 +1197,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         canAccessMany: vi.fn().mockRejectedValue(new Error('batch error')),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.canAccessMany(queries);
 
@@ -1210,7 +1210,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         canAccessMany: vi.fn().mockResolvedValue(['allow']),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.canAccessMany(queries);
 
@@ -1226,7 +1226,7 @@ describe('auth plugin', () => {
           'maybe' as unknown as 'allow' | 'deny',
         ]),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.canAccessMany(queries);
 
@@ -1239,7 +1239,7 @@ describe('auth plugin', () => {
         ...makeNullSessionProvider(),
         canAccessMany: vi.fn().mockResolvedValue(['allow', 'allow']),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.canAccessMany(queries);
 
@@ -1260,7 +1260,7 @@ describe('auth plugin', () => {
 
     it('returns empty array for empty input', async () => {
       const provider = makeBearerProvider('tok');
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.evaluateMany([]);
 
@@ -1270,7 +1270,7 @@ describe('auth plugin', () => {
 
     it('returns all deny+unsupported when provider lacks evaluateAccess and evaluateMany', async () => {
       const provider = makeBearerProvider('tok'); // no evaluate methods
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.evaluateMany(queries);
 
@@ -1289,7 +1289,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         evaluateMany: evalManyFn,
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.evaluateMany(queries);
 
@@ -1312,7 +1312,7 @@ describe('auth plugin', () => {
         evaluateAccess: evalAccessFn,
         evaluateMany: evalManyFn,
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const malformed = [{ action: 'read', resource: '' }, { action: 'read', resource: 'doc' }];
       const results = await app.auth!.evaluateMany(malformed);
@@ -1331,7 +1331,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         evaluateAccess: evaluateAccessFn,
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.evaluateMany(queries);
 
@@ -1346,7 +1346,7 @@ describe('auth plugin', () => {
         ...makeNullSessionProvider(),
         evaluateMany: vi.fn().mockResolvedValue([{ decision: 'allow' }, { decision: 'allow' }]),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.evaluateMany(queries);
 
@@ -1362,7 +1362,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         evaluateMany: vi.fn().mockRejectedValue(new Error('batch error')),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.evaluateMany(queries);
 
@@ -1377,7 +1377,7 @@ describe('auth plugin', () => {
         ...makeBearerProvider('tok'),
         evaluateMany: vi.fn().mockResolvedValue([{ decision: 'allow' }]),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.evaluateMany(queries);
 
@@ -1395,7 +1395,7 @@ describe('auth plugin', () => {
           {} as unknown as { decision: 'allow' | 'deny' },
         ]),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.evaluateMany(queries);
 
@@ -1421,7 +1421,7 @@ describe('auth plugin', () => {
           { decision: 'allow', meta: { source: 'scope', nested: { id: 'p-1' } } },
         ] as ReadonlyArray<AccessEvaluation>),
       };
-      const app = createHAI3().use(auth({ provider })).build();
+      const app = createFrontX().use(auth({ provider })).build();
 
       const results = await app.auth!.evaluateMany(malformedQueries);
 

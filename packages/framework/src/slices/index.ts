@@ -3,10 +3,10 @@
 /**
  * Layout Slices
  *
- * @cyberfabric/framework owns all layout domain slices.
+ * @gears-frontx/framework owns all layout domain slices.
  * These slices manage header, footer, menu, sidebar, screen, popup, and overlay state.
  *
- * State access: Components use `useAppSelector` hook from @cyberfabric/react.
+ * State access: Components use `useAppSelector` hook from @gears-frontx/react.
  */
 
 import { combineReducers, type Reducer } from '@reduxjs/toolkit';

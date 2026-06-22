@@ -1,50 +1,50 @@
-# @cyberfabric/react
+# @gears-frontx/react
 
 React bindings and hooks for FrontX applications. Provides the React integration layer with MFE (Microfrontend) support.
 
 ## React Layer
 
-This package is part of the **React Layer (L3)** - it depends only on @cyberfabric/framework (not directly on SDK packages) and provides React-specific components and hooks.
+This package is part of the **React Layer (L3)** - it depends only on @gears-frontx/framework (not directly on SDK packages) and provides React-specific components and hooks.
 
 ## Core Concepts
 
-### HAI3Provider
+### Gears FrontXProvider
 
-Wrap your app with HAI3Provider to enable all hooks:
+Wrap your app with Gears FrontXProvider to enable all hooks:
 
 ```tsx
-import { HAI3Provider } from '@cyberfabric/react';
+import { Gears FrontXProvider } from '@gears-frontx/react';
 
 function App() {
   return (
-    <HAI3Provider>
+    <Gears FrontXProvider>
       <YourApp />
-    </HAI3Provider>
+    </Gears FrontXProvider>
   );
 }
 
 // With configuration
-<HAI3Provider config={{ devMode: true }}>
+<Gears FrontXProvider config={{ devMode: true }}>
   <YourApp />
-</HAI3Provider>
+</Gears FrontXProvider>
 
 // With pre-built app (host-style shell; host typically also uses queryCache() — see REACT.md)
-const app = createHAI3().use(screensets()).build();
-<HAI3Provider app={app}>
+const app = createGears FrontX().use(screensets()).build();
+<Gears FrontXProvider app={app}>
   <YourApp />
-</HAI3Provider>
+</Gears FrontXProvider>
 
 // Child MFE app — canonical bootstrap matches src/mfe_packages/*/init.ts and .ai/targets/SCREENSETS.md:
-// apiRegistry.register / initialize before .build; createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build();
+// apiRegistry.register / initialize before .build; createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build();
 // registerSlice after .build when slices exist.
-const mfeApp = createHAI3().use(effects()).use(queryCacheShared()).use(mock()).build();
-<HAI3Provider app={mfeApp}>
+const mfeApp = createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build();
+<Gears FrontXProvider app={mfeApp}>
   <YourApp />
-</HAI3Provider>
+</Gears FrontXProvider>
 ```
 
 The shared `QueryClient` is created and owned by the `queryCache()` framework plugin at L2.
-`HAI3Provider` resolves that client from the app instance — it does not create its own `QueryClient`.
+`Gears FrontXProvider` resolves that client from the app instance — it does not create its own `QueryClient`.
 
 When the host uses `queryCache()` and the child MFE app uses `queryCacheShared()` (with `effects()` and `mock()` on the same chain as in repo MFE inits), both roots join the same shared `QueryClient` while keeping separate React trees. `ThemeAwareReactLifecycle` relies on that shared plugin-owned client through the app instance. If the shared client is missing for a mounted MFE, the lifecycle now fails explicitly instead of silently falling back.
 
@@ -55,7 +55,7 @@ For separate roots, build each app with the appropriate query-cache plugin (`que
 Services define endpoints as descriptors. Components consume them via `useApiQuery` and `useApiMutation`. No manual query keys, no `queryOptions()` calls.
 
 ```tsx
-import { useApiQuery, useApiMutation, apiRegistry } from '@cyberfabric/react';
+import { useApiQuery, useApiMutation, apiRegistry } from '@gears-frontx/react';
 import { AccountsApiService } from '../api/AccountsApiService';
 
 function ProfileScreen() {
@@ -101,7 +101,7 @@ endpoint descriptors directly (e.g., `queryCache.get(service.getCurrentUser)`).
 Services declare SSE endpoints as stream descriptors. Components consume them via `useApiStream`, which manages the EventSource lifecycle automatically (connect on mount, disconnect on unmount).
 
 ```tsx
-import { useApiStream, apiRegistry } from '@cyberfabric/react';
+import { useApiStream, apiRegistry } from '@gears-frontx/react';
 import { ChatApiService } from '../api/ChatApiService';
 
 function ChatStream() {
@@ -144,7 +144,7 @@ function ChatStream() {
 Access the FrontX app instance:
 
 ```tsx
-import { useFrontX } from '@cyberfabric/react';
+import { useFrontX } from '@gears-frontx/react';
 
 function MyComponent() {
   const app = useFrontX();
@@ -163,7 +163,7 @@ function MyComponent() {
 Type-safe Redux hooks:
 
 ```tsx
-import { useAppDispatch, useAppSelector } from '@cyberfabric/react';
+import { useAppDispatch, useAppSelector } from '@gears-frontx/react';
 
 function MyComponent() {
   const dispatch = useAppDispatch();
@@ -176,7 +176,7 @@ function MyComponent() {
 Access translation utilities:
 
 ```tsx
-import { useTranslation } from '@cyberfabric/react';
+import { useTranslation } from '@gears-frontx/react';
 
 function MyComponent() {
   const { t, language, setLanguage, isRTL } = useTranslation();
@@ -195,7 +195,7 @@ function MyComponent() {
 Load screen-level translations:
 
 ```tsx
-import { useScreenTranslations } from '@cyberfabric/react';
+import { useScreenTranslations } from '@gears-frontx/react';
 
 const translations = {
   en: () => import('./i18n/en.json'),
@@ -217,7 +217,7 @@ function HomeScreen() {
 Access theme utilities:
 
 ```tsx
-import { useTheme } from '@cyberfabric/react';
+import { useTheme } from '@gears-frontx/react';
 
 function ThemeToggle() {
   const { currentTheme, themes, setTheme } = useTheme();
@@ -239,19 +239,19 @@ function ThemeToggle() {
 Access the MFE bridge for child MFEs:
 
 ```tsx
-import { useMfeBridge } from '@cyberfabric/react';
-import { HAI3_ACTION_LOAD_EXT, HAI3_SHARED_PROPERTY_THEME } from '@cyberfabric/react';
+import { useMfeBridge } from '@gears-frontx/react';
+import { Gears FrontX_ACTION_LOAD_EXT, Gears FrontX_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
 
 function MyExtension() {
   const bridge = useMfeBridge();
 
   // Execute actions chain on parent
   await bridge.executeActionsChain({
-    action: { type: HAI3_ACTION_LOAD_EXT, target: 'screen', payload: { extensionId: 'other' } }
+    action: { type: Gears FrontX_ACTION_LOAD_EXT, target: 'screen', payload: { extensionId: 'other' } }
   });
 
   // Get shared property
-  const theme = bridge.getProperty(HAI3_SHARED_PROPERTY_THEME);
+  const theme = bridge.getProperty(Gears FrontX_SHARED_PROPERTY_THEME);
 }
 ```
 
@@ -260,10 +260,10 @@ function MyExtension() {
 Subscribe to shared property changes:
 
 ```tsx
-import { useSharedProperty, HAI3_SHARED_PROPERTY_THEME } from '@cyberfabric/react';
+import { useSharedProperty, Gears FrontX_SHARED_PROPERTY_THEME } from '@gears-frontx/react';
 
 function ThemedComponent() {
-  const theme = useSharedProperty(HAI3_SHARED_PROPERTY_THEME);
+  const theme = useSharedProperty(Gears FrontX_SHARED_PROPERTY_THEME);
 
   return <div style={{ backgroundColor: theme?.primaryColor }}>...</div>;
 }
@@ -274,10 +274,10 @@ function ThemedComponent() {
 Invoke actions on the host application:
 
 ```tsx
-import { useHostAction, HAI3_ACTION_LOAD_EXT } from '@cyberfabric/react';
+import { useHostAction, Gears FrontX_ACTION_LOAD_EXT } from '@gears-frontx/react';
 
 function MyExtension() {
-  const loadExtension = useHostAction(HAI3_ACTION_LOAD_EXT);
+  const loadExtension = useHostAction(Gears FrontX_ACTION_LOAD_EXT);
 
   const handleClick = () => {
     loadExtension({ extensionId: 'other' });
@@ -292,7 +292,7 @@ function MyExtension() {
 Subscribe to extensions in a domain:
 
 ```tsx
-import { useDomainExtensions } from '@cyberfabric/react';
+import { useDomainExtensions } from '@gears-frontx/react';
 
 function ScreenList() {
   const screenExtensions = useDomainExtensions('screen');
@@ -312,7 +312,7 @@ function ScreenList() {
 Subscribe to registered GTS packages:
 
 ```tsx
-import { useRegisteredPackages } from '@cyberfabric/react';
+import { useRegisteredPackages } from '@gears-frontx/react';
 
 function PackageList() {
   const packages = useRegisteredPackages();
@@ -332,7 +332,7 @@ function PackageList() {
 Subscribe to the active GTS package (the package of the currently mounted screen extension):
 
 ```tsx
-import { useActivePackage } from '@cyberfabric/react';
+import { useActivePackage } from '@gears-frontx/react';
 
 function ActivePackageIndicator() {
   const activePackage = useActivePackage();
@@ -352,7 +352,7 @@ function ActivePackageIndicator() {
 Provide MFE context for child extensions:
 
 ```tsx
-import { MfeProvider } from '@cyberfabric/react';
+import { MfeProvider } from '@gears-frontx/react';
 
 function MfeHost() {
   return (
@@ -368,7 +368,7 @@ function MfeHost() {
 Render extensions into a domain slot:
 
 ```tsx
-import { ExtensionDomainSlot } from '@cyberfabric/react';
+import { ExtensionDomainSlot } from '@gears-frontx/react';
 
 function LayoutScreen() {
   return (
@@ -398,7 +398,7 @@ with `RefContainerProvider`.
 Provide container references for MFE mounting:
 
 ```tsx
-import { RefContainerProvider } from '@cyberfabric/react';
+import { RefContainerProvider } from '@gears-frontx/react';
 
 function Layout() {
   return (
@@ -414,8 +414,8 @@ function Layout() {
 
 ## Key Rules
 
-1. **Wrap with HAI3Provider** - Required for all hooks to work
-2. **Use hooks for state access** - Don't import selectors directly from @cyberfabric/framework
+1. **Wrap with Gears FrontXProvider** - Required for all hooks to work
+2. **Use hooks for state access** - Don't import selectors directly from @gears-frontx/framework
 3. **Use endpoint descriptors for data** - `useApiQuery(service.endpoint)` for REST, `useApiStream(service.stream)` for SSE — not `queryOptions()` or manual key factories
 4. **Service is the cache contract** - The service IS the data layer; cache keys are derived automatically
 5. **QueryCache uses descriptors** - `queryCache.get(service.endpoint)`, not raw key arrays
@@ -425,7 +425,7 @@ function Layout() {
 
 ## Re-exports
 
-For convenience, this package re-exports everything from @cyberfabric/framework:
+For convenience, this package re-exports everything from @gears-frontx/framework:
 
 - All SDK primitives (eventBus, createStore, etc.)
 - All plugins (screensets, themes, layout, microfrontends, etc.)
@@ -433,12 +433,12 @@ For convenience, this package re-exports everything from @cyberfabric/framework:
 - All types (including MFE types)
 - All MFE actions, selectors, and domain constants
 
-This allows users to import everything from `@cyberfabric/react` without needing `@cyberfabric/framework` directly.
+This allows users to import everything from `@gears-frontx/react` without needing `@gears-frontx/framework` directly.
 
 ## Exports
 
 ### Components
-- `HAI3Provider` - Main context provider
+- `Gears FrontXProvider` - Main context provider
 - `MfeProvider` - MFE context provider
 - `ExtensionDomainSlot` - Domain slot renderer
 - `RefContainerProvider` - Container reference provider
@@ -462,20 +462,20 @@ This allows users to import everything from `@cyberfabric/react` without needing
 - `useActivePackage` - Subscribe to active GTS package
 
 ### Context
-- `HAI3Context` - React context (for advanced use)
+- `Gears FrontXContext` - React context (for advanced use)
 - `MfeContext` - MFE context (for advanced use)
 
 ### Types
-- `HAI3ProviderProps`
-- `ApiQueryResult<TData>` - HAI3-owned query result type (data, error, isLoading, refetch, etc.)
-- `ApiMutationResult<TData>` - HAI3-owned mutation result type (mutateAsync, isPending, error, reset, etc.)
-- `ApiStreamResult<TEvent>` - HAI3-owned stream result type (data, events, status, error, disconnect)
+- `Gears FrontXProviderProps`
+- `ApiQueryResult<TData>` - Gears FrontX-owned query result type (data, error, isLoading, refetch, etc.)
+- `ApiMutationResult<TData>` - Gears FrontX-owned mutation result type (mutateAsync, isPending, error, reset, etc.)
+- `ApiStreamResult<TEvent>` - Gears FrontX-owned stream result type (data, events, status, error, disconnect)
 - `ApiStreamOptions` - Stream hook options (mode, enabled)
 - `QueryCache` - Restricted cache interface (accepts descriptors or raw keys)
 - `MutationCallbackContext` - Context with queryCache injected into mutation callbacks
 - `MfeProviderProps`, `ExtensionDomainSlotProps`
 - `UseTranslationReturn`, `UseThemeReturn`
-- All types from @cyberfabric/framework (including `EndpointDescriptor`, `MutationDescriptor`, `StreamDescriptor`, `StreamStatus`)
+- All types from @gears-frontx/framework (including `EndpointDescriptor`, `MutationDescriptor`, `StreamDescriptor`, `StreamStatus`)
 
 ## Migration from Legacy API
 
@@ -488,7 +488,7 @@ The `useNavigation` hook has been removed. Use MFE hooks and actions instead:
 
 **OLD**: Navigate using hook
 ```tsx
-import { useNavigation } from '@cyberfabric/react';
+import { useNavigation } from '@gears-frontx/react';
 
 function MyComponent() {
   const { navigateToScreen } = useNavigation();
@@ -503,7 +503,7 @@ function MyComponent() {
 
 **NEW**: Mount extension using app actions
 ```tsx
-import { useFrontX } from '@cyberfabric/react';
+import { useFrontX } from '@gears-frontx/react';
 
 function MyComponent() {
   const app = useFrontX();
@@ -530,7 +530,7 @@ function MyComponent() {
 
 **NEW (Preferred for host screen slots)**: Use ExtensionDomainSlot
 ```tsx
-import { ExtensionDomainSlot } from '@cyberfabric/react';
+import { ExtensionDomainSlot } from '@gears-frontx/react';
 
 function MyComponent() {
   return (

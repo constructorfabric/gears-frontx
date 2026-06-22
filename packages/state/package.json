@@ -1,6 +1,6 @@
 {
-  "name": "@cyberfabric/state",
-  "version": "0.2.0-alpha.2",
+  "name": "@gears-frontx/state",
+  "version": "0.2.0-alpha.0",
   "description": "State management for FrontX SDK - event bus, store, and effects",
   "type": "module",
   "main": "./dist/index.cjs",

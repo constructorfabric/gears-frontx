@@ -53,7 +53,7 @@ export interface DomainContext {
    * Called inside `factory.build(ctx)` for each action type the domain handles.
    * Throws after `registerDomain` returns.
    *
-   * @param actionType - GTS action type ID (e.g., `HAI3_ACTION_MOUNT_EXT`).
+   * @param actionType - GTS action type ID (e.g., `FRONTX_ACTION_MOUNT_EXT`).
    * @param handler - `ActionHandler` instance to invoke when the action fires.
    */
   registerHandler(actionType: string, handler: ActionHandler): void;

@@ -10,7 +10,7 @@ import {
   useAppSelector,
   eventBus,
   type MenuState,
-} from '@cyberfabric/react';
+} from '@gears-frontx/react';
 import {
   Sidebar,
   SidebarContent,
@@ -19,8 +19,8 @@ import {
   SidebarMenuButton,
   SidebarHeader,
 } from '@/app/components/ui/sidebar';
-import { HAI3LogoIcon } from '@/app/icons/HAI3LogoIcon';
-import { HAI3LogoTextIcon } from '@/app/icons/HAI3LogoTextIcon';
+import { FrontXLogoIcon } from '@/app/icons/FrontXLogoIcon';
+import { FrontXLogoTextIcon } from '@/app/icons/FrontXLogoTextIcon';
 
 export interface MenuProps {
   children?: React.ReactNode;
@@ -37,8 +37,8 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   return (
     <Sidebar collapsed={collapsed}>
       <SidebarHeader
-        logo={<HAI3LogoIcon />}
-        logoText={!collapsed ? <HAI3LogoTextIcon /> : undefined}
+        logo={<FrontXLogoIcon />}
+        logoText={!collapsed ? <FrontXLogoTextIcon /> : undefined}
         collapsed={collapsed}
         onClick={handleToggleCollapse}
       />

@@ -1,7 +1,7 @@
 // @cpt-dod:cpt-frontx-dod-studio-devtools-panel-overlay:p1
 // @cpt-algo:cpt-frontx-algo-studio-devtools-portal-management:p1
 import React from 'react';
-import { useTranslation } from '@cyberfabric/react';
+import { useTranslation } from '@gears-frontx/react';
 import { Card } from './uikit/base/card';
 import { Button } from './uikit/base/button';
 import { ButtonVariant, ButtonSize } from './uikit/types';

@@ -18,8 +18,8 @@ import {
   resetSharedFetchCache,
   resetSharedQueryClient,
   type StreamDescriptor,
-} from '@cyberfabric/framework';
-import { useApiStream } from '@cyberfabric/react';
+} from '@gears-frontx/framework';
+import { useApiStream } from '@gears-frontx/react';
 import {
   ownedApps,
   buildTestQueryClient,

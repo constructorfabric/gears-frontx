@@ -4,7 +4,7 @@
  * Replace '_blank/home' with your screenset/domain name.
  */
 
-import { createSlice } from '@cyberfabric/react';
+import { createSlice } from '@gears-frontx/react';
 
 const { slice } = createSlice({
   name: '_blank/home',
@@ -18,7 +18,7 @@ export const homeSlice = slice;
  * RootState augmentation for type-safe selectors
  * Update the state type when you add your domain state shape.
  */
-declare module '@cyberfabric/react' {
+declare module '@gears-frontx/react' {
   interface RootState {
     '_blank/home': Record<string, never>;
   }

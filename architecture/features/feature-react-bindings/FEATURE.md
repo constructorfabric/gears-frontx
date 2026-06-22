@@ -11,7 +11,7 @@
   - [1.3 Actors](#13-actors)
   - [1.4 References](#14-references)
 - [2. Actor Flows (CDSL)](#2-actor-flows-cdsl)
-  - [Bootstrap Application with HAI3Provider](#bootstrap-application-with-hai3provider)
+  - [Bootstrap Application with Gears FrontXProvider](#bootstrap-application-with-gears-frontxprovider)
   - [Access Typed Redux State in a Component](#access-typed-redux-state-in-a-component)
   - [Dispatch Actions from a Component](#dispatch-actions-from-a-component)
   - [Use Translations in a Component](#use-translations-in-a-component)
@@ -27,7 +27,7 @@
   - [Provide MFE Context to Child Extension](#provide-mfe-context-to-child-extension)
   - [Access the FrontX App Instance Directly](#access-the-frontx-app-instance-directly)
 - [3. Processes / Business Logic (CDSL)](#3-processes--business-logic-cdsl)
-  - [Resolve HAI3App Instance](#resolve-hai3app-instance)
+  - [Resolve Gears FrontXApp Instance](#resolve-gears-frontxapp-instance)
   - [Load Screen Translations](#load-screen-translations)
   - [Build Provider Tree](#build-provider-tree)
   - [Validate MFE Context Guard](#validate-mfe-context-guard)
@@ -59,22 +59,22 @@
 
 ### 1.1 Overview
 
-React Bindings is the L3 boundary that exposes the FrontX framework to React 19 applications. It converts the framework's plain-object output (`HAI3App`) into React context, typed hooks, and MFE rendering components, forming the primary developer-facing API surface of the entire system.
+React Bindings is the L3 boundary that exposes the FrontX framework to React 19 applications. It converts the framework's plain-object output (`Gears FrontXApp`) into React context, typed hooks, and MFE rendering components, forming the primary developer-facing API surface of the entire system.
 
-Problem: The framework layer (`@cyberfabric/framework`) is deliberately React-agnostic. Application developers need typed React hooks, a root provider that wires Redux and i18n into the React tree, and components that can mount MFE extensions with CSS isolation — without importing directly from L1/L2 packages.
+Problem: The framework layer (`@gears-frontx/framework`) is deliberately React-agnostic. Application developers need typed React hooks, a root provider that wires Redux and i18n into the React tree, and components that can mount MFE extensions with CSS isolation — without importing directly from L1/L2 packages.
 
-Primary value: One import (`@cyberfabric/react`) gives developers access to the full FrontX surface in a React-idiomatic way while preserving the strict layer hierarchy.
+Primary value: One import (`@gears-frontx/react`) gives developers access to the full FrontX surface in a React-idiomatic way while preserving the strict layer hierarchy.
 
 Key assumptions:
 - The consuming application runs React 19.
-- A `HAI3App` instance exists before `HAI3Provider` is rendered (either pre-built or created internally).
+- A `Gears FrontXApp` instance exists before `Gears FrontXProvider` is rendered (either pre-built or created internally).
 - MFE hooks may only be called from within `MfeProvider` context.
 
 ### 1.2 Purpose
 
-Bridge `@cyberfabric/framework` to React 19 by providing the provider tree, typed hooks, and MFE rendering components that application developers interact with directly. Keep all React-specific code confined to L3, preserving framework-agnosticism of L1 and L2.
+Bridge `@gears-frontx/framework` to React 19 by providing the provider tree, typed hooks, and MFE rendering components that application developers interact with directly. Keep all React-specific code confined to L3, preserving framework-agnosticism of L1 and L2.
 
-Success criteria: Developers can wrap their application with `<HAI3Provider>`, access typed Redux state, translations, theme, shared properties, and domain extensions solely through hooks exported from `@cyberfabric/react`, with no need to import from `@cyberfabric/framework` or lower layers.
+Success criteria: Developers can wrap their application with `<Gears FrontXProvider>`, access typed Redux state, translations, theme, shared properties, and domain extensions solely through hooks exported from `@gears-frontx/react`, with no need to import from `@gears-frontx/framework` or lower layers.
 
 ### 1.3 Actors
 
@@ -89,24 +89,24 @@ Success criteria: Developers can wrap their application with `<HAI3Provider>`, a
 - Decomposition: [DECOMPOSITION.md](../../DECOMPOSITION.md) — Section 2.7
 - Depends on: `cpt-frontx-feature-framework-composition`
 - Design component: `cpt-frontx-component-react`
-- ADRs: `cpt-frontx-adr-mandatory-screen-lazy-loading`, `cpt-frontx-adr-react-19-ref-as-prop`, `cpt-frontx-adr-domain-implementation-mount-strategies` — drives the singleton-root `ExtensionDomainSlot` design and the `useMountedExtensions` hook (issue cyberfabric/frontx#278)
+- ADRs: `cpt-frontx-adr-mandatory-screen-lazy-loading`, `cpt-frontx-adr-react-19-ref-as-prop`, `cpt-frontx-adr-domain-implementation-mount-strategies` — drives the singleton-root `ExtensionDomainSlot` design and the `useMountedExtensions` hook (issue gears-frontx/frontx#278)
 
 ---
 
 ## 2. Actor Flows (CDSL)
 
-### Bootstrap Application with HAI3Provider
+### Bootstrap Application with Gears FrontXProvider
 
 - [x] `p1` - **ID**: `cpt-frontx-flow-react-bindings-bootstrap-provider`
 
 **Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-runtime`
 
-1. [x] - `p1` - Host application renders `<HAI3Provider>` with optional `config`, `app`, or `mfeBridge` props - `inst-render-provider`
-2. [x] - `p1` - Algorithm: resolve HAI3App instance using `cpt-frontx-algo-react-bindings-resolve-app` - `inst-resolve-app`
-3. [x] - `p1` - `HAI3App` instance placed into `HAI3Context` via React context provider - `inst-set-hai3-context`
+1. [x] - `p1` - Host application renders `<Gears FrontXProvider>` with optional `config`, `app`, or `mfeBridge` props - `inst-render-provider`
+2. [x] - `p1` - Algorithm: resolve Gears FrontXApp instance using `cpt-frontx-algo-react-bindings-resolve-app` - `inst-resolve-app`
+3. [x] - `p1` - `Gears FrontXApp` instance placed into `Gears FrontXContext` via React context provider - `inst-set-frontx-context`
 4. [x] - `p1` - Redux store from `app.store` wrapped in `react-redux` `<Provider>` - `inst-set-redux-provider`
-5. [x] - `p1` - WHEN the app was built with `queryCache()` or `queryCacheShared()`, descendants wrapped in the internal query provider that resolves the plugin-owned `QueryClient` from the app (same stack as `HAI3QueryClientProvider` in implementation) - `inst-render-query-provider`
-6. [x] - `p2` - IF `mfeBridge` prop is present THEN wrap the entire composed provider stack (outermost) in `<MfeProvider value={mfeBridge}>` — `MfeProvider` sits outside `HAI3Context` / Redux / query providers, not between them and `children` - `inst-wrap-mfe-provider`
+5. [x] - `p1` - WHEN the app was built with `queryCache()` or `queryCacheShared()`, descendants wrapped in the internal query provider that resolves the plugin-owned `QueryClient` from the app (same stack as `Gears FrontXQueryClientProvider` in implementation) - `inst-render-query-provider`
+6. [x] - `p2` - IF `mfeBridge` prop is present THEN wrap the entire composed provider stack (outermost) in `<MfeProvider value={mfeBridge}>` — `MfeProvider` sits outside `Gears FrontXContext` / Redux / query providers, not between them and `children` - `inst-wrap-mfe-provider`
 7. [x] - `p1` - Child components rendered innermost (inside the query provider when present) - `inst-render-children`
 8. [x] - `p1` - On unmount: IF app was created internally (no `app` prop provided) THEN call `app.destroy()` - `inst-destroy-app`
 
@@ -118,8 +118,8 @@ Success criteria: Developers can wrap their application with `<HAI3Provider>`, a
 
 **Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-runtime`
 
-1. [x] - `p1` - Developer calls `useAppSelector(selectorFn)` inside a component tree wrapped by `HAI3Provider` - `inst-call-selector`
-2. [x] - `p1` - Hook delegates to `react-redux` `useSelector` typed against `RootState` from `@cyberfabric/framework` - `inst-delegate-selector`
+1. [x] - `p1` - Developer calls `useAppSelector(selectorFn)` inside a component tree wrapped by `Gears FrontXProvider` - `inst-call-selector`
+2. [x] - `p1` - Hook delegates to `react-redux` `useSelector` typed against `RootState` from `@gears-frontx/framework` - `inst-delegate-selector`
 3. [x] - `p1` - Runtime returns the slice of state selected by `selectorFn` - `inst-return-state`
 4. [x] - `p1` - Component re-renders when selected value changes - `inst-rerender-on-change`
 
@@ -131,8 +131,8 @@ Success criteria: Developers can wrap their application with `<HAI3Provider>`, a
 
 **Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-runtime`
 
-1. [x] - `p1` - Developer calls `useAppDispatch()` inside a component tree wrapped by `HAI3Provider` - `inst-call-dispatch`
-2. [x] - `p1` - Hook delegates to `react-redux` `useDispatch` and casts return type to `AppDispatch` from `@cyberfabric/framework` - `inst-delegate-dispatch`
+1. [x] - `p1` - Developer calls `useAppDispatch()` inside a component tree wrapped by `Gears FrontXProvider` - `inst-call-dispatch`
+2. [x] - `p1` - Hook delegates to `react-redux` `useDispatch` and casts return type to `AppDispatch` from `@gears-frontx/framework` - `inst-delegate-dispatch`
 3. [x] - `p1` - Developer uses returned `dispatch` function to dispatch typed Redux actions - `inst-use-dispatch`
 
 ---
@@ -143,8 +143,8 @@ Success criteria: Developers can wrap their application with `<HAI3Provider>`, a
 
 **Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-runtime`
 
-1. [x] - `p1` - Developer calls `useTranslation()` inside a component tree wrapped by `HAI3Provider` - `inst-call-translation`
-2. [x] - `p1` - Hook reads `app.i18nRegistry` from `HAI3Context` - `inst-read-i18n-registry`
+1. [x] - `p1` - Developer calls `useTranslation()` inside a component tree wrapped by `Gears FrontXProvider` - `inst-call-translation`
+2. [x] - `p1` - Hook reads `app.i18nRegistry` from `Gears FrontXContext` - `inst-read-i18n-registry`
 3. [x] - `p1` - Hook subscribes to `i18nRegistry` version changes via `useSyncExternalStore` - `inst-subscribe-i18n`
 4. [x] - `p1` - Hook returns `{ t, language, setLanguage, isRTL }` - `inst-return-translation-api`
 5. [x] - `p1` - When developer calls `setLanguage(lang)`, hook dispatches `app.actions.setLanguage` on the framework, which propagates via event bus to MFEs - `inst-set-language`
@@ -172,8 +172,8 @@ Success criteria: Developers can wrap their application with `<HAI3Provider>`, a
 
 **Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-runtime`
 
-1. [x] - `p1` - Developer calls `useTheme()` inside a component tree wrapped by `HAI3Provider` - `inst-call-theme`
-2. [x] - `p1` - Hook reads `app.themeRegistry` from `HAI3Context` - `inst-read-theme-registry`
+1. [x] - `p1` - Developer calls `useTheme()` inside a component tree wrapped by `Gears FrontXProvider` - `inst-call-theme`
+2. [x] - `p1` - Hook reads `app.themeRegistry` from `Gears FrontXContext` - `inst-read-theme-registry`
 3. [x] - `p1` - Hook subscribes to `themeRegistry` version changes via `useSyncExternalStore` - `inst-subscribe-theme`
 4. [x] - `p1` - Hook returns `{ currentTheme, themes, setTheme }` - `inst-return-theme-api`
 5. [x] - `p1` - When developer calls `setTheme(themeId)`, hook dispatches `app.actions.changeTheme` - `inst-dispatch-change-theme`
@@ -187,7 +187,7 @@ Success criteria: Developers can wrap their application with `<HAI3Provider>`, a
 
 **Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-runtime`
 
-1. [x] - `p1` - Developer calls `useFormatters()` inside a component tree wrapped by `HAI3Provider` - `inst-call-formatters`
+1. [x] - `p1` - Developer calls `useFormatters()` inside a component tree wrapped by `Gears FrontXProvider` - `inst-call-formatters`
 2. [x] - `p1` - Hook calls `useTranslation()` internally to subscribe to language changes - `inst-subscribe-via-translation`
 3. [x] - `p1` - Hook returns a memoized `Formatters` object (formatDate, formatTime, formatDateTime, formatRelative, formatNumber, formatPercent, formatCompact, formatCurrency, compareStrings, createCollator) - `inst-return-formatters`
 4. [x] - `p1` - Returned formatters read current locale from `i18nRegistry.getLanguage()` at call time - `inst-formatters-read-locale`
@@ -243,8 +243,8 @@ The slot is **per-domain only**. It accepts a `domainId` and provides the DOM ro
 
 **Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-runtime`
 
-1. [x] - `p1` - Developer calls `useDomainExtensions(domainId)` inside a component wrapped by `HAI3Provider` - `inst-call-domain-extensions`
-2. [x] - `p1` - Hook reads `app.mfeRegistry` from `HAI3Context`; throws if registry is absent (requires `microfrontends()` plugin) - `inst-guard-registry`
+1. [x] - `p1` - Developer calls `useDomainExtensions(domainId)` inside a component wrapped by `Gears FrontXProvider` - `inst-call-domain-extensions`
+2. [x] - `p1` - Hook reads `app.mfeRegistry` from `Gears FrontXContext`; throws if registry is absent (requires `microfrontends()` plugin) - `inst-guard-registry`
 3. [x] - `p1` - Hook subscribes to `app.store` changes via `useSyncExternalStore` - `inst-subscribe-store`
 4. [x] - `p1` - On each store notification, snapshot function calls `registry.getExtensionsForDomain(domainId)` and compares extension IDs to cached value - `inst-diff-extensions`
 5. [x] - `p1` - RETURN cached extension array when IDs are unchanged; RETURN new array reference only when IDs differ (prevents spurious re-renders) - `inst-stable-reference`
@@ -257,7 +257,7 @@ The slot is **per-domain only**. It accepts a `domainId` and provides the DOM ro
 
 **Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-runtime`
 
-1. [x] - `p1` - Developer calls `useRegisteredPackages()` inside a component wrapped by `HAI3Provider` - `inst-call-registered-packages`
+1. [x] - `p1` - Developer calls `useRegisteredPackages()` inside a component wrapped by `Gears FrontXProvider` - `inst-call-registered-packages`
 2. [x] - `p1` - Hook reads `app.mfeRegistry`; throws if absent - `inst-guard-registry-packages`
 3. [x] - `p1` - Hook subscribes to `app.store` changes via `useSyncExternalStore` - `inst-subscribe-store-packages`
 4. [x] - `p1` - Snapshot function calls `registry.getRegisteredPackages()`, joins with comma as cache key; RETURN cached list when unchanged - `inst-diff-packages`
@@ -272,7 +272,7 @@ The slot is **per-domain only**. It accepts a `domainId` and provides the DOM ro
 
 Domain-agnostic hook that returns the currently-mounted `Extension` instances for any registered domain — including multi-mount domains backed by `ConcurrentMountStrategy`. Pairs with `getMountedExtensions(domainId)` on the registry.
 
-1. [x] - `p1` - Developer calls `useMountedExtensions(domainId)` inside a component wrapped by `HAI3Provider` - `inst-call-mounted-extensions`
+1. [x] - `p1` - Developer calls `useMountedExtensions(domainId)` inside a component wrapped by `Gears FrontXProvider` - `inst-call-mounted-extensions`
 2. [x] - `p1` - Hook reads `app.mfeRegistry`; throws if absent (requires `microfrontends()` plugin) - `inst-guard-registry-mounted`
 3. [x] - `p1` - Hook subscribes to `app.store` changes via `useSyncExternalStore` - `inst-subscribe-store-mounted`
 4. [x] - `p1` - Snapshot function reads `ids = registry.getMountedExtensions(domainId)` and resolves each ID to the corresponding `Extension` instance via `registry.getExtension(id)`, filtering out any that resolve to `undefined` (race against unregister) - `inst-use-mounted-extensions-snapshot`
@@ -295,24 +295,24 @@ Domain-agnostic hook that returns the currently-mounted `Extension` instances fo
 
 ### Access the FrontX App Instance Directly
 
-- [x] `p2` - **ID**: `cpt-frontx-flow-react-bindings-use-hai3`
+- [x] `p2` - **ID**: `cpt-frontx-flow-react-bindings-use-frontx`
 
 **Actors**: `cpt-frontx-actor-developer`
 
-1. [x] - `p2` - Developer calls `useFrontX()` inside a component wrapped by `HAI3Provider` - `inst-call-use-hai3`
-2. [x] - `p2` - Hook reads `HAI3Context` and throws if context value is `null` (i.e., called outside `HAI3Provider`) - `inst-guard-hai3-context`
-3. [x] - `p2` - RETURN `HAI3App` instance - `inst-return-hai3-app`
+1. [x] - `p2` - Developer calls `useFrontX()` inside a component wrapped by `Gears FrontXProvider` - `inst-call-use-frontx`
+2. [x] - `p2` - Hook reads `Gears FrontXContext` and throws if context value is `null` (i.e., called outside `Gears FrontXProvider`) - `inst-guard-frontx-context`
+3. [x] - `p2` - RETURN `Gears FrontXApp` instance - `inst-return-frontx-app`
 
 ---
 
 ## 3. Processes / Business Logic (CDSL)
 
-### Resolve HAI3App Instance
+### Resolve Gears FrontXApp Instance
 
 - [x] `p1` - **ID**: `cpt-frontx-algo-react-bindings-resolve-app`
 
 1. [x] - `p1` - IF `app` prop is provided THEN RETURN provided `app` unchanged - `inst-use-provided-app`
-2. [x] - `p1` - IF `app` prop is absent THEN call `createHAI3App(config)` with the optional `config` prop (or `undefined`) and RETURN the result - `inst-create-app`
+2. [x] - `p1` - IF `app` prop is absent THEN call `createGears FrontXApp(config)` with the optional `config` prop (or `undefined`) and RETURN the result - `inst-create-app`
 3. [x] - `p1` - The resolved app is memoized so identity is stable across re-renders as long as `app` and `config` props do not change - `inst-memoize-app`
 
 ---
@@ -337,10 +337,10 @@ Domain-agnostic hook that returns the currently-mounted `Extension` instances fo
 
 - [x] `p1` - **ID**: `cpt-frontx-algo-react-bindings-build-provider-tree`
 
-1. [x] - `p1` - Resolve `HAI3App` instance (see `cpt-frontx-algo-react-bindings-resolve-app`) - `inst-resolve-app-tree`
-2. [x] - `p1` - Inner stack starts with `<HAI3Context.Provider value={app}>` - `inst-wrap-hai3-context`
+1. [x] - `p1` - Resolve `Gears FrontXApp` instance (see `cpt-frontx-algo-react-bindings-resolve-app`) - `inst-resolve-app-tree`
+2. [x] - `p1` - Inner stack starts with `<Gears FrontXContext.Provider value={app}>` - `inst-wrap-frontx-context`
 3. [x] - `p1` - Wrap in `<ReduxProvider store={app.store}>` - `inst-wrap-redux`
-4. [x] - `p1` - Resolve the plugin-owned `QueryClient` from the app (bootstrap/activation semantics used by `HAI3Provider`, e.g. `useBootstrappedHAI3QueryClient(app)`), then wrap in `<HAI3QueryClientProvider queryClient={queryClient}>`; when `queryClient` is `undefined`, that component renders `children` without TanStack `QueryClientProvider`. Keep `children` innermost - `inst-render-query-provider` / `inst-render-children-tree`
+4. [x] - `p1` - Resolve the plugin-owned `QueryClient` from the app (bootstrap/activation semantics used by `Gears FrontXProvider`, e.g. `useBootstrappedGears FrontXQueryClient(app)`), then wrap in `<Gears FrontXQueryClientProvider queryClient={queryClient}>`; when `queryClient` is `undefined`, that component renders `children` without TanStack `QueryClientProvider`. Keep `children` innermost - `inst-render-query-provider` / `inst-render-children-tree`
 5. [x] - `p2` - IF `mfeBridge` prop is present THEN return that stack wrapped in `<MfeProvider value={mfeBridge}>` as the outermost provider; ELSE return the stack unchanged - `inst-wrap-mfe-conditional`
 
 ---
@@ -352,7 +352,7 @@ Domain-agnostic hook that returns the currently-mounted `Extension` instances fo
 Guards that throw when MFE-scoped hooks are used outside their required context.
 
 1. [x] - `p1` - `useMfeBridge()`, `useMfeContext()`, `useSharedProperty()`, `useHostAction()` MUST throw a descriptive error if called outside a `MfeProvider` ancestor - `inst-throw-no-mfe-context`
-2. [x] - `p1` - `useFrontX()` MUST throw a descriptive error if called outside a `HAI3Provider` ancestor - `inst-throw-no-hai3-context`
+2. [x] - `p1` - `useFrontX()` MUST throw a descriptive error if called outside a `Gears FrontXProvider` ancestor - `inst-throw-no-frontx-context`
 3. [x] - `p1` - `useDomainExtensions()`, `useRegisteredPackages()` MUST throw if `app.mfeRegistry` is not present, directing developers to add the `microfrontends()` plugin - `inst-throw-no-registry`
 
 ---
@@ -404,9 +404,9 @@ Tracks per-language load state for `useScreenTranslations`.
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-react-bindings-provider`
 
-`HAI3Provider` accepts `children`, optional `config`, optional pre-built `app`, and optional `mfeBridge`. When `app` is not provided, it creates one via `createHAI3App(config)`. When the app was built with `queryCache()` or `queryCacheShared()`, `HAI3Provider` resolves the attached shared `QueryClient` and mounts `<HAI3QueryClientProvider queryClient={...}>` (the inner component only accepts `queryClient` and `children`, not the app); otherwise `queryClient` stays `undefined` and the query provider passes `children` through without TanStack context. Internally created resources are cleaned up on unmount. Provider order is innermost-to-outermost: `HAI3Context` → `ReduxProvider` → `HAI3QueryClientProvider` → `children`. When `mfeBridge` is supplied, `MfeProvider` wraps that entire stack as the outermost provider (so MFE context wraps the Redux and query layers, not the other way around).
+`Gears FrontXProvider` accepts `children`, optional `config`, optional pre-built `app`, and optional `mfeBridge`. When `app` is not provided, it creates one via `createGears FrontXApp(config)`. When the app was built with `queryCache()` or `queryCacheShared()`, `Gears FrontXProvider` resolves the attached shared `QueryClient` and mounts `<Gears FrontXQueryClientProvider queryClient={...}>` (the inner component only accepts `queryClient` and `children`, not the app); otherwise `queryClient` stays `undefined` and the query provider passes `children` through without TanStack context. Internally created resources are cleaned up on unmount. Provider order is innermost-to-outermost: `Gears FrontXContext` → `ReduxProvider` → `Gears FrontXQueryClientProvider` → `children`. When `mfeBridge` is supplied, `MfeProvider` wraps that entire stack as the outermost provider (so MFE context wraps the Redux and query layers, not the other way around).
 
-For MFE screen roots, the host owns the shared `QueryClient` through `queryCache()` and the child app joins that same cache through `queryCacheShared()` before the first React commit. `HAI3Provider` resolves the resulting shared client from the app instance and keeps L1 mount contracts free of cache metadata. Overlapping descriptor fetches can still reuse the same `sharedFetchCache` window across roots before TanStack observers attach.
+For MFE screen roots, the host owns the shared `QueryClient` through `queryCache()` and the child app joins that same cache through `queryCacheShared()` before the first React commit. `Gears FrontXProvider` resolves the resulting shared client from the app instance and keeps L1 mount contracts free of cache metadata. Overlapping descriptor fetches can still reuse the same `sharedFetchCache` window across roots before TanStack observers attach.
 
 **Implements**:
 - `cpt-frontx-algo-react-bindings-resolve-app`
@@ -430,7 +430,7 @@ For MFE screen roots, the host owns the shared `QueryClient` through `queryCache
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-react-bindings-redux-hooks`
 
-`useAppSelector` is a `TypedUseSelectorHook<RootState>` wrapping `react-redux` `useSelector`. `useAppDispatch` wraps `react-redux` `useDispatch` and casts the return type to `AppDispatch`. Both hooks require `HAI3Provider` in the ancestor tree. Neither hook imports directly from `@cyberfabric/state`.
+`useAppSelector` is a `TypedUseSelectorHook<RootState>` wrapping `react-redux` `useSelector`. `useAppDispatch` wraps `react-redux` `useDispatch` and casts the return type to `AppDispatch`. Both hooks require `Gears FrontXProvider` in the ancestor tree. Neither hook imports directly from `@gears-frontx/state`.
 
 **Implements**:
 - `cpt-frontx-flow-react-bindings-use-selector`
@@ -451,7 +451,7 @@ For MFE screen roots, the host owns the shared `QueryClient` through `queryCache
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-react-bindings-translation-hook`
 
-`useTranslation` returns `{ t, language, setLanguage, isRTL }`. It subscribes to `i18nRegistry` version via `useSyncExternalStore` so components re-render on language changes. `setLanguage` dispatches `app.actions.setLanguage` which propagates to MFEs via the event bus. The hook never imports from `@cyberfabric/i18n` directly.
+`useTranslation` returns `{ t, language, setLanguage, isRTL }`. It subscribes to `i18nRegistry` version via `useSyncExternalStore` so components re-render on language changes. `setLanguage` dispatches `app.actions.setLanguage` which propagates to MFEs via the event bus. The hook never imports from `@gears-frontx/i18n` directly.
 
 **Implements**:
 - `cpt-frontx-flow-react-bindings-use-translation`
@@ -511,7 +511,7 @@ For MFE screen roots, the host owns the shared `QueryClient` through `queryCache
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-react-bindings-formatters-hook`
 
-`useFormatters` returns a memoized `Formatters` object containing all locale-aware formatter functions from `@cyberfabric/framework`. It internally calls `useTranslation()` to subscribe to language changes. The returned object is re-created only when `language` changes, preventing unnecessary re-renders from unrelated state updates.
+`useFormatters` returns a memoized `Formatters` object containing all locale-aware formatter functions from `@gears-frontx/framework`. It internally calls `useTranslation()` to subscribe to language changes. The returned object is re-created only when `language` changes, preventing unnecessary re-renders from unrelated state updates.
 
 **Implements**:
 - `cpt-frontx-flow-react-bindings-use-formatters`
@@ -604,7 +604,7 @@ All five MFE-scoped hooks (`useMfeBridge`, `useMfeContext`, `useSharedProperty`,
 
 - [x] `p2` - **ID**: `cpt-frontx-dod-react-bindings-event-payload-map`
 
-`@cyberfabric/react` re-declares `EventPayloadMap` as an interface extending `FrameworkEventPayloadMap` from `@cyberfabric/framework`. This creates a TypeScript declaration site at L3 that application code can augment using `declare module '@cyberfabric/react'`, avoiding direct imports from L1 (`@cyberfabric/state`). The `eventBus` instance is re-exported with the augmented type so that event bus calls in application code are type-safe against both framework and application events.
+`@gears-frontx/react` re-declares `EventPayloadMap` as an interface extending `FrameworkEventPayloadMap` from `@gears-frontx/framework`. This creates a TypeScript declaration site at L3 that application code can augment using `declare module '@gears-frontx/react'`, avoiding direct imports from L1 (`@gears-frontx/state`). The `eventBus` instance is re-exported with the augmented type so that event bus calls in application code are type-safe against both framework and application events.
 
 **Implements**:
 - (architectural pattern, no specific flow)
@@ -621,7 +621,7 @@ All five MFE-scoped hooks (`useMfeBridge`, `useMfeContext`, `useSharedProperty`,
 
 ## 6. Acceptance Criteria
 
-- [x]`HAI3Provider` renders without errors when given only `children`, with `config`, with a pre-built `app`, and with `mfeBridge`
+- [x]`Gears FrontXProvider` renders without errors when given only `children`, with `config`, with a pre-built `app`, and with `mfeBridge`
 - [x]`useAppSelector` returns typed state; re-renders component when selected value changes, does not re-render when unrelated state changes
 - [x]`useAppDispatch` returns a function that dispatches Redux actions to the store
 - [x]`useTranslation` returns current language, a working `t()` function, correct `isRTL`, and a `setLanguage` that triggers language propagation to MFEs
@@ -630,14 +630,14 @@ All five MFE-scoped hooks (`useMfeBridge`, `useMfeContext`, `useSharedProperty`,
 - [x]`useFormatters` returns locale-aware formatters that recalculate on language change
 - [x] `ExtensionDomainSlot` is per-domain only (no `extensionId` prop), renders exactly ONE root `<div>` per domain instance, calls `registry.getMounter(domainId).attach(element)` from its ref-attach callback and `mounter.detach()` on cleanup; on detach, `mounter.detach()` mass-unmounts every currently-mounted extension in the domain so no orphan DOM trees or slice/registry desync remain. The slot does NOT dispatch `mount_ext` or `unmount_ext` actions — the host owns those dispatches via `registry.executeActionsChain`
 - [x] `useMountedExtensions(domainId)` returns the array of currently-mounted `Extension` instances for the named domain (multi-mount domains return >1 entries); the array reference is stable when the underlying ID list is unchanged
-- [x] `useDomainExtensions(HAI3_SCREEN_DOMAIN)` returns every screen extension registered at runtime — including those whose IDs belong to different GTS packages — without filtering by package, so a nav menu wired to this hook lists screens from every co-existing package
+- [x] `useDomainExtensions(Gears FrontX_SCREEN_DOMAIN)` returns every screen extension registered at runtime — including those whose IDs belong to different GTS packages — without filtering by package, so a nav menu wired to this hook lists screens from every co-existing package
 - [x] `useRegisteredPackages()` is a passive enumeration of GTS packages discovered at runtime; consumers use it for observation only and not for filtering other queries
 - [x]`useSharedProperty` re-renders MFE component when host updates the subscribed property
 - [x]`useHostAction` sends an `ActionsChain` to the host bridge; errors are logged to console, not thrown
 - [x]`useDomainExtensions` and `useRegisteredPackages` both throw descriptive errors when `microfrontends()` plugin is absent
 - [x]All three observation hooks return referentially stable arrays when the underlying data has not changed
 - [x]MFE-scoped hooks throw descriptive errors when called outside `MfeProvider`
-- [x]`useFrontX` throws descriptive error when called outside `HAI3Provider`
-- [x]`@cyberfabric/react` imports ZERO `@cyberfabric/state`, `@cyberfabric/screensets`, `@cyberfabric/api`, or `@cyberfabric/i18n` packages directly (enforced by dependency-cruiser)
+- [x]`useFrontX` throws descriptive error when called outside `Gears FrontXProvider`
+- [x]`@gears-frontx/react` imports ZERO `@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, or `@gears-frontx/i18n` packages directly (enforced by dependency-cruiser)
 - [x]All components accept `ref` as a prop (React 19 pattern; no `forwardRef`)
 - [x]TypeScript strict mode passes with zero `@ts-ignore` suppressions in source files
