@@ -1,16 +1,26 @@
 import { defineConfig } from 'vitepress'
 
+// Use environment variable for base path, default to '/' for local dev.
+// For GitHub Pages project site, set to '/FrontX/' or '/repo-name/'.
+// Icon/manifest hrefs are prefixed with this so they resolve under the base in production.
+const base = process.env.VITE_BASE || '/'
+
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: 'Gears FrontX Documentation',
   description: 'AI-Driven Product Development & Framework Documentation',
-  // Use environment variable for base path, default to '/' for local dev
-  // For GitHub Pages project site, set to '/FrontX/' or '/repo-name/'
-  base: process.env.VITE_BASE || '/',
+  base,
+
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}favicon.svg` }],
+    ['link', { rel: 'icon', type: 'image/x-icon', href: `${base}favicon.ico` }],
+    ['link', { rel: 'apple-touch-icon', sizes: '180x180', href: `${base}apple-touch-icon.png` }],
+    ['link', { rel: 'manifest', href: `${base}site.webmanifest` }],
+  ],
 
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
-    logo: '/logo.svg',
+    logo: { light: '/logo.svg', dark: '/logo-dark.svg' },
 
     nav: [
       { text: 'Home', link: '/' },
