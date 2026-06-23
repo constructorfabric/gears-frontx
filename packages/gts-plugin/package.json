@@ -1,0 +1,45 @@
+{
+  "name": "@gears-frontx/gts-plugin",
+  "version": "0.3.0-alpha.0",
+  "description": "GTS default type-system provider plugin for the FrontX MFE runtime",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "type-check": "tsc --noEmit",
+    "type-check:test": "tsc -p tsconfig.test.json",
+    "test": "npm run test:unit",
+    "test:unit": "vitest --run --passWithNoTests=false",
+    "test:unit:watch": "vitest --watch"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "4.1.4",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.2",
+    "vitest": "4.1.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "frontx",
+    "gts",
+    "type-system",
+    "plugin",
+    "typescript"
+  ],
+  "author": "Cyber Fabric",
+  "license": "Apache-2.0"
+}

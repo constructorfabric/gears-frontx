@@ -1,0 +1,48 @@
+{
+  "name": "@gears-frontx/mfes",
+  "version": "0.3.0-alpha.0",
+  "description": "MFE runtime substrate for FrontX — registration, loading, extension-domain governance, mediation, and isolation",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "type-check": "tsc --noEmit",
+    "type-check:test": "tsc -p tsconfig.test.json",
+    "test": "npm run test:unit",
+    "test:unit": "vitest --run --passWithNoTests=false",
+    "test:unit:watch": "vitest --watch"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "4.1.4",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.2",
+    "vitest": "4.1.4"
+  },
+  "dependencies": {
+    "@gears-frontx/gts-plugin": "0.3.0-alpha.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "frontx",
+    "mfe",
+    "microfrontend",
+    "runtime",
+    "typescript"
+  ],
+  "author": "Cyber Fabric",
+  "license": "Apache-2.0"
+}

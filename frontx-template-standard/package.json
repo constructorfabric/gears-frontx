@@ -1,0 +1,12 @@
+{
+  "name": "frontx-template-standard",
+  "version": "0.3.0-alpha.0",
+  "description": "FrontX standard solution template — relocation target for solution packages (framework, react, state, i18n, auth, studio)",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "author": "Cyber Fabric",
+  "license": "Apache-2.0"
+}
