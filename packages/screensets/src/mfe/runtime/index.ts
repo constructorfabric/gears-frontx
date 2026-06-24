@@ -1,41 +1,33 @@
 /**
  * MFE Runtime - MfeRegistry Factory and Configuration
  *
- * This module exports the core runtime components for the MFE system.
- *
- * Key exports:
- * - MfeRegistry (abstract class) - The public API contract
- * - MfeRegistryFactory (abstract class) - Factory contract
- * - mfeRegistryFactory (singleton) - Factory instance for building registry
- * - MfeRegistryConfig (interface) - Registry configuration
- * - Abstract mount strategy classes and shipped concrete strategies
- * - DomainContext interface and related types
- *
- * NOTE: Default* concrete classes are NOT exported. They are internal implementation details.
+ * Registry contracts and runtime abstractions are now in @gears-frontx/mfes.
+ * Re-exported here for backward compatibility. Screensets-specific concrete
+ * implementations (DefaultMfeRegistry, DefaultMfeRegistryFactory) remain internal.
  *
  * @packageDocumentation
  */
 
 import { DefaultMfeRegistryFactory } from './DefaultMfeRegistryFactory';
-import type { MfeRegistryFactory } from './MfeRegistryFactory';
+import type { MfeRegistryFactory } from '@gears-frontx/mfes';
 
-export { MfeRegistry } from './MfeRegistry';
-export { MfeRegistryFactory } from './MfeRegistryFactory';
-export type { MfeRegistryConfig } from './config';
+export { MfeRegistry } from '@gears-frontx/mfes';
+export { MfeRegistryFactory } from '@gears-frontx/mfes';
+export type { MfeRegistryConfig } from '@gears-frontx/mfes';
 
 // Mount strategy abstractions and shipped implementations
-export { MountStrategy } from './mount-strategy';
-export type { ContainerHooks, ActionPayload } from './mount-strategy';
-export { ConcurrentMountStrategy, OptionalMountStrategy, ExclusiveMountStrategy } from './mount-strategies';
+export { MountStrategy } from '@gears-frontx/mfes';
+export type { ContainerHooks, ActionPayload } from '@gears-frontx/mfes';
+export { ConcurrentMountStrategy, OptionalMountStrategy, ExclusiveMountStrategy } from '@gears-frontx/mfes';
 
 // Domain implementation abstractions
-export { ExtensionDomainImplementation } from './ExtensionDomainImplementation';
-export { ExtensionDomainImplementationFactory } from './ExtensionDomainImplementationFactory';
-export { ExtensionMounter } from './ExtensionMounter';
-export { DomainLifecycleTrigger } from './DomainLifecycleTrigger';
+export { ExtensionDomainImplementation } from '@gears-frontx/mfes';
+export { ExtensionDomainImplementationFactory } from '@gears-frontx/mfes';
+export { ExtensionMounter } from '@gears-frontx/mfes';
+export { DomainLifecycleTrigger } from '@gears-frontx/mfes';
 
 // DomainContext interface (domain authors see only the interface)
-export type { DomainContext } from './DomainContext';
+export type { DomainContext } from '@gears-frontx/mfes';
 
 /**
  * Singleton MfeRegistryFactory instance.
@@ -45,20 +37,12 @@ export type { DomainContext } from './DomainContext';
  * the registry singleton. After the first build(), subsequent calls return
  * the cached instance.
  *
- * This factory pattern enables TypeSystemPlugin pluggability by deferring
- * the binding of the type system plugin to application wiring time.
- *
  * @example
  * ```typescript
  * import { mfeRegistryFactory, gtsPlugin } from '@gears-frontx/screensets';
  *
- * // Build the registry with GTS plugin at application wiring time
  * const registry = mfeRegistryFactory.build({ typeSystem: gtsPlugin });
- *
- * // Register a domain via concrete factory
  * registry.registerDomain(myDomain, new MyDomainFactory());
- *
- * // Register an extension
  * await registry.registerExtension(myExtension);
  * ```
  */

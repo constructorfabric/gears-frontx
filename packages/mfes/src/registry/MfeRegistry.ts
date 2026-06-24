@@ -10,16 +10,20 @@
  */
 // @cpt-FEATURE:cpt-frontx-feature-mfe-registry:p2
 // @cpt-dod:cpt-frontx-dod-mfe-registry-registry-contract:p1
+// @cpt-flow:cpt-frontx-flow-mfe-registry-register-validate-mount:p1
+// @cpt-flow:cpt-frontx-flow-mfe-registry-factory-build:p2
+// @cpt-algo:cpt-frontx-algo-mfe-registry-handler-resolution:p1
+// @cpt-state:cpt-frontx-state-mfe-registry-entry-lifecycle:p2
 
-import type { TypeSystemPlugin } from '../plugins/types';
+import type { TypeSystemPlugin } from '../type-substrate';
 import type { ParentMfeBridge } from '../handler/types';
 import type {
   ExtensionDomain,
   Extension,
   ActionsChain,
 } from '../types';
-import type { ExtensionDomainImplementationFactory } from './ExtensionDomainImplementationFactory';
-import type { ExtensionMounter } from './ExtensionMounter';
+import type { ExtensionDomainImplementationFactory } from '../runtime/ExtensionDomainImplementationFactory';
+import type { ExtensionMounter } from '../runtime/ExtensionMounter';
 
 /**
  * Abstract MfeRegistry - public contract for the MFE runtime facade.

@@ -1,27 +1,9 @@
 /**
  * Action Type Definitions
  *
- * Action represents a typed message with a target, self-identifying type ID, and optional payload.
+ * Re-exported from @gears-frontx/mfes. Kept for backward compatibility.
  *
  * @packageDocumentation
  */
 
-/**
- * An action with target, self-identifying type, and optional payload
- * GTS Type: gts.frontx.mfes.comm.action.v1~
- */
-export interface Action {
-  /** Self-reference to this action's type ID */
-  type: string;
-  /** Target type ID (ExtensionDomain or Extension) */
-  target: string;
-  /**
-   * Optional action payload.
-   * Lifecycle actions (load_ext, mount_ext, unmount_ext) require a `subject` field
-   * identifying the extension ID to act upon. This is enforced at runtime via GTS schema
-   * validation (payload.subject with x-gts-ref to extension type).
-   */
-  payload?: { subject?: string } & Record<string, unknown>;
-  /** Optional timeout override in milliseconds (overrides domain's defaultActionTimeout) */
-  timeout?: number;
-}
+export type { Action } from '@gears-frontx/mfes';

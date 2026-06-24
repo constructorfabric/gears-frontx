@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { MfeRegistry } from '../src/mfe/runtime/MfeRegistry';
+import { MfeRegistry } from '@gears-frontx/mfes';
 import type {
   Extension,
   ExtensionDomain,

@@ -25,17 +25,24 @@
 // @cpt-dod:cpt-frontx-dod-mfe-registry-registry-contract:p1
 
 import type { TypeSystemPlugin } from '../plugins/types';
-import type { MfeRegistryConfig } from './config';
-import type { MfeHandler, ParentMfeBridge } from '../handler/types';
-import type {
-  ExtensionDomain,
-  Extension,
-  ActionsChain,
-} from '../types';
-import { MfeRegistry } from './MfeRegistry';
+import {
+  MfeRegistry,
+  type MfeRegistryConfig,
+  type MfeHandler,
+  type ParentMfeBridge,
+  type ExtensionDomain,
+  type Extension,
+  type ActionsChain,
+  type ExtensionDomainImplementationFactory,
+  type ExtensionMounter,
+  ActionsChainsMediator,
+  RuntimeCoordinator,
+  InvalidatableDomainContext,
+  ConcurrentMountStrategy,
+  OptionalMountStrategy,
+  ExclusiveMountStrategy,
+} from '@gears-frontx/mfes';
 import { WeakMapRuntimeCoordinator } from '../coordination/weak-map-runtime-coordinator';
-import { RuntimeCoordinator } from '../coordination/types';
-import { ActionsChainsMediator } from '../mediator';
 import { DefaultActionsChainsMediator } from '../mediator/actions-chains-mediator';
 import { type ExtensionDomainState } from './extension-manager';
 import { DefaultExtensionManager } from './default-extension-manager';
@@ -49,16 +56,8 @@ import { LoadExtHandler } from './extension-lifecycle-action-handler';
 import { FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT } from '../constants';
 import { EntryTypeNotHandledError } from '../errors';
 import { extractGtsPackage } from '../gts/extract-package';
-import type { ExtensionDomainImplementationFactory } from './ExtensionDomainImplementationFactory';
-import type { ExtensionMounter } from './ExtensionMounter';
 import { DefaultExtensionMounter } from './DefaultExtensionMounter';
 import { DefaultDomainLifecycleTrigger } from './DefaultDomainLifecycleTrigger';
-import { InvalidatableDomainContext } from './DomainContext';
-import {
-  ConcurrentMountStrategy,
-  OptionalMountStrategy,
-  ExclusiveMountStrategy,
-} from './mount-strategies';
 
 /**
  * Default concrete implementation of MfeRegistry.

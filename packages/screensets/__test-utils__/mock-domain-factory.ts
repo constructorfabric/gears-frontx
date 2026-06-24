@@ -36,7 +36,7 @@ import {
   FRONTX_ACTION_UNMOUNT_EXT,
 } from '../src/mfe/constants/index';
 import type { ExtensionDomain } from '../src/mfe/types';
-import type { MfeRegistry } from '../src/mfe/runtime/MfeRegistry';
+import type { MfeRegistry } from '@gears-frontx/mfes';
 
 // ─── Internal implementation class ───────────────────────────────────────────
 

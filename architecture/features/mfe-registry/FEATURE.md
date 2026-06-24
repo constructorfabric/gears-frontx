@@ -190,7 +190,7 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### Registry Facade Contract
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-registry-contract`
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-registry-contract`
 
 The system **MUST** expose the abstract `MfeRegistry` as the sole public runtime contract, obtainable only through `mfeRegistryFactory.build({ typeSystem })`, with the concrete implementation and internal coordination machinery remaining inaccessible to consumers.
 
@@ -204,7 +204,7 @@ The system **MUST** expose the abstract `MfeRegistry` as the sole public runtime
 
 ### Handler Resolution by Declared Base Type
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-handler-injection`
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-handler-injection`
 
 The system **MUST** resolve a handler for each registered `MfeEntry` by evaluating `typeSystem.isTypeOf(entryTypeId, handler.handledBaseTypeId)` through the injected `TypeSystemPlugin` — the runtime MUST contain no type-format string literals used for handler matching, and handlers MUST NOT carry a self-selection predicate.
 
@@ -232,7 +232,7 @@ The system **MUST** own and orchestrate the complete register → type-validate 
 
 ### Type Contracts
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-type-contracts`
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-type-contracts`
 
 The system **MUST** define the `MfeHandler` abstract class with `handledBaseTypeId`, `priority`, `bridgeFactory`, and `load(entry, extensionId)` — and MUST NOT include any `canHandle`-style self-selection method on the handler.
 

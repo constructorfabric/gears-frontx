@@ -15,7 +15,7 @@ import type { RuntimeCoordinator } from '../coordination/types';
 import type { ActionHandler } from '../mediator/types';
 import type { ActionsChain } from '../types';
 import { DefaultExtensionManager } from './default-extension-manager';
-import type { MfeRegistry } from './MfeRegistry';
+import type { MfeRegistry } from '@gears-frontx/mfes';
 import { MountManager } from './mount-manager';
 import type { ActionChainExecutor, LifecycleTrigger } from './mount-manager';
 import { RuntimeBridgeFactory } from './runtime-bridge-factory';

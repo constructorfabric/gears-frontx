@@ -12,10 +12,8 @@
 // @cpt-state:cpt-frontx-state-mfe-registry-factory-cache:p1
 // @cpt-dod:cpt-frontx-dod-mfe-registry-factory-cache:p1
 
-import { MfeRegistryFactory } from './MfeRegistryFactory';
+import { MfeRegistryFactory, type MfeRegistry, type MfeRegistryConfig } from '@gears-frontx/mfes';
 import { DefaultMfeRegistry } from './DefaultMfeRegistry';
-import type { MfeRegistry } from './MfeRegistry';
-import type { MfeRegistryConfig } from './config';
 
 /**
  * Concrete factory that implements factory-with-cache pattern.

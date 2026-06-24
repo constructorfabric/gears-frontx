@@ -9,7 +9,7 @@
  */
 
 import type { MfeRegistry } from './MfeRegistry';
-import type { MfeRegistryConfig } from './config';
+import type { MfeRegistryConfig } from '../runtime/config';
 
 /**
  * Abstract factory for creating the MfeRegistry singleton.
