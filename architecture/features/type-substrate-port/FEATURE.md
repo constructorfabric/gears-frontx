@@ -81,16 +81,16 @@ User-facing interactions that start with an actor (human or external system) and
 
 **Steps**:
 1. [ ] - `p1` - Developer supplies application-specific type definition schemas to the injected type-substrate port - `inst-supply-schemas`
-2. [ ] - `p1` - Port records each schema by its identifier (opaque string; runtime has no access to schema structure) - `inst-port-register`
+2. [x] - `p1` - Port records each schema by its identifier (opaque string; runtime has no access to schema structure) - `inst-port-register`
 3. [ ] - `p1` - Developer configures the MFE runtime with the injected type-substrate port at construction time - `inst-configure-runtime`
 4. [ ] - `p1` - Developer registers a microfrontend with the runtime, providing its declared type identifier - `inst-register-mfe`
 5. [ ] - `p1` - Runtime extracts the declared type identifier from the microfrontend entry as an opaque string (no schema structure accessed) - `inst-extract-type-id`
-6. [ ] - `p1` - Runtime delegates entity validation to the port, passing only the opaque type identifier - `inst-delegate-validate`
+6. [x] - `p1` - Runtime delegates entity validation to the port, passing only the opaque type identifier - `inst-delegate-validate`
 7. [ ] - `p1` - **IF** validation fails: - `inst-check-valid`
    1. [ ] - `p1` - Runtime collects structured error details from the port result - `inst-collect-errors`
    2. [ ] - `p1` - Runtime rejects the microfrontend and surfaces error details to the developer - `inst-reject-mfe`
    3. [ ] - `p1` - **RETURN** rejection result with validation error details - `inst-return-reject`
-8. [ ] - `p1` - Runtime delegates type-hierarchy check to the port, confirming the MFE type satisfies the required base type - `inst-delegate-is-type-of`
+8. [x] - `p1` - Runtime delegates type-hierarchy check to the port, confirming the MFE type satisfies the required base type - `inst-delegate-is-type-of`
 9. [ ] - `p1` - **IF** hierarchy check fails: - `inst-check-hierarchy`
    1. [ ] - `p1` - Runtime rejects the microfrontend with a type-mismatch reason - `inst-reject-hierarchy`
    2. [ ] - `p1` - **RETURN** rejection result - `inst-return-hierarchy-reject`
@@ -111,11 +111,11 @@ Internal system functions and procedures that do not interact with actors direct
 
 **Steps**:
 1. [ ] - `p1` - Receive declared type identifier from microfrontend entry as an opaque string - `inst-recv-type-id`
-2. [ ] - `p1` - Delegate instance validation to the injected port using the opaque type identifier (runtime performs no schema interpretation) - `inst-call-validate`
+2. [x] - `p1` - Delegate instance validation to the injected port using the opaque type identifier (runtime performs no schema interpretation) - `inst-call-validate`
 3. [ ] - `p1` - **IF** port returns a validation failure: - `inst-check-port-result`
    1. [ ] - `p1` - Collect structured error details from the port result - `inst-collect-port-errors`
    2. [ ] - `p1` - **RETURN** rejection outcome with error details - `inst-return-failure`
-4. [ ] - `p1` - Delegate type-hierarchy check to the port, passing declared type identifier and required base type identifier - `inst-call-is-type-of`
+4. [x] - `p1` - Delegate type-hierarchy check to the port, passing declared type identifier and required base type identifier - `inst-call-is-type-of`
 5. [ ] - `p1` - **IF** hierarchy check returns false: - `inst-check-hierarchy-result`
    1. [ ] - `p1` - **RETURN** rejection outcome indicating type mismatch - `inst-return-type-mismatch`
 6. [ ] - `p1` - **RETURN** admission outcome (validation and hierarchy both resolved through the port) - `inst-return-admitted`
@@ -130,7 +130,7 @@ Internal system functions and procedures that do not interact with actors direct
 
 **Steps**:
 1. [ ] - `p1` - Receive declared type identifier and required base type identifier as opaque strings - `inst-recv-ids`
-2. [ ] - `p1` - Delegate hierarchy resolution to the injected port (runtime performs no identifier parsing, grammar interpretation, or format knowledge) - `inst-delegate-hierarchy`
+2. [x] - `p1` - Delegate hierarchy resolution to the injected port (runtime performs no identifier parsing, grammar interpretation, or format knowledge) - `inst-delegate-hierarchy`
 3. [ ] - `p1` - **RETURN** the boolean result received from the port unchanged - `inst-return-bool`
 
 ## 4. States (CDSL)
@@ -139,15 +139,15 @@ Include when entities have explicit lifecycle states.
 
 ### Schema Registration Lifecycle
 
-- [ ] `p2` - **ID**: `cpt-frontx-state-type-substrate-port-schema-lifecycle`
+- [x] `p2` - **ID**: `cpt-frontx-state-type-substrate-port-schema-lifecycle`
 
 **States**: UNREGISTERED, REGISTERED, SUPERSEDED
 
 **Initial State**: UNREGISTERED
 
 **Transitions**:
-1. [ ] - `p1` - **FROM** UNREGISTERED **TO** REGISTERED **WHEN** the application supplies the schema and the port records it by its identifier - `inst-transition-register`
-2. [ ] - `p1` - **FROM** REGISTERED **TO** SUPERSEDED **WHEN** a schema with the same identifier is re-registered, replacing the prior record - `inst-transition-supersede`
+1. [x] - `p1` - **FROM** UNREGISTERED **TO** REGISTERED **WHEN** the application supplies the schema and the port records it by its identifier - `inst-transition-register`
+2. [x] - `p1` - **FROM** REGISTERED **TO** SUPERSEDED **WHEN** a schema with the same identifier is re-registered, replacing the prior record - `inst-transition-supersede`
 
 ## 5. Definitions of Done
 
@@ -155,7 +155,7 @@ Specific implementation tasks derived from flows and algorithms above.
 
 ### Port Contract Extraction into @gears-frontx/mfes
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-type-substrate-port-port-contract-extraction`
+- [x] `p1` - **ID**: `cpt-frontx-dod-type-substrate-port-port-contract-extraction`
 
 The system **MUST** define and ship the `TypeSystemPlugin` port contract in `@gears-frontx/mfes`, extracted from `packages/screensets/src/mfe/plugins/types.ts`, so the opaque type-substrate port is the sole published surface that MFE Runtime consumers depend on.
 
@@ -169,7 +169,7 @@ The system **MUST** define and ship the `TypeSystemPlugin` port contract in `@ge
 
 ### Opaque Boundary Enforcement
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-type-substrate-port-opaque-boundary`
+- [x] `p1` - **ID**: `cpt-frontx-dod-type-substrate-port-opaque-boundary`
 
 The system **MUST** ensure the MFE runtime holds the type-substrate port exclusively through the port interface, carrying no concrete type-definition format literals, no schema field access beyond the identifier, and no format-specific import or dependency — enforced as a CI-checkable invariant.
 
@@ -183,7 +183,7 @@ The system **MUST** ensure the MFE runtime holds the type-substrate port exclusi
 
 ### Validation and Hierarchy Delegation
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-type-substrate-port-validation-delegation`
+- [x] `p1` - **ID**: `cpt-frontx-dod-type-substrate-port-validation-delegation`
 
 The system **MUST** delegate every schema validation and type-hierarchy-resolution operation to the injected port and **MUST NOT** perform any local schema interpretation, format parsing, or direct schema field inspection inside the runtime.
 

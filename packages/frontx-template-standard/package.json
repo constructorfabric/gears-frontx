@@ -1,7 +1,7 @@
 {
-  "name": "@gears-frontx/mfes",
+  "name": "@gears-frontx/frontx-template-standard",
   "version": "0.3.0-alpha.0",
-  "description": "MFE runtime substrate for FrontX — registration, loading, extension-domain governance, mediation, and isolation",
+  "description": "Standard FrontX application template — target scaffold for non-Pillar-1 code relocation",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -35,9 +35,7 @@
   },
   "keywords": [
     "frontx",
-    "mfe",
-    "microfrontend",
-    "runtime",
+    "template",
     "typescript"
   ],
   "author": "Cyber Fabric",

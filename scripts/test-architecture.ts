@@ -37,6 +37,25 @@ function getMonorepoPostChecks(): ArchCheck[] {
 }
 
 /**
+ * FrontX ecosystem boundary checks (stubs — full enforcement added in Phase 10).
+ *
+ * Boundary invariants covered:
+ *   cpt-frontx-constraint-mfes-no-type-format-literals     (MFES-1)
+ *   cpt-frontx-constraint-mfes-no-solution-shared-properties (MFES-2)
+ *   cpt-frontx-constraint-mfes-no-layout-domain-values      (MFES-3)
+ *   cpt-frontx-constraint-mfes-no-type-format-dependency    (MFES-4)
+ *   cpt-frontx-constraint-mfes-opaque-schema-surface        (MFES-5)
+ *   cpt-frontx-constraint-gts-plugin-owns-infra-schemas     (GTS-PLUGIN-1)
+ *   cpt-frontx-constraint-gts-plugin-excludes-solution-schemas (GTS-PLUGIN-2)
+ *   cpt-frontx-constraint-api-no-solution-content           (API-1)
+ */
+function getEcosystemBoundaryChecks(): ArchCheck[] {
+  // TODO(Phase 10 — pillar1-verify): replace stubs with concrete depcruise/lint commands
+  // that enforce the MFES-1..5, GTS-PLUGIN-1..2, and API-1 invariants listed above.
+  return [];
+}
+
+/**
  * Run monorepo architecture validation
  */
 function validateMonorepoArchitecture(): ValidationResult {

@@ -60,9 +60,48 @@ export default [
     },
   },
 
+  // SDK foundation: @gears-frontx/mfes — the port-contract package.
+  // Allow unknown/object types (TypeSystemPlugin uses TSchema=unknown and entity:unknown).
+  // mfes is the lowest-level SDK package; it cannot import any other @gears-frontx package.
+  {
+    files: ['packages/mfes/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@gears-frontx/*'],
+              message:
+                'SDK VIOLATION: @gears-frontx/mfes is the SDK foundation and cannot import other @gears-frontx packages.',
+            },
+            {
+              group: ['react', 'react-dom', 'react/*'],
+              message:
+                'SDK VIOLATION: SDK packages cannot import React.',
+            },
+            {
+              group: ['@gears-frontx/*/src/**'],
+              message:
+                'MONOREPO VIOLATION: Import from package root, not internal paths.',
+            },
+            {
+              group: ['@/*'],
+              message:
+                'PACKAGE VIOLATION: Use relative imports within packages.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // SDK packages: Allow unknown/object types (required for generic event bus, store, etc.)
   // These packages use generics and need flexible typing for consumer code to augment
-  // Layer enforcement: SDK packages cannot import other @gears-frontx packages or React
+  // Layer enforcement: SDK packages cannot import other @gears-frontx packages or React,
+  //   EXCEPT @gears-frontx/mfes which is the extracted port-contract foundation.
   {
     files: [
       'packages/state/**/*.ts',
@@ -78,9 +117,9 @@ export default [
         {
           patterns: [
             {
-              group: ['@gears-frontx/*'],
+              group: ['@gears-frontx/!(mfes)', '@gears-frontx/!(mfes)/*'],
               message:
-                'SDK VIOLATION: SDK packages cannot import other @gears-frontx packages.',
+                'SDK VIOLATION: SDK packages cannot import other @gears-frontx packages (except @gears-frontx/mfes).',
             },
             {
               group: ['react', 'react-dom', 'react/*'],
@@ -263,6 +302,41 @@ export default [
           ],
         },
       ],
+    },
+  },
+
+  // ============ @gears-frontx/mfes BOUNDARY STUBS ============
+  // STUB: cpt-frontx-constraint-mfes-no-type-format-literals (MFES-1),
+  //       cpt-frontx-constraint-mfes-no-solution-shared-properties (MFES-2),
+  //       cpt-frontx-constraint-mfes-no-layout-domain-values (MFES-3),
+  //       cpt-frontx-constraint-mfes-no-type-format-dependency (MFES-4),
+  //       cpt-frontx-constraint-mfes-opaque-schema-surface (MFES-5)
+  // Full enforcement rules added in Phase 10 (pillar1-verify).
+  {
+    files: ['packages/mfes/**/*.ts', 'packages/mfes/**/*.tsx'],
+    rules: {
+      // Boundary enforcement for @gears-frontx/mfes will be added here in Phase 10.
+    },
+  },
+
+  // ============ @gears-frontx/gts-plugin BOUNDARY STUBS ============
+  // STUB: cpt-frontx-constraint-gts-plugin-owns-infra-schemas (GTS-PLUGIN-1),
+  //       cpt-frontx-constraint-gts-plugin-excludes-solution-schemas (GTS-PLUGIN-2)
+  // Full enforcement rules added in Phase 10 (pillar1-verify).
+  {
+    files: ['packages/gts-plugin/**/*.ts', 'packages/gts-plugin/**/*.tsx'],
+    rules: {
+      // Boundary enforcement for @gears-frontx/gts-plugin will be added here in Phase 10.
+    },
+  },
+
+  // ============ @gears-frontx/api BOUNDARY STUB ============
+  // STUB: cpt-frontx-constraint-api-no-solution-content (API-1)
+  // Full enforcement rules added in Phase 10 (pillar1-verify).
+  {
+    files: ['packages/api/**/*.ts', 'packages/api/**/*.tsx'],
+    rules: {
+      // Boundary enforcement for @gears-frontx/api will be added here in Phase 10.
     },
   },
 

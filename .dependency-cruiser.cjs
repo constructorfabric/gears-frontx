@@ -50,6 +50,69 @@ module.exports = {
       to: { path: '^src/' },
       comment: 'PACKAGE VIOLATION: Packages cannot import from app src/. Packages must be self-contained.'
     },
+
+    // ============ @gears-frontx/mfes BOUNDARY STUBS ============
+    // Full enforcement logic added in Phase 10 (pillar1-verify).
+    {
+      name: 'mfes-no-type-format-literals',
+      severity: 'warn',
+      from: {},
+      to: {},
+      comment: 'STUB: cpt-frontx-constraint-mfes-no-type-format-literals (MFES-1) — @gears-frontx/mfes must contain no type-system-format string literals. Phase 10 adds enforcement.'
+    },
+    {
+      name: 'mfes-no-solution-shared-properties',
+      severity: 'warn',
+      from: {},
+      to: {},
+      comment: 'STUB: cpt-frontx-constraint-mfes-no-solution-shared-properties (MFES-2) — @gears-frontx/mfes must define no solution-specific shared-property identifiers. Phase 10 adds enforcement.'
+    },
+    {
+      name: 'mfes-no-layout-domain-values',
+      severity: 'warn',
+      from: {},
+      to: {},
+      comment: 'STUB: cpt-frontx-constraint-mfes-no-layout-domain-values (MFES-3) — @gears-frontx/mfes must define no specific extension-domain (layout-domain) values. Phase 10 adds enforcement.'
+    },
+    {
+      name: 'mfes-no-type-format-dependency',
+      severity: 'warn',
+      from: {},
+      to: {},
+      comment: 'STUB: cpt-frontx-constraint-mfes-no-type-format-dependency (MFES-4) — @gears-frontx/mfes must declare no dependency on any concrete type-system-format implementation. Phase 10 adds enforcement.'
+    },
+    {
+      name: 'mfes-opaque-schema-surface',
+      severity: 'warn',
+      from: {},
+      to: {},
+      comment: 'STUB: cpt-frontx-constraint-mfes-opaque-schema-surface (MFES-5) — @gears-frontx/mfes schema surface must be opaque; format-specific shape lives in the type-system plugin. Phase 10 adds enforcement.'
+    },
+
+    // ============ @gears-frontx/gts-plugin BOUNDARY STUBS ============
+    {
+      name: 'gts-plugin-owns-infra-schemas',
+      severity: 'warn',
+      from: {},
+      to: {},
+      comment: 'STUB: cpt-frontx-constraint-gts-plugin-owns-infra-schemas (GTS-PLUGIN-1) — @gears-frontx/gts-plugin owns infrastructure schemas and default lifecycle instances. Phase 10 adds enforcement.'
+    },
+    {
+      name: 'gts-plugin-excludes-solution-schemas',
+      severity: 'warn',
+      from: {},
+      to: {},
+      comment: 'STUB: cpt-frontx-constraint-gts-plugin-excludes-solution-schemas (GTS-PLUGIN-2) — @gears-frontx/gts-plugin must own no solution-specific schemas. Phase 10 adds enforcement.'
+    },
+
+    // ============ @gears-frontx/api BOUNDARY STUB ============
+    {
+      name: 'api-no-solution-content',
+      severity: 'warn',
+      from: {},
+      to: {},
+      comment: 'STUB: cpt-frontx-constraint-api-no-solution-content (API-1) — @gears-frontx/api must contain no solution-specific content (no concrete endpoints, auth wiring, or app-specific plugins). Phase 10 adds enforcement.'
+    },
   ],
   options: {
     ...standaloneConfig.options,
