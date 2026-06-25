@@ -1,6 +1,3 @@
-// @cpt-dod:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1
-// @cpt-dod:cpt-frontx-dod-mfe-isolation-lazy-import-abi:p1
-// @cpt-flow:cpt-frontx-flow-mfe-isolation-build-v2:p2
 import * as esbuild from 'esbuild';
 import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -178,7 +175,6 @@ type EnrichedMfeJson = Omit<MfeJson, 'manifest' | 'entries'> & {
 };
 
 // ── Build-output manifest enricher ──────────────────────────────────────────
-// @cpt-algo:cpt-frontx-algo-mfe-isolation-enrich-mfe-json:p1
 
 class MfeJsonEnricher {
   private readonly packageRoot: string;
@@ -286,7 +282,6 @@ class MfeJsonEnricher {
 }
 
 // ── Standalone ESM builder ──────────────────────────────────────────────────
-// @cpt-algo:cpt-frontx-algo-mfe-isolation-build-standalone-esm:p1
 
 interface SharedDepPackageJson {
   dependencies?: Record<string, string>;
@@ -779,7 +774,6 @@ function transformLazyImports(
   return { code: transformer.apply(code), count: transformer.count() };
 }
 
-// @cpt-begin:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-1
 /**
  * Creates the frontx-mf-gts Vite plugin.
  *
@@ -793,7 +787,7 @@ function transformLazyImports(
  * @example
  * ```typescript
  * // vite.config.ts
- * import { frontxMfGts } from '@cyberfabric/screensets/build/mf-gts';
+ * import { frontxMfGts } from '@gears-frontx/frontx-template-standard/build/mf-gts';
  *
  * export default defineConfig({
  *   plugins: [react(), federation({ ... }), frontxMfGts()],
@@ -954,7 +948,6 @@ export function frontxMfGts(): Plugin {
         // Throws when neither a clean default-export nor the consolidation
         // pattern is detected — that's a true plugin bug worth surfacing
         // at build time rather than at runtime.
-        // @cpt-dod:cpt-frontx-dod-mfe-isolation-lifecycle-chunk-isolation:p1
         const hasDefaultExport = (src: string): boolean => {
           // `export default ...` — direct default.
           if (/export\s+default\s/u.test(src)) return true;
@@ -1082,6 +1075,5 @@ export function frontxMfGts(): Plugin {
       },
     };
 }
-// @cpt-end:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-1
 
 export { LazyImportTransformer, transformLazyImports };

@@ -26,11 +26,6 @@
       "types": "./dist/mfe/handler/index.d.ts",
       "import": "./dist/mfe/handler/index.js",
       "require": "./dist/mfe/handler/index.cjs"
-    },
-    "./build/mf-gts": {
-      "types": "./dist/build/mf-gts.d.ts",
-      "import": "./dist/build/mf-gts.js",
-      "require": "./dist/build/mf-gts.cjs"
     }
   },
   "files": [
@@ -68,17 +63,5 @@
     "@gears-frontx/gts-plugin": "0.3.0-alpha.0",
     "@gears-frontx/mfes": "0.3.0-alpha.0",
     "@globaltypesystem/gts-ts": "^0.3.0"
-  },
-  "peerDependencies": {
-    "esbuild": ">=0.20.0",
-    "vite": ">=5.0.0"
-  },
-  "peerDependenciesMeta": {
-    "esbuild": {
-      "optional": true
-    },
-    "vite": {
-      "optional": true
-    }
   }
 }

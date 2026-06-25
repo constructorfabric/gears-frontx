@@ -6,7 +6,6 @@ export default defineConfig({
     types: 'src/types.ts',
     'mfe/plugins/gts/index': 'src/mfe/plugins/gts/index.ts',
     'mfe/handler/index': 'src/mfe/handler/index.ts',
-    'build/mf-gts': 'src/build/mf-gts.ts',
   },
   format: ['cjs', 'esm'],
   dts: true,
@@ -16,6 +15,5 @@ export default defineConfig({
   external: [
     '@globaltypesystem/gts-ts',
     '@module-federation/runtime',
-    'esbuild',
   ],
 });

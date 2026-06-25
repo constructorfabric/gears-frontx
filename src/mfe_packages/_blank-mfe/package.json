@@ -38,6 +38,7 @@
     "@gears-frontx/auth": "file:../../../packages/auth",
     "@gears-frontx/state": "file:../../../packages/state",
     "@gears-frontx/screensets": "file:../../../packages/screensets",
+    "@gears-frontx/frontx-template-standard": "file:../../../packages/frontx-template-standard",
     "@gears-frontx/api": "file:../../../packages/api",
     "@gears-frontx/i18n": "file:../../../packages/i18n",
     "@reduxjs/toolkit": "^2.11.2",

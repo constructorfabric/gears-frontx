@@ -24,8 +24,13 @@
  * @packageDocumentation
  */
 // @cpt-dod:cpt-frontx-dod-mfe-isolation-blob-core:p1
+// @cpt-flow:cpt-frontx-flow-mfe-loading-on-demand-load:p1
+// @cpt-algo:cpt-frontx-algo-mfe-loading-manifest-discovery:p1
+// @cpt-state:cpt-frontx-state-mfe-loading-load-lifecycle:p1
+// @cpt-dod:cpt-frontx-dod-mfe-loading-manifest-field-discovery:p1
 
 import type { MfeEntryMF, MfManifest } from '../types';
+import { LazyLoaderRegistry } from '@gears-frontx/mfes';
 import {
   MfeHandler,
   ChildMfeBridge,
@@ -82,57 +87,6 @@ interface LoadBlobState {
    * URL is owned by the same load and shares its never-revoke invariant).
    */
   lazyLoaderUrl?: string;
-}
-
-/**
- * Host-side registry of per-load lazy resolvers. Loader-stub modules call
- * `globalThis.__FRONTX_LAZY__.resolve(loaderId, path)` to reach the resolver
- * that owns their load's blob URL chain — the loader stub itself can't
- * reach handler methods directly because it evaluates inside its own blob
- * URL realm.
- *
- * IDs are minted by {@link LazyLoaderRegistry.register}; lifetimes follow
- * the parent load (page lifetime per ADR-0004's never-revoke invariant).
- *
- * The registry is exposed once on `globalThis.__FRONTX_LAZY__` so every blob
- * URL realm in the host can reach it. The exposure is narrow: a single
- * read-only `resolve(id, path)` method — no leakage of handler internals.
- */
-type LazyResolver = (path: string) => Promise<string>;
-
-class LazyLoaderRegistry {
-  private static instance: LazyLoaderRegistry | undefined;
-  private readonly resolvers = new Map<string, LazyResolver>();
-  private nextId = 0;
-
-  static ensureExposed(): LazyLoaderRegistry {
-    if (this.instance) return this.instance;
-    const inst = new LazyLoaderRegistry();
-    this.instance = inst;
-    const host = globalThis as unknown as {
-      __FRONTX_LAZY__?: { resolve(id: string, path: string): Promise<string> };
-    };
-    host.__FRONTX_LAZY__ = {
-      resolve: (id, path) => inst.resolve(id, path),
-    };
-    return inst;
-  }
-
-  register(resolver: LazyResolver): string {
-    const id = `lz-${++this.nextId}`;
-    this.resolvers.set(id, resolver);
-    return id;
-  }
-
-  private resolve(id: string, path: string): Promise<string> {
-    const resolver = this.resolvers.get(id);
-    if (!resolver) {
-      return Promise.reject(
-        new Error(`__frontx_lazy: no resolver registered for loader id '${id}'`)
-      );
-    }
-    return resolver(path);
-  }
 }
 
 /**
@@ -332,15 +286,19 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * Each call creates a fully isolated module evaluation chain via blob URLs.
    */
   private async loadInternal(entry: MfeEntryMF): Promise<MfeEntryLifecycle<ChildMfeBridge>> {
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-register-entry
     const manifest = await this.resolveManifest(entry.manifest);
     this.manifestCache.cacheManifest(manifest);
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-register-entry
 
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-trigger-load
     const { moduleFactory, stylesheetPaths, baseUrl } = await this.loadExposedModuleIsolated(
       manifest,
       entry.exposedModule,
       entry.exposeAssets,
       entry.id
     );
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-trigger-load
 
     const loadedModule = moduleFactory();
 
@@ -351,11 +309,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       );
     }
 
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-return-lifecycle
     return this.wrapLifecycleWithStylesheets(
       loadedModule,
       stylesheetPaths,
       baseUrl
     );
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-return-lifecycle
   }
 
   /**
@@ -384,15 +344,20 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     stylesheetPaths: string[];
     baseUrl: string;
   }> {
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-public-path
     // publicPath is the authoritative base URL for all chunks in this MFE.
     const baseUrl = manifest.metaData.publicPath;
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-public-path
 
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
     // Build shared dep blob URLs first (leaves first, dependency order).
     // Each dep's standalone ESM may import other shared deps as bare specifiers;
     // those are rewritten to already-resolved blob URLs before creating the blob.
     const sharedDepBlobUrls = await this.buildSharedDepBlobUrls(manifest);
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
 
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-parse-manifest-expose-metadata:p1:inst-1
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-expose-chunk
     // Derive expose chunk filename directly from entry metadata — no regex needed.
     const exposeChunkFilename = exposeAssets.js.sync[0];
     if (!exposeChunkFilename) {
@@ -401,6 +366,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         entryId
       );
     }
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-expose-chunk
 
     const loadState: LoadBlobState = {
       blobUrlMap: new Map(),
@@ -411,11 +377,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       entryChunkFilename: exposeChunkFilename,
     };
 
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-css
     // Collect CSS paths from exposeAssets (sync injected at mount; async lazy).
     const stylesheetPaths = [
       ...exposeAssets.css.sync,
       ...exposeAssets.css.async,
     ];
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-css
     // @cpt-end:cpt-frontx-algo-mfe-isolation-parse-manifest-expose-metadata:p1:inst-1
 
     // Build blob URL chain for the expose chunk and all its static deps.
@@ -599,14 +567,19 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     manifest: MfManifest
   ): Promise<Map<string, string>> {
     const sources = new Map<string, string>();
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-for-each-shared
     for (const dep of manifest.shared) {
       const cacheKey = `${dep.name}@${dep.version}`;
       let textPromise = this.sharedDepTextCache.get(cacheKey);
       if (textPromise === undefined) {
+        // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-resolve-chunk-path
         const absoluteUrl = dep.chunkPath.startsWith('http')
           ? dep.chunkPath
           : manifest.metaData.publicPath + dep.chunkPath;
+        // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-resolve-chunk-path
+        // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
         textPromise = this.fetchSourceText(absoluteUrl);
+        // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
         // Evict on rejection so a transient failure doesn't poison every
         // future load that shares this name@version. Identity check prevents
         // clobbering a later retry promise under the same key.
@@ -619,6 +592,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       }
       sources.set(dep.name, await textPromise);
     }
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-for-each-shared
     return sources;
   }
 
@@ -670,9 +644,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     source: string,
     blobUrls: Map<string, string>
   ): string {
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-rewrite-specifiers
     const rewritten = this.rewriteBareSpecifiers(source, blobUrls);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-rewrite-specifiers
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-shared-blob
     const blob = new Blob([rewritten], { type: 'text/javascript' });
     return URL.createObjectURL(blob);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-shared-blob
   }
 
   // @cpt-algo:cpt-frontx-algo-mfe-isolation-rewrite-bare-specifiers:p1
@@ -789,9 +767,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * revoked — per ADR-0004 + ADR-0022 the stub joins the parent load's
    * blob URL chain and shares its page-lifetime invariant.
    */
+  // @cpt-algo:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1
   private ensureLazyLoaderUrl(loadState: LoadBlobState): string {
     if (loadState.lazyLoaderUrl !== undefined) return loadState.lazyLoaderUrl;
 
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-mint-stub
     const registry = LazyLoaderRegistry.ensureExposed();
     const loaderId = registry.register((path) => this.resolveLazyChunk(path, loadState));
 
@@ -811,6 +791,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     const url = URL.createObjectURL(blob);
     loadState.lazyLoaderUrl = url;
     return url;
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-mint-stub
   }
 
   /**
@@ -833,6 +814,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     relPath: string,
     loadState: LoadBlobState
   ): Promise<string> {
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-relative-path
     // Compiled-chunk dynamic imports are sibling-relative: Rollup emits
     // paths like `./LayoutElements-hash.js` against the importing chunk's
     // directory. The entry chunk lives in `loadState.entryChunkFilename`
@@ -844,9 +826,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       loadState.entryChunkFilename,
       relPath
     );
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-relative-path
 
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-fetch-lazy-chunk
     await this.createBlobUrlChain(loadState, filename);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-fetch-lazy-chunk
 
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-lazy-blob
     const blobUrl = loadState.blobUrlMap.get(filename);
     if (blobUrl === undefined) {
       throw new MfeLoadError(
@@ -855,6 +841,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       );
     }
     return blobUrl;
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-lazy-blob
   }
 
   /**

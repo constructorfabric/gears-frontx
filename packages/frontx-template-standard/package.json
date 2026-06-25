@@ -11,6 +11,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./build/mf-gts": {
+      "types": "./dist/build/mf-gts.d.ts",
+      "import": "./dist/build/mf-gts.js",
+      "require": "./dist/build/mf-gts.cjs"
     }
   },
   "files": [
@@ -25,7 +30,17 @@
     "test:unit:watch": "vitest --watch"
   },
   "peerDependencies": {
-    "@gears-frontx/screensets": "*"
+    "@gears-frontx/screensets": "*",
+    "esbuild": ">=0.20.0",
+    "vite": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "esbuild": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@vitest/coverage-v8": "4.1.4",

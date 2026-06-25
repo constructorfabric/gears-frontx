@@ -1,3 +1,17 @@
+// Manifest types (Phase 5)
+export type {
+  MfManifest,
+  MfManifestAssets,
+  MfManifestShared,
+  MfManifestMetaData,
+  MfManifestRemoteEntry,
+  MfManifestBuildInfo,
+} from './manifest/mf-manifest';
+
+// Lazy-import ABI runtime registry (Phase 5)
+export { LazyLoaderRegistry } from './lazy-loader/lazy-loader-registry';
+export type { LazyResolver } from './lazy-loader/lazy-loader-registry';
+
 // Type substrate port (Phase 2)
 export type {
   ValidationErrorItem,
