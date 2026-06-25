@@ -15,11 +15,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { TypeSystemPlugin, ValidationResult, JSONSchema } from '../../../src/mfe/plugins/types';
 import type { ActionsChain, ExtensionDomain, MfeEntry } from '../../../src/mfe/types';
-import { ActionHandler } from '../../../src/mfe/mediator';
 import {
+  ActionHandler,
   DefaultActionsChainsMediator,
   NoHandlerForActionTargetError,
-} from '../../../src/mfe/mediator/actions-chains-mediator';
+} from '@gears-frontx/mfes';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import {
   FRONTX_ACTION_LOAD_EXT,

@@ -63,3 +63,12 @@ export { InvalidatableDomainContext } from './runtime/DomainContext';
 // Coordination types (Phase 3)
 export { RuntimeCoordinator } from './runtime/coordination/types';
 export type { RuntimeConnection } from './runtime/coordination/types';
+
+// Mediator concrete implementation (Phase 6)
+export { DefaultActionsChainsMediator, NoHandlerForActionTargetError } from './mediator/actions-chains-mediator';
+
+// Bridge concrete implementations (Phase 6)
+export { ChildMfeBridgeImpl, ParentMfeBridgeImpl, ChildDomainForwardingHandler } from './bridge';
+
+// Bridge error classes (Phase 6)
+export { NoActionsChainHandlerError, BridgeDisposedError } from './bridge/errors';

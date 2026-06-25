@@ -5,12 +5,15 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ChildMfeBridgeImpl } from '../../../src/mfe/bridge/ChildMfeBridge';
-import { ParentMfeBridgeImpl } from '../../../src/mfe/bridge/ParentMfeBridge';
+import {
+  ChildMfeBridgeImpl,
+  ParentMfeBridgeImpl,
+  ActionHandler,
+  NoActionsChainHandlerError,
+  BridgeDisposedError,
+  DefaultActionsChainsMediator,
+} from '@gears-frontx/mfes';
 import type { ActionsChain, SharedProperty, ExtensionDomain } from '../../../src/mfe/types';
-import { ActionHandler } from '../../../src/mfe/mediator/types';
-import { NoActionsChainHandlerError, BridgeDisposedError } from '../../../src/mfe/errors';
-import { DefaultActionsChainsMediator } from '../../../src/mfe/mediator/actions-chains-mediator';
 import { DefaultMfeRegistry } from '../../../src/mfe/runtime/DefaultMfeRegistry';
 import type { TypeSystemPlugin, ValidationResult, JSONSchema } from '../../../src/mfe/plugins/types';
 import { MockDomainFactory } from '../../../__test-utils__';

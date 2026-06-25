@@ -53,6 +53,7 @@ import { OperationSerializer } from './operation-serializer';
 import { RuntimeBridgeFactory } from './runtime-bridge-factory';
 import { DefaultRuntimeBridgeFactory } from './default-runtime-bridge-factory';
 import { LoadExtHandler } from './extension-lifecycle-action-handler';
+import { INFRASTRUCTURE_LIFECYCLE_ACTIONS } from '../validation/contract';
 import { FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT } from '../constants';
 import { EntryTypeNotHandledError } from '../errors';
 import { extractGtsPackage } from '../gts/extract-package';
@@ -158,6 +159,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
       getDomainState: (domainId) => this.extensionManager.getDomainState(domainId),
       getExtensionEntry: (extensionId) =>
         this.extensionManager.getExtensionState(extensionId)?.entry,
+      infrastructureActionTypes: INFRASTRUCTURE_LIFECYCLE_ACTIONS,
     });
 
     this.extensionManager = new DefaultExtensionManager({

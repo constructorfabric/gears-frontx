@@ -6,10 +6,10 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ChildMfeBridgeImpl } from '../../../src/mfe/bridge/ChildMfeBridge';
-import { ParentMfeBridgeImpl } from '../../../src/mfe/bridge/ParentMfeBridge';
-import { ChildDomainForwardingHandler } from '../../../src/mfe/bridge/ChildDomainForwardingHandler';
-import { ActionHandler } from '../../../src/mfe/mediator/types';
+import { ChildMfeBridgeImpl } from '../../src/bridge/ChildMfeBridge';
+import { ParentMfeBridgeImpl } from '../../src/bridge/ParentMfeBridge';
+import { ChildDomainForwardingHandler } from '../../src/bridge/ChildDomainForwardingHandler';
+import { ActionHandler } from '../../src/mediator/types';
 
 describe('Cross-Runtime Action Chain Routing', () => {
   let childBridge: ChildMfeBridgeImpl;

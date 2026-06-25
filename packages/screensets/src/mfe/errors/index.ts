@@ -136,20 +136,8 @@ export class UnsupportedLifecycleStageError extends MfeError {
   }
 }
 
-/**
- * Error thrown when no actions chain handler is registered on a child bridge
- */
-export class NoActionsChainHandlerError extends MfeError {
-  constructor(
-    public readonly instanceId: string
-  ) {
-    super(
-      `No actions chain handler registered for instance '${instanceId}'. Child MFEs must call bridge.onActionsChain() to receive parent actions chains.`,
-      'NO_ACTIONS_CHAIN_HANDLER'
-    );
-    this.name = 'NoActionsChainHandlerError';
-  }
-}
+// Re-exported from @gears-frontx/mfes (Phase 6 extraction)
+export { NoActionsChainHandlerError } from '@gears-frontx/mfes';
 
 /**
  * Error thrown when an extension's entry type is not handled by any registered handler
@@ -171,17 +159,5 @@ export class EntryTypeNotHandledError extends MfeError {
   }
 }
 
-/**
- * Error thrown when attempting to use a disposed bridge
- */
-export class BridgeDisposedError extends MfeError {
-  constructor(
-    public readonly instanceId: string
-  ) {
-    super(
-      `Bridge has been disposed for instance '${instanceId}'`,
-      'BRIDGE_DISPOSED'
-    );
-    this.name = 'BridgeDisposedError';
-  }
-}
+// Re-exported from @gears-frontx/mfes (Phase 6 extraction)
+export { BridgeDisposedError } from '@gears-frontx/mfes';

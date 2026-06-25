@@ -216,10 +216,10 @@ The system **MUST** provide a child bridge exposing exactly `executeActionsChain
 
 ## 6. Acceptance Criteria
 
-- [ ] The actions-chains mediator resolves a handler by the `(targetId, actionTypeId)` pair and falls back to the per-target catch-all handler when no specific pair matches
-- [ ] Chain execution follows the `next` continuation on success and the `fallback` continuation on failure, both within per-action and whole-chain timeout bounds
-- [ ] In-flight action tracking prevents unregistration of a target's handlers while actions for that target are pending
-- [ ] Action admission is delegated to the injected type-system provider; no type-format literals appear in the mediator
-- [ ] The child bridge surface is exactly `executeActionsChain`, `subscribeToProperty`, `getProperty`, and `registerActionHandler`; the parent bridge surface is exactly `instanceId` and `dispose()`
-- [ ] The property channel carries no solution-specific shared-property identifiers, satisfying `cpt-frontx-constraint-mfes-no-solution-shared-properties` (MFES-2)
-- [ ] Child domain forwarding uses the catch-all handler tier in the parent mediator, forwarding actions through the bridge transport without the parent enumerating the child's action vocabulary
+- [x] The actions-chains mediator resolves a handler by the `(targetId, actionTypeId)` pair and falls back to the per-target catch-all handler when no specific pair matches
+- [x] Chain execution follows the `next` continuation on success and the `fallback` continuation on failure, both within per-action and whole-chain timeout bounds
+- [x] In-flight action tracking prevents unregistration of a target's handlers while actions for that target are pending
+- [x] Action admission is delegated to the injected type-system provider; no type-format literals appear in the mediator
+- [x] The child bridge surface is exactly `executeActionsChain`, `subscribeToProperty`, `getProperty`, and `registerActionHandler`; the parent bridge surface is exactly `instanceId` and `dispose()`
+- [x] The property channel carries no solution-specific shared-property identifiers, satisfying `cpt-frontx-constraint-mfes-no-solution-shared-properties` (MFES-2)
+- [x] Child domain forwarding uses the catch-all handler tier in the parent mediator, forwarding actions through the bridge transport without the parent enumerating the child's action vocabulary
