@@ -7,8 +7,8 @@
  * @packageDocumentation
  */
 
-import type { JSONSchema } from '../plugins/types';
-import type { LifecycleStage } from '../types';
+import type { LifecycleStage } from '@gears-frontx/mfes';
+import type { JSONSchema } from './types';
 
 // Import all schema JSON files
 import entrySchema from './frontx.mfes/schemas/mfe/entry.v1.json';

@@ -24,6 +24,9 @@
     "test:unit": "vitest --run --passWithNoTests=false",
     "test:unit:watch": "vitest --watch"
   },
+  "peerDependencies": {
+    "@gears-frontx/screensets": "*"
+  },
   "devDependencies": {
     "@vitest/coverage-v8": "4.1.4",
     "tsup": "^8.0.0",

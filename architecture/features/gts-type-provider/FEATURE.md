@@ -60,7 +60,7 @@ User-facing interactions that start with an actor (human or external system) and
 
 ### Validate MFE Extension Type at Registration
 
-- [ ] `p1` - **ID**: `cpt-frontx-flow-gts-type-provider-validate-extension-type`
+- [x] `p1` - **ID**: `cpt-frontx-flow-gts-type-provider-validate-extension-type`
 
 **Actor**: `cpt-frontx-actor-project-developer`
 
@@ -73,26 +73,26 @@ User-facing interactions that start with an actor (human or external system) and
 - No schema is registered for the declared type identifier — runtime rejects the extension with an unknown-type error.
 
 **Steps**:
-1. [ ] - `p1` - Actor supplies an extension definition to the MFE Runtime with a declared type identifier. - `inst-vt-01`
-2. [ ] - `p1` - Runtime delegates type-derivation resolution to the provider: invokes `isTypeOf` with the extension's declared type identifier and the expected infrastructure base type. - `inst-vt-02`
-3. [ ] - `p1` - Provider applies the GTS prefix-matching rule to determine whether the declared type derives from the base type. - `inst-vt-03`
-4. [ ] - `p1` - **IF** the declared type does not derive from the expected base type: - `inst-vt-04`
-   1. [ ] - `p1` - Provider returns a negative derivation result. - `inst-vt-04a`
-   2. [ ] - `p1` - Runtime rejects the extension with a type-mismatch error. - `inst-vt-04b`
-   3. [ ] - `p1` - **RETURN** rejected extension registration. - `inst-vt-04c`
-5. [ ] - `p1` - Runtime delegates instance validation to the provider: invokes `validateInstance` for the extension's instance identifier. - `inst-vt-05`
-6. [ ] - `p1` - **IF** no schema is registered for the instance's type: - `inst-vt-06`
-   1. [ ] - `p1` - Provider returns a validation failure indicating an unknown type. - `inst-vt-06a`
-   2. [ ] - `p1` - Runtime rejects the extension. - `inst-vt-06b`
-   3. [ ] - `p1` - **RETURN** rejected extension registration. - `inst-vt-06c`
-7. [ ] - `p1` - Provider validates the instance data against the resolved schema. - `inst-vt-07`
-8. [ ] - `p1` - **IF** validation fails: - `inst-vt-08`
-   1. [ ] - `p1` - Provider returns a failure result with error details. - `inst-vt-08a`
-   2. [ ] - `p1` - Runtime rejects the extension with the reported validation errors. - `inst-vt-08b`
-   3. [ ] - `p1` - **RETURN** rejected extension registration. - `inst-vt-08c`
-9. [ ] - `p1` - Provider returns a validation success result. - `inst-vt-09`
-10. [ ] - `p1` - Runtime proceeds to admit the extension. - `inst-vt-10`
-11. [ ] - `p1` - **RETURN** successful extension registration. - `inst-vt-11`
+1. [x] - `p1` - Actor supplies an extension definition to the MFE Runtime with a declared type identifier. - `inst-vt-01`
+2. [x] - `p1` - Runtime delegates type-derivation resolution to the provider: invokes `isTypeOf` with the extension's declared type identifier and the expected infrastructure base type. - `inst-vt-02`
+3. [x] - `p1` - Provider applies the GTS prefix-matching rule to determine whether the declared type derives from the base type. - `inst-vt-03`
+4. [x] - `p1` - **IF** the declared type does not derive from the expected base type: - `inst-vt-04`
+   1. [x] - `p1` - Provider returns a negative derivation result. - `inst-vt-04a`
+   2. [x] - `p1` - Runtime rejects the extension with a type-mismatch error. - `inst-vt-04b`
+   3. [x] - `p1` - **RETURN** rejected extension registration. - `inst-vt-04c`
+5. [x] - `p1` - Runtime delegates instance validation to the provider: invokes `validateInstance` for the extension's instance identifier. - `inst-vt-05`
+6. [x] - `p1` - **IF** no schema is registered for the instance's type: - `inst-vt-06`
+   1. [x] - `p1` - Provider returns a validation failure indicating an unknown type. - `inst-vt-06a`
+   2. [x] - `p1` - Runtime rejects the extension. - `inst-vt-06b`
+   3. [x] - `p1` - **RETURN** rejected extension registration. - `inst-vt-06c`
+7. [x] - `p1` - Provider validates the instance data against the resolved schema. - `inst-vt-07`
+8. [x] - `p1` - **IF** validation fails: - `inst-vt-08`
+   1. [x] - `p1` - Provider returns a failure result with error details. - `inst-vt-08a`
+   2. [x] - `p1` - Runtime rejects the extension with the reported validation errors. - `inst-vt-08b`
+   3. [x] - `p1` - **RETURN** rejected extension registration. - `inst-vt-08c`
+9. [x] - `p1` - Provider returns a validation success result. - `inst-vt-09`
+10. [x] - `p1` - Runtime proceeds to admit the extension. - `inst-vt-10`
+11. [x] - `p1` - **RETURN** successful extension registration. - `inst-vt-11`
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -100,74 +100,74 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### Infrastructure Schema and Lifecycle Instance Registration
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-gts-type-provider-infra-registration`
+- [x] `p1` - **ID**: `cpt-frontx-algo-gts-type-provider-infra-registration`
 
 **Input**: None — executed at construction of the provider.
 
 **Output**: Provider internal store populated with infrastructure schemas and validated default lifecycle stage instances; provider transitions to READY state.
 
 **Steps**:
-1. [ ] - `p1` - Create the internal GTS store for schema and instance registration. - `inst-ir-01`
-2. [ ] - `p1` - Load the full set of ecosystem infrastructure schema definitions from the declared schema sources (13 schemas: 8 core, 2 MF-specific, 3 extension action schemas). - `inst-ir-02`
-3. [ ] - `p1` - **FOR EACH** infrastructure schema in the loaded set: - `inst-ir-03`
-   1. [ ] - `p1` - Wrap the schema as a typed entity and register it in the internal GTS store. - `inst-ir-03a`
-4. [ ] - `p1` - Load the set of default lifecycle stage instances from the declared instance sources (4 instances: init, activated, deactivated, destroyed). - `inst-ir-04`
-5. [ ] - `p1` - **FOR EACH** lifecycle stage instance in the loaded set: - `inst-ir-05`
-   1. [ ] - `p1` - Wrap the instance as a typed entity and register it in the internal GTS store. - `inst-ir-05a`
-6. [ ] - `p1` - **FOR EACH** registered lifecycle stage instance: - `inst-ir-06`
-   1. [ ] - `p1` - Request the GTS store to validate the instance against its corresponding registered schema. - `inst-ir-06a`
-   2. [ ] - `p1` - **IF** validation fails: - `inst-ir-06b`
-      1. [ ] - `p1` - Abort construction and raise an error that identifies the failing instance and the reported failure reason. - `inst-ir-06b1`
-7. [ ] - `p1` - **RETURN** provider ready for use with all infrastructure schemas and lifecycle stage instances registered and validated. - `inst-ir-07`
+1. [x] - `p1` - Create the internal GTS store for schema and instance registration. - `inst-ir-01`
+2. [x] - `p1` - Load the full set of ecosystem infrastructure schema definitions from the declared schema sources (13 schemas: 8 core, 2 MF-specific, 3 extension action schemas). - `inst-ir-02`
+3. [x] - `p1` - **FOR EACH** infrastructure schema in the loaded set: - `inst-ir-03`
+   1. [x] - `p1` - Wrap the schema as a typed entity and register it in the internal GTS store. - `inst-ir-03a`
+4. [x] - `p1` - Load the set of default lifecycle stage instances from the declared instance sources (4 instances: init, activated, deactivated, destroyed). - `inst-ir-04`
+5. [x] - `p1` - **FOR EACH** lifecycle stage instance in the loaded set: - `inst-ir-05`
+   1. [x] - `p1` - Wrap the instance as a typed entity and register it in the internal GTS store. - `inst-ir-05a`
+6. [x] - `p1` - **FOR EACH** registered lifecycle stage instance: - `inst-ir-06`
+   1. [x] - `p1` - Request the GTS store to validate the instance against its corresponding registered schema. - `inst-ir-06a`
+   2. [x] - `p1` - **IF** validation fails: - `inst-ir-06b`
+      1. [x] - `p1` - Abort construction and raise an error that identifies the failing instance and the reported failure reason. - `inst-ir-06b1`
+7. [x] - `p1` - **RETURN** provider ready for use with all infrastructure schemas and lifecycle stage instances registered and validated. - `inst-ir-07`
 
 ### Schema Validation
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-gts-type-provider-schema-validation`
+- [x] `p1` - **ID**: `cpt-frontx-algo-gts-type-provider-schema-validation`
 
 **Input**: `instanceId` — the identifier of a previously registered GTS instance.
 
 **Output**: Validation result — success with an empty error list, or failure with a non-empty error list describing the violation.
 
 **Steps**:
-1. [ ] - `p1` - Request the GTS store to validate the registered instance identified by `instanceId` against its schema. - `inst-sv-01`
-2. [ ] - `p1` - **IF** the GTS store reports a successful and valid result: - `inst-sv-02`
-   1. [ ] - `p1` - **RETURN** a success result with an empty error list. - `inst-sv-02a`
-3. [ ] - `p1` - Compose a failure result containing the GTS store's reported error message. - `inst-sv-03`
-4. [ ] - `p1` - **RETURN** the failure result. - `inst-sv-04`
+1. [x] - `p1` - Request the GTS store to validate the registered instance identified by `instanceId` against its schema. - `inst-sv-01`
+2. [x] - `p1` - **IF** the GTS store reports a successful and valid result: - `inst-sv-02`
+   1. [x] - `p1` - **RETURN** a success result with an empty error list. - `inst-sv-02a`
+3. [x] - `p1` - Compose a failure result containing the GTS store's reported error message. - `inst-sv-03`
+4. [x] - `p1` - **RETURN** the failure result. - `inst-sv-04`
 
 ### Type-Of Hierarchy Resolution
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-gts-type-provider-typof-resolution`
+- [x] `p1` - **ID**: `cpt-frontx-algo-gts-type-provider-typof-resolution`
 
 **Input**: `typeId` — the type identifier to test; `baseTypeId` — the base type to test derivation against.
 
 **Output**: Boolean — true when `typeId` is identical to or derives from `baseTypeId` in the GTS type hierarchy; false otherwise.
 
 **Steps**:
-1. [ ] - `p1` - Apply the GTS prefix-matching derivation rule: in GTS a derived type identifier always starts with its base type identifier. - `inst-tr-01`
-2. [ ] - `p1` - **IF** `typeId` equals `baseTypeId` or `typeId` starts with `baseTypeId`: - `inst-tr-02`
-   1. [ ] - `p1` - **RETURN** true — the type is the same as or derives from the base type. - `inst-tr-02a`
-3. [ ] - `p1` - **RETURN** false — no derivation relationship exists. - `inst-tr-03`
+1. [x] - `p1` - Apply the GTS prefix-matching derivation rule: in GTS a derived type identifier always starts with its base type identifier. - `inst-tr-01`
+2. [x] - `p1` - **IF** `typeId` equals `baseTypeId` or `typeId` starts with `baseTypeId`: - `inst-tr-02`
+   1. [x] - `p1` - **RETURN** true — the type is the same as or derives from the base type. - `inst-tr-02a`
+3. [x] - `p1` - **RETURN** false — no derivation relationship exists. - `inst-tr-03`
 
 ## 4. States (CDSL)
 
 ### Provider Initialization State Machine
 
-- [ ] `p1` - **ID**: `cpt-frontx-state-gts-type-provider-init`
+- [x] `p1` - **ID**: `cpt-frontx-state-gts-type-provider-init`
 
 **States**: UNINITIALIZED, INFRA_SCHEMAS_REGISTERED, READY
 
 **Initial State**: UNINITIALIZED
 
 **Transitions**:
-1. [ ] - `p1` - **FROM** UNINITIALIZED **TO** INFRA_SCHEMAS_REGISTERED **WHEN** all ecosystem infrastructure schemas and default lifecycle stage instances have been registered in the internal GTS store. - `inst-pi-01`
-2. [ ] - `p1` - **FROM** INFRA_SCHEMAS_REGISTERED **TO** READY **WHEN** every registered lifecycle stage instance has been validated against its schema without error. - `inst-pi-02`
+1. [x] - `p1` - **FROM** UNINITIALIZED **TO** INFRA_SCHEMAS_REGISTERED **WHEN** all ecosystem infrastructure schemas and default lifecycle stage instances have been registered in the internal GTS store. - `inst-pi-01`
+2. [x] - `p1` - **FROM** INFRA_SCHEMAS_REGISTERED **TO** READY **WHEN** every registered lifecycle stage instance has been validated against its schema without error. - `inst-pi-02`
 
 ## 5. Definitions of Done
 
 ### Infrastructure Schema Ownership
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-gts-type-provider-infra-schema-ownership`
+- [x] `p1` - **ID**: `cpt-frontx-dod-gts-type-provider-infra-schema-ownership`
 
 The provider **MUST** register all ecosystem infrastructure schemas and default lifecycle stage instances in the internal GTS store at construction time, and **MUST** validate every lifecycle stage instance against its registered schema before the provider is considered ready. Construction **MUST** fail if any lifecycle stage instance does not satisfy its schema. No solution-specific schemas are registered by the provider at construction.
 
@@ -184,7 +184,7 @@ The provider **MUST** register all ecosystem infrastructure schemas and default 
 
 ### Type Validation and Hierarchy Resolution
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-gts-type-provider-type-validation`
+- [x] `p1` - **ID**: `cpt-frontx-dod-gts-type-provider-type-validation`
 
 The provider **MUST** validate registered instances against their schemas and resolve type hierarchy by GTS prefix-matching when invoked through the type-substrate port, returning a structured validation result for every call.
 
@@ -202,9 +202,9 @@ The provider **MUST** validate registered instances against their schemas and re
 
 ## 6. Acceptance Criteria
 
-- [ ] The GTS provider registers all ecosystem infrastructure schemas and default lifecycle stage instances at construction, making it ready to use immediately after instantiation.
-- [ ] Lifecycle stage instances that fail validation during construction cause the provider to abort construction with a descriptive error.
-- [ ] `isTypeOf` returns true when the declared type identifier equals or starts with the base type identifier, and false otherwise.
-- [ ] `validateInstance` returns a success result for a registered valid instance and a failure result with error details for an invalid or unrecognized instance.
-- [ ] The provider owns no solution-specific schemas at construction; application schemas registered at runtime through the port do not affect the infrastructure schema set.
-- [ ] The provider is injectable as the type-substrate port implementation in the MFE Registry factory without requiring any consumer-authored type configuration.
+- [x] The GTS provider registers all ecosystem infrastructure schemas and default lifecycle stage instances at construction, making it ready to use immediately after instantiation.
+- [x] Lifecycle stage instances that fail validation during construction cause the provider to abort construction with a descriptive error.
+- [x] `isTypeOf` returns true when the declared type identifier equals or starts with the base type identifier, and false otherwise.
+- [x] `validateInstance` returns a success result for a registered valid instance and a failure result with error details for an invalid or unrecognized instance.
+- [x] The provider owns no solution-specific schemas at construction; application schemas registered at runtime through the port do not affect the infrastructure schema set.
+- [x] The provider is injectable as the type-substrate port implementation in the MFE Registry factory without requiring any consumer-authored type configuration.
