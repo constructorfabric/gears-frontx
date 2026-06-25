@@ -286,7 +286,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 ### 2.6 [Extension-Domain Governance: Mount Strategies, Cardinality & Contract Matching](features/extension-domain-governance/) - HIGH
 
-- [ ] `p1` - **ID**: `cpt-frontx-feature-extension-domain-governance`
+- [x] `p1` - **ID**: `cpt-frontx-feature-extension-domain-governance`
 
 - **Purpose**: Govern extension-domain occupancy through composable named mount strategies (concurrent/optional/exclusive) and a cardinality matrix, admitting extensions only by subset-rule contract matching with the scoped infrastructure-lifecycle-action exemption — realizing default-deny admission.
 
@@ -305,17 +305,17 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 - **Requirements Covered**:
 
-  - [ ] `p1` - `cpt-frontx-fr-mfe-multi-occupant-domain`
-  - [ ] `p1` - `cpt-frontx-fr-mfe-type-validation`
-  - [ ] `p1` - `cpt-frontx-nfr-security`
+  - [x] `p1` - `cpt-frontx-fr-mfe-multi-occupant-domain`
+  - [x] `p1` - `cpt-frontx-fr-mfe-type-validation`
+  - [x] `p1` - `cpt-frontx-nfr-security`
 
 - **Design Principles Covered**:
 
-  - [ ] `p1` - `cpt-frontx-principle-default-deny-admission`
+  - [x] `p1` - `cpt-frontx-principle-default-deny-admission`
 
 - **Design Constraints Covered**:
 
-  - [ ] `p1` - `cpt-frontx-constraint-mfes-no-layout-domain-values`
+  - [x] `p1` - `cpt-frontx-constraint-mfes-no-layout-domain-values`
 
 - **Domain Model Entities**:
   - Extension

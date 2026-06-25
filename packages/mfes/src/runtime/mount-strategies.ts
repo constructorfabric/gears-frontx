@@ -16,6 +16,8 @@
 // @cpt-algo:cpt-frontx-algo-mfe-registry-optional-mount-strategy:p1
 // @cpt-algo:cpt-frontx-algo-mfe-registry-exclusive-mount-strategy:p1
 // @cpt-dod:cpt-frontx-dod-mfe-registry-mount-contracts:p1
+// @cpt-algo:cpt-frontx-algo-extension-domain-governance-mount-execution:p2
+// @cpt-dod:cpt-frontx-dod-extension-domain-governance-default-deny:p1
 
 import { MountStrategy, type ActionPayload, type ContainerHooks } from './mount-strategy';
 import type { ExtensionMounter } from './ExtensionMounter';
@@ -39,8 +41,12 @@ export class ConcurrentMountStrategy extends MountStrategy {
   }
 
   // @cpt-begin:cpt-frontx-algo-mfe-registry-concurrent-mount-strategy:p1:inst-mount
+  // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-match-strategy
+  // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-concurrent
   async mount(payload: ActionPayload): Promise<void> {
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-get-mounted
     const extensionId = payload.subject;
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-get-mounted
     const container = this.hooks.create(extensionId);
     try {
       await this.mounter.mount(extensionId, container);
@@ -48,7 +54,12 @@ export class ConcurrentMountStrategy extends MountStrategy {
       this.hooks.destroy(extensionId);
       throw error;
     }
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-return
+    // (implicit return — mount completed)
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-return
   }
+  // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-concurrent
+  // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-match-strategy
   // @cpt-end:cpt-frontx-algo-mfe-registry-concurrent-mount-strategy:p1:inst-mount
 
   // @cpt-begin:cpt-frontx-algo-mfe-registry-concurrent-mount-strategy:p1:inst-unmount
@@ -84,19 +95,25 @@ export class OptionalMountStrategy extends MountStrategy {
   }
 
   // @cpt-begin:cpt-frontx-algo-mfe-registry-optional-mount-strategy:p1:inst-mount
+  // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-optional-displace
   async mount(payload: ActionPayload): Promise<void> {
     const subject = payload.subject;
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-get-mounted
     const mounted = this.registry.getMountedExtensions(this.domainId);
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-get-mounted
 
     if (mounted.length === 1 && mounted[0] !== subject) {
       await this.mounter.unmount(mounted[0]);
       this.hooks.destroy(mounted[0]);
     }
 
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-optional-idempotent
     if (mounted.includes(subject)) {
       return;
     }
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-optional-idempotent
 
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-optional-mount
     const container = this.hooks.create(subject);
     try {
       await this.mounter.mount(subject, container);
@@ -104,7 +121,9 @@ export class OptionalMountStrategy extends MountStrategy {
       this.hooks.destroy(subject);
       throw error;
     }
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-optional-mount
   }
+  // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-optional-displace
   // @cpt-end:cpt-frontx-algo-mfe-registry-optional-mount-strategy:p1:inst-mount
 
   // @cpt-begin:cpt-frontx-algo-mfe-registry-optional-mount-strategy:p1:inst-unmount
@@ -152,13 +171,18 @@ export class ExclusiveMountStrategy extends MountStrategy {
   // @cpt-end:cpt-frontx-algo-mfe-registry-exclusive-mount-strategy:p1:inst-ctor
 
   // @cpt-begin:cpt-frontx-algo-mfe-registry-exclusive-mount-strategy:p1:inst-mount-idempotent
+  // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-evict
   async mount(payload: ActionPayload): Promise<void> {
     const subject = payload.subject;
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-get-mounted
     const mounted = this.registry.getMountedExtensions(this.domainId);
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-get-mounted
 
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-idempotent
     if (mounted.length === 1 && mounted[0] === subject) {
       return;
     }
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-idempotent
     // @cpt-end:cpt-frontx-algo-mfe-registry-exclusive-mount-strategy:p1:inst-mount-idempotent
 
     // @cpt-begin:cpt-frontx-algo-mfe-registry-exclusive-mount-strategy:p1:inst-mount-evict
@@ -171,6 +195,7 @@ export class ExclusiveMountStrategy extends MountStrategy {
     // @cpt-end:cpt-frontx-algo-mfe-registry-exclusive-mount-strategy:p1:inst-mount-evict
 
     // @cpt-begin:cpt-frontx-algo-mfe-registry-exclusive-mount-strategy:p1:inst-mount-create-try
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-mount
     const container = this.hooks.create(subject);
     try {
       await this.mounter.mount(subject, container);
@@ -179,6 +204,8 @@ export class ExclusiveMountStrategy extends MountStrategy {
       throw error;
     }
   }
+  // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-mount
+  // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-evict
   // @cpt-end:cpt-frontx-algo-mfe-registry-exclusive-mount-strategy:p1:inst-mount-create-try
 
   // ExclusiveMountStrategy intentionally does NOT implement the optional
