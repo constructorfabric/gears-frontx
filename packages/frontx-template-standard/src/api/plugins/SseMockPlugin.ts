@@ -16,7 +16,7 @@ import {
   type SseConnectContext,
   type SseShortCircuitResponse,
   MOCK_PLUGIN,
-} from '../types';
+} from '@gears-frontx/api';
 import { MockEventSource, type SseMockEvent } from '../mocks/MockEventSource';
 
 /**

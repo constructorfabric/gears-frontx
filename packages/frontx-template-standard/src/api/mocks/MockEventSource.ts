@@ -10,7 +10,7 @@
 // @cpt-algo:cpt-frontx-algo-api-communication-mock-event-source:p2
 // @cpt-state:cpt-frontx-state-api-communication-mock-event-source:p2
 
-import type { EventSourceLike } from '../types';
+import type { EventSourceLike } from '@gears-frontx/api';
 
 /**
  * SSE Mock Event

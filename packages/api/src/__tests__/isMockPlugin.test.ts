@@ -7,8 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { MOCK_PLUGIN, isMockPlugin, ApiPluginBase } from '../types';
-import { RestMockPlugin } from '../plugins/RestMockPlugin';
-import { SseMockPlugin } from '../plugins/SseMockPlugin';
+import { RestMockPlugin, SseMockPlugin } from '@gears-frontx/frontx-template-standard';
 
 describe('isMockPlugin', () => {
   describe('built-in mock plugins', () => {

@@ -380,7 +380,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 ### 2.8 [API Protocol Surface](features/api-protocol-surface/) - MEDIUM
 
-- [ ] `p2` - **ID**: `cpt-frontx-feature-api-protocol-surface`
+- [x] `p2` - **ID**: `cpt-frontx-feature-api-protocol-surface`
 
 - **Purpose**: Provide a protocol-separated, solution-agnostic API surface (`@gears-frontx/api`): request/response and streaming behind a common abstract `ApiProtocol` with descriptor-based endpoints + auto-derived cache keys, a generic plugin short-circuit, and a realm-scoped retainer-counted shared fetch cache that lets independently bundled units reuse in-flight and cached results.
 
@@ -398,18 +398,18 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 - **Requirements Covered**:
 
-  - [ ] `p2` - `cpt-frontx-nfr-runtime-performance`
+  - [x] `p2` - `cpt-frontx-nfr-runtime-performance`
 
 - **Design Constraints Covered**:
 
-  - [ ] `p2` - `cpt-frontx-constraint-api-no-solution-content`
+  - [x] `p2` - `cpt-frontx-constraint-api-no-solution-content`
 
 - **Domain Model Entities**:
   - ApiService
 
 - **Design Components**:
 
-  - [ ] `p2` - `cpt-frontx-component-api-surface`
+  - [x] `p2` - `cpt-frontx-component-api-surface`
 
 - **API**:
   - TS library surface (no PRD interface ID by DESIGN §3.3)

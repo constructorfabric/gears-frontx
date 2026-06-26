@@ -11,7 +11,7 @@
 import axios from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RestProtocol } from '../protocols/RestProtocol';
-import { RestMockPlugin } from '../plugins/RestMockPlugin';
+import { RestMockPlugin } from '@gears-frontx/frontx-template-standard';
 import { apiRegistry } from '../apiRegistry';
 import type { RestPluginHooks, RestRequestContext, ApiPluginErrorContext } from '../types';
 

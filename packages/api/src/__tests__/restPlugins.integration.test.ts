@@ -7,7 +7,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RestProtocol } from '../protocols/RestProtocol';
-import { RestMockPlugin } from '../plugins/RestMockPlugin';
+import { RestMockPlugin } from '@gears-frontx/frontx-template-standard';
 import { apiRegistry } from '../apiRegistry';
 import type { ApiPluginErrorContext, RestPluginHooks, RestRequestContext } from '../types';
 import { createProtocolPluginTests } from './protocolPluginTestFactory';

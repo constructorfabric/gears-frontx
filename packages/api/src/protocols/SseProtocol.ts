@@ -11,6 +11,8 @@
 // @cpt-algo:cpt-frontx-algo-api-communication-sse-plugin-chain:p1
 // @cpt-algo:cpt-frontx-algo-api-communication-plugin-ordering:p1
 // @cpt-state:cpt-frontx-state-api-communication-sse-connection:p1
+// @cpt-flow:cpt-frontx-flow-api-protocol-surface-service-call:p1
+// @cpt-dod:cpt-frontx-dod-api-protocol-surface-protocol-dispatch:p1
 
 import assign from 'lodash/assign.js';
 import {
@@ -166,7 +168,9 @@ export class SseProtocol extends ApiProtocol<SsePluginHooks> {
 
     for (const plugin of this.getPluginsInOrder()) {
       if (plugin.onConnect) {
+        // @cpt-begin:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-run-sse-plugins-inner
         const result = await plugin.onConnect(currentContext);
+        // @cpt-end:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-run-sse-plugins-inner
 
         if (isSseShortCircuit(result)) {
           return result;
@@ -204,30 +208,44 @@ export class SseProtocol extends ApiProtocol<SsePluginHooks> {
       : url;
 
     // 1. Build SSE connection context for plugin chain
+    // @cpt-begin:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-build-sse-ctx
     const context: SseConnectContext = {
       url: fullUrl,
       headers: {},
     };
+    // @cpt-end:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-build-sse-ctx
 
     // 2. Execute plugin chain - allows plugins to short-circuit with mock EventSource
+    // @cpt-begin:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-run-sse-plugins
     const result = await this.executePluginChainAsync(context);
+    // @cpt-end:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-run-sse-plugins
 
     // 3. Determine which EventSource to use
     let eventSource: EventSourceLike;
 
+    // @cpt-begin:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-sse-short-circuit
     if (isSseShortCircuit(result)) {
+      // @cpt-begin:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-use-mock-es
       // Plugin provided mock EventSource
       eventSource = result.shortCircuit;
+      // @cpt-end:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-use-mock-es
     } else {
+      // @cpt-begin:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-real-es
       // Create real EventSource
       const withCredentials = this.config.withCredentials ?? true;
       eventSource = new EventSource(fullUrl, { withCredentials });
+      // @cpt-end:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-real-es
     }
+    // @cpt-end:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-sse-short-circuit
 
     // 4. Attach handlers - same code path for both mock and real
+    // @cpt-begin:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-attach-handlers
     this.attachHandlers(connectionId, eventSource, onMessage, onComplete);
+    // @cpt-end:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-attach-handlers
 
+    // @cpt-begin:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-return-conn-id
     return connectionId;
+    // @cpt-end:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-return-conn-id
   }
   // @cpt-end:cpt-frontx-flow-api-communication-sse-connection:p1:inst-1
   // @cpt-end:cpt-frontx-state-api-communication-sse-connection:p1:inst-1

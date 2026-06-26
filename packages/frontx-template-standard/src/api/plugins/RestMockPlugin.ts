@@ -20,7 +20,7 @@ import {
   type JsonCompatible,
   type MockResponseFactory,
   MOCK_PLUGIN,
-} from '../types';
+} from '@gears-frontx/api';
 
 /**
  * REST Mock Configuration
