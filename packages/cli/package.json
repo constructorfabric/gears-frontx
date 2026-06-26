@@ -1,0 +1,37 @@
+{
+  "name": "@gears-frontx/cli",
+  "version": "0.2.0-alpha.0",
+  "description": "Template resolution CLI for FrontX SDK — zero bundled template content",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "bin": {
+    "frontx": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "type-check": "tsc --noEmit",
+    "type-check:test": "tsc -p tsconfig.test.json",
+    "test": "npm run test:unit",
+    "test:unit": "vitest --run --passWithNoTests=false"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "4.1.4",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.2",
+    "vitest": "^3.2.4"
+  },
+  "keywords": [],
+  "license": "MIT"
+}
