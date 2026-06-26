@@ -37,30 +37,74 @@ function getMonorepoPostChecks(): ArchCheck[] {
 }
 
 /**
- * FrontX ecosystem boundary checks (stubs — full enforcement added in Phase 10).
+ * FrontX ecosystem boundary checks (Phase 10 — full enforcement).
  *
  * Boundary invariants covered:
- *   cpt-frontx-constraint-mfes-no-type-format-literals     (MFES-1)
- *   cpt-frontx-constraint-mfes-no-solution-shared-properties (MFES-2)
- *   cpt-frontx-constraint-mfes-no-layout-domain-values      (MFES-3)
- *   cpt-frontx-constraint-mfes-no-type-format-dependency    (MFES-4)
- *   cpt-frontx-constraint-mfes-opaque-schema-surface        (MFES-5)
- *   cpt-frontx-constraint-gts-plugin-owns-infra-schemas     (GTS-PLUGIN-1)
- *   cpt-frontx-constraint-gts-plugin-excludes-solution-schemas (GTS-PLUGIN-2)
- *   cpt-frontx-constraint-api-no-solution-content           (API-1)
+ *   cpt-frontx-constraint-mfes-no-type-format-literals     (MFES-1) — ESLint eslint.config.js
+ *   cpt-frontx-constraint-mfes-no-solution-shared-properties (MFES-2) — ESLint eslint.config.js
+ *   cpt-frontx-constraint-mfes-no-layout-domain-values      (MFES-3) — ESLint eslint.config.js
+ *   cpt-frontx-constraint-mfes-no-type-format-dependency    (MFES-4) — dep-cruiser
+ *   cpt-frontx-constraint-mfes-opaque-schema-surface        (MFES-5) — grep check below
+ *   cpt-frontx-constraint-gts-plugin-owns-infra-schemas     (GTS-PLUGIN-1) — dep-cruiser
+ *   cpt-frontx-constraint-gts-plugin-excludes-solution-schemas (GTS-PLUGIN-2) — dep-cruiser
+ *   cpt-frontx-constraint-api-no-solution-content           (API-1) — dep-cruiser
  */
 function getEcosystemBoundaryChecks(): ArchCheck[] {
-  // TODO(Phase 10 — pillar1-verify): replace stubs with concrete depcruise/lint commands
-  // that enforce the MFES-1..5, GTS-PLUGIN-1..2, and API-1 invariants listed above.
-  return [];
+  return [
+    // @cpt-begin:cpt-frontx-constraint-mfes-no-type-format-dependency:p10:inst-arch-check
+    {
+      command:
+        'npx dependency-cruiser packages/mfes/src --config .dependency-cruiser.cjs --output-type err-long',
+      description:
+        'MFES-4 (cpt-frontx-constraint-mfes-no-type-format-dependency): mfes boundary — no concrete type-format import (gts-plugin / @globaltypesystem)',
+    },
+    // @cpt-end:cpt-frontx-constraint-mfes-no-type-format-dependency:p10:inst-arch-check
+    // @cpt-begin:cpt-frontx-constraint-gts-plugin-owns-infra-schemas:p10:inst-arch-check
+    {
+      command:
+        'npx dependency-cruiser packages/gts-plugin/src packages/mfes/src packages/api/src --config .dependency-cruiser.cjs --output-type err-long',
+      description:
+        'GTS-PLUGIN-1 (cpt-frontx-constraint-gts-plugin-owns-infra-schemas): infra schema ownership — no external package imports gts-plugin schema internals',
+    },
+    // @cpt-end:cpt-frontx-constraint-gts-plugin-owns-infra-schemas:p10:inst-arch-check
+    // @cpt-begin:cpt-frontx-constraint-gts-plugin-excludes-solution-schemas:p10:inst-arch-check
+    {
+      command:
+        'npx dependency-cruiser packages/gts-plugin/src --config .dependency-cruiser.cjs --output-type err-long',
+      description:
+        'GTS-PLUGIN-2 (cpt-frontx-constraint-gts-plugin-excludes-solution-schemas): gts-plugin boundary — no solution schema imports (frontx-template-standard)',
+    },
+    // @cpt-end:cpt-frontx-constraint-gts-plugin-excludes-solution-schemas:p10:inst-arch-check
+    // @cpt-begin:cpt-frontx-constraint-api-no-solution-content:p10:inst-arch-check
+    {
+      command:
+        'npx dependency-cruiser packages/api/src --exclude __tests__ --config .dependency-cruiser.cjs --output-type err-long',
+      description:
+        'API-1 (cpt-frontx-constraint-api-no-solution-content): api boundary — no solution content in production surface (frontx-template-standard / auth)',
+    },
+    // @cpt-end:cpt-frontx-constraint-api-no-solution-content:p10:inst-arch-check
+    // @cpt-begin:cpt-frontx-constraint-mfes-opaque-schema-surface:p10:inst-arch-check
+    {
+      command:
+        "bash -c '! grep -rl \"import.*JSONSchema\" packages/mfes/src/'",
+      description:
+        'MFES-5 (cpt-frontx-constraint-mfes-opaque-schema-surface): mfes has no JSONSchema shape import — schema surface is opaque (TSchema=unknown)',
+    },
+    // @cpt-end:cpt-frontx-constraint-mfes-opaque-schema-surface:p10:inst-arch-check
+  ];
 }
 
 /**
  * Run monorepo architecture validation
  */
 function validateMonorepoArchitecture(): ValidationResult {
-  // Order: monorepo (clean build) -> standalone -> monorepo post (unused)
-  const allChecks = [...getMonorepoChecks(), ...getStandaloneChecks(), ...getMonorepoPostChecks()];
+  // Order: monorepo (clean build) -> standalone -> monorepo post (unused) -> ecosystem boundaries
+  const allChecks = [
+    ...getMonorepoChecks(),
+    ...getStandaloneChecks(),
+    ...getMonorepoPostChecks(),
+    ...getEcosystemBoundaryChecks(),
+  ];
   return runValidation(allChecks, 'Gears FrontX Monorepo Architecture Validation');
 }
 

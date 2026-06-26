@@ -113,12 +113,57 @@ module.exports = {
       to: {},
       comment: 'STUB: cpt-frontx-constraint-api-no-solution-content (API-1) — @gears-frontx/api must contain no solution-specific content (no concrete endpoints, auth wiring, or app-specific plugins). Phase 10 adds enforcement.'
     },
+
+    // ============ PILLAR-1 BOUNDARY ENFORCEMENT (Phase 10) ============
+    // Full enforcement for MFES-4, GTS-PLUGIN-1, GTS-PLUGIN-2, API-1.
+    // MFES-1/2/3 are enforced via ESLint (no-restricted-syntax in eslint.config.js).
+    // MFES-5 is enforced via scripts/test-architecture.ts (grep-based opaque surface check).
+
+    // @cpt-begin:cpt-frontx-constraint-mfes-no-type-format-dependency:p10:inst-dep-cruiser-rule
+    {
+      name: 'frontx-mfes-4-type-format-dep',
+      severity: 'error',
+      from: { path: '^packages/mfes/' },
+      to: { path: '^packages/gts-plugin/|node_modules/@globaltypesystem/' },
+      comment: 'cpt-frontx-constraint-mfes-no-type-format-dependency (MFES-4): @gears-frontx/mfes must declare no dependency on any concrete type-format implementation. The type-substrate port is injected at runtime, not imported at build time.',
+    },
+    // @cpt-end:cpt-frontx-constraint-mfes-no-type-format-dependency:p10:inst-dep-cruiser-rule
+
+    // @cpt-begin:cpt-frontx-constraint-gts-plugin-owns-infra-schemas:p10:inst-dep-cruiser-rule
+    {
+      name: 'frontx-gts-plugin-1-infra-schemas',
+      severity: 'error',
+      from: { path: '^packages/', pathNot: '^packages/gts-plugin/' },
+      to: { path: '^packages/gts-plugin/src/frontx\\.mfes/' },
+      comment: 'cpt-frontx-constraint-gts-plugin-owns-infra-schemas (GTS-PLUGIN-1): Infrastructure schemas are owned exclusively by @gears-frontx/gts-plugin. Other packages must not import gts-plugin internal schema files directly; use the package root export instead.',
+    },
+    // @cpt-end:cpt-frontx-constraint-gts-plugin-owns-infra-schemas:p10:inst-dep-cruiser-rule
+
+    // @cpt-begin:cpt-frontx-constraint-gts-plugin-excludes-solution-schemas:p10:inst-dep-cruiser-rule
+    {
+      name: 'frontx-gts-plugin-2-no-solution-schemas',
+      severity: 'error',
+      from: { path: '^packages/gts-plugin/' },
+      to: { path: '^packages/frontx-template-standard/|^packages/framework/src/gts/' },
+      comment: 'cpt-frontx-constraint-gts-plugin-excludes-solution-schemas (GTS-PLUGIN-2): @gears-frontx/gts-plugin must not import solution-specific schemas. Solution schemas (theme, language, extension_screen) are owned by frontx-template-standard.',
+    },
+    // @cpt-end:cpt-frontx-constraint-gts-plugin-excludes-solution-schemas:p10:inst-dep-cruiser-rule
+
+    // @cpt-begin:cpt-frontx-constraint-api-no-solution-content:p10:inst-dep-cruiser-rule
+    {
+      name: 'frontx-api-1-no-solution-content',
+      severity: 'error',
+      from: { path: '^packages/api/', pathNot: '__tests__' },
+      to: { path: '^packages/frontx-template-standard/|^packages/auth/' },
+      comment: 'cpt-frontx-constraint-api-no-solution-content (API-1): @gears-frontx/api production surface must contain no solution-specific content. Mock plugins, auth wiring, and app-specific plugins belong in frontx-template-standard or application code.',
+    },
+    // @cpt-end:cpt-frontx-constraint-api-no-solution-content:p10:inst-dep-cruiser-rule
   ],
   options: {
     ...standaloneConfig.options,
     exclude: {
       ...standaloneConfig.options.exclude,
-      path: 'packages/.*/dist|node_modules'
+      path: 'packages/.*/dist|node_modules|packages/mfes/mfes'
     }
   }
 };

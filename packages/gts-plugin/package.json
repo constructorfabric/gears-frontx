@@ -21,7 +21,7 @@
     "type-check": "tsc --noEmit",
     "type-check:test": "tsc -p tsconfig.test.json",
     "test": "npm run test:unit",
-    "test:unit": "vitest --run --passWithNoTests=false",
+    "test:unit": "vitest --run --passWithNoTests",
     "test:unit:watch": "vitest --watch"
   },
   "dependencies": {

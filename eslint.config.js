@@ -305,38 +305,65 @@ export default [
     },
   },
 
-  // ============ @gears-frontx/mfes BOUNDARY STUBS ============
-  // STUB: cpt-frontx-constraint-mfes-no-type-format-literals (MFES-1),
-  //       cpt-frontx-constraint-mfes-no-solution-shared-properties (MFES-2),
-  //       cpt-frontx-constraint-mfes-no-layout-domain-values (MFES-3),
-  //       cpt-frontx-constraint-mfes-no-type-format-dependency (MFES-4),
-  //       cpt-frontx-constraint-mfes-opaque-schema-surface (MFES-5)
-  // Full enforcement rules added in Phase 10 (pillar1-verify).
+  // ============ @gears-frontx/mfes BOUNDARY ENFORCEMENT (Phase 10) ============
+  // MFES-1/2/3 enforced here via no-restricted-syntax denylist.
+  // MFES-4 enforced via dep-cruiser rule frontx-mfes-4-type-format-dep (.dependency-cruiser.cjs).
+  // MFES-5 enforced via scripts/test-architecture.ts (opaque schema surface grep check).
   {
     files: ['packages/mfes/**/*.ts', 'packages/mfes/**/*.tsx'],
     rules: {
-      // Boundary enforcement for @gears-frontx/mfes will be added here in Phase 10.
+      'no-restricted-syntax': [
+        'error',
+        // @cpt-begin:cpt-frontx-constraint-mfes-no-type-format-literals:p10:inst-eslint-rule
+        {
+          selector:
+            "Literal[value=/gts\\.(frontx\\.(screensets|framework|state|i18n|react)|[a-z]+\\.(screensets|framework|state|i18n))/]",
+          message:
+            'MFES-1 VIOLATION (cpt-frontx-constraint-mfes-no-type-format-literals): @gears-frontx/mfes must not contain type-system-format string literals from solution namespaces. These belong in the type-system plugin or consumer packages.',
+        },
+        // @cpt-end:cpt-frontx-constraint-mfes-no-type-format-literals:p10:inst-eslint-rule
+        // @cpt-begin:cpt-frontx-constraint-mfes-no-solution-shared-properties:p10:inst-eslint-rule
+        {
+          selector: "Literal[value=/^(theme|language)$/]",
+          message:
+            'MFES-2 VIOLATION (cpt-frontx-constraint-mfes-no-solution-shared-properties): @gears-frontx/mfes must not define solution-specific shared-property identifiers (e.g. theme, language). Supply these via the application layer or templates.',
+        },
+        // @cpt-end:cpt-frontx-constraint-mfes-no-solution-shared-properties:p10:inst-eslint-rule
+        // @cpt-begin:cpt-frontx-constraint-mfes-no-layout-domain-values:p10:inst-eslint-rule
+        {
+          selector: "Literal[value=/^(header|footer|menu|sidebar|popup|overlay|screen)$/]",
+          message:
+            'MFES-3 VIOLATION (cpt-frontx-constraint-mfes-no-layout-domain-values): @gears-frontx/mfes must not define specific extension-domain (layout-domain) values. These are solution vocabulary owned by frontx-template-standard (LayoutDomain enum).',
+        },
+        // @cpt-end:cpt-frontx-constraint-mfes-no-layout-domain-values:p10:inst-eslint-rule
+      ],
     },
   },
 
-  // ============ @gears-frontx/gts-plugin BOUNDARY STUBS ============
-  // STUB: cpt-frontx-constraint-gts-plugin-owns-infra-schemas (GTS-PLUGIN-1),
-  //       cpt-frontx-constraint-gts-plugin-excludes-solution-schemas (GTS-PLUGIN-2)
-  // Full enforcement rules added in Phase 10 (pillar1-verify).
+  // ============ @gears-frontx/gts-plugin ============
+  // GTS-PLUGIN-1/2 are enforced via dep-cruiser rules frontx-gts-plugin-1/2 (.dependency-cruiser.cjs).
+  // Allow unknown/object types: gts-plugin owns JSONSchema (requires [key: string]: unknown)
+  // and implements TypeSystemPlugin.register(entity: unknown) — all architecturally required.
   {
     files: ['packages/gts-plugin/**/*.ts', 'packages/gts-plugin/**/*.tsx'],
     rules: {
-      // Boundary enforcement for @gears-frontx/gts-plugin will be added here in Phase 10.
+      'no-restricted-syntax': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
     },
   },
 
-  // ============ @gears-frontx/api BOUNDARY STUB ============
-  // STUB: cpt-frontx-constraint-api-no-solution-content (API-1)
-  // Full enforcement rules added in Phase 10 (pillar1-verify).
+  // ============ @gears-frontx/api BOUNDARY ============
+  // API-1 enforced via dep-cruiser rule frontx-api-1-no-solution-content (.dependency-cruiser.cjs).
+  // (no ESLint-level changes needed for api boundary enforcement)
+
+  // ============ @gears-frontx/frontx-template-standard ============
+  // Allow unknown/object types: build utilities (mf-gts.ts AST transforms, lazy-import-transform)
+  // use unknown for dynamic module shapes and generic AST node types — architecturally required.
   {
-    files: ['packages/api/**/*.ts', 'packages/api/**/*.tsx'],
+    files: ['packages/frontx-template-standard/**/*.ts', 'packages/frontx-template-standard/**/*.tsx'],
     rules: {
-      // Boundary enforcement for @gears-frontx/api will be added here in Phase 10.
+      'no-restricted-syntax': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
     },
   },
 
