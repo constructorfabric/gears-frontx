@@ -337,7 +337,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 ### 2.7 [MFE Runtime Isolation](features/mfe-isolation/) - HIGH
 
-- [ ] `p1` - **ID**: `cpt-frontx-feature-mfe-isolation`
+- [x] `p1` - **ID**: `cpt-frontx-feature-mfe-isolation`
 
 - **Purpose**: Isolate each loaded microfrontend in its own module graph behind an audited trust kernel — concentrating dynamic-code primitives in one annotated trust-kernel file with a no-mutable-state contract and runtime guards, retaining backing references for the page lifetime to support top-level await.
 
@@ -354,7 +354,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 - **Requirements Covered**:
 
-  - [ ] `p1` - `cpt-frontx-fr-mfe-runtime-registration`
+  - [x] `p1` - `cpt-frontx-fr-mfe-runtime-registration`
   - [ ] `p1` - `cpt-frontx-nfr-security`
 
 - **Design Principles Covered**:

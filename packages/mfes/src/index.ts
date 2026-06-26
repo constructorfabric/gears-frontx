@@ -136,3 +136,14 @@ export { RuntimeBridgeFactory } from './runtime/runtime-bridge-factory';
 // Governance concrete classes (Phase 7)
 export { DefaultExtensionManager } from './runtime/default-extension-manager';
 export { DefaultMountManager, type HandlerResolver } from './runtime/default-mount-manager';
+
+// MFE Isolation — handler, trust kernel, types (Phase 8)
+export { MfeHandlerMF, LruCache } from './handler/MfeHandlerMF';
+export { MfeBridgeFactoryDefault } from './handler/mfe-bridge-factory-default';
+export { RetryHandler } from './handler/retry-handler';
+export type { MfeEntryMF } from './types/mfe-entry-mf';
+export {
+  sourceImports,
+  rewriteBareSpecifier,
+  importBlobModule,
+} from './handler/mf-dynamic-module-ops';

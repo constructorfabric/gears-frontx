@@ -25,6 +25,8 @@
  *
  * @packageDocumentation
  */
+// @cpt-dod:cpt-frontx-dod-mfe-isolation-blob-core:p1
+// @cpt-algo:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1
 
 /**
  * Test whether a source text contains an import of a specific package name.
@@ -99,10 +101,20 @@ export function rewriteBareSpecifier(
  *         `data:` URL from the same code path under test mocks.
  */
 export async function importBlobModule(blobUrl: string): Promise<unknown> {
+  // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-inspect-scheme
+  // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-if-invalid-scheme
   if (!(blobUrl.startsWith('blob:') || blobUrl.startsWith('data:'))) {
+    // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-reject-scheme
     throw new TypeError(
       `importBlobModule accepts only blob: or data: URLs, received: ${blobUrl}`,
     );
+    // @cpt-end:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-reject-scheme
   }
+  // @cpt-end:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-if-invalid-scheme
+  // @cpt-end:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-inspect-scheme
+  // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-exec-import
+  // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-return-module
   return await import(/* @vite-ignore */ blobUrl);
+  // @cpt-end:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-return-module
+  // @cpt-end:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-exec-import
 }
