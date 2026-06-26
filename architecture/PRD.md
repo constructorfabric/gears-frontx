@@ -301,7 +301,7 @@ The system **MUST** allow a developer to update an installed template to a newer
 
 #### Validate a template's structure before publishing
 
-- [ ] `p1` - **ID**: `cpt-frontx-fr-cli-template-validate-prepublish`
+- [x] `p1` - **ID**: `cpt-frontx-fr-cli-template-validate-prepublish`
 
 The system **MUST** allow a Template Developer to validate a template's structure against the publication contract before publishing it.
 

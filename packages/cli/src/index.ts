@@ -23,3 +23,16 @@ export type { ListEntry } from './commands/list.js';
 
 export { updateLocalCommand } from './commands/update-local.js';
 export type { UpdateLocalResult } from './commands/update-local.js';
+
+export { validateManifestContract } from './manifest/validate-contract.js';
+export { validateCommand } from './commands/validate.js';
+export type {
+  TemplateManifest,
+  CompositionRef,
+  ManifestViolation,
+  ManifestValidationResult,
+  ManifestValidationState,
+  ReadFileFn,
+} from './manifest/types.js';
+export type { ValidateCommandResult } from './commands/validate.js';
+export { MANIFEST_FILENAME, MANIFEST_SCHEMA_VERSION, RECOGNIZED_KINDS } from './manifest/types.js';

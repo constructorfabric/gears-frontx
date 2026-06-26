@@ -355,18 +355,18 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 - **Requirements Covered**:
 
   - [x] `p1` - `cpt-frontx-fr-mfe-runtime-registration`
-  - [ ] `p1` - `cpt-frontx-nfr-security`
+  - [x] `p1` - `cpt-frontx-nfr-security`
 
 - **Design Principles Covered**:
 
-  - [ ] `p1` - `cpt-frontx-principle-default-deny-admission`
+  - [x] `p1` - `cpt-frontx-principle-default-deny-admission`
 
 - **Domain Model Entities**:
   - MfeEntry
 
 - **Design Components**:
 
-  - [ ] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
+  - [x] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
 
 - **API**:
   - N/A
@@ -518,7 +518,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 ### 2.11 [Template Manifest Contract & Pre-Publish Validation](features/template-manifest/) - HIGH
 
-- [ ] `p1` - **ID**: `cpt-frontx-feature-template-manifest`
+- [x] `p1` - **ID**: `cpt-frontx-feature-template-manifest`
 
 - **Purpose**: Define the single published template manifest as the conformance contract — every template declares itself (identity, version, kind, referenced compositions) in a versioned shape, checked at pre-publish validation and read at install and scaffold, giving one authoritative description.
 
@@ -536,14 +536,14 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 - **Requirements Covered**:
 
-  - [ ] `p1` - `cpt-frontx-fr-cli-template-validate-prepublish`
+  - [x] `p1` - `cpt-frontx-fr-cli-template-validate-prepublish`
 
 - **Domain Model Entities**:
   - TemplateManifest
 
 - **Design Components**:
 
-  - [ ] `p1` - `cpt-frontx-component-cli` (shared)
+  - [x] `p1` - `cpt-frontx-component-cli` (shared)
 
 - **API**:
   - CLI validate (pre-publish) command
