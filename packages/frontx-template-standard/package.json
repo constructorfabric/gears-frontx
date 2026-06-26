@@ -21,6 +21,9 @@
   "files": [
     "dist"
   ],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "tsup",
     "type-check": "tsc --noEmit",
@@ -30,7 +33,7 @@
     "test:unit:watch": "vitest --watch"
   },
   "peerDependencies": {
-    "@gears-frontx/api": ">=0.2.0",
+    "@gears-frontx/api": ">=0.2.0-0",
     "@gears-frontx/screensets": "*",
     "esbuild": ">=0.20.0",
     "vite": ">=5.0.0"

@@ -29,15 +29,15 @@ export default defineConfig({
     alias: [
       {
         find: '@gears-frontx/react/testing',
-        replacement: path.resolve(__dirname, './packages/framework/dist/testing.js'),
+        replacement: path.resolve(__dirname, './packages/frontx-template-standard/packages/framework/dist/testing.js'),
       },
       {
         find: '@frontx-test-utils',
-        replacement: path.resolve(__dirname, './src/__test-utils__'),
+        replacement: path.resolve(__dirname, './packages/frontx-template-standard/src-app/__test-utils__'),
       },
       {
         find: '@',
-        replacement: path.resolve(__dirname, './src'),
+        replacement: path.resolve(__dirname, './packages/frontx-template-standard/src-app'),
       },
     ],
     dedupe: [...VITE_RESOLVE_DEDUPE],
@@ -58,7 +58,7 @@ export default defineConfig({
       // the scaffold renderer picks up the same globs without duplication.
       ...HOST_SCRIPT_TEST_INCLUDE,
     ],
-    exclude: ['src/mfe_packages/**', ...DEFAULT_TEST_EXCLUDE],
+    exclude: ['packages/frontx-template-standard/src-app/mfe_packages/**', ...DEFAULT_TEST_EXCLUDE],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

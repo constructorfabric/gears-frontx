@@ -1,19 +1,48 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "./packages/cli/template-sources/project/configs/tsconfig.json",
   "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "stripInternal": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "alwaysStrict": true,
+    "noImplicitThis": true,
+
+    /* Path aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@/app/*": ["./src/app/*"],
-      "@/mfe_packages/*": ["./src/mfe_packages/*"],
-      "@/screensets/*": ["./src/screensets/*"],
-      "@gears-frontx/state": ["./packages/state/src/index.ts"],
-      "@gears-frontx/state/*": ["./packages/state/src/*"],
+      "@/*": ["./packages/frontx-template-standard/src-app/*"],
+      "@/app/*": ["./packages/frontx-template-standard/src-app/app/*"],
+      "@/mfe_packages/*": ["./packages/frontx-template-standard/src-app/mfe_packages/*"],
+      "@/screensets/*": ["./packages/frontx-template-standard/src-app/screensets/*"],
+      "@gears-frontx/state": ["./packages/frontx-template-standard/packages/state/src/index.ts"],
+      "@gears-frontx/state/*": ["./packages/frontx-template-standard/packages/state/src/*"],
       "@gears-frontx/api": ["./packages/api/src/index.ts"],
       "@gears-frontx/api/*": ["./packages/api/src/*"],
-      "@gears-frontx/i18n": ["./packages/i18n/src/index.ts"],
-      "@gears-frontx/i18n/*": ["./packages/i18n/src/*"],
+      "@gears-frontx/i18n": ["./packages/frontx-template-standard/packages/i18n/src/index.ts"],
+      "@gears-frontx/i18n/*": ["./packages/frontx-template-standard/packages/i18n/src/*"],
       "@gears-frontx/gts-plugin": ["./packages/gts-plugin/src/index.ts"],
       "@gears-frontx/gts-plugin/*": ["./packages/gts-plugin/src/*"],
       "@gears-frontx/frontx-template-standard": ["./packages/frontx-template-standard/src/index.ts"],
@@ -25,22 +54,30 @@
         "./packages/screensets/src/mfe/plugins/gts/index.ts"
       ],
       "@gears-frontx/screensets/*": ["./packages/screensets/src/*"],
-      "@gears-frontx/framework": ["./packages/framework/src/index.ts"],
-      "@gears-frontx/framework/*": ["./packages/framework/src/*"],
-      "@gears-frontx/react": ["./packages/react/src/index.ts"],
-      "@gears-frontx/react/*": ["./packages/react/src/*"],
-      "@gears-frontx/studio": ["./packages/studio/src/index.ts"],
-      "@gears-frontx/studio/*": ["./packages/studio/src/*"],
-      "@gears-frontx/auth": ["./packages/auth/src/index.ts"],
-      "@gears-frontx/auth/*": ["./packages/auth/src/*"],
-      "@gears-frontx/cli": ["./packages/cli/src/index.ts"],
-      "@gears-frontx/cli/*": ["./packages/cli/src/*"],
-      "@frontx-test-utils/*": ["./src/__test-utils__/*"]
+      "@gears-frontx/framework": ["./packages/frontx-template-standard/packages/framework/src/index.ts"],
+      "@gears-frontx/framework/*": ["./packages/frontx-template-standard/packages/framework/src/*"],
+      "@gears-frontx/react": ["./packages/frontx-template-standard/packages/react/src/index.ts"],
+      "@gears-frontx/react/*": ["./packages/frontx-template-standard/packages/react/src/*"],
+      "@gears-frontx/studio": ["./packages/frontx-template-standard/packages/studio/src/index.ts"],
+      "@gears-frontx/studio/*": ["./packages/frontx-template-standard/packages/studio/src/*"],
+      "@gears-frontx/auth": ["./packages/frontx-template-standard/packages/auth/src/index.ts"],
+      "@gears-frontx/auth/*": ["./packages/frontx-template-standard/packages/auth/src/*"],
+      "@frontx-test-utils/*": ["./packages/frontx-template-standard/src-app/__test-utils__/*"]
     }
   },
   // Root type-check covers the host app. Nested MFEs and package test trees run
   // through their own tsconfig/script entry points (`type-check:mfe`, package `type-check`).
-  "include": ["src", "packages/*/src", "packages/cli/template-sources/layout-custom-uikit"],
-  "exclude": ["packages/*/dist", "packages/*/__tests__", "packages/*/src/__tests__", "**/__tests__", "src/mfe_packages"],
+  "include": [
+    "packages/frontx-template-standard/src-app",
+    "packages/*/src",
+    "packages/frontx-template-standard/packages/*/src"
+  ],
+  "exclude": [
+    "packages/*/dist",
+    "packages/*/__tests__",
+    "packages/*/src/__tests__",
+    "**/__tests__",
+    "packages/frontx-template-standard/src-app/mfe_packages"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

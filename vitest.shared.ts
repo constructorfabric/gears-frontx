@@ -121,7 +121,9 @@ const REPO_ROOT = path.dirname(SHARED_SHARED_FILE_PATH);
 const SHARED_SETUP_FILE_PATH = path.join(REPO_ROOT, 'vitest.setup.ts');
 const MFE_BASE_FILE_PATH = path.join(
   REPO_ROOT,
-  'src',
+  'packages',
+  'frontx-template-standard',
+  'src-app',
   'mfe_packages',
   'vitest.mfe.base.ts',
 );
@@ -254,6 +256,11 @@ export function definePackageVitestConfig(
   return {
     plugins,
     root: rootDir,
+    server: {
+      fs: {
+        allow: [REPO_ROOT],
+      },
+    },
     test: {
       globals: true,
       environment,
@@ -304,7 +311,7 @@ export function renderStandaloneMfeVitestBase(): string {
   // The shared import body itself has no `}` characters, so confining the
   // group to non-brace content is safe.
   const importBlockRegex =
-    /import\s+\{[^}]*?\}\s+from\s+['"]\.\.\/\.\.\/vitest\.shared['"];\n?/;
+    /import\s+\{[^}]*?\}\s+from\s+['"](?:\.\.\/)*vitest\.shared['"];\n?/;
   const dirnameDeclRegex =
     /const __dirname = path\.dirname\(fileURLToPath\(import\.meta\.url\)\);\n?/;
 
