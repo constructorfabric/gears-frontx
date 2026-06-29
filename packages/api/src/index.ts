@@ -61,11 +61,6 @@ export type {
   SharedFetchCacheInvalidateFilters,
 } from './sharedFetchCache';
 
-// Re-export mock config types from plugin files
-export type { RestMockConfig } from './plugins/RestMockPlugin';
-export type { SseMockConfig } from './plugins/SseMockPlugin';
-export type { SseMockEvent } from './mocks/MockEventSource';
-
 // Export plugin classes and functions
 export {
   ApiPluginBase,
@@ -103,11 +98,6 @@ export {
   releaseSharedFetchCache,
   resetSharedFetchCache,
 } from './sharedFetchCache';
-
-// Export protocol-specific mock plugins
-export { RestMockPlugin } from './plugins/RestMockPlugin';
-export { SseMockPlugin } from './plugins/SseMockPlugin';
-export { MockEventSource } from './mocks/MockEventSource';
 
 // Export registry
 export { apiRegistry } from './apiRegistry';

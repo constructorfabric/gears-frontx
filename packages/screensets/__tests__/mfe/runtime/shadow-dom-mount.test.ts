@@ -15,7 +15,7 @@ import { GtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { ExtensionDomain, Extension, MfeEntry } from '../../../src/mfe/types';
 import type { ChildMfeBridge, MfeEntryLifecycle } from '../../../src/mfe/handler/types';
 import type { RuntimeCoordinator } from '../../../src/mfe/coordination/types';
-import type { MfeRegistry } from '../../../src/mfe/runtime/MfeRegistry';
+import type { MfeRegistry } from '@gears-frontx/mfes';
 import {
   MockDomainFactory,
   createMinimalMfeRegistryStub,

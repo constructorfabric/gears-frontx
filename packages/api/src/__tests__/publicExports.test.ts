@@ -88,9 +88,6 @@ describe('package barrel exports', () => {
       'retainSharedFetchCache',
       'releaseSharedFetchCache',
       'resetSharedFetchCache',
-      'RestMockPlugin',
-      'SseMockPlugin',
-      'MockEventSource',
       'apiRegistry',
     ] as const;
 

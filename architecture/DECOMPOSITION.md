@@ -1,919 +1,857 @@
-# Decomposition: FrontX Dev Kit
+# Decomposition: FrontX Ecosystem
 
 <!-- toc -->
 
 - [1. Overview](#1-overview)
 - [2. Entries](#2-entries)
-  - [2.1 State Management ⏳ HIGH](#21-state-management--high)
-  - [2.2 MFE Registry & Contracts ⏳ HIGH](#22-mfe-registry--contracts--high)
-  - [2.3 MFE Blob URL Isolation ⏳ HIGH](#23-mfe-blob-url-isolation--high)
-  - [2.4 API Communication ⏳ HIGH](#24-api-communication--high)
-  - [2.5 Internationalization Infrastructure ⏳ HIGH](#25-internationalization-infrastructure--high)
-  - [2.6 Framework Composition ⏳ HIGH](#26-framework-composition--high)
-  - [2.7 React Bindings ⏳ HIGH](#27-react-bindings--high)
-  - [2.8 Studio DevTools ⏳ MEDIUM](#28-studio-devtools--medium)
-  - [2.9 CLI Tooling ⏳ MEDIUM](#29-cli-tooling--medium)
-  - [2.10 Publishing Pipeline ⏳ MEDIUM](#210-publishing-pipeline--medium)
-  - [2.11 UI Libraries Choice ⏳ HIGH](#211-ui-libraries-choice--high)
-  - [2.12 Request Lifecycle & Query Integration ⏳ HIGH](#212-request-lifecycle--query-integration--high)
-  - [2.13 Unit Test Generation & Agent Verification ⏳ MEDIUM](#213-unit-test-generation--agent-verification--medium)
+  - [2.1 Opaque Type-Substrate Port - HIGH](#21-opaque-type-substrate-port---high)
+  - [2.2 MFE Registry & Handler Resolution - HIGH](#22-mfe-registry--handler-resolution---high)
+  - [2.3 GTS Default Type-System Provider - HIGH](#23-gts-default-type-system-provider---high)
+  - [2.4 MFE Discovery & Lazy-Import Loading - HIGH](#24-mfe-discovery--lazy-import-loading---high)
+  - [2.5 Host–MFE Communication: Actions-Chains Mediator & Parent–Child Bridge - HIGH](#25-hostmfe-communication-actions-chains-mediator--parentchild-bridge---high)
+  - [2.6 Extension-Domain Governance: Mount Strategies, Cardinality & Contract Matching - HIGH](#26-extension-domain-governance-mount-strategies-cardinality--contract-matching---high)
+  - [2.7 MFE Runtime Isolation - HIGH](#27-mfe-runtime-isolation---high)
+  - [2.8 API Protocol Surface - MEDIUM](#28-api-protocol-surface---medium)
+  - [2.9 Ecosystem Distribution & Versioning Policy - MEDIUM](#29-ecosystem-distribution--versioning-policy---medium)
+  - [2.10 Template Externalization & Source-Spec Resolution - HIGH](#210-template-externalization--source-spec-resolution---high)
+  - [2.11 Template Manifest Contract & Pre-Publish Validation - HIGH](#211-template-manifest-contract--pre-publish-validation---high)
+  - [2.12 Two-Namespace Commands & Project/MFE Scaffolding - HIGH](#212-two-namespace-commands--projectmfe-scaffolding---high)
+  - [2.13 Composed-Template Resolution & Project Provenance - HIGH](#213-composed-template-resolution--project-provenance---high)
+  - [2.14 Upgrade Change-Set Engine - HIGH](#214-upgrade-change-set-engine---high)
+  - [2.15 AI Tooling Kit Packaging & Base Content - HIGH](#215-ai-tooling-kit-packaging--base-content---high)
+  - [2.16 Template AI-Extension Contract & Discovery/Activation - HIGH](#216-template-ai-extension-contract--discoveryactivation---high)
+  - [2.17 AI-Driven Upgrade Orchestration - HIGH](#217-ai-driven-upgrade-orchestration---high)
 - [3. Feature Dependencies](#3-feature-dependencies)
 
 <!-- /toc -->
 
 ## 1. Overview
 
-The DESIGN is decomposed into 13 features aligned with package/module boundaries in the monorepo. Each feature maps to a cohesive set of source files that can be implemented, tested, and reviewed independently.
+This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features, grouped along the three ecosystem pillars and ordered foundation-first. It is a work-package breakdown only: it states what each feature owns, what it depends on, and which upstream DESIGN/PRD elements it covers — it does not re-derive design, model behavior, or restate requirement text. All upstream elements are cited by ID; per-feature behavior is authored in each `features/{slug}/FEATURE.md`.
 
-**Decomposition strategy**: One feature per logical package or cross-cutting capability. L1 SDK packages each get their own feature (state, screensets, api, i18n). L2/L3 packages get their own features. MFE isolation is separated from screenset registry because it spans multiple packages and has distinct FRs. Standalone packages (studio, cli) are individual features, and UI strategy is captured as a separate CLI-driven feature. Publishing/CI is a separate infrastructure feature. Unit-test generation extends the CLI tooling with test scaffolding, starter tests, and AI agent verification guidance.
+**Decomposition strategy.** Each feature is a cohesive component/subsystem slice with loose coupling to its neighbours, sized so its dependencies form an acyclic graph with the foundations at the roots. Surviving Pillar-1 features (extraction + boundary-hardening of shipping runtime/type-system/API code) are kept distinct in nature from the greenfield Pillar-2/3 features; the two are never mixed in one feature.
 
-**Dependency direction**: Features follow the same layer dependency as the architecture — SDK features have no inter-dependencies, framework depends on SDK features, react depends on framework, standalone features are independent. Tooling-extension features depend on the standalone features they extend.
+**Three pillars.**
+- **Pillar 1 — Core Framework** (`@gears-frontx/mfes`, `@gears-frontx/gts-plugin`, `@gears-frontx/api`): F2 type-substrate port, F4 registry & handler resolution, F3 GTS default type-system provider, F5 discovery & lazy-import loading, F6 host–MFE communication, F7 extension-domain governance, F8 runtime isolation, F9 API protocol surface.
+- **Pillar 2 — CLI** (`@gears-frontx/cli`): F10 template externalization & source-spec resolution, F11 template manifest contract, F12 two-namespace commands & scaffolding, F13 composed-template resolution & provenance, F14 upgrade change-set engine.
+- **Pillar 3 — AI Tooling** (`cyber-pilot-kit-frontx`): F15 kit packaging & base content, F16 template AI-extension contract & discovery/activation, F17 AI-driven upgrade orchestration.
+- **Cross-cutting:** F1 ecosystem distribution & versioning policy governs all published artifacts.
+
+**Coverage and exclusivity.** Every DESIGN component (5), principle (5), constraint (10), and sequence (4), and every PRD functional (24) and non-functional (4) requirement, is assigned to at least one feature; `cpt validate` enforces 100% coverage of the strict DESIGN elements. Each strict element (component / principle / constraint / sequence) is owned by exactly one feature, with one explicit exception: the three components `cpt-frontx-component-mfe-runtime`, `cpt-frontx-component-cli`, and `cpt-frontx-component-ai-tooling-kit` are each realized by several cohesive features and are therefore shared across those features. The shared-component reason is the cohesion/coupling rule: these components decompose into multiple high-cohesion, loosely-coupled features that each own a distinct slice of the component, so listing the component reference in every owning feature preserves coverage without forcing an artificial single-feature monolith. PRD `fr`/`nfr` requirements are covered transitively and may appear in more than one feature's Requirements Covered.
 
 ## 2. Entries
 
 **Overall implementation status:**
 
-- [x] `p1` - **ID**: `cpt-frontx-status-overall`
+- [ ] `p1` - **ID**: `cpt-frontx-status-overall`
 
-### 2.1 [State Management](feature-state-management/) ⏳ HIGH
+### 2.1 [Opaque Type-Substrate Port](features/type-substrate-port/) - HIGH
 
-- [x] `p1` - **ID**: `cpt-frontx-feature-state-management`
+- [ ] `p1` - **ID**: `cpt-frontx-feature-type-substrate-port`
 
-- **Purpose**: Provides the foundational state management and event infrastructure for the entire FrontX system. Implements the typed EventBus, Redux Toolkit store with dynamic slice registration, action factory, and effect system that enforce the Action → Event → Effect → Reducer data flow pattern.
-
-- **Depends On**: None
-
-- **Scope**:
-  - EventBus pub/sub messaging with typed events
-  - Store factory with dynamic slice registration
-  - `createAction()` factory producing typed action creators
-  - Effect system for event-driven side effects
-  - Flux terminology enforcement (Action → Event → Effect → Reducer)
-  - Module augmentation support for type-safe slice extensions
-
-- **Out of scope**:
-  - React hooks for state access (see `cpt-frontx-feature-react-bindings`)
-  - Domain-specific slices (registered by each plugin)
-  - Persistence or DevTools middleware
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-sdk-state-interface`
-  - [x] `p2` - `cpt-frontx-fr-sdk-flux-terminology`
-  - [x] `p1` - `cpt-frontx-fr-sdk-action-pattern`
-  - [x] `p2` - `cpt-frontx-fr-sdk-module-augmentation`
-  - [x] `p1` - `cpt-frontx-nfr-rel-serialization`
-  - [x] `p2` - `cpt-frontx-nfr-perf-action-timeout`
-  - [x] `p1` - `cpt-frontx-nfr-maint-event-driven`
-
-- **Design Principles Covered**:
-
-  - [x] `p1` - `cpt-frontx-principle-event-driven-architecture`
-  - [x] `p1` - `cpt-frontx-principle-action-event-effect-reducer-flux`
-
-- **Design Constraints Covered**:
-
-  - [x] `p1` - `cpt-frontx-constraint-no-react-below-l3`
-  - [x] `p1` - `cpt-frontx-constraint-zero-cross-deps-at-l1`
-  - [x] `p1` - `cpt-frontx-constraint-typescript-strict-mode`
-  - [x] `p1` - `cpt-frontx-constraint-esm-first-module-format`
-  - [x] `p2` - `cpt-frontx-constraint-oss-licensing`
-
-- **Domain Model Entities**:
-  - State (Store)
-  - Event
-  - Action
-  - Effect
-
-- **Design Components**:
-
-  - [x] `p1` - `cpt-frontx-component-state`
-
-- **API**:
-  - `eventBus.publish()` / `eventBus.subscribe()`
-  - `createAction()`
-  - `createSlice()` / `registerSlice()`
-  - `registerEffect()`
-
-- **Sequences**:
-
-  - `cpt-frontx-seq-screenset-data-flow`
-
-- **Data**:
-  - N/A (client-side library)
-
-### 2.2 [MFE Registry & Contracts](feature-mfe-registry/) ⏳ HIGH
-
-- [x] `p1` - **ID**: `cpt-frontx-feature-mfe-registry`
-
-- **Purpose**: Defines the contract between host application and microfrontend extensions. Manages the screen-set registry, MFE type contracts (entry types, domain declarations, shared property schemas, action types), and auto-discovery via Vite glob imports.
+- **Purpose**: Define the MFE Runtime's opaque type-substrate port through which the runtime reasons about types solely by identity and delegates every schema/validation/hierarchy operation to an injected provider — keeping the runtime independent of any concrete type-definition specification.
 
 - **Depends On**: None
 
 - **Scope**:
-  - `mfeRegistryFactory` for registering/querying screen-sets
-  - MFE entry type definitions (component, screen, extension)
-  - Extension domain declarations and shared property schemas
-  - MFE action type definitions
-  - Handler injection for MFE loading
-  - Screenset self-containment conventions (slice name = state key = screenset ID)
+  - Opaque Schema identity surface on the runtime.
+  - The injected type-substrate port contract (validate, type-of/hierarchy resolution) the runtime calls.
+  - Extraction of the port out of `packages/screensets` into `@gears-frontx/mfes`.
+  - Hardening MFES-1/4/5 boundaries.
 
 - **Out of scope**:
-  - Blob URL isolation (see `cpt-frontx-feature-mfe-isolation`)
-  - React rendering of MFEs (see `cpt-frontx-feature-react-bindings`)
-  - Theme/i18n propagation (see `cpt-frontx-feature-framework-composition`)
+  - The concrete GTS provider implementation (F3).
+  - Handler resolution (F4).
+  - Registry mechanics (F4).
 
 - **Requirements Covered**:
 
-  - [x] `p1` - `cpt-frontx-fr-sdk-screensets-package`
-  - [x] `p1` - `cpt-frontx-fr-mfe-entry-types`
-  - [x] `p1` - `cpt-frontx-fr-mfe-ext-domain`
-  - [x] `p1` - `cpt-frontx-fr-mfe-shared-property`
-  - [x] `p1` - `cpt-frontx-fr-mfe-action-types`
-  - [x] `p1` - `cpt-frontx-fr-mfe-dynamic-registration`
-  - [x] `p1` - `cpt-frontx-fr-broadcast-write-api`
-  - [x] `p1` - `cpt-frontx-fr-broadcast-matching`
-  - [x] `p1` - `cpt-frontx-fr-broadcast-validate`
-  - [x] `p1` - `cpt-frontx-fr-validation-gts`
-  - [x] `p1` - `cpt-frontx-fr-validation-reject`
+  - [ ] `p1` - `cpt-frontx-fr-application-type-definitions`
+  - [ ] `p1` - `cpt-frontx-fr-mfe-type-validation`
 
 - **Design Principles Covered**:
 
-  - [x] `p2` - `cpt-frontx-principle-self-registering-registries`
+  - [ ] `p1` - `cpt-frontx-principle-opaque-type-substrate`
+  - [ ] `p1` - `cpt-frontx-principle-agnostic-core`
 
 - **Design Constraints Covered**:
 
-  - [x] `p1` - `cpt-frontx-constraint-no-react-below-l3`
-  - [x] `p1` - `cpt-frontx-constraint-zero-cross-deps-at-l1`
-  - [x] `p2` - `cpt-frontx-constraint-no-barrel-exports-for-registries`
+  - [ ] `p1` - `cpt-frontx-constraint-mfes-no-type-format-literals`
+  - [ ] `p1` - `cpt-frontx-constraint-mfes-no-type-format-dependency`
+  - [ ] `p1` - `cpt-frontx-constraint-mfes-opaque-schema-surface`
 
 - **Domain Model Entities**:
-  - ScreenSet
-  - Screen
-  - Microfrontend
-  - SharedProperty
+  - Schema
 
 - **Design Components**:
 
-  - [x] `p1` - `cpt-frontx-component-screensets`
+  - [ ] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
 
 - **API**:
-  - `mfeRegistryFactory.build(config)`
-  - `registerDomain(domain, containerProvider)`
-  - `registerExtension(extension)`
-  - `executeActionsChain(chain)`
-  - `updateSharedProperty(propertyId, value)`
+  - MFE Runtime type-substrate port (TS)
 
 - **Sequences**:
-  - None (registry is data infrastructure; sequences use it but are owned by other features)
+  - N/A
 
 - **Data**:
-  - N/A (client-side library)
 
-### 2.3 [MFE Blob URL Isolation](feature-mfe-isolation/) ⏳ HIGH
+  - N/A
 
-- [x] `p1` - **ID**: `cpt-frontx-feature-mfe-isolation`
+### 2.2 [MFE Registry & Handler Resolution](features/mfe-registry/) - HIGH
 
-- **Purpose**: Implements per-MFE JavaScript isolation through blob URL evaluation. Each MFE bundle is fetched, its import specifiers rewritten to blob URLs, and evaluated in a fresh module scope. This ensures each MFE has its own module-level state (EventBus, store) independent of the host and other MFEs.
+- [ ] `p1` - **ID**: `cpt-frontx-feature-mfe-registry`
+
+- **Purpose**: Provide the abstract `MfeRegistry` façade (built via `mfeRegistryFactory` with the type-system provider injected) that owns microfrontend registration and on-demand load orchestration, resolving each unit's handler by its declared base type rather than by handler self-selection.
+
+- **Depends On**: `cpt-frontx-feature-type-substrate-port`
+
+- **Scope**:
+  - Registry façade + factory injection.
+  - Registration entry.
+  - Handler abstraction + resolution by declared base type (via `typeSystem.isTypeOf`).
+  - On-demand load orchestration entry.
+  - Ownership of the register→validate→mount sequence.
+
+- **Out of scope**:
+  - Manifest discovery + lazy-import ABI (F5).
+  - Mediation/bridge (F6).
+  - Domain admission/mount strategies (F7).
+  - Isolation (F8).
+  - The concrete type system (F3).
+
+- **Requirements Covered**:
+
+  - [ ] `p1` - `cpt-frontx-fr-mfe-runtime-registration`
+  - [ ] `p1` - `cpt-frontx-fr-ui-framework-agnostic`
+
+- **Design Principles Covered**:
+
+  - [ ] `p1` - `cpt-frontx-principle-agnostic-core`
+
+- **Domain Model Entities**:
+  - MfeEntry
+  - Extension
+
+- **Design Components**:
+
+  - [ ] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
+
+- **API**:
+  - `cpt-frontx-interface-mfe-runtime` (registry facade)
+
+- **Sequences**:
+
+  - [ ] `p1` - `cpt-frontx-seq-mfe-register-validate-mount` (OWNER — orchestrating entry)
+
+- **Data**:
+
+  - N/A
+
+### 2.3 [GTS Default Type-System Provider](features/gts-type-provider/) - HIGH
+
+- [ ] `p1` - **ID**: `cpt-frontx-feature-gts-type-provider`
+
+- **Purpose**: Supply the ecosystem's default, injectable type-system provider (`@gears-frontx/gts-plugin`) implementing the runtime's opaque type-substrate port over a concrete type-definition specification, owning the infrastructure schemas + default lifecycle instances and providing schema validation and type-of resolution.
+
+- **Depends On**: `cpt-frontx-feature-type-substrate-port`
+
+- **Scope**:
+  - The `@gears-frontx/gts-plugin` provider implementing `TypeSystemPlugin`.
+  - Registration of infrastructure schemas + default lifecycle instances at construction.
+  - Schema validation + type-of/hierarchy resolution.
+  - Extraction out of `packages/screensets`.
+
+- **Out of scope**:
+  - The opaque port contract itself (F2).
+  - Runtime registry (F4).
+  - Solution-specific schemas (registered by their owners at runtime).
+
+- **Requirements Covered**:
+
+  - [ ] `p1` - `cpt-frontx-fr-mfe-type-validation`
+  - [ ] `p1` - `cpt-frontx-fr-application-type-definitions`
+
+- **Design Principles Covered**:
+
+  - [ ] `p1` - `cpt-frontx-principle-opaque-type-substrate`
+
+- **Design Constraints Covered**:
+
+  - [ ] `p1` - `cpt-frontx-constraint-gts-plugin-owns-infra-schemas`
+  - [ ] `p1` - `cpt-frontx-constraint-gts-plugin-excludes-solution-schemas`
+
+- **Domain Model Entities**:
+  - Schema
+  - LifecycleStage
+
+- **Design Components**:
+
+  - [ ] `p1` - `cpt-frontx-component-type-system-plugin`
+
+- **API**:
+  - `cpt-frontx-interface-type-system`
+
+- **Sequences**:
+  - N/A
+
+- **Data**:
+
+  - N/A
+
+### 2.4 [MFE Discovery & Lazy-Import Loading](features/mfe-loading/) - HIGH
+
+- [ ] `p1` - **ID**: `cpt-frontx-feature-mfe-loading`
+
+- **Purpose**: Drive microfrontend discovery from an enriched published manifest (asset base, per-entry backing files, stylesheets, ordered shared deps) and resolve lazy dynamic imports through a runtime ABI that inherits the parent load's shared-dependency bindings — keeping the runtime ABI distinct from the template-bound build and deferring build cost.
 
 - **Depends On**: `cpt-frontx-feature-mfe-registry`
 
 - **Scope**:
-  - Blob URL creation from fetched source text
-  - Bare specifier rewriting for all declared shared deps (`@gears-frontx/*` and third-party like `react`, `react-dom`, `@reduxjs/toolkit`) → per-load blob URLs
-  - Cross-runtime source text deduplication via `sharedDepTextCache` keyed by `name@version`
-  - Recursive chain loading for transitive dependencies
-  - Per-load import map management
-  - `@module-federation/vite` build plugin for expose chunk compilation only (MF 2.0 runtime not used; `shared: {}`)
-  - `frontx-mf-gts` Vite plugin building standalone ESM shared deps from `rollupOptions.external` via esbuild
-  - Deterministic filenames without content hashes
-  - Never-revoke policy for blob URLs
-  - MFE internal dataflow (useReducer/useState, no host Redux)
-  - Per-load blob URL chain construction from enriched `{outDir}/mfe-manifest.json` (no `FederationHost` instance)
-  - Generation script reading `{outDir}/mfe-manifest.json` from each MFE into aggregated `generated-mfe-manifests.json`
+  - Manifest-driven discovery (read declared fields, not parsed remote-entry).
+  - Lazy-import ABI separation (build-time rewrite to ABI call, per-load runtime resolver mapping to parent graph).
+  - On-demand load execution.
 
 - **Out of scope**:
-  - CSS isolation via Shadow DOM (see `cpt-frontx-feature-react-bindings`)
-  - MFE lifecycle orchestration (see `cpt-frontx-feature-framework-composition`)
+  - Registry façade/handler resolution (F4).
+  - Runtime isolation/trust kernel (F8).
 
 - **Requirements Covered**:
 
-  - [x] `p1` - `cpt-frontx-fr-blob-fresh-eval`
-  - [x] `p2` - `cpt-frontx-fr-blob-no-revoke`
-  - [x] `p1` - `cpt-frontx-fr-blob-source-cache`
-  - [x] `p1` - `cpt-frontx-fr-blob-import-rewriting`
-  - [x] `p1` - `cpt-frontx-fr-blob-recursive-chain`
-  - [x] `p2` - `cpt-frontx-fr-blob-per-load-map`
-  - [x] `p1` - `cpt-frontx-fr-mfe-author-state-lifecycle`
-  - [x] `p1` - `cpt-frontx-fr-externalize-transform`
-  - [x] `p1` - `cpt-frontx-fr-externalize-filenames`
-  - [x] `p2` - `cpt-frontx-fr-externalize-build-only`
-  - [x] `p1` - `cpt-frontx-fr-dataflow-internal-app`
-  - [x] `p1` - `cpt-frontx-fr-dataflow-no-redux`
-  - [x] `p1` - `cpt-frontx-fr-sharescope-construction`
-  - [x] `p2` - `cpt-frontx-fr-sharescope-concurrent`
-  - [x] `p2` - `cpt-frontx-nfr-perf-blob-overhead`
-  - [x] `p1` - `cpt-frontx-nfr-sec-csp-blob`
-
-- **Design Principles Covered**:
-
-  - [x] `p1` - `cpt-frontx-principle-mfe-isolation`
-
-- **Design Constraints Covered**:
-
-  - [x] `p1` - `cpt-frontx-constraint-zero-cross-deps-at-l1`
+  - [ ] `p1` - `cpt-frontx-fr-mfe-runtime-registration`
+  - [ ] `p1` - `cpt-frontx-nfr-runtime-performance`
 
 - **Domain Model Entities**:
-  - Microfrontend
+  - MfeEntry
 
 - **Design Components**:
 
-  - [x] `p1` - `cpt-frontx-component-screensets` (blob loader subsystem)
+  - [ ] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
 
 - **API**:
-  - `MfeHandlerMF.load()` / `.mount()` / `.unmount()`
-  - `sharedDepTextCache` (keyed by `name@version`) and `sourceTextCache` (keyed by absolute URL)
-  - Bare specifier rewriting within the handler
-  - `@module-federation/vite` plugin configuration (expose chunks only)
-  - `frontx-mf-gts` Vite plugin configuration (standalone ESM builder + `{outDir}/mfe-manifest.json` producer)
+  - N/A
 
 - **Sequences**:
-
-  - `cpt-frontx-seq-mfe-loading`
+  - N/A
 
 - **Data**:
-  - N/A (client-side library)
 
-### 2.4 [API Communication](feature-api-communication/) ⏳ HIGH
+  - N/A
 
-- [x] `p1` - **ID**: `cpt-frontx-feature-api-communication`
+### 2.5 [Host–MFE Communication: Actions-Chains Mediator & Parent–Child Bridge](features/mfe-host-communication/) - HIGH
 
-- **Purpose**: Provides a unified API service layer abstracting REST and SSE protocols behind consistent interfaces. Includes global and instance-level plugin systems for cross-cutting concerns, mock mode control via symbol-based plugin identification, and protocol-specific configuration.
+- [ ] `p1` - **ID**: `cpt-frontx-feature-mfe-host-communication`
+
+- **Purpose**: Route host–microfrontend communication through an actions-chains mediator keyed by target and action type with recursive chain execution (success/fallback branching, in-flight tracking for safe teardown) over a narrow parent–child capability bridge that delegates to the registry.
+
+- **Depends On**: `cpt-frontx-feature-mfe-registry`
+
+- **Scope**:
+  - Actions-chains mediator (keyed dispatch, per-target catch-all tier, recursive chain success/fallback, in-flight tracking).
+  - Narrow capability bridge (executeActionsChain, subscribeToProperty, getProperty, registerActionHandler) delegating to the registry.
+  - Matching narrow parent handle.
+
+- **Out of scope**:
+  - Domain admission/contract matching (F7).
+  - Type validation (F2/F3).
+
+- **Requirements Covered**:
+
+  - [ ] `p1` - `cpt-frontx-fr-mfe-host-communication`
+
+- **Design Principles Covered**:
+
+  - [ ] `p1` - `cpt-frontx-principle-agnostic-core`
+
+- **Design Constraints Covered**:
+
+  - [ ] `p1` - `cpt-frontx-constraint-mfes-no-solution-shared-properties`
+
+- **Domain Model Entities**:
+  - Action
+  - ActionsChain
+
+- **Design Components**:
+
+  - [ ] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
+
+- **API**:
+  - N/A
+
+- **Sequences**:
+  - N/A
+
+- **Data**:
+
+  - N/A
+
+### 2.6 [Extension-Domain Governance: Mount Strategies, Cardinality & Contract Matching](features/extension-domain-governance/) - HIGH
+
+- [x] `p1` - **ID**: `cpt-frontx-feature-extension-domain-governance`
+
+- **Purpose**: Govern extension-domain occupancy through composable named mount strategies (concurrent/optional/exclusive) and a cardinality matrix, admitting extensions only by subset-rule contract matching with the scoped infrastructure-lifecycle-action exemption — realizing default-deny admission.
+
+- **Depends On**: `cpt-frontx-feature-mfe-registry`, `cpt-frontx-feature-gts-type-provider`
+
+- **Scope**:
+  - Mount-strategy selection + cardinality matrix.
+  - Action–behavior consistency validation at admission.
+  - Subset-rule contract matching (three containment rules).
+  - Domain occupancy admit/reject.
+
+- **Out of scope**:
+  - Registry/handler resolution (F4).
+  - Isolation (F8).
+  - Mediation (F6).
+
+- **Requirements Covered**:
+
+  - [x] `p1` - `cpt-frontx-fr-mfe-multi-occupant-domain`
+  - [x] `p1` - `cpt-frontx-fr-mfe-type-validation`
+  - [x] `p1` - `cpt-frontx-nfr-security`
+
+- **Design Principles Covered**:
+
+  - [x] `p1` - `cpt-frontx-principle-default-deny-admission`
+
+- **Design Constraints Covered**:
+
+  - [x] `p1` - `cpt-frontx-constraint-mfes-no-layout-domain-values`
+
+- **Domain Model Entities**:
+  - Extension
+  - ExtensionDomain
+
+- **Design Components**:
+
+  - [ ] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
+
+- **API**:
+  - N/A
+
+- **Sequences**:
+  - N/A
+
+- **Data**:
+
+  - N/A
+
+### 2.7 [MFE Runtime Isolation](features/mfe-isolation/) - HIGH
+
+- [x] `p1` - **ID**: `cpt-frontx-feature-mfe-isolation`
+
+- **Purpose**: Isolate each loaded microfrontend in its own module graph behind an audited trust kernel — concentrating dynamic-code primitives in one annotated trust-kernel file with a no-mutable-state contract and runtime guards, retaining backing references for the page lifetime to support top-level await.
+
+- **Depends On**: `cpt-frontx-feature-mfe-registry`, `cpt-frontx-feature-mfe-loading`
+
+- **Scope**:
+  - Per-unit module-graph isolation.
+  - The audited trust kernel (dynamic import + specifier-matcher construction) with safety annotations + guards.
+  - Backing-reference retention.
+
+- **Out of scope**:
+  - Load orchestration (F5).
+  - Registry (F4).
+
+- **Requirements Covered**:
+
+  - [x] `p1` - `cpt-frontx-fr-mfe-runtime-registration`
+  - [x] `p1` - `cpt-frontx-nfr-security`
+
+- **Design Principles Covered**:
+
+  - [x] `p1` - `cpt-frontx-principle-default-deny-admission`
+
+- **Domain Model Entities**:
+  - MfeEntry
+
+- **Design Components**:
+
+  - [x] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
+
+- **API**:
+  - N/A
+
+- **Sequences**:
+  - N/A
+
+- **Data**:
+
+  - N/A
+
+### 2.8 [API Protocol Surface](features/api-protocol-surface/) - MEDIUM
+
+- [x] `p2` - **ID**: `cpt-frontx-feature-api-protocol-surface`
+
+- **Purpose**: Provide a protocol-separated, solution-agnostic API surface (`@gears-frontx/api`): request/response and streaming behind a common abstract `ApiProtocol` with descriptor-based endpoints + auto-derived cache keys, a generic plugin short-circuit, and a realm-scoped retainer-counted shared fetch cache that lets independently bundled units reuse in-flight and cached results.
 
 - **Depends On**: None
 
 - **Scope**:
-  - `createApiService()` factory for typed service instances
-  - REST protocol adapter (Axios-based)
-  - SSE protocol adapter (EventSource-based)
-  - Protocol registry with class-keyed Map storage
-  - Global plugin registry on `apiRegistry` with OCP-compliant API
-  - Instance-level plugins for local overrides
-  - `RestMockPlugin` and `SseMockPlugin` for mock responses
-  - `MOCK_PLUGIN` symbol and `isMockPlugin()` type guard
-  - `toggleMockMode` action for centralized mock control
-  - Plugin retry support with error context and safety-limited depth
-  - Type-safe SSE events via generics
+  - `ApiProtocol` request/response + streaming protocols.
+  - Protocol-specific plugin hooks + uniform plugin contract.
+  - Short-circuit return contract.
+  - Realm-shared retainer-counted fetch cache (well-known global symbol, dedupe by key).
 
 - **Out of scope**:
-  - Business-domain API endpoint definitions (owned by domain plugins)
-  - Authentication token management (configured via interceptors by consumers)
+  - Any solution-specific plugin/endpoint/auth wiring (consumer-supplied).
+  - Intra-ecosystem package coupling.
 
 - **Requirements Covered**:
 
-  - [x] `p1` - `cpt-frontx-fr-sdk-api-package`
-  - [x] `p1` - `cpt-frontx-fr-sse-protocol`
-  - [x] `p2` - `cpt-frontx-fr-sse-mock-mode`
-  - [x] `p1` - `cpt-frontx-fr-sse-protocol-registry`
-  - [x] `p2` - `cpt-frontx-fr-sse-type-safe-events`
-  - [x] `p2` - `cpt-frontx-fr-mock-toggle`
-  - [x] `p2` - `cpt-frontx-nfr-rel-api-retry`
-
-- **Design Principles Covered**:
-
-  - [x] `p1` - `cpt-frontx-principle-event-driven-architecture` (mock toggle via events)
+  - [x] `p2` - `cpt-frontx-nfr-runtime-performance`
 
 - **Design Constraints Covered**:
 
-  - [x] `p1` - `cpt-frontx-constraint-no-react-below-l3`
-  - [x] `p1` - `cpt-frontx-constraint-zero-cross-deps-at-l1`
-  - [x] `p2` - `cpt-frontx-constraint-no-package-internals-imports`
+  - [x] `p2` - `cpt-frontx-constraint-api-no-solution-content`
 
 - **Domain Model Entities**:
-  - Event (SSE events)
+  - ApiService
 
 - **Design Components**:
 
-  - [x] `p1` - `cpt-frontx-component-api`
+  - [x] `p2` - `cpt-frontx-component-api-surface`
 
 - **API**:
-  - `createApiService()`
-  - `apiRegistry.registerPlugin()` / `.getPlugins()`
-  - `SseProtocol.connect()` / `.disconnect()`
-  - `toggleMockMode` action
+  - TS library surface (no PRD interface ID by DESIGN §3.3)
 
 - **Sequences**:
-  - None (API is infrastructure; used by sequences but doesn't own one)
+  - N/A
 
 - **Data**:
-  - N/A (client-side library)
 
-### 2.5 [Internationalization Infrastructure](feature-i18n-infrastructure/) ⏳ HIGH
+  - N/A
 
-- [x] `p1` - **ID**: `cpt-frontx-feature-i18n-infrastructure`
+### 2.9 [Ecosystem Distribution & Versioning Policy](features/ecosystem-distribution/) - MEDIUM
 
-- **Purpose**: Provides internationalization infrastructure supporting 36 languages with locale-aware formatting, hybrid namespace model for menu/screen-level translations, and lazy chunk loading.
+- [ ] `p2` - **ID**: `cpt-frontx-feature-ecosystem-distribution`
+
+- **Purpose**: Establish the matched-version, per-concern artifact distribution policy — independently published, independently versioned artifacts whose major/minor stay matched while patch/pre-release diverge, isolating breaking changes behind semver + a deprecation cycle, and imposing no architectural ceiling on integrated units.
 
 - **Depends On**: None
 
 - **Scope**:
-  - 36 built-in language configurations with locale metadata
-  - Date, number, currency, relative-time formatter exports (individually tree-shakeable)
-  - Hybrid namespace model (global keys + screenset-scoped keys)
-  - Lazy chunk loading per namespace
-  - `I18nRegistry.createLoader()` static method for Vite-compatible imports
-  - Graceful fallback for invalid format inputs
-  - Strict content separation enforcement (screenset files = menu titles only)
+  - Matched major/minor version-policy enforcement across published artifacts.
+  - Deprecation-cycle gate before removal.
+  - npm + GitHub-source distribution channels.
+  - The no-architectural-ceiling guarantee (growth governed by performance thresholds, not structure).
 
 - **Out of scope**:
-  - React `useTranslation()` hook (see `cpt-frontx-feature-react-bindings`)
-  - Translation content (provided by consuming applications)
-  - Language propagation to MFEs (see `cpt-frontx-feature-framework-composition`)
+  - Per-component internal behavior (other features).
+  - CI implementation code.
 
 - **Requirements Covered**:
 
-  - [x] `p1` - `cpt-frontx-fr-sdk-i18n-package`
-  - [x] `p1` - `cpt-frontx-fr-i18n-formatters`
-  - [x] `p1` - `cpt-frontx-fr-i18n-formatter-exports`
-  - [x] `p2` - `cpt-frontx-fr-i18n-graceful-invalid`
-  - [x] `p1` - `cpt-frontx-fr-i18n-hybrid-namespace`
-  - [x] `p1` - `cpt-frontx-fr-i18n-lazy-chunks`
+  - [ ] `p2` - `cpt-frontx-fr-versioned-platform-evolution`
+  - [ ] `p2` - `cpt-frontx-fr-no-architectural-ceiling`
+  - [ ] `p2` - `cpt-frontx-nfr-evolvability`
+  - [ ] `p2` - `cpt-frontx-nfr-scalability-ceiling`
 
 - **Design Principles Covered**:
 
-  - [x] `p2` - `cpt-frontx-principle-self-registering-registries` (i18n namespace registration)
-
-- **Design Constraints Covered**:
-
-  - [x] `p1` - `cpt-frontx-constraint-no-react-below-l3`
-  - [x] `p1` - `cpt-frontx-constraint-zero-cross-deps-at-l1`
+  - [ ] `p2` - `cpt-frontx-principle-per-concern-versioning`
 
 - **Domain Model Entities**:
-  - (i18n infrastructure — no explicit domain entity in DESIGN)
-
-- **Design Components**:
-
-  - [x] `p1` - `cpt-frontx-component-i18n`
+  - N/A
 
 - **API**:
-  - `I18nRegistry.createLoader()`
-  - `formatDate()` / `formatNumber()` / `formatCurrency()` / `formatRelativeTime()`
-  - Namespace registration API
+  - `cpt-frontx-contract-package-registry-distribution`
 
 - **Sequences**:
-  - None
+  - N/A
 
 - **Data**:
-  - N/A (client-side library)
 
-### 2.6 [Framework Composition](feature-framework-composition/) ⏳ HIGH
+  - N/A
 
-- [x] `p1` - **ID**: `cpt-frontx-feature-framework-composition`
+### 2.10 [Template Externalization & Source-Spec Resolution](features/template-resolution/) - HIGH
 
-- **Purpose**: Composes L1 SDK packages into a cohesive application framework through the plugin architecture. Provides the builder API, plugin system, layout orchestration, configuration management, microfrontends lifecycle plugin, shared property bridge with GTS validation, and theme/i18n propagation to MFEs.
+- [ ] `p1` - **ID**: `cpt-frontx-feature-template-resolution`
 
-- **Depends On**: `cpt-frontx-feature-state-management`, `cpt-frontx-feature-mfe-registry`, `cpt-frontx-feature-api-communication`, `cpt-frontx-feature-i18n-infrastructure`
-
-- **Scope**:
-  - `createGears FrontX()` builder with `.use(plugin).build()` chaining
-  - `Gears FrontXPlugin` interface and `Gears FrontXPluginContext`
-  - Layout slices (menu, header, footer, sidebars, overlay, popups)
-  - `AppConfig` with tenant settings, router config, layout visibility
-  - `app/*` event API for configuration propagation
-  - `microfrontends()` plugin with MFE lifecycle actions
-  - Domain constants (`Gears FrontX_SCREEN_DOMAIN`, `Gears FrontX_SIDEBAR_DOMAIN`, `Gears FrontX_POPUP_DOMAIN`, `Gears FrontX_OVERLAY_DOMAIN`)
-  - Theme propagation to MFEs via `themes()` plugin
-  - Language propagation to MFEs via `i18n()` plugin
-  - `updateSharedProperty()` global broadcast
-  - GTS validation of shared property values
-  - `setSharedProperty()` / `getSharedProperty()` bridge
-  - `queryCache()` plugin for host-owned shared `QueryClient` lifecycle, mock mode cache integration, and Flux cache invalidation; `queryCacheShared()` plugin so separately mounted child roots (including MFE apps) join the same host client without a second `QueryClient`
-  - SDK re-exports for consumer convenience
-
-- **Out of scope**:
-  - React provider/hooks (see `cpt-frontx-feature-react-bindings`)
-  - Blob URL isolation mechanics (see `cpt-frontx-feature-mfe-isolation`)
-  - App-owned UI component implementations (see `cpt-frontx-feature-ui-libraries-choice`)
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-sdk-framework-layer`
-  - [x] `p1` - `cpt-frontx-fr-sdk-plugin-arch`
-  - [x] `p1` - `cpt-frontx-fr-sdk-layer-deps`
-  - [x] `p1` - `cpt-frontx-fr-appconfig-tenant`
-  - [x] `p1` - `cpt-frontx-fr-appconfig-event-api`
-  - [x] `p1` - `cpt-frontx-fr-appconfig-router-config`
-  - [x] `p2` - `cpt-frontx-fr-appconfig-layout-visibility`
-  - [x] `p1` - `cpt-frontx-fr-mfe-theme-propagation`
-  - [x] `p1` - `cpt-frontx-fr-mfe-i18n-propagation`
-  - [x] `p1` - `cpt-frontx-fr-broadcast-write-api`
-  - [x] `p1` - `cpt-frontx-fr-broadcast-matching`
-  - [x] `p1` - `cpt-frontx-fr-broadcast-validate`
-  - [x] `p1` - `cpt-frontx-fr-validation-gts`
-  - [x] `p1` - `cpt-frontx-fr-validation-reject`
-  - [x] `p1` - `cpt-frontx-fr-mfe-plugin`
-  - [x] `p1` - `cpt-frontx-nfr-rel-error-handling`
-  - [x] `p1` - `cpt-frontx-nfr-sec-type-validation`
-  - [x] `p1` - `cpt-frontx-nfr-maint-zero-crossdeps`
-
-- **Design Principles Covered**:
-
-  - [x] `p1` - `cpt-frontx-principle-plugin-first-composition`
-  - [x] `p1` - `cpt-frontx-principle-layer-isolation`
-
-- **Design Constraints Covered**:
-
-  - [x] `p1` - `cpt-frontx-constraint-no-react-below-l3`
-
-- **Domain Model Entities**:
-  - Plugin
-  - SharedProperty
-  - ScreenSet (via registry integration)
-
-- **Design Components**:
-
-  - [x] `p1` - `cpt-frontx-component-framework`
-
-- **API**:
-  - `createGears FrontX()` / `.use()` / `.build()`
-  - `microfrontends()` / `themes()` / `i18n()` / `effects()` / `mock()` / `queryCache()` / `queryCacheShared()` plugins
-  - `setSharedProperty()` / `getSharedProperty()`
-  - `AppConfig` type
-
-- **Sequences**:
-
-  - `cpt-frontx-seq-app-bootstrap`
-  - `cpt-frontx-seq-shared-property-broadcast`
-
-- **Data**:
-  - N/A (client-side library)
-
-### 2.7 [React Bindings](feature-react-bindings/) ⏳ HIGH
-
-- [x] `p1` - **ID**: `cpt-frontx-feature-react-bindings`
-
-- **Purpose**: Bridges the framework layer to React 19, providing the root provider, typed hooks, MFE rendering with Shadow DOM CSS isolation, and error boundaries. This is the primary API surface that application developers interact with.
-
-- **Depends On**: `cpt-frontx-feature-framework-composition`
-
-- **Scope**:
-  - `Gears FrontXProvider` root component (Redux store, i18n, theme, framework context)
-  - Resolves the shared `QueryClient` from the app when built with `queryCache()` or `queryCacheShared()` (host vs child join path); does not instantiate its own TanStack client
-  - Typed hooks: `useGears FrontX()`, `useAppSelector()`, `useAppDispatch()`, `useTranslation()`, `useScreenTranslations()`, `useFormatters()`, `useTheme()`, `useMfeBridge()`, `useSharedProperty()`, `useHostAction()`, and related MFE hooks
-  - `ExtensionDomainSlot` host renderer with RefContainerProvider-backed container coordination
-  - Per-MFE React error boundaries
-  - Initialization sequence orchestration
-  - Screen component with React.lazy() wrapping and Suspense fallback
-
-- **Out of scope**:
-  - App-owned UI component implementations (see `cpt-frontx-feature-ui-libraries-choice`)
-  - Framework plugin logic (see `cpt-frontx-feature-framework-composition`)
-
-- **Requirements Covered**:
-
-  - [x] `p2` - `cpt-frontx-fr-sdk-react-layer`
-  - [x] `p1` - `cpt-frontx-nfr-sec-shadow-dom`
-  - [x] `p1` - `cpt-frontx-nfr-compat-react`
-  - [x] `p1` - `cpt-frontx-nfr-perf-lazy-loading`
-
-- **Design Principles Covered**:
-
-  - [x] `p1` - `cpt-frontx-principle-layer-isolation` (React confined to L3)
-
-- **Design Constraints Covered**:
-
-  - [x] `p1` - `cpt-frontx-constraint-no-react-below-l3` (this feature IS the React boundary)
-
-- **Domain Model Entities**:
-  - Screen
-  - Component
-
-- **Design Components**:
-
-  - [x] `p1` - `cpt-frontx-component-react`
-
-- **API**:
-  - `<Gears FrontXProvider>` (with optional internal query provider when `queryCache()` / `queryCacheShared()` registered)
-  - `<ExtensionDomainSlot>`
-  - `<RefContainerProvider>`
-  - `<Screen>`
-  - `useGears FrontX()` / `useAppSelector()` / `useAppDispatch()` / `useTranslation()` / `useScreenTranslations()` / `useFormatters()` / `useTheme()` / `useMfeBridge()` / `useSharedProperty()` / `useHostAction()` — plus descriptor-driven `useApiQuery()` / `useApiSuspenseQuery()` / `useApiInfiniteQuery()` / `useApiSuspenseInfiniteQuery()` / `useApiMutation()` / `useApiStream()` / `useQueryCache()` (see [2.12](#212-request-lifecycle--query-integration--high))
-
-- **Sequences**:
-
-  - [x] `p1` - `cpt-frontx-seq-app-bootstrap` (initialization sequence)
-
-- **Data**:
-  - N/A (client-side library)
-
-### 2.8 [Studio DevTools](feature-studio-devtools/) ⏳ MEDIUM
-
-- [x] `p2` - **ID**: `cpt-frontx-feature-studio-devtools`
-
-- **Purpose**: Provides a development-time overlay for inspecting and tweaking theme, i18n, viewport, and state. Conditionally loaded via `import.meta.env.DEV` for zero production bundle impact. Persists panel state to localStorage.
+- **Purpose**: Make the CLI (`@gears-frontx/cli`) bundle no template and resolve each template from an external source by versioned source-spec (`host:owner/repo@ref`) at runtime into a tracked local inventory — install, local list, and local update bounded to that inventory, never disturbing scaffolded projects.
 
 - **Depends On**: None
 
 - **Scope**:
-  - Toggleable floating glassmorphic overlay panel
-  - Theme switching, language selection, API mock mode toggle controls
-  - Viewport simulation at configurable breakpoints
-  - Panel state persistence (open/closed, position, preferences) via localStorage
-  - Build independence (excluded from production via tree-shaking)
-  - Event-driven persistence (subscribes to framework events)
+  - Template install by versioned source-spec.
+  - Source-spec syntax (host-prefixed `host:owner/repo@ref`).
+  - Local inventory listing.
+  - Local update bounded to inventory.
+  - CLI-template-independence (CLI-1).
 
 - **Out of scope**:
-  - Framework state modification (dispatches through standard event flow)
-  - Production usage
+  - Manifest pre-publish validation (F11).
+  - Scaffolding/namespaces (F12).
+  - Composition (F13).
+  - Upgrade (F14).
 
 - **Requirements Covered**:
 
-  - [x] `p1` - `cpt-frontx-fr-studio-panel`
-  - [x] `p1` - `cpt-frontx-fr-studio-controls`
-  - [x] `p1` - `cpt-frontx-fr-studio-persistence`
-  - [x] `p1` - `cpt-frontx-fr-studio-viewport`
-  - [x] `p1` - `cpt-frontx-fr-studio-independence`
+  - [ ] `p1` - `cpt-frontx-fr-cli-template-install`
+  - [ ] `p1` - `cpt-frontx-fr-cli-template-list`
+  - [ ] `p1` - `cpt-frontx-fr-cli-template-update-local`
 
 - **Design Principles Covered**:
-  - (Studio is standalone; operates through event-driven patterns)
+
+  - [ ] `p1` - `cpt-frontx-principle-template-agnostic-tooling`
 
 - **Design Constraints Covered**:
 
-  - [x] `p1` - `cpt-frontx-constraint-typescript-strict-mode`
+  - [ ] `p1` - `cpt-frontx-constraint-cli-template-independence`
 
 - **Domain Model Entities**:
-  - (No domain entities uniquely owned by Studio)
+  - Template
 
 - **Design Components**:
 
-  - [x] `p1` - `cpt-frontx-component-studio`
+  - [ ] `p1` - `cpt-frontx-component-cli` (shared)
 
 - **API**:
-  - `import('@gears-frontx/studio')` (dev-only dynamic import)
-  - Studio panel toggle
+  - CLI install/list/update commands
+  - `cpt-frontx-contract-source-spec`
 
 - **Sequences**:
-  - None
+  - N/A
 
 - **Data**:
-  - N/A (client-side library)
 
-### 2.9 [CLI Tooling](feature-cli-tooling/) ⏳ MEDIUM
+  - N/A
 
-- [x] `p2` - **ID**: `cpt-frontx-feature-cli-tooling`
+### 2.11 [Template Manifest Contract & Pre-Publish Validation](features/template-manifest/) - HIGH
 
-- **Purpose**: Reduces boilerplate and enforces conventions through interactive scaffolding commands. Generates screen-sets, MFE packages, and components from real project files used as templates. Supports both interactive (human) and programmatic (AI agent) execution modes.
+- [x] `p1` - **ID**: `cpt-frontx-feature-template-manifest`
+
+- **Purpose**: Define the single published template manifest as the conformance contract — every template declares itself (identity, version, kind, referenced compositions) in a versioned shape, checked at pre-publish validation and read at install and scaffold, giving one authoritative description.
+
+- **Depends On**: `cpt-frontx-feature-template-resolution`
+
+- **Scope**:
+  - Template manifest shape/contract.
+  - Pre-publish structure validation against the contract.
+  - Manifest consumed at install + scaffold.
+
+- **Out of scope**:
+  - Source-spec resolution (F10).
+  - Composition recursion (F13).
+  - Scaffolding mechanics (F12).
+
+- **Requirements Covered**:
+
+  - [x] `p1` - `cpt-frontx-fr-cli-template-validate-prepublish`
+
+- **Domain Model Entities**:
+  - TemplateManifest
+
+- **Design Components**:
+
+  - [x] `p1` - `cpt-frontx-component-cli` (shared)
+
+- **API**:
+  - CLI validate (pre-publish) command
+  - `cpt-frontx-contract-template-manifest`
+
+- **Sequences**:
+  - N/A
+
+- **Data**:
+
+  - N/A
+
+### 2.12 [Two-Namespace Commands & Project/MFE Scaffolding](features/cli-scaffolding/) - HIGH
+
+- [x] `p1` - **ID**: `cpt-frontx-feature-cli-scaffolding`
+
+- **Purpose**: Organize the CLI command surface into project-level and microfrontend-level namespaces sharing one resolver, and drive project and microfrontend scaffolding from those namespaces — the namespace organization being the CLI's public interface.
+
+- **Depends On**: `cpt-frontx-feature-template-resolution`
+
+- **Scope**:
+  - Two-namespace command architecture (project-level + microfrontend-level, one shared resolver).
+  - Project scaffolding.
+  - Microfrontend scaffolding.
+
+- **Out of scope**:
+  - Composed-template recursion + provenance (F13).
+  - Upgrade (F14).
+  - Manifest validation (F11).
+
+- **Requirements Covered**:
+
+  - [x] `p1` - `cpt-frontx-fr-cli-two-namespace-commands`
+  - [x] `p1` - `cpt-frontx-fr-cli-project-scaffold`
+  - [x] `p1` - `cpt-frontx-fr-cli-microfrontend-scaffold`
+
+- **Domain Model Entities**:
+  - Template
+
+- **Design Components**:
+
+  - [ ] `p1` - `cpt-frontx-component-cli` (shared)
+
+- **API**:
+  - `cpt-frontx-interface-cli` (command surface)
+
+- **Sequences**:
+  - N/A
+
+- **Data**:
+
+  - N/A
+
+### 2.13 [Composed-Template Resolution & Project Provenance](features/composed-provenance/) - HIGH
+
+- [ ] `p1` - **ID**: `cpt-frontx-feature-composed-provenance`
+
+- **Purpose**: Resolve manifest-declared composed templates recursively in one operation under a defined collision rule (nearest-declaration-wins, collision reported before any write), scaffold the composition, and write each scaffolded project's provenance record (template identity + version + re-resolvable source-spec).
+
+- **Depends On**: `cpt-frontx-feature-cli-scaffolding`, `cpt-frontx-feature-template-resolution`
+
+- **Scope**:
+  - Manifest-declared recursive composition through the shared resolver.
+  - Nearest-declaration-wins collision rule + pre-write collision report.
+  - Project-provenance record written at scaffold time.
+
+- **Out of scope**:
+  - Base scaffolding/namespaces (F12).
+  - Install/source-spec (F10).
+  - Upgrade change-set (F14).
+
+- **Requirements Covered**:
+
+  - [ ] `p1` - `cpt-frontx-fr-cli-composed-template-resolution`
+
+- **Domain Model Entities**:
+  - Template
+  - ProjectProvenance
+
+- **Design Components**:
+
+  - [ ] `p1` - `cpt-frontx-component-cli` (shared)
+
+- **API**:
+  - `cpt-frontx-contract-project-provenance`
+
+- **Sequences**:
+
+  - [ ] `p1` - `cpt-frontx-seq-composed-project-scaffold` (OWNER)
+
+- **Data**:
+
+  - N/A
+
+### 2.14 [Upgrade Change-Set Engine](features/upgrade-changeset/) - HIGH
+
+- [ ] `p1` - **ID**: `cpt-frontx-feature-upgrade-changeset`
+
+- **Purpose**: Provide the single CLI-owned change-set engine that computes a template-version diff against project provenance, presents it for review and approval, applies it non-destructively, and supports rollback — the one reviewable, reversible engine both direct CLI and AI orchestration drive.
+
+- **Depends On**: `cpt-frontx-feature-composed-provenance`
+
+- **Scope**:
+  - Version-diff computation against provenance baseline.
+  - Reviewable change-set presentation + explicit approval gate.
+  - Non-destructive apply.
+  - Rollback/reversibility.
+  - Provenance update on apply.
+
+- **Out of scope**:
+  - AI orchestration/enrichment of the engine (F17).
+  - Scaffolding (F12).
+  - Composition (F13).
+
+- **Requirements Covered**:
+
+  - [ ] `p1` - `cpt-frontx-fr-cli-project-upgrade-changeset`
+  - [ ] `p1` - `cpt-frontx-fr-cli-upgrade-review-approval`
+
+- **Domain Model Entities**:
+  - ProjectProvenance
+
+- **Design Components**:
+
+  - [ ] `p1` - `cpt-frontx-component-cli` (shared)
+
+- **API**:
+  - CLI upgrade command
+  - `cpt-frontx-contract-project-provenance` (reads baseline)
+
+- **Sequences**:
+  - N/A
+
+- **Data**:
+
+  - N/A
+
+### 2.15 [AI Tooling Kit Packaging & Base Content](features/ai-kit-packaging/) - HIGH
+
+- [ ] `p1` - **ID**: `cpt-frontx-feature-ai-kit-packaging`
+
+- **Purpose**: Ship the AI Tooling Framework as a Cypilot kit (`cyber-pilot-kit-frontx`) with a declarative manifest, every resource identifier `frontx_`-prefixed, carrying solution-agnostic base ecosystem capabilities (skills, workflows, guidelines, reference artifacts) available to agents at session start — and no solution-specific content.
 
 - **Depends On**: None
 
 - **Scope**:
-  - `frontx` binary entry point via Commander.js
-  - Commands: `create`, `generate`, `dev`, `update`, `validate`
-  - Template-based code generation from real project files
-  - Plugin-based command registry with `CommandDefinition` interface
-  - Dual-mode execution (interactive + programmatic)
-  - AI skill definitions for Claude Code integration
-  - Layer-aware command variants with cascade fallback
-  - E2E scaffold verification: required PR gate and nightly coverage via scripted harness
+  - Kit packaging + declarative manifest.
+  - `frontx_`-prefixed resource identifiers (KIT-1).
+  - Base ecosystem AI capabilities at session start.
+  - Solution-agnostic base / no solution content split.
+  - Install through the Cypilot CLI.
 
 - **Out of scope**:
-  - Runtime framework functionality (CLI generates code that imports it)
-  - Build or deployment execution (delegates to Vite and npm)
-  - Unit-test scaffolding and AI verification guidance (see `cpt-frontx-feature-unit-test-generation-and-agent-verification`)
+  - Template-extension contract + discovery/activation (F16).
+  - AI upgrade orchestration (F17).
 
 - **Requirements Covered**:
 
-  - [x] `p1` - `cpt-frontx-fr-cli-package`
-  - [x] `p1` - `cpt-frontx-fr-cli-commands`
-  - [x] `p1` - `cpt-frontx-fr-cli-templates`
-  - [x] `p1` - `cpt-frontx-fr-cli-skills`
-  - [x] `p1` - `cpt-frontx-fr-cli-e2e-verification`
+  - [ ] `p1` - `cpt-frontx-fr-ai-session-start-knowledge`
+  - [ ] `p1` - `cpt-frontx-fr-ai-frontx-skills`
+  - [ ] `p1` - `cpt-frontx-fr-ai-tooling-template-agnostic`
 
 - **Design Principles Covered**:
-  - (CLI is tooling; doesn't uniquely own architecture principles)
+
+  - [ ] `p1` - `cpt-frontx-principle-template-agnostic-tooling`
 
 - **Design Constraints Covered**:
 
-  - [x] `p1` - `cpt-frontx-constraint-esm-first-module-format`
+  - [ ] `p1` - `cpt-frontx-constraint-kit-prefixed-resource-ids`
 
 - **Domain Model Entities**:
-  - (No domain entities uniquely owned by CLI)
+  - Kit
 
 - **Design Components**:
 
-  - [x] `p2` - `cpt-frontx-component-cli`
+  - [ ] `p1` - `cpt-frontx-component-ai-tooling-kit` (shared)
 
 - **API**:
-  - `frontx create [project-name]`
-  - `frontx generate screenset|mfe|component [name]`
-  - `frontx update`
-  - `frontx validate`
-  - `frontx dev`
+  - `cpt-frontx-interface-ai-tooling-framework`
+  - `cpt-frontx-contract-kit-installation`
 
 - **Sequences**:
-  - None
+  - N/A
 
 - **Data**:
-  - N/A (client-side library)
 
-### 2.10 [Publishing Pipeline](feature-publishing-pipeline/) ⏳ MEDIUM
+  - N/A
 
-- [x] `p2` - **ID**: `cpt-frontx-feature-publishing-pipeline`
+### 2.16 [Template AI-Extension Contract & Discovery/Activation](features/template-ai-extensions/) - HIGH
 
-- **Purpose**: Automates NPM package publishing with correct layer-order dependency resolution, version detection via git diff, and idempotent CI workflow. Ensures all packages have correct metadata, ESM output, and consistent versioning.
+- [ ] `p1` - **ID**: `cpt-frontx-feature-template-ai-extensions`
 
-- **Depends On**: None
+- **Purpose**: Define the closed-set extension-bundle contract a template's AI bundle conforms to (skills, workflows, guidelines, reference artifacts as named typed slots) and the generalized scan that discovers conforming installed-template extensions and activates them into the agent-visible capability set under explicit precedence — with no manual wiring; malformed extensions reported and not activated.
+
+- **Depends On**: `cpt-frontx-feature-ai-kit-packaging`, `cpt-frontx-feature-template-resolution`
 
 - **Scope**:
-  - GitHub Actions workflow triggered on PR merge to main
-  - Version change detection via git diff
-  - Layer-ordered sequential publishing (SDK → Framework → React → Studio → CLI)
-  - NPM registry pre-check for idempotency
-  - Retry with exponential backoff
-  - `package.json` metadata: `engines`, `exports`, `type`, `sideEffects`
-  - Consistent versioning across packages
+  - Template AI-extension contract (closed category set, named typed slots, structure independent of content).
+  - Discovery scan parameterized by the contract.
+  - Activation/composition under precedence.
+  - Structural-error reporting for malformed bundles.
 
 - **Out of scope**:
-  - Package build logic (each package owns its tsup config)
-  - NPM registry infrastructure
+  - Base kit packaging (F15).
+  - Upgrade orchestration (F17).
+  - CLI install mechanics (F10).
 
 - **Requirements Covered**:
 
-  - [x] `p1` - `cpt-frontx-fr-sdk-flat-packages`
-  - [x] `p1` - `cpt-frontx-fr-pub-metadata`
-  - [x] `p1` - `cpt-frontx-fr-pub-versions`
-  - [x] `p1` - `cpt-frontx-fr-pub-esm`
-  - [x] `p1` - `cpt-frontx-fr-pub-ci`
-  - [x] `p1` - `cpt-frontx-nfr-compat-node`
-  - [x] `p1` - `cpt-frontx-nfr-compat-typescript`
-  - [x] `p1` - `cpt-frontx-nfr-compat-esm`
-  - [x] `p1` - `cpt-frontx-nfr-perf-treeshake`
-  - [x] `p2` - `cpt-frontx-nfr-maint-arch-enforcement`
-
-- **Design Principles Covered**:
-
-  - [x] `p1` - `cpt-frontx-principle-layer-isolation` (build order enforces layer deps)
-
-- **Design Constraints Covered**:
-
-  - [x] `p1` - `cpt-frontx-constraint-esm-first-module-format`
-  - [x] `p1` - `cpt-frontx-constraint-typescript-strict-mode`
-  - [x] `p2` - `cpt-frontx-constraint-no-package-internals-imports`
+  - [ ] `p1` - `cpt-frontx-fr-ai-template-bundle-extensions`
+  - [ ] `p1` - `cpt-frontx-fr-ai-extension-discovery-activation`
 
 - **Domain Model Entities**:
-  - (No domain entities — infrastructure concern)
+  - AiExtension
 
 - **Design Components**:
-  - (Cross-cutting — affects all package build outputs)
+
+  - [ ] `p1` - `cpt-frontx-component-ai-tooling-kit` (shared)
 
 - **API**:
-  - `.github/workflows/publish.yml`
-  - `npm run build:packages`
+  - N/A
 
 - **Sequences**:
-  - None
+
+  - [ ] `p1` - `cpt-frontx-seq-template-ai-extension-discovery-activation` (OWNER)
 
 - **Data**:
-  - N/A (client-side library)
 
-### 2.11 [UI Libraries Choice](feature-ui-libraries-choice/) ⏳ HIGH
+  - N/A
 
-- [x] `p1` - **ID**: `cpt-frontx-feature-ui-libraries-choice`
+### 2.17 [AI-Driven Upgrade Orchestration](features/ai-upgrade-orchestration/) - HIGH
 
-- **Purpose**: Provides a per-project UI strategy chosen at creation time. When running `frontx create`, the developer selects a UI approach for the project: copy-owned shadcn/ui components, a third-party library (MUI, Ant Design, etc.), or fully custom components. The CLI reads `frontx.config.json` to determine the active UI kit and scaffolds accordingly.
+- [ ] `p1` - **ID**: `cpt-frontx-feature-ai-upgrade-orchestration`
 
-- **Depends On**: `cpt-frontx-feature-cli-tooling`
+- **Purpose**: Orchestrate AI-driven template upgrades over the single CLI change-set engine — reading project provenance, invoking and enriching the engine with change-impact analysis, review gates, and downstream-effect assessment, while applying the identical change set the direct CLI path would.
+
+- **Depends On**: `cpt-frontx-feature-upgrade-changeset`, `cpt-frontx-feature-ai-kit-packaging`
 
 - **Scope**:
-  - `frontx.config.json` `uikit` field supporting `"shadcn"`, `"none"`, or a third-party package name
-  - CLI `frontx create` scaffolding per UI kit type (shadcn components, bridge file, or empty uikit)
-  - CLI `frontx screenset` generation respecting the project's configured UI kit
-  - UIKit bridge generation for third-party libraries
-  - CSS variable theme propagation for all UI kit types
-  - AI guidelines updated (UIKIT.md, SCREENSETS.md)
+  - AI workflow surface for template upgrades.
+  - Orchestration that invokes + enriches the CLI change-set engine (analysis, review gates, downstream-impact).
+  - No second engine.
 
 - **Out of scope**:
-  - MFE isolation mechanics (see `cpt-frontx-feature-mfe-isolation`)
+  - The change-set engine itself (F14, CLI-owned).
+  - Base kit (F15).
+  - Extension discovery (F16).
 
 - **Requirements Covered**:
 
-  - [x] `p1` - `cpt-frontx-fr-cli-commands`
-  - [x] `p1` - `cpt-frontx-fr-cli-templates`
-  - [x] `p1` - `cpt-frontx-nfr-maint-zero-crossdeps`
-
-- **Design Principles Covered**:
-
-  - [x] `p1` - `cpt-frontx-principle-mfe-isolation`
-  - [x] `p2` - `cpt-frontx-principle-self-registering-registries`
-
-- **Design Constraints Covered**:
-
-  - [x] `p1` - `cpt-frontx-constraint-typescript-strict-mode`
+  - [ ] `p1` - `cpt-frontx-fr-ai-upgrade-orchestration`
 
 - **Domain Model Entities**:
-  - Component
+  - ProjectProvenance
+  - AiExtension
 
 - **Design Components**:
 
-  - [x] `p1` - `cpt-frontx-component-cli`
+  - [ ] `p1` - `cpt-frontx-component-ai-tooling-kit` (shared)
 
 - **API**:
-  - `frontx create` (UI kit selection prompt)
-  - `frontx screenset` (UI kit-aware generation)
-  - `frontx.config.json` `uikit` field
-
-- **Sequences**:
-  - None
-
-- **Data**:
-  - N/A (client-side library)
-
-### 2.12 [Request Lifecycle & Query Integration](feature-request-lifecycle/) ⏳ HIGH
-
-- [x] `p2` - **ID**: `cpt-frontx-feature-request-lifecycle`
-
-- **Purpose**: Adds `AbortSignal`-based request cancellation to `RestProtocol` at L1, explicit declarative endpoint/stream contracts for library-agnostic caching at L1, a `queryCache()` / `queryCacheShared()` framework plugin pair at L2 (host owns the shared `QueryClient`; child roots join it), and descriptor-consuming hooks at L3 for declarative data fetching and mutations with automatic caching, deduplication, optimistic updates, and cache invalidation.
-
-- **Depends On**: `cpt-frontx-feature-api-communication`, `cpt-frontx-feature-react-bindings`, `cpt-frontx-feature-framework-composition`
-
-- **Scope**:
-  - `AbortSignal` threading through `RestProtocol` and plugin chain
-  - `RestRequestOptions` pattern for HTTP method extensibility
-  - `CanceledError` detection and plugin chain bypass
-  - `EndpointDescriptor<TData>`, `MutationDescriptor<TData, TVariables>`, and `StreamDescriptor<TEvent>` types at L1 (`@gears-frontx/api`)
-  - `RestEndpointProtocol.query(path)`, `queryWith(pathFn)`, `mutation(method, path)`, and `SseStreamProtocol.stream(path)` — cache keys derived from `[baseURL, 'GET', path]` for static reads, `[baseURL, 'GET', resolvedPath, params]` for parameterized reads, `[baseURL, method, path]` for writes, and `[baseURL, 'SSE', path]` for streams
-  - `queryCache()` framework plugin at L2 — creates and owns the host shared `QueryClient`, handles `MockEvents.Toggle` cache clear, handles `cache/invalidate` / `cache/set` / `cache/remove` events from Flux effects, keeps the L1 `sharedFetchCache` in sync, and attaches the client to the app instance for internal React consumption
-  - `queryCacheShared()` framework plugin at L2 — required for separately mounted child roots (including MFE apps): joins the existing host `QueryClient` from `queryCache()` without creating a second client; may register before the host runtime and attach when the host initializes
-  - `Gears FrontXProvider` resolves the shared `QueryClient` from the app instance for both `queryCache()` and `queryCacheShared()` compositions (not creating its own)
-  - Restricted `QueryCache` interface (`get`, `getState`, `set` with updater, `cancel`, `invalidate`, `invalidateMany`, `remove`) accepts `EndpointDescriptor | QueryKey` — exposed via `useQueryCache()` and injected into mutation callbacks
-  - `useApiQuery(descriptor)` hook for declarative single-page reads — returns `ApiQueryResult<TData>` (Gears FrontX-owned type)
-  - `useApiSuspenseQuery(descriptor)` hook for Suspense-driven single-page reads — returns `ApiSuspenseQueryResult<TData>` (Gears FrontX-owned type)
-  - `useApiInfiniteQuery({ initialPage, getNextPage, getPreviousPage? })` hook for descriptor-driven paginated reads — returns `ApiInfiniteQueryResult<TPage>` (Gears FrontX-owned type)
-  - `useApiSuspenseInfiniteQuery({ initialPage, getNextPage, getPreviousPage? })` hook for Suspense-driven paginated reads — returns `ApiSuspenseInfiniteQueryResult<TPage>` (Gears FrontX-owned type)
-  - `useApiMutation({ endpoint, ... })` hook for declarative writes — returns `ApiMutationResult<TData>` (Gears FrontX-owned type)
-  - `useApiStream(descriptor, options?)` hook for declarative SSE streaming — returns `ApiStreamResult<TEvent>` (Gears FrontX-owned type) with `'latest'`/`'accumulate'` modes and automatic connect/disconnect lifecycle
-  - Event-based cache updates for L2 Flux effects (`cache/invalidate`, `cache/set`, and `cache/remove` handled by the host `queryCache()` plugin; joined child apps reuse the same client)
-  - Flux escape hatch for cross-feature orchestration
-
-- **Out of scope**:
-  - SSE-to-cache integration for query invalidation (known gap — event-based `cache/update` pattern deferred; `useApiStream` provides reactive state but does not write to `QueryCache` automatically)
-  - SSE cancellation (handled by `SseProtocol.disconnect()` and `useApiStream` unmount cleanup)
-  - Custom cache storage backends (TanStack Query uses in-memory cache)
-  - Server-side rendering / hydration support
-  - GraphQL protocol support (descriptors are protocol-agnostic by design but only REST is implemented)
-
-- **Requirements Covered**:
-
-  - `cpt-frontx-fr-sdk-api-package`
-  - `cpt-frontx-fr-sdk-react-layer`
-  - `cpt-frontx-fr-api-endpoint-descriptors`
-  - `cpt-frontx-fr-sse-stream-descriptors`
-  - `cpt-frontx-fr-framework-query-cache-plugin`
-
-- **Design Principles Covered**:
-
-  - `cpt-frontx-principle-layer-isolation` (descriptors at L1, `queryCache()` / `queryCacheShared()` plugins at L2, hooks at L3)
-
-- **Design Constraints Covered**:
-
-  - `cpt-frontx-constraint-no-react-below-l3`
-  - `cpt-frontx-constraint-zero-cross-deps-at-l1`
-
-- **Domain Model Entities**:
-  - (No new domain entities — extends existing API and React layers)
-
-- **Design Components**:
-
-  - `cpt-frontx-component-api`
-  - `cpt-frontx-component-react`
-
-- **API**:
-  - `RestProtocol.get(url, { signal })` / `.post()` / `.put()` / `.patch()` / `.delete()`
-  - `RestEndpointProtocol.query<TData>(path, options?)` → `EndpointDescriptor<TData>` (always GET)
-  - `RestEndpointProtocol.queryWith<TData, TParams>(pathFn, options?)` → `ParameterizedEndpointDescriptor<TData, TParams>` (always GET)
-  - `RestEndpointProtocol.mutation<TData, TVariables>(method, path)` → `MutationDescriptor<TData, TVariables>`
-  - `SseStreamProtocol.stream<TEvent>(path, options?)` → `StreamDescriptor<TEvent>` — routes through `SseProtocol` plugin chain
-  - `queryCache(config?)` framework plugin — creates and owns the host shared `QueryClient`
-  - `queryCacheShared()` framework plugin — joins the host `QueryClient` for child roots (no second client; host `queryCache()` runtime must exist or attach when it appears)
-  - `useApiQuery(descriptor)` → `ApiQueryResult<TData>` — caching, dedup, cancel on unmount
-  - `useApiSuspenseQuery(descriptor)` → `ApiSuspenseQueryResult<TData>` — Suspense-driven reads with descriptor-based cancellation and refetch
-  - `useApiInfiniteQuery({ initialPage, getNextPage, getPreviousPage? })` → `ApiInfiniteQueryResult<TPage>` — paginated reads, adjacent-page descriptor resolution, cancel on unmount
-  - `useApiSuspenseInfiniteQuery({ initialPage, getNextPage, getPreviousPage? })` → `ApiSuspenseInfiniteQueryResult<TPage>` — Suspense-driven paginated reads with descriptor-based adjacent-page resolution
-  - `useApiMutation({ endpoint, onMutate, onSuccess, onError, onSettled })` → `ApiMutationResult<TData>` — callbacks receive `{ queryCache }`
-  - `useApiStream(descriptor, options?)` → `ApiStreamResult<TEvent>` — connect on mount, disconnect on unmount, `'latest'`/`'accumulate'` modes
-  - `QueryCache` interface: `get`, `getState`, `set` (value or updater), `cancel`, `invalidate`, `invalidateMany`, `remove` — accepts `EndpointDescriptor | QueryKey`
-  - Cache keys derived automatically: `[baseURL, 'GET', path]` for static reads, `[baseURL, 'GET', resolvedPath, params]` for parameterized reads, `[baseURL, method, path]` for writes, `[baseURL, 'SSE', path]` for streams — no manual key factories
-
-- **Sequences**:
-  - None
-
-- **Data**:
-  - N/A (client-side library)
-
-- **ADRs**:
-
-  - `cpt-frontx-adr-tanstack-query-data-management`
-
-### 2.13 [Unit Test Generation & Agent Verification](feature-unit-test-generation-and-agent-verification/) ⏳ MEDIUM
-
-- [x] `p1` - **ID**: `cpt-frontx-feature-unit-test-generation-and-agent-verification`
-
-- **Purpose**: Extends FrontX CLI scaffolding so newly created projects ship with a configured Vitest workflow, starter unit tests, editable project-level testing guidance, and AI instructions that require agents to use the standard unit-test workflow under tiered triggers (not after every edit). Generation commands produce companion test files when stable templates exist.
-
-- **Depends On**: `cpt-frontx-feature-cli-tooling`
-
-- **Scope**:
-  - Vitest configuration in scaffolded projects (`vitest.config.ts`, dependencies)
-  - Standard `test:unit` / `test:unit:watch` script aliases in generated `package.json`, invoked through the project's configured package manager
-  - Starter app-level unit tests exercising scaffolded utilities
-  - `_blank-mfe` baseline tests so generated screensets inherit a working test pattern
-  - Companion starter tests for code-generation commands when a stable template exists
-  - Editable project-level testing guidance (`.ai/project/GUIDELINES.md`, `.ai/project/targets/UNIT_TESTING.md`)
-  - AI sync propagation: generated assistant files reference the standard unit-test command and testing guidance
-  - Default `frontx validate` (`validate components`) remains a fast structural check and does not run unit tests by default; optional future CLI composition may chain tests behind an explicit subcommand or flag
-  - Generated agent guidance uses tiered triggers for when to run the package-manager invocation of `test:unit` (or a scoped workspace equivalent), with CI as full enforcement
-  - E2E scaffold verification: CLI PR gate validates the standard unit-test workflow passes on a fresh scaffold
-
-- **Out of scope**:
-  - Test-library or strategy selection (Vitest is the fixed choice for initial rollout)
-  - Runtime test execution infrastructure (delegates to Vitest + project package-manager scripts)
-  - Application-specific test logic (starter tests are minimal baselines)
-
-- **Requirements Covered** (shares CLI-scaffold clauses with `cpt-frontx-feature-cli-tooling` and separately covers the project-level agent-guidance clause in `cpt-frontx-fr-ai-agent-integration`):
-
-  - [x] `p1` - `cpt-frontx-fr-cli-commands` (unit-test scaffold and generation clauses)
-  - [x] `p1` - `cpt-frontx-fr-cli-templates` (test asset and testing guidance clauses)
-  - [x] `p1` - `cpt-frontx-fr-cli-skills` (testing guidance in AI assistant files)
-  - [x] `p1` - `cpt-frontx-fr-cli-e2e-verification` (standard `test:unit` in required PR gate; workflow and `e2e-pr-smoke` harness allocated under `cpt-frontx-feature-cli-tooling`)
-  - [x] `p1` - `cpt-frontx-fr-ai-agent-integration` (project-level testing guidance and generated agent instructions)
-  - [ ] `p2` - `cpt-frontx-nfr-maint-arch-enforcement` (scaffolded unit-test workflow in verification loop)
-
-- **Design Principles Covered**:
-  - (Tooling feature; doesn't uniquely own architecture principles)
-
-- **Design Constraints Covered**:
-
-  - [x] `p1` - `cpt-frontx-constraint-typescript-strict-mode`
-
-- **Domain Model Entities**:
-  - ProjectTestingConvention
-  - ProjectTestingGuidance
-
-- **Design Components**:
-
-  - [x] `p2` - `cpt-frontx-component-cli`
-
-- **API**:
-  - `frontx create` (Vitest scaffold output)
-  - `frontx ai sync` (testing guidance propagation)
-  - `test:unit` / `test:unit:watch` via the configured package manager (generated command contract)
+  - N/A
 
 - **Sequences**:
 
-  - `cpt-frontx-seq-cli-project-scaffold`
-  - `cpt-frontx-seq-ai-agent-verification`
+  - [ ] `p1` - `cpt-frontx-seq-ai-driven-template-upgrade` (OWNER)
 
 - **Data**:
-  - N/A (client-side library)
 
----
+  - N/A
 
 ## 3. Feature Dependencies
 
 ```text
-cpt-frontx-feature-state-management          (L1, no deps)
-cpt-frontx-feature-mfe-registry        (L1, no deps)
-cpt-frontx-feature-api-communication         (L1, no deps)
-cpt-frontx-feature-i18n-infrastructure       (L1, no deps)
-cpt-frontx-feature-studio-devtools           (standalone, no deps)
-cpt-frontx-feature-cli-tooling               (standalone, no deps)
-cpt-frontx-feature-publishing-pipeline       (infrastructure, no deps)
-cpt-frontx-feature-ui-libraries-choice       (standalone, requires: cli-tooling)
-    │
-    ├─→ cpt-frontx-feature-mfe-isolation
-    │       requires: screenset-registry
-    │
-    ├─→ cpt-frontx-feature-framework-composition
-    │       requires: state-management, screenset-registry,
-    │                 api-communication, i18n-infrastructure
-    │
-    └─→ cpt-frontx-feature-react-bindings
-    │       requires: framework-composition
-    │
-    └─→ cpt-frontx-feature-request-lifecycle
-    │       requires: api-communication, react-bindings,
-    │                 framework-composition
-
-cpt-frontx-feature-unit-test-generation-and-agent-verification
-                                            (standalone, requires: cli-tooling)
+F1 ecosystem-distribution        (foundation)
+F2 type-substrate-port           (foundation)
+   ├─→ F3 gts-type-provider
+   └─→ F4 mfe-registry
+          ├─→ F5 mfe-loading ──────────────┐
+          ├─→ F6 mfe-host-communication     │
+          ├─→ F7 extension-domain-governance (also ← F3)
+          └─→ F8 mfe-isolation ←────────────┘ (← F5)
+F9 api-protocol-surface          (foundation, standalone)
+F10 template-resolution          (foundation)
+   ├─→ F11 template-manifest
+   ├─→ F12 cli-scaffolding ──→ F13 composed-provenance ──→ F14 upgrade-changeset
+   └─→ F16 template-ai-extensions (also ← F15)
+F15 ai-kit-packaging             (foundation)
+   ├─→ F16 template-ai-extensions
+   └─→ F17 ai-upgrade-orchestration (also ← F14)
 ```
 
 **Dependency Rationale**:
 
-- `cpt-frontx-feature-mfe-isolation` requires `cpt-frontx-feature-mfe-registry`: blob URL loader operates on screen-set registry entries and MFE contracts
-- `cpt-frontx-feature-framework-composition` requires all four L1 features: framework composes all SDK packages via plugin system
-- `cpt-frontx-feature-react-bindings` requires `cpt-frontx-feature-framework-composition`: React layer consumes the built framework output
-- `cpt-frontx-feature-request-lifecycle` requires `cpt-frontx-feature-api-communication` (AbortSignal and descriptors at L1), `cpt-frontx-feature-framework-composition` (`queryCache()` / `queryCacheShared()` plugins at L2), and `cpt-frontx-feature-react-bindings` (TanStack Query hooks and provider resolution at L3)
-- `cpt-frontx-feature-ui-libraries-choice` requires `cpt-frontx-feature-cli-tooling`: CLI commands (`frontx create`, `frontx screenset`) implement the UI kit scaffolding
-- `cpt-frontx-feature-unit-test-generation-and-agent-verification` requires `cpt-frontx-feature-cli-tooling`: extends CLI scaffolding with Vitest configuration, starter tests, and AI verification guidance
-- All L1 features, standalone features, and publishing-pipeline are independent and can be developed in parallel
+- `cpt-frontx-feature-gts-type-provider` requires `cpt-frontx-feature-type-substrate-port`: the GTS provider implements the opaque type-substrate port the runtime defines.
+- `cpt-frontx-feature-mfe-registry` requires `cpt-frontx-feature-type-substrate-port`: the registry façade is built with the type-system provider injected through the port contract.
+- `cpt-frontx-feature-mfe-loading` requires `cpt-frontx-feature-mfe-registry`: on-demand loading is orchestrated from the registry.
+- `cpt-frontx-feature-mfe-host-communication` requires `cpt-frontx-feature-mfe-registry`: the capability bridge delegates to the registry.
+- `cpt-frontx-feature-extension-domain-governance` requires `cpt-frontx-feature-mfe-registry`: admission and mount strategies act on registry-resolved extensions.
+- `cpt-frontx-feature-extension-domain-governance` requires `cpt-frontx-feature-gts-type-provider`: action–behavior consistency validation at admission uses type-of resolution from the provider.
+- `cpt-frontx-feature-mfe-isolation` requires `cpt-frontx-feature-mfe-registry`: isolated mounts are driven by the registry's load orchestration.
+- `cpt-frontx-feature-mfe-isolation` requires `cpt-frontx-feature-mfe-loading`: isolation wraps the load execution path.
+- `cpt-frontx-feature-template-manifest` requires `cpt-frontx-feature-template-resolution`: the manifest is read at install/scaffold through the resolver.
+- `cpt-frontx-feature-cli-scaffolding` requires `cpt-frontx-feature-template-resolution`: scaffolding consumes templates from the resolved inventory.
+- `cpt-frontx-feature-composed-provenance` requires `cpt-frontx-feature-cli-scaffolding`: composition extends the scaffolding path.
+- `cpt-frontx-feature-composed-provenance` requires `cpt-frontx-feature-template-resolution`: recursive composition resolves each composed template through the shared resolver.
+- `cpt-frontx-feature-upgrade-changeset` requires `cpt-frontx-feature-composed-provenance`: the change-set diffs against the provenance record written at scaffold time.
+- `cpt-frontx-feature-template-ai-extensions` requires `cpt-frontx-feature-ai-kit-packaging`: extensions activate into the base kit's capability set.
+- `cpt-frontx-feature-template-ai-extensions` requires `cpt-frontx-feature-template-resolution`: discovery is triggered on template install (cross-pillar edge F16 ← F10).
+- `cpt-frontx-feature-ai-upgrade-orchestration` requires `cpt-frontx-feature-upgrade-changeset`: orchestration drives the single CLI change-set engine (cross-pillar edge F17 ← F14).
+- `cpt-frontx-feature-ai-upgrade-orchestration` requires `cpt-frontx-feature-ai-kit-packaging`: the orchestration workflow ships inside the base AI kit.

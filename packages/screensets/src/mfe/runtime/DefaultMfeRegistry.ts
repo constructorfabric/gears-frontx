@@ -25,17 +25,24 @@
 // @cpt-dod:cpt-frontx-dod-mfe-registry-registry-contract:p1
 
 import type { TypeSystemPlugin } from '../plugins/types';
-import type { MfeRegistryConfig } from './config';
-import type { MfeHandler, ParentMfeBridge } from '../handler/types';
-import type {
-  ExtensionDomain,
-  Extension,
-  ActionsChain,
-} from '../types';
-import { MfeRegistry } from './MfeRegistry';
+import {
+  MfeRegistry,
+  type MfeRegistryConfig,
+  type MfeHandler,
+  type ParentMfeBridge,
+  type ExtensionDomain,
+  type Extension,
+  type ActionsChain,
+  type ExtensionDomainImplementationFactory,
+  type ExtensionMounter,
+  ActionsChainsMediator,
+  RuntimeCoordinator,
+  InvalidatableDomainContext,
+  ConcurrentMountStrategy,
+  OptionalMountStrategy,
+  ExclusiveMountStrategy,
+} from '@gears-frontx/mfes';
 import { WeakMapRuntimeCoordinator } from '../coordination/weak-map-runtime-coordinator';
-import { RuntimeCoordinator } from '../coordination/types';
-import { ActionsChainsMediator } from '../mediator';
 import { DefaultActionsChainsMediator } from '../mediator/actions-chains-mediator';
 import { type ExtensionDomainState } from './extension-manager';
 import { DefaultExtensionManager } from './default-extension-manager';
@@ -46,19 +53,12 @@ import { OperationSerializer } from './operation-serializer';
 import { RuntimeBridgeFactory } from './runtime-bridge-factory';
 import { DefaultRuntimeBridgeFactory } from './default-runtime-bridge-factory';
 import { LoadExtHandler } from './extension-lifecycle-action-handler';
+import { INFRASTRUCTURE_LIFECYCLE_ACTIONS } from '../validation/contract';
 import { FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, FRONTX_ACTION_UNMOUNT_EXT } from '../constants';
 import { EntryTypeNotHandledError } from '../errors';
 import { extractGtsPackage } from '../gts/extract-package';
-import type { ExtensionDomainImplementationFactory } from './ExtensionDomainImplementationFactory';
-import type { ExtensionMounter } from './ExtensionMounter';
 import { DefaultExtensionMounter } from './DefaultExtensionMounter';
 import { DefaultDomainLifecycleTrigger } from './DefaultDomainLifecycleTrigger';
-import { InvalidatableDomainContext } from './DomainContext';
-import {
-  ConcurrentMountStrategy,
-  OptionalMountStrategy,
-  ExclusiveMountStrategy,
-} from './mount-strategies';
 
 /**
  * Default concrete implementation of MfeRegistry.
@@ -159,6 +159,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
       getDomainState: (domainId) => this.extensionManager.getDomainState(domainId),
       getExtensionEntry: (extensionId) =>
         this.extensionManager.getExtensionState(extensionId)?.entry,
+      infrastructureActionTypes: INFRASTRUCTURE_LIFECYCLE_ACTIONS,
     });
 
     this.extensionManager = new DefaultExtensionManager({
@@ -317,6 +318,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
     );
 
     // Step 4: Invoke factory (try/finally for rollback + ctx invalidation).
+    // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-compose-domain
     // @cpt-begin:cpt-frontx-algo-mfe-registry-domain-implementation-construction:p1:inst-1
     let implementation;
     try {
@@ -333,16 +335,30 @@ export class DefaultMfeRegistry extends MfeRegistry {
       ctx.invalidate();
     }
     // @cpt-end:cpt-frontx-algo-mfe-registry-domain-implementation-construction:p1:inst-1
+    // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-compose-domain
 
     // Step 5: Cross-validate handlers vs declaration AND strategy/cardinality matrix.
+    // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-cardinality-check
+    // @cpt-begin:cpt-frontx-state-extension-domain-governance-cardinality:p2:inst-card-t1
     try {
       this.crossValidateHandlers(declaration, implementation._getMountStrategiesInternal(), ctx);
     } catch (error) {
+      // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-cardinality-fail-check
+      // @cpt-begin:cpt-frontx-state-extension-domain-governance-cardinality:p2:inst-card-t2
       ctx.clearCollectedHandlers();
       this.extensionManager.unregisterDomain(declaration.id).catch(() => { /* best-effort */ });
+      // @cpt-end:cpt-frontx-state-extension-domain-governance-cardinality:p2:inst-card-t2
+      // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-cardinality-fail-check
+      // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-cardinality-reject
+      // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-domain-reg-fail
       throw error;
+      // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-domain-reg-fail
+      // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-cardinality-reject
     }
+    // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-cardinality-check
 
+    // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-domain-registered
+    // @cpt-begin:cpt-frontx-state-extension-domain-governance-cardinality:p2:inst-card-t3
     // Step 6: Persist handlers to mediator.
     for (const [actionType, handler] of ctx.getCollectedHandlers()) {
       this.mediator.registerHandler(declaration.id, actionType, handler);
@@ -363,6 +379,9 @@ export class DefaultMfeRegistry extends MfeRegistry {
     ).catch(error => {
       console.error('[DefaultMfeRegistry] Domain init error:', error, { domainId: declaration.id });
     });
+    // @cpt-end:cpt-frontx-state-extension-domain-governance-cardinality:p2:inst-card-t3
+    // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-domain-registered
+    // @cpt-end:cpt-frontx-state-extension-domain-governance-cardinality:p2:inst-card-t1
   }
   // @cpt-end:cpt-frontx-flow-mfe-registry-register-domain:p1:inst-1
 
@@ -371,7 +390,11 @@ export class DefaultMfeRegistry extends MfeRegistry {
    *
    * @throws {Error} on any violation.
    */
+  // @cpt-algo:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1
+  // @cpt-state:cpt-frontx-state-extension-domain-governance-cardinality:p2
+  // @cpt-dod:cpt-frontx-dod-extension-domain-governance-cardinality-enforcement:p1
   // @cpt-begin:cpt-frontx-algo-mfe-registry-cross-validate-handlers:p1:inst-1
+  // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-identify-strategy
   private crossValidateHandlers(
     declaration: ExtensionDomain,
     strategies: import('./mount-strategy').MountStrategy[],
@@ -385,6 +408,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
 
     // Use the first strategy as the representative — mixed-strategy domains are not supported.
     const strategy = strategies[0];
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-identify-strategy
 
     // Identify strategy class and look up cardinality row.
     let requireMount: boolean;
@@ -392,49 +416,71 @@ export class DefaultMfeRegistry extends MfeRegistry {
     let forbidUnmount: boolean;
     let strategyName: string;
 
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-match-strategy
     if (strategy instanceof ConcurrentMountStrategy) {
+      // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-concurrent-row
       strategyName = 'ConcurrentMountStrategy';
       requireMount = true;
       requireUnmount = true;
       forbidUnmount = false;
+      // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-concurrent-row
     } else if (strategy instanceof OptionalMountStrategy) {
+      // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-optional-row
       strategyName = 'OptionalMountStrategy';
       requireMount = true;
       requireUnmount = true;
       forbidUnmount = false;
+      // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-optional-row
     } else if (strategy instanceof ExclusiveMountStrategy) {
+      // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-exclusive-row
       strategyName = 'ExclusiveMountStrategy';
       requireMount = true;
       requireUnmount = false;
       forbidUnmount = true;
+      // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-exclusive-row
     } else {
+      // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-unknown-reject
       throw new Error(
         `Domain '${declaration.id}': unrecognized MountStrategy class. ` +
         'The cardinality matrix only handles ConcurrentMountStrategy, OptionalMountStrategy, and ExclusiveMountStrategy. ' +
         'Custom strategy classes are not supported (per ADR-0020).'
       );
+      // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-unknown-reject
     }
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-match-strategy
 
     const declaredActions = declaration.actions;
 
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-required-check-loop
     // Enforce REQUIRED actions in declaration.
     if (requireMount && !declaredActions.includes(FRONTX_ACTION_MOUNT_EXT)) {
+      // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-missing-required
       throw new Error(
         `Domain '${declaration.id}': ${strategyName} requires '${FRONTX_ACTION_MOUNT_EXT}' in declaration.actions.`
       );
+      // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-missing-required
     }
     if (requireUnmount && !declaredActions.includes(FRONTX_ACTION_UNMOUNT_EXT)) {
+      // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-required-fail
       throw new Error(
         `Domain '${declaration.id}': ${strategyName} requires '${FRONTX_ACTION_UNMOUNT_EXT}' in declaration.actions.`
       );
+      // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-required-fail
     }
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-required-check-loop
 
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-forbidden-check-loop
     // Enforce FORBIDDEN actions in declaration.
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-forbidden-present
     if (forbidUnmount && declaredActions.includes(FRONTX_ACTION_UNMOUNT_EXT)) {
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-forbidden-present
+      // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-forbidden-fail
       throw new Error(
         `Domain '${declaration.id}': ${strategyName} forbids '${FRONTX_ACTION_UNMOUNT_EXT}' in declaration.actions.`
       );
+      // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-forbidden-fail
     }
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-forbidden-check-loop
 
     const collectedHandlers = ctx.getCollectedHandlers();
 
@@ -462,12 +508,16 @@ export class DefaultMfeRegistry extends MfeRegistry {
         );
       }
     }
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-accept
+    // domain accepted — strategy registered as mount executor (implicit; execution continues in registerDomain)
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-accept
   }
   // @cpt-end:cpt-frontx-algo-mfe-registry-cross-validate-handlers:p1:inst-1
 
   // ─── Execute actions chain ────────────────────────────────────────────────
 
   // @cpt-begin:cpt-frontx-flow-mfe-registry-execute-chain:p1:inst-1
+  // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-mount-action
   async executeActionsChain(chain: ActionsChain): Promise<void> {
     const result = await this.mediator.executeActionsChain(chain);
     if (!result.completed) {
@@ -477,7 +527,14 @@ export class DefaultMfeRegistry extends MfeRegistry {
         `| path: [${result.path.join(' -> ')}]`
       );
     }
+    // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-admitted-mount
+    // (mount strategy invoked via mediator dispatch chain → strategy.mount())
+    // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-admitted-mount
+    // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-mount-success
+    // (implicit: chain.completed = true on success path)
+    // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-mount-success
   }
+  // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-mount-action
   // @cpt-end:cpt-frontx-flow-mfe-registry-execute-chain:p1:inst-1
 
   // ─── Shared property ──────────────────────────────────────────────────────

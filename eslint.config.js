@@ -1,20 +1,89 @@
 /**
  * FrontX ESLint Configuration (Monorepo Root)
  *
- * This file contains the complete ESLint rules for the FrontX monorepo:
- * - Standalone rules from packages/cli/template-sources/project/configs/eslint.config.js
- * - Monorepo-specific package boundary rules
- * - SDK/Framework package exceptions (unknown type is required for generic code)
- *
- * For standalone projects, use packages/cli/template-sources/project/configs/eslint.config.js
+ * After Phase 11 template-move, packages/cli is deleted.
+ * Standalone rules are now inlined directly. Non-Pillar-1 packages live under
+ * packages/frontx-template-standard/packages/<name>/ and app source at
+ * packages/frontx-template-standard/src-app/.
  */
 
-import standaloneConfig from './packages/cli/template-sources/project/configs/eslint.config.js';
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import unusedImports from 'eslint-plugin-unused-imports';
+import reactHooks from 'eslint-plugin-react-hooks';
+import globals from 'globals';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
-  // Include all standalone configs
-  ...standaloneConfig,
+  // Global ignores
+  {
+    ignores: [
+      'dist/**',
+      '**/dist/**',
+      '**/.__mf__temp/**',
+      '**/coverage/**',
+      'node_modules/**',
+      '*.config.*',
+      '**/*.config.*',
+      '**/*.cjs',
+      'scripts/**',
+    ],
+  },
+
+  // Base JS + TypeScript
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+
+  // L0 BASE: Universal rules for all TS/TSX files
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.es2020,
+        ...globals.node,
+      },
+    },
+    plugins: {
+      'unused-imports': unusedImports,
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      'unused-imports/no-unused-imports': 'error',
+      'unused-imports/no-unused-vars': [
+        'error',
+        {
+          vars: 'all',
+          varsIgnorePattern: '^_',
+          args: 'after-used',
+          argsIgnorePattern: '^_',
+          caughtErrors: 'all',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        { 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true, 'ts-check': false },
+      ],
+      '@typescript-eslint/no-empty-object-type': 'error',
+      '@typescript-eslint/no-unsafe-function-type': 'error',
+      '@typescript-eslint/no-wrapper-object-types': 'error',
+      'prefer-const': 'error',
+      'no-console': 'off',
+      'no-var': 'error',
+      'no-empty-pattern': 'error',
+    },
+  },
+
+  // React hooks
+  {
+    files: ['**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: { ...reactHooks.configs.recommended.rules, 'react-hooks/exhaustive-deps': 'error' },
+  },
 
   // Additional monorepo ignores
   {
@@ -23,8 +92,7 @@ export default [
       '**/dist/**', // All dist directories are build artifacts
       '**/*.__mf__temp/**', // Module Federation generated temp files
       '**/.__mf__temp/**', // Module Federation generated temp files (dot-prefixed)
-      'packages/**/templates/**', // CLI templates are build artifacts
-      'packages/cli/template-sources/**', // CLI template sources (linted separately in standalone)
+      'packages/**/templates/**',
       'scripts/**', // Monorepo scripts
       '**/.vitepress/**',
       // Legacy config files (still used by dependency-cruiser)
@@ -60,16 +128,11 @@ export default [
     },
   },
 
-  // SDK packages: Allow unknown/object types (required for generic event bus, store, etc.)
-  // These packages use generics and need flexible typing for consumer code to augment
-  // Layer enforcement: SDK packages cannot import other @gears-frontx packages or React
+  // SDK foundation: @gears-frontx/mfes — the port-contract package.
+  // Allow unknown/object types (TypeSystemPlugin uses TSchema=unknown and entity:unknown).
+  // mfes is the lowest-level SDK package; it cannot import any other @gears-frontx package.
   {
-    files: [
-      'packages/state/**/*.ts',
-      'packages/api/**/*.ts',
-      'packages/i18n/**/*.ts',
-      'packages/screensets/**/*.ts',
-    ],
+    files: ['packages/mfes/**/*.ts'],
     rules: {
       'no-restricted-syntax': 'off',
       '@typescript-eslint/no-empty-object-type': 'off',
@@ -80,7 +143,51 @@ export default [
             {
               group: ['@gears-frontx/*'],
               message:
-                'SDK VIOLATION: SDK packages cannot import other @gears-frontx packages.',
+                'SDK VIOLATION: @gears-frontx/mfes is the SDK foundation and cannot import other @gears-frontx packages.',
+            },
+            {
+              group: ['react', 'react-dom', 'react/*'],
+              message:
+                'SDK VIOLATION: SDK packages cannot import React.',
+            },
+            {
+              group: ['@gears-frontx/*/src/**'],
+              message:
+                'MONOREPO VIOLATION: Import from package root, not internal paths.',
+            },
+            {
+              group: ['@/*'],
+              message:
+                'PACKAGE VIOLATION: Use relative imports within packages.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // SDK packages: Allow unknown/object types (required for generic event bus, store, etc.)
+  // These packages use generics and need flexible typing for consumer code to augment
+  // Layer enforcement: SDK packages cannot import other @gears-frontx packages or React,
+  //   EXCEPT @gears-frontx/mfes which is the extracted port-contract foundation.
+  {
+    files: [
+      'packages/frontx-template-standard/packages/state/**/*.ts',
+      'packages/api/**/*.ts',
+      'packages/frontx-template-standard/packages/i18n/**/*.ts',
+      'packages/screensets/**/*.ts',
+    ],
+    rules: {
+      'no-restricted-syntax': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@gears-frontx/!(mfes)', '@gears-frontx/!(mfes)/*'],
+              message:
+                'SDK VIOLATION: SDK packages cannot import other @gears-frontx packages (except @gears-frontx/mfes).',
             },
             {
               group: ['react', 'react-dom', 'react/*'],
@@ -107,7 +214,7 @@ export default [
   // Layer enforcement: Framework cannot import @gears-frontx/react or React
   // BUT keep Flux rules for effects files
   {
-    files: ['packages/framework/**/*.ts'],
+    files: ['packages/frontx-template-standard/packages/framework/**/*.ts'],
     ignores: ['**/effects.ts', '**/*Effects.ts', '**/effects/**/*.ts'],
     rules: {
       'no-restricted-syntax': 'off',
@@ -144,7 +251,7 @@ export default [
 
   // Framework effects: Keep Flux rules with layer enforcement
   {
-    files: ['packages/framework/**/effects.ts', 'packages/framework/**/*Effects.ts'],
+    files: ['packages/frontx-template-standard/packages/framework/**/effects.ts', 'packages/frontx-template-standard/packages/framework/**/*Effects.ts'],
     rules: {
       '@typescript-eslint/no-empty-object-type': 'off',
       '@typescript-eslint/no-restricted-imports': [
@@ -181,9 +288,9 @@ export default [
   // Framework action files in effects directory: Allow event emission with layer enforcement
   {
     files: [
-      'packages/framework/**/effects/**/*Actions.ts',
-      'packages/framework/**/effects/*Actions.ts',
-      'packages/framework/**/effects/**/actions.ts',
+      'packages/frontx-template-standard/packages/framework/**/effects/**/*Actions.ts',
+      'packages/frontx-template-standard/packages/framework/**/effects/*Actions.ts',
+      'packages/frontx-template-standard/packages/framework/**/effects/**/actions.ts',
     ],
     rules: {
       'no-restricted-syntax': 'off', // Actions emit events as their primary purpose
@@ -222,7 +329,7 @@ export default [
   // React package: Allow unknown types for hook generics
   // Layer enforcement: React must import from @gears-frontx/framework, not SDK packages directly
   {
-    files: ['packages/react/**/*.ts', 'packages/react/**/*.tsx'],
+    files: ['packages/frontx-template-standard/packages/react/**/*.ts', 'packages/frontx-template-standard/packages/react/**/*.tsx'],
     rules: {
       'no-restricted-syntax': 'off',
       '@typescript-eslint/no-empty-object-type': 'off', // Allow empty EventPayloadMap for module augmentation
@@ -266,6 +373,68 @@ export default [
     },
   },
 
+  // ============ @gears-frontx/mfes BOUNDARY ENFORCEMENT (Phase 10) ============
+  // MFES-1/2/3 enforced here via no-restricted-syntax denylist.
+  // MFES-4 enforced via dep-cruiser rule frontx-mfes-4-type-format-dep (.dependency-cruiser.cjs).
+  // MFES-5 enforced via scripts/test-architecture.ts (opaque schema surface grep check).
+  {
+    files: ['packages/mfes/**/*.ts', 'packages/mfes/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        // @cpt-begin:cpt-frontx-constraint-mfes-no-type-format-literals:p10:inst-eslint-rule
+        {
+          selector:
+            "Literal[value=/gts\\.(frontx\\.(screensets|framework|state|i18n|react)|[a-z]+\\.(screensets|framework|state|i18n))/]",
+          message:
+            'MFES-1 VIOLATION (cpt-frontx-constraint-mfes-no-type-format-literals): @gears-frontx/mfes must not contain type-system-format string literals from solution namespaces. These belong in the type-system plugin or consumer packages.',
+        },
+        // @cpt-end:cpt-frontx-constraint-mfes-no-type-format-literals:p10:inst-eslint-rule
+        // @cpt-begin:cpt-frontx-constraint-mfes-no-solution-shared-properties:p10:inst-eslint-rule
+        {
+          selector: "Literal[value=/^(theme|language)$/]",
+          message:
+            'MFES-2 VIOLATION (cpt-frontx-constraint-mfes-no-solution-shared-properties): @gears-frontx/mfes must not define solution-specific shared-property identifiers (e.g. theme, language). Supply these via the application layer or templates.',
+        },
+        // @cpt-end:cpt-frontx-constraint-mfes-no-solution-shared-properties:p10:inst-eslint-rule
+        // @cpt-begin:cpt-frontx-constraint-mfes-no-layout-domain-values:p10:inst-eslint-rule
+        {
+          selector: "Literal[value=/^(header|footer|menu|sidebar|popup|overlay|screen)$/]",
+          message:
+            'MFES-3 VIOLATION (cpt-frontx-constraint-mfes-no-layout-domain-values): @gears-frontx/mfes must not define specific extension-domain (layout-domain) values. These are solution vocabulary owned by frontx-template-standard (LayoutDomain enum).',
+        },
+        // @cpt-end:cpt-frontx-constraint-mfes-no-layout-domain-values:p10:inst-eslint-rule
+      ],
+    },
+  },
+
+  // ============ @gears-frontx/gts-plugin ============
+  // GTS-PLUGIN-1/2 are enforced via dep-cruiser rules frontx-gts-plugin-1/2 (.dependency-cruiser.cjs).
+  // Allow unknown/object types: gts-plugin owns JSONSchema (requires [key: string]: unknown)
+  // and implements TypeSystemPlugin.register(entity: unknown) — all architecturally required.
+  {
+    files: ['packages/gts-plugin/**/*.ts', 'packages/gts-plugin/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
+    },
+  },
+
+  // ============ @gears-frontx/api BOUNDARY ============
+  // API-1 enforced via dep-cruiser rule frontx-api-1-no-solution-content (.dependency-cruiser.cjs).
+  // (no ESLint-level changes needed for api boundary enforcement)
+
+  // ============ @gears-frontx/frontx-template-standard ============
+  // Allow unknown/object types: build utilities (mf-gts.ts AST transforms, lazy-import-transform)
+  // use unknown for dynamic module shapes and generic AST node types — architecturally required.
+  {
+    files: ['packages/frontx-template-standard/**/*.ts', 'packages/frontx-template-standard/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
+    },
+  },
+
   // CLI package: Allow unknown types for dynamic command handling
   // Inherits monorepo boundary enforcement from catch-all block
   {
@@ -277,7 +446,7 @@ export default [
 
   // Layout components: Allow unknown types for API registry type assertions
   {
-    files: ['src/layout/**/*.tsx', 'src/layout/**/*.ts'],
+    files: ['packages/frontx-template-standard/src-app/layout/**/*.tsx', 'packages/frontx-template-standard/src-app/layout/**/*.ts'],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -292,7 +461,7 @@ export default [
 
   // MFE packages: Each MFE is fully self-contained — no imports from host or other MFEs
   {
-    files: ['src/mfe_packages/**/*.{ts,tsx}'],
+    files: ['packages/frontx-template-standard/src-app/mfe_packages/**/*.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
@@ -316,7 +485,7 @@ export default [
 
   // App: Layer enforcement for src/app/** (must use @gears-frontx/react, not L1/L2 packages)
   {
-    files: ['src/app/**/*.{ts,tsx}'],
+    files: ['packages/frontx-template-standard/src-app/app/**/*.{ts,tsx}'],
     rules: {
       // Use @typescript-eslint rule to catch TypeScript-specific imports (import type, side-effect imports)
       '@typescript-eslint/no-restricted-imports': [
@@ -370,10 +539,10 @@ export default [
   // App: Studio should only be imported via FrontXProvider (auto-detection)
   // Only App.tsx variants are allowed to import StudioOverlay directly
   {
-    files: ['src/**/*'],
+    files: ['packages/frontx-template-standard/src-app/**/*'],
     ignores: [
-      'src/app/App.tsx', // Monorepo demo app - renders StudioOverlay
-      'src/app/App.no-uikit.tsx', // --uikit none variant - renders StudioOverlay
+      'packages/frontx-template-standard/src-app/app/App.tsx', // Monorepo demo app - renders StudioOverlay
+      'packages/frontx-template-standard/src-app/app/App.no-uikit.tsx', // --uikit none variant - renders StudioOverlay
     ],
     rules: {
       'no-restricted-imports': [
@@ -388,14 +557,6 @@ export default [
           ],
         },
       ],
-    },
-  },
-
-  // Studio: Exclude from inline styles rule (dev-only package with intentional glassmorphic effects)
-  {
-    files: ['packages/studio/**/*.tsx'],
-    rules: {
-      'local/no-inline-styles': 'off',
     },
   },
 
@@ -431,38 +592,4 @@ export default [
     },
   },
 
-  // App: Domain-based architecture rules for actions/effects
-  {
-    files: ['src/app/actions/**/*', 'src/app/effects/**/*'],
-    rules: {
-      'local/no-barrel-exports-events-effects': 'error',
-    },
-  },
-
-  // App: Prevent coordinator effect anti-pattern in effects
-  {
-    files: ['src/app/effects/**/*'],
-    rules: {
-      'local/no-coordinator-effects': 'error',
-    },
-  },
-
-  // App: Domain event format for events
-  {
-    files: ['src/app/events/**/*'],
-    rules: {
-      'local/domain-event-format': 'error',
-    },
-  },
-
-  // Trust kernel: files excluded from Codacy security scanning must satisfy
-  // strict safety guardrails (required JSDoc `@safety-reviewed` / `@why`
-  // tags on every export, no module-level state, no unsafe imports).
-  // Adding a file here requires coordinated update to `.codacy.yaml`.
-  {
-    files: ['packages/screensets/src/mfe/handler/mf-dynamic-module-ops.ts'],
-    rules: {
-      'local/trusted-patterns-file': 'error',
-    },
-  },
 ];

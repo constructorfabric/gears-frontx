@@ -7,8 +7,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SseProtocol } from '../protocols/SseProtocol';
-import { SseMockPlugin } from '../plugins/SseMockPlugin';
-import { MockEventSource } from '../mocks/MockEventSource';
+import { SseMockPlugin, MockEventSource } from '@gears-frontx/frontx-template-standard';
 import type { SsePluginHooks, SseConnectContext } from '../types';
 import { createProtocolPluginTests } from './protocolPluginTestFactory';
 

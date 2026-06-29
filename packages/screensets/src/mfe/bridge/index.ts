@@ -1,12 +1,5 @@
 /**
- * MFE Bridge Implementations
- *
- * Concrete implementations of ChildMfeBridge and ParentMfeBridge.
- * These are internal implementations - the interfaces are exported from handler/types.ts.
- *
+ * Re-exported from @gears-frontx/mfes (Phase 6 extraction).
  * @packageDocumentation
  */
-
-export { ChildMfeBridgeImpl } from './ChildMfeBridge';
-export { ParentMfeBridgeImpl } from './ParentMfeBridge';
-export { ChildDomainForwardingHandler } from './ChildDomainForwardingHandler';
+export { ChildMfeBridgeImpl, ParentMfeBridgeImpl, ChildDomainForwardingHandler } from '@gears-frontx/mfes';

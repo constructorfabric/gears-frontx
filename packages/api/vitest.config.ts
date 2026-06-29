@@ -5,7 +5,19 @@ import { definePackageVitestConfig } from '../../vitest.shared';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default definePackageVitestConfig({
+const base = definePackageVitestConfig({
   rootDir: __dirname,
   environment: 'node',
 });
+
+export default {
+  ...base,
+  resolve: {
+    alias: {
+      '@gears-frontx/frontx-template-standard': path.resolve(
+        __dirname,
+        '../frontx-template-standard/src/index.ts'
+      ),
+    },
+  },
+};

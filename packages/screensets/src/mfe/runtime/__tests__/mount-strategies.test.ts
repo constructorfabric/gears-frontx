@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { ConcurrentMountStrategy, OptionalMountStrategy, ExclusiveMountStrategy } from '../mount-strategies';
 import { MountStrategy, type ActionPayload, type ContainerHooks } from '../mount-strategy';
 import { ExtensionMounter } from '../ExtensionMounter';
-import { MfeRegistry } from '../MfeRegistry';
+import { MfeRegistry } from '@gears-frontx/mfes';
 import type { TypeSystemPlugin } from '../../plugins/types';
 import type { ExtensionDomain, Extension, ActionsChain } from '../../types';
 import type { ExtensionDomainImplementationFactory } from '../ExtensionDomainImplementationFactory';

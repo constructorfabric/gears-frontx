@@ -1,6 +1,4 @@
-# PRD — FrontX Dev Kit
-
-<!-- artifact-version: 1.5 -->
+# PRD — FrontX Ecosystem
 
 <!-- toc -->
 
@@ -18,27 +16,9 @@
   - [4.1 In Scope](#41-in-scope)
   - [4.2 Out of Scope](#42-out-of-scope)
 - [5. Functional Requirements](#5-functional-requirements)
-  - [5.1 SDK Core](#51-sdk-core)
-  - [5.2 App Configuration](#52-app-configuration)
-  - [5.3 SSE Streaming](#53-sse-streaming)
-  - [5.4 MFE Type System](#54-mfe-type-system)
-  - [5.5 MFE Core](#55-mfe-core)
-  - [5.6 MFE Blob URL Isolation](#56-mfe-blob-url-isolation)
-  - [5.7 MFE Build Plugin](#57-mfe-build-plugin)
-  - [5.8 MFE Internal Dataflow](#58-mfe-internal-dataflow)
-  - [5.9 MFE Share Scope Management](#59-mfe-share-scope-management)
-  - [5.10 Shared Property Broadcast](#510-shared-property-broadcast)
-  - [5.11 Shared Property Validation](#511-shared-property-validation)
-  - [5.12 i18n Formatters](#512-i18n-formatters)
-  - [5.13 i18n Loading](#513-i18n-loading)
-  - [5.14 Studio](#514-studio)
-  - [5.15 CLI](#515-cli)
-  - [5.16 Publishing](#516-publishing)
-  - [5.17 Mock Mode](#517-mock-mode)
-  - [5.18 Microfrontend Plugin](#518-microfrontend-plugin)
-  - [5.19 Screensets Workflow](#519-screensets-workflow)
-  - [5.20 Request Lifecycle & Data Management](#520-request-lifecycle--data-management)
-  - [5.21 Documentation](#521-documentation)
+  - [5.1 Core Framework](#51-core-framework)
+  - [5.2 CLI](#52-cli)
+  - [5.3 AI Tooling Framework](#53-ai-tooling-framework)
 - [6. Non-Functional Requirements](#6-non-functional-requirements)
   - [6.1 NFR Inclusions](#61-nfr-inclusions)
   - [6.2 NFR Exclusions](#62-nfr-exclusions)
@@ -50,7 +30,6 @@
 - [10. Dependencies](#10-dependencies)
 - [11. Assumptions](#11-assumptions)
 - [12. Risks](#12-risks)
-- [13. Open Questions](#13-open-questions)
 
 <!-- /toc -->
 
@@ -58,1596 +37,699 @@
 
 ### 1.1 Purpose
 
-FrontX is an AI-optimized UI development kit that accelerates the creation of production-ready interfaces from concept to deployment. It bridges the gap between rapid prototyping (Drafts → Mockups) and scalable production systems through a layered architecture that decouples domain logic, UI components, and business functionality. Built on React 19 with TypeScript, Vite, and Redux Toolkit, FrontX provides a plugin-based framework enabling developers to extend functionality without modifying core code.
+The FrontX Ecosystem exists to enable AI-driven creation of frontend projects. It gives teams a product set in which AI agents can reliably scaffold, extend, and evolve frontend projects by targeting stable, narrow, explicitly-contracted product capabilities instead of improvising against an open-ended codebase. The ecosystem delivers this through three co-equal pillars: a **Core Framework** that makes an application runtime-extensible by composable microfrontends over a substrate for typed entities; a **CLI** that owns the full project lifecycle — installing, listing, updating, and validating templates, scaffolding projects and microfrontends, resolving composed templates, recording project provenance, and upgrading existing projects to newer template versions; and an **AI Tooling Framework** that equips AI agents with ecosystem-wide capabilities, lets templates contribute their own AI capabilities, activates those capabilities automatically in consuming projects, and orchestrates AI-driven project upgrades.
 
-The dev kit targets teams building internal tools, dashboards, AI-powered applications, and embedded UI systems. It standardizes patterns for state management, API integration, localization, component reuse, and extensibility while maintaining full control over UI rendering through a customizable UI kit built on shadcn/ui.
+Together these pillars let an AI agent carry a frontend project from first scaffold through ongoing extension and version upgrades, while the human Template Developers and Project Developers steering the work stay in control of intent and review. The product's value is measured by how predictably and safely AI agents and their human collaborators can produce and maintain real frontend applications on top of it.
 
 ### 1.2 Background / Problem Statement
 
-Modern UI frameworks optimize for component reuse and visual design, but fail at enforcing architectural discipline across multiple teams and long-lived projects. Developers face recurring challenges:
+Teams building frontend projects increasingly depend on AI agents to do the work — scaffolding new projects, adding features, and keeping projects current as their foundations evolve. For an AI agent to do this reliably, it needs a product surface that is stable, narrow, and explicitly contracted, so the agent targets well-defined capabilities rather than guessing at the shape of an open-ended codebase.
 
-- **State Management Chaos**: Mixed patterns (direct dispatch, imperative logic in components, async middleware) create unpredictable state flow and hard-to-trace bugs.
-- **API Integration Scattered**: Services coupled to specific protocols (REST vs streaming), mocking logic mixed with business logic, no support for dynamic protocol switching.
-- **Localization Friction**: Translation files either monolithic (loaded all-at-once wasting bandwidth) or completely decentralized (inconsistent patterns).
-- **Screensets Siloed**: Individual teams own "screens" but lack a standard way to extend the app without modifying core code; integration of third-party features requires custom wiring.
-- **Monorepo Bloat**: Framework code, UI components, app templates, and build tools entangled in single packages, forcing unnecessary dependencies.
-- **No Clear Upgrade Path**: Breaking changes to core packages ripple across all screens; adding new features requires updating multiple layers.
+Two groups of people, each working alongside AI agents, have distinct needs. **Template Developers** design, version, and publish the project templates and microfrontend templates that other teams build from; they need stable product contracts, pre-publish validation, semantic-versioning discipline, deterministic composition of templates, and a way to bundle template-specific AI capabilities. **Project Developers** scaffold a project from a template and then build business code on top; they need predictable scaffolding output, reliable template upgrades, a clear boundary between what the product provides and what the application must supply, and AI agents that already understand both the ecosystem and the specific template in use.
 
-FrontX solves these by enforcing a proven architectural model with four isolated layers: flat SDK packages (zero inter-dependencies), composable framework plugins, React adapters, and user-owned layout templates. The framework enforces event-driven Flux patterns and zero cross-layer dependencies, ensuring applications remain maintainable as they scale from single screens to complex multi-feature applications with microfrontend deployments.
+Across both groups, three needs recur: stable, narrow contracts an AI agent can target; a project lifecycle — install, scaffold, compose, validate, and upgrade — that an AI agent can drive end to end; and AI tooling that knows the ecosystem out of the box and can be extended with knowledge specific to each template. The FrontX Ecosystem addresses these needs directly, so that AI-driven frontend development is predictable and safe for both the people directing it and the agents performing it.
 
 ### 1.3 Goals (Business Outcomes)
 
-| Goal | Baseline | Target | Timeframe |
-|------|----------|--------|-----------|
-| Time to Production (measured from `frontx create` to first successful production build) | 4-6 weeks (custom architecture + component library integration) | 1-2 weeks (scaffold + plugin composition) | 2026 Q3 |
-| Team Onboarding (measured as elapsed time to complete getting-started tutorial and produce a working screenset) | 3-5 days (learn monolithic patterns + project-specific rules) | 6-8 hours (four-layer model + plugin API) | 2026 Q2 |
-| Bundle Size | 680KB (all features bundled, even unused) | <250KB dev, <180KB prod (tree-shaken per-feature) | 2026 Q3 |
-| Per-Screen Load Time | 1.2s (all screens pre-bundled, lazy-load only images) | <400ms (screens + translations lazy-loaded on-demand) | 2026 Q2 |
-| Screenset Onboarding (measured from `frontx scaffold screenset` to first successful dev server render of a modified screen) | 8-10 hours (study uicore, copy demo, adapt) | 45 min (scaffold + modify single file) | 2026 Q2 |
+- **Bounded time-to-scaffold** — A Project Developer (or an AI agent acting for one) can scaffold a working project from a project template in a single operation whose duration is bounded by a target published in the platform's release notes. Baseline: not yet measured (new product); Target: a predictable, bounded scaffold operation; Timeframe: established and published at the first platform release.
+- **Reviewable, reversible upgrades** — Every upgrade of an existing project to a newer template version is applied as a reviewable change set that a developer approves before it touches project files, with non-destructive rollback. Baseline: none (new product); Target: 100% of upgrades review-gated and reversible; Timeframe: first platform release.
+- **Automatic activation of template AI extensions** — When a template that bundles AI capabilities is installed in a project, those capabilities become available to AI agents automatically, with no manual wiring by the developer. Baseline: none (new product); Target: zero manual wiring steps for template-bundled AI capabilities; Timeframe: first platform release.
+- **Compatibility within a major version** — Platform releases preserve backward compatibility within a major version, so consuming applications are not forced to upgrade in lockstep with the product. Baseline: none (new product); Target: zero breaking changes to published product contracts within a major version line; Timeframe: ongoing from the first major release.
+- **No architectural ceiling on application scale** — The platform places no upper limit on the number of microfrontends or type definitions an application integrates, beyond the thresholds stated in the non-functional requirements. Baseline: none (new product); Target: scale governed only by the stated NFR thresholds, not by product architecture; Timeframe: first platform release.
 
 ### 1.4 Glossary
 
 | Term | Definition |
 |------|------------|
-| Action | Function that emits events on the EventBus. Never calls `getState()`, never async — async work moved to services/effects. |
-| Effect Initializer | Function that subscribes to events and dispatches reducers to update Redux state. Called once per slice registration, returns optional cleanup. |
-| Reducer | Pure function that updates Redux state based on a ReducerPayload. Exported as standalone functions, NOT via `.actions` property. |
-| Screenset | Vertical slice: group of related screens + translations + API services + state, self-contained and deployable independently. |
-| Extension / MFE Entry | Loaded microfrontend (via Module Federation) bound to an extension domain; exposes actions and properties for host app communication. |
-| Extension Domain | Contract definition for a category of extensions: shared properties, action types the domain can receive and execute, action types an extension's entry must support to be injectable, lifecycle. |
-| Plugin | Framework-level feature (screensets, themes, i18n, routing, effects, microfrontends, layout) composed via `.use()` on `createGears FrontX` builder. |
-| Shared Property | Observable value broadcast to all extensions (e.g., theme, language). Propagated by owning plugin. |
-| Studio | Standalone dev tools overlay (theme selector, language picker, API mode toggle, floating panel). Only loaded in `import.meta.env.DEV`. |
-| UI Kit | Component library: per-project choice at creation (local components, shadcn, or third-party). |
-| Registry | Self-registering singleton (MfeRegistry, ThemeRegistry, I18nRegistry, ApiRegistry). Updated dynamically at runtime. |
-| GTS | Global Type System — schema-based validation for MFE shared properties and action chains. |
-| CDSL | Cypilot Domain-Specific Language for describing flows, algorithms, and states in FEATURE specs. |
-| Shell | The host application code that defines a screenset's layout structure and shell-level features. Owned by the screenset — freely modifiable without constraints. |
-| Package Pool | The shared collection of all MFE packages in a project. Screensets reference packages from this pool. Multiple screensets can share the same package. |
-| Stage | The SDLC phase of a screenset: `draft` (PM prototyping), `mockup` (UX design refinement), or `production` (deployed code). |
-| Promotion | Advancing a screenset from one stage to the next (draft → mockup → production). |
+| ecosystem | The FrontX product set as a whole; referred to hereinafter as "the ecosystem". |
+| project | The development-time unit a Project Developer scaffolds from a project template — its source files plus the recorded provenance of the template it came from — and which the CLI installs into, validates, and upgrades. The development-time form of an application. |
+| application | The running frontend product the platform composes at runtime: the host into which microfrontends are loaded and placed, made runtime-extensible by the Core Framework. The runtime form of a project. |
+| microfrontend (MFE) | An independently-developed, runtime-loadable unit of user-facing functionality that the platform loads and places into a running application. Abbreviated **MFE**. |
+| extension | A configured placement that binds one microfrontend into one extension domain, producing a concrete occupant of that domain. An extension is not the microfrontend itself; it is the microfrontend as placed and configured in a specific domain. |
+| extension domain | A named extension point in the application where microfrontends can be placed. It governs which microfrontends may occupy it, whether it permits one or several occupants at once, and what shared state and capabilities its occupants receive. |
+| type definition | A description of an entity's shape that the type system can validate against; specification-format-agnostic at the product-requirements level. |
+| platform | The Core Framework pillar as a consuming application depends on it at runtime — the versioned runtime foundation an application is built upon. (Distinct from "ecosystem", which is the whole FrontX product set.) |
+| project template | A template that scaffolds an entire new project. |
+| microfrontend template | A template that scaffolds a single, independently-developed microfrontend. |
+| scaffold | The act of generating files and configuration into a target directory from a template. |
+| composed template | A project template that references one or more microfrontend templates and resolves them as part of a single scaffold operation. |
+| project provenance | Recorded information about which template, and which template version, a project was scaffolded from. |
+| upgrade | Applying a newer template version to an existing project, delivered as a reviewable change set. |
+| update | Installation of a newer template version locally, without applying it to any existing project. |
+| template-bundled AI extension | An AI capability — a skill, workflow, guideline, or reference artifact — that ships inside a template and activates when that template is installed. |
+| AI Tooling Framework | The Pillar 3 component that provides base ecosystem AI capabilities, the extension contract templates use to bundle AI extensions, and the discovery-and-activation surface that turns installed-template extensions into available capabilities for AI agents. |
 
 ## 2. Actors
 
-> **Note**: Stakeholder needs are managed at project/task level by steering committee. Document **actors** (users, systems) that interact with this module.
-
 ### 2.1 Human Actors
 
-#### Application Developer
+#### Template Developer
 
-**ID**: `cpt-frontx-actor-developer`
+**ID**: `cpt-frontx-actor-template-developer`
 
-**Role**: Frontend/fullstack engineer who writes screensets (screen components, actions, effects, slices), integrates API services, adds translations, and extends plugins via composition.
-**Needs**: Clear SDK APIs, consistent patterns, type-safe hooks, fast scaffolding via CLI, reliable build tooling.
+**Role**: Designs, authors, versions, and publishes project templates or microfrontend templates that other teams build from. Works alongside AI agents throughout this work.
+**Needs**: Stable product contracts; pre-publish validation tooling; semantic-versioning discipline tooling; reference templates; deterministic composition primitives; support for bundling template-specific AI capabilities.
 
-#### Screenset Author
+#### Project Developer
 
-**ID**: `cpt-frontx-actor-screenset-author`
+**ID**: `cpt-frontx-actor-project-developer`
 
-**Role**: Creates self-contained vertical slices with screens, translations, API services, and state. Registers translations via localization config and implements custom API services.
-**Needs**: Self-contained packaging, namespace isolation, lazy-loading support, MFE extension points.
-
-#### Studio User
-
-**ID**: `cpt-frontx-actor-studio-user`
-
-**Role**: Developer using the floating dev panel to toggle themes, screensets, languages, and mock API mode during development.
-**Needs**: Quick access (keyboard shortcut), persistent settings, zero production footprint.
-
-#### End User
-
-**ID**: `cpt-frontx-actor-end-user`
-
-**Role**: Uses the built application — interacts with screens, navigates, switches themes/languages, triggers API calls, receives real-time updates.
-**Needs**: Responsive load times (<400ms per screen), accessible UI, locale-aware formatting.
+**Role**: Scaffolds a project from an existing project template, then builds business code on top of it. Works alongside AI agents throughout this work.
+**Needs**: Predictable scaffolding output; reliable template upgrades; a clear boundary between what the product provides and what the application must provide; AI agents that already understand both the ecosystem and the specific template in use.
 
 ### 2.2 System Actors
 
-#### Host Application
+#### Cypilot CLI
 
-**ID**: `cpt-frontx-actor-host-app`
+**ID**: `cpt-frontx-actor-cypilot-cli`
 
-**Role**: Initializes FrontX via `createGears FrontX().use(...).build()`, registers screensets, provides `Gears FrontXProvider` to React tree, emits configuration events (tenant, language, theme).
+**Role**: The AI-tooling command-line integration. The FrontX AI Tooling Framework is installed into a consuming project through it, and AI agents discover the ecosystem's skills, workflows, and guidelines through it.
+**Direction**: Inbound (installs the framework into a consuming project).
+**Availability**: Required at template-project install and upgrade time and during AI-driven development sessions.
 
-#### Build System
+#### GitHub
 
-**ID**: `cpt-frontx-actor-build-system`
+**ID**: `cpt-frontx-actor-github`
 
-**Role**: Compiles TypeScript via Vite + tsup, tree-shakes dev-only code, bundles monorepo packages, generates Module Federation manifests, runs ESLint/dependency-cruiser/knip checks, publishes packages.
+**Role**: Public source registry that hosts the project templates and microfrontend templates published by Template Developers, and hosts the FrontX AI Tooling Framework. Both the FrontX CLI and the Cypilot CLI fetch from it by versioned reference.
+**Direction**: Outbound (publications flow to the registry); inbound (the CLI and Cypilot CLI fetch from the registry into a consuming project).
+**Availability**: Required at install and upgrade time.
 
-#### Browser Runtime
+#### Package Registry
 
-**ID**: `cpt-frontx-actor-runtime`
+**ID**: `cpt-frontx-actor-package-registry`
 
-**Role**: Evaluates JavaScript modules and lazy-loaded screens, maintains Redux store and EventBus subscriptions, renders React components, handles API calls, persists state to localStorage.
-
-#### Framework Plugin
-
-**ID**: `cpt-frontx-actor-framework-plugin`
-
-**Role**: Implements plugin interface via `.use(featureName(config))`. Provides slices, effects, actions, registries. Subscribes to event bus for cross-plugin communication.
-
-#### API Protocol
-
-**ID**: `cpt-frontx-actor-api-protocol`
-
-**Role**: Implements `ApiProtocol` interface with `initialize()`, `cleanup()`, and custom methods. Registered in `BaseApiService` by constructor name. Supports plugin chains.
-
-#### Microfrontend Runtime
-
-**ID**: `cpt-frontx-actor-microfrontend`
-
-**Role**: Module Federation container that exposes screens/components loaded by host app at runtime. Receives actions from host, broadcasts shared properties. Each instance is blob-URL-isolated.
-
-#### CI/CD Pipeline
-
-**ID**: `cpt-frontx-actor-ci-cd`
-
-**Role**: Validates (TypeScript strict, ESLint, dependency-cruiser, knip), tests, builds packages in layer order, publishes to npm. Enforces architecture rules.
-
-#### GTS Plugin
-
-**ID**: `cpt-frontx-actor-gts-plugin`
-
-**Role**: Validates MFE shared properties and action chains against GTS schemas. Supports derived schemas for theme/language enums.
-
-#### CLI Tool
-
-**ID**: `cpt-frontx-actor-cli`
-
-**Role**: Scaffolds new projects (`frontx create`), generates layout and screenset code (`frontx scaffold`), runs migrations (`frontx migrate`), syncs AI tool configs (`frontx ai sync`). Orchestrates screenset lifecycle operations: copy, promote, delete, list, activate.
-
-#### Product Manager
-
-**ID**: `cpt-frontx-actor-product-manager`
-
-**Role**: Creates new draft screensets (from blank templates or by duplicating existing screensets), uses AI tools to generate feature prototypes in shell code and MFE packages, creates multiple variant drafts for comparison, selects the best approach, and commits the chosen draft to the project.
-
-#### UX Designer
-
-**ID**: `cpt-frontx-actor-ux-designer`
-
-**Role**: Promotes PM drafts to mockup stage, creates styling and layout variants for feedback collection, refines visual design and interaction details, selects the final approach, and commits the chosen mockup.
-
-#### AI Agent
-
-**ID**: `cpt-frontx-actor-ai-agent`
-
-**Role**: Generates and modifies shell code and MFE packages within screensets under PM or designer direction. Operates through IDE-integrated AI assistants, using CLI commands and FrontX-provided skills and workflows for screenset-aware operations.
-
-#### Dev Server
-
-**ID**: `cpt-frontx-actor-dev-server`
-
-**Role**: Serves the active screenset's shell and MFE packages during local development. Handles entry point resolution for the active screenset.
+**Role**: npm-compatible package registry that hosts FrontX's published packages. Project Developers install FrontX packages from it using their chosen npm-compatible package manager.
+**Direction**: Outbound (FrontX publishes packages to the registry); inbound (an application installs packages from the registry).
+**Availability**: Required at publish time and at application install time.
 
 ## 3. Operational Concept & Environment
 
+The ecosystem operates as a set of products that Template Developers and Project Developers use, together with AI agents, across two recurring activities: publishing templates and the AI capabilities bundled with them, and scaffolding and evolving projects from those templates. These activities run in ordinary developer environments and require nothing beyond standard project defaults.
+
 ### 3.1 Module-Specific Environment Constraints
 
-FrontX is an npm workspace monorepo (`frontx-monorepo`) structured as:
-
-```
-packages/           -- Published @gears-frontx/* packages
-  state/            -- L1 SDK: EventBus, Store, createSlice
-  screensets/       -- L1 SDK: MFE contracts, registry, Shadow DOM
-  api/              -- L1 SDK: REST/SSE protocols, plugin system
-  i18n/             -- L1 SDK: 36-language i18n, formatters
-  framework/        -- L2: Plugin architecture, layout slices
-  react/            -- L3: Gears FrontXProvider, hooks, MFE components
-  studio/           -- Dev: Floating overlay with controls
-  cli/              -- Tool: Scaffolding CLI
-  docs/             -- VitePress documentation site
-internal/           -- Non-published internal tooling
-src/                -- Demo host application + MFE packages
-```
-
-**Build orchestration**: Sequential layer build — SDK (parallel) → framework → react → studio → cli.
-
-**Development**: `npm run dev` builds MFE packages, generates MFE manifests and color tokens, then starts the Vite dev server.
-
-**Architecture checks**: `npm run arch:check`, `arch:deps`, `arch:unused` validate layer boundaries and unused exports.
-
-> **Note**: Technology names and version constraints listed in this PRD are product-defining requirements for this SDK, not implementation decisions deferrable to architecture phase. They define the target runtime and build contract that consumers depend on.
+None.
 
 ## 4. Scope
 
 ### 4.1 In Scope
 
-- State management — EventBus pub/sub, Redux-backed store with dynamic slice registration, effect system
-- MFE runtime — MfeRegistry, extension lifecycle, actions chain mediation, domain management, GTS validation
-- API communication — REST and SSE protocols, plugin chain, mock mode, retry with exponential backoff
-- Internationalization — 36 languages, RTL support, namespace-based translations, lazy loading, locale-aware formatters
-- Plugin architecture — Composable plugins, presets (full, minimal)
-- Layout state — 6 domain slices (header, footer, menu, sidebar, popup, overlay), tenant, mock
-- React integration — Gears FrontXProvider, typed hooks, MFE hooks
-- UI component library — shadcn/ui + Radix UI primitives, variant system, theming
-- Developer studio — Runtime overlay with MFE package selector, theme/language/API mode toggles
-- CLI tooling — Project scaffolding, screenset generation, migration runners, AI tool sync
-- MFE isolation — Blob URL per-runtime isolation, Shadow DOM CSS isolation
-- Architecture enforcement — Dependency-cruiser rules, Knip unused export detection
-- Screensets workflow — Three-stage SDLC pipeline (draft → mockup → production), screenset copy/promote/delete, Studio screenset selector, shell-as-owned-code, shared MFE package pool with copy-on-write, multi-product screenset support
+#### Core Framework (Pillar 1)
+
+- Microfrontends can be registered with the application and loaded on demand.
+- Multiple microfrontends can occupy the same extension domain when the domain permits multiple occupants.
+- Microfrontends can communicate with the host application and react to changes in the host application's state.
+- Microfrontends and their extensions are validated against type definitions at registration.
+- Applications can use type definitions for their own entities, and additional type definitions can be registered at runtime.
+- Applications may use any UI framework; the core framework does not constrain that choice.
+- Versioned platform releases with semantic-versioning discipline, so breaking changes are isolated from consuming applications by versioning and compatibility commitments.
+- No architectural ceiling on application complexity — the number of microfrontends or type definitions an application integrates — within the stated non-functional thresholds.
+
+#### CLI (Pillar 2)
+
+- Installing a project template or microfrontend template from a public source registry by versioned reference.
+- Listing installed templates and their versions.
+- Updating an installed template locally to a newer version.
+- Validating a template's structure against the publication contract before publishing.
+- Scaffolding a new project from an installed project template into a chosen target directory.
+- Scaffolding a new microfrontend from an installed microfrontend template into a chosen target directory.
+- Resolving composed templates at scaffold time, so referenced microfrontend templates are scaffolded as part of the same operation.
+- Upgrading an existing project to a newer template version, applied as a reviewable change set.
+- Reviewing and approving upgrade changes before they apply to project files.
+- Organizing commands into two namespaces — project-level and microfrontend-level — reflecting the two first-class template kinds the product supports.
+
+#### AI Tooling Framework (Pillar 3)
+
+- FrontX-specific skills available to AI agents, such as creating microfrontends, validating templates, generating type definitions, and other ecosystem-scoped operations.
+- Template-bundled AI extensions — template-specific skills, workflows, guidelines, and reference artifacts that operate alongside the ecosystem's base AI capabilities.
+- Automatic discovery and activation of installed-template AI extensions in consuming projects, without manual wiring by the developer.
+- AI-driven project-upgrade orchestration that complements direct CLI invocation, including review gates, migration analyses, and downstream impact assessments.
+- Ecosystem-knowledge artifacts — rules, examples, guidelines, and reference artifacts — available to AI agents at session start, with no training step required.
+- The AI Tooling Framework itself is template-agnostic and ships zero template-specific content; template-specific AI capabilities arrive through template bundles.
 
 ### 4.2 Out of Scope
 
-- Server-side rendering (SSR) — Client-side SPA architecture only
-- Backend/BFF — API layer provides client-side protocols only
-- Authentication implementation — Framework provides templates but no auth logic
-- Production MFE registry/discovery — No backend catalog; extensions registered at runtime via code
-- Cross-MFE shared state — Explicitly rejected; each MFE has isolated store
-- Layout rendering components — Generated by CLI into user's project, not in any @gears-frontx package
-- WebSocket protocol — Only REST and SSE implemented
-- Database schemas — N/A (client-side library)
-- Runtime screenset switching in deployed applications
-- Remote or cloud-based screenset management (all operations are local filesystem + git)
-- Screenset access control or permissions (handled by git branch permissions)
-- Collaborative real-time editing of screensets (each PM works independently, collaboration via git)
+- FrontX does not include specific UI component libraries (buttons, modals, forms, and the like).
+- FrontX does not include a specific state management library.
+- FrontX does not include specific internationalization or locale handling.
+- FrontX does not include specific authentication or authorization implementations.
+- FrontX does not include a specific theming or styling system.
+- FrontX does not include specific layout choices — which extension domains exist, what they are called, or what microfrontends occupy them.
+- FrontX does not include specific shared application state schemas, such as theme, language, or user-locale schemas.
+- FrontX does not include specific build-tooling configurations.
+- FrontX does not include specific AI workflows, skills, or guidelines tied to a particular application domain.
+- FrontX is not a host for application-domain business logic of any kind.
 
 ## 5. Functional Requirements
 
-> **Testing strategy**: All requirements verified via automated tests (unit, integration, e2e) targeting 90%+ code coverage unless otherwise specified. Document verification method only for non-test approaches.
+Functional requirements define WHAT the system must do. Group by feature area or priority tier.
 
-### 5.1 SDK Core
+### 5.1 Core Framework
 
-#### Flat SDK Packages
+#### Microfrontend runtime registration and on-demand loading
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-sdk-flat-packages`
+- [ ] `p1` - **ID**: `cpt-frontx-fr-mfe-runtime-registration`
 
-The system MUST provide 4 flat SDK packages (`@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/api`, `@gears-frontx/i18n`) with ZERO `@gears-frontx/*` inter-dependencies.
+The system **MUST** allow microfrontends to be registered with a running application and loaded on demand.
 
-**Rationale**: Enables independent consumption and parallel builds. Each package has only external peer dependencies.
-**Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-build-system`
+**Rationale**: Lets an application gain user-facing functionality from independently-developed units at runtime, without rebuilding or redeploying the host.
 
-#### State Package Interface
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-sdk-state-interface`
+#### Multiple microfrontends per extension domain
 
-`@gears-frontx/state` MUST export EventBus (singleton + interface), `createStore`, `getStore`, `registerSlice`, `unregisterSlice`, `hasSlice`, `getRegisteredSlices`, `resetStore`, `createSlice`, and types `ReducerPayload`, `EventPayloadMap`, `RootState`, `AppDispatch`, `EffectInitializer`, `Gears FrontXStore`, `SliceObject`, `EventHandler`, `Subscription`.
+- [ ] `p1` - **ID**: `cpt-frontx-fr-mfe-multi-occupant-domain`
 
-**Rationale**: Complete state management foundation for event-driven Flux architecture.
-**Actors**: `cpt-frontx-actor-developer`
+The system **MUST** allow multiple microfrontends to occupy the same extension domain when that domain permits multiple occupants.
 
-#### FrontX Flux Terminology
+**Rationale**: Enables modular layouts and side-by-side experiences within a single extension point, so teams can compose richer screens without contention over a shared slot.
 
-- [x] `p2` - **ID**: `cpt-frontx-fr-sdk-flux-terminology`
+**Actors**: `cpt-frontx-actor-project-developer`
 
-The system MUST use consistent FrontX Flux terminology: Action (emits events), Event (past-tense message), Effect (subscribes + calls reducers), Reducer (pure state update), Slice (reducers + initial state). The terms "action creator" and "dispatch" MUST NOT appear in public API.
+#### Microfrontend–host communication and host-state reaction
 
-**Rationale**: Avoids confusion with Redux terminology; enforces FrontX event-driven patterns.
-**Actors**: `cpt-frontx-actor-developer`
+- [ ] `p1` - **ID**: `cpt-frontx-fr-mfe-host-communication`
 
-#### Screensets Package
+The system **MUST** allow microfrontends to communicate with the host application. The system **MUST** allow microfrontends to react to changes in the host application's state.
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-sdk-screensets-package`
+**Rationale**: Enables coordinated behavior across independently-deployed units, so a composed application behaves as one product rather than disconnected fragments.
 
-`@gears-frontx/screensets` MUST export `LayoutDomain` enum, MFE type system (`MfeEntry`, `MfeEntryMF`, `Extension`, `ScreenExtension`, `ExtensionDomain`, `SharedProperty`, `Action`, `ActionsChain`), `MfeRegistry`, `MfeHandler`, `MfeBridgeFactory`, and action/property constants. It MUST have ZERO `@gears-frontx/*` dependencies.
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
 
-**Rationale**: MFE contracts must be consumable without pulling in framework or React.
-**Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-microfrontend`
+#### Microfrontend and extension validation at registration
 
-#### API Package
+- [ ] `p1` - **ID**: `cpt-frontx-fr-mfe-type-validation`
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-sdk-api-package`
+The system **MUST** validate microfrontends and their extensions against type definitions at the time they are registered with the application.
 
-`@gears-frontx/api` MUST export `BaseApiService`, `RestProtocol`, `SseProtocol`, `RestMockPlugin`, `SseMockPlugin`, `MockEventSource`, `ApiPluginBase`, `ApiPlugin`, `ApiProtocol`, `apiRegistry`, type guards `isShortCircuit`/`isRestShortCircuit`/`isSseShortCircuit`, and streaming types `StreamDescriptor`/`StreamStatus`. It MUST have only `axios` as peer dependency.
+**Rationale**: Surfaces contract violations at the moment of integration rather than later in front of users, lowering the cost and risk of composing third-party units.
 
-**Rationale**: Protocol-agnostic API layer with pluggable mock mode.
-**Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-api-protocol`
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
 
-#### i18n Package
+#### Application-defined type definitions with runtime registration
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-sdk-i18n-package`
+- [ ] `p1` - **ID**: `cpt-frontx-fr-application-type-definitions`
 
-`@gears-frontx/i18n` MUST export `I18nRegistry`, `Language` enum (36 languages), `TranslationLoader`, `SUPPORTED_LANGUAGES`, `getLanguageMetadata`, `getRTLLanguages`, formatters (`formatDate`, `formatTime`, `formatDateTime`, `formatRelative`, `formatNumber`, `formatPercent`, `formatCompact`, `formatCurrency`, `compareStrings`, `createCollator`), and `TextDirection`/`LanguageDisplayMode` types. It MUST have ZERO dependencies.
+The system **MUST** allow an application to use type definitions for its own entities. The system **MUST** allow additional type definitions to be registered at runtime.
 
-**Rationale**: Full i18n foundation with zero-dependency constraint for maximum portability.
-**Actors**: `cpt-frontx-actor-developer`
+**Rationale**: Lets an application extend the shared vocabulary it uses with its microfrontends, so the product grows with the application's own domain rather than being fixed at build time.
 
-#### Framework Layer
+**Actors**: `cpt-frontx-actor-project-developer`
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-sdk-framework-layer`
+#### UI-framework-agnostic application components
 
-`@gears-frontx/framework` MUST depend only on SDK packages (state, screensets, api, i18n), MUST NOT depend on React, and MUST provide layout domain state types, registries, effect coordination, `createGears FrontX()` builder, and `createGears FrontXApp()` convenience function.
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ui-framework-agnostic`
 
-**Rationale**: Framework wires SDK capabilities into composable plugins without React coupling.
-**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-framework-plugin`
+The system **MUST** allow an application built on the platform to use any UI framework for its components, including React, Vue, Svelte, and vanilla JavaScript. The core framework **MUST NOT** constrain the UI library choice.
 
-#### Action Pattern
+**Rationale**: Lets applications and templates choose their UI stack independently of the platform, protecting that choice across platform updates and broadening the set of teams the product can serve.
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-sdk-action-pattern`
+**Actors**: `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-template-developer`
 
-Actions MUST be handwritten pure functions that emit events via `eventBus.emit()`. Actions MUST NOT dispatch directly to Redux. No `createAction` helper MUST be exported from SDK packages. Components MUST NOT use `eventBus` directly.
+#### Versioned platform evolution with compatibility commitments
 
-**Rationale**: Enforces event-driven architecture; prevents direct Redux coupling.
-**Actors**: `cpt-frontx-actor-developer`
+- [ ] `p1` - **ID**: `cpt-frontx-fr-versioned-platform-evolution`
 
-#### Plugin Architecture
+The system **MUST** evolve through versioned releases under semantic-versioning discipline. The system **MUST** isolate breaking changes from consuming applications through versioning and compatibility commitments.
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-sdk-plugin-arch`
+**Rationale**: Gives consuming applications predictable upgrades and frees them from upgrading in lockstep with the product, protecting investment in code built on the platform.
 
-`@gears-frontx/framework` MUST provide a plugin-based architecture via `createGears FrontX()` builder with `.use()` and `.build()`. Plugins MUST declare name, optional dependencies, and optional provides. Presets MUST include `full()`, `minimal()`.
+**Actors**: `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-template-developer`
 
-**Rationale**: Composable feature set; applications only pay for what they use.
-**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-framework-plugin`
+#### No architectural ceiling on application complexity
 
-#### React Adapter Layer
+- [ ] `p2` - **ID**: `cpt-frontx-fr-no-architectural-ceiling`
 
-- [x] `p2` - **ID**: `cpt-frontx-fr-sdk-react-layer`
+The system **MUST NOT** place an upper limit on the number of microfrontends or type definitions an application integrates, beyond the thresholds stated in the non-functional requirements.
 
-`@gears-frontx/react` MUST depend only on `@gears-frontx/framework`, MUST provide `Gears FrontXProvider` and hooks (`useAppDispatch`, `useAppSelector`, `useTranslation`, `useNavigation`, `useTheme`, `useFormatters`), and MUST NOT contain layout components or UI kit dependencies.
+**Rationale**: Lets the platform scale with the complexity of the applications built on it, so growth is governed by stated performance thresholds rather than by product architecture.
 
-**Rationale**: Thin React binding; keeps React-specific code isolated from framework logic.
-**Actors**: `cpt-frontx-actor-developer`
+**Actors**: `cpt-frontx-actor-project-developer`
 
-#### Layer Dependency Rules
+### 5.2 CLI
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-sdk-layer-deps`
+#### Template install from the source registry by versioned reference
 
-SDK packages (L1) MUST have ZERO `@gears-frontx/*` deps. Framework (L2) MUST depend only on SDK. React (L3) MUST depend only on Framework. User code MAY import from any layer.
+- [ ] `p1` - **ID**: `cpt-frontx-fr-cli-template-install`
 
-**Rationale**: Enforces clean dependency graph; prevents circular coupling.
-**Actors**: `cpt-frontx-actor-build-system`
+The system **MUST** allow a developer to install a project template or microfrontend template from the source registry by versioned reference.
 
-#### Type-Safe Module Augmentation
+**Rationale**: Gives developers deterministic, version-pinned acquisition of templates, so the starting point for a project is reproducible rather than dependent on whichever version happens to be current.
 
-- [x] `p2` - **ID**: `cpt-frontx-fr-sdk-module-augmentation`
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-github`
 
-The system MUST use TypeScript module augmentation for `EventPayloadMap` and `RootState` extensibility. Custom events MUST be type-safe in `eventBus.emit()` and `eventBus.on()`.
+#### List installed templates and their versions
 
-**Rationale**: Type safety for cross-package event communication without coupling.
-**Actors**: `cpt-frontx-actor-developer`
+- [ ] `p1` - **ID**: `cpt-frontx-fr-cli-template-list`
 
-### 5.2 App Configuration
+The system **MUST** allow a developer to list the templates currently installed and their versions.
 
-#### Tenant Type and Events
+**Rationale**: Gives developers visibility into their template inventory, so they can confirm what is available to scaffold from and at which version.
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-appconfig-tenant`
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
 
-The system MUST define a `Tenant` type with `{ id: string }`. Tenant state MUST be typed as `Tenant | null`. The system MUST provide tenant change events (`app/tenant/changed`, `app/tenant/cleared`) via event bus, with corresponding action functions (`changeTenant`, `clearTenantAction`, `setTenantLoadingState`).
+#### Update an installed template locally
 
-**Rationale**: Tenant context is the foundation for multi-tenant applications.
-**Actors**: `cpt-frontx-actor-host-app`
+- [ ] `p1` - **ID**: `cpt-frontx-fr-cli-template-update-local`
 
-#### Event-Driven Configuration
+The system **MUST** allow a developer to update an installed template to a newer version locally. This update **MUST NOT** alter any project that was scaffolded from the template.
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-appconfig-event-api`
+**Rationale**: Decouples acquiring a newer template version from applying it to a project, so developers can obtain and inspect updates without disturbing existing projects.
 
-The system MUST support event-driven configuration for tenant, language, theme, and navigation. Configuration changes MUST propagate through the event bus, not through direct state mutation.
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-github`
 
-**Rationale**: Event-driven patterns ensure all listeners (including MFE plugins) receive configuration changes.
-**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-framework-plugin`
+#### Validate a template's structure before publishing
 
-#### Router Configuration
+- [x] `p1` - **ID**: `cpt-frontx-fr-cli-template-validate-prepublish`
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-appconfig-router-config`
+The system **MUST** allow a Template Developer to validate a template's structure against the publication contract before publishing it.
 
-The system MUST provide router mode configuration via `Gears FrontXConfig.routerMode` supporting `'browser'` (default), `'hash'`, and `'memory'` types.
+**Rationale**: Catches structural errors before a template reaches other teams, so consumers are protected from malformed templates and the publisher avoids costly post-publication corrections.
 
-**Rationale**: Different deployment environments require different routing strategies.
-**Actors**: `cpt-frontx-actor-host-app`
+**Actors**: `cpt-frontx-actor-template-developer`
 
-#### Layout Visibility
+#### Scaffold a new project from an installed project template
 
-- [x] `p2` - **ID**: `cpt-frontx-fr-appconfig-layout-visibility`
+- [ ] `p1` - **ID**: `cpt-frontx-fr-cli-project-scaffold`
 
-The system MUST provide layout visibility control for footer, menu, and sidebar via imperative action functions (`setFooterVisible`, `setMenuVisible`, `setSidebarVisible`). Unspecified parts MUST default to visible (footer, menu) or hidden (sidebar).
+The system **MUST** allow a Project Developer to scaffold a new project from an installed project template into a chosen target directory.
 
-**Rationale**: Applications need to control which layout regions are visible.
-**Actors**: `cpt-frontx-actor-host-app`
+**Rationale**: Gives developers predictable, reproducible project bootstrap from a known template, so every project starts from a consistent, contracted foundation.
 
-### 5.3 SSE Streaming
+**Actors**: `cpt-frontx-actor-project-developer`
 
-#### SSE Protocol
+#### Scaffold a new microfrontend from a microfrontend template
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-sse-protocol`
+- [ ] `p1` - **ID**: `cpt-frontx-fr-cli-microfrontend-scaffold`
 
-The system MUST provide an `SseProtocol` class that wraps browser `EventSource` API with async `connect()`, `disconnect()`, `cleanup()`, and plugin chain support via `getPluginsInOrder()`.
+The system **MUST** allow a Project Developer to scaffold a new microfrontend from an installed microfrontend template into a chosen target directory.
 
-**Rationale**: Server-Sent Events enable real-time data streaming (chat, notifications).
-**Actors**: `cpt-frontx-actor-api-protocol`, `cpt-frontx-actor-developer`
+**Rationale**: Lets a microfrontend be created as an independently-developed unit that an application loads at runtime, so it can be built and versioned on its own rather than built into an application.
 
-#### Plugin-Based Mock Mode
+**Actors**: `cpt-frontx-actor-project-developer`
 
-- [x] `p2` - **ID**: `cpt-frontx-fr-sse-mock-mode`
+#### Composed-template resolution at project scaffold
 
-SSE protocol MUST use plugin composition for mock streaming via `SseMockPlugin`. Mock MUST NOT create real `EventSource` instances. Mock returns `MockEventSource` via plugin short-circuit pattern.
+- [ ] `p1` - **ID**: `cpt-frontx-fr-cli-composed-template-resolution`
 
-**Rationale**: Development and testing without backend dependencies.
-**Actors**: `cpt-frontx-actor-developer`
+When a developer scaffolds a project from a project template that references microfrontend templates, the system **MUST** resolve and scaffold those referenced microfrontends as part of the same operation.
 
-#### Protocol Registry
+**Rationale**: Delivers a complete composed project in a single step, so developers do not have to discover and scaffold each referenced microfrontend by hand.
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-sse-protocol-registry`
+**Actors**: `cpt-frontx-actor-project-developer`
 
-`BaseApiService` MUST use protocol registry pattern. Protocols MUST be registered by constructor name, accessible via type-safe `protocol<T>()` method. `cleanup()` MUST destroy all protocols and plugins.
+#### Project upgrade as a reviewable change set
 
-**Rationale**: Extensible protocol architecture; services can use REST, SSE, or custom protocols.
-**Actors**: `cpt-frontx-actor-api-protocol`
+- [ ] `p1` - **ID**: `cpt-frontx-fr-cli-project-upgrade-changeset`
 
-#### Type-Safe SSE Events
+The system **MUST** allow a developer to upgrade an existing project to a newer version of the template it was scaffolded from, with the upgrade applied as a reviewable change set.
 
-- [x] `p2` - **ID**: `cpt-frontx-fr-sse-type-safe-events`
+**Rationale**: Makes adopting newer template versions non-destructive and auditable, so developers can keep projects current without risking unreviewed changes to their files.
 
-SSE-related events MUST be type-safe via `EventPayloadMap` module augmentation.
+**Actors**: `cpt-frontx-actor-project-developer`
 
-**Rationale**: Compile-time safety for event-driven SSE integration.
-**Actors**: `cpt-frontx-actor-developer`
+#### Review and approval of upgrade changes before they apply
 
-#### Stream Descriptors
+- [ ] `p1` - **ID**: `cpt-frontx-fr-cli-upgrade-review-approval`
 
-- [x] `p2` - **ID**: `cpt-frontx-fr-sse-stream-descriptors`
+The system **MUST** allow a developer to review and approve upgrade changes before they apply to project files.
 
-`BaseApiService` at L1 MUST expose registered protocols via `this.protocol(ProtocolClass)`. `SseStreamProtocol` MUST provide `stream<TEvent>(path, options?)` returning a `StreamDescriptor<TEvent>` with `key`, `connect(onEvent, onComplete?)`, and `disconnect(connectionId)`, and services MUST declare stream descriptors via `this.protocol(SseStreamProtocol).stream(...)`. Cache keys MUST be derived from `[baseURL, 'SSE', path]`. The `connect` method MUST route through `SseProtocol` with full plugin chain support (including mock short-circuit). Default event parsing MUST be `JSON.parse(event.data)` with an optional `parse` override. `@gears-frontx/react` MUST export `useApiStream(descriptor, options?)` that manages EventSource lifecycle (connect on mount, disconnect on unmount), supports `'latest'` and `'accumulate'` modes, and returns `ApiStreamResult<TEvent>` with `{ data, events, status, error, disconnect }`.
+**Rationale**: Keeps a human in control of what an upgrade changes, so no modification reaches a project's files without explicit approval.
 
-**Rationale**: Extends the descriptor pattern to SSE streams, giving components a declarative hook for real-time data that mirrors `useApiQuery` for REST. Services remain the single source of truth for connection shape and mock configuration.
-**Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-screenset-author`
+**Actors**: `cpt-frontx-actor-project-developer`
 
-### 5.4 MFE Type System
+#### Two-namespace command organization
 
-> **Note**: MFE type contracts documented here define the inter-package communication API. For a library product, public type shapes are product requirements, not internal implementation types.
+- [ ] `p2` - **ID**: `cpt-frontx-fr-cli-two-namespace-commands`
 
-#### MFE Entry Types
+The system **MUST** organize its commands into two namespaces: one for project-level operations and one for microfrontend-level operations.
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-mfe-entry-types`
+**Rationale**: Reflects the two first-class template kinds the product supports, so developers find the right command by the kind of work they are doing.
 
-The system MUST define `MfeEntry` (base with id, requiredProperties, actions, domainActions), `MfeEntryMF` (extends with manifest, exposedModule, exposeAssets), `Extension` (id, domain, entry), `ScreenExtension` (extends with presentation: label, route, optional icon/order). All types MUST have an `id: string` field. The `MfeEntryMF.manifest` field MUST reference an MfManifest GTS entity that provides package-level metadata: MFE identity, base URL, and shared dependency declarations with version metadata. The `MfeEntryMF.exposeAssets` field MUST carry the per-module chunk paths and CSS asset paths for the specific exposed module. The manifest and expose assets content MUST originate from the build-generated `mf-manifest.json`, split at registration time between the shared manifest entity and per-module entries.
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
 
-**Rationale**: Type contracts for MFE communication between host and extensions.
-**Actors**: `cpt-frontx-actor-microfrontend`, `cpt-frontx-actor-developer`
+### 5.3 AI Tooling Framework
 
-#### Extension Domain
+#### FrontX-specific skills available to AI agents
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-mfe-ext-domain`
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-frontx-skills`
 
-`ExtensionDomain` MUST have id, sharedProperties, actions, extensionsActions, defaultActionTimeout (required number), lifecycleStages (required), extensionsLifecycleStages (required). It MAY have extensionsTypeId.
+The system **MUST** make FrontX-specific skills available to AI agents working in a FrontX-based project, including creating new microfrontends, validating templates, generating type definitions, and other ecosystem-scoped operations.
 
-**Rationale**: Defines the communication contract between host app and MFE extensions.
-**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-microfrontend`
+**Rationale**: Gives AI agents fluency in ecosystem operations from the start, so developers receive correct, ecosystem-aware assistance without configuring it for each project.
 
-#### Shared Property Type
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-mfe-shared-property`
+#### Template-bundled AI extensions
 
-`SharedProperty` MUST have `id: string` and `value: unknown`. Shared property constants MUST be GTS type IDs.
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-template-bundle-extensions`
 
-**Rationale**: Type-safe shared property broadcasting with schema validation.
-**Actors**: `cpt-frontx-actor-microfrontend`
+The system **MUST** allow a Template Developer to bundle a template with AI extensions — template-specific skills, workflows, guidelines, and reference artifacts — that operate alongside the ecosystem's base AI capabilities.
 
-#### Action and Actions Chain Types
+**Rationale**: Lets templates carry their own AI expertise, so the knowledge specific to a template travels with it instead of being recreated in each consuming project.
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-mfe-action-types`
+**Actors**: `cpt-frontx-actor-template-developer`
 
-`Action` MUST have type (string), target (string), optional payload and timeout. `ActionsChain` MUST contain action, optional next and fallback (recursive). Neither MUST have an id field. The `type` field value MUST be a GTS schema type ID (string ending with `~`). When an action payload references an extension, the field MUST be named `subject`; no `extensionId` field MUST appear in action payloads.
+#### Automatic discovery and activation of template-supplied AI extensions
 
-**Rationale**: Chain-based action execution with fallback support for resilient MFE communication. GTS schema type IDs (trailing `~`) distinguish type definitions from instance IDs; `subject` is the GTS-standard field name for entity references in action payloads.
-**Actors**: `cpt-frontx-actor-microfrontend`
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-extension-discovery-activation`
 
-### 5.5 MFE Core
+When a template is installed in a project, the system **MUST** discover the template's AI extensions and activate them for AI agents working in that project, without the developer needing to wire them up manually.
 
-#### Dynamic Registration
+**Rationale**: Delivers zero-configuration extensibility, so template-supplied AI capabilities become available the moment a template is installed.
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-mfe-dynamic-registration`
+**Actors**: `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-cypilot-cli`
 
-The system MUST support dynamic registration of MFE extensions and domains at runtime; there MUST NOT be static configuration.
+#### AI-driven project-upgrade orchestration
 
-**Rationale**: Extensions are loaded on-demand; the set of available extensions is not known at build time.
-**Actors**: `cpt-frontx-actor-host-app`
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-upgrade-orchestration`
 
-#### Theme Propagation via Plugin
+The system **MUST** allow a Project Developer to use AI agents to orchestrate template upgrades — analysing the change, applying the upgrade, and validating downstream effects — through AI-driven workflows that may include review gates, migration analyses, and downstream impact assessments.
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-mfe-theme-propagation`
+**Rationale**: Complements direct CLI invocation with guided, AI-driven upgrades, so developers can adopt newer template versions with analysis and review built into the flow.
 
-The `themes()` plugin MUST call `mfeRegistry?.updateSharedProperty(Gears FrontX_SHARED_PROPERTY_THEME, themeId)` in its `theme/changed` event handler, wrapped in try/catch.
+**Actors**: `cpt-frontx-actor-project-developer`
 
-**Rationale**: Theme changes must propagate to all MFE extensions. Owned by themes plugin, not microfrontends.
-**Actors**: `cpt-frontx-actor-framework-plugin`
+#### Ecosystem-knowledge artifacts available at session start
 
-#### Language Propagation via Plugin
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-session-start-knowledge`
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-mfe-i18n-propagation`
+The system **MUST** make ecosystem-knowledge artifacts — rules, examples, guidelines, and reference artifacts — available to AI agents at session start, with no training step required.
 
-The `i18n()` plugin MUST call `mfeRegistry?.updateSharedProperty(Gears FrontX_SHARED_PROPERTY_LANGUAGE, language)` in its `i18n/language/changed` event handler, wrapped in try/catch.
+**Rationale**: Makes AI agents ecosystem-aware from the first interaction, so developers receive correct guidance immediately rather than after a setup or learning step.
 
-**Rationale**: Language changes must propagate to all MFE extensions. Owned by i18n plugin, not microfrontends.
-**Actors**: `cpt-frontx-actor-framework-plugin`
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
 
-### 5.6 MFE Blob URL Isolation
+#### AI Tooling Framework is template-agnostic
 
-#### Fresh Module Evaluation
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-tooling-template-agnostic`
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-blob-fresh-eval`
+The AI Tooling Framework **MUST** ship zero template-specific content; template-specific AI capabilities **MUST** arrive exclusively via template bundles.
 
-`MfeHandlerMF` MUST use Blob URLs to produce a fresh ES module evaluation per MFE load. `Object.is(mfeA_React, mfeB_React)` MUST be `false`.
+**Rationale**: Keeps the framework free of coupling to any particular template's domain, so it stays portable across every template and templates remain the single source of their own AI capabilities.
 
-**Rationale**: Prevents cross-MFE state leakage (React fiber trees, hooks, Redux stores).
-**Actors**: `cpt-frontx-actor-microfrontend`
-
-#### No Blob URL Revocation
-
-- [x] `p2` - **ID**: `cpt-frontx-fr-blob-no-revoke`
-
-The handler MUST NOT call `URL.revokeObjectURL()` after `import()` resolves; blob URLs MUST remain valid for the page lifetime.
-
-**Rationale**: ES module evaluation is not finished when `import()` resolves. A module that contains top-level `await`, dynamic `import()`, or any deferred sub-module load continues to fetch and parse against the blob URL after the outer promise has settled. Revoking the URL — at any point — turns those queued fetches into `ERR_FILE_NOT_FOUND` and breaks the load nondeterministically. Never-revoke is a correctness invariant of the loader, not a memory-hygiene policy; per-mount state hygiene is the MFE author's responsibility, not the loader's (see `cpt-frontx-fr-mfe-author-state-lifecycle`).
-**Actors**: `cpt-frontx-actor-microfrontend`
-
-#### MFE Author Owns Per-Mount State Lifecycle
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-mfe-author-state-lifecycle`
-
-The MFE entry is responsible for constructing per-mount state inside its `mount()` and for disposing of that state inside its `unmount()`. Module-scope state established when the MFE bundle first evaluates (the React module instance, the MFE-local store singleton, registered effects, plugin registrations) survives across mount/unmount cycles within a single load — the loader does not, and will not, force fresh module evaluation at every mount.
-
-Concretely, the MFE entry MUST:
-
-1. Create per-instance state (component trees, subscriptions, timers, observers, action handlers registered through the bridge) inside `mount(container, bridge, mountContext?)` so that each mount produces an independent set of resources.
-2. Tear those resources down inside `unmount(container)` (unsubscribe, cancel timers, remove DOM nodes, dispose observers, release any references to the bridge).
-3. NOT rely on `unmount()` to reset module-level singletons or to drop blob URLs; `unmount()` is purely an instance-lifecycle hook.
-4. MUST assume any module-scope cache it keeps is shared across all mounts of that MFE within the page, and key/manage that cache accordingly (e.g., key entries by mount-context, do not rely on per-mount eviction).
-
-**Rationale**: The loader cannot safely revoke blob URLs (`cpt-frontx-fr-blob-no-revoke`), so module-scope state must be assumed to persist for the lifetime of the load. Pushing per-mount lifecycle to the MFE author keeps a clean correctness boundary: the host guarantees module-scope persistence, the MFE guarantees instance-scope cleanup. Authors who want fresh module state per use case can elect not to keep state at module scope at all.
-**Actors**: `cpt-frontx-actor-microfrontend`
-
-#### Source Text Cache
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-blob-source-cache`
-
-`MfeHandlerMF` MUST maintain a handler-level `sourceTextCache` of fetched source text strings, keyed by absolute URL, for general chunk fetch deduplication — at most ONE in-flight network fetch per absolute URL while the entry remains cached. For shared dependencies, the handler MUST additionally maintain a `sharedDepTextCache` keyed by `name@version` that deduplicates shared dep source text across MFEs regardless of which MFE's origin server serves the file (e.g., `shared/react.js` is MFE-relative and may differ in absolute URL between MFEs sharing the same `name@version`). `sourceTextCache` handles general fetch dedup for expose chunks and other assets; `sharedDepTextCache` guarantees that a single source text is used per `name@version` while that entry remains cached.
-
-Both caches MUST be bounded — long-running hosts that accumulate many distinct MFE chunks or many distinct shared dep versions over time MUST NOT grow memory without limit. When a cache reaches its capacity, the least-recently-accessed entry is evicted; a later access for an evicted key re-fetches. Eviction is correctness-safe: per-load blob URLs are built from whatever source text is returned, cached or freshly fetched.
-
-**Rationale**: Prevents redundant network requests when multiple MFEs share the same dependency version. Separating `sharedDepTextCache` (keyed by `name@version`) from `sourceTextCache` (keyed by URL) ensures correct deduplication even when the same shared dep version is served from different origin paths across MFEs. The bounded-cache requirement prevents unbounded memory growth in apps that cycle through many MFE packages over their lifetime.
-**Actors**: `cpt-frontx-actor-microfrontend`
-
-#### Import Rewriting
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-blob-import-rewriting`
-
-`MfeHandlerMF` MUST rewrite ALL relative imports to absolute URLs using manifest-provided chunk paths. URL resolution MUST derive the base URL from the manifest metadata, not from parsing a JavaScript entry point. Any `import.meta.url` references in blob-URL'd chunk source text MUST be replaced with the resolved absolute base URL before blob creation so that preload helper code within the chunk can construct correct absolute URLs.
-
-**Rationale**: Blob-evaluated modules cannot resolve relative imports; manifest-based path resolution is independent of JavaScript syntax. `import.meta.url` inside a blob URL resolves to the blob URL itself rather than the original deployment origin, breaking any chunk-internal preload or dynamic URL construction that relies on it.
-**Actors**: `cpt-frontx-actor-microfrontend`
-
-#### Recursive Blob Chain
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-blob-recursive-chain`
-
-The MFE handler MUST recursively create blob URLs for a chunk and all its static dependencies, building a chain of isolated modules.
-
-**Rationale**: Ensures the entire dependency tree gets fresh per-load evaluations.
-**Actors**: `cpt-frontx-actor-microfrontend`
-
-#### Per-Load Blob Map
-
-- [x] `p2` - **ID**: `cpt-frontx-fr-blob-per-load-map`
-
-The blob URL mapping MUST be scoped to a single load; different MFE loads MUST have independent mapping instances.
-
-**Rationale**: Prevents cross-load blob URL reuse which would break isolation.
-**Actors**: `cpt-frontx-actor-microfrontend`
-
-### 5.7 MFE Build Plugin
-
-#### Shared Dependency Transforms
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-externalize-transform`
-
-The MFE build configuration MUST externalize ALL declared shared dependencies via `rollupOptions.external` so that bare import specifiers are preserved in the output across the entire MFE bundle, including code-split chunks — not only expose entry files. At runtime, the handler resolves these bare specifiers to per-load shared dep blob URLs.
-
-**Rationale**: Preserving bare specifiers in all chunks allows the handler's blob URL chain to rewrite them uniformly to isolated shared dep instances. All chunks in the MFE bundle must participate in shared dependency resolution for blob URL isolation to work correctly.
-**Actors**: `cpt-frontx-actor-build-system`
-
-#### Declarative Manifest Generation
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-externalize-filenames`
-
-The MFE build plugin MUST produce a declarative manifest (`mf-manifest.json`) with deterministic chunk paths for exposed modules and CSS assets. The manifest MUST be auto-generated alongside the federation entry point on every build.
-
-**Rationale**: Auto-generated manifest ensures chunk paths are always in sync with the build output, replacing manual chunkPath authoring.
-**Actors**: `cpt-frontx-actor-build-system`
-
-#### Build-Only Operation
-
-- [x] `p2` - **ID**: `cpt-frontx-fr-externalize-build-only`
-
-The MFE build plugin MUST operate at build time only (`vite build`); it MUST NOT transform imports during `vite dev`.
-
-**Rationale**: Dev server should not be affected by MFE build transforms.
-**Actors**: `cpt-frontx-actor-build-system`
-
-#### Registration Config Generation Script
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-manifest-generation-script`
-
-The build system MUST emit a per-environment registration manifest that lets every FrontX app instance (host, scaffolded, or nested) register the available MFE entries against the correct deployment. Deployment-specific data (base URLs, asset paths) MUST be injected at build/serve time so MFE source artifacts remain environment-independent. The manifest delivery mechanism MUST be swappable for a backend-delivered equivalent without changing MFE authoring or the per-app registration contract.
-
-**Rationale**: keeping MFE source artifacts environment-independent makes them reviewable and version-controllable; injecting deployment data at build/serve time keeps environment promotion mechanical; isolating the swap to a single transport seam keeps the future backend migration low-risk.
-**Actors**: `cpt-frontx-actor-build-system`, `cpt-frontx-actor-ci-cd`
-
-### 5.8 MFE Internal Dataflow
-
-#### Isolated MFE App
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-dataflow-internal-app`
-
-Each MFE package MUST create a minimal Gears FrontXApp via `createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build()` (host owns `queryCache()`; MFE joins the shared QueryClient) and use `Gears FrontXProvider` to provide store context.
-
-**Rationale**: MFEs need isolated Redux store via FrontX framework, not direct Redux access.
-**Actors**: `cpt-frontx-actor-microfrontend`
-
-#### No Direct Redux Imports
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-dataflow-no-redux`
-
-MFE packages MUST NOT import from `react-redux`, `redux`, or `@reduxjs/toolkit` directly. All store access MUST go through `@gears-frontx/react` APIs.
-
-**Rationale**: Direct Redux imports bypass blob URL isolation and break store independence.
-**Actors**: `cpt-frontx-actor-microfrontend`
-
-### 5.9 MFE Share Scope Management
-
-#### Share Scope Construction
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-sharescope-construction`
-
-`MfeHandlerMF` MUST fetch standalone ESM source text for each shared dependency declared in the manifest, deduplicated via `sharedDepTextCache` keyed by `name@version` (one fetch per `name@version` across all runtimes). For each shared dep, the handler MUST rewrite bare specifiers between shared deps to per-load blob URLs (respecting dependency order — leaves first), then create a fresh blob URL via `URL.createObjectURL()`. Each shared dep's `manifest.shared[].unwrapKey` identifies the export key to extract the module from the standalone ESM (`null` means `'default'`). The handler MUST NOT use `@module-federation/runtime`, `createInstance()`, `FederationHost`, `__loadShare__`, `__mf_init__`, or write to `globalThis.__federation_shared__`.
-
-**Rationale**: Standalone ESM modules (built by the `frontx-mf-gts` plugin via esbuild) with bare specifier rewriting eliminate all MF 2.0 runtime dependencies. Build-time `unwrapKey` values avoid runtime heuristics (no single-export guessing, no module factory name detection). Per-load blob URLs from cached source text produce unique module evaluations — fresh state per load.
-**Actors**: `cpt-frontx-actor-microfrontend`
-
-#### Concurrent Load Safety
-
-- [x] `p2` - **ID**: `cpt-frontx-fr-sharescope-concurrent`
-
-When multiple MFEs are loaded concurrently, each load's shared dependency resolution MUST be isolated. Each load creates its own `LoadBlobState` with independent `sharedDepBlobUrls` and `blobUrlMap`; per-load blob URLs from `URL.createObjectURL()` produce unique module evaluations with no cross-load reuse. The handler-level `sharedDepTextCache` (keyed by `name@version`) deduplicates shared dep source text fetches — at most ONE fetch per `name@version` across all loads. There is no global state interaction — no `globalThis` entries, no shared scope, no runtime registry.
-
-**Rationale**: Per-load blob URLs from cached source text guarantee that concurrent loads cannot interfere with each other's shared dependency resolution. Each `URL.createObjectURL()` produces a unique URL that evaluates as an independent module — isolation is guaranteed by the blob URL mechanism itself.
-**Actors**: `cpt-frontx-actor-microfrontend`
-
-### 5.10 Shared Property Broadcast
-
-#### Write API
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-broadcast-write-api`
-
-`MfeRegistry` MUST provide `updateSharedProperty(propertyId, value)` as the sole write method. `updateDomainProperty()` and `updateDomainProperties()` MUST NOT exist.
-
-**Rationale**: Shared properties have global semantics — one value across all declaring domains.
-**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-framework-plugin`
-
-#### Domain-Targeted Propagation
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-broadcast-matching`
-
-When `updateSharedProperty(propertyId, value)` is called, the system MUST validate the value, store it, and propagate to all domains whose `sharedProperties` array includes `propertyId`. Domains that do NOT include the property MUST NOT receive the update.
-
-**Rationale**: Targeted broadcast; only interested domains receive updates.
-**Actors**: `cpt-frontx-actor-host-app`
-
-#### Validate Before Propagate
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-broadcast-validate`
-
-GTS validation MUST occur before propagation. If validation fails, the property value MUST NOT be stored or propagated to any domain.
-
-**Rationale**: Invalid values must never reach MFE domains.
-**Actors**: `cpt-frontx-actor-gts-plugin`
-
-### 5.11 Shared Property Validation
-
-#### GTS Validation Pattern
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-validation-gts`
-
-The system MUST validate shared property values by calling `typeSystem.register({ id: ephemeralId, value })`, where `ephemeralId = "${propertyTypeId}frontx.mfes.comm.runtime.v1"`. `register()` registers the ephemeral instance AND validates it against the schema derived from the chained instance ID in a single call; IF the value does not conform, `register()` throws a plain `Error` with a rich diagnostic (instance JSON, resolved schema JSON, failure reason) and propagation is blocked.
-
-**Rationale**: Single-call GTS registration-with-validation; schema-validation failures surface as thrown errors, not structured result objects.
-**Actors**: `cpt-frontx-actor-gts-plugin`
-
-#### Reject Invalid Values
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-validation-reject`
-
-When validation fails, `updateSharedProperty()` MUST throw an error containing validation failure details. The property value MUST NOT be stored or propagated.
-
-**Rationale**: Invalid values must be rejected with clear diagnostics.
-**Actors**: `cpt-frontx-actor-gts-plugin`
-
-### 5.12 i18n Formatters
-
-#### Locale-Aware Formatters
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-i18n-formatters`
-
-The system MUST provide locale-aware formatters: `formatDate`, `formatTime`, `formatDateTime`, `formatRelative` (using `Intl.DateTimeFormat`/`Intl.RelativeTimeFormat`), `formatNumber`, `formatPercent`, `formatCompact` (using `Intl.NumberFormat`), `formatCurrency` (using `Intl.NumberFormat` style currency), and `compareStrings`/`createCollator` (using `Intl.Collator`). All MUST use `i18nRegistry.getLanguage()` as locale source, falling back to English.
-
-**Rationale**: Locale-specific formatting is essential for international applications.
-**Actors**: `cpt-frontx-actor-developer`
-
-#### Formatter Exports
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-i18n-formatter-exports`
-
-All formatters MUST be exported from `@gears-frontx/i18n`, re-exported from `@gears-frontx/framework`, and accessible via `useFormatters()` hook from `@gears-frontx/react`.
-
-**Rationale**: Single import surface across all layers.
-**Actors**: `cpt-frontx-actor-developer`
-
-#### Graceful Invalid Input
-
-- [x] `p2` - **ID**: `cpt-frontx-fr-i18n-graceful-invalid`
-
-All formatters MUST return `''` for null, undefined, or invalid inputs and MUST NOT throw.
-
-**Rationale**: Prevents runtime crashes from formatting operations.
-**Actors**: `cpt-frontx-actor-runtime`
-
-### 5.13 i18n Loading
-
-#### Hybrid Namespace Support
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-i18n-hybrid-namespace`
-
-The system MUST support two-tier translation namespaces: `screenset.<id>` for shared content and `screen.<screensetId>.<screenId>` for screen-specific content.
-
-**Rationale**: Enables colocated, lazy-loaded screen translations while sharing common keys.
-**Actors**: `cpt-frontx-actor-screenset-author`
-
-#### Lazy Screen Translations
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-i18n-lazy-chunks`
-
-Screen translations MUST load on-demand when the screen is lazy-loaded, NOT upfront with the application. Loaded translations MUST be cached.
-
-**Rationale**: Reduces initial bundle and network cost.
-**Actors**: `cpt-frontx-actor-runtime`
-
-### 5.14 Studio
-
-#### Floating Panel
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-studio-panel`
-
-The system MUST provide a `StudioPanel` component rendering as a floating overlay with fixed positioning, glassmorphic styling, visible only in dev mode. Users MUST be able to drag, resize, and collapse the panel. All positions and state MUST persist to localStorage.
-
-**Rationale**: Dev-only inspection and configuration tool.
-**Actors**: `cpt-frontx-actor-studio-user`
-
-#### Studio Controls
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-studio-controls`
-
-StudioPanel MUST provide: theme selector dropdown, MFE package selector, language selector with native script display, and mock/real API toggle.
-
-**Rationale**: Runtime configuration switching during development.
-**Actors**: `cpt-frontx-actor-studio-user`
-
-#### Settings Persistence
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-studio-persistence`
-
-The system MUST persist theme, language, mock API state, and GTS package selection to localStorage on change. On Studio mount, MUST restore all persisted settings. ALL persistence logic MUST live in `@gears-frontx/studio` only.
-
-**Rationale**: Session continuity across page reloads.
-**Actors**: `cpt-frontx-actor-studio-user`
-
-#### Viewport Positioning
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-studio-viewport`
-
-The system MUST clamp Studio button and panel positions to the current viewport on load and window resize, maintaining a 20px margin from edges.
-
-**Rationale**: Prevents off-screen elements after display changes.
-**Actors**: `cpt-frontx-actor-studio-user`
-
-#### Package Independence
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-studio-independence`
-
-`@gears-frontx/studio` MUST be a standalone workspace package, `"sideEffects": false`, tree-shakeable, excluded from production builds via `import.meta.env.DEV` conditional.
-
-**Rationale**: Zero production footprint.
-**Actors**: `cpt-frontx-actor-build-system`
-
-### 5.15 CLI
-
-#### Package Structure
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-cli-package`
-
-The CLI MUST be implemented as workspace package `@gears-frontx/cli` with binary `frontx`, supporting ESM (Node.js 18+) and programmatic API.
-
-**Rationale**: Standard npm CLI distribution.
-**Actors**: `cpt-frontx-actor-cli`
-
-#### Core Commands
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-cli-commands`
-
-The CLI MUST provide: `frontx create <project>` (scaffold new project), `frontx update` (update packages/templates), `frontx scaffold layout` (generate layout), `frontx scaffold screenset <name>` (generate screenset), `frontx validate components` (validate structure), `frontx ai sync` (sync AI tool configs), `frontx migrate [version]` (run code migrations). `frontx validate components` MUST remain a structural validation command and MUST NOT execute the unit-test suite by default; the generated `test:unit` script alias, invoked through the project's configured package manager (for example `npm run test:unit`, `pnpm run test:unit`, or `yarn test:unit`), and CI MUST remain the unit-test execution contract. Scaffolded projects MUST include a standard unit-test workflow by default. Commands that generate new code MUST also generate starter unit tests when a stable template exists for that output.
-
-**Rationale**: Complete developer workflow from project creation through maintenance.
-**Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-cli`
-
-#### Template System
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-cli-templates`
-
-The CLI MUST use a template system with `copy-templates.ts` build script, manifest.json, and screenset templates. Templates MUST be user-owned (not locked in node_modules). Project and screenset templates MUST include the assets required for the standard unit-test workflow, including starter test files and editable project-level testing guidance where applicable.
-
-**Rationale**: Consistent scaffolding with full user control over generated code.
-**Actors**: `cpt-frontx-actor-cli`
-
-#### AI Skills Assembly
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-cli-skills`
-
-The CLI build MUST generate IDE guidance files and command adapters for supported tools: `CLAUDE.md`, `.cursor/rules/`, `.windsurf/rules/`, `.claude/commands/`, `.cursor/commands/`, `.windsurf/workflows/`, and `.github/copilot-commands/`. Generated AI guidance MUST include project-level unit-test guidance and instructions that direct agents to use the standard unit-test workflow under tiered triggers when modifying generated code, and MUST NOT equate `frontx validate components` with running unit tests.
-
-**Rationale**: Distributes AI assistant integrations with every scaffolded project.
-**Actors**: `cpt-frontx-actor-cli`
-
-#### E2E Scaffold Verification
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-cli-e2e-verification`
-
-The repository MUST run a dedicated required GitHub Actions PR workflow (`cli-pr-e2e`) that verifies the freshly scaffolded default app is installable, buildable, type-check clean, and passes the standard unit-test workflow on Node 24.14.x. A separate non-required nightly workflow MUST cover broader CLI scenarios (custom UIKit, layer scaffolds, migrate commands, invalid-name rejection, ai sync idempotency). Both workflows MUST persist step-level logs as CI artifacts.
-
-**Rationale**: The generated project is the primary CLI deliverable; a green CLI package build alone does not prove the scaffold path works end-to-end.
-**Actors**: `cpt-frontx-actor-build-system`, `cpt-frontx-actor-cli`
-
-### 5.16 Publishing
-
-#### NPM Metadata
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-pub-metadata`
-
-All `@gears-frontx/*` packages MUST include complete NPM metadata: author, license (Apache-2.0), repository, bugs, homepage, keywords, engines (>=18), sideEffects, publishConfig, files, exports.
-
-**Rationale**: NPM publishing readiness and discoverability.
-**Actors**: `cpt-frontx-actor-build-system`
-
-#### Aligned Versions
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-pub-versions`
-
-All `@gears-frontx/*` packages MUST use aligned versions (same version number).
-
-**Rationale**: Dependency coherence across the monorepo.
-**Actors**: `cpt-frontx-actor-build-system`
-
-#### ESM-First Module Format
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-pub-esm`
-
-All packages MUST use ESM-first module format with `"type": "module"`, dual exports (ESM + CJS), and TypeScript declarations.
-
-**Rationale**: Modern module compatibility with fallback for CJS consumers.
-**Actors**: `cpt-frontx-actor-build-system`
-
-#### Automated CI Publishing
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-pub-ci`
-
-When a PR merged to `main` contains version changes, CI MUST automatically publish affected packages to NPM in layer dependency order. The workflow MUST verify version does NOT already exist on NPM before publishing. If any publish fails, the workflow MUST stop immediately.
-
-**Rationale**: Automated release pipeline with safety checks.
-**Actors**: `cpt-frontx-actor-ci-cd`
-
-### 5.17 Mock Mode
-
-#### Mock Mode Toggle
-
-- [x] `p2` - **ID**: `cpt-frontx-fr-mock-toggle`
-
-The system MUST provide a `toggleMockMode` action via `mock()` plugin that activates/deactivates all registered mock plugins across all API services. Studio's API mode toggle MUST use this action.
-
-**Rationale**: Centralized mock mode control enables developers and studio users to switch between real and mock API responses without restarting the application.
-**Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-studio-user`
-
-### 5.18 Microfrontend Plugin
-
-#### MFE Lifecycle Plugin
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-mfe-plugin`
-
-The system MUST provide a `microfrontends()` framework plugin with actions (`loadExtension`, `mountExtension`, `unmountExtension`, `registerExtension`, `unregisterExtension`) and domain constants (`Gears FrontX_SCREEN_DOMAIN`, `Gears FrontX_SIDEBAR_DOMAIN`, `Gears FrontX_POPUP_DOMAIN`, `Gears FrontX_OVERLAY_DOMAIN`). The plugin MUST orchestrate MFE loading via blob URL isolation, propagate theme and i18n changes to mounted extensions, and bridge shared properties between host and MFE.
-
-**Rationale**: Core orchestration plugin that integrates MFE lifecycle management, theme/i18n propagation, and shared property bridging into the framework's plugin chain.
-**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-framework-plugin`
-
-### 5.19 Screensets Workflow
-
-#### Screenset Definition
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-screenset-definition`
-
-The system MUST define a screenset as a complete UI console comprising: a host application shell (owned code) and a set of MFE package references. Each screenset MUST have a stage (`draft`, `mockup`, `production`) and descriptive metadata. Each screenset MUST be an independent, self-contained unit that can be created, copied, modified, promoted, and deleted without affecting other screensets.
-
-**Rationale**: The screenset is the atomic unit of the three-stage SDLC pipeline. Without a clear definition, tooling cannot manage the lifecycle.
-**Actors**: `cpt-frontx-actor-cli`, `cpt-frontx-actor-product-manager`
-
-#### Shell Ownership and Customizability
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-shell-ownership`
-
-Each screenset's shell MUST be owned imperative code — freely modifiable by PMs, designers, developers, and AI agents without restrictions from a configuration schema or abstraction layer. Shell code MUST be copied on screenset creation, and modifications to one screenset's shell MUST NOT affect any other screenset. The system MUST NOT constrain what a screenset's shell can contain or how it renders its host layout.
-
-**Rationale**: PMs need unrestricted flexibility to customize the host application (add search bars, multi-level navigation, tenant hierarchy navigation, etc.) using AI tools. A configuration-based approach would limit this to predefined parameters.
-**Actors**: `cpt-frontx-actor-product-manager`, `cpt-frontx-actor-ai-agent`, `cpt-frontx-actor-ux-designer`
-
-#### Shared MFE Packages
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-shared-packages`
-
-MFE packages MUST be shareable across screensets. Multiple screensets — including screensets for different products — MUST be able to reference the same MFE package. A single MFE package MUST be able to provide functionality to multiple screensets simultaneously.
-
-**Rationale**: Companies running multiple frontend products (e.g., partner back-office + customer console) need to share common MFE packages (e.g., usage dashboard) across products without duplication.
-**Actors**: `cpt-frontx-actor-product-manager`, `cpt-frontx-actor-developer`
-
-#### Package Modification Isolation
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-package-isolation`
-
-When a screenset needs to modify a shared MFE package, the modification MUST NOT affect other screensets that reference the same package. The system MUST ensure that each screenset can independently evolve its packages while unmodified packages remain shared.
-
-**Rationale**: PMs create many draft variants simultaneously. A modification in one draft must not break production or another PM's draft.
-**Actors**: `cpt-frontx-actor-cli`, `cpt-frontx-actor-product-manager`
-
-#### Screenset Creation
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-screenset-creation`
-
-The system MUST allow creating new screensets by duplicating any existing screenset or from a template. The project scaffolding command MUST create an initial production screenset. All screenset operations MUST be available as standalone CLI commands that work without AI tooling.
-
-**Rationale**: Fast creation is the foundation of the prototyping workflow. CLI is the foundation — AI agents and Studio are layers on top that use CLI operations.
-**Actors**: `cpt-frontx-actor-cli`, `cpt-frontx-actor-product-manager`
-
-#### Screenset Stages
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-stage-transitions`
-
-Each screenset MUST have a stage (`draft`, `mockup`, `production`) that can be changed freely. The recommended SDLC flow is draft → mockup → production, but the system MUST allow any stage transition. Stages are categories that signal intent (prototyping, design refinement, production-ready) — they do not enforce technical constraints or deployment behavior.
-
-**Rationale**: The three stages provide a shared vocabulary for the SDLC pipeline. PMs prototype in drafts, designers refine in mockups, developers harden in production. Teams may iterate between stages as needed (e.g., designer passes a mockup back to PM for rework).
-**Actors**: `cpt-frontx-actor-cli`, `cpt-frontx-actor-ux-designer`, `cpt-frontx-actor-developer`
-
-#### Screenset Deletion and Cleanup
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-screenset-deletion`
-
-The system MUST allow deleting screensets. The system SHOULD detect and offer cleanup of resources that become orphaned after deletion (e.g., MFE packages no longer referenced by any screenset).
-
-**Rationale**: PMs create many draft variants and need to clean up rejected ones without leaving orphaned resources.
-**Actors**: `cpt-frontx-actor-cli`, `cpt-frontx-actor-product-manager`
-
-#### Screenset Discovery and Listing
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-screenset-listing`
-
-The system MUST allow listing all screensets in a project with their name, stage, author, and package count. The listing MUST support grouping or sorting by stage.
-
-**Rationale**: Developers and PMs need visibility into all screensets to understand the current state of the SDLC pipeline.
-**Actors**: `cpt-frontx-actor-cli`, `cpt-frontx-actor-product-manager`, `cpt-frontx-actor-developer`
-
-#### Active Screenset Selection
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-screenset-activation`
-
-The system MUST allow selecting which screenset is active for the dev server. The dev server MUST serve only the active screenset's shell and referenced MFE packages. Non-active screensets MUST NOT affect dev server performance. The active screenset selection MUST persist across dev server restarts. If no screenset is explicitly activated, the system MUST default to a production screenset.
-
-**Rationale**: The dev server serves one screenset at a time. PMs switch between screensets for comparison. Persistence avoids re-activation after every restart.
-**Actors**: `cpt-frontx-actor-cli`, `cpt-frontx-actor-dev-server`
-
-#### Studio Screenset Selector
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-studio-screenset-selector`
-
-Studio MUST provide a screenset selector as the top-level navigation control. The selector MUST display all screensets grouped by stage (production, mockup, draft). Selecting a screenset MUST switch the active screenset for preview. Studio MUST display the active screenset's metadata (name, stage, author).
-
-**Rationale**: The screenset selector is the PM's primary tool for comparing variants during local development. The screenset is the top-level organizational unit.
-**Actors**: `cpt-frontx-actor-studio-user`, `cpt-frontx-actor-product-manager`, `cpt-frontx-actor-ux-designer`
-
-#### AI Agent Integration
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-ai-agent-integration`
-
-The system MUST provide FrontX-specific AI skills and workflows that enable AI agents to create screensets, modify shell code, and manage MFE packages within screensets. Each screenset MUST include machine-readable context (guidelines, structure descriptions) that AI agents can consume to understand the screenset's structure and conventions. Generated project AI context MUST include project-level unit-test guidance that tells agents when to add or update unit tests and to use the standard unit-test workflow when modifying generated code. Generated guidance MUST NOT describe `frontx validate components` as running or replacing unit tests; agents MUST run the standard unit-test workflow as a separate step when tiered triggers apply: colocated tests or test setup touched, logic-heavy modules changed, or task or review handoff. That unit-test guidance MUST stay compact and adapt only the Vitest topics FrontX agents need for generated projects: scaffold command usage, focused test-structure primitives, mocking, environment selection, and targeted filtering.
-
-**Rationale**: AI tooling is the primary mechanism for PMs and designers to modify shell code. Without dedicated skills and context, AI agents would lack the domain knowledge to operate on screensets effectively.
-**Actors**: `cpt-frontx-actor-ai-agent`, `cpt-frontx-actor-product-manager`
-
-#### Production Build Isolation
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-screenset-build-isolation`
-
-The production build MUST include only the production screenset(s) and their referenced MFE packages. Draft and mockup screensets MUST NOT appear in production build artifacts or affect production build performance.
-
-**Rationale**: Draft and mockup screensets are development artifacts. They must not slow down or bloat production deployments.
-**Actors**: `cpt-frontx-actor-build-system`, `cpt-frontx-actor-developer`
-
-#### Multi-Product Support
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-multi-product`
-
-A single FrontX project MUST support multiple independent production screensets representing different products (e.g., partner back-office and customer console). Each production screenset MUST be independently deployable. Each production screenset MUST be able to have its own draft and mockup variants progressing through the SDLC pipeline independently.
-
-**Rationale**: Companies often build multiple frontend products from a single codebase, sharing infrastructure and MFE packages while maintaining independent release cycles.
-**Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-product-manager`
-
-### 5.20 Request Lifecycle & Data Management
-
-#### Request Cancellation
-
-- [x] `p1` - **ID**: `cpt-frontx-fr-api-request-cancellation`
-
-`RestProtocol` HTTP methods (`get`, `post`, `put`, `patch`, `delete`) MUST accept an optional `AbortSignal` via a `RestRequestOptions` parameter. When the signal is aborted, the in-flight Axios request MUST be canceled and the error MUST NOT enter the `onError` plugin chain or trigger retries.
-
-**Rationale**: Enables callers to cancel requests on component unmount, navigation, or user action — preventing wasted bandwidth, state updates on unmounted components, and memory leaks.
-**Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-runtime`
-
-#### Endpoint Descriptors
-
-- [x] `p2` - **ID**: `cpt-frontx-fr-api-endpoint-descriptors`
-
-`BaseApiService` at L1 MUST expose registered protocols via `this.protocol(ProtocolClass)`. `RestEndpointProtocol` MUST provide `query<TData>(path, options?)`, `queryWith<TData, TParams>(pathFn, options?)`, and `mutation<TData, TVariables>(method, path)` returning `EndpointDescriptor` / `MutationDescriptor` objects, and `SseStreamProtocol` MUST provide `stream<TEvent>(path, options?)` returning `StreamDescriptor<TEvent>`. Services MUST declare descriptors via `this.protocol(RestEndpointProtocol)...` and `this.protocol(SseStreamProtocol)...`. `query` and `queryWith` are always GET — the method is implicit. Cache keys MUST be derived automatically from `[baseURL, 'GET', path]` for static reads, `[baseURL, 'GET', resolvedPath, params]` for parameterized reads, `[baseURL, method, path]` for writes, and `[baseURL, 'SSE', path]` for streams. Descriptors carry optional cache hints (`staleTime`, `gcTime`). MFEs MUST NOT use manual query key factories or `queryOptions()` outside service descriptors — the service IS the data layer.
-
-**Rationale**: Moves the caching contract to the service layer where the request shape (baseURL, method, path) is already known, eliminating per-MFE coupling to the caching library. A library swap (TanStack → SWR, Apollo, custom) does not require MFE rewrites, but it MUST update API, framework, and React layers together so the L1 shared fetch cache, REST descriptor fetch paths, and the L2/L3 server-state runtime stay aligned.
-**Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-screenset-author`
-
-#### queryCache Framework Plugin
-
-- [x] `p2` - **ID**: `cpt-frontx-fr-framework-query-cache-plugin`
-
-`@gears-frontx/framework` MUST provide a `queryCache(config?)` framework plugin that creates and owns the shared `QueryClient` from `@tanstack/query-core`, plus a `queryCacheShared()` join path for child apps that must reuse the existing host `QueryClient`. The host plugin MUST associate that client with the app instance through internal query-cache wiring (well-known symbols used only between the plugin, framework internals, and `@gears-frontx/react` resolution — not a supported public field or method on `Gears FrontXApp` for holding or reaching the raw `QueryClient`), accept configurable defaults (`staleTime`, `gcTime`, `refetchOnWindowFocus`), clear the cache on `MockEvents.Toggle`, handle `cache/invalidate`, `cache/set`, and `cache/remove` events from L2 Flux effects, keep the L1 `sharedFetchCache` in sync for cross-root reads, and clean up on `app.destroy()`. The host plugin MUST be included in the `full()` preset.
-
-**Rationale**: Centralizes cache infrastructure management in the framework's plugin system, following the same pattern as `mock()` and `themes()`. Imperative cache use outside React is limited to L2 effects and the sanctioned `QueryCache` surface exposed through L3 hooks — there is no supported standalone non-React or test-only API that reads the `QueryClient` off the app instance. Cache defaults remain configurable at the framework level.
-**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-runtime`
-
-#### Declarative Query Hooks
-
-- [x] `p2` - **ID**: `cpt-frontx-fr-react-query-hooks`
-
-`@gears-frontx/react` MUST export `useApiQuery`, `useApiSuspenseQuery`, `useApiInfiniteQuery`, `useApiSuspenseInfiniteQuery`, `useApiMutation`, `useApiStream`, and `useQueryCache` hooks. `useApiQuery` MUST accept an `EndpointDescriptor` (from a declarative contract such as `RestEndpointProtocol.query()`) and return `ApiQueryResult<TData>` (Gears FrontX-owned type) with automatic caching, request deduplication, stale-while-revalidate, background refetch on window focus, and request cancellation on unmount. `useApiSuspenseQuery` MUST accept the same `EndpointDescriptor` contract as `useApiQuery`, require a surrounding Suspense boundary for the initial load, and return `ApiSuspenseQueryResult<TData>` (Gears FrontX-owned type) with `data`, `isFetching`, and `refetch`. `useApiInfiniteQuery` MUST accept descriptor-driven pagination inputs `{ initialPage, getNextPage, getPreviousPage? }`, where each page is an `EndpointDescriptor`, and return `ApiInfiniteQueryResult<TPage>` (Gears FrontX-owned type) with grouped page data plus `hasNextPage`, `hasPreviousPage`, `fetchNextPage`, and `fetchPreviousPage`. `useApiSuspenseInfiniteQuery` MUST accept the same descriptor-driven pagination inputs as `useApiInfiniteQuery`, require a surrounding Suspense boundary for the initial load, and return `ApiSuspenseInfiniteQueryResult<TPage>` (Gears FrontX-owned type) with grouped page data plus `hasNextPage`, `hasPreviousPage`, `fetchNextPage`, and `fetchPreviousPage`. `useApiMutation` MUST accept `{ endpoint: MutationDescriptor, onMutate?, onSuccess?, onError?, onSettled? }` and return `ApiMutationResult<TData>` (Gears FrontX-owned type) with support for optimistic updates via `onMutate` with rollback on error. `useApiStream` MUST accept a `StreamDescriptor<TEvent>` (from a declarative contract such as `SseStreamProtocol.stream()`) and return `ApiStreamResult<TEvent>` (Gears FrontX-owned type) with connection lifecycle management, `'latest'`/`'accumulate'` modes, and `{ data, events, status, error, disconnect }`. `useQueryCache` MUST expose the sanctioned imperative cache API accepting `EndpointDescriptor | QueryKey` for inspection, invalidation, and targeted cache writes without exposing the raw cache client. `queryOptions` MUST NOT be re-exported. `UseApiQueryOptions` type MUST NOT exist.
-
-**Rationale**: Eliminates per-endpoint boilerplate for component-level reads and writes while keeping MFEs library-agnostic — they consume descriptors, not TanStack-specific types.
-**Actors**: `cpt-frontx-actor-screenset-author`, `cpt-frontx-actor-developer`
-
-#### Server-State Runtime Shared Cache
-
-- [x] `p2` - **ID**: `cpt-frontx-fr-react-query-client-sharing`
-
-`Gears FrontXProvider` MUST resolve the shared `QueryClient` from the `queryCache()` / `queryCacheShared()` plugin pipeline instead of creating its own cache runtime. When used inside separately mounted MFE React roots, the host MUST own the shared `QueryClient` through `queryCache()` and child roots MUST join it through `queryCacheShared()` without mutating L1 action or mount contracts. The child React lifecycle MUST rely on that shared plugin-owned client before the first commit. Each MFE retains its own `apiRegistry` and service instances — the descriptor's `fetch` uses the local service, but the shared client and L1 `sharedFetchCache` coordinate deduplication across roots. MFEs MUST NOT access the native cache client directly — cache operations are available only through the `QueryCache` interface (`get`, `getState`, `set`, `cancel`, `invalidate`, `invalidateMany`, `remove`) which accepts `EndpointDescriptor | QueryKey`. Cache keys are derived automatically from `[baseURL, 'GET', path]` for static endpoints, `[baseURL, 'GET', resolvedPath, params]` for parameterized endpoints, `[baseURL, method, path]` for writes, and `[baseURL, 'SSE', path]` for streams — MFEs sharing the same derived key share cache entries; MFEs wanting isolated cache use a different `baseURL`.
-
-**Rationale**: MFEs render in separate React roots, so they cannot share the cache through React-context inheritance alone. The `queryCache()` plugin owns the shared TanStack `QueryClient` and makes it available to `Gears FrontXProvider` through internal app wiring. The restricted `QueryCache` interface prevents uncontrolled cross-MFE cache tampering. Cache key derivation from `baseURL` gives MFEs natural opt-in/opt-out control over shared caching.
-**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-runtime`
-### 5.21 Documentation
-
-#### Documentation Requirements
-
-- [ ] `p1` - **ID**: `cpt-frontx-fr-documentation`
-
-The system MUST provide: (1) a getting-started guide enabling a new developer to scaffold and run a working screenset within 6–8 hours; (2) an API reference for all public library interfaces (`@gears-frontx/state`, `@gears-frontx/screensets`, `@gears-frontx/framework`, `@gears-frontx/react`, `@gears-frontx/api`, `@gears-frontx/i18n`); (3) an MFE integration guide covering the two-file model (`mfe.json` + `generated-mfe-manifests.json`), generation script usage, and blob URL isolation overview.
-
-**Rationale**: Developer onboarding depends on clear documentation. The 6–8 hour onboarding target from the Goals table is only achievable with a complete getting-started guide and API reference.
-**Actors**: `cpt-frontx-actor-developer`
+**Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
 
 ## 6. Non-Functional Requirements
 
 ### 6.1 NFR Inclusions
 
-#### Lazy Loading Performance
+#### Runtime performance
 
-- [x] `p1` - **ID**: `cpt-frontx-nfr-perf-lazy-loading`
+- [ ] `p1` - **ID**: `cpt-frontx-nfr-runtime-performance`
 
-All screen extensions MUST be lazy-loaded via dynamic `import()`. MFE bundles MUST be fetched on-demand when an action whose `type` matches the `Gears FrontX_ACTION_LOAD_EXT` GTS schema type ID is executed.
+The system **MUST** meet measurable response-time and throughput targets for runtime operations.
 
-**Threshold**: Screen load time < 400ms on 4G connection.
-**Rationale**: Initial bundle must not include all screens; on-demand loading reduces time-to-interactive.
+**Threshold**: Microfrontend registration completes in ≤ 50 ms at p95 per registration call; on-demand microfrontend load completes in ≤ 1500 ms at p95 from request to the microfrontend being loaded and placed; the application sustains ≥ 20 registration calls per second without p95 latency exceeding these targets.
 
-#### Tree-Shakeability
+**Rationale**: Predictable runtime performance is required for AI agents that compose applications from many microfrontends at scale.
 
-- [x] `p1` - **ID**: `cpt-frontx-nfr-perf-treeshake`
+#### Evolvability
 
-All published packages MUST be tree-shakeable. `sideEffects` field MUST be declared in `package.json`. Studio MUST be tree-shaken in production via `import.meta.env.DEV` conditional.
+- [ ] `p1` - **ID**: `cpt-frontx-nfr-evolvability`
 
-**Threshold**: Production bundle < 180KB for a minimal app (framework + one screenset).
-**Rationale**: Unused code must not be included in production bundles.
+The system **MUST** evolve through versioned releases without forcing consumers to upgrade in lockstep.
 
-#### Blob URL Overhead
+**Threshold**: Major and minor versions across the product's published artifacts match; patch and pre-release versions may diverge; breaking changes are isolated from consuming applications by versioning and compatibility commitments; every removal is preceded by a deprecation cycle of at least one minor version.
 
-- [x] `p2` - **ID**: `cpt-frontx-nfr-perf-blob-overhead`
+**Rationale**: Predictable upgrade discipline lets consuming applications adopt new platform versions on their own cadence rather than in forced lockstep.
 
-Blob URL creation for MFE isolation MUST add no more than ~1-5ms per shared dependency per MFE load. Source text MUST be cached in-memory after first fetch.
+#### Scaling without an architectural ceiling
 
-**Threshold**: < 5ms per dependency; < 50ms total for typical MFE with 10 shared deps.
-**Rationale**: Isolation overhead must be imperceptible to users.
+- [ ] `p1` - **ID**: `cpt-frontx-nfr-scalability-ceiling`
 
-#### Action Chain Timeout
+The system **MUST** place no architectural upper limit on the number of microfrontends or type definitions an application can integrate.
 
-- [x] `p2` - **ID**: `cpt-frontx-nfr-perf-action-timeout`
+**Threshold**: At least 100 microfrontends concurrently registered with a single application, and at least 500 type definitions registered with a single application, measured without architectural failure; these values are operational floors that conforming implementations meet or exceed, not ceilings.
 
-All MFE action chain executions MUST have a timeout. Default chain timeout MUST be 120,000ms.
+**Rationale**: AI-driven projects accumulate complexity over time; the platform must not impose architectural limits that force teams to re-platform.
 
-**Threshold**: Chain completes within 2 minutes or fails with timeout error.
-**Rationale**: Prevents indefinitely hanging MFE operations.
+#### Security
 
-#### MFE Error Handling
+- [ ] `p1` - **ID**: `cpt-frontx-nfr-security`
 
-- [x] `p1` - **ID**: `cpt-frontx-nfr-rel-error-handling`
+**Threshold**: The platform enforces a default-deny access posture — a microfrontend receives no host state or capability beyond what its extension domain explicitly grants, and no implicit access to other microfrontends; every microfrontend and its extension passes type validation before it is admitted to run. Measured: 100% of admitted microfrontends validated at admission (zero unvalidated executions); zero access paths available to a microfrontend outside its extension domain's declared grants.
 
-All async MFE operations MUST use try/catch with typed error classes. MFE loading MUST support configurable retry with exponential backoff (default: 2 retries, 1000ms initial delay).
-
-**Threshold**: Max 3 attempts before failure; exponential delay prevents thundering herd.
-**Rationale**: Resilient MFE loading; transient failures should not crash the application.
-
-#### API Retry Safety
-
-- [x] `p2` - **ID**: `cpt-frontx-nfr-rel-api-retry`
-
-API plugin retry MUST enforce `maxRetryDepth` (default: 10) to prevent infinite retry loops.
-
-**Threshold**: Maximum 10 retry attempts per request.
-**Rationale**: Prevents infinite retry loops from cascading failures.
-
-#### MFE Operation Serialization
-
-- [x] `p1` - **ID**: `cpt-frontx-nfr-rel-serialization`
-
-Concurrent MFE lifecycle operations on the same domain MUST be serialized to prevent state corruption.
-
-**Threshold**: No concurrent load/mount/unmount operations on the same domain.
-**Rationale**: Prevents race conditions in extension lifecycle management.
-
-#### Shadow DOM CSS Isolation
-
-- [x] `p1` - **ID**: `cpt-frontx-nfr-sec-shadow-dom`
-
-Each MFE extension MUST render inside a Shadow DOM with `all: initial` host reset for CSS isolation. Shadow roots MUST default to `mode: 'open'`.
-
-**Threshold**: Zero CSS leakage between MFE extensions and host.
-**Rationale**: Style isolation prevents visual corruption across boundaries.
-
-#### CSP Blob URL Requirement
-
-- [x] `p1` - **ID**: `cpt-frontx-nfr-sec-csp-blob`
-
-Content Security Policy MUST include `blob:` in `script-src` directive. MFE loading MUST fail explicitly if blob URLs are blocked by CSP.
-
-**Threshold**: Clear error message on CSP violation.
-**Rationale**: Deployment environments must be aware of CSP requirements.
-
-#### GTS Type Validation
-
-- [x] `p1` - **ID**: `cpt-frontx-nfr-sec-type-validation`
-
-All MFE action chains MUST pass GTS type system validation before execution. Actions MUST be validated as anonymous instances: the action is registered without an `id` field, the schema is resolved from the `type` field, and validation is performed against that schema.
-
-**Threshold**: Invalid actions rejected with validation error details.
-**Rationale**: Prevents malformed data from reaching MFE extensions. Anonymous instance validation aligns with GTS conventions where runtime action objects are transient and carry no persistent identity.
-
-#### Node.js Compatibility
-
-- [x] `p1` - **ID**: `cpt-frontx-nfr-compat-node`
-
-Development environment MUST require Node.js >= 22.0.0, npm >= 10.0.0. Published packages MUST support Node.js >= 18.0.0.
-
-**Threshold**: All packages pass CI on Node 18 and Node 22.
-**Rationale**: LTS compatibility for consumers; latest for development.
-
-#### TypeScript Strict Mode
-
-- [x] `p1` - **ID**: `cpt-frontx-nfr-compat-typescript`
-
-TypeScript strict mode MUST be enabled with ALL strict sub-flags. No `any`, no `as unknown as` casts in published code.
-
-**Threshold**: Zero TypeScript strict violations in CI.
-**Rationale**: Maximum type safety across the codebase.
-
-#### ESM-First Module Format
-
-- [x] `p1` - **ID**: `cpt-frontx-nfr-compat-esm`
-
-All packages MUST use ESM-first with dual CJS output. `"type": "module"` in all `package.json` files.
-
-**Threshold**: Both `import` and `require` paths resolve correctly.
-**Rationale**: Modern module ecosystem compatibility.
-
-#### React 19 Compatibility
-
-- [x] `p1` - **ID**: `cpt-frontx-nfr-compat-react`
-
-React >= 19.2.4, React DOM >= 19.2.4. React Redux >= 8.0.0.
-
-**Threshold**: All hooks and components work with React 19 concurrent features.
-**Rationale**: Latest React with ref-as-prop pattern.
-
-#### Zero Cross-Deps at L1
-
-- [x] `p1` - **ID**: `cpt-frontx-nfr-maint-zero-crossdeps`
-
-SDK Layer (L1) packages MUST have ZERO `@gears-frontx/*` dependencies and ZERO React dependencies. Enforced by dependency-cruiser rules.
-
-**Threshold**: `npm run arch:deps:sdk` passes with zero violations.
-**Rationale**: SDK packages must be independently consumable.
-
-#### Event-Driven Communication Only
-
-- [x] `p1` - **ID**: `cpt-frontx-nfr-maint-event-driven`
-
-All cross-domain communication MUST use the event bus. No direct slice dispatch from components. No manual state sync or prop drilling.
-
-**Threshold**: Zero direct `dispatch` calls in component files; zero cross-package event bus imports in components.
-**Rationale**: Consistent event-driven architecture throughout.
-
-#### Architecture Enforcement
-
-- [x] `p2` - **ID**: `cpt-frontx-nfr-maint-arch-enforcement`
-
-Architecture MUST be verifiable via `npm run arch:check`, `arch:deps`, and `arch:unused`. Dependency-cruiser and Knip MUST enforce layer boundaries and detect unused exports.
-
-**Threshold**: All architecture checks pass in CI.
-**Rationale**: Prevents architectural drift over time.
-
-#### Screenset Operations Performance
-
-- [ ] `p1` - **ID**: `cpt-frontx-nfr-screenset-ops-perf`
-
-Screenset creation (copy or from template) MUST complete in under 2 seconds for a screenset containing up to 50 shell files and 20 package references. Screenset stage changes MUST complete in under 2 seconds, excluding any interactive prompts.
-
-**Threshold**: < 2 seconds per operation on local SSD storage.
-**Rationale**: Fast creation and promotion are critical for the prototyping workflow. These operations must feel instant to PMs.
-
-#### Screenset Scalability
-
-- [ ] `p2` - **ID**: `cpt-frontx-nfr-screenset-scalability`
-
-The system MUST support 20+ concurrent screensets in a single project with minimal degradation to dev server startup time, page reload time, or git operations.
-
-**Threshold**: Dev server startup within 10% of single-screenset baseline; git status < 1 second; page reload < 3 seconds.
-**Rationale**: PMs creating many variants and multiple PMs working in parallel can produce a large number of concurrent screensets.
-
-#### Zero Production Build Overhead from Screensets
-
-- [ ] `p1` - **ID**: `cpt-frontx-nfr-screenset-build-isolation`
-
-Non-production screensets MUST NOT be included in the production build's module graph. Production build time MUST have 0% overhead compared to a project with a single screenset.
-
-**Threshold**: Production build time within 1% of single-screenset baseline.
-**Rationale**: Draft and mockup screensets are development artifacts that must not slow down or bloat production deployments.
+**Rationale**: Running independently-developed microfrontends — potentially from different teams or vendors — within one host makes default-deny access and admission validation essential for the trust enterprises require.
 
 ### 6.2 NFR Exclusions
 
-- **Accessibility** (UX-PRD-002): Not applicable at framework level — accessibility is the responsibility of application/screenset UI components and application-level code. Local UI may use Radix UI primitives for accessibility foundations.
-- **Safety** (SAFE-PRD-001/002): Not applicable — FrontX is a client-side UI framework with no physical interaction, medical, or vehicle control capabilities.
-- **Regulatory Compliance** (COMPL-PRD-001/002/003): Not applicable — FrontX does not process PII, financial data, or healthcare data. Applications built with FrontX may have compliance requirements, but those are application-level concerns.
-- **Internationalization** (UX-PRD-003): Addressed as functional requirement `cpt-frontx-fr-sdk-i18n-package` — FrontX provides the i18n infrastructure; application-level translation content is out of scope.
-- **Offline Capability** (UX-PRD-004): Not applicable — FrontX is designed for always-connected SPA environments.
-- **Availability/Recovery** (REL-PRD-001/002): Not applicable — FrontX is a client-side library, not a hosted service. Availability and recovery are deployment-level concerns.
-- **Security** (SEC-PRD-001 through SEC-PRD-005): Not applicable — FrontX is a client-side UI framework that does not implement authentication, authorization, data classification, audit logging, or privacy controls. These are application-level concerns.
-- **Performance/Throughput** (PERF-PRD-002/003): Not applicable — FrontX is a client-side library; concurrent users, transaction volumes, and capacity planning are server-side concerns.
-- **Usability/Inclusivity** (UX-PRD-005): Not applicable — FrontX targets a narrow technical audience (developers, screenset authors, PMs using AI tooling).
-- **Maintainability/Support** (MAINT-PRD-002): Not applicable — FrontX is an alpha-stage SDK; formal SLA and support tiers are not applicable.
-- **Data** (DATA-PRD-001/002/003): Not applicable — FrontX is a client-side library with no persistent data storage beyond localStorage for Studio settings.
-- **Operations** (OPS-PRD-001/002): Not applicable — FrontX is an npm package library, not a deployed service.
+- **Safety** (SAFE-PRD-001/002) — Not applicable as a safety-critical concern. FrontX is frontend developer tooling; it does not control, monitor, or interact with physical or safety-critical systems, so it cannot directly cause harm to people, property, or the environment. Risks arising from loading and running independently-developed microfrontends at runtime are addressed by the Security NFR in §6.1, not as a physical-safety concern.
+- **Privacy by Design** (SEC-PRD-005): Not applicable — the product is developer tooling that does not collect, store, or process end-user personal data.
+- **Accessibility** (UX-PRD-002): Not applicable — the product ships no end-user-facing interface; applications and templates built on the product own their own accessibility posture.
+- **Internationalization** (UX-PRD-003): Not applicable — the product ships no end-user-facing text; applications and templates built on the product own their own internationalization.
+- **Inclusivity** (UX-PRD-005): Not applicable — for the same reason as Accessibility, the product ships no end-user-facing interface.
+- **Regulatory Compliance** (COMPL-PRD-001 / COMPL-PRD-002 / COMPL-PRD-003): Not applicable — the product is developer tooling that does not process regulated data; applications and templates built on the product own their own compliance posture.
 
 ## 7. Public Library Interfaces
 
 ### 7.1 Public API Surface
 
-#### @gears-frontx/state
+#### MFE Runtime
 
-- [x] `p1` - **ID**: `cpt-frontx-interface-state`
+- [ ] `p1` - **ID**: `cpt-frontx-interface-mfe-runtime`
 
-**Type**: TypeScript ES module
-**Stability**: stable
-**Description**: Event-driven state management with EventBus pub/sub, Redux-backed store, dynamic slice registration, and type-safe module augmentation.
-**Breaking Change Policy**: Major version bump required.
+**Type**: Library
 
-#### @gears-frontx/screensets
+**Stability**: unstable
 
-- [x] `p1` - **ID**: `cpt-frontx-interface-screensets`
+**Description**: The MFE Runtime registers microfrontends with a running application and loads them on demand, lets multiple microfrontends occupy the same extension domain when that domain permits multiple occupants, mediates communication between microfrontends and the host application and lets microfrontends react to changes in the host application's state, and validates microfrontends and their extensions against type definitions when they are registered (anchors capabilities C1-1, C1-2, C1-3, C1-4).
 
-**Type**: TypeScript ES module
-**Stability**: stable
-**Description**: MFE type system, MfeRegistry, MfeHandler, MfeBridge, Shadow DOM utilities, GTS validation plugin, action/property constants.
-**Breaking Change Policy**: Major version bump required.
+**Breaking Change Policy**: A major version bump is required for any incompatible change to the component's public surface; minor and patch versions preserve backward compatibility.
 
-#### @gears-frontx/api
+#### Type System
 
-- [x] `p1` - **ID**: `cpt-frontx-interface-api`
+- [ ] `p1` - **ID**: `cpt-frontx-interface-type-system`
 
-**Type**: TypeScript ES module
-**Stability**: stable
-**Description**: Protocol-agnostic API layer with REST and SSE protocols, plugin chain, mock mode, type guards.
-**Breaking Change Policy**: Major version bump required.
+**Type**: Library
 
-#### @gears-frontx/i18n
+**Stability**: unstable
 
-- [x] `p1` - **ID**: `cpt-frontx-interface-i18n`
+**Description**: The Type System validates microfrontends and their extensions against type definitions at registration and lets an application use type definitions for its own entities, with additional type definitions registered at runtime (anchors capabilities C1-4, C1-5).
 
-**Type**: TypeScript ES module
-**Stability**: stable
-**Description**: 36-language i18n registry, locale-aware formatters (date, number, currency, collation), RTL support, language metadata.
-**Breaking Change Policy**: Major version bump required.
+**Breaking Change Policy**: A major version bump is required for any incompatible change to the component's public surface; minor and patch versions preserve backward compatibility.
 
-#### @gears-frontx/framework
+#### CLI
 
-- [x] `p1` - **ID**: `cpt-frontx-interface-framework`
+- [ ] `p1` - **ID**: `cpt-frontx-interface-cli`
 
-**Type**: TypeScript ES module
-**Stability**: stable
-**Description**: Plugin architecture with `createGears FrontX()` builder, presets, layout domain slices, effect coordination, re-exports all L1 APIs.
-**Breaking Change Policy**: Major version bump required.
+**Type**: CLI
 
-#### @gears-frontx/react
+**Stability**: unstable
 
-- [x] `p1` - **ID**: `cpt-frontx-interface-react`
+**Description**: The CLI owns the project lifecycle: it installs, lists, updates, and validates templates from the source registry; scaffolds projects and microfrontends into a chosen target directory; resolves composed templates as part of a single scaffold operation; records project provenance; upgrades existing projects to newer template versions as reviewable change sets that a developer approves before they apply; and organizes its commands into project-level and microfrontend-level namespaces (anchors capabilities C2-1 through C2-10).
 
-**Type**: TypeScript ES module (React 19+)
-**Stability**: stable
-**Description**: Gears FrontXProvider, typed hooks, MFE hooks, ExtensionDomainSlot, RefContainerProvider, re-exports all L2 APIs.
-**Breaking Change Policy**: Major version bump required.
+**Breaking Change Policy**: A major version bump is required for any incompatible change to the command surface; minor and patch versions preserve backward compatibility.
 
-#### @gears-frontx/studio
+#### AI Tooling Framework
 
-- [x] `p2` - **ID**: `cpt-frontx-interface-studio`
+- [ ] `p1` - **ID**: `cpt-frontx-interface-ai-tooling-framework`
 
-**Type**: TypeScript ES module (React 19+)
-**Stability**: experimental
-**Description**: Dev-only floating overlay with MFE package selector, theme/language/mock controls, persistence, viewport clamping.
-**Breaking Change Policy**: Minor version may include breaking changes during experimental phase.
+**Type**: Library
 
-#### @gears-frontx/cli
+**Stability**: unstable
 
-- [x] `p1` - **ID**: `cpt-frontx-interface-cli`
+**Description**: The AI Tooling Framework provides FrontX-specific skills to AI agents working in a project, lets Template Developers bundle template-specific AI extensions, automatically discovers and activates installed-template AI extensions for AI agents in a consuming project, supports AI-driven orchestration of template upgrades, and makes ecosystem-knowledge artifacts available to AI agents at session start, while itself shipping zero template-specific content (anchors capabilities C3-2, C3-3, C3-4, C3-5, C3-6, C3-7).
 
-**Type**: Node.js CLI binary + programmatic API
-**Stability**: stable
-**Description**: Project scaffolding, code generation, migration runners, AI tool configuration sync.
-**Breaking Change Policy**: Major version bump required.
+**Breaking Change Policy**: A major version bump is required for any incompatible change to the component's public surface; minor and patch versions preserve backward compatibility.
 
 ### 7.2 External Integration Contracts
 
-#### MFE Manifest Contract
+#### Source-spec contract
 
-- [x] `p1` - **ID**: `cpt-frontx-contract-mfe-manifest`
+- [ ] `p2` - **ID**: `cpt-frontx-contract-source-spec`
 
-**Direction**: required from MFE packages
-**Protocol/Format**: `mfe.json` per MFE package (human-authored source) + `{outDir}/mfe-manifest.json` (build output produced by the `frontx-mf-gts` Vite plugin). A temporary generation script reads `{outDir}/mfe-manifest.json` from each MFE into `generated-mfe-manifests.json` for host bootstrap.
-**Compatibility**: `{outDir}/mfe-manifest.json` content MUST conform to the `MfManifest` GTS schema.
-**Description**: Each MFE package provides `mfe.json` — human-authored and version-controlled: it contains a minimal `manifest` section (`manifest.id`, `manifest.remoteEntry`), entries (without `exposeAssets`), extensions, schemas, and optional `domains[]`. The source file does not contain `manifest.metaData`, `manifest.shared[]`, or `entries[].exposeAssets`. The `frontx-mf-gts` Vite plugin derives shared dependencies from `rollupOptions.external` in the resolved Vite config and writes the enriched manifest to `{outDir}/mfe-manifest.json` at build time with `manifest.metaData`, `manifest.shared[]` (with `chunkPath`/`version`/`unwrapKey` per dep), and `entries[].exposeAssets`. Source `mfe.json` is never modified by the build. `{outDir}/mfe-manifest.json` is the complete self-contained build-output contract per MFE. The generation script (see `cpt-frontx-fr-manifest-generation-script`) is a temporary aggregator that reads `{outDir}/mfe-manifest.json` from each MFE with environment-specific `--base-url`; when a backend API is ready, the static import is replaced with a fetch call. `mf-manifest.json` is consumed by the plugin only and never reaches runtime.
+**Direction**: required from client
 
-#### Module Federation Runtime
+**Description**: The product accepts versioned references that identify templates hosted on the source registry (`cpt-frontx-actor-github`). References resolve generically; the contract does not prescribe a specific reference syntax at the product-requirements level.
 
-- [x] `p2` - **ID**: `cpt-frontx-contract-federation-runtime`
+**Compatibility**: Reference resolution remains compatible across minor and patch versions; any breaking change follows the platform's evolvability requirement (`cpt-frontx-nfr-evolvability`).
 
-**Direction**: required from build system
-**Protocol/Format**: `@module-federation/vite` build plugin (`shared: {}`, `rollupOptions.external`; produces `mf-manifest.json`) + `frontx-mf-gts` Vite plugin (builds standalone ESMs for shared deps, writes enriched manifest to `{outDir}/mfe-manifest.json` with manifest metadata, shared dep info, and expose assets)
-**Compatibility**: Compatible with Module Federation 2.0 manifest schema for expose compilation and `mf-manifest.json` generation.
-**Description**: The MFE build pipeline runs `@module-federation/vite` to produce `mf-manifest.json` (expose chunk paths, CSS assets). The `frontx-mf-gts` plugin runs in `closeBundle`: builds standalone ESM modules for each shared dep from `node_modules` via esbuild into `{outDir}/shared/`, then writes the enriched manifest to `{outDir}/mfe-manifest.json` with `manifest.metaData`, `manifest.shared[]` (with `chunkPath`/`version`/`unwrapKey`), and `entries[].exposeAssets`. Source `mfe.json` is never modified. At runtime, the handler fetches standalone ESM source text (deduplicated via `sharedDepTextCache` keyed by `name@version`), rewrites bare specifiers to per-load blob URLs, and constructs the expose blob URL chain — no `@module-federation/runtime`, no `FederationHost`, no `__mf_init__`.
+#### Template manifest contract
+
+- [ ] `p2` - **ID**: `cpt-frontx-contract-template-manifest`
+
+**Direction**: bidirectional
+
+**Description**: The product requires every template to publish a manifest that describes the template in a defined shape, and it both produces that manifest when a template is validated for publication and consumes it when a template is installed or scaffolded. This is an internal contract between templates and the product; it names no external party.
+
+**Compatibility**: The manifest shape is versioned with the platform; changes that are not backward-compatible follow `cpt-frontx-nfr-evolvability`.
+
+#### Project provenance contract
+
+- [ ] `p2` - **ID**: `cpt-frontx-contract-project-provenance`
+
+**Direction**: provided by library
+
+**Description**: The product records provenance into each scaffolded project, capturing which template and which template version the project was scaffolded from, so a later upgrade can determine what to apply. This is an internal contract recorded per scaffolded project; it names no external party.
+
+**Compatibility**: Provenance records remain readable across versions; any change that is not backward-compatible follows `cpt-frontx-nfr-evolvability`.
+
+#### Kit-installation contract
+
+- [ ] `p2` - **ID**: `cpt-frontx-contract-kit-installation`
+
+**Direction**: required from client
+
+**Description**: The AI Tooling Framework is installed into a consuming project through the AI-tooling CLI integration (`cpt-frontx-actor-cypilot-cli`), which is how AI agents come to have the framework's skills and the activated template extensions available.
+
+**Compatibility**: The installation contract remains compatible across minor and patch versions; breaking changes follow `cpt-frontx-nfr-evolvability`.
+
+#### Package-registry distribution contract
+
+- [ ] `p2` - **ID**: `cpt-frontx-contract-package-registry-distribution`
+
+**Direction**: bidirectional
+
+**Description**: The product publishes its packages to the package registry (`cpt-frontx-actor-package-registry`) and is installed from that registry by consuming applications using their chosen package manager.
+
+**Compatibility**: Published packages follow semantic versioning; consuming applications rely on the platform's evolvability commitments (`cpt-frontx-nfr-evolvability`).
 
 ## 8. Use Cases
 
-#### MFE Extension Loading
+#### Template Developer publishes a project template that composes microfrontend templates
 
-- [x] `p1` - **ID**: `cpt-frontx-usecase-mfe-load`
+- [ ] `p2` - **ID**: `cpt-frontx-usecase-publish-composed-project-template`
 
-**Actor**: `cpt-frontx-actor-host-app`
-
-**Preconditions**:
-- FrontX app initialized with `microfrontends()` plugin
-- Extension domain registered with shared properties and actions
-
-**Main Flow**:
-1. Host dispatches `loadExtension` action with MFE entry reference
-2. Handler resolves `MfManifest` GTS entity and reads `entry.exposeAssets` for per-module chunk paths
-3. Handler builds shared dep blob URLs (fetches standalone ESMs via `sharedDepTextCache` keyed by `name@version`, rewrites bare specifiers, creates per-load blob URLs), then builds the expose blob URL chain and evaluates the exposed module
-4. Handler returns lifecycle module (mount/unmount)
-5. Host dispatches `mountExtension` to render in Shadow DOM slot
-
-**Postconditions**:
-- Extension rendered in Shadow DOM with CSS isolation
-- Shared properties (theme, language) propagated
-- Action chain communication available
-
-**Alternative Flows**:
-- **Manifest fetch fails**: MfeLoadError thrown; host can retry with exponential backoff
-- **GTS validation fails**: Extension not mounted; error logged with validation details
-
-#### Screenset Scaffolding
-
-- [x] `p2` - **ID**: `cpt-frontx-usecase-scaffold`
-
-**Actor**: `cpt-frontx-actor-developer`
+**Actor**: `cpt-frontx-actor-template-developer`
 
 **Preconditions**:
-- FrontX project exists with `@gears-frontx/cli` installed
+- A template repository exists with the template's content authored.
+- The product is installed on the developer's machine.
 
 **Main Flow**:
-1. Developer runs `frontx scaffold screenset my-feature`
-2. CLI copies screenset template to `src/screensets/my-feature/`
-3. Template includes: screens, translations, API service stubs, actions, effects, and starter unit tests when a stable template exists
-4. Generated project AI context includes project-level unit-test guidance for the new screenset code
-5. Developer modifies generated code and starter tests to implement business logic
+1. The Template Developer authors the project template's content.
+2. The Template Developer declares the project template's composed microfrontend templates by reference.
+3. The Template Developer validates the template's structure against the publication contract before publishing (`cpt-frontx-fr-cli-template-validate-prepublish`).
+4. The Template Developer publishes the template to the source registry (`cpt-frontx-actor-github`).
 
 **Postconditions**:
-- Self-contained screenset folder with working demo screens
-- Translation namespaces derived from screenset/screen IDs
-- API service stubs ready for implementation
-- Starter unit tests exist for generated screenset code when a stable template exists
-- Generated code follows the project's standard unit-test workflow
+- The template is available for installation by Project Developers from the source registry.
 
 **Alternative Flows**:
-- **Directory exists**: CLI prompts for `--force` flag to overwrite
+- **Validation fails**: the validation step reports specific errors; the Template Developer fixes them and re-validates before publishing.
 
-#### PM Creates Feature Prototypes
+#### Template Developer bundles a template with AI extensions
 
-- [ ] `p1` - **ID**: `cpt-frontx-usecase-pm-prototyping`
+- [ ] `p2` - **ID**: `cpt-frontx-usecase-bundle-template-ai-extensions`
 
-**Actor**: `cpt-frontx-actor-product-manager`
+**Actor**: `cpt-frontx-actor-template-developer`
 
-**Preconditions**: A production screenset exists in the project. PM has the project cloned and running locally.
+**Preconditions**:
+- A template exists.
+- The AI Tooling Framework's extension contract is documented in the ecosystem-knowledge artifacts available to AI agents at session start.
 
 **Main Flow**:
-1. PM creates a new draft screenset by duplicating the production screenset
-2. PM activates the draft screenset for local development
-3. PM uses AI tools in IDE to modify the shell (e.g., add search bar to header)
-4. PM creates a second draft with a different approach
-5. PM uses Studio screenset selector to switch between both drafts, comparing UX
-6. PM decides on the preferred variant, deletes the rejected one
-7. PM commits the chosen draft to git
+1. The Template Developer declares AI extensions — skills, workflows, guidelines, and reference artifacts — inside the template bundle (`cpt-frontx-fr-ai-template-bundle-extensions`).
+2. The Template Developer publishes the template via the source registry (`cpt-frontx-actor-github`).
 
-**Postconditions**: One draft screenset exists in the repo alongside the production screenset.
+**Postconditions**:
+- When Project Developers install this template, the AI Tooling Framework automatically discovers and activates the bundled AI extensions for AI agents working in that project (`cpt-frontx-fr-ai-extension-discovery-activation`).
 
 **Alternative Flows**:
-- **AI modifies a shared MFE package**: The system ensures the modification is isolated to this screenset without affecting other screensets (per `cpt-frontx-fr-package-isolation`)
-- **PM wants more variants**: PM creates additional copies, each independently modifiable
+- **Extension declaration malformed**: pre-publish validation reports the structural error before publication.
 
-#### Designer Creates Styling Variants
+#### Project Developer scaffolds a new project from a composed project template
 
-- [ ] `p2` - **ID**: `cpt-frontx-usecase-designer-styling`
+- [ ] `p2` - **ID**: `cpt-frontx-usecase-scaffold-composed-project`
 
-**Actor**: `cpt-frontx-actor-ux-designer`
+**Actor**: `cpt-frontx-actor-project-developer`
 
-**Preconditions**: A draft screenset exists in the repo, approved by PM for design refinement.
+**Preconditions**:
+- The source registry (`cpt-frontx-actor-github`) is reachable.
+- A target directory is chosen.
+- The product is installed.
 
 **Main Flow**:
-1. Designer promotes the PM's draft to mockup stage
-2. Designer duplicates the mockup to create a styling variant
-3. Designer modifies themes, colors, spacing in the variant's shell
-4. Designer uses Studio to compare the mockup variants
-5. Designer collects stakeholder feedback, selects the preferred variant
-6. Designer deletes rejected variants, commits the chosen mockup
+1. The Project Developer installs the project template by versioned reference (`cpt-frontx-fr-cli-template-install`).
+2. The Project Developer scaffolds the project (`cpt-frontx-fr-cli-project-scaffold`); the composed microfrontends declared by the template are resolved and scaffolded as part of the same operation (`cpt-frontx-fr-cli-composed-template-resolution`).
+3. The AI Tooling Framework activates the ecosystem's base AI capabilities and any template-bundled AI extensions for AI agents working in the new project (`cpt-frontx-fr-ai-extension-discovery-activation`, `cpt-frontx-fr-ai-session-start-knowledge`).
 
-**Postconditions**: One mockup screenset exists, ready for developer promotion.
+**Postconditions**:
+- A scaffolded project on disk with its composed microfrontends; AI agents have ecosystem and template-specific AI capabilities active.
 
 **Alternative Flows**:
-- **Stakeholders request changes**: Designer modifies the chosen mockup and re-collects feedback without creating new variants
+- **Source registry unreachable**: the CLI reports the failure and aborts the scaffold without writing any files.
+- **Composition collision**: the CLI reports the conflicting composition before any files are written.
 
-#### Developer Promotes to Production
+#### Project Developer adds a new microfrontend to an existing project
 
-- [ ] `p1` - **ID**: `cpt-frontx-usecase-dev-production`
+- [ ] `p2` - **ID**: `cpt-frontx-usecase-add-microfrontend-to-project`
 
-**Actor**: `cpt-frontx-actor-developer`
+**Actor**: `cpt-frontx-actor-project-developer`
 
-**Preconditions**: A mockup screenset exists in the repo, approved by stakeholders.
-
-**Main Flow (whole screenset promotion)**:
-1. Developer changes the approved mockup's stage to production
-2. Developer hardens shell code: adds error handling, integrates real APIs, ensures test coverage
-3. Developer verifies production build includes only the production screenset
-4. Developer removes or demotes the previous production screenset
-5. Developer commits and deploys
-
-**Postconditions**: The promoted screenset is the new production screenset.
-
-**Alternative Flows**:
-- **Incremental merge**: Instead of promoting the entire mockup, developer copies specific new features (MFE packages/extensions) from the mockup into the existing production screenset, then hardens them in place. The mockup screenset is deleted after features are extracted.
-- **Designer passes mockup back to PM**: Designer changes the mockup's stage back to draft for further PM rework before re-promoting to mockup
-
-#### Cross-Product Package Sharing
-
-- [ ] `p2` - **ID**: `cpt-frontx-usecase-cross-product-sharing`
-
-**Actor**: `cpt-frontx-actor-developer`
-
-**Preconditions**: Two production screensets exist (e.g., `partner-backoffice` and `customer-console`). A shared MFE package `usage-dashboard` exists in the pool.
+**Preconditions**:
+- An existing scaffolded project is on disk.
+- The microfrontend template is available in the source registry.
 
 **Main Flow**:
-1. Developer adds `usage-dashboard` to both screensets' package references
-2. The `usage-dashboard` package defines extensions for both screensets' domains
-3. Both screensets load and display the usage dashboard from the shared package
-4. A bug fix to `usage-dashboard` automatically applies to both screensets
+1. The Project Developer installs the microfrontend template by versioned reference (`cpt-frontx-fr-cli-template-install`).
+2. The Project Developer scaffolds the microfrontend into the existing project (`cpt-frontx-fr-cli-microfrontend-scaffold`).
+3. At application runtime the microfrontend is registered with the application (`cpt-frontx-fr-mfe-runtime-registration`); type-definition validation runs at registration (`cpt-frontx-fr-mfe-type-validation`).
 
-**Postconditions**: Both products share the same MFE package without duplication.
+**Postconditions**:
+- The microfrontend is added to the project and registers and validates successfully at runtime.
 
 **Alternative Flows**:
-- **One product needs a customized version**: Developer creates an isolated copy of the package for that product's screenset (per `cpt-frontx-fr-package-isolation`)
+- **Type validation fails at registration**: the application surfaces the validation error and the microfrontend is not placed into its extension domain.
+
+#### Project Developer runs an AI-driven template upgrade
+
+- [ ] `p2` - **ID**: `cpt-frontx-usecase-ai-driven-template-upgrade`
+
+**Actor**: `cpt-frontx-actor-project-developer`
+
+**Preconditions**:
+- A project is scaffolded from a template at an older version.
+- A newer version of that template is available in the source registry.
+
+**Main Flow**:
+1. An AI agent uses the AI Tooling Framework's upgrade orchestration to analyse the change from the older version to the newer version (`cpt-frontx-fr-ai-upgrade-orchestration`).
+2. The AI agent applies the upgrade as a reviewable change set (`cpt-frontx-fr-cli-project-upgrade-changeset`).
+3. The Project Developer reviews and approves the upgrade changes before they apply to project files (`cpt-frontx-fr-cli-upgrade-review-approval`).
+4. The approved change set is applied to the project files.
+
+**Postconditions**:
+- The project is upgraded to the newer template version with all reviewable changes accepted.
+
+**Alternative Flows**:
+- **Change set rejected**: the Project Developer declines the change set; the project remains at its current version and no files are written.
+- **Downstream impact assessment flags incompatibilities**: the AI agent surfaces the incompatibilities before the change set is applied, and the Project Developer decides whether to proceed.
 
 ## 9. Acceptance Criteria
 
-- [x] All published workspace packages build successfully in layer dependency order
-- [x] `npm run arch:check` passes with zero violations (dependency-cruiser)
-- [x] `npm run arch:unused` passes with zero violations (Knip)
-- [x] SDK packages (state, screensets, api, i18n) have zero `@gears-frontx/*` dependencies
-- [x] MFE blob URL isolation produces independent module evaluations per load
-- [x] Shared property updates propagate only to domains that declare the property
-- [x] GTS validation rejects invalid shared property values before propagation
-- [x] All formatters return `''` for invalid inputs without throwing
-- [x] Studio panel is excluded from production builds via tree-shaking
-- [x] CLI scaffolds functional project with `frontx create` + `frontx scaffold layout`, including a standard unit-test workflow
-- [x] Generated projects include editable project-level unit-test guidance for AI-assisted development
-- [x] Code-generation commands create starter unit tests alongside generated code when a stable template exists
-- [x] The default scaffold passes the standard unit-test workflow in required CLI PR verification
-- [ ] A screenset can be created (from template or by duplicating any existing screenset) in under 2 seconds
-- [ ] The copied screenset's shell code is independently modifiable without affecting the source
-- [ ] Studio displays all local screensets grouped by stage and allows switching between them
-- [ ] Screenset stage can be changed freely between draft, mockup, and production
-- [ ] The production build includes only the production screenset's code and referenced packages
-- [ ] Two screensets can reference the same shared MFE package simultaneously
-- [ ] Modifying a shared package from one screenset does not affect other screensets referencing the same package
-- [ ] Screensets can be deleted and orphaned resources are detected
-- [ ] All screensets in a project can be listed with stage, author, and package count
-- [ ] Active screenset selection persists across dev server restarts
-- [ ] All screenset operations work as standalone CLI commands without AI tooling
-- [ ] Multiple production screensets for different products can be built independently
+- [ ] AI agents can drive end-to-end FrontX-project creation: install a project template, scaffold the project with its composed microfrontends, and operate on the resulting project with ecosystem-aware AI capabilities — verifiable via `cpt-frontx-usecase-publish-composed-project-template`, `cpt-frontx-usecase-scaffold-composed-project`, and `cpt-frontx-usecase-ai-driven-template-upgrade`.
+- [ ] All three pillars deliver capabilities at the user-capability level: §5 contains functional requirements for all 24 capabilities locked in §2 (Core Framework: 8; CLI: 10; AI Tooling Framework: 6) — verifiable via the §5 inventory.
+- [ ] Pillar balance is maintained in the §5 distribution: each pillar has at least 5 functional requirements and the maximum-to-minimum ratio is at most 2 — verifiable by counting §5 entries per pillar.
+- [ ] All four public components have a §7.1 entry with a stability level and a breaking-change policy — verifiable via the §7.1 enumeration.
+- [ ] All five external integration contracts are documented with party, direction, and a compatibility commitment in §7.2 — verifiable via the §7.2 enumeration.
+- [ ] The PRD is structurally valid and internally consistent: `cpt validate --artifact architecture/PRD.md --skip-code` returns PASS, and the standing content-quality checks — citation discipline, design-agnostic prose, controlled product vocabulary, and external-system-name scope, together with pillar balance — all clear.
+- [ ] Downstream SDLC artifacts authored against this PRD trace back to specific functional-requirement IDs (`cpt-frontx-fr-*`) and component or contract IDs (`cpt-frontx-interface-*` / `cpt-frontx-contract-*`).
 
 ## 10. Dependencies
 
 | Dependency | Description | Criticality |
 |------------|-------------|-------------|
-| `@reduxjs/toolkit` >=2.0.0 | Store, slices, Redux internals for @gears-frontx/state | p1 |
-| `axios` >=1.0.0 | HTTP REST client for @gears-frontx/api | p1 |
-| `react` ^19.2.4 | UI rendering for @gears-frontx/react, studio | p1 |
-| `react-dom` ^19.2.4 | DOM rendering | p1 |
-| `react-redux` >=8.0.0 | React-Redux bindings for @gears-frontx/react | p1 |
-| `@globaltypesystem/gts-ts` ^0.3.0 | GTS type validation for @gears-frontx/screensets | p1 |
-| `vite` 6.4.1 | Build tooling and dev server | p1 |
-| `@module-federation/vite` | Module Federation 2.0 build plugin for MFEs | p1 |
-| `tsup` ^8.0.0 | Package bundling (ESM/CJS dual output) | p2 |
-| `tailwindcss` ^3.4.1 | Utility CSS for local UI | p2 |
-| `commander` ^12.1.0 | CLI argument parsing for @gears-frontx/cli | p2 |
-| Radix UI primitives (20+ packages) | Accessible UI for local UI | p2 |
-| `recharts` | Chart visualization for local UI | p3 |
-| `sonner` | Toast notifications for local UI | p3 |
+| GitHub (source registry, `cpt-frontx-actor-github`) | Public source registry hosting the project templates, microfrontend templates, and the FrontX AI Tooling Framework; referenced by versioned source-spec contract at install and upgrade time. | p1 |
+| npm-compatible package registry (`cpt-frontx-actor-package-registry`) | Package registry hosting the product's published packages; consumed by applications at install time using their chosen npm-compatible package manager. | p1 |
+| Cypilot CLI (`cpt-frontx-actor-cypilot-cli`) | The AI-tooling command-line integration through which the AI Tooling Framework is installed into consuming projects and AI agents discover the ecosystem's skills, workflows, and guidelines. | p1 |
+| JavaScript / TypeScript runtime | The runtime environment on which the platform and its consuming applications execute. | p1 |
+| Type-definition specification | The specification language the product uses to describe and validate entity shapes; resolved generically at the product-requirements level so the contract, not any single specification, is what the product depends on. | p1 |
 
 ## 11. Assumptions
 
-- Applications are client-side SPAs served from a static host or CDN; no SSR infrastructure assumed
-- Modern evergreen browsers (Chrome, Firefox, Safari, Edge) with ES2020 target; no IE11 or legacy polyfills
-- Development requires npm >= 10.0.0 with workspace support
-- Development environment requires Node.js 22+; published packages support Node.js 18+ at runtime
-- MFE manifests and federation entry points are fetchable via `fetch()`, requiring same-origin hosting or proper CORS headers
-- Deployment environments allow `blob:` in CSP `script-src` for MFE isolation
-- Both host app and MFE packages use Vite with `@module-federation/vite` (Module Federation 2.0)
-- Host application uses React 19; MFEs may use any framework implementing the lifecycle interface
-- Package version 0.4.0-alpha.0 — backward-incompatible changes are expected
-- Lodash is required for non-trivial object and array operations (per project guidelines)
-- AI tooling (Cursor, Windsurf, Claude Code, Copilot) is the primary mechanism for modifying shell code in draft screensets — PMs and designers are not expected to write code manually
-- Git is the collaboration mechanism — multiple PMs working on different features use git branches containing their respective draft screensets
-- The dev server serves one screenset at a time — side-by-side comparison happens by switching in Studio (sequential), not by running two screensets simultaneously
-- Forked packages created during prototyping are short-lived — they are either merged back to the shared pool during production promotion or deleted with rejected screensets
+- AI agents capable of operating FrontX's AI tooling are available to both human actor types — Template Developer and Project Developer — during their work.
+- Humans-using-AI is the dominant interaction model for the product's two human actor types; the product is designed for work driven by AI agents under human direction rather than for unaided manual operation.
+- The package registry and its compatible package managers remain the dominant distribution channel for frontend libraries throughout the product's release horizon.
+- Semantic versioning remains the dominant version-discipline convention for the product's published artifacts and for the templates that consume them.
+- Templates and their bundled AI extensions are versioned together; a template's AI extensions are part of the template bundle, not separate publications, and upgrade in step with the template.
 
 ## 12. Risks
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Blob URL memory accumulation in long sessions | Memory leak from non-revoked blob URLs | Browser cleans up on page unload; typical SPA lifecycle is bounded |
-| Module Federation manifest schema stability | `mf-manifest.json` schema may evolve across MF 2.0 releases | Handler reads a defined subset of manifest fields; the MfeHandler abstraction isolates internal schema changes from the blob URL isolation pipeline |
-| CSP policy conflicts with blob: URLs | Enterprise deployments may reject blob URLs | Document CSP requirement; provide MfeHandler extension point for alternatives |
-| Race conditions in concurrent MFE operations | State corruption from interleaved lifecycle operations | Domain-level operation serialization; per-load LoadBlobState isolation |
-| Memory leaks from unreleased event subscriptions | EventSource, EventBus, axios connections not cleaned up | cleanup() methods on protocols, destroy() on plugins, unsubscribe() on subscriptions |
-| Large change surface for breaking changes | Alpha status means API changes are expected | CLI migration runners automate codemod transformations |
-| Infinite retry loops | API/MFE retry could loop indefinitely | maxRetryDepth (default: 10) in RestProtocol; retries config (default: 2) in MfeHandlerMF |
-| Single Module Federation implementation lock-in | Only `@module-federation/vite` supported | MfeHandler is abstract; custom handlers pluggable via microfrontends config |
-| Shell code divergence across screensets | Screensets accumulate incompatible shell patterns, making framework upgrades and shared maintenance difficult | Provide tooling that shows how a screenset's shell differs from its source; document recommended shell update practices |
-| Orphaned resources after screenset deletion | Project accumulates unused MFE packages no longer referenced by any screenset | CLI detects and offers cleanup of orphaned resources during deletion |
-| AI agents make invalid screenset modifications | Malformed configuration or broken package references from AI edits | Validate screenset configuration on dev server startup; provide machine-readable context to guide AI agents |
-| Package isolation mechanism introduces subtle bugs | Modified packages may lose correct bindings to other screensets' domains | Comprehensive validation of isolated packages after modification |
-| Shared package updates break dependent screensets | Bug fix in a shared package changes behavior that a screenset relied on | Package modification isolation ensures screensets that customized a package are not affected; shared packages should have stable interfaces |
-| Framework upgrades require per-screenset shell updates | Since each screenset owns its shell code, a framework upgrade must be applied to every screenset independently | Provide shell diffing/update tooling; document recommended upgrade practices |
-
-## 13. Open Questions
-
-No open questions at this time. Previously open questions resolved during development:
-- MFE manifest format: resolved — `MfManifest` type and GTS schema updated to match `mf-manifest.json` structure directly; auto-generated by `@module-federation/vite`
+| The forward-looking AI Tooling Framework pillar lacks initial concrete parity with the Core Framework and CLI pillars at the first published baseline. | Pillar 3 capabilities may be perceived as aspirational rather than delivered at the product's first published baseline. | Deliver Pillar 3 alongside Pillar 1 and Pillar 2 in a matched-version release; publish reference template-bundled AI extensions that exercise template extension, automatic activation, and AI-driven upgrade orchestration. |
+| Template-ecosystem adoption depends on the quality of the reference templates the product ships. | Without high-quality reference templates, Project Developers may not discover the product's strengths, slowing adoption. | Bundle at least one reference project template and at least one reference microfrontend template with the first published baseline; validate each against the publication contract before publishing. |
+| The type-definition specification dependency couples the product to an external specification. | A breaking change in the chosen type-definition specification could ripple through the product and its consumers. | Depend on the type-definition contract rather than on a single specification, keeping the specification a replaceable concern at the contract boundary. |
+| Pillar parity drifts over time as new capabilities accumulate unevenly across the three pillars. | One pillar may come to dominate future releases, eroding the co-equal framing the product depends on. | Re-check pillar balance on every revision of this document; escalate any imbalance before it propagates into downstream work. |

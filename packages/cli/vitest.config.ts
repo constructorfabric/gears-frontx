@@ -1,11 +1,19 @@
-// @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-standard-test-convention:p1
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { definePackageVitestConfig } from '../../vitest.shared';
+import { defineConfig } from 'vitest/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default definePackageVitestConfig({
-  rootDir: __dirname,
-  environment: 'node',
+export default defineConfig({
+  root: __dirname,
+  test: {
+    globals: true,
+    environment: 'node',
+    include: [
+      'src/__tests__/**/*.test.ts',
+      'src/**/__tests__/**/*.test.ts',
+    ],
+    exclude: ['**/node_modules/**', '**/dist/**'],
+    passWithNoTests: false,
+  },
 });

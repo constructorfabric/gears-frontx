@@ -1,0 +1,100 @@
+{
+  "name": "@gears-frontx/framework",
+  "version": "0.2.0-alpha.0",
+  "description": "FrontX framework integrating all SDK packages with plugin architecture",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js",
+      "require": "./dist/types.cjs"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "require": "./dist/testing.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "CLAUDE.md",
+    "llms.txt",
+    "commands"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "type-check": "tsc --noEmit",
+    "type-check:test": "tsc -p tsconfig.test.json",
+    "test": "npm run test:unit",
+    "test:unit": "vitest --run --passWithNoTests=false",
+    "test:unit:watch": "vitest --watch"
+  },
+  "dependencies": {
+    "path-to-regexp": "^8.2.0"
+  },
+  "devDependencies": {
+    "@gears-frontx/auth": "*",
+    "@gears-frontx/frontx-template-standard": "*",
+    "@vitest/coverage-v8": "4.1.4",
+    "@tanstack/query-core": "^5.0.0",
+    "tsup": "8.0.0",
+    "typescript": "5.4.2",
+    "vitest": "4.1.4"
+  },
+  "peerDependencies": {
+    "@gears-frontx/auth": "*",
+    "@gears-frontx/frontx-template-standard": "*",
+    "@gears-frontx/state": "*",
+    "@gears-frontx/screensets": "*",
+    "@gears-frontx/api": "*",
+    "@gears-frontx/i18n": "*",
+    "@tanstack/query-core": "^5.0.0",
+    "vitest": "4.1.4"
+  },
+  "peerDependenciesMeta": {
+    "@gears-frontx/auth": {
+      "optional": false
+    },
+    "@gears-frontx/frontx-template-standard": {
+      "optional": false
+    },
+    "@gears-frontx/state": {
+      "optional": false
+    },
+    "@gears-frontx/screensets": {
+      "optional": false
+    },
+    "@gears-frontx/api": {
+      "optional": false
+    },
+    "@gears-frontx/i18n": {
+      "optional": false
+    },
+    "@tanstack/query-core": {
+      "optional": false
+    },
+    "vitest": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "frontx",
+    "framework",
+    "plugin",
+    "screenset",
+    "typescript"
+  ],
+  "author": "Cyber Fabric",
+  "license": "Apache-2.0"
+}

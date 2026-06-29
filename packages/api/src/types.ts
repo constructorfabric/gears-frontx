@@ -6,6 +6,7 @@
  */
 
 // @cpt-dod:cpt-frontx-dod-api-communication-plugin-types:p1
+// @cpt-dod:cpt-frontx-dod-api-protocol-surface-protocol-dispatch:p1
 // @cpt-algo:cpt-frontx-algo-api-communication-is-mock-plugin:p2
 // @cpt-state:cpt-frontx-state-api-communication-mock-mode:p2
 
@@ -149,6 +150,8 @@ export interface ApiServicesConfig {
  * class SseProtocol extends ApiProtocol<SsePluginHooks> { ... }
  * ```
  */
+// @cpt-flow:cpt-frontx-flow-api-protocol-surface-service-call:p1
+// @cpt-dod:cpt-frontx-dod-api-protocol-surface-protocol-dispatch:p1
 export abstract class ApiProtocol<TPlugin extends BasePluginHooks = BasePluginHooks> {
   /**
    * Initialize the protocol with configuration.
@@ -660,11 +663,13 @@ export interface SseShortCircuitResponse {
  * @returns True if result is a REST short-circuit response
  */
 // @cpt-begin:cpt-frontx-algo-api-communication-is-mock-plugin:p2:inst-is-rest-short-circuit
+// @cpt-begin:cpt-frontx-algo-api-protocol-surface-protocol-dispatch:p1:inst-detect-sc-rest
 export function isRestShortCircuit(
   result: RestRequestContext | RestShortCircuitResponse | undefined
 ): result is RestShortCircuitResponse {
   return result !== undefined && 'shortCircuit' in result && typeof (result as RestShortCircuitResponse).shortCircuit === 'object' && 'status' in (result as RestShortCircuitResponse).shortCircuit;
 }
+// @cpt-end:cpt-frontx-algo-api-protocol-surface-protocol-dispatch:p1:inst-detect-sc-rest
 // @cpt-end:cpt-frontx-algo-api-communication-is-mock-plugin:p2:inst-is-rest-short-circuit
 
 /**
@@ -675,11 +680,13 @@ export function isRestShortCircuit(
  * @returns True if result is an SSE short-circuit response
  */
 // @cpt-begin:cpt-frontx-algo-api-communication-is-mock-plugin:p2:inst-is-sse-short-circuit
+// @cpt-begin:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-sse-short-circuit-guard
 export function isSseShortCircuit(
   result: SseConnectContext | SseShortCircuitResponse | undefined
 ): result is SseShortCircuitResponse {
   return result !== undefined && 'shortCircuit' in result && typeof (result as SseShortCircuitResponse).shortCircuit === 'object' && 'close' in (result as SseShortCircuitResponse).shortCircuit;
 }
+// @cpt-end:cpt-frontx-flow-api-protocol-surface-service-call:p1:inst-sse-short-circuit-guard
 // @cpt-end:cpt-frontx-algo-api-communication-is-mock-plugin:p2:inst-is-sse-short-circuit
 
 // ============================================================================

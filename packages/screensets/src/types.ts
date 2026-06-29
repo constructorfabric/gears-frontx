@@ -11,16 +11,7 @@
 // Layout Domain Enum
 // ============================================================================
 
-/**
- * Layout Domain Enum
- * Defines all layout domains that can be orchestrated.
- */
-export enum LayoutDomain {
-  Header = 'header',
-  Footer = 'footer',
-  Menu = 'menu',
-  Sidebar = 'sidebar',
-  Screen = 'screen',
-  Popup = 'popup',
-  Overlay = 'overlay',
-}
+// @cpt-constraint:cpt-frontx-constraint-mfes-no-layout-domain-values (MFES-3)
+// LayoutDomain relocated to @gears-frontx/frontx-template-standard in Phase 7.
+// Re-exported here for backward compatibility.
+export { LayoutDomain } from '@gears-frontx/frontx-template-standard';

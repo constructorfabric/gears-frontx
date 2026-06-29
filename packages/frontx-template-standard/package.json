@@ -1,0 +1,68 @@
+{
+  "name": "@gears-frontx/frontx-template-standard",
+  "version": "0.3.0-alpha.0",
+  "description": "Standard FrontX application template — target scaffold for non-Pillar-1 code relocation",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./build/mf-gts": {
+      "types": "./dist/build/mf-gts.d.ts",
+      "import": "./dist/build/mf-gts.js",
+      "require": "./dist/build/mf-gts.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "type-check": "tsc --noEmit",
+    "type-check:test": "tsc -p tsconfig.test.json",
+    "test": "npm run test:unit",
+    "test:unit": "vitest --run --passWithNoTests=false",
+    "test:unit:watch": "vitest --watch"
+  },
+  "peerDependencies": {
+    "@gears-frontx/api": ">=0.2.0-0",
+    "@gears-frontx/screensets": "*",
+    "esbuild": ">=0.20.0",
+    "vite": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@gears-frontx/api": {
+      "optional": false
+    },
+    "esbuild": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "4.1.4",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.2",
+    "vitest": "4.1.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "frontx",
+    "template",
+    "typescript"
+  ],
+  "author": "Cyber Fabric",
+  "license": "Apache-2.0"
+}

@@ -20,7 +20,7 @@ import { MfeHandlerMF } from '../../src/mfe/handler/mf-handler';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..', '..', '..', '..');
-const BLANK_MFE_ROOT = join(REPO_ROOT, 'src', 'mfe_packages', '_blank-mfe');
+const BLANK_MFE_ROOT = join(REPO_ROOT, 'packages', 'frontx-template-standard', 'src-app', 'mfe_packages', '_blank-mfe');
 /** Root of the build output; chunk paths in manifests are relative to this. */
 const DIST_DIR = join(BLANK_MFE_ROOT, 'dist');
 /** Raw @module-federation/vite output — used for expose chunk verification */
