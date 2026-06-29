@@ -558,7 +558,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 ### 2.12 [Two-Namespace Commands & Project/MFE Scaffolding](features/cli-scaffolding/) - HIGH
 
-- [ ] `p1` - **ID**: `cpt-frontx-feature-cli-scaffolding`
+- [x] `p1` - **ID**: `cpt-frontx-feature-cli-scaffolding`
 
 - **Purpose**: Organize the CLI command surface into project-level and microfrontend-level namespaces sharing one resolver, and drive project and microfrontend scaffolding from those namespaces — the namespace organization being the CLI's public interface.
 
@@ -576,9 +576,9 @@ This decomposition breaks the FROZEN FrontX DESIGN into 17 work-package features
 
 - **Requirements Covered**:
 
-  - [ ] `p1` - `cpt-frontx-fr-cli-two-namespace-commands`
-  - [ ] `p1` - `cpt-frontx-fr-cli-project-scaffold`
-  - [ ] `p1` - `cpt-frontx-fr-cli-microfrontend-scaffold`
+  - [x] `p1` - `cpt-frontx-fr-cli-two-namespace-commands`
+  - [x] `p1` - `cpt-frontx-fr-cli-project-scaffold`
+  - [x] `p1` - `cpt-frontx-fr-cli-microfrontend-scaffold`
 
 - **Domain Model Entities**:
   - Template

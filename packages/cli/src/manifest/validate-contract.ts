@@ -1,6 +1,23 @@
 // @cpt-algo:cpt-frontx-algo-template-manifest-validate-contract:p1
-import type { ManifestViolation, ManifestValidationResult } from './types.js';
+import type { ManifestViolation, ManifestValidationResult, TemplateManifest } from './types.js';
 import { RECOGNIZED_KINDS } from './types.js';
+
+// Result type for manifest parsing + validation in one step.
+export type ReadManifestResult =
+  | { ok: true; manifest: TemplateManifest }
+  | { ok: false; message: string };
+
+// Parse and validate manifest content in one step, returning the typed manifest.
+export function readManifestFromContent(content: string): ReadManifestResult {
+  const validation = validateManifestContract(content);
+  if (validation.status === 'REJECTED') {
+    return {
+      ok: false,
+      message: validation.violations.map((v) => v.message).join('; '),
+    };
+  }
+  return { ok: true, manifest: JSON.parse(content) as TemplateManifest };
+}
 
 // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-read-manifest
 // The raw manifest string is passed in by the caller (command layer reads the file).

@@ -201,6 +201,12 @@ export class TemplateInventory {
     // @cpt-end:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-success
   }
 
+  // --- lookup (shared resolver access for scaffolding) ---
+
+  lookup(name: string): InventoryEntry | undefined {
+    return this.index.lookup(name);
+  }
+
   // --- state machine query ---
 
   // @cpt-state:cpt-frontx-state-template-resolution-inventory-lifecycle:p1

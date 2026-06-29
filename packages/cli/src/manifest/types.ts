@@ -12,6 +12,12 @@ export interface CompositionRef {
   ref: string; // source-spec ("github:acme/mfe@v1.0.0") or registered name
 }
 
+// Single content item within a template — used by scaffolding at runtime.
+export interface TemplateFile {
+  path: string;    // relative path within the template
+  content: string; // file content to write at destination
+}
+
 // Single authoritative contract — cpt-frontx-contract-template-manifest
 // Same shape used at pre-publish validation, install time, and scaffold time.
 export interface TemplateManifest {
@@ -20,6 +26,7 @@ export interface TemplateManifest {
   version: string;                  // template version string
   kind: TemplateKind;               // 'project-template' | 'mfe-template'
   compositions?: CompositionRef[];  // project-template only
+  files?: TemplateFile[];           // content items for scaffolding
 }
 
 export interface ManifestViolation {
