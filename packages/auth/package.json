@@ -1,6 +1,6 @@
 {
   "name": "@gears-frontx/auth",
-  "version": "0.2.0-alpha.0",
+  "version": "0.2.0-alpha.1",
   "description": "Headless authentication contract and types for Gears FrontX SDK",
   "type": "module",
   "main": "./dist/index.cjs",
