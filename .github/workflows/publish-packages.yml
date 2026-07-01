@@ -152,7 +152,7 @@ jobs:
 
           # Sort packages by layer (L1=SDK, L2=Framework, L3=React, L4=Studio, L5=CLI)
           SORTED=$(echo "$PACKAGES" | jq -c 'sort_by(.dir |
-            if . == "state" or . == "screensets" or . == "api" or . == "i18n" then 1
+            if . == "state" or . == "screensets" or . == "api" or . == "auth" or . == "i18n" then 1
             elif . == "framework" then 2
             elif . == "react" then 3
             elif . == "studio" then 4
