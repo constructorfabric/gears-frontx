@@ -18,6 +18,8 @@
 // in `adapters/fs-project-io.ts`) rather than reimplementing any I/O.
 import readline from 'node:readline/promises';
 import process from 'node:process';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { installCommand } from './commands/install';
 import type { InstallCommandResult } from './commands/install';
@@ -499,7 +501,18 @@ async function main(): Promise<void> {
   // @cpt-end:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-return
 }
 
-const isMainModule = process.argv[1] && import.meta.url === new URL(process.argv[1], 'file:').href;
+// The global npm bin is a SYMLINK to this file, so `process.argv[1]` (the
+// symlink path, e.g. .../bin/frontx) never equals `import.meta.url` (the real
+// path, .../dist/cli.js) under a plain URL comparison — which made the globally
+// installed CLI silently no-op. Resolve BOTH to real paths before comparing so
+// the CLI actually runs when invoked through a symlinked global bin.
+let isMainModule = false;
+try {
+  isMainModule =
+    !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+} catch {
+  isMainModule = false;
+}
 if (isMainModule || process.env.FRONTX_CLI_FORCE_MAIN === '1') {
   main().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
