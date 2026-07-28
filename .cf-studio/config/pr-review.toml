@@ -3,7 +3,7 @@
 #
 # Resolution order:
 #   1. {cf-studio-path}/config/pr-review.toml   (user-editable, this file)
-#   2. {cf-studio-path}/.gen/kits/sdlc/scripts/pr-review.toml  (default)
+#   2. {cf-studio-path}/config/kits/sdlc/scripts/pr-review.toml  (default)
 #
 # Paths support {cf-studio-path} variable — resolved at runtime.
 
@@ -17,8 +17,9 @@ data_dir = ".prs"
 [[prompts]]
 description = "Code Review"
 prompt_file = "{cf-studio-path}/config/kits/sdlc/scripts/prompts/pr/code-review.md"
-checklist   = "{cf-studio-path}/.gen/kits/sdlc/codebase/checklist.md"
-spec_coverage_checklist = "{cf-studio-path}/config/kits/sdlc/codebase/spec-coverage-checklist.md"
+checklist   = "{cf-studio-path}/config/kits/sdlc/codebase/checklist.md"
+# spec-coverage-checklist.md is not shipped by the installed sdlc kit version — re-enable if it appears after `cfs kit update`.
+# spec_coverage_checklist = "{cf-studio-path}/config/kits/sdlc/codebase/spec-coverage-checklist.md"
 min_coverage    = "100"
 min_granularity = "0.5"
 # coding_guidelines = "docs/coding-guidelines.md"
@@ -26,22 +27,22 @@ min_granularity = "0.5"
 
 [[prompts]]
 description = "PRD Review"
-prompt_file = "{cf-studio-path}/.gen/kits/sdlc/scripts/prompts/pr/prd-review.md"
-checklist   = "{cf-studio-path}/.gen/kits/sdlc/artifacts/PRD/checklist.md"
-template    = "{cf-studio-path}/.gen/kits/sdlc/artifacts/PRD/template.md"
+prompt_file = "{cf-studio-path}/config/kits/sdlc/scripts/prompts/pr/prd-review.md"
+checklist   = "{cf-studio-path}/config/kits/sdlc/artifacts/PRD/checklist.md"
+template    = "{cf-studio-path}/config/kits/sdlc/artifacts/PRD/template.md"
 # project_domain = ""
 # existing_artifacts = "docs/prd/"
 
 [[prompts]]
 description = "ADR Review"
-prompt_file = "{cf-studio-path}/.gen/kits/sdlc/scripts/prompts/pr/adr-review.md"
-checklist   = "{cf-studio-path}/.gen/kits/sdlc/artifacts/ADR/checklist.md"
-template    = "{cf-studio-path}/.gen/kits/sdlc/artifacts/ADR/template.md"
+prompt_file = "{cf-studio-path}/config/kits/sdlc/scripts/prompts/pr/adr-review.md"
+checklist   = "{cf-studio-path}/config/kits/sdlc/artifacts/ADR/checklist.md"
+template    = "{cf-studio-path}/config/kits/sdlc/artifacts/ADR/template.md"
 # existing_artifacts = "docs/adr/"
 
 [[prompts]]
 description = "Design Review"
-prompt_file = "{cf-studio-path}/.gen/kits/sdlc/scripts/prompts/pr/design-review.md"
-checklist   = "{cf-studio-path}/.gen/kits/sdlc/artifacts/DESIGN/checklist.md"
-template    = "{cf-studio-path}/.gen/kits/sdlc/artifacts/DESIGN/template.md"
+prompt_file = "{cf-studio-path}/config/kits/sdlc/scripts/prompts/pr/design-review.md"
+checklist   = "{cf-studio-path}/config/kits/sdlc/artifacts/DESIGN/checklist.md"
+template    = "{cf-studio-path}/config/kits/sdlc/artifacts/DESIGN/template.md"
 # architecture = "docs/architecture/"

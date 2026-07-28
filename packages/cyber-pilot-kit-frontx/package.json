@@ -1,7 +1,7 @@
 {
   "name": "@gears-frontx/cyber-pilot-kit-frontx",
   "version": "0.3.0-alpha.0",
-  "description": "FrontX AI Tooling Kit — ecosystem-level AI capabilities for Cypilot agents working in FrontX projects",
+  "description": "FrontX AI Tooling Kit — ecosystem-level AI capabilities for AI agents working in FrontX projects",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -15,9 +15,10 @@
   },
   "files": [
     "dist",
-    "manifest.toml",
+    ".cf-studio-kit.toml",
     "SKILL.md",
     "AGENTS.md",
+    "README.md",
     "guidelines"
   ],
   "scripts": {
@@ -38,9 +39,12 @@
   },
   "keywords": [
     "frontx",
-    "cypilot",
+    "cf-studio",
     "ai-kit",
     "ecosystem"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "smol-toml": "^1.6.1"
+  }
 }

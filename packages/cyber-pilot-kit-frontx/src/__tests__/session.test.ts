@@ -12,13 +12,33 @@ const validRegistration: KitRegistration = {
   source: 'npm:@gears-frontx/cyber-pilot-kit-frontx',
 };
 
-const validManifestContent = JSON.stringify({
-  manifest: { version: '0.1.0', name: 'cyber-pilot-kit-frontx', description: 'FrontX AI Tooling Kit' },
-  resources: [
-    { id: 'frontx_skill', source: 'SKILL.md', default_path: 'SKILL.md', type: 'file', user_modifiable: false },
-    { id: 'frontx_agents', source: 'AGENTS.md', default_path: 'AGENTS.md', type: 'file', user_modifiable: false },
-  ],
-});
+// Real TOML, in the canonical `.cf-studio-kit.toml` shape. This fixture used to
+// be `JSON.stringify(...)`, so `loadKitSession` was only ever exercised against
+// JSON — and its `JSON.parse` call rejected every genuine manifest as malformed.
+const validManifestContent = `
+manifest_version = "1.0"
+
+[[kits]]
+slug = "cyber-pilot-kit-frontx"
+name = "FrontX AI Tooling Kit"
+version = "0.3.0-alpha.0"
+
+[[kits.resources]]
+id = "frontx_skill"
+kind = "skill"
+source = "SKILL.md"
+install_path = "SKILL.md"
+type = "file"
+user_modifiable = false
+
+[[kits.resources]]
+id = "frontx_agents"
+kind = "rule"
+source = "AGENTS.md"
+install_path = "AGENTS.md"
+type = "file"
+user_modifiable = false
+`;
 
 describe('KitLifecycleState', () => {
   // inst-transition-packaged-to-installed / inst-transition-installed-to-active / inst-transition-active-to-installed / inst-transition-installed-to-packaged
@@ -48,6 +68,14 @@ describe('loadKitSession', () => {
     );
     expect(result.capabilities).toHaveLength(0);
     expect(result.errors.length).toBeGreaterThan(0);
+  });
+
+  // Regression: a well-formed TOML manifest must not be reported as malformed.
+  // `loadKitSession` parsed with JSON.parse, so every valid manifest failed here.
+  it('well-formed TOML manifest is not reported malformed', async () => {
+    const result = await loadKitSession(validRegistration, async () => validManifestContent, async () => true);
+    expect(result.errors).toEqual([]);
+    expect(result.state).toBe(KitLifecycleState.SESSION_ACTIVE);
   });
 
   // inst-session-start / inst-locate-registration / inst-read-manifest / inst-invoke-validation / inst-for-each-resource / inst-resolve-resource-path / inst-else-resource-present / inst-expose-resource / inst-return-session-active

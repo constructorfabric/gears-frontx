@@ -1,0 +1,48 @@
+# Canonical Constructor Studio kit manifest for the FrontX AI Tooling Kit.
+#
+# Replaces the legacy Cypilot `manifest.toml`. Generated with
+# `cfs kit normalize --from manifest` on studio engine v1.6.2, then
+# hand-corrected for `name` and `version` (see below).
+#
+# Resource identifiers carry the mandatory `frontx_` prefix (KIT-1,
+# cpt-frontx-adr-ai-tooling-framework-packaging).
+
+manifest_version = "1.0"
+
+[[kits]]
+slug = "cyber-pilot-kit-frontx"
+name = "FrontX AI Tooling Kit"
+version = "0.3.0-alpha.0"
+
+[[kits.resources]]
+id = "frontx_skill"
+kind = "skill"
+source = "SKILL.md"
+install_path = "SKILL.md"
+type = "file"
+user_modifiable = false
+public = true
+
+[[kits.resources]]
+id = "frontx_agents"
+kind = "rule"
+source = "AGENTS.md"
+install_path = "AGENTS.md"
+type = "file"
+user_modifiable = false
+public = true
+
+# No `public` key here, deliberately — do not add one to match the resources
+# above. Studio permits `public = true` only for the `skill`, `agent`, and `rule`
+# kinds; on a `directory` resource it is a hard validation error:
+#   Resource 'frontx_guidelines': public=true is only allowed for skill, agent,
+#   and rule resources
+# The guidelines are still installed and readable; `public` controls only whether
+# `generate-agents` surfaces a resource to agent hosts as its own entry point.
+[[kits.resources]]
+id = "frontx_guidelines"
+kind = "directory"
+source = "guidelines/"
+install_path = "guidelines/"
+type = "directory"
+user_modifiable = false

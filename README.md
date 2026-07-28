@@ -167,17 +167,21 @@ within a project. It bundles no templates of its own.
 
 ### AI Tooling
 
-The AI Tooling Framework is delivered as a **Cypilot kit**
+The AI Tooling Framework is delivered as a **Constructor Studio kit**
 (`cyber-pilot-kit-frontx`) — the kit *is* the framework's public surface. It is
-distributed as a GitHub tarball and installed/updated through the **Cypilot
-CLI** (`cpt`), not the `frontx` CLI and not as an npm dependency:
+installed/updated through the **Constructor Studio CLI** (`cfs`), not the
+`frontx` CLI and not as an npm dependency. The kit lives inside this monorepo,
+so it installs from the repository subdirectory:
 
 ```bash
-cpt kit install github:gears-frontx/cyber-pilot-kit-frontx
+cfs kit install git/https://github.com/constructorfabric/gears-frontx//packages/cyber-pilot-kit-frontx
+
+# or, from a local checkout of this repository
+cfs kit install path/packages/cyber-pilot-kit-frontx
 ```
 
 On install, its `frontx_`-prefixed resources (KIT-1) register in the project's
-`.cypilot/config/core.toml` and become available to agents at session start —
+`.cf-studio/config/core.toml` and become available to agents at session start —
 no training step. As shipped today the kit provides three capabilities:
 
 - **Ecosystem fluency** — a top-level skill (`SKILL.md`), navigation rules (`AGENTS.md`), and boundary guidelines that let agents reason correctly about MFEs, extension domains, source-specs, and the ecosystem/template boundary.

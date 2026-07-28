@@ -3,7 +3,7 @@ export { loadKitSession, KitLifecycleState } from './session.js';
 export { createFsResourceBodyReader } from './resource-body-reader.js';
 export type {
   KitManifest,
-  KitManifestMeta,
+  KitDefinition,
   KitResourceEntry,
   ValidationViolation,
   ValidationResult,

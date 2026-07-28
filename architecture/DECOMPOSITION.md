@@ -38,7 +38,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 18 work-package features
 - **Pillar 3 — AI Tooling** (`cyber-pilot-kit-frontx`): F15 kit packaging & base content, F16 template AI-extension contract & discovery/activation, F17 AI-driven upgrade orchestration.
 - **Cross-cutting:** F1 ecosystem distribution & versioning policy governs all published artifacts.
 
-**Coverage and exclusivity.** Every DESIGN component (14), principle (7), constraint (18), and sequence (4), and every PRD functional (25) and non-functional (4) requirement, is assigned to at least one feature; `cpt validate` enforces the traceability links, and the DECOMPOSITION checklist's COV rule requires 100% coverage of the strict DESIGN elements. Each strict **component, constraint, and sequence** is owned by exactly one feature, with one explicit exception: the three package-anchor components `cpt-frontx-component-mfe-runtime`, `cpt-frontx-component-cli`, and `cpt-frontx-component-ai-tooling-kit` are each realized by several cohesive features and are therefore shared across those features, while each of their internal sub-components (for example `cpt-frontx-component-cli-template-resolver`, `cpt-frontx-component-cli-prepublish-validator`, `cpt-frontx-component-ai-base-kit`, `cpt-frontx-component-ai-extension-host`, `cpt-frontx-component-ai-upgrade-orchestration`) is owned by exactly one feature. The shared-component reason is the cohesion/coupling rule: these components decompose into multiple high-cohesion, loosely-coupled features that each own a distinct slice of the component, so listing the component reference in every owning feature preserves coverage without forcing an artificial single-feature monolith. **Design principles are not subject to single-feature exclusivity** — like PRD `fr`/`nfr` requirements they are cross-cutting and may appear in more than one feature's coverage (for example `cpt-frontx-principle-agnostic-core` across F2/F4/F6, `cpt-frontx-principle-opaque-type-substrate` across F2/F3, `cpt-frontx-principle-default-deny-admission` across F7/F8, and `cpt-frontx-principle-template-agnostic-tooling` across F10/F15), because a principle constrains several features by nature. PRD `fr`/`nfr` requirements are likewise covered transitively and may appear in more than one feature's Requirements Covered.
+**Coverage and exclusivity.** Every DESIGN component (14), principle (7), constraint (19), and sequence (4), and every PRD functional (26) and non-functional (4) requirement, is assigned to at least one feature; `cfs validate` enforces the traceability links, and the DECOMPOSITION checklist's COV rule requires 100% coverage of the strict DESIGN elements. Each strict **component, constraint, and sequence** is owned by exactly one feature, with one explicit exception: the three package-anchor components `cpt-frontx-component-mfe-runtime`, `cpt-frontx-component-cli`, and `cpt-frontx-component-ai-tooling-kit` are each realized by several cohesive features and are therefore shared across those features, while each of their internal sub-components (for example `cpt-frontx-component-cli-template-resolver`, `cpt-frontx-component-cli-prepublish-validator`, `cpt-frontx-component-ai-base-kit`, `cpt-frontx-component-ai-extension-host`, `cpt-frontx-component-ai-upgrade-orchestration`) is owned by exactly one feature. The shared-component reason is the cohesion/coupling rule: these components decompose into multiple high-cohesion, loosely-coupled features that each own a distinct slice of the component, so listing the component reference in every owning feature preserves coverage without forcing an artificial single-feature monolith. **Design principles are not subject to single-feature exclusivity** — like PRD `fr`/`nfr` requirements they are cross-cutting and may appear in more than one feature's coverage (for example `cpt-frontx-principle-agnostic-core` across F2/F4/F6, `cpt-frontx-principle-opaque-type-substrate` across F2/F3, `cpt-frontx-principle-default-deny-admission` across F7/F8, and `cpt-frontx-principle-template-agnostic-tooling` across F10/F15), because a principle constrains several features by nature. PRD `fr`/`nfr` requirements are likewise covered transitively and may appear in more than one feature's Requirements Covered.
 
 ## 2. Entries
 
@@ -723,7 +723,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 18 work-package features
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-ai-kit-packaging`
 
-- **Purpose**: Ship the AI Tooling Framework as a Cypilot kit (`cyber-pilot-kit-frontx`) with a declarative manifest, every resource identifier `frontx_`-prefixed, carrying solution-agnostic base ecosystem capabilities (skills, workflows, guidelines, reference artifacts) available to agents at session start — and no solution-specific content.
+- **Purpose**: Ship the AI Tooling Framework as a Constructor Studio kit (`cyber-pilot-kit-frontx`) with a declarative manifest, every resource identifier `frontx_`-prefixed, carrying solution-agnostic base ecosystem capabilities (skills, workflows, guidelines, reference artifacts) available to agents at session start — and no solution-specific content.
 
 - **Depends On**: None
 
@@ -732,7 +732,8 @@ This decomposition breaks the FROZEN FrontX DESIGN into 18 work-package features
   - `frontx_`-prefixed resource identifiers (KIT-1).
   - Base ecosystem AI capabilities at session start.
   - Solution-agnostic base / no solution content split.
-  - Install through the Cypilot CLI.
+  - Install through the AI Tooling CLI.
+  - Declared skill/rule resource surface for public entry points, with applicability metadata (KIT-4).
 
 - **Out of scope**:
   - Template-extension contract + discovery/activation (F16).
@@ -743,6 +744,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 18 work-package features
   - [x] `p1` - `cpt-frontx-fr-ai-session-start-knowledge`
   - [x] `p1` - `cpt-frontx-fr-ai-frontx-skills`
   - [x] `p1` - `cpt-frontx-fr-ai-tooling-template-agnostic`
+  - [x] `p1` - `cpt-frontx-fr-ai-agent-skill-resources`
 
 - **Design Principles Covered**:
 
@@ -752,6 +754,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 18 work-package features
 
   - [x] `p1` - `cpt-frontx-constraint-kit-prefixed-resource-ids`
   - [x] `p1` - `cpt-frontx-constraint-kit-zero-solution-content`
+  - [x] `p2` - `cpt-frontx-constraint-kit-declared-skill-rule-resources`
 
 - **Domain Model Entities**:
   - Kit

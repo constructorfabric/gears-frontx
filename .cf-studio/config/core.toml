@@ -318,6 +318,21 @@ freshness = "fresh"
 [kits.sdlc.local_metadata]
 conf_version = "1.0.0"
 
+[kits.cyber-pilot-kit-frontx]
+format = "CFS"
+path = "../packages/cyber-pilot-kit-frontx"
+install_mode = "register"
+version = "0.3.0-alpha.0"
+tool_risk_fingerprint = "3bdcd30d3029ad80e74c76eb0b57d80ad617a51191eb9d9307b2921c65f5dc16"
+
+[kits.cyber-pilot-kit-frontx.source_provenance]
+source_type = "local_path"
+resolver_mode = "register"
+resolution_basis = "local_path"
+effective_source = "../packages/cyber-pilot-kit-frontx"
+verified = "local"
+freshness = "local"
+
 [install]
 version_source = "project_config"
 runtime_tracking = "ignored"

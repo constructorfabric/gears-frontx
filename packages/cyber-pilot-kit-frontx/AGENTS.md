@@ -1,3 +1,7 @@
+---
+description: "Agent navigation rules for FrontX ecosystem package boundaries, CLI, and MFEs."
+---
+
 # FrontX AI Tooling Kit — Agent Navigation Rules
 
 ## Package Boundaries (always enforce)

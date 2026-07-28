@@ -31,4 +31,4 @@ Provides AI agents with ecosystem-level fluency for FrontX projects.
 - **Extension domain**: capability grouping that governs which MFEs may mount in a given area.
 - **Source-spec**: `protocol://host/path#ref` URI that the CLI resolves to a template at runtime.
 - **Template**: an external project-type deliverable (not bundled into core packages).
-- **Cypilot kit**: declarative content bundle installable via `cpt kit install`.
+- **Constructor Studio kit**: declarative content bundle installable via `cfs kit install`.

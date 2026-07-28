@@ -37,7 +37,7 @@
 
 ### 1.1 Purpose
 
-The FrontX Ecosystem exists to enable AI-driven creation of frontend projects. It gives teams a product set in which AI agents can reliably scaffold, extend, and evolve frontend projects by targeting stable, narrow, explicitly-contracted product capabilities instead of improvising against an open-ended codebase. Templates define what any given project becomes; the platform provides the lifecycle and runtime mechanisms for assembling, extending, and evolving a project from them. The ecosystem delivers this through three co-equal pillars: a **Core Framework** that makes an application runtime-extensible by composable microfrontends over a substrate for typed entities; a **CLI** that owns the full lifecycle of assembling and evolving a repository from templates — installing, listing, updating, and validating templates, applying a template to seed a new repository or extend an existing one, assembling a repository from multiple templates while detecting and preventing conflicting assembly, recording each applied template's provenance independently, and upgrading each applied template independently to a newer version; and an **AI Tooling Framework** that equips AI agents with ecosystem-wide capabilities, lets templates contribute their own AI capabilities, activates those capabilities automatically in consuming projects, and orchestrates AI-driven template upgrades.
+The FrontX Ecosystem exists to enable AI-driven creation of frontend projects. It gives teams a product set in which AI agents can reliably scaffold, extend, and evolve frontend projects by targeting stable, narrow, explicitly-contracted product capabilities instead of improvising against an open-ended codebase. Templates define what any given project becomes; the platform provides the lifecycle and runtime mechanisms for assembling, extending, and evolving a project from them. The ecosystem delivers this through three co-equal pillars: a **Core Framework** that makes an application runtime-extensible by composable microfrontends over a substrate for typed entities; a **CLI** that owns the full lifecycle of assembling and evolving a repository from templates — installing, listing, updating, and validating templates, applying a template to seed a new repository or extend an existing one, assembling a repository from multiple templates while detecting and preventing conflicting assembly, recording each applied template's provenance independently, and upgrading each applied template independently to a newer version; and an **AI Tooling Framework** that equips AI agents with ecosystem-wide capabilities, declares every capability it offers to AI agents so any agent host can find and use it without per-host configuration, lets templates contribute their own AI capabilities, activates those capabilities automatically in consuming projects, and orchestrates AI-driven template upgrades.
 
 Together these pillars let an AI agent carry a frontend project from first scaffold through ongoing extension and version upgrades, while the human Template Developers and Project Developers steering the work stay in control of intent and review. The product's value is measured by how predictably and safely AI agents and their human collaborators can produce and maintain real frontend applications on top of it.
 
@@ -78,6 +78,8 @@ Across both groups, three needs recur: stable, narrow contracts an AI agent can 
 | upgrade | Applying a newer version of an already-applied template to a repository, delivered as a reviewable change set; each applied template upgrades independently. |
 | update | Installation of a newer template version locally, without applying it to any repository. |
 | template-bundled AI extension | An AI capability — a skill, workflow, guideline, or reference artifact — that ships inside a template and activates when that template is installed. |
+| declared agent resource | A capability unit the AI Tooling Framework publishes in its manifest, carrying its own identity and the metadata that states when it applies, so that a project and the AI agents working in it can account for every agent-facing capability present. |
+| AI agent host | The coding-agent environment an AI agent works in, which discovers the declared agent resources present in a project and activates them for the agent. Third-party to the product. |
 | AI Tooling Framework | The Pillar 3 component that provides base ecosystem AI capabilities, the extension contract templates use to bundle AI extensions, and the discovery-and-activation surface that turns installed-template extensions into available capabilities for AI agents. |
 
 ## 2. Actors
@@ -100,20 +102,29 @@ Across both groups, three needs recur: stable, narrow contracts an AI agent can 
 
 ### 2.2 System Actors
 
-#### Cypilot CLI
+#### AI Tooling CLI
 
-**ID**: `cpt-frontx-actor-cypilot-cli`
+**ID**: `cpt-frontx-actor-ai-tooling-cli`
 
 **Role**: The AI-tooling command-line integration. The FrontX AI Tooling Framework is installed into a consuming project through it, and AI agents discover the ecosystem's skills, workflows, and guidelines through it.
 **Direction**: Inbound (installs the framework into a consuming project).
 **Availability**: Required at template-project install and upgrade time and during AI-driven development sessions.
 
+#### AI Agent Host
+
+**ID**: `cpt-frontx-actor-ai-agent-host`
+
+**Role**: The coding-agent environment an AI agent works in. It discovers the framework's declared resources in a consuming project and activates them for the agent, so the framework's capabilities become usable without per-host configuration.
+**Direction**: Inbound (consumes the declared resources installed into a consuming project).
+**Conformance expectation**: Honors the discovery obligations of the kit-installation contract (`cpt-frontx-contract-kit-installation`).
+**Availability**: Third-party, outside the product's control; required during AI-driven development sessions.
+
 #### GitHub
 
 **ID**: `cpt-frontx-actor-github`
 
-**Role**: Public source registry that hosts the templates published by Template Developers, and hosts the FrontX AI Tooling Framework. Both the FrontX CLI and the Cypilot CLI fetch from it by versioned reference.
-**Direction**: Outbound (publications flow to the registry); inbound (the CLI and Cypilot CLI fetch from the registry into a consuming project).
+**Role**: Public source registry that hosts the templates published by Template Developers, and hosts the FrontX AI Tooling Framework. Both the FrontX CLI and the AI Tooling CLI fetch from it by versioned reference.
+**Direction**: Outbound (publications flow to the registry); inbound (the CLI and AI Tooling CLI fetch from the registry into a consuming project).
 **Availability**: Required at install and upgrade time.
 
 #### Package Registry
@@ -163,6 +174,7 @@ None.
 #### AI Tooling Framework (Pillar 3)
 
 - FrontX-specific skills available to AI agents, such as creating microfrontends, validating templates, generating type definitions, and other ecosystem-scoped operations.
+- Every capability the framework offers to AI agents is declared, with its own identity and a statement of when it applies, so any AI agent host can find and use it without per-host configuration and nothing agent-facing arrives undeclared.
 - Template-bundled AI extensions — template-specific skills, workflows, guidelines, and reference artifacts that operate alongside the ecosystem's base AI capabilities.
 - Automatic discovery and activation of installed-template AI extensions in consuming projects, without manual wiring by the developer.
 - AI-driven project-upgrade orchestration that complements direct CLI invocation, including review gates, migration analyses, and downstream impact assessments.
@@ -392,6 +404,16 @@ The system **MUST** make FrontX-specific skills available to AI agents working i
 
 **Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
 
+#### Skills packaged as declared agent-skill resources
+
+- [x] `p1` - **ID**: `cpt-frontx-fr-ai-agent-skill-resources`
+
+The AI Tooling Framework **MUST** expose every capability it offers to AI agents through a declared agent resource that carries a defined identity and states when it applies. Each capability the framework offers as an invocable entry point **MUST** be discoverable and invocable by any AI agent host honouring the kit-installation contract (`cpt-frontx-contract-kit-installation`), without per-host configuration by the developer. The framework **MUST NOT** deliver any agent-facing capability into a consuming project undeclared.
+
+**Rationale**: Declared agent resources give every AI agent host a uniform way to find and use the framework's capabilities without per-host configuration, and leave nothing agent-facing in a project that the project cannot account for.
+
+**Actors**: `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-ai-agent-host`, `cpt-frontx-actor-ai-tooling-cli`
+
 #### Template-bundled AI extensions
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-ai-template-bundle-extensions`
@@ -410,7 +432,7 @@ When a template is installed in a project, the system **MUST** discover the temp
 
 **Rationale**: Delivers zero-configuration extensibility, so template-supplied AI capabilities become available the moment a template is installed.
 
-**Actors**: `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-cypilot-cli`
+**Actors**: `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-ai-tooling-cli`
 
 #### AI-driven project-upgrade orchestration
 
@@ -541,7 +563,7 @@ The system **MUST** place no architectural upper limit on the number of microfro
 
 **Stability**: unstable
 
-**Description**: The AI Tooling Framework provides FrontX-specific skills to AI agents working in a project, lets Template Developers bundle template-specific AI extensions, automatically discovers and activates installed-template AI extensions for AI agents in a consuming project, supports AI-driven orchestration of template upgrades, and makes ecosystem-knowledge artifacts available to AI agents at session start, while itself shipping zero template-specific content (anchors capabilities C3-2, C3-3, C3-4, C3-5, C3-6, C3-7).
+**Description**: The AI Tooling Framework provides FrontX-specific skills to AI agents working in a project, presents its agent-facing capabilities as a surface of declared agent resources that any conforming AI agent host can discover and invoke, lets Template Developers bundle template-specific AI extensions, automatically discovers and activates installed-template AI extensions for AI agents in a consuming project, supports AI-driven orchestration of template upgrades, and makes ecosystem-knowledge artifacts available to AI agents at session start, while itself shipping zero template-specific content (anchors capabilities C3-2, C3-3, C3-4, C3-5, C3-6, C3-7, C3-8).
 
 **Breaking Change Policy**: A major version bump is required for any incompatible change to the component's public surface; minor and patch versions preserve backward compatibility.
 
@@ -583,7 +605,7 @@ The system **MUST** place no architectural upper limit on the number of microfro
 
 **Direction**: required from client
 
-**Description**: The AI Tooling Framework is installed into a consuming project through the AI-tooling CLI integration (`cpt-frontx-actor-cypilot-cli`), which is how AI agents come to have the framework's skills and the activated template extensions available.
+**Description**: The AI Tooling Framework is installed into a consuming project through the AI-tooling CLI integration (`cpt-frontx-actor-ai-tooling-cli`), which is how AI agents come to have the framework's skills and the activated template extensions available. Installation materializes the framework's declared agent resources into the project and surfaces its public entry points, so that an AI agent host (`cpt-frontx-actor-ai-agent-host`) honouring this contract can discover and invoke them without bespoke wiring; this discovery obligation is what `cpt-frontx-fr-ai-agent-skill-resources` relies on.
 
 **Compatibility**: The installation contract remains compatible across minor and patch versions; breaking changes follow `cpt-frontx-nfr-evolvability`.
 
@@ -723,7 +745,7 @@ The system **MUST** place no architectural upper limit on the number of microfro
 ## 9. Acceptance Criteria
 
 - [ ] AI agents can drive end-to-end FrontX-project creation: install a template, assemble a repository from one or more templates, and operate on the resulting repository with ecosystem-aware AI capabilities — verifiable via `cpt-frontx-usecase-publish-composed-project-template`, `cpt-frontx-usecase-scaffold-composed-project`, and `cpt-frontx-usecase-ai-driven-template-upgrade`.
-- [ ] All three pillars deliver capabilities at the user-capability level: §5 contains functional requirements for all 25 capabilities across the three pillars (Core Framework: 8; CLI: 11; AI Tooling Framework: 6) — verifiable via the §5 inventory.
+- [ ] All three pillars deliver capabilities at the user-capability level: §5 contains functional requirements for all 26 capabilities across the three pillars (Core Framework: 8; CLI: 11; AI Tooling Framework: 7) — verifiable via the §5 inventory.
 - [ ] Pillar balance is maintained in the §5 distribution: each pillar has at least 5 functional requirements and the maximum-to-minimum ratio is at most 2 — verifiable by counting §5 entries per pillar.
 - [ ] All four public components have a §7.1 entry with a stability level and a breaking-change policy — verifiable via the §7.1 enumeration.
 - [ ] All six external integration contracts are documented with party, direction, and a compatibility commitment in §7.2 — verifiable via the §7.2 enumeration.
@@ -736,7 +758,7 @@ The system **MUST** place no architectural upper limit on the number of microfro
 |------------|-------------|-------------|
 | GitHub (source registry, `cpt-frontx-actor-github`) | Public source registry hosting the templates and the FrontX AI Tooling Framework; referenced by versioned source-spec contract at install and upgrade time. | p1 |
 | npm-compatible package registry (`cpt-frontx-actor-package-registry`) | Package registry hosting the product's published packages; consumed by applications at install time using their chosen npm-compatible package manager. | p1 |
-| Cypilot CLI (`cpt-frontx-actor-cypilot-cli`) | The AI-tooling command-line integration through which the AI Tooling Framework is installed into consuming projects and AI agents discover the ecosystem's skills, workflows, and guidelines. | p1 |
+| AI Tooling CLI (`cpt-frontx-actor-ai-tooling-cli`) | The AI-tooling command-line integration through which the AI Tooling Framework is installed into consuming projects and AI agents discover the ecosystem's skills, workflows, and guidelines. | p1 |
 | JavaScript / TypeScript runtime | The runtime environment on which the platform and its consuming applications execute. | p1 |
 | Type-definition specification | The specification language the product uses to describe and validate entity shapes; resolved generically at the product-requirements level so the contract, not any single specification, is what the product depends on. | p1 |
 

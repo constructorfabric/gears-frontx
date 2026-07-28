@@ -43,7 +43,7 @@ The FrontX ecosystem is delivered as a set of independently published, independe
 
 The technical approach centers on an agnostic, narrowly contracted substrate. The Core Framework reasons about microfrontends, type identifiers, and extension domains through injected ports and opaque identifiers rather than concrete formats or solution vocabulary, so an application composes against a stable surface regardless of its UI stack, type-definition specification, or layout vocabulary (`cpt-frontx-fr-ui-framework-agnostic`, `cpt-frontx-fr-mfe-runtime-registration`). The runtime admits units only after type validation, places them into governed extension domains under explicit cardinality and admission rules, mediates host-microfrontend communication through a narrow capability bridge, and isolates loaded units - realizing a default-deny security posture (`cpt-frontx-fr-mfe-type-validation`, `cpt-frontx-nfr-security`). The CLI resolves templates by versioned source-spec at runtime and bundles none, keeping the command surface fully decoupled from the content it scaffolds and applying project upgrades as reviewable, non-destructive change sets (`cpt-frontx-fr-cli-template-install`, `cpt-frontx-fr-cli-project-upgrade-changeset`). The AI Tooling Framework ships only base ecosystem capabilities and gains template-specific expertise through bundled extensions discovered and activated automatically (`cpt-frontx-fr-ai-frontx-skills`, `cpt-frontx-fr-ai-extension-discovery-activation`).
 
-The system context is a composed FrontX application running in the browser, whose host loads independently developed microfrontends at runtime. External boundaries are: the consuming application and its microfrontends (which depend on the Core Framework packages and choose their own UI framework), a GitHub-hosted source registry and an npm package registry that distribute templates and packages, the back-end services that microfrontends call through the API Protocol Surface, and the Cypilot CLI environment that installs and activates the AI Tooling kit. Within these boundaries the architecture satisfies the PRD by allocating each capability to exactly one owning artifact and placing no architectural ceiling on the microfrontends or type definitions an application integrates (`cpt-frontx-fr-no-architectural-ceiling`, `cpt-frontx-nfr-scalability-ceiling`).
+The system context is a composed FrontX application running in the browser, whose host loads independently developed microfrontends at runtime. External boundaries are: the consuming application and its microfrontends (which depend on the Core Framework packages and choose their own UI framework), a GitHub-hosted source registry and an npm package registry that distribute templates and packages, the back-end services that microfrontends call through the API Protocol Surface, and the AI Tooling CLI environment that installs and activates the AI Tooling kit. Within these boundaries the architecture satisfies the PRD by allocating each capability to exactly one owning artifact and placing no architectural ceiling on the microfrontends or type definitions an application integrates (`cpt-frontx-fr-no-architectural-ceiling`, `cpt-frontx-nfr-scalability-ceiling`).
 
 ### 1.2 Architecture Drivers
 
@@ -76,7 +76,8 @@ Requirements that significantly influence architecture decisions. Each driver be
 | `cpt-frontx-fr-ai-template-bundle-extensions` | Templates carry AI bundles conforming to the template AI extension contract (`cpt-frontx-adr-template-ai-extension-contract`). |
 | `cpt-frontx-fr-ai-extension-discovery-activation` | Installed-template extensions are discovered and activated without manual wiring (`cpt-frontx-adr-extension-discovery-activation`). |
 | `cpt-frontx-fr-ai-upgrade-orchestration` | AI-driven upgrade workflows orchestrate and enrich the CLI change-set engine (`cpt-frontx-adr-ai-driven-upgrade-orchestration`). |
-| `cpt-frontx-fr-ai-session-start-knowledge` | Ecosystem-knowledge artifacts are packaged as a Cypilot kit available at session start (`cpt-frontx-adr-ai-tooling-framework-packaging`). |
+| `cpt-frontx-fr-ai-session-start-knowledge` | Ecosystem-knowledge artifacts are packaged as a Constructor Studio kit available at session start (`cpt-frontx-adr-ai-tooling-framework-packaging`). |
+| `cpt-frontx-fr-ai-agent-skill-resources` | Kit packaging declares every public agent entry point in the kit manifest as a `skill` resource (invocable entry points) or a `rule` resource (always-loaded navigation rules), ships supporting knowledge content as declared non-public resources, and carries each capability's applicability metadata in the resource document itself, surfaced to any conforming agent host at install — nothing agent-facing undeclared (`cpt-frontx-constraint-kit-declared-skill-rule-resources`, `cpt-frontx-adr-ai-tooling-framework-packaging`). |
 | `cpt-frontx-fr-ai-tooling-template-agnostic` | The framework ships no solution-specific AI content; such content arrives only via template bundles (`cpt-frontx-adr-solution-ai-content-placement`). |
 
 #### NFR Allocation
@@ -133,7 +134,7 @@ Pillar 2 — CLI:
 
 Pillar 3 — AI Tooling:
 
-* `cpt-frontx-adr-ai-tooling-framework-packaging` — Packages base AI capabilities as a Cypilot kit with prefixed resource identifiers.
+* `cpt-frontx-adr-ai-tooling-framework-packaging` — Packages base AI capabilities as a Constructor Studio kit with prefixed resource identifiers.
 * `cpt-frontx-adr-template-ai-extension-contract` — Defines the extension contract a template's AI bundle conforms to.
 * `cpt-frontx-adr-extension-discovery-activation` — Discovers and activates installed-template AI extensions without manual wiring.
 * `cpt-frontx-adr-solution-ai-content-placement` — Separates base ecosystem AI content from solution-specific content.
@@ -142,7 +143,7 @@ Pillar 3 — AI Tooling:
 
 ### 1.3 Architecture Layers
 
-The ecosystem layers run from the agnostic runtime substrate up to the tooling that drives the lifecycle around it. The present instance of the delivered set is four npm packages plus one Cypilot kit (non-binding; the durable architecture is the per-concern layering, not this count). Each layer's technology choices align with the §2.2 boundary constraints and the NFRs: the runtime substrate stays UI-framework- and type-format-agnostic (MFES-1..MFES-5) so it supports any UI stack, and the type-system layer is the only Core Framework layer permitted a concrete type-definition specification (GTS-PLUGIN-1, GTS-PLUGIN-2).
+The ecosystem layers run from the agnostic runtime substrate up to the tooling that drives the lifecycle around it. The present instance of the delivered set is four npm packages plus one Constructor Studio kit (non-binding; the durable architecture is the per-concern layering, not this count). Each layer's technology choices align with the §2.2 boundary constraints and the NFRs: the runtime substrate stays UI-framework- and type-format-agnostic (MFES-1..MFES-5) so it supports any UI stack, and the type-system layer is the only Core Framework layer permitted a concrete type-definition specification (GTS-PLUGIN-1, GTS-PLUGIN-2).
 
 ```mermaid
 graph TD
@@ -165,7 +166,7 @@ graph TD
 | Layer | Responsibility | Technology |
 |-------|---------------|------------|
 | Presentation | Application and microfrontend UI; chosen freely per unit, not constrained by the platform | Any UI framework (React, Vue, Svelte, vanilla JavaScript); TypeScript |
-| Application (Tooling) | Template and repository lifecycle (install, apply, assemble, upgrade) and AI-agent orchestration over it | Node.js CLI (`@gears-frontx/cli`); Cypilot kit (`cyber-pilot-kit-frontx`); GitHub source registry; npm package registry |
+| Application (Tooling) | Template and repository lifecycle (install, apply, assemble, upgrade) and AI-agent orchestration over it | Node.js CLI (`@gears-frontx/cli`); Constructor Studio kit (`cyber-pilot-kit-frontx`); GitHub source registry; npm package registry |
 | Domain (Type System) | Concrete type-definition provider behind the runtime's opaque type-substrate port; infrastructure schemas and validation | TypeScript type-system plugin (`@gears-frontx/gts-plugin`) over a concrete type-definition specification |
 | Infrastructure (Runtime substrate) | Agnostic registration, on-demand loading, extension-domain governance, mediation, isolation, and protocol-separated service access | TypeScript runtime (`@gears-frontx/mfes`) with module-federation runtime and lazy import; API Protocol Surface (`@gears-frontx/api`) with a transport peer dependency |
 
@@ -357,7 +358,7 @@ A repository carries one provenance record per applied template, each capturing 
 
 - [x] `p2` - **ID**: `cpt-frontx-constraint-kit-prefixed-resource-ids`
 
-Every resource identifier in the AI Tooling kit (`cyber-pilot-kit-frontx`) carries the `frontx_` prefix, so the kit's contributed skills, workflows, and reference artifacts are unambiguously namespaced within a consuming project's Cypilot environment.
+Every resource identifier in the AI Tooling kit (`cyber-pilot-kit-frontx`) carries the `frontx_` prefix, so the kit's contributed skills, workflows, and reference artifacts are unambiguously namespaced within a consuming project's Constructor Studio environment.
 
 **ADRs**: `cpt-frontx-adr-ai-tooling-framework-packaging`
 
@@ -376,6 +377,14 @@ The AI Tooling Framework (`cyber-pilot-kit-frontx`) ships no solution-specific A
 The AI Tooling Framework's upgrade workflows orchestrate and enrich the CLI's single change-set engine; they contain no independent change-set or project-mutation logic of their own. Change computation and application remain owned by the CLI engine (CLI-3), and the framework adds only review gating, change-impact analysis, and downstream-effect assessment on top of it. CI-enforceable invariant: the framework holds no code path that computes or applies project changes independently of the CLI change-set engine.
 
 **ADRs**: `cpt-frontx-adr-ai-driven-upgrade-orchestration`, `cpt-frontx-adr-ai-tooling-internal-decomposition`
+
+#### KIT-4 — Declared skill and rule resources in the AI Tooling kit
+
+- [x] `p2` - **ID**: `cpt-frontx-constraint-kit-declared-skill-rule-resources`
+
+Every capability the AI Tooling kit (`cyber-pilot-kit-frontx`) exposes as a public agent entry point is declared in the kit manifest as a resource of kind `skill` (invocable agent entry points) or kind `rule` (always-loaded agent navigation rules). Supporting knowledge content — the guidelines directory, for example — ships as declared non-public resources of the kind that fits it, installed and readable in the project but not surfaced as an entry point of its own. Nothing agent-facing enters a consuming project undeclared. The applicability metadata that states when a capability applies lives in each resource document itself, in its frontmatter or description (for example the `description` field of `SKILL.md`), and is surfaced to agent hosts by the `generate-agents` step — not in manifest fields, which carry identity, kind, and install location. The kit contributes no `agent`-kind personas; introducing one requires revisiting KIT-4. This realizes `cpt-frontx-fr-ai-agent-skill-resources` and supports `cpt-frontx-fr-ai-session-start-knowledge`, since rule resources are what an agent host loads at session start. CI-enforceable invariant: every public agent entry point in the packaged kit traces to a manifest resource of kind `skill` or `rule`, and every such resource document carries non-empty applicability metadata. The kind-plus-metadata assertion is automated in the kit's own test suite (`validateKitManifest`'s public-kind-restricted and applicability-metadata checks, asserted against the real shipped manifest and resource files in `kit-self-validation.test.ts`), per `cpt-frontx-adr-ai-tooling-framework-packaging` Confirmation.
+
+**ADRs**: `cpt-frontx-adr-ai-tooling-framework-packaging`
 
 ## 3. Technical Architecture
 
@@ -400,7 +409,7 @@ The ecosystem's core entities span the three pillars: the runtime substrate's re
 | OwnershipBoundary | A template's declaration of the ground it owns: the exclusive subtrees it alone writes and, per shared file, the keys or regions it owns with a declared merge; compared across applied templates to detect a conflicting assembly. | Declared in the manifest — role owned by DESIGN, decision by `cpt-frontx-adr-template-ownership-boundary-declaration`, concrete schema owned by `cpt-frontx-feature-template-manifest` |
 | Assembly | A repository composed from one or more independently-applied templates, including a preset's transitively-referenced templates, whose declared boundaries are checked for intersection before any files are written. | Materialized repository content; assembled by the CLI per `cpt-frontx-adr-composed-template-resolution` and `cpt-frontx-adr-assembly-conflict-prevention` |
 | ProjectProvenance | The set of records written into a repository — one per applied template — each capturing that template's identity, applied-from version, source-spec, and occupied boundary, so a later per-template upgrade can determine what to apply. | In-repository provenance records, one per applied template — role owned by DESIGN, decision by `cpt-frontx-adr-project-provenance-record`, concrete schema owned by `cpt-frontx-feature-composed-provenance` |
-| Kit | The AI Tooling delivery unit — a Cypilot kit carrying base ecosystem capabilities, every resource identifier prefixed for unambiguous namespacing. | Target — Cypilot kit resources; shape owned by `cpt-frontx-adr-ai-tooling-framework-packaging` |
+| Kit | The AI Tooling delivery unit — a Constructor Studio kit carrying base ecosystem capabilities, every resource identifier prefixed for unambiguous namespacing. | Target — Constructor Studio kit resources; shape owned by `cpt-frontx-adr-ai-tooling-framework-packaging` |
 | AiExtension | A template-bundled AI capability conforming to the extension contract, discovered and activated in a consuming project without manual wiring. | Extension bundle — role owned by DESIGN, decision by `cpt-frontx-adr-template-ai-extension-contract`, concrete schema owned by `cpt-frontx-feature-template-ai-extensions` |
 
 **Relationships**:
@@ -735,17 +744,18 @@ Upgrading an applied template to a newer version must be reviewable and safe rat
 
 - [x] `p2` - **ID**: `cpt-frontx-component-ai-tooling-kit`
 
-Concrete artifact: `cyber-pilot-kit-frontx` (a Cypilot kit).
+Concrete artifact: `cyber-pilot-kit-frontx` (a Constructor Studio kit).
 
 ##### Why this component exists
 
-AI agents working in a FrontX project need ecosystem fluency from session start and the ability to gain template-specific expertise automatically when a template is installed. This component delivers those capabilities as a Cypilot kit — the framework's delivered public surface — installed through the Cypilot CLI.
+AI agents working in a FrontX project need ecosystem fluency from session start and the ability to gain template-specific expertise automatically when a template is installed. This component delivers those capabilities as a Constructor Studio kit — the framework's delivered public surface — installed through the AI Tooling CLI.
 
-This component is the package-level anchor for `cyber-pilot-kit-frontx`: it is the kit that Cypilot installs, and it delegates its concerns to three internal components — base kit, extension host, and upgrade orchestration — so the pillar reads as single-responsibility parts rather than one fused unit (`cpt-frontx-adr-ai-tooling-internal-decomposition`).
+This component is the package-level anchor for `cyber-pilot-kit-frontx`: it is the kit that Constructor Studio installs, and it delegates its concerns to three internal components — base kit, extension host, and upgrade orchestration — so the pillar reads as single-responsibility parts rather than one fused unit (`cpt-frontx-adr-ai-tooling-internal-decomposition`).
 
 ##### Responsibility scope
 
-- Is the delivered Cypilot kit and installation unit; every contributed resource identifier carries the `frontx_` prefix (KIT-1, `cpt-frontx-adr-ai-tooling-framework-packaging`).
+- Is the delivered Constructor Studio kit and installation unit; every contributed resource identifier carries the `frontx_` prefix (KIT-1, `cpt-frontx-adr-ai-tooling-framework-packaging`).
+- Declares every public agent entry point it exposes as a manifest resource of kind `skill` (invocable agent entry points) or kind `rule` (always-loaded agent navigation rules), ships supporting knowledge content as declared non-public resources, and carries each entry point's applicability metadata in the resource document itself, so any host honouring the kit-installation contract discovers and invokes them without bespoke wiring (KIT-4, `cpt-frontx-fr-ai-agent-skill-resources`).
 - Composes the internal components — base kit, extension host, and upgrade orchestration — into the framework's public surface.
 
 ##### Responsibility boundaries
@@ -871,8 +881,8 @@ Covers `cpt-frontx-interface-cli` (PRD §7.1).
 
 Covers `cpt-frontx-interface-ai-tooling-framework` (PRD §7.1).
 
-- **Technology**: Cypilot kit — `cyber-pilot-kit-frontx`
-- **Location**: kit resources of `cyber-pilot-kit-frontx`, installed through the Cypilot CLI integration
+- **Technology**: Constructor Studio kit — `cyber-pilot-kit-frontx`
+- **Location**: kit resources of `cyber-pilot-kit-frontx`, installed through the AI Tooling CLI integration
 - **Shape**: the base ecosystem capabilities available to agents at session start, the discovery-and-activation surface for template-bundled AI extensions, and the AI workflow surface that orchestrates and enriches the CLI change-set engine — shipping no solution-specific content of its own.
 - **Stability**: unstable; incompatible changes to the public surface require a major version bump under the per-concern independent versioning policy.
 - **ADRs**: `cpt-frontx-adr-artifact-versioning-and-distribution`, `cpt-frontx-adr-ai-tooling-framework-packaging`
@@ -885,7 +895,7 @@ The integration contracts below complement the interfaces above. Each entry stat
 - **Template manifest** (`cpt-frontx-contract-template-manifest`): the descriptor every template publishes in a defined shape — its identity, version, declared ownership boundaries, and referenced templates — produced when a template is validated for publication (pre-publish validator) and consumed when it is installed, applied, or assembled (template resolver, assembler, conflict checker). Stability: versioned with the platform; non-backward-compatible changes follow `cpt-frontx-nfr-evolvability`. Role owned by DESIGN; concrete schema owned by `cpt-frontx-feature-template-manifest`. **ADRs**: `cpt-frontx-adr-template-manifest-contract`, `cpt-frontx-adr-template-ownership-boundary-declaration`, `cpt-frontx-adr-contract-schema-ownership`.
 - **Project provenance** (`cpt-frontx-contract-project-provenance`): the set of records written into a repository (provenance recorder), one per applied template, each capturing that template's identity, applied-from version, source-spec, and occupied boundary so a later per-template upgrade (change-set engine) can determine what to apply; there is no single whole-repository origin. Stability: readable across versions; non-backward-compatible changes follow `cpt-frontx-nfr-evolvability`. Role owned by DESIGN; concrete schema owned by `cpt-frontx-feature-composed-provenance`. **ADRs**: `cpt-frontx-adr-project-provenance-record`, `cpt-frontx-adr-contract-schema-ownership`.
 - **Template AI-extension** (`cpt-frontx-contract-template-ai-extension`): the conformance shape a template's bundled AI extension declares — the closed set of extension categories (skills, workflows, guidelines, reference artifacts) — produced by the Template Developer at authoring and consumed by the AI extension host at discovery and activation. Stability: additive changes within the contract preserve conforming templates; admitting or removing a category is a breaking change following `cpt-frontx-nfr-evolvability`. Role owned by DESIGN; concrete schema owned by `cpt-frontx-feature-template-ai-extensions`. **ADRs**: `cpt-frontx-adr-template-ai-extension-contract`, `cpt-frontx-adr-extension-discovery-activation`, `cpt-frontx-adr-contract-schema-ownership`.
-- **Kit-installation** (`cpt-frontx-contract-kit-installation`): the path by which the AI Tooling Framework is installed into a consuming project through the Cypilot CLI integration, making its skills and activated template extensions available to agents. Stability: compatible across minor and patch versions; breaking changes follow `cpt-frontx-nfr-evolvability`. **ADRs**: `cpt-frontx-adr-ai-tooling-framework-packaging`.
+- **Kit-installation** (`cpt-frontx-contract-kit-installation`): the path by which the AI Tooling Framework is installed into a consuming project through the AI Tooling CLI integration, making its skills and activated template extensions available to agents. Stability: compatible across minor and patch versions; breaking changes follow `cpt-frontx-nfr-evolvability`. **ADRs**: `cpt-frontx-adr-ai-tooling-framework-packaging`.
 - **Package-registry distribution** (`cpt-frontx-contract-package-registry-distribution`): the publish-and-install path for the ecosystem's packages on the package registry, consumed by applications through their chosen package manager. Stability: semantic versioning under the per-concern independent versioning policy. **ADRs**: `cpt-frontx-adr-artifact-versioning-and-distribution`.
 
 ### 3.4 Internal Dependencies
@@ -916,7 +926,7 @@ Ownership of `.frontx/` is split. Each applied template's AI bundle lives under 
 
 ### 3.5 External Dependencies
 
-The ecosystem depends on a small set of external systems and third-party libraries, each owned by exactly one component so external coupling stays localized. The concrete type-definition specification is confined to the Type System plugin; the module-federation runtime to the MFE Runtime; the transport library to the API Protocol Surface as a peer dependency; and the source registry, package registry, and Cypilot integration to the lifecycle and tooling components.
+The ecosystem depends on a small set of external systems and third-party libraries, each owned by exactly one component so external coupling stays localized. The concrete type-definition specification is confined to the Type System plugin; the module-federation runtime to the MFE Runtime; the transport library to the API Protocol Surface as a peer dependency; and the source registry, package registry, and AI tooling CLI integration to the lifecycle and tooling components.
 
 #### GTS specification
 
@@ -940,7 +950,7 @@ The ecosystem depends on a small set of external systems and third-party librari
 
 | Dependency Module | Interface Used | Purpose | Owning Component |
 |-------------------|----------------|---------|------------------|
-| GitHub source registry (`cpt-frontx-actor-github`) | versioned source-spec fetch | Hosts the templates and the AI Tooling Framework; the CLI resolves and fetches them by versioned source-spec at runtime (`cpt-frontx-adr-template-acquisition-and-location`, `cpt-frontx-adr-source-spec-syntax`). | `@gears-frontx/cli` (and the Cypilot integration for the kit) |
+| GitHub source registry (`cpt-frontx-actor-github`) | versioned source-spec fetch | Hosts the templates and the AI Tooling Framework. Templates are resolved and fetched by versioned source-spec at runtime (`cpt-frontx-adr-template-acquisition-and-location`, `cpt-frontx-adr-source-spec-syntax`); the AI Tooling kit is resolved by the AI tooling CLI integration from its monorepo subdirectory reference or a local directory — not through the template source-spec mechanism (`cpt-frontx-adr-ai-tooling-framework-packaging`). | `@gears-frontx/cli` (templates) and the AI tooling CLI integration (kit) |
 
 #### npm package registry
 
@@ -948,11 +958,11 @@ The ecosystem depends on a small set of external systems and third-party librari
 |-------------------|----------------|---------|------------------|
 | npm package registry (`cpt-frontx-actor-package-registry`) | package publish/install | Distributes the ecosystem's published packages under the per-concern independent versioning policy; applications install from it with their chosen package manager (`cpt-frontx-adr-artifact-versioning-and-distribution`). | all published packages (distribution channel) |
 
-#### Cypilot CLI / kit system
+#### AI Tooling CLI / kit system
 
 | Dependency Module | Interface Used | Purpose | Owning Component |
 |-------------------|----------------|---------|------------------|
-| Cypilot CLI / kit system (`cpt-frontx-actor-cypilot-cli`) | kit installation and resource discovery | Installs the AI Tooling Framework into a consuming project and surfaces its prefixed resources to agents at session start (`cpt-frontx-adr-ai-tooling-framework-packaging`). | `cyber-pilot-kit-frontx` |
+| AI Tooling CLI / kit system (`cpt-frontx-actor-ai-tooling-cli`) | kit installation and resource discovery | Installs the AI Tooling Framework into a consuming project and surfaces its prefixed resources to agents at session start (`cpt-frontx-adr-ai-tooling-framework-packaging`). | `cyber-pilot-kit-frontx` |
 
 **Dependency Rules**:
 - No circular dependencies between components and external systems.
@@ -1105,7 +1115,8 @@ Not applicable because the ecosystem persists no databases; provenance and manif
 The ecosystem has no server-side runtime to deploy; its artifacts are distributed as published units and consumed within the consuming application's own build and runtime. Two distribution channels carry the artifacts:
 
 - **Package registry (npm-compatible)** — the Core Framework packages and the CLI are published to the npm package registry (`cpt-frontx-actor-package-registry`) under the per-concern independent versioning policy and installed by applications with their chosen package manager (`cpt-frontx-adr-artifact-versioning-and-distribution`).
-- **GitHub source registry (tarball/source)** — templates and the AI Tooling Framework are hosted on the GitHub source registry (`cpt-frontx-actor-github`) and acquired by versioned source-spec at install and upgrade time; the AI Tooling Framework is additionally installed into a consuming project through the Cypilot CLI integration (`cpt-frontx-actor-cypilot-cli`) (`cpt-frontx-adr-template-acquisition-and-location`, `cpt-frontx-adr-ai-tooling-framework-packaging`).
+- **GitHub source registry (tarball/source)** — templates are hosted on the GitHub source registry (`cpt-frontx-actor-github`) and acquired by versioned source-spec at install and upgrade time (`cpt-frontx-adr-template-acquisition-and-location`).
+- **AI Tooling CLI kit install** — the AI Tooling Framework is published as a versioned npm artifact and installed into a consuming project through the AI Tooling CLI integration (`cpt-frontx-actor-ai-tooling-cli`), which resolves the kit from a monorepo subdirectory reference or a local directory rather than from a tarball source-spec (`cpt-frontx-adr-ai-tooling-framework-packaging`).
 
 Template publication is **out of band**: a template developer publishes a template to GitHub (tag/release) outside the FrontX CLI, which is a pure consumer — it resolves and applies already-published templates by source-spec and never publishes them. The CLI's only pre-publication role is the pre-publish manifest validation (`cpt-frontx-feature-template-manifest`) a developer may run before publishing through their own GitHub workflow.
 

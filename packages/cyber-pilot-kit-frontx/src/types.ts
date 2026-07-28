@@ -1,20 +1,31 @@
-export interface KitManifestMeta {
-  version: string;
-  name?: string;
+export interface KitResourceEntry {
+  id: string;
+  /** Canonical resource taxonomy slot (skill, rule, template, script, ...). */
+  kind?: string;
+  source: string;
+  install_path: string;
+  type: 'file' | 'directory';
+  user_modifiable?: boolean;
+  /** Whether `generate-agents` surfaces this resource to agent hosts. */
+  public?: boolean;
   description?: string;
 }
 
-export interface KitResourceEntry {
-  id: string;
-  source: string;
-  default_path: string;
-  type: 'file' | 'directory';
-  user_modifiable?: boolean;
+export interface KitDefinition {
+  slug: string;
+  name?: string;
+  version: string;
+  resources: KitResourceEntry[];
 }
 
+/**
+ * Canonical Constructor Studio kit manifest (`.cf-studio-kit.toml`). Replaces
+ * the legacy Cypilot `manifest.toml` model, which used a single `[manifest]`
+ * table plus a flat `[[resources]]` array keyed on `default_path`.
+ */
 export interface KitManifest {
-  manifest: KitManifestMeta;
-  resources: KitResourceEntry[];
+  manifest_version: string;
+  kits: KitDefinition[];
 }
 
 export interface ValidationViolation {

@@ -1,6 +1,7 @@
 // @cpt-flow:cpt-frontx-flow-ai-kit-packaging-session-availability:p1
 // @cpt-state:cpt-frontx-state-ai-kit-packaging-kit-lifecycle:p1
 // @cpt-dod:cpt-frontx-dod-ai-kit-packaging-install-and-activate:p1
+import { parse as parseToml } from 'smol-toml';
 import { validateKitManifest } from './validate-manifest.js';
 import type { KitManifest, KitRegistration, KitSessionResult, KitCapability } from './types.js';
 
@@ -62,9 +63,11 @@ export async function loadKitSession(
   // @cpt-end:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-read-manifest
 
   // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-invoke-validation
+  // The kit manifest is TOML (`.cf-studio-kit.toml`). This previously called
+  // JSON.parse, which rejects every well-formed manifest as malformed.
   let parsed: unknown;
   try {
-    parsed = JSON.parse(rawManifest);
+    parsed = parseToml(rawManifest);
   } catch {
     errors.push('Kit manifest is malformed: failed to parse content');
     // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-if-manifest-invalid
@@ -93,11 +96,12 @@ export async function loadKitSession(
 
   const manifest = parsed as KitManifest;
   const unavailable: string[] = [];
+  const declaredResources = manifest.kits.flatMap((kit) => kit.resources);
 
   // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-for-each-resource
-  for (const resource of manifest.resources) {
+  for (const resource of declaredResources) {
     // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-resolve-resource-path
-    const resourcePath = `${registration.path}/${resource.default_path}`;
+    const resourcePath = `${registration.path}/${resource.install_path}`;
     // @cpt-end:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-resolve-resource-path
 
     // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-if-resource-missing

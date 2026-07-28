@@ -1,7 +1,9 @@
 // @cpt-algo:cpt-frontx-algo-ai-kit-packaging-manifest-validation:p1
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parse as parseToml } from 'smol-toml';
 import { validateKitManifest } from '../validate-manifest.js';
 import { createFsResourceBodyReader } from '../resource-body-reader.js';
 import type { KitManifest, KitResourceEntry, ResourceBodyReader } from '../types.js';
@@ -9,19 +11,57 @@ import type { KitManifest, KitResourceEntry, ResourceBodyReader } from '../types
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Kit package root: src/__tests__/ -> src/ -> package root
 const kitRoot = path.resolve(__dirname, '../..');
+const manifestPath = path.join(kitRoot, '.cf-studio-kit.toml');
 
-const shippedManifest: KitManifest = {
-  manifest: {
-    version: '0.1.0',
-    name: 'cyber-pilot-kit-frontx',
-    description: 'FrontX AI Tooling Kit — ecosystem-level AI capabilities for Cypilot agents',
-  },
-  resources: [
-    { id: 'frontx_skill', source: 'SKILL.md', default_path: 'SKILL.md', type: 'file', user_modifiable: false },
-    { id: 'frontx_agents', source: 'AGENTS.md', default_path: 'AGENTS.md', type: 'file', user_modifiable: false },
-    { id: 'frontx_guidelines', source: 'guidelines/', default_path: 'guidelines/', type: 'directory', user_modifiable: false },
-  ],
-};
+// The manifest under test is the REAL shipped file, parsed from disk — not a
+// literal transcribed by hand. A hardcoded copy cannot detect the manifest
+// drifting away from what this validator accepts, and previously did not:
+// the file could be deleted outright with the whole suite still green.
+const shippedManifest = parseToml(fs.readFileSync(manifestPath, 'utf8')) as unknown as KitManifest;
+
+// cpt-frontx-adr-ai-tooling-framework-packaging mandates a check asserting that
+// every resource identifier in the shipped manifest matches ^frontx_ (KIT-1).
+// The ADR claimed this existed; it did not. These assertions are that check,
+// and they read the real file rather than a transcription of it.
+describe('shipped manifest on disk — canonical shape and KIT-1 prefix', () => {
+  it('.cf-studio-kit.toml exists and parses as TOML', () => {
+    expect(fs.existsSync(manifestPath)).toBe(true);
+    expect(shippedManifest.manifest_version).toBe('1.0');
+    expect(Array.isArray(shippedManifest.kits)).toBe(true);
+    expect(shippedManifest.kits.length).toBeGreaterThan(0);
+  });
+
+  it('legacy Cypilot manifest.toml is gone', () => {
+    expect(fs.existsSync(path.join(kitRoot, 'manifest.toml'))).toBe(false);
+  });
+
+  it('every resource id in the shipped manifest matches ^frontx_ (KIT-1)', () => {
+    const ids = shippedManifest.kits.flatMap((kit) => kit.resources.map((r) => r.id));
+    expect(ids.length).toBeGreaterThan(0);
+    for (const id of ids) {
+      expect(id).toMatch(/^frontx_/);
+    }
+  });
+
+  it('manifest version matches package.json version', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(kitRoot, 'package.json'), 'utf8')) as { version: string };
+    expect(shippedManifest.kits[0].version).toBe(pkg.version);
+  });
+
+  it('every declared resource source exists on disk', () => {
+    for (const kit of shippedManifest.kits) {
+      for (const resource of kit.resources) {
+        expect(fs.existsSync(path.join(kitRoot, resource.source))).toBe(true);
+      }
+    }
+  });
+
+  it('the real shipped manifest passes validateKitManifest', () => {
+    const result = validateKitManifest(shippedManifest);
+    expect(result.violations).toEqual([]);
+    expect(result.status).toBe('PASS');
+  });
+});
 
 describe('kit self-validation — shipped resource BODY scan (cpt-frontx-adr-solution-ai-content-placement)', () => {
   // inst-scan-solution-content — real on-disk shipped content, no bodyReader (baseline, id/description only)
@@ -91,8 +131,11 @@ describe('kit self-validation — shipped resource BODY scan (cpt-frontx-adr-sol
   // inst-scan-solution-content — abstract use of the generic word "template" in guidelines is NOT a false positive
   it('body abstractly describing the template mechanism (no specific name) → PASS', () => {
     const abstractReader: ResourceBodyReader = {
-      read(): string[] {
-        return ['Templates are independently installed solutions the CLI resolves by source-spec; the base names none.'];
+      read(entry: KitResourceEntry): string[] {
+        const body = 'Templates are independently installed solutions the CLI resolves by source-spec; the base names none.';
+        // Public resources (frontx_skill, frontx_agents) must still carry applicability
+        // metadata for this scenario to isolate the solution-content scan being tested.
+        return entry.public ? [`---\ndescription: "test fixture"\n---\n\n${body}`] : [body];
       },
     };
     const result = validateKitManifest(shippedManifest, abstractReader);
@@ -109,5 +152,52 @@ describe('kit self-validation — shipped resource BODY scan (cpt-frontx-adr-sol
     const result = validateKitManifest(shippedManifest, throwingReader);
     expect(result.status).toBe('FAIL');
     expect(result.violations.some((v) => v.code === 'RESOURCE_BODY_UNREADABLE')).toBe(true);
+  });
+});
+
+// The kit's own test suite asserting its declared-resource-surface DoD clauses
+// (a)-(c) against the REAL shipped manifest and resource files on disk, per the
+// DoD's own verifiable clause (d) and cpt-frontx-adr-ai-tooling-framework-packaging Confirmation.
+// Traceability marker for this DoD lives in validate-manifest.ts, the production
+// code that enforces it (test files are excluded from marker scanning).
+describe('kit self-validation — declared public resource surface (cpt-frontx-dod-ai-kit-packaging-declared-resource-surface)', () => {
+  const publicResources = shippedManifest.kits.flatMap((kit) => kit.resources.filter((r) => r.public === true));
+  const nonPublicResources = shippedManifest.kits.flatMap((kit) => kit.resources.filter((r) => r.public !== true));
+
+  // DoD clause (a): every public resource is kind skill|rule
+  it('every public resource has kind "skill" or "rule"', () => {
+    expect(publicResources.length).toBeGreaterThan(0);
+    for (const resource of publicResources) {
+      expect(['skill', 'rule']).toContain(resource.kind);
+    }
+  });
+
+  // DoD clause (b): each public resource document carries non-empty applicability
+  // metadata (frontmatter description) — read the real shipped file, not a mock.
+  it('every public resource document carries a non-empty frontmatter description', () => {
+    for (const resource of publicResources) {
+      const body = fs.readFileSync(path.join(kitRoot, resource.source), 'utf8');
+      const frontmatter = body.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      expect(frontmatter, `${resource.id}: expected frontmatter in ${resource.source}`).not.toBeNull();
+      const description = frontmatter?.[1].match(/^description:\s*(.*)$/m)?.[1]?.trim().replace(/^["']|["']$/g, '');
+      expect(description, `${resource.id}: expected non-empty frontmatter description`).toBeTruthy();
+    }
+  });
+
+  // DoD clause (c): supporting knowledge content (frontx_guidelines) ships as a
+  // declared non-public resource, not as an undeclared public entry point.
+  it('frontx_guidelines is declared and is not public', () => {
+    const guidelines = nonPublicResources.find((r) => r.id === 'frontx_guidelines');
+    expect(guidelines).toBeDefined();
+    expect(guidelines?.public).not.toBe(true);
+  });
+
+  // DoD clause (d): validateKitManifest itself asserts (a) and (b) via the real
+  // fs body reader, over the real shipped manifest — end-to-end, not mocked.
+  it('validateKitManifest PASSes clauses (a) and (b) against the real shipped manifest and files', () => {
+    const reader = createFsResourceBodyReader(kitRoot);
+    const result = validateKitManifest(shippedManifest, reader);
+    expect(result.violations).toEqual([]);
+    expect(result.status).toBe('PASS');
   });
 });
