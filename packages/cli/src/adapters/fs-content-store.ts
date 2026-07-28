@@ -2,6 +2,7 @@
 // @cpt-algo:cpt-frontx-algo-template-resolution-bounded-update:p1
 import fs from 'node:fs';
 import path from 'node:path';
+import { BUNDLE_MARKER } from '../bundle/envelope';
 import { MANIFEST_FILENAME } from '../manifest/types';
 import type { ContentStorePort } from '../inventory/types';
 import { assertWithinRoot, resolveInstalledContentPath } from './fs-installed-content-path';
@@ -69,8 +70,6 @@ export class FsContentStore implements ContentStorePort {
 // string-valued fields and would otherwise be indistinguishable from a
 // one-entry file map by shape alone). Anything else (a plain manifest
 // string, unparseable input, JSON without the marker) is not a bundle.
-const BUNDLE_MARKER = '$frontxTemplateFiles';
-
 function parseBundle(content: string): Record<string, string> | undefined {
   let parsed: unknown;
   try {

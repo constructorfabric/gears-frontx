@@ -4,8 +4,22 @@ import { installCommand } from '../../commands/install';
 import { TemplateInventory } from '../../inventory/TemplateInventory';
 import type { FetchFn } from '../../resolver/types';
 import type { DiscoveryHookContext, ExtensionDiscoveryHook } from '../types';
+import type { TemplateManifest } from '../../manifest/types';
 
-function makeSuccessFetch(content = 'template-content'): FetchFn {
+// A contract-valid manifest, serialized to the string a `FetchFn` returns.
+// "widget-kit" is deliberately different from the repository segment
+// ("my-template" in the specs below), so the hook-context assertion proves
+// the discovery hook receives the manifest-declared identity.
+function manifestContent(name: string, version = '1.0.0'): string {
+  const manifest: TemplateManifest = {
+    name,
+    version,
+    ownershipBoundaries: { exclusiveSubtrees: [], sharedFiles: [] },
+  };
+  return JSON.stringify(manifest);
+}
+
+function makeSuccessFetch(content: string = manifestContent('widget-kit')): FetchFn {
   return vi.fn().mockResolvedValue(content);
 }
 
@@ -24,7 +38,7 @@ describe('install-time extension discovery hook (cross-pillar edge F16 <- F10)',
     expect(result.ok).toBe(true);
     expect(hook).toHaveBeenCalledTimes(1);
     const context = (hook as ReturnType<typeof vi.fn>).mock.calls[0][0] as DiscoveryHookContext;
-    expect(context.name).toBe('my-template');
+    expect(context.name).toBe('widget-kit');
     expect(context.ref).toBe('v1.0.0');
     expect(result.discovery).toEqual({ triggered: true, errorCount: 0 });
   });

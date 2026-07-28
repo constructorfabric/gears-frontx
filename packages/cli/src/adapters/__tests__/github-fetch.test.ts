@@ -52,8 +52,20 @@ describe('createGithubFetchFn', () => {
   // `$frontxTemplateFiles` bundle envelope `FsContentStore.writeBundle`
   // consumes.
   it('(a) fetches template content from the source registry, unpacks the tarball, and returns the bundle envelope — happy path', async () => {
+    // Real contract fixture: the manifest FILENAME is `frontx-template.json`
+    // (MANIFEST_FILENAME, `manifest/types.ts`) and identity is carried by the
+    // `name` field (`manifest/validate-contract.ts`) — NOT `frontx.template.json`
+    // with an `identity` field, which is not a shape this codebase ever reads.
+    // "acme-widgets" is deliberately different from the repository segment
+    // ("my-template" in the source-spec below), proving identity comes from
+    // the manifest rather than from the repository name.
+    const manifestJson = JSON.stringify({
+      name: 'acme-widgets',
+      version: '1.0.0',
+      ownershipBoundaries: { exclusiveSubtrees: [], sharedFiles: [] },
+    });
     const fetchImpl = vi.fn(async () =>
-      makeGithubTarballResponse({ 'frontx.template.json': '{"identity":"my-template"}', 'src/index.ts': 'export {};' }),
+      makeGithubTarballResponse({ 'frontx-template.json': manifestJson, 'src/index.ts': 'export {};' }),
     ) as unknown as typeof fetch;
 
     const fetchFn = createGithubFetchFn({ fetchImpl });
@@ -68,11 +80,11 @@ describe('createGithubFetchFn', () => {
     if (resolved.ok) {
       expect(JSON.parse(resolved.value.content)).toEqual({
         $frontxTemplateFiles: {
-          'frontx.template.json': '{"identity":"my-template"}',
+          'frontx-template.json': manifestJson,
           'src/index.ts': 'export {};',
         },
       });
-      expect(resolved.value.name).toBe('my-template');
+      expect(resolved.value.name).toBe('acme-widgets');
     }
     expect(fetchImpl).toHaveBeenCalledWith(
       'https://api.github.com/repos/acme/my-template/tarball/v1.0.0',

@@ -111,6 +111,173 @@ describe('seedRepository — cpt-frontx-flow-cli-scaffolding-seed-repository', (
 });
 
 describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
+  // inst-add-resolve-occupied
+  it('resolves a provenance record written under the old identity scheme by its source address', async () => {
+    // The repository remembers `legacy-repo-name`, the identity the resolver
+    // derived from the repository segment before the manifest owned it. The
+    // installed template now answers to its manifest name, and the two are
+    // connected only by the source-spec the record carries.
+    const applied = makeEntry('declared-identity', [{ path: 'applied/index.ts', content: 'applied' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['applied/'], sharedFiles: [] },
+    });
+    const legacyEntry: InventoryEntry = { ...applied, source: 'github:acme/legacy-repo-name@v1.0.0' };
+    const newTemplate = makeEntry('new-template', [{ path: 'new/index.ts', content: 'new' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['new/'], sharedFiles: [] },
+    });
+    const entries: Record<string, InventoryEntry> = {
+      'declared-identity': legacyEntry,
+      'new-template': newTemplate,
+    };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'legacy-repo-name', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/legacy-repo-name@v2.0.0' },
+      ]),
+    );
+
+    const result = await addTemplate(
+      'new-template',
+      '/target',
+      (n: string) => entries[n],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+    );
+
+    // The add proceeds: the legacy record's boundaries were established from
+    // the address match, so nothing was skipped and nothing was locked out.
+    expect(result.ok).toBe(true);
+    expect(files.get('/target/new/index.ts')).toBe('new');
+  });
+
+  // inst-add-resolve-occupied
+  it('ignores an identity hit whose installed source addresses a different template, and resolves by address instead', async () => {
+    // An inventory written before the collision guard existed: the key
+    // `shared-key` points at a template acquired from somewhere else entirely.
+    const impostor: InventoryEntry = {
+      ...makeEntry('shared-key', [{ path: 'impostor/index.ts', content: 'impostor' }], {
+        ownershipBoundaries: { exclusiveSubtrees: ['new/'], sharedFiles: [] },
+      }),
+      source: 'github:contoso/unrelated@v1.0.0',
+    };
+    const realOwner: InventoryEntry = {
+      ...makeEntry('real-owner', [{ path: 'owned/index.ts', content: 'owned' }], {
+        ownershipBoundaries: { exclusiveSubtrees: ['owned/'], sharedFiles: [] },
+      }),
+      source: 'github:acme/shared-key@v1.0.0',
+    };
+    const newTemplate = makeEntry('new-template', [{ path: 'new/index.ts', content: 'new' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['new/'], sharedFiles: [] },
+    });
+    const entries: Record<string, InventoryEntry> = {
+      'shared-key': impostor,
+      'real-owner': realOwner,
+      'new-template': newTemplate,
+    };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'shared-key', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/shared-key@v1.0.0' },
+      ]),
+    );
+
+    const result = await addTemplate(
+      'new-template',
+      '/target',
+      (n: string) => entries[n],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+    );
+
+    // Trusting the identity hit would have checked the impostor's boundaries,
+    // which do not include `owned/`, and the add would have proceeded over the
+    // real owner's ground. Resolved by address, the real owner's `owned/` is
+    // what the conflict check sees, and `new/` does not intersect it.
+    expect(result.ok).toBe(true);
+    expect(files.get('/target/new/index.ts')).toBe('new');
+  });
+
+  // inst-add-check-occupied, inst-add-abort-occupied-unknown
+  it('aborts when an applied template recorded in provenance is not installed locally, naming the source-spec that would restore it', async () => {
+    const newTemplate = makeEntry('new-template', [{ path: 'new/index.ts', content: 'new' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['new/'], sharedFiles: [] },
+    });
+    const entries: Record<string, InventoryEntry> = { 'new-template': newTemplate };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    // Neither the identity nor the address resolves: the template genuinely is
+    // not installed, so `frontx install <sourceSpec>` is a recovery that works.
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'legacy-repo-name', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/legacy-repo-name@v1.0.0' },
+      ]),
+    );
+
+    const result = await addTemplate(
+      'new-template',
+      '/target',
+      (n: string) => entries[n],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('occupied-not-installed');
+    expect(result.message).toContain('github:acme/legacy-repo-name@v1.0.0');
+    // Skipping the unresolvable record instead of aborting would let the
+    // conflict check pass a claim over ground the recorded template owns.
+    expect(files.has('/target/new/index.ts')).toBe(false);
+  });
+
+  // inst-add-check-occupied, inst-add-abort-occupied-unknown
+  it('aborts when an applied template is installed but its manifest cannot be read', async () => {
+    const newTemplate = makeEntry('new-template', [{ path: 'new/index.ts', content: 'new' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['new/'], sharedFiles: [] },
+    });
+    const corrupted: InventoryEntry = { ...makeEntry('applied-template', []), content: 'not-a-manifest' };
+    const entries: Record<string, InventoryEntry> = {
+      'new-template': newTemplate,
+      'applied-template': corrupted,
+    };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    // The record's source-spec must address the same template as the installed
+    // entry, or the identity hit is rejected and this exercises the
+    // not-installed branch instead of the unreadable-manifest one.
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'applied-template', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/applied-template@v1.0.0' },
+      ]),
+    );
+
+    const result = await addTemplate(
+      'new-template',
+      '/target',
+      (n: string) => entries[n],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('occupied-manifest-unreadable');
+    expect(files.has('/target/new/index.ts')).toBe(false);
+  });
+
   it('adds into an existing repository: stages via the SAME P14 path, submits staged assembly + already-occupied boundaries to P29, materializes ONLY the new contribution, adds one provenance record per newly applied template', async () => {
     const existing = makeEntry('existing-template', [{ path: 'existing/index.ts', content: 'existing' }], {
       ownershipBoundaries: { exclusiveSubtrees: ['existing/'], sharedFiles: [] },
@@ -130,6 +297,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       'new-template',
       '/target',
       lookupFn,
+      async () => Object.values(entries),
       readContentFn,
       writeFileFn,
       readProvenanceFn,
@@ -151,7 +319,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
   it('aborts with no files written when the template reference cannot be resolved from the local inventory', async () => {
     const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
 
-    const result = await addTemplate('missing', '/target', () => undefined, readContentFn, writeFileFn, readProvenanceFn, provenanceWriteFn);
+    const result = await addTemplate('missing', '/target', () => undefined, async () => [], readContentFn, writeFileFn, readProvenanceFn, provenanceWriteFn);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -177,6 +345,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       'clashing-template',
       '/target',
       (n) => entries[n],
+      async () => Object.values(entries),
       readContentFn,
       writeFileFn,
       readProvenanceFn,

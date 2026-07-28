@@ -5,7 +5,9 @@
 // @cpt-dod:cpt-frontx-dod-template-resolution-install-by-spec:p1
 // @cpt-dod:cpt-frontx-dod-template-resolution-list-inventory:p1
 // @cpt-dod:cpt-frontx-dod-template-resolution-bounded-local-update:p1
-import { parseSourceSpec } from '../spec-parser/parse';
+import { pathsNest } from '../paths/relative-path';
+import { formatTemplateAddress, parseSourceSpec } from '../spec-parser/parse';
+import type { StructuredRef } from '../spec-parser/types';
 import { resolveToInventory } from '../resolver/resolve';
 import type { FetchFn } from '../resolver/types';
 import { InventoryIndex } from './InventoryIndex';
@@ -67,10 +69,68 @@ export class TemplateInventory {
     // @cpt-end:cpt-frontx-flow-template-resolution-install:p1:inst-install-reach-check
     // @cpt-end:cpt-frontx-flow-template-resolution-install:p1:inst-install-fetch
 
+    const record = resolveResult.value;
+
+    // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-collision-check
+    // Two templates declaring one identity must not be merged. `FsContentStore.write`
+    // writes each file through without clearing the content path first, so the
+    // second install would overwrite the matching paths and leave the rest of the
+    // occupant's files in place, while the index entry is replaced wholesale —
+    // one template listed, a mixture of two on disk, no signal to the developer.
+    //
+    // The comparison is on the template address rather than the whole source-spec:
+    // two specs differing only in `@ref` name one template at two versions, and
+    // refusing that would turn a version bump into a collision while leaving the
+    // genuine clobber unguarded.
+    const occupant = this.index.lookup(record.name);
+    const sameTemplate = occupant !== undefined && addressesSameTemplate(occupant.source, parseResult.value);
+    // An identity that nests with an installed one is refused even though the
+    // two are different keys, because they are not different directories.
+    const nesting = this.index
+      .all()
+      .find((entry) => entry.name !== record.name && pathsNest(entry.name, record.name));
+
+    if (occupant !== undefined && !sameTemplate) {
+      // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-collision-fail
+      // @cpt-begin:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-reject-loop
+      return {
+        ok: false,
+        error: {
+          message:
+            `Template identity "${record.name}" is already installed from "${occupant.source}", ` +
+            `so "${record.source}" was not installed. Run "frontx update-local ${record.name} ${record.source}" ` +
+            'to point the installed entry at this source instead.',
+        },
+      };
+      // @cpt-end:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-reject-loop
+      // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-collision-fail
+    }
+
+    if (nesting !== undefined) {
+      // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-collision-fail
+      return {
+        ok: false,
+        error: {
+          message:
+            `Template identity "${record.name}" would be materialized inside the content path of the ` +
+            `installed template "${nesting.name}", or the other way round, so "${record.source}" was not ` +
+            'installed: a bounded update of either would clear the other from disk.',
+        },
+      };
+      // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-collision-fail
+    }
+    // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-collision-check
+
     // @cpt-begin:cpt-frontx-flow-template-resolution-install:p1:inst-install-materialize
     // @cpt-begin:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-to-installed
-    const record = resolveResult.value;
-    this.store.write(record.name, record.content);
+    // Re-installing the same template — a newer ref at the same address — must
+    // clear the content path first, or a file the new version dropped survives
+    // on disk. Only a first install can write through.
+    if (sameTemplate) {
+      this.store.replace(record.name, record.content);
+    } else {
+      this.store.write(record.name, record.content);
+    }
     const entry: InventoryEntry = {
       name: record.name,
       source: record.source,
@@ -179,9 +239,33 @@ export class TemplateInventory {
     // @cpt-end:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-fetch-fail-check
     // @cpt-end:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-reach-check
 
+    const record = resolveResult.value;
+
+    // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-identity-mismatch
+    // A bounded update takes a new source-spec for an existing entry, and a
+    // source-spec can now address a subtree, so a caller can point an entry at
+    // a different template of the same repository. `FsContentStore.replace` clears
+    // the content path before writing, so proceeding would substitute one template
+    // for another under the entry's identity, with no acquisition-level failure to
+    // notice. Here the declared identity settles whether the two are one template;
+    // the install guard above settles the same question from the reference.
+    if (record.name !== existing.name) {
+      // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-identity-mismatch-fail
+      return {
+        ok: false,
+        error: {
+          message:
+            `Source-spec "${record.source}" resolves to the template "${record.name}", ` +
+            `not to "${existing.name}", so the installed template was left unchanged. ` +
+            'Install the other template instead of updating this entry.',
+        },
+      };
+      // @cpt-end:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-identity-mismatch-fail
+    }
+    // @cpt-end:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-identity-mismatch
+
     // @cpt-begin:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-write
     // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-replace
-    const record = resolveResult.value;
     this.store.replace(existing.name, record.content);
     // @cpt-end:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-replace
     // @cpt-end:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-write
@@ -221,4 +305,16 @@ export class TemplateInventory {
   getState(name: string): InventoryState {
     return this.index.getState(name);
   }
+}
+
+// Whether an already-recorded source-spec names the same template as the
+// reference now being installed, comparing addresses so that a version bump is
+// not mistaken for a second template. A recorded spec that no longer parses
+// belongs to an older grammar; it is treated as a different template so the
+// install refuses loudly rather than writing over content whose origin cannot
+// be established.
+function addressesSameTemplate(recordedSpec: string, requested: StructuredRef): boolean {
+  const recorded = parseSourceSpec(recordedSpec);
+  if (!recorded.ok) return false;
+  return formatTemplateAddress(recorded.value) === formatTemplateAddress(requested);
 }

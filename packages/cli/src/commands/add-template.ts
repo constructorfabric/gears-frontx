@@ -11,7 +11,18 @@ import type { ProvenanceWriteFn } from '../provenance/types';
 
 export type AddTemplateResult =
   | { ok: true; message: string; appliedTemplates: string[] }
-  | { ok: false; reason: 'unresolved' | 'cycle' | 'manifest-unreadable' | 'provenance-failed'; message: string }
+  | {
+      ok: false;
+      reason:
+        | 'unresolved'
+        | 'cycle'
+        | 'manifest-unreadable'
+        | 'provenance-failed'
+        | 'occupied-not-installed'
+        | 'occupied-manifest-unreadable'
+        | 'occupied-source-ambiguous';
+      message: string;
+    }
   | { ok: false; reason: 'conflict'; conflicts: BoundaryConflictEntry[]; message: string };
 
 /**
@@ -29,6 +40,9 @@ export async function addTemplate(
   templateRef: string,
   targetDir: string,
   lookupFn: (name: string) => InventoryEntry | undefined,
+  // The whole installed set, needed to resolve a provenance record whose
+  // identity predates the manifest-declared scheme by its source address.
+  listInstalledFn: () => Promise<InventoryEntry[]>,
   readContentFn: ReadContentItemsFn,
   writeFileFn: WriteFileFn,
   readProvenanceFn: ReadProvenanceRecordsFn,
@@ -76,10 +90,29 @@ export async function addTemplate(
     return { ok: false, reason: applyResult.reason, message: `Apply aborted — ${applyResult.message}` };
   }
 
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-conflict-check
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve-occupied
   const existingProvenance = await readProvenanceFn(targetDir);
-  const alreadyOccupiedBoundaries = occupiedBoundariesFromProvenance(existingProvenance, lookupFn);
-  const verdict = checkAssemblyConflicts(applyResult.assembly, alreadyOccupiedBoundaries);
+  const alreadyOccupied = occupiedBoundariesFromProvenance(
+    existingProvenance,
+    lookupFn,
+    await listInstalledFn(),
+  );
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve-occupied
+
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-check-occupied
+  if (!alreadyOccupied.ok) {
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-abort-occupied-unknown
+    return {
+      ok: false,
+      reason: alreadyOccupied.reason,
+      message: `Apply aborted — ${alreadyOccupied.message} No files written.`,
+    };
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-abort-occupied-unknown
+  }
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-check-occupied
+
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-conflict-check
+  const verdict = checkAssemblyConflicts(applyResult.assembly, alreadyOccupied.occupied);
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-conflict-check
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-conflict

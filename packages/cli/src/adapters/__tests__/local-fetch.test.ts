@@ -91,8 +91,12 @@ describe('offline e2e — frontx install + seed assemble the real template-stand
       const writeFileFn = createFsWriteFileFn();
       const provenanceWriteFn = createFsProvenanceWriteFn();
 
+      // Identity is the manifest's own declared `name`
+      // ("@gears-frontx/frontx-template-standard", `template-standard/frontx-template.json`),
+      // not the repository segment ("frontx-template-standard") the source-spec named.
+      const templateIdentity = '@gears-frontx/frontx-template-standard';
       const seedResult = await seedRepository(
-        'frontx-template-standard',
+        templateIdentity,
         targetDir,
         lookupFn,
         readContentFn,
@@ -102,7 +106,7 @@ describe('offline e2e — frontx install + seed assemble the real template-stand
 
       expect(seedResult.ok).toBe(true);
       if (!seedResult.ok) return;
-      expect(seedResult.appliedTemplates).toEqual(['frontx-template-standard']);
+      expect(seedResult.appliedTemplates).toEqual([templateIdentity]);
 
       // Representative files inside declared exclusive subtrees materialize as REAL on-disk files.
       expect(fs.existsSync(path.join(targetDir, 'package.json'))).toBe(true);
@@ -115,7 +119,7 @@ describe('offline e2e — frontx install + seed assemble the real template-stand
       const provenance = JSON.parse(fs.readFileSync(path.join(targetDir, '.frontx', 'provenance.json'), 'utf-8')) as Array<{
         templateIdentity: string;
       }>;
-      expect(provenance.map((r) => r.templateIdentity)).toEqual(['frontx-template-standard']);
+      expect(provenance.map((r) => r.templateIdentity)).toEqual([templateIdentity]);
 
       // No network / build-artifact directories were ever pulled into the target.
       expect(fs.existsSync(path.join(targetDir, 'node_modules'))).toBe(false);

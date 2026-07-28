@@ -5,8 +5,22 @@ import { installCommand } from '../../commands/install';
 import { TemplateInventory } from '../../inventory/TemplateInventory';
 import type { FetchFn } from '../../resolver/types';
 import type { DiscoveryHookContext } from '../types';
+import type { TemplateManifest } from '../../manifest/types';
 
-function makeSuccessFetch(content = 'template-content'): FetchFn {
+// A contract-valid manifest, serialized to the string a `FetchFn` returns.
+// "widget-kit" is deliberately different from the repository segment
+// ("my-template" in the spec below), so a content root built from the
+// repository name would miss the bundle anchor and surface as `errorCount: 1`.
+function manifestContent(name: string, version = '1.0.0'): string {
+  const manifest: TemplateManifest = {
+    name,
+    version,
+    ownershipBoundaries: { exclusiveSubtrees: [], sharedFiles: [] },
+  };
+  return JSON.stringify(manifest);
+}
+
+function makeSuccessFetch(content: string = manifestContent('widget-kit')): FetchFn {
   return vi.fn().mockResolvedValue(content);
 }
 
@@ -33,7 +47,7 @@ describe('createFsBackedDiscoveryHook (CLI <-> fs-discovery wiring, zero compile
     // real discoverAndActivateFromInstalledTemplateFs), without the CLI
     // importing the kit package anywhere in this file.
     const bundleAnchors: Record<string, { entries: unknown[] }> = {
-      'installed-templates/my-template': { entries: [{ id: 'skill-1', category: 'skills', path: 'skills/skill-1' }] },
+      'installed-templates/widget-kit': { entries: [{ id: 'skill-1', category: 'skills', path: 'skills/skill-1' }] },
     };
     const discovery: FsExtensionDiscovery = {
       discover: (contentRoot: string) => {

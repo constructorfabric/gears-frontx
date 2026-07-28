@@ -1,5 +1,6 @@
 import { readManifestFromContent } from '../manifest/validate-contract';
 import { writeProvenance } from '../provenance/write';
+import { formatTemplateAddress, parseSourceSpec } from '../spec-parser/parse';
 import { composeSharedFiles } from './compose-shared-files';
 import type { ProvenanceRecord, ProvenanceWriteFn } from '../provenance/types';
 import type { InventoryEntry } from '../inventory/types';
@@ -11,24 +12,113 @@ import type { StagedAssembly, WriteFileFn } from './types';
 // current records for an add (cpt-frontx-flow-cli-scaffolding-add-template).
 export type ReadProvenanceRecordsFn = (targetDir: string) => Promise<ProvenanceRecord[]>;
 
+export type OccupiedBoundariesResult =
+  | { ok: true; occupied: OccupiedBoundaryEntry[] }
+  | {
+      ok: false;
+      reason: 'occupied-not-installed' | 'occupied-manifest-unreadable' | 'occupied-source-ambiguous';
+      templateIdentity: string;
+      sourceSpec: string;
+      message: string;
+    };
+
 // Derives the ownership boundaries already occupied by a repository's
 // previously-applied templates by cross-referencing each existing provenance
-// record's template identity against the local inventory — the boundaries
+// record against the local inventory — the boundaries
 // cpt-frontx-flow-cli-scaffolding-add-template submits to the pre-flight
 // conflict check TOGETHER WITH the newly staged assembly.
+//
+// A record that cannot be resolved fails the whole derivation instead of being
+// skipped. Skipping drops that template's boundaries from the conflict check,
+// so the check would pass a claim over ground an applied template already owns
+// and the add would overwrite it — the one outcome the pre-flight check exists
+// to prevent.
+//
+// A record written before identity came from the manifest holds the repository
+// name, which no inventory entry answers to any more, so identity alone would
+// fail every such repository with no recovery: reinstalling from the recorded
+// source-spec lands under the manifest identity, not the recorded one. The
+// record's source-spec is the value that survived the change, so an identity
+// miss falls back to matching the installed template by source address. That
+// makes the migration silent where it can be, and leaves a loud failure only
+// where the template genuinely is not installed.
 export function occupiedBoundariesFromProvenance(
   records: ProvenanceRecord[],
   lookupFn: (name: string) => InventoryEntry | undefined,
-): OccupiedBoundaryEntry[] {
+  installed: InventoryEntry[],
+): OccupiedBoundariesResult {
   const occupied: OccupiedBoundaryEntry[] = [];
   for (const record of records) {
-    const entry = lookupFn(record.templateIdentity);
-    if (!entry) continue;
+    // An identity hit is trusted only when the entry came from the address the
+    // record names. An inventory written before the collision guard existed can
+    // hold this key pointing at another template, and its boundaries would then
+    // be checked in place of the real occupant's — a claim over ground the
+    // actual owner holds would pass.
+    const byIdentity = lookupFn(record.templateIdentity);
+    const candidates =
+      byIdentity !== undefined && sameSourceAddress(byIdentity.source, record.sourceSpec)
+        ? [byIdentity]
+        : matchBySourceAddress(record.sourceSpec, installed);
+    const [entry, ...surplus] = candidates;
+
+    if (entry === undefined) {
+      return {
+        ok: false,
+        reason: 'occupied-not-installed',
+        templateIdentity: record.templateIdentity,
+        sourceSpec: record.sourceSpec,
+        message:
+          `Applied template "${record.templateIdentity}" is recorded in this repository but is not installed locally, ` +
+          `so the ground it owns cannot be checked. Install it with "frontx install ${record.sourceSpec}" and retry.`,
+      };
+    }
+    if (surplus.length > 0) {
+      return {
+        ok: false,
+        reason: 'occupied-source-ambiguous',
+        templateIdentity: record.templateIdentity,
+        sourceSpec: record.sourceSpec,
+        message:
+          `Applied template "${record.templateIdentity}" is not installed under that identity, and more than one ` +
+          `installed template was acquired from "${record.sourceSpec}", so the ground it owns cannot be established. ` +
+          'Remove the duplicate from the local inventory and retry.',
+      };
+    }
+
     const manifestResult = readManifestFromContent(entry.content);
-    if (!manifestResult.ok) continue;
+    if (!manifestResult.ok) {
+      return {
+        ok: false,
+        reason: 'occupied-manifest-unreadable',
+        templateIdentity: record.templateIdentity,
+        sourceSpec: record.sourceSpec,
+        message:
+          `Applied template "${record.templateIdentity}" is installed locally but does not satisfy the manifest ` +
+          `contract, so the ground it owns cannot be checked: ${manifestResult.message}. ` +
+          `Reinstall it with "frontx install ${record.sourceSpec}" and retry.`,
+      };
+    }
+    // The record's identity, not the entry's, names the occupant: it is what
+    // this repository's own region markers and provenance already carry.
     occupied.push({ templateName: record.templateIdentity, boundary: manifestResult.manifest.ownershipBoundaries });
   }
-  return occupied;
+  return { ok: true, occupied };
+}
+
+// Installed templates acquired from the same address as `sourceSpec`, ignoring
+// the version selector: the address is what identifies a template across a
+// change of identity scheme, and across the version the record was applied at.
+function matchBySourceAddress(sourceSpec: string, installed: InventoryEntry[]): InventoryEntry[] {
+  return installed.filter((entry) => sameSourceAddress(entry.source, sourceSpec));
+}
+
+// Whether two source-specs address the same template, ignoring the version
+// selector. A spec that no longer parses matches nothing: its origin cannot be
+// established, and guessing would be worse than the loud failure downstream.
+function sameSourceAddress(left: string, right: string): boolean {
+  const a = parseSourceSpec(left);
+  const b = parseSourceSpec(right);
+  return a.ok && b.ok && formatTemplateAddress(a.value) === formatTemplateAddress(b.value);
 }
 
 export type MaterializeResult = { ok: true } | { ok: false; message: string };

@@ -1,4 +1,6 @@
 // @cpt-algo:cpt-frontx-algo-template-manifest-validate-contract:p1
+import { readBundleFiles } from '../bundle/envelope';
+import { isSafeRelativePath } from '../paths/relative-path';
 import { MANIFEST_FILENAME } from './types';
 import type { ManifestViolation, ManifestValidationResult, TemplateManifest } from './types';
 
@@ -9,8 +11,7 @@ export type ReadManifestResult =
 
 // The resolver seam (`FetchFn`, `packages/cli/src/resolver/types.ts`) may
 // hand back either a bare manifest string (legacy single-file content) or a
-// multi-file bundle envelope — `{ "$frontxTemplateFiles": { <relative path>:
-// <file text>, ... } }` — the same envelope `FsContentStore` (adapters
+// multi-file bundle envelope — the same envelope `FsContentStore` (adapters
 // layer) already materializes to real on-disk files
 // (`cpt-frontx-dod-template-resolution-install-by-spec`). Every caller of
 // `readManifestFromContent` (composition resolution, uniform-apply,
@@ -18,23 +19,14 @@ export type ReadManifestResult =
 // resolver/inventory stored — so this single read path unwraps the bundle
 // envelope down to its manifest file BEFORE validating/parsing, keeping
 // every downstream caller's contract ("content is the manifest") unchanged
-// whether the underlying fetch was single-file or multi-file. The literal
-// marker is duplicated (not imported) from `adapters/fs-content-store.ts`
-// deliberately: `manifest/` is core/pure and must not depend on the IO
-// `adapters/` layer.
-const BUNDLE_MARKER = '$frontxTemplateFiles';
-
+// whether the underlying fetch was single-file or multi-file. The envelope
+// shape itself is owned by `bundle/envelope.ts`, a core module: `manifest/`
+// stays free of any dependency on the IO `adapters/` layer without carrying
+// its own copy of the parse.
 function unwrapBundleEnvelope(content: string): string {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch {
-    return content;
-  }
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return content;
-  const filesValue = (parsed as Record<string, unknown>)[BUNDLE_MARKER];
-  if (typeof filesValue !== 'object' || filesValue === null || Array.isArray(filesValue)) return content;
-  const manifestText = (filesValue as Record<string, unknown>)[MANIFEST_FILENAME];
+  const files = readBundleFiles(content);
+  if (files === undefined) return content;
+  const manifestText = files[MANIFEST_FILENAME];
   return typeof manifestText === 'string' ? manifestText : content;
 }
 
@@ -119,6 +111,19 @@ export function validateManifestContract(raw: string): ManifestValidationResult 
   if (typeof name !== 'string' || name.trim() === '') {
     // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-identity-violation
     violations.push({ field: 'name', message: 'identity field "name" is required and must be a non-empty string' });
+    // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-identity-violation
+  } else if (!isSafeRelativePath(name)) {
+    // The identity addresses the template's installed content path and its own
+    // `.frontx/ai/<identity>/` bundle subtree, so pre-publish validation refuses
+    // a value install would refuse. Without this the two gates disagree and a
+    // template can pass validation yet never be installable.
+    // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-identity-violation
+    violations.push({
+      field: 'name',
+      message:
+        'identity field "name" must be usable as a repository-relative path: no leading "/", ' +
+        'no backslash, no ":" or control character, and no empty, "." or ".." segment',
+    });
     // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-identity-violation
   }
   // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-identity-missing

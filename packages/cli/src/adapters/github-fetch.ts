@@ -3,6 +3,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { BUNDLE_MARKER } from '../bundle/envelope';
 import type { FetchFn } from '../resolver/types';
 
 // Real network `FetchFn` implementation — the source-registry actor
@@ -62,12 +63,6 @@ export function createGithubFetchFn(options: GithubFetchOptions = {}): FetchFn {
     // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-fetch
   };
 }
-
-// The same bundle-envelope marker `FsContentStore.writeBundle`
-// (`packages/cli/src/adapters/fs-content-store.ts`) uses to distinguish a
-// multi-file bundle from an ordinary manifest string — kept in lockstep here
-// so this adapter emits exactly the shape the store already consumes.
-const BUNDLE_MARKER = '$frontxTemplateFiles';
 
 const TAR_BLOCK_SIZE = 512;
 

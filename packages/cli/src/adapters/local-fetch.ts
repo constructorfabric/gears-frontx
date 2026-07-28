@@ -16,6 +16,7 @@
 // pure-logic resolver built from the parsed source-spec.
 import fs from 'node:fs';
 import path from 'node:path';
+import { BUNDLE_MARKER } from '../bundle/envelope';
 import type { FetchFn } from '../resolver/types';
 
 /** Directory names never included in the local bundle — build/dependency
@@ -57,7 +58,7 @@ export function createLocalFetchFn(localDir: string, options: LocalFetchOptions 
     for (const relativePath of files.sort()) {
       bundle[relativePath] = fs.readFileSync(path.join(localDir, relativePath), 'utf-8');
     }
-    return JSON.stringify({ $frontxTemplateFiles: bundle });
+    return JSON.stringify({ [BUNDLE_MARKER]: bundle });
   };
 }
 
