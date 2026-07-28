@@ -16,7 +16,8 @@
 
 - CLI resolves templates by source-spec at runtime; it bundles no template content
 - Source-spec format: `protocol://host/path#ref`
-- Scaffolding commands live under two namespaces: `project` and `mfe`
+- The CLI has no scaffolding commands; supported commands are `install`, `list`, `update-local`, `validate`, `seed`, `add`, `upgrade`, and `help`
+- To add an MFE package, copy the `_blank-mfe` reference scaffold in `mfe_packages/` (see its `README.md`)
 
 ## When working with MFEs
 
