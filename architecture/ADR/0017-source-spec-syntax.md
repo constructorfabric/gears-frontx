@@ -1,6 +1,9 @@
 ---
-status: accepted
+status: superseded
 date: 2026-06-05
+superseded_by: cpt-frontx-adr-source-spec-subdirectory-addressing
+status_history:
+  - "2026-07-28: ACCEPTED -> SUPERSEDED (an optional subtree segment was added to the reference shape by cpt-frontx-adr-source-spec-subdirectory-addressing; the shape decided here remains valid as the subtree-less form)"
 ---
 
 # Source-Spec Syntax for Versioned Template References

@@ -141,7 +141,7 @@ Terminology (owned here as the provenance schema owner): a template's **declared
 1. [x] - `p1` - Accept the repository root path and the set of applied templates with their identities, applied-from versions, source-specs, and occupied ownership boundaries - `inst-accept-provenance-inputs`
 2. [x] - `p1` - Determine the provenance store location inside the repository root — the single file `.frontx/provenance.json` at the repository root (per `cpt-frontx-contract-project-provenance`) - `inst-determine-storage-location`
 3. [x] - `p1` - **FOR EACH** applied template in the set - `inst-foreach-applied`
-   1. [x] - `p1` - Construct one provenance record capturing that template's identity, its applied-from version, its source-spec (in the shape decided by `cpt-frontx-adr-source-spec-syntax`), and its occupied ownership boundary - `inst-construct-provenance`
+   1. [x] - `p1` - Construct one provenance record capturing that template's identity, its applied-from version, its source-spec (in the shape decided by `cpt-frontx-adr-source-spec-subdirectory-addressing`, retaining the subtree segment when the reference carries one so a later re-resolution addresses the same template), and its occupied ownership boundary - `inst-construct-provenance`
    2. [x] - `p1` - Write the record into the provenance set in a durable, human-readable format - `inst-write-record`
    3. [x] - `p1` - **IF** the write fails - `inst-check-write-fail`
       1. [x] - `p1` - **RETURN** a provenance-write error; the assembly is considered incomplete without a record for every applied template - `inst-return-write-error`

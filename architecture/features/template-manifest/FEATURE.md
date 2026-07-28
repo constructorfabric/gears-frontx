@@ -111,8 +111,8 @@ Internal system functions and procedures that do not interact with actors direct
    1. [x] - `p1` - Add violation: manifest is unparseable - `inst-add-parse-violation`
    2. [x] - `p1` - **RETURN** REJECTED with violations - `inst-return-parse-rejected`
 4. [x] - `p1` - Verify that the manifest declares an identity field (name) - `inst-check-identity`
-5. [x] - `p1` - **IF** identity field is absent or empty - `inst-if-identity-missing`
-   1. [x] - `p1` - Add violation: identity field is required - `inst-add-identity-violation`
+5. [x] - `p1` - **IF** identity field is absent or empty, or is not usable as a repository-relative path — the identity addresses the template's installed content path and its own `.frontx/ai/<template-identity>/` bundle subtree, so pre-publish validation refuses a value install would refuse - `inst-if-identity-missing`
+   1. [x] - `p1` - Add violation: identity field is required and must be usable as a repository-relative path - `inst-add-identity-violation`
 6. [x] - `p1` - Verify that the manifest declares a version field conforming to the versioned shape - `inst-check-version`
 7. [x] - `p1` - **IF** version field is absent or malformed - `inst-if-version-missing`
    1. [x] - `p1` - Add violation: version field is required and must conform to the versioned shape - `inst-add-version-violation`
