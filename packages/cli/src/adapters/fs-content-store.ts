@@ -125,7 +125,10 @@ function listFilesRecursive(root: string, relativeDir = ''): string[] {
   const entries = fs.readdirSync(absoluteDir, { withFileTypes: true });
   const files: string[] = [];
   for (const entry of entries) {
-    const relativePath = path.join(relativeDir, entry.name);
+    // POSIX separator, per the envelope's key contract (bundle/envelope.ts):
+    // `path.join` would make the round trip promised above lossy on Windows,
+    // handing back `src\index.ts` for a key written as `src/index.ts`.
+    const relativePath = relativeDir === '' ? entry.name : `${relativeDir}/${entry.name}`;
     if (entry.isDirectory()) {
       files.push(...listFilesRecursive(root, relativePath));
     } else if (entry.isFile()) {

@@ -8,6 +8,13 @@
 // The two parses stay separate on purpose: the producing side additionally
 // rejects an empty map and non-string values, a stricter rule than a reader
 // needs.
+//
+// A key is a relative path with POSIX separators on every host, because the
+// envelope is a wire format rather than a host path: the GitHub adapter takes
+// its keys from tar entries, and subtree narrowing matches a `<subtree>/`
+// prefix and refuses a backslash as an escaping path
+// (packages/cli/src/resolver/narrow-subtree.ts). An adapter that builds a key
+// with `path.join` breaks both on Windows.
 export const BUNDLE_MARKER = '$frontxTemplateFiles';
 
 // The file map inside the envelope, or `undefined` when `content` is not an

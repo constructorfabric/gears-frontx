@@ -7,6 +7,7 @@ import { InventoryIndex } from '../inventory/InventoryIndex';
 import { InventoryStore } from '../inventory/InventoryStore';
 import { TemplateInventory } from '../inventory/TemplateInventory';
 import { InventoryState } from '../inventory/types';
+import type { ContentStorePort } from '../inventory/types';
 import { MANIFEST_FILENAME } from '../manifest/types';
 import type { TemplateManifest } from '../manifest/types';
 import { resolveToInventory } from '../resolver/resolve';
@@ -56,6 +57,40 @@ function subtreeBundleOf(subtree: string, manifest: TemplateManifest): string {
 
 function fetchOf(content: string): FetchFn {
   return async () => content;
+}
+
+// A content store carrying the real adapter's write/replace asymmetry: `write`
+// materializes over whatever is already there, `replace` clears the content
+// path first (packages/cli/src/adapters/fs-content-store.ts). The in-memory
+// `InventoryStore` implements both as one `Map.set`, so a case built on it
+// cannot see which operation a reinstall chose and passes either way.
+class AccumulatingStore implements ContentStorePort {
+  private readonly materialized: Map<string, Record<string, string>> = new Map();
+
+  write(name: string, content: string): void {
+    this.materialized.set(name, { ...(this.materialized.get(name) ?? {}), ...filesOf(content) });
+  }
+
+  replace(name: string, content: string): void {
+    this.materialized.set(name, filesOf(content));
+  }
+
+  read(name: string): string | undefined {
+    const files = this.materialized.get(name);
+    return files === undefined ? undefined : JSON.stringify({ [BUNDLE_MARKER]: files });
+  }
+
+  has(name: string): boolean {
+    return this.materialized.has(name);
+  }
+}
+
+// The files an envelope materializes into. Every fixture in this file is an
+// envelope, so this parses one here rather than reaching for the reader the
+// code under test uses — a double that shares that reader would break with it
+// instead of catching it.
+function filesOf(content: string): Record<string, string> {
+  return (JSON.parse(content) as Record<string, Record<string, string>>)[BUNDLE_MARKER] ?? {};
 }
 
 async function resolveSpec(spec: string, content: string) {
@@ -222,7 +257,7 @@ describe('TemplateInventory — manifest identity across install and bounded upd
   });
 
   it('clears the content path when re-installing the same address, so a file the new version dropped is gone', async () => {
-    const store = new InventoryStore();
+    const store = new AccumulatingStore();
     const inventory = new TemplateInventory(new InventoryIndex(), store);
     const withExtra = JSON.stringify({
       [BUNDLE_MARKER]: {
@@ -237,6 +272,9 @@ describe('TemplateInventory — manifest identity across install and bounded upd
     const bumped = await inventory.install('github:acme/ui@v2.0.0', fetchOf(withoutExtra));
 
     expect(bumped.ok).toBe(true);
+    // A plain write would have materialized over the previous version, leaving
+    // `src/dropped.ts` behind; only clearing the content path first leaves
+    // exactly the files the new version carries.
     expect(store.read('ui-template')).toBe(withoutExtra);
   });
 

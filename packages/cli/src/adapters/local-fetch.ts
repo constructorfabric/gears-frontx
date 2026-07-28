@@ -68,7 +68,11 @@ function walkDirectory(root: string, excludedDirs: Set<string>, relativeDir = ''
   const files: string[] = [];
   for (const entry of entries) {
     if (entry.isDirectory() && excludedDirs.has(entry.name)) continue;
-    const relativePath = path.join(relativeDir, entry.name);
+    // POSIX separator, per the envelope's key contract (bundle/envelope.ts):
+    // `path.join` would emit `\` on Windows, and a subtree-addressed install of
+    // a local template would fail there as `empty-subtree`. The reads below
+    // accept `/` on every platform.
+    const relativePath = relativeDir === '' ? entry.name : `${relativeDir}/${entry.name}`;
     if (entry.isDirectory()) {
       files.push(...walkDirectory(root, excludedDirs, relativePath));
     } else if (entry.isFile()) {

@@ -68,7 +68,7 @@ applied template under `./my-app/.frontx/`.
 ### 3. Add a template to an existing repository
 
 ```bash
-frontx add my-template ./existing-repo
+frontx add @acme/my-template ./existing-repo
 ```
 
 A repository can be assembled from **multiple independently-applied templates**.

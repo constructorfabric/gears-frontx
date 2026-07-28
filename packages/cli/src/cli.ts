@@ -270,7 +270,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
     case 'update-local': {
       const [name, spec] = args;
       if (!name || !spec) {
-        return { exitCode: EXIT_USER_ERROR, stderr: 'update-local requires <name> and <spec> arguments.' };
+        return { exitCode: EXIT_USER_ERROR, stderr: 'update-local requires <identity> and <spec> arguments.' };
       }
       const result = await updateLocalCommand(name, spec, deps.inventory, deps.fetchFn);
       if (!result.ok) return { exitCode: EXIT_USER_ERROR, stderr: result.message };
