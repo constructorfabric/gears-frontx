@@ -1,6 +1,15 @@
 <!-- @standalone:override -->
 # CLI Guidelines
 
+## STATUS (READ FIRST)
+
+- PARTIALLY STALE: sections SCOPE, PRESET HIERARCHY, PRESET STRUCTURE, CRITICAL RULES, BUILD PROCESS, UPDATE COMMAND, SCREENSET COMMANDS and PROJECT GENERATOR describe the pre-split CLI.
+- Those sections have no referent in the current tree: presets/ and templates/ do not exist, copy-templates.ts and syncTemplates do not exist, and commands create / update / screenset create|copy do not exist.
+- Current command surface -> install, list, update-local, validate, seed, add, upgrade.
+- Source of truth for packages/cli -> architecture/ADR/0016, 0018, 0019, 0020, 0021, 0033 and the FEATUREs under architecture/features/ that own each area (template-resolution, cli-invocation, cli-scaffolding, composed-provenance, upgrade-changeset, template-manifest).
+- Still in force here -> DEPENDENCY-CRUISER, TESTING, and the non-preset items of PRE-DIFF CHECKLIST.
+- Code in packages/cli carries @cpt-begin / @cpt-end markers bound to FEATURE instruction IDs. Change the FEATURE first, then the code, then run cfs validate.
+
 ## AI WORKFLOW (REQUIRED)
 1) Summarize 3-6 rules from this file before proposing changes.
 2) STOP if you modify templates directly, bypass preset hierarchy, or add rules to root files.

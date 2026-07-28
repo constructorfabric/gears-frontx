@@ -125,17 +125,22 @@ template you apply.
 ### Scaffold and evolve a project
 
 ```bash
-# Install a template from a versioned source (host:owner/repo@ref)
-frontx install github:acme/my-template@v1.0.0
+# Install a template from a versioned source (host:owner/repo[//subtree]@ref)
+frontx install github:acme/starter-repo@v1.0.0
 
-# List installed templates
+# Install a template that occupies a subtree of a repository
+frontx install github:acme/templates//shell@v1.0.0
+
+# List installed templates by the identity each manifest declares
 frontx list
 
-# Seed a new repository from an installed template
-frontx seed my-template ./my-app
+# Seed a new repository from an installed template, by that identity -
+# which is what the manifest declares, not the repository it came from.
+# Here github:acme/starter-repo declares "@acme/web-app" in its manifest.
+frontx seed @acme/web-app ./my-app
 
 # Or add a template into an existing repository
-frontx add my-template ./existing-repo
+frontx add @acme/web-app ./existing-repo
 
 # Later, upgrade an applied template to a newer version (reviewable change set)
 frontx upgrade ./my-app 1.1.0
@@ -152,9 +157,9 @@ within a project. It bundles no templates of its own.
 
 | Command | Purpose |
 |---------|---------|
-| `frontx install <spec>` | Install a template from a source-spec (`host:owner/repo@ref`) into the local inventory |
+| `frontx install <spec>` | Install a template from a source-spec (`host:owner/repo[//subtree]@ref`) into the local inventory, tracked under the identity its manifest declares |
 | `frontx list` | List installed templates |
-| `frontx seed <templateRef> <targetDir>` | Seed a **new** repository from a template |
+| `frontx seed <templateRef> <targetDir>` | Seed a **new** repository from a template; `templateRef` is the identity shown by `frontx list`, not the repository name |
 | `frontx add <templateRef> <targetDir>` | Add a template into an **existing** repository |
 | `frontx upgrade <projectRoot> <version>` | Upgrade an applied template (reviewable change set) |
 | `frontx validate <templateDir>` | Validate a template manifest for publication |

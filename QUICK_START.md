@@ -38,18 +38,26 @@ applies them to repositories. It bundles no templates of its own.
 
 ### 1. Install a template
 
-Templates are addressed by a source-spec, `host:owner/repo@ref`:
+Templates are addressed by a source-spec, `host:owner/repo[//subtree]@ref`. The optional
+`//subtree` segment addresses a template that occupies a subtree of a repository, so
+one repository can publish several templates:
 
 ```bash
-frontx install github:acme/my-template@v1.0.0
+frontx install github:acme/my-template@v1.0.0        # template at the repository root
+frontx install github:acme/templates//shell@v1.0.0   # template in the shell/ subtree
 frontx list          # show installed templates and versions
 ```
+
+A template is tracked under the identity its own `frontx-template.json` declares, not under
+the repository name. Installing a template whose identity is already taken by a different
+source fails rather than overwriting the installed one.
 
 ### 2. Seed a new repository
 
 ```bash
-# frontx seed <templateRef> <targetDir>   (templateRef comes from `frontx list`)
-frontx seed my-template ./my-app
+# frontx seed <templateRef> <targetDir>
+# templateRef is the identity the template's manifest declares, as shown by `frontx list`
+frontx seed @acme/my-template ./my-app
 ```
 
 Seeding resolves the template (plus any templates its preset references), runs a
@@ -93,7 +101,7 @@ frontx validate ./path/to/template
 
 | Command | Purpose |
 |---------|---------|
-| `frontx install <spec>` | Install a template from `host:owner/repo@ref` into the inventory |
+| `frontx install <spec>` | Install a template from `host:owner/repo[//subtree]@ref` into the inventory |
 | `frontx list` | List installed templates and versions |
 | `frontx seed <templateRef> <targetDir>` | Seed a **new** repository from a template |
 | `frontx add <templateRef> <targetDir>` | Add a template into an **existing** repository |
