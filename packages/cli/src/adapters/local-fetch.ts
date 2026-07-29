@@ -5,7 +5,7 @@
 //
 // It realizes that EXISTING seam with a local-directory adapter so
 // `frontx install` + `frontx seed` can assemble the on-disk
-// `template-standard/` OFFLINE (no network / no GitHub publish) for e2e
+// `template-shell/` OFFLINE (no network / no GitHub publish) for e2e
 // exercise of the real materialize path. It walks a local directory and
 // emits the exact bundle envelope `FsContentStore`
 // (`packages/cli/src/adapters/fs-content-store.ts`) already materializes —
@@ -20,7 +20,7 @@ import { BUNDLE_MARKER } from '../bundle/envelope';
 import type { FetchFn } from '../resolver/types';
 
 /** Directory names never included in the local bundle — build/dependency
- * artifacts the real template-standard `.gitignore` also excludes. */
+ * artifacts the real template-shell `.gitignore` also excludes. */
 const DEFAULT_EXCLUDED_DIRS = new Set([
   'node_modules',
   'dist',
@@ -32,6 +32,7 @@ const DEFAULT_EXCLUDED_DIRS = new Set([
   '.vite',
   '.mf',
   '.__mf__temp',
+  '.omc',
 ]);
 
 export interface LocalFetchOptions {
