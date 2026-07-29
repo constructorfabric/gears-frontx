@@ -258,11 +258,10 @@ Run `npm run arch:check` and `npm run arch:deps` before committing.
   capability inventory across all three pillars
 - Review [DESIGN.md](./architecture/DESIGN.md) for the system design and
   package boundaries
-- Read [AI Guidelines](./.ai/GUIDELINES.md) for AI coding rules and patterns
 - Explore the pillar packages under `packages/`
 
 ## Getting Help
 
-- Check the AI guidelines and architecture docs under `.ai/` and `architecture/`
+- Check the architecture docs under `architecture/`
 - Run `frontx help` for the CLI command surface
 - Refer to each package's types for its public API

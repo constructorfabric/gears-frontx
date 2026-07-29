@@ -5,7 +5,7 @@ description: Use this skill whenever delegating work to subagents — whether a 
 
 # Team Lead
 
-Consult [.ai/GUIDELINES.md](../../../.ai/GUIDELINES.md) for the current tech stack, package list, and routing rules — those evolve with the repo.
+Consult [architecture/DESIGN.md](../../../architecture/DESIGN.md) for the package inventory and the layering rules between packages — those evolve with the repo.
 
 ## Team Composition
 

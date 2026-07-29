@@ -198,8 +198,7 @@ live and version outside this repository.
 
 ```bash
 FrontX/                              # Ecosystem repository root
-├── .ai/                            # AI prompting rules and GUIDELINES
-├── architecture/                   # Cypilot SDLC artifacts (PRD, DESIGN, ADR, features)
+├── architecture/                   # Constructor Studio SDLC artifacts (PRD, DESIGN, ADR, features)
 ├── packages/                       # Ecosystem packages (published to npm)
 │   ├── mfes/                       # P1: MFE runtime — registration, loading, mounting, isolation
 │   ├── gts-plugin/                 # P1: GTS default type-system provider plugin
@@ -228,16 +227,13 @@ npm run arch:deps            # dependency-boundary rules
 
 `npm run test:unit` fans out to every ecosystem package under `packages/*`; use
 `npm run test:unit:watch` while iterating. Contributors should read the
-[Validation](CONTRIBUTING.md#validation) section in [CONTRIBUTING.md](CONTRIBUTING.md),
-and [GUIDELINES.md](.ai/GUIDELINES.md) for development guidelines.
+[Validation](CONTRIBUTING.md#validation) section in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Documentation
 
 - **[DECOMPOSITION.md](architecture/DECOMPOSITION.md)**: Project roadmap and feature decomposition
 - **[PRD.md](architecture/PRD.md)**: Core philosophy, principles, and values
-- **[GUIDELINES.md](.ai/GUIDELINES.md)**: Development guidelines for AI and humans
 - **[CONTRIBUTING.md](CONTRIBUTING.md)**: How to contribute to the project (includes validation and unit-test commands)
-- **[UNIT_TESTING.md](.ai/project/targets/UNIT_TESTING.md)**: Unit-test contract and monorepo runner rules
 
 ## Community & Support
 

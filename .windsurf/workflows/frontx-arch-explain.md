@@ -1,6 +1,0 @@
----
-description: Explain FrontX architecture concepts
-auto_execution_mode: 3
----
-
-Use `.ai/commands/frontx-arch-explain.md` as the single source of truth.

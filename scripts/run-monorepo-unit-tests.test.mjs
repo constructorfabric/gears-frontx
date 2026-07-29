@@ -2,10 +2,10 @@
 //
 // Unit tests for the pure-logic helpers inside `run-monorepo-unit-tests.mjs`.
 // The runner file is >500 LOC of dense routing logic (arg parsing, path
-// inference, workspace discovery, cross-project arg rewriting); per
-// UNIT_TESTING.md TRIGGERS it qualifies as a "logic-heavy file" that must
-// carry unit tests. The exported helpers are deliberately side-effect-free so
-// we can cover every routing branch here without spawning child processes.
+// inference, workspace discovery, cross-project arg rewriting), so it qualifies
+// as a "logic-heavy file" that must carry unit tests. The exported helpers are
+// deliberately side-effect-free so we can cover every routing branch here
+// without spawning child processes.
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import path from 'node:path';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';

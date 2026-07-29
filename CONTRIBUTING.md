@@ -128,7 +128,7 @@ npm run test:unit
 npm run test:unit:watch
 ```
 
-The host app (`src/app`) and each workspace or nested MFE that defines `test:unit` is exercised by that command. For conventions, CI expectations, and narrowing runs to a single project or path, see [`.ai/project/targets/UNIT_TESTING.md`](.ai/project/targets/UNIT_TESTING.md).
+The host app (`src/app`) and each workspace or nested MFE that defines `test:unit` is exercised by that command. To narrow a run, pass the project name or a path to the runner: `npm run test:unit -- --project=cli`, or `npm run test:unit -- packages/cli/src/__tests__/resolver.test.ts` for a single file.
 
 **Internal scripts (do not call directly):** Root [`package.json`](package.json) defines `_test:unit:host` and `_test:unit:host:watch` for the host app only; they exist so the monorepo runner can invoke Vitest where there is no workspace package. Agents and CI should use `npm run test:unit` / `test:unit:watch` instead.
 

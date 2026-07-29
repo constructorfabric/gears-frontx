@@ -2,7 +2,7 @@
 # frontx:new-api-service - Add New API Service (Framework Layer)
 
 ## AI WORKFLOW (REQUIRED)
-1) Read .ai/targets/API.md and .ai/targets/EVENTS.md before starting.
+1) Read packages/api/CLAUDE.md before starting.
 2) Gather requirements from user.
 3) Implement.
 4) Validate.
@@ -22,7 +22,7 @@
 - REQUIRED: Register mock map in service constructor for DEV mode.
 - REQUIRED: Register slice and initialize effects in screenset config.
 - REQUIRED: Run npm run type-check && npm run arch:check.
-- See packages/api/CLAUDE.md and .ai/targets/EVENTS.md for examples.
+- See packages/api/CLAUDE.md for examples.
 
 ## RETRY PATTERN
 - REQUIRED: Use ApiPluginErrorContext in onError for retry support.

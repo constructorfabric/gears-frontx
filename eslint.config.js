@@ -302,7 +302,7 @@ export default [
           selector:
             "CallExpression[callee.name='dispatch'] CallExpression[callee.object.name][callee.property.name]",
           message:
-            'FLUX VIOLATION: Do not dispatch slice actions directly. Use event-emitting actions instead. See EVENTS.md.',
+            'FLUX VIOLATION: Do not dispatch slice actions directly. Use event-emitting actions instead.',
         },
         {
           selector:

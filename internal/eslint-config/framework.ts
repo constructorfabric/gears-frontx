@@ -57,7 +57,7 @@ export const frameworkConfig: ConfigArray = [
                 '**/core/actions/**',
               ],
               message:
-                'FLUX VIOLATION: Effects cannot import actions (circular flow risk). Effects only listen to events and update slices. See EVENTS.md.',
+                'FLUX VIOLATION: Effects cannot import actions (circular flow risk). Effects only listen to events and update slices.',
             },
           ],
         },

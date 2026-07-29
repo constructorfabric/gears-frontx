@@ -28,13 +28,13 @@ function App() {
   <YourApp />
 </Gears FrontXProvider>
 
-// With pre-built app (host-style shell; host typically also uses queryCache() — see REACT.md)
+// With pre-built app (host-style shell; host typically also uses queryCache())
 const app = createGears FrontX().use(screensets()).build();
 <Gears FrontXProvider app={app}>
   <YourApp />
 </Gears FrontXProvider>
 
-// Child MFE app — canonical bootstrap matches src/mfe_packages/*/init.ts and .ai/targets/SCREENSETS.md:
+// Child MFE app — canonical bootstrap matches src/mfe_packages/*/init.ts:
 // apiRegistry.register / initialize before .build; createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build();
 // registerSlice after .build when slices exist.
 const mfeApp = createGears FrontX().use(effects()).use(queryCacheShared()).use(mock()).build();
@@ -48,7 +48,7 @@ The shared `QueryClient` is created and owned by the `queryCache()` framework pl
 
 When the host uses `queryCache()` and the child MFE app uses `queryCacheShared()` (with `effects()` and `mock()` on the same chain as in repo MFE inits), both roots join the same shared `QueryClient` while keeping separate React trees. `ThemeAwareReactLifecycle` relies on that shared plugin-owned client through the app instance. If the shared client is missing for a mounted MFE, the lifecycle now fails explicitly instead of silently falling back.
 
-For separate roots, build each app with the appropriate query-cache plugin (`queryCache()` for the host, `queryCacheShared()` for child MFE shells) so every tree joins the same cache through plugin composition. MFE package ordering and forbidden bootstrap pieces are defined in SCREENSETS.md. Host apps should register domains/extensions during bootstrap; **`ExtensionDomainSlot`** is the preferred host-side renderer for screen slots while the framework wires `mount_ext`.
+For separate roots, build each app with the appropriate query-cache plugin (`queryCache()` for the host, `queryCacheShared()` for child MFE shells) so every tree joins the same cache through plugin composition. Host apps should register domains/extensions during bootstrap; **`ExtensionDomainSlot`** is the preferred host-side renderer for screen slots while the framework wires `mount_ext`.
 
 ### Data Fetching with Endpoint Descriptors
 

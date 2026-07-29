@@ -2,7 +2,7 @@
 # frontx:new-api-service - Add New API Service (SDK Layer)
 
 ## AI WORKFLOW (REQUIRED)
-1) Read .ai/targets/API.md before starting.
+1) Read packages/api/CLAUDE.md before starting.
 2) Gather requirements from user.
 3) Implement.
 4) Validate.

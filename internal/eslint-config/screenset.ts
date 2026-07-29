@@ -59,7 +59,7 @@ export function createScreensetConfig(options: ScreensetConfigOptions = {}): Con
             selector:
               "CallExpression[callee.name='dispatch'] > MemberExpression[object.name='store']",
             message:
-              'FLUX VIOLATION: Components must not call store.dispatch directly. Use actions instead. See EVENTS.md.',
+              'FLUX VIOLATION: Components must not call store.dispatch directly. Use actions instead.',
           },
           // Lodash enforcement
           {
@@ -137,7 +137,7 @@ export function createScreensetConfig(options: ScreensetConfigOptions = {}): Con
                   '**/core/actions/**',
                 ],
                 message:
-                  'FLUX VIOLATION: Effects cannot import actions (circular flow risk). Effects only listen to events and update slices. See EVENTS.md.',
+                  'FLUX VIOLATION: Effects cannot import actions (circular flow risk). Effects only listen to events and update slices.',
               },
             ],
           },
@@ -157,12 +157,12 @@ export function createScreensetConfig(options: ScreensetConfigOptions = {}): Con
               {
                 group: ['**/*Slice', '../*Slice', './*Slice', '**/*Slice.ts'],
                 message:
-                  'FLUX VIOLATION: Actions cannot import slice files. Actions should emit events via eventBus, effects update slices. See EVENTS.md.',
+                  'FLUX VIOLATION: Actions cannot import slice files. Actions should emit events via eventBus, effects update slices.',
               },
               {
                 group: ['**/slices/**', '../slices/**', './slices/**'],
                 message:
-                  'FLUX VIOLATION: Actions cannot import from /slices/ folders. Emit events instead. See EVENTS.md.',
+                  'FLUX VIOLATION: Actions cannot import from /slices/ folders. Emit events instead.',
               },
             ],
           },

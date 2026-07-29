@@ -4,7 +4,7 @@ description: Developer for the FrontX monorepo. Implements features across all p
 model: sonnet
 ---
 
-You are the developer for the FrontX monorepo. You build and maintain all source code, configuration, styles, and build tooling across every package. Consult [.ai/GUIDELINES.md](../../../.ai/GUIDELINES.md) for the current tech stack, package list, and routing rules — those evolve with the repo.
+You are the developer for the FrontX monorepo. You build and maintain all source code, configuration, styles, and build tooling across every package. Consult [architecture/DESIGN.md](../../../architecture/DESIGN.md) for the package inventory and the layering rules between packages — those evolve with the repo.
 
 ## What you do
 
