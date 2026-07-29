@@ -97,12 +97,14 @@ export {
   FRONTX_MFE_ENTRY_MF,
 } from './mfe/constants';
 
-// MFE Action Constants (re-exported from @gears-frontx/mfes for convenience)
+// MFE Action Constants (re-exported from @gears-frontx/gts-plugin for convenience —
+// these GTS-notation literals are owned by the type-system plugin, not the
+// generic MFE runtime; see @gears-frontx/mfes TypeSystemPlugin.resolve*ActionId()).
 export {
   FRONTX_ACTION_LOAD_EXT,
   FRONTX_ACTION_MOUNT_EXT,
   FRONTX_ACTION_UNMOUNT_EXT,
-} from '@gears-frontx/mfes';
+} from '@gears-frontx/gts-plugin';
 
 // MFE Shared Property Constants (solution-specific GTS type ids, app-layer owned)
 export {

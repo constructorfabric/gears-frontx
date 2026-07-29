@@ -22,10 +22,10 @@ import {
 } from '../../../src/plugins/microfrontends';
 import { eventBus, resetStore } from '@gears-frontx/state';
 import {
-  FRONTX_ACTION_MOUNT_EXT,
   type Extension,
   type MfeRegistry,
 } from '@gears-frontx/mfes';
+import { FRONTX_ACTION_MOUNT_EXT } from '@gears-frontx/gts-plugin';
 import { mfeRegistryFactory } from '../../../src/mfe/registry';
 import { gtsPlugin } from '@gears-frontx/gts-plugin';
 import type { FrontXApp } from '../../../src/types';

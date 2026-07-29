@@ -24,11 +24,16 @@
  */
 
 import type { ExtensionDomain } from '@gears-frontx/mfes';
+// FRONTX_ACTION_* are GTS-notation lifecycle-action literals owned by the
+// type-system plugin (moved out of @gears-frontx/mfes — the generic runtime
+// resolves them dynamically via TypeSystemPlugin.resolve*ActionId() and never
+// hardcodes a concrete format). This template commits to GTS notation for its
+// static domain declarations, so it imports the literals from their new owner.
 import {
   FRONTX_ACTION_LOAD_EXT,
   FRONTX_ACTION_MOUNT_EXT,
   FRONTX_ACTION_UNMOUNT_EXT,
-} from '@gears-frontx/mfes';
+} from '@gears-frontx/gts-plugin';
 import {
   FRONTX_SHARED_PROPERTY_THEME,
   FRONTX_SHARED_PROPERTY_LANGUAGE,

@@ -44,6 +44,11 @@ class FakeRegistry extends MfeRegistry {
     getSchema: () => undefined,
     isTypeOf: () => false,
     validateInstance: () => ({ valid: true, errors: [] }),
+    // Not exercised by ExtensionDomainSlot (it only calls registry.getMounter),
+    // but required by the TypeSystemPlugin contract.
+    resolveLoadExtActionId: () => 'load_ext',
+    resolveMountExtActionId: () => 'mount_ext',
+    resolveUnmountExtActionId: () => 'unmount_ext',
   };
 
   private readonly mounsterByDomain = new Map<string, ExtensionMounter>();

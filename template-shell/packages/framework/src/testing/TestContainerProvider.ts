@@ -19,8 +19,6 @@ import {
   ConcurrentMountStrategy,
   ExclusiveMountStrategy,
   ActionHandler,
-  FRONTX_ACTION_MOUNT_EXT,
-  FRONTX_ACTION_UNMOUNT_EXT,
   type ContainerHooks,
   type DomainContext,
   type ExtensionDomain,
@@ -71,8 +69,20 @@ export class TestContainerProvider extends ExtensionDomainImplementationFactory 
       throw new Error('TestContainerProvider.build called without prepareForDomain');
     }
     const actions = declaration.actions ?? [];
-    const hasMount = actions.includes(FRONTX_ACTION_MOUNT_EXT);
-    const hasUnmount = actions.includes(FRONTX_ACTION_UNMOUNT_EXT);
+
+    // Resolve the framework's well-known lifecycle action IDs through the
+    // injected typeSystem rather than a hardcoded import — mirrors
+    // DefaultMfeRegistry.crossValidateHandlers so this fixture accepts every
+    // domain the real registry accepts, including a hierarchy-derived (is-a)
+    // mount_ext/unmount_ext variant, not just an exact GTS-literal match.
+    // Handlers are registered under the ACTUAL declared action id (which may
+    // be the derived variant) — crossValidateHandlers checks declared actions
+    // against collected handlers by exact key, not by isTypeOf.
+    const mountExtActionId = ctx.typeSystem.resolveMountExtActionId();
+    const unmountExtActionId = ctx.typeSystem.resolveUnmountExtActionId();
+    const declaredMountAction = actions.find((id) => ctx.typeSystem.isTypeOf(id, mountExtActionId));
+    const declaredUnmountAction = actions.find((id) => ctx.typeSystem.isTypeOf(id, unmountExtActionId));
+
     const container = this.mockContainer;
     const hooks: ContainerHooks = {
       create: () => container,
@@ -80,25 +90,25 @@ export class TestContainerProvider extends ExtensionDomainImplementationFactory 
     };
 
     const strategies: MountStrategy[] = [];
-    if (hasMount && hasUnmount) {
+    if (declaredMountAction && declaredUnmountAction) {
       const strategy = new ConcurrentMountStrategy(ctx.mounter, hooks);
       strategies.push(strategy);
       ctx.registerHandler(
-        FRONTX_ACTION_MOUNT_EXT,
+        declaredMountAction,
         ActionHandler.fromFunction((_t, p) => strategy.mount(p as ActionPayload))
       );
       ctx.registerHandler(
-        FRONTX_ACTION_UNMOUNT_EXT,
+        declaredUnmountAction,
         ActionHandler.fromFunction((_t, p) => strategy.unmount!(p as ActionPayload))
       );
-    } else if (hasMount) {
+    } else if (declaredMountAction) {
       if (!this._registry) {
         throw new Error('TestContainerProvider: ExclusiveMountStrategy requires setRegistry(registry) before registering an exclusive domain');
       }
       const strategy = new ExclusiveMountStrategy(ctx.mounter, hooks, this._registry, declaration.id);
       strategies.push(strategy);
       ctx.registerHandler(
-        FRONTX_ACTION_MOUNT_EXT,
+        declaredMountAction,
         ActionHandler.fromFunction((_t, p) => strategy.mount(p as ActionPayload))
       );
     }

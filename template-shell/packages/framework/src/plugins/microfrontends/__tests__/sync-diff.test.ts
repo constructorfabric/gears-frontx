@@ -22,10 +22,12 @@ import {
   ExtensionDomainImplementation,
   ExtensionDomainImplementationFactory,
   ActionHandler,
-  FRONTX_ACTION_MOUNT_EXT,
-  FRONTX_ACTION_UNMOUNT_EXT,
   ExtensionMounter,
 } from '@gears-frontx/mfes';
+import {
+  FRONTX_ACTION_MOUNT_EXT,
+  FRONTX_ACTION_UNMOUNT_EXT,
+} from '@gears-frontx/gts-plugin';
 import type {
   ContainerHooks,
   DomainContext,

@@ -20,7 +20,7 @@ import {
 import {
   FRONTX_ACTION_LOAD_EXT,
   FRONTX_ACTION_MOUNT_EXT,
-} from '@gears-frontx/mfes';
+} from '@gears-frontx/gts-plugin';
 
 describe('Base Extension Domain Constants - Shared Properties', () => {
   describe('screenDomain sharedProperties', () => {

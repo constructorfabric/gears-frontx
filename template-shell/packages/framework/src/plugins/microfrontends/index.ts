@@ -20,9 +20,12 @@ import {
   type ActionsChain,
   type MfeHandler,
   type TypeSystemPlugin,
+} from '@gears-frontx/mfes';
+// FRONTX_ACTION_* moved to @gears-frontx/gts-plugin — see base-domains.ts.
+import {
   FRONTX_ACTION_MOUNT_EXT,
   FRONTX_ACTION_UNMOUNT_EXT,
-} from '@gears-frontx/mfes';
+} from '@gears-frontx/gts-plugin';
 import { mfeRegistryFactory } from '../../mfe/registry';
 import { getStore } from '@gears-frontx/state';
 import type { FrontXPlugin } from '../../types';

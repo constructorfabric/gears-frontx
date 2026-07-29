@@ -7,8 +7,10 @@
  * the now-deleted screensets assembly package (`mfe/constants/index.ts`);
  * that package has been deleted with no surviving shim (Stage 2b), so the
  * definitions move to the app layer that actually owns them. The generic
- * `FRONTX_ACTION_*` constants are NOT here — those are core infrastructure
- * and come from `@gears-frontx/mfes`.
+ * `FRONTX_ACTION_*` constants are NOT here — those are GTS-notation
+ * lifecycle-action literals owned by `@gears-frontx/gts-plugin` (the generic
+ * MFE runtime never hardcodes them; it resolves them dynamically via
+ * `TypeSystemPlugin.resolve*ActionId()`).
  *
  * @packageDocumentation
  */

@@ -12,13 +12,13 @@
 
 import { eventBus } from '@gears-frontx/state';
 import { MfeEvents } from './constants';
+import { type Extension, type MfeRegistry } from '@gears-frontx/mfes';
+// FRONTX_ACTION_* moved to @gears-frontx/gts-plugin — see base-domains.ts.
 import {
   FRONTX_ACTION_LOAD_EXT,
   FRONTX_ACTION_MOUNT_EXT,
   FRONTX_ACTION_UNMOUNT_EXT,
-  type Extension,
-  type MfeRegistry,
-} from '@gears-frontx/mfes';
+} from '@gears-frontx/gts-plugin';
 
 // ============================================================================
 // Module-Level Registry Reference
