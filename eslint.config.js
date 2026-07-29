@@ -4,9 +4,11 @@
  * Covers ONLY the ecosystem packages (mfes, gts-plugin, api, cli,
  * cyber-pilot-kit-frontx).
  * Non-Pillar-1 packages (state, i18n, framework, react, auth, studio) and the
- * host app now live in the self-contained top-level `template-standard/`
- * (see Phase 11 template-move); it ships its own `eslint.config.js` and is
- * excluded from this config's scope below.
+ * host app now live in the self-contained top-level `template-shell/`
+ * (see Phase 11 template-move; split from its MFE content into the sibling
+ * `template-mfe/` in issue #470); it ships its own `eslint.config.js`. Both
+ * `template-shell/` and `template-mfe/` are excluded from this config's
+ * scope below.
  */
 
 import js from '@eslint/js';
@@ -114,7 +116,8 @@ export default [
       '.husky/**',
       '.artifacts/**', // Sandbox artifacts (gitignored)
       '.agents/**', // Agent infrastructure (gitignored)
-      'template-standard/**', // Self-contained template; ships its own eslint.config.js
+      'template-shell/**', // Self-contained template; ships its own eslint.config.js
+      'template-mfe/**', // MFE content extracted from template-shell (issue #470); linted as part of the assembled shell+mfe tree, not from this ecosystem root
     ],
   },
 
@@ -250,7 +253,7 @@ export default [
         {
           selector: "Literal[value=/^(header|footer|menu|sidebar|popup|overlay|screen)$/]",
           message:
-            'MFES-3 VIOLATION (cpt-frontx-constraint-mfes-no-layout-domain-values): @gears-frontx/mfes must not define specific extension-domain (layout-domain) values. These are solution vocabulary owned by frontx-template-standard (LayoutDomain enum).',
+            'MFES-3 VIOLATION (cpt-frontx-constraint-mfes-no-layout-domain-values): @gears-frontx/mfes must not define specific extension-domain (layout-domain) values. These are solution vocabulary owned by frontx-template-shell (LayoutDomain enum).',
         },
         // @cpt-end:cpt-frontx-constraint-mfes-no-layout-domain-values:p10:inst-eslint-rule
       ],

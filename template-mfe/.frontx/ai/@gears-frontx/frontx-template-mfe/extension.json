@@ -1,0 +1,26 @@
+{
+  "id": "frontx-template-mfe-ai-bundle",
+  "contractVersion": "1.0.0",
+  "entries": [
+    {
+      "id": "add-mfe-package",
+      "category": "skills",
+      "path": "skills/add-mfe-package"
+    },
+    {
+      "id": "add-mfe-package-workflow",
+      "category": "workflows",
+      "path": "workflows/add-mfe-package-workflow.md"
+    },
+    {
+      "id": "gts-id-conventions",
+      "category": "guidelines",
+      "path": "guidelines/gts-id-conventions.md"
+    },
+    {
+      "id": "gts-id-patterns-reference",
+      "category": "reference_artifacts",
+      "path": "reference-artifacts/gts-id-patterns-reference.json"
+    }
+  ]
+}

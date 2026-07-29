@@ -25,8 +25,8 @@ reason = "Auth SDK package has no backing CDSL artifact"
 patterns = ["packages/auth/*"]
 
 [[ignore]]
-reason = "Template-standard package is template territory (Phase 11 template-move); code carries pre-redesign markers that reference archived IDs — no active FEATURE artifact backs this package"
-patterns = ["packages/frontx-template-standard/**"]
+reason = "template-shell/template-mfe are template territory (Phase 11 template-move, split in issue #470); code carries pre-redesign markers that reference archived IDs — no active FEATURE artifact backs these packages"
+patterns = ["template-shell/**", "template-mfe/**"]
 
 [[ignore]]
 reason = "Unmarked build/test tooling in scripts/ has no CDSL backing. NOTE: scripts/ecosystem-version-policy.mjs (ecosystem-distribution F1) and scripts/test-architecture.ts carry @cpt markers and MUST stay scanned — they are deliberately NOT ignored here."

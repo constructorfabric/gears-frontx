@@ -31,7 +31,7 @@
     "noImplicitThis": true,
 
     /* Path aliases (ecosystem packages only — template packages carry their
-       own tsconfig in the self-contained template-standard/) */
+       own tsconfig in the self-contained template-shell/) */
     "baseUrl": ".",
     "paths": {
       "@gears-frontx/api": ["./packages/api/src/index.ts"],
@@ -43,7 +43,7 @@
     }
   },
   // Ecosystem packages only. The host app + template packages (state, i18n,
-  // framework, react, studio, auth) type-check via template-standard's own
+  // framework, react, studio, auth) type-check via template-shell's own
   // tsconfig.app.json / per-package tsconfig.json (Phase 11 template-move).
   "include": [
     "packages/*/src"

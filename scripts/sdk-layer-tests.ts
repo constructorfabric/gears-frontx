@@ -55,14 +55,14 @@ function log(message: string, color: keyof typeof colors = 'reset'): void {
 }
 
 // Phase 11 relocated `state`, `i18n`, `framework`, `react` into the
-// self-contained `template-standard/packages/*` tree (template territory);
+// self-contained `template-shell/packages/*` tree (template territory);
 // `api` and `screensets` remain ecosystem-side under `packages/*`. The SDK
 // layer invariant still spans both locations, so resolve each package name
 // to its post-relocation directory instead of assuming a single root.
 const TEMPLATE_PACKAGE_NAMES = new Set(['state', 'i18n', 'framework', 'react']);
 
 function resolvePackageDir(pkgName: string): string {
-  const base = TEMPLATE_PACKAGE_NAMES.has(pkgName) ? 'template-standard/packages' : 'packages';
+  const base = TEMPLATE_PACKAGE_NAMES.has(pkgName) ? 'template-shell/packages' : 'packages';
   return path.join(process.cwd(), base, pkgName);
 }
 

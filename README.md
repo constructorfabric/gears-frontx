@@ -209,6 +209,8 @@ FrontX/                              # Ecosystem repository root
 │   ├── api/                        # P1: API communication protocols + service registry
 │   ├── cli/                        # P2: template-resolution CLI (`frontx`)
 │   └── cyber-pilot-kit-frontx/     # P3: AI Tooling Kit
+├── template-shell/                 # Reference template: app shell (developed here, applied via `frontx seed`)
+├── template-mfe/                   # Reference template: add-only MFE bundle (applied via `frontx add`)
 ├── internal/                       # Internal build/lint config workspaces
 ├── scripts/                        # Architecture, version-policy, and test tooling
 └── tsconfig.json                   # TypeScript config (ecosystem packages only)

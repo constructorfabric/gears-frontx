@@ -147,6 +147,53 @@ describe('kit self-validation — shipped resource BODY scan (cpt-frontx-adr-sol
     expect(result.violations.some((v) => v.code === 'SOLUTION_SPECIFIC_CONTENT')).toBe(true);
   });
 
+  // inst-scan-solution-content — regression guard for the CURRENT identities after the
+  // issue #470 shell/mfe split. SPECIFIC_TEMPLATE_NAMES keeps the historical
+  // `frontx-template-standard`/`template-standard` entries (tested above) AND adds
+  // `frontx-template-shell`/`template-shell`/`frontx-template-mfe`/`template-mfe` —
+  // a leak naming either current product must be caught exactly like the legacy name.
+  it('AGENTS.md-body leak naming the current shell package "frontx-template-shell" → FAIL SOLUTION_SPECIFIC_CONTENT', () => {
+    const leakingReader: ResourceBodyReader = {
+      read(entry: KitResourceEntry): string[] {
+        if (entry.id === 'frontx_agents') {
+          return [
+            [
+              '# FrontX AI Tooling Kit — Agent Navigation Rules',
+              '',
+              '## Package Boundaries (always enforce)',
+              '',
+              '- Template packages: `frontx-template-shell` and its sub-packages',
+            ].join('\n'),
+          ];
+        }
+        return [''];
+      },
+    };
+
+    const result = validateKitManifest(loadShippedManifest(), leakingReader);
+    expect(result.status).toBe('FAIL');
+    expect(
+      result.violations.some(
+        (v) => v.code === 'SOLUTION_SPECIFIC_CONTENT' && v.message.includes('frontx-template-shell'),
+      ),
+    ).toBe(true);
+  });
+
+  // inst-scan-solution-content — mfe counterpart, bare form (no frontx- prefix)
+  it('resource body naming "template-mfe" (without frontx- prefix) → FAIL SOLUTION_SPECIFIC_CONTENT', () => {
+    const leakingReader: ResourceBodyReader = {
+      read(entry: KitResourceEntry): string[] {
+        if (entry.id === 'frontx_guidelines') {
+          return ['## Template Territory\n\n`src-app/mfe_packages/` ships from `template-mfe/`.'];
+        }
+        return [''];
+      },
+    };
+    const result = validateKitManifest(loadShippedManifest(), leakingReader);
+    expect(result.status).toBe('FAIL');
+    expect(result.violations.some((v) => v.code === 'SOLUTION_SPECIFIC_CONTENT')).toBe(true);
+  });
+
   // inst-scan-solution-content — abstract use of the generic word "template" in guidelines is NOT a false positive
   it('body abstractly describing the template mechanism (no specific name) → PASS', () => {
     const abstractReader: ResourceBodyReader = {

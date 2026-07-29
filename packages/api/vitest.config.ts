@@ -1,7 +1,7 @@
 // @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-standard-test-convention:p1
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { definePackageVitestConfig } from '../../template-standard/vitest.shared';
+import { definePackageVitestConfig } from '../../template-shell/vitest.shared';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -14,9 +14,9 @@ export default {
   ...base,
   resolve: {
     alias: {
-      '@gears-frontx/frontx-template-standard': path.resolve(
+      '@gears-frontx/frontx-template-shell': path.resolve(
         __dirname,
-        '../../template-standard/src/index.ts'
+        '../../template-shell/src/index.ts'
       ),
     },
   },

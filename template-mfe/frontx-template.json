@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "name": "@gears-frontx/frontx-template-mfe",
+  "version": "0.1.0-alpha.0",
+  "ownershipBoundaries": {
+    "exclusiveSubtrees": [
+      "src-app/mfe_packages/",
+      ".frontx/ai/@gears-frontx/frontx-template-mfe/"
+    ],
+    "sharedFiles": []
+  }
+}
