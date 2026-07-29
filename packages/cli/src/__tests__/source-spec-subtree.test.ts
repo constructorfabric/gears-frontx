@@ -154,6 +154,16 @@ describe('parseSourceSpec — subtree segment (inst-parse-extract-subtree, inst-
 
     expect(result.ok).toBe(false);
   });
+
+  // Only the FIRST colon bounds the host, so a later one reaches the subtree
+  // segment, where it would designate a Windows drive once the segment is
+  // resolved against the inventory root.
+  it('refuses a subtree segment carrying a colon', () => {
+    const result = parseSourceSpec('github:acme/templates//sh:ell@v1.2.0');
+
+    expect(result.ok).toBe(false);
+  });
+
 });
 
 describe('narrowBundleToSubtree (inst-resolve-subtree)', () => {

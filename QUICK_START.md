@@ -107,7 +107,7 @@ frontx validate ./path/to/template
 | `frontx add <templateRef> <targetDir>` | Add a template into an **existing** repository |
 | `frontx upgrade <projectRoot> <version> [--yes] [--json]` | Upgrade an applied template |
 | `frontx validate <templateDir>` | Validate a template for publication |
-| `frontx update-local <name> <spec>` | Refresh a locally installed template from its source |
+| `frontx update-local <identity> <spec>` | Refresh a locally installed template from its source |
 | `frontx help` | Show the usage summary |
 
 Exit codes: `0` success, `1` user error, `2` internal error.

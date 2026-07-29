@@ -154,6 +154,93 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
   });
 
   // inst-add-resolve-occupied
+  it('submits one claim per installed template when two provenance records resolve to the same one', async () => {
+    // A repository carrying both a record written under the old identity scheme
+    // and one written under the new: the legacy record resolves by source
+    // address, the current one by identity, and both land on `applied/`.
+    const applied = makeEntry('declared-identity', [{ path: 'applied/index.ts', content: 'applied' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['applied/'], sharedFiles: [] },
+    });
+    const newTemplate = makeEntry('new-template', [{ path: 'new/index.ts', content: 'new' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['new/'], sharedFiles: [] },
+    });
+    const entries: Record<string, InventoryEntry> = {
+      'declared-identity': applied,
+      'new-template': newTemplate,
+    };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'legacy-repo-name', scaffoldedFromVersion: '1.0.0', sourceSpec: applied.source },
+        { templateIdentity: 'declared-identity', scaffoldedFromVersion: '2.0.0', sourceSpec: applied.source },
+      ]),
+    );
+
+    const result = await addTemplate(
+      'new-template',
+      '/target',
+      (n: string) => entries[n],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+    );
+
+    // One claim per occupant, so `applied/` is not contested by itself and the
+    // disjoint `new/` claim passes. Two claims would have made every add in
+    // this repository fail with the occupant named under both identities.
+    expect(result.ok).toBe(true);
+    expect(files.get('/target/new/index.ts')).toBe('new');
+  });
+
+  // inst-add-resolve-occupied
+  it('keeps the surviving claim after deduplication, so the occupant still contests its own ground', async () => {
+    // The companion to the case above: deduplicating to ZERO claims would also
+    // let a disjoint add through, so the guard has to be shown from the other
+    // side — a template claiming the occupied ground must still be refused.
+    const applied = makeEntry('declared-identity', [{ path: 'applied/index.ts', content: 'applied' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['applied/'], sharedFiles: [] },
+    });
+    const intruder = makeEntry('intruder', [{ path: 'applied/other.ts', content: 'intruder' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['applied/'], sharedFiles: [] },
+    });
+    const entries: Record<string, InventoryEntry> = {
+      'declared-identity': applied,
+      intruder,
+    };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'legacy-repo-name', scaffoldedFromVersion: '1.0.0', sourceSpec: applied.source },
+        { templateIdentity: 'declared-identity', scaffoldedFromVersion: '2.0.0', sourceSpec: applied.source },
+      ]),
+    );
+
+    const result = await addTemplate(
+      'intruder',
+      '/target',
+      (n: string) => entries[n],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('conflict');
+    if (result.reason !== 'conflict') return;
+    // Exactly one contest, and the occupant is named once — under the identity
+    // of the first record that resolved, not under both.
+    expect(result.conflicts).toEqual([{ ground: 'applied/', contestants: ['intruder', 'legacy-repo-name'] }]);
+    expect(files.get('/target/applied/other.ts')).toBeUndefined();
+  });
+
+  // inst-add-resolve-occupied
   it('ignores an identity hit whose installed source addresses a different template, and resolves by address instead', async () => {
     // An inventory written before the collision guard existed: the key
     // `shared-key` points at a template acquired from somewhere else entirely.

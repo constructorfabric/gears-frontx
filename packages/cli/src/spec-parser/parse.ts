@@ -88,7 +88,9 @@ export function parseSourceSpec(raw: string): ParseResult {
           `Malformed repository path or subtree segment in source-spec "${raw}". ` +
           'Expected format: host:owner/repo[//subtree]@ref (e.g. github:acme/templates//shell@v1.0.0). ' +
           'The repository path must be exactly one owner segment and one repository segment, ' +
-          'and a subtree segment must be a relative path with no empty, "." or ".." segments.',
+          'and a subtree segment must be usable as a repository-relative path: no surrounding ' +
+          'whitespace, no leading "/", no backslash, no ":" or control character, and no empty, ' +
+          '"." or ".." segment.',
       },
     };
     // @cpt-end:cpt-frontx-algo-template-resolution-parse-spec:p1:inst-parse-invalid-path-fail

@@ -42,12 +42,16 @@ export type OccupiedBoundariesResult =
 // miss falls back to matching the installed template by source address. That
 // makes the migration silent where it can be, and leaves a loud failure only
 // where the template genuinely is not installed.
+//
+// One claim per resolved installed template, however many records point at it:
+// a template owns its boundaries once, and the reason is at the skip below.
 export function occupiedBoundariesFromProvenance(
   records: ProvenanceRecord[],
   lookupFn: (name: string) => InventoryEntry | undefined,
   installed: InventoryEntry[],
 ): OccupiedBoundariesResult {
   const occupied: OccupiedBoundaryEntry[] = [];
+  const claimed = new Set<string>();
   for (const record of records) {
     // An identity hit is trusted only when the entry came from the address the
     // record names. An inventory written before the collision guard existed can
@@ -84,6 +88,19 @@ export function occupiedBoundariesFromProvenance(
           'Remove the duplicate from the local inventory and retry.',
       };
     }
+
+    // Two records resolving to one installed template describe one occupant,
+    // not two. The conflict check pairs every claim with every other one,
+    // occupied claims included, so the same boundaries submitted twice read as
+    // the occupant contesting itself and abort an add that has no real
+    // conflict — with nothing the caller could do about it, since the records
+    // are already on disk. Reachable from provenance written before identity
+    // came from the manifest, where a legacy record and a manifest-identity
+    // record for one template both resolve here: one by identity, one by
+    // address. The first record's identity is the one reported, and either
+    // names ground the same entry owns.
+    if (claimed.has(entry.name)) continue;
+    claimed.add(entry.name);
 
     const manifestResult = readManifestFromContent(entry.content);
     if (!manifestResult.ok) {

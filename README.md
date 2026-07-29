@@ -163,7 +163,7 @@ within a project. It bundles no templates of its own.
 | `frontx add <templateRef> <targetDir>` | Add a template into an **existing** repository |
 | `frontx upgrade <projectRoot> <version>` | Upgrade an applied template (reviewable change set) |
 | `frontx validate <templateDir>` | Validate a template manifest for publication |
-| `frontx update-local <name> <spec>` | Refresh a locally installed template from its source |
+| `frontx update-local <identity> <spec>` | Refresh a locally installed template from its source |
 
 ### AI Tooling
 
