@@ -56,7 +56,7 @@ What concrete shape should a versioned source-spec take, so that a reference is 
 
 Chosen option: **Host-prefixed token with an optional subtree segment**, because it resolves the unambiguous-origin, explicit-version, and one-value drivers in a single compact token while reusing the reference shape already established across the platform substrate. The complete shape is:
 
-```
+```text
 host:owner/repo[//subtree]@ref
 ```
 

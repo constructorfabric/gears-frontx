@@ -29,7 +29,7 @@ function App() {
 </Gears FrontXProvider>
 
 // With pre-built app (host-style shell; host typically also uses queryCache())
-const app = createGears FrontX().use(screensets()).build();
+const app = createGears FrontX().use(screensets()).use(queryCache()).build();
 <Gears FrontXProvider app={app}>
   <YourApp />
 </Gears FrontXProvider>

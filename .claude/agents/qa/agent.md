@@ -79,7 +79,7 @@ Run independent checks in parallel where possible. Report exact exit codes and e
 
 Read and scan the implementation for violations that automated tools miss.
 
-**Forbidden patterns** — search ALL of `src/` and `__tests__/`:
+**Forbidden patterns** — search ALL package sources and tests: `src/`, `packages/*/src/`, and every `__tests__/`/`tests/` directory:
 - `as any` — BLOCK
 - `as unknown as` — BLOCK
 - `unknown` in public type definitions — BLOCK
