@@ -4,13 +4,13 @@ import { isSafeRelativePath } from '../paths/relative-path';
 import type { ParseResult, StructuredRef } from './types';
 
 // Separator that introduces the optional subtree segment
-// (cpt-frontx-adr-source-spec-subdirectory-addressing).
+// (cpt-frontx-adr-source-spec-syntax).
 const SUBTREE_SEPARATOR = '//';
 
 export function parseSourceSpec(raw: string): ParseResult {
   // @cpt-begin:cpt-frontx-algo-template-resolution-parse-spec:p1:inst-parse-prefix-check
-  // An empty host counts as no host: `cpt-frontx-adr-source-spec-subdirectory-addressing`
-  // re-decides the prefix as mandatory, and `:owner/repo@ref` names no registry.
+  // An empty host counts as no host: `cpt-frontx-adr-source-spec-syntax` fixes
+  // the prefix as mandatory, and `:owner/repo@ref` names no registry.
   const colonAt = raw.indexOf(':');
   const colonIdx = colonAt > 0 ? colonAt : -1;
   // @cpt-end:cpt-frontx-algo-template-resolution-parse-spec:p1:inst-parse-prefix-check
@@ -101,8 +101,8 @@ export function parseSourceSpec(raw: string): ParseResult {
 
   // @cpt-begin:cpt-frontx-algo-template-resolution-parse-spec:p1:inst-parse-return
   // `subtree` is omitted rather than set to undefined when the reference carries
-  // no subtree, so a subtree-less reference parses into the same four parts it
-  // produced before the segment existed.
+  // no subtree, so a subtree-less reference parses into exactly four parts rather
+  // than four plus a key holding `undefined`.
   return { ok: true, value: subtree === undefined ? { host, owner, repo, ref } : { host, owner, repo, subtree, ref } };
   // @cpt-end:cpt-frontx-algo-template-resolution-parse-spec:p1:inst-parse-return
 }

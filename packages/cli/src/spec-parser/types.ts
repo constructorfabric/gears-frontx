@@ -5,9 +5,9 @@ export interface StructuredRef {
   owner: string;
   repo: string;
   // Optional subtree the template occupies inside the repository, addressed by
-  // the `//<subtree>` segment (cpt-frontx-adr-source-spec-subdirectory-addressing).
+  // the `//<subtree>` segment (cpt-frontx-adr-source-spec-syntax).
   // Absent — not empty — when the reference addresses the repository root, so a
-  // reference written before the segment existed parses into the same shape.
+  // subtree-less reference carries four keys rather than five, one of them unset.
   subtree?: string;
   ref: string;
 }

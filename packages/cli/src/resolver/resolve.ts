@@ -113,7 +113,7 @@ function buildFetchUrl(ref: StructuredRef): string {
   // Build a canonical fetch URL from the structured reference. The subtree is
   // deliberately absent: acquisition stays whole-repository and the subtree is
   // a filter applied to the acquired content
-  // (cpt-frontx-adr-source-spec-subdirectory-addressing).
+  // (cpt-frontx-adr-source-spec-syntax).
   if (ref.host === 'github') {
     return `https://api.github.com/repos/${ref.owner}/${ref.repo}/tarball/${ref.ref}`;
   }

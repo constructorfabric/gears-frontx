@@ -2,7 +2,7 @@
 import { BUNDLE_MARKER, readBundleFiles } from '../bundle/envelope';
 
 // Narrowing an acquired multi-file bundle to the subtree a source-spec named
-// (cpt-frontx-adr-source-spec-subdirectory-addressing). Selection is a filter
+// (cpt-frontx-adr-source-spec-syntax). Selection is a filter
 // over content the existing acquisition already produced, not a second
 // transport, so it lives in the shared resolver rather than in any one fetch
 // adapter.
