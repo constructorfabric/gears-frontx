@@ -2,6 +2,19 @@
 // @cpt-dod:cpt-frontx-dod-ai-kit-packaging-declared-resource-surface:p1
 import type { KitDefinition, KitManifest, KitResourceEntry, ResourceBodyReader, ValidationResult, ValidationViolation } from './types.js';
 
+// Two rule sets live in this file. FrontX-owned rules — the `frontx_` id prefix
+// (KIT-1), the KIT-4 public skill|rule restriction with applicability metadata,
+// and the solution-content scans (cpt-frontx-adr-solution-ai-content-placement)
+// — are specified by this repository, and this file is their authoritative
+// implementation. Everything else (required fields, id pattern, type enum, path
+// containment, the base public/kind contract) is a SNAPSHOT of rules owned by
+// the Constructor Studio kit specification
+// (`.cf-studio/.core/architecture/specs/kit/kit.md`, engine v1.6.2); their
+// authoritative gate is `cfs kit validate` in CI. The mirror exists so
+// `loadKitSession` refuses at session start what the CLI refuses at install.
+// When the Studio spec moves, update the snapshot from the spec — never treat
+// this copy as the definition of Studio behavior.
+
 // Generic solution/template concept words that must not appear in a base-kit
 // resource `id` or `description` (cpt-frontx-adr-solution-ai-content-placement).
 //
