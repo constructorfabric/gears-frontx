@@ -1,0 +1,19 @@
+{
+  "//": "MONOREPO BUILD HARNESS — NOT PART OF THIS TEMPLATE. This file is deliberately absent from frontx-template.json's ownershipBoundaries, so `frontx add` never copies it into a seeded project and this template claims ownership of no root package.json anywhere. It exists only so the MFE packages below resolve their @gears-frontx dependencies inside the gears-frontx monorepo, where there is no workspace root above them. A seeded project resolves the same names through the shell's own root manifest instead. Keep this file free of version numbers: every entry below is a path or a glob, so nothing here can drift out of step with packages/*/package.json.",
+  "name": "frontx-template-mfe-monorepo-harness",
+  "private": true,
+  "workspaces": [
+    "src-app/mfe_packages/*"
+  ],
+  "overrides": {
+    "@gears-frontx/frontx-template-shell": "file:../template-shell",
+    "@gears-frontx/auth": "file:../template-shell/packages/auth",
+    "@gears-frontx/framework": "file:../template-shell/packages/framework",
+    "@gears-frontx/i18n": "file:../template-shell/packages/i18n",
+    "@gears-frontx/react": "file:../template-shell/packages/react",
+    "@gears-frontx/state": "file:../template-shell/packages/state",
+    "@gears-frontx/api": "file:../packages/api",
+    "@gears-frontx/gts-plugin": "file:../packages/gts-plugin",
+    "@gears-frontx/mfes": "file:../packages/mfes"
+  }
+}

@@ -7,11 +7,21 @@ scaffold to copy for a new MFE), and two widget fixtures (`widgets-fixture-a`,
 
 ## Add-only — requires `template-shell`
 
-This template is **add-only**. It has no root `package.json`, no build/test/lint
-tooling, and no `src-app/app/` host — those are owned by
+This template is **add-only**. It claims ownership of no root `package.json`, no
+build/test/lint tooling, and no `src-app/app/` host — those are owned by
 [`frontx-template-shell`](../template-shell/README.md). Seeding this template into
 an empty directory produces a non-functional repository (dangling `file:`
 dependencies into a shell that isn't there).
+
+The `package.json` next to this README is **not part of the template**: it is a
+monorepo build harness, deliberately absent from `frontx-template.json`'s
+`ownershipBoundaries`, so `frontx add` never copies it anywhere. It exists only
+because inside the gears-frontx monorepo there is no workspace root above these
+MFE packages and nothing that could resolve `@gears-frontx/*` for them. A seeded
+project resolves the same names through the shell's own root manifest and has no
+use for it. The same applies to `frontx-template.json` and this README — a
+template directory holds shipped payload *and* authoring machinery, and the
+manifest's boundaries are what separate the two.
 
 ```bash
 frontx seed frontx-template-shell ./my-app

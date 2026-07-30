@@ -334,12 +334,34 @@ describe('Fixture 6 — declaration coverage: every real file in template-shell/
     expect(uncovered).toEqual([]);
   });
 
-  it('template-mfe/: zero files outside the declared boundary and the {frontx-template.json, README.md} allow-list', () => {
+  // The allow-list is the de-facto register of files that live in a template
+  // directory WITHOUT being part of the template: authoring and delivery
+  // machinery, never shipped. `frontx-template.json` (the manifest itself) and
+  // `README.md` were already here; `package.json` / `package-lock.json` join
+  // them as the monorepo build harness — the workspace root that lets these
+  // MFE packages resolve their @gears-frontx dependencies in a repo that has
+  // no workspace root above them. A seeded project resolves the same names
+  // through the shell's root manifest, so the harness has nothing to do there.
+  // Contrast template-shell, which DECLARES its README.md and package.json and
+  // therefore ships them.
+  it('template-mfe/: zero files outside the declared boundary and the {frontx-template.json, README.md, package.json, package-lock.json} allow-list', () => {
     const manifest = readManifest(TEMPLATE_MFE_DIR);
-    const allowList = new Set(['frontx-template.json', 'README.md']);
+    const allowList = new Set(['frontx-template.json', 'README.md', 'package.json', 'package-lock.json']);
     const uncovered = listRealFiles(TEMPLATE_MFE_DIR).filter(
       (p) => !allowList.has(p) && !isPathWithinExclusiveSubtrees(p, manifest.ownershipBoundaries.exclusiveSubtrees),
     );
     expect(uncovered).toEqual([]);
+  });
+
+  // Allow-listing only says "ignore this file". This says the stronger thing
+  // the harness depends on: template-mfe must never CLAIM a root package.json.
+  // Claiming it would collide with template-shell's exclusive subtree and turn
+  // a development-only file into an ownership assertion — reviving exactly the
+  // inferred-ownership model ADR-0031 rejected.
+  it('template-mfe/: the harness manifest stays undeclared — no claim on package.json', () => {
+    const { exclusiveSubtrees, sharedFiles } = readManifest(TEMPLATE_MFE_DIR).ownershipBoundaries;
+    expect(exclusiveSubtrees).not.toContain('package.json');
+    expect(exclusiveSubtrees).not.toContain('package-lock.json');
+    expect(sharedFiles.map((entry: { path: string }) => entry.path)).not.toContain('package.json');
   });
 });
