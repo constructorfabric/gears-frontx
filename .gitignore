@@ -104,6 +104,7 @@ __pycache__/
 .agents/skills/cf-coding-review/SKILL.md
 .agents/skills/cf-coding-tests/SKILL.md
 .agents/skills/cf-coding/SKILL.md
+.agents/skills/cf-cyber-pilot-kit-frontx-frontx/SKILL.md
 .agents/skills/cf-debug-prompts/SKILL.md
 .agents/skills/cf-docs-ci/SKILL.md
 .agents/skills/cf-docs-planning/SKILL.md
@@ -132,6 +133,17 @@ __pycache__/
 .agents/skills/cf-prompting-gen/SKILL.md
 .agents/skills/cf-prompting-planning/SKILL.md
 .agents/skills/cf-prompting-review/SKILL.md
+.agents/skills/cf-sdlc-change-impact-analysis/SKILL.md
+.agents/skills/cf-sdlc-decompose/SKILL.md
+.agents/skills/cf-sdlc-doc-adr/SKILL.md
+.agents/skills/cf-sdlc-doc-design/SKILL.md
+.agents/skills/cf-sdlc-doc-feature/SKILL.md
+.agents/skills/cf-sdlc-doc-prd/SKILL.md
+.agents/skills/cf-sdlc-implement/SKILL.md
+.agents/skills/cf-sdlc-migrate-openspec/SKILL.md
+.agents/skills/cf-sdlc-pr-review/SKILL.md
+.agents/skills/cf-sdlc-pr-status/SKILL.md
+.agents/skills/cf-sdlc-reverse-engineer/SKILL.md
 .agents/skills/cf-skills-ci/SKILL.md
 .agents/skills/cf-skills-planning/SKILL.md
 .agents/skills/cf-skills-review/SKILL.md
@@ -196,6 +208,7 @@ __pycache__/
 .claude/skills/cf-coding-review/SKILL.md
 .claude/skills/cf-coding-tests/SKILL.md
 .claude/skills/cf-coding/SKILL.md
+.claude/skills/cf-cyber-pilot-kit-frontx-frontx/SKILL.md
 .claude/skills/cf-debug-prompts/SKILL.md
 .claude/skills/cf-docs-ci/SKILL.md
 .claude/skills/cf-docs-planning/SKILL.md
@@ -231,6 +244,9 @@ __pycache__/
 .claude/skills/cf-sdlc-doc-feature/SKILL.md
 .claude/skills/cf-sdlc-doc-prd/SKILL.md
 .claude/skills/cf-sdlc-implement/SKILL.md
+.claude/skills/cf-sdlc-migrate-openspec/SKILL.md
+.claude/skills/cf-sdlc-pr-review/SKILL.md
+.claude/skills/cf-sdlc-pr-status/SKILL.md
 .claude/skills/cf-sdlc-reverse-engineer/SKILL.md
 .claude/skills/cf-skills-ci/SKILL.md
 .claude/skills/cf-skills-planning/SKILL.md
@@ -376,6 +392,9 @@ __pycache__/
 .cursor/commands/cf-sdlc-doc-feature.md
 .cursor/commands/cf-sdlc-doc-prd.md
 .cursor/commands/cf-sdlc-implement.md
+.cursor/commands/cf-sdlc-migrate-openspec.md
+.cursor/commands/cf-sdlc-pr-review.md
+.cursor/commands/cf-sdlc-pr-status.md
 .cursor/commands/cf-sdlc-reverse-engineer.md
 .cursor/commands/cf-skills-ci.md
 .cursor/commands/cf-skills-planning.md
@@ -477,6 +496,9 @@ __pycache__/
 .github/prompts/cf-sdlc-doc-feature.prompt.md
 .github/prompts/cf-sdlc-doc-prd.prompt.md
 .github/prompts/cf-sdlc-implement.prompt.md
+.github/prompts/cf-sdlc-migrate-openspec.prompt.md
+.github/prompts/cf-sdlc-pr-review.prompt.md
+.github/prompts/cf-sdlc-pr-status.prompt.md
 .github/prompts/cf-sdlc-reverse-engineer.prompt.md
 .github/prompts/cf-skills-ci.prompt.md
 .github/prompts/cf-skills-planning.prompt.md
@@ -533,6 +555,9 @@ __pycache__/
 .windsurf/workflows/cf-sdlc-doc-feature.md
 .windsurf/workflows/cf-sdlc-doc-prd.md
 .windsurf/workflows/cf-sdlc-implement.md
+.windsurf/workflows/cf-sdlc-migrate-openspec.md
+.windsurf/workflows/cf-sdlc-pr-review.md
+.windsurf/workflows/cf-sdlc-pr-status.md
 .windsurf/workflows/cf-sdlc-reverse-engineer.md
 .windsurf/workflows/cf-skills-ci.md
 .windsurf/workflows/cf-skills-planning.md
