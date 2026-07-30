@@ -43,6 +43,8 @@ export interface KitRegistration {
   path: string;
   version: string;
   source: string;
+  /** `register` reads the kit in place; `copy` materializes resources at their install paths. */
+  install_mode: 'register' | 'copy';
 }
 
 export interface KitCapability {

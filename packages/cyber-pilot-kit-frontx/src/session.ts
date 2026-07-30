@@ -101,7 +101,11 @@ export async function loadKitSession(
   // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-for-each-resource
   for (const resource of declaredResources) {
     // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-resolve-resource-path
-    const resourcePath = `${registration.path}/${resource.install_path}`;
+    // A register-mode kit is never copied — Studio reads it in place — so the
+    // effective location is the resource's `source`; `install_path` describes
+    // only where a copy-mode install materializes the resource.
+    const relativePath = registration.install_mode === 'register' ? resource.source : resource.install_path;
+    const resourcePath = `${registration.path}/${relativePath}`;
     // @cpt-end:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-resolve-resource-path
 
     // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-if-resource-missing

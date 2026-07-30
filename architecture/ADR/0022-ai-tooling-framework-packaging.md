@@ -39,7 +39,7 @@ The AI Tooling Framework (`cpt-frontx-component-ai-tooling-kit`, packaged as `cy
 
 ## Considered Options
 
-* **Constructor Studio kit** (evaluated as "Cypilot kit"; renamed by the 2026-07-28 amendment) — the framework ships as a Constructor Studio kit with a declarative `.cf-studio-kit.toml`; every resource identifier is `frontx_`-prefixed (constraint KIT-1); the package is published as a versioned npm artifact and installed through the AI Tooling CLI by source reference. The kit is the framework's delivered public surface.
+* **Constructor Studio kit** — the framework ships as a Constructor Studio kit with a declarative `.cf-studio-kit.toml`; every resource identifier is `frontx_`-prefixed (constraint KIT-1); the package is published as a versioned npm artifact and installed through the AI Tooling CLI by source reference. The kit is the framework's delivered public surface.
 * **Bespoke library package with a custom installer** — the framework ships as a standalone package with its own install-and-load logic and its own resource layout, independent of the kit-manifest mechanism.
 * **In-repo scaffolding** — the framework's capabilities are copied into each consuming project at scaffold time, with no separately versioned package to install or update.
 
@@ -94,27 +94,14 @@ The framework's capabilities are copied into each project at scaffold time, with
 
 ## More Information
 
-**Amendment (2026-07-28)** — The vendor substrate this decision rides on was renamed
-from Cypilot to Constructor Studio, and the declarative kit manifest moved from
-`manifest.toml` to the canonical `.cf-studio-kit.toml` (`manifest_version` +
-`kits[]`, with `default_path` renamed to `install_path`). The decision's durable
-identity is unchanged: the framework still ships as a declaratively-described kit,
-installed through the AI-tooling CLI integration, presenting one governed public
-surface with `frontx_`-prefixed resource identity. Only the vendor name, the CLI
-binary, and the manifest's filename and schema changed — all neutral substrate under
-the citation policy stated below. Neither revisit trigger recorded in this ADR fired,
-so this is an amendment rather than a supersession.
-
-The same amendment corrects the distribution description. This ADR previously
-stated the package was "distributed as a GitHub tarball". No standalone
-`cyber-pilot-kit-frontx` repository has ever existed: the kit ships inside the
-`constructorfabric/gears-frontx` monorepo and is published to npm as
-`@gears-frontx/cyber-pilot-kit-frontx`, while `cfs kit install` — which cannot
-consume npm — resolves it by generic-Git subdirectory reference or local path.
-The tarball wording described a channel that was never in use; the actual
-distribution has not changed, so this is a correction of an inaccurate
-description rather than a change of distribution path under the scope stated
-above.
+The kit ships inside the `constructorfabric/gears-frontx` monorepo — no
+standalone kit repository exists — and is published to npm as
+`@gears-frontx/cyber-pilot-kit-frontx`. The AI-tooling CLI's kit installer does
+not consume npm artifacts; it resolves the kit by generic-Git subdirectory
+reference or by local path. The npm artifact serves the package-registry
+distribution policy (`cpt-frontx-adr-artifact-versioning-and-distribution`),
+while the source-reference install path is what delivers the kit into a
+consuming project.
 
 The kit-installation substrate this decision rides on is the declarative kit manifest defined by the Constructor Studio kit specification (`.cf-studio/.core/architecture/specs/kit/kit.md`) (only declared resources install, each at its declared `install_path` or a user-overridden path) and the `[kits.*]` registration in `.cf-studio/config/core.toml` (each kit records its `path`, `version`, and install mode or resolved source); the `.cf-studio/config/kits/sdlc/` kit is a working exemplar of this packaging. These are neutral substrate citations and are not part of this decision's durable identity. KIT-1's `frontx_` prefix maps to the `resource.id` field of the kit-manifest schema, layered above that field's general identifier pattern. The matched-version policy that governs the kit's public-surface compatibility is decided in `cpt-frontx-adr-artifact-versioning-and-distribution` — a non-binding pointer to a related decision.
 

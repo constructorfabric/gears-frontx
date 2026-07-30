@@ -404,13 +404,13 @@ The system **MUST** make FrontX-specific skills available to AI agents working i
 
 **Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
 
-#### Skills packaged as declared agent-skill resources
+#### Framework capabilities discoverable by any AI agent host
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-ai-agent-skill-resources`
 
-The AI Tooling Framework **MUST** expose every capability it offers to AI agents through a declared agent resource that carries a defined identity and states when it applies. Each capability the framework offers as an invocable entry point **MUST** be discoverable and invocable by any AI agent host honouring the kit-installation contract (`cpt-frontx-contract-kit-installation`), without per-host configuration by the developer. The framework **MUST NOT** deliver any agent-facing capability into a consuming project undeclared.
+Every capability the AI Tooling Framework offers to AI agents **MUST** carry a defined identity and state when it applies. Each capability the framework offers as an invocable entry point **MUST** be discoverable and invocable by any AI agent host honouring the kit-installation contract (`cpt-frontx-contract-kit-installation`), without per-host configuration by the developer. The framework **MUST NOT** deliver into a consuming project any agent-facing capability the project cannot account for.
 
-**Rationale**: Declared agent resources give every AI agent host a uniform way to find and use the framework's capabilities without per-host configuration, and leave nothing agent-facing in a project that the project cannot account for.
+**Rationale**: A uniform discovery guarantee lets every AI agent host find and use the framework's capabilities without per-host configuration, and leaves nothing agent-facing in a project that the project cannot account for.
 
 **Actors**: `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-ai-agent-host`, `cpt-frontx-actor-ai-tooling-cli`
 

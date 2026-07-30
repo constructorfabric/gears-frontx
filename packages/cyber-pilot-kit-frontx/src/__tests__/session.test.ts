@@ -10,6 +10,7 @@ const validRegistration: KitRegistration = {
   path: '/fake/kit/path',
   version: '0.1.0',
   source: 'npm:@gears-frontx/cyber-pilot-kit-frontx',
+  install_mode: 'register',
 };
 
 // Real TOML, in the canonical `.cf-studio-kit.toml` shape. This fixture used to
@@ -89,6 +90,54 @@ describe('loadKitSession', () => {
     expect(result.capabilities).toHaveLength(2);
     expect(result.errors).toHaveLength(0);
     expect(result.warnings).toHaveLength(0);
+  });
+
+  // inst-resolve-resource-path — `source` and `install_path` coincide in the
+  // shipped manifest, so these fixtures diverge them to pin which field each
+  // install mode resolves from.
+  const divergentManifestContent = `
+manifest_version = "1.0"
+
+[[kits]]
+slug = "cyber-pilot-kit-frontx"
+version = "0.3.0-alpha.0"
+
+[[kits.resources]]
+id = "frontx_skill"
+kind = "skill"
+source = "SKILL.md"
+install_path = "installed/SKILL.md"
+type = "file"
+`;
+
+  it('register mode resolves resources from source, not install_path', async () => {
+    const probed: string[] = [];
+    const result = await loadKitSession(
+      { ...validRegistration, install_mode: 'register' },
+      async () => divergentManifestContent,
+      async (p) => {
+        probed.push(p);
+        return true;
+      },
+    );
+    expect(probed).toEqual(['/fake/kit/path/SKILL.md']);
+    expect(result.capabilities).toEqual([{ id: 'frontx_skill', path: '/fake/kit/path/SKILL.md', type: 'file' }]);
+  });
+
+  it('copy mode resolves resources from install_path', async () => {
+    const probed: string[] = [];
+    const result = await loadKitSession(
+      { ...validRegistration, install_mode: 'copy' },
+      async () => divergentManifestContent,
+      async (p) => {
+        probed.push(p);
+        return true;
+      },
+    );
+    expect(probed).toEqual(['/fake/kit/path/installed/SKILL.md']);
+    expect(result.capabilities).toEqual([
+      { id: 'frontx_skill', path: '/fake/kit/path/installed/SKILL.md', type: 'file' },
+    ]);
   });
 
   // inst-if-resource-missing / inst-record-missing / inst-if-partial / inst-partial-warning

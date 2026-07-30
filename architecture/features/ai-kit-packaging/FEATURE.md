@@ -84,7 +84,7 @@ User-facing interactions that start with an actor (human or external system) and
    1. [x] - `p1` - Surface validation errors; agent session proceeds without AI Tooling capabilities - `inst-manifest-invalid-error`
    2. [x] - `p1` - **RETURN** partial-capability state with validation errors - `inst-return-invalid`
 7. [x] - `p1` - **FOR EACH** resource entry declared across the validated manifest's kits - `inst-for-each-resource`
-   1. [x] - `p1` - Resolve the resource's installed path from the manifest's `install_path` (register-mode kits re-derive effective locations from the manifest rather than from persisted path anchors) - `inst-resolve-resource-path`
+   1. [x] - `p1` - Resolve the resource's effective path from the manifest — from `source` for a register-mode kit (the kit is read in place, never copied), from `install_path` for a copy-mode install - `inst-resolve-resource-path`
    2. [x] - `p1` - **IF** the resource path does not exist on disk - `inst-if-resource-missing`
       1. [x] - `p1` - Record the resource as unavailable; continue iterating remaining resources - `inst-record-missing`
    3. [x] - `p1` - **ELSE** - `inst-else-resource-present`
