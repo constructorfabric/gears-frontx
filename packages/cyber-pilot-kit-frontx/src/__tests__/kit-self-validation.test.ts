@@ -17,7 +17,15 @@ const manifestPath = path.join(kitRoot, '.cf-studio-kit.toml');
 // literal transcribed by hand. A hardcoded copy cannot detect the manifest
 // drifting away from what this validator accepts, and previously did not:
 // the file could be deleted outright with the whole suite still green.
-const shippedManifest = parseToml(fs.readFileSync(manifestPath, 'utf8')) as unknown as KitManifest;
+//
+// Loaded lazily inside each test rather than at module scope: an import-time
+// read would abort collection of the whole file on a missing or malformed
+// manifest, so the existence assertion below could never run and report it.
+let cachedManifest: KitManifest | undefined;
+function loadShippedManifest(): KitManifest {
+  cachedManifest ??= parseToml(fs.readFileSync(manifestPath, 'utf8')) as unknown as KitManifest;
+  return cachedManifest;
+}
 
 // cpt-frontx-adr-ai-tooling-framework-packaging mandates a check asserting that
 // every resource identifier in the shipped manifest matches ^frontx_ (KIT-1).
@@ -26,6 +34,7 @@ const shippedManifest = parseToml(fs.readFileSync(manifestPath, 'utf8')) as unkn
 describe('shipped manifest on disk — canonical shape and KIT-1 prefix', () => {
   it('.cf-studio-kit.toml exists and parses as TOML', () => {
     expect(fs.existsSync(manifestPath)).toBe(true);
+    const shippedManifest = loadShippedManifest();
     expect(shippedManifest.manifest_version).toBe('1.0');
     expect(Array.isArray(shippedManifest.kits)).toBe(true);
     expect(shippedManifest.kits.length).toBeGreaterThan(0);
@@ -36,7 +45,7 @@ describe('shipped manifest on disk — canonical shape and KIT-1 prefix', () => 
   });
 
   it('every resource id in the shipped manifest matches ^frontx_ (KIT-1)', () => {
-    const ids = shippedManifest.kits.flatMap((kit) => kit.resources.map((r) => r.id));
+    const ids = loadShippedManifest().kits.flatMap((kit) => kit.resources.map((r) => r.id));
     expect(ids.length).toBeGreaterThan(0);
     for (const id of ids) {
       expect(id).toMatch(/^frontx_/);
@@ -45,11 +54,21 @@ describe('shipped manifest on disk — canonical shape and KIT-1 prefix', () => 
 
   it('manifest version matches package.json version', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(kitRoot, 'package.json'), 'utf8')) as { version: string };
-    expect(shippedManifest.kits[0].version).toBe(pkg.version);
+    expect(loadShippedManifest().kits[0].version).toBe(pkg.version);
+  });
+
+  it('core.toml registration version matches the shipped manifest', () => {
+    const corePath = path.resolve(kitRoot, '../../.cf-studio/config/core.toml');
+    const core = parseToml(fs.readFileSync(corePath, 'utf8')) as unknown as {
+      kits: Record<string, { version: string }>;
+    };
+    const registration = core.kits['cyber-pilot-kit-frontx'];
+    expect(registration).toBeDefined();
+    expect(registration.version).toBe(loadShippedManifest().kits[0].version);
   });
 
   it('every declared resource source exists on disk', () => {
-    for (const kit of shippedManifest.kits) {
+    for (const kit of loadShippedManifest().kits) {
       for (const resource of kit.resources) {
         expect(fs.existsSync(path.join(kitRoot, resource.source))).toBe(true);
       }
@@ -57,7 +76,7 @@ describe('shipped manifest on disk — canonical shape and KIT-1 prefix', () => 
   });
 
   it('the real shipped manifest passes validateKitManifest', () => {
-    const result = validateKitManifest(shippedManifest);
+    const result = validateKitManifest(loadShippedManifest());
     expect(result.violations).toEqual([]);
     expect(result.status).toBe('PASS');
   });
@@ -66,14 +85,14 @@ describe('shipped manifest on disk — canonical shape and KIT-1 prefix', () => 
 describe('kit self-validation — shipped resource BODY scan (cpt-frontx-adr-solution-ai-content-placement)', () => {
   // inst-scan-solution-content — real on-disk shipped content, no bodyReader (baseline, id/description only)
   it('manifest id/description-only scan (no bodyReader) → PASS on shipped manifest', () => {
-    const result = validateKitManifest(shippedManifest);
+    const result = validateKitManifest(loadShippedManifest());
     expect(result.status).toBe('PASS');
   });
 
   // inst-scan-solution-content — proves the body scan reads real shipped files and finds no leak
   it('real shipped AGENTS.md / SKILL.md / guidelines/* bodies contain no specific template/solution name → PASS', () => {
     const reader = createFsResourceBodyReader(kitRoot);
-    const result = validateKitManifest(shippedManifest, reader);
+    const result = validateKitManifest(loadShippedManifest(), reader);
     expect(result.status).toBe('PASS');
     expect(result.violations).toHaveLength(0);
   });
@@ -100,11 +119,11 @@ describe('kit self-validation — shipped resource BODY scan (cpt-frontx-adr-sol
     };
 
     // Sanity: the manifest-metadata-only scan does NOT catch this leak (id/description are clean).
-    const metadataOnly = validateKitManifest(shippedManifest);
+    const metadataOnly = validateKitManifest(loadShippedManifest());
     expect(metadataOnly.status).toBe('PASS');
 
     // The body scan MUST catch it.
-    const result = validateKitManifest(shippedManifest, leakingReader);
+    const result = validateKitManifest(loadShippedManifest(), leakingReader);
     expect(result.status).toBe('FAIL');
     expect(
       result.violations.some(
@@ -123,7 +142,7 @@ describe('kit self-validation — shipped resource BODY scan (cpt-frontx-adr-sol
         return [''];
       },
     };
-    const result = validateKitManifest(shippedManifest, leakingReader);
+    const result = validateKitManifest(loadShippedManifest(), leakingReader);
     expect(result.status).toBe('FAIL');
     expect(result.violations.some((v) => v.code === 'SOLUTION_SPECIFIC_CONTENT')).toBe(true);
   });
@@ -138,7 +157,7 @@ describe('kit self-validation — shipped resource BODY scan (cpt-frontx-adr-sol
         return entry.public ? [`---\ndescription: "test fixture"\n---\n\n${body}`] : [body];
       },
     };
-    const result = validateKitManifest(shippedManifest, abstractReader);
+    const result = validateKitManifest(loadShippedManifest(), abstractReader);
     expect(result.status).toBe('PASS');
   });
 
@@ -149,7 +168,7 @@ describe('kit self-validation — shipped resource BODY scan (cpt-frontx-adr-sol
         throw new Error('ENOENT: no such file');
       },
     };
-    const result = validateKitManifest(shippedManifest, throwingReader);
+    const result = validateKitManifest(loadShippedManifest(), throwingReader);
     expect(result.status).toBe('FAIL');
     expect(result.violations.some((v) => v.code === 'RESOURCE_BODY_UNREADABLE')).toBe(true);
   });
@@ -161,13 +180,13 @@ describe('kit self-validation — shipped resource BODY scan (cpt-frontx-adr-sol
 // Traceability marker for this DoD lives in validate-manifest.ts, the production
 // code that enforces it (test files are excluded from marker scanning).
 describe('kit self-validation — declared public resource surface (cpt-frontx-dod-ai-kit-packaging-declared-resource-surface)', () => {
-  const publicResources = shippedManifest.kits.flatMap((kit) => kit.resources.filter((r) => r.public === true));
-  const nonPublicResources = shippedManifest.kits.flatMap((kit) => kit.resources.filter((r) => r.public !== true));
+  const publicResources = () => loadShippedManifest().kits.flatMap((kit) => kit.resources.filter((r) => r.public === true));
+  const nonPublicResources = () => loadShippedManifest().kits.flatMap((kit) => kit.resources.filter((r) => r.public !== true));
 
   // DoD clause (a): every public resource is kind skill|rule
   it('every public resource has kind "skill" or "rule"', () => {
-    expect(publicResources.length).toBeGreaterThan(0);
-    for (const resource of publicResources) {
+    expect(publicResources().length).toBeGreaterThan(0);
+    for (const resource of publicResources()) {
       expect(['skill', 'rule']).toContain(resource.kind);
     }
   });
@@ -175,7 +194,7 @@ describe('kit self-validation — declared public resource surface (cpt-frontx-d
   // DoD clause (b): each public resource document carries non-empty applicability
   // metadata (frontmatter description) — read the real shipped file, not a mock.
   it('every public resource document carries a non-empty frontmatter description', () => {
-    for (const resource of publicResources) {
+    for (const resource of publicResources()) {
       const body = fs.readFileSync(path.join(kitRoot, resource.source), 'utf8');
       const frontmatter = body.match(/^---\r?\n([\s\S]*?)\r?\n---/);
       expect(frontmatter, `${resource.id}: expected frontmatter in ${resource.source}`).not.toBeNull();
@@ -187,7 +206,7 @@ describe('kit self-validation — declared public resource surface (cpt-frontx-d
   // DoD clause (c): supporting knowledge content (frontx_guidelines) ships as a
   // declared non-public resource, not as an undeclared public entry point.
   it('frontx_guidelines is declared and is not public', () => {
-    const guidelines = nonPublicResources.find((r) => r.id === 'frontx_guidelines');
+    const guidelines = nonPublicResources().find((r) => r.id === 'frontx_guidelines');
     expect(guidelines).toBeDefined();
     expect(guidelines?.public).not.toBe(true);
   });
@@ -196,7 +215,7 @@ describe('kit self-validation — declared public resource surface (cpt-frontx-d
   // fs body reader, over the real shipped manifest — end-to-end, not mocked.
   it('validateKitManifest PASSes clauses (a) and (b) against the real shipped manifest and files', () => {
     const reader = createFsResourceBodyReader(kitRoot);
-    const result = validateKitManifest(shippedManifest, reader);
+    const result = validateKitManifest(loadShippedManifest(), reader);
     expect(result.violations).toEqual([]);
     expect(result.status).toBe('PASS');
   });

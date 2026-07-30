@@ -41,6 +41,13 @@ describe('validateKitManifest', () => {
     expect(result.violations.some((v) => v.field === 'kits')).toBe(true);
   });
 
+  // inst-check-required-fields — kits present but empty
+  it('empty kits array → FAIL EMPTY_KITS violation', () => {
+    const result = validateKitManifest({ manifest_version: '1.0', kits: [] });
+    expect(result.status).toBe('FAIL');
+    expect(result.violations.some((v) => v.code === 'EMPTY_KITS')).toBe(true);
+  });
+
   // inst-check-version
   it('missing kit version → FAIL version violation', () => {
     const m = validManifest({ version: '' });

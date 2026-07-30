@@ -30,7 +30,7 @@ compose:
 
 ```sh
 npm install @gears-frontx/cyber-pilot-kit-frontx
-cfs kit install path/node_modules/@gears-frontx/cyber-pilot-kit-frontx
+cfs kit install ./node_modules/@gears-frontx/cyber-pilot-kit-frontx
 ```
 
 The published tarball ships `.cf-studio-kit.toml` alongside `SKILL.md`,

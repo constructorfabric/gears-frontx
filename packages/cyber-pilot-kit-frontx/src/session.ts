@@ -68,8 +68,9 @@ export async function loadKitSession(
   let parsed: unknown;
   try {
     parsed = parseToml(rawManifest);
-  } catch {
-    errors.push('Kit manifest is malformed: failed to parse content');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    errors.push(`Kit manifest is malformed: failed to parse content: ${msg}`);
     // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-if-manifest-invalid
     // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-manifest-invalid-error
     // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-return-invalid
