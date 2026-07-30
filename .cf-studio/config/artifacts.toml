@@ -25,6 +25,10 @@ reason = "Auth SDK package has no backing CDSL artifact"
 patterns = ["packages/auth/*"]
 
 [[ignore]]
+reason = "Telemetry SDK package has no backing CDSL artifact"
+patterns = ["packages/telemetry/**", "packages/telemetry-example-web/**"]
+
+[[ignore]]
 reason = "Template-standard package is template territory (Phase 11 template-move); code carries pre-redesign markers that reference archived IDs — no active FEATURE artifact backs this package"
 patterns = ["packages/frontx-template-standard/**"]
 

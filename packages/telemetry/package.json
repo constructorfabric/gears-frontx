@@ -1,0 +1,58 @@
+{
+  "name": "@gears-frontx/telemetry",
+  "version": "0.3.0-alpha.0",
+  "description": "Browser telemetry SDK for FrontX - session tracking, device and navigation context, DOM autocapture, and a plugin system",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "CLAUDE.md",
+    "llms.txt",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "type-check": "tsc --noEmit",
+    "type-check:test": "tsc -p tsconfig.test.json",
+    "test": "npm run test:unit",
+    "test:unit": "vitest --run --passWithNoTests=false",
+    "test:unit:watch": "vitest --watch"
+  },
+  "dependencies": {
+    "bowser": "2.11.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "4.1.4",
+    "happy-dom": "20.10.6",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.2",
+    "vitest": "4.1.4"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "frontx",
+    "telemetry",
+    "analytics",
+    "events",
+    "autocapture",
+    "browser",
+    "sdk",
+    "typescript"
+  ],
+  "author": "Cyber Fabric",
+  "license": "Apache-2.0"
+}

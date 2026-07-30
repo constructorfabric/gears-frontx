@@ -1,9 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
 
@@ -39,7 +39,9 @@
       "@gears-frontx/gts-plugin": ["./packages/gts-plugin/src/index.ts"],
       "@gears-frontx/gts-plugin/*": ["./packages/gts-plugin/src/*"],
       "@gears-frontx/mfes": ["./packages/mfes/src/index.ts"],
-      "@gears-frontx/mfes/*": ["./packages/mfes/src/*"]
+      "@gears-frontx/mfes/*": ["./packages/mfes/src/*"],
+      "@gears-frontx/telemetry": ["./packages/telemetry/src/index.ts"],
+      "@gears-frontx/telemetry/*": ["./packages/telemetry/src/*"]
     }
   },
   // Ecosystem packages only. The host app + template packages (state, i18n,

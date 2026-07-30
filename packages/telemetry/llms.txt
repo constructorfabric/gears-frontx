@@ -1,0 +1,149 @@
+# @gears-frontx/telemetry
+
+> Browser telemetry SDK for FrontX. Batches app events and POSTs them to an endpoint you control. Session tracking, device/navigation context, DOM autocapture, plugin system.
+
+Ecosystem package (`packages/telemetry`), standalone by construction: no intra-ecosystem `@gears-frontx` imports, no React, no deep `@gears-frontx/*/src/**` imports - enforced for every file under `packages/telemetry` by the root `eslint.config.js`, plus `frontx-telemetry-1-no-template-content` and `frontx-single-intra-ecosystem-edge-telemetry-standalone` in `.dependency-cruiser.cjs`. One runtime dependency: `bowser` 2.11.0, used only in `src/plugins/device.ts` for OS name/version, browser name/version and platform type; everything else is native DOM. Browser-only: needs `window`, `document`, `localStorage`, `fetch`, `crypto.randomUUID`, `Intl.Locale`.
+
+## Entry Point
+
+Exactly one: `.` (`@gears-frontx/telemetry`). No subpath exports. Wiring this SDK into a FrontX app is template-side work - the framework lives at `template-standard/packages/framework` and `packages/cyber-pilot-kit-frontx/guidelines/ecosystem-boundaries.md:28-31` forbids an ecosystem package importing template territory at the source level - so no framework-plugin API ships from here.
+
+## Core API
+
+- [createTelemetry](src/services/telemetry.ts): `(config: TelemetryConfig) => TelemetryService` - build a client; no listeners and no plugin `setup` until `start()`, though `logEvent` already queues and flushes
+- [telemetryLocalePlugin](src/plugins/locale.ts): `(source: LocaleSource) => { name: 'locale', setup }` - a telemetry plugin (the plugin type itself is internal, not an export) that sets `context_language` per event, maximized to BCP 47 (`en` -> `en-US`)
+- [telemetryElementHookKey](src/plugins/autocapture/elementHook.ts): `unique symbol` = `Symbol.for('@gears-frontx/telemetry/element-hook')` - the element property autocapture reads a hook from; augments global `Element`
+
+## TelemetryService
+
+| Method | Returns | Notes |
+|--------|---------|-------|
+| `start()` | `TelemetryService` | Registers built-in plugins, runs every plugin `setup`, starts session tracking and the flush scheduler, fires `start` hooks |
+| `logEvent(name, data?)` | `void` | Also accepts one full record: `logEvent({ name, data, ...context })`. `id` and `time_triggered` are set after caller fields, so a caller cannot forge them |
+| `identify(id)` | `TelemetryService` | `string \| number`; sets `context_user_id` on later events only |
+| `plugin(...plugins)` | `TelemetryService` | Falsy entries ignored, so `cond && myPlugin()` is safe |
+| `destroy()` | `void` | Removes listeners, cancels the scheduler, fires `destroy` hooks |
+
+Chainable except `logEvent` and `destroy`. `start()`, `plugin()` and `destroy()` no-op when `window` is undefined (SSR); `logEvent()` and `identify()` do not.
+
+Plugins are keyed by `name` (same name replaces) and are set up once, inside `start()` -> call `plugin()` before `start()` or the plugin never runs. Built-ins are registered inside `start()`, after your plugins, so their `event` hooks run last and overwrite: device/OS/client/timezone fields (`device.ts`), `context_app_*` and `context_call_chain` (`appInfo.ts`).
+
+`destroy()` does not flush - queued events are dropped.
+
+## Config
+
+`TelemetryConfig`, normalized by [normalizeOptions](src/utils/utils.ts):
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `appName` | `string` | required | `context_source_app_name`; default for `context_app_name` and `context_service_name` |
+| `appVersion` | `string` | required | `context_source_app_version` |
+| `url` | `string` | `/api/events` | apiVersion 1 -> `/api/events`, else `/api/telemetry/v{apiVersion}/events` |
+| `autocapture` | `boolean` | `true` | DOM `click`/`change`/`submit` capture |
+| `enabled` | `boolean` | `true` | `false` still collects, enriches and drains the queue - only the POST is skipped |
+| `verbose` | `boolean` | `false` | Console logging from the SDK's logger |
+| `storagePrefix` | `string` | none | Infix in the owned keys: `telemetry_{prefix}_device_id`, `telemetry_{prefix}_session` |
+| `sessionDuration` | `number` | `1800000` | Inactivity window (ms) before a stored session is treated as ended |
+| `apiVersion` | `number` | `1` | Wire envelope, see Transport |
+
+## Quick Start
+
+```typescript
+import { createTelemetry, telemetryLocalePlugin } from '@gears-frontx/telemetry';
+
+const telemetry = createTelemetry({
+  appName: 'my-app',
+  appVersion: '1.4.2',
+  url: 'https://telemetry.example.com/api/events',
+})
+  .plugin(telemetryLocalePlugin(i18next))
+  .plugin({
+    name: 'tenant',
+    setup: (context) => {
+      context.addHook('event', (record) => {
+        record.context_tenant_id = tenantId;
+      });
+    },
+  });
+
+telemetry.identify(user.id);
+telemetry.start();
+telemetry.logEvent('settings_saved', { theme: 'dark' });
+```
+
+## Emitted Events
+
+- `session_start` - on `start()` when no live session is in `localStorage`
+- `page_view` - `data.url` = pathname; on `popstate` and on patched `history.pushState`/`replaceState`, deduped per pathname. `start()` alone emits none. Later events carry `caused_by_id` = the current page_view id
+- `autocapture_click` / `autocapture_change` / `autocapture_submit`
+
+Session activity is refreshed on `scroll`/`keydown`/`click` (debounced 100ms) and on every `page_view`.
+
+## Transport
+
+`logEvent -> event hooks -> queue -> flush`. The timer restarts on every event, so a flush lands 5s after the last one; `visibilitychange` to `hidden` flushes immediately. `fetch` is `keepalive` with fixed `Content-Type: application/vnd.kafka.json.v2+json` and Kafka `Accept` headers (not configurable), and a rejected POST goes to `console.error`, never retried. Each record gains `time_sent` at flush.
+
+- apiVersion 1 -> `{ records: [{ key: id, value: record }] }`. Every nested object is stringified field-by-field, so `data: { a: 'b' }` arrives as `data: { a: '"b"' }`.
+- apiVersion 2 -> `{ meta, records }`; `context_user_id` and `context_tenant_id` are deleted, and fields identical across a batch of 2+ are hoisted into `meta`. A single-record batch leaves `meta` empty.
+
+## Autocapture
+
+Capture-phase passive listeners on `document` for `click`, `change`, `submit`. The walk goes from the event target up to `body` (crossing shadow boundaries via `host`); only `a`, `button`, `form`, `input`, `select`, `textarea`, `label` produce the base record, and `$el_text` only comes from `a`, `button`, `label` (capped at 1000 chars). Autocapture owns the `$` prefix in `data`: `$el_tag_name`, `$el_text`, `$el_attr_*` (incl. `$el_attr_class` from `classList`, `$el_attr_href`), `$external_click_url`. `style`, `fill`, `viewBox`, `xmlns` and `data-telemetry-no-capture` are never captured as attributes.
+
+Redaction: a `hidden`/`password` input, or an element whose `name` or `id` looks sensitive (`cvv`, `ssn`, `cardnum`, `pwd`, `routing`, ...), anywhere on the walked path suppresses the whole event; values shaped like a credit card or US SSN are dropped; on `select`, `textarea`, `contenteditable="true"` and any `input` whose type is not `button`/`checkbox`/`submit`/`reset`, only `name`, `id`, `aria-label` are read. Safety net, not a compliance guarantee.
+
+Opt out per subtree with `data-telemetry-no-capture="false"`. The value is inverted: a bare attribute or `="true"` does nothing.
+
+## Element Hooks
+
+```typescript
+import { telemetryElementHookKey } from '@gears-frontx/telemetry';
+
+el[telemetryElementHookKey] = () => ({
+  context: {
+    context_service_name: 'settings-panel',
+    context_service_version: '1.0.0',
+    context_call_chain: ['settings-panel'],
+  },
+  data: { section: 'appearance' },
+});
+```
+
+- Allowlist: only `context_service_name`, `context_service_version`, `context_call_chain` survive a hook. Anything else is dropped - other record fields are overwritten by built-in plugins before send.
+- `{ capture: false }` from any hook on the path suppresses the whole event; `context`/`data` in the same return are then ignored.
+- The closest hook returning a usable contribution wins its whole field set. `context` from one hook is never mixed with `data` from another, and a field the winning hook left out (or set to an explicit `undefined`) stays unset - no farther-out hook fills the gap. A non-object `context` or `data` counts as no contribution.
+- `data` merges underneath autocapture's own keys; hook keys starting with `$` are stripped.
+- `context_call_chain` must be the registering element's complete chain. `appInfo` prepends `appName` and warns when the chain lacks the service name; chains are never stitched across hooks.
+- A throwing hook degrades that element to no contribution; the event is still emitted, and the first thrown value is rethrown out of the listener afterwards (wrapped in an `Error` with `cause` when it is not an `Error`) so it reaches `window.onerror`.
+- Cross-deployment contract (reader and writers can be on different versions): evolve additively; a semantic change needs a new registry-symbol string, not a new meaning for this one.
+
+## Writing a Plugin
+
+`{ name: string, setup: (context) => void }`. `context` carries `config` (normalized), `addHook`, `logEvent` (returns the record), `getSession`, `refreshSession`, `logger`. Hook keys: `event` (mutate the record before it is queued), `start`, `destroy`. `sessionStart` is declared in `TelemetryHooks` but never called. Hooks of one key all run even if one throws; the first error is rethrown after the last hook.
+
+## Types
+
+```typescript
+import type {
+  TelemetryService,                  // client returned by createTelemetry
+  TelemetryLogEvent,                 // (...args: TelemetryLogEventParams) => void
+  TelemetryLogEventParams,           // [name, data?] | [record]
+  TelemetryEventRecord,              // name, data, and the context_* fields
+  TelemetryData,                     // Record<string, unknown>
+  TelemetryConfig,                   // see Config
+  LocaleSource,                      // { language: string }, read per event
+  TelemetryElementHook,              // () => TelemetryElementHookResult
+  TelemetryElementHookResult,        // { capture?: false; context?; data? } | void
+  TelemetryElementHookAttribution,   // the three hook-settable context_* fields
+} from '@gears-frontx/telemetry';
+```
+
+Several declared `TelemetryEventRecord` fields are never populated by the SDK (`context_user_email`, `context_tenant_id`, `context_device_screen_*`, `context_session_duration`, `context_dom_element_*`, ...); a plugin or a `logEvent` record has to set them.
+
+## Optional
+
+- [README.md](README.md): prose guide, PII notes, known gaps
+- [CLAUDE.md](CLAUDE.md): package rules and commands
+- [src/__tests__/telemetry.test.ts](src/__tests__/telemetry.test.ts): client, transport and locale behavior (13 tests)
+- [src/__tests__/autocapture.test.ts](src/__tests__/autocapture.test.ts): element hook contract (18 tests)
+- [packages/telemetry-example-web](../telemetry-example-web): browser example, private; `npm run demo:telemetry` from the repo root, port 5273

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@gears-frontx/telemetry — demo</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>@gears-frontx/telemetry</h1>
+      <p class="sub">
+        Posting to <code id="endpoint"></code> — every record is echoed below and logged in the
+        terminal running <code>vite</code>.
+      </p>
+    </header>
+
+    <main>
+      <section>
+        <h2>Autocapture</h2>
+        <p>
+          These are ordinary elements. Nothing here calls the SDK — autocapture listens on
+          <code>document</code> for <code>click</code>, <code>change</code> and
+          <code>submit</code>.
+        </p>
+        <div class="row">
+          <button type="button" id="plain-button">A button</button>
+          <a href="#demo" id="internal-link">An internal link</a>
+          <a href="https://example.com" target="_blank" rel="noreferrer">An external link</a>
+        </div>
+        <form class="row" id="demo-form">
+          <label>
+            Text input
+            <input type="text" name="comment" placeholder="type, then blur" />
+          </label>
+          <label>
+            Theme
+            <select name="theme" id="theme">
+              <option value="light">light</option>
+              <option value="dark">dark</option>
+            </select>
+          </label>
+          <button type="submit">Submit</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>Redaction</h2>
+        <p>
+          Autocapture never records these values: the field names and value shapes look sensitive.
+          Click them and compare against the records below.
+        </p>
+        <div class="row">
+          <label>
+            Password
+            <input type="password" name="password" value="hunter2" />
+          </label>
+          <label>
+            Card number
+            <input type="text" name="cardnum" value="4111111111111111" />
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Opting out</h2>
+        <p>
+          This subtree carries <code>data-telemetry-no-capture="false"</code>, so clicks inside it
+          are suppressed. Note the value is inverted — see the README's Known gaps.
+        </p>
+        <div class="row" data-telemetry-no-capture="false">
+          <button type="button">Suppressed button</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Element hook</h2>
+        <p>
+          The button below registers a hook under <code>telemetryElementHookKey</code>, adding
+          service attribution and custom <code>data</code> to any event from its subtree.
+        </p>
+        <div class="row" id="hooked">
+          <button type="button">Attributed button</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Explicit API</h2>
+        <div class="row">
+          <button type="button" id="log-event">logEvent('settings_saved')</button>
+          <button type="button" id="identify">identify('demo-user-2')</button>
+          <button type="button" id="destroy">destroy()</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>
+          Requests <span class="count" id="request-count">0</span>
+          <span class="sub-count">event hook fired <b id="hook-count">0</b>×</span>
+        </h2>
+        <p class="sub">
+          The exact body of every <code>POST</code> the SDK sends, captured by wrapping
+          <code>fetch</code>. Events are batched and flushed on a 5s timer, so one request usually
+          carries several records.
+        </p>
+        <p class="sub">
+          Note how much larger this is than what a plugin's <code>event</code> hook sees. The hook
+          runs before the built-in device, appInfo and session plugins enrich the record, before
+          <code>time_sent</code>, before each object-valued field is individually
+          <code>JSON.stringify</code>'d, and before the envelope is built — compare
+          <code>context_user_data</code> here against the values the page actually set.
+        </p>
+        <ol id="requests" reversed></ol>
+      </section>
+    </main>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

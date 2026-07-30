@@ -222,6 +222,57 @@ export default [
     },
   },
 
+  // @gears-frontx/telemetry: a browser SDK whose wire format and element-hook contract are typed
+  // against consumer data, so `unknown` and the variadic hook dispatch are load-bearing.
+  // Boundary: no intra-ecosystem edge, no React, and no reach into template territory.
+  {
+    files: ['packages/telemetry/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@gears-frontx/*', '@gears-frontx/*/*'],
+              message:
+                'SDK VIOLATION: @gears-frontx/telemetry holds no intra-ecosystem package dependency.',
+            },
+            {
+              group: ['react', 'react-dom', 'react/*'],
+              message:
+                'SDK VIOLATION: SDK packages cannot import React.',
+            },
+            {
+              group: ['@gears-frontx/*/src/**'],
+              message:
+                'MONOREPO VIOLATION: Import from package root, not internal paths.',
+            },
+            {
+              group: ['@/*'],
+              message:
+                'PACKAGE VIOLATION: Use relative imports within packages.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // The envelope builders rewrite each record field in place to match the collector's wire format,
+  // and the hooks manager dispatches a variadic tuple through a key-indexed handler map.
+  {
+    files: [
+      'packages/telemetry/src/managers/events.ts',
+      'packages/telemetry/src/managers/hooks.ts',
+    ],
+    rules: {
+      '@typescript-eslint/ban-ts-comment': 'off',
+    },
+  },
+
   // ============ @gears-frontx/mfes BOUNDARY ENFORCEMENT (Phase 10) ============
   // MFES-1/2/3 enforced here via no-restricted-syntax denylist.
   // MFES-4 enforced via dep-cruiser rule frontx-mfes-4-type-format-dep (.dependency-cruiser.cjs).
