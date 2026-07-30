@@ -114,6 +114,10 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
       readProjectFile: async (p) => {
         if (p === `${PROJ_ROOT}/src/App.tsx`) return 'v1 content';
         if (p === `${PROJ_ROOT}/src/old.ts`) return 'old file';
+        // The provenance file on disk is always the full SET (ADR-0019) —
+        // one record per applied template, even for a single-template
+        // project — never the bare record `readProvenance` resolves it to.
+        if (p === `${PROJ_ROOT}/.frontx/provenance.json`) return JSON.stringify([BASE_PROVENANCE]);
         return null;
       },
       readContentItems,
@@ -131,10 +135,13 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     expect(written.get(`${PROJ_ROOT}/src/new.ts`)).toBe('new file');
     // old.ts removed
     expect(removed.has(`${PROJ_ROOT}/src/old.ts`)).toBe(true);
-    // Provenance updated to 2.0.0
+    // Provenance updated to 2.0.0 — written back as a SET (one entry here),
+    // never as a single bare object.
     const provContent = written.get(`${PROJ_ROOT}/.frontx/provenance.json`);
     expect(provContent).toBeDefined();
-    expect(JSON.parse(provContent!).scaffoldedFromVersion).toBe('2.0.0');
+    const provRecords = JSON.parse(provContent!) as unknown;
+    expect(Array.isArray(provRecords)).toBe(true);
+    expect((provRecords as Array<{ scaffoldedFromVersion: string }>)[0].scaffoldedFromVersion).toBe('2.0.0');
   });
 
   // (c) Declining leaves the project byte-for-byte unchanged — no file created, modified, or deleted
@@ -163,7 +170,9 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     const files = new Map<string, string>([
       [`${PROJ_ROOT}/src/App.tsx`, 'v1 content'],
       [`${PROJ_ROOT}/src/old.ts`, 'old file'],
-      [`${PROJ_ROOT}/.frontx/provenance.json`, JSON.stringify(BASE_PROVENANCE, null, 2)],
+      // The provenance file on disk is always the full SET (ADR-0019) — one
+      // record per applied template, even for a single-template project.
+      [`${PROJ_ROOT}/.frontx/provenance.json`, JSON.stringify([BASE_PROVENANCE], null, 2)],
     ]);
 
     const deps: UpgradeFlowDeps = {
@@ -180,10 +189,12 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     const applyResult = await upgradeChangeSetReviewApproval(PROJ_ROOT, '2.0.0', deps);
     expect(applyResult.status).toBe('applied');
 
-    // After apply: provenance at 2.0.0
-    expect(
-      JSON.parse(files.get(`${PROJ_ROOT}/.frontx/provenance.json`)!).scaffoldedFromVersion,
-    ).toBe('2.0.0');
+    // After apply: provenance at 2.0.0 — still a one-entry SET, not a bare object.
+    const afterApply = JSON.parse(files.get(`${PROJ_ROOT}/.frontx/provenance.json`)!) as Array<{
+      scaffoldedFromVersion: string;
+    }>;
+    expect(Array.isArray(afterApply)).toBe(true);
+    expect(afterApply[0].scaffoldedFromVersion).toBe('2.0.0');
 
     // Rollback
     const snapshot = (applyResult as Extract<typeof applyResult, { status: 'applied' }>).snapshot;
@@ -193,10 +204,12 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     });
 
     expect(rollbackResult.ok).toBe(true);
-    // Provenance restored to 1.0.0
-    expect(
-      JSON.parse(files.get(`${PROJ_ROOT}/.frontx/provenance.json`)!).scaffoldedFromVersion,
-    ).toBe('1.0.0');
+    // Provenance restored to 1.0.0, still the one-entry SET shape
+    const afterRollback = JSON.parse(files.get(`${PROJ_ROOT}/.frontx/provenance.json`)!) as Array<{
+      scaffoldedFromVersion: string;
+    }>;
+    expect(Array.isArray(afterRollback)).toBe(true);
+    expect(afterRollback[0].scaffoldedFromVersion).toBe('1.0.0');
     // old.ts restored
     expect(files.get(`${PROJ_ROOT}/src/old.ts`)).toBe('old file');
     // new.ts removed (it was null pre-upgrade → rollback removes it)
@@ -377,7 +390,8 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     // the co-owning template's region is left byte-for-byte untouched.
     const files = new Map<string, string>([
       [`${PROJ_ROOT}/${SHARED_PATH}`, projectFileContent],
-      [`${PROJ_ROOT}/.frontx/provenance.json`, JSON.stringify(REGION_PROVENANCE, null, 2)],
+      // The provenance file on disk is always the full SET (ADR-0019).
+      [`${PROJ_ROOT}/.frontx/provenance.json`, JSON.stringify([REGION_PROVENANCE], null, 2)],
     ]);
 
     const applyResult = await applyChangeSet(changeSet, PROJ_ROOT, REGION_PROVENANCE, {
@@ -395,5 +409,73 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     expect(appliedContent).toContain('// frontx:region other-template:extra');
     expect(appliedContent).toContain('const otherStaysPut = true;');
     expect(appliedContent).toContain('// frontx:endregion other-template:extra');
+  });
+
+  // (j)/(k) #488 follow-up: a bad provenance precondition — either the file
+  // isn't the JSON array the SET schema requires, or it IS an array but
+  // holds no record for the template being upgraded — must abort BEFORE any
+  // project file is written, returning `{ok:false}` per `ApplyResult`'s
+  // contract (ADR-0019 / ADR-0021 Confirmation (d)). A thrown exception at
+  // that point would escape past `inst-app-catch`'s restore-on-error, since
+  // that block only wraps the for-each-entry loop — by the time such an
+  // error surfaced, entries could already be on disk with no way back. Both
+  // cases are asserted BEFORE the loop ever runs: zero writes, zero removes.
+  const trivialChangeSet: ChangeSet = {
+    templateIdentity: 'my-template',
+    baselineVersion: '1.0.0',
+    targetVersion: '2.0.0',
+    clean: [{ kind: 'modify', path: 'src/App.tsx', content: 'v2 content' }],
+    conflicts: [],
+  };
+
+  it('(j) a malformed (non-array) provenance file aborts before any project file is written', async () => {
+    const writes = new Map<string, string>();
+    const removed = new Set<string>();
+
+    const applyResult = await applyChangeSet(trivialChangeSet, PROJ_ROOT, BASE_PROVENANCE, {
+      readProjectFile: async (p) => {
+        if (p === `${PROJ_ROOT}/.frontx/provenance.json`) return JSON.stringify(BASE_PROVENANCE);
+        if (p === `${PROJ_ROOT}/src/App.tsx`) return 'v1 content';
+        return null;
+      },
+      writeProjectFile: async (p, c) => { writes.set(p, c); },
+      removeProjectFile: async (p) => { removed.add(p); },
+      writeProvenance: async (p, c) => { writes.set(p, c); },
+    });
+
+    expect(applyResult.ok).toBe(false);
+    if (applyResult.ok) return;
+    expect(applyResult.message).toMatch(/provenance/i);
+    // The project is byte-for-byte unchanged — no write or removal was ever
+    // attempted, not merely rolled back after the fact.
+    expect(writes.size).toBe(0);
+    expect(removed.size).toBe(0);
+  });
+
+  it('(k) a valid provenance SET missing the target template\'s record aborts before any project file is written', async () => {
+    const writes = new Map<string, string>();
+    const removed = new Set<string>();
+    const unrelatedRecord = {
+      templateIdentity: 'someone-else-template',
+      scaffoldedFromVersion: '9.9.9',
+      sourceSpec: 'local:acme/someone-else-template@9.9.9',
+    };
+
+    const applyResult = await applyChangeSet(trivialChangeSet, PROJ_ROOT, BASE_PROVENANCE, {
+      readProjectFile: async (p) => {
+        if (p === `${PROJ_ROOT}/.frontx/provenance.json`) return JSON.stringify([unrelatedRecord]);
+        if (p === `${PROJ_ROOT}/src/App.tsx`) return 'v1 content';
+        return null;
+      },
+      writeProjectFile: async (p, c) => { writes.set(p, c); },
+      removeProjectFile: async (p) => { removed.add(p); },
+      writeProvenance: async (p, c) => { writes.set(p, c); },
+    });
+
+    expect(applyResult.ok).toBe(false);
+    if (applyResult.ok) return;
+    expect(applyResult.message).toMatch(/my-template/);
+    expect(writes.size).toBe(0);
+    expect(removed.size).toBe(0);
   });
 });

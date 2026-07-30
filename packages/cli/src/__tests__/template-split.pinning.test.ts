@@ -223,7 +223,7 @@ describe('Fixture 7 (F6-pinning) — region-union composition depends on assembl
   });
 });
 
-describe('Fixture 9 (B1-pinning) — frontx upgrade corrupts multi-record provenance in a shell+mfe repository', () => {
+describe('Fixture 9 (B1-fix, issue #488) — frontx upgrade preserves multi-record provenance in a shell+mfe repository', () => {
   // The upgrade engine's re-resolved baseline/target entries (via
   // `resolveTemplateAtVersion` -> `resolveToInventory`) are plain in-memory
   // `RESOLVED` entries — unlike `TemplateInventory.install`, they are never
@@ -277,9 +277,11 @@ describe('Fixture 9 (B1-pinning) — frontx upgrade corrupts multi-record proven
 
     // `readProvenance` (F11) only ever resolves `records[0]` — the shell
     // record, since seed always writes first — so this is a same-version,
-    // effectively no-op upgrade of the FIRST record. That is deliberate: B1
-    // is a defect in HOW the provenance file gets rewritten after ANY
-    // upgrade, independent of whether the diff itself is empty.
+    // effectively no-op upgrade of the FIRST record. That is deliberate: this
+    // fixture exercises HOW the provenance file gets rewritten after ANY
+    // upgrade, independent of whether the diff itself is empty. Per-template
+    // upgrade TARGET selection (choosing to upgrade the mfe record instead)
+    // is a separate, not-yet-made design decision — out of scope for #488.
     const upgradeResult = await upgradeChangeSetReviewApproval(targetDir, shellManifest.version, {
       readProvenance: createFsReadSingleProvenanceFn(),
       fetchFn: createLocalFetchFn(TEMPLATE_SHELL_DIR, { excludedDirs: EXCLUDED_DIRS }),
@@ -295,21 +297,30 @@ describe('Fixture 9 (B1-pinning) — frontx upgrade corrupts multi-record proven
     return { targetDir, shellManifest };
   }
 
-  it("KNOWN DEFECT B1 (ADR-0021(d)/ADR-0019, tracked as a separate issue) — .frontx/provenance.json is overwritten with ONE object; the mfe record is gone", async () => {
-    const { targetDir } = await seedAddThenUpgrade();
+  it('the provenance SET survives the upgrade (ADR-0021(d)/ADR-0019) — both records remain, only the upgraded record changes version, and the array shape is preserved', async () => {
+    const { targetDir, shellManifest } = await seedAddThenUpgrade();
 
     const afterRaw = fs.readFileSync(path.join(targetDir, '.frontx', 'provenance.json'), 'utf-8');
     const after = JSON.parse(afterRaw) as unknown;
 
-    expect(Array.isArray(after)).toBe(false);
-    expect(after).toMatchObject({ templateIdentity: TEMPLATE_SHELL_IDENTITY });
-    // Not just "not equal to the mfe record" — the mfe identity string is
-    // entirely absent from the file, i.e. genuinely lost, not merely
-    // reordered or renamed.
-    expect(afterRaw).not.toContain(TEMPLATE_MFE_IDENTITY);
+    expect(Array.isArray(after)).toBe(true);
+    expect(after).toHaveLength(2);
+    // The mfe record's identity string must still be present — not merely
+    // "the array has two entries", but genuinely the SAME record, untouched.
+    expect(afterRaw).toContain(TEMPLATE_MFE_IDENTITY);
+
+    const records = after as Array<{ templateIdentity: string; scaffoldedFromVersion: string }>;
+    const shellRecord = records.find((record) => record.templateIdentity === TEMPLATE_SHELL_IDENTITY);
+    const mfeRecord = records.find((record) => record.templateIdentity === TEMPLATE_MFE_IDENTITY);
+    expect(shellRecord).toBeDefined();
+    expect(mfeRecord).toBeDefined();
+    // The upgraded (shell) record reflects the target version this cycle
+    // upgraded to; the untouched (mfe) record is not asserted against a
+    // specific version — only that it still exists, unmodified in shape.
+    expect(shellRecord?.scaffoldedFromVersion).toBe(shellManifest.version);
   });
 
-  it('KNOWN DEFECT B1 follow-on — the corrupted provenance file then crashes the NEXT add-template call (F19: spreading a non-array is not iterable)', async () => {
+  it('the NEXT add-template call succeeds against the post-upgrade provenance file — the array shape it left behind is still a valid, readable SET', async () => {
     const { targetDir } = await seedAddThenUpgrade();
     if (!harness) throw new Error('unreachable: seedAddThenUpgrade always sets `harness`');
 
@@ -330,22 +341,22 @@ describe('Fixture 9 (B1-pinning) — frontx upgrade corrupts multi-record proven
     );
     expect(thirdInstall.ok).toBe(true);
 
-    // `readProvenanceRecords` types its return as `ProvenanceRecord[]` but
-    // only ever does `JSON.parse(raw) as ProvenanceRecord[]` — an unchecked
-    // cast. After the B1 corruption the file holds a plain object, and
-    // `occupiedBoundariesFromProvenance`'s `for (const record of records)`
-    // throws synchronously on that object, rejecting `addTemplate`'s promise.
-    await expect(
-      addTemplate(
-        'frontx-template-third-fixture',
-        targetDir,
-        harness.lookupFn,
-        harness.listInstalledFn,
-        harness.readContentFn,
-        harness.writeFileFn,
-        readProvenanceRecords,
-        harness.provenanceWriteFn,
-      ),
-    ).rejects.toThrow(/not iterable/);
+    const addResult = await addTemplate(
+      'frontx-template-third-fixture',
+      targetDir,
+      harness.lookupFn,
+      harness.listInstalledFn,
+      harness.readContentFn,
+      harness.writeFileFn,
+      readProvenanceRecords,
+      harness.provenanceWriteFn,
+    );
+    expect(addResult.ok).toBe(true);
+
+    const afterAdd = JSON.parse(
+      fs.readFileSync(path.join(targetDir, '.frontx', 'provenance.json'), 'utf-8'),
+    ) as unknown;
+    expect(Array.isArray(afterAdd)).toBe(true);
+    expect(afterAdd).toHaveLength(3);
   });
 });

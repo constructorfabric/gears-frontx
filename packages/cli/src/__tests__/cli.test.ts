@@ -389,6 +389,12 @@ describe('dispatch: upgrade (cpt-frontx-flow-upgrade-changeset-review-approval)'
     const { deps } = makeDeps({
       fetchFn,
       readSingleProvenanceFn: vi.fn(async () => provenance),
+      // The provenance file on disk is always the full SET (ADR-0019) — one
+      // record per applied template, even when there is only one — never
+      // the bare record `readSingleProvenanceFn` bridges it down to.
+      readProjectFile: vi.fn(async (p: string) =>
+        p === '/proj/.frontx/provenance.json' ? JSON.stringify([provenance]) : null,
+      ),
     });
 
     const outcome = await run(['upgrade', '/proj', '2.0.0', '--yes'], deps);
