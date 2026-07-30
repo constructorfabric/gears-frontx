@@ -5,7 +5,7 @@ import { composeSharedFiles } from './compose-shared-files';
 import type { ProvenanceRecord, ProvenanceWriteFn } from '../provenance/types';
 import type { InventoryEntry } from '../inventory/types';
 import type { OccupiedBoundaryEntry } from './state';
-import type { StagedAssembly, WriteFileFn } from './types';
+import type { ReadProjectFileFn, StagedAssembly, WriteFileFn } from './types';
 
 // Injected reader for a target repository's existing provenance records —
 // empty for a seed (the target is empty by definition) or the repository's
@@ -157,7 +157,11 @@ export type MaterializeResult = { ok: true } | { ok: false; message: string };
  * exists to prevent. It then writes one provenance record PER applied
  * template — appended to any records the target already holds (add-template)
  * rather than overwriting them; a seed always starts from an empty
- * `existingProvenance` set.
+ * `existingProvenance` set. `existingProvenance` is also threaded through to
+ * `composeSharedFiles`, which needs the identities it names to tell a
+ * recorded-but-not-contributing template's on-disk region-union block (carry
+ * forward verbatim, `cpt-frontx-dod-cli-scaffolding-preserve-applied-regions`)
+ * apart from an unrecorded one (refuse the assembly).
  */
 export async function materializeAssembly(
   assembly: StagedAssembly,
@@ -166,8 +170,12 @@ export async function materializeAssembly(
   lookupFn: (name: string) => InventoryEntry | undefined,
   writeFileFn: WriteFileFn,
   provenanceWriteFn: ProvenanceWriteFn,
+  // Defaults to "nothing already on disk" — see composeSharedFiles for why
+  // that default is safe: it reproduces the pre-fix behavior exactly for a
+  // caller that has no target repository state to reconcile against.
+  readProjectFileFn: ReadProjectFileFn = async () => null,
 ): Promise<MaterializeResult> {
-  const composeResult = await composeSharedFiles(assembly, targetDir, writeFileFn);
+  const composeResult = await composeSharedFiles(assembly, targetDir, writeFileFn, readProjectFileFn, existingProvenance);
   if (!composeResult.ok) return { ok: false, message: composeResult.message };
 
   const newRecords: ProvenanceRecord[] = assembly.contributions.map((contribution) => {

@@ -322,6 +322,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         deps.readContentFn,
         deps.writeFileFn,
         deps.provenanceWriteFn,
+        deps.readProjectFile,
       );
       if (!result.ok) {
         const exitCode = result.reason === 'manifest-unreadable' || result.reason === 'provenance-failed'
@@ -352,6 +353,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         deps.writeFileFn,
         deps.readProvenanceRecordsFn,
         deps.provenanceWriteFn,
+        deps.readProjectFile,
       );
       if (!result.ok) {
         const exitCode = result.reason === 'manifest-unreadable' || result.reason === 'provenance-failed'

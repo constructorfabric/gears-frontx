@@ -5,7 +5,7 @@ import { checkAssemblyConflicts } from '../scaffold/conflict';
 import { materializeAssembly, occupiedBoundariesFromProvenance } from '../scaffold/materialize';
 import type { ReadProvenanceRecordsFn } from '../scaffold/materialize';
 import type { InventoryEntry } from '../inventory/types';
-import type { ReadContentItemsFn, WriteFileFn } from '../scaffold/types';
+import type { ReadContentItemsFn, ReadProjectFileFn, WriteFileFn } from '../scaffold/types';
 import type { BoundaryConflictEntry } from '../scaffold/state';
 import type { ProvenanceWriteFn } from '../provenance/types';
 
@@ -47,6 +47,11 @@ export async function addTemplate(
   writeFileFn: WriteFileFn,
   readProvenanceFn: ReadProvenanceRecordsFn,
   provenanceWriteFn: ProvenanceWriteFn,
+  // Optional — defaults to "nothing already on disk". A real `add` against a
+  // repository that already holds applied templates should always supply the
+  // real adapter, or a recorded region-union block from an earlier apply
+  // will not be found and carried forward.
+  readProjectFileFn: ReadProjectFileFn = async () => null,
 ): Promise<AddTemplateResult> {
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-invoke
   // entry: apply command invoked with a template reference and the path of a
@@ -137,6 +142,7 @@ export async function addTemplate(
     lookupFn,
     writeFileFn,
     provenanceWriteFn,
+    readProjectFileFn,
   );
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
 

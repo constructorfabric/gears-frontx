@@ -1,13 +1,18 @@
 // TEST-ONLY — this file carries NO `@cpt` marker and traces to NO FEATURE
 // instruction, same as `adapters/__tests__/local-fetch.test.ts`.
 //
-// Issue #470 / phase 3 — pinning tests for two KNOWN, ALREADY-EXISTING
-// defects in the CLI's multi-template path, surfaced by the boundary design
-// for the template-shell/template-mfe split. SSOT:
+// Issue #470 / phase 3 — this file originally pinned two KNOWN,
+// ALREADY-EXISTING defects in the CLI's multi-template path, surfaced by the
+// boundary design for the template-shell/template-mfe split. SSOT:
 // `.omc/plans/issue-470-boundary-design.md` §5 (risks R5/B1), §6 (fixtures 7,
-// 9), §7 (deferred fixes — both defects are tracked as SEPARATE issues, out
-// of #470's scope; fixing `scaffold/compose-shared-files.ts` or
-// `upgrade/apply.ts` is explicitly NOT part of this task).
+// 9), §7 (deferred fixes — both were tracked as SEPARATE issues, out of
+// #470's own scope). Both are now fixed and their tests rewritten into
+// correctness assertions, per the "when the tracked fix lands" instruction
+// below: Fixture 9's provenance-truncation defect by issue #488 (see its
+// describe block), and Fixture 7's region-union truncation-on-`add` defect
+// by issue #487 (`scaffold/compose-shared-files.ts`'s carry-forward-from-disk
+// fix — see `cpt-frontx-dod-cli-scaffolding-preserve-applied-regions`,
+// `architecture/features/cli-scaffolding/FEATURE.md`).
 //
 // "Pinning" here means: assert TODAY's (defective) behavior on purpose, so a
 // silent regression-in-the-opposite-direction (the defect getting WORSE, or
@@ -64,7 +69,7 @@ afterEach(() => {
   harness = undefined;
 });
 
-describe('Fixture 7 (F6-pinning) — region-union composition depends on assembly SHAPE, not on what is already on disk', () => {
+describe('Fixture 7 (F6-fixed, issue #487) — region-union composition reconciles with what is already on disk, regardless of assembly shape', () => {
   const REGION_PATH = 'shared.txt';
 
   const manifestA: TemplateManifest = {
@@ -134,6 +139,7 @@ describe('Fixture 7 (F6-pinning) — region-union composition depends on assembl
     const readContentFn = createFsReadContentItemsFn(inventoryRoot);
     const writeFileFn = createFsWriteFileFn();
     const provenanceWriteFn = createFsProvenanceWriteFn();
+    const readProjectFileFn = createFsReadProjectFileFn();
 
     const seedResult = await seedRepository(
       'region-fixture-bundle',
@@ -142,6 +148,7 @@ describe('Fixture 7 (F6-pinning) — region-union composition depends on assembl
       readContentFn,
       writeFileFn,
       provenanceWriteFn,
+      readProjectFileFn,
     );
     expect(seedResult.ok).toBe(true);
     if (!seedResult.ok) return;
@@ -156,7 +163,7 @@ describe('Fixture 7 (F6-pinning) — region-union composition depends on assembl
     expect(composed).toContain('frontx:region region-fixture-b:b');
   });
 
-  it('KNOWN DEFECT (tracked separately, see §7 of the SSOT) — seed A, then add B: the file is truncated to ONLY B\'s region; A\'s already-written region-union block is silently discarded', async () => {
+  it('FIXED (issue #487) — seed A, then add B: the file carries BOTH regions; A\'s already-written region-union block survives the add', async () => {
     const inventoryRoot = trackedTmpDir('frontx-split-f7-addflow-inv-');
     const targetDir = trackedTmpDir('frontx-split-f7-addflow-target-');
     const aDir = trackedTmpDir('frontx-split-f7-addflow-a-');
@@ -187,6 +194,7 @@ describe('Fixture 7 (F6-pinning) — region-union composition depends on assembl
     const writeFileFn = createFsWriteFileFn();
     const provenanceWriteFn = createFsProvenanceWriteFn();
     const readProvenanceRecordsFn: ReadProvenanceRecordsFn = readProvenanceRecords;
+    const readProjectFileFn = createFsReadProjectFileFn();
 
     const seedResult = await seedRepository(
       'region-fixture-a',
@@ -195,16 +203,21 @@ describe('Fixture 7 (F6-pinning) — region-union composition depends on assembl
       readContentFn,
       writeFileFn,
       provenanceWriteFn,
+      readProjectFileFn,
     );
     expect(seedResult.ok).toBe(true);
     expect(fs.readFileSync(path.join(targetDir, REGION_PATH), 'utf-8')).toContain('frontx:region region-fixture-a:a');
 
     // No conflict is expected here — region-fixture-a and region-fixture-b
     // declare DISJOINT region keys ('a' vs. 'b') on the same shared path, so
-    // the pre-flight conflict check correctly passes this add. The defect is
-    // NOT a false-negative conflict check; it is that materialization, once
-    // past that check, only ever looks at what THIS add's own assembly
-    // contributes — never at the file `addTemplate` is about to overwrite.
+    // the pre-flight conflict check correctly passes this add. Issue #487's
+    // defect was that materialization, once past that check, only ever
+    // looked at what THIS add's own assembly contributes — never at the file
+    // `addTemplate` is about to overwrite. Fixed: materialization now reads
+    // the file already on disk, recognizes region-fixture-a's block as
+    // recorded in this repository's provenance (not a contributor to THIS
+    // add, but not unrecorded either), and carries it forward verbatim
+    // alongside region-fixture-b's freshly extracted region.
     const addResult = await addTemplate(
       'region-fixture-b',
       targetDir,
@@ -214,12 +227,13 @@ describe('Fixture 7 (F6-pinning) — region-union composition depends on assembl
       writeFileFn,
       readProvenanceRecordsFn,
       provenanceWriteFn,
+      readProjectFileFn,
     );
     expect(addResult.ok).toBe(true);
 
-    const truncated = fs.readFileSync(path.join(targetDir, REGION_PATH), 'utf-8');
-    expect(truncated).not.toContain('frontx:region region-fixture-a:a');
-    expect(truncated).toContain('frontx:region region-fixture-b:b');
+    const composed = fs.readFileSync(path.join(targetDir, REGION_PATH), 'utf-8');
+    expect(composed).toContain('frontx:region region-fixture-a:a');
+    expect(composed).toContain('frontx:region region-fixture-b:b');
   });
 });
 

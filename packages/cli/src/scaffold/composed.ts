@@ -12,7 +12,7 @@ import { materializeAssembly } from './materialize';
 import { provenancePath } from '../provenance/contract';
 import type { BoundaryConflictEntry } from './state';
 import type { ProvenanceWriteFn } from '../provenance/types';
-import type { ReadContentItemsFn, WriteFileFn } from './types';
+import type { ReadContentItemsFn, ReadProjectFileFn, WriteFileFn } from './types';
 
 export type ComposedScaffoldResult =
   | { ok: true; message: string; provenanceLocation: string }
@@ -44,6 +44,10 @@ export async function scaffoldComposedProject(
   writeFileFn: WriteFileFn,
   provenanceWriteFn: ProvenanceWriteFn,
   readContentFn: ReadContentItemsFn,
+  // Optional — a composed scaffold always targets a fresh directory, so
+  // "nothing already on disk" (the default) is the correct value; kept
+  // overridable for callers that want to reconcile against a real path.
+  readProjectFileFn: ReadProjectFileFn = async () => null,
 ): Promise<ComposedScaffoldResult> {
 // @cpt-end:cpt-frontx-flow-composed-provenance-scaffold-composed-project:p1:inst-issue-scaffold
 
@@ -187,6 +191,7 @@ export async function scaffoldComposedProject(
     lookupFn,
     writeFileFn,
     provenanceWriteFn,
+    readProjectFileFn,
   );
   // @cpt-end:cpt-frontx-flow-composed-provenance-scaffold-composed-project:p1:inst-invoke-provenance-write
   // @cpt-end:cpt-frontx-flow-composed-provenance-scaffold-composed-project:p1:inst-scaffold-composition

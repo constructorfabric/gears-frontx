@@ -5,7 +5,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { scaffoldComposedProject } from '../scaffold/composed';
 import type { InventoryEntry } from '../inventory/types';
 import { InventoryState } from '../inventory/types';
-import type { ContentItem, ReadContentItemsFn } from '../scaffold/types';
+import type { ContentItem, ReadContentItemsFn, ReadProjectFileFn } from '../scaffold/types';
 import type { OwnershipBoundary } from '../manifest/types';
 
 // Content items live SEPARATELY from the manifest, in a registry keyed by
@@ -13,6 +13,12 @@ import type { OwnershipBoundary } from '../manifest/types';
 // from the "installed content path" — never from the manifest.
 const contentRegistry = new Map<string, ContentItem[]>();
 const readContentFn: ReadContentItemsFn = async (entry) => contentRegistry.get(entry.name) ?? [];
+
+// Every fixture below scaffolds a fresh target directory with nothing
+// on it yet, so the seam that reads a shared file already on disk
+// (`cpt-frontx-algo-cli-scaffolding-compose-shared-files` inst-cs-read-existing-blocks)
+// always sees "absent" here.
+const readProjectFileFn: ReadProjectFileFn = async () => null;
 
 const NO_BOUNDARY: OwnershipBoundary = { exclusiveSubtrees: [], sharedFiles: [] };
 
@@ -76,6 +82,7 @@ describe('scaffoldComposedProject', () => {
       writeFileFn,
       provenanceWriteFn,
       readContentFn,
+      readProjectFileFn,
     );
 
     expect(result.ok).toBe(true);
@@ -109,6 +116,7 @@ describe('scaffoldComposedProject', () => {
       writeFileFn,
       provenanceWriteFn,
       readContentFn,
+      readProjectFileFn,
     );
 
     expect(result.ok).toBe(true);
@@ -156,6 +164,7 @@ describe('scaffoldComposedProject', () => {
       writeFileFn,
       provenanceWriteFn,
       readContentFn,
+      readProjectFileFn,
     );
 
     expect(result.ok).toBe(false);
@@ -200,6 +209,7 @@ describe('scaffoldComposedProject', () => {
       writeFileFn,
       provenanceWriteFn,
       readContentFn,
+      readProjectFileFn,
     );
 
     expect(result.ok).toBe(true);
@@ -229,6 +239,7 @@ describe('scaffoldComposedProject', () => {
       writeFileFn,
       provenanceWriteFn,
       readContentFn,
+      readProjectFileFn,
     );
 
     expect(result.ok).toBe(false);
@@ -263,6 +274,7 @@ describe('scaffoldComposedProject', () => {
       writeFileFn,
       provenanceWriteFn,
       readContentFn,
+      readProjectFileFn,
     );
 
     expect(provenanceWriteFn).toHaveBeenCalledOnce();
@@ -320,6 +332,7 @@ describe('scaffoldComposedProject', () => {
       writeFileFn,
       provenanceWriteFn,
       readContentFn,
+      readProjectFileFn,
     );
 
     expect(result.ok).toBe(true);

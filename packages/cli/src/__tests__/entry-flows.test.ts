@@ -7,7 +7,7 @@ import { addTemplate } from '../commands/add-template';
 import type { InventoryEntry } from '../inventory/types';
 import { InventoryState } from '../inventory/types';
 import type { TemplateManifest } from '../manifest/types';
-import type { ContentItem, ReadContentItemsFn, WriteFileFn } from '../scaffold/types';
+import type { ContentItem, ReadContentItemsFn, ReadProjectFileFn, WriteFileFn } from '../scaffold/types';
 import type { ProvenanceRecord, ProvenanceWriteFn } from '../provenance/types';
 import type { ReadProvenanceRecordsFn } from '../scaffold/materialize';
 
@@ -51,7 +51,12 @@ function makeFsFake() {
     const raw = files.get(`${targetDir}/.frontx/provenance.json`);
     return raw ? (JSON.parse(raw) as ProvenanceRecord[]) : [];
   };
-  return { files, writeFileFn, provenanceWriteFn, readProvenanceFn };
+  // Backed by the SAME in-memory `files` map every other fake here writes
+  // through, so a region-union path this fake fs already holds (from an
+  // earlier seed/add in the same test) is visible to composeSharedFiles'
+  // carry-forward check exactly as the real fs adapter would see it.
+  const readProjectFileFn: ReadProjectFileFn = async (path) => files.get(path) ?? null;
+  return { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn };
 }
 
 describe('seedRepository — cpt-frontx-flow-cli-scaffolding-seed-repository', () => {
@@ -62,9 +67,9 @@ describe('seedRepository — cpt-frontx-flow-cli-scaffolding-seed-repository', (
     const mfeA = makeEntry('mfe-a', [{ path: 'mfe-a/index.ts', content: 'export const mfeA = true;' }]);
     const entries: Record<string, InventoryEntry> = { 'preset-template': preset, 'mfe-a': mfeA };
     const lookupFn = (n: string) => entries[n];
-    const { files, writeFileFn, provenanceWriteFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProjectFileFn } = makeFsFake();
 
-    const result = await seedRepository('preset-template', '/target', lookupFn, readContentFn, writeFileFn, provenanceWriteFn);
+    const result = await seedRepository('preset-template', '/target', lookupFn, readContentFn, writeFileFn, provenanceWriteFn, readProjectFileFn);
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -77,9 +82,9 @@ describe('seedRepository — cpt-frontx-flow-cli-scaffolding-seed-repository', (
   });
 
   it('aborts with no files written when the template reference cannot be resolved from the local inventory', async () => {
-    const { files, writeFileFn, provenanceWriteFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProjectFileFn } = makeFsFake();
 
-    const result = await seedRepository('missing', '/target', () => undefined, readContentFn, writeFileFn, provenanceWriteFn);
+    const result = await seedRepository('missing', '/target', () => undefined, readContentFn, writeFileFn, provenanceWriteFn, readProjectFileFn);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -96,9 +101,9 @@ describe('seedRepository — cpt-frontx-flow-cli-scaffolding-seed-repository', (
       ownershipBoundaries: { exclusiveSubtrees: ['shared/'], sharedFiles: [] },
     });
     const entries: Record<string, InventoryEntry> = { 'template-a': templateA, 'template-b': templateB };
-    const { files, writeFileFn, provenanceWriteFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProjectFileFn } = makeFsFake();
 
-    const result = await seedRepository('template-a', '/target', (n) => entries[n], readContentFn, writeFileFn, provenanceWriteFn);
+    const result = await seedRepository('template-a', '/target', (n) => entries[n], readContentFn, writeFileFn, provenanceWriteFn, readProjectFileFn);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -128,7 +133,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       'declared-identity': legacyEntry,
       'new-template': newTemplate,
     };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([
@@ -145,6 +150,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readProjectFileFn,
     );
 
     // The add proceeds: the legacy record's boundaries were established from
@@ -168,7 +174,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       'declared-identity': applied,
       'new-template': newTemplate,
     };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([
@@ -186,6 +192,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readProjectFileFn,
     );
 
     // One claim per occupant, so `applied/` is not contested by itself and the
@@ -210,7 +217,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       'declared-identity': applied,
       intruder,
     };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([
@@ -228,6 +235,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readProjectFileFn,
     );
 
     expect(result.ok).toBe(false);
@@ -264,7 +272,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       'real-owner': realOwner,
       'new-template': newTemplate,
     };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([
@@ -281,6 +289,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readProjectFileFn,
     );
 
     // Trusting the identity hit would have checked the impostor's boundaries,
@@ -297,7 +306,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       ownershipBoundaries: { exclusiveSubtrees: ['new/'], sharedFiles: [] },
     });
     const entries: Record<string, InventoryEntry> = { 'new-template': newTemplate };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
     // Neither the identity nor the address resolves: the template genuinely is
     // not installed, so `frontx install <sourceSpec>` is a recovery that works.
     files.set(
@@ -316,6 +325,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readProjectFileFn,
     );
 
     expect(result.ok).toBe(false);
@@ -337,7 +347,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       'new-template': newTemplate,
       'applied-template': corrupted,
     };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
     // The record's source-spec must address the same template as the installed
     // entry, or the identity hit is rejected and this exercises the
     // not-installed branch instead of the unreadable-manifest one.
@@ -357,6 +367,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readProjectFileFn,
     );
 
     expect(result.ok).toBe(false);
@@ -374,7 +385,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
     });
     const entries: Record<string, InventoryEntry> = { 'existing-template': existing, 'new-template': newTemplate };
     const lookupFn = (n: string) => entries[n];
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([{ templateIdentity: 'existing-template', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/existing-template@v1.0.0' }]),
@@ -389,6 +400,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readProjectFileFn,
     );
 
     expect(result.ok).toBe(true);
@@ -404,9 +416,9 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
   });
 
   it('aborts with no files written when the template reference cannot be resolved from the local inventory', async () => {
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
 
-    const result = await addTemplate('missing', '/target', () => undefined, async () => [], readContentFn, writeFileFn, readProvenanceFn, provenanceWriteFn);
+    const result = await addTemplate('missing', '/target', () => undefined, async () => [], readContentFn, writeFileFn, readProvenanceFn, provenanceWriteFn, readProjectFileFn);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -422,7 +434,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       ownershipBoundaries: { exclusiveSubtrees: ['clash/'], sharedFiles: [] },
     });
     const entries: Record<string, InventoryEntry> = { 'existing-template': existing, 'clashing-template': clashing };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([{ templateIdentity: 'existing-template', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/existing-template@v1.0.0' }]),
@@ -437,6 +449,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readProjectFileFn,
     );
 
     expect(result.ok).toBe(false);
@@ -457,9 +470,9 @@ describe('boundary-declared-assembly DoD — cpt-frontx-dod-cli-scaffolding-boun
       { path: 'template-a/index.ts', content: 'in-bounds' },
       { path: 'unrelated/outside.ts', content: 'out-of-bounds' },
     ]);
-    const { files, writeFileFn, provenanceWriteFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProjectFileFn } = makeFsFake();
 
-    const result = await seedRepository('template-a', '/target', () => entry, readContentFn, writeFileFn, provenanceWriteFn);
+    const result = await seedRepository('template-a', '/target', () => entry, readContentFn, writeFileFn, provenanceWriteFn, readProjectFileFn);
 
     expect(result.ok).toBe(true);
     expect(files.get('/target/template-a/index.ts')).toBe('in-bounds');

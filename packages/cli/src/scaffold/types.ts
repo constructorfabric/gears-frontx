@@ -4,6 +4,17 @@ import type { InventoryEntry } from '../inventory/types';
 // Injected write function — caller supplies; no direct filesystem access in core logic.
 export type WriteFileFn = (destPath: string, content: string) => Promise<void>;
 
+// Injected reader for a file already on disk at a target repository path —
+// `null` when absent. Symmetric to upgrade's `ReadProjectFileFn`
+// (`../upgrade/types.ts`), redeclared here (rather than imported) so
+// scaffold does not take a cross-feature dependency on upgrade for a shape
+// this simple; both seams share the SAME real implementation
+// (`createFsReadProjectFileFn`, `../adapters/fs-project-io.ts`). Needed by
+// `composeSharedFiles` (cpt-frontx-algo-cli-scaffolding-compose-shared-files
+// inst-cs-read-existing-blocks) to read a `region-union` shared file already
+// on disk before composing over it.
+export type ReadProjectFileFn = (absolutePath: string) => Promise<string | null>;
+
 // Injected conflict check — returns true when the target directory has conflicting content.
 // Used by the composed-provenance (F13) scaffolder; unrelated to the kindless
 // assembly-op's boundary-intersection conflict verdict (cpt-frontx-state-cli-scaffolding-assembly-op).

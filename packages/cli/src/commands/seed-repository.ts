@@ -4,7 +4,7 @@ import { uniformApply } from '../scaffold/assembler';
 import { checkAssemblyConflicts } from '../scaffold/conflict';
 import { materializeAssembly } from '../scaffold/materialize';
 import type { InventoryEntry } from '../inventory/types';
-import type { ReadContentItemsFn, WriteFileFn } from '../scaffold/types';
+import type { ReadContentItemsFn, ReadProjectFileFn, WriteFileFn } from '../scaffold/types';
 import type { BoundaryConflictEntry } from '../scaffold/state';
 import type { ProvenanceWriteFn } from '../provenance/types';
 
@@ -28,6 +28,10 @@ export async function seedRepository(
   readContentFn: ReadContentItemsFn,
   writeFileFn: WriteFileFn,
   provenanceWriteFn: ProvenanceWriteFn,
+  // Optional — defaults to "nothing already on disk", which is exactly what
+  // a fresh seed target already is; a caller that has no reason to reconcile
+  // with an existing file (e.g. a test fixture) can omit it.
+  readProjectFileFn: ReadProjectFileFn = async () => null,
 ): Promise<SeedRepositoryResult> {
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-invoke
   // entry: apply command invoked with a template reference and a target directory path
@@ -95,6 +99,7 @@ export async function seedRepository(
     lookupFn,
     writeFileFn,
     provenanceWriteFn,
+    readProjectFileFn,
   );
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-materialize
 

@@ -74,6 +74,10 @@ export type {
 // cpt-frontx-dod-cli-scaffolding-conflict-check). Fills the `conflictVerdictFn`
 // seam `runAssemblyOp` (above) drives through.
 export { checkAssemblyConflicts } from './scaffold/conflict';
+// `ReadProjectFileFn` is intentionally NOT re-exported from here again: it is
+// the same shape as upgrade's `ReadProjectFileFn` (already exported below),
+// redeclared locally in `scaffold/types.ts` only to avoid a cross-feature
+// import, not to mint a second public name for it.
 export type {
   WriteFileFn,
   ConflictCheckFn,

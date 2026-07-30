@@ -13,7 +13,7 @@ import { TemplateInventory } from '../../inventory/TemplateInventory';
 import { FsInventoryIndex } from '../fs-inventory-index';
 import { FsContentStore } from '../fs-content-store';
 import { createFsReadContentItemsFn } from '../fs-read-content-items';
-import { createFsWriteFileFn } from '../fs-project-io';
+import { createFsWriteFileFn, createFsReadProjectFileFn } from '../fs-project-io';
 import { createFsProvenanceWriteFn } from '../provenance-io';
 import { installCommand } from '../../commands/install';
 import { seedRepository } from '../../commands/seed-repository';
@@ -106,6 +106,7 @@ describe('offline e2e — frontx install + seed assemble the real template-shell
       const readContentFn = createFsReadContentItemsFn(inventoryRoot);
       const writeFileFn = createFsWriteFileFn();
       const provenanceWriteFn = createFsProvenanceWriteFn();
+      const readProjectFileFn = createFsReadProjectFileFn();
 
       // Identity is the manifest's own declared `name`
       // ("@gears-frontx/frontx-template-shell", `template-shell/frontx-template.json`),
@@ -118,6 +119,7 @@ describe('offline e2e — frontx install + seed assemble the real template-shell
         readContentFn,
         writeFileFn,
         provenanceWriteFn,
+        readProjectFileFn,
       );
 
       expect(seedResult.ok).toBe(true);
