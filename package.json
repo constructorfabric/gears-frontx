@@ -33,7 +33,7 @@
     "type-check:packages:mfes": "npm run type-check --workspace=@gears-frontx/mfes",
     "type-check:packages:gts-plugin": "npm run type-check --workspace=@gears-frontx/gts-plugin",
     "type-check:packages:sdk": "npm run type-check --workspace=@gears-frontx/api",
-    "type-check:packages:telemetry": "npm run type-check --workspace=@gears-frontx/telemetry",
+    "type-check:packages:telemetry": "npm run type-check --workspace=@gears-frontx/telemetry && npm run type-check:demo --workspace=@gears-frontx/telemetry",
     "type-check:packages:test": "npm run type-check:test --workspace=@gears-frontx/api --workspace=@gears-frontx/cli --workspace=@gears-frontx/telemetry",
     "clean:artifacts": "rm -rf packages/*/dist dist .nyc_output coverage .eslintcache",
     "clean:modules": "rm -rf node_modules",
