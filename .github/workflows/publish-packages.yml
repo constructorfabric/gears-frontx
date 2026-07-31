@@ -273,7 +273,7 @@ jobs:
       # longer reads packages/*/dist — it installs @gears-frontx/api, mfes and
       # gts-plugin from the registry at exact pinned versions (#485), which is why
       # this job waits on publish-ecosystem instead.
-      - name: Install + build ecosystem (template build inputs)
+      - name: Sanity-build ecosystem sources (pre-publish check)
         run: |
           npm ci
           npm run build:packages
