@@ -15,5 +15,6 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**'],
     globalSetup: './vitest.global-setup.ts',
     passWithNoTests: false,
+    restoreMocks: true,
   },
 });
