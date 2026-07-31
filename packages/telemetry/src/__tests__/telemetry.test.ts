@@ -427,6 +427,24 @@ describe('Telemetry Client', () => {
     expect(record.context_user_data?.locale).toBe('"es-ES"');
   });
 
+  test('should attach a user id of 0', () => {
+    const telemetry = createTelemetry(mockAppInfo);
+
+    telemetry.identify(0);
+    telemetry.start();
+    onTestFinished(() => telemetry.destroy());
+
+    telemetry.logEvent('zero_user_event');
+    vi.runAllTimers();
+
+    const payload: TelemetryApiPayload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const record = payload.records.find(
+      (r: TelemetryApiRecord) => r.value.name === 'zero_user_event',
+    );
+
+    expect(record?.value.context_user_id).toBe(0);
+  });
+
   test('should normalize short locale codes to full BCP 47 format', () => {
     vi.spyOn(navigator, 'language', 'get').mockImplementation(() => 'es-ES');
 

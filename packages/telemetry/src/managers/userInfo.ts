@@ -15,7 +15,8 @@ export function createUserInfoManager(context: TelemetryContext) {
   }
 
   function onEvent(record: TelemetryRecord) {
-    if (!userId) {
+    // `0` is a legal TelemetryUserId, so absence is the only reason to skip.
+    if (userId === undefined) {
       return;
     }
 
