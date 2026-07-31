@@ -40,13 +40,9 @@ const unanchoredSSNRegex = new RegExp(`(${coreSSNPattern})`);
 
 export const autocaptureTextElements = ['a', 'button', 'label'];
 export const autocaptureElements = ['a', 'button', 'form', 'input', 'select', 'textarea', 'label'];
-export const attributeIgnoreList = [
-  'style',
-  'fill',
-  'viewBox',
-  'xmlns',
-  'data-telemetry-no-capture',
-];
+export const noCaptureAttribute = 'data-telemetry-no-capture';
+
+export const attributeIgnoreList = ['style', 'fill', 'viewBox', 'xmlns', noCaptureAttribute];
 
 export function shouldCaptureValue(
   value: string | undefined | null,

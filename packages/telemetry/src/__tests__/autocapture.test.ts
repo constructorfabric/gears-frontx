@@ -574,12 +574,16 @@ describe('autocapture element hook', () => {
     expect(value.data).not.toHaveProperty('0');
   });
 
-  test('should suppress capture when an ancestor carries the data-telemetry-no-capture attribute', () => {
+  test.each([
+    ['a bare attribute', ''],
+    ['the value "true"', 'true'],
+    ['the value "false"', 'false'],
+    ['an unrecognized value', 'yes'],
+  ])('should suppress capture when an ancestor carries %s', (_label, value) => {
     startClient();
 
     const noCaptureAncestor = document.createElement('div');
-    // Matches the exact runtime check in the autocapture walk (`getAttribute('data-telemetry-no-capture') === 'false'`).
-    noCaptureAncestor.setAttribute('data-telemetry-no-capture', 'false');
+    noCaptureAncestor.setAttribute('data-telemetry-no-capture', value);
 
     const button = document.createElement('button');
     button.textContent = 'Click me';

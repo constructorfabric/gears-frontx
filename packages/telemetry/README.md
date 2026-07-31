@@ -154,10 +154,12 @@ characters), and a safe subset of its attributes (`$el_attr_*`). Anchor clicks a
 
 ### Opting out
 
-Add `data-telemetry-no-capture="false"` to an element to suppress capture for its subtree.
+Add `data-telemetry-no-capture` to an element to suppress capture for its subtree. Only presence
+matters - the value is never read, so the bare attribute, `="true"` and anything else all opt out.
+Remove the attribute to opt back in.
 
-> The value is inverted from what the name suggests - a bare attribute or `="true"` does nothing.
-> See *Known gaps*.
+> Earlier builds suppressed only on the literal `="false"` and ignored everything else, so markup
+> written against that reading keeps working - but drop the value, it means nothing now.
 
 ### Element hooks
 
@@ -249,7 +251,6 @@ The SDK is being extracted from an internal codebase. These are tracked and will
 - The request body uses a Kafka REST Proxy envelope and stringifies each nested object field, so
   `data: { a: 'b' }` arrives as `data: { a: '"b"' }`. A pluggable transport will replace it.
 - `Content-Type` is not configurable.
-- `data-telemetry-no-capture` is inverted, as noted above.
 - Several `context_*` record fields are declared but never populated (tenant, user profile,
   screen size, touch support, DOM element id and value).
 

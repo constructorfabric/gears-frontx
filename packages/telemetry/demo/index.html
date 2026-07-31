@@ -65,10 +65,10 @@
       <section>
         <h2>Opting out</h2>
         <p>
-          This subtree carries <code>data-telemetry-no-capture="false"</code>, so clicks inside it
-          are suppressed. Note the value is inverted — see the README's Known gaps.
+          This subtree carries <code>data-telemetry-no-capture</code>, so clicks inside it are
+          suppressed. Only presence matters; the value is never read.
         </p>
-        <div class="row" data-telemetry-no-capture="false">
+        <div class="row" data-telemetry-no-capture>
           <button type="button">Suppressed button</button>
         </div>
       </section>

@@ -12,6 +12,7 @@ import {
   getTextContent,
   limitText,
   mergeElementHookContribution,
+  noCaptureAttribute,
   shouldCaptureDomEvent,
   shouldCaptureElement,
   shouldCaptureValue,
@@ -132,7 +133,7 @@ export function autocapturePlugin(): TelemetryPlugin {
         let contribution: AutocaptureElementContribution = { context: {}, data: {} };
 
         for (const el of eachParentElement(target, true)) {
-          if (el.getAttribute('data-telemetry-no-capture') === 'false') {
+          if (el.hasAttribute(noCaptureAttribute)) {
             return false;
           }
 

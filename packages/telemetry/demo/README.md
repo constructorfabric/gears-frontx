@@ -54,7 +54,7 @@ that hook fires *before* a record is queued, so the counter runs ahead of the re
 | --- | --- |
 | Autocapture | Ordinary buttons, links, inputs and a form. Nothing calls the SDK; autocapture listens on `document` for `click`, `change` and `submit`. |
 | Redaction | A password field and a card number. Neither value reaches a record - the field names and value shapes trip the redaction rules. |
-| Opting out | A subtree carrying `data-telemetry-no-capture="false"`. Note the value is inverted; see the SDK README's *Known gaps*. |
+| Opting out | A subtree carrying a bare `data-telemetry-no-capture`. Only presence matters; the value is never read. |
 | Element hook | A button registering a hook under `telemetryElementHookKey`, contributing service attribution and custom `data`. |
 | Explicit API | `logEvent`, `identify` and `destroy`. |
 
