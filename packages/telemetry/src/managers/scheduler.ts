@@ -1,3 +1,5 @@
+const FLUSH_DELAY_MS = 5000;
+
 export function createScheduler(cb: () => void) {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
@@ -14,7 +16,7 @@ export function createScheduler(cb: () => void) {
 
   function schedule() {
     cancel();
-    timeoutId = setTimeout(cb, 5000);
+    timeoutId = setTimeout(cb, FLUSH_DELAY_MS);
   }
 
   function cancel() {

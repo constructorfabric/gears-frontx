@@ -3,8 +3,10 @@ import type { TelemetryContext, TelemetrySession } from '../utils/types';
 
 export type SessionManager = ReturnType<typeof createSessionManager>;
 
+const REFRESH_DEBOUNCE_MS = 100;
+
 export function createSessionManager(context: TelemetryContext) {
-  const refreshSessionDebounced = debounce(refreshSession, 100);
+  const refreshSessionDebounced = debounce(refreshSession, REFRESH_DEBOUNCE_MS);
   const refreshEvents = ['scroll', 'keydown', 'click'];
 
   return {
