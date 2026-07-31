@@ -247,13 +247,18 @@ export function* eachParentElement(target: Element, includeTarget = false) {
 
   let curEl = target;
   while (curEl.parentNode && !isTag(curEl, 'body')) {
-    if (isShadowRoot(curEl.parentNode)) {
-      yield (curEl.parentNode as ShadowRoot).host;
-      curEl = (curEl.parentNode as ShadowRoot).host;
-      continue;
+    // The walk only stops at `body`, so an element parented outside it climbs to
+    // `documentElement`, whose parentNode is the document itself. A shadow root reached from a
+    // detached tree has no `host`. Neither is an Element, and the consumers call Element methods.
+    const parent = isShadowRoot(curEl.parentNode)
+      ? curEl.parentNode.host
+      : (curEl.parentNode as Element);
+
+    if (!isElementNode(parent)) {
+      return;
     }
 
-    yield curEl.parentNode as Element;
-    curEl = curEl.parentNode as Element;
+    yield parent;
+    curEl = parent;
   }
 }

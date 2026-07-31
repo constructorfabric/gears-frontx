@@ -241,6 +241,44 @@ describe('autocapture element hook', () => {
     expect(value.context_service_version).toBeUndefined();
   });
 
+  test('should not throw when the walk passes documentElement', () => {
+    startClient();
+
+    // Only reachable programmatically — the parser moves stray markup into body — but an extension
+    // or an overlay library mounting on documentElement produces exactly this shape.
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside body';
+    document.documentElement.appendChild(outside);
+    onTestFinished(() => outside.remove());
+
+    // The walk stops only at body, so it climbs to documentElement, whose parentNode is the
+    // document itself.
+    expect(() =>
+      outside.dispatchEvent(new MouseEvent('click', { bubbles: true })),
+    ).not.toThrow();
+
+    const record = flushAutocaptureRecord('click');
+    expect(record.data?.$el_tag_name).toBe(JSON.stringify('button'));
+    expect(record.data?.$el_text).toBe(JSON.stringify('Outside body'));
+  });
+
+  test('should not throw when the walk reaches a shadow root with no host', () => {
+    startClient();
+
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const button = document.createElement('button');
+    button.textContent = 'In shadow';
+    shadow.appendChild(button);
+    document.createDocumentFragment().appendChild(host);
+
+    // The host is detached, so nothing reaches the document listener and no record is emitted; the
+    // walk still must not throw when it reaches a shadow root whose tree has no document.
+    expect(() =>
+      button.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true })),
+    ).not.toThrow();
+  });
+
   test('should propagate a genuine internal autocapture error (a bug in the walk, not a hook) to the caller instead of swallowing it', () => {
     startClient();
 
