@@ -231,6 +231,9 @@ user typed, and `identify()` does not affect it, but it does correlate every eve
 across sessions, reloads and signed-out visits. Treat it as personal data in your own privacy
 assessment, and disclose it wherever you disclose cookies.
 
+`enabled: false` does not stop either key from being written - it only skips the POST (see
+`enabled` above). Gate `start()` itself on consent if the device id must not be written before then.
+
 To forget a device, remove the key, then build a new client and `start()` it — a client is
 single-use, so the id is minted by the next client's `start()`:
 
