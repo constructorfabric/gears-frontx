@@ -21,7 +21,7 @@
     "build:packages:gts-plugin": "npm run build --workspace=@gears-frontx/gts-plugin",
     "build:packages:sdk": "npm run build --workspace=@gears-frontx/api",
     "build:packages:telemetry": "npm run build --workspace=@gears-frontx/telemetry",
-    "demo:telemetry": "npm run dev --workspace=@gears-frontx/telemetry-example-web",
+    "demo:telemetry": "npm run demo --workspace=@gears-frontx/telemetry",
     "build:packages:cli": "npm run build --workspace=@gears-frontx/cli",
     "lint:deps": "node scripts/check-test-dependency-versions.mjs",
     "lint": "npm run lint:deps && eslint . --max-warnings 0",

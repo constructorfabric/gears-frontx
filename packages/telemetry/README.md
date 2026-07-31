@@ -250,10 +250,11 @@ assertions do not depend on the machine.
 The test script must stay named `test:unit`: `scripts/test-runner/discovery.mjs` skips any workspace
 that does not have it.
 
-The browser example is `packages/telemetry-example-web` - private, never published. It serves the
-page on port 5273 with a dev-server collector that echoes received batches to the terminal.
+The browser example is `demo/`, served on port 5273 with a dev-server collector that echoes received
+batches to the terminal. It never ships: `files[]` is a whitelist and the tsup entry is `src/index.ts`
+alone.
 
-Boundaries are enforced in root config, not by convention: the `packages/telemetry` block in
+Boundaries are enforced in root config, not by convention: the `packages/telemetry/src` block in
 `eslint.config.js` bans intra-ecosystem `@gears-frontx` imports, React, and deep
 `@gears-frontx/*/src/**` imports,
 and `.dependency-cruiser.cjs` adds `frontx-telemetry-1-no-template-content` and

@@ -228,8 +228,9 @@ export default [
   // @gears-frontx/telemetry: standalone browser SDK — no intra-ecosystem edge, no React.
   // dep-cruiser cannot see this edge: options.exclude.path drops packages/*/dist and every
   // workspace import resolves there, so this block is the gate that catches it.
+  // Scoped to src/ to match the two dep-cruiser rules; demo/ consumes the package by name.
   {
-    files: ['packages/telemetry/**/*.ts', 'packages/telemetry/**/*.tsx'],
+    files: ['packages/telemetry/src/**/*.ts', 'packages/telemetry/src/**/*.tsx'],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',

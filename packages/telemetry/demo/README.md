@@ -1,12 +1,15 @@
 # Telemetry Web Example
 
-A browser page wired to [`@gears-frontx/telemetry`](../telemetry), posting to a local collector.
+A browser page wired to [`@gears-frontx/telemetry`](..), posting to a local collector.
 
-It consumes the package exactly as an external user would - a `dependencies` entry on the published
-entry point, no reaching into `src/`, no path aliases. That is what makes it a check rather than a
-demo: if the example compiles and runs, the public API and the emitted types are usable.
+It consumes the package the way an external user would - the bare specifier `@gears-frontx/telemetry`,
+resolved through the package's `exports` to `dist/`, no reaching into `src/`, no path aliases. That is
+what makes it a check rather than a demo: if the example compiles and runs, the public API and the
+emitted types are usable.
 
-Private and never published.
+Nothing here is published. `files[]` in the package manifest is a whitelist (`dist`, `README.md`,
+`LICENSE`, `NOTICE`), and the tsup entry is `src/index.ts` alone, so `demo/` reaches neither the
+tarball nor the bundle.
 
 ## Run
 
@@ -16,16 +19,16 @@ From the repo root:
 npm run demo:telemetry
 ```
 
-Or from this directory:
+Or from the package directory:
 
 ```sh
-npm run dev
+npm run demo
 ```
 
-Open <http://localhost:5273>. The port is pinned in `vite.config.ts` because the `url` in
-`src/main.ts` is absolute.
+Open <http://localhost:5273>. The port is pinned in `vite.config.ts` because the `url` in `main.ts`
+is absolute.
 
-`predev` builds the SDK first, so a fresh clone works in one command. The example consumes the SDK's
+`predemo` builds the SDK first, so a fresh clone works in one command. The example consumes the SDK's
 `dist/`, not its source, so re-run after changing the SDK.
 
 `optimizeDeps.exclude` lists the SDK. Vite otherwise pre-bundles it into `node_modules/.vite` and
@@ -62,5 +65,5 @@ through a framework plugin is a separate concern and lives in template territory
 - `sessionDuration` is set to 60s rather than the 30 minute default, so a session boundary is
   observable without waiting.
 - `verbose: true`, so the SDK also logs to the browser console.
-- The plugin in `src/main.ts` is written inline. `context` and `record` are typed contextually -
-  writing a plugin requires no type imports.
+- The plugin in `main.ts` is written inline. `context` and `record` are typed contextually - writing
+  a plugin requires no type imports.

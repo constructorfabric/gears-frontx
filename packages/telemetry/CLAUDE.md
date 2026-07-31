@@ -31,5 +31,5 @@ known gaps: `README.md`.
 ```sh
 npm run test:unit --workspace=@gears-frontx/telemetry   # vitest, happy-dom, TZ=UTC pinned
 npm run build     --workspace=@gears-frontx/telemetry   # tsup: cjs + esm + dts
-npm run demo:telemetry                                  # packages/telemetry-example-web, private
+npm run demo:telemetry                                  # demo/, kept out of the tarball by files[]
 ```

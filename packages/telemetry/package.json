@@ -23,6 +23,9 @@
     "build": "tsup",
     "type-check": "tsc --noEmit",
     "type-check:test": "tsc -p tsconfig.test.json",
+    "type-check:demo": "tsc -p demo/tsconfig.json",
+    "predemo": "npm run build",
+    "demo": "vite demo",
     "test": "npm run test:unit",
     "test:unit": "vitest --run --passWithNoTests=false",
     "test:unit:watch": "vitest --watch"
@@ -31,10 +34,12 @@
     "bowser": "2.11.0"
   },
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "@vitest/coverage-v8": "4.1.4",
     "happy-dom": "20.10.6",
     "tsup": "^8.0.0",
     "typescript": "^5.4.2",
+    "vite": "^6.4.3",
     "vitest": "4.1.4"
   },
   "sideEffects": false,

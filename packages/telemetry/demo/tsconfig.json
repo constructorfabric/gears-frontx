@@ -4,6 +4,7 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "lib": ["esnext", "dom", "dom.iterable"],
+    "types": ["node"],
     "strict": true,
     "noEmit": true,
     "isolatedModules": true,
@@ -12,5 +13,5 @@
     "esModuleInterop": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["*.ts"]
 }

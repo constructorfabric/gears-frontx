@@ -45,7 +45,7 @@ export default defineConfig({
     exclude: ['@gears-frontx/telemetry'],
   },
   server: {
-    // Pinned so the `url` in src/main.ts stays correct. 5273 rather than vite's default, so the
+    // Pinned so the `url` in main.ts stays correct. 5273 rather than vite's default, so the
     // example and the monorepo's own dev server can run at the same time.
     port: 5273,
     strictPort: true,
