@@ -97,9 +97,12 @@ const pinnedSurfaceDriftWarning =
  * caller has to read fields rather than just the message.
  *
  * `restored` names the packages the rollback returned to the state `npm ci` left
- * them in: every package linked before the failure, plus the one that failed.
- * `unrestored` names the packages it could not put back, and a non-empty
- * `unrestored` is the only outcome of this script that needs `npm ci` to repair.
+ * them in: every package whose installed directory had already been moved aside.
+ * That includes the package that failed when its symlink was refused, and
+ * excludes it when the move aside itself was refused - nothing of it had moved,
+ * so it appears in neither list. `unrestored` names the packages the rollback
+ * could not put back, and a non-empty `unrestored` is the only outcome of this
+ * script that needs `npm ci` to repair.
  *
  * @typedef {{
  *   ok: false;

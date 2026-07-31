@@ -30,7 +30,7 @@ const builtArtifact = Object.freeze({ kind: 'file' });
  * Only the five members the script uses are provided, so a call to anything else
  * fails the test loudly instead of silently touching the real filesystem.
  *
- * @param {Record<string, { kind: string; json?: unknown; target?: string }>} initial
+ * @param {Record<string, { kind: string; json?: unknown; text?: string; target?: string }>} initial
  */
 function fakeFs(initial) {
   const tree = new Map(Object.entries(initial));
@@ -55,6 +55,14 @@ function fakeFs(initial) {
       existsSync: (target) => tree.has(target),
       readFileSync: (target) => {
         const entry = tree.get(target);
+
+        // `text` is read back verbatim, which is the only way to reach the
+        // parse refusal: a manifest that does not parse has no object form to
+        // stringify from.
+        if (typeof entry?.text === 'string') {
+          return entry.text;
+        }
+
         if (entry?.json === undefined) {
           throw fsError('ENOENT', target);
         }
@@ -161,6 +169,27 @@ function failSymlinkAt(fs, failingLinkPath) {
     }
 
     return original(target, linkPath, type);
+  };
+}
+
+/**
+ * Makes the one move `match` selects fail, the way a directory another process
+ * holds open does: every neighbouring move still succeeds. `match` sees both
+ * ends, because staging and rollback move the same two paths in opposite
+ * directions and a case usually means only one of them.
+ *
+ * @param {{ renameSync: (from: string, to: string) => void }} fs
+ * @param {(move: { from: string; to: string }) => boolean} match
+ */
+function failRenameAt(fs, match) {
+  const original = fs.renameSync;
+
+  return (from, to) => {
+    if (match({ from, to })) {
+      throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+    }
+
+    return original(from, to);
   };
 }
 
@@ -286,6 +315,23 @@ describe('linkEcosystemPackages', () => {
     expect(result).toMatchObject({ ok: false, reason: 'source-missing' });
   });
 
+  // A half-written or truncated `package.json` shares its reason code with an
+  // absent one, so the message is what separates them; both are refused before
+  // anything moves.
+  it('refuses a package whose manifest does not parse', () => {
+    const { fs, tree } = builtTree();
+    tree.set(path.join(repoRoot, 'packages/mfes/package.json'), {
+      kind: 'file',
+      text: '{ "name": "@gears-frontx/mfes"',
+    });
+
+    const result = linkEcosystemPackages({ repoRoot, fs, platform: 'linux' });
+
+    expect(result).toMatchObject({ ok: false, reason: 'source-missing' });
+    expect(result.message).toContain('packages/mfes/package.json is unreadable');
+    expect(scopeEntries(tree)).toEqual(installedScope);
+  });
+
   // The failure the staging exists for, and the one no precondition can rule
   // out: Windows rejects `dir` symlinks without Developer Mode and a scanner can
   // hold a directory open, so package 2 of 3 failing is routine. Deleting before
@@ -315,12 +361,7 @@ describe('linkEcosystemPackages', () => {
     const { fs, tree } = builtTree();
     const [first, second] = linkedPackageDirs;
     const secondLink = path.join(scopeDir, second);
-    fs.renameSync = ((original) => (from, to) => {
-      if (from === secondLink) {
-        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
-      }
-      return original(from, to);
-    })(fs.renameSync);
+    fs.renameSync = failRenameAt(fs, ({ from }) => from === secondLink);
 
     const result = linkEcosystemPackages({ repoRoot, fs, platform: 'linux' });
 
@@ -346,12 +387,7 @@ describe('linkEcosystemPackages', () => {
     const [first, second] = linkedPackageDirs;
     const secondLink = path.join(scopeDir, second);
     fs.symlinkSync = failSymlinkAt(fs, secondLink);
-    fs.renameSync = ((original) => (from, to) => {
-      if (to === secondLink) {
-        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
-      }
-      return original(from, to);
-    })(fs.renameSync);
+    fs.renameSync = failRenameAt(fs, ({ to }) => to === secondLink);
 
     const result = linkEcosystemPackages({ repoRoot, fs, platform: 'linux' });
 
