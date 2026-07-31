@@ -304,6 +304,38 @@ describe('linkEcosystemPackages', () => {
       restored: [first, second],
       unrestored: [],
     });
+    expect(result.message).toContain(`creating the @gears-frontx/${second} symlink failed`);
+    expect(scopeEntries(tree)).toEqual(installedScope);
+  });
+
+  // Staging fails for reasons of its own - a directory another process holds
+  // open, a busy mount - so reporting it as a symlink failure sends a reader
+  // after privileges and link support when nothing was ever linked.
+  it('names the move aside rather than the symlink when staging the second package fails', () => {
+    const { fs, tree } = builtTree();
+    const [first, second] = linkedPackageDirs;
+    const secondLink = path.join(scopeDir, second);
+    fs.renameSync = ((original) => (from, to) => {
+      if (from === secondLink) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return original(from, to);
+    })(fs.renameSync);
+
+    const result = linkEcosystemPackages({ repoRoot, fs, platform: 'linux' });
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: 'link-failed',
+      failedPackage: second,
+      // The package that failed is absent: nothing of it moved, so the rollback
+      // had nothing of its own to undo.
+      restored: [first],
+      unrestored: [],
+    });
+    expect(result.message).toContain(
+      `moving the installed @gears-frontx/${second} directory aside failed`,
+    );
     expect(scopeEntries(tree)).toEqual(installedScope);
   });
 

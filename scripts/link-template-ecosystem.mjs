@@ -245,11 +245,12 @@ function describePackages(names) {
  *   fs: typeof fsDefault;
  *   staged: { name: string; linkPath: string; backupPath: string | null }[];
  *   failedPackage: string;
+ *   failedStep: 'stage' | 'link';
  *   cause: unknown;
  * }} context
  * @returns {LinkRollback}
  */
-function restoreInstalledTree({ fs, staged, failedPackage, cause }) {
+function restoreInstalledTree({ fs, staged, failedPackage, failedStep, cause }) {
   /** @type {string[]} */
   const restored = [];
   /** @type {string[]} */
@@ -296,11 +297,20 @@ function restoreInstalledTree({ fs, staged, failedPackage, cause }) {
       'the tree from the lockfile.';
   }
 
+  // Naming the wrong syscall sends a reader looking for a symlink problem when
+  // the move aside is what the filesystem refused, and the two have different
+  // causes: privileges and link support for one, a lock or a busy directory for
+  // the other.
+  const failedOperation =
+    failedStep === 'stage'
+      ? `moving the installed @gears-frontx/${failedPackage} directory aside`
+      : `creating the @gears-frontx/${failedPackage} symlink`;
+
   return {
     ok: false,
     reason: 'link-failed',
     message: [
-      `Cannot link: creating the @gears-frontx/${failedPackage} symlink failed ` +
+      `Cannot link: ${failedOperation} failed ` +
         `(${cause instanceof Error ? cause.message : String(cause)}).`,
       stateLine,
       recoveryLine,
@@ -408,16 +418,37 @@ export function linkEcosystemPackages({
     const linkPath = path.join(scopeDir, name);
     const { target, type } = symlinkSpecFor(scopeDir, source, platform);
 
+    // One `try` per step rather than one around both: the two fail for
+    // different reasons and the message has to say which one the filesystem
+    // refused.
+    /** @type {string | null} */
+    let backupPath;
     try {
-      const backupPath = stageInstalledAside(fs, linkPath, `${linkPath}${backupSuffix}`);
+      backupPath = stageInstalledAside(fs, linkPath, `${linkPath}${backupSuffix}`);
+    } catch (error) {
+      return restoreInstalledTree({
+        fs,
+        staged,
+        failedPackage: name,
+        failedStep: 'stage',
+        cause: error,
+      });
+    }
 
-      // Recorded only once the move succeeded, so the rollback never tries to
-      // restore a package whose directory never left its place.
-      staged.push({ name, linkPath, backupPath });
+    // Recorded only once the move succeeded, so the rollback never tries to
+    // restore a package whose directory never left its place.
+    staged.push({ name, linkPath, backupPath });
 
+    try {
       fs.symlinkSync(target, linkPath, type);
     } catch (error) {
-      return restoreInstalledTree({ fs, staged, failedPackage: name, cause: error });
+      return restoreInstalledTree({
+        fs,
+        staged,
+        failedPackage: name,
+        failedStep: 'link',
+        cause: error,
+      });
     }
   }
 
