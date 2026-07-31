@@ -222,15 +222,12 @@ export default [
     },
   },
 
-  // @gears-frontx/telemetry: a browser SDK whose wire format and element-hook contract are typed
-  // against consumer data, so `unknown` and the variadic hook dispatch are load-bearing.
-  // Boundary: no intra-ecosystem edge, no React, and no reach into template territory.
+  // @gears-frontx/telemetry: standalone browser SDK — no intra-ecosystem edge, no React.
+  // dep-cruiser cannot see this edge: options.exclude.path drops packages/*/dist and every
+  // workspace import resolves there, so this block is the gate that catches it.
   {
-    files: ['packages/telemetry/**/*.ts'],
+    files: ['packages/telemetry/**/*.ts', 'packages/telemetry/**/*.tsx'],
     rules: {
-      'no-restricted-syntax': 'off',
-      '@typescript-eslint/no-empty-object-type': 'off',
-      '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-restricted-imports': [
         'error',
         {
@@ -261,8 +258,22 @@ export default [
     },
   },
 
+  // The hook signature is variadic so a handler of any shape stays assignable, and the record
+  // carries consumer-supplied user data.
+  // TODO: type both against a generic payload and drop this block; follow-up PR.
+  {
+    files: [
+      'packages/telemetry/src/utils/hooks.ts',
+      'packages/telemetry/src/utils/eventTypes.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+
   // The envelope builders rewrite each record field in place to match the collector's wire format,
   // and the hooks manager dispatches a variadic tuple through a key-indexed handler map.
+  // TODO: build the envelope into a fresh typed object and drop this block; follow-up PR.
   {
     files: [
       'packages/telemetry/src/managers/events.ts',
