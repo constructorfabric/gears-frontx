@@ -81,11 +81,18 @@ export function autocapturePlugin(): TelemetryPlugin {
           // (including a falsy one, or `null`) — wrapped here with `cause` set to the original so
           // error monitoring still attributes it to the consumer's element hook, not to this
           // handler.
-          throw result.hookError.value instanceof Error
-            ? result.hookError.value
-            : new Error('Telemetry element hook threw a non-Error value', {
-                cause: result.hookError.value,
-              });
+          if (result.hookError.value instanceof Error) {
+            throw result.hookError.value;
+          }
+          // `cause` is defined rather than passed to the constructor: the ecosystem-wide
+          // type-check runs at `lib: ES2020`, where `ErrorOptions` does not exist.
+          const wrapped = new Error('Telemetry element hook threw a non-Error value');
+          Object.defineProperty(wrapped, 'cause', {
+            value: result.hookError.value,
+            configurable: true,
+            writable: true,
+          });
+          throw wrapped;
         }
       }
 
