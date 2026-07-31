@@ -49,7 +49,8 @@ immediate flush when the page goes to `visibilitychange` / hidden. The POST uses
 Log events after `start()`. The built-in plugins are only registered there, so anything logged
 earlier goes out without session, device or app context.
 
-Call `destroy()` on teardown to remove listeners and stop the scheduler.
+Call `destroy()` on teardown. It runs the `destroy` hooks, sends whatever is still queued, and
+removes the listeners.
 
 ## Configuration
 
@@ -80,7 +81,7 @@ Call `destroy()` on teardown to remove listeners and stop the scheduler.
 | `identify(id)`         | `TelemetryService`| Attach a user id to subsequent events. `string \| number`.                          |
 | `logEvent(name, data?)`| `void`            | Record a custom event. Also accepts a full record: `logEvent({ name, data, ... })`. |
 | `plugin(...plugins)`   | `TelemetryService`| Register plugins. Falsy entries are ignored, so `cond && myPlugin()` is safe.       |
-| `destroy()`            | `void`            | Remove listeners, stop the scheduler, and stop collecting.                          |
+| `destroy()`            | `void`            | Run the `destroy` hooks, flush the queue, remove listeners, stop collecting.         |
 
 All methods except `logEvent` and `destroy` are chainable.
 

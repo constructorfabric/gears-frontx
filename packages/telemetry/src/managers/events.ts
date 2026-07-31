@@ -33,7 +33,9 @@ export function createEventsManager({ hooks, config, logger }: TelemetryContext)
 
   function destroy() {
     document.removeEventListener('visibilitychange', handleVisibilityChange);
-    scheduler.cancel();
+    // Flush rather than cancel: whatever is queued is up to 5s of events, and the POST carries
+    // `keepalive` so it survives the teardown that prompted this call.
+    scheduler.exec();
   }
 
   function handleVisibilityChange() {

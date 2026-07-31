@@ -82,7 +82,9 @@ export function createTelemetry(configRaw: TelemetryConfig): TelemetryService {
     }
 
     sessionManager.destroy();
-    eventsManager.destroy();
+    // The events manager goes last because its destroy flushes: a plugin's `destroy` hook may log
+    // a parting event, and it has to reach the queue before the final send.
     hooks.callHooksSync('destroy');
+    eventsManager.destroy();
   }
 }

@@ -427,6 +427,45 @@ describe('Telemetry Client', () => {
     expect(record.context_user_data?.locale).toBe('"es-ES"');
   });
 
+  test('should flush queued events on destroy() without waiting for the timer', () => {
+    const telemetry = createTelemetry(mockAppInfo);
+    telemetry.start();
+
+    telemetry.logEvent('logged_before_destroy');
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    telemetry.destroy();
+
+    // No timer was advanced — destroy() itself sent the batch.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const payload: TelemetryApiPayload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const names = payload.records.map((r: TelemetryApiRecord) => r.value.name);
+
+    expect(names).toContain('logged_before_destroy');
+  });
+
+  test('should send an event logged from a plugin destroy hook', () => {
+    const telemetry = createTelemetry(mockAppInfo);
+
+    telemetry.plugin({
+      name: 'parting',
+      setup: (context) => {
+        context.addHook('destroy', () => {
+          context.logEvent('parting_event');
+        });
+      },
+    });
+
+    telemetry.start();
+    telemetry.destroy();
+
+    const payload: TelemetryApiPayload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const names = payload.records.map((r: TelemetryApiRecord) => r.value.name);
+
+    expect(names).toContain('parting_event');
+  });
+
   test('should ignore a repeated start()', () => {
     let hookCalls = 0;
     const telemetry = createTelemetry(mockAppInfo);
