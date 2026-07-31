@@ -47,14 +47,21 @@ export const linkedPackageDirs = ['api', 'mfes', 'gts-plugin'];
  * `@gears-frontx/gts-plugin` and reads `DomainContext.typeSystem`, neither of
  * which exists in the published `0.3.0-alpha.0` tarballs — the constants still
  * sit in `@gears-frontx/mfes` there. Linking is what makes the template compile
- * at all until the next ecosystem alpha ships, so the warning is printed on
+ * at all until the pins move onto `0.3.0-alpha.1`, so the warning is printed on
  * success: it explains why the pinned tree is red, not why linking failed.
+ *
+ * The warning names the failing exports and not a count of errors. The count
+ * moves with every ecosystem change, and `type-check` chains its sub-steps with
+ * `&&`, so the number a developer sees also depends on which sub-step
+ * short-circuits first — a figure quoted here would be wrong more often than
+ * right.
  */
 const pinnedSurfaceDriftWarning =
   'Note: the pinned registry versions cannot build template-shell right now — the published\n' +
   '0.3.0-alpha.0 tarballs predate the FRONTX_ACTION_*/DomainContext.typeSystem move into\n' +
-  '@gears-frontx/gts-plugin, so 17 type errors surface without these links. Linking is the\n' +
-  'only working path until the next ecosystem alpha is published (#485).';
+  '@gears-frontx/gts-plugin, so type-check and build:packages fail on those exports without\n' +
+  'these links. Linking is the only working path until the template pins move onto the\n' +
+  '0.3.0-alpha.1 packages this branch publishes (#485).';
 
 /**
  * @typedef {{ ok: true; linked: string[]; warning: string }} LinkSuccess
