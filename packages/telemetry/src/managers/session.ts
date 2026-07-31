@@ -41,7 +41,11 @@ export function createSessionManager(context: TelemetryContext) {
       startTime: storedSession?.startTime ?? Date.now(),
     };
 
-    saveTelemetrySession(context.config, newSession);
+    const saveError = saveTelemetrySession(context.config, newSession);
+
+    if (saveError) {
+      context.logger.logError(saveError);
+    }
   }
 
   function trackEvents() {

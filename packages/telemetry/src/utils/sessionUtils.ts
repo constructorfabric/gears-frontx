@@ -9,8 +9,14 @@ export function getSessionKey(storageKey?: string) {
   return getLocalStorageKey('session', storageKey);
 }
 
+/** Returns the error when the write fails, so the caller can route it through its logger. */
 export function saveTelemetrySession(config: TelemetryConfigNormalized, value: TelemetrySession) {
-  localStorage.setItem(getSessionKey(config.storagePrefix), JSON.stringify(value));
+  try {
+    localStorage.setItem(getSessionKey(config.storagePrefix), JSON.stringify(value));
+    return undefined;
+  } catch (e) {
+    return e;
+  }
 }
 
 export function getTelemetrySession(

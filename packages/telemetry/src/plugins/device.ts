@@ -37,22 +37,29 @@ export function devicePlugin(): TelemetryPlugin {
         }
       }
 
+      // Storage access is best-effort: `setup()` runs inside `start()` and the plugin loop has no
+      // error isolation, so a throw here would skip every later plugin and the `start` hooks.
+      // `localStorage` throws on an origin blocked from storing data and on a full quota.
       function getDeviceId() {
         const storageKey = getLocalStorageKey('device_id', context.config.storagePrefix);
-        let id = localStorage.getItem(storageKey);
 
-        if (!id) {
-          try {
-            id = crypto.randomUUID();
-          } catch (e) {
-            console.error(e);
+        try {
+          const storedId = localStorage.getItem(storageKey);
+
+          if (storedId) {
+            return storedId;
           }
+        } catch (e) {
+          context.logger.logError(e);
+        }
 
-          if (!id) {
-            throw new Error('Could not generate deviceId');
-          }
+        const id = crypto.randomUUID();
 
+        // A generated id still identifies this page even when it cannot be persisted.
+        try {
           localStorage.setItem(storageKey, id);
+        } catch (e) {
+          context.logger.logError(e);
         }
 
         return id;

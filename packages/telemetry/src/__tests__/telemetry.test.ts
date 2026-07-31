@@ -427,6 +427,57 @@ describe('Telemetry Client', () => {
     expect(record.context_user_data?.locale).toBe('"es-ES"');
   });
 
+  test('should still start when localStorage reads are blocked', () => {
+    vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
+      throw new DOMException('The operation is insecure.', 'SecurityError');
+    });
+    vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new DOMException('The operation is insecure.', 'SecurityError');
+    });
+
+    const telemetry = createTelemetry(mockAppInfo);
+
+    expect(() => telemetry.start()).not.toThrow();
+    onTestFinished(() => telemetry.destroy());
+
+    telemetry.logEvent('after_blocked_storage');
+    vi.runAllTimers();
+
+    const payload: TelemetryApiPayload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const names = payload.records.map((r: TelemetryApiRecord) => r.value.name);
+
+    // The later built-ins still set up, so start() emitted its session event.
+    expect(names).toContain('session_start');
+    expect(names).toContain('after_blocked_storage');
+
+    const record = payload.records.find(
+      (r: TelemetryApiRecord) => r.value.name === 'after_blocked_storage',
+    );
+    expect(record?.value.context_device_id).toBe(mockedUid);
+    expect(record?.value.context_os_name).toBe('macOS');
+  });
+
+  test('should keep a generated device id when it cannot be persisted', () => {
+    vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+    });
+
+    const telemetry = createTelemetry(mockAppInfo);
+
+    expect(() => telemetry.start()).not.toThrow();
+    onTestFinished(() => telemetry.destroy());
+
+    telemetry.logEvent('after_quota_exceeded');
+    vi.runAllTimers();
+
+    const payload: TelemetryApiPayload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const record = payload.records.find(
+      (r: TelemetryApiRecord) => r.value.name === 'after_quota_exceeded',
+    );
+
+    expect(record?.value.context_device_id).toBe(mockedUid);
+  });
+
   test('should attach a user id of 0', () => {
     const telemetry = createTelemetry(mockAppInfo);
 

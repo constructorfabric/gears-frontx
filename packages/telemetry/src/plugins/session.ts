@@ -10,7 +10,22 @@ export function sessionPlugin(): TelemetryPlugin {
       context.addHook('start', onStart);
 
       function onEvent(record: TelemetryRecord) {
-        const session = context.getSession()!;
+        let session = context.getSession();
+
+        // The stored session expires after `sessionDuration` without a refresh, so an event on an
+        // idle page finds none and opens the next one.
+        if (!session) {
+          context.refreshSession();
+          session = context.getSession();
+        }
+
+        // Still none means the session could not be stored at all, e.g. an origin blocked from
+        // storing data. The event goes out without session context rather than throwing out of the
+        // public `logEvent()`.
+        if (!session) {
+          return;
+        }
+
         record.context_session_id = session.id;
         record.context_session_started_time = session.startTime;
       }
