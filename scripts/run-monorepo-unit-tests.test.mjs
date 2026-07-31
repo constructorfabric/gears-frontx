@@ -38,6 +38,13 @@ import {
  * Fixture project list with the same shape the runner uses at runtime but
  * decoupled from filesystem discovery so tests stay deterministic.
  *
+ * The host here is rooted at `src/` rather than mirroring the real
+ * `repo-scripts` project, and stays that way on purpose: `src/` is a prefix of
+ * the `demo-mfe` root below, and that nesting is the only thing that exercises
+ * longest-prefix precedence in `findBestProjectForPath`. No arrangement of the
+ * repo's actual project roots nests, so a "realistic" fixture would leave that
+ * branch untested.
+ *
  * @type {import('./run-monorepo-unit-tests.mjs').Project[]}
  */
 const projects = [
@@ -676,16 +683,23 @@ describe('discoverWorkspaceProjects + loadProjects (end-to-end discovery)', () =
     expect(api.workspace).toBe('@fixture/api');
   });
 
-  it('loadProjects composes ecosystem workspace projects only (no host/MFE)', async () => {
+  it('loadProjects composes the static repo-scripts project plus discovered workspaces', async () => {
     // Phase 11 template-move relocated the host app + its nested MFEs to the
     // self-contained `template-shell/` (which runs its own tests via its
     // own package.json; its MFE content later split into the sibling
-    // `template-mfe/` in issue #470). The ecosystem-side runner discovers workspace
-    // packages only; `discoverMfeProjects` remains available as a generic
-    // utility (see its own dedicated fixture tests above) but is no longer
-    // composed into `loadProjects`.
+    // `template-mfe/` in issue #470), so `discoverMfeProjects` remains a
+    // generic utility (see its own dedicated fixture tests above) that
+    // `loadProjects` no longer composes.
+    //
+    // `repo-scripts` is present for a fixture root that has no `scripts/` at
+    // all, and that is the point: it is static, not discovered. `scripts/` is
+    // not an npm workspace, so nothing about it can be read out of
+    // `package.json#workspaces` — the only source `discoverWorkspaceProjects`
+    // has. Removing the previous static entry is what silently unhooked the
+    // whole `scripts/` suite from `test:unit` (#483).
     const result = await loadProjects(fixtureRoot);
     expect(result.map((project) => `${project.kind}:${project.name}`)).toEqual([
+      'host:repo-scripts',
       'workspace:api',
     ]);
   });
@@ -771,9 +785,9 @@ describe('assertForwardPathArgsExpanded', () => {
   });
 });
 
-describe('inferProjectsFromForwardArgs with extraRootPaths', () => {
+describe('inferProjectsFromForwardArgs for the repo-scripts project', () => {
   const projectsWithScripts = [
-    { kind: 'host', name: 'host-app', rootPath: 'src', extraRootPaths: ['scripts'] },
+    { kind: 'host', name: 'repo-scripts', rootPath: 'scripts' },
     {
       kind: 'workspace',
       name: 'api',
@@ -783,15 +797,14 @@ describe('inferProjectsFromForwardArgs with extraRootPaths', () => {
     },
   ];
 
-  it('routes scripts/*.test.* to host-app via extraRootPaths', () => {
-    // Without `extraRootPaths`, no project owned `scripts/**` and the runner
-    // fell back to "fan out across every package" for a focused run against
-    // one script-level test file. The extra root makes routing explicit.
+  it('routes scripts/*.test.* to repo-scripts', () => {
+    // While no project owned `scripts/**`, a focused run against one
+    // script-level test file fell back to "fan out across every package".
     const matched = inferProjectsFromForwardArgs(
       ['scripts/run-monorepo-unit-tests.test.mjs'],
       projectsWithScripts,
     );
-    expect(matched.map((project) => project.name)).toEqual(['host-app']);
+    expect(matched.map((project) => project.name)).toEqual(['repo-scripts']);
   });
 
   it('still prefers workspace roots for nested workspace paths', () => {

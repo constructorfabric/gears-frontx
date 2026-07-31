@@ -122,24 +122,8 @@ export function normalizePathArg(arg, { repoRoot = defaultRepoRoot } = {}) {
 }
 
 /**
- * Collect every repo-relative root directory a project claims ownership of,
- * for prefix-matching against forwarded paths. Host projects may list extra
- * non-`src` directories (e.g. `scripts`) via `extraRootPaths`; workspace and
- * MFE projects only own their single `rootPath`.
- *
- * @param {import('./common.mjs').Project} project
- * @returns {string[]}
- */
-function projectRootPaths(project) {
-  if (project.kind === 'host' && Array.isArray(project.extraRootPaths)) {
-    return [project.rootPath, ...project.extraRootPaths];
-  }
-  return [project.rootPath];
-}
-
-/**
  * Pick the single project that most specifically owns a normalized path.
- * The longest matching root wins so nested project roots beat broader hosts.
+ * The longest matching root wins so nested project roots beat broader ones.
  *
  * @param {string} normalizedPath
  * @param {import('./common.mjs').Project[]} projects
@@ -152,12 +136,11 @@ function findBestProjectForPath(normalizedPath, projects) {
   let bestLength = -1;
 
   for (const project of projects) {
-    for (const root of projectRootPaths(project)) {
-      const isMatch = normalizedPath === root || normalizedPath.startsWith(`${root}/`);
-      if (!isMatch || root.length <= bestLength) continue;
-      best = project;
-      bestLength = root.length;
-    }
+    const root = project.rootPath;
+    const isMatch = normalizedPath === root || normalizedPath.startsWith(`${root}/`);
+    if (!isMatch || root.length <= bestLength) continue;
+    best = project;
+    bestLength = root.length;
   }
 
   return best;
@@ -169,11 +152,11 @@ function findBestProjectForPath(normalizedPath, projects) {
  * ignored here and still forwarded verbatim to Vitest.
  *
  * For each path, the most specific (longest matching root) project wins.
- * That matters now that `host-app` owns all of `src/` — without longest-
- * prefix precedence, an MFE path like `src/mfe_packages/demo-mfe/foo.test.ts`
- * would match both `host-app` (prefix `src/`) and `demo-mfe`, triggering the
- * multi-project error even though a single, more specific project clearly
- * owns it.
+ * That matters wherever one project's root is a prefix of another's: an MFE
+ * path like `src/mfe_packages/demo-mfe/foo.test.ts` matches both a host rooted
+ * at `src/` and `demo-mfe` itself, and without longest-prefix precedence the
+ * runner would raise the multi-project error even though a single, more
+ * specific project clearly owns the file.
  *
  * @param {string[]} forwardArgs
  * @param {import('./common.mjs').Project[]} projects
@@ -198,9 +181,9 @@ export function inferProjectsFromForwardArgs(forwardArgs, projects, options = {}
 /**
  * Rewrite path-like args so they're relative to the project's Vitest root.
  *
- * Host-app runs Vitest with root = repo root, so repo-relative paths already
- * resolve correctly. Workspace and MFE projects run Vitest with root = their
- * package directory, so a repo-relative path like
+ * Host projects run Vitest with root = repo root, so repo-relative paths
+ * already resolve correctly. Workspace and MFE projects run Vitest with root =
+ * their package directory, so a repo-relative path like
  *   src/mfe_packages/demo-mfe/src/api/foo.test.ts
  * would be resolved against
  *   /repo/src/mfe_packages/demo-mfe/

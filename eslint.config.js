@@ -30,6 +30,14 @@ export default [
       '*.config.*',
       '**/*.config.*',
       '**/*.cjs',
+      // Not lintable yet, and deliberately still ignored. Lifting this needs a
+      // config block giving `scripts/**` the Node globals it runs against —
+      // without one, 69 of the 73 errors are `no-undef` on `console`, `Buffer`,
+      // `setTimeout` and `queueMicrotask`. The remaining 4 are real and
+      // pre-existing (`no-useless-assignment`, `preserve-caught-error`, an
+      // unused import), so lifting the ignore turns `npm run lint` red on code
+      // this branch does not touch. Tracked with the rest of the scripts/
+      // enforcement gap on #483.
       'scripts/**',
       // Disposable Claude Code agent worktrees — full repo checkouts that
       // should never be linted as part of this repo's own source tree.
@@ -109,7 +117,7 @@ export default [
       '**/*.__mf__temp/**', // Module Federation generated temp files
       '**/.__mf__temp/**', // Module Federation generated temp files (dot-prefixed)
       'packages/**/templates/**',
-      'scripts/**', // Monorepo scripts
+      'scripts/**', // Monorepo scripts — see the reasoning on the global ignore above
       '**/.vitepress/**',
       // Legacy config files (still used by dependency-cruiser)
       '.dependency-cruiser.cjs',

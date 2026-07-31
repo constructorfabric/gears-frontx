@@ -23,6 +23,7 @@
     "build:packages:telemetry": "npm run build --workspace=@gears-frontx/telemetry",
     "demo:telemetry": "npm run demo --workspace=@gears-frontx/telemetry",
     "build:packages:cli": "npm run build --workspace=@gears-frontx/cli",
+    "dev:template:link": "node scripts/link-template-ecosystem.mjs",
     "lint:deps": "node scripts/check-test-dependency-versions.mjs",
     "lint": "npm run lint:deps && eslint . --max-warnings 0",
     "policy:version-check": "node scripts/ecosystem-version-policy.mjs",
@@ -56,7 +57,9 @@
     "prepare": "prek install",
     "test": "npm run test:unit",
     "test:unit": "node scripts/run-monorepo-unit-tests.mjs --run",
-    "test:unit:watch": "node scripts/run-monorepo-unit-tests.mjs --watch"
+    "test:unit:watch": "node scripts/run-monorepo-unit-tests.mjs --watch",
+    "_test:unit:host": "vitest --run --config vitest.scripts.config.mjs",
+    "_test:unit:host:watch": "vitest --watch --config vitest.scripts.config.mjs"
   },
   "dependencies": {
     "@gears-frontx/api": "*"

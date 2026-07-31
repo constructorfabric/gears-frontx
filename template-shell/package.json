@@ -66,9 +66,9 @@
     "test:unit:watch": "vitest --watch"
   },
   "dependencies": {
-    "@gears-frontx/api": "file:../packages/api",
-    "@gears-frontx/gts-plugin": "file:../packages/gts-plugin",
-    "@gears-frontx/mfes": "file:../packages/mfes",
+    "@gears-frontx/api": "0.3.0-alpha.0",
+    "@gears-frontx/gts-plugin": "0.3.0-alpha.0",
+    "@gears-frontx/mfes": "0.3.0-alpha.0",
     "@hookform/resolvers": "5.2.2",
     "@iconify/react": "^6.0.2",
     "@radix-ui/react-avatar": "^1.1.11",

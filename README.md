@@ -226,12 +226,13 @@ git clone https://github.com/cyberfabric/FrontX.git
 cd FrontX
 npm ci
 npm run build:packages       # build all ecosystem packages
-npm run test:unit            # unit tests across packages/*
+npm run test:unit            # unit tests across packages/* and scripts/
 npm run arch:check           # architecture-boundary gates
 npm run arch:deps            # dependency-boundary rules
 ```
 
-`npm run test:unit` fans out to every ecosystem package under `packages/*`; use
+`npm run test:unit` fans out to every ecosystem package under `packages/*` and to
+the repo-root `scripts/` toolchain; use
 `npm run test:unit:watch` while iterating. Contributors should read the
 [Validation](CONTRIBUTING.md#validation) section in [CONTRIBUTING.md](CONTRIBUTING.md).
 

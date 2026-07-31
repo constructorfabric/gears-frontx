@@ -121,10 +121,8 @@ errors. Add MFE packages with `frontx add frontx-template-mfe` (see
 regenerated — before their preview ports (`:3001` demo, `:3099` blank,
 `:3201`/`:3202` widget fixtures) come up alongside the host.
 
-> **Alpha note.** This template pins the FrontX ecosystem packages
-> (`@gears-frontx/mfes`, `@gears-frontx/gts-plugin`, `@gears-frontx/api`) by
-> local path for pre-release development; published releases resolve them from
-> the npm registry.
+The FrontX ecosystem packages (`@gears-frontx/mfes`, `@gears-frontx/gts-plugin`,
+`@gears-frontx/api`) resolve from the npm registry at exact pinned versions.
 
 See **[QUICK_START.md](QUICK_START.md)** for the hands-on development workflow —
 creating screens and microfrontends, layout, state, styling, and commands.

@@ -102,6 +102,33 @@ npm run build:packages:studio
 npm run build:packages:cli
 ```
 
+## Template Development Loop
+
+[`template-shell/`](template-shell) is not a root workspace: it is a standalone npm project that pins `@gears-frontx/api`, `@gears-frontx/mfes` and `@gears-frontx/gts-plugin` to exact registry versions, so that a seeded project installs outside the monorepo. Those pins mean a plain `npm install` inside the template resolves the **published** alpha, not the sources you are editing.
+
+After changing anything under `packages/api`, `packages/mfes` or `packages/gts-plugin`, relink before running the template:
+
+```bash
+npm run build:packages       # publish-shaped dist/ for the ecosystem packages
+npm run dev:template:link    # point the template's node_modules at the packages/* builds
+cd template-shell && npm run dev
+```
+
+`dev:template:link` ([`scripts/link-template-ecosystem.mjs`](scripts/link-template-ecosystem.mjs)) only repoints those three directories inside the template's `node_modules`; it never writes `package.json` or `package-lock.json`, so nothing from the dev loop can leak into a seeded project. What each linked directory then resolves through is its `dist/`, which is why the script refuses to link an unbuilt package instead of leaving the failure to surface later as a missing module. Skipping the link today is not silent - against the current pins the template does not build at all:
+
+> **Known issue — the link step is currently mandatory, not an optimisation.** The published `0.3.0-alpha.0` tarballs predate the move of `FRONTX_ACTION_*` into `@gears-frontx/gts-plugin` and the addition of `DomainContext.typeSystem` to `@gears-frontx/mfes`. `template-shell/packages/framework` already imports both from their new homes, so against the pins alone `npm run type-check` and `npm run build:packages` fail with type errors on those exports. `npm ci` and `npm run build:package` are unaffected. Running `dev:template:link` puts the local `dist/` in place and both go green; `npm run dev:template:link` prints the same warning. The clearing sequence is two merges: this branch bumps `mfes` and `gts-plugin` to `0.3.0-alpha.1`, which publishes the fixed surfaces, and a follow-up moves the template's pins onto them — a lockfile cannot resolve a tarball that does not exist yet. Until that second merge, linking is the only way to build the template, and a seeded project cannot build from the pins at all. Tracked on [#485](https://github.com/constructorfabric/gears-frontx/issues/485).
+
+Once that follow-up lands, skipping the link becomes silent instead of loud: the template will build and pass its checks against the published alpha, and local edits to `packages/*` simply never appear. That is the steady state to watch for - the type errors above are the one period in which forgetting to relink announces itself.
+
+To go back to the pinned registry versions, run `npm ci` inside `template-shell`. There is no `--unlink`: the links replace published tarball *content*, which only npm can restore.
+
+Two ways to lose the links without meaning to:
+
+- **any `npm install` inside `template-shell`** — say, while adding a dependency — reifies the tree from the lockfile and silently puts the registry tarballs back. Relink afterwards.
+- **`npm run clean:artifacts`** at the repo root removes `packages/*/dist`, so the links survive but point at nothing. `npm run build:packages` restores them; the link script refuses to run at all if the build is missing.
+
+The dev loop uses symlinks on macOS and Linux and directory junctions on Windows, so no elevated shell or Developer Mode is required on any platform. If a link cannot be created anyway, the run moves each installed directory aside rather than deleting it, so it rolls the whole tree back to the pinned versions and names what it could not restore - a failed link costs a re-run, not an `npm ci`.
+
 ## Validation
 
 ```bash
@@ -128,9 +155,11 @@ npm run test:unit
 npm run test:unit:watch
 ```
 
-The host app (`src/app`) and each workspace or nested MFE that defines `test:unit` is exercised by that command. To narrow a run, pass the project name or a path to the runner: `npm run test:unit -- --project=cli`, or `npm run test:unit -- packages/cli/src/__tests__/resolver.test.ts` for a single file.
+Every workspace that defines `test:unit`, plus the repo-root `scripts/` toolchain as the `repo-scripts` project, is exercised by that command. To narrow a run, pass the project name or a path to the runner: `npm run test:unit -- --project=cli`, or `npm run test:unit -- packages/cli/src/__tests__/resolver.test.ts` for a single file.
 
-**Internal scripts (do not call directly):** Root [`package.json`](package.json) defines `_test:unit:host` and `_test:unit:host:watch` for the host app only; they exist so the monorepo runner can invoke Vitest where there is no workspace package. Agents and CI should use `npm run test:unit` / `test:unit:watch` instead.
+`scripts/` is not an npm workspace, so the runner cannot discover it from `package.json#workspaces` the way it finds everything else; it is registered explicitly in [`scripts/test-runner/discovery.mjs`](scripts/test-runner/discovery.mjs) and tested through [`vitest.scripts.config.mjs`](vitest.scripts.config.mjs). A new test file under `scripts/` needs no wiring, but a new *root-level* directory of tests does.
+
+**Internal scripts (do not call directly):** Root [`package.json`](package.json) defines `_test:unit:host` and `_test:unit:host:watch` for the `repo-scripts` project; they exist so the monorepo runner can invoke Vitest where there is no workspace package. Agents and CI should use `npm run test:unit` / `test:unit:watch` instead.
 
 ## License
 

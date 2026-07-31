@@ -13,6 +13,12 @@ jobs:
   # Version-gated: a package publishes only when its package.json `version`
   # changed in this push. Ecosystem packages publish INDEPENDENTLY (F1
   # policy) — no layer/dependency ordering.
+  #
+  # PART 1 IS A HARD PREREQUISITE OF THE SHELL TEMPLATE (#485): the template
+  # pins @gears-frontx/api, @gears-frontx/mfes and @gears-frontx/gts-plugin to
+  # exact registry versions, so a seeded project cannot install until this job
+  # has published them. Removing the temporary PART 2 (#469 item 5) must leave
+  # PART 1 in place.
   # ══════════════════════════════════════════════════════════════════════
   detect-ecosystem:
     runs-on: ubuntu-latest
@@ -227,8 +233,24 @@ jobs:
           fi
 
   publish-template:
-    needs: detect-template
-    if: needs.detect-template.outputs.has_changes == 'true'
+    # PART 1 is a hard prerequisite (#485): `npm ci` in template-shell resolves
+    # @gears-frontx/api, mfes and gts-plugin from the registry at exact pinned
+    # versions, so the ecosystem publish must have finished before the template
+    # installs. `!cancelled()` carries the case where no ecosystem version changed:
+    # publish-ecosystem is skipped, and a skipped `needs` job would otherwise skip
+    # this job outright instead of evaluating the result check below.
+    #
+    # detect-ecosystem is in `needs` for its result alone: a *failed* detect marks
+    # publish-ecosystem `skipped`, which is indistinguishable here from the benign
+    # "no version changed" skip — so without this the template would publish in a
+    # state where nobody established whether the pins are on the registry yet.
+    needs: [detect-template, detect-ecosystem, publish-ecosystem]
+    if: >-
+      !cancelled() &&
+      needs.detect-template.outputs.has_changes == 'true' &&
+      needs.detect-ecosystem.result == 'success' &&
+      (needs.publish-ecosystem.result == 'success' ||
+      needs.publish-ecosystem.result == 'skipped')
     runs-on: ubuntu-latest
     outputs:
       published: ${{ steps.publish.outputs.published }}
@@ -247,9 +269,11 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
-      # The template consumes the ecosystem packages by local path, so their
-      # dist must exist before the template builds.
-      - name: Install + build ecosystem (template build inputs)
+      # Pre-publish sanity build of the ecosystem sources. The template itself no
+      # longer reads packages/*/dist — it installs @gears-frontx/api, mfes and
+      # gts-plugin from the registry at exact pinned versions (#485), which is why
+      # this job waits on publish-ecosystem instead.
+      - name: Sanity-build ecosystem sources (pre-publish check)
         run: |
           npm ci
           npm run build:packages

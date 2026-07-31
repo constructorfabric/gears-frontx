@@ -275,8 +275,8 @@ export function validateWatchTargets(targets, projectNames, parallel) {
     'Watch mode owns stdio for a single Vitest instance; running every package in parallel makes its interactive prompt (p/t/q) unusable.\n' +
       `Pass --project=<name> or a path under one project root. Available: ${projectNames}.\n` +
       'Examples:\n' +
-      '  npm run test:unit:watch -- --project=host-app\n' +
-      '  npm run test:unit:watch -- src/app/effects/bootstrapEffects.test.ts',
+      '  npm run test:unit:watch -- --project=repo-scripts\n' +
+      '  npm run test:unit:watch -- scripts/link-template-ecosystem.test.mjs',
   );
 }
 

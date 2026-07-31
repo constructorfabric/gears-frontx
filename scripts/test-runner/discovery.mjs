@@ -15,12 +15,32 @@ import path from 'node:path';
 import { defaultRepoRoot } from './common.mjs';
 
 /**
+ * The repo-root `scripts/` toolchain, tested through the root
+ * `vitest.scripts.config.mjs` and the private `_test:unit:host` script.
+ *
+ * Static rather than discovered, because `scripts/` is not an npm workspace and
+ * so cannot appear in `package.json#workspaces` — the mechanism every other
+ * project here comes from. That is exactly how its tests went dark: the split
+ * removed the host project that used to own `scripts/`, discovery had no way to
+ * find a replacement, and four test files stopped running without anything
+ * failing (#483).
+ */
+const repoScriptsProject = Object.freeze(
+  /** @type {import('./common.mjs').HostProject} */ ({
+    kind: 'host',
+    name: 'repo-scripts',
+    rootPath: 'scripts',
+  }),
+);
+
+/**
  * @param {string} [repoRoot]
  * @returns {Promise<import('./common.mjs').Project[]>}
  */
 export async function loadProjects(repoRoot = defaultRepoRoot) {
   /** @type {import('./common.mjs').Project[]} */
   const projects = [
+    repoScriptsProject,
     ...(await discoverWorkspaceProjects({ repoRoot })),
   ];
 
