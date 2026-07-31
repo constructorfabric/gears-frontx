@@ -42,6 +42,13 @@ jobs:
             pkg_json="${pkg_dir}package.json"
             [ -f "$pkg_json" ] || continue
 
+            # Private packages can never be published — skip them, as PART 2
+            # already does. Without this, a package that is private while it
+            # matures (ui-kit until its MVP set lands) enters the matrix on its
+            # first commit and fails the run on `npm publish`.
+            IS_PRIVATE=$(jq -r '.private // false' "$pkg_json")
+            if [ "$IS_PRIVATE" = "true" ]; then continue; fi
+
             if git diff "$BASE_COMMIT" --name-only | grep -q "^${pkg_json}$"; then
               OLD_VERSION=$(git show "$BASE_COMMIT":"$pkg_json" 2>/dev/null | jq -r '.version' || echo "")
               NEW_VERSION=$(jq -r '.version' "$pkg_json")

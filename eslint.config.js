@@ -270,6 +270,38 @@ export default [
     },
   },
 
+  // @gears-frontx/ui-kit: a React component library — React is its raison d'etre, so the
+  // SDK no-React rule does not apply. Boundary: no intra-ecosystem edge, no reach into
+  // template territory, package-root imports only.
+  {
+    files: ['packages/ui-kit/**/*.ts', 'packages/ui-kit/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': 'off',
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@gears-frontx/*', '@gears-frontx/*/*'],
+              message:
+                'ECOSYSTEM VIOLATION: @gears-frontx/ui-kit holds no intra-ecosystem package dependency.',
+            },
+            {
+              group: ['@gears-frontx/*/src/**'],
+              message:
+                'MONOREPO VIOLATION: Import from package root, not internal paths.',
+            },
+            {
+              group: ['@/*'],
+              message:
+                'PACKAGE VIOLATION: Use relative imports within packages.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // The hook signature is variadic so a handler of any shape stays assignable, and the record
   // carries consumer-supplied user data.
   // TODO: type both against a generic payload and drop this block; follow-up PR.

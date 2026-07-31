@@ -33,6 +33,10 @@ reason = "template-shell/template-mfe are template territory (Phase 11 template-
 patterns = ["template-shell/**", "template-mfe/**"]
 
 [[ignore]]
+reason = "UI Kit package has no backing CDSL artifact yet - PRD requirement, DESIGN component and FEATURE are planned, and this entry is removed once they land"
+patterns = ["packages/ui-kit/**"]
+
+[[ignore]]
 reason = "Unmarked build/test tooling in scripts/ has no CDSL backing. NOTE: scripts/ecosystem-version-policy.mjs (ecosystem-distribution F1) and scripts/test-architecture.ts carry @cpt markers and MUST stay scanned — they are deliberately NOT ignored here."
 patterns = ["scripts/test-runner/*", "scripts/manual-auth-tests/*", "scripts/check-test-dependency-versions.mjs", "scripts/run-monorepo-unit-tests.mjs", "scripts/sdk-layer-tests.ts", "scripts/verify-layered-configs.ts"]
 

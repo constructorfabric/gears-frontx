@@ -1,0 +1,128 @@
+/*
+ * Button styles, translated from shadcn/ui (MIT) to CSS Modules.
+ * Consumes only theme.css variables — no raw colors.
+ */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius) - 2px);
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+
+/*
+ * Forced-colors mode drops box-shadow, so the ring above leaves the button with
+ * no visible focus at all. Hand the indicator back to the UA outline, which the
+ * mode does paint, and keep it off the shadow.
+ */
+@media (forced-colors: active) {
+  .button:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+.button:disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.variantDefault {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.variantDefault:hover {
+  background-color: color-mix(in oklab, var(--primary) 90%, transparent);
+}
+
+.variantDestructive {
+  background-color: var(--destructive);
+  color: var(--destructive-foreground);
+}
+
+.variantDestructive:hover {
+  background-color: color-mix(in oklab, var(--destructive) 90%, transparent);
+}
+
+.variantOutline {
+  border-color: var(--border);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.variantOutline:hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.variantSecondary {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+.variantSecondary:hover {
+  background-color: color-mix(in oklab, var(--secondary) 80%, transparent);
+}
+
+.variantGhost {
+  background-color: transparent;
+  color: var(--foreground);
+}
+
+.variantGhost:hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.variantLink {
+  background-color: transparent;
+  color: var(--primary);
+  text-underline-offset: 4px;
+}
+
+.variantLink:hover {
+  text-decoration: underline;
+}
+
+.sizeDefault {
+  height: 2.25rem;
+  padding: 0 1rem;
+}
+
+.sizeSm {
+  height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: calc(var(--radius) - 4px);
+}
+
+.sizeLg {
+  height: 2.5rem;
+  padding: 0 1.5rem;
+}
+
+.sizeIcon {
+  height: 2.25rem;
+  width: 2.25rem;
+  padding: 0;
+}

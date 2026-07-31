@@ -41,15 +41,15 @@
       "@gears-frontx/mfes": ["./packages/mfes/src/index.ts"],
       "@gears-frontx/mfes/*": ["./packages/mfes/src/*"],
       "@gears-frontx/telemetry": ["./packages/telemetry/src/index.ts"],
-      "@gears-frontx/telemetry/*": ["./packages/telemetry/src/*"]
+      "@gears-frontx/telemetry/*": ["./packages/telemetry/src/*"],
+      "@gears-frontx/ui-kit": ["./packages/ui-kit/src/index.ts"],
+      "@gears-frontx/ui-kit/*": ["./packages/ui-kit/src/*"]
     }
   },
   // Ecosystem packages only. The host app + template packages (state, i18n,
   // framework, react, studio, auth) type-check via template-shell's own
   // tsconfig.app.json / per-package tsconfig.json (Phase 11 template-move).
-  "include": [
-    "packages/*/src"
-  ],
+  "include": ["packages/*/src"],
   "exclude": [
     "packages/*/dist",
     "packages/*/__tests__",

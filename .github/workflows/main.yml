@@ -65,6 +65,14 @@ jobs:
     - name: Run unit tests with coverage gating
       run: npm run test:unit -- --coverage
 
+    # Packaging acceptance for the published surface: pack the kit, install the
+    # tarball into a clean Vite project and assert the tokens, component styles
+    # and CSS-module class map survive the consumer's build. Kept out of the
+    # unit-test runner (it packs and installs, so it is a slow lane), which is
+    # why it runs as its own step.
+    - name: Verify ui-kit installs into a clean consumer
+      run: npm run test:consumer --workspace=@gears-frontx/ui-kit
+
     - name: Audit dependencies for high severity vulnerabilities
       run: npm audit --audit-level=high --omit=dev
 
