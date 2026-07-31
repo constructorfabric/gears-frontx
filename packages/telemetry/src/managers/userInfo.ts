@@ -10,7 +10,7 @@ export function createUserInfoManager(context: TelemetryContext) {
     identify,
   };
 
-  function identify(newUserId?: TelemetryUserId) {
+  function identify(newUserId: TelemetryUserId) {
     userId = newUserId;
   }
 

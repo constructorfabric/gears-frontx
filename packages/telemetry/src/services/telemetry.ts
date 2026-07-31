@@ -31,7 +31,7 @@ export function createTelemetry(configRaw: TelemetryConfig): TelemetryService {
     eventsManager.logEvent(...args);
   }
 
-  function identify(newUserId?: TelemetryUserId) {
+  function identify(newUserId: TelemetryUserId) {
     userInfoManager.identify(newUserId);
     return rootApi;
   }
