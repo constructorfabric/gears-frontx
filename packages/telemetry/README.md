@@ -213,6 +213,27 @@ credit-card or US-SSN patterns are dropped. This is a
 safety net, **not** a compliance guarantee. Audit what your own markup exposes, and use the opt-out
 attribute or an element hook on any subtree that renders personal data.
 
+### Identifiers the SDK stores
+
+Two keys in `localStorage`, both owned by the SDK. `storagePrefix` is inserted into each when set,
+so a second client on the same origin can keep its own:
+
+| key | holds | lifetime |
+| --- | --- | --- |
+| `telemetry_device_id` | a UUID sent as `context_device_id` on **every** record | persists until the key is removed |
+| `telemetry_session` | the current session id, start time and last activity | replaced when `sessionDuration` elapses without activity |
+
+`context_device_id` is a persistent pseudonymous identifier: it is not derived from anything the
+user typed, and `identify()` does not affect it, but it does correlate every event from this browser
+across sessions, reloads and signed-out visits. Treat it as personal data in your own privacy
+assessment, and disclose it wherever you disclose cookies.
+
+To forget a device, remove the key — a new id is minted on the next `start()`:
+
+```ts
+localStorage.removeItem('telemetry_device_id'); // or `telemetry_${storagePrefix}_device_id`
+```
+
 ## Browser support
 
 Modern evergreen browsers. Requires `fetch`, `localStorage`, `crypto.randomUUID` and `Intl.Locale`.
