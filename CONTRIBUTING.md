@@ -153,9 +153,11 @@ npm run test:unit
 npm run test:unit:watch
 ```
 
-The host app (`src/app`) and each workspace or nested MFE that defines `test:unit` is exercised by that command. To narrow a run, pass the project name or a path to the runner: `npm run test:unit -- --project=cli`, or `npm run test:unit -- packages/cli/src/__tests__/resolver.test.ts` for a single file.
+Every workspace that defines `test:unit`, plus the repo-root `scripts/` toolchain as the `repo-scripts` project, is exercised by that command. To narrow a run, pass the project name or a path to the runner: `npm run test:unit -- --project=cli`, or `npm run test:unit -- packages/cli/src/__tests__/resolver.test.ts` for a single file.
 
-**Internal scripts (do not call directly):** Root [`package.json`](package.json) defines `_test:unit:host` and `_test:unit:host:watch` for the host app only; they exist so the monorepo runner can invoke Vitest where there is no workspace package. Agents and CI should use `npm run test:unit` / `test:unit:watch` instead.
+`scripts/` is not an npm workspace, so the runner cannot discover it from `package.json#workspaces` the way it finds everything else; it is registered explicitly in [`scripts/test-runner/discovery.mjs`](scripts/test-runner/discovery.mjs) and tested through [`vitest.scripts.config.mjs`](vitest.scripts.config.mjs). A new test file under `scripts/` needs no wiring, but a new *root-level* directory of tests does.
+
+**Internal scripts (do not call directly):** Root [`package.json`](package.json) defines `_test:unit:host` and `_test:unit:host:watch` for the `repo-scripts` project; they exist so the monorepo runner can invoke Vitest where there is no workspace package. Agents and CI should use `npm run test:unit` / `test:unit:watch` instead.
 
 ## License
 

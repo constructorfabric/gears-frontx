@@ -27,7 +27,7 @@ export const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 export const defaultProjectTimeoutMs = 15 * 60 * 1000;
 
 /** Project picked by `--watch` when no `--project` / path narrows the run. */
-export const defaultWatchProjectName = 'host-app';
+export const defaultWatchProjectName = 'repo-scripts';
 
 /**
  * Maximum bytes buffered per parallel child before oldest chunks are dropped.
@@ -63,13 +63,14 @@ export class CliError extends Error {
  * forwarded (see `inferProjectsFromForwardArgs`), so focused runs from the repo
  * root don't have to restate the package.
  *
- * `extraRootPaths` (host projects only) lists additional repo-relative
- * directories that belong to the same Vitest root. The host Vitest config
- * picks up `scripts/` test globs alongside `src/`, so the runner has to
- * route `scripts/foo.test.ts` to `host-app` too — without it, focused runs
- * against scripts silently fall through to "fan out" mode.
+ * A `host` project is one whose Vitest runs from the repo root against the root
+ * `vitest.config.mjs`, spawned through the private `_test:unit:host` script
+ * rather than a workspace or a nested package directory. There is exactly one —
+ * `repo-scripts`, owning `scripts/`. The kind survives as its own case because
+ * that spawn shape has no `-w <workspace>` to pass and no package `cwd` to
+ * enter, so it cannot be folded into either of the other two.
  *
- * @typedef {{ kind: 'host'; name: string; rootPath: string; extraRootPaths?: string[] }} HostProject
+ * @typedef {{ kind: 'host'; name: string; rootPath: string }} HostProject
  * @typedef {{ kind: 'workspace'; name: string; workspace: string; rootPath: string; hasWatchScript: boolean }} WorkspaceProject
  * @typedef {{ kind: 'mfe'; name: string; cwd: string; rootPath: string }} MfeProject
  * @typedef {HostProject | WorkspaceProject | MfeProject} Project

@@ -201,8 +201,8 @@ Options:
 
 Path-based project inference:
   When --project is not set, any forwarded path that starts with a known
-  project root (e.g. src/app/..., packages/api/..., src/mfe_packages/<mfe>/...,
-  scripts/...) narrows the run to that single project automatically. Paths
+  project root (e.g. scripts/..., packages/api/..., src/mfe_packages/<mfe>/...)
+  narrows the run to that single project automatically. Paths
   spanning multiple projects are rejected with a clear error; unexpanded
   globs (e.g. "packages/api/**/*.test.ts" the shell did not expand) are
   rejected too so focused runs don't silently fan out.
@@ -210,15 +210,15 @@ Path-based project inference:
 Examples:
   npm run test:unit
   npm run test:unit -- --parallel
-  npm run test:unit -- src/app/effects/bootstrapEffects.test.ts
+  npm run test:unit -- scripts/test-runner/orchestration.test.mjs
   npm run test:unit -- packages/api/src/__tests__/AccountsApiService.test.ts
   npm run test:unit -- src/mfe_packages/demo-mfe/src/api/AccountsApiService.test.ts
   npm run test:unit -- --project=api
   npm run test:unit -- --project=api --parallel
   npm run test:unit -- --reporter=verbose                (no path → all projects)
   npm run test:unit:watch                                 (defaults to ${defaultWatchProjectName})
-  npm run test:unit:watch -- src/app/effects/bootstrapEffects.test.ts
-  npm run test:unit:watch -- --project=host-app
+  npm run test:unit:watch -- scripts/test-runner/orchestration.test.mjs
+  npm run test:unit:watch -- --project=repo-scripts
 `,
   );
 }

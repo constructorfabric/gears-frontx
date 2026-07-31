@@ -24,7 +24,7 @@
  *                                            [-- <vitest args>]
  *
  *   --run                 Non-interactive run across all (or selected) projects. Default.
- *   --watch               Interactive Vitest watcher. Defaults to `host-app`
+ *   --watch               Interactive Vitest watcher. Defaults to `repo-scripts`
  *                         when no project/path narrows the run; otherwise it
  *                         still requires a single target so one Vitest instance
  *                         owns stdio.

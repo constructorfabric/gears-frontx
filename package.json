@@ -54,7 +54,9 @@
     "prepare": "prek install",
     "test": "npm run test:unit",
     "test:unit": "node scripts/run-monorepo-unit-tests.mjs --run",
-    "test:unit:watch": "node scripts/run-monorepo-unit-tests.mjs --watch"
+    "test:unit:watch": "node scripts/run-monorepo-unit-tests.mjs --watch",
+    "_test:unit:host": "vitest --run --config vitest.scripts.config.mjs",
+    "_test:unit:host:watch": "vitest --watch --config vitest.scripts.config.mjs"
   },
   "dependencies": {
     "@gears-frontx/api": "*"
