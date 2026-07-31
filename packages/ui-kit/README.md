@@ -40,5 +40,7 @@ npm run test:unit --workspace=@gears-frontx/ui-kit
 ```
 
 See [DESIGN.md](DESIGN.md) for the design and its history. The package is
-`private` until the MVP component set lands; flipping `private` publishes it
-via the standard version-gated workflow.
+`private` until the MVP component set lands and #495 approves its architecture
+ownership, traceability, and version policy. The required CDSL artifacts must
+also replace the temporary `artifacts.toml` ignore. Only then may `private` be
+removed for publication through the standard version-gated workflow.

@@ -57,8 +57,11 @@ generate screens consistently.
   consumes only these variables — the theme file is the single seam between
   kit styles and consumer brand.
 - Publishing: version-gated like every ecosystem package. `private: true`
-  until the MVP component set lands (the publish workflow skips private
-  packages); flipping it is the release act.
+  remains in place until both the MVP component set lands and #495 approves
+  the package's architecture ownership, traceability, and version policy. The
+  required CDSL artifacts must then replace the temporary `artifacts.toml`
+  ignore. Only after all of those gates pass is flipping `private` the release
+  act.
 
 ## Component set (MVP, ~18 components)
 
@@ -108,4 +111,5 @@ page, settings form, confirmation dialog).
 1. Package skeleton + proven tsup/CSS Modules pipeline + Button (this step).
 2. Tokens polish + first component batch (forms) on `@base-ui/react`.
 3. Remaining components.
-4. AI docs + kitchen-sink example app; flip `private` and publish.
+4. AI docs + kitchen-sink example app; satisfy the #495 publication gates,
+   remove the temporary artifact ignore, then flip `private` and publish.

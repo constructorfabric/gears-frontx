@@ -193,7 +193,7 @@ module.exports = {
       name: 'frontx-single-intra-ecosystem-edge-api-standalone',
       severity: 'error',
       from: { path: '^packages/api/src/' },
-      to: { path: '^packages/(mfes|gts-plugin|cli|cyber-pilot-kit-frontx|telemetry|ui-kit)/' },
+      to: { path: '^packages/(mfes|gts-plugin|cli|cyber-pilot-kit-frontx|telemetry)/' },
       comment:
         'cpt-frontx-adr-ai-driven-upgrade-orchestration: @gears-frontx/api holds no intra-ecosystem package dependency.',
     },
@@ -201,7 +201,7 @@ module.exports = {
       name: 'frontx-single-intra-ecosystem-edge-cli-standalone',
       severity: 'error',
       from: { path: '^packages/cli/src/' },
-      to: { path: '^packages/(mfes|gts-plugin|api|cyber-pilot-kit-frontx|telemetry|ui-kit)/' },
+      to: { path: '^packages/(mfes|gts-plugin|api|cyber-pilot-kit-frontx|telemetry)/' },
       comment:
         'cpt-frontx-adr-ai-driven-upgrade-orchestration: @gears-frontx/cli holds no intra-ecosystem package dependency.',
     },
@@ -209,7 +209,7 @@ module.exports = {
       name: 'frontx-single-intra-ecosystem-edge-kit-standalone',
       severity: 'error',
       from: { path: '^packages/cyber-pilot-kit-frontx/src/' },
-      to: { path: '^packages/(mfes|gts-plugin|api|cli|telemetry|ui-kit)/' },
+      to: { path: '^packages/(mfes|gts-plugin|api|cli|telemetry)/' },
       comment:
         'cpt-frontx-adr-ai-driven-upgrade-orchestration: @gears-frontx/cyber-pilot-kit-frontx holds no intra-ecosystem package dependency — in particular no @gears-frontx/cli edge; it coordinates with the CLI only over its command/invocation surface.',
     },
@@ -217,20 +217,32 @@ module.exports = {
       name: 'frontx-single-intra-ecosystem-edge-mfes-gts-plugin-only',
       severity: 'error',
       from: { path: '^packages/mfes/src/' },
-      to: { path: '^packages/(api|cli|cyber-pilot-kit-frontx|telemetry|ui-kit)/' },
+      to: { path: '^packages/(api|cli|cyber-pilot-kit-frontx|telemetry)/' },
       comment:
         'cpt-frontx-adr-ai-driven-upgrade-orchestration: the only intra-ecosystem package edge is @gears-frontx/mfes -> @gears-frontx/gts-plugin (via the type-substrate port); @gears-frontx/mfes must not depend on @gears-frontx/api, @gears-frontx/cli, or @gears-frontx/cyber-pilot-kit-frontx.',
     },
+    // @cpt-end:cpt-frontx-adr-ai-driven-upgrade-orchestration:p20:inst-dep-cruiser-rule
+
+    // Interim isolation while #495 defines UI Kit's architecture ownership and
+    // dependency policy. Keep these rules outside CDSL markers: no accepted ADR
+    // owns this boundary yet. Replace them with the approved, traced policy when
+    // the temporary artifacts.toml ignore is removed.
     {
-      name: 'frontx-single-intra-ecosystem-edge-ui-kit-standalone',
+      name: 'frontx-ui-kit-interim-not-imported-by-ecosystem',
+      severity: 'error',
+      from: { path: '^packages/(mfes|gts-plugin|api|cli|cyber-pilot-kit-frontx|telemetry)/src/' },
+      to: { path: '^packages/ui-kit/' },
+      comment:
+        'INTERIM (#495): existing ecosystem packages must not acquire an unapproved dependency on @gears-frontx/ui-kit.',
+    },
+    {
+      name: 'frontx-ui-kit-interim-no-intra-ecosystem-imports',
       severity: 'error',
       from: { path: '^packages/ui-kit/src/' },
       to: { path: '^packages/(mfes|gts-plugin|api|cli|cyber-pilot-kit-frontx|telemetry)/' },
       comment:
-        'cpt-frontx-adr-ai-driven-upgrade-orchestration: @gears-frontx/ui-kit holds no intra-ecosystem package dependency.',
+        'INTERIM (#495): @gears-frontx/ui-kit remains isolated until its dependency policy is approved.',
     },
-    // @cpt-end:cpt-frontx-adr-ai-driven-upgrade-orchestration:p20:inst-dep-cruiser-rule
-
     {
       name: 'frontx-single-intra-ecosystem-edge-telemetry-standalone',
       severity: 'error',
