@@ -161,13 +161,14 @@ jobs:
           else echo "skipped=$(printf '%s\n' "${SKIPPED_PACKAGES[@]}" | jq -sc '.')" >> $GITHUB_OUTPUT; fi
 
   # ══════════════════════════════════════════════════════════════════════
-  # PART 2 (TEMPORARY) — standard template + its subpackages
-  # Publishes @gears-frontx/frontx-template-standard and its publishable
-  # workspace subpackages (template-standard/packages/*), version-gated, in
-  # DEPENDENCY ORDER. Private demo/fixture MFEs (src-app/mfe_packages/*) are
-  # skipped — npm cannot publish private packages.
+  # PART 2 (TEMPORARY) — shell template + its subpackages
+  # Publishes @gears-frontx/frontx-template-shell and its publishable
+  # workspace subpackages (template-shell/packages/*), version-gated, in
+  # DEPENDENCY ORDER. MFE packages moved to template-mfe/ (issue #470) and
+  # are not published by this job; the mfe_packages glob below now matches
+  # nothing under template-shell and is kept as a defensive no-op.
   #
-  # ⚠️  REMOVE THIS ENTIRE PART (both jobs) when the standard template is
+  # ⚠️  REMOVE THIS ENTIRE PART (both jobs) when the shell template is
   #     extracted into its own repository; it will carry its own publish
   #     workflow there.
   # ══════════════════════════════════════════════════════════════════════
@@ -191,9 +192,9 @@ jobs:
 
           # The template package itself + every workspace subpackage.
           MANIFESTS=$(printf '%s\n' \
-            "template-standard/package.json" \
-            template-standard/packages/*/package.json \
-            template-standard/src-app/mfe_packages/*/package.json)
+            "template-shell/package.json" \
+            template-shell/packages/*/package.json \
+            template-shell/src-app/mfe_packages/*/package.json)
 
           for pkg_json in $MANIFESTS; do
             [ -f "$pkg_json" ] || continue
@@ -254,7 +255,7 @@ jobs:
           npm run build:packages
 
       - name: Install + build template
-        working-directory: template-standard
+        working-directory: template-shell
         run: |
           npm ci
           npm run build:package
@@ -301,7 +302,7 @@ jobs:
           # Dependency order: leaf libs + the template lib first, then the
           # packages that depend on them (framework → react → studio).
           SORTED=$(echo "$PACKAGES" | jq -c 'sort_by(.name |
-            if . == "@gears-frontx/state" or . == "@gears-frontx/i18n" or . == "@gears-frontx/auth" or . == "@gears-frontx/frontx-template-standard" then 1
+            if . == "@gears-frontx/state" or . == "@gears-frontx/i18n" or . == "@gears-frontx/auth" or . == "@gears-frontx/frontx-template-shell" then 1
             elif . == "@gears-frontx/framework" then 2
             elif . == "@gears-frontx/react" then 3
             elif . == "@gears-frontx/studio" then 4
@@ -380,7 +381,7 @@ jobs:
             '${{ needs.publish-ecosystem.outputs.published }}' \
             '${{ needs.publish-ecosystem.outputs.skipped }}'
 
-          report "Standard template (temporary)" \
+          report "Shell template (temporary)" \
             "${{ needs.detect-template.outputs.has_changes }}" \
             "${{ needs.publish-template.result }}" \
             '${{ needs.publish-template.outputs.published }}' \

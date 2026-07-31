@@ -33,7 +33,17 @@ const SOLUTION_TERMS = ['react', 'vue', 'angular', 'svelte', 'template', 'soluti
 // manifest id/description only), this list targets concrete product names
 // so that legitimate abstract use of words like "template" inside base
 // guidelines/skills is not falsely flagged.
-const SPECIFIC_TEMPLATE_NAMES = ['frontx-template-standard', 'template-standard'];
+// Old names are kept (never removed) so the guard still catches historical
+// leaks in content authored before issue #470's shell/mfe split; new names
+// are added alongside for the current product identities.
+const SPECIFIC_TEMPLATE_NAMES = [
+  'frontx-template-standard',
+  'template-standard',
+  'frontx-template-shell',
+  'template-shell',
+  'frontx-template-mfe',
+  'template-mfe',
+];
 
 // @cpt-begin:cpt-frontx-algo-ai-kit-packaging-manifest-validation:p1:inst-check-required-fields
 function checkRequiredFields(manifest: unknown, violations: ValidationViolation[]): manifest is KitManifest {

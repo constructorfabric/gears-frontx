@@ -289,6 +289,38 @@ describe('dispatch: seed (cpt-frontx-flow-cli-scaffolding-seed-repository)', () 
     const outcome = await run(['seed', 'foo'], deps);
     expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
   });
+
+  // F-3 (issue #470 phase 4.5): ADR-0032 requires the refusal to name each
+  // contested ground and its contesting templates. `seedRepository` already
+  // returns `result.conflicts`; this locks in that `run()` actually prints
+  // it instead of dropping it and printing only the generic abort message.
+  it('prints the contested ground and its contesting templates to stderr on a boundary conflict', async () => {
+    const { deps, registerManifest, registerContent } = makeDeps();
+    registerManifest(
+      'github:acme/clash-a@v1.0.0',
+      makeManifest('clash-a', '1.0.0', {
+        ownershipBoundaries: { exclusiveSubtrees: ['shared/'], sharedFiles: [] },
+        referencedTemplates: [{ ref: 'clash-b', appliedAt: 'clash-b/' }],
+      }),
+    );
+    registerManifest(
+      'github:acme/clash-b@v1.0.0',
+      makeManifest('clash-b', '1.0.0', {
+        ownershipBoundaries: { exclusiveSubtrees: ['shared/'], sharedFiles: [] },
+      }),
+    );
+    registerContent('clash-a', [{ path: 'clash-a/index.ts', content: 'a' }]);
+    registerContent('clash-b', [{ path: 'clash-b/index.ts', content: 'b' }]);
+    await run(['install', 'github:acme/clash-a@v1.0.0'], deps);
+    await run(['install', 'github:acme/clash-b@v1.0.0'], deps);
+
+    const outcome = await run(['seed', 'clash-a', '/tmp/target-repo'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toContain('shared/');
+    expect(outcome.stderr).toContain('clash-a');
+    expect(outcome.stderr).toContain('clash-b');
+  });
 });
 
 describe('dispatch: add (cpt-frontx-flow-cli-scaffolding-add-template)', () => {
@@ -307,6 +339,32 @@ describe('dispatch: add (cpt-frontx-flow-cli-scaffolding-add-template)', () => {
     const { deps } = makeDeps();
     const outcome = await run(['add', 'bar', '/tmp/existing-repo'], deps);
     expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+  });
+
+  // F-3 (issue #470 phase 4.5): symmetric with the `seed` case above —
+  // `addTemplate` returns `result.conflicts` when the staged assembly claims
+  // ground already occupied per provenance; `run()` must print it, not just
+  // the generic abort message.
+  it('prints the contested ground and its contesting templates to stderr on a boundary conflict', async () => {
+    const provenanceRecord: ProvenanceRecord = {
+      templateIdentity: 'bar',
+      scaffoldedFromVersion: '1.0.0',
+      sourceSpec: 'github:acme/bar@v1.0.0',
+      occupiedOwnershipBoundary: 'bar/',
+    };
+    const { deps, registerManifest, registerContent } = makeDeps({
+      readProvenanceRecordsFn: vi.fn(async () => [provenanceRecord]),
+    });
+    registerManifest('github:acme/bar@v1.0.0', makeManifest('bar', '1.0.0'));
+    registerContent('bar', [{ path: 'bar/src/Bar.tsx', content: 'hello bar' }]);
+    await run(['install', 'github:acme/bar@v1.0.0'], deps);
+
+    // Re-adding the same already-applied template re-claims its own ground.
+    const outcome = await run(['add', 'bar', '/tmp/existing-repo'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toContain('bar/');
+    expect(outcome.stderr).toContain('bar');
   });
 });
 

@@ -34,6 +34,7 @@ import { TemplateInventory } from './inventory/TemplateInventory';
 import type { InventoryEntry } from './inventory/types';
 import type { FetchFn } from './resolver/types';
 import type { ReadContentItemsFn, WriteFileFn } from './scaffold/types';
+import type { BoundaryConflictEntry } from './scaffold/state';
 import type { ReadFileFn } from './manifest/types';
 import type { ProvenanceWriteFn } from './provenance/types';
 import type { ReadProvenanceRecordsFn } from './scaffold/materialize';
@@ -223,6 +224,21 @@ function createJsonApproval(): PresentAndGetApprovalFn {
 
 // --- dispatch (cpt-frontx-flow-cli-invocation-run-command) ---
 
+/**
+ * ADR-0032 requires the pre-flight conflict report to name "each contested
+ * ground and its contesting templates" (`scaffold/conflict.ts` — the SOLE
+ * authority that produces `BoundaryConflictEntry[]`). `seed`/`add` already
+ * carry that detail on their `conflict` outcome, but until now this CLI
+ * layer dropped it on the floor and printed only the generic abort message
+ * — the refusal never actually named ground or contestants. One line per
+ * conflict, appended to stderr below the generic message.
+ */
+function formatConflictDetails(conflicts: BoundaryConflictEntry[]): string {
+  return conflicts
+    .map((c) => `  ground "${c.ground}" contested by: ${c.contestants.join(', ')}`)
+    .join('\n');
+}
+
 function formatInstallResult(result: InstallCommandResult): CommandOutcome {
   if (!result.ok) return { exitCode: EXIT_USER_ERROR, stderr: result.message };
   const discoveryLine =
@@ -308,7 +324,11 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         const exitCode = result.reason === 'manifest-unreadable' || result.reason === 'provenance-failed'
           ? EXIT_INTERNAL_ERROR
           : EXIT_USER_ERROR;
-        return { exitCode, stderr: result.message };
+        const stderr =
+          result.reason === 'conflict'
+            ? `${result.message}\n${formatConflictDetails(result.conflicts)}`
+            : result.message;
+        return { exitCode, stderr };
       }
       return { exitCode: EXIT_SUCCESS, stdout: result.message };
     }
@@ -334,7 +354,11 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         const exitCode = result.reason === 'manifest-unreadable' || result.reason === 'provenance-failed'
           ? EXIT_INTERNAL_ERROR
           : EXIT_USER_ERROR;
-        return { exitCode, stderr: result.message };
+        const stderr =
+          result.reason === 'conflict'
+            ? `${result.message}\n${formatConflictDetails(result.conflicts)}`
+            : result.message;
+        return { exitCode, stderr };
       }
       return { exitCode: EXIT_SUCCESS, stdout: result.message };
     }

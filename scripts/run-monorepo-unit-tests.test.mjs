@@ -678,8 +678,9 @@ describe('discoverWorkspaceProjects + loadProjects (end-to-end discovery)', () =
 
   it('loadProjects composes ecosystem workspace projects only (no host/MFE)', async () => {
     // Phase 11 template-move relocated the host app + its nested MFEs to the
-    // self-contained `template-standard/` (which runs its own tests via its
-    // own package.json). The ecosystem-side runner discovers workspace
+    // self-contained `template-shell/` (which runs its own tests via its
+    // own package.json; its MFE content later split into the sibling
+    // `template-mfe/` in issue #470). The ecosystem-side runner discovers workspace
     // packages only; `discoverMfeProjects` remains available as a generic
     // utility (see its own dedicated fixture tests above) but is no longer
     // composed into `loadProjects`.

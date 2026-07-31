@@ -136,7 +136,7 @@ jobs:
       - name: Check spec coverage thresholds
         # Threshold rebased for the post-split ecosystem repo. The framework/
         # template split changed the scanned code: solution packages moved out
-        # to template-standard/, extracted Pillar-1 code (api/mfes/gts-plugin)
+        # to template-shell/, extracted Pillar-1 code (api/mfes/gts-plugin)
         # moved in, and tooling scripts/ were removed from the scan. Extracted
         # code + type/interface/glue lines cap fair @cpt marker density well
         # below the old 58 (even greenfield cli/kit top out ~50-56%). Current

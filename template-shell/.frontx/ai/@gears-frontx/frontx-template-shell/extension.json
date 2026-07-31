@@ -1,0 +1,11 @@
+{
+  "id": "frontx-template-shell-ai-bundle",
+  "contractVersion": "1.0.0",
+  "entries": [
+    {
+      "id": "mfe-package-contract",
+      "category": "guidelines",
+      "path": "guidelines/mfe-package-contract.md"
+    }
+  ]
+}

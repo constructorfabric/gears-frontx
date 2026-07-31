@@ -6,9 +6,10 @@
  *
  * The non-Pillar-1 packages (state, i18n, framework, react, auth, studio)
  * and the host app now live in the self-contained top-level
- * `template-standard/` (Phase 11 template-move); its template-internal
+ * `template-shell/` (Phase 11 template-move; split from its MFE content into
+ * the sibling `template-mfe/` in issue #470); its template-internal
  * layering/isolation rules moved into its own `.dependency-cruiser.cjs`.
- * Once template-standard is no longer an npm workspace of this repo,
+ * Once template-shell is no longer an npm workspace of this repo,
  * ecosystem packages have no module-resolution path into it at all — the
  * forbid rules below enforce that boundary generically (by shape, not by
  * naming the template's path), so they keep working if the template's
