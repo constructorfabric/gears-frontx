@@ -44,8 +44,9 @@ That middleware stands in for the ingestion backend. The package is transport-ag
 whatever envelope the SDK builds to whatever `url` you configure. Point `url` at a real collector and
 nothing else changes.
 
-Records also render on the page, via an example plugin on the `event` hook - that fires *before* the
-record is queued, so the page shows the same object the collector receives.
+The page renders each outgoing request by wrapping `fetch`, so what it shows is the exact payload the
+collector receives. Separately, an example plugin on the `event` hook counts the records it sees -
+that hook fires *before* a record is queued, so the counter runs ahead of the request list.
 
 ## What the page demonstrates
 

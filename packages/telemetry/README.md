@@ -84,6 +84,9 @@ Call `destroy()` on teardown to remove listeners and stop the scheduler.
 
 All methods except `logEvent` and `destroy` are chainable.
 
+Register plugins before `start()`. `setup()` runs inside `start()`, so a plugin passed to
+`plugin()` afterwards is stored and never set up.
+
 `destroy()` does not unregister plugin hooks, so calling `start()` again on the same client
 registers them a second time. Build a new client instead.
 
