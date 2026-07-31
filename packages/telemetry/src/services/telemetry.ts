@@ -24,6 +24,7 @@ export function createTelemetry(configRaw: TelemetryConfig): TelemetryService {
   const userInfoManager = createUserInfoManager(context);
   const pluginsManager = createPluginsManager(context, sessionManager, eventsManager);
   const rootApi = { plugin, start, destroy, logEvent, identify };
+  let started = false;
 
   return rootApi;
 
@@ -40,6 +41,16 @@ export function createTelemetry(configRaw: TelemetryConfig): TelemetryService {
     if (typeof window === 'undefined') {
       return rootApi;
     }
+
+    // `destroy()` leaves the registered hooks in place, so this flag is never cleared: a second
+    // `start()` would set every plugin up again, duplicating its `event` hook and its listeners.
+    // A client is single-use by design — build a new one instead of restarting this one.
+    if (started) {
+      logger.logError('Telemetry is already started; build a new client instead of restarting.');
+      return rootApi;
+    }
+
+    started = true;
 
     plugin(
       sessionPlugin(),

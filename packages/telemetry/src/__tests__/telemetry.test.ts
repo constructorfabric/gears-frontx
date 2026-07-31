@@ -427,6 +427,38 @@ describe('Telemetry Client', () => {
     expect(record.context_user_data?.locale).toBe('"es-ES"');
   });
 
+  test('should ignore a repeated start()', () => {
+    let hookCalls = 0;
+    const telemetry = createTelemetry(mockAppInfo);
+
+    telemetry.plugin({
+      name: 'counter',
+      setup: (context) => {
+        context.addHook('event', (record) => {
+          if (record.name === 'counted_event') {
+            hookCalls += 1;
+          }
+        });
+      },
+    });
+
+    telemetry.start();
+    telemetry.start();
+    onTestFinished(() => telemetry.destroy());
+
+    telemetry.logEvent('counted_event');
+    vi.runAllTimers();
+
+    expect(hookCalls).toBe(1);
+
+    const payload: TelemetryApiPayload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const counted = payload.records.filter(
+      (r: TelemetryApiRecord) => r.value.name === 'counted_event',
+    );
+
+    expect(counted).toHaveLength(1);
+  });
+
   test('should still start when localStorage reads are blocked', () => {
     vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
       throw new DOMException('The operation is insecure.', 'SecurityError');
