@@ -102,6 +102,22 @@ npm run build:packages:studio
 npm run build:packages:cli
 ```
 
+## Template Development Loop
+
+[`template-shell/`](template-shell) is not a root workspace: it is a standalone npm project that pins `@gears-frontx/api`, `@gears-frontx/mfes` and `@gears-frontx/gts-plugin` to exact registry versions, so that a seeded project installs outside the monorepo. Those pins mean a plain `npm install` inside the template resolves the **published** alpha, not the sources you are editing.
+
+After changing anything under `packages/api`, `packages/mfes` or `packages/gts-plugin`, relink before running the template:
+
+```bash
+npm run build:packages       # publish-shaped dist/ for the ecosystem packages
+npm run dev:template:link    # point the template's node_modules at packages/* sources
+cd template-shell && npm run dev
+```
+
+`dev:template:link` ([`scripts/link-template-ecosystem.mjs`](scripts/link-template-ecosystem.mjs)) only repoints those three directories inside the template's `node_modules`; it never writes `package.json` or `package-lock.json`, so nothing from the dev loop can leak into a seeded project. Skipping it is silent: the template builds and passes its checks against the published alpha, and local edits simply never appear.
+
+To go back to the pinned registry versions, run `npm ci` inside `template-shell`.
+
 ## Validation
 
 ```bash
