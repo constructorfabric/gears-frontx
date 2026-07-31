@@ -175,7 +175,7 @@ module.exports = {
     // Surface, the CLI, and the AI Tooling Framework hold no intra-ecosystem
     // package dependencies. Coordination between the AI Tooling Framework
     // and the CLI is an orchestration relationship over the CLI's command
-    // surface, not a compile-time package dependency." (ADR-0027
+    // surface, not a compile-time package dependency." (ADR-0026
     // cpt-frontx-adr-ai-driven-upgrade-orchestration). These two rules
     // together enforce that the ONLY intra-ecosystem package edge is
     // @gears-frontx/mfes -> @gears-frontx/gts-plugin — in particular they
@@ -213,15 +213,16 @@ module.exports = {
       comment:
         'cpt-frontx-adr-ai-driven-upgrade-orchestration: the only intra-ecosystem package edge is @gears-frontx/mfes -> @gears-frontx/gts-plugin (via the type-substrate port); @gears-frontx/mfes must not depend on @gears-frontx/api, @gears-frontx/cli, or @gears-frontx/cyber-pilot-kit-frontx.',
     },
+    // @cpt-end:cpt-frontx-adr-ai-driven-upgrade-orchestration:p20:inst-dep-cruiser-rule
+
     {
       name: 'frontx-single-intra-ecosystem-edge-telemetry-standalone',
       severity: 'error',
       from: { path: '^packages/telemetry/src/' },
       to: { path: '^packages/(mfes|gts-plugin|api|cli|cyber-pilot-kit-frontx)/' },
       comment:
-        'cpt-frontx-adr-ai-driven-upgrade-orchestration: @gears-frontx/telemetry holds no intra-ecosystem package dependency.',
+        'ecosystem-boundaries: @gears-frontx/telemetry holds no intra-ecosystem package dependency.',
     },
-    // @cpt-end:cpt-frontx-adr-ai-driven-upgrade-orchestration:p20:inst-dep-cruiser-rule
   ],
   options: {
     doNotFollow: '^node_modules',
