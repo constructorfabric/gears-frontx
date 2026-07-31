@@ -16,7 +16,7 @@ import { defaultRepoRoot } from './common.mjs';
 
 /**
  * The repo-root `scripts/` toolchain, tested through the root
- * `vitest.config.mjs` and the private `_test:unit:host` script.
+ * `vitest.scripts.config.mjs` and the private `_test:unit:host` script.
  *
  * Static rather than discovered, because `scripts/` is not an npm workspace and
  * so cannot appear in `package.json#workspaces` — the mechanism every other

@@ -64,11 +64,11 @@ export class CliError extends Error {
  * root don't have to restate the package.
  *
  * A `host` project is one whose Vitest runs from the repo root against the root
- * `vitest.config.mjs`, spawned through the private `_test:unit:host` script
- * rather than a workspace or a nested package directory. There is exactly one —
- * `repo-scripts`, owning `scripts/`. The kind survives as its own case because
- * that spawn shape has no `-w <workspace>` to pass and no package `cwd` to
- * enter, so it cannot be folded into either of the other two.
+ * `vitest.scripts.config.mjs`, spawned through the private `_test:unit:host`
+ * script rather than a workspace or a nested package directory. There is exactly
+ * one — `repo-scripts`, owning `scripts/`. The kind survives as its own case
+ * because that spawn shape has no `-w <workspace>` to pass and no package `cwd`
+ * to enter, so it cannot be folded into either of the other two.
  *
  * @typedef {{ kind: 'host'; name: string; rootPath: string }} HostProject
  * @typedef {{ kind: 'workspace'; name: string; workspace: string; rootPath: string; hasWatchScript: boolean }} WorkspaceProject
