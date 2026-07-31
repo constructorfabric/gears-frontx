@@ -242,7 +242,7 @@ export default [
                 'SDK VIOLATION: @gears-frontx/telemetry holds no intra-ecosystem package dependency.',
             },
             {
-              group: ['react', 'react-dom', 'react/*'],
+              group: ['react', 'react-dom', 'react-dom/*', 'react/*'],
               message:
                 'SDK VIOLATION: SDK packages cannot import React.',
             },
