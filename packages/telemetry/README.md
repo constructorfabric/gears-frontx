@@ -231,7 +231,8 @@ user typed, and `identify()` does not affect it, but it does correlate every eve
 across sessions, reloads and signed-out visits. Treat it as personal data in your own privacy
 assessment, and disclose it wherever you disclose cookies.
 
-To forget a device, remove the key — a new id is minted on the next `start()`:
+To forget a device, remove the key, then build a new client and `start()` it — a client is
+single-use, so the id is minted by the next client's `start()`:
 
 ```ts
 localStorage.removeItem('telemetry_device_id'); // or `telemetry_${storagePrefix}_device_id`

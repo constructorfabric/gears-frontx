@@ -262,21 +262,32 @@ describe('autocapture element hook', () => {
     expect(record.data?.$el_text).toBe(JSON.stringify('Outside body'));
   });
 
-  test('should not throw when the walk reaches a shadow root with no host', () => {
-    startClient();
+  // Driven through the generator rather than a click: a detached tree never reaches the document
+  // listener, so a dispatched event would exercise nothing.
+  test.each([
+    [
+      'a fragment standing in for a shadow root',
+      () => {
+        const fragment = document.createDocumentFragment();
+        const el = document.createElement('div');
+        fragment.appendChild(el);
+        return el;
+      },
+    ],
+    [
+      'the document above documentElement',
+      () => {
+        const el = document.createElement('div');
+        document.documentElement.appendChild(el);
+        onTestFinished(() => el.remove());
+        return el;
+      },
+    ],
+  ])('should yield only Elements when the walk reaches %s', (_label, build) => {
+    const yielded = [...autocaptureHelpers.eachParentElement(build(), true)];
 
-    const host = document.createElement('div');
-    const shadow = host.attachShadow({ mode: 'open' });
-    const button = document.createElement('button');
-    button.textContent = 'In shadow';
-    shadow.appendChild(button);
-    document.createDocumentFragment().appendChild(host);
-
-    // The host is detached, so nothing reaches the document listener and no record is emitted; the
-    // walk still must not throw when it reaches a shadow root whose tree has no document.
-    expect(() =>
-      button.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true })),
-    ).not.toThrow();
+    expect(yielded.length).toBeGreaterThan(0);
+    yielded.forEach((el) => expect(el.nodeType).toBe(1));
   });
 
   test('should propagate a genuine internal autocapture error (a bug in the walk, not a hook) to the caller instead of swallowing it', () => {
