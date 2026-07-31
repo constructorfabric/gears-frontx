@@ -23,6 +23,11 @@
  * npm can put back, so any inverse this script could offer would still end in
  * `npm ci` — after leaving three holes in the tree in the meantime.
  *
+ * That same asymmetry is why a run that cannot create every link puts the tree
+ * back rather than reporting how far it got: the installed content is moved
+ * aside, never deleted, until the last symlink is in place. A failed link costs
+ * a re-run, not an `npm ci`.
+ *
  * Core logic is exported for unit tests; only `runCli` touches the process.
  *
  * CLI entry: `npm run dev:template:link` (exit 0 on success).
@@ -41,6 +46,17 @@ export const templateDirName = 'template-shell';
  * already linked by npm, and must keep whatever npm gave it.
  */
 export const linkedPackageDirs = ['api', 'mfes', 'gts-plugin'];
+
+/**
+ * Suffix of the directory an installed package is moved to while its symlink
+ * takes its place. Nothing outside one run of this script reads it: the backups
+ * are discarded once every link exists, and a run that fails renames them back.
+ *
+ * It can survive on disk if the process is killed mid-run, so staging clears a
+ * leftover before reusing the name - the content there is a copy of a published
+ * tarball, which npm can always fetch again.
+ */
+export const backupSuffix = '.frontx-link-backup';
 
 /**
  * The template's own code imports `FRONTX_ACTION_*` from
@@ -69,8 +85,27 @@ const pinnedSurfaceDriftWarning =
  *   ok: false;
  *   reason: 'template-not-installed' | 'source-missing' | 'build-missing';
  *   message: string;
- * }} LinkFailure
- * @typedef {LinkSuccess | LinkFailure} LinkResult
+ * }} LinkRefusal
+ * @typedef {LinkSuccess | LinkRefusal | LinkRollback} LinkResult
+ */
+
+/**
+ * The only failure that can be raised after the first write, and the reason the
+ * caller has to read fields rather than just the message.
+ *
+ * `restored` names the packages the rollback returned to the state `npm ci` left
+ * them in: every package linked before the failure, plus the one that failed.
+ * `unrestored` names the packages it could not put back, and a non-empty
+ * `unrestored` is the only outcome of this script that needs `npm ci` to repair.
+ *
+ * @typedef {{
+ *   ok: false;
+ *   reason: 'link-failed';
+ *   message: string;
+ *   failedPackage: string;
+ *   restored: string[];
+ *   unrestored: string[];
+ * }} LinkRollback
  */
 
 /**
@@ -121,10 +156,12 @@ function readObjectProperty(value, key) {
 
 /**
  * Windows rejects `symlinkSync(..., 'dir')` with EPERM unless Developer Mode or
- * an elevated shell is active, and it does so *after* the target directory has
- * already been removed — leaving the tree worse than before and recoverable
- * only by `npm ci`. Junctions need no privilege but only accept an absolute
- * target, so the platform decides both the type and the path form.
+ * an elevated shell is active. Junctions need no privilege but only accept an
+ * absolute target, so the platform decides both the type and the path form.
+ *
+ * A privilege check would not make this safe on its own: EPERM here lands
+ * mid-loop, after earlier packages are linked, which is why the write phase
+ * stages the installed content aside instead of trusting the spec to work.
  *
  * @param {string} scopeDir
  * @param {string} source
@@ -139,12 +176,147 @@ export function symlinkSpecFor(scopeDir, source, platform) {
 }
 
 /**
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+function isMissingEntryError(error) {
+  return readObjectProperty(error, 'code') === 'ENOENT';
+}
+
+/**
+ * Moves the installed package directory aside so a symlink can take its place
+ * without anything being destroyed.
+ *
+ * Deleting the directory first is the obvious way to clear the path, and it is
+ * what makes a mid-loop failure unrecoverable: what it deletes is published
+ * tarball content that only `npm ci` can put back. A rename keeps that content
+ * one syscall away for as long as the run can still fail.
+ *
+ * @param {typeof fsDefault} fs
+ * @param {string} linkPath
+ * @param {string} backupPath
+ * @returns {string | null} The backup path, or `null` when nothing was installed
+ *   at `linkPath` and a rollback would therefore have nothing to restore.
+ */
+function stageInstalledAside(fs, linkPath, backupPath) {
+  // A backup left behind by a killed run would block the rename on Windows,
+  // where renaming onto an existing directory fails.
+  fs.rmSync(backupPath, { recursive: true, force: true });
+
+  try {
+    fs.renameSync(linkPath, backupPath);
+  } catch (error) {
+    // npm installs all three, but a hand-pruned or partially installed tree can
+    // be missing one, and a link left dangling by a moved checkout renames
+    // fine. Only a genuinely absent entry gets here, and the symlink below
+    // simply creates it - exactly what the previous forced delete allowed.
+    if (isMissingEntryError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+
+  return backupPath;
+}
+
+/**
+ * @param {string[]} names
+ * @returns {string}
+ */
+function describePackages(names) {
+  return names.map((name) => `@gears-frontx/${name}`).join(', ');
+}
+
+/**
+ * Undoes every write of a failed run and reports what the tree holds afterwards.
+ *
+ * Entries are undone newest first and independently: this code runs because the
+ * filesystem already refused something once, so one package that will not come
+ * back must not strand the ones that would. That is also why the result
+ * separates `restored` from `unrestored` instead of telling every caller to run
+ * `npm ci` - a rollback that worked leaves nothing to repair, and a blanket
+ * recovery instruction would train developers to ignore the one case that does.
+ *
+ * @param {{
+ *   fs: typeof fsDefault;
+ *   staged: { name: string; linkPath: string; backupPath: string | null }[];
+ *   failedPackage: string;
+ *   cause: unknown;
+ * }} context
+ * @returns {LinkRollback}
+ */
+function restoreInstalledTree({ fs, staged, failedPackage, cause }) {
+  /** @type {string[]} */
+  const restored = [];
+  /** @type {string[]} */
+  const unrestored = [];
+
+  for (const { name, linkPath, backupPath } of [...staged].reverse()) {
+    try {
+      // Removes the symlink itself rather than what it points at - `rm` does not
+      // follow links, so `packages/<name>` is never at risk here. The link may
+      // also not exist, which is the case this run failed on.
+      fs.rmSync(linkPath, { recursive: true, force: true });
+
+      if (backupPath !== null) {
+        fs.renameSync(backupPath, linkPath);
+      }
+
+      restored.push(name);
+    } catch {
+      unrestored.push(name);
+    }
+  }
+
+  // Reported in the order the packages are linked, not the order they were undone.
+  restored.reverse();
+  unrestored.reverse();
+
+  /** @type {string} */
+  let stateLine;
+  /** @type {string} */
+  let recoveryLine;
+
+  if (unrestored.length > 0) {
+    stateLine =
+      `Rollback could not restore ${describePackages(unrestored)} - the installed ` +
+      `content is still there under \`${backupSuffix}\`.`;
+    recoveryLine = `Run \`npm ci\` inside ${templateDirName} to repair the tree.`;
+  } else {
+    stateLine =
+      restored.length > 0
+        ? `Rolled ${describePackages(restored)} back to the installed versions; nothing was left half-removed.`
+        : 'Nothing had been written yet, so the installed tree is untouched.';
+    recoveryLine =
+      `Fix the cause and re-run, or run \`npm ci\` inside ${templateDirName} to rebuild ` +
+      'the tree from the lockfile.';
+  }
+
+  return {
+    ok: false,
+    reason: 'link-failed',
+    message: [
+      `Cannot link: creating the @gears-frontx/${failedPackage} symlink failed ` +
+        `(${cause instanceof Error ? cause.message : String(cause)}).`,
+      stateLine,
+      recoveryLine,
+    ].join('\n'),
+    failedPackage,
+    restored,
+    unrestored,
+  };
+}
+
+/**
  * Repoints the template's installed ecosystem directories at `packages/*`.
  *
- * Every precondition is checked across all packages before the first write:
- * a failure halfway through would leave part of the tree linked to sources and
- * part on registry tarballs, which is a harder state to diagnose than either
- * end point.
+ * The run is all-or-nothing in both phases. Every precondition is checked across
+ * all packages before the first write, and each write moves the installed
+ * directory aside instead of deleting it, so a failure on the second of three
+ * packages rolls back to the tree `npm ci` produced. Either half-state - part
+ * linked and part on registry tarballs, or worse, one package deleted and not
+ * replaced - is harder to diagnose than both end points.
  *
  * @param {{
  *   repoRoot: string;
@@ -226,19 +398,47 @@ export function linkEcosystemPackages({
     plan.push({ name, source, entryPoint });
   }
 
-  /** @type {string[]} */
-  const linked = [];
+  /** @type {{ name: string; linkPath: string; backupPath: string | null }[]} */
+  const staged = [];
 
   for (const { name, source } of plan) {
     const linkPath = path.join(scopeDir, name);
     const { target, type } = symlinkSpecFor(scopeDir, source, platform);
 
-    fs.rmSync(linkPath, { recursive: true, force: true });
-    fs.symlinkSync(target, linkPath, type);
-    linked.push(name);
+    try {
+      const backupPath = stageInstalledAside(fs, linkPath, `${linkPath}${backupSuffix}`);
+
+      // Recorded only once the move succeeded, so the rollback never tries to
+      // restore a package whose directory never left its place.
+      staged.push({ name, linkPath, backupPath });
+
+      fs.symlinkSync(target, linkPath, type);
+    } catch (error) {
+      return restoreInstalledTree({ fs, staged, failedPackage: name, cause: error });
+    }
   }
 
-  return { ok: true, linked, warning: pinnedSurfaceDriftWarning };
+  // Only now is the installed content unreachable, so discarding it can no
+  // longer cost anything.
+  for (const { backupPath } of staged) {
+    if (backupPath === null) {
+      continue;
+    }
+
+    try {
+      fs.rmSync(backupPath, { recursive: true, force: true });
+    } catch {
+      // The links are already in place, so the run succeeded; a backup that
+      // refuses to be deleted is debris the next run clears before staging.
+      // Failing here would report a failure for a correctly linked tree.
+    }
+  }
+
+  return {
+    ok: true,
+    linked: plan.map(({ name }) => name),
+    warning: pinnedSurfaceDriftWarning,
+  };
 }
 
 /**
