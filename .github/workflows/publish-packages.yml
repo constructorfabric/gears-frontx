@@ -239,10 +239,16 @@ jobs:
     # installs. `!cancelled()` carries the case where no ecosystem version changed:
     # publish-ecosystem is skipped, and a skipped `needs` job would otherwise skip
     # this job outright instead of evaluating the result check below.
-    needs: [detect-template, publish-ecosystem]
+    #
+    # detect-ecosystem is in `needs` for its result alone: a *failed* detect marks
+    # publish-ecosystem `skipped`, which is indistinguishable here from the benign
+    # "no version changed" skip — so without this the template would publish in a
+    # state where nobody established whether the pins are on the registry yet.
+    needs: [detect-template, detect-ecosystem, publish-ecosystem]
     if: >-
       !cancelled() &&
       needs.detect-template.outputs.has_changes == 'true' &&
+      needs.detect-ecosystem.result == 'success' &&
       (needs.publish-ecosystem.result == 'success' ||
       needs.publish-ecosystem.result == 'skipped')
     runs-on: ubuntu-latest

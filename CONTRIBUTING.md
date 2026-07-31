@@ -114,9 +114,18 @@ npm run dev:template:link    # point the template's node_modules at packages/* s
 cd template-shell && npm run dev
 ```
 
-`dev:template:link` ([`scripts/link-template-ecosystem.mjs`](scripts/link-template-ecosystem.mjs)) only repoints those three directories inside the template's `node_modules`; it never writes `package.json` or `package-lock.json`, so nothing from the dev loop can leak into a seeded project. Skipping it is silent: the template builds and passes its checks against the published alpha, and local edits simply never appear.
+`dev:template:link` ([`scripts/link-template-ecosystem.mjs`](scripts/link-template-ecosystem.mjs)) only repoints those three directories inside the template's `node_modules`; it never writes `package.json` or `package-lock.json`, so nothing from the dev loop can leak into a seeded project. Skipping it is normally silent: the template builds and passes its checks against the published alpha, and local edits simply never appear.
 
-To go back to the pinned registry versions, run `npm ci` inside `template-shell`.
+> **Known issue — the link step is currently mandatory, not an optimisation.** The published `0.3.0-alpha.0` tarballs predate the move of `FRONTX_ACTION_*` into `@gears-frontx/gts-plugin` and the addition of `DomainContext.typeSystem` to `@gears-frontx/mfes`. `template-shell/packages/framework` already imports both from their new homes, so against the pins alone `npm run type-check` and `npm run build:packages` fail with 17 type errors. `npm ci` and `npm run build:package` are unaffected. Running `dev:template:link` puts the local `dist/` in place and both go green; `npm run dev:template:link` prints the same warning. This clears itself the next time the ecosystem packages publish — until then a seeded project cannot build from the pins either. Tracked on [#485](https://github.com/constructorfabric/gears-frontx/issues/485).
+
+To go back to the pinned registry versions, run `npm ci` inside `template-shell`. There is no `--unlink`: the links replace published tarball *content*, which only npm can restore.
+
+Two ways to lose the links without meaning to:
+
+- **any `npm install` inside `template-shell`** — say, while adding a dependency — reifies the tree from the lockfile and silently puts the registry tarballs back. Relink afterwards.
+- **`npm run clean:artifacts`** at the repo root removes `packages/*/dist`, so the links survive but point at nothing. `npm run build:packages` restores them; the link script refuses to run at all if the build is missing.
+
+The dev loop uses symlinks on macOS and Linux and directory junctions on Windows, so no elevated shell or Developer Mode is required on any platform.
 
 ## Validation
 
