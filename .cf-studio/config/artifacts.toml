@@ -25,7 +25,7 @@ reason = "Auth SDK package has no backing CDSL artifact"
 patterns = ["packages/auth/*"]
 
 [[ignore]]
-reason = "Telemetry SDK package has no backing CDSL artifact"
+reason = "Telemetry SDK package has no backing CDSL artifact yet - PRD requirement, DESIGN component and FEATURE are planned, and this entry is removed once they land"
 patterns = ["packages/telemetry/**", "packages/telemetry-example-web/**"]
 
 [[ignore]]

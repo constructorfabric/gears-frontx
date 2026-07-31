@@ -85,7 +85,7 @@ Read and scan the implementation for violations that automated tools miss.
 - `unknown` in public type definitions — BLOCK
 - `eslint-disable`, `eslint-disable-next-line`, `eslint-disable-line` — BLOCK
 - Barrel exports that hide real imports — BLOCK
-- Ad-hoc tracking code outside `@gears-frontx/telemetry` — BLOCK
+- Telemetry or tracking code outside `packages/telemetry` — BLOCK
 - Manual state sync or prop drilling — BLOCK
 - Native helpers where lodash equivalents exist for non-trivial operations — BLOCK
 
