@@ -10,8 +10,11 @@
  * template builds, type-checks and tests green against code nobody changed.
  *
  * This script repoints the three installed ecosystem directories at the local
- * sources. It replaces exactly those three entries and touches nothing else:
- * not `package.json`, not `package-lock.json`, not the rest of the tree.
+ * `packages/*` builds. What it links is the whole package directory, but what a
+ * consumer then resolves through it is `dist/` - which is why an unbuilt package
+ * is refused instead of linked. It replaces exactly those three entries and
+ * touches nothing else: not `package.json`, not `package-lock.json`, not the
+ * rest of the tree.
  *
  * A `npm install --no-save --no-package-lock <paths>` would do the linking too,
  * but npm rebuilds the whole ideal tree for it — pruning unrelated packages and
