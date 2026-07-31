@@ -16,7 +16,6 @@
   "files": [
     "dist",
     "CLAUDE.md",
-    "llms.txt",
     "README.md",
     "LICENSE",
     "NOTICE"

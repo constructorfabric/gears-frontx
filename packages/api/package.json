@@ -22,7 +22,6 @@
     "dist",
     "README.md",
     "CLAUDE.md",
-    "llms.txt",
     "commands"
   ],
   "scripts": {

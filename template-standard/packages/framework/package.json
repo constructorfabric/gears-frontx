@@ -25,8 +25,7 @@
   },
   "files": [
     "dist",
-    "CLAUDE.md",
-    "llms.txt"
+    "CLAUDE.md"
   ],
   "scripts": {
     "build": "tsup",
