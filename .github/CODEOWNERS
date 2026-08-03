@@ -1,0 +1,10 @@
+# Only the last matching pattern applies — ownership does not accumulate, so a
+# path listed below is owned by those names alone, not additionally by @GeraBart.
+
+*                        @GeraBart
+
+/packages/ui-kit/        @SysoevAndrey
+/packages/telemetry/     @hello1101n
+
+/template-shell/         @gs-layer @itechmeat
+/template-mfe/           @gs-layer @itechmeat
