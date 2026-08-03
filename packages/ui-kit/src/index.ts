@@ -16,5 +16,24 @@ export {
   RadioGroupItem,
   type RadioGroupItemProps,
 } from './components/radio-group/radio-group';
+export {
+  Select,
+  SelectContent,
+  type SelectContentProps,
+  SelectGroup,
+  type SelectGroupProps,
+  SelectItem,
+  type SelectItemProps,
+  SelectLabel,
+  type SelectLabelProps,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectSeparator,
+  type SelectSeparatorProps,
+  SelectTrigger,
+  type SelectTriggerProps,
+  SelectValue,
+  type SelectValueProps,
+} from './components/select/select';
 export { Switch, type SwitchProps } from './components/switch/switch';
 export { Textarea, type TextareaProps } from './components/textarea/textarea';

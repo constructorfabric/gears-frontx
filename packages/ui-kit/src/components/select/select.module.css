@@ -1,0 +1,207 @@
+/*
+ * Select styles, translated from shadcn/ui (MIT) to CSS Modules.
+ * Consumes only theme.css variables — no raw colors.
+ */
+
+.trigger {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.375rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.625rem;
+  border: 1px solid var(--input);
+  border-radius: calc(var(--radius) - 2px);
+  background-color: transparent;
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  outline: none;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.trigger[data-placeholder] {
+  color: var(--muted-foreground);
+}
+
+.trigger:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+
+/* See button.module.css: forced-colors drops box-shadow, restore UA outline. */
+@media (forced-colors: active) {
+  .trigger:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+.trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Declared after :focus-visible so the invalid ring wins while focused. */
+.trigger[aria-invalid='true'] {
+  border-color: var(--destructive);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 20%, transparent);
+}
+
+.sizeDefault {
+  height: 2.25rem;
+}
+
+.sizeSm {
+  height: 2rem;
+}
+
+.triggerIcon {
+  pointer-events: none;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+
+.value {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.375rem;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+
+.positioner {
+  isolation: isolate;
+  z-index: 50;
+}
+
+.popup {
+  position: relative;
+  isolation: isolate;
+  z-index: 50;
+  max-height: var(--available-height);
+  width: var(--anchor-width);
+  min-width: 9rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow:
+    0 4px 6px -1px color-mix(in oklab, var(--foreground) 10%, transparent),
+    0 2px 4px -2px color-mix(in oklab, var(--foreground) 10%, transparent);
+  transform-origin: var(--transform-origin);
+  transition:
+    opacity 100ms ease,
+    transform 100ms ease;
+}
+
+.popup[data-starting-style],
+.popup[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+/* When the popup aligns an item over the trigger (native-select feel),
+ * entering with a scale animation would visibly shift it — skip it. */
+.popup[data-align-trigger='true'] {
+  transition: none;
+}
+
+.group {
+  padding: 0.25rem;
+  scroll-margin: 0.25rem 0;
+}
+
+.groupLabel {
+  padding: 0.375rem 0.5rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.item {
+  position: relative;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 2rem 0.375rem 0.5rem;
+  border-radius: calc(var(--radius) - 4px);
+  cursor: default;
+  user-select: none;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: none;
+}
+
+.item:focus,
+.item[data-highlighted] {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.item[data-disabled] {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.itemText {
+  display: flex;
+  flex: 1;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.itemIndicator {
+  pointer-events: none;
+  position: absolute;
+  right: 0.5rem;
+  display: flex;
+  width: 1rem;
+  height: 1rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.separator {
+  pointer-events: none;
+  margin: 0.25rem -0.25rem;
+  height: 1px;
+  background-color: var(--border);
+}
+
+.scrollArrow {
+  z-index: 10;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0;
+  cursor: default;
+  background-color: var(--popover);
+}
+
+.scrollArrowUp {
+  top: 0;
+}
+
+.scrollArrowDown {
+  bottom: 0;
+}
+
+.svgIcon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  pointer-events: none;
+}

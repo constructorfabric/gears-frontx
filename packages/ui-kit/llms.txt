@@ -33,6 +33,10 @@ Rules for generated code:
 - [RadioGroup](dist/docs/radio-group.md): mutually exclusive options
   (RadioGroup + RadioGroupItem); `value`/`onValueChange` on the group;
   arrow-key navigation built in.
+- [Select](dist/docs/select.md): dropdown picking one value from a
+  list (Select/SelectTrigger/SelectValue/SelectContent/SelectGroup/
+  SelectItem); trigger sizes default|sm; keyboard and typeahead built
+  in.
 - [Switch](dist/docs/switch.md): immediate on/off toggle;
   `checked`/`onCheckedChange`, sizes default|sm; use checkbox for
   submit-time options.
