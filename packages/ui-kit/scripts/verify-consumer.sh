@@ -81,4 +81,9 @@ grep -rq -- '--primary' dist/assets/*.css || { echo 'FAIL: theme variables missi
 grep -rqE 'button_button' dist/assets/*.css || { echo 'FAIL: component styles missing from bundle'; exit 1; }
 grep -rqE 'button_variantOutline' dist/assets/*.js || { echo 'FAIL: CSS-module class map missing from JS bundle'; exit 1; }
 
+echo "==> Asserting the AI docs layer ships with the package"
+KIT="node_modules/@gears-frontx/ui-kit"
+[ -f "$KIT/llms.txt" ] || { echo 'FAIL: llms.txt missing from the package'; exit 1; }
+[ -f "$KIT/dist/docs/button.md" ] || { echo 'FAIL: per-component docs missing from dist/docs'; exit 1; }
+
 echo "OK: consumer check passed"

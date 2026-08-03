@@ -1,0 +1,28 @@
+# @gears-frontx/ui-kit
+
+> Standard React component base for FrontX templates. Behavior comes from
+> Base UI primitives, styling is compiled CSS on semantic design tokens,
+> variants via a `variant`/`size` prop pair. Consumers need no CSS framework
+> or build plugins.
+
+Rules for generated code:
+
+- Import styles exactly once at the app entry, theme first:
+  `import '@gears-frontx/ui-kit/theme.css';`
+  `import '@gears-frontx/ui-kit/styles.css';`
+- Import components from the package root: `import { Button } from '@gears-frontx/ui-kit';`
+- Brand/appearance changes go through theme tokens (CSS variables in
+  `theme.css`, light/dark via `data-theme`), never through inline styles or
+  overriding kit class names.
+- Per-component docs below list the kit-level props; everything else is the
+  underlying native element's props.
+
+## Components
+
+- [Button](dist/docs/button.md): action button; variants
+  default|destructive|outline|secondary|ghost|link, sizes
+  default|sm|lg|icon; render-prop polymorphism for rendering as a link.
+
+## Optional
+
+- [README](README.md): installation, setup, package layout.

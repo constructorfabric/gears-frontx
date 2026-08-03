@@ -79,11 +79,16 @@ internal react-kit (gitlab.constr.dev/frontend/react-kit): per-component
 directories, colocated tests and docs, `render`-prop polymorphism. A composite
 `data-table` is deliberately deferred.
 
-## AI layer (planned)
+## AI layer
 
-`llms.txt` + a short usage doc per component (when to use, anti-patterns,
-composition examples) shipped in the package; three composition recipes (CRUD
-page, settings form, confirmation dialog).
+Shipped in the package so agents read it from `node_modules`: `llms.txt` at
+the package root (entry point: setup rules + component index) and a short
+usage doc per component (when to use, kit-level props, examples,
+anti-patterns) colocated as `src/components/<name>/<name>.md` and copied to
+`dist/docs/` at build. A unit test enforces that every component has a doc,
+is indexed in `llms.txt`, and documents every variant/size its CSS module
+defines. Still planned: three composition recipes (CRUD page, settings form,
+confirmation dialog) once the components they compose exist.
 
 ## Testing and acceptance
 

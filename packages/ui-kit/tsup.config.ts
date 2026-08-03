@@ -19,6 +19,8 @@ export default defineConfig({
     '.css': 'local-css',
   },
   // Design tokens are plain CSS (not a module) and must survive as a separate
-  // consumer-importable file — tsup only emits CSS that JS imports.
-  onSuccess: 'cp src/styles/theme.css dist/theme.css',
+  // consumer-importable file — tsup only emits CSS that JS imports. The
+  // per-component usage docs ship under dist/docs/ so agents can read them
+  // from node_modules via llms.txt.
+  onSuccess: 'cp src/styles/theme.css dist/theme.css && mkdir -p dist/docs && cp src/components/*/*.md dist/docs/',
 });
