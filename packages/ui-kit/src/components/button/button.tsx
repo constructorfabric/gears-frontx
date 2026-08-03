@@ -1,5 +1,5 @@
+import { Button as ButtonPrimitive } from '@base-ui/react/button';
 import { cva, type VariantProps } from 'class-variance-authority';
-import type { ComponentProps } from 'react';
 
 import styles from './button.module.css';
 
@@ -27,8 +27,10 @@ const buttonVariants = cva(styles.button, {
 });
 
 export interface ButtonProps
-  extends ComponentProps<'button'>, VariantProps<typeof buttonVariants> {}
+  extends Omit<ButtonPrimitive.Props, 'className'>, VariantProps<typeof buttonVariants> {
+  className?: string;
+}
 
-export function Button({ className, variant, size, type = 'button', ...props }: ButtonProps) {
-  return <button type={type} className={buttonVariants({ variant, size, className })} {...props} />;
+export function Button({ className, variant, size, ...props }: ButtonProps) {
+  return <ButtonPrimitive className={buttonVariants({ variant, size, className })} {...props} />;
 }

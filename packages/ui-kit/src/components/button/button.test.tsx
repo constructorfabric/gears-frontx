@@ -45,6 +45,18 @@ describe('Button', () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it('renders a custom element via the render prop', () => {
+    render(
+      <Button render={<a href="/docs" />} variant="link">
+        Docs
+      </Button>,
+    );
+    const link = screen.getByRole('link', { name: 'Docs' });
+    expect(link).toHaveProperty('tagName', 'A');
+    expect(link.className).toContain(styles.button);
+    expect(link.className).toContain(styles.variantLink);
+  });
+
   it('does not fire clicks when disabled', () => {
     const onClick = vi.fn();
     render(
