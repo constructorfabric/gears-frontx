@@ -33,8 +33,8 @@ raw value instead of the label until the popup has been opened once.
 | `size` | `default` \| `sm` | `default` |
 | `className` | `string` — merged after the kit class | — |
 
-`SelectValue`: renders the selected item's label; pass `placeholder` via
-the root's `items`/children contract (see example). `SelectContent`
+`SelectValue`: renders the selected item's label. Pass `placeholder`
+directly to `SelectValue` (see example). `SelectContent`
 accepts positioning props (`side`, `sideOffset`, `align`, `alignOffset`,
 `alignItemWithTrigger`) and `container` — the popup portals to `<body>`
 by default, so if your theme lives on a subtree (`data-theme` on a

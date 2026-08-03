@@ -7,9 +7,11 @@ polymorphism, correct disabled/focus behavior, `type="button"` by default
 ## When to use
 
 - Any click-triggered action: submit, delete, open a dialog, toggle a panel.
-- Navigation styled as a button:
-  `<Button render={<a href="..." />} nativeButton={false}>` — a real anchor
-  underneath (crawlable, cmd-clickable) with button semantics on top.
+- An action that also navigates (e.g. "Open reports"):
+  `<Button render={<a href="..." />} nativeButton={false}>`. It is announced
+  as a button (`role="button"`), while the real anchor underneath keeps
+  cmd-click/middle-click and crawlability. Not a substitute for a link: for
+  plain navigation use the consumer app's link component.
 
 ## When not to use
 
@@ -49,7 +51,8 @@ import { Button } from '@gears-frontx/ui-kit';
 // Icon-only: always label it
 <Button size="icon" aria-label="Close">✕</Button>
 
-// Real link that looks like a button
+// Button-semantic action over a real anchor (announced as a button,
+// cmd-clickable) — not for plain navigation
 <Button render={<a href="/reports" />} nativeButton={false} variant="outline">
   Open reports
 </Button>

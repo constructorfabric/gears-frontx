@@ -8,8 +8,8 @@ error, validation state) when rendered inside one.
 
 - Any single-line free-text value: names, emails, search queries, numbers,
   file uploads (`type="file"`).
-- Inside a `Field` (planned) to get label association and validation display
-  for free.
+- Inside a `Field` to get label association and validation display for
+  free.
 
 ## When not to use
 
@@ -53,5 +53,5 @@ import { Input } from '@gears-frontx/ui-kit';
   enough — it hands you the string directly.
 - Do not restyle via inline `style` — sizing/spacing tweaks belong to layout
   containers, colors to theme tokens.
-- Do not build a labelled input by hand once `field` lands — the Field
-  composition handles label/error/description wiring.
+- Do not build a labelled input by hand — the `Field` composition handles
+  label/error/description wiring.

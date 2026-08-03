@@ -14,7 +14,7 @@ a control via `htmlFor`, or by nesting the control inside it.
 
 - Headings or free-standing text — labels are for controls; use regular
   markup styled by the consumer app.
-- Once `field` lands, prefer the Field composition — it wires the label,
+- Inside a form, prefer the `Field` composition — it wires the label,
   control, description, and error together automatically.
 
 ## Props (kit level)
