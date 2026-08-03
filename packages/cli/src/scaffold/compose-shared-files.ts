@@ -179,40 +179,70 @@ export interface RegionSpan {
 // keys "scripts" and "scripts-dev") lets one marker be mistaken for a
 // substring of another's — the review #500 round-2 P1-2 defect this function
 // exists to close. Returns `undefined` when the line carries no occurrence of
-// `prefix` at all — INCLUDING when `prefix` is present only as a leading
-// substring of a longer word (e.g. "frontx:regional configuration",
-// "frontx:endregionally noted") — `'malformed'` when `prefix` occurs with a
-// proper boundary after it but its token has no `identity:key` separator, or
-// the parsed pair otherwise. Tolerates an arbitrary comment PREFIX before the
-// marker token via `indexOf` (the marker hides inside a comment of any
-// language) and takes the token up to the first whitespace as its SUFFIX
-// boundary — see `locateAllMarkerBlocks`'s docstring below for why that
-// boundary rule is the most this scanner can resolve in general.
+// `prefix` with a valid boundary anywhere in it — INCLUDING when every
+// occurrence of `prefix` is only a leading substring of a longer word (e.g.
+// "frontx:regional configuration", "frontx:endregionally noted") —
+// `'malformed'` when the first occurrence of `prefix` with a proper boundary
+// after it has a token with no `identity:key` separator, or the parsed pair
+// otherwise. Tolerates an arbitrary comment PREFIX before the marker token
+// (the marker hides inside a comment of any language) and takes the token up
+// to the first whitespace as its SUFFIX boundary — see
+// `locateAllMarkerBlocks`'s docstring below for why that boundary rule is the
+// most this scanner can resolve in general.
 //
 // The contract (`cpt-frontx-feature-template-manifest`) shapes a marker as
 // `<PREFIX> <identity>:<key>` — a whitespace boundary between PREFIX and the
-// token is part of that shape, not incidental. Before this boundary check
-// (review #500 round-4 P2), `indexOf` alone treated ANY occurrence of the
-// bare prefix text as a marker: ordinary prose that merely happens to START
-// with the prefix's characters (e.g. the word "frontx:regional") was
-// misparsed as a marker with no `identity:key` separator and reported
-// `malformed` — which, since commits 1bf44af1/ce4584c8 made `malformed` a
-// materialization refusal, meant any file containing that word broke `add`/
-// `seed` outright. Requiring a whitespace-or-end-of-line boundary right after
-// `prefix` distinguishes an actual marker occurrence from prose that is
-// merely prefixed by the same characters, without weakening detection of a
-// genuine malformed marker (a real marker line with a boundary, but no
-// resolvable `identity:key` after it, is still reported `'malformed'`).
+// token is part of that shape, not incidental. Before the round-4 boundary
+// check, `indexOf` alone treated ANY occurrence of the bare prefix text as a
+// marker: ordinary prose that merely happens to START with the prefix's
+// characters (e.g. the word "frontx:regional") was misparsed as a marker with
+// no `identity:key` separator and reported `malformed` — which, since commits
+// 1bf44af1/ce4584c8 made `malformed` a materialization refusal, meant any
+// file containing that word broke `add`/`seed` outright. Requiring a
+// whitespace-or-end-of-line boundary right after `prefix` distinguishes an
+// actual marker occurrence from prose that is merely prefixed by the same
+// characters, without weakening detection of a genuine malformed marker (a
+// real marker line with a boundary, but no resolvable `identity:key` after
+// it, is still reported `'malformed'`).
+//
+// That round-4 fix checked only the FIRST `indexOf` hit, though: comment
+// prefixes are arbitrary and unbounded (the marker "hides inside a comment of
+// any language"), so boundary-less prose ahead of a genuine marker on the
+// SAME line is not a hypothetical — it is exactly what an arbitrary-prefix
+// scanner must expect. Stopping at the first hit meant a real marker further
+// along the line (e.g. "frontx:regional note; frontx:region prior:k") was
+// never reached at all, reported `undefined` as if no marker existed on the
+// line (review #500 round-5, regression from round-4's own fix). This loop
+// walks every occurrence of `prefix` in on-disk order and returns on the
+// FIRST one with a valid boundary — whether that first bounded occurrence
+// goes on to parse cleanly or turns out `'malformed'`, per the same
+// first-occurrence contract this function has always had (a well-formed
+// marker occurring for a SECOND time, with the same prefix, on one line is
+// intentionally left to that first-found occurrence — see
+// `locateAllMarkerBlocks`'s docstring for why one marker per line-and-prefix
+// is the shape every real manifest and fixture uses, and why extending this
+// function to return more than one match would be a contract change no
+// caller asks for).
 function parseMarkerLine(line: string, prefix: string): { identity: string; regionKey: string } | 'malformed' | undefined {
-  const prefixIndex = line.indexOf(prefix);
-  if (prefixIndex === -1) return undefined;
-  const boundaryChar = line[prefixIndex + prefix.length];
-  if (boundaryChar !== undefined && !/\s/.test(boundaryChar)) return undefined;
-  const afterPrefix = line.slice(prefixIndex + prefix.length).trimStart();
-  const token = afterPrefix.split(/\s/)[0] ?? '';
-  const colonIndex = token.indexOf(':');
-  if (colonIndex === -1) return 'malformed';
-  return { identity: token.slice(0, colonIndex), regionKey: token.slice(colonIndex + 1) };
+  let searchFrom = 0;
+  while (searchFrom <= line.length) {
+    const prefixIndex = line.indexOf(prefix, searchFrom);
+    if (prefixIndex === -1) return undefined;
+    const boundaryChar = line[prefixIndex + prefix.length];
+    if (boundaryChar === undefined || /\s/.test(boundaryChar)) {
+      const afterPrefix = line.slice(prefixIndex + prefix.length).trimStart();
+      const token = afterPrefix.split(/\s/)[0] ?? '';
+      const colonIndex = token.indexOf(':');
+      if (colonIndex === -1) return 'malformed';
+      return { identity: token.slice(0, colonIndex), regionKey: token.slice(colonIndex + 1) };
+    }
+    // This occurrence had no boundary (e.g. "regional" continuing past
+    // "frontx:region") — keep scanning from just past where it started, not
+    // past its whole length, so an adversarially overlapping repeat of
+    // `prefix` immediately after is still found.
+    searchFrom = prefixIndex + 1;
+  }
+  return undefined;
 }
 
 // A marker on the scanned file whose block boundaries could not be

@@ -1197,3 +1197,107 @@ describe('composeSharedFiles — review #500 round-4 P3: deterministic compositi
     expect(writes).toEqual([{ path: '/target/shared.txt', content: expectedComposed }]);
   });
 });
+
+describe('locateAllMarkerBlocks — review #500 round-5: a real marker further along the SAME line must still be found after an earlier boundary-less occurrence of the bare prefix', () => {
+  it('locates a begin marker that follows prefix-colliding prose on the same line ("frontx:regional note; frontx:region prior:k")', () => {
+    // The round-4 fix made `parseMarkerLine` stop at the line's FIRST
+    // `indexOf` hit and return `undefined` the moment that hit lacks a
+    // boundary — so a genuine marker appearing later on the same line, past
+    // an earlier same-prefix word, was never reached at all. Regression for
+    // review #500 round 5: this must resolve to a located block, not vanish.
+    const content = ['// frontx:regional note; frontx:region prior:k', 'content', 'frontx:endregion prior:k'].join('\n');
+
+    expect(locateAllMarkerBlocks(content)).toEqual({
+      blocks: [
+        {
+          identity: 'prior',
+          regionKey: 'k',
+          span: { beginIndex: 0, endIndex: 2 },
+          text: content,
+        },
+      ],
+      unlocatable: [],
+    });
+  });
+
+  it('locates an end marker that follows prefix-colliding prose on the same line ("frontx:endregionally note; frontx:endregion prior:k")', () => {
+    const content = ['frontx:region prior:k', 'content', '// frontx:endregionally note; frontx:endregion prior:k'].join('\n');
+
+    expect(locateAllMarkerBlocks(content)).toEqual({
+      blocks: [
+        {
+          identity: 'prior',
+          regionKey: 'k',
+          span: { beginIndex: 0, endIndex: 2 },
+          text: content,
+        },
+      ],
+      unlocatable: [],
+    });
+  });
+
+  it('locates a full block whose begin AND end lines both carry prefix-colliding prose before the real marker — the exact review #500 round-5 repro', () => {
+    // Reported effect: `blocks: 0, unlocatable: []` — a correctly-formed
+    // block made entirely invisible, neither located nor flagged, so
+    // composition silently drops it rather than refusing or carrying it.
+    const content = [
+      '// frontx:regional note; frontx:region prior:k',
+      'content',
+      '// frontx:endregionally note; frontx:endregion prior:k',
+    ].join('\n');
+
+    expect(locateAllMarkerBlocks(content)).toEqual({
+      blocks: [
+        {
+          identity: 'prior',
+          regionKey: 'k',
+          span: { beginIndex: 0, endIndex: 2 },
+          text: content,
+        },
+      ],
+      unlocatable: [],
+    });
+  });
+});
+
+describe('composeSharedFiles — review #500 round-5: a carried-forward block behind prefix-colliding prose is not silently dropped', () => {
+  it('carries the block forward into the composed output instead of losing it', async () => {
+    // "prior" is recorded in provenance but does not contribute to this
+    // assembly, so its on-disk block must be carried forward verbatim
+    // (inst-cs-carry-forward-recorded-blocks) — exactly the path that
+    // silently lost this content before the round-5 fix, since the block was
+    // never located at all.
+    const onDisk = [
+      '// frontx:regional note; frontx:region prior:k',
+      'Content owned by prior.',
+      '// frontx:endregionally note; frontx:endregion prior:k',
+    ].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async (path) => (path === '/target/shared.txt' ? onDisk : null);
+    const existingProvenance: ProvenanceRecord[] = [
+      { templateIdentity: 'prior', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/prior@offline' },
+    ];
+    const assembly = assemblyOf(
+      contribution(
+        'template-b',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-b:b\nContent owned by B.\nfrontx:endregion template-b:b' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, existingProvenance);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Deterministic order by identity: "prior" sorts before "template-b".
+    const expectedComposed = [
+      '// frontx:regional note; frontx:region prior:k',
+      'Content owned by prior.',
+      '// frontx:endregionally note; frontx:endregion prior:k',
+      'frontx:region template-b:b',
+      'Content owned by B.',
+      'frontx:endregion template-b:b',
+    ].join('\n');
+    expect(writes).toEqual([{ path: '/target/shared.txt', content: expectedComposed }]);
+  });
+});
