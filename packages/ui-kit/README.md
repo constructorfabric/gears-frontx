@@ -39,7 +39,7 @@ npm run test:unit --workspace=@gears-frontx/ui-kit
 ./packages/ui-kit/scripts/verify-consumer.sh     # pack-install acceptance check
 ```
 
-See [DESIGN.md](DESIGN.md) for the design and its history. The package is
+See [design-notes.md](design-notes.md) for the design and its history. The package is
 `private` until the MVP component set lands and #495 approves its architecture
 ownership, traceability, and version policy. The required CDSL artifacts must
 also replace the temporary `artifacts.toml` ignore. Only then may `private` be
