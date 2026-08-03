@@ -358,10 +358,12 @@ describe('Fixture 6 — declaration coverage: every real file in template-shell/
   // Claiming it would collide with template-shell's exclusive subtree and turn
   // a development-only file into an ownership assertion — reviving exactly the
   // inferred-ownership model ADR-0031 rejected.
-  it('template-mfe/: the harness manifest stays undeclared — no claim on package.json', () => {
+  it('template-mfe/: the harness manifest stays undeclared — no claim on package.json or package-lock.json', () => {
     const { exclusiveSubtrees, sharedFiles } = readManifest(TEMPLATE_MFE_DIR).ownershipBoundaries;
+    const sharedFilePaths = sharedFiles.map((entry: { path: string }) => entry.path);
     expect(exclusiveSubtrees).not.toContain('package.json');
     expect(exclusiveSubtrees).not.toContain('package-lock.json');
-    expect(sharedFiles.map((entry: { path: string }) => entry.path)).not.toContain('package.json');
+    expect(sharedFilePaths).not.toContain('package.json');
+    expect(sharedFilePaths).not.toContain('package-lock.json');
   });
 });
