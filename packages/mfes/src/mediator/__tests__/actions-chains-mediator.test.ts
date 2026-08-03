@@ -11,6 +11,11 @@ import type { ExtensionDomainState } from '../../runtime/extension-manager';
 const MOUNT_EXT = 'mock.action.v1~mount_ext.v1~';
 const UNMOUNT_EXT = 'mock.action.v1~unmount_ext.v1~';
 const LOAD_EXT = 'mock.action.v1~load_ext.v1~';
+// Stand-ins for the four well-known lifecycle stages, same rationale as above.
+const STAGE_INIT = 'mock.stage.v1~init.v1';
+const STAGE_ACTIVATED = 'mock.stage.v1~activated.v1';
+const STAGE_DEACTIVATED = 'mock.stage.v1~deactivated.v1';
+const STAGE_DESTROYED = 'mock.stage.v1~destroyed.v1';
 // A domain-declared "is-a" derivative of mount_ext — NOT string-equal to
 // MOUNT_EXT, but recognized as derived from it by the mock's isTypeOf.
 const DERIVED_MOUNT_EXT = `${MOUNT_EXT}vendor.v1~`;
@@ -38,6 +43,18 @@ function createMockPlugin(): TypeSystemPlugin<unknown> {
     },
     resolveUnmountExtActionId(): string {
       return UNMOUNT_EXT;
+    },
+    resolveLifecycleStageInitId(): string {
+      return STAGE_INIT;
+    },
+    resolveLifecycleStageActivatedId(): string {
+      return STAGE_ACTIVATED;
+    },
+    resolveLifecycleStageDeactivatedId(): string {
+      return STAGE_DEACTIVATED;
+    },
+    resolveLifecycleStageDestroyedId(): string {
+      return STAGE_DESTROYED;
     },
   };
 }

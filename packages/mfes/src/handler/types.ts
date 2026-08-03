@@ -11,6 +11,7 @@
 // @cpt-algo:cpt-frontx-algo-mfe-registry-handler-resolution:p1
 
 import type { MfeEntry, ActionsChain, SharedProperty } from '../types';
+import type { TypeSystemPlugin } from '../type-substrate';
 import { ActionHandler } from '../mediator/types';
 
 /**
@@ -158,7 +159,13 @@ export abstract class MfeBridgeFactory<TBridge extends ChildMfeBridge = ChildMfe
  * - Creating bridge instances
  *
  * Handler resolution (type hierarchy matching) is performed by the registry
- * using its own TypeSystemPlugin, not by the handler itself.
+ * using its own TypeSystemPlugin, not by the handler itself. The optional
+ * `typeSystem` carried by this base class is for resolving references inside
+ * the load path that the type system owns - e.g. a string manifest reference
+ * (`MfeEntryMF.manifest` as a `cti.reference`) that points to a separately
+ * registered manifest instance (issue #472, tracked under the #505 umbrella).
+ * It is intentionally optional so existing handlers that never see string
+ * references keep compiling unchanged.
  */
 export abstract class MfeHandler<TEntry extends MfeEntry = MfeEntry, TBridge extends ChildMfeBridge = ChildMfeBridge> {
   /**
@@ -179,12 +186,23 @@ export abstract class MfeHandler<TEntry extends MfeEntry = MfeEntry, TBridge ext
    */
   readonly priority: number;
 
+  /**
+   * Optional injected type-system plugin, used by handlers that need to
+   * resolve references inside the load path (manifests, schema lookups).
+   * `undefined` for handlers constructed before this was introduced - they
+   * keep the legacy behaviour of resolving every reference from their own
+   * internal cache.
+   */
+  protected readonly typeSystem: TypeSystemPlugin | undefined;
+
   constructor(
     handledBaseTypeId: string,
-    priority: number = 0
+    priority: number = 0,
+    typeSystem?: TypeSystemPlugin
   ) {
     this.handledBaseTypeId = handledBaseTypeId;
     this.priority = priority;
+    this.typeSystem = typeSystem;
   }
 
   /**

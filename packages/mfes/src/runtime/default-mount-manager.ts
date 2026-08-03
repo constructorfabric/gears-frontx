@@ -13,6 +13,7 @@
 // @cpt-dod:cpt-frontx-dod-extension-domain-governance-default-deny:p1
 
 import type { MfeHandler, MfeMountContext, ParentMfeBridge } from '../handler/types';
+import type { TypeSystemPlugin } from '../type-substrate';
 import type { RuntimeCoordinator } from './coordination/types';
 import type { ActionHandler } from '../mediator/types';
 import type { ActionsChain } from '../types';
@@ -29,6 +30,7 @@ export class DefaultMountManager extends MountManager {
   private readonly extensionManager: DefaultExtensionManager;
   private readonly resolveHandler: HandlerResolver;
   private readonly coordinator: RuntimeCoordinator;
+  private readonly typeSystem: TypeSystemPlugin;
   private readonly triggerLifecycle: LifecycleTrigger;
   private readonly executeActionsChain: ActionChainExecutor;
   private readonly hostRuntime: MfeRegistry;
@@ -42,6 +44,7 @@ export class DefaultMountManager extends MountManager {
     extensionManager: DefaultExtensionManager;
     resolveHandler: HandlerResolver;
     coordinator: RuntimeCoordinator;
+    typeSystem: TypeSystemPlugin;
     triggerLifecycle: LifecycleTrigger;
     executeActionsChain: ActionChainExecutor;
     hostRuntime: MfeRegistry;
@@ -55,6 +58,7 @@ export class DefaultMountManager extends MountManager {
     this.extensionManager = config.extensionManager;
     this.resolveHandler = config.resolveHandler;
     this.coordinator = config.coordinator;
+    this.typeSystem = config.typeSystem;
     this.triggerLifecycle = config.triggerLifecycle;
     this.executeActionsChain = config.executeActionsChain;
     this.hostRuntime = config.hostRuntime;
@@ -187,7 +191,7 @@ export class DefaultMountManager extends MountManager {
 
       await this.triggerLifecycle(
         extensionId,
-        'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1'
+        this.typeSystem.resolveLifecycleStageActivatedId()
       );
 
       return parentBridge;
@@ -213,7 +217,7 @@ export class DefaultMountManager extends MountManager {
 
     await this.triggerLifecycle(
       extensionId,
-      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1'
+      this.typeSystem.resolveLifecycleStageDeactivatedId()
     );
 
     try {

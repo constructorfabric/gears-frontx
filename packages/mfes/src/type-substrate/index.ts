@@ -184,6 +184,62 @@ export interface TypeSystemPlugin<TSchema = unknown> {
   // @cpt-begin:cpt-frontx-algo-type-substrate-port-type-of-resolution:p2:inst-resolve-unmount-ext
   resolveUnmountExtActionId(): string;
   // @cpt-end:cpt-frontx-algo-type-substrate-port-type-of-resolution:p2:inst-resolve-unmount-ext
+
+  // === Well-Known Lifecycle Stages ===
+  //
+  // The MFE Runtime fires four lifecycle stages on domains and extensions —
+  // init, activated, deactivated, destroyed — and every plugin MUST supply
+  // its own notation-native type ID for each one. Like the action family
+  // above, modeled as four explicit methods (not a single method keyed by
+  // a string) so implementers get a compile-time-enforced, discoverable
+  // contract: TypeScript rejects an incomplete `implements TypeSystemPlugin`
+  // rather than letting an unsupported string key silently resolve to nothing.
+  // The runtime MUST resolve each stage it fires through these methods and
+  // MUST NOT carry a literal stage identifier (issue #505).
+
+  /**
+   * Resolve this plugin's concrete type ID for the framework's `init`
+   * lifecycle stage (fired on domain registration and extension
+   * registration).
+   *
+   * @returns This plugin's concrete type ID for the `init` lifecycle stage
+   */
+  // @cpt-begin:cpt-frontx-algo-type-substrate-port-type-of-resolution:p2:inst-resolve-lifecycle-stage-init
+  resolveLifecycleStageInitId(): string;
+  // @cpt-end:cpt-frontx-algo-type-substrate-port-type-of-resolution:p2:inst-resolve-lifecycle-stage-init
+
+  /**
+   * Resolve this plugin's concrete type ID for the framework's `activated`
+   * lifecycle stage (fired when an extension becomes the active occupant of
+   * an exclusive domain).
+   *
+   * @returns This plugin's concrete type ID for the `activated` lifecycle stage
+   */
+  // @cpt-begin:cpt-frontx-algo-type-substrate-port-type-of-resolution:p2:inst-resolve-lifecycle-stage-activated
+  resolveLifecycleStageActivatedId(): string;
+  // @cpt-end:cpt-frontx-algo-type-substrate-port-type-of-resolution:p2:inst-resolve-lifecycle-stage-activated
+
+  /**
+   * Resolve this plugin's concrete type ID for the framework's `deactivated`
+   * lifecycle stage (fired when an extension stops being the active occupant
+   * of an exclusive domain, before unmount).
+   *
+   * @returns This plugin's concrete type ID for the `deactivated` lifecycle stage
+   */
+  // @cpt-begin:cpt-frontx-algo-type-substrate-port-type-of-resolution:p2:inst-resolve-lifecycle-stage-deactivated
+  resolveLifecycleStageDeactivatedId(): string;
+  // @cpt-end:cpt-frontx-algo-type-substrate-port-type-of-resolution:p2:inst-resolve-lifecycle-stage-deactivated
+
+  /**
+   * Resolve this plugin's concrete type ID for the framework's `destroyed`
+   * lifecycle stage (fired on domain unregistration and extension
+   * unregistration, after unmount).
+   *
+   * @returns This plugin's concrete type ID for the `destroyed` lifecycle stage
+   */
+  // @cpt-begin:cpt-frontx-algo-type-substrate-port-type-of-resolution:p2:inst-resolve-lifecycle-stage-destroyed
+  resolveLifecycleStageDestroyedId(): string;
+  // @cpt-end:cpt-frontx-algo-type-substrate-port-type-of-resolution:p2:inst-resolve-lifecycle-stage-destroyed
 }
 
 /**

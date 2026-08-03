@@ -106,7 +106,7 @@ export class DefaultExtensionManager extends ExtensionManager {
 
     await this.triggerDomainOwnLifecycle(
       domainId,
-      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1'
+      this.typeSystem.resolveLifecycleStageDestroyedId()
     );
 
     this.domains.delete(domainId);
@@ -190,7 +190,7 @@ export class DefaultExtensionManager extends ExtensionManager {
 
     await this.triggerLifecycle(
       extension.id,
-      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1'
+      this.typeSystem.resolveLifecycleStageInitId()
     );
     // @cpt-end:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t3
     // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-admission-fail
@@ -211,7 +211,7 @@ export class DefaultExtensionManager extends ExtensionManager {
 
     await this.triggerLifecycle(
       extensionId,
-      'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1'
+      this.typeSystem.resolveLifecycleStageDestroyedId()
     );
 
     const domainState = this.domains.get(extensionState.extension.domain);

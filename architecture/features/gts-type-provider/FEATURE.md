@@ -152,6 +152,10 @@ Internal system functions and procedures that do not interact with actors direct
 4. [x] - `p1` - Resolve this plugin's own GTS action-type ID for the framework's well-known `load_ext` lifecycle action - `inst-tr-04`
 5. [x] - `p1` - Resolve this plugin's own GTS action-type ID for the framework's well-known `mount_ext` lifecycle action - `inst-tr-05`
 6. [x] - `p1` - Resolve this plugin's own GTS action-type ID for the framework's well-known `unmount_ext` lifecycle action - `inst-tr-06`
+7. [x] - `p1` - Resolve this plugin's own GTS type ID for the framework's well-known `init` lifecycle stage - `inst-tr-07`
+8. [x] - `p1` - Resolve this plugin's own GTS type ID for the framework's well-known `activated` lifecycle stage - `inst-tr-08`
+9. [x] - `p1` - Resolve this plugin's own GTS type ID for the framework's well-known `deactivated` lifecycle stage - `inst-tr-09`
+10. [x] - `p1` - Resolve this plugin's own GTS type ID for the framework's well-known `destroyed` lifecycle stage - `inst-tr-10`
 
 ### Runtime Application Type Registration
 

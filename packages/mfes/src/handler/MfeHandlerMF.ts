@@ -29,6 +29,7 @@
 
 import type { MfeEntryMF } from '../types/mfe-entry-mf';
 import type { MfManifest } from '../manifest/mf-manifest';
+import type { TypeSystemPlugin } from '../type-substrate';
 import { LazyLoaderRegistry } from '../lazy-loader/lazy-loader-registry';
 import {
   MfeHandler,
@@ -164,6 +165,16 @@ const SHARED_DEP_TEXT_CACHE_CAPACITY = 128;
 interface MfeLoaderConfig {
   timeout?: number;
   retries?: number;
+  /**
+   * Optional injected type-system plugin. When present, string manifest
+   * references (`MfeEntryMF.manifest` as a type ID) are resolved through
+   * `typeSystem.getSchema(ref)` after a `manifestCache` miss, mirroring how
+   * `DefaultExtensionManager.resolveEntry` resolves a string entry reference
+   * (issue #472, tracked under the #505 umbrella). When absent, the handler
+   * keeps the legacy behaviour of resolving every reference from its own
+   * internal cache.
+   */
+  typeSystem?: TypeSystemPlugin;
 }
 
 /**
@@ -236,7 +247,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     handledBaseTypeId: string,
     config: MfeLoaderConfig = {}
   ) {
-    super(handledBaseTypeId, 0);
+    super(handledBaseTypeId, 0, config.typeSystem);
     this.bridgeFactory = new MfeBridgeFactoryDefault();
     this.manifestCache = new ManifestCache();
     this.retryHandler = new RetryHandler();
@@ -598,8 +609,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * Resolve manifest from reference.
    *
    * Accepts an inline MfManifest object (caches it) or a string type ID
-   * (looks up from cache). Schema validation is the type system plugin's
-   * responsibility — the handler trusts registered manifests are valid.
+   * (looks up from cache, then falls back to the injected type system when
+   * one is present - mirrors how `DefaultExtensionManager.resolveEntry`
+   * resolves a string entry reference, issue #472). Schema validation is the
+   * type system plugin's responsibility - the handler trusts registered
+   * manifests are valid.
    */
   private async resolveManifest(manifestRef: string | MfManifest): Promise<MfManifest> {
     if (typeof manifestRef === 'object' && manifestRef !== null) {
@@ -612,8 +626,22 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       if (cached) {
         return cached;
       }
+
+      // Fall back to the type system when the handler was constructed with
+      // one - a string manifest reference may point to a separately
+      // registered MfManifest instance (the CTI `cti.reference` pattern).
+      // Without this lookup, non-GTS consumers that register manifests as
+      // type-system instances never resolve (#472 under the #505 umbrella).
+      if (this.typeSystem) {
+        const fromTypeSystem = this.typeSystem.getSchema(manifestRef);
+        if (fromTypeSystem && isMfManifest(fromTypeSystem)) {
+          this.manifestCache.cacheManifest(fromTypeSystem);
+          return fromTypeSystem;
+        }
+      }
+
       throw new MfeLoadError(
-        `Manifest '${manifestRef}' not found. Provide manifest inline in MfeEntryMF or ensure another entry from the same remote was loaded first.`,
+        `Manifest '${manifestRef}' not found. Provide manifest inline in MfeEntryMF, ensure another entry from the same remote was loaded first, or register it in the type system before loading.`,
         manifestRef
       );
     }
@@ -1288,3 +1316,21 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 }
 
 export { MfeHandlerMF };
+
+/**
+ * Type guard for `MfManifest`, used when resolving a string manifest reference
+ * through `typeSystem.getSchema(ref)` (#472). Schema-validation correctness is
+ * the plugin's responsibility; this only confirms the structural shape so the
+ * handler does not cache an arbitrary object as a manifest.
+ */
+function isMfManifest(value: unknown): value is MfManifest {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.name === 'string' &&
+    typeof candidate.metaData === 'object' &&
+    candidate.metaData !== null &&
+    Array.isArray(candidate.shared)
+  );
+}

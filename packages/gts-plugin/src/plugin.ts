@@ -30,6 +30,10 @@ import {
   FRONTX_ACTION_LOAD_EXT,
   FRONTX_ACTION_MOUNT_EXT,
   FRONTX_ACTION_UNMOUNT_EXT,
+  FRONTX_LIFECYCLE_STAGE_INIT,
+  FRONTX_LIFECYCLE_STAGE_ACTIVATED,
+  FRONTX_LIFECYCLE_STAGE_DEACTIVATED,
+  FRONTX_LIFECYCLE_STAGE_DESTROYED,
 } from './constants';
 import type { JSONSchema } from './types';
 import { loadSchemas, loadLifecycleStages } from './loader';
@@ -347,6 +351,55 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
     return FRONTX_ACTION_UNMOUNT_EXT;
   }
   // @cpt-end:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-06
+
+  /**
+   * Resolve this plugin's GTS type ID for the framework's well-known `init`
+   * lifecycle stage. Keeps the GTS-notation literal owned here, never in the
+   * generic runtime.
+   *
+   * @returns The GTS type ID for the `init` lifecycle stage
+   */
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-07
+  resolveLifecycleStageInitId(): string {
+    return FRONTX_LIFECYCLE_STAGE_INIT;
+  }
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-07
+
+  /**
+   * Resolve this plugin's GTS type ID for the framework's well-known
+   * `activated` lifecycle stage.
+   *
+   * @returns The GTS type ID for the `activated` lifecycle stage
+   */
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-08
+  resolveLifecycleStageActivatedId(): string {
+    return FRONTX_LIFECYCLE_STAGE_ACTIVATED;
+  }
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-08
+
+  /**
+   * Resolve this plugin's GTS type ID for the framework's well-known
+   * `deactivated` lifecycle stage.
+   *
+   * @returns The GTS type ID for the `deactivated` lifecycle stage
+   */
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-09
+  resolveLifecycleStageDeactivatedId(): string {
+    return FRONTX_LIFECYCLE_STAGE_DEACTIVATED;
+  }
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-09
+
+  /**
+   * Resolve this plugin's GTS type ID for the framework's well-known
+   * `destroyed` lifecycle stage.
+   *
+   * @returns The GTS type ID for the `destroyed` lifecycle stage
+   */
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-10
+  resolveLifecycleStageDestroyedId(): string {
+    return FRONTX_LIFECYCLE_STAGE_DESTROYED;
+  }
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-10
 }
 
 /**

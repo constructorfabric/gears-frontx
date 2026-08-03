@@ -24,6 +24,14 @@ import { ExtensionMounter } from '../ExtensionMounter';
 const FRONTX_ACTION_LOAD_EXT = 'mock.action.v1~load_ext.v1~';
 const FRONTX_ACTION_MOUNT_EXT = 'mock.action.v1~mount_ext.v1~';
 const FRONTX_ACTION_UNMOUNT_EXT = 'mock.action.v1~unmount_ext.v1~';
+// Stand-ins for the four well-known lifecycle stages the runtime fires
+// (init/activated/deactivated/destroyed). Same rationale: deliberately NOT
+// the real GTS strings — the mock exercises its own notation, and the mock's
+// `resolveLifecycleStageInitId()` etc. return these (issue #505).
+const FRONTX_LIFECYCLE_STAGE_INIT = 'mock.stage.v1~init.v1';
+const FRONTX_LIFECYCLE_STAGE_ACTIVATED = 'mock.stage.v1~activated.v1';
+const FRONTX_LIFECYCLE_STAGE_DEACTIVATED = 'mock.stage.v1~deactivated.v1';
+const FRONTX_LIFECYCLE_STAGE_DESTROYED = 'mock.stage.v1~destroyed.v1';
 
 // ─── Minimal TypeSystemPlugin mock matching current interface ─────────────────
 //
@@ -64,6 +72,18 @@ function createMockPlugin(): TypeSystemPlugin<MockSchema> {
     },
     resolveUnmountExtActionId(): string {
       return FRONTX_ACTION_UNMOUNT_EXT;
+    },
+    resolveLifecycleStageInitId(): string {
+      return FRONTX_LIFECYCLE_STAGE_INIT;
+    },
+    resolveLifecycleStageActivatedId(): string {
+      return FRONTX_LIFECYCLE_STAGE_ACTIVATED;
+    },
+    resolveLifecycleStageDeactivatedId(): string {
+      return FRONTX_LIFECYCLE_STAGE_DEACTIVATED;
+    },
+    resolveLifecycleStageDestroyedId(): string {
+      return FRONTX_LIFECYCLE_STAGE_DESTROYED;
     },
   };
 }
