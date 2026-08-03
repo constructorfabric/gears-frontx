@@ -2,7 +2,7 @@
 import { resolveComposition } from '../composition/resolve';
 import { uniformApply } from '../scaffold/assembler';
 import { checkAssemblyConflicts } from '../scaffold/conflict';
-import { materializeAssembly, occupiedBoundariesFromProvenance } from '../scaffold/materialize';
+import { isUserFixableMaterializeFailure, materializeAssembly, occupiedBoundariesFromProvenance } from '../scaffold/materialize';
 import type { ReadProvenanceRecordsFn } from '../scaffold/materialize';
 import type { InventoryEntry } from '../inventory/types';
 import type { ReadContentItemsFn, ReadProjectFileFn, WriteFileFn } from '../scaffold/types';
@@ -18,6 +18,14 @@ export type AddTemplateResult =
         | 'cycle'
         | 'manifest-unreadable'
         | 'provenance-failed'
+        // review #500 (fix 2/2): a materialization refusal the repository's
+        // owner can act on and retry — composeSharedFiles' 'unrecorded-owner',
+        // 'span-overlap', or 'carried-block-conflict' (see
+        // isUserFixableMaterializeFailure). Kept distinct from
+        // 'provenance-failed' so cli.ts's exit-code mapping (anything but
+        // 'manifest-unreadable'/'provenance-failed' is EXIT_USER_ERROR) sends
+        // the user a fixable-error code instead of an internal-error one.
+        | 'materialization-refused'
         | 'occupied-not-installed'
         | 'occupied-manifest-unreadable'
         | 'occupied-source-ambiguous';
@@ -147,7 +155,12 @@ export async function addTemplate(
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
 
   if (!materializeResult.ok) {
-    return { ok: false, reason: 'provenance-failed', message: materializeResult.message };
+    // review #500 (fix 2/2): only a user-fixable compose refusal gets its own
+    // reason here — an invariant-violation compose reason, or a real
+    // provenance-write failure (no composeReason at all), stays
+    // 'provenance-failed' exactly as before.
+    const reason = isUserFixableMaterializeFailure(materializeResult) ? 'materialization-refused' : 'provenance-failed';
+    return { ok: false, reason, message: materializeResult.message };
   }
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-done

@@ -111,7 +111,11 @@ export type { ComposeSharedFilesResult, ExtractedRegion, MaterializedFile } from
 // (cpt-frontx-dod-cli-scaffolding-boundary-declared-assembly) AND delegates to
 // composeSharedFiles for the shared-file region composition DoD
 // (cpt-frontx-dod-cli-scaffolding-compose-shared-files).
-export { materializeAssembly, occupiedBoundariesFromProvenance } from './scaffold/materialize';
+export {
+  isUserFixableMaterializeFailure,
+  materializeAssembly,
+  occupiedBoundariesFromProvenance,
+} from './scaffold/materialize';
 export type { MaterializeResult, ReadProvenanceRecordsFn } from './scaffold/materialize';
 export { seedRepository } from './commands/seed-repository';
 export type { SeedRepositoryResult } from './commands/seed-repository';

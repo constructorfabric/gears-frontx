@@ -2,7 +2,7 @@
 import { resolveComposition } from '../composition/resolve';
 import { uniformApply } from '../scaffold/assembler';
 import { checkAssemblyConflicts } from '../scaffold/conflict';
-import { materializeAssembly } from '../scaffold/materialize';
+import { isUserFixableMaterializeFailure, materializeAssembly } from '../scaffold/materialize';
 import type { InventoryEntry } from '../inventory/types';
 import type { ReadContentItemsFn, ReadProjectFileFn, WriteFileFn } from '../scaffold/types';
 import type { BoundaryConflictEntry } from '../scaffold/state';
@@ -10,7 +10,23 @@ import type { ProvenanceWriteFn } from '../provenance/types';
 
 export type SeedRepositoryResult =
   | { ok: true; message: string; appliedTemplates: string[] }
-  | { ok: false; reason: 'unresolved' | 'cycle' | 'manifest-unreadable' | 'provenance-failed'; message: string }
+  | {
+      ok: false;
+      reason:
+        | 'unresolved'
+        | 'cycle'
+        | 'manifest-unreadable'
+        | 'provenance-failed'
+        // review #500 (fix 2/2): mirrors AddTemplateResult's reason of the
+        // same name — see the comment there for the exit-code rationale. A
+        // fresh seed target is normally empty, but composeSharedFiles is
+        // still invoked and can still refuse for the same reasons an `add`
+        // can (a template's manifest declares a `region-union` path that
+        // collides with content the caller's own writeFileFn/readProjectFileFn
+        // adapter already has on disk at the target).
+        | 'materialization-refused';
+      message: string;
+    }
   | { ok: false; reason: 'conflict'; conflicts: BoundaryConflictEntry[]; message: string };
 
 /**
@@ -104,7 +120,9 @@ export async function seedRepository(
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-materialize
 
   if (!materializeResult.ok) {
-    return { ok: false, reason: 'provenance-failed', message: materializeResult.message };
+    // review #500 (fix 2/2): see the identical branch in add-template.ts.
+    const reason = isUserFixableMaterializeFailure(materializeResult) ? 'materialization-refused' : 'provenance-failed';
+    return { ok: false, reason, message: materializeResult.message };
   }
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-done

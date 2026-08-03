@@ -2,6 +2,7 @@ import { readManifestFromContent } from '../manifest/validate-contract';
 import { writeProvenance } from '../provenance/write';
 import { formatTemplateAddress, parseSourceSpec } from '../spec-parser/parse';
 import { composeSharedFiles } from './compose-shared-files';
+import type { ComposeSharedFilesResult } from './compose-shared-files';
 import type { ProvenanceRecord, ProvenanceWriteFn } from '../provenance/types';
 import type { InventoryEntry } from '../inventory/types';
 import type { OccupiedBoundaryEntry } from './state';
@@ -138,7 +139,55 @@ function sameSourceAddress(left: string, right: string): boolean {
   return a.ok && b.ok && formatTemplateAddress(a.value) === formatTemplateAddress(b.value);
 }
 
-export type MaterializeResult = { ok: true } | { ok: false; message: string };
+// The subset of ComposeSharedFilesResult's discriminant reachable here —
+// derived rather than hand-duplicated, so a new compose refusal reason added
+// there is a type error here until this file (and its two callers,
+// addTemplate/seedRepository) decide which exit code it deserves, instead of
+// silently falling through to 'provenance-failed'.
+type ComposeFailureReason = Extract<ComposeSharedFilesResult, { ok: false }>['reason'];
+
+// review #500 (fix 2/2): `composeSharedFiles` already distinguishes a
+// user-fixable refusal (the developer can edit the target repository and
+// retry) from a materialization-invariant violation (a bug in the pre-flight
+// conflict check, not something the user did wrong) via its typed `reason`.
+// The FIRST fix on this review thread propagated that same distinction one
+// hop further — `materializeAssembly` used to collapse every compose failure
+// to a bare `message`, which is what let `addTemplate`/`seedRepository`
+// re-tag EVERY materialization refusal as `'provenance-failed'` regardless
+// of cause, and `cli.ts` then exit that as EXIT_INTERNAL_ERROR even for a
+// refusal the user could fix themselves (`unrecorded-owner`). `composeReason`
+// carries the SAME typed reason one hop further: undefined for a real
+// provenance-write failure (writeProvenance below never produces a
+// ComposeFailureReason), populated with compose's own reason otherwise.
+export type MaterializeResult =
+  | { ok: true }
+  | { ok: false; message: string; composeReason?: ComposeFailureReason };
+
+// The three compose refusals the target repository's OWNER can resolve and
+// retry: `unrecorded-owner` (register the occupying template's provenance),
+// `span-overlap` (disentangle overlapping markers in template content),
+// `carried-block-conflict` (fix a hand-edited or corrupted on-disk file).
+// Every other compose reason (`exclusive-contested`, `key-collision`,
+// `carried-key-collision`) names a materialization invariant the pre-flight
+// conflict check should already have caught — reaching materialization means
+// that check missed it, which is a mechanism bug, not the user's to fix.
+const USER_FIXABLE_COMPOSE_REASONS: ReadonlySet<ComposeFailureReason> = new Set([
+  'unrecorded-owner',
+  'span-overlap',
+  'carried-block-conflict',
+]);
+
+/**
+ * Classifies a materialization failure as user-fixable (the target
+ * repository's owner can resolve it and retry `seed`/`add`) or not (a
+ * mechanism bug — an invariant violation, or a real provenance-write
+ * failure). Shared by `addTemplate` and `seedRepository` so both commands
+ * map the same set of compose reasons to the same exit code, rather than
+ * each re-deriving — and risking drifting — its own copy of this list.
+ */
+export function isUserFixableMaterializeFailure(result: { ok: false; composeReason?: ComposeFailureReason }): boolean {
+  return result.composeReason !== undefined && USER_FIXABLE_COMPOSE_REASONS.has(result.composeReason);
+}
 
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-boundary-declared-assembly:p1
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-compose-shared-files:p1
@@ -161,7 +210,12 @@ export type MaterializeResult = { ok: true } | { ok: false; message: string };
  * `composeSharedFiles`, which needs the identities it names to tell a
  * recorded-but-not-contributing template's on-disk region-union block (carry
  * forward verbatim, `cpt-frontx-dod-cli-scaffolding-preserve-applied-regions`)
- * apart from an unrecorded one (refuse the assembly).
+ * apart from an unrecorded one (refuse the assembly). On a compose refusal,
+ * the returned failure carries composeSharedFiles' own typed `reason` as
+ * `composeReason` (review #500 fix 2/2) — undefined only for a real
+ * `writeProvenance` failure below — so `addTemplate`/`seedRepository` can
+ * tell a user-fixable materialization refusal apart from a mechanism bug
+ * instead of collapsing every failure into one internal-error code.
  */
 export async function materializeAssembly(
   assembly: StagedAssembly,
@@ -176,7 +230,7 @@ export async function materializeAssembly(
   readProjectFileFn: ReadProjectFileFn = async () => null,
 ): Promise<MaterializeResult> {
   const composeResult = await composeSharedFiles(assembly, targetDir, writeFileFn, readProjectFileFn, existingProvenance);
-  if (!composeResult.ok) return { ok: false, message: composeResult.message };
+  if (!composeResult.ok) return { ok: false, message: composeResult.message, composeReason: composeResult.reason };
 
   const newRecords: ProvenanceRecord[] = assembly.contributions.map((contribution) => {
     const entry = lookupFn(contribution.templateName);
