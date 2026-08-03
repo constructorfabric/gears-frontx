@@ -11,7 +11,7 @@
   gap: 0.375rem;
   padding: 0.5rem 0.5rem 0.5rem 0.625rem;
   border: 1px solid var(--input);
-  border-radius: calc(var(--radius) - 2px);
+  border-radius: var(--radius-md);
   background-color: transparent;
   color: var(--foreground);
   font-family: inherit;
@@ -91,7 +91,7 @@
   min-width: 9rem;
   overflow-x: hidden;
   overflow-y: auto;
-  border-radius: calc(var(--radius) - 2px);
+  border-radius: var(--radius-md);
   border: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
   background-color: var(--popover);
   color: var(--popover-foreground);
@@ -135,7 +135,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem 2rem 0.375rem 0.5rem;
-  border-radius: calc(var(--radius) - 4px);
+  border-radius: var(--radius-sm);
   cursor: default;
   user-select: none;
   font-size: 0.875rem;

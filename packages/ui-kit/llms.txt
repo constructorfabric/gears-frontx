@@ -14,6 +14,8 @@ Rules for generated code:
 - Brand/appearance changes go through theme tokens (CSS variables in
   `theme.css`, light/dark via `data-theme`), never through inline styles or
   overriding kit class names.
+- Rounding is a scale derived from `--radius` (`--radius-sm|md|lg|xl`);
+  override `--radius` alone and every component follows.
 - Per-component docs below list the kit-level props; everything else is the
   underlying native element's props.
 
