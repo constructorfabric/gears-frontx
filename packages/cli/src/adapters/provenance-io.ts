@@ -92,26 +92,23 @@ export async function readProvenanceRecords(repoRoot: string): Promise<Provenanc
  * Full per-template upgrade-target selection (letting a caller choose WHICH
  * applied template's record to upgrade) is a separate, not-yet-made design
  * decision — out of scope here. Until that lands, this bridge always picks
- * the first record; when more than one record exists, it says so on stderr
- * so the choice is diagnosable rather than a silent, unexplained "why did it
- * upgrade the shell and not the mfe" surprise.
+ * the first record.
+ *
+ * review #500 (fix 3/3): this adapter used to print the "which record was
+ * picked, which were skipped" diagnostic to stderr itself. Moved to `cli.ts`
+ * (`formatMultiRecordUpgradeNotice`), which decides what reaches the terminal or
+ * the `--json` handshake for every other message on this command surface —
+ * an IO adapter choosing what to print, unconditionally and outside that
+ * single place, is exactly the seam this bridge exists to avoid leaking
+ * decisions across. `cli.ts` derives the same diagnostic from
+ * `readProvenanceRecords` directly (the SET-shaped read above), independent
+ * of this bridge, so a caller of this function (e.g. the upgrade engine's
+ * own tests) that has no reason to care about the diagnostic no longer
+ * inherits an unrelated side effect.
  */
 export function createFsReadSingleProvenanceFn(): (repoRoot: string) => Promise<ProvenanceRecord | null> {
   return async function readSingleProvenance(repoRoot: string): Promise<ProvenanceRecord | null> {
     const records = await readProvenanceRecords(repoRoot);
-    const selected = records[0] ?? null;
-    if (selected !== null && records.length > 1) {
-      const others = records
-        .slice(1)
-        .map((record) => record.templateIdentity)
-        .join(', ');
-      process.stderr.write(
-        `[frontx] Multiple provenance records found; this repository has more than one applied ` +
-          `template. Upgrade targets the first-applied one ("${selected.templateIdentity}") — ` +
-          `per-template target selection is not yet supported, so the other applied template(s) ` +
-          `(${others}) cannot be selected for this upgrade.\n`,
-      );
-    }
-    return selected;
+    return records[0] ?? null;
   };
 }

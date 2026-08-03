@@ -210,10 +210,15 @@ export interface LocatedBlock {
  * token on the FIRST `:` — a template identity is a colon-free
  * package-style name, so the region key is whatever remains, colons
  * included. A marker whose key carries embedded whitespace, or whose
- * comment-closer touches the token with no separating space, falls outside
- * what this scanner can resolve — flagged as an open ambiguity rather than
- * silently constrained (see PR discussion), since the manifest contract does
- * not close it.
+ * comment-closer touches the token with no separating space (so no
+ * whitespace ever separates `identity:key` from the closing token), falls
+ * outside what this scanner can resolve: it cannot tell where the key ends
+ * and the comment-closer begins, because `cpt-frontx-feature-template-manifest`
+ * — the sole owner of the region-addressing schema — declares no charset
+ * restriction on a region key. Closing that gap is a manifest-contract change
+ * (reserving a character, or requiring a separating space before any
+ * comment-closer), not a scanner change, so it is left unsupported here
+ * rather than "fixed" by a heuristic the contract does not license.
  */
 export function locateAllMarkerBlocks(content: string): LocatedBlock[] {
   const lines = content.split('\n');
@@ -287,8 +292,16 @@ export async function composeSharedFiles(
   // Both default to "nothing already on disk, nothing already applied" —
   // exactly the previous behavior — for the few call sites that genuinely
   // have no target repository to reconcile against (e.g. a fresh in-memory
-  // fixture). Every real seed/add path (`seedRepository`, `addTemplate`,
-  // `scaffoldComposedProject`) always supplies its own real values.
+  // fixture). Every real seed/add path (`seedRepository`, `addTemplate`)
+  // always supplies its own real value here. `scaffoldComposedProject`
+  // declares the same default but, unlike those two, has no production
+  // caller in this CLI's own command surface (`cli.ts` never dispatches to
+  // it) — its sole caller is `__tests__/composition.test.ts`, which passes a
+  // null-returning stub of its own, not a real adapter (review #500).
+  // TODO(#489): make this parameter required once the template-mfe-harness
+  // branch merges — kept optional for now only because
+  // `__tests__/template-split.e2e.test.ts` (edited on that branch) calls
+  // `seedRepository`/`addTemplate` without supplying it.
   readProjectFileFn: ReadProjectFileFn = async () => null,
   existingProvenance: ProvenanceRecord[] = [],
 ): Promise<ComposeSharedFilesResult> {

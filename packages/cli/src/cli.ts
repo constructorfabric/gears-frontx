@@ -242,6 +242,32 @@ function formatConflictDetails(conflicts: BoundaryConflictEntry[]): string {
     .join('\n');
 }
 
+// review #500 (fix 3/3): reads the SAME provenance SET
+// `createFsReadSingleProvenanceFn` bridges down to one record, so this
+// diagnostic can be produced HERE — where every other `upgrade` message is
+// decided — without the single-record bridge itself deciding to print
+// anything. `undefined` when there is nothing to report (zero or one
+// record): callers append this into an existing message only when present.
+async function formatMultiRecordUpgradeNotice(
+  projectRoot: string,
+  readProvenanceRecordsFn: ReadProvenanceRecordsFn,
+): Promise<string | undefined> {
+  const records = await readProvenanceRecordsFn(projectRoot);
+  if (records.length <= 1) return undefined;
+  const [selected, ...rest] = records;
+  const others = rest.map((record) => record.templateIdentity).join(', ');
+  return (
+    `[frontx] Multiple provenance records found; this repository has more than one applied ` +
+    `template. Upgrade targets the first-applied one ("${selected.templateIdentity}") — ` +
+    `per-template target selection is not yet supported, so the other applied template(s) ` +
+    `(${others}) cannot be selected for this upgrade.`
+  );
+}
+
+function joinNoticeAndMessage(notice: string | undefined, message: string | undefined): string | undefined {
+  return notice && message ? `${notice}\n${message}` : (notice ?? message);
+}
+
 function formatInstallResult(result: InstallCommandResult): CommandOutcome {
   if (!result.ok) return { exitCode: EXIT_USER_ERROR, stderr: result.message };
   const discoveryLine =
@@ -381,6 +407,15 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       // (DESIGN §3.4; cpt-frontx-dod-ai-upgrade-orchestration-single-engine)
       // instead of the human-facing interactive prompt.
       const jsonMode = rest.includes('--json');
+      // review #500 (fix 3/3): computed HERE, from the same SET-shaped read
+      // the upgrade engine's single-record bridge (`createFsReadSingleProvenanceFn`)
+      // uses internally, rather than left to that adapter to print — this is
+      // the one place, like every other message on this command surface,
+      // that decides what reaches the terminal. Suppressed entirely in
+      // `--json` mode: the AI Tooling Framework's handshake (DESIGN §3.4) is
+      // a minimal, fixed machine-readable protocol, and an unstructured
+      // human-facing line has no well-formed place in it.
+      const multiRecordNotice = await formatMultiRecordUpgradeNotice(projectRoot, deps.readProvenanceRecordsFn);
       const result = await upgradeCommand(projectRoot, targetVersion, {
         readProvenance: deps.readSingleProvenanceFn,
         fetchFn: deps.fetchFn,
@@ -401,20 +436,21 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
           return {
             exitCode: EXIT_SUCCESS,
             stdout: jsonMode ? JSON.stringify({ ok: true, status: result.status }) : result.changeSetJson,
+            stderr: jsonMode ? undefined : multiRecordNotice,
           };
         case 'resolution-failed':
           return {
             exitCode: EXIT_USER_ERROR,
             stderr: jsonMode
               ? JSON.stringify({ ok: false, status: result.status, message: result.message })
-              : result.message,
+              : joinNoticeAndMessage(multiRecordNotice, result.message),
           };
         case 'apply-failed':
           return {
             exitCode: EXIT_INTERNAL_ERROR,
             stderr: jsonMode
               ? JSON.stringify({ ok: false, status: result.status, message: result.message })
-              : result.message,
+              : joinNoticeAndMessage(multiRecordNotice, result.message),
           };
       }
     }
