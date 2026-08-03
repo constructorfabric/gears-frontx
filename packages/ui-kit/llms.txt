@@ -25,6 +25,10 @@ Rules for generated code:
 - [Checkbox](dist/docs/checkbox.md): on/off tick box for independent
   options; `checked`/`onCheckedChange`; nest inside Label for one click
   target.
+- [Field](dist/docs/field.md): labelled form field composition
+  (Field/FieldLabel/FieldDescription/FieldError); wires ids, htmlFor,
+  aria-describedby, and validation display automatically — the default
+  way to build forms.
 - [Input](dist/docs/input.md): single-line text field; `onValueChange`
   for the string value, `aria-invalid` for the error state; wires into
   Field automatically.

@@ -1,0 +1,28 @@
+/*
+ * Field styles, translated from shadcn/ui (MIT) to CSS Modules.
+ * Consumes only theme.css variables — no raw colors.
+ */
+
+.field {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Base UI stamps data-invalid on the root when validation fails. */
+.field[data-invalid] {
+  color: var(--destructive);
+}
+
+.description {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.375;
+}
+
+.error {
+  color: var(--destructive);
+  font-size: 0.875rem;
+  line-height: 1.375;
+}

@@ -8,6 +8,16 @@
  */
 export { Button, type ButtonProps } from './components/button/button';
 export { Checkbox, type CheckboxProps } from './components/checkbox/checkbox';
+export {
+  Field,
+  type FieldProps,
+  FieldDescription,
+  type FieldDescriptionProps,
+  FieldError,
+  type FieldErrorProps,
+  FieldLabel,
+  type FieldLabelProps,
+} from './components/field/field';
 export { Input, type InputProps } from './components/input/input';
 export { Label, type LabelProps } from './components/label/label';
 export {
