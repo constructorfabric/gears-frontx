@@ -289,7 +289,7 @@ export default [
   {
     files: [
       'packages/telemetry/src/managers/events.ts',
-      'packages/telemetry/src/managers/hooks.ts',
+      'packages/telemetry/src/utils/hooks.ts',
     ],
     rules: {
       '@typescript-eslint/ban-ts-comment': 'off',

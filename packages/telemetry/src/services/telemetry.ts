@@ -1,6 +1,4 @@
 import { createEventsManager } from '../managers/events';
-import { createHooks } from '../managers/hooks';
-import { createLogger } from '../managers/logger';
 import { createPluginsManager } from '../managers/plugins';
 import { createSessionManager } from '../managers/session';
 import { createUserInfoManager } from '../managers/userInfo';
@@ -10,6 +8,8 @@ import { devicePlugin } from '../plugins/device';
 import { navigationPlugin } from '../plugins/navigation';
 import { sessionPlugin } from '../plugins/session';
 import type { TelemetryLogEventParams, TelemetryUserId } from '../utils/eventTypes';
+import { createHooks } from '../utils/hooks';
+import { createLogger } from '../utils/logger';
 import type { TelemetryContext, TelemetryConfig, TelemetryPluginOption } from '../utils/types';
 import { normalizeOptions } from '../utils/utils';
 import type { TelemetryService } from './types';

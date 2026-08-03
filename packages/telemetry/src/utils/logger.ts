@@ -1,4 +1,4 @@
-import type { TelemetryConfigNormalized } from '../utils/types';
+import type { TelemetryConfigNormalized } from './types';
 
 export type TelemetryLoggerService = {
   logMessage: (...args: unknown[]) => void;

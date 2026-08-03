@@ -6,9 +6,9 @@ import type {
   TelemetryEventRecord,
   TelemetryLogEventParams,
 } from '../utils/eventTypes';
+import { createScheduler } from '../utils/scheduler';
 import type { TelemetryContext } from '../utils/types';
 import { toJSONLikeValues } from '../utils/utils';
-import { createScheduler } from './scheduler';
 
 export type EventsManager = {
   start: () => void;

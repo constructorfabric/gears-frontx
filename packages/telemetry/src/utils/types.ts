@@ -1,7 +1,6 @@
-import type { TelemetryHooksService } from '../managers/hooks';
-import type { TelemetryLoggerService } from '../managers/logger';
 import type { TelemetryLogEventParams, TelemetryRecord } from './eventTypes';
-import type { HooksManager } from './hooks';
+import type { HooksManager, TelemetryHooksService } from './hooks';
+import type { TelemetryLoggerService } from './logger';
 
 export type TelemetryConfigNormalized = {
   appName: string;
