@@ -63,7 +63,7 @@ generate screens consistently.
   ignore. Only after all of those gates pass is flipping `private` the release
   act.
 
-## Component set (MVP, ~18 components)
+## Component set (MVP, 19 components)
 
 | Group    | Components |
 |----------|------------|
