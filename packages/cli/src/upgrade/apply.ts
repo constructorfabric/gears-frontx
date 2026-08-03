@@ -44,15 +44,26 @@ function describeNonArrayPayload(value: unknown): string {
 }
 
 // The fields ADR-0019/the `ProvenanceRecord` contract (provenance/types.ts)
-// requires on every record — `occupiedOwnershipBoundary` is the one field
-// declared optional there, so it is not checked here. Not a new requirement:
-// these are exactly the contract's own required fields.
+// requires on every record. Not a new requirement: these are exactly the
+// contract's own required fields.
+// `occupiedOwnershipBoundary` is declared optional there, so its ABSENCE is
+// never checked — but review #500 round 3 found that its PRESENCE was not
+// checked either: a record with `occupiedOwnershipBoundary: 42` (or any other
+// non-string) passed as valid, so a later write could carry that malformed
+// value forward unnoticed. Checked below alongside the required fields, not
+// folded into `REQUIRED_PROVENANCE_RECORD_FIELDS` itself, since that constant
+// also drives `describeInvalidRecord`'s "missing or has a non-string" wording,
+// which does not apply to a field that is allowed to be absent. Duplicated
+// from the equivalent guard in adapters/provenance-io.ts — this pure-logic
+// upgrade engine takes filesystem access only through injected deps, never
+// through the adapters layer directly, so the two copies are intentional.
 const REQUIRED_PROVENANCE_RECORD_FIELDS = ['templateIdentity', 'scaffoldedFromVersion', 'sourceSpec'] as const;
 
 function isValidProvenanceRecord(value: unknown): value is ProvenanceRecord {
   return (
     isRecordShaped(value) &&
-    REQUIRED_PROVENANCE_RECORD_FIELDS.every((field) => typeof value[field] === 'string')
+    REQUIRED_PROVENANCE_RECORD_FIELDS.every((field) => typeof value[field] === 'string') &&
+    (value.occupiedOwnershipBoundary === undefined || typeof value.occupiedOwnershipBoundary === 'string')
   );
 }
 
@@ -60,7 +71,10 @@ function describeInvalidRecord(value: unknown): string {
   if (!isRecordShaped(value)) {
     return value === null ? 'is null, not an object' : `is a ${typeof value}, not an object`;
   }
-  const invalidFields = REQUIRED_PROVENANCE_RECORD_FIELDS.filter((field) => typeof value[field] !== 'string');
+  const invalidFields: string[] = REQUIRED_PROVENANCE_RECORD_FIELDS.filter((field) => typeof value[field] !== 'string');
+  if (value.occupiedOwnershipBoundary !== undefined && typeof value.occupiedOwnershipBoundary !== 'string') {
+    invalidFields.push('occupiedOwnershipBoundary');
+  }
   return `is missing or has a non-string ${invalidFields.map((field) => `"${field}"`).join(', ')}`;
 }
 

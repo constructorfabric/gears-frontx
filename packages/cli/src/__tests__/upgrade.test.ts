@@ -534,4 +534,38 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     expect(writes.size).toBe(0);
     expect(removed.size).toBe(0);
   });
+
+  // review #500 round 3: mirrors provenance-io.test.ts (f) for this pure-logic
+  // engine's duplicate guard. `occupiedOwnershipBoundary` is optional, so its
+  // absence must stay valid — but a non-string value present on the record
+  // (e.g. a number) must not pass through this check unnoticed, since a
+  // subsequent provenance write would then carry that malformed value forward.
+  it('(n) a provenance array element with a non-string occupiedOwnershipBoundary aborts before any project file is written, without throwing', async () => {
+    const writes = new Map<string, string>();
+    const removed = new Set<string>();
+    const malformedRecord = {
+      templateIdentity: 'my-template',
+      scaffoldedFromVersion: '1.0.0',
+      sourceSpec: 'local:acme/my-template@1.0.0',
+      occupiedOwnershipBoundary: 42,
+    };
+
+    const applyResult = await applyChangeSet(trivialChangeSet, PROJ_ROOT, BASE_PROVENANCE, {
+      readProjectFile: async (p) => {
+        if (p === `${PROJ_ROOT}/.frontx/provenance.json`) return JSON.stringify([malformedRecord]);
+        if (p === `${PROJ_ROOT}/src/App.tsx`) return 'v1 content';
+        return null;
+      },
+      writeProjectFile: async (p, c) => { writes.set(p, c); },
+      removeProjectFile: async (p) => { removed.add(p); },
+      writeProvenance: async (p, c) => { writes.set(p, c); },
+    });
+
+    expect(applyResult.ok).toBe(false);
+    if (applyResult.ok) return;
+    expect(applyResult.message).toMatch(/occupiedOwnershipBoundary/);
+    expect(applyResult.message).toMatch(/index 0/);
+    expect(writes.size).toBe(0);
+    expect(removed.size).toBe(0);
+  });
 });

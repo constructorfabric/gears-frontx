@@ -107,5 +107,34 @@ describe('provenance-io', () => {
     );
 
     await expect(readProvenanceRecords(root)).rejects.toThrow(/templateIdentity/);
+    await expect(readProvenanceRecords(root)).rejects.toThrow(/index 0/);
+    await expect(readProvenanceRecords(root)).rejects.toThrow(location);
+  });
+
+  // review #500 round 3: `occupiedOwnershipBoundary` is optional on
+  // `ProvenanceRecord`, so its ABSENCE was rightly never checked — but its
+  // PRESENCE was not checked either: a record carrying a non-string value for
+  // it (e.g. a number) passed `isValidProvenanceRecord` unnoticed, and a
+  // subsequent write could carry that malformed value forward. Once present,
+  // it must be a string like every other field.
+  it('(f) throws a diagnosable error naming the field when occupiedOwnershipBoundary is present but not a string', async () => {
+    const location = provenancePath(root);
+    fs.mkdirSync(path.dirname(location), { recursive: true });
+    fs.writeFileSync(
+      location,
+      JSON.stringify([
+        {
+          templateIdentity: 'root-project',
+          scaffoldedFromVersion: '1.0.0',
+          sourceSpec: 'github:acme/root-project@v1.0.0',
+          occupiedOwnershipBoundary: 42,
+        },
+      ]),
+      'utf-8',
+    );
+
+    await expect(readProvenanceRecords(root)).rejects.toThrow(/occupiedOwnershipBoundary/);
+    await expect(readProvenanceRecords(root)).rejects.toThrow(/index 0/);
+    await expect(readProvenanceRecords(root)).rejects.toThrow(location);
   });
 });
