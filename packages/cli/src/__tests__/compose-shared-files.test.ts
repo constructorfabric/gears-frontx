@@ -1,6 +1,6 @@
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1
 import { describe, it, expect } from 'vitest';
-import { composeSharedFiles, groupContributionsByPath } from '../scaffold/compose-shared-files';
+import { composeSharedFiles, groupContributionsByPath, locateAllMarkerBlocks } from '../scaffold/compose-shared-files';
 import type { ContributionEntry, ReadProjectFileFn, StagedAssembly } from '../scaffold/types';
 import type { OwnershipBoundary } from '../manifest/types';
 import type { ProvenanceRecord } from '../provenance/types';
@@ -77,6 +77,99 @@ describe('groupContributionsByPath (inst-cs-group-by-path)', () => {
     const grouped = groupContributionsByPath(assembly);
 
     expect(grouped.get('package.json')).toHaveLength(2);
+  });
+});
+
+describe('locateAllMarkerBlocks (inst-cs-read-existing-blocks) — raw scanner behavior', () => {
+  it('returns an empty array for an empty file', () => {
+    expect(locateAllMarkerBlocks('')).toEqual([]);
+  });
+
+  it('does not deduplicate two blocks sharing the same (identity, regionKey) pair — the caller is responsible for that', () => {
+    const content = [
+      'frontx:region template-a:shared',
+      'first',
+      'frontx:endregion template-a:shared',
+      'frontx:region template-a:shared',
+      'second',
+      'frontx:endregion template-a:shared',
+    ].join('\n');
+
+    const blocks = locateAllMarkerBlocks(content);
+
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]).toEqual({
+      identity: 'template-a',
+      regionKey: 'shared',
+      span: { beginIndex: 0, endIndex: 2 },
+      text: 'frontx:region template-a:shared\nfirst\nfrontx:endregion template-a:shared',
+    });
+    expect(blocks[1]).toEqual({
+      identity: 'template-a',
+      regionKey: 'shared',
+      span: { beginIndex: 3, endIndex: 5 },
+      text: 'frontx:region template-a:shared\nsecond\nfrontx:endregion template-a:shared',
+    });
+  });
+
+  it('returns nested spans as-is — the inner block fully contained in the outer one', () => {
+    const content = [
+      'frontx:region template-a:outer',
+      'frontx:region template-b:inner',
+      'nested',
+      'frontx:endregion template-b:inner',
+      'frontx:endregion template-a:outer',
+    ].join('\n');
+
+    const blocks = locateAllMarkerBlocks(content);
+
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0].span).toEqual({ beginIndex: 0, endIndex: 4 });
+    expect(blocks[1].span).toEqual({ beginIndex: 1, endIndex: 3 });
+  });
+
+  it('returns interleaved (partially overlapping) spans as-is', () => {
+    const content = [
+      'frontx:region template-a:build',
+      'buildline',
+      'frontx:region template-b:test',
+      'testline',
+      'frontx:endregion template-a:build',
+      'frontx:endregion template-b:test',
+    ].join('\n');
+
+    const blocks = locateAllMarkerBlocks(content);
+
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0].span).toEqual({ beginIndex: 0, endIndex: 4 });
+    expect(blocks[1].span).toEqual({ beginIndex: 2, endIndex: 5 });
+  });
+
+  it('drops an unterminated begin marker with no matching end marker', () => {
+    const content = ['frontx:region template-a:orphan', 'no end here'].join('\n');
+
+    expect(locateAllMarkerBlocks(content)).toEqual([]);
+  });
+
+  it('skips a malformed begin marker whose token carries no identity:key separator', () => {
+    const content = ['frontx:region not-a-valid-token-without-colon', 'body', 'frontx:endregion not-a-valid-token-without-colon'].join('\n');
+
+    expect(locateAllMarkerBlocks(content)).toEqual([]);
+  });
+
+  it('locates a marker pair hidden inside an arbitrary-language comment style (HTML)', () => {
+    const content = ['<!-- frontx:region template-a:html-block -->', 'body', '<!-- frontx:endregion template-a:html-block -->'].join('\n');
+
+    const blocks = locateAllMarkerBlocks(content);
+
+    expect(blocks).toEqual([
+      {
+        identity: 'template-a',
+        regionKey: 'html-block',
+        span: { beginIndex: 0, endIndex: 2 },
+        text: content,
+      },
+    ]);
   });
 });
 
@@ -381,6 +474,89 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
     expect(result.templateIdentity).toBe('mystery-template');
     expect(result.regionKey).toBe('x');
     expect(result.message).not.toMatch(/declares|claims ownership/i);
+    expect(writes).toEqual([]);
+  });
+
+  it('refuses the assembly, writing no file, when two carried-forward blocks share the same (identity, regionKey) pair (inst-cs-if-carried-block-conflict / inst-cs-return-carried-block-conflict, duplicate)', async () => {
+    // Both carried blocks are owned by "template-b", recorded in provenance
+    // and not a contributor to this assembly — so neither trips
+    // inst-cs-if-unrecorded-block-owner — but the on-disk file itself
+    // duplicates template-b's "shared" key at two non-overlapping locations,
+    // something only hand-editing (or corruption) of the target file could
+    // produce.
+    const onDisk = [
+      'frontx:region template-b:shared',
+      'first',
+      'frontx:endregion template-b:shared',
+      'frontx:region template-b:shared',
+      'second',
+      'frontx:endregion template-b:shared',
+    ].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const existingProvenance: ProvenanceRecord[] = [
+      { templateIdentity: 'template-b', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/b@offline' },
+    ];
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-a:a\nA.\nfrontx:endregion template-a:a' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, existingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('carried-block-conflict');
+    if (result.reason !== 'carried-block-conflict') return;
+    expect(result.path).toBe('shared.txt');
+    expect(result.contestants).toEqual(['template-b', 'template-b']);
+    expect(result.regionKeys).toEqual(['shared', 'shared']);
+    expect(result.message).toMatch(/hand-edited|corrupted/i);
+    expect(writes).toEqual([]);
+  });
+
+  it('refuses the assembly, writing no file, when two carried-forward blocks have overlapping on-disk marker spans (inst-cs-if-carried-block-conflict / inst-cs-return-carried-block-conflict, overlap)', async () => {
+    // template-b and template-c are both recorded in provenance and neither
+    // contributes to this assembly, so both blocks are eligible to be
+    // carried forward — but their marker pairs are interleaved on disk, a
+    // condition the pre-flight conflict check never evaluates because it
+    // never reads file content, only declared boundaries.
+    const onDisk = [
+      'header',
+      'frontx:region template-b:shared',
+      'line1',
+      'frontx:region template-c:shared2',
+      'line2',
+      'frontx:endregion template-b:shared',
+      'frontx:endregion template-c:shared2',
+    ].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const existingProvenance: ProvenanceRecord[] = [
+      { templateIdentity: 'template-b', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/b@offline' },
+      { templateIdentity: 'template-c', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/c@offline' },
+    ];
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-a:a\nA.\nfrontx:endregion template-a:a' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, existingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('carried-block-conflict');
+    if (result.reason !== 'carried-block-conflict') return;
+    expect(result.path).toBe('shared.txt');
+    expect(result.contestants).toEqual(['template-b', 'template-c']);
+    expect(result.regionKeys).toEqual(['shared', 'shared2']);
+    expect(result.message).toMatch(/hand-edited|corrupted/i);
     expect(writes).toEqual([]);
   });
 

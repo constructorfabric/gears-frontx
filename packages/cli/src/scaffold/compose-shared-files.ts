@@ -50,6 +50,13 @@ export interface MaterializedFile {
 // only materialization can observe; `unrecorded-owner` is neither a bug nor
 // a content-level conflict — it is evidence the occupied-boundary picture
 // the pre-flight check evaluated was incomplete (`inst-cs-return-unrecorded-owner`).
+// `carried-block-conflict` is likewise not a pre-flight-check miss: it is
+// detected entirely WITHIN the carried-block set read from one on-disk
+// buffer, which the pre-flight check never sees at all, so a duplicate or
+// overlapping pair there can only mean the on-disk file itself — the same
+// insufficiently-trusted source `unrecorded-owner` already treats with
+// suspicion — was hand-edited or corrupted since it was last written
+// (`inst-cs-return-carried-block-conflict`).
 export type ComposeSharedFilesResult =
   | { ok: true; files: MaterializedFile[] }
   | { ok: false; reason: 'exclusive-contested'; path: string; contestants: string[]; message: string }
@@ -76,6 +83,14 @@ export type ComposeSharedFilesResult =
       path: string;
       regionKey: string;
       contestants: string[];
+      message: string;
+    }
+  | {
+      ok: false;
+      reason: 'carried-block-conflict';
+      path: string;
+      contestants: string[];
+      regionKeys: string[];
       message: string;
     };
 
@@ -247,7 +262,12 @@ export function locateAllMarkerBlocks(content: string): LocatedBlock[] {
  * otherwise carrying every other on-disk block forward verbatim
  * (`inst-cs-carry-forward-recorded-blocks`, the issue #487 fix: an earlier
  * `add` no longer truncates a previously-applied template's already-written
- * region-union block); extracts each contributor's owned region by its
+ * region-union block); refuses the assembly, before trusting that carried
+ * set any further, when two CARRIED blocks resolve the same (identity,
+ * regionKey) pair or have overlapping/nested spans — a corrupted or
+ * hand-edited target file, not a pre-flight-check miss, since the pre-flight
+ * check never sees carried blocks at all (`inst-cs-if-carried-block-conflict`);
+ * extracts each contributor's owned region by its
  * identity-and-region-key sentinel markers; refuses the assembly if any two
  * EXTRACTED regions' actual on-disk marker spans overlap — the
  * content-level check only materialization can observe; composes the
@@ -376,6 +396,60 @@ export async function composeSharedFiles(
     // this assembly's own reviewable change-set.
     const carriedBlocks = existingBlocks.filter((block) => !contributorIdentities.has(block.identity));
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-carry-forward-recorded-blocks
+
+    // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-carried-block-conflict
+    // `locateAllMarkerBlocks` is a raw scanner: it neither deduplicates
+    // repeated (identity, regionKey) pairs nor rejects nested/overlapping
+    // spans, so this is the first point that can catch a corrupted or
+    // hand-edited target file BEFORE it is trusted the same way an
+    // occupied-boundary comparison trusts a declared claim. Every carried
+    // block was located in the SAME on-disk buffer (`inst-cs-read-existing-blocks`),
+    // so — unlike the cross-buffer extracted-region check below, which only
+    // compares spans when both buffers are byte-identical — comparing spans
+    // within this set is unconditionally valid. Checked BEFORE building any
+    // Map keyed by (identity, regionKey): a Map silently keeps the last
+    // duplicate and would hide exactly the condition this check exists to
+    // surface.
+    let carriedBlockConflict: { kind: 'duplicate' | 'overlap'; first: LocatedBlock; second: LocatedBlock } | undefined;
+    for (let i = 0; i < carriedBlocks.length && !carriedBlockConflict; i++) {
+      for (let j = i + 1; j < carriedBlocks.length; j++) {
+        const first = carriedBlocks[i];
+        const second = carriedBlocks[j];
+        if (first.identity === second.identity && first.regionKey === second.regionKey) {
+          carriedBlockConflict = { kind: 'duplicate', first, second };
+          break;
+        }
+        if (first.span.beginIndex <= second.span.endIndex && second.span.beginIndex <= first.span.endIndex) {
+          carriedBlockConflict = { kind: 'overlap', first, second };
+          break;
+        }
+      }
+    }
+    // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-carried-block-conflict
+    if (carriedBlockConflict) {
+      // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-carried-block-conflict
+      const { kind, first, second } = carriedBlockConflict;
+      const found =
+        kind === 'duplicate'
+          ? `two carried blocks both resolving identity "${first.identity}" and region key "${first.regionKey}"`
+          : `two carried blocks with overlapping or nested on-disk marker spans ` +
+            `(${first.identity}:${first.regionKey} and ${second.identity}:${second.regionKey})`;
+      return {
+        ok: false,
+        reason: 'carried-block-conflict',
+        path,
+        contestants: [first.identity, second.identity],
+        regionKeys: [first.regionKey, second.regionKey],
+        message:
+          `Materialization refused — the file already on disk at path "${path}" carries ${found}. This is not a ` +
+          'pre-flight conflict-check miss: carried blocks are read directly from that file and are never compared ' +
+          'against each other before materialization, so a duplicate or overlapping pair among them can only mean ' +
+          'the file was edited by hand or otherwise corrupted since it was last written by this tool. Fix the file ' +
+          `at "${path}" (remove the duplicate marker pair, or disentangle the overlapping regions) and retry. No ` +
+          'file was written.',
+      };
+      // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-carried-block-conflict
+    }
 
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-extract-regions
     const extracted: ExtractedRegion[] = [];
