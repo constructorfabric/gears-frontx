@@ -7,3 +7,4 @@
  * once in the consumer entry module.
  */
 export { Button, type ButtonProps } from './components/button/button';
+export { Input, type InputProps } from './components/input/input';

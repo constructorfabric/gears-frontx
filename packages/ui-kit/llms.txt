@@ -22,6 +22,9 @@ Rules for generated code:
 - [Button](dist/docs/button.md): action button; variants
   default|destructive|outline|secondary|ghost|link, sizes
   default|sm|lg|icon; render-prop polymorphism for rendering as a link.
+- [Input](dist/docs/input.md): single-line text field; `onValueChange`
+  for the string value, `aria-invalid` for the error state; wires into
+  Field automatically.
 
 ## Optional
 
