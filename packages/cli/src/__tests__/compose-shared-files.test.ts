@@ -477,6 +477,49 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
     expect(writes).toEqual([]);
   });
 
+  it('returns a materialization-invariant error when a carried-forward block and an extracted region resolve the same declared region key under DIFFERENT identities (inst-cs-if-carried-key-collision / inst-cs-return-carried-key-invariant)', async () => {
+    // Mirrors the pre-flight conflict check's own region-key-clash comparison
+    // (checkAssemblyConflicts, cpt-frontx-algo-cli-scaffolding-conflict-check
+    // inst-cc-if-region-key-clash): that check flags two DIFFERENT templates
+    // claiming the same region key on the same path — it never requires a
+    // shared identity, since two distinct templates never have one. Reached
+    // here by calling composeSharedFiles directly with an assembly that
+    // never went through the pre-flight check — the invariant scenario this
+    // guard exists for: the target's existing provenance already records
+    // template-a's claim on key "shared" (carried forward, since template-a
+    // does not contribute to THIS assembly), while the incoming template-b
+    // claims the SAME key "shared" (extracted from its own installed
+    // content). Had this assembly been run through the pre-flight check
+    // first, its occupied-boundary comparison would have refused it before
+    // any materialization was attempted.
+    const onDisk = 'frontx:region template-a:shared\nA content.\nfrontx:endregion template-a:shared';
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const existingProvenance: ProvenanceRecord[] = [
+      { templateIdentity: 'template-a', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/a@offline' },
+    ];
+    const assembly = assemblyOf(
+      contribution(
+        'template-b',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['shared'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-b:shared\nB content.\nfrontx:endregion template-b:shared' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, existingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('carried-key-collision');
+    if (result.reason !== 'carried-key-collision') return;
+    expect(result.path).toBe('shared.txt');
+    expect(result.regionKey).toBe('shared');
+    expect(result.contestants).toEqual(['template-a', 'template-b']);
+    expect(result.message).toMatch(/template-a/);
+    expect(result.message).toMatch(/template-b/);
+    expect(writes).toEqual([]);
+  });
+
   it('refuses the assembly, writing no file, when two carried-forward blocks share the same (identity, regionKey) pair (inst-cs-if-carried-block-conflict / inst-cs-return-carried-block-conflict, duplicate)', async () => {
     // Both carried blocks are owned by "template-b", recorded in provenance
     // and not a contributor to this assembly — so neither trips

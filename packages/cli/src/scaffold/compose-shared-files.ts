@@ -492,37 +492,47 @@ export async function composeSharedFiles(
     }
 
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-carried-key-collision
-    // Defensive, mirroring inst-cs-if-key-collision above: `carriedBlocks`
-    // excludes every contributor identity by construction
-    // (inst-cs-carry-forward-recorded-blocks), so a carried owner and a
-    // contributor can never legitimately share (identity, key) — this
-    // SHOULD be unreachable whenever the pre-flight conflict check's
-    // occupied-boundary comparison ran correctly. Checked anyway: reaching
-    // this collision instead of being stopped earlier by that comparison is
-    // exactly the failure mode a materialization invariant exists to catch.
-    // (A NUL-separated composite key, rather than a delimiter that could
-    // itself appear inside an identity or a region key, keeps the lookup
-    // unambiguous.)
-    const carriedByIdentityKey = new Map(
-      carriedBlocks.map((block) => [`${block.identity}\u0000${block.regionKey}`, block]),
-    );
-    const collidedCarried = extracted.find((region) =>
-      carriedByIdentityKey.has(`${region.templateName}\u0000${region.regionKey}`),
-    );
+    // Mirrors the pre-flight conflict check's OWN region-key-clash comparison
+    // (`cpt-frontx-algo-cli-scaffolding-conflict-check` inst-cc-if-region-key-clash),
+    // which flags two templates claiming the SAME region key on the SAME
+    // shared-file path — keyed on regionKey ALONE, never on identity: two
+    // different templates never share an identity, so requiring one would
+    // make the comparison vacuous. Keying THIS check on (identity, regionKey)
+    // — rather than regionKey alone, as it now reads — made it unreachable:
+    // `carriedBlocks` excludes every contributor identity
+    // (inst-cs-carry-forward-recorded-blocks), so a carried block's identity
+    // can never equal a contributor's, and every `extracted` region's
+    // templateName IS a contributor's. Keyed on regionKey alone, this check
+    // is reachable: the target's existing provenance recording template A's
+    // claim on key "k" (carried forward here) while the incoming assembly's
+    // template B also claims "k" (extracted here) is exactly the
+    // occupied-boundary clash `cpt-frontx-algo-cli-scaffolding-conflict-check`
+    // exists to catch — reaching materialization means that check's
+    // occupied-boundary derivation missed it.
+    const carriedByRegionKey = new Map(carriedBlocks.map((block) => [block.regionKey, block]));
+    let collidedCarried: { carriedBlock: LocatedBlock; extractedRegion: ExtractedRegion } | undefined;
+    for (const region of extracted) {
+      const carriedBlock = carriedByRegionKey.get(region.regionKey);
+      if (carriedBlock) {
+        collidedCarried = { carriedBlock, extractedRegion: region };
+        break;
+      }
+    }
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-carried-key-collision
     if (collidedCarried) {
       // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-carried-key-invariant
+      const { carriedBlock, extractedRegion } = collidedCarried;
       return {
         ok: false,
         reason: 'carried-key-collision',
         path,
-        regionKey: collidedCarried.regionKey,
-        contestants: [collidedCarried.templateName],
+        regionKey: extractedRegion.regionKey,
+        contestants: [carriedBlock.identity, extractedRegion.templateName],
         message:
-          `Materialization invariant violated — path "${path}" has a carried-forward block and a freshly ` +
-          `extracted region both resolving identity "${collidedCarried.templateName}" and region key ` +
-          `"${collidedCarried.regionKey}"; the pre-flight conflict check should have refused this assembly via ` +
-          'the occupied-boundary comparison.',
+          `Materialization invariant violated — path "${path}" has a carried-forward block owned by ` +
+          `"${carriedBlock.identity}" and a freshly extracted region owned by "${extractedRegion.templateName}" ` +
+          `both resolving region key "${extractedRegion.regionKey}"; the pre-flight conflict check's ` +
+          'occupied-boundary comparison should have refused this assembly before any file was written.',
       };
       // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-carried-key-invariant
     }
