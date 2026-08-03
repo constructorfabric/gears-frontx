@@ -3,11 +3,14 @@
  * Consumes only theme.css variables — no raw colors.
  */
 
+/*
+ * No color declaration on purpose: the label inherits from its context so
+ * Field can tint it destructive via .field[data-invalid].
+ */
 .label {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--foreground);
   font-size: 0.875rem;
   line-height: 1;
   font-weight: 500;

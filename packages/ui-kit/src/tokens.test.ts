@@ -37,8 +37,9 @@ describe('theme tokens', () => {
 
   it.each(moduleFiles)('%s consumes only theme-defined variables', (file) => {
     const css = readFileSync(file, 'utf8');
+    // A module may consume no tokens at all (label inherits everything);
+    // what it does consume must come from the theme.
     const used = Array.from(css.matchAll(/var\((--[a-z0-9-]+)/g), (match) => match[1] ?? '');
-    expect(used.length).toBeGreaterThan(0);
     for (const token of Array.from(new Set(used))) {
       if (BASE_UI_RUNTIME_VARS.has(token)) {
         continue;
