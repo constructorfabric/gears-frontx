@@ -10,17 +10,20 @@ scaffold to copy for a new MFE), and two widget fixtures (`widgets-fixture-a`,
 This template is **add-only**. It claims ownership of no root `package.json`, no
 build/test/lint tooling, and no `src-app/app/` host — those are owned by
 [`frontx-template-shell`](../template-shell/README.md). Seeding this template into
-an empty directory produces a non-functional repository (dangling `file:`
-dependencies into a shell that isn't there).
+an empty directory produces a repository with no host to mount its MFEs into.
+
+Each MFE pins its `@gears-frontx/*` dependencies to exact published versions, so a
+seeded project installs them from the registry like any other dependency.
 
 The `package.json` next to this README is **not part of the template**: it is a
-monorepo build harness, deliberately absent from `frontx-template.json`'s
-`ownershipBoundaries`, so `frontx add` never copies it anywhere. It exists only
-because inside the gears-frontx monorepo there is no workspace root above these
-MFE packages and nothing that could resolve `@gears-frontx/*` for them. A seeded
-project resolves the same names through the shell's own root manifest and has no
-use for it. The same applies to `frontx-template.json` and this README — a
-template directory holds shipped payload *and* authoring machinery, and the
+monorepo dev harness, deliberately absent from `frontx-template.json`'s
+`ownershipBoundaries`, so `frontx add` never copies it anywhere. Inside this
+monorepo the pins above would fetch registry tarballs, which would make local
+edits to `packages/*` and `template-shell/packages/*` invisible; the harness
+redirects each pinned name to its local source. It redirects rather than
+re-declares, so the installed versions still satisfy the pins. The same
+not-part-of-the-template status applies to `frontx-template.json` and this README
+— a template directory holds shipped payload *and* authoring machinery, and the
 manifest's boundaries are what separate the two.
 
 ```bash
