@@ -163,11 +163,18 @@ export type MaterializeResult =
   | { ok: true }
   | { ok: false; message: string; composeReason?: ComposeFailureReason };
 
-// The three compose refusals the target repository's OWNER can resolve and
+// The four compose refusals the target repository's OWNER can resolve and
 // retry: `unrecorded-owner` (register the occupying template's provenance),
 // `span-overlap` (disentangle overlapping markers in template content),
-// `carried-block-conflict` (fix a hand-edited or corrupted on-disk file).
-// Every other compose reason (`exclusive-contested`, `key-collision`,
+// `carried-block-conflict` (fix a hand-edited or corrupted on-disk file), and
+// `malformed-marker-block` (fix or remove the on-disk marker composeSharedFiles
+// names by path and line number — a token with no `identity:key` separator, an
+// unterminated region, or an orphaned end marker; added review #500 round 3,
+// having been missed when the refusal itself was added in round 2 — see
+// composeSharedFiles' own inst-cs-if-malformed-marker doc for why this is
+// detected on the on-disk buffer itself and, like the other three, is
+// something ONLY the repository's owner can fix, never a pre-flight-check
+// miss). Every other compose reason (`exclusive-contested`, `key-collision`,
 // `carried-key-collision`) names a materialization invariant the pre-flight
 // conflict check should already have caught — reaching materialization means
 // that check missed it, which is a mechanism bug, not the user's to fix.
@@ -175,6 +182,7 @@ const USER_FIXABLE_COMPOSE_REASONS: ReadonlySet<ComposeFailureReason> = new Set(
   'unrecorded-owner',
   'span-overlap',
   'carried-block-conflict',
+  'malformed-marker-block',
 ]);
 
 /**

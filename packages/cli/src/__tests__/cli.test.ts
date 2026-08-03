@@ -414,6 +414,79 @@ describe('dispatch: add (cpt-frontx-flow-cli-scaffolding-add-template)', () => {
         'reapply it through "frontx add") and retry.',
     );
   });
+
+  // review #500 round 3: `malformed-marker-block` was added to
+  // ComposeSharedFilesResult's `reason` union in round 2 (commit 1bf44af1)
+  // but never added to `USER_FIXABLE_COMPOSE_REASONS`, so it fell through to
+  // 'provenance-failed' and EXIT_INTERNAL_ERROR — the exact defect the
+  // 'unrecorded-owner' test above already covers for a different reason.
+  // composeSharedFiles' message names the corrupt line and tells the
+  // repository's owner exactly what to fix; an internal-error exit would
+  // have told them to file a bug instead.
+  it('exits user-error (not internal-error) when materialization refuses a malformed on-disk marker, and surfaces the full refusal message', async () => {
+    const { deps, registerManifest, registerContent } = makeDeps({
+      readProjectFile: vi.fn(async (path: string) =>
+        path === '/tmp/existing-repo/shared.txt'
+          ? 'frontx:region badtoken\nSome content.\nfrontx:endregion badtoken'
+          : null,
+      ),
+    });
+    registerManifest(
+      'github:acme/bar@v1.0.0',
+      makeManifest('bar', '1.0.0', {
+        ownershipBoundaries: {
+          exclusiveSubtrees: [],
+          sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }],
+        },
+      }),
+    );
+    registerContent('bar', [{ path: 'shared.txt', content: 'frontx:region bar:b\nB content.\nfrontx:endregion bar:b' }]);
+    await run(['install', 'github:acme/bar@v1.0.0'], deps);
+
+    const outcome = await run(['add', 'bar', '/tmp/existing-repo'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toBe(
+      'Materialization refused — path "shared.txt" line 1 has a marker token with no "identity:key" ' +
+        'separator, so it cannot be parsed into a locatable block. This on-disk file cannot be trusted to ' +
+        'carry forward or check for unrecorded owners until this marker is fixed or removed. Fix or remove the ' +
+        'marker at "shared.txt" line 1 and retry. No file was written.',
+    );
+  });
+
+  // Symmetric with the `add` case above: `seedRepository` shares the same
+  // `materializeAssembly` -> `isUserFixableMaterializeFailure` path, so a
+  // malformed on-disk marker at the seed target must classify the same way.
+  it('seed: exits user-error (not internal-error) when materialization refuses a malformed on-disk marker', async () => {
+    const { deps, registerManifest, registerContent } = makeDeps({
+      readProjectFile: vi.fn(async (path: string) =>
+        path === '/tmp/seed-repo/shared.txt'
+          ? 'frontx:region badtoken\nSome content.\nfrontx:endregion badtoken'
+          : null,
+      ),
+    });
+    registerManifest(
+      'github:acme/bar@v1.0.0',
+      makeManifest('bar', '1.0.0', {
+        ownershipBoundaries: {
+          exclusiveSubtrees: [],
+          sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }],
+        },
+      }),
+    );
+    registerContent('bar', [{ path: 'shared.txt', content: 'frontx:region bar:b\nB content.\nfrontx:endregion bar:b' }]);
+    await run(['install', 'github:acme/bar@v1.0.0'], deps);
+
+    const outcome = await run(['seed', 'bar', '/tmp/seed-repo'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toBe(
+      'Materialization refused — path "shared.txt" line 1 has a marker token with no "identity:key" ' +
+        'separator, so it cannot be parsed into a locatable block. This on-disk file cannot be trusted to ' +
+        'carry forward or check for unrecorded owners until this marker is fixed or removed. Fix or remove the ' +
+        'marker at "shared.txt" line 1 and retry. No file was written.',
+    );
+  });
 });
 
 describe('dispatch: upgrade (cpt-frontx-flow-upgrade-changeset-review-approval)', () => {
