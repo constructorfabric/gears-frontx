@@ -1,6 +1,6 @@
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1
 import { describe, it, expect } from 'vitest';
-import { composeSharedFiles, groupContributionsByPath, locateAllMarkerBlocks } from '../scaffold/compose-shared-files';
+import { composeSharedFiles, groupContributionsByPath, locateAllMarkerBlocks, locateRegionSpan } from '../scaffold/compose-shared-files';
 import type { ContributionEntry, ReadProjectFileFn, StagedAssembly } from '../scaffold/types';
 import type { OwnershipBoundary } from '../manifest/types';
 import type { ProvenanceRecord } from '../provenance/types';
@@ -81,8 +81,8 @@ describe('groupContributionsByPath (inst-cs-group-by-path)', () => {
 });
 
 describe('locateAllMarkerBlocks (inst-cs-read-existing-blocks) — raw scanner behavior', () => {
-  it('returns an empty array for an empty file', () => {
-    expect(locateAllMarkerBlocks('')).toEqual([]);
+  it('returns no blocks and no unlocatable markers for an empty file', () => {
+    expect(locateAllMarkerBlocks('')).toEqual({ blocks: [], unlocatable: [] });
   });
 
   it('does not deduplicate two blocks sharing the same (identity, regionKey) pair — the caller is responsible for that', () => {
@@ -95,8 +95,9 @@ describe('locateAllMarkerBlocks (inst-cs-read-existing-blocks) — raw scanner b
       'frontx:endregion template-a:shared',
     ].join('\n');
 
-    const blocks = locateAllMarkerBlocks(content);
+    const { blocks, unlocatable } = locateAllMarkerBlocks(content);
 
+    expect(unlocatable).toEqual([]);
     expect(blocks).toHaveLength(2);
     expect(blocks[0]).toEqual({
       identity: 'template-a',
@@ -121,8 +122,9 @@ describe('locateAllMarkerBlocks (inst-cs-read-existing-blocks) — raw scanner b
       'frontx:endregion template-a:outer',
     ].join('\n');
 
-    const blocks = locateAllMarkerBlocks(content);
+    const { blocks, unlocatable } = locateAllMarkerBlocks(content);
 
+    expect(unlocatable).toEqual([]);
     expect(blocks).toHaveLength(2);
     expect(blocks[0].span).toEqual({ beginIndex: 0, endIndex: 4 });
     expect(blocks[1].span).toEqual({ beginIndex: 1, endIndex: 3 });
@@ -138,30 +140,38 @@ describe('locateAllMarkerBlocks (inst-cs-read-existing-blocks) — raw scanner b
       'frontx:endregion template-b:test',
     ].join('\n');
 
-    const blocks = locateAllMarkerBlocks(content);
+    const { blocks, unlocatable } = locateAllMarkerBlocks(content);
 
+    expect(unlocatable).toEqual([]);
     expect(blocks).toHaveLength(2);
     expect(blocks[0].span).toEqual({ beginIndex: 0, endIndex: 4 });
     expect(blocks[1].span).toEqual({ beginIndex: 2, endIndex: 5 });
   });
 
-  it('drops an unterminated begin marker with no matching end marker', () => {
+  it('reports an unterminated begin marker with no matching end marker via `unlocatable`, dropping it from `blocks` (P1-1)', () => {
     const content = ['frontx:region template-a:orphan', 'no end here'].join('\n');
 
-    expect(locateAllMarkerBlocks(content)).toEqual([]);
+    expect(locateAllMarkerBlocks(content)).toEqual({
+      blocks: [],
+      unlocatable: [{ kind: 'unterminated', lineIndex: 0, identity: 'template-a', regionKey: 'orphan' }],
+    });
   });
 
-  it('skips a malformed begin marker whose token carries no identity:key separator', () => {
+  it('reports a malformed begin marker whose token carries no identity:key separator via `unlocatable`, dropping it from `blocks` (P1-1)', () => {
     const content = ['frontx:region not-a-valid-token-without-colon', 'body', 'frontx:endregion not-a-valid-token-without-colon'].join('\n');
 
-    expect(locateAllMarkerBlocks(content)).toEqual([]);
+    expect(locateAllMarkerBlocks(content)).toEqual({
+      blocks: [],
+      unlocatable: [{ kind: 'malformed', lineIndex: 0 }],
+    });
   });
 
   it('locates a marker pair hidden inside an arbitrary-language comment style (HTML)', () => {
     const content = ['<!-- frontx:region template-a:html-block -->', 'body', '<!-- frontx:endregion template-a:html-block -->'].join('\n');
 
-    const blocks = locateAllMarkerBlocks(content);
+    const { blocks, unlocatable } = locateAllMarkerBlocks(content);
 
+    expect(unlocatable).toEqual([]);
     expect(blocks).toEqual([
       {
         identity: 'template-a',
@@ -170,6 +180,72 @@ describe('locateAllMarkerBlocks (inst-cs-read-existing-blocks) — raw scanner b
         text: content,
       },
     ]);
+  });
+
+  it('does not let a declared region key close on another key it prefixes — "scripts" must not be closed by "scripts-dev"\'s end marker (P1-2)', () => {
+    const content = [
+      'frontx:region identity:scripts',
+      'scripts body',
+      'frontx:endregion identity:scripts',
+      'frontx:region identity:scripts-dev',
+      'scripts-dev body',
+      'frontx:endregion identity:scripts-dev',
+    ].join('\n');
+
+    const { blocks, unlocatable } = locateAllMarkerBlocks(content);
+
+    expect(unlocatable).toEqual([]);
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]).toEqual({
+      identity: 'identity',
+      regionKey: 'scripts',
+      span: { beginIndex: 0, endIndex: 2 },
+      text: 'frontx:region identity:scripts\nscripts body\nfrontx:endregion identity:scripts',
+    });
+    expect(blocks[1]).toEqual({
+      identity: 'identity',
+      regionKey: 'scripts-dev',
+      span: { beginIndex: 3, endIndex: 5 },
+      text: 'frontx:region identity:scripts-dev\nscripts-dev body\nfrontx:endregion identity:scripts-dev',
+    });
+  });
+
+  it('reports the SHORTER key ("scripts") as unterminated, not a false substring match on "scripts-dev"\'s end marker, when only "scripts" is left unclosed (P1-2 inverse case)', () => {
+    const content = [
+      'frontx:region identity:scripts',
+      'scripts body, never closed',
+      'frontx:region identity:scripts-dev',
+      'scripts-dev body',
+      'frontx:endregion identity:scripts-dev',
+    ].join('\n');
+
+    const { blocks, unlocatable } = locateAllMarkerBlocks(content);
+
+    expect(blocks).toEqual([
+      {
+        identity: 'identity',
+        regionKey: 'scripts-dev',
+        span: { beginIndex: 2, endIndex: 4 },
+        text: 'frontx:region identity:scripts-dev\nscripts-dev body\nfrontx:endregion identity:scripts-dev',
+      },
+    ]);
+    expect(unlocatable).toEqual([{ kind: 'unterminated', lineIndex: 0, identity: 'identity', regionKey: 'scripts' }]);
+  });
+});
+
+describe('locateRegionSpan — known-pair locator (P1-2 substring-match regression)', () => {
+  it('does not match a declared region key against another declared key it prefixes on the same buffer', () => {
+    const content = [
+      'frontx:region identity:scripts',
+      'scripts body',
+      'frontx:endregion identity:scripts',
+      'frontx:region identity:scripts-dev',
+      'scripts-dev body',
+      'frontx:endregion identity:scripts-dev',
+    ].join('\n');
+
+    expect(locateRegionSpan(content, 'identity', 'scripts')).toEqual({ beginIndex: 0, endIndex: 2 });
+    expect(locateRegionSpan(content, 'identity', 'scripts-dev')).toEqual({ beginIndex: 3, endIndex: 5 });
   });
 });
 
@@ -641,6 +717,148 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
     // clean.txt composed without any conflict, ahead of shared.txt in
     // iteration order, yet must NOT have been written once shared.txt's
     // overlap refused the whole assembly.
+    expect(writes).toEqual([]);
+  });
+});
+
+describe('composeSharedFiles — review #500 round-2 P1-1: unlocatable markers on disk are refused, never silently dropped', () => {
+  it('refuses the assembly, writing no file, when the file on disk carries an unterminated begin marker (inst-cs-if-malformed-marker / inst-cs-return-malformed-marker)', async () => {
+    // "template-a:orphan" opens a region with no matching end marker.
+    // Before this fix, `locateAllMarkerBlocks` silently dropped it, so its
+    // content vanished from the composed output with no diagnostic — even
+    // though "template-a" is a genuine contributor to this assembly.
+    const onDisk = ['frontx:region template-a:orphan', 'no end here'].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const assembly = assemblyOf(
+      contribution(
+        'template-b',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-b:b\nB.\nfrontx:endregion template-b:b' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('malformed-marker-block');
+    if (result.reason !== 'malformed-marker-block') return;
+    expect(result.path).toBe('shared.txt');
+    expect(result.kind).toBe('unterminated');
+    expect(result.lineNumber).toBe(1);
+    expect(result.identity).toBe('template-a');
+    expect(result.regionKey).toBe('orphan');
+    // `writes` is populated by `fakeWriter`'s own `writeFileFn` on every call
+    // it receives, so an empty array here IS proof `writeFileFn` was never
+    // invoked for this refused assembly.
+    expect(writes).toEqual([]);
+  });
+
+  it('refuses the assembly, writing no file, when the file on disk carries a malformed begin marker with no identity:key separator (inst-cs-if-malformed-marker / inst-cs-return-malformed-marker)', async () => {
+    const onDisk = ['frontx:region not-a-valid-token-without-colon', 'body', 'frontx:endregion not-a-valid-token-without-colon'].join(
+      '\n',
+    );
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const assembly = assemblyOf(
+      contribution(
+        'template-b',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-b:b\nB.\nfrontx:endregion template-b:b' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('malformed-marker-block');
+    if (result.reason !== 'malformed-marker-block') return;
+    expect(result.path).toBe('shared.txt');
+    expect(result.kind).toBe('malformed');
+    expect(result.lineNumber).toBe(1);
+    expect(result.identity).toBeUndefined();
+    expect(result.regionKey).toBeUndefined();
+    expect(writes).toEqual([]);
+  });
+});
+
+describe('composeSharedFiles — review #500 round-2 P1-2: a declared region key must not be closed by another key it prefixes', () => {
+  it('resolves both "scripts" and "scripts-dev" correctly when both are well-formed and closed — no false span-overlap, no false refusal', async () => {
+    // Both keys are recorded in provenance and NOT contributed by this
+    // assembly's own template, so both are carried forward. Before the P1-2
+    // fix, "scripts"'s end-marker search would have matched "scripts-dev"'s
+    // endregion line via substring containment, corrupting the "scripts"
+    // span and leaving "scripts-dev"'s begin marker to falsely appear
+    // unterminated (or vice versa depending on iteration order).
+    const onDisk = [
+      'frontx:region identity:scripts',
+      'scripts body',
+      'frontx:endregion identity:scripts',
+      'frontx:region identity:scripts-dev',
+      'scripts-dev body',
+      'frontx:endregion identity:scripts-dev',
+    ].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const existingProvenance: ProvenanceRecord[] = [
+      { templateIdentity: 'identity', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/identity@offline' },
+    ];
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-a:a\nA.\nfrontx:endregion template-a:a' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, existingProvenance);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const expectedComposed = [
+      'frontx:region identity:scripts',
+      'scripts body',
+      'frontx:endregion identity:scripts',
+      'frontx:region identity:scripts-dev',
+      'scripts-dev body',
+      'frontx:endregion identity:scripts-dev',
+      'frontx:region template-a:a',
+      'A.',
+      'frontx:endregion template-a:a',
+    ].join('\n');
+    expect(writes).toEqual([{ path: '/target/shared.txt', content: expectedComposed }]);
+  });
+
+  it('reports the refusal against the truly-unterminated "scripts" key, not a false substring match on "scripts-dev"s end marker', async () => {
+    const onDisk = [
+      'frontx:region identity:scripts',
+      'scripts body, never closed',
+      'frontx:region identity:scripts-dev',
+      'scripts-dev body',
+      'frontx:endregion identity:scripts-dev',
+    ].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-a:a\nA.\nfrontx:endregion template-a:a' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('malformed-marker-block');
+    if (result.reason !== 'malformed-marker-block') return;
+    expect(result.kind).toBe('unterminated');
+    expect(result.identity).toBe('identity');
+    expect(result.regionKey).toBe('scripts');
+    expect(result.lineNumber).toBe(1);
     expect(writes).toEqual([]);
   });
 });

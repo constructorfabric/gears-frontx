@@ -56,7 +56,16 @@ export interface MaterializedFile {
 // overlapping pair there can only mean the on-disk file itself — the same
 // insufficiently-trusted source `unrecorded-owner` already treats with
 // suspicion — was hand-edited or corrupted since it was last written
-// (`inst-cs-return-carried-block-conflict`).
+// (`inst-cs-return-carried-block-conflict`). `malformed-marker-block` is
+// detected EARLIER than any of those three: while scanning the on-disk buffer
+// for marker pairs at all (`inst-cs-read-existing-blocks`), before contributor
+// identity is even considered. A begin marker whose token has no `identity:key`
+// separator, or one with no matching end marker before end of file, means that
+// block's boundaries cannot be established for ANY marker on the path —
+// contributor-owned or not — so it cannot be classified as either a carried
+// block or an unrecorded owner; `carried-block-conflict`, by contrast, only
+// ever compares blocks that already parsed and closed successfully
+// (`inst-cs-return-malformed-marker`).
 export type ComposeSharedFilesResult =
   | { ok: true; files: MaterializedFile[] }
   | { ok: false; reason: 'exclusive-contested'; path: string; contestants: string[]; message: string }
@@ -91,6 +100,16 @@ export type ComposeSharedFilesResult =
       path: string;
       contestants: string[];
       regionKeys: string[];
+      message: string;
+    }
+  | {
+      ok: false;
+      reason: 'malformed-marker-block';
+      path: string;
+      lineNumber: number;
+      kind: 'malformed' | 'unterminated';
+      identity?: string;
+      regionKey?: string;
       message: string;
     };
 
@@ -149,18 +168,61 @@ export interface RegionSpan {
   endIndex: number;
 }
 
+// Parses ONE marker line for a given sentinel PREFIX (`frontx:region` or
+// `frontx:endregion`), extracting its `identity:key` token the same way
+// regardless of which direction is calling: the known-pair locator
+// (`locateRegionSpan`) and the blind scanner (`locateAllMarkerBlocks`) must
+// agree on where a token ends, or a shared key prefix (e.g. declared region
+// keys "scripts" and "scripts-dev") lets one marker be mistaken for a
+// substring of another's — the review #500 round-2 P1-2 defect this function
+// exists to close. Returns `undefined` when the line carries no occurrence of
+// `prefix` at all, `'malformed'` when the prefix is present but its token has
+// no `identity:key` separator, or the parsed pair otherwise. Tolerates an
+// arbitrary comment PREFIX before the marker token via `indexOf` (the marker
+// hides inside a comment of any language) and takes the token up to the first
+// whitespace as its SUFFIX boundary — see `locateAllMarkerBlocks`'s docstring
+// below for why that boundary rule is the most this scanner can resolve in
+// general.
+function parseMarkerLine(line: string, prefix: string): { identity: string; regionKey: string } | 'malformed' | undefined {
+  const prefixIndex = line.indexOf(prefix);
+  if (prefixIndex === -1) return undefined;
+  const afterPrefix = line.slice(prefixIndex + prefix.length).trimStart();
+  const token = afterPrefix.split(/\s/)[0] ?? '';
+  const colonIndex = token.indexOf(':');
+  if (colonIndex === -1) return 'malformed';
+  return { identity: token.slice(0, colonIndex), regionKey: token.slice(colonIndex + 1) };
+}
+
+// A marker on the scanned file whose block boundaries could not be
+// established: either its begin-marker token has no `identity:key` separator
+// (`kind: 'malformed'`), or it opens a region with no matching end marker
+// before end of file (`kind: 'unterminated'`, carrying the identity/regionKey
+// that WAS parsed from its begin marker). Surfaced so the caller can refuse
+// materialization naming the exact line and defect, rather than the file's
+// content silently vanishing from the composed output the way a `continue`
+// past it once did (review #500 round-2 P1-1).
+export type UnlocatableMarker =
+  | { kind: 'malformed'; lineIndex: number }
+  | { kind: 'unterminated'; lineIndex: number; identity: string; regionKey: string };
+
 // Locates one template's owned region on disk by matching the begin/end
 // sentinel-marker pair keyed by that template's identity and the declared
 // region key. Returns undefined if the pair cannot be located — pre-publish
 // manifest validation guarantees well-formed declared keys, not that the
-// markers exist on disk.
+// markers exist on disk. Matches by PARSED identity/regionKey equality
+// (`parseMarkerLine`), never by substring containment — a declared region key
+// that is a prefix of another declared key on the same path (e.g. "scripts"
+// and "scripts-dev") must not let this locator's begin or end search land on
+// the other key's marker line (review #500 round-2 P1-2).
 export function locateRegionSpan(content: string, templateName: string, regionKey: string): RegionSpan | undefined {
   const lines = content.split('\n');
-  const beginMarker = `${REGION_BEGIN_PREFIX} ${templateName}:${regionKey}`;
-  const endMarker = `${REGION_END_PREFIX} ${templateName}:${regionKey}`;
-  const beginIndex = lines.findIndex((line) => line.includes(beginMarker));
+  const matchesTarget = (line: string, prefix: string): boolean => {
+    const parsed = parseMarkerLine(line, prefix);
+    return typeof parsed === 'object' && parsed.identity === templateName && parsed.regionKey === regionKey;
+  };
+  const beginIndex = lines.findIndex((line) => matchesTarget(line, REGION_BEGIN_PREFIX));
   if (beginIndex === -1) return undefined;
-  const endIndex = lines.findIndex((line, index) => index > beginIndex && line.includes(endMarker));
+  const endIndex = lines.findIndex((line, index) => index > beginIndex && matchesTarget(line, REGION_END_PREFIX));
   if (endIndex === -1) return undefined;
   return { beginIndex, endIndex };
 }
@@ -190,6 +252,17 @@ export interface LocatedBlock {
   text: string; // verbatim, INCLUSIVE of marker lines — carried forward as-is, never re-derived
 }
 
+// `locateAllMarkerBlocks`'s full result: every block it COULD locate, plus
+// every begin-marker it found but could not resolve into one — sorted by
+// `lineIndex` ascending so a caller refusing on the first one reports the
+// earliest defect in the file, regardless of which of the two scan passes
+// below (malformed-token detection, then unterminated-block detection) found
+// it.
+export interface LocateAllMarkerBlocksResult {
+  blocks: LocatedBlock[];
+  unlocatable: UnlocatableMarker[];
+}
+
 // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-read-existing-blocks
 /**
  * Scans a file's content for every begin/end sentinel-marker pair and
@@ -197,7 +270,7 @@ export interface LocatedBlock {
  * text. Applies the region-addressing schema owned by
  * `cpt-frontx-feature-template-manifest` in reverse: the forward matcher
  * (`locateRegionSpan`) already tolerates an arbitrary comment PREFIX before
- * the marker token via loose `line.includes(...)` matching, because the
+ * the marker token via `parseMarkerLine`'s `indexOf`-based search, because the
  * marker is meant to hide inside a comment of any language. Scanning without
  * a known (identity, key) to match against additionally needs a SUFFIX
  * boundary — the manifest contract places no charset restriction on a
@@ -219,25 +292,43 @@ export interface LocatedBlock {
  * (reserving a character, or requiring a separating space before any
  * comment-closer), not a scanner change, so it is left unsupported here
  * rather than "fixed" by a heuristic the contract does not license.
+ *
+ * A begin marker whose token has no `identity:key` separator, or one with no
+ * matching end marker before end of file, is NOT silently skipped: both are
+ * reported back via `unlocatable` (review #500 round-2 P1-1) so the caller
+ * can refuse materialization by name rather than have that block's content
+ * vanish from the composed output with no diagnostic. An end marker is
+ * matched by PARSED identity/regionKey equality (`parseMarkerLine`), never by
+ * substring containment, so a declared region key that is a prefix of another
+ * declared key on the same path (e.g. "scripts" and "scripts-dev") cannot
+ * close the wrong block (review #500 round-2 P1-2).
  */
-export function locateAllMarkerBlocks(content: string): LocatedBlock[] {
+export function locateAllMarkerBlocks(content: string): LocateAllMarkerBlocksResult {
   const lines = content.split('\n');
   const begins: Array<{ lineIndex: number; identity: string; regionKey: string }> = [];
+  const unlocatable: UnlocatableMarker[] = [];
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-    const prefixIndex = lines[lineIndex].indexOf(REGION_BEGIN_PREFIX);
-    if (prefixIndex === -1) continue;
-    const afterPrefix = lines[lineIndex].slice(prefixIndex + REGION_BEGIN_PREFIX.length).trimStart();
-    const token = afterPrefix.split(/\s/)[0] ?? '';
-    const colonIndex = token.indexOf(':');
-    if (colonIndex === -1) continue; // malformed marker — no identity:key separator; not a locatable block
-    begins.push({ lineIndex, identity: token.slice(0, colonIndex), regionKey: token.slice(colonIndex + 1) });
+    const parsed = parseMarkerLine(lines[lineIndex], REGION_BEGIN_PREFIX);
+    if (parsed === undefined) continue; // no begin-marker prefix on this line at all
+    if (parsed === 'malformed') {
+      unlocatable.push({ kind: 'malformed', lineIndex });
+      continue;
+    }
+    begins.push({ lineIndex, identity: parsed.identity, regionKey: parsed.regionKey });
   }
 
   const blocks: LocatedBlock[] = [];
   for (const begin of begins) {
-    const endMarker = `${REGION_END_PREFIX} ${begin.identity}:${begin.regionKey}`;
-    const endIndex = lines.findIndex((line, index) => index > begin.lineIndex && line.includes(endMarker));
-    if (endIndex === -1) continue; // unterminated — no matching end marker to close the span
+    const endIndex = lines.findIndex((line, index) => {
+      if (index <= begin.lineIndex) return false;
+      const parsed = parseMarkerLine(line, REGION_END_PREFIX);
+      return typeof parsed === 'object' && parsed.identity === begin.identity && parsed.regionKey === begin.regionKey;
+    });
+    if (endIndex === -1) {
+      // unterminated — no matching end marker to close the span
+      unlocatable.push({ kind: 'unterminated', lineIndex: begin.lineIndex, identity: begin.identity, regionKey: begin.regionKey });
+      continue;
+    }
     blocks.push({
       identity: begin.identity,
       regionKey: begin.regionKey,
@@ -245,7 +336,8 @@ export function locateAllMarkerBlocks(content: string): LocatedBlock[] {
       text: lines.slice(begin.lineIndex, endIndex + 1).join('\n'),
     });
   }
-  return blocks;
+  unlocatable.sort((a, b) => a.lineIndex - b.lineIndex);
+  return { blocks, unlocatable };
 }
 // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-read-existing-blocks
 
@@ -259,8 +351,14 @@ export function locateAllMarkerBlocks(content: string): LocatedBlock[] {
  * two contributors resolving the same declared region key, or a
  * carried-forward block colliding with a freshly-extracted region) that the
  * pre-flight conflict check (`cpt-frontx-algo-cli-scaffolding-conflict-check`)
- * should already have refused; reads any file already on disk at the path
- * and refuses the whole assembly when it carries a marker block whose owning
+ * should already have refused; reads any file already on disk at the path and
+ * refuses the whole assembly, before either block-owner check below trusts
+ * that file's shape at all, when scanning it finds a begin marker with no
+ * parseable `identity:key` token or with no matching end marker before end of
+ * file (`inst-cs-if-malformed-marker`) — an unlocatable marker means that
+ * block's boundaries cannot be established for ANY block on the path, so it
+ * cannot be classified as either carried-forward or unrecorded; otherwise
+ * refuses the whole assembly when it carries a marker block whose owning
  * identity this assembly does not contribute AND the target's existing
  * provenance does not record (`inst-cs-if-unrecorded-block-owner`) — the
  * occupied-boundary picture the pre-flight check evaluated was incomplete —
@@ -366,8 +464,49 @@ export async function composeSharedFiles(
     // contribution alone, discarding whatever an earlier `add` had already
     // written there.
     const existingContent = await readProjectFileFn(`${targetDir}/${path}`);
-    const existingBlocks = existingContent !== null ? locateAllMarkerBlocks(existingContent) : [];
+    const { blocks: existingBlocks, unlocatable } =
+      existingContent !== null ? locateAllMarkerBlocks(existingContent) : { blocks: [], unlocatable: [] };
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-read-existing-blocks
+
+    // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-malformed-marker
+    // Runs BEFORE either block-owner check below trusts this file's shape at
+    // all: an unlocatable marker means this path's block boundaries cannot be
+    // established for ANY block on it — contributor-owned or not — so it can
+    // be neither classified as a carried block nor cleared as the
+    // contributor's own stale extraction. Reported on the FIRST unlocatable
+    // marker (`unlocatable` is sorted by line index) so a file with several
+    // defects is refused on the earliest one rather than a nondeterministic
+    // pick.
+    const firstUnlocatable = unlocatable[0];
+    // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-malformed-marker
+    if (firstUnlocatable) {
+      // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-malformed-marker
+      const lineNumber = firstUnlocatable.lineIndex + 1; // 1-based for a human-readable diagnostic
+      const message =
+        firstUnlocatable.kind === 'malformed'
+          ? `Materialization refused — path "${path}" line ${lineNumber} has a begin-marker token with no ` +
+            '"identity:key" separator, so it cannot be parsed into a locatable block. This on-disk file cannot be ' +
+            'trusted to carry forward or check for unrecorded owners until this marker is fixed or removed. Fix or ' +
+            `remove the marker at "${path}" line ${lineNumber} and retry. No file was written.`
+          : `Materialization refused — path "${path}" line ${lineNumber} opens a ` +
+            `"${firstUnlocatable.identity}:${firstUnlocatable.regionKey}" region with no matching end marker ` +
+            'before end of file. This on-disk file cannot be trusted to carry forward or check for unrecorded ' +
+            `owners until this block is closed. Add the missing "frontx:endregion ` +
+            `${firstUnlocatable.identity}:${firstUnlocatable.regionKey}" marker, or remove the orphaned begin ` +
+            `marker at "${path}" line ${lineNumber}, and retry. No file was written.`;
+      return {
+        ok: false,
+        reason: 'malformed-marker-block',
+        path,
+        lineNumber,
+        kind: firstUnlocatable.kind,
+        ...(firstUnlocatable.kind === 'unterminated'
+          ? { identity: firstUnlocatable.identity, regionKey: firstUnlocatable.regionKey }
+          : {}),
+        message,
+      };
+      // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-malformed-marker
+    }
 
     const contributorIdentities = new Set(entries.map((entry) => entry.templateName));
 
