@@ -551,24 +551,40 @@ export async function composeSharedFiles(
 
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-carried-block-conflict
     // `locateAllMarkerBlocks` is a raw scanner: it neither deduplicates
-    // repeated (identity, regionKey) pairs nor rejects nested/overlapping
-    // spans, so this is the first point that can catch a corrupted or
-    // hand-edited target file BEFORE it is trusted the same way an
-    // occupied-boundary comparison trusts a declared claim. Every carried
-    // block was located in the SAME on-disk buffer (`inst-cs-read-existing-blocks`),
-    // so — unlike the cross-buffer extracted-region check below, which only
-    // compares spans when both buffers are byte-identical — comparing spans
-    // within this set is unconditionally valid. Checked BEFORE building any
-    // Map keyed by (identity, regionKey): a Map silently keeps the last
-    // duplicate and would hide exactly the condition this check exists to
-    // surface.
-    let carriedBlockConflict: { kind: 'duplicate' | 'overlap'; first: LocatedBlock; second: LocatedBlock } | undefined;
+    // repeated region keys nor rejects nested/overlapping spans, so this is
+    // the first point that can catch a corrupted or hand-edited target file
+    // BEFORE it is trusted the same way an occupied-boundary comparison
+    // trusts a declared claim. Every carried block was located in the SAME
+    // on-disk buffer (`inst-cs-read-existing-blocks`), so — unlike the
+    // cross-buffer extracted-region check below, which only compares spans
+    // when both buffers are byte-identical — comparing spans within this set
+    // is unconditionally valid. Checked BEFORE building any Map keyed by
+    // regionKey: a Map silently keeps the last duplicate and would hide
+    // exactly the condition this check exists to surface.
+    //
+    // Keyed on regionKey ALONE, never on (identity, regionKey) — mirroring
+    // `inst-cs-if-key-collision` and `inst-cs-if-carried-key-collision` (and,
+    // upstream of both, the pre-flight conflict check's own
+    // `inst-cc-if-region-key-clash`): a region key is unique per shared-file
+    // PATH, not per identity, per `cpt-frontx-feature-template-manifest`.
+    // Keying on the pair let two carried blocks with the SAME regionKey but
+    // DIFFERENT identities pass silently into the composed union — the same
+    // comparison-unit defect `carried-key-collision` (carried-vs-extracted)
+    // already had fixed in commit 1ae41ec9, left unfixed here (review #500
+    // round 2, P2). `kind: 'duplicate'` (same identity — the same block
+    // repeated) and `kind: 'key-collision'` (different identities racing for
+    // one key) are reported distinctly only in the message text below; both
+    // are still one region-key match, so identity equality is checked to
+    // pick the wording, never to gate whether a match occurred.
+    let carriedBlockConflict:
+      | { kind: 'duplicate' | 'key-collision' | 'overlap'; first: LocatedBlock; second: LocatedBlock }
+      | undefined;
     for (let i = 0; i < carriedBlocks.length && !carriedBlockConflict; i++) {
       for (let j = i + 1; j < carriedBlocks.length; j++) {
         const first = carriedBlocks[i];
         const second = carriedBlocks[j];
-        if (first.identity === second.identity && first.regionKey === second.regionKey) {
-          carriedBlockConflict = { kind: 'duplicate', first, second };
+        if (first.regionKey === second.regionKey) {
+          carriedBlockConflict = { kind: first.identity === second.identity ? 'duplicate' : 'key-collision', first, second };
           break;
         }
         if (first.span.beginIndex <= second.span.endIndex && second.span.beginIndex <= first.span.endIndex) {
@@ -584,8 +600,15 @@ export async function composeSharedFiles(
       const found =
         kind === 'duplicate'
           ? `two carried blocks both resolving identity "${first.identity}" and region key "${first.regionKey}"`
-          : `two carried blocks with overlapping or nested on-disk marker spans ` +
-            `(${first.identity}:${first.regionKey} and ${second.identity}:${second.regionKey})`;
+          : kind === 'key-collision'
+            ? `two carried blocks owned by different identities — "${first.identity}" and "${second.identity}" — ` +
+              `both resolving the same region key "${first.regionKey}"`
+            : `two carried blocks with overlapping or nested on-disk marker spans ` +
+              `(${first.identity}:${first.regionKey} and ${second.identity}:${second.regionKey})`;
+      const remedy =
+        kind === 'key-collision'
+          ? `remove or rename one of "${first.identity}"'s or "${second.identity}"'s "${first.regionKey}" marker pairs`
+          : 'remove the duplicate marker pair, or disentangle the overlapping regions';
       return {
         ok: false,
         reason: 'carried-block-conflict',
@@ -595,10 +618,9 @@ export async function composeSharedFiles(
         message:
           `Materialization refused — the file already on disk at path "${path}" carries ${found}. This is not a ` +
           'pre-flight conflict-check miss: carried blocks are read directly from that file and are never compared ' +
-          'against each other before materialization, so a duplicate or overlapping pair among them can only mean ' +
-          'the file was edited by hand or otherwise corrupted since it was last written by this tool. Fix the file ' +
-          `at "${path}" (remove the duplicate marker pair, or disentangle the overlapping regions) and retry. No ` +
-          'file was written.',
+          'against each other before materialization, so this can only mean the file was edited by hand or ' +
+          `otherwise corrupted since it was last written by this tool. Fix the file at "${path}" (${remedy}) and ` +
+          'retry. No file was written.',
       };
       // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-carried-block-conflict
     }

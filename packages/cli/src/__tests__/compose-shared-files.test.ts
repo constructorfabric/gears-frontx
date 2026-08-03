@@ -679,6 +679,56 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
     expect(writes).toEqual([]);
   });
 
+  it('refuses the assembly, writing no file, when two carried-forward blocks resolve the SAME region key under DIFFERENT identities (inst-cs-if-carried-block-conflict / inst-cs-return-carried-block-conflict, key collision across identities)', async () => {
+    // template-a and template-b are both recorded in provenance and neither
+    // contributes to this assembly (the incoming contributor is a third
+    // template, template-c, claiming an unrelated key) — so neither block
+    // trips inst-cs-if-unrecorded-block-owner. Both blocks are well-formed
+    // and closed, and their spans do not overlap, so neither the
+    // (identity, regionKey)-pair duplicate check nor the span-overlap check
+    // above catches this: the region-key namespace is unique per PATH, not
+    // per identity (cpt-frontx-algo-cli-scaffolding-conflict-check
+    // inst-cc-if-region-key-clash and inst-cs-if-carried-key-collision both
+    // key on regionKey alone for exactly this reason), so two different
+    // owners resolving the same key "shared" is a conflict regardless of
+    // their spans not overlapping.
+    const onDisk = [
+      'frontx:region template-a:shared',
+      'first',
+      'frontx:endregion template-a:shared',
+      'frontx:region template-b:shared',
+      'second',
+      'frontx:endregion template-b:shared',
+    ].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const existingProvenance: ProvenanceRecord[] = [
+      { templateIdentity: 'template-a', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/a@offline' },
+      { templateIdentity: 'template-b', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/b@offline' },
+    ];
+    const assembly = assemblyOf(
+      contribution(
+        'template-c',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['c'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-c:c\nC.\nfrontx:endregion template-c:c' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, existingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('carried-block-conflict');
+    if (result.reason !== 'carried-block-conflict') return;
+    expect(result.path).toBe('shared.txt');
+    expect(result.contestants).toEqual(['template-a', 'template-b']);
+    expect(result.regionKeys).toEqual(['shared', 'shared']);
+    expect(result.message).toMatch(/template-a/);
+    expect(result.message).toMatch(/template-b/);
+    expect(result.message).toMatch(/shared/);
+    expect(writes).toEqual([]);
+  });
+
   it('writes NO file for any path — including one already composed successfully — when a LATER path in the same assembly is refused (ADR-0032: a refused assembly writes zero files)', async () => {
     const assembly = assemblyOf(
       contribution(
