@@ -30,6 +30,9 @@ Rules for generated code:
   Field automatically.
 - [Label](dist/docs/label.md): caption for a form control; native
   `<label>` props; associate via `htmlFor` or by nesting the control.
+- [Switch](dist/docs/switch.md): immediate on/off toggle;
+  `checked`/`onCheckedChange`, sizes default|sm; use checkbox for
+  submit-time options.
 - [Textarea](dist/docs/textarea.md): multi-line text field; native
   `<textarea>` props; grows with content; `aria-invalid` for the error
   state.

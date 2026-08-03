@@ -1,0 +1,94 @@
+/*
+ * Switch styles, translated from shadcn/ui (MIT) to CSS Modules.
+ * Consumes only theme.css variables — no raw colors.
+ */
+
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  outline: none;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+/* Enlarged touch target beyond the track. */
+.switch::after {
+  content: '';
+  position: absolute;
+  inset: -0.5rem -0.75rem;
+}
+
+.switch[data-checked] {
+  background-color: var(--primary);
+}
+
+.switch[data-unchecked] {
+  background-color: var(--input);
+}
+
+.switch:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+
+/* See button.module.css: forced-colors drops box-shadow, restore UA outline. */
+@media (forced-colors: active) {
+  .switch:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+.switch[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Declared after :focus-visible so the invalid ring wins while focused. */
+.switch[aria-invalid='true'] {
+  border-color: var(--destructive);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 20%, transparent);
+}
+
+.sizeDefault {
+  height: 1.15rem;
+  width: 2rem;
+}
+
+.sizeSm {
+  height: 0.875rem;
+  width: 1.5rem;
+}
+
+.thumb {
+  pointer-events: none;
+  display: block;
+  border-radius: 9999px;
+  background-color: var(--background);
+  transition: transform 150ms ease;
+}
+
+.sizeDefault .thumb {
+  width: 1rem;
+  height: 1rem;
+}
+
+.sizeSm .thumb {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.thumb[data-checked] {
+  transform: translateX(calc(100% - 2px));
+}
+
+.thumb[data-unchecked] {
+  transform: translateX(0);
+}
