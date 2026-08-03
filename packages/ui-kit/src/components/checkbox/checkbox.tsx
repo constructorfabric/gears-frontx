@@ -11,9 +11,11 @@ export function Checkbox({ className, ...props }: CheckboxProps) {
   return (
     <CheckboxPrimitive.Root className={cx(styles.checkbox, className)} {...props}>
       <CheckboxPrimitive.Indicator className={styles.indicator}>
-        {/* Inline check mark (lucide "check" path, ISC) — the kit carries no icon dependency. */}
+        {/* Inline check/minus marks (lucide paths, ISC) — the kit carries no
+         * icon dependency. CSS swaps them on the indicator's
+         * data-indeterminate state. */}
         <svg
-          className={styles.icon}
+          className={cx(styles.icon, styles.iconCheck)}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -23,6 +25,18 @@ export function Checkbox({ className, ...props }: CheckboxProps) {
           aria-hidden="true"
         >
           <path d="M20 6 9 17l-5-5" />
+        </svg>
+        <svg
+          className={cx(styles.icon, styles.iconIndeterminate)}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M5 12h14" />
         </svg>
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>

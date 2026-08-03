@@ -25,8 +25,8 @@ mouse and keyboard, exposes state through `data-checked`/`data-unchecked`.
 
 Other props follow Base UI Checkbox.Root (`disabled`, `required`,
 `readOnly`, ...). `aria-invalid` switches the border and ring to the
-destructive color. The `indeterminate` prop is not visually distinguished
-from checked yet — avoid it for now.
+destructive color. `indeterminate` renders a minus mark in an unfilled box
+(`aria-checked="mixed"`) — use it for "some children selected" parents.
 
 ## Examples
 
