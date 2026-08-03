@@ -1089,3 +1089,111 @@ describe('composeSharedFiles — review #500 round-3 P1: orphaned/malformed end 
     expect(writes).toEqual([]);
   });
 });
+
+describe('locateAllMarkerBlocks — review #500 round-4 P2: a marker PREFIX must be followed by a whitespace boundary or end of line', () => {
+  it('does not recognize "frontx:regional" as a begin marker at all — it is ordinary text that merely starts with the prefix, not a marker', () => {
+    // Before the boundary fix, `indexOf` alone matched the bare prefix
+    // characters anywhere in the line, so this ordinary word was misparsed
+    // as a marker with token "al" (no colon) and reported `malformed` — which
+    // is a materialization refusal (inst-cs-return-malformed-marker). With
+    // the boundary check, "regional" continuing past the prefix with no
+    // whitespace means this line carries no marker occurrence at all.
+    const content = ['before', '// frontx:regional configuration', 'after'].join('\n');
+
+    expect(locateAllMarkerBlocks(content)).toEqual({ blocks: [], unlocatable: [] });
+  });
+
+  it('does not recognize "frontx:endregionally" as an end marker at all — same boundary rule applies to the end-marker prefix', () => {
+    const content = ['// frontx:endregionally noted', 'more text'].join('\n');
+
+    expect(locateAllMarkerBlocks(content)).toEqual({ blocks: [], unlocatable: [] });
+  });
+
+  it('still reports a begin marker as malformed when the prefix has a proper boundary (end of line) but no identity:key token follows it at all', () => {
+    // Distinct from the existing "token without a colon" malformed fixture:
+    // here the prefix is followed by nothing (end of line, no trailing
+    // space or token whatsoever) rather than by a same-word continuation —
+    // the boundary check must accept end-of-line as a valid boundary and
+    // still classify this as a real, malformed marker.
+    const content = ['frontx:region', 'body'].join('\n');
+
+    expect(locateAllMarkerBlocks(content)).toEqual({
+      blocks: [],
+      unlocatable: [{ kind: 'malformed', lineIndex: 0 }],
+    });
+  });
+});
+
+describe('composeSharedFiles — review #500 round-4 P2: prefix-boundary text does not trigger a false materialization refusal', () => {
+  it('materializes normally when a shared file merely contains a word starting with the marker prefix, instead of refusing as malformed', async () => {
+    const onDisk = ['// frontx:regional configuration', 'kept as-is'].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-a:a\nA.\nfrontx:endregion template-a:a' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, noExistingProvenance);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // The on-disk "frontx:regional configuration" line carries no marker at
+    // all, so it contributes no carried block — only template-a's freshly
+    // extracted region is composed.
+    const expectedComposed = 'frontx:region template-a:a\nA.\nfrontx:endregion template-a:a';
+    expect(writes).toEqual([{ path: '/target/shared.txt', content: expectedComposed }]);
+  });
+});
+
+describe('composeSharedFiles — review #500 round-4 P3: deterministic composition order is independent of locale collation', () => {
+  it('orders two region keys by UTF-16 code unit, not by `localeCompare` collation, for a pair where the two orders disagree', async () => {
+    // `'école'.localeCompare('zebra')` is negative (accented "e" collates
+    // near "e", so "école" sorts before "zebra" under typical ICU rules),
+    // but `'école' < 'zebra'` by UTF-16 code unit is false ('é' is U+00E9 =
+    // 233, greater than 'z' = U+007A = 122) — so "zebra" must sort first.
+    // Composition promises byte-identical output regardless of environment
+    // (inst-cs-compose-union), which a locale-dependent comparator cannot
+    // guarantee.
+    expect('école'.localeCompare('zebra')).toBeLessThan(0);
+    expect('école' < 'zebra').toBe(false);
+
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['école', 'zebra'] }] },
+        [
+          {
+            path: 'shared.txt',
+            content: [
+              '// frontx:region template-a:école',
+              'accented',
+              '// frontx:endregion template-a:école',
+              '// frontx:region template-a:zebra',
+              'ascii',
+              '// frontx:endregion template-a:zebra',
+            ].join('\n'),
+          },
+        ],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, noExistingFile, noExistingProvenance);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const expectedComposed = [
+      '// frontx:region template-a:zebra',
+      'ascii',
+      '// frontx:endregion template-a:zebra',
+      '// frontx:region template-a:école',
+      'accented',
+      '// frontx:endregion template-a:école',
+    ].join('\n');
+    expect(writes).toEqual([{ path: '/target/shared.txt', content: expectedComposed }]);
+  });
+});

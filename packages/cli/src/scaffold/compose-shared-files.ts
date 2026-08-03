@@ -179,16 +179,35 @@ export interface RegionSpan {
 // keys "scripts" and "scripts-dev") lets one marker be mistaken for a
 // substring of another's — the review #500 round-2 P1-2 defect this function
 // exists to close. Returns `undefined` when the line carries no occurrence of
-// `prefix` at all, `'malformed'` when the prefix is present but its token has
-// no `identity:key` separator, or the parsed pair otherwise. Tolerates an
-// arbitrary comment PREFIX before the marker token via `indexOf` (the marker
-// hides inside a comment of any language) and takes the token up to the first
-// whitespace as its SUFFIX boundary — see `locateAllMarkerBlocks`'s docstring
-// below for why that boundary rule is the most this scanner can resolve in
-// general.
+// `prefix` at all — INCLUDING when `prefix` is present only as a leading
+// substring of a longer word (e.g. "frontx:regional configuration",
+// "frontx:endregionally noted") — `'malformed'` when `prefix` occurs with a
+// proper boundary after it but its token has no `identity:key` separator, or
+// the parsed pair otherwise. Tolerates an arbitrary comment PREFIX before the
+// marker token via `indexOf` (the marker hides inside a comment of any
+// language) and takes the token up to the first whitespace as its SUFFIX
+// boundary — see `locateAllMarkerBlocks`'s docstring below for why that
+// boundary rule is the most this scanner can resolve in general.
+//
+// The contract (`cpt-frontx-feature-template-manifest`) shapes a marker as
+// `<PREFIX> <identity>:<key>` — a whitespace boundary between PREFIX and the
+// token is part of that shape, not incidental. Before this boundary check
+// (review #500 round-4 P2), `indexOf` alone treated ANY occurrence of the
+// bare prefix text as a marker: ordinary prose that merely happens to START
+// with the prefix's characters (e.g. the word "frontx:regional") was
+// misparsed as a marker with no `identity:key` separator and reported
+// `malformed` — which, since commits 1bf44af1/ce4584c8 made `malformed` a
+// materialization refusal, meant any file containing that word broke `add`/
+// `seed` outright. Requiring a whitespace-or-end-of-line boundary right after
+// `prefix` distinguishes an actual marker occurrence from prose that is
+// merely prefixed by the same characters, without weakening detection of a
+// genuine malformed marker (a real marker line with a boundary, but no
+// resolvable `identity:key` after it, is still reported `'malformed'`).
 function parseMarkerLine(line: string, prefix: string): { identity: string; regionKey: string } | 'malformed' | undefined {
   const prefixIndex = line.indexOf(prefix);
   if (prefixIndex === -1) return undefined;
+  const boundaryChar = line[prefixIndex + prefix.length];
+  if (boundaryChar !== undefined && !/\s/.test(boundaryChar)) return undefined;
   const afterPrefix = line.slice(prefixIndex + prefix.length).trimStart();
   const token = afterPrefix.split(/\s/)[0] ?? '';
   const colonIndex = token.indexOf(':');
@@ -849,11 +868,16 @@ export async function composeSharedFiles(
         markerBlock: block.text,
       })),
     ];
-    const orderedRegions = allRegions.sort((a, b) =>
-      a.templateName === b.templateName
-        ? a.regionKey.localeCompare(b.regionKey)
-        : a.templateName.localeCompare(b.templateName),
-    );
+    // Compared by UTF-16 code unit (`<`/`>`), never `localeCompare` — this
+    // composition is byte-for-byte deterministic by contract, and
+    // `localeCompare`'s collation order for non-ASCII identities or region
+    // keys varies by locale/ICU data across environments, which would make
+    // the "same" collision-free assembly materialize in a different order
+    // depending on where it runs (review #500 round-4 P3).
+    const orderedRegions = allRegions.sort((a, b) => {
+      if (a.templateName !== b.templateName) return a.templateName < b.templateName ? -1 : 1;
+      return a.regionKey < b.regionKey ? -1 : 1;
+    });
     const composedContent = orderedRegions.map((region) => region.markerBlock).join('\n');
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-compose-union
 
