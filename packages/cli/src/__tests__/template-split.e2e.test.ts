@@ -379,25 +379,40 @@ describe('Fixture 6 — declaration coverage: every real file in template-shell/
     expect(sharedFilePaths).not.toContain('package-lock.json');
   });
 
-  // Negative control for the assertion style above: a manifest declaring
-  // `exclusiveSubtrees: ['package']` (no trailing slash — an easy typo for
-  // an author reaching for "just the packages/ dir") captures package.json
-  // and package-lock.json by prefix, exactly like the assembler would. The
-  // OLD assertion style (`exclusiveSubtrees.not.toContain('package.json')`)
-  // is blind to this: `'package.json'` is never an array element, so it
-  // stays green while the assembler would actually materialize both files.
-  // This test fails under that old style and passes only because the fixed
-  // assertion goes through the real prefix function.
-  it('negative control: exclusiveSubtrees: ["package"] is caught as capturing package.json / package-lock.json by prefix', () => {
-    const dangerousSubtrees = ['package'];
+  // Negative control for the assertion style above. Three different manifest
+  // declarations capture the root package files by prefix — exactly as the
+  // assembler would — while array membership calls all three safe, because
+  // `'package.json'` is never itself an array element:
+  //
+  //   ['package']   a missing trailing slash, the easy typo for an author
+  //                 reaching for "just the packages/ dir"
+  //   ['package-']  the same typo one character further along
+  //   ['']          the worst of the three: an empty prefix matches EVERY
+  //                 path, so this manifest claims the entire repository
+  //
+  // Each case fails under the old `not.toContain(...)` style and is caught
+  // only because the fixed assertion above goes through the real prefix
+  // function the assembler uses.
+  // `['package-']` is the one asymmetric case: it captures package-lock.json
+  // but NOT package.json, which does not start with that prefix. Spelling the
+  // expectation out per file keeps the control honest — a blanket "captures
+  // both" would have been wrong here and would have hidden the asymmetry.
+  it.each([
+    { label: 'missing trailing slash', subtrees: ['package'], capturesJson: true, capturesLock: true },
+    { label: 'partial prefix', subtrees: ['package-'], capturesJson: false, capturesLock: true },
+    { label: 'empty prefix — claims everything', subtrees: [''], capturesJson: true, capturesLock: true },
+  ])(
+    'negative control: exclusiveSubtrees $subtrees ($label) captures a root package file by prefix',
+    ({ subtrees, capturesJson, capturesLock }) => {
+      // What array membership says: safe. It is wrong for all three.
+      expect(subtrees).not.toContain('package.json');
+      expect(subtrees).not.toContain('package-lock.json');
 
-    // The bug this guards against: array membership says "safe" even though
-    // prefix matching (what the assembler actually uses) says "captured".
-    expect(dangerousSubtrees).not.toContain('package.json');
-    expect(dangerousSubtrees).not.toContain('package-lock.json');
-
-    // The real check the fixed test above uses would have failed loudly here.
-    expect(isPathWithinExclusiveSubtrees('package.json', dangerousSubtrees)).toBe(true);
-    expect(isPathWithinExclusiveSubtrees('package-lock.json', dangerousSubtrees)).toBe(true);
-  });
+      // What the assembler actually does — and what the fixed test above
+      // would have caught. At least one file is captured in every case.
+      expect(isPathWithinExclusiveSubtrees('package.json', subtrees)).toBe(capturesJson);
+      expect(isPathWithinExclusiveSubtrees('package-lock.json', subtrees)).toBe(capturesLock);
+      expect(capturesJson || capturesLock).toBe(true);
+    },
+  );
 });

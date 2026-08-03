@@ -13,9 +13,10 @@ package here must satisfy).
 This directory is **add-only**. It ships with `frontx-template-mfe`, which has
 no root `package.json`, no build/test/lint tooling, and no host application —
 those are owned by `frontx-template-shell`. A package here declares exact
-published versions of its `@gears-frontx/*` dependencies (`react`,
-`framework`, `frontx-template-shell` itself, …) and installs them from the
-registry like any other dependency — there are no `file:` paths to dangle.
+published versions of its FrontX dependencies (`@gears-frontx/react`,
+`@gears-frontx/framework`, `@gears-frontx/frontx-template-shell` itself, …)
+alongside its ordinary third-party ones, and installs them all from the
+registry — there are no `file:` paths to dangle.
 What an applied shell actually supplies is the **runtime host**: the
 `src-app/app/` shell that mounts these MFEs, and — at build/dev time — the
 `frontxMfGts` plugin loaded from `@gears-frontx/frontx-template-shell/build/mf-gts`.
