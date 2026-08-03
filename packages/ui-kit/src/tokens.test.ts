@@ -30,7 +30,14 @@ const moduleFiles = readdirSync(componentsDir, { recursive: true, encoding: 'utf
 
 describe('theme tokens', () => {
   it('defines the radius scale derived from --radius', () => {
-    for (const token of ['--radius', '--radius-sm', '--radius-md', '--radius-lg', '--radius-xl']) {
+    for (const token of [
+      '--radius',
+      '--radius-xs',
+      '--radius-sm',
+      '--radius-md',
+      '--radius-lg',
+      '--radius-xl',
+    ]) {
       expect(definedTokens.has(token), `${token} is missing from theme.css`).toBe(true);
     }
   });

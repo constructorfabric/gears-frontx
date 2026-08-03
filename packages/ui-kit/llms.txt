@@ -18,7 +18,7 @@ Rules for generated code:
 - Brand/appearance changes go through theme tokens (CSS variables in
   `theme.css`, light/dark via `data-theme`), never through inline styles or
   overriding kit class names.
-- Rounding is a scale derived from `--radius` (`--radius-sm|md|lg|xl`);
+- Rounding is a scale derived from `--radius` (`--radius-xs|sm|md|lg|xl`);
   override `--radius` alone and every component follows.
 - Per-component docs below list the kit-level props; everything else is the
   underlying native element's props.
@@ -27,7 +27,8 @@ Rules for generated code:
 
 - [Button](dist/docs/button.md): action button; variants
   default|destructive|outline|secondary|ghost|link, sizes
-  default|sm|lg|icon; render-prop polymorphism for rendering as a link.
+  default|sm|lg|icon; render prop for button-semantic actions over a
+  real anchor (not a link substitute).
 - [Checkbox](dist/docs/checkbox.md): on/off tick box for independent
   options; `checked`/`onCheckedChange`; nest inside Label for one click
   target.

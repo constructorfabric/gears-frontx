@@ -37,6 +37,7 @@
    * the whole scale follows.
    */
   --radius: 0.625rem;
+  --radius-xs: calc(var(--radius) - 6px);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

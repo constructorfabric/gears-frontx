@@ -18,7 +18,7 @@ polymorphism, correct disabled/focus behavior, `type="button"` by default
 - Plain in-text navigation — use the consumer app's link component, not
   `variant="link"`; that variant exists for actions that visually read as
   links.
-- Toggling on/off state — use `switch` or `checkbox` (planned) instead.
+- Toggling on/off state — use `switch` or `checkbox` instead.
 
 ## Props (kit level)
 
