@@ -1,0 +1,62 @@
+/*
+ * Textarea styles, translated from shadcn/ui (MIT) to CSS Modules.
+ * Consumes only theme.css variables — no raw colors.
+ */
+
+.textarea {
+  display: flex;
+  /* Grows with content where supported (Chromium 123+); a fixed min-height
+   * plus the native resize handle everywhere else. */
+  field-sizing: content;
+  min-height: 4rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--input);
+  border-radius: calc(var(--radius) - 2px);
+  background-color: transparent;
+  color: var(--foreground);
+  font-family: inherit;
+  /* text-base on small screens so iOS Safari does not zoom on focus */
+  font-size: 1rem;
+  line-height: 1.5rem;
+  outline: none;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+@media (min-width: 768px) {
+  .textarea {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+}
+
+.textarea::placeholder {
+  color: var(--muted-foreground);
+}
+
+.textarea:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+
+/* See button.module.css: forced-colors drops box-shadow, restore UA outline. */
+@media (forced-colors: active) {
+  .textarea:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+.textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Declared after :focus-visible so the invalid ring wins while focused. */
+.textarea[aria-invalid='true'] {
+  border-color: var(--destructive);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 20%, transparent);
+}

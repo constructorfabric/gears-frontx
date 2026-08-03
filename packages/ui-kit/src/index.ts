@@ -8,3 +8,4 @@
  */
 export { Button, type ButtonProps } from './components/button/button';
 export { Input, type InputProps } from './components/input/input';
+export { Textarea, type TextareaProps } from './components/textarea/textarea';

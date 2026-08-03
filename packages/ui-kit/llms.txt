@@ -25,6 +25,9 @@ Rules for generated code:
 - [Input](dist/docs/input.md): single-line text field; `onValueChange`
   for the string value, `aria-invalid` for the error state; wires into
   Field automatically.
+- [Textarea](dist/docs/textarea.md): multi-line text field; native
+  `<textarea>` props; grows with content; `aria-invalid` for the error
+  state.
 
 ## Optional
 
