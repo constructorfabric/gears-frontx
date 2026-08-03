@@ -21,6 +21,7 @@ export default [
     ignores: [
       'dist/**',
       '**/dist/**',
+      'dist-lib/**', // tsup output of the template's own library build
       '**/.__mf__temp/**',
       '**/coverage/**',
       'node_modules/**',

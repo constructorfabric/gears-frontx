@@ -11,6 +11,7 @@ import {
   runCli,
 } from './template-pin-drift-check.mjs';
 
+/** @type {string | undefined} */
 let rootDir;
 
 afterEach(async () => {
@@ -22,6 +23,10 @@ async function makeRoot() {
   return rootDir;
 }
 
+/**
+ * @param {string} filePath
+ * @param {unknown} value
+ */
 async function writeJson(filePath, value) {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, JSON.stringify(value));
@@ -29,10 +34,15 @@ async function writeJson(filePath, value) {
 
 // A minimal marker manifest - discovery only checks for the file's presence
 // (`findTemplateDirs`), never its content.
+/** @param {string} templateDir */
 async function writeManifest(templateDir) {
   await writeJson(path.join(templateDir, 'frontx-template.json'), {});
 }
 
+/**
+ * @param {string} root
+ * @param {Record<string, string>} [versions]
+ */
 async function writeEcosystemPackages(root, versions = {}) {
   for (const dir of ['api', 'mfes', 'gts-plugin']) {
     await writeJson(path.join(root, 'packages', dir, 'package.json'), {
@@ -45,8 +55,11 @@ async function writeEcosystemPackages(root, versions = {}) {
 const isEcosystemScopeName = ecosystemScopeMatcher(['@gears-frontx/api']);
 
 /** Runs the guard with its output captured, so a case can assert what it named. */
+/** @param {string} root */
 function run(root) {
+  /** @type {string[]} */
   const lines = [];
+  /** @param {string} line */
   const record = (line) => lines.push(line);
   const exitCode = runCli({ rootDir: root, log: record, logError: record });
   return { exitCode, output: lines.join('\n') };

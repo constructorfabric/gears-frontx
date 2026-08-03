@@ -264,7 +264,7 @@ export function readDeclaredEdgeRange(rootDir, options = {}) {
  *   declaredEdgeRange?: string;
  *   publishedGtsPluginVersions?: string[];
  * }} input
- * @returns {{ pass: boolean; reason?: string }}
+ * @returns {{ pass: boolean; reason?: string; artifactName?: string; changeClass?: 'major' | 'minor' | 'patch'; blockedBySibling?: boolean }}
  */
 export function runIndependentPublication(input) {
   // @cpt-flow:cpt-frontx-flow-ecosystem-distribution-independent-publication:p1
@@ -436,7 +436,7 @@ export function buildNpmDeprecateArgs(name, version, message) {
  *     deprecationNotice?: { publishedAt: string; recommendedVersion: string; endOfLifeTarget?: string };
  *     declaredEdgeRange?: string;
  *   };
- *   projectDependencies: Array<{ name: string; version: string }>;
+ *   projectDependencies: Array<{ name: string; version: string; declaredEdgeRange?: string }>;
  * }} input
  * @returns {{ pass: boolean; reason?: string; warning?: string; conflict?: { name: string; version: string }; installed?: { name: string; version: string } }}
  */

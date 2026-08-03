@@ -34,6 +34,8 @@ import {
   validateWatchTargets,
 } from './run-monorepo-unit-tests.mjs';
 
+/** @typedef {import('./run-monorepo-unit-tests.mjs').Project} Project */
+
 /**
  * Fixture project list with the same shape the runner uses at runtime but
  * decoupled from filesystem discovery so tests stay deterministic.
@@ -45,7 +47,7 @@ import {
  * repo's actual project roots nests, so a "realistic" fixture would leave that
  * branch untested.
  *
- * @type {import('./run-monorepo-unit-tests.mjs').Project[]}
+ * @type {Project[]}
  */
 const projects = [
   { kind: 'host', name: 'host-app', rootPath: 'src' },
@@ -70,6 +72,23 @@ const projects = [
     rootPath: 'src/mfe_packages/demo-mfe',
   },
 ];
+
+/**
+ * Locates a fixture project or fails fast with a clear message. Safer than a
+ * bare non-null assertion: a typo in the predicate surfaces as a descriptive
+ * test failure instead of quietly handing `undefined` to the function under
+ * test.
+ *
+ * @param {(project: Project) => boolean} predicate
+ * @returns {Project}
+ */
+function mustFindProject(predicate) {
+  const found = projects.find(predicate);
+  if (!found) {
+    throw new Error('Fixture project not found for the given predicate.');
+  }
+  return found;
+}
 
 describe('parseArgs', () => {
   it('returns the default run shape when no arguments are passed', () => {
@@ -257,9 +276,9 @@ describe('inferProjectsFromForwardArgs', () => {
 });
 
 describe('rewriteForwardArgsForProject', () => {
-  const host = projects.find((project) => project.name === 'host-app');
-  const api = projects.find((project) => project.name === 'api');
-  const demoMfe = projects.find((project) => project.name === 'demo-mfe');
+  const host = mustFindProject((project) => project.name === 'host-app');
+  const api = mustFindProject((project) => project.name === 'api');
+  const demoMfe = mustFindProject((project) => project.name === 'demo-mfe');
 
   it('leaves args untouched for the host project', () => {
     const args = ['src/app/foo.test.ts', '--reporter=verbose'];
@@ -318,12 +337,13 @@ describe('resolveWorkspaceEntry', () => {
 
   it('expands `parent/*` globs by listing directory children', async () => {
     const repoRoot = '/virtual/repo';
+    /** @param {string} dirPath */
     const readdir = async (dirPath) => {
       expect(dirPath).toBe(path.join(repoRoot, 'packages'));
       return [
-        { name: 'api', isDirectory: () => true },
-        { name: 'framework', isDirectory: () => true },
-        { name: 'README.md', isDirectory: () => false },
+        { name: 'api', isDirectory: () => true, isSymbolicLink: () => false },
+        { name: 'framework', isDirectory: () => true, isSymbolicLink: () => false },
+        { name: 'README.md', isDirectory: () => false, isSymbolicLink: () => false },
       ];
     };
 
@@ -340,8 +360,8 @@ describe('resolveWorkspaceEntry', () => {
 
   it('filters out non-directory entries in glob expansion', async () => {
     const readdir = async () => [
-      { name: 'api', isDirectory: () => true },
-      { name: '.gitkeep', isDirectory: () => false },
+      { name: 'api', isDirectory: () => true, isSymbolicLink: () => false },
+      { name: '.gitkeep', isDirectory: () => false, isSymbolicLink: () => false },
     ];
     expect(await resolveWorkspaceEntry('packages/*', { readdir })).toEqual(['packages/api']);
   });
@@ -454,6 +474,7 @@ describe('validateWatchTargets', () => {
   });
 
   it('rejects workspaces that lack a test:unit:watch script', () => {
+    /** @type {Project[]} */
     const noWatch = [
       {
         kind: 'workspace',
@@ -510,7 +531,7 @@ describe('aggregateExitCode', () => {
 
 describe('spawnOptionsFor', () => {
   it('uses the repo root as cwd for host projects', () => {
-    const host = projects.find((project) => project.kind === 'host');
+    const host = mustFindProject((project) => project.kind === 'host');
     const options = spawnOptionsFor(host);
     expect(options.cwd).toBeTypeOf('string');
     expect(options.cwd.length).toBeGreaterThan(0);
@@ -518,17 +539,17 @@ describe('spawnOptionsFor', () => {
   });
 
   it('uses the repo root as cwd for workspace projects', () => {
-    const workspace = projects.find((project) => project.kind === 'workspace');
+    const workspace = mustFindProject((project) => project.kind === 'workspace');
     expect(spawnOptionsFor(workspace).cwd).toBeTypeOf('string');
   });
 
   it('uses the MFE cwd for MFE projects (nested install boundary)', () => {
-    const mfe = projects.find((project) => project.kind === 'mfe');
+    const mfe = mustFindProject((project) => project.kind === 'mfe');
     expect(spawnOptionsFor(mfe).cwd).toBe('/repo/src/mfe_packages/demo-mfe');
   });
 
   it('switches to piped stdio when buffered is true (parallel output)', () => {
-    const workspace = projects.find((project) => project.kind === 'workspace');
+    const workspace = mustFindProject((project) => project.kind === 'workspace');
     expect(spawnOptionsFor(workspace, { buffered: true }).stdio).toEqual([
       'ignore',
       'pipe',
@@ -537,7 +558,7 @@ describe('spawnOptionsFor', () => {
   });
 
   it('threads process.env through unchanged so child inherits NODE_ENV etc.', () => {
-    const host = projects.find((project) => project.kind === 'host');
+    const host = mustFindProject((project) => project.kind === 'host');
     expect(spawnOptionsFor(host).env).toBe(process.env);
   });
 });
@@ -786,6 +807,7 @@ describe('assertForwardPathArgsExpanded', () => {
 });
 
 describe('inferProjectsFromForwardArgs for the repo-scripts project', () => {
+  /** @type {Project[]} */
   const projectsWithScripts = [
     { kind: 'host', name: 'repo-scripts', rootPath: 'scripts' },
     {

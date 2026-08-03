@@ -193,12 +193,14 @@ function DatePickerInput({
   const [inputValue, setInputValue] = React.useState(date ? formatDate(date) : "")
   const [month, setMonth] = React.useState<Date | undefined>(date)
 
-  // Sync input value when the date changes externally, using the "adjusting
-  // state during render" pattern (react.dev) instead of an effect: the synced
-  // value lands in the same render pass instead of one commit later.
-  const [prevSyncKey, setPrevSyncKey] = React.useState({ date, formatDate })
-  if (prevSyncKey.date !== date || prevSyncKey.formatDate !== formatDate) {
-    setPrevSyncKey({ date, formatDate })
+  // Sync input value when date changes externally, using the "adjusting state during
+  // render" pattern (react.dev) instead of an effect — this replaces stale text before
+  // paint in the same render pass rather than committing it once and scheduling a
+  // second render from an effect. Tracks the (date, formatDate) pair that produced the
+  // last sync so unrelated re-renders (e.g. typing) don't reset the input.
+  const [prevSync, setPrevSync] = React.useState({ date, formatDate })
+  if (prevSync.date !== date || prevSync.formatDate !== formatDate) {
+    setPrevSync({ date, formatDate })
     setInputValue(date ? formatDate(date) : "")
   }
 

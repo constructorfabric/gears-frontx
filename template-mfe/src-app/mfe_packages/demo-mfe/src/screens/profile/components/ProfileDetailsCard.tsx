@@ -44,12 +44,13 @@ export const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
     getFormValues(user)
   );
 
-  // Re-derive the form values when the user changes or editing stops, using the
-  // "adjusting state during render" pattern (react.dev) instead of an effect:
-  // the reset lands in the same render pass instead of one commit later.
-  const [prevResetKey, setPrevResetKey] = useState({ isEditing, user });
-  if (prevResetKey.isEditing !== isEditing || prevResetKey.user !== user) {
-    setPrevResetKey({ isEditing, user });
+  // Reset formValues from `user` whenever (isEditing, user) changes and we're not
+  // mid-edit, using the "adjusting state during render" pattern (react.dev) instead of
+  // an effect — this syncs before paint in the same render pass rather than committing
+  // stale values once and scheduling a second render from an effect.
+  const [prevSyncKey, setPrevSyncKey] = useState({ isEditing, user });
+  if (prevSyncKey.isEditing !== isEditing || prevSyncKey.user !== user) {
+    setPrevSyncKey({ isEditing, user });
     if (!isEditing) {
       setFormValues(getFormValues(user));
     }

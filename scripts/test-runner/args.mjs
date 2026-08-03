@@ -182,6 +182,7 @@ export function parseArgs(argv) {
   return { mode, project, parallel, help, timeoutMs, forwardArgs };
 }
 
+/** @param {string} projectNames */
 export function printUsage(projectNames) {
   console.log(
     `Usage: node scripts/run-monorepo-unit-tests.mjs [--run|--watch] [--project=<name>] [--parallel] [--timeout=<ms>] [-- <vitest args>]

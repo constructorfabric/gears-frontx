@@ -75,3 +75,21 @@ export class CliError extends Error {
  * @typedef {{ kind: 'mfe'; name: string; cwd: string; rootPath: string }} MfeProject
  * @typedef {HostProject | WorkspaceProject | MfeProject} Project
  */
+
+/**
+ * Structural subset of `node:child_process`'s `ChildProcess` that
+ * `waitForExit` actually consumes. Narrowing to this shape (instead of the
+ * full `ChildProcess` type) lets unit tests drive a lightweight in-memory
+ * fake (`FakeChild`) without satisfying `ChildProcess`'s much larger real
+ * surface (`stdin`, `stdio`, `connected`, `channel`, …) that this runner
+ * never touches.
+ *
+ * @typedef {{
+ *   killed: boolean;
+ *   once(event: 'error', listener: (err: Error) => void): void;
+ *   once(event: 'exit', listener: (code: number | null, signal: NodeJS.Signals | null) => void): void;
+ *   kill(signal?: NodeJS.Signals | number): boolean;
+ *   stdout?: { on(event: 'data', listener: (chunk: Buffer) => void): void } | null;
+ *   stderr?: { on(event: 'data', listener: (chunk: Buffer) => void): void } | null;
+ * }} SpawnedChildLike
+ */

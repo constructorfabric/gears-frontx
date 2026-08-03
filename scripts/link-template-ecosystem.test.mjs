@@ -12,6 +12,9 @@ import {
   templateDirName,
 } from './link-template-ecosystem.mjs';
 
+/** @typedef {import('./link-template-ecosystem.mjs').FileSystemLike} FileSystemLike */
+/** @typedef {import('./link-template-ecosystem.mjs').LinkResult} LinkResult */
+
 const repoRoot = '/repo';
 
 /**
@@ -60,10 +63,8 @@ function fakeFs(initial) {
   const fsError = (code, target) =>
     Object.assign(new Error(`${code}: ${target}`), { code });
 
-  return {
-    tree,
-    calls,
-    fs: {
+  /** @type {FileSystemLike} */
+  const fs = {
       existsSync: (target) => tree.has(target),
       readFileSync: (target) => {
         const entry = tree.get(target);
@@ -103,8 +104,9 @@ function fakeFs(initial) {
         calls.links.push({ target, linkPath, type });
         tree.set(linkPath, { kind: 'link', target });
       },
-    },
   };
+
+  return { tree, calls, fs };
 }
 
 /**
@@ -169,8 +171,9 @@ const linkedScope = Object.freeze({
  * Makes exactly one link path fail, the way a Windows EPERM or a directory an
  * antivirus scanner holds open does: after everything before it succeeded.
  *
- * @param {{ symlinkSync: (target: string, linkPath: string, type: string) => void }} fs
+ * @param {Pick<FileSystemLike, 'symlinkSync'>} fs
  * @param {string} failingLinkPath
+ * @returns {FileSystemLike['symlinkSync']}
  */
 function failSymlinkAt(fs, failingLinkPath) {
   const original = fs.symlinkSync;
@@ -190,8 +193,9 @@ function failSymlinkAt(fs, failingLinkPath) {
  * ends, because staging and rollback move the same two paths in opposite
  * directions and a case usually means only one of them.
  *
- * @param {{ renameSync: (from: string, to: string) => void }} fs
+ * @param {Pick<FileSystemLike, 'renameSync'>} fs
  * @param {(move: { from: string; to: string }) => boolean} match
+ * @returns {FileSystemLike['renameSync']}
  */
 function failRenameAt(fs, match) {
   const original = fs.renameSync;
@@ -203,6 +207,44 @@ function failRenameAt(fs, match) {
 
     return original(from, to);
   };
+}
+
+/**
+ * Narrows a result to the branch a case is asserting about. `toMatchObject({ ok:
+ * false })` alone leaves the static type the full union, and a blind property
+ * read would let the opposite branch reach an assertion written for this one.
+ *
+ * @param {LinkResult} result
+ * @returns {Exclude<LinkResult, { ok: true }>}
+ */
+function expectFailure(result) {
+  if (result.ok) {
+    throw new Error('expected a failure result');
+  }
+  return result;
+}
+
+/**
+ * @param {LinkResult} result
+ * @returns {Extract<LinkResult, { ok: true }>}
+ */
+function expectSuccess(result) {
+  if (!result.ok) {
+    throw new Error(`expected a success result, got: ${result.message}`);
+  }
+  return result;
+}
+
+/**
+ * An `existsSync` that reports one path as absent and defers the rest — the
+ * shape every "missing artifact" case below needs.
+ *
+ * @param {FileSystemLike['existsSync']} original
+ * @param {string} missing
+ * @returns {FileSystemLike['existsSync']}
+ */
+function withMissingPath(original, missing) {
+  return (target) => (target === missing ? false : original(target));
 }
 
 describe('builtEntryPointOf', () => {
@@ -250,8 +292,7 @@ describe('linkEcosystemPackages', () => {
 
     const result = linkEcosystemPackages({ repoRoot, packageDirs: linkedPackageDirs, fs, platform: 'linux' });
 
-    expect(result.ok).toBe(true);
-    expect(result.linked).toEqual(linkedPackageDirs);
+    expect(expectSuccess(result).linked).toEqual(linkedPackageDirs);
     expect(scopeEntries(tree)).toEqual(linkedScope);
     expect(calls.links.map((link) => link.linkPath)).toEqual(
       linkedPackageDirs.map((name) => path.join(scopeDir, name)),
@@ -278,7 +319,7 @@ describe('linkEcosystemPackages', () => {
     const result = linkEcosystemPackages({ repoRoot, packageDirs: linkedPackageDirs, fs, platform: 'linux' });
 
     expect(result).toMatchObject({ ok: false, reason: 'template-not-installed' });
-    expect(result.message).toContain('npm ci');
+    expect(expectFailure(result).message).toContain('npm ci');
     expect(calls.links).toEqual([]);
   });
 
@@ -287,26 +328,21 @@ describe('linkEcosystemPackages', () => {
   // surfaced later as a missing module inside the template build.
   it('refuses an unbuilt package, naming the missing artifact and the build command', () => {
     const { fs } = builtTree();
-    fs.existsSync = ((original) => (target) =>
-      target === path.join(repoRoot, 'packages/mfes/dist/index.js') ? false : original(target))(
-      fs.existsSync,
-    );
+    fs.existsSync = withMissingPath(fs.existsSync, path.join(repoRoot, 'packages/mfes/dist/index.js'));
 
     const result = linkEcosystemPackages({ repoRoot, packageDirs: linkedPackageDirs, fs, platform: 'linux' });
 
     expect(result).toMatchObject({ ok: false, reason: 'build-missing' });
-    expect(result.message).toContain(path.join('packages/mfes', './dist/index.js'));
-    expect(result.message).toContain('npm run build:packages');
+    const failure = expectFailure(result);
+    expect(failure.message).toContain(path.join('packages/mfes', './dist/index.js'));
+    expect(failure.message).toContain('npm run build:packages');
   });
 
   // A refusal halfway through would leave part of the tree on local sources and
   // part on registry tarballs — harder to diagnose than either end state.
   it('writes nothing at all when a later package fails its build check', () => {
     const { fs, calls, tree } = builtTree();
-    fs.existsSync = ((original) => (target) =>
-      target === path.join(repoRoot, 'packages/gts-plugin/dist/index.js')
-        ? false
-        : original(target))(fs.existsSync);
+    fs.existsSync = withMissingPath(fs.existsSync, path.join(repoRoot, 'packages/gts-plugin/dist/index.js'));
 
     const result = linkEcosystemPackages({ repoRoot, packageDirs: linkedPackageDirs, fs, platform: 'linux' });
 
@@ -317,10 +353,7 @@ describe('linkEcosystemPackages', () => {
 
   it('refuses when a package directory is absent from the checkout', () => {
     const { fs } = builtTree();
-    fs.existsSync = ((original) => (target) =>
-      target === path.join(repoRoot, 'packages/api/package.json') ? false : original(target))(
-      fs.existsSync,
-    );
+    fs.existsSync = withMissingPath(fs.existsSync, path.join(repoRoot, 'packages/api/package.json'));
 
     const result = linkEcosystemPackages({ repoRoot, packageDirs: linkedPackageDirs, fs, platform: 'linux' });
 
@@ -340,7 +373,7 @@ describe('linkEcosystemPackages', () => {
     const result = linkEcosystemPackages({ repoRoot, packageDirs: linkedPackageDirs, fs, platform: 'linux' });
 
     expect(result).toMatchObject({ ok: false, reason: 'source-missing' });
-    expect(result.message).toContain('packages/mfes/package.json is unreadable');
+    expect(expectFailure(result).message).toContain('packages/mfes/package.json is unreadable');
     expect(scopeEntries(tree)).toEqual(installedScope);
   });
 
@@ -363,7 +396,7 @@ describe('linkEcosystemPackages', () => {
       cleared: [],
       unrestored: [],
     });
-    expect(result.message).toContain(`creating the @gears-frontx/${second} symlink failed`);
+    expect(expectFailure(result).message).toContain(`creating the @gears-frontx/${second} symlink failed`);
     expect(scopeEntries(tree)).toEqual(installedScope);
   });
 
@@ -388,7 +421,7 @@ describe('linkEcosystemPackages', () => {
       cleared: [],
       unrestored: [],
     });
-    expect(result.message).toContain(
+    expect(expectFailure(result).message).toContain(
       `moving the installed @gears-frontx/${second} directory aside failed`,
     );
     expect(scopeEntries(tree)).toEqual(installedScope);
@@ -412,10 +445,11 @@ describe('linkEcosystemPackages', () => {
       cleared: [],
       unrestored: [second],
     });
-    expect(result.message).toContain('npm ci');
+    expect(expectFailure(result).message).toContain('npm ci');
 
     // The content is not lost, only misnamed - which is what makes `npm ci` a
     // repair rather than a re-download of something that vanished.
+    /** @type {Record<string, string>} */
     const surviving = { ...installedScope, [`${second}${backupSuffix}`]: 'installed' };
     delete surviving[second];
     expect(scopeEntries(tree)).toEqual(surviving);
@@ -440,9 +474,11 @@ describe('linkEcosystemPackages', () => {
       cleared: [first],
       unrestored: [],
     });
-    expect(result.message).toContain(`rolled @gears-frontx/${second}, @gears-frontx/${third} back to the installed versions`);
-    expect(result.message).toContain(`removed the @gears-frontx/${first} symlink, where nothing had been installed to put back`);
+    const rollback = expectFailure(result);
+    expect(rollback.message).toContain(`rolled @gears-frontx/${second}, @gears-frontx/${third} back to the installed versions`);
+    expect(rollback.message).toContain(`removed the @gears-frontx/${first} symlink, where nothing had been installed to put back`);
     // The absent package stays absent; the other two are back at their installed content.
+    /** @type {Record<string, string>} */
     const expected = { ...installedScope };
     delete expected[first];
     expect(scopeEntries(tree)).toEqual(expected);
@@ -450,7 +486,7 @@ describe('linkEcosystemPackages', () => {
 });
 
 describe('runCli', () => {
-  const cliOptions = { repoRoot, packageDirs: linkedPackageDirs, platform: 'linux' };
+  const cliOptions = { repoRoot, packageDirs: linkedPackageDirs, platform: /** @type {NodeJS.Platform} */ ('linux') };
 
   // With the pins on 0.3.0-alpha.1 the template builds without these links, so
   // a stale link no longer announces itself - success is the case that needs the

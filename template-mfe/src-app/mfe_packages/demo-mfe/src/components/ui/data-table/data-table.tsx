@@ -57,10 +57,7 @@ export function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
 
-  // TanStack Table's useReactTable returns functions the React Compiler cannot
-  // memoize safely; it skips this component, which is the documented expectation
-  // for this library.
-  // eslint-disable-next-line react-hooks/incompatible-library
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table's useReactTable is not analyzable by the React Compiler, so this component opts out of compilation. The returned `table` is also passed to memoizable children (DataTablePagination), which the rule flags for the same reason; that is accepted here because TanStack's table object is intentionally mutable and re-created per render, so memoizing on it would be wrong either way.
   const internalTable = useReactTable({
     data,
     columns,

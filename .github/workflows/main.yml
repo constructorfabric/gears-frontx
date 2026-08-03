@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# Every job here only reads the repo: nothing pushes, comments, or releases —
+# upload-artifact needs no contents scope. Declared once at the workflow level
+# (with persist-credentials: false on each checkout) so the default read/write
+# token never reaches repository-controlled scripts.
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -17,6 +24,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v5
+      with:
+        persist-credentials: false
 
     - name: Setup Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v5
@@ -30,20 +39,8 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    # MFE packages under `src/mfe_packages/*` are NOT npm workspaces — each
-    # has its own lockfile because Module Federation runtimes load them as
-    # isolated apps. The root `npm ci` above does not install their deps, so
-    # `type-check:mfe` and MFE-scoped unit tests can't resolve third-party
-    # packages (@radix-ui, @tanstack/react-table, recharts, vaul, …) until
-    # each MFE is installed in place.
-    - name: Install MFE dependencies
-      run: |
-        for mfe in src/mfe_packages/*/; do
-          if [ -f "$mfe/package-lock.json" ]; then
-            echo "==> npm ci in $mfe"
-            (cd "$mfe" && npm ci)
-          fi
-        done
+    # MFE packages are template content — the template-validate job below
+    # installs and checks them.
 
     # Consumer packages (framework, react, studio, cli) resolve workspace deps
     # via their sibling packages' `dist/` types. A fresh `npm ci` has no dist,
@@ -137,12 +134,244 @@ jobs:
     - name: Check template lockfile self-link entries
       run: npm run policy:template-lockfile-selflink
 
+  # The template-*/ trees carry their own arch:deps / lint / test:unit scripts,
+  # and nothing else in this workflow enters them — so without this job their
+  # checks are enforced only when someone runs them by hand, and they rot
+  # (#483).
+  #
+  # The template-shell/template-mfe split (#470) produced two kinds of
+  # template, and both need covering:
+  #   - self-contained (template-shell): root package.json and lockfile of its
+  #     own, validated standalone by the glob loop below, which deliberately
+  #     avoids hardcoding template names;
+  #   - add-only overlay (template-mfe): no root package.json, no tooling of
+  #     its own. It cannot be validated in place — its packages' file: links
+  #     resolve to template-mfe/packages/* (which does not exist), and their
+  #     vite/vitest configs import out of the shell. The only way to run their
+  #     checks is to compose the pair the way `frontx add` does and validate
+  #     the result, which the second step does.
+  template-validate:
+    name: Template Validate
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        persist-credentials: false
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v5
+      with:
+        node-version: '25.x'
+        cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          template-*/package-lock.json
+
+    - name: Enable Corepack
+      run: corepack enable
+
+    # The templates pin @gears-frontx/* to exact registry versions (#485), so
+    # every template check below resolves published tarballs and NOT this repo's
+    # packages/. That is the point: this job validates what a seeded project
+    # actually installs, which is why a pin lagging the ecosystem surface has to
+    # fail here — that drift is what `dev:template:link` papers over locally,
+    # and papering over it in CI would leave a seeded project broken with
+    # nothing red to show it.
+    #
+    # This step is still required even though the pins no longer resolve here.
+    # The templates do not declare their whole toolchain: template-shell's
+    # eslint.config.js imports `typescript-eslint`, which is absent from its own
+    # devDependencies and resolves upward into the repo root's node_modules. Drop
+    # the root install and `npm run lint` below fails to load its config.
+    # Only the install is needed — no `build:packages`: with the pins on
+    # registry tarballs, nothing in this job reads the workspace packages'
+    # dist/ output.
+    #
+    # A seeded project standing on its own therefore cannot run that lint at all;
+    # what covers it here is the monorepo's tree, not the template's. Tracked as
+    # part of the templates' declared-toolchain gap, not something this job can
+    # fix by installing differently.
+    - name: Install ecosystem toolchain
+      run: npm ci
+
+    # Split the templates by what their manifests CLAIM, not by what happens to
+    # sit on disk. A template that declares "package.json" among its ownership
+    # boundaries owns its own tooling and is validated standalone; one that does
+    # not is an add-only overlay and is only meaningful composed onto a shell.
+    #
+    # Disk presence is the wrong test. #489 adds a root package.json to
+    # template-mfe as a monorepo-only build harness, deliberately absent from
+    # the manifest so it never ships into a seeded project. A plain `-f` check
+    # would route the overlay down the self-contained path and then fail on the
+    # arch:deps / lint / test:unit scripts a build harness has no reason to
+    # define. Reading the manifest keeps both halves correct without loosening
+    # those calls to --if-present, which would let a real template lose a script
+    # and go quietly unchecked — the failure this job exists to prevent.
+    - name: Classify templates
+      run: |
+        set -euo pipefail
+        node -e '
+          const fs = require("fs");
+          const selfContained = [], overlays = [];
+          for (const dir of fs.readdirSync(".").filter((d) => d.startsWith("template-")).sort()) {
+            if (!fs.existsSync(dir + "/frontx-template.json")) continue;
+            const b = JSON.parse(fs.readFileSync(dir + "/frontx-template.json", "utf8")).ownershipBoundaries || {};
+            // sharedFiles ownership (a region-union or exclusive merge into a file this
+            // template does not fully own) is not implemented below: classification only
+            // checks exclusiveSubtrees, and the composition step only copies
+            // exclusiveSubtrees — neither consults compose-shared-files.ts the way
+            // assembler.ts does. Refusing here turns "silently misclassified as
+            // self-contained" / "silently uncomposed" into a loud failure the day a
+            // manifest actually declares one, instead of half-implementing the contract
+            // for a case nothing exercises yet (both shipped manifests use `[]` today).
+            if ((b.sharedFiles || []).length) {
+              throw new Error(dir + " declares ownershipBoundaries.sharedFiles, which this job does not classify or compose — extend \"Classify templates\" and \"Validate shell + overlay composition\" to handle it before adding one");
+            }
+            const claims = b.exclusiveSubtrees || [];
+            (claims.includes("package.json") ? selfContained : overlays).push(dir);
+          }
+          if (!selfContained.length) throw new Error("no self-contained template found");
+          console.log("self-contained: " + selfContained.join(" "));
+          console.log("overlays: " + (overlays.join(" ") || "(none)"));
+          fs.appendFileSync(process.env.GITHUB_ENV,
+            `SELF_CONTAINED_TEMPLATES=${selfContained.join(" ")}\n` +
+            `OVERLAY_TEMPLATES=${overlays.join(" ")}\n`);
+        '
+
+    - name: Validate self-contained templates
+      run: |
+        set -euo pipefail
+        for template in $SELF_CONTAINED_TEMPLATES; do
+          echo "==> Validating $template"
+          (
+            cd "$template"
+            npm ci
+            # Full `build`, not just build:package/build:packages — it also
+            # chains build:mfes, generate:mfe-manifests and vite build, which
+            # nothing else in CI runs. It comes first so the later checks see
+            # the generated manifests.
+            npm run build
+            npm run type-check
+            npm run arch:deps
+            npm run lint
+            npm run test:unit
+          )
+        done
+
+    # Composes the overlays onto the shell and runs the shell's checks over the
+    # union — the tree a real `frontx seed shell && frontx add mfe` produces.
+    # This is what actually covers the MFE packages: the shell's eslint config
+    # has an src-app/mfe_packages/** block, its dependency-cruiser config has
+    # no-cross-mfe-imports, and its test:unit ends in
+    # `--workspaces --if-present` — all three are no-ops until the overlay lands.
+    #
+    # Nothing in the manifests says which shell an overlay belongs to, so this
+    # requires exactly one self-contained template and composes every overlay
+    # onto it. The subtrees copied are read from each overlay's own
+    # exclusiveSubtrees, mirroring the assembler's ownership semantics
+    # (packages/cli/src/scaffold/assembler.ts) rather than guessing at paths.
+    - name: Validate shell + overlay composition
+      run: |
+        set -euo pipefail
+
+        # shellcheck disable=SC2086
+        set -- $SELF_CONTAINED_TEMPLATES
+        if [ "$#" -ne 1 ]; then
+          echo "::error::composition needs exactly one self-contained template, got: $*"
+          exit 1
+        fi
+        shell="$1"
+
+        if [ -z "${OVERLAY_TEMPLATES// /}" ]; then
+          echo "::error::no overlay templates found — this step would be a no-op"
+          exit 1
+        fi
+
+        # Every check below is a silent no-op if an overlay did not land —
+        # eslint just matches no files, test:unit finds no extra workspaces.
+        # That vacuous pass is the exact failure mode this job exists to
+        # catch, so each overlay's own contribution is counted as it lands,
+        # not folded into one total afterwards: a subtree that exists but
+        # holds no package.json (a docs-only directory, say) must not be
+        # hidden by another overlay's packages passing the count for
+        # everyone.
+        composed_total=0
+        for overlay in $OVERLAY_TEMPLATES; do
+          subtrees="$(node -e '
+            const m = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+            const s = m.ownershipBoundaries && m.ownershipBoundaries.exclusiveSubtrees;
+            if (!s || !s.length) {
+              console.error("no exclusiveSubtrees declared in " + process.argv[1]);
+              process.exit(1);
+            }
+            console.log(s.join("\n"));
+          ' "$overlay/frontx-template.json")"
+
+          overlay_count=0
+          while read -r subtree; do
+            [ -n "$subtree" ] || continue
+            # A declared subtree that isn't there means the manifest and the
+            # tree disagree.
+            if [ ! -d "$overlay/$subtree" ]; then
+              echo "::error::$overlay declares exclusiveSubtree '$subtree', which does not exist"
+              exit 1
+            fi
+            echo "==> Overlaying $overlay/$subtree"
+            # Copy the *contents* into the destination: `cp -R src dest` nests
+            # under dest when dest already exists, which would bury the
+            # packages a level deeper than the count below looks.
+            mkdir -p "$shell/${subtree%/}"
+            cp -R "$overlay/$subtree/." "$shell/${subtree%/}/"
+            # Each MFE ships a standalone package-lock.json whose file:
+            # targets point into template-mfe/packages/*, which does not
+            # exist. npm ignores nested locks inside a workspace, but drop
+            # them so nothing reads them — from the subtree just copied, not
+            # a hardcoded mfe_packages path.
+            find "$shell/${subtree%/}" -not -path '*/node_modules/*' \
+              -name package-lock.json -delete
+            # Counted from the subtree just copied, not a hardcoded
+            # `src-app/mfe_packages` path — the manifest already told us
+            # where this overlay's content landed.
+            subtree_count="$(find "$shell/${subtree%/}" -not -path '*/node_modules/*' \
+              -name package.json 2>/dev/null | wc -l)"
+            overlay_count=$((overlay_count + subtree_count))
+          done <<< "$subtrees"
+
+          if [ "$overlay_count" -eq 0 ]; then
+            echo "::error::$overlay's exclusiveSubtrees exist but contain no MFE package (no package.json found)"
+            exit 1
+          fi
+          echo "==> $overlay contributed $overlay_count MFE package(s)"
+          composed_total=$((composed_total + overlay_count))
+        done
+        echo "==> Composed $composed_total MFE package(s) into $shell"
+
+        cd "$shell"
+        # npm install, not npm ci: the shell's committed lockfile is generated
+        # without the overlay, so it has no mfe_packages entries and `ci` would
+        # fail as out of sync. Re-installing after an `add` is the documented
+        # workflow (template-mfe/README.md).
+        npm install
+        # Here `build` also compiles the overlaid MFEs (build:mfes) and emits
+        # their manifests, which the standalone run has nothing to do.
+        npm run build
+        # `type-check` ends in type-check:mfe, which reports "no MFE packages"
+        # in the standalone run above and only does real work here.
+        npm run type-check
+        npm run arch:deps
+        npm run lint
+        npm run test:unit
+
   studio-validate:
     name: Studio Validate Artifacts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -166,6 +395,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -187,6 +418,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -245,6 +478,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v5
+      with:
+        persist-credentials: false
 
     - name: Setup Node.js
       uses: actions/setup-node@v5

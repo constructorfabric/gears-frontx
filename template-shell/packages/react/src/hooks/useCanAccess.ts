@@ -48,6 +48,11 @@ function getAuthRuntime(app: FrontXApp): AuthRuntime | null {
   return (app as FrontXAuthAppContract).auth ?? null;
 }
 
+// Module-level constant so the no-auth-runtime denial keeps a stable identity
+// across renders — consumers can put the hook result in dependency lists
+// without re-firing every render.
+const DENIED_NO_AUTH: UseCanAccessResult = { allow: false, isResolving: false };
+
 /**
  * Declarative RBAC guard hook.
  *
@@ -67,6 +72,11 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
 ): UseCanAccessResult {
   const app = useFrontX();
 
+  // Resolved once per `app` change; read here (not just inside the effect) so both the
+  // "no auth runtime" case and the "pending" reset below can be derived/adjusted at
+  // render time instead of requiring a synchronous setState from the effect.
+  const auth = getAuthRuntime(app);
+
   // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-stable-key
   const stableKey = accessQueryKey(query as AccessQuery);
 
@@ -75,29 +85,37 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
   // pattern) so the effect can depend on the stored value directly — its
   // referential identity tracks the access intent, not the parent render cycle.
   const [stableQuery, setStableQuery] = useState<AccessQuery>(() => query as AccessQuery);
-  const [storedKey, setStoredKey] = useState(stableKey);
+  // Tracks the (app, auth, stableKey) combination the effect below was last run for —
+  // exactly its dependency list — so every input that would restart the access check
+  // also re-pessimizes `result` here, during render, instead of via a setState call
+  // inside the effect.
+  const [runState, setRunState] = useState({ app, auth, stableKey });
   const [result, setResult] = useState<UseCanAccessResult>({ allow: false, isResolving: true });
 
-  if (storedKey !== stableKey) {
-    setStoredKey(stableKey);
+  if (runState.app !== app || runState.auth !== auth || runState.stableKey !== stableKey) {
+    setRunState({ app, auth, stableKey });
     setStableQuery(query as AccessQuery);
+    // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-pending-effect
+    // Re-pessimize at render time: every (app, auth, stableKey) combination
+    // the effect below runs for enters Pending here, before the async
+    // decision starts.
     setResult({ allow: false, isResolving: true });
+    // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-pending-effect
   }
   // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-stable-key
 
   useEffect(() => {
-    // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-pending-effect
-    const auth = getAuthRuntime(app);
     if (!auth) {
-      setResult({ allow: false, isResolving: false });
+      // No auth runtime on the app: the returned result is derived below
+      // (`auth ? result : DENIED_NO_AUTH`), so there is nothing to synchronize here.
       return;
     }
 
-    setResult({ allow: false, isResolving: true });
-
+    // `result` is re-pessimized during render (inst-pending-effect above) for
+    // every (app, auth, stableKey) combination this effect runs for — no
+    // setState needed here before starting the async decision.
     let alive = true;
     const controller = new AbortController();
-    // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-pending-effect
 
     // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-decision-apply
     void auth
@@ -120,7 +138,7 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
       controller.abort();
     };
     // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-abort
-  }, [app, stableQuery]);
+  }, [app, auth, stableQuery]);
 
-  return result;
+  return auth ? result : DENIED_NO_AUTH;
 }

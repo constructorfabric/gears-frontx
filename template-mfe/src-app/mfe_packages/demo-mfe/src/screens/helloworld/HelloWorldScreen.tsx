@@ -21,6 +21,13 @@ const languageModules = import.meta.glob('./i18n/*.json') as Record<
   () => Promise<{ default: Record<string, string> }>
 >;
 
+const RTL_LANGUAGES = ['ar', 'he', 'fa', 'ur'];
+
+function readBridgeProperty(bridge: ChildMfeBridge, property: string, fallback: string): string {
+  const current = bridge.getProperty(property);
+  return current && typeof current.value === 'string' ? current.value : fallback;
+}
+
 /**
  * Hello World Screen for the MFE remote.
  *
@@ -37,17 +44,25 @@ const languageModules = import.meta.glob('./i18n/*.json') as Record<
  */
 export const HelloWorldScreen: React.FC<HelloWorldScreenProps> = ({ bridge }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  // Initial values are read lazily during the first render so the first paint
-  // already reflects the host's shared properties; the effect below only
-  // subscribes to changes (setState inside an effect body is a lint error).
-  const [theme, setTheme] = useState<string>(() => {
-    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
-    return initialTheme && typeof initialTheme.value === 'string' ? initialTheme.value : 'default';
-  });
-  const [language, setLanguage] = useState<string>(() => {
-    const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
-    return initialLang && typeof initialLang.value === 'string' ? initialLang.value : 'en';
-  });
+  // Initial value read directly from the bridge's lazy useState initializer (runs once,
+  // synchronously, during the first render) instead of via setState in a mount effect —
+  // this avoids an extra render and the set-state-in-effect anti-pattern. The effect
+  // below only subscribes for subsequent property changes.
+  const [theme, setTheme] = useState<string>(() =>
+    readBridgeProperty(bridge, FRONTX_SHARED_PROPERTY_THEME, 'default')
+  );
+  const [language, setLanguage] = useState<string>(() =>
+    readBridgeProperty(bridge, FRONTX_SHARED_PROPERTY_LANGUAGE, 'en')
+  );
+  // The lazy initializers above run only on mount; if the host swaps the bridge
+  // instance, re-read its current properties during render ("adjusting state
+  // during render") — the subscription effect only delivers future changes.
+  const [prevBridge, setPrevBridge] = useState(bridge);
+  if (prevBridge !== bridge) {
+    setPrevBridge(bridge);
+    setTheme(readBridgeProperty(bridge, FRONTX_SHARED_PROPERTY_THEME, 'default'));
+    setLanguage(readBridgeProperty(bridge, FRONTX_SHARED_PROPERTY_LANGUAGE, 'en'));
+  }
 
   // Load translations using the shared hook
   const { t, loading } = useScreenTranslations(languageModules, bridge);
@@ -73,14 +88,13 @@ export const HelloWorldScreen: React.FC<HelloWorldScreenProps> = ({ bridge }) =>
     };
   }, [bridge]);
 
-  // Keep the shadow host's text direction in sync with the language state —
-  // including the initial language read during render. A DOM host mutation has
-  // to wait for commit, so this lives in an effect rather than the render body.
+  // Keep the Shadow DOM host's text direction in sync with the active language.
+  // An effect keyed by `language` (rather than logic inside the subscription
+  // callback) also covers the initial language, which never fires a callback.
   useEffect(() => {
     const rootNode = containerRef.current?.getRootNode();
     if (rootNode && 'host' in rootNode) {
-      const rtlLanguages = ['ar', 'he', 'fa', 'ur'];
-      (rootNode.host as HTMLElement).dir = rtlLanguages.includes(language) ? 'rtl' : 'ltr';
+      (rootNode.host as HTMLElement).dir = RTL_LANGUAGES.includes(language) ? 'rtl' : 'ltr';
     }
   }, [language]);
 

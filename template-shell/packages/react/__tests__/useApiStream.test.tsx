@@ -15,6 +15,7 @@ import {
   resetSharedFetchCache,
   resetSharedQueryClient,
   type StreamDescriptor,
+  type StreamStatus,
 } from '@gears-frontx/framework';
 import { useApiStream } from '@gears-frontx/react';
 import {
@@ -111,6 +112,74 @@ describe('useApiStream', () => {
 
     await waitFor(() => expect(result.current.status).toBe('error'));
     expect(result.current.error).toEqual(new Error('offline'));
+  });
+
+  it('reports connecting on the very first render when enabled (no idle flash)', () => {
+    const statuses: StreamStatus[] = [];
+    const descriptor = makeStreamDescriptor<string>({
+      key: ['@stream', 'first-render-status'],
+      connect: () => new Promise<string>(() => {}), // never settles
+    });
+
+    renderHook(() => {
+      const stream = useApiStream(descriptor);
+      statuses.push(stream.status);
+      return stream;
+    });
+
+    // The lazy state initializer starts at 'connecting' when enabled — the
+    // first committed frame never shows a transient 'idle'.
+    expect(statuses[0]).toBe('connecting');
+  });
+
+  it('re-enable clears stale data and reconnects through connecting', async () => {
+    const resolvers: Array<(id: string) => void> = [];
+    let emit: (e: string) => void = () => {};
+    const disconnect = vi.fn();
+    const connect = vi.fn((onEvent: (e: string) => void) => {
+      emit = onEvent;
+      return new Promise<string>((resolve) => {
+        resolvers.push(resolve);
+      });
+    });
+    const descriptor = makeStreamDescriptor<string>({
+      key: ['@stream', 're-enable'],
+      connect,
+      disconnect,
+    });
+
+    const { result, rerender } = renderHook(
+      (props: { enabled: boolean }) =>
+        useApiStream(descriptor, { enabled: props.enabled, mode: 'accumulate' }),
+      { initialProps: { enabled: true } },
+    );
+
+    await act(async () => {
+      resolvers[0]('cid-1');
+    });
+    await waitFor(() => expect(result.current.status).toBe('connected'));
+    act(() => {
+      emit('stale');
+    });
+    expect(result.current.data).toBe('stale');
+    expect(result.current.events).toEqual(['stale']);
+
+    rerender({ enabled: false });
+    expect(result.current.status).toBe('idle');
+    await waitFor(() => expect(disconnect).toHaveBeenCalledWith('cid-1'));
+
+    rerender({ enabled: true });
+    // Render-time adjustment: the previous connection's data is cleared and
+    // status is back to 'connecting' before the second connect resolves.
+    expect(result.current.status).toBe('connecting');
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.events).toEqual([]);
+    expect(connect).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolvers[1]('cid-2');
+    });
+    expect(result.current.status).toBe('connected');
   });
 
   it('with enabled false stays idle and never calls connect', () => {

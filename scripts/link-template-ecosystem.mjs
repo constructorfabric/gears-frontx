@@ -99,6 +99,22 @@ const silentStalenessNote =
  */
 
 /**
+ * Structural subset of `node:fs` that this script calls. Narrower than
+ * `typeof fs` on purpose: the real module's members carry encoding overloads
+ * and extra call signatures a test fake has no reason to implement, so typing
+ * the injection point as the whole module makes every fake in the unit tests a
+ * type error. This shape is exactly the five calls made below.
+ *
+ * @typedef {{
+ *   existsSync: (path: string) => boolean;
+ *   readFileSync: (path: string, encoding: 'utf8') => string;
+ *   rmSync: (path: string, options: { recursive: boolean; force: boolean }) => void;
+ *   renameSync: (from: string, to: string) => void;
+ *   symlinkSync: (target: string, linkPath: string, type: 'dir' | 'junction') => void;
+ * }} FileSystemLike
+ */
+
+/**
  * The only failure that can be raised after the first write, and the reason the
  * caller has to read fields rather than just the message.
  *
@@ -213,7 +229,7 @@ function isMissingEntryError(error) {
  * tarball content that only `npm ci` can put back. A rename keeps that content
  * one syscall away for as long as the run can still fail.
  *
- * @param {typeof fsDefault} fs
+ * @param {FileSystemLike} fs
  * @param {string} linkPath
  * @param {string} backupPath
  * @returns {string | null} The backup path, or `null` when nothing was installed
@@ -260,7 +276,7 @@ function describePackages(names) {
  * recovery instruction would train developers to ignore the one case that does.
  *
  * @param {{
- *   fs: typeof fsDefault;
+ *   fs: FileSystemLike;
  *   staged: { name: string; linkPath: string; backupPath: string | null }[];
  *   failedPackage: string;
  *   failedStep: 'stage' | 'link';
@@ -324,6 +340,11 @@ function restoreInstalledTree({ fs, staged, failedPackage, failedStep, cause }) 
       parts.push(`removed the ${describePackages(cleared)} symlink, where nothing had been installed to put back`);
     }
     stateLine = `Rollback ${parts.join(' and ')}; nothing was left half-removed.`;
+    // The rollback already returned the tree to what `npm ci` left, so unlike
+    // the unrestored case above there is nothing to repair - re-running is the
+    // whole remedy. Left unassigned, this line printed as literal "undefined"
+    // in the message join below.
+    recoveryLine = 'Fix the cause and re-run.';
   } else {
     stateLine = 'Nothing had been written yet, so the installed tree is untouched.';
     recoveryLine =
@@ -374,7 +395,7 @@ function restoreInstalledTree({ fs, staged, failedPackage, failedStep, cause }) 
  * @param {{
  *   repoRoot: string;
  *   packageDirs: string[];
- *   fs?: typeof fsDefault;
+ *   fs?: FileSystemLike;
  *   platform?: NodeJS.Platform;
  * }} options
  * @returns {LinkResult}
@@ -540,7 +561,7 @@ export function linkEcosystemPackages({
  * @param {{
  *   repoRoot?: string;
  *   packageDirs?: string[];
- *   fs?: typeof fsDefault;
+ *   fs?: FileSystemLike;
  *   platform?: NodeJS.Platform;
  *   log?: (message: string) => void;
  *   error?: (message: string) => void;

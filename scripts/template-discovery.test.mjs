@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MANIFEST_FILENAME, findTemplateDirs } from './template-discovery.mjs';
 
+/** @type {string | undefined} */
 let rootDir;
 
 afterEach(async () => {
@@ -24,6 +25,7 @@ async function makeRoot() {
 
 // Discovery only checks that the file is THERE, never what it contains - the
 // manifest's content is the CLI validate command's subject.
+/** @param {string} dir */
 async function writeManifest(dir, filename = MANIFEST_FILENAME) {
   await mkdir(dir, { recursive: true });
   await writeFile(path.join(dir, filename), '{}');
@@ -92,7 +94,7 @@ describe('MANIFEST_FILENAME sync guard', () => {
     const match = /export const MANIFEST_FILENAME = '([^']+)';/.exec(readFileSync(sourcePath, 'utf8'));
 
     expect(match, 'canonical MANIFEST_FILENAME export not found - did types.ts change shape?').not.toBeNull();
-    expect(MANIFEST_FILENAME).toBe(match[1]);
+    expect(MANIFEST_FILENAME).toBe(match?.[1]);
   });
 });
 
@@ -111,10 +113,11 @@ describe('artifacts.toml template-territory ignore sync guard', () => {
 
     expect(entry, 'template-territory ignore entry not found - did artifacts.toml drop its ADR citation?').toBeDefined();
 
-    const patternsLine = /patterns\s*=\s*\[([^\]]*)\]/.exec(entry);
+    const patternsLine = /patterns\s*=\s*\[([^\]]*)\]/.exec(/** @type {string} */ (entry));
     expect(patternsLine, 'template-territory ignore entry carries no patterns array').not.toBeNull();
 
-    const globbed = [...patternsLine[1].matchAll(/"([^"]+)\/\*\*"/g)].map((m) => m[1]).sort();
+    const patterns = /** @type {RegExpExecArray} */ (patternsLine)[1];
+    const globbed = [...patterns.matchAll(/"([^"]+)\/\*\*"/g)].map((m) => m[1]).sort();
     const discovered = findTemplateDirs(repoRoot).map((d) => path.basename(d)).sort();
 
     expect(globbed).toEqual(discovered);

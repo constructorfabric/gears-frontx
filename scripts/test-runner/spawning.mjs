@@ -119,7 +119,9 @@ export function createBoundedBuffer(maxBytes) {
       // guard keeps at least the newest chunk even when a single write is
       // bigger than the cap itself — callers still want the trailing bytes.
       while (totalBytes > maxBytes && chunks.length > 1) {
-        const dropped = chunks.shift();
+        // `chunks.length > 1` guarantees `shift()` returns an element, not
+        // `undefined` — TS can't see that loop invariant, so document it.
+        const dropped = /** @type {Buffer} */ (chunks.shift());
         totalBytes -= dropped.length;
         truncated = true;
       }
@@ -196,7 +198,7 @@ const sigkillGraceMs = 5_000;
  *    tearing down. Sequential mode now sees the timeout rejection only
  *    after the child has actually exited (or we've given up on SIGKILL).
  *
- * @param {import('node:child_process').ChildProcess} child
+ * @param {import('./common.mjs').SpawnedChildLike} child
  * @param {string} projectName
  * @param {{ timeoutMs?: number }} [options]
  * @returns {Promise<number>}
@@ -218,6 +220,7 @@ export function waitForExit(child, projectName, { timeoutMs } = {}) {
       if (hardDeadlineTimer) clearTimeout(hardDeadlineTimer);
     };
 
+    /** @param {NodeJS.Signals} signal */
     const safeKill = (signal) => {
       try {
         child.kill(signal);
