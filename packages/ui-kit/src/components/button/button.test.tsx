@@ -46,15 +46,21 @@ describe('Button', () => {
   });
 
   it('renders a custom element via the render prop', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     render(
-      <Button render={<a href="/docs" />} variant="link">
+      <Button render={<a href="/docs" />} nativeButton={false} variant="link">
         Docs
       </Button>,
     );
-    const link = screen.getByRole('link', { name: 'Docs' });
+    // Base UI applies button semantics to the anchor: role="button", real href.
+    const link = screen.getByRole('button', { name: 'Docs' });
     expect(link).toHaveProperty('tagName', 'A');
+    expect(link).toHaveProperty('href', expect.stringContaining('/docs'));
     expect(link.className).toContain(styles.button);
     expect(link.className).toContain(styles.variantLink);
+    // nativeButton={false} keeps Base UI's non-native-button warning silent.
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it('does not fire clicks when disabled', () => {

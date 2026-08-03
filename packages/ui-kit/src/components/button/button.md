@@ -7,8 +7,9 @@ polymorphism, correct disabled/focus behavior, `type="button"` by default
 ## When to use
 
 - Any click-triggered action: submit, delete, open a dialog, toggle a panel.
-- Navigation styled as a button: `<Button render={<a href="..." />}>` so the
-  element is a real link (crawlable, cmd-clickable).
+- Navigation styled as a button:
+  `<Button render={<a href="..." />} nativeButton={false}>` — a real anchor
+  underneath (crawlable, cmd-clickable) with button semantics on top.
 
 ## When not to use
 
@@ -24,6 +25,7 @@ polymorphism, correct disabled/focus behavior, `type="button"` by default
 | `variant` | `default` \| `destructive` \| `outline` \| `secondary` \| `ghost` \| `link` | `default` |
 | `size` | `default` \| `sm` \| `lg` \| `icon` | `default` |
 | `render` | `ReactElement` — replaces the root element, button semantics are applied to it | — |
+| `nativeButton` | `boolean` — set to `false` whenever `render` is not a native `<button>` | `true` |
 | `focusableWhenDisabled` | `boolean` — keep the button in tab order when disabled | `false` |
 | `className` | `string` — merged after variant classes | — |
 
@@ -48,7 +50,9 @@ import { Button } from '@gears-frontx/ui-kit';
 <Button size="icon" aria-label="Close">✕</Button>
 
 // Real link that looks like a button
-<Button render={<a href="/reports" />} variant="outline">Open reports</Button>
+<Button render={<a href="/reports" />} nativeButton={false} variant="outline">
+  Open reports
+</Button>
 
 // Form submit (explicit type)
 <Button type="submit">Create account</Button>
