@@ -14,6 +14,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    setupFiles: ['./src/__test-utils__/setup.ts'],
     execArgv: nodeMajor >= 25 ? ['--no-experimental-webstorage'] : [],
     include: [
       '__tests__/**/*.test.{ts,tsx}',
