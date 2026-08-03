@@ -48,7 +48,9 @@
   }
 }
 
-.checkbox:disabled {
+/* Base UI renders the root as a <span role="checkbox">, so :disabled can
+ * never match — the stamped data-disabled attribute is the disabled state. */
+.checkbox[data-disabled] {
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -73,4 +75,18 @@
 .icon {
   width: 0.875rem;
   height: 0.875rem;
+}
+
+/* Indeterminate shows a minus in an unfilled box (the root gets
+ * data-indeterminate, not data-checked, so it keeps the outline look). */
+.iconIndeterminate {
+  display: none;
+}
+
+.indicator[data-indeterminate] .iconCheck {
+  display: none;
+}
+
+.indicator[data-indeterminate] .iconIndeterminate {
+  display: block;
 }

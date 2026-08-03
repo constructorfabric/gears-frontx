@@ -50,7 +50,10 @@ describe('RadioGroup', () => {
   it('ignores clicks on a disabled item', () => {
     const onValueChange = vi.fn();
     renderGroup({ onValueChange });
-    fireEvent.click(screen.getByRole('radio', { name: 'Enterprise' }));
+    const disabledItem = screen.getByRole('radio', { name: 'Enterprise' });
+    fireEvent.click(disabledItem);
     expect(onValueChange).not.toHaveBeenCalled();
+    // The item is a <span>, so the disabled style hangs off data-disabled.
+    expect(disabledItem.hasAttribute('data-disabled')).toBe(true);
   });
 });

@@ -34,10 +34,22 @@ describe('Checkbox', () => {
     expect(checkbox.className).toContain('consumer');
   });
 
+  it('renders a distinct indeterminate state', () => {
+    render(<Checkbox aria-label="Partial" indeterminate />);
+    const checkbox = screen.getByRole('checkbox', { name: 'Partial' });
+    expect(checkbox.getAttribute('aria-checked')).toBe('mixed');
+    const indicator = checkbox.querySelector(`.${styles.indicator}`);
+    expect(indicator?.hasAttribute('data-indeterminate')).toBe(true);
+    expect(indicator?.querySelector(`.${styles.iconIndeterminate}`)).toBeTruthy();
+  });
+
   it('does not toggle when disabled', () => {
     const onCheckedChange = vi.fn();
     render(<Checkbox aria-label="Terms" disabled onCheckedChange={onCheckedChange} />);
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Terms' }));
+    const checkbox = screen.getByRole('checkbox', { name: 'Terms' });
+    fireEvent.click(checkbox);
     expect(onCheckedChange).not.toHaveBeenCalled();
+    // The root is a <span>, so the disabled style hangs off data-disabled.
+    expect(checkbox.hasAttribute('data-disabled')).toBe(true);
   });
 });
