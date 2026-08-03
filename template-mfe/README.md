@@ -38,14 +38,31 @@ to `frontx-template.json` and this README — a template directory holds
 shipped payload *and* authoring machinery, and the manifest's boundaries are
 what separate the two.
 
-Bootstrap order for working in this monorepo (installing the harness alone is
-**not** sufficient — `frontx-template-shell/build/mf-gts` only exists once the
-shell has been built):
+Bootstrap order for working in this monorepo. Installing the harness alone is
+**not** sufficient, and neither is building the shell's publishable package
+alone: an MFE's `vite.config.ts` loads `frontxMfGts`, which pulls in the shell's
+own subpackages, and each of those resolves through its `dist/` — absent until
+built. Every layer below has to exist before the one above it can load.
 
 ```bash
-cd template-shell && npm install && npm run build:package  # produces dist-lib/build/mf-gts
+# 1. ecosystem packages this repo owns (api, mfes, gts-plugin, …)
+npm ci && npm run build:packages
+
+# 2. the shell's own subpackages — auth, state, i18n, framework, react, studio.
+#    Each publishes through its dist/, which frontxMfGts reaches at build time.
+cd template-shell && npm install && npm run build:packages
+
+# 3. the shell's publishable package — produces dist-lib/build/mf-gts itself
+npm run build:package
+
+# 4. the MFEs
 cd ../template-mfe && npm install
 ```
+
+Steps 1–3 are exactly what `template-shell`'s own tooling expects; the harness
+adds only step 4. Skipping step 2 is the easy mistake: `npm run build:package`
+(singular) builds the shell's entry point, `npm run build:packages` (plural)
+builds the six subpackages it depends on.
 
 For a seeded project (not this monorepo), the shell is a published, already-built
 package, so plain `npm install` is sufficient there:
