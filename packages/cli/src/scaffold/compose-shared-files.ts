@@ -59,12 +59,15 @@ export interface MaterializedFile {
 // (`inst-cs-return-carried-block-conflict`). `malformed-marker-block` is
 // detected EARLIER than any of those three: while scanning the on-disk buffer
 // for marker pairs at all (`inst-cs-read-existing-blocks`), before contributor
-// identity is even considered. A begin marker whose token has no `identity:key`
-// separator, or one with no matching end marker before end of file, means that
-// block's boundaries cannot be established for ANY marker on the path —
-// contributor-owned or not — so it cannot be classified as either a carried
-// block or an unrecorded owner; `carried-block-conflict`, by contrast, only
-// ever compares blocks that already parsed and closed successfully
+// identity is even considered. A begin or end marker whose token has no
+// `identity:key` separator, a begin marker with no matching end marker before
+// end of file, or an end marker that closes no block (no preceding begin for
+// its key, or an earlier begin of that same key already claimed the only
+// preceding available end — review #500 round-3 P1), means that block's
+// boundaries cannot be established for ANY marker on the path — contributor-
+// owned or not — so it cannot be classified as either a carried block or an
+// unrecorded owner; `carried-block-conflict`, by contrast, only ever compares
+// blocks that already parsed and closed successfully
 // (`inst-cs-return-malformed-marker`).
 export type ComposeSharedFilesResult =
   | { ok: true; files: MaterializedFile[] }
@@ -107,7 +110,7 @@ export type ComposeSharedFilesResult =
       reason: 'malformed-marker-block';
       path: string;
       lineNumber: number;
-      kind: 'malformed' | 'unterminated';
+      kind: 'malformed' | 'unterminated' | 'orphan-end';
       identity?: string;
       regionKey?: string;
       message: string;
@@ -194,16 +197,28 @@ function parseMarkerLine(line: string, prefix: string): { identity: string; regi
 }
 
 // A marker on the scanned file whose block boundaries could not be
-// established: either its begin-marker token has no `identity:key` separator
-// (`kind: 'malformed'`), or it opens a region with no matching end marker
-// before end of file (`kind: 'unterminated'`, carrying the identity/regionKey
-// that WAS parsed from its begin marker). Surfaced so the caller can refuse
-// materialization naming the exact line and defect, rather than the file's
-// content silently vanishing from the composed output the way a `continue`
-// past it once did (review #500 round-2 P1-1).
+// established: either a begin OR end marker's token has no `identity:key`
+// separator (`kind: 'malformed'` — which side it was on does not change how
+// the caller must respond, so it is not tracked), a begin marker that opens a
+// region with no matching end marker before end of file (`kind:
+// 'unterminated'`, carrying the identity/regionKey that WAS parsed from its
+// begin marker), or an end marker that never closes any located block (`kind:
+// 'orphan-end'`, carrying the identity/regionKey that WAS parsed from its own
+// token) — either because no begin marker for its `identity:key` precedes it
+// at all, or because an earlier begin marker sharing that same `identity:key`
+// already claimed the nearest preceding available end marker (review #500
+// round-3 P1: nearest-first matching, per `locateAllMarkerBlocks`'s docstring,
+// means at most one begin ever claims a given end, so a second begin sharing
+// a key with an already-closed one is reported `unterminated` on ITS OWN
+// line, never as a reason to call the end that already closed something
+// `orphan-end`). Surfaced so the caller can refuse materialization naming the
+// exact line and defect, rather than the file's content silently vanishing
+// from the composed output the way a `continue` past it once did (review #500
+// round-2 P1-1).
 export type UnlocatableMarker =
   | { kind: 'malformed'; lineIndex: number }
-  | { kind: 'unterminated'; lineIndex: number; identity: string; regionKey: string };
+  | { kind: 'unterminated'; lineIndex: number; identity: string; regionKey: string }
+  | { kind: 'orphan-end'; lineIndex: number; identity: string; regionKey: string };
 
 // Locates one template's owned region on disk by matching the begin/end
 // sentinel-marker pair keyed by that template's identity and the declared
@@ -293,49 +308,100 @@ export interface LocateAllMarkerBlocksResult {
  * comment-closer), not a scanner change, so it is left unsupported here
  * rather than "fixed" by a heuristic the contract does not license.
  *
- * A begin marker whose token has no `identity:key` separator, or one with no
- * matching end marker before end of file, is NOT silently skipped: both are
- * reported back via `unlocatable` (review #500 round-2 P1-1) so the caller
- * can refuse materialization by name rather than have that block's content
+ * A begin marker whose token has no `identity:key` separator, an end marker
+ * whose token has no `identity:key` separator, a begin marker with no
+ * matching end marker before end of file, or an end marker that closes no
+ * block, is NOT silently skipped: all four are reported back via
+ * `unlocatable` (review #500 round-2 P1-1, round-3 P1) so the caller can
+ * refuse materialization by name rather than have that block's content
  * vanish from the composed output with no diagnostic. An end marker is
  * matched by PARSED identity/regionKey equality (`parseMarkerLine`), never by
  * substring containment, so a declared region key that is a prefix of another
  * declared key on the same path (e.g. "scripts" and "scripts-dev") cannot
  * close the wrong block (review #500 round-2 P1-2).
+ *
+ * Matching is NEAREST-FIRST and CONSUMING: begins are walked in on-disk order
+ * and each claims the nearest still-unclaimed matching end after it, marking
+ * that end claimed before the next begin searches — so an end marker can
+ * close AT MOST ONE begin. Two begins sharing one `identity:key` and only one
+ * matching end is therefore not silently misread as two overlapping blocks
+ * sharing that end (which independent, non-consuming searches would produce):
+ * the first begin claims the sole end, and the second is reported
+ * `unterminated` on its own line (round-3 P1). Symmetrically, every end
+ * marker that parses but is never claimed by any begin — because no matching
+ * begin precedes it at all, or because an earlier begin of the same key
+ * already claimed the only preceding available end — is reported
+ * `orphan-end`; an end that DOES close a block is never also reported,
+ * regardless of how many other begins or ends share its key elsewhere on the
+ * path (round-3 P1).
  */
 export function locateAllMarkerBlocks(content: string): LocateAllMarkerBlocksResult {
   const lines = content.split('\n');
   const begins: Array<{ lineIndex: number; identity: string; regionKey: string }> = [];
+  const candidateEnds: Array<{ lineIndex: number; identity: string; regionKey: string }> = [];
   const unlocatable: UnlocatableMarker[] = [];
+
+  // Single pass classifying every line: a line can carry (at most, in every
+  // real fixture) one of a begin-marker prefix or an end-marker prefix, never
+  // both — `REGION_END_PREFIX` is not a substring of `REGION_BEGIN_PREFIX` or
+  // vice versa, so `parseMarkerLine`'s independent `indexOf` searches for each
+  // never collide on an ordinary marker line.
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-    const parsed = parseMarkerLine(lines[lineIndex], REGION_BEGIN_PREFIX);
-    if (parsed === undefined) continue; // no begin-marker prefix on this line at all
-    if (parsed === 'malformed') {
+    const line = lines[lineIndex];
+    const beginParsed = parseMarkerLine(line, REGION_BEGIN_PREFIX);
+    if (beginParsed === 'malformed') {
       unlocatable.push({ kind: 'malformed', lineIndex });
-      continue;
+    } else if (beginParsed !== undefined) {
+      begins.push({ lineIndex, identity: beginParsed.identity, regionKey: beginParsed.regionKey });
     }
-    begins.push({ lineIndex, identity: parsed.identity, regionKey: parsed.regionKey });
+
+    const endParsed = parseMarkerLine(line, REGION_END_PREFIX);
+    if (endParsed === 'malformed') {
+      unlocatable.push({ kind: 'malformed', lineIndex });
+    } else if (endParsed !== undefined) {
+      candidateEnds.push({ lineIndex, identity: endParsed.identity, regionKey: endParsed.regionKey });
+    }
   }
 
   const blocks: LocatedBlock[] = [];
+  const claimedEndLineIndices = new Set<number>();
   for (const begin of begins) {
-    const endIndex = lines.findIndex((line, index) => {
-      if (index <= begin.lineIndex) return false;
-      const parsed = parseMarkerLine(line, REGION_END_PREFIX);
-      return typeof parsed === 'object' && parsed.identity === begin.identity && parsed.regionKey === begin.regionKey;
-    });
-    if (endIndex === -1) {
-      // unterminated — no matching end marker to close the span
+    // Nearest-first: `candidateEnds` is in on-disk (ascending lineIndex)
+    // order because the scan above appended to it in that order, so `.find`
+    // returns the earliest still-unclaimed matching end — the same marker an
+    // unconsuming forward scan would have found, UNLESS an earlier begin
+    // (processed first, since `begins` is likewise in on-disk order) already
+    // claimed it.
+    const matchedEnd = candidateEnds.find(
+      (end) =>
+        end.lineIndex > begin.lineIndex &&
+        !claimedEndLineIndices.has(end.lineIndex) &&
+        end.identity === begin.identity &&
+        end.regionKey === begin.regionKey,
+    );
+    if (!matchedEnd) {
+      // unterminated — no unclaimed matching end marker left to close the span
       unlocatable.push({ kind: 'unterminated', lineIndex: begin.lineIndex, identity: begin.identity, regionKey: begin.regionKey });
       continue;
     }
+    claimedEndLineIndices.add(matchedEnd.lineIndex);
     blocks.push({
       identity: begin.identity,
       regionKey: begin.regionKey,
-      span: { beginIndex: begin.lineIndex, endIndex },
-      text: lines.slice(begin.lineIndex, endIndex + 1).join('\n'),
+      span: { beginIndex: begin.lineIndex, endIndex: matchedEnd.lineIndex },
+      text: lines.slice(begin.lineIndex, matchedEnd.lineIndex + 1).join('\n'),
     });
   }
+
+  // Every well-formed end marker left unclaimed after every begin has had its
+  // chance to claim one closes nothing on this path — orphaned, never
+  // silently ignored.
+  for (const end of candidateEnds) {
+    if (!claimedEndLineIndices.has(end.lineIndex)) {
+      unlocatable.push({ kind: 'orphan-end', lineIndex: end.lineIndex, identity: end.identity, regionKey: end.regionKey });
+    }
+  }
+
   unlocatable.sort((a, b) => a.lineIndex - b.lineIndex);
   return { blocks, unlocatable };
 }
@@ -484,23 +550,32 @@ export async function composeSharedFiles(
       const lineNumber = firstUnlocatable.lineIndex + 1; // 1-based for a human-readable diagnostic
       const message =
         firstUnlocatable.kind === 'malformed'
-          ? `Materialization refused — path "${path}" line ${lineNumber} has a begin-marker token with no ` +
+          ? `Materialization refused — path "${path}" line ${lineNumber} has a marker token with no ` +
             '"identity:key" separator, so it cannot be parsed into a locatable block. This on-disk file cannot be ' +
             'trusted to carry forward or check for unrecorded owners until this marker is fixed or removed. Fix or ' +
             `remove the marker at "${path}" line ${lineNumber} and retry. No file was written.`
-          : `Materialization refused — path "${path}" line ${lineNumber} opens a ` +
-            `"${firstUnlocatable.identity}:${firstUnlocatable.regionKey}" region with no matching end marker ` +
-            'before end of file. This on-disk file cannot be trusted to carry forward or check for unrecorded ' +
-            `owners until this block is closed. Add the missing "frontx:endregion ` +
-            `${firstUnlocatable.identity}:${firstUnlocatable.regionKey}" marker, or remove the orphaned begin ` +
-            `marker at "${path}" line ${lineNumber}, and retry. No file was written.`;
+          : firstUnlocatable.kind === 'unterminated'
+            ? `Materialization refused — path "${path}" line ${lineNumber} opens a ` +
+              `"${firstUnlocatable.identity}:${firstUnlocatable.regionKey}" region with no matching end marker ` +
+              'before end of file. This on-disk file cannot be trusted to carry forward or check for unrecorded ' +
+              `owners until this block is closed. Add the missing "frontx:endregion ` +
+              `${firstUnlocatable.identity}:${firstUnlocatable.regionKey}" marker, or remove the orphaned begin ` +
+              `marker at "${path}" line ${lineNumber}, and retry. No file was written.`
+            : `Materialization refused — path "${path}" line ${lineNumber} closes a ` +
+              `"${firstUnlocatable.identity}:${firstUnlocatable.regionKey}" region with no matching begin marker ` +
+              'before it — either none exists on this path at all, or an earlier begin marker sharing that same ' +
+              '"identity:key" already claimed the nearest preceding one. This on-disk file cannot be trusted to ' +
+              'carry forward or check for unrecorded owners until this marker is fixed or removed. Add the ' +
+              `missing "frontx:region ${firstUnlocatable.identity}:${firstUnlocatable.regionKey}" marker before ` +
+              `it, or remove the orphaned end marker at "${path}" line ${lineNumber}, and retry. No file was ` +
+              'written.';
       return {
         ok: false,
         reason: 'malformed-marker-block',
         path,
         lineNumber,
         kind: firstUnlocatable.kind,
-        ...(firstUnlocatable.kind === 'unterminated'
+        ...(firstUnlocatable.kind !== 'malformed'
           ? { identity: firstUnlocatable.identity, regionKey: firstUnlocatable.regionKey }
           : {}),
         message,

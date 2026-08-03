@@ -158,12 +158,74 @@ describe('locateAllMarkerBlocks (inst-cs-read-existing-blocks) — raw scanner b
   });
 
   it('reports a malformed begin marker whose token carries no identity:key separator via `unlocatable`, dropping it from `blocks` (P1-1)', () => {
+    // This fixture's closing line is ALSO an unparseable end-marker token
+    // (round-3 P1 fix: a malformed end marker is now reported too, not just
+    // a malformed begin marker) — both lines are reported, sorted by line
+    // index.
     const content = ['frontx:region not-a-valid-token-without-colon', 'body', 'frontx:endregion not-a-valid-token-without-colon'].join('\n');
 
     expect(locateAllMarkerBlocks(content)).toEqual({
       blocks: [],
-      unlocatable: [{ kind: 'malformed', lineIndex: 0 }],
+      unlocatable: [
+        { kind: 'malformed', lineIndex: 0 },
+        { kind: 'malformed', lineIndex: 2 },
+      ],
     });
+  });
+
+  it('reports an orphaned end marker with no matching begin marker via `unlocatable` (review #500 round-3 P1)', () => {
+    const content = ['no begin here', 'frontx:endregion template-a:orphan'].join('\n');
+
+    expect(locateAllMarkerBlocks(content)).toEqual({
+      blocks: [],
+      unlocatable: [{ kind: 'orphan-end', lineIndex: 1, identity: 'template-a', regionKey: 'orphan' }],
+    });
+  });
+
+  it('does not report an end marker as orphaned when it legitimately closes a block (review #500 round-3 P1)', () => {
+    const content = ['frontx:region template-a:ok', 'body', 'frontx:endregion template-a:ok'].join('\n');
+
+    const { blocks, unlocatable } = locateAllMarkerBlocks(content);
+
+    expect(unlocatable).toEqual([]);
+    expect(blocks).toHaveLength(1);
+  });
+
+  it('reports the SECOND of two begins sharing one key as unterminated — not the sole end marker as orphaned, and not both — when two begins share one end (review #500 round-3 P1)', () => {
+    // Two begins for the same identity:key, only one end marker. Nearest-first
+    // matching (in on-disk order) lets the FIRST begin claim the only end; the
+    // second begin has nothing left to close and is reported unterminated.
+    // The end marker DID close a block, so it must never ALSO be reported as
+    // orphaned — exactly one `unlocatable` entry, not two.
+    const content = [
+      'frontx:region template-a:shared',
+      'first',
+      'frontx:region template-a:shared',
+      'second',
+      'frontx:endregion template-a:shared',
+    ].join('\n');
+
+    const { blocks, unlocatable } = locateAllMarkerBlocks(content);
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].span).toEqual({ beginIndex: 0, endIndex: 4 });
+    expect(unlocatable).toEqual([{ kind: 'unterminated', lineIndex: 2, identity: 'template-a', regionKey: 'shared' }]);
+  });
+
+  it('reports a malformed end marker whose token carries no identity:key separator via `unlocatable` (review #500 round-3 P1)', () => {
+    const content = ['frontx:region template-a:ok', 'body', 'frontx:endregion not-a-valid-token-without-colon'].join('\n');
+
+    const { blocks, unlocatable } = locateAllMarkerBlocks(content);
+
+    // The well-formed begin marker never finds a matching end — the only end
+    // marker on the path is malformed, so it is never a valid close candidate
+    // for anything — and is reported unterminated, alongside the malformed
+    // end reported separately.
+    expect(blocks).toEqual([]);
+    expect(unlocatable).toEqual([
+      { kind: 'unterminated', lineIndex: 0, identity: 'template-a', regionKey: 'ok' },
+      { kind: 'malformed', lineIndex: 2 },
+    ]);
   });
 
   it('locates a marker pair hidden inside an arbitrary-language comment style (HTML)', () => {
@@ -908,6 +970,121 @@ describe('composeSharedFiles — review #500 round-2 P1-2: a declared region key
     expect(result.kind).toBe('unterminated');
     expect(result.identity).toBe('identity');
     expect(result.regionKey).toBe('scripts');
+    expect(result.lineNumber).toBe(1);
+    expect(writes).toEqual([]);
+  });
+});
+
+describe('composeSharedFiles — review #500 round-3 P1: orphaned/malformed end markers are refused, never silently dropped', () => {
+  it('refuses the assembly, writing no file, when the file on disk carries an orphaned end marker with no matching begin marker', async () => {
+    // "template-a:orphan" is an end marker with no preceding begin marker at
+    // all. Before this fix, `locateAllMarkerBlocks` only ever scanned for
+    // BEGIN markers up front, so this line was never even considered — it
+    // silently vanished from the composed output the same way an
+    // unterminated begin once did (review #500 round-2 P1-1).
+    const onDisk = ['no begin here', 'frontx:endregion template-a:orphan'].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const assembly = assemblyOf(
+      contribution(
+        'template-b',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-b:b\nB.\nfrontx:endregion template-b:b' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('malformed-marker-block');
+    if (result.reason !== 'malformed-marker-block') return;
+    expect(result.path).toBe('shared.txt');
+    expect(result.kind).toBe('orphan-end');
+    expect(result.lineNumber).toBe(2);
+    expect(result.identity).toBe('template-a');
+    expect(result.regionKey).toBe('orphan');
+    // `writes` is populated by `fakeWriter`'s own `writeFileFn` on every call
+    // it receives, so an empty array here IS proof `writeFileFn` was never
+    // invoked for this refused assembly, not just that `result.ok` is false.
+    expect(writes).toEqual([]);
+  });
+
+  it('does not refuse when the on-disk file carries only a legitimately-closed marker block (no false orphan-end refusal)', async () => {
+    const onDisk = 'frontx:region identity:ok\nbody\nfrontx:endregion identity:ok';
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const existingProvenance: ProvenanceRecord[] = [
+      { templateIdentity: 'identity', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/identity@offline' },
+    ];
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-a:a\nA.\nfrontx:endregion template-a:a' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, existingProvenance);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(writes).toHaveLength(1);
+  });
+
+  it('reports the unclosed second begin as unterminated — not the sole end marker as orphaned, and not a double refusal — when two begins share one end', async () => {
+    const onDisk = [
+      'frontx:region identity:dup',
+      'first',
+      'frontx:region identity:dup',
+      'second',
+      'frontx:endregion identity:dup',
+    ].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-a:a\nA.\nfrontx:endregion template-a:a' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('malformed-marker-block');
+    if (result.reason !== 'malformed-marker-block') return;
+    expect(result.kind).toBe('unterminated');
+    expect(result.identity).toBe('identity');
+    expect(result.regionKey).toBe('dup');
+    expect(result.lineNumber).toBe(3);
+    expect(writes).toEqual([]);
+  });
+
+  it('refuses the assembly, writing no file, when the file on disk carries a malformed end marker with no identity:key separator', async () => {
+    const onDisk = ['frontx:region identity:ok', 'body', 'frontx:endregion not-a-valid-token-without-colon'].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const assembly = assemblyOf(
+      contribution(
+        'template-b',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-b:b\nB.\nfrontx:endregion template-b:b' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('malformed-marker-block');
+    if (result.reason !== 'malformed-marker-block') return;
+    // Sorted by line index — the well-formed begin's "unterminated" defect
+    // (line 1) is the earliest defect on the path, reported ahead of the
+    // malformed end marker's defect (line 3).
+    expect(result.kind).toBe('unterminated');
     expect(result.lineNumber).toBe(1);
     expect(writes).toEqual([]);
   });
