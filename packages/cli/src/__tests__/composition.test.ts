@@ -341,4 +341,74 @@ describe('scaffoldComposedProject', () => {
     expect(records).toHaveLength(2);
     expect(records.map((r) => r['templateIdentity']).sort()).toEqual(['mfe-a', 'root-project']);
   });
+
+  // (h) review #500 round 2 (P2-3): a materialization refusal (composeSharedFiles'
+  // `unrecorded-owner`, reachable now that a real `readProjectFileFn` is
+  // plumbed through) is NOT a provenance-write failure — composeSharedFiles
+  // writes ZERO files on any refusal, so claiming "Scaffold completed" is a
+  // direct falsehood, and the refusal is user-fixable (register the occupying
+  // template's provenance and retry), which `seedRepository`/`addTemplate`
+  // already surface as `reason: 'materialization-refused'` via
+  // `isUserFixableMaterializeFailure`.
+  it('(h) an unrecorded on-disk region-union block refuses materialization — reason materialization-refused, no "completed" claim', async () => {
+    const SHARED_PATH = 'shared.config.js';
+    const registry = new Map<string, InventoryEntry>([
+      [
+        'simple-project',
+        makeEntry(
+          'simple-project',
+          '1.0.0',
+          [
+            {
+              path: SHARED_PATH,
+              content: [
+                '// frontx:region simple-project:setup',
+                'const a = 1;',
+                '// frontx:endregion simple-project:setup',
+              ].join('\n'),
+            },
+          ],
+          [],
+          {
+            exclusiveSubtrees: [],
+            sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+          },
+        ),
+      ],
+    ]);
+
+    const lookupFn = (name: string) => registry.get(name);
+    const writeFileFn = vi.fn().mockResolvedValue(undefined);
+    const provenanceWriteFn = vi.fn().mockResolvedValue(undefined);
+
+    // The target already carries this shared file on disk with a block owned
+    // by a template that neither contributes to this scaffold nor is
+    // recorded in any existing provenance (a fresh scaffold has none) — an
+    // unrecorded owner, per cpt-frontx-algo-cli-scaffolding-compose-shared-files.
+    const existingOnDisk: ReadProjectFileFn = async (p) =>
+      p === `/target/${SHARED_PATH}`
+        ? [
+            '// frontx:region unknown-template:other',
+            'const b = 2;',
+            '// frontx:endregion unknown-template:other',
+          ].join('\n')
+        : null;
+
+    const result = await scaffoldComposedProject(
+      'simple-project',
+      '/target',
+      lookupFn,
+      writeFileFn,
+      provenanceWriteFn,
+      readContentFn,
+      existingOnDisk,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('materialization-refused');
+    expect(result.message).not.toMatch(/scaffold completed/i);
+    expect(writeFileFn).not.toHaveBeenCalled();
+    expect(provenanceWriteFn).not.toHaveBeenCalled();
+  });
 });

@@ -75,6 +75,7 @@ This feature realizes the preset (referenced-template) recursive resolution deci
 - Source registry (`cpt-frontx-actor-github`) unreachable: CLI reports the failure and aborts with no files written.
 - Composition collision detected (unresolvable same-coordinate conflict): CLI reports the conflicting declarations and aborts before any files are written.
 - Reference cycle detected in the composition tree: CLI reports the cycle and aborts before any files are written.
+- Materializing the cleared assembly is refused (`cpt-frontx-algo-cli-scaffolding-compose-shared-files`, e.g. an on-disk shared-file block owned by a template neither in this scaffold's set nor recorded in existing provenance): CLI reports the refusal and aborts with no files written — distinct from a provenance record write failure, which happens only after files are already written.
 
 **Steps**:
 
@@ -92,8 +93,8 @@ This feature realizes the preset (referenced-template) recursive resolution deci
    1. [x] - `p1` - CLI reports the contested target path and contesting template identities to the developer and **RETURN** (no files written) - `inst-abort-boundary-conflict`
 10. [x] - `p1` - CLI materializes the cleared staged assembly, writing all files in one operation — including each applied template's AI-extension bundle into its identity-scoped `.frontx/ai/<template-identity>/` subtree as ordinary owned content (the bundle contract is owned by `cpt-frontx-feature-template-ai-extensions`) - `inst-scaffold-composition`
 11. [x] - `p1` - CLI invokes the provenance write algorithm (`cpt-frontx-algo-composed-provenance-provenance-write`) to write one provenance record per applied template — each capturing that template's identity, applied-from version, source-spec, and occupied ownership boundary — into the repository - `inst-invoke-provenance-write`
-12. [x] - `p1` - **IF** any provenance record write fails - `inst-check-provenance-write-fail`
-    1. [x] - `p1` - CLI reports the provenance write failure to the developer - `inst-report-provenance-fail`
+12. [x] - `p1` - **IF** materializing the assembly is refused (`cpt-frontx-algo-cli-scaffolding-compose-shared-files`, e.g. an unrecorded on-disk block owner) or any provenance record write fails - `inst-check-provenance-write-fail`
+    1. [x] - `p1` - CLI reports the failure to the developer, distinguishing a user-fixable materialization refusal — no file was written — from a provenance-write failure — files were already written, only the provenance record failed - `inst-report-provenance-fail`
 13. [x] - `p1` - **RETURN** the assembled repository — its files, its `.frontx/ai/` extension bundles, and one provenance record per applied template — to the developer; the AI Tooling Framework discovers and activates those bundles on its own next invocation by scanning the repository's `.frontx/ai/` (no CLI-to-Kit signal; see `cpt-frontx-feature-template-ai-extensions` and DESIGN §3.4) - `inst-return-success`
 
 ## 3. Processes / Business Logic (CDSL)

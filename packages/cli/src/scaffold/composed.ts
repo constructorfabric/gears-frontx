@@ -8,7 +8,7 @@ import { resolveComposition } from '../composition/resolve';
 import { CompositionResolutionState } from '../composition/state';
 import { uniformApply } from './assembler';
 import { checkAssemblyConflicts } from './conflict';
-import { materializeAssembly } from './materialize';
+import { isUserFixableMaterializeFailure, materializeAssembly } from './materialize';
 import { provenancePath } from '../provenance/contract';
 import type { BoundaryConflictEntry } from './state';
 import type { ProvenanceWriteFn } from '../provenance/types';
@@ -18,7 +18,19 @@ export type ComposedScaffoldResult =
   | { ok: true; message: string; provenanceLocation: string }
   | {
       ok: false;
-      reason: 'registry-unreachable' | 'cycle' | 'resolve-error' | 'provenance-failed';
+      reason:
+        | 'registry-unreachable'
+        | 'cycle'
+        | 'resolve-error'
+        | 'provenance-failed'
+        // review #500 round 2 (P2-3): mirrors SeedRepositoryResult/AddTemplateResult's
+        // reason of the same name — a materialization refusal the target
+        // repository's owner can act on and retry (composeSharedFiles'
+        // `unrecorded-owner`, `span-overlap`, or `carried-block-conflict`;
+        // see `isUserFixableMaterializeFailure`), kept distinct from
+        // `provenance-failed` because, unlike a real provenance-write
+        // failure, NO file was written when this reason is returned.
+        | 'materialization-refused';
       message: string;
     }
   | { ok: false; reason: 'conflict'; conflicts: BoundaryConflictEntry[]; message: string };
@@ -199,10 +211,26 @@ export async function scaffoldComposedProject(
   // @cpt-begin:cpt-frontx-flow-composed-provenance-scaffold-composed-project:p1:inst-check-provenance-write-fail
   if (!materializeResult.ok) {
     // @cpt-begin:cpt-frontx-flow-composed-provenance-scaffold-composed-project:p1:inst-report-provenance-fail
+    // review #500 round 2 (P2-3): `materializeAssembly` reports TWO distinct
+    // failure modes under one `{ok:false}` shape — a `composeSharedFiles`
+    // materialization refusal (reachable now that a real `readProjectFileFn`
+    // is plumbed through this flow, not the always-null default) and a real
+    // `writeProvenance` failure. They are not the same event: a refusal
+    // writes ZERO files (composeSharedFiles defers every write until every
+    // path is refusal-free), so "Scaffold completed" is a direct falsehood
+    // for it, and it is user-fixable (e.g. register the occupying template's
+    // provenance and retry) — exactly the distinction `seedRepository` and
+    // `addTemplate` already surface via `isUserFixableMaterializeFailure`.
+    // Only a genuine provenance-write failure — files already written,
+    // provenance the only thing that failed — keeps the "completed" wording.
+    const reason = isUserFixableMaterializeFailure(materializeResult) ? 'materialization-refused' : 'provenance-failed';
     return {
       ok: false,
-      reason: 'provenance-failed',
-      message: `Scaffold completed but provenance write failed: ${materializeResult.message}`,
+      reason,
+      message:
+        reason === 'materialization-refused'
+          ? `Scaffold aborted — ${materializeResult.message}`
+          : `Scaffold completed but provenance write failed: ${materializeResult.message}`,
     };
     // @cpt-end:cpt-frontx-flow-composed-provenance-scaffold-composed-project:p1:inst-report-provenance-fail
   }
