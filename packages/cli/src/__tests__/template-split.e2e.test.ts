@@ -358,12 +358,46 @@ describe('Fixture 6 — declaration coverage: every real file in template-shell/
   // Claiming it would collide with template-shell's exclusive subtree and turn
   // a development-only file into an ownership assertion — reviving exactly the
   // inferred-ownership model ADR-0031 rejected.
+  //
+  // The assembler (`isWithinDeclaredBoundaries` in scaffold/assembler.ts)
+  // includes a file by PREFIX for exclusiveSubtrees (`item.path.startsWith(subtree)`)
+  // but by EXACT match for sharedFiles (`sharedFile.path === item.path`). A plain
+  // `.not.toContain('package.json')` on the exclusiveSubtrees array only checks
+  // array membership — it would stay green even if a subtree entry like
+  // `'package'` silently captured `package.json` and `package-lock.json` by
+  // prefix, and the harness would ship into a seeded project unnoticed. So
+  // exclusiveSubtrees must be checked through the same prefix function the
+  // assembler uses (`isPathWithinExclusiveSubtrees`); sharedFiles stays a plain
+  // membership check since that half of the assembler's test really is
+  // exact-equality.
   it('template-mfe/: the harness manifest stays undeclared — no claim on package.json or package-lock.json', () => {
     const { exclusiveSubtrees, sharedFiles } = readManifest(TEMPLATE_MFE_DIR).ownershipBoundaries;
     const sharedFilePaths = sharedFiles.map((entry: { path: string }) => entry.path);
-    expect(exclusiveSubtrees).not.toContain('package.json');
-    expect(exclusiveSubtrees).not.toContain('package-lock.json');
+    expect(isPathWithinExclusiveSubtrees('package.json', exclusiveSubtrees)).toBe(false);
+    expect(isPathWithinExclusiveSubtrees('package-lock.json', exclusiveSubtrees)).toBe(false);
     expect(sharedFilePaths).not.toContain('package.json');
     expect(sharedFilePaths).not.toContain('package-lock.json');
+  });
+
+  // Negative control for the assertion style above: a manifest declaring
+  // `exclusiveSubtrees: ['package']` (no trailing slash — an easy typo for
+  // an author reaching for "just the packages/ dir") captures package.json
+  // and package-lock.json by prefix, exactly like the assembler would. The
+  // OLD assertion style (`exclusiveSubtrees.not.toContain('package.json')`)
+  // is blind to this: `'package.json'` is never an array element, so it
+  // stays green while the assembler would actually materialize both files.
+  // This test fails under that old style and passes only because the fixed
+  // assertion goes through the real prefix function.
+  it('negative control: exclusiveSubtrees: ["package"] is caught as capturing package.json / package-lock.json by prefix', () => {
+    const dangerousSubtrees = ['package'];
+
+    // The bug this guards against: array membership says "safe" even though
+    // prefix matching (what the assembler actually uses) says "captured".
+    expect(dangerousSubtrees).not.toContain('package.json');
+    expect(dangerousSubtrees).not.toContain('package-lock.json');
+
+    // The real check the fixed test above uses would have failed loudly here.
+    expect(isPathWithinExclusiveSubtrees('package.json', dangerousSubtrees)).toBe(true);
+    expect(isPathWithinExclusiveSubtrees('package-lock.json', dangerousSubtrees)).toBe(true);
   });
 });

@@ -18,13 +18,37 @@ seeded project installs them from the registry like any other dependency.
 The `package.json` next to this README is **not part of the template**: it is a
 monorepo dev harness, deliberately absent from `frontx-template.json`'s
 `ownershipBoundaries`, so `frontx add` never copies it anywhere. Inside this
-monorepo the pins above would fetch registry tarballs, which would make local
-edits to `packages/*` and `template-shell/packages/*` invisible; the harness
-redirects each pinned name to its local source. It redirects rather than
-re-declares, so the installed versions still satisfy the pins. The same
-not-part-of-the-template status applies to `frontx-template.json` and this README
-— a template directory holds shipped payload *and* authoring machinery, and the
-manifest's boundaries are what separate the two.
+monorepo the pins above would fetch registry tarballs instead of resolving to
+local source, so the harness redirects each pinned name to its local source
+via `overrides`. It redirects rather than re-declares, so the installed
+versions still satisfy the pins.
+
+This makes local edits to `template-shell/packages/*` (`react`, `auth`,
+`framework`, `i18n`, `state`) visible immediately, since the MFE packages
+import those names directly and the override resolves straight to that
+source. It does the same for direct imports of `packages/api`,
+`packages/gts-plugin`, and `packages/mfes`. **It does not** reach edits to
+those same three packages through `@gears-frontx/frontx-template-shell`'s own
+pre-built `dist-lib/build/mf-gts` — `template-shell/package.json` pins
+`gts-plugin`/`mfes`/`api` to their own published versions with no local
+override of its own, so whatever `frontxMfGts` bundles at `template-shell`'s
+build time reflects those registry versions, not edits made here, until
+`template-shell` is rebuilt. The same not-part-of-the-template status applies
+to `frontx-template.json` and this README — a template directory holds
+shipped payload *and* authoring machinery, and the manifest's boundaries are
+what separate the two.
+
+Bootstrap order for working in this monorepo (installing the harness alone is
+**not** sufficient — `frontx-template-shell/build/mf-gts` only exists once the
+shell has been built):
+
+```bash
+cd template-shell && npm install && npm run build:package  # produces dist-lib/build/mf-gts
+cd ../template-mfe && npm install
+```
+
+For a seeded project (not this monorepo), the shell is a published, already-built
+package, so plain `npm install` is sufficient there:
 
 ```bash
 frontx seed frontx-template-shell ./my-app
