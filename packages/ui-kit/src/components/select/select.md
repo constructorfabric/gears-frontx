@@ -36,7 +36,10 @@ raw value instead of the label until the popup has been opened once.
 `SelectValue`: renders the selected item's label; pass `placeholder` via
 the root's `items`/children contract (see example). `SelectContent`
 accepts positioning props (`side`, `sideOffset`, `align`, `alignOffset`,
-`alignItemWithTrigger`). `SelectItem` takes `value` (required) and
+`alignItemWithTrigger`) and `container` — the popup portals to `<body>`
+by default, so if your theme lives on a subtree (`data-theme` on a
+section instead of `<html>`), pass that section as `container` or the
+popup renders with the root theme. `SelectItem` takes `value` (required) and
 `disabled`. `aria-invalid` on the trigger switches its border and ring to
 the destructive color.
 

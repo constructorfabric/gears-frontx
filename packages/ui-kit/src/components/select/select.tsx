@@ -65,11 +65,18 @@ export interface SelectContentProps
       'align' | 'alignOffset' | 'side' | 'sideOffset' | 'alignItemWithTrigger'
     > {
   className?: string;
+  /**
+   * Where to portal the popup. Defaults to <body>. Pass a themed container
+   * when the theme is scoped to a subtree (data-theme on a section rather
+   * than <html>) so the popup inherits its tokens and font.
+   */
+  container?: SelectPrimitive.Portal.Props['container'];
 }
 
 export function SelectContent({
   className,
   children,
+  container,
   side = 'bottom',
   sideOffset = 4,
   align = 'center',
@@ -78,7 +85,7 @@ export function SelectContent({
   ...props
 }: SelectContentProps) {
   return (
-    <SelectPrimitive.Portal>
+    <SelectPrimitive.Portal container={container}>
       <SelectPrimitive.Positioner
         side={side}
         sideOffset={sideOffset}

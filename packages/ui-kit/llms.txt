@@ -11,9 +11,10 @@ Rules for generated code:
   `import '@gears-frontx/ui-kit/theme.css';`
   `import '@gears-frontx/ui-kit/styles.css';`
 - Import components from the package root: `import { Button } from '@gears-frontx/ui-kit';`
-- Set the app font on `<body>` (or `<html>`), not on an inner container:
-  overlay components (Select) portal their popup to `<body>` and inherit
-  the font from there.
+- Set the app font AND `data-theme` on `<html>`/`<body>`, not on an inner
+  container: overlay components (Select) portal their popup to `<body>`
+  and inherit theme tokens and font from there. If a subtree must carry
+  its own theme, pass that element as `container` to `SelectContent`.
 - Brand/appearance changes go through theme tokens (CSS variables in
   `theme.css`, light/dark via `data-theme`), never through inline styles or
   overriding kit class names.

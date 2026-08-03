@@ -69,6 +69,27 @@ describe('Select', () => {
     expect(screen.getByRole('combobox', { name: 'Region' }).textContent).toContain('Americas');
   });
 
+  it('portals the popup into a provided container', () => {
+    const container = document.createElement('div');
+    container.id = 'themed-section';
+    document.body.appendChild(container);
+    render(
+      <Select items={ITEMS} defaultOpen>
+        <SelectTrigger aria-label="Region">
+          <SelectValue placeholder="Pick" />
+        </SelectTrigger>
+        <SelectContent container={container}>
+          <SelectGroup>
+            <SelectItem value="eu">Europe</SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>,
+    );
+    const listbox = screen.getByRole('listbox');
+    expect(container.contains(listbox)).toBe(true);
+    container.remove();
+  });
+
   it('applies the sm trigger size', () => {
     render(
       <Select>
