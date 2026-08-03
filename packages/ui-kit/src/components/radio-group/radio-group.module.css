@@ -1,0 +1,88 @@
+/*
+ * Radio group styles, translated from shadcn/ui (MIT) to CSS Modules.
+ * Consumes only theme.css variables — no raw colors.
+ */
+
+.group {
+  display: grid;
+  width: 100%;
+  gap: 0.75rem;
+}
+
+.item {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: 1px solid var(--input);
+  border-radius: 9999px;
+  background-color: transparent;
+  outline: none;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+/* Enlarged touch target beyond the 1rem circle. */
+.item::after {
+  content: '';
+  position: absolute;
+  inset: -0.5rem -0.75rem;
+}
+
+.item[data-checked] {
+  border-color: var(--primary);
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.item:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+
+/* See button.module.css: forced-colors drops box-shadow, restore UA outline. */
+@media (forced-colors: active) {
+  .item:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+.item:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Declared after :focus-visible so the invalid ring wins while focused. */
+.item[aria-invalid='true'] {
+  border-color: var(--destructive);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 20%, transparent);
+}
+
+/* Invalid but checked: the filled circle keeps its primary border. */
+.item[aria-invalid='true'][data-checked] {
+  border-color: var(--primary);
+}
+
+.indicator {
+  display: flex;
+  width: 1rem;
+  height: 1rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.5rem;
+  height: 0.5rem;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background-color: var(--primary-foreground);
+}

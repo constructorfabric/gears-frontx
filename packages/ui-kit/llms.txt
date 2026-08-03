@@ -30,6 +30,9 @@ Rules for generated code:
   Field automatically.
 - [Label](dist/docs/label.md): caption for a form control; native
   `<label>` props; associate via `htmlFor` or by nesting the control.
+- [RadioGroup](dist/docs/radio-group.md): mutually exclusive options
+  (RadioGroup + RadioGroupItem); `value`/`onValueChange` on the group;
+  arrow-key navigation built in.
 - [Switch](dist/docs/switch.md): immediate on/off toggle;
   `checked`/`onCheckedChange`, sizes default|sm; use checkbox for
   submit-time options.

@@ -10,5 +10,11 @@ export { Button, type ButtonProps } from './components/button/button';
 export { Checkbox, type CheckboxProps } from './components/checkbox/checkbox';
 export { Input, type InputProps } from './components/input/input';
 export { Label, type LabelProps } from './components/label/label';
+export {
+  RadioGroup,
+  type RadioGroupProps,
+  RadioGroupItem,
+  type RadioGroupItemProps,
+} from './components/radio-group/radio-group';
 export { Switch, type SwitchProps } from './components/switch/switch';
 export { Textarea, type TextareaProps } from './components/textarea/textarea';
