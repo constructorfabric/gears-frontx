@@ -6,9 +6,9 @@ control inside it automatically — ids, `htmlFor`, and `aria-describedby`
 are wired for you, and validation state flows to every part via
 `data-invalid`/`data-disabled`.
 
-Kit controls (`Input`, and Base UI-based controls like `Checkbox`,
-`Switch`, `RadioGroup`, `Select`) register themselves with the surrounding
-Field — no extra props needed.
+Kit controls (`Input`, `Textarea`, and Base UI-based controls like
+`Checkbox`, `Switch`, `RadioGroup`, `Select`) register themselves with the
+surrounding Field — no extra props needed.
 
 ## When to use
 

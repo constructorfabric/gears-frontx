@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { Field, FieldDescription, FieldLabel } from '../field/field';
 import { Textarea } from './textarea';
 import styles from './textarea.module.css';
 
@@ -34,5 +35,20 @@ describe('Textarea', () => {
   it('forwards the invalid state', () => {
     render(<Textarea aria-invalid={true} />);
     expect(screen.getByRole('textbox').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('wires into a surrounding Field like Input does', () => {
+    render(
+      <Field name="notes" disabled>
+        <FieldLabel>Notes</FieldLabel>
+        <Textarea />
+        <FieldDescription>Optional context.</FieldDescription>
+      </Field>,
+    );
+    const textarea = screen.getByLabelText('Notes');
+    expect(textarea).toHaveProperty('tagName', 'TEXTAREA');
+    expect(textarea).toHaveProperty('disabled', true);
+    const description = screen.getByText('Optional context.');
+    expect(textarea.getAttribute('aria-describedby')).toContain(description.id);
   });
 });

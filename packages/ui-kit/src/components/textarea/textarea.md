@@ -7,6 +7,8 @@ elsewhere it keeps the native resize handle.
 ## When to use
 
 - Multi-line free text: descriptions, comments, messages.
+- Inside a `Field` to get label association and validation display for
+  free — it registers with the surrounding Field like `Input` does.
 
 ## When not to use
 
