@@ -80,4 +80,32 @@ describe('provenance-io', () => {
 
     expect(await readSingle(root)).toEqual(record);
   });
+
+  // review #500 round 2 (P2-1): the SET shape was checked (`Array.isArray`)
+  // but individual elements were not, so every caller of `readProvenanceRecords`
+  // that trusts the `ProvenanceRecord[]` return type and dereferences a field
+  // on an element (e.g. `record.templateIdentity`) would hit an unrelated
+  // TypeError instead of the diagnosable error this function already gives
+  // for a non-array payload. Bring element-level failures to the same
+  // diagnosability: name the file and which element/field is invalid.
+  it('(d) throws a diagnosable error naming the file and the index when an array element is not object-shaped', async () => {
+    const location = provenancePath(root);
+    fs.mkdirSync(path.dirname(location), { recursive: true });
+    fs.writeFileSync(location, JSON.stringify([null]), 'utf-8');
+
+    await expect(readProvenanceRecords(root)).rejects.toThrow(/index 0/);
+    await expect(readProvenanceRecords(root)).rejects.toThrow(location);
+  });
+
+  it('(e) throws a diagnosable error naming the file and the index when an array element is missing templateIdentity', async () => {
+    const location = provenancePath(root);
+    fs.mkdirSync(path.dirname(location), { recursive: true });
+    fs.writeFileSync(
+      location,
+      JSON.stringify([{ scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/x@v1.0.0' }]),
+      'utf-8',
+    );
+
+    await expect(readProvenanceRecords(root)).rejects.toThrow(/templateIdentity/);
+  });
 });

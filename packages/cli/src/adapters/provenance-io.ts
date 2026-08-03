@@ -51,6 +51,31 @@ function describeNonArrayPayload(value: unknown): string {
     : 'a single object instead of an array';
 }
 
+// The SET shape (`Array.isArray`, above) was checked but individual elements
+// were not (review #500 round 2, P2-1) — an unchecked cast let a malformed
+// element (e.g. `[null]`, or an object missing `templateIdentity`) reach
+// every caller of `readProvenanceRecords` uncast, surfacing as the same
+// unrelated, unhelpful TypeError the non-array guard above already exists to
+// avoid. The fields checked are exactly the `ProvenanceRecord` contract's own
+// required ones (provenance/types.ts) — `occupiedOwnershipBoundary` is the
+// one field declared optional there, so it is not checked here.
+const REQUIRED_PROVENANCE_RECORD_FIELDS = ['templateIdentity', 'scaffoldedFromVersion', 'sourceSpec'] as const;
+
+function isValidProvenanceRecord(value: unknown): value is ProvenanceRecord {
+  return (
+    isRecordShaped(value) &&
+    REQUIRED_PROVENANCE_RECORD_FIELDS.every((field) => typeof value[field] === 'string')
+  );
+}
+
+function describeInvalidRecord(value: unknown): string {
+  if (!isRecordShaped(value)) {
+    return value === null ? 'is null, not an object' : `is a ${typeof value}, not an object`;
+  }
+  const invalidFields = REQUIRED_PROVENANCE_RECORD_FIELDS.filter((field) => typeof value[field] !== 'string');
+  return `is missing or has a non-string ${invalidFields.map((field) => `"${field}"`).join(', ')}`;
+}
+
 // @cpt-begin:cpt-frontx-algo-composed-provenance-provenance-write:p1:inst-determine-storage-location
 /**
  * Reads the full provenance SET back from the single file
@@ -63,7 +88,13 @@ function describeNonArrayPayload(value: unknown): string {
  * found) when the file's content is not the JSON array the SET schema
  * requires — e.g. a single object left behind by a pre-fix `frontx upgrade`
  * (issue #488) — rather than returning it uncast and letting a caller's
- * `for...of` fail with an unrelated "is not iterable" TypeError.
+ * `for...of` fail with an unrelated "is not iterable" TypeError. Throws the
+ * same diagnosable shape (naming the file path, the element's index, and
+ * which required field is missing or non-string) when the array itself is
+ * well-formed but one of its ELEMENTS is not a valid `ProvenanceRecord` —
+ * e.g. `[null]` — rather than returning it uncast and letting a caller that
+ * dereferences a field on it (e.g. `occupiedBoundariesFromProvenance`) hit an
+ * unrelated TypeError instead (review #500 round 2, P2-1).
  */
 export async function readProvenanceRecords(repoRoot: string): Promise<ProvenanceRecord[]> {
   const location = provenancePath(repoRoot);
@@ -78,7 +109,18 @@ export async function readProvenanceRecords(repoRoot: string): Promise<Provenanc
         're-seed/re-add the affected template(s), before retrying.',
     );
   }
-  return parsed as ProvenanceRecord[];
+  const records: ProvenanceRecord[] = [];
+  for (const [index, item] of parsed.entries()) {
+    if (!isValidProvenanceRecord(item)) {
+      throw new Error(
+        `Provenance file at "${location}" contains an invalid record at index ${index}: ` +
+          `${describeInvalidRecord(item)}. Restore it from version control, or re-seed/re-add the ` +
+          'affected template(s), before retrying.',
+      );
+    }
+    records.push(item);
+  }
+  return records;
 }
 // @cpt-end:cpt-frontx-algo-composed-provenance-provenance-write:p1:inst-determine-storage-location
 

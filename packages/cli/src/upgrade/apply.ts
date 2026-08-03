@@ -23,7 +23,13 @@ export type ApplyResult =
 // rather than imported: this pure-logic upgrade engine takes its filesystem
 // access only through injected deps (never through the adapters layer
 // directly), and the two callers read from different sources (a repo root
-// path there vs. an already-snapshotted string here).
+// path there vs. an already-snapshotted string here). Guards each ELEMENT of
+// that array too (review #500 round 2, P2-1): `Array.isArray` alone let a
+// malformed element (e.g. `[null]`, or an object missing `templateIdentity`)
+// through uncast, and the very next line — `existingRecords.findIndex(record
+// => record.templateIdentity === ...)` — either threw a raw TypeError that
+// escaped `ApplyResult`'s `{ok:true}|{ok:false}` contract, or silently
+// misdiagnosed the malformed element as "record not found".
 function isRecordShaped(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -37,6 +43,27 @@ function describeNonArrayPayload(value: unknown): string {
     : 'a single object instead of an array';
 }
 
+// The fields ADR-0019/the `ProvenanceRecord` contract (provenance/types.ts)
+// requires on every record — `occupiedOwnershipBoundary` is the one field
+// declared optional there, so it is not checked here. Not a new requirement:
+// these are exactly the contract's own required fields.
+const REQUIRED_PROVENANCE_RECORD_FIELDS = ['templateIdentity', 'scaffoldedFromVersion', 'sourceSpec'] as const;
+
+function isValidProvenanceRecord(value: unknown): value is ProvenanceRecord {
+  return (
+    isRecordShaped(value) &&
+    REQUIRED_PROVENANCE_RECORD_FIELDS.every((field) => typeof value[field] === 'string')
+  );
+}
+
+function describeInvalidRecord(value: unknown): string {
+  if (!isRecordShaped(value)) {
+    return value === null ? 'is null, not an object' : `is a ${typeof value}, not an object`;
+  }
+  const invalidFields = REQUIRED_PROVENANCE_RECORD_FIELDS.filter((field) => typeof value[field] !== 'string');
+  return `is missing or has a non-string ${invalidFields.map((field) => `"${field}"`).join(', ')}`;
+}
+
 function parseProvenanceRecordSet(raw: string | null, provPath: string): ProvenanceRecord[] {
   if (raw === null || raw.trim() === '') return [];
   const parsed: unknown = JSON.parse(raw);
@@ -46,7 +73,17 @@ function parseProvenanceRecordSet(raw: string | null, provPath: string): Provena
         `template), but found ${describeNonArrayPayload(parsed)}.`,
     );
   }
-  return parsed as ProvenanceRecord[];
+  const records: ProvenanceRecord[] = [];
+  for (const [index, item] of parsed.entries()) {
+    if (!isValidProvenanceRecord(item)) {
+      throw new Error(
+        `Provenance file at "${provPath}" contains an invalid record at index ${index}: ` +
+          `${describeInvalidRecord(item)}.`,
+      );
+    }
+    records.push(item);
+  }
+  return records;
 }
 
 // Rewrites ONLY the template's own marker-delimited region within a

@@ -478,4 +478,60 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     expect(writes.size).toBe(0);
     expect(removed.size).toBe(0);
   });
+
+  // (l)/(m) review #500 round 2 (P2-1): the SET shape was checked
+  // (`Array.isArray`) but individual elements were not, so a malformed
+  // element (e.g. `[null]`) reached `existingRecords.findIndex(record =>
+  // record.templateIdentity === ...)` and threw a raw TypeError that escaped
+  // `ApplyResult`'s `{ok:true}|{ok:false}` contract entirely — bypassing the
+  // restore-on-error path (which only wraps the for-each-entry loop) even
+  // though nothing had been written yet. Both cases must abort as
+  // `{ok:false}`, before any write, with a message naming the file and which
+  // element/field was invalid.
+  it('(l) a provenance array element that is null aborts before any project file is written, without throwing', async () => {
+    const writes = new Map<string, string>();
+    const removed = new Set<string>();
+
+    const applyResult = await applyChangeSet(trivialChangeSet, PROJ_ROOT, BASE_PROVENANCE, {
+      readProjectFile: async (p) => {
+        if (p === `${PROJ_ROOT}/.frontx/provenance.json`) return JSON.stringify([null]);
+        if (p === `${PROJ_ROOT}/src/App.tsx`) return 'v1 content';
+        return null;
+      },
+      writeProjectFile: async (p, c) => { writes.set(p, c); },
+      removeProjectFile: async (p) => { removed.add(p); },
+      writeProvenance: async (p, c) => { writes.set(p, c); },
+    });
+
+    expect(applyResult.ok).toBe(false);
+    if (applyResult.ok) return;
+    expect(applyResult.message).toContain(`${PROJ_ROOT}/.frontx/provenance.json`);
+    expect(applyResult.message).toMatch(/index 0/);
+    expect(writes.size).toBe(0);
+    expect(removed.size).toBe(0);
+  });
+
+  it('(m) a provenance array element missing templateIdentity aborts before any project file is written, without throwing', async () => {
+    const writes = new Map<string, string>();
+    const removed = new Set<string>();
+    const malformedRecord = { scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:acme/my-template@1.0.0' };
+
+    const applyResult = await applyChangeSet(trivialChangeSet, PROJ_ROOT, BASE_PROVENANCE, {
+      readProjectFile: async (p) => {
+        if (p === `${PROJ_ROOT}/.frontx/provenance.json`) return JSON.stringify([malformedRecord]);
+        if (p === `${PROJ_ROOT}/src/App.tsx`) return 'v1 content';
+        return null;
+      },
+      writeProjectFile: async (p, c) => { writes.set(p, c); },
+      removeProjectFile: async (p) => { removed.add(p); },
+      writeProvenance: async (p, c) => { writes.set(p, c); },
+    });
+
+    expect(applyResult.ok).toBe(false);
+    if (applyResult.ok) return;
+    expect(applyResult.message).toMatch(/templateIdentity/);
+    expect(applyResult.message).toMatch(/index 0/);
+    expect(writes.size).toBe(0);
+    expect(removed.size).toBe(0);
+  });
 });
