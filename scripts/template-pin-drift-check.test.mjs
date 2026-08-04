@@ -336,6 +336,90 @@ describe('runCli', () => {
     expect(run(root).exitCode).toBe(0);
   });
 
+  // #501: template-mfe pins template-shell/packages/* and template-shell itself
+  // - names that live in neither this repo's own `packages/*` nor template-mfe's
+  // own tree, so the pre-existing self-defined exemption cannot cover them.
+  // This is the actual bug: those 18 pin sites reported as unverifiable, not as
+  // matching or drifted, even though every one of them is checkable against
+  // template-shell's real versions.
+  it("verifies a pin on ANOTHER template's workspace member against that template's real version", async () => {
+    const root = await makeRoot();
+    await writeEcosystemPackages(root);
+    await writeManifest(path.join(root, 'template-shell'));
+    await writeJson(path.join(root, 'template-shell', 'package.json'), {
+      name: '@gears-frontx/frontx-template-shell',
+      version: '0.1.0-alpha.1',
+      workspaces: ['packages/*'],
+    });
+    await writeJson(path.join(root, 'template-shell', 'packages', 'auth', 'package.json'), {
+      name: '@gears-frontx/auth',
+      version: '0.2.0-alpha.1',
+    });
+    await writeManifest(path.join(root, 'template-mfe'));
+    await writeJson(path.join(root, 'template-mfe', 'src-app', 'mfe_packages', 'demo-mfe', 'package.json'), {
+      name: '@gears-frontx/demo-mfe',
+      devDependencies: {
+        '@gears-frontx/auth': '0.2.0-alpha.1',
+        '@gears-frontx/frontx-template-shell': '0.1.0-alpha.1',
+      },
+    });
+
+    const { exitCode, output } = run(root);
+
+    expect(exitCode).toBe(0);
+    expect(output).not.toContain('cannot be verified');
+  });
+
+  it("reports real drift, not 'cannot be verified', when a cross-template pin no longer matches", async () => {
+    const root = await makeRoot();
+    await writeEcosystemPackages(root);
+    await writeManifest(path.join(root, 'template-shell'));
+    await writeJson(path.join(root, 'template-shell', 'package.json'), {
+      name: '@gears-frontx/frontx-template-shell',
+      version: '0.1.0-alpha.1',
+      workspaces: ['packages/*'],
+    });
+    await writeJson(path.join(root, 'template-shell', 'packages', 'auth', 'package.json'), {
+      name: '@gears-frontx/auth',
+      version: '0.2.0-alpha.2',
+    });
+    await writeManifest(path.join(root, 'template-mfe'));
+    await writeJson(path.join(root, 'template-mfe', 'src-app', 'mfe_packages', 'demo-mfe', 'package.json'), {
+      name: '@gears-frontx/demo-mfe',
+      devDependencies: { '@gears-frontx/auth': '0.2.0-alpha.1' },
+    });
+
+    const { exitCode, output } = run(root);
+
+    expect(exitCode).toBe(1);
+    expect(output).toContain('pinned 0.2.0-alpha.1, actual 0.2.0-alpha.2');
+    expect(output).not.toContain('cannot be verified');
+  });
+
+  // The fail-closed rule this map must not lose sight of: a workspace member
+  // that IS there but has no valid version must abort naming the file, never
+  // silently drop out of the truth map (which would quietly resurrect the
+  // "unverifiable" failure this fix exists to remove).
+  it("fails closed, naming the file, when a template's own workspace member manifest has no valid version", async () => {
+    const root = await makeRoot();
+    await writeEcosystemPackages(root);
+    await writeManifest(path.join(root, 'template-shell'));
+    await writeJson(path.join(root, 'template-shell', 'package.json'), {
+      name: '@gears-frontx/frontx-template-shell',
+      version: '0.1.0-alpha.1',
+      workspaces: ['packages/*'],
+    });
+    await writeJson(path.join(root, 'template-shell', 'packages', 'auth', 'package.json'), {
+      name: '@gears-frontx/auth',
+    });
+
+    const { exitCode, output } = run(root);
+
+    expect(exitCode).toBe(1);
+    expect(output).toContain(path.join('template-shell', 'packages', 'auth', 'package.json'));
+    expect(output).toContain('"version"');
+  });
+
   it('does not report a pin on a name the monorepo defines outside packages/, e.g. an internal/* workspace', async () => {
     const root = await makeRoot();
     await writeJson(path.join(root, 'package.json'), { name: 'gears-frontx', workspaces: ['packages/*', 'internal/*'] });

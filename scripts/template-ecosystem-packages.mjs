@@ -23,6 +23,19 @@
  * manifest must never read as "this package has no version to compare against",
  * which is indistinguishable from "none of its pin sites drifted".
  *
+ * `packages/*` is not the whole truth, though (#501): a template can pin
+ * ANOTHER template's own identity or one of that template's workspace members
+ * - `template-mfe` pins `@gears-frontx/frontx-template-shell` and every one of
+ * `template-shell/packages/*` (react, auth, framework, i18n, state) to exact
+ * versions, and none of those names live under this repo's own `packages/*`.
+ * `readTemplateEcosystemPackages` asks each template the same question
+ * `packages/*` already answers - what do you publish, and at what version -
+ * and `readEcosystemTruthVersions` folds the answer in on top. Its own
+ * docblock covers the scope gate and the fail-closed rule on a missing
+ * version; `packages/*` is folded in first and never overwritten by a
+ * template's contribution of the same name (see `readEcosystemTruthVersions`
+ * for why that tie-break is the right one).
+ *
  * ## A pin on a name the truth map does not have
  *
  * FAILS LOUDLY, naming the site - a pin this repo cannot verify is not a pin
@@ -32,7 +45,7 @@
  * (`findDriftedSites` cannot distinguish "no truth entry" from "matches"). With
  * it, the missing manifest surfaces at the pin sites that depend on it.
  *
- * The one exception is a name the scanned tree DEFINES itself, which npm
+ * The remaining exception is a name the scanned tree DEFINES itself, which npm
  * resolves locally through a workspace whatever range it carries, so no
  * registry version exists for it to drift from. That exception is not a
  * courtesy: `template-shell` is a workspace root (`workspaces: ["packages/*",
@@ -41,17 +54,26 @@
  * deliberately does not publish. The monorepo's own manifests get the same
  * treatment against the names its root `workspaces` declare, which is why
  * `internal/*` (`@gears-frontx/eslint-config`, `@gears-frontx/depcruise-config`)
- * needs no special case despite being outside the truth map.
+ * needs no special case despite being outside the truth map. In practice this
+ * exception now mostly matters for a template pinning its OWN workspace
+ * member (`template-shell` pinning its own `@gears-frontx/auth`, say): the
+ * truth map above already carries that name at that template's real version,
+ * so the exception and the truth map agree; it stays load-bearing for a name
+ * defined in a tree the truth map has no reason to walk (an `internal/*`
+ * workspace, for one).
  *
  * The npm scope itself is derived from the truth map's own names, so not even
  * the string `@gears-frontx` is written down here.
  *
  * Consumers: `template-pin-drift-check.mjs` (compares every pin site against
  * the truth map) and `link-template-ecosystem.mjs` (repoints exactly the
- * directories the template pins at their local builds).
+ * `packages/*` directories the template pins at their local builds - template
+ * contributions never enter that linker, since a template's own workspace
+ * member already resolves locally with nothing published to shadow it).
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { findTemplateDirs } from './template-discovery.mjs';
 
 /**
  * Mirrors `DEPENDENCY_FIELDS` (`packages/cli/src/manifest/validate-content-
@@ -149,11 +171,33 @@ export function readEcosystemPackages(rootDir) {
 /**
  * The truth a pinned site is compared against: package name -> current version.
  *
+ * `packages/*` is not the whole truth: a template can pin another template's
+ * own identity or one of that template's workspace members (`template-mfe`
+ * pinning `@gears-frontx/frontx-template-shell` and `template-shell/packages/*`
+ * - #501), and neither lives under this repo's `packages/*`. Those
+ * contributions are folded in on top, from `readTemplateEcosystemPackages`.
+ *
+ * `packages/*` is folded in FIRST and never overwritten by a template
+ * contribution of the same name. Verified today: no `packages/*` directory
+ * shares a name with any template or template workspace member (see this
+ * module's docblock). If that ever changes, `packages/*` is this repo's actual
+ * publish source - the manifest a real `npm install` resolves - so it must win
+ * over a template's copy of the same name rather than being silently
+ * overwritten by it, which is what `if (!(name in truth))` below guarantees.
+ *
  * @param {string} rootDir monorepo root
  * @returns {Record<string, string>}
  */
 export function readEcosystemTruthVersions(rootDir) {
-  return Object.fromEntries(readEcosystemPackages(rootDir).map(({ name, version }) => [name, version]));
+  const ecosystem = readEcosystemPackages(rootDir);
+  /** @type {Record<string, string>} */
+  const truth = Object.fromEntries(ecosystem.map(({ name, version }) => [name, version]));
+
+  const isEcosystemScopeName = ecosystemScopeMatcher(ecosystem.map(({ name }) => name));
+  for (const { name, version } of readTemplateEcosystemPackages(rootDir, isEcosystemScopeName)) {
+    if (!(name in truth)) truth[name] = version;
+  }
+  return truth;
 }
 
 /**
@@ -361,6 +405,108 @@ function workspaceMemberDirs(rootDir, pattern) {
     .readdirSync(prefixDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name !== 'node_modules')
     .map((entry) => path.join(prefixDir, entry.name));
+}
+
+/**
+ * Reads one already-parsed manifest as an ecosystem truth-map candidate, or
+ * says why it is not one - the one rule shared by a template's own identity
+ * and each of its workspace members (see `readTemplateEcosystemPackages`).
+ *
+ * A missing or non-ecosystem-scope `name` returns `null`: it declares no
+ * identity this map governs, so there is nothing to compare and nothing to
+ * fail closed on either - the same judgment `readEcosystemPackages` makes for
+ * a `packages/*` directory with no manifest at all, applied here to a name
+ * outside scope instead of a missing file. This is what lets
+ * `template-mfe/package.json` (`frontx-template-mfe-monorepo-harness`,
+ * unscoped, `private: true`, deliberately carrying no version - see that
+ * file's own leading comment) sit right next to `template-shell/package.json`
+ * (`@gears-frontx/frontx-template-shell`) without either needing a special
+ * case: one is in scope and the other isn't, and only that decides.
+ *
+ * Once a name IS in scope, though, it is unconditionally a truth candidate,
+ * so a missing `version` fails closed exactly as an unusable `packages/*`
+ * manifest does - "no version" must never be indistinguishable from "matches".
+ *
+ * @param {Record<string, unknown>} manifest
+ * @param {string} manifestPath reported in the fail-closed error
+ * @param {(name: string) => boolean} isEcosystemScopeName
+ * @returns {{ name: string; version: string } | null}
+ */
+function ecosystemScopedNameVersion(manifest, manifestPath, isEcosystemScopeName) {
+  const name = manifest['name'];
+  if (typeof name !== 'string' || name.trim() === '' || !isEcosystemScopeName(name)) return null;
+
+  const version = manifest['version'];
+  if (typeof version !== 'string' || version.trim() === '') {
+    throw new Error(`${manifestPath} has no valid "version" - the ecosystem truth map cannot be built.`);
+  }
+  return { name, version };
+}
+
+/**
+ * Every `{ dir, name, version }` a template's OWN tree contributes to the
+ * ecosystem truth map, on top of `packages/*`: the template's own root
+ * manifest (its published identity, e.g. `@gears-frontx/frontx-template-shell`)
+ * and every workspace member its root `workspaces` patterns select (e.g.
+ * `template-shell/packages/auth`).
+ *
+ * WHY templates need asking at all (#501): `template-mfe` pins subpackages of
+ * `template-shell` (its own workspace members) and `template-shell` itself,
+ * and none of those names live under this repo's `packages/*` - so without
+ * this, every one of those pins is structurally unverifiable, not merely
+ * unpinned coincidence. This closes that gap the same way `packages/*` is
+ * built: derived from manifests on disk, never declared.
+ *
+ * This deliberately does NOT restrict which `workspaces` pattern counts - not
+ * `packages/*` specifically, whatever the template's own root manifest
+ * declares - for the same reason `readRepoDefinedPackageNames` does not
+ * special-case `packages/*` for the monorepo root: a template's workspace
+ * layout is exactly as free to change as the monorepo's own, and a governed
+ * subset would be the hand-maintained list this file's whole design exists to
+ * avoid. In practice this also picks up `template-mfe`'s own MFE fixture
+ * packages (`@gears-frontx/demo-mfe` and friends) as truth entries; harmless,
+ * since nothing pins an exact version of a leaf MFE app.
+ *
+ * Every candidate is filtered through `ecosystemScopedNameVersion`, so a
+ * template or workspace member outside the ecosystem's own npm scope (or with
+ * no manifest, or no `name`) contributes nothing, while one that IS in scope
+ * fails closed on a missing `version` rather than silently dropping out.
+ *
+ * @param {string} rootDir monorepo root
+ * @param {(name: string) => boolean} isEcosystemScopeName
+ * @returns {EcosystemPackage[]}
+ */
+export function readTemplateEcosystemPackages(rootDir, isEcosystemScopeName) {
+  /** @type {EcosystemPackage[]} */
+  const packages = [];
+
+  for (const templateDir of findTemplateDirs(rootDir)) {
+    const templateName = path.basename(templateDir);
+    const rootManifestPath = path.join(templateDir, 'package.json');
+    // No root manifest at all: nothing to contribute, and no `workspaces`
+    // field to discover members from either.
+    if (!fs.existsSync(rootManifestPath)) continue;
+
+    const rootManifest = readPackageManifest(rootManifestPath);
+    const ownEntry = ecosystemScopedNameVersion(rootManifest, rootManifestPath, isEcosystemScopeName);
+    if (ownEntry !== null) packages.push({ dir: templateName, ...ownEntry });
+
+    const patterns = Array.isArray(rootManifest['workspaces']) ? rootManifest['workspaces'] : [];
+    for (const pattern of patterns) {
+      if (typeof pattern !== 'string') continue;
+      for (const memberDir of workspaceMemberDirs(templateDir, pattern)) {
+        const memberManifestPath = path.join(memberDir, 'package.json');
+        if (!fs.existsSync(memberManifestPath)) continue;
+
+        const memberManifest = readPackageManifest(memberManifestPath);
+        const memberEntry = ecosystemScopedNameVersion(memberManifest, memberManifestPath, isEcosystemScopeName);
+        if (memberEntry !== null) {
+          packages.push({ dir: path.join(templateName, path.relative(templateDir, memberDir)), ...memberEntry });
+        }
+      }
+    }
+  }
+  return packages;
 }
 
 /**

@@ -18,10 +18,13 @@
  * added `packages/telemetry` while this branch was in review. So everything is
  * discovered structurally instead:
  *
- *  - WHICH PACKAGES are a version truth: every `packages/*` manifest, read by
+ *  - WHICH PACKAGES are a version truth: every `packages/*` manifest, PLUS
+ *    every template's own identity and workspace members (`template-mfe` pins
+ *    `template-shell/packages/*` and `template-shell` itself - #501 - neither
+ *    of which lives under this repo's `packages/*`), read by
  *    `template-ecosystem-packages.mjs` (see its docblock for the fail-closed
- *    rules and for why a pin on a name outside that truth is a failure rather
- *    than a skip).
+ *    rules and for why a pin on a name outside that combined truth is a
+ *    failure rather than a skip).
  *  - WHICH TEMPLATES to walk: every directory carrying `frontx-template.json`
  *    (ADR-0018 manifest presence, not a `template-*` name prefix), so a renamed
  *    or relocated template stays covered - and zero templates found is a hard
@@ -53,6 +56,7 @@ import {
   ecosystemScopeMatcher,
   pinSitesIn,
   readEcosystemPackages,
+  readEcosystemTruthVersions,
   readPackageManifest,
   readRepoDefinedPackageNames,
   scanTreePins,
@@ -144,8 +148,13 @@ export function findUnverifiableSites(sites, truthVersions, locallyDefinedNames)
  */
 function check({ rootDir, log, logError }) {
   const ecosystem = readEcosystemPackages(rootDir);
-  const truthVersions = Object.fromEntries(ecosystem.map(({ name, version }) => [name, version]));
   const isEcosystemScopeName = ecosystemScopeMatcher(ecosystem.map(({ name }) => name));
+  // Not `packages/*` alone: a template can pin another template's own identity
+  // or one of that template's workspace members (#501), so the truth map this
+  // guard compares against has to include those too. See
+  // `readEcosystemTruthVersions` for what gets folded in and why `packages/*`
+  // wins any (currently nonexistent) name collision with a template.
+  const truthVersions = readEcosystemTruthVersions(rootDir);
 
   const templateDirs = findTemplateDirs(rootDir);
 

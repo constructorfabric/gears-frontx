@@ -13,6 +13,7 @@ import {
   readEcosystemPackages,
   readEcosystemTruthVersions,
   readRepoDefinedPackageNames,
+  readTemplateEcosystemPackages,
   scanTreePins,
   templatePinnedPackageDirs,
 } from './template-ecosystem-packages.mjs';
@@ -46,6 +47,12 @@ async function writeEcosystemPackages(root, versions = {}) {
 /** Relative paths with POSIX separators, so an expectation reads the same on any platform. */
 function relativePosix(from, absolutePaths) {
   return absolutePaths.map((p) => path.relative(from, p).split(path.sep).join('/')).sort();
+}
+
+// A minimal marker manifest - `findTemplateDirs` only checks for the file's
+// presence, never its content.
+async function writeTemplateManifest(templateDir) {
+  await writeJson(path.join(templateDir, 'frontx-template.json'), {});
 }
 
 describe('readEcosystemPackages', () => {
@@ -348,6 +355,169 @@ describe('templatePinnedPackageDirs', () => {
     await writeEcosystemPackages(root);
 
     expect(templatePinnedPackageDirs(root, 'template-gone')).toEqual([]);
+  });
+});
+
+// #501: template-mfe pins template-shell/packages/* and template-shell itself,
+// none of which live under this repo's own `packages/*` - so without asking
+// the templates the same question `packages/*` already answers ("what do you
+// publish, and at what version"), those pins are structurally unverifiable.
+describe('readTemplateEcosystemPackages', () => {
+  const isEcosystemScopeName = ecosystemScopeMatcher(['@gears-frontx/api']);
+
+  it("contributes a template's own name+version when it is inside the ecosystem scope", async () => {
+    const root = await makeRoot();
+    await writeTemplateManifest(path.join(root, 'template-shell'));
+    await writeJson(path.join(root, 'template-shell', 'package.json'), {
+      name: '@gears-frontx/frontx-template-shell',
+      version: '0.1.0-alpha.1',
+    });
+
+    expect(readTemplateEcosystemPackages(root, isEcosystemScopeName)).toContainEqual({
+      dir: 'template-shell',
+      name: '@gears-frontx/frontx-template-shell',
+      version: '0.1.0-alpha.1',
+    });
+  });
+
+  it('contributes every workspace member the workspaces patterns select, alongside the template itself', async () => {
+    const root = await makeRoot();
+    await writeTemplateManifest(path.join(root, 'template-shell'));
+    await writeJson(path.join(root, 'template-shell', 'package.json'), {
+      name: '@gears-frontx/frontx-template-shell',
+      version: '0.1.0-alpha.1',
+      workspaces: ['packages/*'],
+    });
+    await writeJson(path.join(root, 'template-shell', 'packages', 'auth', 'package.json'), {
+      name: '@gears-frontx/auth',
+      version: '0.2.0-alpha.1',
+    });
+
+    const packages = readTemplateEcosystemPackages(root, isEcosystemScopeName);
+
+    expect(packages).toContainEqual({ dir: 'template-shell', name: '@gears-frontx/frontx-template-shell', version: '0.1.0-alpha.1' });
+    expect(packages).toContainEqual(
+      expect.objectContaining({ name: '@gears-frontx/auth', version: '0.2.0-alpha.1' }),
+    );
+  });
+
+  // template-mfe's own root manifest names itself `frontx-template-mfe-monorepo-
+  // harness` - unscoped, `private: true`, and (deliberately, per its own comment)
+  // carrying no version at all. That is not a broken manifest to fail closed on:
+  // it is simply not a truth candidate, the same judgment `packages/*` makes for
+  // a directory with no manifest at all, applied here to a name outside the
+  // scope this map governs.
+  it('skips a template whose own name is outside the ecosystem scope, even with no version present', async () => {
+    const root = await makeRoot();
+    await writeTemplateManifest(path.join(root, 'template-mfe'));
+    await writeJson(path.join(root, 'template-mfe', 'package.json'), {
+      name: 'frontx-template-mfe-monorepo-harness',
+      private: true,
+    });
+
+    expect(() => readTemplateEcosystemPackages(root, isEcosystemScopeName)).not.toThrow();
+    expect(readTemplateEcosystemPackages(root, isEcosystemScopeName)).toEqual([]);
+  });
+
+  it('skips a template root manifest that declares no name at all', async () => {
+    const root = await makeRoot();
+    await writeTemplateManifest(path.join(root, 'template-mfe'));
+    await writeJson(path.join(root, 'template-mfe', 'package.json'), { private: true });
+
+    expect(readTemplateEcosystemPackages(root, isEcosystemScopeName)).toEqual([]);
+  });
+
+  it('skips a template directory that carries no root package.json at all', async () => {
+    const root = await makeRoot();
+    await writeTemplateManifest(path.join(root, 'template-mfe'));
+
+    expect(readTemplateEcosystemPackages(root, isEcosystemScopeName)).toEqual([]);
+  });
+
+  // The counterpart to the skip above: an in-scope name IS a truth candidate,
+  // so a missing version on it must never read as "nothing to compare against" -
+  // the same fail-closed rule `packages/*` applies to its own manifests.
+  it("fails closed, naming the file, when a template's own in-scope name has no valid version", async () => {
+    const root = await makeRoot();
+    await writeTemplateManifest(path.join(root, 'template-shell'));
+    await writeJson(path.join(root, 'template-shell', 'package.json'), {
+      name: '@gears-frontx/frontx-template-shell',
+    });
+
+    expect(() => readTemplateEcosystemPackages(root, isEcosystemScopeName)).toThrow(
+      /template-shell[/\\]package\.json has no valid "version"/,
+    );
+  });
+
+  it('fails closed, naming the file, when a workspace member has an in-scope name but no valid version', async () => {
+    const root = await makeRoot();
+    await writeTemplateManifest(path.join(root, 'template-shell'));
+    await writeJson(path.join(root, 'template-shell', 'package.json'), {
+      name: '@gears-frontx/frontx-template-shell',
+      version: '0.1.0-alpha.1',
+      workspaces: ['packages/*'],
+    });
+    await writeJson(path.join(root, 'template-shell', 'packages', 'auth', 'package.json'), {
+      name: '@gears-frontx/auth',
+    });
+
+    expect(() => readTemplateEcosystemPackages(root, isEcosystemScopeName)).toThrow(
+      /packages[/\\]auth[/\\]package\.json has no valid "version"/,
+    );
+  });
+
+  it('skips a workspace member directory that carries no manifest at all', async () => {
+    const root = await makeRoot();
+    await writeTemplateManifest(path.join(root, 'template-shell'));
+    await writeJson(path.join(root, 'template-shell', 'package.json'), {
+      name: '@gears-frontx/frontx-template-shell',
+      version: '0.1.0-alpha.1',
+      workspaces: ['packages/*'],
+    });
+    await mkdir(path.join(root, 'template-shell', 'packages', 'not-a-package'), { recursive: true });
+
+    expect(() => readTemplateEcosystemPackages(root, isEcosystemScopeName)).not.toThrow();
+  });
+});
+
+describe('readEcosystemTruthVersions with templates', () => {
+  it("folds a template's own version and its workspace members into the truth map, on top of packages/*", async () => {
+    const root = await makeRoot();
+    await writeEcosystemPackages(root);
+    await writeTemplateManifest(path.join(root, 'template-shell'));
+    await writeJson(path.join(root, 'template-shell', 'package.json'), {
+      name: '@gears-frontx/frontx-template-shell',
+      version: '0.1.0-alpha.1',
+      workspaces: ['packages/*'],
+    });
+    await writeJson(path.join(root, 'template-shell', 'packages', 'auth', 'package.json'), {
+      name: '@gears-frontx/auth',
+      version: '0.2.0-alpha.1',
+    });
+
+    const truth = readEcosystemTruthVersions(root);
+
+    expect(truth['@gears-frontx/frontx-template-shell']).toBe('0.1.0-alpha.1');
+    expect(truth['@gears-frontx/auth']).toBe('0.2.0-alpha.1');
+    // packages/* itself is untouched by the fold.
+    expect(truth['@gears-frontx/api']).toBe('0.3.0-alpha.0');
+  });
+
+  // Verified today: no `packages/*` directory shares a name with any template
+  // or template workspace member (see the module docblock). This proves the
+  // tie-break the docblock commits to for if that ever changes: `packages/*`
+  // is this repo's actual publish source, so it must win over a template's
+  // copy of the same name rather than being silently overwritten by it.
+  it('prefers the packages/* version over a template contribution of the same name', async () => {
+    const root = await makeRoot();
+    await writeEcosystemPackages(root, { api: '0.4.0-alpha.0' });
+    await writeTemplateManifest(path.join(root, 'template-shell'));
+    await writeJson(path.join(root, 'template-shell', 'package.json'), {
+      name: '@gears-frontx/api',
+      version: '0.1.0-alpha.0',
+    });
+
+    expect(readEcosystemTruthVersions(root)['@gears-frontx/api']).toBe('0.4.0-alpha.0');
   });
 });
 
