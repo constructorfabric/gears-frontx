@@ -126,6 +126,17 @@ jobs:
     - name: Check template ecosystem pin-drift
       run: npm run policy:template-pin-drift
 
+    # #524: `npm install` reconciling an out-of-sync template lockfile drops
+    # the template's `file:.` self-link entry, writing a lockfile its own
+    # `npm ci` then rejects ("Missing: ... from lock file") — and reconciling
+    # is exactly what `npm ci`'s out-of-sync error tells the developer to do.
+    # This asserts every self-link a template's manifest declares still has
+    # its lockfile entry, so the failure names the vanished entry at commit
+    # time instead of surfacing as a generic `npm ci` red in template CI.
+    # No build-order dependency: reads the JSON files directly.
+    - name: Check template lockfile self-link entries
+      run: npm run policy:template-lockfile-selflink
+
   studio-validate:
     name: Studio Validate Artifacts
     runs-on: ubuntu-latest

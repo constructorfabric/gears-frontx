@@ -29,6 +29,7 @@
     "lint": "npm run lint:deps && eslint . --max-warnings 0",
     "policy:version-check": "node scripts/ecosystem-version-policy.mjs",
     "policy:template-pin-drift": "node scripts/template-pin-drift-check.mjs",
+    "policy:template-lockfile-selflink": "node scripts/template-lockfile-selflink-check.mjs",
     "validate:templates": "node scripts/validate-templates.mjs",
     "type-check": "npm run type-check:all",
     "type-check:host": "tsc --noEmit",
