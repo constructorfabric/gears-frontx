@@ -158,7 +158,7 @@ within a project. It bundles no templates of its own.
 | Command | Purpose |
 |---------|---------|
 | `frontx install <spec>` | Install a template from a source-spec (`host:owner/repo[//subtree]@ref`) into the local inventory, tracked under the identity its manifest declares |
-| `frontx list` | List installed templates |
+| `frontx list [--json]` | List installed templates; `--json` emits one machine-readable record per entry, carrying its identity, pinned reference, source address and the description its manifest declares |
 | `frontx seed <templateRef> <targetDir>` | Seed a **new** repository from a template; `templateRef` is the identity shown by `frontx list`, not the repository name |
 | `frontx add <templateRef> <targetDir>` | Add a template into an **existing** repository |
 | `frontx upgrade <projectRoot> <version>` | Upgrade an applied template (reviewable change set) |
@@ -182,9 +182,10 @@ cfs kit install path/packages/cyber-pilot-kit-frontx
 
 On install, its `frontx_`-prefixed resources (KIT-1) register in the project's
 `.cf-studio/config/core.toml` and become available to agents at session start —
-no training step. As shipped today the kit provides three capabilities:
+no training step. As shipped today the kit provides four capabilities:
 
-- **Ecosystem fluency** — a top-level skill (`SKILL.md`), navigation rules (`AGENTS.md`), and boundary guidelines that let agents reason correctly about MFEs, extension domains, source-specs, and the ecosystem/template boundary.
+- **Ecosystem fluency and request routing** — a top-level skill (`SKILL.md`), navigation rules (`AGENTS.md`), and boundary guidelines that let agents reason correctly about MFEs, extension domains, source-specs, and the ecosystem/template boundary. Its routing section states which capability serves each kind of FrontX request.
+- **Intent-driven project scaffolding** — the developer says what they want built rather than naming a template; the kit matches that intent against the descriptions installed templates declare, applies the chosen set by running `frontx seed`/`frontx add`, and then realizes each unit the intent names through the applied templates' own activated skills. The direct CLI path stays available unchanged for a developer who already holds a reference.
 - **Template-extension discovery & activation** — a template can ship its own skills, workflows, guidelines, and reference artifacts; on `frontx install`, the kit discovers and activates them in the consuming project, with no manual wiring.
 - **AI-driven upgrade orchestration** — the kit drives template upgrades over the CLI's machine-readable command surface (`frontx upgrade --json`), layering review gates, migration analysis, and downstream impact assessment onto the direct CLI path.
 

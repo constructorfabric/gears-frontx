@@ -46,6 +46,7 @@ one repository can publish several templates:
 frontx install github:acme/my-template@v1.0.0        # template at the repository root
 frontx install github:acme/templates//shell@v1.0.0   # template in the shell/ subtree
 frontx list          # show installed templates and versions
+frontx list --json   # same set, one machine-readable record per entry
 ```
 
 A template is tracked under the identity its own `frontx-template.json` declares, not under
@@ -102,7 +103,7 @@ frontx validate ./path/to/template
 | Command | Purpose |
 |---------|---------|
 | `frontx install <spec>` | Install a template from `host:owner/repo[//subtree]@ref` into the inventory |
-| `frontx list` | List installed templates and versions |
+| `frontx list [--json]` | List installed templates and versions; `--json` emits one machine-readable record per entry, carrying its identity, pinned reference, source address and declared description |
 | `frontx seed <templateRef> <targetDir>` | Seed a **new** repository from a template |
 | `frontx add <templateRef> <targetDir>` | Add a template into an **existing** repository |
 | `frontx upgrade <projectRoot> <version> [--yes] [--json]` | Upgrade an applied template |
@@ -159,9 +160,9 @@ cfs kit update cyber-pilot-kit-frontx
 
 Every resource the kit installs carries the `frontx_` prefix (KIT-1), so it
 cannot collide with other kits (e.g. the SDLC kit) installed in the same
-project. As shipped today the kit provides three concrete capabilities.
+project. As shipped today the kit provides four concrete capabilities.
 
-### Ecosystem fluency
+### Ecosystem fluency and request routing
 
 The kit hands agents ecosystem knowledge at session start: a top-level skill
 (`SKILL.md`) covering the package surface, architecture principles, and key
@@ -169,6 +170,36 @@ concepts; navigation rules (`AGENTS.md`); and boundary guidelines
 (`guidelines/`). This is what lets an agent reason correctly about MFEs,
 extension domains, source-specs, and the ecosystem/template boundary without
 being taught.
+
+`SKILL.md` also carries a **routing** section: for each kind of FrontX request it
+states which capability serves it — creating a project, applying a reference the
+developer already holds, adding a unit inside ground an applied template owns,
+upgrading, or validating a template. A request matching none of them is reported
+as unmatched rather than routed to the nearest capability.
+
+### Intent-driven project scaffolding
+
+The developer states what they want built — "a console with two screens, one
+showing X and one showing Y" — instead of naming a template they would have to
+know already. The scaffolding skill:
+
+1. reads the selectable set with `frontx list --json`, the machine-readable form
+   of the listing, and never by reading the CLI's own storage;
+2. matches the intent against the **descriptions** those templates declare in
+   their manifests, refusing rather than guessing when nothing is installed,
+   nothing matches, or two candidates tie;
+3. presents the plan — what to seed with, what to add, at which pinned versions
+   — before anything is written;
+4. applies it by running `frontx seed` and `frontx add`, reproducing no part of
+   resolution, assembly, conflict checking, or provenance writing;
+5. reports the applied set back from `.frontx/provenance.json`;
+6. then realizes each unit the intent named inside the applied ground, by
+   following the applied template's own activated skills once per unit and
+   putting the stated content into each unit created.
+
+A template is applied at most once per project. Two screens are not two
+applications — they are two units inside one applied template's ground, added by
+that template's own skills.
 
 ### Template-extension discovery & activation
 
@@ -191,9 +222,13 @@ The `--json` surface emits the raw change set and reads a decision back, so the
 kit can layer review gates, migration analysis, and downstream impact assessment
 onto the change set before it is applied.
 
-> **Not AI skills.** Scaffolding a project (`frontx seed` / `frontx add`) and
-> validating a template (`frontx validate`) are direct **CLI** operations, not
-> kit capabilities.
+> **Two paths, one engine.** Scaffolding is reachable both ways. State an intent
+> and the kit's scaffolding skill chooses and applies for you; hold a template
+> reference already and `frontx seed` / `frontx add` apply it directly, exactly
+> as before. The kit adds the selection, the plan and the per-unit realization —
+> never a second way to write a project, since both paths end in the same CLI
+> commands. Validating a template (`frontx validate`) remains a direct CLI
+> operation with no kit capability over it.
 
 ### Roadmap
 
