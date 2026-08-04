@@ -19,9 +19,17 @@ description: "Agent navigation rules for FrontX ecosystem package boundaries, CL
 ## When working with the CLI
 
 - CLI resolves templates by source-spec at runtime; it bundles no template content
-- Source-spec format: `protocol://host/path#ref`
-- The CLI has no scaffolding commands; supported commands are `install`, `list`, `update-local`, `validate`, `seed`, `add`, `upgrade`, and `help`
-- To add an MFE package, copy the `_blank-mfe` reference scaffold in `mfe_packages/` (see its `README.md`)
+- Source-spec format: `host:owner/repo[//subtree]@ref` — the optional `//subtree` addresses a template occupying a subdirectory of a repository
+- Supported commands are `install`, `list`, `update-local`, `validate`, `seed`, `add`, `upgrade`, and `help`
+- `seed` applies a template into a **new** repository, `add` into an **existing** one; both take the identity the template's own manifest declares, which is what `list` reports
+- `list --json` is the machine-readable form: one record per installed template carrying its identity, pinned reference, source address, and declared description
+
+## When a request is to create or extend a project
+
+- Route it first — the routing section of this kit's `SKILL.md` states which capability serves which kind of request
+- A request stating what to build, with no template reference in hand, is served by the scaffolding skill, which selects from what the installed inventory declares and applies it over the CLI command surface
+- A request naming a reference already held is served by `frontx seed` / `frontx add` directly
+- **To add a unit inside ground an applied template already owns — one more MFE package, one more screen — use the skills that template activated in the project under `.frontx/ai/<template-identity>/`.** That template owns its scaffold, its naming, and its registration steps. This kit ships no unit-adding procedure and must not describe one: doing so would put solution knowledge in the solution-agnostic base and would go stale the moment the template changed
 
 ## When working with MFEs
 

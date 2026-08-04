@@ -44,7 +44,11 @@ One JSON line: `{ "ok": true, "templates": [ ... ] }`. Each record carries
   the plan so the developer sees what version will be applied;
 - `source` - the address it was resolved from;
 - `description` - the template's own statement of what it establishes and what
-  it contributes. **The key is absent when the template declares none.**
+  it contributes. **The key is absent when the template declares none, and also
+  when the entry's stored manifest can no longer be read** - the listing reports
+  the rest of the inventory rather than failing over one unreadable record.
+  Either way you have no declared description to match against, and the entry is
+  handled as an entry that declares none.
 
 This command is the only source for the selectable set. Do not consult any
 remote registry, any list built into this document, or the CLI's storage.
