@@ -77,6 +77,8 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 **Error Scenarios**:
 - Template reference cannot be resolved from the local template inventory: the operation is aborted and the developer is notified with no files written.
 - Two applied templates in the staged assembly claim the same ground: the operation is aborted before any file is written, naming the contesting templates and the contested ground.
+- A `region-union` shared-file path already on disk carries a marker line `compose-shared-files` cannot parse into a locatable block — a token with no `identity:key` separator, an unterminated region, or an end marker that closes nothing: the operation is aborted before any file is written, naming the path and line number for the developer to fix or remove.
+- A `region-union` shared-file path already on disk carries a block whose owning identity is not among the templates being applied: the operation is aborted before any file is written, naming the path and the block's unrecorded owner. At a seed this is unconditional for any such pre-existing block — the target's provenance starts empty, so no prior owner can ever be recorded to explain it away.
 
 **Steps**:
 1. [x] - `p1` - Developer invokes the apply command with a template reference and a target directory path. - `inst-seed-invoke`
@@ -103,6 +105,9 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 - Template reference cannot be resolved from the local template inventory: the operation is aborted and the developer is notified with no files written.
 - An already-applied template's provenance record cannot be matched to an installed template, either by the identity it names or by the source address it records, or the matched template does not satisfy the manifest contract: the operation is aborted naming that record's source-spec, because the boundaries that template occupies cannot be established and proceeding would check the new template against an incomplete picture.
 - The new template's declared boundaries intersect an already-applied template's boundaries: the operation is aborted before any file is written, naming the contesting templates and the contested ground.
+- A `region-union` shared-file path already on disk carries a block whose owning identity is neither a contributing template nor recorded in the repository's existing provenance: the operation is aborted before any file is written, naming the path and the unrecorded owner, because that block is evidence the occupied-boundary picture the conflict check evaluated was incomplete.
+- Two blocks already on disk at the same `region-union` path, both owned by a previously-applied template that is not contributing to this assembly, resolve the same region key or have overlapping on-disk marker spans: the operation is aborted before any file is written, naming the path and the conflicting blocks, because carried-forward blocks are never compared against each other before this point and the mismatch can only mean the file was hand-edited or corrupted since it was last written.
+- A `region-union` shared-file path already on disk carries a marker line `compose-shared-files` cannot parse into a locatable block — a token with no `identity:key` separator, an unterminated region, or an end marker that closes nothing: the operation is aborted before any file is written, naming the path and line number for the developer to fix or remove.
 
 **Steps**:
 1. [x] - `p1` - Developer invokes the apply command with a template reference and the path of a repository that already holds applied templates. - `inst-add-invoke`

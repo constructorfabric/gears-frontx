@@ -487,6 +487,55 @@ describe('dispatch: add (cpt-frontx-flow-cli-scaffolding-add-template)', () => {
         'marker at "shared.txt" line 1 and retry. No file was written.',
     );
   });
+
+  // review #500 round 4: `seed` always calls `materializeAssembly` with an
+  // empty `existingProvenance` (`seedRepository.ts` hardcodes `[]` — a seed
+  // target has no prior applied templates by definition), so
+  // composeSharedFiles' `appliedIdentities` set is always empty for this
+  // flow. That means ANY on-disk region-union block whose identity is not
+  // among the templates THIS seed is applying is unconditionally
+  // "unrecorded" — there is no "already applied, carry forward" case a seed
+  // could ever hit, because nothing could have been legitimately applied
+  // before it. Proves `unrecorded-owner` IS reachable from `seed`
+  // (a target directory that is not actually empty, contra the flow's
+  // documented precondition, still reaches this refusal rather than an
+  // internal error) — the FEATURE.md Error Scenarios list for
+  // `cpt-frontx-flow-cli-scaffolding-seed-repository` omitted it.
+  it('seed: exits user-error (not internal-error) when materialization refuses an unrecorded on-disk marker owner', async () => {
+    const { deps, registerManifest, registerContent } = makeDeps({
+      readProjectFile: vi.fn(async (path: string) =>
+        path === '/tmp/seed-repo/shared.txt'
+          ? 'frontx:region mystery-template:x\nUnexplained content.\nfrontx:endregion mystery-template:x'
+          : null,
+      ),
+    });
+    registerManifest(
+      'github:acme/bar@v1.0.0',
+      makeManifest('bar', '1.0.0', {
+        ownershipBoundaries: {
+          exclusiveSubtrees: [],
+          sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }],
+        },
+      }),
+    );
+    registerContent('bar', [{ path: 'shared.txt', content: 'frontx:region bar:b\nB content.\nfrontx:endregion bar:b' }]);
+    await run(['install', 'github:acme/bar@v1.0.0'], deps);
+
+    const outcome = await run(['seed', 'bar', '/tmp/seed-repo'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toBe(
+      'Materialization refused — path "shared.txt" carries a block owned by "mystery-template" ' +
+        '(region "x") that this assembly does not contribute and that this ' +
+        "repository's existing provenance does not record. That on-disk block is NOT a declaration of " +
+        'ownership — it is evidence that the occupied-boundary picture the pre-flight conflict check ' +
+        'evaluated was incomplete: no arbitrated claim accounts for this ground, so composing over it would ' +
+        "either drop the occupying template's contribution or silently absorb an un-arbitrated claim, and " +
+        'assembly-conflict-prevention forbids both outcomes. No file is written. Record ' +
+        '"mystery-template"\'s applied provenance for this repository (for example, reinstall it and ' +
+        'reapply it through "frontx add") and retry.',
+    );
+  });
 });
 
 describe('dispatch: upgrade (cpt-frontx-flow-upgrade-changeset-review-approval)', () => {

@@ -141,9 +141,11 @@ function sameSourceAddress(left: string, right: string): boolean {
 
 // The subset of ComposeSharedFilesResult's discriminant reachable here —
 // derived rather than hand-duplicated, so a new compose refusal reason added
-// there is a type error here until this file (and its two callers,
-// addTemplate/seedRepository) decide which exit code it deserves, instead of
-// silently falling through to 'provenance-failed'.
+// there flows into this union automatically. The type alias alone does not
+// force anything, though: see USER_FIXABLE_COMPOSE_REASONS below, whose
+// Record<ComposeFailureReason, boolean> shape is what turns "a new reason
+// wasn't classified yet" into a compile error in THIS file, instead of
+// silently falling through to 'provenance-failed' at the caller.
 type ComposeFailureReason = Extract<ComposeSharedFilesResult, { ok: false }>['reason'];
 
 // review #500 (fix 2/2): `composeSharedFiles` already distinguishes a
@@ -178,12 +180,25 @@ export type MaterializeResult =
 // `carried-key-collision`) names a materialization invariant the pre-flight
 // conflict check should already have caught — reaching materialization means
 // that check missed it, which is a mechanism bug, not the user's to fix.
-const USER_FIXABLE_COMPOSE_REASONS: ReadonlySet<ComposeFailureReason> = new Set([
-  'unrecorded-owner',
-  'span-overlap',
-  'carried-block-conflict',
-  'malformed-marker-block',
-]);
+// review #500 round 4: a `ReadonlySet` used to stand in here. A Set's `.has`
+// answers `false` for a member it was never told about — so the exact defect
+// this round's review caught (`malformed-marker-block` added to
+// ComposeSharedFilesResult's reason union in round 2 but never added to this
+// list, silently falling through to 'provenance-failed'/EXIT_INTERNAL_ERROR)
+// produced no compile error. A `Record` keyed by the FULL `ComposeFailureReason`
+// union requires an explicit `true`/`false` verdict for every member: omitting
+// one is `error TS2741: Property '<reason>' is missing`, raised at THIS
+// declaration the moment a new reason is added to the union above, not a
+// silent runtime fallback discovered later in a caller two hops away.
+const USER_FIXABLE_COMPOSE_REASONS: Record<ComposeFailureReason, boolean> = {
+  'unrecorded-owner': true,
+  'span-overlap': true,
+  'carried-block-conflict': true,
+  'malformed-marker-block': true,
+  'exclusive-contested': false,
+  'key-collision': false,
+  'carried-key-collision': false,
+};
 
 /**
  * Classifies a materialization failure as user-fixable (the target
@@ -194,7 +209,7 @@ const USER_FIXABLE_COMPOSE_REASONS: ReadonlySet<ComposeFailureReason> = new Set(
  * each re-deriving — and risking drifting — its own copy of this list.
  */
 export function isUserFixableMaterializeFailure(result: { ok: false; composeReason?: ComposeFailureReason }): boolean {
-  return result.composeReason !== undefined && USER_FIXABLE_COMPOSE_REASONS.has(result.composeReason);
+  return result.composeReason !== undefined && USER_FIXABLE_COMPOSE_REASONS[result.composeReason];
 }
 
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-boundary-declared-assembly:p1

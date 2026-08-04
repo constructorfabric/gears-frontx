@@ -25,11 +25,15 @@ export type ComposedScaffoldResult =
         | 'provenance-failed'
         // review #500 round 2 (P2-3): mirrors SeedRepositoryResult/AddTemplateResult's
         // reason of the same name — a materialization refusal the target
-        // repository's owner can act on and retry (composeSharedFiles'
-        // `unrecorded-owner`, `span-overlap`, or `carried-block-conflict`;
-        // see `isUserFixableMaterializeFailure`), kept distinct from
-        // `provenance-failed` because, unlike a real provenance-write
-        // failure, NO file was written when this reason is returned.
+        // repository's owner can act on and retry. Which of composeSharedFiles'
+        // reasons that covers is decided in exactly one place,
+        // `USER_FIXABLE_COMPOSE_REASONS` in `./materialize` (consulted here via
+        // `isUserFixableMaterializeFailure`) — not re-enumerated in this comment,
+        // which is what let it drift out of sync with that list in round 4
+        // (`malformed-marker-block` was added there but not named here). Kept
+        // distinct from `provenance-failed` because, unlike a real
+        // provenance-write failure, NO file was written when this reason is
+        // returned.
         | 'materialization-refused';
       message: string;
     }
