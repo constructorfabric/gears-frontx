@@ -57,6 +57,19 @@ packages/cli/src/generated/
 # Agent infrastructure (session-local, not part of feature code)
 .agents/
 
+# Local OMX agent runtime (session/task state, logs — not part of feature code)
+/.omx/
+
+# oh-my-claudecode (OMC) agent runtime state — regenerated per working
+# directory wherever an agent's cwd is invoked from (root and package
+# subdirectories); no committable content in this repo today
+.omc/
+
+# Local PR-review cache (cf-sdlc pr-review/pr-status workflow; data_dir set in
+# .cf-studio/config/pr-review.toml) — fetched PR metadata, diffs and comments
+# kept for offline review, not tracked source
+/.prs/
+
 # FrontX migration tracker (project-local, runtime-written by the CLI's upgrade
 # provenance write — NOT the template-authored .frontx/ai/ AI-extension bundle,
 # which is tracked source content shipped with a template)

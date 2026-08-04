@@ -42,6 +42,10 @@ export default [
       // Disposable Claude Code agent worktrees — full repo checkouts that
       // should never be linted as part of this repo's own source tree.
       '.claude/**',
+      // Local OMX agent runtime — session/task state, logs, and an embedded
+      // scratch subproject (code-memory-pilot) with its own package.json and
+      // .mjs sources; none of it is this repo's source.
+      '.omx/**',
       // Constructor Studio vendored/generated runtime — kit-managed tool
       // internals (e.g. bundled browser-side assets), not this repo's own
       // source. Regenerated via `cfs update`/`cfs generate-agents`.
