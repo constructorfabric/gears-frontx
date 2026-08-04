@@ -77,7 +77,7 @@ This is the concrete declared shape of the two entry points, owned by this featu
 
 **Scaffolding entry point** - a new `skill` resource declared in `.cf-studio-kit.toml` with a `frontx_`-prefixed identifier, `kind = "skill"`, `public = true`, a `source` and `install_path` that address a document nested under a directory the kit ships, `type = "file"`, and non-empty applicability metadata in its own document frontmatter stating that it applies when a developer wants a new FrontX project created from a stated intent. Neither the resource identifier nor any manifest field names a solution, a framework, or a concrete template, because the manifest's identifier and description fields are scanned against the solution-term list; and neither entry-point document names a concrete template, because resource bodies are scanned against the specific-template-name list. The declared `source` must additionally be covered by the package's published file set, or the resource is declared, validated in the monorepo, and absent from the published package.
 
-Both entry points are documents, not compiled modules: the scaffolding flow is a sequence of one-shot command invocations with no mid-stream protocol to hold open, so it needs no in-kit module at the process boundary and adds none. The realization leg is documents for the same reason and a stronger one: it is carried out by following the instructions an applied template's own activated extension skill states, so the base kit contributes the sequencing and none of the writing, and KIT-3's invariant - that the framework holds no code path materializing or modifying a project file - stands unweakened.
+Both entry points are documents, not compiled modules: the scaffolding flow is a sequence of one-shot command invocations with no mid-stream protocol to hold open, so it needs no in-kit module at the process boundary and adds none. The realization leg is documents for the same reason and a stronger one: it is carried out by following the instructions an applied template's own activated extension skill states. The base kit contributes the sequencing - which unit, in which order, how many - and the intent-specific content that only the stated intent can supply, and contributes none of the structure, naming, identifiers, or registration, every one of which the template's own skill states. KIT-3's invariant - that the framework holds no code path materializing or modifying a project file - therefore stands unweakened, because the framework ships no such code path on either leg.
 
 ## 2. Actor Flows (CDSL)
 
@@ -105,6 +105,7 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 - The provenance record set cannot be read after a command reported success: the developer is told the applied set could not be confirmed and is pointed at the target directory, rather than being shown an applied set that was not read.
 - A unit the intent names falls inside an applied template's ground but no activated extension skill covers that ground: the unit is reported as residual work naming the ground it falls in, and nothing is written into that ground, because the template that owns the ground has declared no way to add a unit to it.
 - Realizing a unit fails: the flow stops at that unit, relays the failure's own reported reason without reinterpreting it, names the units realized before it, and realizes no further unit and attempts no correction retry.
+- The verification an applied template's extension skill declares fails after the units were created: the flow reports the project as applied and realized but not verified, relays that verification's own output unreinterpreted, and does not report scaffolding complete - a failing type-check or lint is the difference between a project that was written and one that works, and no correction retry is attempted for it either.
 
 **Steps**:
 1. [ ] - `p1` - Developer states the intent for a project and the target directory, and the agent host invokes the scaffolding entry point. - `inst-sfi-invoke`
@@ -132,8 +133,10 @@ User-facing interactions that start with an actor and describe the end-to-end fl
        2. [ ] - `p1` - **IF** realizing the unit fails - `inst-sfi-if-unit-failed`
           1. [ ] - `p1` - **RETURN** the failure's own reported reason unreinterpreted, naming the applied templates and the units realized before it; no further unit is realized and no correction retry is attempted. - `inst-sfi-return-unit-failed`
 12. [ ] - `p1` - The entry point runs the verification each covering extension skill declares for the units it created, so what is handed back is a project that builds and runs rather than one that was merely written. - `inst-sfi-verify-realized`
-13. [ ] - `p1` - The entry point reports as the work remaining only the intent that no applied template's ground contains and no activated extension skill covers; it neither modifies any applied template's content as part of applying it nor retries a failed command in a correction loop. - `inst-sfi-report-residual`
-14. [ ] - `p1` - **RETURN** scaffolding complete - the applied set as read from provenance, the units realized inside the applied ground, plus the residual work. - `inst-sfi-return-done`
+13. [ ] - `p1` - **IF** a declared verification reports failure - `inst-sfi-if-verify-failed`
+    1. [ ] - `p1` - **RETURN** the project as applied and realized but **not verified**, relaying that verification's own output unreinterpreted and naming the units it covered; scaffolding complete is not reported, and no correction retry is attempted. - `inst-sfi-return-verify-failed`
+14. [ ] - `p1` - The entry point reports as the work remaining only the intent that no applied template's ground contains and no activated extension skill covers; it neither modifies any applied template's content as part of applying it nor retries a failed command in a correction loop. - `inst-sfi-report-residual`
+15. [ ] - `p1` - **RETURN** scaffolding complete - the applied set as read from provenance, the units realized inside the applied ground and verified, plus the residual work. - `inst-sfi-return-done`
 
 ### Route a FrontX Request to the Capability That Serves It
 
@@ -209,7 +212,9 @@ Internal system functions and procedures called by actor flows above.
 
 - [ ] `p2` - **ID**: `cpt-frontx-state-ai-project-scaffolding-plan-lifecycle`
 
-**States**: REQUESTED, INVENTORY_READ, PLANNED, SEEDED, EXTENDED, REPORTED, REALIZED, REFUSED
+**States**: REQUESTED, INVENTORY_READ, PLANNED, SEEDED, EXTENDED, APPLIED_REPORTED, REALIZED, VERIFIED, REFUSED
+
+`APPLIED_REPORTED` is named for what it reports: the applied set has been read back from provenance, and the flow continues into realization. It is not terminal, and naming it `REPORTED` would suggest the developer has been handed a finished result while the units the intent named are still missing. `VERIFIED` is the terminal success state, reached only once the applied templates' own declared verification has passed over the units created.
 
 **Initial State**: REQUESTED
 
@@ -221,9 +226,11 @@ Internal system functions and procedures called by actor flows above.
 5. [ ] - `p1` - **FROM** PLANNED **TO** REFUSED **WHEN** the seed command exits non-zero; the CLI's reported reason is relayed and no add command is invoked. - `inst-pl-planned-refused`
 6. [ ] - `p1` - **FROM** SEEDED **TO** EXTENDED **WHEN** every further template in the plan has been applied by the CLI's add command exiting successfully. - `inst-pl-seeded-extended`
 7. [ ] - `p1` - **FROM** SEEDED **TO** REFUSED **WHEN** an add command exits non-zero; the templates applied before the failure are named and no further add command is invoked. - `inst-pl-seeded-refused`
-8. [ ] - `p1` - **FROM** EXTENDED **TO** REPORTED **WHEN** the applied set has been read from the target directory's provenance record set and reported. - `inst-pl-extended-reported`
-9. [ ] - `p1` - **FROM** REPORTED **TO** REALIZED **WHEN** every unit the plan attributed to an applied template's ground has either been created through that template's activated extension skill and filled with the content the intent states for it, or been recorded as residual for want of a covering extension skill; the residual work is reported with the realized units. - `inst-pl-reported-realized`
-10. [ ] - `p1` - **FROM** REPORTED **TO** REFUSED **WHEN** realizing a unit fails; the units realized before the failure are named, no further unit is realized, and no correction retry is attempted. - `inst-pl-reported-refused`
+8. [ ] - `p1` - **FROM** EXTENDED **TO** APPLIED_REPORTED **WHEN** the applied set has been read from the target directory's provenance record set and reported. - `inst-pl-extended-reported`
+9. [ ] - `p1` - **FROM** APPLIED_REPORTED **TO** REALIZED **WHEN** every unit the plan attributed to an applied template's ground has either been created through that template's activated extension skill and filled with the content the intent states for it, or been recorded as residual for want of a covering extension skill; the residual work is reported with the realized units. - `inst-pl-reported-realized`
+10. [ ] - `p1` - **FROM** APPLIED_REPORTED **TO** REFUSED **WHEN** realizing a unit fails; the units realized before the failure are named, no further unit is realized, and no correction retry is attempted. - `inst-pl-reported-refused`
+11. [ ] - `p1` - **FROM** REALIZED **TO** VERIFIED **WHEN** the verification each covering extension skill declares has passed over the units it created; this is the terminal success state, and only from it is scaffolding reported complete. - `inst-pl-realized-verified`
+12. [ ] - `p1` - **FROM** REALIZED **TO** REFUSED **WHEN** a declared verification reports failure; the project is reported as applied and realized but not verified, that verification's own output is relayed unreinterpreted, and no correction retry is attempted. - `inst-pl-realized-refused`
 
 ## 5. Definitions of Done
 
@@ -277,7 +284,7 @@ The system **MUST** select the templates to apply by matching the developer's st
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-ai-project-scaffolding-command-surface-only`
 
-The system **MUST** apply every selected template by invoking the installed `frontx` executable's seed and add commands, and **MUST NOT** import `@gears-frontx/cli`, read the CLI's inventory storage, materialize or modify any project file as part of applying a template, or reproduce any part of resolution, assembly, conflict checking, or provenance writing - relaying each command's own reported reason on a non-zero exit and stopping rather than retrying in a correction loop. Content created inside an already-applied template's own ground after that template has been applied is not an application and is outside this prohibition: it is created by following the instructions that template's own activated extension skill states, so the base kit contributes the sequencing and holds no code path that writes it, and no second assembler comes into existence (`target`).
+The system **MUST** apply every selected template by invoking the installed `frontx` executable's seed and add commands, and **MUST NOT** import `@gears-frontx/cli`, read the CLI's inventory storage, materialize or modify any project file as part of applying a template, or reproduce any part of resolution, assembly, conflict checking, or provenance writing - relaying each command's own reported reason on a non-zero exit and stopping rather than retrying in a correction loop. Content placed into a unit an activated extension skill has just created, following that skill's conventions, is not an application and is outside this prohibition: the unit's structure comes from the template's own skill, no template is applied a second time, and the base kit holds no code path that writes any of it, so no second assembler comes into existence (`target`).
 
 **Implements**:
 - `cpt-frontx-flow-ai-project-scaffolding-scaffold-from-intent`
@@ -375,6 +382,7 @@ The system **MUST** leave the ecosystem in a state where the capability is reach
 - [ ] The content the intent states for each unit is present in the unit the flow created, so a realized unit carries what the developer asked for rather than the scaffold's placeholder content. (`target`)
 - [ ] A unit whose ground no activated extension skill covers is reported as residual work naming that ground, and nothing is written into it. (`target`)
 - [ ] A failure while realizing a unit stops the flow at that unit, relays the failure's own reported reason, names the units realized before it, and attempts no correction retry. (`target`)
+- [ ] A failing verification declared by a covering extension skill is reported as applied and realized but not verified, relaying that verification's own output, and scaffolding complete is not reported; no correction retry is attempted. (`target`)
 - [ ] Every applied template is applied by invoking the installed `frontx` executable; the kit holds no import of `@gears-frontx/cli` and no code path that materializes or modifies a project file. (`target`)
 - [ ] A non-zero exit from an invoked command stops the flow at that command, relays the CLI's own reported reason, names the templates applied before the failure, and invokes no further command and no correction retry. (`target`)
 - [ ] After applying, the applied set is reported from the target directory's provenance record set - identity, applied-from version, and source address per record - and an unreadable record set is reported as an unconfirmed applied set. (`target`)

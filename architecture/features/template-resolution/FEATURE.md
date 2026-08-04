@@ -8,6 +8,7 @@
   - [1.2 Purpose](#12-purpose)
   - [1.3 Actors](#13-actors)
   - [1.4 References](#14-references)
+  - [1.5 Machine-Readable Listing Envelope](#15-machine-readable-listing-envelope)
 - [2. Actor Flows (CDSL)](#2-actor-flows-cdsl)
   - [Install Template by Versioned Source-Spec](#install-template-by-versioned-source-spec)
   - [List Local Template Inventory](#list-local-template-inventory)
@@ -57,6 +58,27 @@ This feature ensures the CLI command surface is fully decoupled from the content
 - **PRD**: [PRD.md](../../PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Dependencies**: None
+
+### 1.5 Machine-Readable Listing Envelope
+
+This feature owns the concrete shape of the listing command's machine-readable form, because that form is a **cross-boundary contract**: it is the surface over which the AI Tooling Framework obtains the selectable set (`cpt-frontx-feature-ai-project-scaffolding`) without linking the CLI or reading its inventory storage (DESIGN §3.4). A consumer on the far side of a process boundary cannot discover the shape by reading the producer's types, so the shape is fixed here rather than left to whichever formatter happens to emit it - the same reason `cpt-frontx-feature-template-manifest` fixes the manifest's field-level schema in its own §1.2 and `cpt-frontx-feature-template-ai-extensions` fixes the bundle convention in its §1.5.
+
+**Request**: the listing command invoked with the `--json` flag. Absent the flag, the human-readable form is emitted unchanged; the two forms never mix on one invocation.
+
+**Response**: exactly one line of JSON on standard output, matching the one-line result convention the upgrade command's machine-readable handshake already established on this command surface:
+
+```json
+{"ok": true, "templates": [{"name": "...", "ref": "...", "source": "...", "description": "..."}]}
+```
+
+- `ok` - always `true` for a successful enumeration; present so a consumer distinguishes a result line from any other output on the stream, and so a future failure form can be added without changing the success shape.
+- `templates` - one record per inventory entry, in inventory order. An empty inventory yields `[]`, never an absent key and never the human-readable empty message.
+- `name` - the identity the template's own manifest declares, and the argument the seed and add commands take.
+- `ref` - the reference the entry is pinned at, as recorded from the source-spec's `@ref` segment. This is the acquisition reference, **not** the manifest's `version` field; the two need not agree in form or value.
+- `source` - the full source-spec the entry was resolved from, re-resolvable as-is.
+- `description` - the description the entry's manifest declares. **The key is absent, never empty and never a placeholder, when the entry's manifest declares none or no longer satisfies the manifest contract** - a consumer selects templates by this value, and a substituted placeholder would be indistinguishable from a declaration the template never made.
+
+The key names are the contract; renaming one is a breaking change to the AI Tooling Framework's read path even though no compile-time edge would report it.
 
 ## 2. Actor Flows (CDSL)
 

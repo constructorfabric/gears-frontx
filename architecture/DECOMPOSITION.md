@@ -906,9 +906,15 @@ This decomposition breaks the FROZEN FrontX DESIGN into 19 work-package features
 
 ### 2.19 [AI-Driven Project Scaffolding from Intent](features/ai-project-scaffolding/) - HIGH
 
+<!-- The [x] below is the cfs coverage rollup - this entry's references resolve
+     and its DESIGN/PRD coverage holds - and NOT a claim that the feature is
+     implemented. Its FEATURE's own featstatus (`cpt-frontx-featstatus-ai-project-
+     scaffolding`) is unchecked and governs implementation status: both entry
+     points ship as documents rather than compiled modules, so no code marker
+     pairs with their CDSL instructions and none may be checked. -->
 - [x] `p1` - **ID**: `cpt-frontx-feature-ai-project-scaffolding`
 
-- **Purpose**: Close the gap between a stated project intent and the template reference the CLI's apply commands require - declaring a top-level routing entry point and a scaffolding entry point in the base AI kit that match the intent against the descriptions locally installed templates declare, plan one seed plus further distinct adds, drive the CLI assembler over the command surface to apply them, and report the applied set back from provenance.
+- **Purpose**: Close the gap between a stated project intent and the template reference the CLI's apply commands require - declaring a top-level routing entry point and a scaffolding entry point in the base AI kit that match the intent against the descriptions locally installed templates declare, plan one seed plus further distinct adds, drive the CLI assembler over the command surface to apply them, report the applied set back from provenance, and then realize each unit the intent names inside the applied ground by driving the applied templates' own activated extension skills once per unit and placing the intent's stated content into each unit created - so what the developer receives realizes the stated intent rather than describing it.
 
 - **Depends On**: `cpt-frontx-feature-ai-kit-packaging`, `cpt-frontx-feature-template-manifest`, `cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-cli-scaffolding`, `cpt-frontx-feature-composed-provenance`, `cpt-frontx-feature-template-ai-extensions`
 
@@ -917,13 +923,15 @@ This decomposition breaks the FROZEN FrontX DESIGN into 19 work-package features
   - Selection of the application set by matching intent against manifest-declared descriptions, over the locally installed inventory only.
   - The application plan: at most one seed, then further distinct templates added, at most one application per template identity.
   - Refusal without writing files when nothing is installed, nothing matches, or candidates tie.
-  - Reporting the applied set from the provenance record set, plus the residual work the applied templates do not cover.
+  - Reporting the applied set from the provenance record set.
+  - Realization of per-unit multiplicity inside an applied template's own ground: driving that template's activated extension skills (F16) once per unit the intent names, placing the intent's stated content into each unit created, and running the verification those skills declare - the sequencing and the intent-specific content are this feature's, while the structure, naming, identifiers and registration remain the applied template's own skill's to state.
+  - Reporting as residual only the intent that no applied template's ground contains and no activated extension skill covers.
 
 - **Out of scope**:
   - The manifest's declared description field itself (F11 owns the schema).
   - The listing command and the inventory it reads (F10).
   - Seed, add, assembly, conflict checking (F12) and provenance writing (F13).
-  - Per-unit multiplicity inside an applied template's own ground, carried by that template's activated extension skills (F16).
+  - The discovery and activation of the extension bundles this feature drives, and the per-unit procedure each activated skill states (F16 owns both); this feature invokes them and authors neither.
   - Remote template discovery, template-content modification while applying, and any failure-correction retry loop.
 
 - **Requirements Covered**:
@@ -943,6 +951,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 19 work-package features
   - Assembly
   - OwnershipBoundary
   - ProjectProvenance
+  - AiExtension
   - Kit
 
 - **Design Components**:
