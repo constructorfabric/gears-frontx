@@ -53,6 +53,6 @@ not serve produces a confident wrong answer.
 
 - **MFE** (Microfrontend): isolated UI unit registered through the MFE registry.
 - **Extension domain**: capability grouping that governs which MFEs may mount in a given area.
-- **Source-spec**: `protocol://host/path#ref` URI that the CLI resolves to a template at runtime.
+- **Source-spec**: `host:owner/repo[//subtree]@ref` — the address the CLI resolves to a template at runtime; the optional `//subtree` addresses a template occupying a subdirectory of a repository.
 - **Template**: an external project-type deliverable (not bundled into core packages).
 - **Constructor Studio kit**: declarative content bundle installable via `cfs kit install`.
