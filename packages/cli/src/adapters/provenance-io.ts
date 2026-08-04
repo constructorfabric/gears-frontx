@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { provenancePath } from '../provenance/contract';
+import { describeInvalidRecord, describeNonArrayPayload, isValidProvenanceRecord } from '../provenance/validate';
 import type { ProvenanceRecord, ProvenanceWriteFn } from '../provenance/types';
 
 // Real filesystem read+write for the provenance store
@@ -37,55 +38,12 @@ export function createFsProvenanceWriteFn(): ProvenanceWriteFn {
 // `readProvenanceRecords` (e.g. `occupiedBoundariesFromProvenance`,
 // `scaffold/materialize.ts`) trusts that type and iterates the result
 // directly; an unchecked cast here surfaces as an unrelated, unhelpful
-// "is not iterable" TypeError deep inside that unrelated caller instead.
-function isRecordShaped(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function describeNonArrayPayload(value: unknown): string {
-  if (value === null) return 'null';
-  if (!isRecordShaped(value)) return `a ${typeof value}`;
-  const identity = value.templateIdentity;
-  return typeof identity === 'string'
-    ? `a single object (templateIdentity: "${identity}") instead of an array`
-    : 'a single object instead of an array';
-}
-
-// The SET shape (`Array.isArray`, above) was checked but individual elements
-// were not (review #500 round 2, P2-1) — an unchecked cast let a malformed
-// element (e.g. `[null]`, or an object missing `templateIdentity`) reach
-// every caller of `readProvenanceRecords` uncast, surfacing as the same
-// unrelated, unhelpful TypeError the non-array guard above already exists to
-// avoid. The fields checked here are exactly the `ProvenanceRecord`
-// contract's own required ones (provenance/types.ts).
-// `occupiedOwnershipBoundary` is declared optional there, so its ABSENCE is
-// never checked — but review #500 round 3 found that its PRESENCE was not
-// checked either: a record with `occupiedOwnershipBoundary: 42` (or any other
-// non-string) passed as valid, so a later write could carry that malformed
-// value forward unnoticed. Checked below alongside the required fields, not
-// folded into `REQUIRED_PROVENANCE_RECORD_FIELDS` itself, since that constant
-// also drives `describeInvalidRecord`'s "missing or has a non-string" wording,
-// which does not apply to a field that is allowed to be absent.
-const REQUIRED_PROVENANCE_RECORD_FIELDS = ['templateIdentity', 'scaffoldedFromVersion', 'sourceSpec'] as const;
-
-function isValidProvenanceRecord(value: unknown): value is ProvenanceRecord {
-  return (
-    isRecordShaped(value) &&
-    REQUIRED_PROVENANCE_RECORD_FIELDS.every((field) => typeof value[field] === 'string') &&
-    (value.occupiedOwnershipBoundary === undefined || typeof value.occupiedOwnershipBoundary === 'string')
-  );
-}
-
-function describeInvalidRecord(value: unknown): string {
-  if (!isRecordShaped(value)) {
-    return value === null ? 'is null, not an object' : `is a ${typeof value}, not an object`;
-  }
-  const invalidFields: string[] = REQUIRED_PROVENANCE_RECORD_FIELDS.filter((field) => typeof value[field] !== 'string');
-  if (value.occupiedOwnershipBoundary !== undefined && typeof value.occupiedOwnershipBoundary !== 'string') {
-    invalidFields.push('occupiedOwnershipBoundary');
-  }
-  return `is missing or has a non-string ${invalidFields.map((field) => `"${field}"`).join(', ')}`;
-}
+// "is not iterable" TypeError deep inside that unrelated caller instead. The
+// shape guards themselves live in `provenance/validate.ts`, shared with
+// `upgrade/apply.ts`'s own provenance-set parsing (review #500) — this
+// file's message text below additionally suggests restoring from version
+// control, which `upgrade/apply.ts`'s in-memory apply path does not, so each
+// caller keeps composing its own full message around the shared fragments.
 
 // @cpt-begin:cpt-frontx-algo-composed-provenance-provenance-write:p1:inst-determine-storage-location
 /**

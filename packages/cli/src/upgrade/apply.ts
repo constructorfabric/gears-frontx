@@ -1,6 +1,7 @@
 // @cpt-algo:cpt-frontx-algo-upgrade-changeset-apply:p1
 // @cpt-dod:cpt-frontx-dod-upgrade-changeset-apply:p1
 import { provenancePath } from '../provenance/contract';
+import { describeInvalidRecord, describeNonArrayPayload, isValidProvenanceRecord } from '../provenance/validate';
 import { locateRegionSpan } from '../scaffold/compose-shared-files';
 import type {
   ChangeSet,
@@ -16,68 +17,25 @@ export type ApplyResult =
   | { ok: true; snapshot: ProjectSnapshot }
   | { ok: false; message: string };
 
-// Guards the provenance SET shape (ADR-0019: one record per applied
-// template, never a single whole-repository record) against the raw string
-// `deps.readProjectFile` returns — the same guard `readProvenanceRecords`
-// (adapters/provenance-io.ts) applies for its own callers, duplicated here
-// rather than imported: this pure-logic upgrade engine takes its filesystem
-// access only through injected deps (never through the adapters layer
-// directly), and the two callers read from different sources (a repo root
-// path there vs. an already-snapshotted string here). Guards each ELEMENT of
-// that array too (review #500 round 2, P2-1): `Array.isArray` alone let a
-// malformed element (e.g. `[null]`, or an object missing `templateIdentity`)
-// through uncast, and the very next line — `existingRecords.findIndex(record
-// => record.templateIdentity === ...)` — either threw a raw TypeError that
-// escaped `ApplyResult`'s `{ok:true}|{ok:false}` contract, or silently
-// misdiagnosed the malformed element as "record not found".
-function isRecordShaped(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function describeNonArrayPayload(value: unknown): string {
-  if (value === null) return 'null';
-  if (!isRecordShaped(value)) return `a ${typeof value}`;
-  const identity = value.templateIdentity;
-  return typeof identity === 'string'
-    ? `a single object (templateIdentity: "${identity}") instead of an array`
-    : 'a single object instead of an array';
-}
-
-// The fields ADR-0019/the `ProvenanceRecord` contract (provenance/types.ts)
-// requires on every record. Not a new requirement: these are exactly the
-// contract's own required fields.
-// `occupiedOwnershipBoundary` is declared optional there, so its ABSENCE is
-// never checked — but review #500 round 3 found that its PRESENCE was not
-// checked either: a record with `occupiedOwnershipBoundary: 42` (or any other
-// non-string) passed as valid, so a later write could carry that malformed
-// value forward unnoticed. Checked below alongside the required fields, not
-// folded into `REQUIRED_PROVENANCE_RECORD_FIELDS` itself, since that constant
-// also drives `describeInvalidRecord`'s "missing or has a non-string" wording,
-// which does not apply to a field that is allowed to be absent. Duplicated
-// from the equivalent guard in adapters/provenance-io.ts — this pure-logic
-// upgrade engine takes filesystem access only through injected deps, never
-// through the adapters layer directly, so the two copies are intentional.
-const REQUIRED_PROVENANCE_RECORD_FIELDS = ['templateIdentity', 'scaffoldedFromVersion', 'sourceSpec'] as const;
-
-function isValidProvenanceRecord(value: unknown): value is ProvenanceRecord {
-  return (
-    isRecordShaped(value) &&
-    REQUIRED_PROVENANCE_RECORD_FIELDS.every((field) => typeof value[field] === 'string') &&
-    (value.occupiedOwnershipBoundary === undefined || typeof value.occupiedOwnershipBoundary === 'string')
-  );
-}
-
-function describeInvalidRecord(value: unknown): string {
-  if (!isRecordShaped(value)) {
-    return value === null ? 'is null, not an object' : `is a ${typeof value}, not an object`;
-  }
-  const invalidFields: string[] = REQUIRED_PROVENANCE_RECORD_FIELDS.filter((field) => typeof value[field] !== 'string');
-  if (value.occupiedOwnershipBoundary !== undefined && typeof value.occupiedOwnershipBoundary !== 'string') {
-    invalidFields.push('occupiedOwnershipBoundary');
-  }
-  return `is missing or has a non-string ${invalidFields.map((field) => `"${field}"`).join(', ')}`;
-}
-
+// Parses and validates the provenance SET shape (ADR-0019: one record per
+// applied template, never a single whole-repository record) against the raw
+// string `deps.readProjectFile` returns, using the shape guards shared with
+// `readProvenanceRecords` (adapters/provenance-io.ts) via `provenance/validate.ts`
+// — this pure-logic upgrade engine takes its filesystem access only through
+// injected deps (never through the adapters layer directly), but the guards
+// themselves are pure functions over `unknown` with no filesystem access, so
+// both callers import the same neutral module rather than one importing the
+// other's file. Guards each ELEMENT of the array too (review #500 round 2,
+// P2-1): `Array.isArray` alone let a malformed element (e.g. `[null]`, or an
+// object missing `templateIdentity`) through uncast, and the very next line —
+// `existingRecords.findIndex(record => record.templateIdentity === ...)` —
+// either threw a raw TypeError that escaped `ApplyResult`'s
+// `{ok:true}|{ok:false}` contract, or silently misdiagnosed the malformed
+// element as "record not found". The message text assembled below (unlike
+// the shape guards) is NOT shared with adapters/provenance-io.ts's own
+// message — that caller's text additionally suggests restoring from version
+// control, which does not apply to this in-memory apply path — so each
+// caller keeps composing its own full message around the shared fragments.
 function parseProvenanceRecordSet(raw: string | null, provPath: string): ProvenanceRecord[] {
   if (raw === null || raw.trim() === '') return [];
   const parsed: unknown = JSON.parse(raw);
