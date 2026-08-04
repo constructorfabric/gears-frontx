@@ -181,25 +181,21 @@ as unmatched rather than routed to the nearest capability.
 
 The developer states what they want built — "a console with two screens, one
 showing X and one showing Y" — instead of naming a template they would have to
-know already. The scaffolding skill:
+know already. The skill selects what to apply by matching that intent against
+the **descriptions** installed templates declare in their manifests, applies the
+chosen set by running the `frontx` commands, and then realizes each unit the
+intent named through the applied templates' own activated skills. It refuses
+rather than guessing when nothing is installed, nothing matches, or two
+candidates tie — writing no files in any of those cases — and it learns what is
+installed only by invoking the CLI, never by reading the CLI's own storage.
 
-1. reads the selectable set with `frontx list --json`, the machine-readable form
-   of the listing, and never by reading the CLI's own storage;
-2. matches the intent against the **descriptions** those templates declare in
-   their manifests, refusing rather than guessing when nothing is installed,
-   nothing matches, or two candidates tie;
-3. presents the plan — what to seed with, what to add, at which pinned versions
-   — before anything is written;
-4. applies it by running `frontx seed` and `frontx add`, reproducing no part of
-   resolution, assembly, conflict checking, or provenance writing;
-5. reports the applied set back from `.frontx/provenance.json`;
-6. then realizes each unit the intent named inside the applied ground, by
-   following the applied template's own activated skills once per unit and
-   putting the stated content into each unit created.
+It is one of two paths to the same result, never a replacement for the other —
+see the note below.
 
-A template is applied at most once per project. Two screens are not two
-applications — they are two units inside one applied template's ground, added by
-that template's own skills.
+The procedure itself lives in
+[`packages/cyber-pilot-kit-frontx/skills/project-scaffolding/SKILL.md`](packages/cyber-pilot-kit-frontx/skills/project-scaffolding/SKILL.md),
+which is what the agent follows — read it there rather than here, so there is
+one copy to keep true.
 
 ### Template-extension discovery & activation
 

@@ -26,10 +26,8 @@ description: "Agent navigation rules for FrontX ecosystem package boundaries, CL
 
 ## When a request is to create or extend a project
 
-- Route it first — the routing section of this kit's `SKILL.md` states which capability serves which kind of request
-- A request stating what to build, with no template reference in hand, is served by the scaffolding skill, which selects from what the installed inventory declares and applies it over the CLI command surface
-- A request naming a reference already held is served by `frontx seed` / `frontx add` directly
-- **To add a unit inside ground an applied template already owns — one more MFE package, one more screen — use the skills that template activated in the project under `.frontx/ai/<template-identity>/`.** That template owns its scaffold, its naming, and its registration steps. This kit ships no unit-adding procedure and must not describe one: doing so would put solution knowledge in the solution-agnostic base and would go stale the moment the template changed
+- Route it first — the routing section of this kit's `SKILL.md` maps each kind of request (create, apply a held reference, add a unit, upgrade, validate) to the capability or command that serves it. Read the routing table there; it is the only copy, and restating it here is how the two fall out of step
+- **This kit describes no procedure for adding a unit inside ground an applied template owns** — no MFE package, no screen. That template owns its scaffold, its naming and its registration steps, and states them in the skills it activated under `.frontx/ai/<template-identity>/`. Writing such a procedure here would put solution knowledge in the solution-agnostic base and go stale the moment the template changed
 
 ## When working with MFEs
 

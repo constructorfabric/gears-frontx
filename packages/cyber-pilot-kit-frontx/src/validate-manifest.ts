@@ -15,8 +15,17 @@ import type { KitDefinition, KitManifest, KitResourceEntry, ResourceBodyReader, 
 // When the Studio spec moves, update the snapshot from the spec — never treat
 // this copy as the definition of Studio behavior.
 
+// Concrete UI-framework names. Split out of SOLUTION_TERMS below because they
+// behave differently from the generic concept words they used to sit among: a
+// framework name is never legitimate in base-kit content, in a manifest field
+// or in a resource body, whereas "template" and "solution" are abstract
+// vocabulary the base uses constantly. Both scans in this file therefore
+// include this list; only the id/description scan adds the generic words.
+const FRAMEWORK_NAMES = ['react', 'vue', 'angular', 'svelte'];
+
 // Generic solution/template concept words that must not appear in a base-kit
-// resource `id` or `description` (cpt-frontx-adr-solution-ai-content-placement).
+// resource `id` or `description` (cpt-frontx-adr-solution-ai-content-placement),
+// composed with the framework names above.
 //
 // Deliberately EXCLUDES "studio": the kit's own vendor substrate is named
 // Constructor Studio (`cfs`, `.cf-studio-kit.toml`), so the bare word cannot
@@ -25,7 +34,7 @@ import type { KitDefinition, KitManifest, KitResourceEntry, ResourceBodyReader, 
 // solution or template is called "studio" — the term appears nowhere in the
 // PRD, DESIGN, or DECOMPOSITION. Re-add it only as a concrete, prefixed name
 // (e.g. `frontx-studio`) via SPECIFIC_TEMPLATE_NAMES below, never as a bare word.
-const SOLUTION_TERMS = ['react', 'vue', 'angular', 'svelte', 'template', 'solution', 'screenset'];
+const SOLUTION_TERMS = [...FRAMEWORK_NAMES, 'template', 'solution', 'screenset'];
 
 // Known specific template/solution NAMES that must never appear in shipped
 // base-kit resource BODIES (cpt-frontx-adr-solution-ai-content-placement).
@@ -44,6 +53,18 @@ const SPECIFIC_TEMPLATE_NAMES = [
   'frontx-template-mfe',
   'template-mfe',
 ];
+
+// What a shipped resource BODY is scanned against: the concrete template
+// identities above plus the framework names. The DoD this enforces excludes
+// "any concrete template, solution, or framework" from base-kit content
+// (cpt-frontx-dod-ai-project-scaffolding-declared-skill-surface), and template
+// identities alone left the framework half unenforced over bodies.
+//
+// Exported with `findForbiddenSolutionName` below so a caller needing
+// per-document granularity reuses this list AND its matching rule instead of
+// transcribing either. A second hand-maintained copy diverges from the day it
+// is written, which is exactly the defect this export exists to prevent.
+export const FORBIDDEN_BODY_NAMES: readonly string[] = [...SPECIFIC_TEMPLATE_NAMES, ...FRAMEWORK_NAMES];
 
 // @cpt-begin:cpt-frontx-algo-ai-kit-packaging-manifest-validation:p1:inst-check-required-fields
 function checkRequiredFields(manifest: unknown, violations: ValidationViolation[]): manifest is KitManifest {
@@ -310,8 +331,15 @@ function checkSolutionContent(entry: unknown, prefix: string, violations: Valida
 // @cpt-end:cpt-frontx-algo-ai-kit-packaging-manifest-validation:p1:inst-scan-solution-content
 
 // @cpt-begin:cpt-frontx-algo-ai-kit-packaging-manifest-validation:p1:inst-scan-solution-content
-function findSpecificTemplateName(text: string): string | undefined {
-  return SPECIFIC_TEMPLATE_NAMES.find((name) => {
+/**
+ * The name a shipped resource body carries that base-kit content may not name,
+ * or `undefined` when it carries none. The single authority for both the list
+ * and the word-boundary rule that matches it.
+ *
+ * @param text - a shipped resource body, or any excerpt of one
+ */
+export function findForbiddenSolutionName(text: string): string | undefined {
+  return FORBIDDEN_BODY_NAMES.find((name) => {
     const re = new RegExp(`(?<![a-z0-9])${name}(?![a-z0-9])`, 'i');
     return re.test(text);
   });
@@ -342,7 +370,7 @@ function checkResourceBodyContent(
 
   // @cpt-begin:cpt-frontx-algo-ai-kit-packaging-manifest-validation:p1:inst-if-solution-content
   for (const body of bodies) {
-    const found = findSpecificTemplateName(body);
+    const found = findForbiddenSolutionName(body);
     if (found) {
       // @cpt-begin:cpt-frontx-algo-ai-kit-packaging-manifest-validation:p1:inst-record-solution-violation
       violations.push({
