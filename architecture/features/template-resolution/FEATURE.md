@@ -28,7 +28,7 @@
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-frontx-featstatus-template-resolution`
+- [x] `p1` - **ID**: `cpt-frontx-featstatus-template-resolution`
 ## 1. Feature Context
 
 - [x] `p2` - `cpt-frontx-feature-template-resolution`
@@ -94,7 +94,7 @@ User-facing interactions that start with an actor (human or external system) and
 
 ### List Local Template Inventory
 
-- [ ] `p1` - **ID**: `cpt-frontx-flow-template-resolution-list`
+- [x] `p1` - **ID**: `cpt-frontx-flow-template-resolution-list`
 
 **Actor**: `cpt-frontx-actor-project-developer`
 
@@ -111,7 +111,7 @@ User-facing interactions that start with an actor (human or external system) and
 3. [x] - `p1` - **IF** the inventory index contains no entries: - `inst-list-empty-check`
    1. [x] - `p1` - **RETURN** empty inventory message to developer, or an empty collection when the machine-readable form was requested - `inst-list-empty-return`
 4. [x] - `p1` - CLI formats each inventory entry as name and pinned version - `inst-list-format`
-5. [ ] - `p1` - **IF** the machine-readable form was requested, CLI instead emits one structured record per inventory entry carrying identity, pinned reference, source address, and the description declared by the manifest the entry records - omitting the description for an entry whose manifest declares none, rather than substituting a placeholder a caller could mistake for a declaration - `inst-list-format-machine`
+5. [x] - `p1` - **IF** the machine-readable form was requested, CLI instead emits one structured record per inventory entry carrying identity, pinned reference, source address, and the description declared by the manifest the entry records - omitting the description for an entry whose manifest declares none, rather than substituting a placeholder a caller could mistake for a declaration - `inst-list-format-machine`
 6. [x] - `p1` - **RETURN** formatted inventory listing to developer - `inst-list-return`
 
 ### Update Installed Template in Local Inventory
@@ -329,7 +329,7 @@ The system **MUST** take a template's identity from the identity its own manifes
 - [ ] Installing a template whose declared identity nests with an already-installed identity, such as `@acme/tools/extra` against an installed `@acme/tools`, fails with an error naming the occupying identity, and nothing is written under the occupant's content path
 - [ ] CLI list command returns all installed templates and their pinned versions from the local inventory
 - [ ] CLI list command reports an empty inventory when no templates are installed
-- [ ] CLI list command offers a machine-readable form carrying each installed template's identity, pinned reference, source address, and manifest-declared description, emitting an empty collection for an empty inventory and no description for an entry whose manifest declares none (`target`)
+- [x] CLI list command offers a machine-readable form carrying each installed template's identity, pinned reference, source address, and manifest-declared description, emitting an empty collection for an empty inventory and no description for an entry whose manifest declares none (`target`)
 - [ ] CLI update-local command replaces the named inventory entry with newly fetched content at the new pinned version, leaving every scaffolded project path unmodified
 - [ ] CLI update-local command reports a not-found error when the named template is absent from the local inventory
 - [ ] No template content is bundled in the CLI distribution (zero template assets or dependencies in the CLI package)

@@ -21,8 +21,11 @@ import type { TemplateManifest, ReadFileFn, ListContentOwnedFilesFn } from '../m
 // that isn't what they're testing.
 const noContentOwnedFiles: ListContentOwnedFilesFn = async () => [];
 
-// Helper: build a valid four-category manifest JSON string.
-// Categories: (1) identity, (2) version, (3) ownership boundaries, (4) referenced templates.
+// Helper: build a valid manifest JSON string. Categories: (1) identity,
+// (2) version, (3) ownership boundaries, (4) referenced templates,
+// (5) description. The base omits the description because it is optional, so
+// a case that cares about it declares one through `overrides` and every other
+// case doubles as coverage that omission conforms.
 function validManifest(overrides: Partial<TemplateManifest> = {}): string {
   const base: TemplateManifest = {
     name: 'my-tpl',
@@ -258,6 +261,48 @@ describe('validateManifestContract', () => {
     });
     const result = validateManifestContract(raw);
     expect(result.status).toBe('VALIDATED');
+  });
+
+  // inst-check-description / inst-if-description-invalid / inst-add-description-violation
+  it('passes a manifest declaring a non-empty description', () => {
+    const result = validateManifestContract(
+      validManifest({ description: 'Establishes the project shell and contributes the build toolchain.' }),
+    );
+
+    expect(result.status).toBe('VALIDATED');
+  });
+
+  // The category is optional so manifests published before it was declared stay
+  // conforming; omitting it costs the template only its selectability.
+  it('passes a manifest omitting the description entirely', () => {
+    const result = validateManifestContract(validManifest());
+
+    expect(result.status).toBe('VALIDATED');
+  });
+
+  // inst-add-description-violation — a description declared empty states
+  // nothing, which is a violation rather than a silent absence.
+  it('rejects a description declared as an empty string, naming the description field', () => {
+    const result = validateManifestContract(validManifest({ description: '   ' }));
+
+    expect(result.status).toBe('REJECTED');
+    if (result.status !== 'REJECTED') return;
+    expect(result.violations.some((v) => v.field === 'description')).toBe(true);
+  });
+
+  it('rejects a description declared as a non-string, naming the description field', () => {
+    const raw = JSON.stringify({
+      name: 'my-tpl',
+      version: '1.0.0',
+      ownershipBoundaries: { exclusiveSubtrees: [], sharedFiles: [] },
+      description: 42,
+    });
+
+    const result = validateManifestContract(raw);
+
+    expect(result.status).toBe('REJECTED');
+    if (result.status !== 'REJECTED') return;
+    expect(result.violations.some((v) => v.field === 'description')).toBe(true);
   });
 });
 

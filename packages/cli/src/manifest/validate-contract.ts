@@ -289,6 +289,28 @@ export function validateManifestContract(raw: string): ManifestValidationResult 
   }
   // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-for-each-referenced
 
+  // ── Category 5: description ───────────────────────────────────────────────
+  // Presence-and-shape only. Whether the prose actually describes the template
+  // is what selection depends on and what no structural check can establish,
+  // so validation never judges it.
+  // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-check-description
+  const description = obj['description'];
+  const descriptionIsDeclared = description !== undefined;
+  // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-check-description
+
+  // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-description-invalid
+  if (descriptionIsDeclared && (typeof description !== 'string' || description.trim() === '')) {
+    // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-description-violation
+    violations.push({
+      field: 'description',
+      message:
+        'a declared description must be a non-empty string: a description declared empty states nothing, ' +
+        'whereas omitting the category is permitted and costs the template only its selectability from a stated intent',
+    });
+    // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-description-violation
+  }
+  // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-description-invalid
+
   // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-violations
   if (violations.length > 0) {
     // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-return-rejected

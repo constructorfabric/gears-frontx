@@ -216,6 +216,64 @@ describe('dispatch: list (cpt-frontx-flow-template-resolution-list)', () => {
     expect(outcome.exitCode).toBe(EXIT_SUCCESS);
     expect(outcome.stdout).toContain('foo@v1.0.0');
   });
+
+  // inst-list-format-machine — the surface a calling program obtains the
+  // selectable set over, instead of reading this CLI's inventory storage.
+  it('emits one structured record per entry carrying identity, pinned reference, source and declared description under --json', async () => {
+    const { deps, registerManifest } = makeDeps();
+    registerManifest(
+      'github:acme/foo@v1.0.0',
+      makeManifest('foo', '1.0.0', { description: 'Establishes the thing and contributes the other thing.' }),
+    );
+    await run(['install', 'github:acme/foo@v1.0.0'], deps);
+
+    const outcome = await run(['list', '--json'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_SUCCESS);
+    expect(JSON.parse(outcome.stdout ?? '')).toEqual({
+      ok: true,
+      templates: [
+        {
+          name: 'foo',
+          ref: 'v1.0.0',
+          source: 'github:acme/foo@v1.0.0',
+          description: 'Establishes the thing and contributes the other thing.',
+        },
+      ],
+    });
+  });
+
+  // inst-list-format-machine — a placeholder here would be a declaration the
+  // template never made, so the key is absent rather than empty.
+  it('omits the description entirely for an entry whose manifest declares none', async () => {
+    const { deps, registerManifest } = makeDeps();
+    registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0'));
+    await run(['install', 'github:acme/foo@v1.0.0'], deps);
+
+    const outcome = await run(['list', '--json'], deps);
+
+    const parsed: unknown = JSON.parse(outcome.stdout ?? '');
+    expect(parsed).toEqual({ ok: true, templates: [{ name: 'foo', ref: 'v1.0.0', source: 'github:acme/foo@v1.0.0' }] });
+  });
+
+  it('emits an empty collection rather than the empty-inventory message under --json', async () => {
+    const { deps } = makeDeps();
+
+    const outcome = await run(['list', '--json'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_SUCCESS);
+    expect(JSON.parse(outcome.stdout ?? '')).toEqual({ ok: true, templates: [] });
+  });
+
+  it('leaves the human-readable listing unchanged when a manifest declares a description', async () => {
+    const { deps, registerManifest } = makeDeps();
+    registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0', { description: 'Establishes a thing.' }));
+    await run(['install', 'github:acme/foo@v1.0.0'], deps);
+
+    const outcome = await run(['list'], deps);
+
+    expect(outcome.stdout).toBe('foo@v1.0.0 (github:acme/foo@v1.0.0)');
+  });
 });
 
 describe('dispatch: update-local (cpt-frontx-flow-template-resolution-update-local)', () => {

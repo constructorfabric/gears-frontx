@@ -126,7 +126,7 @@ export function usageText(): string {
     '',
     'Commands:',
     '  install <spec>                        Install a template from a source-spec',
-    '  list                                   List installed templates',
+    '  list [--json]                           List installed templates (--json for one machine-readable record per entry)',
     '  update-local <identity> <spec>          Update a locally installed template',
     '  validate <templateDir>                  Validate a template manifest for publication',
     '  seed <templateRef> <targetDir>          Seed a new repository from a template',
@@ -204,9 +204,10 @@ function createInteractiveApproval(): PresentAndGetApprovalFn {
 // --- `--json` command-surface handshake (cpt-frontx-dod-ai-upgrade-orchestration-single-engine) ---
 //
 // The AI Tooling Framework's kit (`@gears-frontx/cyber-pilot-kit-frontx`)
-// coordinates with this CLI over the `frontx upgrade --json` COMMAND SURFACE
-// only (DESIGN §3.4) — it never imports this package. This handshake is the
-// minimal machine-readable protocol that command-surface coupling requires:
+// coordinates with this CLI over its COMMAND SURFACE only (DESIGN §3.4) — it
+// never imports this package. `frontx list --json` (dispatched above) answers
+// what is installed; the handshake below is the upgrade path's protocol, which
+// needs more than one line because the engine pauses mid-run for a decision:
 // one JSON line carrying the raw change set BEFORE approval, one decision
 // line read back from stdin, and one final JSON line carrying the
 // `{ ok, status, message? }` result.
@@ -303,7 +304,20 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
 
     // dispatch -> cpt-frontx-flow-template-resolution-list (listCommand)
     case 'list': {
+      // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-invoke
+      const jsonMode = args.includes('--json');
+      // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-invoke
       const entries = await listCommand(deps.inventory);
+      // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
+      // ONE JSON line, matching the `frontx upgrade --json` handshake's final
+      // result line, so the AI Tooling Framework's kit obtains the selectable
+      // set over the same command surface it already speaks (DESIGN §3.4) and
+      // never by reading this CLI's inventory storage. An empty inventory is an
+      // empty `templates` collection, not the human-facing message.
+      if (jsonMode) {
+        return { exitCode: EXIT_SUCCESS, stdout: JSON.stringify({ ok: true, templates: entries }) };
+      }
+      // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
       const stdout =
         entries.length === 0
           ? 'No templates installed.'

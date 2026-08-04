@@ -33,19 +33,27 @@ export interface ReferencedTemplate {
 }
 
 // Single authoritative contract — cpt-frontx-contract-template-manifest.
-// EXACTLY four declared categories: identity, version, ownership boundaries,
-// referenced templates. The manifest declares NO content and carries NO file
-// bodies — every consumer reads content items from the resolved on-disk
-// installed content path (cpt-frontx-algo-cli-scaffolding-uniform-apply
-// inst-ua-read-content), never from this shape. The same shape is checked at
-// pre-publish validation and consumed at install, apply, and assembly time —
-// no per-command divergence.
+// EXACTLY five declared categories: identity, version, ownership boundaries,
+// referenced templates, description. The manifest declares NO content and
+// carries NO file bodies — every consumer reads content items from the
+// resolved on-disk installed content path (cpt-frontx-algo-cli-scaffolding-
+// uniform-apply inst-ua-read-content), never from this shape. The same shape
+// is checked at pre-publish validation and consumed at install, apply,
+// assembly, and selection time — no per-command divergence.
 export interface TemplateManifest {
   schemaVersion?: string;                     // optional; absent = '1.0'; enables forward-reading
   name: string;                               // (1) identity
   version: string;                            // (2) version — versioned shape
   ownershipBoundaries: OwnershipBoundary;     // (3) ownership boundaries
   referencedTemplates?: ReferencedTemplate[]; // (4) referenced templates (a preset applies together)
+  // (5) description — the template's own prose statement of what it establishes
+  // and contributes, which selection matches a stated intent against. Optional
+  // so manifests published before the category was declared stay conforming and
+  // installable; the cost a template accepts by omitting it is that it is not
+  // selectable from an intent and is reachable only by its exact reference.
+  // Prose only, drawn from no closed set, so it reintroduces none of the
+  // template classification cpt-frontx-adr-uniform-template-mechanism removed.
+  description?: string;
 }
 
 export interface ManifestViolation {

@@ -23,7 +23,7 @@
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-frontx-featstatus-template-manifest`
+- [x] `p1` - **ID**: `cpt-frontx-featstatus-template-manifest`
 ## 1. Feature Context
 
 - [x] `p2` - `cpt-frontx-feature-template-manifest`
@@ -108,7 +108,7 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### Validate Template Structure Against the Manifest Contract
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-template-manifest-validate-contract`
+- [x] `p1` - **ID**: `cpt-frontx-algo-template-manifest-validate-contract`
 
 **Input**: candidate template directory path, manifest contract shape (the single authoritative description read at install, apply, and assembly time - `cpt-frontx-contract-template-manifest`) whose concrete schema declares exactly five categories: identity, version, ownership boundaries, referenced templates, and description
 
@@ -146,9 +146,9 @@ Internal system functions and procedures that do not interact with actors direct
     1. [x] - `p1` - Verify the entry carries a well-formed template reference - `inst-check-referenced-entry`
     2. [x] - `p1` - **IF** the reference is malformed - `inst-if-referenced-invalid`
        1. [x] - `p1` - Add violation: a referenced-template entry must declare a well-formed template reference - `inst-add-referenced-violation`
-13. [ ] - `p1` - Verify the description category: the template's own prose statement of what it establishes and contributes, which selection matches a stated intent against - `inst-check-description`
-14. [ ] - `p1` - **IF** the manifest declares a description that is not a non-empty string - `inst-if-description-invalid`
-    1. [ ] - `p1` - Add violation: a declared description must be a non-empty string - a description declared empty states nothing, whereas omitting it is permitted and only costs the template its selectability from an intent - `inst-add-description-violation`
+13. [x] - `p1` - Verify the description category: the template's own prose statement of what it establishes and contributes, which selection matches a stated intent against - `inst-check-description`
+14. [x] - `p1` - **IF** the manifest declares a description that is not a non-empty string - `inst-if-description-invalid`
+    1. [x] - `p1` - Add violation: a declared description must be a non-empty string - a description declared empty states nothing, whereas omitting it is permitted and only costs the template its selectability from an intent - `inst-add-description-violation`
 15. [x] - `p1` - **IF** any violations were accumulated - `inst-if-violations`
     1. [x] - `p1` - **RETURN** REJECTED with the accumulated violations list - `inst-return-rejected`
 16. [x] - `p1` - **RETURN** VALIDATED with no violations - `inst-return-validated`
@@ -262,7 +262,7 @@ The system **MUST** ensure the CLI pre-publish validate command additionally rej
 - [x] A manifest declaring an exclusive subtree or shared-file path in the reserved CLI-owned `.frontx/` metadata namespace (`.frontx/provenance.json`, or any `.frontx/` path other than the manifest's own `.frontx/ai/<template-identity>/` bundle subtree) causes a FAIL; a template may declare only its own `.frontx/ai/<template-identity>/` bundle subtree under `.frontx/`.
 - [x] A file inside a declared exclusive subtree or shared-file path that references a filesystem path resolving outside the candidate template directory - per the known-carrier registry (currently: a `package.json` `file:` specifier; a tsconfig file's `compilerOptions.paths` mapping, `extends` target, `references[].path` entry, `files`/`include`/`exclude` entry, or one of its path-valued `compilerOptions` (`baseUrl`, `rootDir`, `rootDirs`, `outDir`, `declarationDir`, `outFile`, `tsBuildInfoFile`, `typeRoots`); or a lockfile workspace-member key/`resolved` entry) - causes a FAIL naming the offending file and path; a reference that resolves to a location still inside the template directory is not flagged, and an absolute, drive-prefixed, or home-relative (`~`) reference always is.
 - [x] A declared content-owning path that is absent, is a broken symlink, or resolves outside the candidate template directory causes a FAIL naming the path, never a silent PASS from enumerating no content.
-- [ ] A manifest declaring a description that is not a non-empty string causes a FAIL naming the description category; a manifest omitting the description entirely causes a PASS, because the category is optional and its absence costs the template only its selectability from a stated intent.
+- [x] A manifest declaring a description that is not a non-empty string causes a FAIL naming the description category; a manifest omitting the description entirely causes a PASS, because the category is optional and its absence costs the template only its selectability from a stated intent.
 - [x] A conforming manifest declaring exactly the five categories causes a PASS result and a zero exit code.
 - [x] The same manifest shape checked at pre-publish validation is consumed at install, apply, and assembly — no command reads a different or partial descriptor.
 - [x] The manifest shape is versioned so that previously published manifests remain readable when the contract evolves.
