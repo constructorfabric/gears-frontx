@@ -1,14 +1,14 @@
 /**
  * @gears-frontx/api Dependency Cruiser Configuration
- * Extends SDK layer config - enforces zero @gears-frontx dependencies and no React
+ * Extends the Core Framework layer config — zero @gears-frontx imports, no React.
  */
 
-const sdkConfig = require('@gears-frontx/depcruise-config/sdk.cjs');
+const coreConfig = require('@gears-frontx/depcruise-config/core.cjs');
 
 module.exports = {
-  forbidden: sdkConfig.forbidden,
+  forbidden: coreConfig.forbidden,
   options: {
-    ...sdkConfig.options,
+    ...coreConfig.options,
     // Only analyze this package's source
     doNotFollow: {
       path: 'node_modules',

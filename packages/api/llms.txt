@@ -2,7 +2,7 @@
 
 > API communication protocols and service registry for FrontX SDK. Supports REST, SSE, and mock protocols.
 
-Part of the FrontX SDK Layer (L1) - can be used independently without other @gears-frontx packages. Peer dependency on axios.
+Part of the FrontX Core Framework layer (architecture/DESIGN.md §1.3) - can be used independently, with zero @gears-frontx runtime dependencies. Peer dependency on axios.
 
 ## Core API
 

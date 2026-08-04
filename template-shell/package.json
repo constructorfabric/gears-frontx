@@ -1,7 +1,7 @@
 {
   "name": "@gears-frontx/frontx-template-shell",
   "version": "0.1.0-alpha.0",
-  "description": "Standard FrontX application template — target scaffold for non-Pillar-1 code relocation",
+  "description": "Standard FrontX application template — target scaffold for template-side code relocation",
   "type": "module",
   "main": "./dist-lib/index.cjs",
   "module": "./dist-lib/index.js",
@@ -56,9 +56,6 @@
     "lint:framework": "eslint packages/framework/src --max-warnings 0",
     "lint:react": "eslint packages/react/src --max-warnings 0",
     "lint": "eslint . --max-warnings 0",
-    "arch:deps:sdk": "npx dependency-cruiser packages/state/src packages/i18n/src --config internal/depcruise-config/sdk.cjs --output-type err-long",
-    "arch:deps:framework": "npx dependency-cruiser packages/framework/src --config internal/depcruise-config/framework.cjs --output-type err-long",
-    "arch:deps:react": "npx dependency-cruiser packages/react/src --config internal/depcruise-config/react.cjs --output-type err-long",
     "arch:deps": "npx dependency-cruiser src-app/ packages/ --config .dependency-cruiser.cjs --output-type err-long",
     "arch:plugins": "npm run test:unit --workspace=@gears-frontx/framework -- __tests__/plugin-system.test.ts",
     "test": "npm run test:unit",

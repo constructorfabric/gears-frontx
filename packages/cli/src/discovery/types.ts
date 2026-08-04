@@ -1,5 +1,5 @@
 /**
- * F16 cross-pillar edge (F16 <- F10): the CLI's install path signals the AI
+ * F16 cross-package edge (F16 <- F10): the CLI's install path signals the AI
  * Tooling Framework that an installed template is present, so it can run
  * its extension-discovery scan. The CLI has zero compile-time dependency on
  * the AI Tooling Framework's kit package (CLI-1 spirit) — the hook is

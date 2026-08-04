@@ -1,18 +1,40 @@
 #!/usr/bin/env node
 
 /**
- * FrontX Layered Config Verification Script
- * Verifies that layered ESLint and dependency-cruiser configs are correctly structured
+ * FrontX Guard Config Verification Script
+ * Verifies that the shared ESLint and dependency-cruiser configs in `internal/`
+ * are correctly structured and still carry the rules the boundary guards
+ * depend on. Running a guard cannot detect the guard being weakened — a rule
+ * deleted or renamed in the config produces no violation, only silence — so
+ * this script asserts the rules exist by name (see #476).
  *
  * This script:
  * 1. Loads each config and verifies it's a valid config array/object
- * 2. Checks that layer configs extend base configs correctly
- * 3. Verifies expected rules are present in each layer
+ * 2. Checks that derived configs extend base configs correctly
+ * 3. Verifies expected rules are present in each config
+ *
+ * Layer *membership* and package.json edges are `npm run arch:edges`
+ * (scripts/package-edge-tests.ts), not this script.
+ *
+ * Reads the ESLint configs from `internal/eslint-config/dist/`, so invoke it via
+ * `npm run arch:guards`, which builds that package first. Run bare on a tree
+ * where the package has never been built and every ESLint assertion fails on a
+ * missing file — `dist/` is gitignored and `npm install` does not produce it.
+ *
+ * The dependency-cruiser side is ecosystem-only (base + core) after the
+ * framework/template split: the retired framework/react/screenset configs
+ * described packages that emigrated to `template-shell/`, which enforces its
+ * own internal layering in its self-owned `.dependency-cruiser.cjs`. The ESLint
+ * side still ships the full set because `template-shell/packages/*` consume
+ * `@gears-frontx/eslint-config/{framework,react}.js` directly, and this script
+ * is the only ecosystem-side check that those published configs still build
+ * and load — ecosystem CI does not lint the template.
  */
 
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
-import { createRequire } from 'module';
+import { existsSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { createRequire } from 'node:module';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const require = createRequire(import.meta.url);
 
@@ -34,15 +56,31 @@ function log(message: string, color: keyof typeof colors = 'reset'): void {
   console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
-const ESLINT_CONFIG_DIR = join(process.cwd(), 'internal', 'eslint-config', 'dist');
-const DEPCRUISE_CONFIG_DIR = join(process.cwd(), 'internal', 'depcruise-config');
+/**
+ * Repo root from this file's own location, not `process.cwd()`: the check must
+ * report the same thing whether it runs via `npm run arch:guards` from the root,
+ * from a pre-commit hook, or from inside a package directory. Under cwd
+ * resolution the last two report every config as a missing file.
+ */
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+const ESLINT_CONFIG_DIR = join(REPO_ROOT, 'internal', 'eslint-config', 'dist');
+const DEPCRUISE_CONFIG_DIR = join(REPO_ROOT, 'internal', 'depcruise-config');
+
+// ESLint configs shipped by @gears-frontx/eslint-config. `framework`, `react`,
+// and `screenset` serve `template-shell/packages/*`, which import them
+// directly; `base` and `sdk` serve the ecosystem's own packages.
+const ESLINT_CONFIG_NAMES = ['base', 'sdk', 'framework', 'react', 'screenset'];
+
+// Depcruise configs shipped by @gears-frontx/depcruise-config. Ecosystem-only.
+const DEPCRUISE_CONFIG_NAMES = ['base', 'core'];
 
 /**
  * Verify ESLint configs can be imported and have correct structure
  */
 async function verifyEslintConfigs(): Promise<TestResult[]> {
   const results: TestResult[] = [];
-  const configs = ['base', 'sdk', 'framework', 'react', 'screenset'];
+  const configs = ESLINT_CONFIG_NAMES;
 
   for (const configName of configs) {
     const configPath = join(ESLINT_CONFIG_DIR, `${configName}.js`);
@@ -115,7 +153,7 @@ async function verifyEslintConfigs(): Promise<TestResult[]> {
  */
 function verifyDepcruiseConfigs(): TestResult[] {
   const results: TestResult[] = [];
-  const configs = ['base', 'sdk', 'framework', 'react', 'screenset'];
+  const configs = DEPCRUISE_CONFIG_NAMES;
 
   for (const configName of configs) {
     const configPath = join(DEPCRUISE_CONFIG_DIR, `${configName}.cjs`);
@@ -170,84 +208,44 @@ function verifyDepcruiseConfigs(): TestResult[] {
 }
 
 /**
- * Verify SDK config has correct restrictions
+ * Verify the Core Framework config carries the boundary restrictions.
+ *
+ * Rule names are asserted literally, so a rename in core.cjs without a matching
+ * update here fails the check. That is deliberate: the previous version of this
+ * script asserted a name (`sdk-no-frontx-imports`) that the config had since
+ * renamed, and because nothing ran the script the mismatch sat undetected (#476).
+ * The fix for a failure here is to reconcile the two, never to loosen the check.
  */
-function verifySdkRestrictions(): TestResult[] {
+function verifyCoreRestrictions(): TestResult[] {
   const results: TestResult[] = [];
 
   try {
-    const sdkConfig = require(join(DEPCRUISE_CONFIG_DIR, 'sdk.cjs'));
+    const coreConfig = require(join(DEPCRUISE_CONFIG_DIR, 'core.cjs'));
 
-    // Check for sdk-no-frontx-imports rule
-    const hasNoHai3Rule = sdkConfig.forbidden.some(
-      (rule: { name: string }) => rule.name === 'sdk-no-frontx-imports'
-    );
-    results.push({
-      name: 'SDK config: Has sdk-no-frontx-imports rule',
-      passed: hasNoHai3Rule,
-      message: hasNoHai3Rule ? 'Rule present' : 'Rule missing',
-    });
-
-    // Check for sdk-no-react rule
-    const hasNoReactRule = sdkConfig.forbidden.some(
-      (rule: { name: string }) => rule.name === 'sdk-no-react'
-    );
-    results.push({
-      name: 'SDK config: Has sdk-no-react rule',
-      passed: hasNoReactRule,
-      message: hasNoReactRule ? 'Rule present' : 'Rule missing',
-    });
-
-    // Check that base rules are inherited (no-circular)
-    const hasNoCircular = sdkConfig.forbidden.some(
-      (rule: { name: string }) => rule.name === 'no-circular'
-    );
-    results.push({
-      name: 'SDK config: Inherits no-circular from base',
-      passed: hasNoCircular,
-      message: hasNoCircular ? 'Inherited' : 'Not inherited',
-    });
-  } catch (error) {
-    results.push({
-      name: 'SDK config: Verification',
-      passed: false,
-      message: `Error: ${(error as Error).message}`,
-    });
-  }
-
-  return results;
-}
-
-/**
- * Verify screenset config has all existing rules
- */
-function verifyScreensetRules(): TestResult[] {
-  const results: TestResult[] = [];
-
-  try {
-    const screensetConfig = require(join(DEPCRUISE_CONFIG_DIR, 'screenset.cjs'));
-
-    const requiredRules = [
-      'no-cross-screenset-imports',
-      'no-circular-screenset-deps',
-      'flux-no-actions-in-effects-folder',
-      'flux-no-effects-in-actions-folder',
-      'no-circular',
+    const requiredRules: [string, string][] = [
+      // Core Framework packages carry no @gears-frontx imports...
+      ['core-no-gears-frontx-imports', 'Core Framework isolation'],
+      // ...except the one type-substrate port edge, itself narrowed to the runtime.
+      ['core-port-provider-only-imports-runtime', 'Type-substrate port narrowing'],
+      // The substrate stays UI-framework-agnostic.
+      ['core-no-react', 'UI-framework agnosticism'],
+      // Inherited from base.cjs.
+      ['no-circular', 'Inherited base rule'],
     ];
 
-    for (const ruleName of requiredRules) {
-      const hasRule = screensetConfig.forbidden.some(
+    for (const [ruleName, description] of requiredRules) {
+      const hasRule = coreConfig.forbidden.some(
         (rule: { name: string }) => rule.name === ruleName
       );
       results.push({
-        name: `Screenset config: Has ${ruleName}`,
+        name: `Core config: Has ${ruleName} (${description})`,
         passed: hasRule,
-        message: hasRule ? 'Rule present' : 'RULE MISSING - Protection lost!',
+        message: hasRule ? 'Rule present' : 'RULE MISSING - boundary enforcement lost!',
       });
     }
   } catch (error) {
     results.push({
-      name: 'Screenset config: Verification',
+      name: 'Core config: Verification',
       passed: false,
       message: `Error: ${(error as Error).message}`,
     });
@@ -260,7 +258,7 @@ function verifyScreensetRules(): TestResult[] {
  * Run all verification tests
  */
 async function runVerification(): Promise<void> {
-  log('\n🔍 Layered Config Verification', 'blue');
+  log('\n🔍 Guard Config Verification', 'blue');
   log('='.repeat(40), 'blue');
 
   const allResults: TestResult[] = [];
@@ -287,22 +285,11 @@ async function runVerification(): Promise<void> {
     );
   }
 
-  // SDK restrictions
-  log('\n🔒 SDK Layer Restrictions', 'blue');
-  const sdkResults = verifySdkRestrictions();
-  allResults.push(...sdkResults);
-  for (const result of sdkResults) {
-    log(
-      `${result.passed ? '✅' : '❌'} ${result.name}: ${result.message}`,
-      result.passed ? 'green' : 'red'
-    );
-  }
-
-  // Screenset rules (protection verification)
-  log('\n🛡️ Screenset Protection Rules', 'blue');
-  const screensetResults = verifyScreensetRules();
-  allResults.push(...screensetResults);
-  for (const result of screensetResults) {
+  // Core Framework restrictions
+  log('\n🔒 Core Framework Boundary Restrictions', 'blue');
+  const coreResults = verifyCoreRestrictions();
+  allResults.push(...coreResults);
+  for (const result of coreResults) {
     log(
       `${result.passed ? '✅' : '❌'} ${result.name}: ${result.message}`,
       result.passed ? 'green' : 'red'
@@ -318,17 +305,24 @@ async function runVerification(): Promise<void> {
   log(`  ❌ Failed: ${failed}`, failed > 0 ? 'red' : 'green');
 
   if (failed > 0) {
-    log('\n💥 Layered config verification failed!', 'red');
+    log('\n💥 Guard config verification failed!', 'red');
     process.exit(1);
   } else {
-    log('\n🎉 Layered config verification passed!', 'green');
+    log('\n🎉 Guard config verification passed!', 'green');
     process.exit(0);
   }
 }
 
-// Execute if run directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Execute if run directly. `pathToFileURL` rather than a hand-rolled
+// `file://${argv[1]}`: the hand-rolled form fails on Windows (drive letters and
+// backslashes need escaping) and on symlinks where argv[1] resolves differently
+// from import.meta.url.
+const isEntryPoint =
+  process.argv[1] !== undefined &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+
+if (isEntryPoint) {
   runVerification();
 }
 
-export { runVerification, verifyEslintConfigs, verifyDepcruiseConfigs };
+export { runVerification, verifyEslintConfigs, verifyDepcruiseConfigs, verifyCoreRestrictions };

@@ -27,7 +27,7 @@ function makeFailFetch(message = 'Network error'): FetchFn {
   return vi.fn().mockRejectedValue(new Error(message));
 }
 
-describe('install-time extension discovery hook (cross-pillar edge F16 <- F10)', () => {
+describe('install-time extension discovery hook (cross-package edge F16 <- F10)', () => {
   it('a successful install triggers the discovery hook with the installed name and ref', async () => {
     const inventory = new TemplateInventory();
     const fetch = makeSuccessFetch();

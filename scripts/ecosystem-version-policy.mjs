@@ -31,7 +31,7 @@ import { pathToFileURL } from 'node:url';
 
 /**
  * The five FrontX ecosystem artifacts this policy governs
- * (DESIGN §"three co-equal pillars"). Directory names are relative to
+ * (DESIGN §1.3). Directory names are relative to
  * `packages/`. Descriptive, non-binding per ADR-0001 "More Information" —
  * adding/retiring an artifact requires no amendment to the policy itself,
  * only to this enumeration.

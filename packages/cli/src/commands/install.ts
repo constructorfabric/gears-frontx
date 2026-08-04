@@ -12,7 +12,7 @@ export interface InstallCommandResult {
 }
 
 /**
- * @param discoveryHook Optional cross-pillar edge (F16 <- F10): when
+ * @param discoveryHook Optional cross-package edge (F16 <- F10): when
  * provided, invoked with the installed template's name+ref immediately
  * after a successful install, signaling the AI Tooling Framework that an
  * installed template is present so it can run its extension-discovery scan.

@@ -33,3 +33,32 @@ repos:
         entry: npm run arch:check
         language: system
         pass_filenames: false
+      # arch:check reads the ecosystem import graph via the root config; these
+      # three cover what it does not, so they run on every commit alongside it:
+      # the Core Framework layer rules applied per-package, the package.json
+      # edges of the boundary model, and the integrity of the shared boundary
+      # configs themselves. All three were unreferenced before #476, which is how
+      # they drifted into failing unnoticed after the framework/template split.
+      #
+      # arch:deps:core needs no build: on a tree where `packages/*/dist` is
+      # missing, a workspace import falls back to its bare specifier, which the
+      # rules match too (see GEARS_FRONTX_TARGET_PATTERNS in layer-constants.cjs).
+      # arch:guards does need one — it loads the ESLint configs from
+      # `internal/eslint-config/dist/`, which is gitignored and not built by
+      # `npm install` (root `prepare` is only `prek install`) — so `arch:guards`
+      # builds that one package itself rather than failing on a fresh clone.
+      - id: arch-deps-core
+        name: Core Framework layer rules (import graph)
+        entry: npm run arch:deps:core
+        language: system
+        pass_filenames: false
+      - id: arch-edges
+        name: Package edge check (package.json manifests)
+        entry: npm run arch:edges
+        language: system
+        pass_filenames: false
+      - id: arch-guards
+        name: Guard config verification
+        entry: npm run arch:guards
+        language: system
+        pass_filenames: false

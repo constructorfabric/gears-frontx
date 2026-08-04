@@ -49,7 +49,7 @@ export function validateBundleForPublish(bundle: AiExtensionBundle): PrePublishV
 
 /**
  * Install-discover-activate leg (Project Developer): invoked once the CLI
- * signals that an installed template is present (cross-pillar edge F16 <- F10).
+ * signals that an installed template is present (cross-package edge F16 <- F10).
  * Runs the contract scan and composes the discovered conforming extensions
  * with the base kit's capability set into the agent-visible activation
  * result.

@@ -3,8 +3,8 @@
  *
  * Covers ONLY the ecosystem packages (mfes, gts-plugin, api, cli,
  * cyber-pilot-kit-frontx).
- * Non-Pillar-1 packages (state, i18n, framework, react, auth, studio) and the
- * host app now live in the self-contained top-level `template-shell/`
+ * The template-side packages (state, i18n, framework, react, auth, studio) and
+ * the host app now live in the self-contained top-level `template-shell/`
  * (see Phase 11 template-move; split from its MFE content into the sibling
  * `template-mfe/` in issue #470); it ships its own `eslint.config.js`. Both
  * `template-shell/` and `template-mfe/` are excluded from this config's

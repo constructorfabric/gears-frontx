@@ -1,18 +1,19 @@
 /**
- * FrontX Dependency Cruiser Configuration Package
+ * FrontX Dependency Cruiser Configuration Package (ecosystem)
  *
- * Layered configuration for the FrontX SDK architecture:
- * - L0 (base): Universal rules for all code
- * - L1 (sdk): SDK packages with zero @gears-frontx dependencies
- * - L2 (framework): Framework package with only SDK deps
- * - L3 (react): React adapter with only framework dep
- * - L4 (screenset): User code with flux rules and isolation
+ * Configuration for the FrontX ecosystem's boundary model
+ * (architecture/DESIGN.md §1.3):
+ * - base: universal rules for all ecosystem code
+ * - core: Core Framework layer (api, gts-plugin, mfes) — zero @gears-frontx
+ *   imports except the type-substrate port, and no React
+ *
+ * The former `framework`, `react`, and `screenset` configs described the
+ * retired L1/L2/L3 chain, whose packages emigrated to `template-shell/`.
+ * The template enforces its own internal layering in its self-owned
+ * `template-shell/.dependency-cruiser.cjs`; this package is ecosystem-only.
  */
 
 module.exports = {
   base: require('./base.cjs'),
-  sdk: require('./sdk.cjs'),
-  framework: require('./framework.cjs'),
-  react: require('./react.cjs'),
-  screenset: require('./screenset.cjs'),
+  core: require('./core.cjs'),
 };

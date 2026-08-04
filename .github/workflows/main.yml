@@ -79,6 +79,30 @@ jobs:
     - name: Run architecture validation
       run: npm run arch:check
 
+    # arch:check covers the ecosystem import graph via the root config
+    # (dependency-cruiser + greps). That coverage was itself vacuous until this
+    # change: the root config excluded `packages/*/dist`, and since a workspace
+    # import resolves through `exports`/`main` to exactly that path, the node
+    # every cross-package rule needed as its `to` was deleted from the graph —
+    # a deliberate `@gears-frontx/api` import in `packages/mfes/src` stayed
+    # green. The root config now bounds `dist` and `node_modules` with
+    # `doNotFollow` instead and matches all three resolution shapes, so the
+    # sentence above is true rather than aspirational.
+    #
+    # These three cover what arch:check still does not: the Core Framework layer
+    # rules applied per-package, the package.json edges of the boundary model,
+    # and the integrity of the shared boundary configs themselves. All three
+    # were unreferenced by CI before #476, which is how they drifted into
+    # failing unnoticed after the framework/template split.
+    - name: Run Core Framework layer rules (import graph)
+      run: npm run arch:deps:core
+
+    - name: Run package edge validation (package.json edges)
+      run: npm run arch:edges
+
+    - name: Run guard config verification
+      run: npm run arch:guards
+
   studio-validate:
     name: Studio Validate Artifacts
     runs-on: ubuntu-latest
@@ -144,12 +168,13 @@ jobs:
       - name: Check spec coverage thresholds
         # Threshold rebased for the post-split ecosystem repo. The framework/
         # template split changed the scanned code: solution packages moved out
-        # to template-shell/, extracted Pillar-1 code (api/mfes/gts-plugin)
+        # to template-shell/, extracted core-substrate code (api/mfes/gts-plugin)
         # moved in, and tooling scripts/ were removed from the scan. Extracted
         # code + type/interface/glue lines cap fair @cpt marker density well
         # below the old 58 (even greenfield cli/kit top out ~50-56%). Current
         # honest coverage is ~41%; the bar sits just below it with headroom.
-        # Raise it as Pillar-1 traceability density improves over time.
+        # Raise it as core-substrate (api/mfes/gts-plugin) traceability
+        # density improves over time.
         run: >-
           python3 .cf-studio/.core/skills/studio/scripts/studio.py
           spec-coverage

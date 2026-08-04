@@ -18,7 +18,7 @@ export type { InventoryEntry, InventoryError, InventoryResult } from './inventor
 export { installCommand } from './commands/install';
 export type { InstallCommandResult } from './commands/install';
 
-// F16 cross-pillar edge (F16 <- F10): install-time extension discovery hook
+// F16 cross-package edge (F16 <- F10): install-time extension discovery hook
 export type { DiscoveryHookContext, DiscoveryHookResult, ExtensionDiscoveryHook } from './discovery/types';
 export { createFsBackedDiscoveryHook } from './discovery/fs-hook';
 export type { FsExtensionDiscovery } from './discovery/fs-hook';
