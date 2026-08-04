@@ -102,6 +102,7 @@ Foundational:
 * `cpt-frontx-adr-artifact-versioning-and-distribution` — Distributes the ecosystem as independently published, per-concern, independently versioned artifacts.
 * `cpt-frontx-adr-core-package-boundaries` — Partitions the Core Framework into boundary-governed concerns (runtime, type-system provider, protocol surface).
 * `cpt-frontx-adr-contract-schema-ownership` — Ends the circular DESIGN↔ADR schema deferral by assigning each owned contract's role to DESIGN, its decision rationale to the ADR, and its concrete field-level schema to the owning FEATURE.
+* `cpt-frontx-adr-per-gear-architecture-chains` — Keeps this chain scoped to the three ecosystem pillars, giving each published package outside them its own artifact chain and traceability namespace under its package directory.
 
 Pillar 1 — Core Framework:
 
