@@ -35,7 +35,7 @@
 
 ### 1.1 Overview
 
-Closes the selection gap between a developer's stated intent and the template reference the CLI requires: the CLI's apply commands take a template reference the caller must already know, and nothing helps the caller decide which installed template answers "a project with a main menu and two screens". This feature adds two declared agent entry points to the base AI kit - a top-level routing entry that recognizes which FrontX capability a request belongs to, and a scaffolding entry that turns a stated project intent into an application plan and executes it. Selection matches the intent against the descriptions installed templates declare in their manifests (`cpt-frontx-feature-template-manifest`), over the local template inventory only, and the plan is executed strictly by invoking the installed `frontx` executable - one seed for the template that establishes the project, then one add per further distinct template - after which the applied set is reported back to the developer from `.frontx/provenance.json`. Because a template is applied at most once, per-unit multiplicity within a template's own ground is not a second application but work delegated to the extension skills that template activates in the project (`cpt-frontx-feature-template-ai-extensions`). All CDSL behavior is `target` (GREENFIELD - grounded in `cpt-frontx-adr-template-manifest-contract`, `cpt-frontx-adr-solution-ai-content-placement`, `cpt-frontx-adr-ai-driven-upgrade-orchestration`, and DESIGN §3.4).
+Closes the selection gap between a developer's stated intent and the template reference the CLI requires: the CLI's apply commands take a template reference the caller must already know, and nothing helps the caller decide which installed template answers "a project with a main menu and two screens". This feature adds two declared agent entry points to the base AI kit - a top-level routing entry that recognizes which FrontX capability a request belongs to, and a scaffolding entry that turns a stated project intent into an application plan, executes it, and then realizes the units the intent names inside the applied ground. Selection matches the intent against the descriptions installed templates declare in their manifests (`cpt-frontx-feature-template-manifest`), over the local template inventory only, and the plan is executed strictly by invoking the installed `frontx` executable - one seed for the template that establishes the project, then one add per further distinct template - after which the applied set is reported back to the developer from `.frontx/provenance.json`. Because a template is applied at most once, per-unit multiplicity within a template's own ground is not a second application: the flow realizes it by driving, once per unit, the extension skills that template activates in the project (`cpt-frontx-feature-template-ai-extensions`), and then placing the content the intent states for each unit into the unit that skill created. What the developer receives is therefore a project that realizes the stated intent, not a plan for one. All CDSL behavior is `target` (GREENFIELD - grounded in `cpt-frontx-adr-template-manifest-contract`, `cpt-frontx-adr-solution-ai-content-placement`, `cpt-frontx-adr-ai-driven-upgrade-orchestration`, and DESIGN §3.4).
 
 ### 1.2 Purpose
 
@@ -53,7 +53,7 @@ The process boundary is the same one `cpt-frontx-adr-ai-driven-upgrade-orchestra
 
 | Actor | Role in Feature |
 |-------|-----------------|
-| `cpt-frontx-actor-project-developer` | States the project intent in natural language, chooses between candidates when selection is ambiguous, and receives the application plan, the applied set, and the residual work the applied templates do not cover |
+| `cpt-frontx-actor-project-developer` | States the project intent in natural language, chooses between candidates when selection is ambiguous, and receives the application plan, the applied set, the units realized inside the applied ground, and the residual work the applied templates and their extension skills do not cover |
 | `cpt-frontx-actor-ai-agent-host` | Surfaces the kit's declared `skill` entry points from their applicability metadata and invokes the routing and scaffolding entry points on the developer's behalf |
 
 ### 1.4 References
@@ -67,7 +67,7 @@ The process boundary is the same one `cpt-frontx-adr-ai-driven-upgrade-orchestra
   - `cpt-frontx-feature-template-resolution` (F10) - owns the installed-template inventory and the listing command this feature reads the selectable set from
   - `cpt-frontx-feature-cli-scaffolding` (F12) - owns the seed and add behavior this feature invokes without reimplementing
   - `cpt-frontx-feature-composed-provenance` (F13) - writes the provenance record set this feature reports back
-  - `cpt-frontx-feature-template-ai-extensions` (F16) - the activated template extension skills that carry per-unit work inside an applied template's own ground
+  - `cpt-frontx-feature-template-ai-extensions` (F16) - discovers and activates the applied templates' own extension skills, which this flow then drives once per unit to carry per-unit work inside an applied template's own ground
 
 ### 1.5 Agent Entry-Point Surface
 
@@ -77,7 +77,7 @@ This is the concrete declared shape of the two entry points, owned by this featu
 
 **Scaffolding entry point** - a new `skill` resource declared in `.cf-studio-kit.toml` with a `frontx_`-prefixed identifier, `kind = "skill"`, `public = true`, a `source` and `install_path` that address a document nested under a directory the kit ships, `type = "file"`, and non-empty applicability metadata in its own document frontmatter stating that it applies when a developer wants a new FrontX project created from a stated intent. Neither the resource identifier nor any manifest field names a solution, a framework, or a concrete template, because the manifest's identifier and description fields are scanned against the solution-term list; and neither entry-point document names a concrete template, because resource bodies are scanned against the specific-template-name list. The declared `source` must additionally be covered by the package's published file set, or the resource is declared, validated in the monorepo, and absent from the published package.
 
-Both entry points are documents, not compiled modules: the scaffolding flow is a sequence of one-shot command invocations with no mid-stream protocol to hold open, so it needs no in-kit module at the process boundary and adds none.
+Both entry points are documents, not compiled modules: the scaffolding flow is a sequence of one-shot command invocations with no mid-stream protocol to hold open, so it needs no in-kit module at the process boundary and adds none. The realization leg is documents for the same reason and a stronger one: it is carried out by following the instructions an applied template's own activated extension skill states, so the base kit contributes the sequencing and none of the writing, and KIT-3's invariant - that the framework holds no code path materializing or modifying a project file - stands unweakened.
 
 ## 2. Actor Flows (CDSL)
 
@@ -92,7 +92,8 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 **Actor**: `cpt-frontx-actor-project-developer`
 
 **Success Scenarios**:
-- Developer states a project intent and a target directory; the scaffolding entry point reads the installed inventory, matches the intent against the templates' declared descriptions, presents the application plan, applies the selected templates through the `frontx` executable, reports the applied set from provenance, and names the residual work the applied templates do not themselves cover.
+- Developer states a project intent and a target directory; the scaffolding entry point reads the installed inventory, matches the intent against the templates' declared descriptions, presents the application plan, applies the selected templates through the `frontx` executable, reports the applied set from provenance, realizes each unit the intent names inside the applied ground through the applied templates' activated extension skills, places the content the intent states into each realized unit, and names whatever residual work is left over.
+- Developer states an intent naming several units of one kind - a project with a stated number of screens - and receives a project holding one realized unit per stated screen, each carrying that screen's stated content, from a single application of the template whose ground those units live in.
 - Developer states an intent against a directory that already holds applied templates; the seed step is omitted and only the further distinct templates are added.
 
 **Error Scenarios**:
@@ -102,6 +103,8 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 - A selected template is already applied in the target directory: it is dropped from the plan and reported as already applied, because a template is applied at most once per project.
 - An invoked `frontx` command exits non-zero: the flow stops at that command, relays the CLI's own reported reason without reinterpreting it, invokes no further command, and reports which templates were applied before the failure.
 - The provenance record set cannot be read after a command reported success: the developer is told the applied set could not be confirmed and is pointed at the target directory, rather than being shown an applied set that was not read.
+- A unit the intent names falls inside an applied template's ground but no activated extension skill covers that ground: the unit is reported as residual work naming the ground it falls in, and nothing is written into that ground, because the template that owns the ground has declared no way to add a unit to it.
+- Realizing a unit fails: the flow stops at that unit, relays the failure's own reported reason without reinterpreting it, names the units realized before it, and realizes no further unit and attempts no correction retry.
 
 **Steps**:
 1. [ ] - `p1` - Developer states the intent for a project and the target directory, and the agent host invokes the scaffolding entry point. - `inst-sfi-invoke`
@@ -120,8 +123,17 @@ User-facing interactions that start with an actor and describe the end-to-end fl
    2. [ ] - `p1` - **IF** the add command exits non-zero - `inst-sfi-if-add-failed`
       1. [ ] - `p1` - **RETURN** the CLI's reported reason unreinterpreted, naming the templates applied before the failure; no further add command is invoked. - `inst-sfi-return-add-failed`
 9. [ ] - `p1` - The entry point invokes the provenance reporting algorithm (`cpt-frontx-algo-ai-project-scaffolding-report-provenance`) to surface the applied set from the target directory's provenance record set. - `inst-sfi-report-provenance`
-10. [ ] - `p1` - The entry point reports the residual intent as the work remaining, and names the applied templates' own extension skills - activated in the project by `cpt-frontx-feature-template-ai-extensions` - as what carries per-unit work inside a template's own ground; it neither modifies any applied template's content as part of applying it nor retries a failed command in a correction loop. - `inst-sfi-report-residual`
-11. [ ] - `p1` - **RETURN** scaffolding complete - the applied set as read from provenance, plus the residual work. - `inst-sfi-return-done`
+10. [ ] - `p1` - The entry point obtains the capability set the applied templates' own AI-extension bundles contribute, discovered and activated in the target directory by `cpt-frontx-feature-template-ai-extensions`, so that per-unit work inside an applied template's ground is carried by the capability that template itself declares rather than by any knowledge held in this entry point. - `inst-sfi-activate-extensions`
+11. [ ] - `p1` - **FOR EACH** unit the plan attributed to an applied template's own ground, in plan order - `inst-sfi-foreach-unit`
+    1. [ ] - `p1` - **IF** no activated extension skill covers that template's ground - `inst-sfi-if-no-extension`
+       1. [ ] - `p1` - Record the unit as residual work naming the ground it falls in, write nothing into that ground, and continue with the next unit - a template that declares no way to add a unit to its ground is not one this entry point may improvise into. - `inst-sfi-record-uncovered-unit`
+    2. [ ] - `p1` - **ELSE** follow the covering extension skill's own instructions once for that unit, creating the unit inside the applied template's ground exactly as that skill directs, and touching no ground that skill does not itself claim. - `inst-sfi-realize-unit`
+       1. [ ] - `p1` - Place the content the intent states for that unit into the unit just created, following the same extension skill's conventions, so the delivered unit carries what the developer asked it to carry rather than the scaffold's placeholder content. - `inst-sfi-place-unit-content`
+       2. [ ] - `p1` - **IF** realizing the unit fails - `inst-sfi-if-unit-failed`
+          1. [ ] - `p1` - **RETURN** the failure's own reported reason unreinterpreted, naming the applied templates and the units realized before it; no further unit is realized and no correction retry is attempted. - `inst-sfi-return-unit-failed`
+12. [ ] - `p1` - The entry point runs the verification each covering extension skill declares for the units it created, so what is handed back is a project that builds and runs rather than one that was merely written. - `inst-sfi-verify-realized`
+13. [ ] - `p1` - The entry point reports as the work remaining only the intent that no applied template's ground contains and no activated extension skill covers; it neither modifies any applied template's content as part of applying it nor retries a failed command in a correction loop. - `inst-sfi-report-residual`
+14. [ ] - `p1` - **RETURN** scaffolding complete - the applied set as read from provenance, the units realized inside the applied ground, plus the residual work. - `inst-sfi-return-done`
 
 ### Route a FrontX Request to the Capability That Serves It
 
@@ -155,7 +167,7 @@ Internal system functions and procedures called by actor flows above.
 
 **Input**: The developer's stated intent; the installed-template inventory as obtained over the command surface, each entry carrying identity, pinned reference, and the description its manifest declares (absent when the manifest declares none); and the set of template identities already applied in the target directory.
 
-**Output**: An application plan - at most one seed selection, an ordered list of further distinct templates to add, the identities dropped as already applied, and the residual intent no selected template's description covers - or a refusal naming which of the three refusal reasons applies: nothing installed, nothing matched, or a choice required.
+**Output**: An application plan - at most one seed selection, an ordered list of further distinct templates to add, the identities dropped as already applied, the units the intent names inside a selected template's own ground each attributed to that template, and the residual intent no selected template's description covers and no selected template's ground contains - or a refusal naming which of the three refusal reasons applies: nothing installed, nothing matched, or a choice required.
 
 **Steps**:
 1. [ ] - `p1` - Receive the intent, the inventory, and the already-applied identities. - `inst-st-receive`
@@ -172,8 +184,9 @@ Internal system functions and procedures called by actor flows above.
    1. [ ] - `p1` - **RETURN** a refusal: a choice is required, naming each tied candidate with its declared description, because guessing between them would write a project the developer did not ask for. - `inst-st-return-ambiguous`
 9. [ ] - `p1` - **FOR EACH** remaining part of the intent, select at most one candidate whose declared description matches it, skipping any candidate already in the plan - a template contributes to a project once, so a part of the intent that repeats a unit the plan already covers adds no second application. - `inst-st-select-further`
 10. [ ] - `p1` - Drop from the plan every selected identity already applied in the target directory, recording it as already applied, because re-applying an identity claims ground that identity already occupies and the CLI refuses the whole operation. - `inst-st-drop-applied`
-11. [ ] - `p1` - Record as the residual intent every part of the intent no selected template's declared description covers - including any repetition of a unit within a template's own ground, which is carried by that template's activated extension skills rather than by a further application. - `inst-st-record-residual`
-12. [ ] - `p1` - **RETURN** the application plan: the seed selection if any, the ordered further templates, the identities dropped as already applied, and the residual intent. - `inst-st-return-plan`
+11. [ ] - `p1` - **FOR EACH** part of the intent that names a unit within a selected or already-applied template's own ground, record it as one unit of per-unit work attributed to that template - one record per unit the intent names, so an intent naming several units of one kind yields several records against the single application that owns their ground. - `inst-st-record-unit-work`
+12. [ ] - `p1` - Record as the residual intent every part of the intent no selected template's declared description covers and no selected or already-applied template's ground contains, so that per-unit work the flow goes on to realize is not reported as work left undone. - `inst-st-record-residual`
+13. [ ] - `p1` - **RETURN** the application plan: the seed selection if any, the ordered further templates, the identities dropped as already applied, the per-unit work attributed to each template, and the residual intent. - `inst-st-return-plan`
 
 ### Report the Applied Set from Project Provenance
 
@@ -196,7 +209,7 @@ Internal system functions and procedures called by actor flows above.
 
 - [ ] `p2` - **ID**: `cpt-frontx-state-ai-project-scaffolding-plan-lifecycle`
 
-**States**: REQUESTED, INVENTORY_READ, PLANNED, SEEDED, EXTENDED, REPORTED, REFUSED
+**States**: REQUESTED, INVENTORY_READ, PLANNED, SEEDED, EXTENDED, REPORTED, REALIZED, REFUSED
 
 **Initial State**: REQUESTED
 
@@ -208,7 +221,9 @@ Internal system functions and procedures called by actor flows above.
 5. [ ] - `p1` - **FROM** PLANNED **TO** REFUSED **WHEN** the seed command exits non-zero; the CLI's reported reason is relayed and no add command is invoked. - `inst-pl-planned-refused`
 6. [ ] - `p1` - **FROM** SEEDED **TO** EXTENDED **WHEN** every further template in the plan has been applied by the CLI's add command exiting successfully. - `inst-pl-seeded-extended`
 7. [ ] - `p1` - **FROM** SEEDED **TO** REFUSED **WHEN** an add command exits non-zero; the templates applied before the failure are named and no further add command is invoked. - `inst-pl-seeded-refused`
-8. [ ] - `p1` - **FROM** EXTENDED **TO** REPORTED **WHEN** the applied set has been read from the target directory's provenance record set and reported with the residual work. - `inst-pl-extended-reported`
+8. [ ] - `p1` - **FROM** EXTENDED **TO** REPORTED **WHEN** the applied set has been read from the target directory's provenance record set and reported. - `inst-pl-extended-reported`
+9. [ ] - `p1` - **FROM** REPORTED **TO** REALIZED **WHEN** every unit the plan attributed to an applied template's ground has either been created through that template's activated extension skill and filled with the content the intent states for it, or been recorded as residual for want of a covering extension skill; the residual work is reported with the realized units. - `inst-pl-reported-realized`
+10. [ ] - `p1` - **FROM** REPORTED **TO** REFUSED **WHEN** realizing a unit fails; the units realized before the failure are named, no further unit is realized, and no correction retry is attempted. - `inst-pl-reported-refused`
 
 ## 5. Definitions of Done
 
@@ -262,7 +277,7 @@ The system **MUST** select the templates to apply by matching the developer's st
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-ai-project-scaffolding-command-surface-only`
 
-The system **MUST** apply every selected template by invoking the installed `frontx` executable's seed and add commands, and **MUST NOT** import `@gears-frontx/cli`, read the CLI's inventory storage, materialize or modify any project file itself, or reproduce any part of resolution, assembly, conflict checking, or provenance writing - relaying each command's own reported reason on a non-zero exit and stopping rather than retrying in a correction loop (`target`).
+The system **MUST** apply every selected template by invoking the installed `frontx` executable's seed and add commands, and **MUST NOT** import `@gears-frontx/cli`, read the CLI's inventory storage, materialize or modify any project file as part of applying a template, or reproduce any part of resolution, assembly, conflict checking, or provenance writing - relaying each command's own reported reason on a non-zero exit and stopping rather than retrying in a correction loop. Content created inside an already-applied template's own ground after that template has been applied is not an application and is outside this prohibition: it is created by following the instructions that template's own activated extension skill states, so the base kit contributes the sequencing and holds no code path that writes it, and no second assembler comes into existence (`target`).
 
 **Implements**:
 - `cpt-frontx-flow-ai-project-scaffolding-scaffold-from-intent`
@@ -282,20 +297,22 @@ The system **MUST** apply every selected template by invoking the installed `fro
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-ai-project-scaffolding-single-application-per-identity`
 
-The system **MUST** plan at most one application per template identity per project - dropping and reporting as already applied any selected identity the target directory's provenance already records, and never planning a second application of an identity already in the plan - and **MUST** attribute repetition of a unit within an applied template's own ground to that template's activated extension skills rather than to a further application, because a second application of one identity re-claims ground that identity already occupies and the CLI refuses the whole operation (`target`).
+The system **MUST** plan at most one application per template identity per project - dropping and reporting as already applied any selected identity the target directory's provenance already records, and never planning a second application of an identity already in the plan - and **MUST** realize repetition of a unit within an applied template's own ground by driving that template's activated extension skills once per unit, rather than by a further application, because a second application of one identity re-claims ground that identity already occupies and the CLI refuses the whole operation. Attributing the repetition is therefore not where the obligation ends: the units are carried out, and only a unit whose ground no activated extension skill covers is handed back as residual (`target`).
 
 **Implements**:
+- `cpt-frontx-flow-ai-project-scaffolding-scaffold-from-intent`
 - `cpt-frontx-algo-ai-project-scaffolding-select-templates`
 - `cpt-frontx-state-ai-project-scaffolding-plan-lifecycle`
 
 **Cites**:
 - `cpt-frontx-component-ai-base-kit`
+- `cpt-frontx-component-ai-extension-host`
 - `cpt-frontx-component-cli-conflict-checker`
 
 **Constraints**: (none owned by this feature)
 
 **Touches**:
-- Entities: `Template`, `OwnershipBoundary`, `ProjectProvenance`
+- Entities: `Template`, `OwnershipBoundary`, `ProjectProvenance`, `AiExtension`
 - No API surface; no persistent database
 
 ### The Applied Set Is Reported from Provenance
@@ -354,10 +371,13 @@ The system **MUST** leave the ecosystem in a state where the capability is reach
 - [ ] A template that declares no description is excluded from matching and reported as not considered; it remains applicable by its exact reference through the direct CLI path. (`target`)
 - [ ] Selection refuses with no files written when nothing is installed, when no declared description matches the intent, and when two or more candidates match the project-establishing part of the intent indistinguishably - the last naming each tied candidate and its declared description. (`target`)
 - [ ] A selected identity already recorded in the target directory's provenance is dropped from the plan and reported as already applied, and no plan ever carries one identity twice. (`target`)
-- [ ] Repetition of a unit within an applied template's own ground is reported as residual work carried by that template's activated extension skills, not planned as a further application. (`target`)
+- [ ] Repetition of a unit within an applied template's own ground is realized through that template's activated extension skills as part of the flow, not planned as a further application - an intent naming several units of one kind yields several realized units from the single application that owns their ground. (`target`)
+- [ ] The content the intent states for each unit is present in the unit the flow created, so a realized unit carries what the developer asked for rather than the scaffold's placeholder content. (`target`)
+- [ ] A unit whose ground no activated extension skill covers is reported as residual work naming that ground, and nothing is written into it. (`target`)
+- [ ] A failure while realizing a unit stops the flow at that unit, relays the failure's own reported reason, names the units realized before it, and attempts no correction retry. (`target`)
 - [ ] Every applied template is applied by invoking the installed `frontx` executable; the kit holds no import of `@gears-frontx/cli` and no code path that materializes or modifies a project file. (`target`)
 - [ ] A non-zero exit from an invoked command stops the flow at that command, relays the CLI's own reported reason, names the templates applied before the failure, and invokes no further command and no correction retry. (`target`)
 - [ ] After applying, the applied set is reported from the target directory's provenance record set - identity, applied-from version, and source address per record - and an unreadable record set is reported as an unconfirmed applied set. (`target`)
 - [ ] Every template the repository publishes declares a non-empty manifest description, so the capability is demonstrable against the shipped templates. (`target`)
 - [ ] No developer document states that scaffolding is not a kit capability; the documentation names the intent-driven path and the unchanged direct CLI path side by side. (`target`)
-- [ ] A project scaffolded through this flow from templates that declare descriptions builds and runs in a browser without errors, verified end to end against the installed templates. (`target`)
+- [ ] A project scaffolded through this flow from templates that declare descriptions realizes the stated intent - every unit the intent names is present in the delivered project, carrying the content stated for it - and builds and runs in a browser without errors, verified end to end against the installed templates. (`target`)
