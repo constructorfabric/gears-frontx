@@ -2,19 +2,22 @@
 
 Constructor Studio kit that gives AI agents ecosystem-level fluency for FrontX
 projects — MFE runtime substrate, GTS type system, API protocol surface, and CLI
-scaffolding. Solution-agnostic base only; no template-specific content ships here.
+scaffolding — routes a FrontX request to the capability that serves it, and
+creates a project from a stated intent. Solution-agnostic base only; no
+template-specific content ships here.
 
 Packaged as `@gears-frontx/cyber-pilot-kit-frontx` and delivered as a Constructor
 Studio kit (`cpt-frontx-adr-ai-tooling-framework-packaging`).
 
 ## Kit shape
 
-| Path | Kind | Purpose |
-|---|---|---|
-| `.cf-studio-kit.toml` | manifest | Canonical declarative installation manifest |
-| `SKILL.md` | skill | Ecosystem skill surface, discoverable at session start |
-| `AGENTS.md` | rule | Agent navigation and package-boundary rules |
-| `guidelines/` | directory | Ecosystem guidelines (boundaries, constraints) |
+| Path | Resource | Kind | Purpose |
+|---|---|---|---|
+| `.cf-studio-kit.toml` | — | manifest | Canonical declarative installation manifest |
+| `SKILL.md` | `frontx_skill` | skill | Ecosystem skill surface, discoverable at session start; carries the routing section that states which capability serves each kind of FrontX request |
+| `skills/project-scaffolding/SKILL.md` | `frontx_project_scaffolding` | skill | Creates a project from a stated intent: matches the intent against the descriptions installed templates declare, applies the chosen set over the `frontx` command surface, then realizes each named unit through the applied templates' own activated skills |
+| `AGENTS.md` | `frontx_agents` | rule | Agent navigation and package-boundary rules |
+| `guidelines/` | `frontx_guidelines` | directory | Ecosystem guidelines (boundaries, constraints) |
 
 Every resource identifier carries the `frontx_` prefix (KIT-1) so the kit's
 resources cannot collide with another kit installed in the same project.
@@ -34,8 +37,11 @@ cfs kit install ./node_modules/@gears-frontx/cyber-pilot-kit-frontx
 ```
 
 The published tarball ships `.cf-studio-kit.toml` alongside `SKILL.md`,
-`AGENTS.md`, `README.md`, and `guidelines/` (see `files` in `package.json`), so
-the extracted package directory is a complete, valid kit source.
+`skills/`, `AGENTS.md`, `README.md`, and `guidelines/` (see `files` in
+`package.json`), so the extracted package directory is a complete, valid kit
+source. Every declared resource `source` must fall inside that list — a source
+outside it leaves the resource declared and absent from the published package,
+which the kit's own suite asserts against.
 
 Installation records the kit at `[kits.cyber-pilot-kit-frontx]` in
 `.cf-studio/config/core.toml`. Only declared resources install, each at its
@@ -49,7 +55,7 @@ against this monorepo, which skips npm entirely — see `cfs kit install --help`
 Already registered — do not re-install. The registration uses
 `install_mode = "register"` against `../packages/cyber-pilot-kit-frontx`, so
 resources resolve in place from source rather than being copied, and edits to
-`SKILL.md`/`AGENTS.md`/`guidelines/` take effect without a reinstall.
+`SKILL.md`/`skills/`/`AGENTS.md`/`guidelines/` take effect without a reinstall.
 
 ## Validate
 
