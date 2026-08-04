@@ -23,6 +23,20 @@ type = "file"
 user_modifiable = false
 public = true
 
+# The intent-driven scaffolding entry point the top-level skill's routing section
+# points at. Declared with no `description` key, deliberately: a resource entry's
+# `id` and `description` are scanned against the generic solution-term list, and
+# the applicability metadata KIT-4 requires lives in the document's own
+# frontmatter (cpt-frontx-dod-ai-project-scaffolding-declared-skill-surface).
+[[kits.resources]]
+id = "frontx_project_scaffolding"
+kind = "skill"
+source = "skills/project-scaffolding/SKILL.md"
+install_path = "skills/project-scaffolding/SKILL.md"
+type = "file"
+user_modifiable = false
+public = true
+
 [[kits.resources]]
 id = "frontx_agents"
 kind = "rule"

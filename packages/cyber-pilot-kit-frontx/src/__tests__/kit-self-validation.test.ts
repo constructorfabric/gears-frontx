@@ -75,6 +75,25 @@ describe('shipped manifest on disk — canonical shape and KIT-1 prefix', () => 
     }
   });
 
+  // Existing on disk is not enough: npm publishes only what `files` covers, so
+  // a source outside it leaves the resource declared, validated here, and
+  // ABSENT from the published package - the manifest points at nothing on any
+  // machine that installed the kit rather than checked out this repository
+  // (cpt-frontx-dod-ai-project-scaffolding-declared-skill-surface, clause c).
+  it('every declared resource source is covered by the package published file set', () => {
+    const published = (
+      JSON.parse(fs.readFileSync(path.join(kitRoot, 'package.json'), 'utf8')) as { files: string[] }
+    ).files.map((entry) => entry.replace(/\/+$/, ''));
+
+    for (const kit of loadShippedManifest().kits) {
+      for (const resource of kit.resources) {
+        const source = resource.source.replace(/\/+$/, '');
+        const covered = published.some((entry) => source === entry || source.startsWith(`${entry}/`));
+        expect(covered, `${resource.id}: "${resource.source}" is not covered by package.json "files"`).toBe(true);
+      }
+    }
+  });
+
   it('the real shipped manifest passes validateKitManifest', () => {
     const result = validateKitManifest(loadShippedManifest());
     expect(result.violations).toEqual([]);
@@ -265,5 +284,83 @@ describe('kit self-validation — declared public resource surface (cpt-frontx-d
     const result = validateKitManifest(loadShippedManifest(), reader);
     expect(result.violations).toEqual([]);
     expect(result.status).toBe('PASS');
+  });
+});
+
+// The two entry points this kit declares for routing and for scaffolding from a
+// stated intent (cpt-frontx-dod-ai-project-scaffolding-declared-skill-surface).
+// Both are documents rather than modules, so the shipped files ARE the
+// implementation and these assertions read them off disk.
+describe('kit self-validation — routing and scaffolding entry points (cpt-frontx-dod-ai-project-scaffolding-declared-skill-surface)', () => {
+  const SCAFFOLDING_ID = 'frontx_project_scaffolding';
+  const ROUTING_ID = 'frontx_skill';
+
+  function resourceById(id: string): KitResourceEntry | undefined {
+    return loadShippedManifest().kits.flatMap((kit) => kit.resources).find((r) => r.id === id);
+  }
+
+  function shippedBody(id: string): string {
+    const resource = resourceById(id);
+    if (!resource) throw new Error(`resource "${id}" is not declared in the shipped manifest`);
+    return fs.readFileSync(path.join(kitRoot, resource.source), 'utf8');
+  }
+
+  it('declares the scaffolding entry point as a public skill under the frontx_ prefix', () => {
+    expect(resourceById(SCAFFOLDING_ID)).toMatchObject({ kind: 'skill', public: true, type: 'file' });
+  });
+
+  // The routing responsibility extends the EXISTING top-level resource rather
+  // than arriving as a second one: a resource whose only content is a pointer to
+  // another adds a hop and no capability, and a second entry claiming the
+  // top-level name is not declarable.
+  it('carries routing in the existing top-level resource instead of a second top-level entry', () => {
+    const topLevel = loadShippedManifest()
+      .kits.flatMap((kit) => kit.resources)
+      .filter((r) => r.source === 'SKILL.md');
+
+    expect(topLevel.map((r) => r.id)).toEqual([ROUTING_ID]);
+  });
+
+  it('states the routing responsibility in a delimited section of the top-level document', () => {
+    const body = shippedBody(ROUTING_ID);
+
+    expect(body).toContain('<!-- frontx:routing:begin -->');
+    expect(body).toContain('<!-- frontx:routing:end -->');
+  });
+
+  // The routing flow's whole point: a request to create a new project resolves
+  // to the scaffolding entry point and to nothing else.
+  it('routes a request to create a new project to the scaffolding entry point', () => {
+    const body = shippedBody(ROUTING_ID);
+    const routing = body.slice(
+      body.indexOf('<!-- frontx:routing:begin -->'),
+      body.indexOf('<!-- frontx:routing:end -->'),
+    );
+
+    expect(routing).toContain(SCAFFOLDING_ID);
+  });
+
+  // The kit orchestrates the CLI over its command surface and never links it, so
+  // the entry point that applies templates must reach them by running the
+  // executable (cpt-frontx-dod-ai-project-scaffolding-command-surface-only).
+  it('drives the frontx executable and names no import of the CLI package in the scaffolding document', () => {
+    const body = shippedBody(SCAFFOLDING_ID);
+
+    expect(body).toContain('frontx list --json');
+    expect(body).toContain('frontx seed');
+    expect(body).toContain('frontx add');
+  });
+
+  // Selection reads the installed set at invocation time; a document that named
+  // a template would be a built-in mapping from a request to a product name,
+  // which is what the solution-agnostic base forbids. The body scan already
+  // enforces this over every shipped resource — this case pins the intent to the
+  // document the rule most constrains.
+  it('names no concrete template in the scaffolding document', () => {
+    const reader = createFsResourceBodyReader(kitRoot);
+
+    const result = validateKitManifest(loadShippedManifest(), reader);
+
+    expect(result.violations.filter((v) => v.message.includes(SCAFFOLDING_ID))).toEqual([]);
   });
 });

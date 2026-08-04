@@ -19,7 +19,8 @@
     "SKILL.md",
     "AGENTS.md",
     "README.md",
-    "guidelines"
+    "guidelines",
+    "skills"
   ],
   "scripts": {
     "build": "tsup",
