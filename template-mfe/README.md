@@ -63,14 +63,12 @@ publishable package emits, so running it first fails on `@gears-frontx/framework
 in a clean checkout. `npm run build` already sequences them correctly, along with
 the MFE and manifest steps that follow.
 
-> **Step 2 does not pass on `develop` yet.** `template-shell` pins
-> `@gears-frontx/gts-plugin` at `0.3.0-alpha.0`, whose published build does not
-> export `FRONTX_ACTION_LOAD_EXT` / `MOUNT_EXT` / `UNMOUNT_EXT` — they moved into
-> `gts-plugin` after that release. `@gears-frontx/framework` imports all three, so
-> the shell build fails there until the shell's pins move to `0.3.0-alpha.1`.
-> That bump is [#498](https://github.com/constructorfabric/gears-frontx/pull/498),
-> which merges before this template. Until it lands, the sequence above is the
-> correct order but not a working one on a clean checkout.
+If step 2 fails on `@gears-frontx/framework` with `TS2307: Cannot find module
+'@gears-frontx/frontx-template-shell'`, the shell's self-link is missing from its
+own `node_modules`. An incremental `npm install` over an existing tree does not
+always restore it, and Node hides the problem — it resolves the package through
+the `exports` self-reference, so only the type build notices. `rm -rf
+template-shell/node_modules && npm install` recreates the link.
 
 For a seeded project (not this monorepo), the shell is a published, already-built
 package, so plain `npm install` is sufficient there:

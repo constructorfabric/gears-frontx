@@ -39,8 +39,8 @@
     "@gears-frontx/state": "0.2.0-alpha.0",
     "@gears-frontx/mfes": "0.3.0-alpha.1",
     "@gears-frontx/gts-plugin": "0.3.0-alpha.1",
-    "@gears-frontx/frontx-template-shell": "0.1.0-alpha.0",
-    "@gears-frontx/api": "0.3.0-alpha.0",
+    "@gears-frontx/frontx-template-shell": "0.1.0-alpha.1",
+    "@gears-frontx/api": "0.3.0-alpha.1",
     "@gears-frontx/i18n": "0.2.0-alpha.0",
     "@reduxjs/toolkit": "^2.11.2",
     "react-redux": "^9.2.0"
