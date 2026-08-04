@@ -118,6 +118,8 @@ cd template-shell && npm run dev
 
 > **Forgetting to relink is silent.** The template builds, type-checks and tests green against the published pins on its own, so a missing relink produces no error anywhere - it just means the `packages/*` edits you are testing are not the code being run. Nothing warns you. Relink after every ecosystem change, and when a template-side result contradicts a change you just made in `packages/*`, suspect the link first.
 
+The silence is local only: the [Template Drift workflow](.github/workflows/template-drift.yml) runs this same relink-and-check sequence in CI for the in-repo inputs it watches, so a working tree that has drifted from `template-shell` goes red there even when every local check passes ([#518](https://github.com/constructorfabric/gears-frontx/issues/518)).
+
 This was not always the steady state. Until the pins reached `0.3.0-alpha.1` ([#485](https://github.com/constructorfabric/gears-frontx/issues/485)), the published `0.3.0-alpha.0` tarballs predated the move of `FRONTX_ACTION_*` into `@gears-frontx/gts-plugin` and the addition of `DomainContext.typeSystem` to `@gears-frontx/mfes`, so `type-check` and `build:packages` failed against the pins alone and linking was mandatory rather than an optimisation. That took two merges to clear - one to publish the fixed surfaces, one to move the pins onto them, because a lockfile cannot resolve a tarball that does not exist yet - and both have landed. A seeded project now builds from its pins with no monorepo present.
 
 To go back to the pinned registry versions, run `npm ci` inside `template-shell`. There is no `--unlink`: the links replace published tarball *content*, which only npm can restore.
