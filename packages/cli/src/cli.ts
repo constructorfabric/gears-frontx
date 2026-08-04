@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 
 import { installCommand } from './commands/install';
 import type { InstallCommandResult } from './commands/install';
-import { listCommand } from './commands/list';
+import { listCommand, listJsonEnvelope } from './commands/list';
 import { updateLocalCommand } from './commands/update-local';
 import { validateCommand } from './commands/validate';
 import { seedRepository } from './commands/seed-repository';
@@ -305,17 +305,30 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
     // dispatch -> cpt-frontx-flow-template-resolution-list (listCommand)
     case 'list': {
       // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-invoke
+      // `list` takes no positional argument and exactly one recognized flag, so
+      // anything else is rejected rather than ignored. Ignoring it silently ran
+      // a near-miss like `--jsonl` straight into the HUMAN output at exit 0 —
+      // a caller parsing that stream sees a successful command and unparseable
+      // output, which is worse than a refusal it can act on.
+      const unknownFlags = args.filter((arg) => arg !== '--json');
+      if (unknownFlags.length > 0) {
+        return {
+          exitCode: EXIT_USER_ERROR,
+          stderr: `Unrecognized argument(s) for list: ${unknownFlags.join(', ')}. Usage: frontx list [--json]`,
+        };
+      }
       const jsonMode = args.includes('--json');
       // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-invoke
       const entries = await listCommand(deps.inventory);
       // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
-      // ONE JSON line, matching the `frontx upgrade --json` handshake's final
-      // result line, so the AI Tooling Framework's kit obtains the selectable
-      // set over the same command surface it already speaks (DESIGN §3.4) and
-      // never by reading this CLI's inventory storage. An empty inventory is an
-      // empty `templates` collection, not the human-facing message.
+      // ONE JSON line in the envelope F10 §1.5 fixes, matching the `frontx
+      // upgrade --json` handshake's final result line, so the AI Tooling
+      // Framework's kit obtains the selectable set over the same command
+      // surface it already speaks (DESIGN §3.4) and never by reading this CLI's
+      // inventory storage. An empty inventory is an empty `templates`
+      // collection, not the human-facing message.
       if (jsonMode) {
-        return { exitCode: EXIT_SUCCESS, stdout: JSON.stringify({ ok: true, templates: entries }) };
+        return { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(listJsonEnvelope(entries)) };
       }
       // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
       const stdout =

@@ -265,6 +265,57 @@ describe('dispatch: list (cpt-frontx-flow-template-resolution-list)', () => {
     expect(JSON.parse(outcome.stdout ?? '')).toEqual({ ok: true, templates: [] });
   });
 
+  // The envelope's KEY NAMES are the contract (F10 §1.5): the AI Tooling
+  // Framework reads this over a process boundary and cannot see these types, so
+  // renaming `templates` breaks it with no compile-time edge to report it.
+  // Asserting the keys is what makes that rename fail here instead of in the
+  // kit — the value-shape assertions above all survive it.
+  it('names the envelope keys the machine-readable contract fixes, so a rename fails here', async () => {
+    const { deps, registerManifest } = makeDeps();
+    registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0', { description: 'Establishes a thing.' }));
+    await run(['install', 'github:acme/foo@v1.0.0'], deps);
+
+    const outcome = await run(['list', '--json'], deps);
+
+    const parsed = JSON.parse(outcome.stdout ?? '') as Record<string, unknown>;
+    expect(Object.keys(parsed).sort()).toEqual(['ok', 'templates']);
+    expect(parsed.ok).toBe(true);
+    const records = parsed.templates as Record<string, unknown>[];
+    expect(Object.keys(records[0]).sort()).toEqual(['description', 'name', 'ref', 'source']);
+  });
+
+  // inst-list-format-machine — `readManifestFromContent` rejects on ANY
+  // contract violation, so a stored manifest that drifted out of contract in a
+  // way that has nothing to do with the description still yields no description.
+  it('lists an entry whose stored manifest no longer satisfies the contract, carrying no description', async () => {
+    const { deps, registerManifest } = makeDeps();
+    registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0', { description: 'Establishes a thing.' }));
+    await run(['install', 'github:acme/foo@v1.0.0'], deps);
+    // Drift the STORED manifest out of contract after install, on a category
+    // unrelated to the description: version is required and must be non-empty.
+    const stored = deps.inventory.lookup('foo');
+    if (!stored) throw new Error('fixture: expected "foo" to be installed');
+    stored.content = JSON.stringify({ ...JSON.parse(stored.content), version: '' });
+
+    const outcome = await run(['list', '--json'], deps);
+
+    expect(JSON.parse(outcome.stdout ?? '')).toEqual({
+      ok: true,
+      templates: [{ name: 'foo', ref: 'v1.0.0', source: 'github:acme/foo@v1.0.0' }],
+    });
+  });
+
+  // A near-miss flag used to fall through to the HUMAN output at exit 0, so a
+  // calling program saw success and unparseable text.
+  it('refuses an unrecognized flag rather than silently emitting the human listing', async () => {
+    const { deps } = makeDeps();
+
+    const outcome = await run(['list', '--jsonl'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stdout).toBeUndefined();
+  });
+
   it('leaves the human-readable listing unchanged when a manifest declares a description', async () => {
     const { deps, registerManifest } = makeDeps();
     registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0', { description: 'Establishes a thing.' }));
