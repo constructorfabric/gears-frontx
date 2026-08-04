@@ -501,6 +501,13 @@ describe('dispatch: add (cpt-frontx-flow-cli-scaffolding-add-template)', () => {
   // documented precondition, still reaches this refusal rather than an
   // internal error) — the FEATURE.md Error Scenarios list for
   // `cpt-frontx-flow-cli-scaffolding-seed-repository` omitted it.
+  //
+  // review #500 round 5: composeSharedFiles' own message for this reason
+  // advises "record this owner's applied provenance ... and retry" — never
+  // executable for `seed`, which hardcodes an empty `existingProvenance` on
+  // every call and so can never observe a recorded provenance change on a
+  // retry. `seedRepository` now substitutes its own message pointing at
+  // "frontx add" instead; asserted here in place of compose's generic text.
   it('seed: exits user-error (not internal-error) when materialization refuses an unrecorded on-disk marker owner', async () => {
     const { deps, registerManifest, registerContent } = makeDeps({
       readProjectFile: vi.fn(async (path: string) =>
@@ -525,15 +532,11 @@ describe('dispatch: add (cpt-frontx-flow-cli-scaffolding-add-template)', () => {
 
     expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
     expect(outcome.stderr).toBe(
-      'Materialization refused — path "shared.txt" carries a block owned by "mystery-template" ' +
-        '(region "x") that this assembly does not contribute and that this ' +
-        "repository's existing provenance does not record. That on-disk block is NOT a declaration of " +
-        'ownership — it is evidence that the occupied-boundary picture the pre-flight conflict check ' +
-        'evaluated was incomplete: no arbitrated claim accounts for this ground, so composing over it would ' +
-        "either drop the occupying template's contribution or silently absorb an un-arbitrated claim, and " +
-        'assembly-conflict-prevention forbids both outcomes. No file is written. Record ' +
-        '"mystery-template"\'s applied provenance for this repository (for example, reinstall it and ' +
-        'reapply it through "frontx add") and retry.',
+      'Apply aborted — path "shared.txt" in "/tmp/seed-repo" carries a block owned by "mystery-template" ' +
+        '(region "x") that this seed does not apply. A seed target must be an empty directory: this one already ' +
+        'holds applied-template content, and "frontx apply" (seed) never reads a target\'s existing provenance, ' +
+        'so no owner can ever be recorded here to clear this refusal on a retry. To add a template to a ' +
+        'repository that already holds applied templates, use "frontx add" instead. No file was written.',
     );
   });
 });

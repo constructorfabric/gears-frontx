@@ -163,7 +163,17 @@ type ComposeFailureReason = Extract<ComposeSharedFilesResult, { ok: false }>['re
 // ComposeFailureReason), populated with compose's own reason otherwise.
 export type MaterializeResult =
   | { ok: true }
-  | { ok: false; message: string; composeReason?: ComposeFailureReason };
+  | {
+      ok: false;
+      message: string;
+      composeReason?: ComposeFailureReason;
+      // Populated only when composeReason is 'unrecorded-owner' — lets a
+      // caller (e.g. `seedRepository`) build its OWN wording around the
+      // concrete path/owner/region rather than reusing compose's generic
+      // "record this owner's provenance and retry" message verbatim, which
+      // is not always actionable advice for every caller (see seedRepository).
+      unrecordedOwner?: { path: string; templateIdentity: string; regionKey: string };
+    };
 
 // The four compose refusals the target repository's OWNER can resolve and
 // retry: `unrecorded-owner` (register the occupying template's provenance),
@@ -256,7 +266,22 @@ export async function materializeAssembly(
   readProjectFileFn: ReadProjectFileFn = async () => null,
 ): Promise<MaterializeResult> {
   const composeResult = await composeSharedFiles(assembly, targetDir, writeFileFn, readProjectFileFn, existingProvenance);
-  if (!composeResult.ok) return { ok: false, message: composeResult.message, composeReason: composeResult.reason };
+  if (!composeResult.ok) {
+    return {
+      ok: false,
+      message: composeResult.message,
+      composeReason: composeResult.reason,
+      ...(composeResult.reason === 'unrecorded-owner'
+        ? {
+            unrecordedOwner: {
+              path: composeResult.path,
+              templateIdentity: composeResult.templateIdentity,
+              regionKey: composeResult.regionKey,
+            },
+          }
+        : {}),
+    };
+  }
 
   const newRecords: ProvenanceRecord[] = assembly.contributions.map((contribution) => {
     const entry = lookupFn(contribution.templateName);

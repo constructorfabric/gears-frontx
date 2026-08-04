@@ -125,7 +125,31 @@ export async function seedRepository(
   if (!materializeResult.ok) {
     // review #500 (fix 2/2): see the identical branch in add-template.ts.
     const reason = isUserFixableMaterializeFailure(materializeResult) ? 'materialization-refused' : 'provenance-failed';
-    return { ok: false, reason, message: materializeResult.message };
+    // review #500 (round 5): composeSharedFiles' own 'unrecorded-owner'
+    // message tells the caller to "record this owner's applied provenance
+    // and retry" — sound advice for `add`, which reads the target's real
+    // provenance, but never executable for `seed`: this command hardcodes
+    // an empty `existingProvenance` a few lines up (a seed target has none
+    // by definition — inst-seed-materialize), so no amount of recording
+    // provenance in the target directory changes what THIS command passes
+    // to `materializeAssembly` on a retry. Reusing compose's message
+    // verbatim would present a fixable-looking exit code (EXIT_USER_ERROR,
+    // via `isUserFixableMaterializeFailure`) with advice that can never
+    // actually fix it. The real fix is the one FEATURE.md's seed error
+    // scenario names: this target directory is not empty, contra seed's
+    // documented precondition — the developer wants `frontx add`, not a
+    // retry of `seed`.
+    const message =
+      materializeResult.composeReason === 'unrecorded-owner' && materializeResult.unrecordedOwner
+        ? `Apply aborted — path "${materializeResult.unrecordedOwner.path}" in "${targetDir}" carries a block ` +
+          `owned by "${materializeResult.unrecordedOwner.templateIdentity}" ` +
+          `(region "${materializeResult.unrecordedOwner.regionKey}") that this seed does not apply. A seed target ` +
+          'must be an empty directory: this one already holds applied-template content, and "frontx apply" (seed) ' +
+          "never reads a target's existing provenance, so no owner can ever be recorded here to clear this " +
+          'refusal on a retry. To add a template to a repository that already holds applied templates, use ' +
+          '"frontx add" instead. No file was written.'
+        : materializeResult.message;
+    return { ok: false, reason, message };
   }
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-done
