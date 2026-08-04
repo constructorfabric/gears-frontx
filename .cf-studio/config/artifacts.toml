@@ -25,7 +25,7 @@ reason = "Auth SDK package has no backing CDSL artifact"
 patterns = ["packages/auth/*"]
 
 [[ignore]]
-reason = "Telemetry SDK code carries no CDSL markers yet. Its requirements live in the package's own chain (packages/telemetry/architecture/PRD.md) per cpt-frontx-adr-per-gear-architecture-chains, so the ignore covers the code only - architecture/ MUST stay scanned. Removed once that chain reaches FEATURE level and the code is marked against it"
+reason = "Telemetry SDK code carries no CDSL markers yet. Its requirements live in packages/telemetry/architecture/PRD.md, so the ignore covers the code only - architecture/ MUST stay scanned. Removed once a FEATURE lands and the code is marked against it"
 patterns = [
   "packages/telemetry/src/**",
   "packages/telemetry/demo/**",
@@ -90,9 +90,8 @@ extensions = [".ts"]
 path = "scripts/"
 extensions = [".mjs", ".ts"]
 
-# Telemetry SDK carries its own chain under its package directory, per
-# cpt-frontx-adr-per-gear-architecture-chains. PRD only so far; the downstream kinds are
-# optional until they land. No codebase entry yet - the code is unmarked and stays ignored above.
+# Telemetry SDK keeps its artifacts beside the package. PRD only for now. No codebase entry -
+# the code is unmarked and stays ignored above.
 [[systems]]
 name = "Telemetry SDK"
 slug = "telemetry"
