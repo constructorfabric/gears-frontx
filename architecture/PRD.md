@@ -398,9 +398,9 @@ The system **MUST** allow a developer to review and approve upgrade changes befo
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-ai-frontx-skills`
 
-The system **MUST** make FrontX-specific skills available to AI agents working in a FrontX-based project, including creating new microfrontends, validating templates, generating type definitions, and other ecosystem-scoped operations.
+The system **MUST** make FrontX-specific skills available to AI agents working in a FrontX-based project, including scaffolding a new project from a developer's stated intent by choosing among the templates installed locally, creating new microfrontends, validating templates, generating type definitions, and other ecosystem-scoped operations.
 
-**Rationale**: Gives AI agents fluency in ecosystem operations from the start, so developers receive correct, ecosystem-aware assistance without configuring it for each project.
+**Rationale**: Gives AI agents fluency in ecosystem operations from the start, so developers receive correct, ecosystem-aware assistance without configuring it for each project - including reaching a scaffolded project from what they want built rather than from a template reference they must already know.
 
 **Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
 
@@ -719,6 +719,31 @@ The system **MUST** place no architectural upper limit on the number of microfro
 - **Conflicting assembly**: the CLI detects that the added template claims ground an already-applied template owns and refuses the addition before any files are written.
 - **Type validation fails at registration**: the application surfaces the validation error and the microfrontend is not placed into its extension domain.
 
+#### Project Developer scaffolds a project from a stated intent
+
+- [ ] `p2` - **ID**: `cpt-frontx-usecase-ai-driven-project-scaffolding`
+
+**Actor**: `cpt-frontx-actor-project-developer`
+
+**Preconditions**:
+- One or more templates are installed in the local template inventory (`cpt-frontx-fr-cli-template-install`).
+- A target directory is chosen.
+- The product is installed.
+
+**Main Flow**:
+1. The Project Developer states what the project should be, in their own words, rather than naming a template (`cpt-frontx-fr-ai-frontx-skills`).
+2. An AI agent uses the AI Tooling Framework to read the locally installed templates and match the stated intent against the description each template declares about itself, producing an application plan it presents to the developer before anything is written.
+3. The AI agent applies the plan through the CLI: one template seeded to establish the repository (`cpt-frontx-fr-cli-seed-repository`), then each further distinct template added (`cpt-frontx-fr-cli-add-template-to-repository`), with the CLI checking declared ownership boundaries before every write (`cpt-frontx-fr-cli-assembly-conflict-prevention`).
+4. The AI agent reports the applied set back to the developer from the provenance record written per applied template, together with the work the applied templates do not themselves cover.
+
+**Postconditions**:
+- A repository on disk assembled from the templates the stated intent selected, with one provenance record per applied template, reported back to the developer.
+
+**Alternative Flows**:
+- **Nothing matches the intent**: the AI agent reports which templates are installed and which declare no description to match against, and writes no files.
+- **Candidates match indistinguishably**: the AI agent asks the Project Developer to choose between the named candidates and their declared descriptions before anything is applied.
+- **A CLI command refuses**: the AI agent relays the CLI's reported reason, names the templates applied before the refusal, and stops rather than retrying.
+
 #### Project Developer runs an AI-driven template upgrade
 
 - [ ] `p2` - **ID**: `cpt-frontx-usecase-ai-driven-template-upgrade`
@@ -744,7 +769,7 @@ The system **MUST** place no architectural upper limit on the number of microfro
 
 ## 9. Acceptance Criteria
 
-- [ ] AI agents can drive end-to-end FrontX-project creation: install a template, assemble a repository from one or more templates, and operate on the resulting repository with ecosystem-aware AI capabilities — verifiable via `cpt-frontx-usecase-publish-composed-project-template`, `cpt-frontx-usecase-scaffold-composed-project`, and `cpt-frontx-usecase-ai-driven-template-upgrade`.
+- [ ] AI agents can drive end-to-end FrontX-project creation: install a template, assemble a repository from one or more templates chosen from a stated intent, and operate on the resulting repository with ecosystem-aware AI capabilities - verifiable via `cpt-frontx-usecase-publish-composed-project-template`, `cpt-frontx-usecase-scaffold-composed-project`, `cpt-frontx-usecase-ai-driven-project-scaffolding`, and `cpt-frontx-usecase-ai-driven-template-upgrade`.
 - [ ] All three pillars deliver capabilities at the user-capability level: §5 contains functional requirements for all 26 capabilities across the three pillars (Core Framework: 8; CLI: 11; AI Tooling Framework: 7) — verifiable via the §5 inventory.
 - [ ] Pillar balance is maintained in the §5 distribution: each pillar has at least 5 functional requirements and the maximum-to-minimum ratio is at most 2 — verifiable by counting §5 entries per pillar.
 - [ ] All four public components have a §7.1 entry with a stability level and a breaking-change policy — verifiable via the §7.1 enumeration.

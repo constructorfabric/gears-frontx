@@ -370,11 +370,11 @@ The AI Tooling Framework (`cyber-pilot-kit-frontx`) ships no solution-specific A
 
 **ADRs**: `cpt-frontx-adr-solution-ai-content-placement`, `cpt-frontx-adr-ai-tooling-internal-decomposition`
 
-#### KIT-3 — Orchestrates, does not reimplement, the change-set engine
+#### KIT-3 - Orchestrates, does not reimplement, the CLI's engines
 
 - [x] `p2` - **ID**: `cpt-frontx-constraint-kit-orchestrates-not-reimplements`
 
-The AI Tooling Framework's upgrade workflows orchestrate and enrich the CLI's single change-set engine; they contain no independent change-set or project-mutation logic of their own. Change computation and application remain owned by the CLI engine (CLI-3), and the framework adds only review gating, change-impact analysis, and downstream-effect assessment on top of it. CI-enforceable invariant: the framework holds no code path that computes or applies project changes independently of the CLI change-set engine.
+The AI Tooling Framework's workflows orchestrate and enrich the CLI's engines; they contain no independent change-set, assembly, or project-mutation logic of their own. On the upgrade path the framework drives the single change-set engine and adds only review gating, change-impact analysis, and downstream-effect assessment on top of it; change computation and application remain owned by the CLI engine (CLI-3). On the scaffolding path the framework chooses which templates to apply and drives the assembler to apply them; resolution, assembly, conflict checking, and provenance writing remain owned by the CLI (CLI-2, CLI-5, CLI-6, CLI-7). Both paths reach the CLI over its command surface rather than by linking it. CI-enforceable invariant: the framework holds no code path that computes or applies project changes, or that materializes or modifies a project file, independently of the CLI engine that owns it.
 
 **ADRs**: `cpt-frontx-adr-ai-driven-upgrade-orchestration`, `cpt-frontx-adr-ai-tooling-internal-decomposition`
 
@@ -468,6 +468,8 @@ graph TD
     end
     GTS -- implements type-substrate port of --> MFES
     ORCH -- orchestrates --> ENG
+    BASE -- reads installed inventory from --> RES
+    BASE -- orchestrates --> ASM
 ```
 
 #### MFE Runtime
@@ -783,16 +785,20 @@ AI agents working in a FrontX project need ecosystem fluency from session start,
 ##### Responsibility scope
 
 - Owns the base ecosystem AI capabilities — skills, workflows, guidelines, and reference artifacts — available to agents at session start, every resource identifier `frontx_`-prefixed (KIT-1).
+- Owns the top-level routing entry point that recognizes which declared capability a FrontX request belongs to, and the scaffolding entry point that chooses the templates to apply by matching a stated intent against the descriptions installed templates declare, then drives the assembler over the command surface to apply them (`cpt-frontx-adr-solution-ai-content-placement`, `cpt-frontx-adr-ai-driven-upgrade-orchestration`).
 
 ##### Responsibility boundaries
 
-- Ships zero solution-specific AI content (KIT-2); solution-specific capabilities arrive only through the extension host from installed-template bundles.
+- Ships zero solution-specific AI content (KIT-2); solution-specific capabilities arrive only through the extension host from installed-template bundles. Its selection mechanism is parameterized over the manifest's declared description and names no template, so the mechanism ships in the kit and the names ship in the templates.
+- Orchestrates, and does not reimplement, the CLI's assembler: it materializes no project file and reproduces no part of resolution, assembly, conflict checking, or provenance writing (KIT-3).
 - Does not discover or activate template extensions (extension host) and does not orchestrate upgrades (upgrade orchestration).
 
 ##### Related components (by ID)
 
 - `cpt-frontx-component-ai-tooling-kit` — internal component of (composed by).
 - `cpt-frontx-component-ai-extension-host` — base capability set is extended by.
+- `cpt-frontx-component-cli-template-resolver` - reads the installed template inventory, with each template's declared description, from (over the command surface).
+- `cpt-frontx-component-cli-assembler` - drives, to apply the templates a stated intent selected (over the command surface).
 
 #### AI Extension Host
 
@@ -900,14 +906,14 @@ The integration contracts below complement the interfaces above. Each entry stat
 
 ### 3.4 Internal Dependencies
 
-The ecosystem's artifacts integrate only through narrow, explicit contracts; the inter-package dependency graph is intentionally minimal. The single intra-ecosystem package dependency is the MFE Runtime's consumption of the Type System plugin as the injected concrete provider of its opaque type-substrate port — and even that flows through a port boundary rather than a concrete-type coupling. The API Protocol Surface, the CLI, and the AI Tooling Framework hold no intra-ecosystem package dependencies. Coordination between the AI Tooling Framework and the CLI is an orchestration relationship over the CLI's command surface, not a compile-time package dependency.
+The ecosystem's artifacts integrate only through narrow, explicit contracts; the inter-package dependency graph is intentionally minimal. The single intra-ecosystem package dependency is the MFE Runtime's consumption of the Type System plugin as the injected concrete provider of its opaque type-substrate port - and even that flows through a port boundary rather than a concrete-type coupling. The API Protocol Surface, the CLI, and the AI Tooling Framework hold no intra-ecosystem package dependencies. Coordination between the AI Tooling Framework and the CLI is an orchestration relationship over the CLI's command surface, not a compile-time package dependency; everything the framework learns about the CLI's own state - the installed template inventory included - reaches it as the output of an invoked command.
 
 AI-extension discovery and activation is a **filesystem handoff through the scaffolded project**, not a package edge and not a CLI-to-Kit call. When the FrontX CLI applies a template, it materializes that template's AI-extension bundle into the scaffolded project under its identity-scoped `.frontx/ai/<template-identity>/` subtree as ordinary owned content and sends no signal to the AI Tooling Framework. The AI Tooling Framework, running inside the scaffolded project on its own invocation, discovers and activates those extensions by scanning `.frontx/ai/`. The integration direction is therefore Kit-reads-project, never CLI-calls-Kit, preserving the no-package-dependency boundary above (`cpt-frontx-adr-extension-discovery-activation`, `cpt-frontx-adr-solution-ai-content-placement`).
 
 There are exactly **two** CLI→Kit filesystem handoffs through the scaffolded project, both in the Kit-reads-project direction and neither a package edge or a CLI-to-Kit call:
 
 1. **`.frontx/ai/` (AI-extension bundles)** — the CLI materializes each applied template's bundle; the AI Tooling Framework scans it to discover and activate extensions (above).
-2. **`.frontx/provenance.json` (applied-template provenance)** — the CLI's provenance recorder writes one record per applied template; the AI Tooling Framework reads this record set to select which applied template to upgrade and to obtain its re-resolvable source-spec before orchestrating the CLI change-set engine (§3.6, `cpt-frontx-feature-ai-upgrade-orchestration`, `cpt-frontx-adr-ai-driven-upgrade-orchestration`).
+2. **`.frontx/provenance.json` (applied-template provenance)** - the CLI's provenance recorder writes one record per applied template; the AI Tooling Framework reads this record set to select which applied template to upgrade and to obtain its re-resolvable source-spec before orchestrating the CLI change-set engine (§3.6, `cpt-frontx-feature-ai-upgrade-orchestration`, `cpt-frontx-adr-ai-driven-upgrade-orchestration`), and reads the same record set on the scaffolding path to establish which templates a target directory already holds before planning an application and to report the applied set back to the developer afterwards (`cpt-frontx-feature-ai-project-scaffolding`, `cpt-frontx-adr-ai-driven-upgrade-orchestration`).
 
 Ownership of `.frontx/` is split. Each applied template's AI bundle lives under its own identity-scoped subtree `.frontx/ai/<template-identity>/`, which the template declares as an exclusive subtree in its ownership boundaries; because these subtrees are disjoint by identity, any number of co-applied templates' bundles co-locate under `.frontx/ai/` without colliding, and same-slot precedence across them is resolved at activation time by the AI Tooling Framework, not by the assembly conflict check. The remainder of `.frontx/` is CLI-owned metadata reserved from templates — specifically `.frontx/provenance.json` written by the provenance recorder (read-only to the Kit) and any other CLI metadata that is not a template's own `.frontx/ai/<template-identity>/` bundle; a template that declares any of the reserved namespace as a boundary is refused at pre-publish validation.
 
@@ -916,13 +922,13 @@ Ownership of `.frontx/` is split. Each applied template's AI bundle lives under 
 | `@gears-frontx/mfes` → `@gears-frontx/gts-plugin` | type-substrate port (plugin interface, injected at registry construction) | The runtime reasons about types only by opaque identity and delegates all schema, validation, and hierarchy resolution to the injected provider (`cpt-frontx-adr-runtime-type-system-coupling`, `cpt-frontx-adr-default-type-substrate-provider`). |
 | `@gears-frontx/api` | none (intra-ecosystem) | Standalone Core Framework surface consumed directly by applications and microfrontends; holds no dependency on any other ecosystem package. |
 | `@gears-frontx/cli` | none (intra-ecosystem) | Standalone; operates on externally resolved templates that target the Core Framework, with no compile-time coupling to any ecosystem package (`cpt-frontx-adr-template-acquisition-and-location`). |
-| `cyber-pilot-kit-frontx` | CLI command surface (orchestration, not a package dependency) | Standalone delivery unit; orchestrates and enriches the CLI's change-set engine through its command surface rather than linking to it (`cpt-frontx-adr-ai-driven-upgrade-orchestration`). |
+| `cyber-pilot-kit-frontx` | CLI command surface (orchestration, not a package dependency) | Standalone delivery unit; orchestrates the CLI's engines through its command surface rather than linking to them - enriching the change-set engine on the upgrade path (`cpt-frontx-adr-ai-driven-upgrade-orchestration`), and reading the installed template inventory and driving the assembler on the scaffolding path (`cpt-frontx-adr-ai-driven-upgrade-orchestration`). It reads no CLI-internal storage: the inventory reaches it as command output, not as a filesystem edge. |
 
 **Dependency Rules**:
 - No circular dependencies. The graph is acyclic: the only package edge is `@gears-frontx/mfes` → `@gears-frontx/gts-plugin` through the type-substrate port; every other artifact is standalone.
 - Inter-component integration goes through the type-substrate port, the published interfaces of §3.3, or the CLI command surface — never through internal types of another package.
 - Only the Type System plugin is permitted to bind a concrete type-definition specification; the runtime stays format-agnostic behind the port (MFES-4, MFES-5).
-- The AI Tooling Framework coordinates with the CLI by orchestrating its public command surface, not by linking its engine (`cpt-frontx-adr-ai-driven-upgrade-orchestration`).
+- The AI Tooling Framework coordinates with the CLI by orchestrating its public command surface, not by linking its engines and not by reading its internal storage - on the upgrade path and on the scaffolding path alike (`cpt-frontx-adr-ai-driven-upgrade-orchestration`).
 
 ### 3.5 External Dependencies
 

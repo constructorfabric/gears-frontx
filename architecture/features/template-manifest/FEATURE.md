@@ -23,18 +23,20 @@
 
 <!-- /toc -->
 
-- [x] `p1` - **ID**: `cpt-frontx-featstatus-template-manifest`
+- [ ] `p1` - **ID**: `cpt-frontx-featstatus-template-manifest`
 ## 1. Feature Context
 
 - [x] `p2` - `cpt-frontx-feature-template-manifest`
 
 ### 1.1 Overview
 
-The template manifest contract defines the single versioned descriptor every publishable template exposes, validated at pre-publish time and consumed at install, apply, and assembly time — giving the CLI one authoritative description to check and read generically. This feature owns the manifest's concrete schema: exactly four declared categories — (1) identity, (2) version, (3) ownership boundaries, and (4) referenced templates — where a template declares what it produces and the ground it owns.
+The template manifest contract defines the single versioned descriptor every publishable template exposes, validated at pre-publish time and consumed at install, apply, and assembly time - giving the CLI one authoritative description to check and read generically. This feature owns the manifest's concrete schema: exactly five declared categories - (1) identity, (2) version, (3) ownership boundaries, (4) referenced templates, and (5) description - where a template declares what it produces, the ground it owns, and, in its own prose, what it establishes and contributes so that a caller holding no reference can choose it.
 
 ### 1.2 Purpose
 
-This feature defines and enforces the conformance contract (`cpt-frontx-contract-template-manifest`) that every template must satisfy to be publishable, and owns its concrete field-level schema per `cpt-frontx-adr-contract-schema-ownership`. The manifest is a single file named `frontx-template.json` located at the root of the template directory. The CLI validates a candidate template's manifest against the four lean categories before publication, and the same manifest is read at install, apply, and assembly time so one authoritative description serves all commands. The four categories are: **identity** (the template's name); **version** (a versioned shape); **ownership boundaries** (the exclusive subtrees the template alone writes and, per shared file, the regions it owns under a declared merge strategy drawn from a closed set — `cpt-frontx-adr-template-ownership-boundary-declaration`); and **referenced templates** (the templates a preset applies together, each declared by a well-formed template reference; a referenced template's own manifest declares where its content lands through that template's own ownership boundaries, so the reference carries no separate target location — `cpt-frontx-adr-composed-template-resolution`).
+This feature defines and enforces the conformance contract (`cpt-frontx-contract-template-manifest`) that every template must satisfy to be publishable, and owns its concrete field-level schema per `cpt-frontx-adr-contract-schema-ownership`. The manifest is a single file named `frontx-template.json` located at the root of the template directory. The CLI validates a candidate template's manifest against the five lean categories before publication, and the same manifest is read at install, apply, and assembly time so one authoritative description serves all commands. The five categories are: **identity** (the template's name); **version** (a versioned shape); **ownership boundaries** (the exclusive subtrees the template alone writes and, per shared file, the regions it owns under a declared merge strategy drawn from a closed set - `cpt-frontx-adr-template-ownership-boundary-declaration`); **referenced templates** (the templates a preset applies together, each declared by a well-formed template reference; a referenced template's own manifest declares where its content lands through that template's own ownership boundaries, so the reference carries no separate target location - `cpt-frontx-adr-composed-template-resolution`); and **description** (the template's own prose statement of what it establishes and what it contributes - `cpt-frontx-adr-template-manifest-contract`).
+
+The **description** is a single optional string field. It is **optional** so that manifests published before it was declared stay conforming and installable, and when present it must be a non-empty string: a field declared empty says nothing and is a violation rather than a silent absence. It carries prose only and is drawn from no closed set, so declaring it reintroduces none of the template classification `cpt-frontx-adr-uniform-template-mechanism` removed. Its consumer is template selection (`cpt-frontx-feature-ai-project-scaffolding`), which matches a stated intent against it; the consequence a template author accepts by omitting it is that the template is not selectable from an intent and is reachable only by its exact reference. Pre-publish validation checks the field's presence-and-shape only - that a declared description is a non-empty string - and never judges whether the prose accurately describes the template, which no structural check can establish.
 
 The **merge strategy** on a shared-file ownership-boundary entry is drawn from a closed set of exactly two values. **`exclusive`** — the template owns the shared file in whole and writes its entire body; at most one template across an assembly may claim a given path as `exclusive`. **`region-union`** — the template owns one or more named, marker-delimited regions within the shared file, and at assembly the disjoint regions contributed by every co-owning template are composed into one repository file. Every co-owning template of a `region-union` path must declare `region-union`; mixing `exclusive` with `region-union` on one path, or two `exclusive` claims on one path, is a conflict for the pre-flight conflict check (`cpt-frontx-feature-cli-scaffolding`). A shared-file entry declaring any merge value outside this closed set is a validation violation.
 
@@ -106,9 +108,9 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### Validate Template Structure Against the Manifest Contract
 
-- [x] `p1` - **ID**: `cpt-frontx-algo-template-manifest-validate-contract`
+- [ ] `p1` - **ID**: `cpt-frontx-algo-template-manifest-validate-contract`
 
-**Input**: candidate template directory path, manifest contract shape (the single authoritative description read at install, apply, and assembly time — `cpt-frontx-contract-template-manifest`) whose concrete schema declares exactly four categories: identity, version, ownership boundaries, and referenced templates
+**Input**: candidate template directory path, manifest contract shape (the single authoritative description read at install, apply, and assembly time - `cpt-frontx-contract-template-manifest`) whose concrete schema declares exactly five categories: identity, version, ownership boundaries, referenced templates, and description
 
 **Output**: validation result (VALIDATED with no violations, or REJECTED with a list of violations)
 
@@ -144,9 +146,12 @@ Internal system functions and procedures that do not interact with actors direct
     1. [x] - `p1` - Verify the entry carries a well-formed template reference - `inst-check-referenced-entry`
     2. [x] - `p1` - **IF** the reference is malformed - `inst-if-referenced-invalid`
        1. [x] - `p1` - Add violation: a referenced-template entry must declare a well-formed template reference - `inst-add-referenced-violation`
-13. [x] - `p1` - **IF** any violations were accumulated - `inst-if-violations`
+13. [ ] - `p1` - Verify the description category: the template's own prose statement of what it establishes and contributes, which selection matches a stated intent against - `inst-check-description`
+14. [ ] - `p1` - **IF** the manifest declares a description that is not a non-empty string - `inst-if-description-invalid`
+    1. [ ] - `p1` - Add violation: a declared description must be a non-empty string - a description declared empty states nothing, whereas omitting it is permitted and only costs the template its selectability from an intent - `inst-add-description-violation`
+15. [x] - `p1` - **IF** any violations were accumulated - `inst-if-violations`
     1. [x] - `p1` - **RETURN** REJECTED with the accumulated violations list - `inst-return-rejected`
-14. [x] - `p1` - **RETURN** VALIDATED with no violations - `inst-return-validated`
+16. [x] - `p1` - **RETURN** VALIDATED with no violations - `inst-return-validated`
 
 ### Validate Content Self-Containment
 
@@ -217,7 +222,7 @@ The system **MUST** implement the CLI pre-publish validate command (`target`) th
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-template-manifest-single-description`
 
-The system **MUST** ensure the same manifest shape (`cpt-frontx-contract-template-manifest`) — the four lean categories identity, version, ownership boundaries, and referenced templates — that the pre-publish validate command checks is the shape consumed at install, apply, and assembly time; there is exactly one description per template, no per-command divergence, and no command reads a different or partial descriptor (`target`).
+The system **MUST** ensure the same manifest shape (`cpt-frontx-contract-template-manifest`) - the five lean categories identity, version, ownership boundaries, referenced templates, and description - that the pre-publish validate command checks is the shape consumed at install, apply, assembly, and selection time; there is exactly one descriptor per template, no per-command divergence, and no command reads a different or partial descriptor. The description category is optional, so a manifest omitting it conforms and installs, and a manifest declaring it as anything other than a non-empty string is rejected (`target`).
 
 **Implements**:
 - `cpt-frontx-algo-template-manifest-validate-contract`
@@ -257,6 +262,7 @@ The system **MUST** ensure the CLI pre-publish validate command additionally rej
 - [x] A manifest declaring an exclusive subtree or shared-file path in the reserved CLI-owned `.frontx/` metadata namespace (`.frontx/provenance.json`, or any `.frontx/` path other than the manifest's own `.frontx/ai/<template-identity>/` bundle subtree) causes a FAIL; a template may declare only its own `.frontx/ai/<template-identity>/` bundle subtree under `.frontx/`.
 - [x] A file inside a declared exclusive subtree or shared-file path that references a filesystem path resolving outside the candidate template directory - per the known-carrier registry (currently: a `package.json` `file:` specifier; a tsconfig file's `compilerOptions.paths` mapping, `extends` target, `references[].path` entry, `files`/`include`/`exclude` entry, or one of its path-valued `compilerOptions` (`baseUrl`, `rootDir`, `rootDirs`, `outDir`, `declarationDir`, `outFile`, `tsBuildInfoFile`, `typeRoots`); or a lockfile workspace-member key/`resolved` entry) - causes a FAIL naming the offending file and path; a reference that resolves to a location still inside the template directory is not flagged, and an absolute, drive-prefixed, or home-relative (`~`) reference always is.
 - [x] A declared content-owning path that is absent, is a broken symlink, or resolves outside the candidate template directory causes a FAIL naming the path, never a silent PASS from enumerating no content.
-- [x] A conforming manifest declaring exactly the four categories causes a PASS result and a zero exit code.
+- [ ] A manifest declaring a description that is not a non-empty string causes a FAIL naming the description category; a manifest omitting the description entirely causes a PASS, because the category is optional and its absence costs the template only its selectability from a stated intent.
+- [x] A conforming manifest declaring exactly the five categories causes a PASS result and a zero exit code.
 - [x] The same manifest shape checked at pre-publish validation is consumed at install, apply, and assembly — no command reads a different or partial descriptor.
 - [x] The manifest shape is versioned so that previously published manifests remain readable when the contract evolves.
