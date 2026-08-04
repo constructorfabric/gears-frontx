@@ -295,6 +295,24 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
   const SCAFFOLDING_ID = 'frontx_project_scaffolding';
   const ROUTING_ID = 'frontx_skill';
 
+  // Concrete product names no base-kit document may carry. Kept in step with
+  // `SPECIFIC_TEMPLATE_NAMES` in validate-manifest.ts and widened with the
+  // framework names the FEATURE's DoD also excludes ("no concrete template,
+  // solution, or framework"), which the production list does not carry because
+  // it scans for shipped-template identities rather than for frameworks.
+  const FORBIDDEN_NAMES = [
+    'frontx-template-standard',
+    'template-standard',
+    'frontx-template-shell',
+    'template-shell',
+    'frontx-template-mfe',
+    'template-mfe',
+    'react',
+    'vue',
+    'angular',
+    'svelte',
+  ];
+
   function resourceById(id: string): KitResourceEntry | undefined {
     return loadShippedManifest().kits.flatMap((kit) => kit.resources).find((r) => r.id === id);
   }
@@ -353,14 +371,27 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
   // Selection reads the installed set at invocation time; a document that named
   // a template would be a built-in mapping from a request to a product name,
-  // which is what the solution-agnostic base forbids. The body scan already
-  // enforces this over every shipped resource — this case pins the intent to the
-  // document the rule most constrains.
-  it('names no concrete template in the scaffolding document', () => {
-    const reader = createFsResourceBodyReader(kitRoot);
+  // which is what the solution-agnostic base forbids.
+  //
+  // Scanning the document DIRECTLY rather than asserting that the whole-manifest
+  // run produced no violation for it: the suite's existing "violations is empty"
+  // case already subsumes that assertion, so a per-resource restatement of it
+  // can never fail on its own and documents an intent it does not test. Reading
+  // the shipped file and applying the same name list makes this case fail by
+  // itself the moment this specific document names a product.
+  it('names no concrete template, solution, or framework in the scaffolding document', () => {
+    const body = shippedBody(SCAFFOLDING_ID);
 
-    const result = validateKitManifest(loadShippedManifest(), reader);
+    const named = FORBIDDEN_NAMES.filter((name) => new RegExp(`(?<![a-z0-9])${name}(?![a-z0-9])`, 'i').test(body));
 
-    expect(result.violations.filter((v) => v.message.includes(SCAFFOLDING_ID))).toEqual([]);
+    expect(named).toEqual([]);
+  });
+
+  it('names no concrete template, solution, or framework in the routing section', () => {
+    const body = shippedBody(ROUTING_ID);
+
+    const named = FORBIDDEN_NAMES.filter((name) => new RegExp(`(?<![a-z0-9])${name}(?![a-z0-9])`, 'i').test(body));
+
+    expect(named).toEqual([]);
   });
 });

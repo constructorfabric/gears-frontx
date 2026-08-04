@@ -40,15 +40,20 @@ frontx list --json
 One JSON line: `{ "ok": true, "templates": [ ... ] }`. Each record carries
 
 - `name` - the template's identity, and **the argument the apply commands take**;
-- `ref` - the pinned reference the entry is installed at, which you report in
-  the plan so the developer sees what version will be applied;
+- `ref` - the reference the entry is pinned at, taken from the source-spec's
+  `@ref` segment. Report it in the plan so the developer sees which pinned
+  reference will be applied. It is **not** the manifest's `version` field: the
+  two need not agree in form or value, so do not present it as the version and
+  do not derive one from the other;
 - `source` - the address it was resolved from;
 - `description` - the template's own statement of what it establishes and what
   it contributes. **The key is absent when the template declares none, and also
-  when the entry's stored manifest can no longer be read** - the listing reports
-  the rest of the inventory rather than failing over one unreadable record.
-  Either way you have no declared description to match against, and the entry is
-  handled as an entry that declares none.
+  when the entry's stored manifest no longer satisfies the manifest contract at
+  all** - for any reason, not only unreadable text, since the listing reports the
+  rest of the inventory rather than failing over one bad record. The two cases
+  are indistinguishable from here and need not be distinguished: either way you
+  have no declared description to match against, and the entry is handled as one
+  that declares none.
 
 This command is the only source for the selectable set. Do not consult any
 remote registry, any list built into this document, or the CLI's storage.
@@ -187,6 +192,14 @@ For each unit from step 3.10, in plan order:
 Then run the verification the covering skills declare for what they created -
 the regeneration, type-check, lint and run steps they name. Hand back a project
 that builds and runs, not one that was merely written.
+
+**If a declared verification fails**, stop there. Report the project as applied
+and realized but **not verified**, relay that verification's own output
+unreinterpreted, and name the units it covered. Do not report scaffolding
+complete, and do not attempt a correction retry - the same rule that governs a
+non-zero command exit governs this. A failing type-check or lint is the whole
+difference between a project that was written and one that works, so reporting
+success over it would hand back the one problem this step exists to catch.
 
 ## Step 8 - Report
 

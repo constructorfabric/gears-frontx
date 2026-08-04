@@ -21,7 +21,7 @@ from whether the working directory already holds applied templates - a
 | Create a new project from what the developer wants built, holding no reference to start from | `frontx_project_scaffolding` - matches the stated intent against what the installed inventory declares, applies the chosen set through the `frontx` executable, and realizes the units the intent names |
 | Apply a specific template whose reference the developer already holds | The `frontx` executable directly - `frontx seed` for a new repository, `frontx add` for an existing one. This path is unchanged and needs no capability here |
 | Add a unit inside ground an applied template already owns - one more screen, one more isolated UI unit | The skills that applied template activates in this project, discovered under `.frontx/ai/<template-identity>/`. The base kit adds no unit itself |
-| Move an applied template to a newer version | The upgrade orchestration capability, which drives the CLI's change-set engine over `frontx upgrade --json` and gates the change set on review |
+| Move an applied template to a newer version | `frontx upgrade <projectRoot> <targetVersion>` directly, or its `--json` form, which emits the change set for review and reads a decision back before anything is applied |
 | Understand the ecosystem - runtime substrate, type system, API surface, package boundaries | This document and the guidelines it ships with |
 | Check that a template is publishable | The `frontx` executable directly - `frontx validate <templateDir>` |
 
