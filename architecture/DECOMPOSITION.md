@@ -922,7 +922,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 19 work-package features
   - Two declared agent entry points: top-level request routing, and scaffolding from a stated intent.
   - Selection of the application set by matching intent against manifest-declared descriptions, over the locally installed inventory only.
   - The application plan: at most one seed, then further distinct templates added, at most one application per template identity.
-  - Refusal without writing files when nothing is installed, nothing matches, or candidates tie.
+  - Refusal without writing files when nothing is installed, nothing matches, candidates tie, or the target holds content no provenance accounts for.
   - Reporting the applied set from the provenance record set.
   - Realization of per-unit multiplicity inside an applied template's own ground: driving that template's activated extension skills (F16) once per unit the intent names, placing the intent's stated content into each unit created, and running the verification those skills declare - the sequencing and the intent-specific content are this feature's, while the structure, naming, identifiers and registration remain the applied template's own skill's to state.
   - Reporting as residual only the intent that no applied template's ground contains and no activated extension skill covers.

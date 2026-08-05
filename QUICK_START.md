@@ -70,9 +70,10 @@ The target must **not already hold content**: a path that does not exist is
 created, and one that is empty or holds only non-content entries (`.git`,
 `.DS_Store`, `Thumbs.db`) is used, while a directory holding anything else is
 refused before any file is written — the conflict check arbitrates templates'
-declared boundaries and cannot speak for content no template declared (see
-`cpt-frontx-dod-cli-scaffolding-seed-empty-target`). Use `frontx add` (below) for
-a directory that already has content.
+declared boundaries and cannot speak for content no template declared (the full
+reasoning is in
+[`architecture/features/cli-scaffolding/FEATURE.md`](architecture/features/cli-scaffolding/FEATURE.md)).
+Use `frontx add` (below) for a directory that already has content.
 
 ### 3. Add a template to an existing repository
 

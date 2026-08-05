@@ -64,6 +64,9 @@ const SPECIFIC_TEMPLATE_NAMES = [
 // per-document granularity reuses this list AND its matching rule instead of
 // transcribing either. A second hand-maintained copy diverges from the day it
 // is written, which is exactly the defect this export exists to prevent.
+//
+// @internal - exported for this package's own self-validation suite, not part
+// of the kit's published surface; `src/index.ts` does not re-export it.
 export const FORBIDDEN_BODY_NAMES: readonly string[] = [...SPECIFIC_TEMPLATE_NAMES, ...FRAMEWORK_NAMES];
 
 // @cpt-begin:cpt-frontx-algo-ai-kit-packaging-manifest-validation:p1:inst-check-required-fields
@@ -336,6 +339,8 @@ function checkSolutionContent(entry: unknown, prefix: string, violations: Valida
  * or `undefined` when it carries none. The single authority for both the list
  * and the word-boundary rule that matches it.
  *
+ * @internal - exported for this package's own self-validation suite, not part
+ * of the kit's published surface; `src/index.ts` does not re-export it.
  * @param text - a shipped resource body, or any excerpt of one
  */
 export function findForbiddenSolutionName(text: string): string | undefined {

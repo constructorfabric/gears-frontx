@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseToml } from 'smol-toml';
-import { findForbiddenSolutionName, validateKitManifest } from '../validate-manifest.js';
+import { FORBIDDEN_BODY_NAMES, findForbiddenSolutionName, validateKitManifest } from '../validate-manifest.js';
 import { createFsResourceBodyReader } from '../resource-body-reader.js';
 import type { KitManifest, KitResourceEntry, ResourceBodyReader } from '../types.js';
 
@@ -80,6 +80,8 @@ describe('shipped manifest on disk — canonical shape and KIT-1 prefix', () => 
   // ABSENT from the published package - the manifest points at nothing on any
   // machine that installed the kit rather than checked out this repository
   // (cpt-frontx-dod-ai-project-scaffolding-declared-skill-surface, clause c).
+  // Assumes `files` holds literal paths, which it does: a glob entry would need
+  // matching rather than the prefix comparison below, and this kit declares none.
   it('every declared resource source is covered by the package published file set', () => {
     const published = (
       JSON.parse(fs.readFileSync(path.join(kitRoot, 'package.json'), 'utf8')) as { files: string[] }
@@ -343,7 +345,9 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
   // The kit orchestrates the CLI over its command surface and never links it, so
   // the entry point that applies templates must reach them by running the
   // executable (cpt-frontx-dod-ai-project-scaffolding-command-surface-only).
-  it('drives the frontx executable and names no import of the CLI package in the scaffolding document', () => {
+  // The absence of an import specifier is asserted separately, over every
+  // shipped document, in no-cli-package-edge.test.ts.
+  it('names the executable commands it drives the CLI through, in the scaffolding document', () => {
     const body = shippedBody(SCAFFOLDING_ID);
 
     expect(body).toContain('frontx list --json');
@@ -365,6 +369,15 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
   // what is forbidden and no copy here to drift out of step with it.
   it('names no concrete template, solution, or framework in the scaffolding document', () => {
     expect(findForbiddenSolutionName(shippedBody(SCAFFOLDING_ID))).toBeUndefined();
+  });
+
+  // Reads the exported list itself, so the scan above is known to be checking a
+  // non-empty set of real product names rather than passing because the list
+  // emptied out. This is the consumer the list is exported for.
+  it('scans against a non-empty forbidden-name list that includes the shipped template identities', () => {
+    expect(FORBIDDEN_BODY_NAMES.length).toBeGreaterThan(0);
+    expect(FORBIDDEN_BODY_NAMES).toContain('template-shell');
+    expect(FORBIDDEN_BODY_NAMES).toContain('react');
   });
 
   it('names no concrete template, solution, or framework in the routing document', () => {

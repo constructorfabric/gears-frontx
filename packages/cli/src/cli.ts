@@ -309,22 +309,32 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
 
     // dispatch -> cpt-frontx-flow-template-resolution-list (listCommand)
     case 'list': {
-      // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-invoke
-      // `list` takes no positional argument and exactly one recognized flag, so
-      // anything else is rejected rather than ignored. Ignoring it silently ran
-      // a near-miss like `--jsonl` straight into the HUMAN output at exit 0 —
-      // a caller parsing that stream sees a successful command and unparseable
-      // output, which is worse than a refusal it can act on.
-      const unknownFlags = args.filter((arg) => arg !== '--json');
-      if (unknownFlags.length > 0) {
+      // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-check-args
+      // `list` takes no positional argument and one recognized flag, so anything
+      // else is refused rather than ignored. Ignoring it ran a near-miss like
+      // `--jsonl` straight into the HUMAN output at exit 0 — a caller parsing
+      // that stream sees a successful command and unparseable output, which is
+      // worse than a refusal it can act on.
+      //
+      // A REPEATED `--json` is accepted, not an error: it names the same form
+      // unambiguously, every mainstream CLI tolerates a repeated flag, and
+      // refusing it would break a caller that appends to an argv list for no
+      // gain in safety.
+      const unknownArgs = args.filter((arg) => arg !== '--json');
+      if (unknownArgs.length > 0) {
+        // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-abort-unknown-arg
         return {
           exitCode: EXIT_USER_ERROR,
-          stderr: `Unrecognized argument(s) for list: ${unknownFlags.join(', ')}. Usage: frontx list [--json]`,
+          stderr: `Unrecognized argument(s) for list: ${unknownArgs.join(', ')}. Usage: frontx list [--json]`,
         };
+        // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-abort-unknown-arg
       }
+      // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-check-args
+
+      // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-invoke
       const jsonMode = args.includes('--json');
       // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-invoke
-      const entries = await listCommand(deps.inventory);
+      const entries = await listCommand(deps.inventory, { withDescriptions: jsonMode });
       // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
       // ONE JSON line in the envelope F10 §1.5 fixes, matching the `frontx
       // upgrade --json` handshake's final result line, so the AI Tooling

@@ -322,6 +322,17 @@ describe('dispatch: list (cpt-frontx-flow-template-resolution-list)', () => {
     expect(outcome.stderr).toContain('frontx list [--json]');
   });
 
+  // A repeated recognized flag names the same form unambiguously, so it is
+  // accepted rather than refused as a duplicate.
+  it('accepts a repeated --json flag rather than refusing it as a duplicate', async () => {
+    const { deps } = makeDeps();
+
+    const outcome = await run(['list', '--json', '--json'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_SUCCESS);
+    expect(JSON.parse(outcome.stdout ?? '')).toEqual({ ok: true, templates: [] });
+  });
+
   it('leaves the human-readable listing unchanged when a manifest declares a description', async () => {
     const { deps, registerManifest } = makeDeps();
     registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0', { description: 'Establishes a thing.' }));

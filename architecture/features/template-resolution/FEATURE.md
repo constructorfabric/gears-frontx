@@ -126,15 +126,18 @@ User-facing interactions that start with an actor (human or external system) and
 
 **Error Scenarios**:
 - Local inventory is empty; CLI reports an empty inventory with no error, as the empty message in the human form and as an empty collection in the machine-readable form
+- The invocation carries an argument that is not the recognized machine-readable flag: the command is refused with a usage line naming the unrecognized argument, and neither listing form is emitted. A near-miss flag must not fall through to the human form, because a calling program would then receive a success exit code alongside output it cannot parse - a silently wrong answer where a refusal it can act on was available. Repeating the recognized flag is not an error: it names the same form unambiguously.
 
 **Steps**:
 1. [x] - `p1` - Developer or calling program invokes the CLI list command, optionally requesting the machine-readable form - `inst-list-invoke`
-2. [x] - `p1` - CLI reads the tracked local inventory index - `inst-list-read`
-3. [x] - `p1` - **IF** the inventory index contains no entries: - `inst-list-empty-check`
+2. [x] - `p1` - **IF** the invocation carries any argument that is not the recognized machine-readable flag - `inst-list-check-args`
+   1. [x] - `p1` - **RETURN** the command refused, naming the unrecognized argument(s) and the accepted usage form; no listing is emitted in either form - `inst-list-abort-unknown-arg`
+3. [x] - `p1` - CLI reads the tracked local inventory index - `inst-list-read`
+4. [x] - `p1` - **IF** the inventory index contains no entries: - `inst-list-empty-check`
    1. [x] - `p1` - **RETURN** empty inventory message to developer, or an empty collection when the machine-readable form was requested - `inst-list-empty-return`
-4. [x] - `p1` - CLI formats each inventory entry as name and pinned version - `inst-list-format`
-5. [x] - `p1` - **IF** the machine-readable form was requested, CLI instead emits one structured record per inventory entry carrying identity, pinned reference, source address, and the description declared by the manifest the entry records - omitting the description for an entry whose manifest declares none, rather than substituting a placeholder a caller could mistake for a declaration - `inst-list-format-machine`
-6. [x] - `p1` - **RETURN** formatted inventory listing to developer - `inst-list-return`
+5. [x] - `p1` - CLI formats each inventory entry as name and pinned version - `inst-list-format`
+6. [x] - `p1` - **IF** the machine-readable form was requested, CLI instead emits one structured record per inventory entry carrying identity, pinned reference, source address, and the description declared by the manifest the entry records - omitting the description for an entry whose manifest declares none, rather than substituting a placeholder a caller could mistake for a declaration - `inst-list-format-machine`
+7. [x] - `p1` - **RETURN** formatted inventory listing to developer - `inst-list-return`
 
 ### Update Installed Template in Local Inventory
 
@@ -282,7 +285,7 @@ The system **MUST** install a template into the local inventory by resolving a d
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-template-resolution-list-inventory`
 
-The system **MUST** enumerate all entries in the tracked local inventory and report each installed template name with its pinned version when the developer invokes the list command, and **MUST** additionally offer a machine-readable form of the same enumeration carrying each entry's identity, pinned reference, source address, and manifest-declared description - the surface over which a calling program obtains the selectable set without reading the inventory's storage. An entry whose manifest declares no description carries none in that form (`target` for the machine-readable form).
+The system **MUST** enumerate all entries in the tracked local inventory and report each installed template name with its pinned version when the developer invokes the list command, and **MUST** additionally offer a machine-readable form of the same enumeration carrying each entry's identity, pinned reference, source address, and manifest-declared description - the surface over which a calling program obtains the selectable set without reading the inventory's storage. An entry whose manifest declares no description carries none in that form, and the command **MUST** refuse an invocation carrying any argument that is not the recognized machine-readable flag rather than falling through to either listing form (`target` for the machine-readable form and for the argument refusal).
 
 **Implements**:
 - `cpt-frontx-flow-template-resolution-list`
@@ -352,6 +355,7 @@ The system **MUST** take a template's identity from the identity its own manifes
 - [ ] CLI list command returns all installed templates and their pinned versions from the local inventory
 - [ ] CLI list command reports an empty inventory when no templates are installed
 - [x] CLI list command offers a machine-readable form carrying each installed template's identity, pinned reference, source address, and manifest-declared description, emitting an empty collection for an empty inventory and no description for an entry whose manifest declares none (`target`)
+- [x] CLI list command refuses an unrecognized argument with a usage line naming it, emitting neither listing form, while a repeated recognized flag is accepted (`target`)
 - [ ] CLI update-local command replaces the named inventory entry with newly fetched content at the new pinned version, leaving every scaffolded project path unmodified
 - [ ] CLI update-local command reports a not-found error when the named template is absent from the local inventory
 - [ ] No template content is bundled in the CLI distribution (zero template assets or dependencies in the CLI package)

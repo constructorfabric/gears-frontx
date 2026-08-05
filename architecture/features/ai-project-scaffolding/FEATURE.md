@@ -97,6 +97,7 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 - Developer states an intent against a directory that already holds applied templates; the seed step is omitted and only the further distinct templates are added.
 
 **Error Scenarios**:
+- The target directory holds content but no provenance record set: this is existing work the flow did not start, so no seed is planned against it. The developer is told what was found and offered either a fresh directory to seed into or the add path applied to the directory as it stands - qualified by that path's own limit, since it arbitrates declared template boundaries only and can still overwrite an existing file at a path the applied template declares.
 - No template is installed in the local inventory: the developer is told that selection has nothing to choose from and how to install a template, and no command that writes files is invoked.
 - No installed template's declared description matches the intent: the developer is told which templates are installed and which were not considered because they declare no description, and is asked to restate the intent or install a template that answers it; nothing is guessed and no files are written.
 - Two or more installed templates match the project-establishing part of the intent indistinguishably: the developer is asked to choose between the named candidates and their declared descriptions before anything is applied.
@@ -110,7 +111,7 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 **Steps**:
 1. [ ] - `p1` - Developer states the intent for a project and the target directory, and the agent host invokes the scaffolding entry point. - `inst-sfi-invoke`
 2. [ ] - `p1` - The entry point obtains the installed-template inventory - each entry's identity, pinned reference, and declared description - by invoking the CLI's machine-readable listing command through the `frontx` executable's command surface (`cpt-frontx-feature-template-resolution`), never by reading the CLI's inventory storage and never from any remote source. - `inst-sfi-read-inventory`
-3. [ ] - `p1` - The entry point establishes whether the target directory already holds applied templates by reading its provenance record set, so that the plan omits a seed for a directory that is already a project. - `inst-sfi-read-target-state`
+3. [ ] - `p1` - The entry point establishes whether the target directory already holds applied templates by reading its provenance record set, so that the plan omits a seed for a directory that is already a project, **and** whether the directory holds content no provenance accounts for - because absent provenance alone does not license a seed: the CLI refuses to seed over content it did not write, so a plan built on provenance alone can name a seed the CLI will refuse. - `inst-sfi-read-target-state`
 4. [ ] - `p1` - The entry point invokes the selection algorithm (`cpt-frontx-algo-ai-project-scaffolding-select-templates`) with the intent, the inventory, and the already-applied set. - `inst-sfi-select`
 5. [ ] - `p1` - **IF** selection returns a refusal - `inst-sfi-if-refused`
    1. [ ] - `p1` - **RETURN** the refusal and its reason to the developer - nothing installed, nothing matched, or a choice required - with no `frontx` command invoked that writes files. - `inst-sfi-return-refused`

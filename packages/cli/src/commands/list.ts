@@ -36,13 +36,24 @@ export function listJsonEnvelope(entries: ListEntry[]): ListJsonEnvelope {
   return { ok: true, templates: entries };
 }
 
+export interface ListCommandOptions {
+  /**
+   * Whether to resolve each entry's declared description. Only the
+   * machine-readable form carries descriptions, and resolving one runs the full
+   * manifest contract validation per entry — work the human form parses and
+   * then discards. Defaults to `false` so the cheap path stays cheap.
+   */
+  withDescriptions?: boolean;
+}
+
 export async function listCommand(
   inventory: TemplateInventory,
+  options: ListCommandOptions = {},
 ): Promise<ListEntry[]> {
   const entries = await inventory.list();
   // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
   return entries.map((e) => {
-    const description = declaredDescription(e.content);
+    const description = options.withDescriptions ? declaredDescription(e.content) : undefined;
     return {
       name: e.name,
       ref: e.ref,

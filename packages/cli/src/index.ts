@@ -24,7 +24,7 @@ export { createFsBackedDiscoveryHook } from './discovery/fs-hook';
 export type { FsExtensionDiscovery } from './discovery/fs-hook';
 
 export { listCommand, listJsonEnvelope } from './commands/list';
-export type { ListEntry, ListJsonEnvelope } from './commands/list';
+export type { ListEntry, ListJsonEnvelope, ListCommandOptions } from './commands/list';
 
 export { updateLocalCommand } from './commands/update-local';
 export type { UpdateLocalResult } from './commands/update-local';
