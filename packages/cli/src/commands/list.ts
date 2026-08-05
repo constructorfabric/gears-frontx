@@ -7,14 +7,27 @@ export interface ListEntry {
   name: string;
   ref: string;
   source: string;
-  // The description the entry's own manifest declares. Absent when the manifest
-  // declares none AND when the stored manifest no longer satisfies the manifest
-  // contract at all — see `declaredDescription` below, which cannot distinguish
-  // the two and does not try. Absent rather than empty on purpose: the
-  // machine-readable form is what a calling program selects a template by, and a
-  // placeholder there is a declaration the template never made
+  // The description the entry's own manifest declares, absent when it declares
+  // none. Absent rather than empty on purpose: the machine-readable form is what
+  // a calling program selects a template by, and a placeholder there is a
+  // declaration the template never made
   // (cpt-frontx-flow-template-resolution-list inst-list-format-machine).
   description?: string;
+  // Present, and only ever `true`, when the entry's stored manifest did not
+  // satisfy the manifest contract, so no description could be read from it.
+  //
+  // This is what keeps `description`'s absence honest. Without it a consumer
+  // reads one absence as two different facts — "this template declares no
+  // description" and "this template's manifest is broken" — and reports the
+  // first for both. The failure mode that makes it worth a field: a future
+  // tightening of the manifest contract would invalidate stored manifests
+  // wholesale, and every template would be reported as declaring no description
+  // rather than as needing reinstallation.
+  //
+  // Absent (not `false`) in the ordinary case, matching `description`'s own
+  // convention, so a conforming entry carries no key for a problem it does not
+  // have.
+  manifestUnreadable?: true;
 }
 
 // The `--json` response envelope, owned by this feature's §1.5 because it is a
@@ -51,18 +64,23 @@ export async function listCommand(
   options: ListCommandOptions = {},
 ): Promise<ListEntry[]> {
   const entries = await inventory.list();
-  // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
   return entries.map((e) => {
-    const description = options.withDescriptions ? declaredDescription(e.content) : undefined;
-    return {
-      name: e.name,
-      ref: e.ref,
-      source: e.source,
-      ...(description === undefined ? {} : { description }),
-    };
+    // Identity, pinned reference and source address are common to both output
+    // forms (inst-list-format), so they sit outside the marked region below.
+    const base: ListEntry = { name: e.name, ref: e.ref, source: e.source };
+    if (!options.withDescriptions) return base;
+
+    // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
+    const stored = storedDescription(e.content);
+    if (!stored.ok) return { ...base, manifestUnreadable: true };
+    return stored.description === undefined ? base : { ...base, description: stored.description };
+    // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
   });
-  // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
 }
+
+type StoredDescriptionResult =
+  | { ok: true; description?: string }
+  | { ok: false; reason: 'manifest-unreadable' };
 
 // The description declared by the manifest an inventory entry recorded at
 // install time, read through the same single manifest read path every other
@@ -71,16 +89,18 @@ export async function listCommand(
 //
 // `readManifestFromContent` rejects on ANY manifest-contract violation, not
 // only on unparseable JSON, so an entry whose stored manifest has since drifted
-// out of contract — a malformed ownership boundary, a missing version — is
-// listed without a description exactly as one that declares none is. The two
-// are deliberately not distinguished: either way there is no description a
-// caller may select on, which is the only question this function answers.
+// out of contract — a malformed ownership boundary, a missing version — reaches
+// the `ok: false` branch. That case is reported as its own outcome rather than
+// folded into "no description": a caller told a template declares nothing looks
+// for a template that describes itself, whereas a caller told the manifest is
+// unreadable knows to reinstall it. Collapsing the two costs a developer that
+// distinction at exactly the moment they need it.
 //
 // Enumerating rather than refusing is the deliberate choice: `list` reports the
 // inventory, and failing the whole enumeration over one bad record would hide
 // every other installed template from a caller that came to enumerate them.
-function declaredDescription(content: string): string | undefined {
+function storedDescription(content: string): StoredDescriptionResult {
   const result = readManifestFromContent(content);
-  if (!result.ok) return undefined;
-  return result.manifest.description;
+  if (!result.ok) return { ok: false, reason: 'manifest-unreadable' };
+  return { ok: true, description: result.manifest.description };
 }

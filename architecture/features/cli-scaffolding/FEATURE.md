@@ -274,6 +274,8 @@ The system **MUST** run a pre-flight intersection check over the staged assembly
 
 The system **MUST** refuse the seed flow, before resolving any template and before writing any file, when the target directory holds at least one entry outside the closed non-content set — reporting the directory, the content entries found and only those, and that seeding materializes a whole repository over ground no template declared — and **MUST** name the add flow as the operation defined against a directory that already holds content, qualified by that flow's own limit: it arbitrates declared template boundaries only and can still overwrite an existing file at a path the applied template declares as its own. The system **MUST** separately refuse, with no add remedy offered, a target path that exists and is not a directory, because the add flow requires a directory too and would fail on the same path.
 
+Every refusal quotes the target as a **resolved absolute path**, whatever form the developer typed. A refusal that echoed `.` back tells them nothing about which directory was refused, and the same resolved form is what the flow records and reports throughout, so one invocation cannot name the target two ways.
+
 The non-content set is closed at `.git`, `.DS_Store`, `Thumbs.db`: no template may declare any of them as ownership ground, no assembly writes to them, and materialization cannot collide with them, so their presence carries no information about whether the ground is free. A target holding only these proceeds, which is what makes seeding a freshly initialized repository — holding exactly `.git` — a supported first step. A target path that does not exist is created by materialization, and a target that exists and is empty proceeds, so the refusal costs no supported case.
 
 This obligation is **not** discharged by the pre-flight conflict check (`cpt-frontx-dod-cli-scaffolding-conflict-check`): that check arbitrates between templates' *declared* boundaries, and pre-existing content is declared by nobody, so the seed flow's empty occupied set makes every claim look free no matter what the directory holds (`target`).
@@ -294,7 +296,7 @@ This obligation is **not** discharged by the pre-flight conflict check (`cpt-fro
 - [x] A target directory that exists and is empty is seeded
 - [x] A target directory holding only non-content entries (`.git`, `.DS_Store`, `Thumbs.db`) is seeded, so a freshly initialized repository is a supported starting point
 - [x] A target directory holding any entry outside the non-content set is refused with no file written and no template resolved, and the refusal names only the content entries
-- [x] The refusal names the directory and the add flow's command, qualified by that flow's declared-boundary-only limit
+- [x] The refusal names the directory as a resolved absolute path, and the add flow's command, qualified by that flow's declared-boundary-only limit
 - [x] A target path that exists and is not a directory is refused with no add remedy offered
 
 ### Shared-File Region Composition at Materialization

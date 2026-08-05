@@ -76,7 +76,8 @@ This feature owns the concrete shape of the listing command's machine-readable f
 - `name` - the identity the template's own manifest declares, and the argument the seed and add commands take.
 - `ref` - the reference the entry is pinned at, as recorded from the source-spec's `@ref` segment. This is the acquisition reference, **not** the manifest's `version` field; the two need not agree in form or value.
 - `source` - the full source-spec the entry was resolved from, re-resolvable as-is.
-- `description` - the description the entry's manifest declares. **The key is absent, never empty and never a placeholder, when the entry's manifest declares none or no longer satisfies the manifest contract** - a consumer selects templates by this value, and a substituted placeholder would be indistinguishable from a declaration the template never made.
+- `description` - the description the entry's manifest declares. **The key is absent, never empty and never a placeholder, when the entry declares none** - a consumer selects templates by this value, and a substituted placeholder would be indistinguishable from a declaration the template never made.
+- `manifestUnreadable` - present, and only ever `true`, when the entry's stored manifest no longer satisfies the manifest contract, so no description could be read from it. Absent otherwise, matching `description`'s own convention. It exists because that case and "declares none" both leave `description` absent while calling for opposite responses: a template that declares none is working as intended and is simply not selectable from an intent, whereas an unreadable manifest is a broken installation to reinstall. Reporting the first for the second would be wrong at exactly the moment it matters, and a future tightening of the manifest contract would invalidate stored manifests wholesale and silently report an entire inventory as declaring nothing.
 
 The key names are the contract; renaming one is a breaking change to the AI Tooling Framework's read path even though no compile-time edge would report it.
 
@@ -123,6 +124,7 @@ User-facing interactions that start with an actor (human or external system) and
 **Success Scenarios**:
 - Developer sees all templates installed in the local inventory with their pinned versions
 - Caller requests the machine-readable listing and receives, per installed template, its identity, pinned reference, source address, and the description its manifest declares - the form a program consumes over the command surface without parsing prose
+- An installed template's stored manifest no longer satisfies the manifest contract; the machine-readable form lists the entry, carries no description for it, and marks it as having an unreadable manifest, so the caller can tell a broken installation from a template that simply declares nothing
 
 **Error Scenarios**:
 - Local inventory is empty; CLI reports an empty inventory with no error, as the empty message in the human form and as an empty collection in the machine-readable form
@@ -136,7 +138,7 @@ User-facing interactions that start with an actor (human or external system) and
 4. [x] - `p1` - **IF** the inventory index contains no entries: - `inst-list-empty-check`
    1. [x] - `p1` - **RETURN** empty inventory message to developer, or an empty collection when the machine-readable form was requested - `inst-list-empty-return`
 5. [x] - `p1` - CLI formats each inventory entry as name and pinned version - `inst-list-format`
-6. [x] - `p1` - **IF** the machine-readable form was requested, CLI instead emits one structured record per inventory entry carrying identity, pinned reference, source address, and the description declared by the manifest the entry records - omitting the description for an entry whose manifest declares none, rather than substituting a placeholder a caller could mistake for a declaration - `inst-list-format-machine`
+6. [x] - `p1` - **IF** the machine-readable form was requested, CLI instead emits one structured record per inventory entry carrying identity, pinned reference, source address, and the description declared by the manifest the entry records - omitting the description for an entry whose manifest declares none, rather than substituting a placeholder a caller could mistake for a declaration, and marking as unreadable an entry whose stored manifest no longer satisfies the manifest contract so that the two causes of an absent description stay distinguishable - `inst-list-format-machine`
 7. [x] - `p1` - **RETURN** formatted inventory listing to developer - `inst-list-return`
 
 ### Update Installed Template in Local Inventory
@@ -285,7 +287,7 @@ The system **MUST** install a template into the local inventory by resolving a d
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-template-resolution-list-inventory`
 
-The system **MUST** enumerate all entries in the tracked local inventory and report each installed template name with its pinned version when the developer invokes the list command, and **MUST** additionally offer a machine-readable form of the same enumeration carrying each entry's identity, pinned reference, source address, and manifest-declared description - the surface over which a calling program obtains the selectable set without reading the inventory's storage. An entry whose manifest declares no description carries none in that form, and the command **MUST** refuse an invocation carrying any argument that is not the recognized machine-readable flag rather than falling through to either listing form (`target` for the machine-readable form and for the argument refusal).
+The system **MUST** enumerate all entries in the tracked local inventory and report each installed template name with its pinned version when the developer invokes the list command, and **MUST** additionally offer a machine-readable form of the same enumeration carrying each entry's identity, pinned reference, source address, and manifest-declared description - the surface over which a calling program obtains the selectable set without reading the inventory's storage. An entry whose manifest declares no description carries none in that form, an entry whose stored manifest no longer satisfies the manifest contract is marked as unreadable rather than reported as declaring none, and the command **MUST** refuse an invocation carrying any argument that is not the recognized machine-readable flag rather than falling through to either listing form (`target` for the machine-readable form and for the argument refusal).
 
 **Implements**:
 - `cpt-frontx-flow-template-resolution-list`
@@ -356,6 +358,7 @@ The system **MUST** take a template's identity from the identity its own manifes
 - [ ] CLI list command reports an empty inventory when no templates are installed
 - [x] CLI list command offers a machine-readable form carrying each installed template's identity, pinned reference, source address, and manifest-declared description, emitting an empty collection for an empty inventory and no description for an entry whose manifest declares none (`target`)
 - [x] CLI list command refuses an unrecognized argument with a usage line naming it, emitting neither listing form, while a repeated recognized flag is accepted (`target`)
+- [x] An entry whose stored manifest no longer satisfies the manifest contract is listed with no description and marked unreadable, distinguishably from an entry that conforms and declares none (`target`)
 - [ ] CLI update-local command replaces the named inventory entry with newly fetched content at the new pinned version, leaving every scaffolded project path unmodified
 - [ ] CLI update-local command reports a not-found error when the named template is absent from the local inventory
 - [ ] No template content is bundled in the CLI distribution (zero template assets or dependencies in the CLI package)

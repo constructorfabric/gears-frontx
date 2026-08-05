@@ -47,13 +47,15 @@ One JSON line: `{ "ok": true, "templates": [ ... ] }`. Each record carries
   do not derive one from the other;
 - `source` - the address it was resolved from;
 - `description` - the template's own statement of what it establishes and what
-  it contributes. **The key is absent when the template declares none, and also
-  when the entry's stored manifest no longer satisfies the manifest contract at
-  all** - for any reason, not only unreadable text, since the listing reports the
-  rest of the inventory rather than failing over one bad record. The two cases
-  are indistinguishable from here and need not be distinguished: either way you
-  have no declared description to match against, and the entry is handled as one
-  that declares none.
+  it contributes. **The key is absent when the template declares none**;
+- `manifestUnreadable` - present, and only ever `true`, when the entry's stored
+  manifest no longer satisfies the manifest contract, so no description could be
+  read from it. The listing reports the rest of the inventory rather than failing
+  over one bad record, and marks the bad one this way. **Neither entry is
+  selectable, but they are not the same problem and must not be reported as the
+  same one**: a template that declares none is working as intended and simply
+  cannot be chosen from an intent, whereas an unreadable manifest is a broken
+  installation the developer can fix by reinstalling that template.
 
 This command is the only source for the selectable set. Do not consult any
 remote registry, any list built into this document, or the CLI's storage.
@@ -97,20 +99,26 @@ Work from the intent, the records from step 1, and the identities from step 2.
    to choose from. Tell the developer to install a template first (`frontx
    install <source-spec>`) and stop. Run no command that writes files.
 2. **Partition by declared description.** Only records carrying a `description`
-   are candidates. Set the rest aside, and keep them - you will report them as
-   not considered. A template that describes nothing offers nothing to match an
-   intent against; it stays reachable by its exact reference through the direct
-   CLI path.
+   are candidates. Set the rest aside, keeping the two causes apart - you will
+   report them, and they call for different actions:
+   - carries neither key: the template declares no description. It offers nothing
+     to match an intent against and stays reachable by its exact reference
+     through the direct CLI path.
+   - carries `manifestUnreadable`: the template's stored manifest is broken.
+     Report it as such and name reinstalling it as the fix. Do not report it as
+     declaring no description - that sends the developer looking for a
+     better-described template instead of repairing the one they have.
 3. **No candidates.** If no record declares a description, refuse: nothing
-   matched. List every installed template and say each was skipped for declaring
-   no description. Write nothing.
+   matched. List every installed template with the reason it was skipped, using
+   each entry's own cause from step 2. Write nothing.
 4. **Match.** Compare the intent against each candidate's `description`, reading
    it as the template's own statement of what it establishes and contributes.
    Special-case no identity, no namespace, no naming pattern - the description is
    the whole basis, and a name that looks promising is not evidence.
 5. **No match.** If no candidate's description answers any part of the intent,
-   refuse: nothing matched. Name the candidates you considered and those skipped
-   for declaring no description. Choose no nearest match, and write nothing.
+   refuse: nothing matched. Name the candidates you considered and those skipped,
+   each with its own reason from step 2. Choose no nearest match, and write
+   nothing.
 6. **The seed.** If step 2 found no applied template, the seed is the single
    candidate whose description matches the project-establishing part of the
    intent - the part that says what kind of project this is.

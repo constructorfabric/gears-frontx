@@ -383,9 +383,11 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         return { exitCode: EXIT_USER_ERROR, stderr: 'seed requires <templateRef> and <targetDir> arguments.' };
       }
       const lookupFn = (name: string): InventoryEntry | undefined => deps.inventory.lookup(name);
-      // Resolved before it reaches the flow, because every seed refusal quotes
-      // this path back verbatim: a developer who typed `.` is told which
-      // directory was refused, not shown their own shorthand reflected at them.
+      // Resolved at this boundary, as `add` below also does, so both apply
+      // commands report and record one form of the path. Every seed refusal
+      // quotes it back verbatim, and a developer who typed `.` is told which
+      // directory was refused rather than shown their own shorthand reflected
+      // at them.
       const result = await seedRepository(
         templateRef,
         path.resolve(targetDir),
@@ -416,9 +418,15 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         return { exitCode: EXIT_USER_ERROR, stderr: 'add requires <templateRef> and <targetDir> arguments.' };
       }
       const lookupFn = (name: string): InventoryEntry | undefined => deps.inventory.lookup(name);
+      // Resolved exactly as `seed` above resolves it: the two commands take the
+      // same argument and write into the same project, so a path that renders
+      // and records one way through one of them must do the same through the
+      // other. `add` reads provenance from this path, joins writes onto it and
+      // quotes it in its result, all of which seed already drives with a
+      // resolved path.
       const result = await addTemplate(
         templateRef,
-        targetDir,
+        path.resolve(targetDir),
         lookupFn,
         () => deps.inventory.list(),
         deps.readContentFn,

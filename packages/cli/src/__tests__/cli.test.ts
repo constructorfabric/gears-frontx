@@ -281,17 +281,29 @@ describe('dispatch: list (cpt-frontx-flow-template-resolution-list)', () => {
 
     const outcome = await run(['list', '--json'], deps);
 
-    const parsed = JSON.parse(outcome.stdout ?? '') as Record<string, unknown>;
+    // Narrowed rather than cast: a cast would assert the very shape this case
+    // exists to verify, so a rename would satisfy the compiler and the
+    // assertion alike.
+    const parsed: unknown = JSON.parse(outcome.stdout ?? '');
+    if (typeof parsed !== 'object' || parsed === null) throw new Error('expected a JSON object envelope');
     expect(Object.keys(parsed).sort()).toEqual(['ok', 'templates']);
-    expect(parsed.ok).toBe(true);
-    const records = parsed.templates as Record<string, unknown>[];
-    expect(Object.keys(records[0]).sort()).toEqual(['description', 'name', 'ref', 'source']);
+
+    const templates: unknown = Reflect.get(parsed, 'templates');
+    expect(Reflect.get(parsed, 'ok')).toBe(true);
+    if (!Array.isArray(templates)) throw new Error('expected "templates" to be an array');
+
+    const record: unknown = templates[0];
+    if (typeof record !== 'object' || record === null) throw new Error('expected a record object');
+    expect(Object.keys(record).sort()).toEqual(['description', 'name', 'ref', 'source']);
   });
 
-  // inst-list-format-machine — `readManifestFromContent` rejects on ANY
-  // contract violation, so a stored manifest that drifted out of contract in a
-  // way that has nothing to do with the description still yields no description.
-  it('lists an entry whose stored manifest no longer satisfies the contract, carrying no description', async () => {
+  // inst-list-format-machine — `readManifestFromContent` rejects on ANY contract
+  // violation, so a manifest that drifted out of contract in a way unrelated to
+  // the description still yields no description. It is reported as its own cause
+  // rather than as "declares none": a caller told a template describes nothing
+  // goes looking for a better-described template, where one told the manifest is
+  // unreadable knows to reinstall this one.
+  it('flags an entry whose stored manifest no longer satisfies the contract, rather than reporting it as declaring none', async () => {
     const { deps, registerManifest } = makeDeps();
     registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0', { description: 'Establishes a thing.' }));
     await run(['install', 'github:acme/foo@v1.0.0'], deps);
@@ -300,6 +312,24 @@ describe('dispatch: list (cpt-frontx-flow-template-resolution-list)', () => {
     const stored = deps.inventory.lookup('foo');
     if (!stored) throw new Error('fixture: expected "foo" to be installed');
     stored.content = JSON.stringify({ ...JSON.parse(stored.content), version: '' });
+
+    const outcome = await run(['list', '--json'], deps);
+
+    expect(JSON.parse(outcome.stdout ?? '')).toEqual({
+      ok: true,
+      templates: [
+        { name: 'foo', ref: 'v1.0.0', source: 'github:acme/foo@v1.0.0', manifestUnreadable: true },
+      ],
+    });
+  });
+
+  // The counterpart cause: a conforming manifest that simply declares no
+  // description carries neither key, so the two causes are distinguishable by
+  // their absence as well as by their presence.
+  it('carries no manifestUnreadable flag for a conforming manifest that declares no description', async () => {
+    const { deps, registerManifest } = makeDeps();
+    registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0'));
+    await run(['install', 'github:acme/foo@v1.0.0'], deps);
 
     const outcome = await run(['list', '--json'], deps);
 
