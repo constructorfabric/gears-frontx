@@ -10,8 +10,8 @@ import { InventoryState } from '../inventory/types';
 import type { TemplateManifest } from '../manifest/types';
 import type { ContentItem, ReadContentItemsFn } from '../scaffold/types';
 
-// Helpers — the manifest carries ONLY the four declared categories (identity,
-// version, ownership boundaries, referenced templates); content items live
+// Helpers — the manifest carries ONLY its declared categories (identity,
+// version, ownership boundaries, referenced templates, description); content items live
 // SEPARATELY, in a content registry keyed by template name, and are read via
 // the injected `readContentFn` seam directly from the "installed content
 // path" — never from the manifest (inst-ua-read-content).

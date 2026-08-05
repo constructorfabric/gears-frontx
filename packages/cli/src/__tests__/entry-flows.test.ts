@@ -12,15 +12,15 @@ import type { ProvenanceRecord, ProvenanceWriteFn } from '../provenance/types';
 import type { ReadProvenanceRecordsFn } from '../scaffold/materialize';
 import type { ReadTargetDirFn } from '../commands/seed-repository';
 
-// Same content-registry-keyed-by-name convention as assembler.test.ts — the
-// manifest carries ONLY the four declared categories; content items live
-// separately and are read via the injected readContentFn seam, directly from
-// the installed content path, never from the manifest.
-// These cases aim seed at a notional '/target' that exists on no filesystem, so
-// the probe reports it absent — the case materialization creates. The
-// empty-target guard's own cases supply their own probe.
+// The seed cases below aim at a notional '/target' that exists on no
+// filesystem, so the probe reports it absent — the case materialization
+// creates. The empty-target guard's own cases supply their own probe.
 const targetAbsent: ReadTargetDirFn = async () => undefined;
 
+// Same content-registry-keyed-by-name convention as assembler.test.ts — the
+// manifest carries ONLY its declared categories; content items live separately
+// and are read via the injected readContentFn seam, directly from the installed
+// content path, never from the manifest.
 function makeEntry(
   name: string,
   content: ContentItem[],
@@ -65,7 +65,8 @@ function makeFsFake() {
   return { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn };
 }
 
-// inst-seed-check-target-empty / inst-seed-if-target-not-empty /
+// inst-seed-check-target-empty / inst-seed-if-target-not-directory /
+// inst-seed-abort-target-not-directory / inst-seed-if-target-not-empty /
 // inst-seed-abort-target-not-empty — cpt-frontx-dod-cli-scaffolding-seed-empty-target
 describe('seedRepository empty-target guard — cpt-frontx-dod-cli-scaffolding-seed-empty-target', () => {
   const entry = makeEntry('template-a', [{ path: 'template-a/index.ts', content: 'export const a = true;' }]);
@@ -90,7 +91,107 @@ describe('seedRepository empty-target guard — cpt-frontx-dod-cli-scaffolding-s
     expect(files.size).toBe(0);
   });
 
-  it('carries the entries it found so a caller reports the refusal without re-reading the directory', async () => {
+  // .git is the load-bearing non-content entry: `git init` then `frontx seed` is
+  // the ordinary way to start, so refusing a bare repository would refuse the
+  // most common first step there is.
+  it('seeds a directory holding only .git, so a freshly initialized repository is a supported start', async () => {
+    const { files, writeFileFn, provenanceWriteFn } = makeFsFake();
+
+    const result = await seedRepository(
+      'template-a',
+      '/fresh-repo',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => ['.git'],
+    );
+
+    expect(result.ok).toBe(true);
+    expect(files.get('/fresh-repo/template-a/index.ts')).toBe('export const a = true;');
+  });
+
+  it('seeds a directory holding only platform droppings such as .DS_Store', async () => {
+    const { writeFileFn, provenanceWriteFn } = makeFsFake();
+
+    const result = await seedRepository(
+      'template-a',
+      '/dropping-only',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => ['.DS_Store', 'Thumbs.db'],
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('still refuses a directory mixing non-content entries with real content', async () => {
+    const { writeFileFn, provenanceWriteFn } = makeFsFake();
+
+    const result = await seedRepository(
+      'template-a',
+      '/mixed',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => ['.git', 'package.json'],
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-not-empty');
+  });
+
+  // The non-content entries were not the reason, so quoting them would send the
+  // developer looking for content that is not what blocked them.
+  it('names only the content entries in the refusal, never the non-content ones', async () => {
+    const { writeFileFn, provenanceWriteFn } = makeFsFake();
+
+    const result = await seedRepository(
+      'template-a',
+      '/mixed',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => ['.git', '.DS_Store', 'package.json'],
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain('package.json');
+    expect(result.message).not.toContain('.git');
+    expect(result.message).not.toContain('.DS_Store');
+    expect(result.message).toContain('holds 1 entry');
+  });
+
+  // A path that exists as a file gets its own reason and NO add remedy: add
+  // needs a directory too, so recommending it would be a second failure.
+  it('refuses a target path that exists and is not a directory, offering no add remedy', async () => {
+    const { files, writeFileFn, provenanceWriteFn } = makeFsFake();
+
+    const result = await seedRepository(
+      'template-a',
+      '/some-file.txt',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => 'not-a-directory',
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-not-directory');
+    expect(result.message).toContain('/some-file.txt');
+    expect(result.message).not.toContain('frontx add');
+    expect(files.size).toBe(0);
+  });
+
+  it('qualifies the add remedy with the boundary-only limit that lets add overwrite a declared path', async () => {
     const { writeFileFn, provenanceWriteFn } = makeFsFake();
 
     const result = await seedRepository(
@@ -100,12 +201,12 @@ describe('seedRepository empty-target guard — cpt-frontx-dod-cli-scaffolding-s
       readContentFn,
       writeFileFn,
       provenanceWriteFn,
-      async () => ['package.json', 'src'],
+      async () => ['package.json'],
     );
 
     expect(result.ok).toBe(false);
-    if (result.ok || result.reason !== 'target-not-empty') return;
-    expect(result.entries).toEqual(['package.json', 'src']);
+    if (result.ok) return;
+    expect(result.message).toContain('declared template boundaries only');
   });
 
   it('names the refused directory and the add command as the remedy', async () => {
@@ -145,8 +246,12 @@ describe('seedRepository empty-target guard — cpt-frontx-dod-cli-scaffolding-s
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.message).toContain('and 7 more');
-    expect(result.message).not.toContain('file-11.ts');
+    // The property: exactly REFUSAL_ENTRY_SAMPLE names quoted, the balance
+    // counted. Asserting one absent filename would pass for the wrong reason if
+    // the cap changed but the sample happened to exclude that name.
+    const quoted = many.filter((name) => result.message.includes(name));
+    expect(quoted).toHaveLength(5);
+    expect(result.message).toContain(`and ${many.length - 5} more`);
   });
 
   it('seeds a target directory that exists and is empty, because an empty directory holds nothing to overwrite', async () => {
@@ -185,7 +290,7 @@ describe('seedRepository empty-target guard — cpt-frontx-dod-cli-scaffolding-s
 
   // The guard runs before resolution, so a populated target is refused without
   // the flow ever consulting the inventory.
-  it('refuses before resolving the template, so no lookup is attempted against a populated target', async () => {
+  it('refuses before resolving the template, so only the reference check consults the inventory', async () => {
     const { writeFileFn, provenanceWriteFn } = makeFsFake();
     const lookupFn = vi.fn((): InventoryEntry | undefined => entry);
 

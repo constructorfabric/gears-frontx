@@ -21,7 +21,7 @@ description: "Agent navigation rules for FrontX ecosystem package boundaries, CL
 - CLI resolves templates by source-spec at runtime; it bundles no template content
 - Source-spec format: `host:owner/repo[//subtree]@ref` — the optional `//subtree` addresses a template occupying a subdirectory of a repository
 - Supported commands are `install`, `list`, `update-local`, `validate`, `seed`, `add`, `upgrade`, and `help`
-- `seed` applies a template into a **new** repository, `add` into an **existing** one; both take the identity the template's own manifest declares, which is what `list` reports
+- `seed` applies a template into a **new** repository - a target that does not exist, is empty, or holds only non-content entries such as `.git`; it refuses a directory holding anything else. `add` applies into an **existing** one. Both take the identity the template's own manifest declares, which is what `list` reports
 - `list --json` is the machine-readable form: one record per installed template carrying its identity, pinned reference, source address, and declared description
 
 ## When a request is to create or extend a project

@@ -29,19 +29,24 @@ export type SeedRepositoryResult =
       message: string;
     }
   | { ok: false; reason: 'conflict'; conflicts: BoundaryConflictEntry[]; message: string }
-  | { ok: false; reason: 'target-not-empty'; entries: string[]; message: string };
+  | { ok: false; reason: 'target-not-empty'; message: string }
+  | { ok: false; reason: 'target-not-directory'; message: string };
 
 /**
- * Reads the entry names directly under `path`, or `undefined` when `path` does
- * not exist.
+ * What the target path holds: the entry names of an existing directory,
+ * `'not-a-directory'` when the path exists but is not a directory, or
+ * `undefined` when it does not exist.
  *
- * The `undefined`/`[]` distinction is the whole point of the signature: a
- * nonexistent target is created by materialization, whereas a target that
- * exists and is empty is seeded into, and only a target holding entries is
- * refused. Injected so this flow touches no filesystem itself; the concrete
- * implementation is `createFsReadTargetDirFn` in `adapters/fs-target-dir.ts`.
+ * All three are distinguished because the seed flow answers each differently: a
+ * nonexistent target is created by materialization, an existing directory is
+ * partitioned into content and non-content, and a non-directory is refused
+ * outright with no add remedy. Injected so this flow touches no filesystem
+ * itself; the concrete implementation is `createFsReadTargetDirFn` in
+ * `adapters/fs-target-dir.ts`.
  */
-export type ReadTargetDirFn = (path: string) => Promise<string[] | undefined>;
+export type TargetDirState = string[] | 'not-a-directory' | undefined;
+
+export type ReadTargetDirFn = (path: string) => Promise<TargetDirState>;
 
 // How many entry names a refusal quotes before summarizing the rest. A
 // developer needs enough to recognize their own directory, not an inventory of
@@ -49,14 +54,29 @@ export type ReadTargetDirFn = (path: string) => Promise<string[] | undefined>;
 // message no terminal can show.
 const REFUSAL_ENTRY_SAMPLE = 5;
 
+// Entries whose presence says nothing about whether the ground is free: no
+// template may declare any of them as ownership boundary (the manifest
+// validator refuses `.frontx/` reserved paths on the same principle), no
+// assembly writes to them, and materialization cannot collide with them.
+//
+// Closed deliberately. `.git` is the load-bearing member: `git init` followed by
+// `frontx seed` is the ordinary way to start, and treating VCS metadata as
+// content would refuse the most common first step there is. Widening this set
+// to anything a template COULD write would reopen the hole the guard closes.
+const NON_CONTENT_ENTRIES: ReadonlySet<string> = new Set(['.git', '.DS_Store', 'Thumbs.db']);
+
 /**
  * cpt-frontx-flow-cli-scaffolding-seed-repository — applies an installed
  * template, plus any templates its preset references, to a target directory
- * that is empty or does not yet exist: refuses a target already holding
- * content, resolves the set through the shared F10 resolver, stages it through
- * the P14 uniform-apply path, submits the staged assembly to the P29
+ * that does not yet exist, is empty, or holds only non-content entries:
+ * refuses a target already holding content and a target path that is not a
+ * directory, resolves the set through the shared F10 resolver, stages it
+ * through the P14 uniform-apply path, submits the staged assembly to the P29
  * pre-flight conflict check, and on pass materializes the repository writing
  * one provenance record per applied template.
+ *
+ * @param targetDir - the directory to seed; pass it already resolved for
+ * display, since it is quoted verbatim in every refusal message
  */
 export async function seedRepository(
   templateRef: string,
@@ -103,25 +123,59 @@ export async function seedRepository(
   // route is declared by nobody and every claim looks free no matter what the
   // directory holds. Without this gate, pointing seed at a populated tree
   // overwrites it silently.
-  const existingEntries = await readTargetDirFn(targetDir);
+  const targetState = await readTargetDirFn(targetDir);
+  // Partitioned here rather than in the adapter: which entries count as content
+  // is a rule of this flow, and the adapter stays a pure listing that reports
+  // what is on disk without judging it.
+  const contentEntries =
+    targetState === undefined || targetState === 'not-a-directory'
+      ? []
+      : targetState.filter((entry) => !NON_CONTENT_ENTRIES.has(entry));
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-check-target-empty
 
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-target-not-directory
+  if (targetState === 'not-a-directory') {
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-directory
+    // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-empty
+    // No add remedy here, deliberately: `frontx add` needs a directory too and
+    // would fail on this same path, so naming it would send the developer to a
+    // second failure rather than to a fix.
+    return {
+      ok: false,
+      reason: 'target-not-directory',
+      message:
+        `Apply refused — target path "${targetDir}" exists and is not a directory, ` +
+        'so no files were written. Seeding materializes a repository into a directory; ' +
+        'point it at a directory path, or remove the file occupying this one.',
+    };
+    // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-empty
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-directory
+  }
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-target-not-directory
+
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-target-not-empty
-  if (existingEntries !== undefined && existingEntries.length > 0) {
+  if (contentEntries.length > 0) {
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-empty
     // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-empty
     // REQUESTED -> ABORTED without entering RESOLVED: the refusal precedes
     // resolution, so no assembly is ever staged for this operation.
+    //
+    // The add remedy carries its own limit. `add` checks the new template's
+    // declared boundaries against those of templates ALREADY APPLIED here, and
+    // this directory has none — so it will not refuse on account of the content
+    // below, and it overwrites an existing file at any path the template
+    // declares as its own. Stating that is the difference between a remedy and
+    // a redirection into the same loss by another route.
     return {
       ok: false,
       reason: 'target-not-empty',
-      entries: existingEntries,
       message:
-        `Apply refused — target directory "${targetDir}" already holds ${existingEntries.length} ` +
-        `${existingEntries.length === 1 ? 'entry' : 'entries'} (${summarizeEntries(existingEntries)}). ` +
+        `Apply refused — target directory "${targetDir}" already holds ${contentEntries.length} ` +
+        `${contentEntries.length === 1 ? 'entry' : 'entries'} (${summarizeEntries(contentEntries)}). ` +
         'Seeding materializes a whole repository and would write over content no template declared, ' +
         `so no files were written. Run "frontx add ${templateRef} ${targetDir}" instead to apply this ` +
-        'template into a directory that already holds content.',
+        'template into a directory that already holds content — noting that add arbitrates declared ' +
+        'template boundaries only, so it can still overwrite an existing file at a path the template declares.',
     };
     // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-empty
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-empty
@@ -221,8 +275,14 @@ export async function seedRepository(
 
 // Quotes the first few entry names and counts the rest, so the refusal carries
 // enough evidence for a developer to recognize the directory they aimed at.
+// Sorted first: `readdir` order is filesystem-dependent, and a refusal whose
+// wording shifts between runs on one unchanged directory reads as instability
+// in the tool rather than as a fixed property of the directory.
 function summarizeEntries(entries: string[]): string {
-  const shown = entries.slice(0, REFUSAL_ENTRY_SAMPLE).join(', ');
-  const remaining = entries.length - Math.min(entries.length, REFUSAL_ENTRY_SAMPLE);
-  return remaining === 0 ? shown : `${shown}, and ${remaining} more`;
+  const sorted = [...entries].sort();
+  const shown = sorted.slice(0, REFUSAL_ENTRY_SAMPLE).join(', ');
+  // `slice` already caps at the array length, so the remainder cannot go
+  // negative and needs no clamping.
+  const remaining = sorted.length - REFUSAL_ENTRY_SAMPLE;
+  return remaining <= 0 ? shown : `${shown}, and ${remaining} more`;
 }

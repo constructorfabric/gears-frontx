@@ -17,6 +17,7 @@
 // I/O adapters delivered in Phases 9-10 (plus the generic fs project-io glue
 // in `adapters/fs-project-io.ts`) rather than reimplementing any I/O.
 import readline from 'node:readline/promises';
+import path from 'node:path';
 import process from 'node:process';
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -372,9 +373,12 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         return { exitCode: EXIT_USER_ERROR, stderr: 'seed requires <templateRef> and <targetDir> arguments.' };
       }
       const lookupFn = (name: string): InventoryEntry | undefined => deps.inventory.lookup(name);
+      // Resolved before it reaches the flow, because every seed refusal quotes
+      // this path back verbatim: a developer who typed `.` is told which
+      // directory was refused, not shown their own shorthand reflected at them.
       const result = await seedRepository(
         templateRef,
-        targetDir,
+        path.resolve(targetDir),
         lookupFn,
         deps.readContentFn,
         deps.writeFileFn,

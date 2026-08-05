@@ -318,6 +318,8 @@ describe('dispatch: list (cpt-frontx-flow-template-resolution-list)', () => {
 
     expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
     expect(outcome.stdout).toBeUndefined();
+    expect(outcome.stderr).toContain('--jsonl');
+    expect(outcome.stderr).toContain('frontx list [--json]');
   });
 
   it('leaves the human-readable listing unchanged when a manifest declares a description', async () => {
@@ -424,6 +426,33 @@ describe('dispatch: seed (cpt-frontx-flow-cli-scaffolding-seed-repository)', () 
     expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
     expect(outcome.stderr).toContain('/existing-repo');
     expect(outcome.stderr).toContain('frontx add foo /existing-repo');
+  });
+
+  // cli.ts resolves the target before the flow sees it, so a developer who typed
+  // a relative path is told which directory was refused.
+  it('renders the refused target as an absolute path even when invoked with a relative one', async () => {
+    const { deps, registerManifest } = makeDeps({
+      readTargetDirFn: vi.fn(async () => ['package.json']),
+    });
+    registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0'));
+    await run(['install', 'github:acme/foo@v1.0.0'], deps);
+
+    const outcome = await run(['seed', 'foo', '.'], deps);
+
+    expect(outcome.stderr).toContain(process.cwd());
+  });
+
+  it('exits user-error and offers no add remedy when the seed target is not a directory', async () => {
+    const { deps, registerManifest } = makeDeps({
+      readTargetDirFn: vi.fn(async () => 'not-a-directory' as const),
+    });
+    registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0'));
+    await run(['install', 'github:acme/foo@v1.0.0'], deps);
+
+    const outcome = await run(['seed', 'foo', '/some-file.txt'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).not.toContain('frontx add');
   });
 
   it('writes no file when seed is refused for a non-empty target', async () => {

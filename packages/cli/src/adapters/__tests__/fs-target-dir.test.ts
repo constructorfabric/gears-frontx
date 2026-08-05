@@ -42,32 +42,36 @@ describe('createFsReadTargetDirFn — cpt-frontx-dod-cli-scaffolding-seed-empty-
 
     const result = await readTargetDir(dir);
 
-    expect(result?.sort()).toEqual(['package.json', 'src']);
+    expect(Array.isArray(result) ? [...result].sort() : result).toEqual(['package.json', 'src']);
   });
 
-  // A path that exists as a file is an occupied target, not an absent one: the
-  // developer's mistake is the same, and reporting it absent would let seed
-  // proceed against something that already exists.
-  it('reports a path that exists as a file as an occupied target rather than an absent one', async () => {
+  // Its own state, not a listing: reporting `[path]` described a file as a
+  // directory containing itself, and sent the refusal down the branch that
+  // recommends `frontx add` against a path add cannot use either.
+  it('reports a path that exists as a file as not-a-directory rather than as a listing', async () => {
     const file = path.join(tmpDir(), 'not-a-dir.txt');
     fs.writeFileSync(file, 'content');
     const readTargetDir = createFsReadTargetDirFn();
 
     const result = await readTargetDir(file);
 
-    expect(result).toEqual([file]);
+    expect(result).toBe('not-a-directory');
   });
 
   // An unreadable directory says nothing about emptiness; swallowing the error
   // would read it as empty and wave the assembly through.
   it('rethrows a permission failure rather than reporting an unreadable directory as empty', async () => {
-    const dir = tmpDir();
-    fs.mkdirSync(path.join(dir, 'locked'));
-    fs.chmodSync(path.join(dir, 'locked'), 0o000);
+    const locked = path.join(tmpDir(), 'locked');
+    fs.mkdirSync(locked);
+    fs.chmodSync(locked, 0o000);
     const readTargetDir = createFsReadTargetDirFn();
 
-    await expect(readTargetDir(path.join(dir, 'locked'))).rejects.toThrow();
-
-    fs.chmodSync(path.join(dir, 'locked'), 0o755);
+    try {
+      await expect(readTargetDir(locked)).rejects.toThrow();
+    } finally {
+      // Restored even when the assertion above fails, so the afterEach sweep can
+      // still remove the directory.
+      fs.chmodSync(locked, 0o755);
+    }
   });
 });

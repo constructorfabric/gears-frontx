@@ -75,9 +75,11 @@ also check whether the directory exists and is empty:
 - **exists and holds content, with no provenance** - this is someone's existing
   work, not a project this flow started. Do not plan a seed against it: say so,
   and offer either a fresh directory to seed into or `frontx add` to apply into
-  the directory as it stands. Planning the seed anyway only earns the CLI's
-  refusal one step later, after you have already shown the developer a plan that
-  could not run.
+  the directory as it stands - saying, when you offer add, that it arbitrates
+  declared template boundaries only, so it can still overwrite an existing file
+  at a path the template declares as its own. Planning the seed anyway only earns
+  the CLI's refusal one step later, after you have already shown the developer a
+  plan that could not run.
 
 ## Step 3 - Select what to apply
 
@@ -112,15 +114,16 @@ Work from the intent, the records from step 1, and the identities from step 2.
    one candidate whose description matches it, skipping any candidate already in
    the plan. **A template contributes to a project once.** A part of the intent
    that repeats a unit inside ground the plan already covers adds no second
-   application - see step 7 below.
-9. **Drop what is already applied.** Remove from the plan every identity step 2
-   already recorded, and record it as already applied. Re-applying an identity
+   application - see Step 7 (Realize the units the intent names) below.
+9. **Drop what is already applied.** Remove from the plan every identity Step 2
+   (Read what the target directory already holds) recorded, and record it as already applied. Re-applying an identity
    re-claims ground it already occupies, and the CLI's conflict check refuses the
    whole operation rather than part of it.
 10. **Separate the per-unit work from the residual.** Every part of the intent
     that names a unit living inside a selected or already-applied template's own
     ground is per-unit work, recorded once per unit and attributed to the
-    template that owns that ground. It is **not** residual - step 7 realizes it.
+    template that owns that ground. It is **not** residual - Step 7 (Realize the
+    units the intent names) realizes it.
     Only what no template's description covers and no template's ground contains
     is residual.
 

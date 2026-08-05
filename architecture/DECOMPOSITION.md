@@ -526,7 +526,7 @@ This decomposition breaks the FROZEN FrontX DESIGN into 19 work-package features
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-template-manifest`
 
-- **Purpose**: Define the single published template manifest as the conformance contract — every template declares itself in a versioned shape across exactly four categories (identity, version, ownership boundaries, referenced templates), checked at pre-publish validation and read at install, apply, and assembly, giving one authoritative description.
+- **Purpose**: Define the single published template manifest as the conformance contract — every template declares itself in a versioned shape across exactly five categories (identity, version, ownership boundaries, referenced templates, description), checked at pre-publish validation and read at install, apply, assembly, and selection, giving one authoritative description.
 
 - **Depends On**: `cpt-frontx-feature-template-resolution`
 
