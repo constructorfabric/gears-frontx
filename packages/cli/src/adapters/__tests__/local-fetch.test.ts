@@ -17,6 +17,7 @@ import { createFsWriteFileFn, createFsReadProjectFileFn } from '../fs-project-io
 import { createFsProvenanceWriteFn } from '../provenance-io';
 import { installCommand } from '../../commands/install';
 import { seedRepository } from '../../commands/seed-repository';
+import { createFsReadTargetDirFn } from '../fs-target-dir';
 
 // The real on-disk template this repository ships — the FIXTURE the P16
 // final done-gate also assembles OFFLINE via this same adapter.
@@ -119,6 +120,7 @@ describe('offline e2e — frontx install + seed assemble the real template-shell
         readContentFn,
         writeFileFn,
         provenanceWriteFn,
+        createFsReadTargetDirFn(),
         readProjectFileFn,
       );
 

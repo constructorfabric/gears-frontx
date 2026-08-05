@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { seedRepository } from '../commands/seed-repository';
+import { createFsReadTargetDirFn } from '../adapters/fs-target-dir';
 import { addTemplate } from '../commands/add-template';
 import { installCommand } from '../commands/install';
 import { createLocalFetchFn } from '../adapters/local-fetch';
@@ -82,6 +83,7 @@ describe('Fixture 1 — union fidelity: seed frontx-template-shell + add frontx-
       harness.readContentFn,
       harness.writeFileFn,
       harness.provenanceWriteFn,
+      createFsReadTargetDirFn(),
     );
     expect(seedResult.ok).toBe(true);
 
@@ -132,6 +134,7 @@ describe('Fixture 2 (CLI part) — seed frontx-template-shell alone into an empt
       harness.readContentFn,
       harness.writeFileFn,
       harness.provenanceWriteFn,
+      createFsReadTargetDirFn(),
     );
 
     expect(seedResult.ok).toBe(true);
@@ -162,6 +165,7 @@ describe('Fixture 3 — add-only integrity: seed shell, hash every file, add mfe
       harness.readContentFn,
       harness.writeFileFn,
       harness.provenanceWriteFn,
+      createFsReadTargetDirFn(),
     );
     expect(seedResult.ok).toBe(true);
 
@@ -215,6 +219,7 @@ describe("Fixture 4 — conflict-check on REAL templates: a synthetic 'mfe-dup' 
       harness.readContentFn,
       harness.writeFileFn,
       harness.provenanceWriteFn,
+      createFsReadTargetDirFn(),
     );
     expect(seedResult.ok).toBe(true);
     const addResult = await addTemplate(

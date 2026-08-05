@@ -20,6 +20,7 @@
 - [5. Definitions of Done](#5-definitions-of-done)
   - [Uniform Apply Path](#uniform-apply-path)
   - [Pre-Flight Conflict Check Before Any Write](#pre-flight-conflict-check-before-any-write)
+  - [Seeding Refuses a Target That Already Holds Content](#seeding-refuses-a-target-that-already-holds-content)
   - [Shared-File Region Composition at Materialization](#shared-file-region-composition-at-materialization)
   - [Preserve Previously-Applied Regions Not Re-Contributed by This Assembly](#preserve-previously-applied-regions-not-re-contributed-by-this-assembly)
   - [Ownership-Boundary-Declared Assembly](#ownership-boundary-declared-assembly)
@@ -72,10 +73,12 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 **Actor**: `cpt-frontx-actor-project-developer`
 
 **Success Scenarios**:
-- Developer applies an installed template to an empty target directory; the CLI resolves the template and any templates its preset references, checks the staged assembly for boundary conflicts, and materializes the repository.
+- Developer applies an installed template to a target directory that does not yet exist; the CLI resolves the template and any templates its preset references, checks the staged assembly for boundary conflicts, and materializes the repository, creating the directory as it writes.
+- Developer applies an installed template to a target directory that exists and is empty; the operation proceeds identically, because an empty directory holds nothing the assembly could overwrite.
 
 **Error Scenarios**:
 - Template reference cannot be resolved from the local template inventory: the operation is aborted and the developer is notified with no files written.
+- The target directory exists and holds any entry: the operation is refused before any file is written, naming the directory and stating that seeding materializes a whole repository and would write over content it does not own. Seeding is defined against ground no template occupies, and the pre-flight conflict check cannot speak for this content — it arbitrates between templates' declared boundaries, and content that arrived by any other route is declared by nobody, so an empty occupied set makes every claim look free. The developer is pointed at the add flow, which is the operation defined against a directory that already holds content.
 - Two applied templates in the staged assembly claim the same ground: the operation is aborted before any file is written, naming the contesting templates and the contested ground.
 - A `region-union` shared-file path already on disk carries a marker line `compose-shared-files` cannot parse into a locatable block — a token with no `identity:key` separator, an unterminated region, or an end marker that closes nothing: the operation is aborted before any file is written, naming the path and line number for the developer to fix or remove.
 - A `region-union` shared-file path already on disk carries a block whose owning identity is not among the templates being applied: the operation is aborted before any file is written, naming the path and the block's unrecorded owner. At a seed this is unconditional for any such pre-existing block — the target's provenance starts empty, so no prior owner can ever be recorded to explain it away.
@@ -84,13 +87,16 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 1. [x] - `p1` - Developer invokes the apply command with a template reference and a target directory path. - `inst-seed-invoke`
 2. [x] - `p1` - **IF** the template reference resolves to no entry in the local template inventory - `inst-seed-check-resolved`
    1. [x] - `p1` - **RETURN** apply aborted — template reference not found in local inventory. - `inst-seed-abort-not-found`
-3. [x] - `p1` - The CLI resolves the referenced template and, per `cpt-frontx-adr-composed-template-resolution`, the templates its preset references, producing the set to apply. - `inst-seed-resolve-set`
-4. [x] - `p1` - The CLI stages the resolved set as an assembly against the empty target directory through the uniform apply path (`cpt-frontx-algo-cli-scaffolding-uniform-apply`). - `inst-seed-stage`
-5. [x] - `p1` - The CLI submits the staged assembly to the pre-flight conflict check (`cpt-frontx-algo-cli-scaffolding-conflict-check`). - `inst-seed-conflict-check`
-6. [x] - `p1` - **IF** the conflict check reports an intersecting claim - `inst-seed-if-conflict`
+3. [x] - `p1` - The CLI reads the target directory to establish whether it already holds content, distinguishing a path that does not exist — which materialization creates — from one that exists and is empty. The reference is checked first because it is the input a developer is most likely to have mistyped, and both checks precede every write, so which comes first affects the message and never the safety. - `inst-seed-check-target-empty`
+4. [x] - `p1` - **IF** the target directory exists and holds any entry - `inst-seed-if-target-not-empty`
+   1. [x] - `p1` - **RETURN** apply refused — the target directory is named along with the entries found, seeding writes a whole repository and would overwrite content no template declared, and the add flow (`cpt-frontx-flow-cli-scaffolding-add-template`) is named as the operation defined against a directory that already holds content; no files written. - `inst-seed-abort-target-not-empty`
+5. [x] - `p1` - The CLI resolves the referenced template and, per `cpt-frontx-adr-composed-template-resolution`, the templates its preset references, producing the set to apply. - `inst-seed-resolve-set`
+6. [x] - `p1` - The CLI stages the resolved set as an assembly against the empty target directory through the uniform apply path (`cpt-frontx-algo-cli-scaffolding-uniform-apply`). - `inst-seed-stage`
+7. [x] - `p1` - The CLI submits the staged assembly to the pre-flight conflict check (`cpt-frontx-algo-cli-scaffolding-conflict-check`). - `inst-seed-conflict-check`
+8. [x] - `p1` - **IF** the conflict check reports an intersecting claim - `inst-seed-if-conflict`
    1. [x] - `p1` - **RETURN** apply aborted — the contesting templates and the contested ground are reported; no files written. - `inst-seed-abort-conflict`
-7. [x] - `p1` - The CLI materializes the staged assembly into the target directory, composing every shared file from its co-owning templates' owned regions per `cpt-frontx-algo-cli-scaffolding-compose-shared-files`. - `inst-seed-materialize`
-8. [x] - `p1` - **RETURN** apply complete — repository seeded and one provenance record written per applied template. - `inst-seed-return-done`
+9. [x] - `p1` - The CLI materializes the staged assembly into the target directory, composing every shared file from its co-owning templates' owned regions per `cpt-frontx-algo-cli-scaffolding-compose-shared-files`. - `inst-seed-materialize`
+10. [x] - `p1` - **RETURN** apply complete — repository seeded and one provenance record written per applied template. - `inst-seed-return-done`
 
 ### Add a Template into an Existing Repository
 
@@ -214,9 +220,10 @@ Internal system functions and procedures called by actor flows above.
 **Transitions**:
 1. [x] - `p1` - **FROM** REQUESTED **TO** RESOLVED **WHEN** every referenced template — including a preset's referenced templates — is located in the local inventory and staged as an assembly. - `inst-as-req-resolved`
 2. [x] - `p1` - **FROM** REQUESTED **TO** ABORTED **WHEN** a template reference cannot be resolved from the local inventory. - `inst-as-req-aborted-unresolved`
-3. [x] - `p1` - **FROM** RESOLVED **TO** CONFLICT_CHECKED **WHEN** the pre-flight conflict check finds no intersecting boundary claim across the staged assembly and any already-occupied boundaries. - `inst-as-resolved-checked`
-4. [x] - `p1` - **FROM** RESOLVED **TO** ABORTED **WHEN** the pre-flight conflict check reports an intersecting boundary claim; no files are written. - `inst-as-resolved-aborted-conflict`
-5. [x] - `p1` - **FROM** CONFLICT_CHECKED **TO** ASSEMBLED **WHEN** the cleared assembly is materialized into the target repository and one provenance record is written per applied template. - `inst-as-checked-assembled`
+3. [x] - `p1` - **FROM** REQUESTED **TO** ABORTED **WHEN** the seed flow's target directory exists and holds any entry; no template is resolved and no file is written. - `inst-as-req-aborted-target-not-empty`
+4. [x] - `p1` - **FROM** RESOLVED **TO** CONFLICT_CHECKED **WHEN** the pre-flight conflict check finds no intersecting boundary claim across the staged assembly and any already-occupied boundaries. - `inst-as-resolved-checked`
+5. [x] - `p1` - **FROM** RESOLVED **TO** ABORTED **WHEN** the pre-flight conflict check reports an intersecting boundary claim; no files are written. - `inst-as-resolved-aborted-conflict`
+6. [x] - `p1` - **FROM** CONFLICT_CHECKED **TO** ASSEMBLED **WHEN** the cleared assembly is materialized into the target repository and one provenance record is written per applied template. - `inst-as-checked-assembled`
 
 ## 5. Definitions of Done
 
@@ -255,6 +262,29 @@ The system **MUST** run a pre-flight intersection check over the staged assembly
 - Interface: `cli`
 - Component: `cpt-frontx-component-cli`, `cpt-frontx-component-cli-conflict-checker`
 - Entities: `Assembly`, `OwnershipBoundary`
+
+### Seeding Refuses a Target That Already Holds Content
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-cli-scaffolding-seed-empty-target`
+
+The system **MUST** refuse the seed flow, before resolving any template and before writing any file, when the target directory exists and holds any entry — reporting the directory, the entries found, and that seeding materializes a whole repository over ground no template declared — and **MUST** name the add flow as the operation defined against a directory that already holds content. A target path that does not exist is created by materialization, and a target that exists and is empty proceeds, so the refusal costs no supported case. This obligation is **not** discharged by the pre-flight conflict check (`cpt-frontx-dod-cli-scaffolding-conflict-check`): that check arbitrates between templates' *declared* boundaries, and pre-existing content is declared by nobody, so the seed flow's empty occupied set makes every claim look free no matter what the directory holds (`target`).
+
+**Implements**:
+- `cpt-frontx-flow-cli-scaffolding-seed-repository`
+- `cpt-frontx-state-cli-scaffolding-assembly-op`
+
+**Constraints**: (none owned by this feature)
+
+**Touches**:
+- Interface: `cli`
+- Component: `cpt-frontx-component-cli`, `cpt-frontx-component-cli-assembler`
+- Entities: `Assembly`
+
+**Verifiable clauses**:
+- [x] A target directory that does not exist is seeded and created
+- [x] A target directory that exists and is empty is seeded
+- [x] A target directory holding any entry is refused with no file written and no template resolved
+- [x] The refusal names the directory and the add flow's command
 
 ### Shared-File Region Composition at Materialization
 
@@ -316,6 +346,7 @@ The system **MUST** assemble a repository from one or more independently-applied
 - [ ] Adding a template into a repository that already holds applied templates checks the new template's declared boundaries against the already-occupied boundaries before any write. (`target`)
 - [ ] A preset's referenced templates are resolved and applied together in one operation, one provenance record written per applied template. (`target`)
 - [ ] Apply is aborted with notification and no files written when the template reference cannot be resolved from the local inventory. (`target`)
+- [x] Seeding is refused with no files written and no template resolved when the target directory exists and holds any entry, naming the directory, the entries found, and the add command as the operation for a directory that already holds content; a nonexistent target is created and an existing empty target proceeds. (`target`)
 - [ ] The pre-flight conflict check refuses the whole assembly before any write, reporting the contesting templates and the contested ground, when two applied templates claim: the same exclusive subtree; the same shared-file path with two `exclusive` claims or one `exclusive` mixed with a `region-union` claim; or the same declared region key on one `region-union` shared-file path. (`target`)
 - [ ] A shared file co-owned by two or more applied templates under `region-union` is materialized as the disjoint union of each template's owned region(s), extracted from installed content by the identity-and-region-key sentinel markers and written with those markers preserved; an `exclusive` path is written whole by its single owner. (`target`)
 - [ ] Materialization refuses the assembly when any two owned regions on a shared-file path have overlapping actual on-disk marker spans — whether contributed by different templates or by a single template declaring multiple keys — the content-level check that runs per shared-file path regardless of contributor count and that the pre-flight conflict check cannot perform. (`target`)

@@ -10,11 +10,17 @@ import type { TemplateManifest } from '../manifest/types';
 import type { ContentItem, ReadContentItemsFn, ReadProjectFileFn, WriteFileFn } from '../scaffold/types';
 import type { ProvenanceRecord, ProvenanceWriteFn } from '../provenance/types';
 import type { ReadProvenanceRecordsFn } from '../scaffold/materialize';
+import type { ReadTargetDirFn } from '../commands/seed-repository';
 
 // Same content-registry-keyed-by-name convention as assembler.test.ts — the
 // manifest carries ONLY the four declared categories; content items live
 // separately and are read via the injected readContentFn seam, directly from
 // the installed content path, never from the manifest.
+// These cases aim seed at a notional '/target' that exists on no filesystem, so
+// the probe reports it absent — the case materialization creates. The
+// empty-target guard's own cases supply their own probe.
+const targetAbsent: ReadTargetDirFn = async () => undefined;
+
 function makeEntry(
   name: string,
   content: ContentItem[],
@@ -59,6 +65,146 @@ function makeFsFake() {
   return { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn };
 }
 
+// inst-seed-check-target-empty / inst-seed-if-target-not-empty /
+// inst-seed-abort-target-not-empty — cpt-frontx-dod-cli-scaffolding-seed-empty-target
+describe('seedRepository empty-target guard — cpt-frontx-dod-cli-scaffolding-seed-empty-target', () => {
+  const entry = makeEntry('template-a', [{ path: 'template-a/index.ts', content: 'export const a = true;' }]);
+
+  it('refuses a target directory that already holds entries, writing no file and resolving no template', async () => {
+    const { files, writeFileFn, provenanceWriteFn } = makeFsFake();
+    const lookupFn = vi.fn(() => entry);
+
+    const result = await seedRepository(
+      'template-a',
+      '/existing-repo',
+      lookupFn,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => ['package.json', 'src', '.git'],
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-not-empty');
+    expect(files.size).toBe(0);
+  });
+
+  it('carries the entries it found so a caller reports the refusal without re-reading the directory', async () => {
+    const { writeFileFn, provenanceWriteFn } = makeFsFake();
+
+    const result = await seedRepository(
+      'template-a',
+      '/existing-repo',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => ['package.json', 'src'],
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok || result.reason !== 'target-not-empty') return;
+    expect(result.entries).toEqual(['package.json', 'src']);
+  });
+
+  it('names the refused directory and the add command as the remedy', async () => {
+    const { writeFileFn, provenanceWriteFn } = makeFsFake();
+
+    const result = await seedRepository(
+      'template-a',
+      '/existing-repo',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => ['package.json'],
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain('/existing-repo');
+    expect(result.message).toContain('frontx add template-a /existing-repo');
+  });
+
+  // A repository holding thousands of files must still produce a readable
+  // refusal, so the message samples and counts rather than listing everything.
+  it('summarizes the remainder rather than listing every entry of a large directory', async () => {
+    const { writeFileFn, provenanceWriteFn } = makeFsFake();
+    const many = Array.from({ length: 12 }, (_, i) => `file-${i}.ts`);
+
+    const result = await seedRepository(
+      'template-a',
+      '/existing-repo',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => many,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain('and 7 more');
+    expect(result.message).not.toContain('file-11.ts');
+  });
+
+  it('seeds a target directory that exists and is empty, because an empty directory holds nothing to overwrite', async () => {
+    const { files, writeFileFn, provenanceWriteFn } = makeFsFake();
+
+    const result = await seedRepository(
+      'template-a',
+      '/empty-dir',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => [],
+    );
+
+    expect(result.ok).toBe(true);
+    expect(files.get('/empty-dir/template-a/index.ts')).toBe('export const a = true;');
+  });
+
+  it('seeds a target directory that does not exist, which materialization creates', async () => {
+    const { files, writeFileFn, provenanceWriteFn } = makeFsFake();
+
+    const result = await seedRepository(
+      'template-a',
+      '/not-yet',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => undefined,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(files.get('/not-yet/template-a/index.ts')).toBe('export const a = true;');
+  });
+
+  // The guard runs before resolution, so a populated target is refused without
+  // the flow ever consulting the inventory.
+  it('refuses before resolving the template, so no lookup is attempted against a populated target', async () => {
+    const { writeFileFn, provenanceWriteFn } = makeFsFake();
+    const lookupFn = vi.fn((): InventoryEntry | undefined => entry);
+
+    await seedRepository(
+      'template-a',
+      '/existing-repo',
+      lookupFn,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => ['package.json'],
+    );
+
+    // One call only: the reference check at inst-seed-check-resolved. Resolution
+    // (inst-seed-resolve-set) would drive further lookups.
+    expect(lookupFn).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('seedRepository — cpt-frontx-flow-cli-scaffolding-seed-repository', () => {
   it('seeds an empty target: resolves the referenced set incl. preset references, stages via P14, passes P29, materializes, writes one provenance record per applied template', async () => {
     const preset = makeEntry('preset-template', [{ path: 'preset-template/README.md', content: 'preset' }], {
@@ -69,7 +215,7 @@ describe('seedRepository — cpt-frontx-flow-cli-scaffolding-seed-repository', (
     const lookupFn = (n: string) => entries[n];
     const { files, writeFileFn, provenanceWriteFn, readProjectFileFn } = makeFsFake();
 
-    const result = await seedRepository('preset-template', '/target', lookupFn, readContentFn, writeFileFn, provenanceWriteFn, readProjectFileFn);
+    const result = await seedRepository('preset-template', '/target', lookupFn, readContentFn, writeFileFn, provenanceWriteFn, targetAbsent, readProjectFileFn);
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -84,7 +230,7 @@ describe('seedRepository — cpt-frontx-flow-cli-scaffolding-seed-repository', (
   it('aborts with no files written when the template reference cannot be resolved from the local inventory', async () => {
     const { files, writeFileFn, provenanceWriteFn, readProjectFileFn } = makeFsFake();
 
-    const result = await seedRepository('missing', '/target', () => undefined, readContentFn, writeFileFn, provenanceWriteFn, readProjectFileFn);
+    const result = await seedRepository('missing', '/target', () => undefined, readContentFn, writeFileFn, provenanceWriteFn, targetAbsent, readProjectFileFn);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -103,7 +249,7 @@ describe('seedRepository — cpt-frontx-flow-cli-scaffolding-seed-repository', (
     const entries: Record<string, InventoryEntry> = { 'template-a': templateA, 'template-b': templateB };
     const { files, writeFileFn, provenanceWriteFn, readProjectFileFn } = makeFsFake();
 
-    const result = await seedRepository('template-a', '/target', (n) => entries[n], readContentFn, writeFileFn, provenanceWriteFn, readProjectFileFn);
+    const result = await seedRepository('template-a', '/target', (n) => entries[n], readContentFn, writeFileFn, provenanceWriteFn, targetAbsent, readProjectFileFn);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -472,7 +618,7 @@ describe('boundary-declared-assembly DoD — cpt-frontx-dod-cli-scaffolding-boun
     ]);
     const { files, writeFileFn, provenanceWriteFn, readProjectFileFn } = makeFsFake();
 
-    const result = await seedRepository('template-a', '/target', () => entry, readContentFn, writeFileFn, provenanceWriteFn, readProjectFileFn);
+    const result = await seedRepository('template-a', '/target', () => entry, readContentFn, writeFileFn, provenanceWriteFn, targetAbsent, readProjectFileFn);
 
     expect(result.ok).toBe(true);
     expect(files.get('/target/template-a/index.ts')).toBe('in-bounds');

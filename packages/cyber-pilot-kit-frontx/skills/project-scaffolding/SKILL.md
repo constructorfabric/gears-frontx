@@ -64,9 +64,20 @@ Read `<targetDir>/.frontx/provenance.json`. It is a JSON array, one record per
 already-applied template, each carrying `templateIdentity`,
 `scaffoldedFromVersion`, `sourceSpec` and `occupiedOwnershipBoundary`.
 
-Absent or unreadable file means the directory holds no applied template, and the
-plan will therefore begin with a seed. A directory that already holds records
-gets no seed - only further templates added.
+Absent or unreadable file means the directory holds no applied template. A
+directory that already holds records gets no seed - only further templates added.
+
+**Absent provenance is not by itself a licence to seed.** Seeding writes a whole
+repository and the CLI refuses it against a target that already holds content, so
+also check whether the directory exists and is empty:
+
+- **does not exist, or exists and is empty** - the plan begins with a seed;
+- **exists and holds content, with no provenance** - this is someone's existing
+  work, not a project this flow started. Do not plan a seed against it: say so,
+  and offer either a fresh directory to seed into or `frontx add` to apply into
+  the directory as it stands. Planning the seed anyway only earns the CLI's
+  refusal one step later, after you have already shown the developer a plan that
+  could not run.
 
 ## Step 3 - Select what to apply
 

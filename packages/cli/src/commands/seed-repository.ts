@@ -1,4 +1,5 @@
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-seed-repository:p1
+// @cpt-dod:cpt-frontx-dod-cli-scaffolding-seed-empty-target:p1
 import { resolveComposition } from '../composition/resolve';
 import { uniformApply } from '../scaffold/assembler';
 import { checkAssemblyConflicts } from '../scaffold/conflict';
@@ -27,13 +28,33 @@ export type SeedRepositoryResult =
         | 'materialization-refused';
       message: string;
     }
-  | { ok: false; reason: 'conflict'; conflicts: BoundaryConflictEntry[]; message: string };
+  | { ok: false; reason: 'conflict'; conflicts: BoundaryConflictEntry[]; message: string }
+  | { ok: false; reason: 'target-not-empty'; entries: string[]; message: string };
+
+/**
+ * Reads the entry names directly under `path`, or `undefined` when `path` does
+ * not exist.
+ *
+ * The `undefined`/`[]` distinction is the whole point of the signature: a
+ * nonexistent target is created by materialization, whereas a target that
+ * exists and is empty is seeded into, and only a target holding entries is
+ * refused. Injected so this flow touches no filesystem itself; the concrete
+ * implementation is `createFsReadTargetDirFn` in `adapters/fs-target-dir.ts`.
+ */
+export type ReadTargetDirFn = (path: string) => Promise<string[] | undefined>;
+
+// How many entry names a refusal quotes before summarizing the rest. A
+// developer needs enough to recognize their own directory, not an inventory of
+// it — and a repository with thousands of files would otherwise produce a
+// message no terminal can show.
+const REFUSAL_ENTRY_SAMPLE = 5;
 
 /**
  * cpt-frontx-flow-cli-scaffolding-seed-repository — applies an installed
- * template, plus any templates its preset references, to an EMPTY target
- * directory: resolves the set through the shared F10 resolver, stages it
- * through the P14 uniform-apply path, submits the staged assembly to the P29
+ * template, plus any templates its preset references, to a target directory
+ * that is empty or does not yet exist: refuses a target already holding
+ * content, resolves the set through the shared F10 resolver, stages it through
+ * the P14 uniform-apply path, submits the staged assembly to the P29
  * pre-flight conflict check, and on pass materializes the repository writing
  * one provenance record per applied template.
  */
@@ -44,6 +65,10 @@ export async function seedRepository(
   readContentFn: ReadContentItemsFn,
   writeFileFn: WriteFileFn,
   provenanceWriteFn: ProvenanceWriteFn,
+  // Required, and ahead of the optional parameter below: a call site that
+  // omitted it would silently skip the empty-target guard, which is the hole
+  // that guard exists to close.
+  readTargetDirFn: ReadTargetDirFn,
   // Optional — defaults to "nothing already on disk", which is exactly what
   // a fresh seed target already is; a caller that has no reason to reconcile
   // with an existing file (e.g. a test fixture) can omit it.
@@ -69,6 +94,39 @@ export async function seedRepository(
     };
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-not-found
   }
+
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-check-target-empty
+  // The P29 pre-flight conflict check cannot stand in for this. It arbitrates
+  // between templates' DECLARED boundaries, and seeding passes it an empty
+  // occupied set (`checkAssemblyConflicts(assembly, [])` below) because no
+  // template has been applied here yet — so content that arrived by any other
+  // route is declared by nobody and every claim looks free no matter what the
+  // directory holds. Without this gate, pointing seed at a populated tree
+  // overwrites it silently.
+  const existingEntries = await readTargetDirFn(targetDir);
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-check-target-empty
+
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-target-not-empty
+  if (existingEntries !== undefined && existingEntries.length > 0) {
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-empty
+    // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-empty
+    // REQUESTED -> ABORTED without entering RESOLVED: the refusal precedes
+    // resolution, so no assembly is ever staged for this operation.
+    return {
+      ok: false,
+      reason: 'target-not-empty',
+      entries: existingEntries,
+      message:
+        `Apply refused — target directory "${targetDir}" already holds ${existingEntries.length} ` +
+        `${existingEntries.length === 1 ? 'entry' : 'entries'} (${summarizeEntries(existingEntries)}). ` +
+        'Seeding materializes a whole repository and would write over content no template declared, ' +
+        `so no files were written. Run "frontx add ${templateRef} ${targetDir}" instead to apply this ` +
+        'template into a directory that already holds content.',
+    };
+    // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-empty
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-empty
+  }
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-target-not-empty
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-resolve-set
   const compositionResult = await resolveComposition(rootEntry, templateRef, new Set<string>(), 0, lookupFn);
@@ -159,4 +217,12 @@ export async function seedRepository(
     appliedTemplates: templateRefs,
   };
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-done
+}
+
+// Quotes the first few entry names and counts the rest, so the refusal carries
+// enough evidence for a developer to recognize the directory they aimed at.
+function summarizeEntries(entries: string[]): string {
+  const shown = entries.slice(0, REFUSAL_ENTRY_SAMPLE).join(', ');
+  const remaining = entries.length - Math.min(entries.length, REFUSAL_ENTRY_SAMPLE);
+  return remaining === 0 ? shown : `${shown}, and ${remaining} more`;
 }

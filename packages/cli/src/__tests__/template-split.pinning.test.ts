@@ -23,6 +23,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { seedRepository } from '../commands/seed-repository';
+import { createFsReadTargetDirFn } from '../adapters/fs-target-dir';
 import { addTemplate } from '../commands/add-template';
 import { installCommand } from '../commands/install';
 import { createLocalFetchFn } from '../adapters/local-fetch';
@@ -148,6 +149,7 @@ describe('Fixture 7 (F6-fixed, issue #487) — region-union composition reconcil
       readContentFn,
       writeFileFn,
       provenanceWriteFn,
+      createFsReadTargetDirFn(),
       readProjectFileFn,
     );
     expect(seedResult.ok).toBe(true);
@@ -203,6 +205,7 @@ describe('Fixture 7 (F6-fixed, issue #487) — region-union composition reconcil
       readContentFn,
       writeFileFn,
       provenanceWriteFn,
+      createFsReadTargetDirFn(),
       readProjectFileFn,
     );
     expect(seedResult.ok).toBe(true);
@@ -267,6 +270,7 @@ describe('Fixture 9 (B1-fix, issue #488) — frontx upgrade preserves multi-reco
       harness.readContentFn,
       harness.writeFileFn,
       harness.provenanceWriteFn,
+      createFsReadTargetDirFn(),
     );
     expect(seedResult.ok).toBe(true);
     const addResult = await addTemplate(

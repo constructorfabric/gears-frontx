@@ -118,7 +118,8 @@ export {
 } from './scaffold/materialize';
 export type { MaterializeResult, ReadProvenanceRecordsFn } from './scaffold/materialize';
 export { seedRepository } from './commands/seed-repository';
-export type { SeedRepositoryResult } from './commands/seed-repository';
+export type { SeedRepositoryResult, ReadTargetDirFn } from './commands/seed-repository';
+export { createFsReadTargetDirFn } from './adapters/fs-target-dir';
 export { addTemplate } from './commands/add-template';
 export type { AddTemplateResult } from './commands/add-template';
 

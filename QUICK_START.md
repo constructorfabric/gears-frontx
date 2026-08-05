@@ -66,6 +66,14 @@ Seeding resolves the template (plus any templates its preset references), runs a
 boundaries, and only then writes files — recording one provenance record per
 applied template under `./my-app/.frontx/`.
 
+The target must **not already hold content**: `seed` materializes a whole
+repository, so a path that does not exist is created and an existing empty
+directory is used, while a directory holding anything is refused before any file
+is written. Use `frontx add` (below) to apply a template into a directory that
+already has content — the conflict check compares templates' declared boundaries
+against each other, and content that arrived by any other route is declared by
+nobody, so it cannot protect a tree it does not know about.
+
 ### 3. Add a template to an existing repository
 
 ```bash

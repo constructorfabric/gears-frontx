@@ -75,6 +75,10 @@ function makeDeps(overrides: Partial<CliDeps> = {}): DepsFixture {
     listContentOwnedFilesFn,
     provenanceWriteFn,
     readProvenanceRecordsFn,
+    // Dispatch fixtures aim at notional paths that exist on no filesystem, so
+    // the probe reports the target absent — the case seed creates. The
+    // empty-target refusal case overrides this.
+    readTargetDirFn: vi.fn(async () => undefined),
     readSingleProvenanceFn: vi.fn(async () => null),
     readProjectFile: vi.fn(async () => null),
     writeProjectFile: vi.fn(async () => undefined),
@@ -405,6 +409,35 @@ describe('dispatch: seed (cpt-frontx-flow-cli-scaffolding-seed-repository)', () 
   });
 
   // F-3 (issue #470 phase 4.5): ADR-0032 requires the refusal to name each
+  // cpt-frontx-dod-cli-scaffolding-seed-empty-target — the refusal reaches the
+  // command surface as a user error, not an internal one: the developer aimed
+  // seed at the wrong directory, which is theirs to correct.
+  it('exits user-error and reports the refusal when seed targets a directory that already holds content', async () => {
+    const { deps, registerManifest } = makeDeps({
+      readTargetDirFn: vi.fn(async () => ['package.json', 'src']),
+    });
+    registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0'));
+    await run(['install', 'github:acme/foo@v1.0.0'], deps);
+
+    const outcome = await run(['seed', 'foo', '/existing-repo'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toContain('/existing-repo');
+    expect(outcome.stderr).toContain('frontx add foo /existing-repo');
+  });
+
+  it('writes no file when seed is refused for a non-empty target', async () => {
+    const { deps, registerManifest } = makeDeps({
+      readTargetDirFn: vi.fn(async () => ['package.json']),
+    });
+    registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0'));
+    await run(['install', 'github:acme/foo@v1.0.0'], deps);
+
+    await run(['seed', 'foo', '/existing-repo'], deps);
+
+    expect(deps.writeFileFn).not.toHaveBeenCalled();
+  });
+
   // contested ground and its contesting templates. `seedRepository` already
   // returns `result.conflicts`; this locks in that `run()` actually prints
   // it instead of dropping it and printing only the generic abort message.
