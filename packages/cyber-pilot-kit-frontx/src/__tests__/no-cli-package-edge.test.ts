@@ -8,7 +8,7 @@
 // (`frontx-single-intra-ecosystem-edge-kit-standalone` in
 // `.dependency-cruiser.cjs`) with a fast, package-local check.
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, lstatSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,7 +26,11 @@ function listFiles(dir: string, matches: (name: string) => boolean): string[] {
   for (const name of readdirSync(dir)) {
     if (SKIPPED_DIRS.has(name)) continue;
     const full = join(dir, name);
-    const stat = statSync(full);
+    // lstat, not stat: a symlinked directory under the kit root would otherwise
+    // be walked as if it were part of the kit, taking the scan outside the root
+    // it is meant to cover or into an ELOOP cycle.
+    const stat = lstatSync(full);
+    if (stat.isSymbolicLink()) continue;
     if (stat.isDirectory()) {
       files.push(...listFiles(full, matches));
     } else if (matches(name)) {

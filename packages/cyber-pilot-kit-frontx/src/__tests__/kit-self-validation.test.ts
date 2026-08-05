@@ -308,7 +308,14 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
   }
 
   it('declares the scaffolding entry point as a public skill under the frontx_ prefix', () => {
-    expect(resourceById(SCAFFOLDING_ID)).toMatchObject({ kind: 'skill', public: true, type: 'file' });
+    expect(resourceById(SCAFFOLDING_ID)).toMatchObject({
+      kind: 'skill',
+      public: true,
+      type: 'file',
+      // Pinned: without it the body assertions below would still pass if the
+      // registration pointed at some other document carrying the same commands.
+      source: 'skills/project-scaffolding/SKILL.md',
+    });
   });
 
   // The routing responsibility extends the EXISTING top-level resource rather

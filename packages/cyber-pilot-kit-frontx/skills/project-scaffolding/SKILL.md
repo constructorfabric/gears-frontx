@@ -69,17 +69,25 @@ directory that already holds records gets no seed - only further templates added
 
 **Absent provenance is not by itself a licence to seed.** Seeding writes a whole
 repository and the CLI refuses it against a target that already holds content, so
-also check whether the directory exists and is empty:
+also check what the path holds. Use exactly the CLI's own rule, so your plan and
+its answer cannot disagree:
 
-- **does not exist, or exists and is empty** - the plan begins with a seed;
-- **exists and holds content, with no provenance** - this is someone's existing
-  work, not a project this flow started. Do not plan a seed against it: say so,
-  and offer either a fresh directory to seed into or `frontx add` to apply into
-  the directory as it stands - saying, when you offer add, that it arbitrates
-  declared template boundaries only, so it can still overwrite an existing file
-  at a path the template declares as its own. Planning the seed anyway only earns
-  the CLI's refusal one step later, after you have already shown the developer a
-  plan that could not run.
+- **does not exist**, **exists and is empty**, or **holds only** the closed set
+  `.git`, `.DS_Store`, `Thumbs.db` - the plan begins with a seed. A freshly
+  initialized repository holds exactly `.git` and is seedable; treating it as
+  populated would refuse the most common way to start.
+- **exists and is not a directory** - a regular file at the target path. Neither
+  seed nor add can use it. Report it and stop; do not offer add.
+- **holds any other entry, with no provenance** - this is someone's existing
+  work, not a project this flow started. Do not plan a seed against it. Report
+  what was found and put the choice to the developer: a fresh directory to seed
+  into, or `frontx add` applied to the directory as it stands - saying, when you
+  offer add, that it arbitrates declared template boundaries only, so it can
+  still overwrite an existing file at a path the template declares as its own.
+  **Wait for their answer before running anything**; offering a choice and then
+  acting for them is how the flow would write over the work it just warned about.
+  Planning the seed anyway only earns the CLI's refusal one step later, after you
+  have already shown a plan that could not run.
 
 ## Step 3 - Select what to apply
 

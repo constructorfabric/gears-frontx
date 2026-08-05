@@ -381,7 +381,7 @@ function checkResourceBodyContent(
       violations.push({
         field: `${prefix}.source`,
         code: 'SOLUTION_SPECIFIC_CONTENT',
-        message: `shipped body of resource "${e.id}" names a specific template/solution ("${found}"), which is prohibited by cpt-frontx-adr-solution-ai-content-placement`,
+        message: `shipped body of resource "${e.id}" names a specific template, solution, or framework ("${found}"), which is prohibited by cpt-frontx-adr-solution-ai-content-placement`,
       });
       // @cpt-end:cpt-frontx-algo-ai-kit-packaging-manifest-validation:p1:inst-record-solution-violation
       break;
