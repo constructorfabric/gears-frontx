@@ -53,6 +53,29 @@ function isWellFormedRepoRelativePath(value: unknown): value is string {
   return !value.split(/[\\/]/).includes('..');
 }
 
+// Environment-owned names no template may declare as ownership ground, at the
+// root or nested at any depth: version-control metadata and platform droppings.
+//
+// This is the SAME closed set the seed flow treats as carrying no content when
+// it inspects a target directory (`NON_CONTENT_ENTRIES` in
+// `commands/seed-repository.ts`, which imports this constant rather than
+// restating it). The exemption and this prohibition are two halves of one rule:
+// a template allowed to declare `.git/` could claim ground the seed guard has
+// already waved through as empty, and materialization would then write into the
+// developer's own repository metadata — reintroducing, through the exemption,
+// exactly the loss the guard exists to prevent.
+export const RESERVED_ENVIRONMENT_ENTRIES: readonly string[] = ['.git', '.DS_Store', 'Thumbs.db'];
+
+// Whether a declared path names, or nests under, a reserved environment-owned
+// entry. Checked per segment so `.git`, `.git/hooks/`, and `packages/.git` are
+// all refused: a template claiming any of them claims the same ground.
+function isReservedEnvironmentPath(pathValue: string): boolean {
+  return pathValue
+    .replace(/\\/g, '/')
+    .split('/')
+    .some((segment) => RESERVED_ENVIRONMENT_ENTRIES.includes(segment));
+}
+
 // Reserved CLI-owned `.frontx/` namespace: `.frontx/provenance.json` and any
 // other `.frontx/` path are reserved and NOT template-declarable, EXCEPT a
 // template's own `.frontx/ai/<template-identity>/` bundle subtree, which is
@@ -175,11 +198,16 @@ export function validateManifestContract(raw: string): ManifestValidationResult 
     }
     // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-subtree-invalid
     // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-subtree-reserved
-    if (typeof subtree === 'string' && isReservedFrontxPath(subtree, templateIdentity)) {
+    if (
+      typeof subtree === 'string' &&
+      (isReservedFrontxPath(subtree, templateIdentity) || isReservedEnvironmentPath(subtree))
+    ) {
       // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-subtree-reserved-violation
       violations.push({
         field: `ownershipBoundaries.exclusiveSubtrees[${i}]`,
-        message: 'the reserved CLI-owned .frontx/ metadata namespace is not template-declarable (only .frontx/ai/<template-identity>/ may be claimed)',
+        message:
+          'a reserved namespace is not template-declarable: under .frontx/ only .frontx/ai/<template-identity>/ may be claimed, ' +
+          `and the environment-owned names (${RESERVED_ENVIRONMENT_ENTRIES.join(', ')}) may not be claimed at any depth`,
       });
       // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-subtree-reserved-violation
     }
@@ -238,11 +266,13 @@ export function validateManifestContract(raw: string): ManifestValidationResult 
     // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-region-keys-missing
 
     // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-shared-file-reserved
-    if (typeof path === 'string' && isReservedFrontxPath(path, templateIdentity)) {
+    if (typeof path === 'string' && (isReservedFrontxPath(path, templateIdentity) || isReservedEnvironmentPath(path))) {
       // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-shared-file-reserved-violation
       violations.push({
         field: `ownershipBoundaries.sharedFiles[${i}].path`,
-        message: 'the reserved CLI-owned .frontx/ metadata namespace is not template-declarable',
+        message:
+          'a reserved namespace is not template-declarable: the CLI-owned .frontx/ metadata namespace, ' +
+          `or an environment-owned name (${RESERVED_ENVIRONMENT_ENTRIES.join(', ')}) at any depth`,
       });
       // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-shared-file-reserved-violation
     }

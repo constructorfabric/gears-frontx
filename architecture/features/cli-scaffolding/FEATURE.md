@@ -224,10 +224,11 @@ Internal system functions and procedures called by actor flows above.
 **Transitions**:
 1. [x] - `p1` - **FROM** REQUESTED **TO** RESOLVED **WHEN** every referenced template — including a preset's referenced templates — is located in the local inventory and staged as an assembly. - `inst-as-req-resolved`
 2. [x] - `p1` - **FROM** REQUESTED **TO** ABORTED **WHEN** a template reference cannot be resolved from the local inventory. - `inst-as-req-aborted-unresolved`
-3. [x] - `p1` - **FROM** REQUESTED **TO** ABORTED **WHEN** the seed flow's target directory exists and holds any entry; no template is resolved and no file is written. - `inst-as-req-aborted-target-not-empty`
-4. [x] - `p1` - **FROM** RESOLVED **TO** CONFLICT_CHECKED **WHEN** the pre-flight conflict check finds no intersecting boundary claim across the staged assembly and any already-occupied boundaries. - `inst-as-resolved-checked`
-5. [x] - `p1` - **FROM** RESOLVED **TO** ABORTED **WHEN** the pre-flight conflict check reports an intersecting boundary claim; no files are written. - `inst-as-resolved-aborted-conflict`
-6. [x] - `p1` - **FROM** CONFLICT_CHECKED **TO** ASSEMBLED **WHEN** the cleared assembly is materialized into the target repository and one provenance record is written per applied template. - `inst-as-checked-assembled`
+3. [x] - `p1` - **FROM** REQUESTED **TO** ABORTED **WHEN** the seed flow's target directory holds at least one entry outside the non-content set; no template is resolved and no file is written. - `inst-as-req-aborted-target-not-empty`
+4. [x] - `p1` - **FROM** REQUESTED **TO** ABORTED **WHEN** the seed flow's target path exists and is not a directory; no template is resolved and no file is written. - `inst-as-req-aborted-target-not-directory`
+5. [x] - `p1` - **FROM** RESOLVED **TO** CONFLICT_CHECKED **WHEN** the pre-flight conflict check finds no intersecting boundary claim across the staged assembly and any already-occupied boundaries. - `inst-as-resolved-checked`
+6. [x] - `p1` - **FROM** RESOLVED **TO** ABORTED **WHEN** the pre-flight conflict check reports an intersecting boundary claim; no files are written. - `inst-as-resolved-aborted-conflict`
+7. [x] - `p1` - **FROM** CONFLICT_CHECKED **TO** ASSEMBLED **WHEN** the cleared assembly is materialized into the target repository and one provenance record is written per applied template. - `inst-as-checked-assembled`
 
 ## 5. Definitions of Done
 

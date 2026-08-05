@@ -4,6 +4,7 @@ import { resolveComposition } from '../composition/resolve';
 import { uniformApply } from '../scaffold/assembler';
 import { checkAssemblyConflicts } from '../scaffold/conflict';
 import { isUserFixableMaterializeFailure, materializeAssembly } from '../scaffold/materialize';
+import { RESERVED_ENVIRONMENT_ENTRIES } from '../manifest/validate-contract';
 import type { InventoryEntry } from '../inventory/types';
 import type { ReadContentItemsFn, ReadProjectFileFn, WriteFileFn } from '../scaffold/types';
 import type { BoundaryConflictEntry } from '../scaffold/state';
@@ -55,15 +56,21 @@ export type ReadTargetDirFn = (path: string) => Promise<TargetDirState>;
 const REFUSAL_ENTRY_SAMPLE = 5;
 
 // Entries whose presence says nothing about whether the ground is free: no
-// template may declare any of them as ownership boundary (the manifest
-// validator refuses `.frontx/` reserved paths on the same principle), no
 // assembly writes to them, and materialization cannot collide with them.
+//
+// Taken from the manifest contract rather than restated, because the exemption
+// here and the prohibition there are two halves of one rule: the validator
+// refuses any template that declares one of these as ownership ground
+// (`RESERVED_ENVIRONMENT_ENTRIES`), which is precisely what makes it safe to
+// wave them through here. Two hand-maintained copies could drift apart, and the
+// drift would be silent and destructive — a name exempted here but declarable
+// there lets a template claim ground this guard already called empty.
 //
 // Closed deliberately. `.git` is the load-bearing member: `git init` followed by
 // `frontx seed` is the ordinary way to start, and treating VCS metadata as
-// content would refuse the most common first step there is. Widening this set
-// to anything a template COULD write would reopen the hole the guard closes.
-const NON_CONTENT_ENTRIES: ReadonlySet<string> = new Set(['.git', '.DS_Store', 'Thumbs.db']);
+// content would refuse the most common first step there is. Widening the set to
+// anything a template COULD write would reopen the hole the guard closes.
+const NON_CONTENT_ENTRIES: ReadonlySet<string> = new Set(RESERVED_ENVIRONMENT_ENTRIES);
 
 /**
  * cpt-frontx-flow-cli-scaffolding-seed-repository — applies an installed
@@ -136,7 +143,7 @@ export async function seedRepository(
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-target-not-directory
   if (targetState === 'not-a-directory') {
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-directory
-    // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-empty
+    // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-directory
     // No add remedy here, deliberately: `frontx add` needs a directory too and
     // would fail on this same path, so naming it would send the developer to a
     // second failure rather than to a fix.
@@ -148,7 +155,7 @@ export async function seedRepository(
         'so no files were written. Seeding materializes a repository into a directory; ' +
         'point it at a directory path, or remove the file occupying this one.',
     };
-    // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-empty
+    // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-directory
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-directory
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-target-not-directory

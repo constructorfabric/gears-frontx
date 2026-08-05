@@ -2,8 +2,22 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
-import { createFsReadTargetDirFn } from '../fs-target-dir';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Created with `vi.hoisted` so the handle exists before the mock factory runs.
+// The real module is spread and only `readdir` is replaced, so every case below
+// that touches a real directory still goes through the real implementation —
+// only the rejection cases override it, one call at a time.
+const { readdirMock } = vi.hoisted(() => ({ readdirMock: vi.fn() }));
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  return { ...actual, readdir: readdirMock };
+});
+
+const { readdir: realReaddir } = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+
+// Imported after the mock, so the adapter binds the mocked `readdir`.
+const { createFsReadTargetDirFn } = await import('../fs-target-dir');
 
 const created: string[] = [];
 
@@ -12,6 +26,13 @@ function tmpDir(): string {
   created.push(dir);
   return dir;
 }
+
+beforeEach(() => {
+  // Default to the real implementation; a case that wants a failure queues a
+  // one-shot rejection over it.
+  readdirMock.mockReset();
+  readdirMock.mockImplementation(realReaddir);
+});
 
 afterEach(() => {
   for (const dir of created.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
@@ -60,18 +81,26 @@ describe('createFsReadTargetDirFn — cpt-frontx-dod-cli-scaffolding-seed-empty-
 
   // An unreadable directory says nothing about emptiness; swallowing the error
   // would read it as empty and wave the assembly through.
-  it('rethrows a permission failure rather than reporting an unreadable directory as empty', async () => {
-    const locked = path.join(tmpDir(), 'locked');
-    fs.mkdirSync(locked);
-    fs.chmodSync(locked, 0o000);
+  //
+  // Driven through a mocked `readdir` rejection rather than a real chmod: mode
+  // bits do not deny a root process and Windows ignores them, so the on-disk
+  // version passed without ever reaching the rethrow on exactly the hosts where
+  // it mattered least to run. The contract under test is "a non-ENOENT,
+  // non-ENOTDIR rejection propagates", which is expressible without a
+  // filesystem that agrees to be unreadable.
+  it.each(['EACCES', 'EPERM'])('rethrows a %s failure rather than reporting an unreadable directory as empty', async (code) => {
+    readdirMock.mockRejectedValueOnce(Object.assign(new Error(`${code}: permission denied`), { code }));
     const readTargetDir = createFsReadTargetDirFn();
 
-    try {
-      await expect(readTargetDir(locked)).rejects.toThrow();
-    } finally {
-      // Restored even when the assertion above fails, so the afterEach sweep can
-      // still remove the directory.
-      fs.chmodSync(locked, 0o755);
-    }
+    await expect(readTargetDir('/whatever')).rejects.toThrow(code);
+  });
+
+  it('reports ENOENT and ENOTDIR as states rather than rethrowing them', async () => {
+    readdirMock.mockRejectedValueOnce(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+    readdirMock.mockRejectedValueOnce(Object.assign(new Error('ENOTDIR'), { code: 'ENOTDIR' }));
+    const readTargetDir = createFsReadTargetDirFn();
+
+    expect(await readTargetDir('/absent')).toBeUndefined();
+    expect(await readTargetDir('/a-file')).toBe('not-a-directory');
   });
 });
