@@ -17,7 +17,7 @@
 // @cpt-state:cpt-frontx-state-react-bindings-extension-slot:p1
 // @cpt-dod:cpt-frontx-dod-react-bindings-extension-slot:p1
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useEffectEvent, useRef, useState } from 'react';
 import type { MfeRegistry } from '@gears-frontx/framework';
 
 /**
@@ -89,12 +89,15 @@ export function ExtensionDomainSlot(props: ExtensionDomainSlotProps): React.Reac
 
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  // Callbacks in refs so effect deps stay minimal — inline parent handlers do not
-  // re-run the attach/detach effect on every parent render.
-  const onAttachedRef = useRef(onAttached);
-  const onDetachedRef = useRef(onDetached);
-  onAttachedRef.current = onAttached;
-  onDetachedRef.current = onDetached;
+  // Effect events so effect deps stay minimal — inline parent handlers do not
+  // re-run the attach/detach effect on every parent render, yet each call
+  // sees the latest committed onAttached/onDetached prop.
+  const emitAttached = useEffectEvent((root: Element) => {
+    onAttached?.(root);
+  });
+  const emitDetached = useEffectEvent(() => {
+    onDetached?.();
+  });
 
   // @cpt-begin:cpt-frontx-state-react-bindings-extension-slot:p1:inst-slot-attached
   // Tracks whether the mounter has been attached to the DOM root.
@@ -119,7 +122,7 @@ export function ExtensionDomainSlot(props: ExtensionDomainSlotProps): React.Reac
     setAttached(true);
     // @cpt-end:cpt-frontx-state-react-bindings-extension-slot:p1:inst-slot-attached
 
-    onAttachedRef.current?.(root);
+    emitAttached(root);
 
     // @cpt-begin:cpt-frontx-flow-react-bindings-extension-domain-slot:p1:inst-detach-root
     return () => {
@@ -132,12 +135,18 @@ export function ExtensionDomainSlot(props: ExtensionDomainSlotProps): React.Reac
       setAttached(false);
       // @cpt-end:cpt-frontx-state-react-bindings-extension-slot:p1:inst-slot-detached
 
-      onDetachedRef.current?.();
+      // emitDetached is an effect event: it always calls the onDetached prop
+      // from the latest committed render, not whatever prop was current when
+      // this effect instance was originally set up.
+      emitDetached();
     };
     // @cpt-end:cpt-frontx-flow-react-bindings-extension-domain-slot:p1:inst-detach-root
     // @cpt-begin:cpt-frontx-state-react-bindings-extension-slot:p2:inst-slot-stable-rerender
     // ATTACHED → ATTACHED (no-op) when parent supplies the same domainId and
     // registry on re-render: useEffect dep equality short-circuits the attach/detach pair.
+    // emitAttached/emitDetached are effect events — non-reactive by contract,
+    // so they are excluded from deps and the effect does not re-run when the
+    // parent passes new inline handlers.
   }, [registry, domainId]);
     // @cpt-end:cpt-frontx-state-react-bindings-extension-slot:p2:inst-slot-stable-rerender
 
