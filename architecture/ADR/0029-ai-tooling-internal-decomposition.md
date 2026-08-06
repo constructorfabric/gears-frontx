@@ -109,4 +109,4 @@ This decision directly addresses the following requirements and design elements:
 * `cpt-frontx-component-ai-extension-host` — Established as the discovery-and-activation component for template-bundled extensions.
 * `cpt-frontx-component-ai-upgrade-orchestration` — Established as the AI workflow surface that orchestrates the CLI change-set engine.
 * `cpt-frontx-constraint-kit-zero-solution-content` — Zero solution-specific content, anchored to the base-kit component.
-* `cpt-frontx-constraint-kit-orchestrates-not-reimplements` — Orchestrates, not reimplements, anchored to the upgrade-orchestration component.
+* `cpt-frontx-constraint-kit-orchestrates-not-reimplements` — Orchestrates, not reimplements. It binds every CLI engine the framework drives, not the upgrade path alone: the change-set engine on that path, and the template resolver and assembler on the scaffolding path. This decision's internal decomposition places the orchestration workflows that satisfy it, and the constraint itself is stated in DESIGN's KIT-3 clause together with the one delegation it admits.
