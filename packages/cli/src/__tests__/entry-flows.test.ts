@@ -1,6 +1,7 @@
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-seed-repository:p1
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-add-template:p1
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-boundary-declared-assembly:p1
+// @cpt-dod:cpt-frontx-dod-cli-scaffolding-add-undeclared-content:p1
 import { describe, it, expect } from 'vitest';
 import { seedRepository } from '../commands/seed-repository';
 import { addTemplate } from '../commands/add-template';
@@ -11,6 +12,7 @@ import type { ContentItem, ReadContentItemsFn, ReadProjectFileFn, WriteFileFn } 
 import type { ProvenanceRecord, ProvenanceWriteFn } from '../provenance/types';
 import type { ReadProvenanceRecordsFn } from '../scaffold/materialize';
 import type { ReadTargetDirFn } from '../commands/seed-repository';
+import type { ReadTargetPathStateFn, TargetPathState } from '../commands/add-template';
 
 // The seed cases below aim at a notional '/target' that exists on no
 // filesystem, so the probe reports it absent — the case materialization
@@ -62,7 +64,15 @@ function makeFsFake() {
   // earlier seed/add in the same test) is visible to composeSharedFiles'
   // carry-forward check exactly as the real fs adapter would see it.
   const readProjectFileFn: ReadProjectFileFn = async (path) => files.get(path) ?? null;
-  return { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn };
+  // The same map read as a directory tree: a key is a file, a prefix of a key is
+  // the directory holding it. A fake that reported every path absent would let
+  // the add flow's occupied-ground guard pass everything, so it is derived from
+  // what the other fakes here have actually written rather than stubbed.
+  const readTargetPathStateFn: ReadTargetPathStateFn = async (path) => {
+    if (files.has(path)) return 'file';
+    return [...files.keys()].some((key) => key.startsWith(`${path}/`)) ? 'directory' : 'absent';
+  };
+  return { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn };
 }
 
 // inst-seed-check-target-empty / inst-seed-if-target-not-directory /
@@ -191,7 +201,12 @@ describe('seedRepository empty-target guard — cpt-frontx-dod-cli-scaffolding-s
     expect(files.size).toBe(0);
   });
 
-  it('qualifies the add remedy with the boundary-only limit that lets add overwrite a declared path', async () => {
+  // The remedy has to say what add does with the content found here, and what
+  // it says has to be what add does: since
+  // cpt-frontx-dod-cli-scaffolding-add-undeclared-content, add refuses a path it
+  // would write that this directory already holds, so a remedy still warning of
+  // an overwrite would send the developer away from a working next step.
+  it('qualifies the add remedy with what add leaves alone rather than with an overwrite it no longer performs', async () => {
     const { writeFileFn, provenanceWriteFn } = makeFsFake();
 
     const result = await seedRepository(
@@ -206,7 +221,29 @@ describe('seedRepository empty-target guard — cpt-frontx-dod-cli-scaffolding-s
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.message).toContain('declared template boundaries only');
+    expect(result.message).toContain('refuses instead of overwriting');
+    expect(result.message).not.toContain('can still overwrite');
+  });
+
+  // Add refuses this same directory when what it holds stands on the template's
+  // own ground, so a refusal naming only add can lead from one refusal to the
+  // next. The fresh-directory exit is what keeps the message a way out.
+  it('names seeding into a fresh directory alongside the add remedy, so the refusal leads somewhere either way', async () => {
+    const { writeFileFn, provenanceWriteFn } = makeFsFake();
+
+    const result = await seedRepository(
+      'template-a',
+      '/existing-repo',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      async () => ['package.json'],
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain('fresh directory');
   });
 
   it('names the refused directory and the add command as the remedy', async () => {
@@ -435,7 +472,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       'declared-identity': legacyEntry,
       'new-template': newTemplate,
     };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([
@@ -452,6 +489,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readTargetPathStateFn,
       readProjectFileFn,
     );
 
@@ -476,7 +514,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       'declared-identity': applied,
       'new-template': newTemplate,
     };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([
@@ -494,6 +532,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readTargetPathStateFn,
       readProjectFileFn,
     );
 
@@ -519,7 +558,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       'declared-identity': applied,
       intruder,
     };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([
@@ -537,6 +576,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readTargetPathStateFn,
       readProjectFileFn,
     );
 
@@ -574,7 +614,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       'real-owner': realOwner,
       'new-template': newTemplate,
     };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([
@@ -591,6 +631,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readTargetPathStateFn,
       readProjectFileFn,
     );
 
@@ -608,7 +649,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       ownershipBoundaries: { exclusiveSubtrees: ['new/'], sharedFiles: [] },
     });
     const entries: Record<string, InventoryEntry> = { 'new-template': newTemplate };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
     // Neither the identity nor the address resolves: the template genuinely is
     // not installed, so `frontx install <sourceSpec>` is a recovery that works.
     files.set(
@@ -627,6 +668,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readTargetPathStateFn,
       readProjectFileFn,
     );
 
@@ -649,7 +691,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       'new-template': newTemplate,
       'applied-template': corrupted,
     };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
     // The record's source-spec must address the same template as the installed
     // entry, or the identity hit is rejected and this exercises the
     // not-installed branch instead of the unreadable-manifest one.
@@ -669,6 +711,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readTargetPathStateFn,
       readProjectFileFn,
     );
 
@@ -687,7 +730,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
     });
     const entries: Record<string, InventoryEntry> = { 'existing-template': existing, 'new-template': newTemplate };
     const lookupFn = (n: string) => entries[n];
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([{ templateIdentity: 'existing-template', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/existing-template@v1.0.0' }]),
@@ -702,6 +745,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readTargetPathStateFn,
       readProjectFileFn,
     );
 
@@ -718,9 +762,9 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
   });
 
   it('aborts with no files written when the template reference cannot be resolved from the local inventory', async () => {
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
 
-    const result = await addTemplate('missing', '/target', () => undefined, async () => [], readContentFn, writeFileFn, readProvenanceFn, provenanceWriteFn, readProjectFileFn);
+    const result = await addTemplate('missing', '/target', () => undefined, async () => [], readContentFn, writeFileFn, readProvenanceFn, provenanceWriteFn, readTargetPathStateFn, readProjectFileFn);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -736,7 +780,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       ownershipBoundaries: { exclusiveSubtrees: ['clash/'], sharedFiles: [] },
     });
     const entries: Record<string, InventoryEntry> = { 'existing-template': existing, 'clashing-template': clashing };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([{ templateIdentity: 'existing-template', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/existing-template@v1.0.0' }]),
@@ -751,6 +795,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readTargetPathStateFn,
       readProjectFileFn,
     );
 
@@ -763,6 +808,248 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
     // Only the pre-existing provenance file is present; no new file was written.
     expect(files.size).toBe(1);
     expect(files.has('/target/.frontx/provenance.json')).toBe(true);
+  });
+});
+
+// inst-add-check-ground-free / inst-add-if-target-not-directory /
+// inst-add-abort-target-not-directory / inst-add-if-ground-occupied /
+// inst-add-abort-ground-occupied / inst-add-recheck-ground —
+// cpt-frontx-dod-cli-scaffolding-add-undeclared-content
+describe('addTemplate occupied-ground guard — cpt-frontx-dod-cli-scaffolding-add-undeclared-content', () => {
+  const guardedTemplate = makeEntry('guarded-template', [{ path: 'guarded/index.ts', content: 'from the template' }], {
+    ownershipBoundaries: { exclusiveSubtrees: ['guarded/'], sharedFiles: [] },
+  });
+  const lookupFn = (name: string): InventoryEntry | undefined => (name === 'guarded-template' ? guardedTemplate : undefined);
+  const listInstalledFn = async (): Promise<InventoryEntry[]> => [guardedTemplate];
+
+  it('refuses a target holding content at a path the template owns that no provenance records, writing no file', async () => {
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
+    // The whole exposure: a populated directory with no provenance at all reads
+    // as an empty occupied set, so the conflict check finds every claim free.
+    files.set('/target/guarded/index.ts', 'work this repository already had');
+
+    const result = await addTemplate(
+      'guarded-template',
+      '/target',
+      lookupFn,
+      listInstalledFn,
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readTargetPathStateFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-holds-undeclared-content');
+    if (result.reason !== 'target-holds-undeclared-content') return;
+    expect(result.paths).toEqual(['guarded/index.ts']);
+    expect(files.get('/target/guarded/index.ts')).toBe('work this repository already had');
+  });
+
+  it('adds into a populated directory whose content the template does not claim, so an unprovenanced project stays a supported target', async () => {
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
+    files.set('/target/README.md', 'someone else wrote this');
+    files.set('/target/.git/HEAD', 'ref: refs/heads/main');
+
+    const result = await addTemplate(
+      'guarded-template',
+      '/target',
+      lookupFn,
+      listInstalledFn,
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readTargetPathStateFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(files.get('/target/guarded/index.ts')).toBe('from the template');
+    expect(files.get('/target/README.md')).toBe('someone else wrote this');
+  });
+
+  it('adds over a shared file an applied template already wrote, because its recorded provenance accounts for that ground', async () => {
+    // The one way an incoming path can legitimately stand on ground already
+    // occupied: a region-union shared file whose earlier contributor is recorded
+    // and whose block materialization carries forward. Refusing it would make
+    // `add` into a repository this tool itself seeded impossible.
+    const applied = makeEntry('applied-template', [], {
+      ownershipBoundaries: {
+        exclusiveSubtrees: [],
+        sharedFiles: [{ path: 'shared.json', mergeStrategy: 'region-union', ownedRegions: ['applied'] }],
+      },
+    });
+    const contributor = makeEntry(
+      'contributing-template',
+      [{ path: 'shared.json', content: 'frontx:region contributing-template:incoming\nincoming\nfrontx:endregion contributing-template:incoming' }],
+      {
+        ownershipBoundaries: {
+          exclusiveSubtrees: [],
+          sharedFiles: [{ path: 'shared.json', mergeStrategy: 'region-union', ownedRegions: ['incoming'] }],
+        },
+      },
+    );
+    const entries: Record<string, InventoryEntry> = { 'applied-template': applied, 'contributing-template': contributor };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'applied-template', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/applied-template@v1.0.0' },
+      ]),
+    );
+    files.set(
+      '/target/shared.json',
+      'frontx:region applied-template:applied\nalready applied\nfrontx:endregion applied-template:applied',
+    );
+
+    const result = await addTemplate(
+      'contributing-template',
+      '/target',
+      (name: string) => entries[name],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readTargetPathStateFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(files.get('/target/shared.json')).toContain('already applied');
+    expect(files.get('/target/shared.json')).toContain('incoming');
+  });
+
+  // A recorded subtree is a path prefix only at a separator boundary: "srcx.ts"
+  // is a sibling of "src", not a file inside it. Comparing the two by bare
+  // prefix would exempt every path whose name merely starts with a recorded
+  // subtree's name, and the guard would wave through the write it exists to
+  // refuse.
+  it('refuses a path that only shares a prefix with a recorded subtree, since a sibling of it is not inside it', async () => {
+    const applied = makeEntry('subtree-owner', [], {
+      // Declared without a trailing separator, which the manifest contract
+      // permits and real manifests use.
+      ownershipBoundaries: { exclusiveSubtrees: ['src'], sharedFiles: [] },
+    });
+    const sibling = makeEntry('sibling-template', [{ path: 'srcx.ts', content: 'from the template' }], {
+      ownershipBoundaries: {
+        exclusiveSubtrees: [],
+        sharedFiles: [{ path: 'srcx.ts', mergeStrategy: 'exclusive', ownedRegions: [] }],
+      },
+    });
+    const entries: Record<string, InventoryEntry> = { 'subtree-owner': applied, 'sibling-template': sibling };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'subtree-owner', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/subtree-owner@v1.0.0' },
+      ]),
+    );
+    files.set('/target/srcx.ts', 'work this repository already had');
+
+    const result = await addTemplate(
+      'sibling-template',
+      '/target',
+      (name: string) => entries[name],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readTargetPathStateFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-holds-undeclared-content');
+    expect(files.get('/target/srcx.ts')).toBe('work this repository already had');
+  });
+
+  it('refuses a target path that exists and is not a directory, writing no file', async () => {
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+
+    const result = await addTemplate(
+      'guarded-template',
+      '/some-file.txt',
+      lookupFn,
+      listInstalledFn,
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      async () => 'file',
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-not-directory');
+    expect(files.size).toBe(0);
+  });
+
+  // inst-add-recheck-ground — the conflict check takes time, so the ground is
+  // re-probed immediately before the first write. A probe reporting the path
+  // free first and occupied second stands in for a repository that gained
+  // content during that window.
+  it('refuses on the last-moment re-probe when the target gained content after the pre-flight probe', async () => {
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    let probes = 0;
+    const flipping = async (path: string): Promise<TargetPathState> => {
+      if (path === '/races') return 'directory';
+      probes += 1;
+      return probes === 1 ? 'absent' : 'file';
+    };
+
+    const result = await addTemplate(
+      'guarded-template',
+      '/races',
+      lookupFn,
+      listInstalledFn,
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      flipping,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-holds-undeclared-content');
+    // The point of re-probing at all: nothing was written despite the
+    // pre-flight probe having cleared the ground.
+    expect(files.size).toBe(0);
+  });
+
+  // A probe that cannot answer must not be read as free ground: a guard that
+  // passes because it could not look is the hole it exists to close.
+  it('fails closed and writes nothing when the probe cannot read the target', async () => {
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    const refusing = async (): Promise<TargetPathState> => {
+      throw new Error('EACCES: permission denied');
+    };
+
+    await expect(
+      addTemplate(
+        'guarded-template',
+        '/unreadable',
+        lookupFn,
+        listInstalledFn,
+        readContentFn,
+        writeFileFn,
+        readProvenanceFn,
+        provenanceWriteFn,
+        refusing,
+        readProjectFileFn,
+      ),
+    ).rejects.toThrow('EACCES');
+
+    expect(files.size).toBe(0);
   });
 });
 
