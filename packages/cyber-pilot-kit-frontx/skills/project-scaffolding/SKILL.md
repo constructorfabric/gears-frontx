@@ -85,7 +85,9 @@ its answer cannot disagree:
   what was found and put the choice to the developer: a fresh directory to seed
   into, or `frontx add` applied to the directory as it stands - saying, when you
   offer add, that it arbitrates declared template boundaries only, so it can
-  still overwrite an existing file at a path the template declares as its own.
+  still overwrite an existing file at a path the template declares as its own -
+  it has no guard of its own against a directory holding content no template
+  recorded (constructorfabric/gears-frontx#539).
   **Wait for their answer before running anything**; offering a choice and then
   acting for them is how the flow would write over the work it just warned about.
   Planning the seed anyway only earns the CLI's refusal one step later, after you
@@ -126,10 +128,11 @@ Work from the intent, the records from step 1, and the identities from step 2.
    no candidate's description matches the project-establishing part - even though
    some candidate matches a supplemental part - refuse. Name the supplemental
    candidates that matched, and say that none of them claims to establish a
-   project, so applying them would contribute to ground nothing has laid. `add`
-   refuses a directory holding no applied template, so a plan with no seed
-   against an empty directory cannot run. Ask the developer to install a template
-   that establishes a project, or to restate the intent. Write nothing.
+   project: a plan built from them carries no seed and lays no ground, and a
+   supplemental template contributes *to* a project, so there would be nothing
+   for it to contribute to. That is the whole reason - do not claim the CLI would
+   refuse such a directory, because it would not. Ask the developer to install a
+   template that establishes a project, or to restate the intent. Write nothing.
 8. **A tie is a question, not a coin flip.** If two or more candidates match the
    project-establishing part indistinguishably, refuse: a choice is required.
    Name each tied candidate with its declared description and ask the developer
