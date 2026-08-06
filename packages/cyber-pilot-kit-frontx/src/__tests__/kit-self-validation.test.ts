@@ -215,6 +215,31 @@ describe('kit self-validation — shipped resource BODY scan (cpt-frontx-adr-sol
     expect(result.violations.some((v) => v.code === 'SOLUTION_SPECIFIC_CONTENT')).toBe(true);
   });
 
+  // inst-scan-solution-content — the FRAMEWORK half of the body scan. Asserting
+  // that FORBIDDEN_BODY_NAMES contains the names proves the list; only feeding a
+  // body through the scan proves the behaviour. Without this case, dropping
+  // FRAMEWORK_NAMES from the scan leaves the whole suite green.
+  it.each(['React', 'vue', 'Angular', 'svelte'])(
+    'resource body naming the framework "%s" → FAIL SOLUTION_SPECIFIC_CONTENT',
+    (framework) => {
+      const leakingReader: ResourceBodyReader = {
+        read(entry: KitResourceEntry): string[] {
+          const body = `Prefer the ${framework} lifecycle for this unit.`;
+          return entry.id === 'frontx_guidelines' ? [body] : [''];
+        },
+      };
+
+      const result = validateKitManifest(loadShippedManifest(), leakingReader);
+
+      expect(result.status).toBe('FAIL');
+      expect(
+        result.violations.some(
+          (v) => v.code === 'SOLUTION_SPECIFIC_CONTENT' && v.message.toLowerCase().includes(framework.toLowerCase()),
+        ),
+      ).toBe(true);
+    },
+  );
+
   // inst-scan-solution-content — abstract use of the generic word "template" in guidelines is NOT a false positive
   it('body abstractly describing the template mechanism (no specific name) → PASS', () => {
     const abstractReader: ResourceBodyReader = {

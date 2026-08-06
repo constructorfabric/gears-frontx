@@ -21,6 +21,16 @@ import type { KitDefinition, KitManifest, KitResourceEntry, ResourceBodyReader, 
 // or in a resource body, whereas "template" and "solution" are abstract
 // vocabulary the base uses constantly. Both scans in this file therefore
 // include this list; only the id/description scan adds the generic words.
+//
+// LIVE CONSTRAINT ON KIT PROSE: the match is case-insensitive and word-boundary
+// only, so it catches the ordinary English verb as readily as the framework —
+// "the agent must react to the refusal" fails the body scan, and so does "a
+// vue of the inventory" or any sentence reaching for those words. Any resource
+// body added to this kit has to route around them (use "respond to", "view").
+// That is deliberate: a scan loose enough to tell the framework from the verb
+// would have to parse English, and the cost of the false positive is one
+// reworded sentence caught loudly in CI, where the cost of a false negative is
+// a framework name shipped in the solution-agnostic base.
 const FRAMEWORK_NAMES = ['react', 'vue', 'angular', 'svelte'];
 
 // Generic solution/template concept words that must not appear in a base-kit
