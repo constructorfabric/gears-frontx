@@ -143,7 +143,9 @@ frontx list
 # Here github:acme/starter-repo declares "@acme/web-app" in its manifest.
 frontx seed @acme/web-app ./my-app
 
-# Or add a template into an existing repository
+# Or add a template into an existing repository — writes only the ground the
+# template declares, and refuses, naming the paths, where that ground already
+# holds content no provenance accounts for
 frontx add @acme/web-app ./existing-repo
 
 # Later, upgrade an applied template to a newer version (reviewable change set)
@@ -164,7 +166,7 @@ within a project. It bundles no templates of its own.
 | `frontx install <spec>` | Install a template from a source-spec (`host:owner/repo[//subtree]@ref`) into the local inventory, tracked under the identity its manifest declares |
 | `frontx list [--json]` | List installed templates; `--json` emits one machine-readable record per entry, carrying its identity, pinned reference, source address and the description its manifest declares |
 | `frontx seed <templateRef> <targetDir>` | Seed a **new** repository from a template; `templateRef` is the identity shown by `frontx list`, not the repository name |
-| `frontx add <templateRef> <targetDir>` | Add a template into an **existing** repository |
+| `frontx add <templateRef> <targetDir>` | Add a template into an **existing** repository; writes only the ground the template declares and refuses, naming the paths, where that ground already holds content no applied template's provenance accounts for |
 | `frontx upgrade <projectRoot> <version>` | Upgrade an applied template (reviewable change set) |
 | `frontx validate <templateDir>` | Validate a template manifest for publication |
 | `frontx update-local <identity> <spec>` | Refresh a locally installed template from its source |

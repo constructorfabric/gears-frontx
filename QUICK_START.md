@@ -80,6 +80,11 @@ frontx add @acme/my-template ./existing-repo
 A repository can be assembled from **multiple independently-applied templates**.
 Conflicting assembly is detected and prevented before any file is written.
 
+`add` writes only the ground the template declares, and refuses — naming the
+paths — when that ground already holds content no applied template's provenance
+accounts for, so existing work in the directory is either left alone or reported,
+never written over.
+
 ### 4. Upgrade an applied template
 
 ```bash
