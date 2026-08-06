@@ -122,20 +122,33 @@ Work from the intent, the records from step 1, and the identities from step 2.
 6. **The seed.** If step 2 found no applied template, the seed is the single
    candidate whose description matches the project-establishing part of the
    intent - the part that says what kind of project this is.
-7. **A tie is a question, not a coin flip.** If two or more candidates match the
+7. **Nothing establishes the project.** If step 2 found no applied template and
+   no candidate's description matches the project-establishing part - even though
+   some candidate matches a supplemental part - refuse. Name the supplemental
+   candidates that matched, and say that none of them claims to establish a
+   project, so applying them would contribute to ground nothing has laid. `add`
+   refuses a directory holding no applied template, so a plan with no seed
+   against an empty directory cannot run. Ask the developer to install a template
+   that establishes a project, or to restate the intent. Write nothing.
+8. **A tie is a question, not a coin flip.** If two or more candidates match the
    project-establishing part indistinguishably, refuse: a choice is required.
    Name each tied candidate with its declared description and ask the developer
    to choose. Guessing here writes a project they did not ask for.
-8. **Further templates.** For each remaining part of the intent, select at most
+9. **Further templates.** For each remaining part of the intent, select at most
    one candidate whose description matches it, skipping any candidate already in
    the plan. **A template contributes to a project once.** A part of the intent
    that repeats a unit inside ground the plan already covers adds no second
    application - see Step 7 (Realize the units the intent names) below.
-9. **Drop what is already applied.** Remove from the plan every identity Step 2
+   **A tie here refuses exactly as an establishing tie does**: if two or more
+   candidates match one supplemental part indistinguishably, refuse with a choice
+   required, naming that part of the intent and each tied candidate with its
+   description. This is not a lesser decision - the identity you pick is the one
+   the project carries in its provenance from then on.
+10. **Drop what is already applied.** Remove from the plan every identity Step 2
    (Read what the target directory already holds) recorded, and record it as already applied. Re-applying an identity
    re-claims ground it already occupies, and the CLI's conflict check refuses the
    whole operation rather than part of it.
-10. **Separate the per-unit work from the residual.** Every part of the intent
+11. **Separate the per-unit work from the residual.** Every part of the intent
     that names a unit living inside a selected or already-applied template's own
     ground is per-unit work, recorded once per unit and attributed to the
     template that owns that ground. It is **not** residual - Step 7 (Realize the
@@ -210,12 +223,12 @@ pass runs on the framework's *next* invocation and makes the same capabilities
 available as activated resources from then on - it has not run in this session,
 and the flow does not need it to have run. What you need is on disk.
 
-For each unit from step 3.10, in plan order:
+For each unit from step 3.11, in plan order:
 
 1. **Find the covering skill.** Look in the bundle of the template that owns the
    unit's ground for a skill whose declared role is adding a unit of that kind.
    This is the authoritative answer to which template owns the unit - the plan's
-   attribution was provisional (Step 3.10), drawn from what descriptions say, and
+   attribution was provisional (Step 3.11), drawn from what descriptions say, and
    is corrected here by what the bundles actually carry.
 2. **No covering skill?** Record the unit as residual work, naming the ground it
    falls in, write nothing into that ground, and move to the next unit. A
@@ -225,18 +238,22 @@ For each unit from step 3.10, in plan order:
    its order. Touch no ground it does not itself claim. It owns the conventions -
    naming, identifiers, registration, generated artifacts - and you follow them
    rather than inventing parallel ones.
-4. **Put the stated content in.** The unit the skill created carries its
-   scaffold's placeholder content. Replace that with what the developer's intent
-   states for *this* unit, following the same skill's conventions. A screen the
-   developer described as showing something must show that thing; delivering the
-   placeholder means the unit was created and the intent was not realized.
+4. **Put the stated content in.** The unit must end up carrying what the
+   developer's intent states for *this* unit. How content enters a unit is the
+   covering skill's business - follow whatever it says about where a unit's
+   content lives and how it is edited; do not assume a shape it did not describe.
+   What this document contributes is only the content itself, which nothing but
+   the stated intent can supply. A screen the developer described as showing
+   something must show that thing: a unit created but left as the scaffold shipped
+   it means the unit exists and the intent was not realized.
 5. **A failure stops the flow.** If realizing a unit fails, relay the failure's
    own reported reason unreinterpreted, name the applied templates and the units
    realized before it, and realize no further unit. No correction retry.
 
-Then run the verification the covering skills declare for what they created -
-the regeneration, type-check, lint and run steps they name. Hand back a project
-that builds and runs, not one that was merely written.
+Then run the verification the covering skills declare for what they created,
+exactly as they declare it - this document does not know which checks a given
+template names, and must not substitute its own. Hand back a project that builds
+and runs, not one that was merely written.
 
 **If a declared verification fails**, stop there. Report the project as applied
 and realized but **not verified**, relay that verification's own output
