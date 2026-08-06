@@ -99,8 +99,9 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 8. [x] - `p1` - The CLI submits the staged assembly to the pre-flight conflict check (`cpt-frontx-algo-cli-scaffolding-conflict-check`). - `inst-seed-conflict-check`
 9. [x] - `p1` - **IF** the conflict check reports an intersecting claim - `inst-seed-if-conflict`
    1. [x] - `p1` - **RETURN** apply aborted — the contesting templates and the contested ground are reported; no files written. - `inst-seed-abort-conflict`
-10. [x] - `p1` - The CLI materializes the staged assembly into the target directory, composing every shared file from its co-owning templates' owned regions per `cpt-frontx-algo-cli-scaffolding-compose-shared-files`. - `inst-seed-materialize`
-11. [x] - `p1` - **RETURN** apply complete — repository seeded and one provenance record written per applied template. - `inst-seed-return-done`
+10. [x] - `p1` - The CLI re-reads the target path immediately before the first write and refuses with the same reasons as the pre-flight read if the path has since become occupied or ceased to be a directory. Resolution and the conflict check take time, during which the target can change; re-reading at the last moment narrows that window. It does not close it atomically, which would take an exclusive-create protocol across every write path - the check exists to catch a developer aiming at the wrong directory, which is not a race. - `inst-seed-recheck-target`
+11. [x] - `p1` - The CLI materializes the staged assembly into the target directory, composing every shared file from its co-owning templates' owned regions per `cpt-frontx-algo-cli-scaffolding-compose-shared-files`. - `inst-seed-materialize`
+12. [x] - `p1` - **RETURN** apply complete — repository seeded and one provenance record written per applied template. - `inst-seed-return-done`
 
 ### Add a Template into an Existing Repository
 
@@ -296,6 +297,7 @@ This obligation is **not** discharged by the pre-flight conflict check (`cpt-fro
 - [x] A target directory that exists and is empty is seeded
 - [x] A target directory holding only non-content entries (`.git`, `.DS_Store`, `Thumbs.db`) is seeded, so a freshly initialized repository is a supported starting point
 - [x] A target directory holding any entry outside the non-content set is refused with no file written and no template resolved, and the refusal names only the content entries
+- [x] The target is re-read immediately before the first write and refused with the same reasons if it became occupied after the pre-flight read
 - [x] The refusal names the directory as a resolved absolute path, and the add flow's command, qualified by that flow's declared-boundary-only limit
 - [x] A target path that exists and is not a directory is refused with no add remedy offered
 

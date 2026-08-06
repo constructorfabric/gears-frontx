@@ -263,6 +263,77 @@ describe('validateManifestContract', () => {
     expect(result.status).toBe('VALIDATED');
   });
 
+  // inst-if-subtree-reserved / inst-add-subtree-reserved-violation — the
+  // environment-owned half of the reserved set. It exists because the seed flow
+  // treats these entries as carrying no content, so a template permitted to
+  // declare one could claim ground that guard already waved through as empty and
+  // materialization would write into the developer's own `.git`.
+  it.each(['.git', '.git/', '.DS_Store', 'Thumbs.db'])(
+    'rejects an exclusive subtree named %s, which no template may own',
+    (reserved) => {
+      const result = validateManifestContract(
+        validManifest({ ownershipBoundaries: { exclusiveSubtrees: [reserved], sharedFiles: [] } }),
+      );
+
+      expect(result.status).toBe('REJECTED');
+      if (result.status !== 'REJECTED') return;
+      expect(result.violations.some((v) => v.field.startsWith('ownershipBoundaries.exclusiveSubtrees'))).toBe(true);
+    },
+  );
+
+  // Checked per path segment, so nesting a reserved name is refused too: a
+  // template claiming `packages/.git` claims the same kind of ground.
+  it('rejects an exclusive subtree that nests a reserved name at any depth', () => {
+    const result = validateManifestContract(
+      validManifest({ ownershipBoundaries: { exclusiveSubtrees: ['packages/.git'], sharedFiles: [] } }),
+    );
+
+    expect(result.status).toBe('REJECTED');
+  });
+
+  it('rejects a shared-file path containing a reserved segment', () => {
+    const result = validateManifestContract(
+      validManifest({
+        ownershipBoundaries: {
+          exclusiveSubtrees: [],
+          sharedFiles: [{ path: '.git/config', mergeStrategy: 'exclusive', ownedRegions: [] }],
+        },
+      }),
+    );
+
+    expect(result.status).toBe('REJECTED');
+    if (result.status !== 'REJECTED') return;
+    expect(result.violations.some((v) => v.field.startsWith('ownershipBoundaries.sharedFiles'))).toBe(true);
+  });
+
+  // The environment-owned set is additive: the pre-existing `.frontx/` rule keeps
+  // admitting a template's own bundle subtree and refusing the reserved metadata.
+  it('leaves the .frontx/ rule unchanged — own bundle subtree admitted, provenance refused', () => {
+    const admitted = validateManifestContract(
+      validManifest({
+        name: 'my-tpl',
+        ownershipBoundaries: { exclusiveSubtrees: ['.frontx/ai/my-tpl/'], sharedFiles: [] },
+      }),
+    );
+    const refused = validateManifestContract(
+      validManifest({
+        ownershipBoundaries: { exclusiveSubtrees: ['.frontx/provenance.json'], sharedFiles: [] },
+      }),
+    );
+
+    expect(admitted.status).toBe('VALIDATED');
+    expect(refused.status).toBe('REJECTED');
+  });
+
+  // A name that merely CONTAINS a reserved one is a different path and is fine.
+  it('admits a subtree whose segment only contains a reserved name as a substring', () => {
+    const result = validateManifestContract(
+      validManifest({ ownershipBoundaries: { exclusiveSubtrees: ['src/.gitkeep-templates/'], sharedFiles: [] } }),
+    );
+
+    expect(result.status).toBe('VALIDATED');
+  });
+
   // inst-check-description / inst-if-description-invalid / inst-add-description-violation
   it('passes a manifest declaring a non-empty description', () => {
     const result = validateManifestContract(

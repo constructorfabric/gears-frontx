@@ -123,71 +123,21 @@ export async function seedRepository(
   }
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-check-target-empty
-  // The P29 pre-flight conflict check cannot stand in for this. It arbitrates
-  // between templates' DECLARED boundaries, and seeding passes it an empty
-  // occupied set (`checkAssemblyConflicts(assembly, [])` below) because no
-  // template has been applied here yet — so content that arrived by any other
-  // route is declared by nobody and every claim looks free no matter what the
-  // directory holds. Without this gate, pointing seed at a populated tree
-  // overwrites it silently.
-  const targetState = await readTargetDirFn(targetDir);
-  // Partitioned here rather than in the adapter: which entries count as content
-  // is a rule of this flow, and the adapter stays a pure listing that reports
-  // what is on disk without judging it.
-  const contentEntries =
-    targetState === undefined || targetState === 'not-a-directory'
-      ? []
-      : targetState.filter((entry) => !NON_CONTENT_ENTRIES.has(entry));
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-check-target-empty
-
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-target-not-directory
-  if (targetState === 'not-a-directory') {
-    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-directory
-    // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-directory
-    // No add remedy here, deliberately: `frontx add` needs a directory too and
-    // would fail on this same path, so naming it would send the developer to a
-    // second failure rather than to a fix.
-    return {
-      ok: false,
-      reason: 'target-not-directory',
-      message:
-        `Apply refused — target path "${targetDir}" exists and is not a directory, ` +
-        'so no files were written. Seeding materializes a repository into a directory; ' +
-        'point it at a directory path, or remove the file occupying this one.',
-    };
-    // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-directory
-    // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-directory
-  }
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-target-not-directory
-
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-directory
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-target-not-empty
-  if (contentEntries.length > 0) {
-    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-empty
-    // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-empty
-    // REQUESTED -> ABORTED without entering RESOLVED: the refusal precedes
-    // resolution, so no assembly is ever staged for this operation.
-    //
-    // The add remedy carries its own limit. `add` checks the new template's
-    // declared boundaries against those of templates ALREADY APPLIED here, and
-    // this directory has none — so it will not refuse on account of the content
-    // below, and it overwrites an existing file at any path the template
-    // declares as its own. Stating that is the difference between a remedy and
-    // a redirection into the same loss by another route.
-    return {
-      ok: false,
-      reason: 'target-not-empty',
-      message:
-        `Apply refused — target directory "${targetDir}" already holds ${contentEntries.length} ` +
-        `${contentEntries.length === 1 ? 'entry' : 'entries'} (${summarizeEntries(contentEntries)}). ` +
-        'Seeding materializes a whole repository and would write over content no template declared, ' +
-        `so no files were written. Run "frontx add ${templateRef} ${targetDir}" instead to apply this ` +
-        'template into a directory that already holds content — noting that add arbitrates declared ' +
-        'template boundaries only, so it can still overwrite an existing file at a path the template declares.',
-    };
-    // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-empty
-    // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-empty
-  }
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-empty
+  // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-directory
+  // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-empty
+  const preflight = await refuseUnlessSeedable(targetDir, templateRef, readTargetDirFn);
+  if (preflight) return preflight;
+  // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-empty
+  // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-req-aborted-target-not-directory
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-empty
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-target-not-empty
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-target-not-directory
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-target-not-directory
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-check-target-empty
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-resolve-set
   const compositionResult = await resolveComposition(rootEntry, templateRef, new Set<string>(), 0, lookupFn);
@@ -228,6 +178,19 @@ export async function seedRepository(
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-abort-conflict
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-conflict
+
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-recheck-target
+  // Resolution and the conflict check above take time, and the target can change
+  // during it. Re-read at the last moment before the first write so a directory
+  // that became occupied meanwhile is refused rather than written over.
+  //
+  // This NARROWS the check-to-write window; it does not close it atomically.
+  // Closing it would need an exclusive-create protocol across every write path,
+  // out of proportion to what it removes — the guard exists to catch a developer
+  // aiming at the wrong directory, which is not a race.
+  const recheck = await refuseUnlessSeedable(targetDir, templateRef, readTargetDirFn);
+  if (recheck) return recheck;
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-recheck-target
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-materialize
   const materializeResult = await materializeAssembly(
@@ -278,6 +241,67 @@ export async function seedRepository(
     appliedTemplates: templateRefs,
   };
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-done
+}
+
+// Refuses when `targetDir` is not seedable, or returns `undefined` when it is.
+//
+// Extracted because the flow asks this question twice: once before doing any
+// work, and again immediately before the first write (inst-seed-recheck-target),
+// where the answer can have changed. One function keeps the two answers
+// identical — a second copy of the partition or of either message would let the
+// pre-flight refusal and the last-moment refusal drift apart, and a developer
+// would see the same situation described two ways depending on timing.
+async function refuseUnlessSeedable(
+  targetDir: string,
+  templateRef: string,
+  readTargetDirFn: ReadTargetDirFn,
+): Promise<SeedRepositoryResult | undefined> {
+  // The P29 pre-flight conflict check cannot stand in for this. It arbitrates
+  // between templates' DECLARED boundaries, and seeding passes it an empty
+  // occupied set because no template has been applied here yet — so content that
+  // arrived by any other route is declared by nobody and every claim looks free
+  // no matter what the directory holds. Without this gate, pointing seed at a
+  // populated tree overwrites it silently.
+  const targetState = await readTargetDirFn(targetDir);
+
+  if (targetState === 'not-a-directory') {
+    // No add remedy here, deliberately: `frontx add` needs a directory too and
+    // would fail on this same path, so naming it would send the developer to a
+    // second failure rather than to a fix.
+    return {
+      ok: false,
+      reason: 'target-not-directory',
+      message:
+        `Apply refused — target path "${targetDir}" exists and is not a directory, ` +
+        'so no files were written. Seeding materializes a repository into a directory; ' +
+        'point it at a directory path, or remove the file occupying this one.',
+    };
+  }
+
+  // Partitioned here rather than in the adapter: which entries count as content
+  // is a rule of this flow, and the adapter stays a pure listing that reports
+  // what is on disk without judging it.
+  const contentEntries =
+    targetState === undefined ? [] : targetState.filter((entry) => !NON_CONTENT_ENTRIES.has(entry));
+  if (contentEntries.length === 0) return undefined;
+
+  // The add remedy carries its own limit. `add` checks the new template's
+  // declared boundaries against those of templates ALREADY APPLIED here, and
+  // this directory has none — so it will not refuse on account of the content
+  // found here, and it overwrites an existing file at any path the template
+  // declares as its own. Stating that is the difference between a remedy and a
+  // redirection into the same loss by another route.
+  return {
+    ok: false,
+    reason: 'target-not-empty',
+    message:
+      `Apply refused — target directory "${targetDir}" already holds ${contentEntries.length} ` +
+      `${contentEntries.length === 1 ? 'entry' : 'entries'} (${summarizeEntries(contentEntries)}). ` +
+      'Seeding materializes a whole repository and would write over content no template declared, ' +
+      `so no files were written. Run "frontx add ${templateRef} ${targetDir}" instead to apply this ` +
+      'template into a directory that already holds content — noting that add arbitrates declared ' +
+      'template boundaries only, so it can still overwrite an existing file at a path the template declares.',
+  };
 }
 
 // Quotes the first few entry names and counts the rest, so the refusal carries

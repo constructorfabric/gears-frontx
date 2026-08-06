@@ -288,6 +288,57 @@ describe('seedRepository empty-target guard — cpt-frontx-dod-cli-scaffolding-s
     expect(files.get('/not-yet/template-a/index.ts')).toBe('export const a = true;');
   });
 
+  // inst-seed-recheck-target — resolution and the conflict check take time, so
+  // the target is re-read immediately before the first write. A probe that
+  // reports empty first and occupied second stands in for a directory that
+  // gained content during that window.
+  it('refuses on the last-moment re-read when the target became occupied after the pre-flight read', async () => {
+    const { files, writeFileFn, provenanceWriteFn } = makeFsFake();
+    const states: (string[] | undefined)[] = [[], ['package.json']];
+    let call = 0;
+    const flipping = async (): Promise<string[] | undefined> => states[call++] ?? ['package.json'];
+
+    const result = await seedRepository(
+      'template-a',
+      '/races',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      flipping,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-not-empty');
+    // The point of re-reading at all: nothing was written despite the pre-flight
+    // read having cleared the target.
+    expect(files.size).toBe(0);
+    expect(call).toBe(2);
+  });
+
+  it('refuses on the re-read when the target became a file after the pre-flight read', async () => {
+    const { files, writeFileFn, provenanceWriteFn } = makeFsFake();
+    const states: (string[] | 'not-a-directory' | undefined)[] = [undefined, 'not-a-directory'];
+    let call = 0;
+    const flipping = async (): Promise<string[] | 'not-a-directory' | undefined> => states[call++] ?? 'not-a-directory';
+
+    const result = await seedRepository(
+      'template-a',
+      '/races-file',
+      () => entry,
+      readContentFn,
+      writeFileFn,
+      provenanceWriteFn,
+      flipping,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-not-directory');
+    expect(files.size).toBe(0);
+  });
+
   // The guard runs before resolution, so a populated target is refused without
   // the flow ever consulting the inventory.
   it('refuses before resolving the template, so only the reference check consults the inventory', async () => {
