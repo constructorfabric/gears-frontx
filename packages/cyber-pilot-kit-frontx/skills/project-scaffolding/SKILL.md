@@ -186,6 +186,12 @@ If the file is absent or unreadable after a command reported success, say the
 applied set could not be confirmed and name the target directory. Do not present
 an applied set you did not read.
 
+**Then stop. Do not continue to Step 7.** Realizing units needs two things this
+failure denies you: which templates are applied, and their bundles to read. With
+the applied set unconfirmed both are guesses, and a unit created into ground that
+may not be there is worse than a unit not created. Report what you know, point at
+the target directory so the developer can establish its state, and end there.
+
 ## Step 7 - Realize the units the intent names
 
 The plan stops short of the intent until this step runs. An intent naming two
@@ -193,15 +199,24 @@ screens is not delivered by a project with the ground for screens and no screens
 in it.
 
 Each applied template materialized its own AI-extension bundle into the project
-under `.frontx/ai/<template-identity>/`. Those bundles are discovered and
-activated in this project by the ecosystem's extension host, and the skills they
-contribute are what add a unit to that template's ground. They, not this
-document, know how.
+under `.frontx/ai/<template-identity>/`. **Read those bundles from disk now** -
+they are already there, written by the apply you just ran. Find each template's
+bundle by its identity-scoped path and each capability inside it by the role its
+bundle declares. The skills they contribute are what add a unit to that
+template's ground; they, not this document, know how.
+
+Do not wait for the framework's extension host to activate them. That activation
+pass runs on the framework's *next* invocation and makes the same capabilities
+available as activated resources from then on - it has not run in this session,
+and the flow does not need it to have run. What you need is on disk.
 
 For each unit from step 3.10, in plan order:
 
 1. **Find the covering skill.** Look in the bundle of the template that owns the
-   unit's ground for an activated skill that adds a unit of that kind.
+   unit's ground for a skill whose declared role is adding a unit of that kind.
+   This is the authoritative answer to which template owns the unit - the plan's
+   attribution was provisional (Step 3.10), drawn from what descriptions say, and
+   is corrected here by what the bundles actually carry.
 2. **No covering skill?** Record the unit as residual work, naming the ground it
    falls in, write nothing into that ground, and move to the next unit. A
    template that declares no way to add a unit to its ground is not one to
