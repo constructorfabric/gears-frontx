@@ -42,7 +42,8 @@
  */
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   isTemplateExamplePackage,
@@ -181,7 +182,13 @@ interface OutMfeManifestConfig {
 // ---------------------------------------------------------------------------
 
 // @cpt-begin:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-2
-class ManifestGenerator {
+/**
+ * Exported for `__tests__/template-example-packages.test.ts`, which runs the
+ * real discovery against a fixture tree rather than a copy of its rules. The
+ * CLI entry at the foot of this file guards on being the process entry point so
+ * that import writes no manifest of its own.
+ */
+export class ManifestGenerator {
   private readonly mfePackagesDir: string;
   private readonly outputFile: string;
   private readonly globalBaseUrl: string | null;
@@ -230,16 +237,15 @@ class ManifestGenerator {
     }
 
     const includeExamples = templateExamplesIncluded();
+    const discovered: string[] = [];
     const skippedExamples: string[] = [];
 
-    const discovered = readdirSync(this.mfePackagesDir).filter((dir) => {
-      if (ManifestGenerator.EXCLUDED.has(dir) || dir.startsWith('.')) {
-        return false;
-      }
+    for (const dir of readdirSync(this.mfePackagesDir)) {
+      if (ManifestGenerator.EXCLUDED.has(dir) || dir.startsWith('.')) continue;
+
       const pkgPath = join(this.mfePackagesDir, dir);
-      if (!existsSync(join(pkgPath, 'mfe.json'))) {
-        return false;
-      }
+      if (!existsSync(join(pkgPath, 'mfe.json'))) continue;
+
       // A package the template ships as an example or as the copy-from scaffold
       // contributes no extension to the aggregated manifest, so nothing of it
       // reaches the registry the host's navigation menu is built from. Excluding
@@ -248,10 +254,11 @@ class ManifestGenerator {
       // producing something no product asked for.
       if (!includeExamples && isTemplateExamplePackage(pkgPath)) {
         skippedExamples.push(dir);
-        return false;
+        continue;
       }
-      return true;
-    });
+
+      discovered.push(dir);
+    }
 
     if (skippedExamples.length > 0) {
       console.log(templateExamplesSkippedNotice(skippedExamples));
@@ -449,15 +456,26 @@ function parseArgs(argv: string[]): { baseUrl: string | null } {
   return { baseUrl };
 }
 
-const { baseUrl } = parseArgs(process.argv.slice(2));
-
-const MFE_PACKAGES_DIR = join(process.cwd(), 'src-app/mfe_packages');
-const OUTPUT_FILE = join(process.cwd(), 'public/generated-mfe-manifests.json');
 const MFE_MANIFEST_PATH = 'dist/mfe-manifest.json';
 
-try {
-  new ManifestGenerator(MFE_PACKAGES_DIR, OUTPUT_FILE, MFE_MANIFEST_PATH, baseUrl).run();
-} catch (err) {
-  console.error('Error generating MFE manifests:', err instanceof Error ? err.message : String(err));
-  process.exit(1);
+// Generating is what running this file does, and only running it: a test that
+// imports `ManifestGenerator` must not also rewrite the real project's
+// `public/generated-mfe-manifests.json` as a side effect of the import. The
+// comparison is against the resolved path of the file node was told to run, so
+// it holds under `tsx scripts/generate-mfe-manifests.ts` as well as under node.
+const invokedPath = process.argv[1];
+const isProcessEntryPoint =
+  invokedPath !== undefined && resolve(invokedPath) === fileURLToPath(import.meta.url);
+
+if (isProcessEntryPoint) {
+  const { baseUrl } = parseArgs(process.argv.slice(2));
+  const mfePackagesDir = join(process.cwd(), 'src-app/mfe_packages');
+  const outputFile = join(process.cwd(), 'public/generated-mfe-manifests.json');
+
+  try {
+    new ManifestGenerator(mfePackagesDir, outputFile, MFE_MANIFEST_PATH, baseUrl).run();
+  } catch (err) {
+    console.error('Error generating MFE manifests:', err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
 }

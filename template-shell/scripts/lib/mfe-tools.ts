@@ -65,10 +65,12 @@ export function isTemplateExamplePackage(packagePath: string): boolean {
   try {
     parsed = JSON.parse(readFileSync(mfeJsonPath, 'utf-8'));
   } catch {
-    // An unreadable mfe.json is the manifest pipeline's failure to report, with
-    // the package named and the parse error quoted. Answering "not an example"
-    // keeps the package in discovery so it reaches that message, instead of
-    // dropping it here under a flag it was never shown to carry.
+    // An `mfe.json` that does not parse is the build's failure to report: the
+    // `frontxMfGts` plugin parses this same file, and its throw surfaces through
+    // `buildMfesSequentially` as "MFE build failed for <name>". (Manifest
+    // generation never sees it - that reads `dist/mfe-manifest.json`.) Answering
+    // "not an example" leaves the package in discovery so it reaches that build,
+    // rather than disappearing here under a flag it was never shown to carry.
     return false;
   }
 
@@ -77,8 +79,8 @@ export function isTemplateExamplePackage(packagePath: string): boolean {
 
 /**
  * Whether discovery includes packages that declare themselves template example
- * content. Only the two explicit spellings count, so an unset or unrelated
- * value leaves the product's own packages as the whole discovered set.
+ * content. `1` and `true` (any casing) are the accepted spellings; an unset or
+ * unrelated value leaves the product's own packages as the whole discovered set.
  *
  * @param env - Environment to read; defaults to the process environment
  */
@@ -89,9 +91,13 @@ export function templateExamplesIncluded(env: NodeJS.ProcessEnv = process.env): 
 
 /**
  * Human-readable line naming the example packages discovery left out and the
- * variable that puts them back. Printed rather than swallowed: a developer who
- * expected the template's demo screens and got an empty menu needs the reason
- * on screen, not in a document.
+ * variable that puts them back.
+ *
+ * Manifest generation is the single place this is printed, and every flow that
+ * builds or serves MFEs ends in it (`dev`, `build`, and `dev:all`'s own
+ * generate step). Printing it from the package scan as well would say the same
+ * thing twice in one `dev:all` run, once from the orchestrator and once from
+ * the generator it spawns.
  */
 export function templateExamplesSkippedNotice(skipped: readonly string[]): string {
   return (
@@ -100,16 +106,53 @@ export function templateExamplesSkippedNotice(skipped: readonly string[]): strin
   );
 }
 
-/** Scan src-app/mfe_packages/ and extract port from each package's scripts. */
-export function getMFEPackages(): MfeInfo[] {
-  if (!existsSync(MFE_PACKAGES_DIR)) {
-    return [];
+/**
+ * The line an orchestrator prints when the scan found nothing to build or
+ * serve. It names the example packages when they are the whole reason the set
+ * is empty: "there are no packages here" and "every package here is an example"
+ * call for different actions, and reporting both as the former after a skip
+ * notice reads as a contradiction.
+ */
+export function noDiscoveredPackagesNotice(skippedExamples: readonly string[]): string {
+  if (skippedExamples.length === 0) {
+    return 'ℹ️  No MFE packages found in src-app/mfe_packages/.';
+  }
+  return (
+    `ℹ️  No MFE packages found in src-app/mfe_packages/ beyond ${skippedExamples.length} ` +
+    `template example package(s): ${skippedExamples.join(', ')}. ` +
+    `Set ${TEMPLATE_EXAMPLES_ENV_VAR}=1 to include them.`
+  );
+}
+
+/**
+ * Outcome of one scan of an MFE packages directory. The skipped example names
+ * travel with the packages because a caller reporting an empty set has to say
+ * which kind of empty it is - see `noDiscoveredPackagesNotice`.
+ */
+export interface MfeDiscovery {
+  /** Packages the shell builds, serves and aggregates, with the port each declares. */
+  packages: MfeInfo[];
+  /** Directory names left out because their `mfe.json` declares template example content. */
+  skippedExamples: string[];
+}
+
+/**
+ * Scan an MFE packages directory and extract each package's port from its
+ * scripts.
+ *
+ * @param mfePackagesDir - Directory to scan. Defaults to this project's own
+ *   `src-app/mfe_packages`; passed explicitly by tests, which cannot move the
+ *   working directory the default was resolved from at import time
+ */
+export function getMFEPackages(mfePackagesDir: string = MFE_PACKAGES_DIR): MfeDiscovery {
+  if (!existsSync(mfePackagesDir)) {
+    return { packages: [], skippedExamples: [] };
   }
 
-  const mfes: MfeInfo[] = [];
-  const entries = readdirSync(MFE_PACKAGES_DIR, { withFileTypes: true });
-  const includeExamples = templateExamplesIncluded();
+  const packages: MfeInfo[] = [];
   const skippedExamples: string[] = [];
+  const entries = readdirSync(mfePackagesDir, { withFileTypes: true });
+  const includeExamples = templateExamplesIncluded();
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
@@ -119,12 +162,12 @@ export function getMFEPackages(): MfeInfo[] {
     // Ahead of the port lookup: an example package is left out whether or not
     // its scripts carry a `--port`, and the "could not find --port" warning
     // below would be noise about a package nothing intends to start.
-    if (!includeExamples && isTemplateExamplePackage(join(MFE_PACKAGES_DIR, entry.name))) {
+    if (!includeExamples && isTemplateExamplePackage(join(mfePackagesDir, entry.name))) {
       skippedExamples.push(entry.name);
       continue;
     }
 
-    const pkgJsonPath = join(MFE_PACKAGES_DIR, entry.name, 'package.json');
+    const pkgJsonPath = join(mfePackagesDir, entry.name, 'package.json');
     if (!existsSync(pkgJsonPath)) continue;
 
     try {
@@ -142,17 +185,13 @@ export function getMFEPackages(): MfeInfo[] {
         continue;
       }
 
-      mfes.push({ name: entry.name, port: parseInt(portMatch[1], 10) });
+      packages.push({ name: entry.name, port: parseInt(portMatch[1], 10) });
     } catch (e) {
       console.warn(`⚠️  Failed to read package.json for ${entry.name}:`, e);
     }
   }
 
-  if (skippedExamples.length > 0) {
-    console.log(templateExamplesSkippedNotice(skippedExamples));
-  }
-
-  return mfes;
+  return { packages, skippedExamples };
 }
 
 /** Build MFE packages sequentially using vite build in each package directory. */

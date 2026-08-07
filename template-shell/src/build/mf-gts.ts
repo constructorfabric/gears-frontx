@@ -137,10 +137,12 @@ interface MfeJsonSchema {
 interface MfeJson {
   /**
    * Set by a package the template ships as an example or as the copy-from
-   * scaffold. The plugin builds such a package like any other and carries the
-   * flag through to the enriched output; what reads it is the shell's manifest
-   * generation and dev orchestration, which leave the package out of the
-   * aggregate so an applied project registers only its own packages.
+   * scaffold. Declared here because the plugin reads this file, not because the
+   * plugin acts on it: the plugin builds such a package like any other. The
+   * consumers are the shell's manifest generation and dev orchestration, and
+   * both read the flag from the source `mfe.json` on disk. `enrich` spreads it
+   * into `dist/mfe-manifest.json` along with every other field it does not
+   * rewrite, and that copy has no reader.
    */
   templateExample?: boolean;
   manifest: MfeJsonManifest;

@@ -5,21 +5,25 @@
  * Called by the build and dev scripts before generate:mfe-manifests.
  */
 
-import { buildMfesSequentially, getMFEPackages } from './lib/mfe-tools.js';
+import {
+  buildMfesSequentially,
+  getMFEPackages,
+  noDiscoveredPackagesNotice,
+} from './lib/mfe-tools.js';
 
 async function main() {
-  const mfes = getMFEPackages();
+  const { packages, skippedExamples } = getMFEPackages();
 
-  if (mfes.length === 0) {
-    console.log('ℹ️  No MFE packages found in src-app/mfe_packages/, skipping MFE build.');
+  if (packages.length === 0) {
+    console.log(`${noDiscoveredPackagesNotice(skippedExamples)} Skipping MFE build.`);
     return;
   }
 
-  console.log(`Found ${mfes.length} MFE package(s):`);
-  mfes.forEach((mfe) => console.log(`  - ${mfe.name}`));
+  console.log(`Found ${packages.length} MFE package(s):`);
+  packages.forEach((mfe) => console.log(`  - ${mfe.name}`));
   console.log();
 
-  await buildMfesSequentially(mfes);
+  await buildMfesSequentially(packages);
 }
 
 main().catch((err) => {
