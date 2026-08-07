@@ -150,9 +150,12 @@ describe('HomeScreen', () => {
     expect(screen.getByRole('status').getAttribute('aria-busy')).toBe('true');
   });
 
-  // The kit scopes its design tokens with data-theme; a screen carrying neither
-  // value inherits whatever prefers-color-scheme resolved on the shadow host.
-  it('scopes the screen to the kit dark tokens only when the host theme names them', async () => {
+  // Every dark palette the host registers has to reach the kit's dark scope:
+  // the screen paints its own surface from those tokens, so a miss puts a light
+  // card on dark host chrome. An unrecognised identifier falls back to the light
+  // scope rather than to no scope, which would inherit whatever
+  // prefers-color-scheme resolved on the shadow host.
+  it('scopes the screen to the kit dark tokens for every dark host theme and to light otherwise', async () => {
     const bridgeFixture = createMfeBridgeFixture({
       domainId: TEST_DOMAIN_ID,
       instanceId: TEST_INSTANCE_ID,
@@ -164,14 +167,25 @@ describe('HomeScreen', () => {
 
     const { container } = render(<HomeScreen bridge={bridgeFixture.bridge} />);
 
+    // TEST_THEME is an identifier the host never registers.
     expect(await screen.findByText(TEST_DOMAIN_ID)).toBeTruthy();
     expect(container.firstElementChild?.getAttribute('data-theme')).toBe('light');
 
-    act(() => {
-      bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_THEME, 'dark');
-    });
+    for (const darkTheme of ['dark', 'dracula', 'dracula-large']) {
+      act(() => {
+        bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_THEME, darkTheme);
+      });
 
-    expect(container.firstElementChild?.getAttribute('data-theme')).toBe('dark');
+      expect(container.firstElementChild?.getAttribute('data-theme')).toBe('dark');
+    }
+
+    for (const lightTheme of ['default', 'light']) {
+      act(() => {
+        bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_THEME, lightTheme);
+      });
+
+      expect(container.firstElementChild?.getAttribute('data-theme')).toBe('light');
+    }
   });
 
   it('reacts to bridge property updates and unsubscribes on unmount', async () => {

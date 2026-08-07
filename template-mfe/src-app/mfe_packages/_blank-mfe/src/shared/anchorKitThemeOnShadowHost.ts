@@ -11,15 +11,15 @@
 /**
  * Rewrite every `:root` selector in a stylesheet to `:host`.
  *
- * Comments are stripped first, which is what lets one anchor set cover both
- * shapes the stylesheet arrives in: Vite hands over the source verbatim in dev
- * and tests, where a `:root` rule follows a comment block, and a single
- * minified line in a production build, where the same rule follows the previous
- * rule's `}`. A line-anchored rewrite passes on the first and silently leaves
- * all but the first selector behind on the second.
+ * Comments are stripped first, and only first: `:root` appears in the kit's
+ * prose as well as its selectors, and once the prose is gone every remaining
+ * occurrence is a selector. Recognising selector *positions* instead — anchored
+ * on a preceding `{`, `}` or start of input — buys nothing over replacing them
+ * all and loses `[data-theme='light'],:root { … }`, which is the same
+ * silent-partial-rewrite this function exists to avoid.
  *
  * @param css - Stylesheet source, minified or not
  */
 export function anchorKitThemeOnShadowHost(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[{}])(\s*):root\b/g, '$1$2:host');
+  return css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/:root\b/g, ':host');
 }

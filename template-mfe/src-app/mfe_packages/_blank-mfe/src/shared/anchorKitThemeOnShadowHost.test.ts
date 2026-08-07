@@ -47,4 +47,13 @@ describe('anchorKitThemeOnShadowHost', () => {
     expect(anchored).toContain(':host,[data-theme=light]');
     expect(anchored).toContain(':host:not([data-theme=light])');
   });
+
+  // A selector list may put :root anywhere, not only first; a rewrite that
+  // recognised selector positions would drop this one and leave the rule
+  // matching nothing in a shadow tree.
+  it('rewrites a root selector that trails another selector in the same list', () => {
+    const anchored = anchorKitThemeOnShadowHost("[data-theme='light'],:root{--background:#fff}");
+
+    expect(anchored).toBe("[data-theme='light'],:host{--background:#fff}");
+  });
 });
