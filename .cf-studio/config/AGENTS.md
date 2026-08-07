@@ -5,6 +5,36 @@ These rules are loaded alongside the generated rules in `{cf-studio-path}/.gen/A
 
 ---
 
+## Contribution Workflow Binding
+
+```pdsl
+UNIT DevelopConflictResolution
+
+PURPOSE:
+  Bind conflict resolution with `develop` to the contribution workflow in `CONTRIBUTING.md`.
+
+WHEN:
+  - REQUIRE resolving conflicts with `develop` on any branch with a PR targeting `develop`
+
+DO:
+  - LOAD the "Resolving Conflicts with `develop`" section of `CONTRIBUTING.md` and follow its procedure
+```
+
+```pdsl
+UNIT CommitRequirements
+
+PURPOSE:
+  Bind commit authoring to the commit requirements in `CONTRIBUTING.md`.
+
+WHEN:
+  - REQUIRE creating commits or preparing a PR for merge in this repository
+
+DO:
+  - LOAD the "Commit Requirements" section of `CONTRIBUTING.md` and follow its procedure
+```
+
+---
+
 ## FrontX Architecture Binding
 
 `architecture/` is the authority on what the system is and why: PRD for intent,

@@ -1,6 +1,6 @@
 # Contributing to Gears FrontX
 
-> **TARGET AUDIENCE:** Humans
+> **TARGET AUDIENCE:** Humans and agents
 > **PURPOSE:** Contribution guidelines and workflow for developers
 
 ## Branching Model (Gitflow)
@@ -17,11 +17,30 @@
 ### Standard Workflow
 
 1. Create a `feature/*` branch from `develop`
-2. Make changes, commit, push, open PR targeting `develop`
+2. Make changes, commit (signed off - see [Commit Requirements](#commit-requirements)), push, open PR targeting `develop`
 3. After review and merge, CI publishes alpha versions
 4. When ready for release, create `release/X.Y.Z` from `develop`
 5. Finalize version bumps, merge `release/X.Y.Z` into `main`
 6. CI publishes stable versions, merge back to `develop`
+
+### Resolving Conflicts with `develop`
+
+**For any branch with a PR targeting `develop` (`feature/*`, `fix/*`, or otherwise), always rebase onto `develop`; never merge `develop` into your branch.** If your branch falls behind canonical `develop` and needs conflicts resolved, rebase onto it:
+
+```bash
+git fetch origin develop
+git rebase origin/develop
+# for each conflicted commit: resolve conflicts, then stage every resolved path
+git add -- path/to/resolved-file
+# substitute every actual resolved path before continuing
+git rebase --continue
+# repeat resolve/add/continue until the rebase completes
+git push --force-with-lease
+```
+
+To abandon the rebase and return to the previous branch state instead, run `git rebase --abort`. In a fork-based setup, replace `origin` with the remote that tracks `constructorfabric/gears-frontx`.
+
+A merge from `develop` into a work branch makes the merge commit and any conflict-resolution combined diff durable in branch history, which is hard to review.
 
 ### Previous-Major Maintenance
 
@@ -33,6 +52,16 @@ When a new major is released, the previous major gets a long-lived `release/vN` 
 4. If the fix also applies to v2, cherry-pick to `develop` or `main`
 
 Users install old majors explicitly: `npm install @gears-frontx/react@v1`
+
+## Commit Requirements
+
+**Sign off every commit (DCO).** Each commit must carry a `Signed-off-by` line certifying the [Developer Certificate of Origin](https://developercertificate.org/). Pass `-s` when committing:
+
+```bash
+git commit -s -m "feat: describe the change"
+```
+
+To add a missing sign-off to the latest commit, run `git commit --amend -s --no-edit`. To sign off a range of commits, run `git rebase --signoff <base>` (e.g. `git rebase --signoff HEAD~3` to cover the last three), then push with `--force-with-lease`. Note that `git rebase --signoff` appends the trailer even when a `Signed-off-by` already exists earlier in the message (it only skips when an identical sign-off is last), so rebasing over already-signed commits that end in `Co-Authored-By` adds a duplicate line - pick a `<base>` that spans only the commits missing the trailer.
 
 ## Versioning
 
@@ -81,8 +110,8 @@ Each package is versioned independently within a single major version.
 ## Development Setup
 
 ```bash
-git clone https://github.com/gears-frontx/frontx.git
-cd frontx
+git clone https://github.com/constructorfabric/gears-frontx.git
+cd gears-frontx
 npm ci
 npm run build:packages
 npm run dev
