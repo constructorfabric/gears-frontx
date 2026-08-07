@@ -975,6 +975,52 @@ describe('addTemplate occupied-ground guard — cpt-frontx-dod-cli-scaffolding-a
     expect(files.get('/target/srcx.ts')).toBe('work this repository already had');
   });
 
+  // The sibling case above never reaches the subtree comparison: its incoming
+  // template declares no subtree, so `claimed.subtrees` is empty and the
+  // separator plays no part. Here BOTH claims declare `src`, which is what makes
+  // the trailing-separator normalization load-bearing — compared by bare prefix,
+  // `srcx.ts` would read as ground inside `src` that both sides declare, be
+  // exempted, and reach the conflict check, which reports the contested `src`
+  // subtree and never mentions the content standing on `srcx.ts`.
+  it('refuses a sibling of a subtree both claims declare, since only the separator makes a path inside it', async () => {
+    const applied = makeEntry('subtree-owner', [], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src'], sharedFiles: [] },
+    });
+    const sibling = makeEntry('sibling-sharer', [{ path: 'srcx.ts', content: 'from the template' }], {
+      ownershipBoundaries: {
+        exclusiveSubtrees: ['src'],
+        sharedFiles: [{ path: 'srcx.ts', mergeStrategy: 'exclusive', ownedRegions: [] }],
+      },
+    });
+    const entries: Record<string, InventoryEntry> = { 'subtree-owner': applied, 'sibling-sharer': sibling };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'subtree-owner', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/subtree-owner@v1.0.0' },
+      ]),
+    );
+    files.set('/target/srcx.ts', 'work this repository already had');
+
+    const result = await addTemplate(
+      'sibling-sharer',
+      '/target',
+      (name: string) => entries[name],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readTargetPathStateFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-holds-undeclared-content');
+    expect(files.get('/target/srcx.ts')).toBe('work this repository already had');
+  });
+
   // The conflict check compares declared claims for equality, so a path strictly
   // inside ANOTHER template's recorded subtree passes it untouched. Exempting
   // such a path from the guard as well would leave nothing between the incoming
@@ -1095,6 +1141,126 @@ describe('addTemplate occupied-ground guard — cpt-frontx-dod-cli-scaffolding-a
     if (result.ok) return;
     expect(result.reason).toBe('conflict');
     expect(files.get('/target/src/index.ts')).toBe('written by the recorded template');
+  });
+
+  // A path can be contributed by several templates at once, and the ground they
+  // declare is the union of their claims — the preset's root here declares only
+  // the shared file, and only the template it references declares the `src/`
+  // subtree the recorded claim also declares. Consulting the first contributor
+  // alone would leave the path unarbitrated and refuse it as unaccounted
+  // content, taking the contest away from the check that names the contestants.
+  it('unions the claims of every template contributing a path, so ground only the referenced template declares is still arbitrated', async () => {
+    const applied = makeEntry('subtree-owner', [], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/'], sharedFiles: [] },
+    });
+    const root = makeEntry(
+      'union-root',
+      [{ path: 'src/shared.json', content: 'frontx:region union-root:root\nroot\nfrontx:endregion union-root:root' }],
+      {
+        ownershipBoundaries: {
+          exclusiveSubtrees: [],
+          sharedFiles: [{ path: 'src/shared.json', mergeStrategy: 'region-union', ownedRegions: ['root'] }],
+        },
+        referencedTemplates: [{ ref: 'union-branch' }],
+      },
+    );
+    const branch = makeEntry(
+      'union-branch',
+      [{ path: 'src/shared.json', content: 'frontx:region union-branch:branch\nbranch\nfrontx:endregion union-branch:branch' }],
+      {
+        ownershipBoundaries: {
+          exclusiveSubtrees: ['src/'],
+          sharedFiles: [{ path: 'src/shared.json', mergeStrategy: 'region-union', ownedRegions: ['branch'] }],
+        },
+      },
+    );
+    const entries: Record<string, InventoryEntry> = {
+      'subtree-owner': applied,
+      'union-root': root,
+      'union-branch': branch,
+    };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'subtree-owner', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/subtree-owner@v1.0.0' },
+      ]),
+    );
+    files.set('/target/src/shared.json', 'written by the recorded template');
+
+    const result = await addTemplate(
+      'union-root',
+      '/target',
+      (name: string) => entries[name],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readTargetPathStateFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('conflict');
+    expect(files.get('/target/src/shared.json')).toBe('written by the recorded template');
+  });
+
+  // The pre-flight probe deliberately runs ahead of the conflict check
+  // (instruction 7 before instruction 10). A target that both holds unaccounted
+  // content and contests a declared boundary is therefore refused for the
+  // content: that refusal names a path the developer can move, delete or record,
+  // while the conflict report would name templates and leave the content that is
+  // actually at risk unmentioned.
+  it('reports the unaccounted content rather than the boundary conflict when the target holds both', async () => {
+    const applied = makeEntry('subtree-owner', [], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/'], sharedFiles: [] },
+    });
+    const contender = makeEntry(
+      'contending-template',
+      [
+        { path: 'src/index.ts', content: 'from the template' },
+        { path: 'legacy.json', content: 'from the template' },
+      ],
+      {
+        ownershipBoundaries: {
+          exclusiveSubtrees: ['src/'],
+          sharedFiles: [{ path: 'legacy.json', mergeStrategy: 'exclusive', ownedRegions: [] }],
+        },
+      },
+    );
+    const entries: Record<string, InventoryEntry> = { 'subtree-owner': applied, 'contending-template': contender };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'subtree-owner', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/subtree-owner@v1.0.0' },
+      ]),
+    );
+    // Unaccounted by any provenance record, and on ground no recorded claim
+    // declares — so nothing arbitrates it and only the guard stands in the way.
+    files.set('/target/legacy.json', 'work this repository already had');
+
+    const result = await addTemplate(
+      'contending-template',
+      '/target',
+      (name: string) => entries[name],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readTargetPathStateFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-holds-undeclared-content');
+    if (result.reason !== 'target-holds-undeclared-content') return;
+    expect(result.paths).toEqual(['legacy.json']);
+    expect(files.get('/target/legacy.json')).toBe('work this repository already had');
   });
 
   it('refuses a target path that exists and is not a directory, writing no file', async () => {

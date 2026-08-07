@@ -161,26 +161,21 @@ export async function addTemplate(
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-check-occupied
 
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-check-ground-free
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-target-not-directory
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-abort-target-not-directory
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-ground-occupied
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-abort-ground-occupied
-  // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-resolved-aborted-target-not-directory
-  // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-resolved-aborted-ground-occupied
   // Runs as soon as both inputs exist — the staged assembly's own paths and the
   // ground the target's provenance accounts for — so a repository holding
   // undeclared content is refused without the pairwise conflict check below
   // having to run at all.
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-check-ground-free
   const preflight = await refuseUnlessGroundFree(applyResult.assembly, alreadyOccupied.occupied, targetDir, readTargetPathStateFn);
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-check-ground-free
+
+  // Both abort transitions leave RESOLVED through this one return; which of them
+  // it is depends on the reason `refuseUnlessGroundFree` chose.
+  // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-resolved-aborted-target-not-directory
+  // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-resolved-aborted-ground-occupied
   if (preflight) return preflight;
   // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-resolved-aborted-ground-occupied
   // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-resolved-aborted-target-not-directory
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-abort-ground-occupied
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-ground-occupied
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-abort-target-not-directory
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-target-not-directory
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-check-ground-free
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-conflict-check
   const verdict = checkAssemblyConflicts(applyResult.assembly, alreadyOccupied.occupied);
@@ -200,7 +195,6 @@ export async function addTemplate(
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-conflict
 
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-recheck-ground
   // The conflict check above takes time, and the target can change during it.
   // Re-probing at the last moment before the first write refuses a repository
   // that gained content at one of these paths meanwhile, rather than writing
@@ -211,9 +205,18 @@ export async function addTemplate(
   // out of proportion to what it removes — the guard exists to catch a developer
   // adding into a directory whose content no template recorded, which is not a
   // race.
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-recheck-ground
   const recheck = await refuseUnlessGroundFree(applyResult.assembly, alreadyOccupied.occupied, targetDir, readTargetPathStateFn);
-  if (recheck) return recheck;
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-recheck-ground
+
+  // The same two refusals as the pre-flight return above, but reached from
+  // CONFLICT_CHECKED: the conflict check has already passed by the time this
+  // runs, so these are their own transitions rather than the RESOLVED ones.
+  // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-checked-aborted-target-not-directory
+  // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-checked-aborted-ground-occupied
+  if (recheck) return recheck;
+  // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-checked-aborted-ground-occupied
+  // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-checked-aborted-target-not-directory
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
   const materializeResult = await materializeAssembly(
@@ -270,10 +273,12 @@ async function refuseUnlessGroundFree(
   // materialization's whole-file write truncates whatever was there.
   const targetState = await readTargetPathStateFn(targetDir);
 
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-target-not-directory
   if (targetState === 'file') {
     // No seed remedy here, deliberately: `frontx seed` needs a directory too and
     // refuses this same path, so naming it would send the developer to a second
     // failure rather than to a fix.
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-abort-target-not-directory
     return {
       ok: false,
       reason: 'target-not-directory',
@@ -282,7 +287,9 @@ async function refuseUnlessGroundFree(
         'so no files were written. Adding materializes a template into a repository directory; ' +
         'point it at a directory path, or remove the file occupying this one.',
     };
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-abort-target-not-directory
   }
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-target-not-directory
 
   // A target that does not exist holds nothing any write could destroy, and
   // materialization creates it — so no path beneath it needs probing.
@@ -325,8 +332,10 @@ async function refuseUnlessGroundFree(
 
   // The whole point of the exemption above: a populated directory whose content
   // the incoming template does not claim stays a supported add target.
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-ground-occupied
   if (occupiedPaths.length === 0) return undefined;
 
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-abort-ground-occupied
   const noun = occupiedPaths.length === 1 ? 'path' : 'paths';
   const pronoun = occupiedPaths.length === 1 ? 'it' : 'them';
   return {
@@ -340,6 +349,8 @@ async function refuseUnlessGroundFree(
       `${pronoun}, so no files were written. Move or delete the named ${noun}, or record the applied provenance ` +
       `of the template that wrote ${pronoun}, and retry.`,
   };
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-abort-ground-occupied
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-ground-occupied
 }
 
 // The ground the templates contributing one path declare for themselves — the
