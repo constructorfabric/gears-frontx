@@ -345,6 +345,58 @@ function verifyCoreCruiseTargets(): TestResult[] {
 }
 
 /**
+ * Verify `doNotFollow` bounds `node_modules` at any depth in both depcruise
+ * configs that cruise the ecosystem tree.
+ *
+ * The pattern is asserted literally: npm nests a `node_modules` under a
+ * workspace whenever its pins conflict with the root's, and an anchored
+ * `^node_modules` lets traversal descend into those until dependency-cruiser
+ * OOMs in CI (#523). Running the cruise cannot detect a regression here — a
+ * loosened pattern produces no violation, only a silently growing graph — so
+ * this is asserted the same way the rule names are. The root config lives
+ * outside `internal/`, but it is a boundary guard all the same.
+ */
+const NODE_MODULES_ANY_DEPTH = '(^|/)node_modules/';
+
+function verifyDoNotFollowPatterns(): TestResult[] {
+  const results: TestResult[] = [];
+
+  const targets: [string, string][] = [
+    [join(DEPCRUISE_CONFIG_DIR, 'base.cjs'), 'Depcruise base'],
+    [join(REPO_ROOT, '.dependency-cruiser.cjs'), 'Depcruise root'],
+  ];
+
+  for (const [configPath, label] of targets) {
+    try {
+      const config = require(configPath);
+      const doNotFollow = config.options?.doNotFollow;
+      const paths =
+        typeof doNotFollow === 'string'
+          ? [doNotFollow]
+          : Array.isArray(doNotFollow?.path)
+            ? doNotFollow.path
+            : [doNotFollow?.path];
+      const hasPattern = paths.includes(NODE_MODULES_ANY_DEPTH);
+      results.push({
+        name: `${label}: doNotFollow matches node_modules at any depth`,
+        passed: hasPattern,
+        message: hasPattern
+          ? `Pattern ${NODE_MODULES_ANY_DEPTH} present`
+          : `PATTERN MISSING - an anchored node_modules regresses to the #523 CI OOM! Got: ${JSON.stringify(doNotFollow)}`,
+      });
+    } catch (error) {
+      results.push({
+        name: `${label}: doNotFollow verification`,
+        passed: false,
+        message: `Error: ${(error as Error).message}`,
+      });
+    }
+  }
+
+  return results;
+}
+
+/**
  * Every `[[ignore]]` entry in the Studio artifact registry, in file order.
  *
  * A deliberately narrow reader rather than a TOML dependency: it needs one
@@ -898,6 +950,17 @@ async function runVerification(): Promise<void> {
     );
   }
 
+  // doNotFollow patterns
+  log('\n🕳️ doNotFollow Depth Guards', 'blue');
+  const doNotFollowResults = verifyDoNotFollowPatterns();
+  allResults.push(...doNotFollowResults);
+  for (const result of doNotFollowResults) {
+    log(
+      `${result.passed ? '✅' : '❌'} ${result.name}: ${result.message}`,
+      result.passed ? 'green' : 'red'
+    );
+  }
+
   // Summary
   const passed = allResults.filter((r) => r.passed).length;
   const failed = allResults.filter((r) => !r.passed).length;
@@ -940,4 +1003,5 @@ export {
   verifyMemberRegistrationInRegistry,
   ignoreEntries,
   memberDebtReasonStatus,
+  verifyDoNotFollowPatterns,
 };

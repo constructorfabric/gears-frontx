@@ -305,7 +305,11 @@ module.exports = {
     // excluding `dist` deleted the very node those rules needed to match.
     // `doNotFollow` keeps the node visible as an un-traversed leaf, which is
     // all the noise reduction that was ever wanted.
-    doNotFollow: { path: ['^node_modules', '^packages/[^/]+/dist'] },
+    //
+    // `node_modules` matches at any depth, not just the root — see
+    // `internal/depcruise-config/base.cjs` for why (#523). The `dist` entry
+    // stays anchored: it is deliberately workspace-root-relative.
+    doNotFollow: { path: ['(^|/)node_modules/', '^packages/[^/]+/dist'] },
     exclude: {
       dynamic: true,
       // Only genuinely-not-ours trees are path-excluded, and none of them is a
