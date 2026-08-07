@@ -38,7 +38,7 @@ function makeEntry(
     name,
     version,
     ownershipBoundaries: boundary,
-    referencedTemplates: compositions.map((c) => ({ ref: c.ref, appliedAt: '.' })),
+    referencedTemplates: compositions.map((c) => ({ ref: c.ref })),
   };
   contentRegistry.set(name, files);
   return {

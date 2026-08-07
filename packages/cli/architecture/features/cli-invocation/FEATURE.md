@@ -45,7 +45,7 @@ This feature closes the gap between the declared `frontx` executable and the lib
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **ADR**: `cpt-frontx-adr-cli-internal-decomposition`, `cpt-frontx-adr-uniform-template-mechanism`, `cpt-frontx-adr-artifact-versioning-and-distribution`
 - **Dependencies**: `cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-template-manifest`, `cpt-frontx-feature-cli-scaffolding`, `cpt-frontx-feature-composed-provenance`, `cpt-frontx-feature-upgrade-changeset`

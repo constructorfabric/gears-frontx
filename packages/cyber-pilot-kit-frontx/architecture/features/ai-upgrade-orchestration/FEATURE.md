@@ -31,6 +31,8 @@
 
 Provides the AI workflow surface through which an AI agent orchestrates a template upgrade by reading the project's provenance record set, selecting which applied template to upgrade (a repository holds one provenance record per applied template, with no single whole-repository origin), invoking and enriching the CLI change-set engine with change-impact analysis, review gates, and downstream-effect assessment, then applying the approved change set or leaving the project unchanged if the developer declines.
 
+**Recorded debt — selection does not reach the engine**: the command surface takes only the project root and target version, so the orchestration's template selection governs the enriched review package but not the engine's own baseline, which the engine resolves from the first provenance record (`packages/cli/src/adapters/provenance-io.ts`). In a repository with more than one applied template, the enriched package and the engine's change set can therefore name different templates. This holds until upgrade-target selection lands on the command surface (tracked by issue #508); `inst-invoke-engine` below states the invocation as shipped.
+
 ### 1.2 Purpose
 
 Delivers the AI-guided upgrade path defined in `cpt-frontx-seq-ai-driven-template-upgrade`: an AI agent that reads provenance, drives the single CLI change-set engine (F14), enriches the output with analysis and downstream-effect assessment, and gates apply on an explicit developer decision — ensuring the identical change set is applied by both the AI-orchestrated path and the direct CLI path.
@@ -47,7 +49,7 @@ Delivers the AI-guided upgrade path defined in `cpt-frontx-seq-ai-driven-templat
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Dependencies**: `cpt-frontx-feature-upgrade-changeset` (F14 — the CLI change-set engine this feature orchestrates), `cpt-frontx-feature-ai-kit-packaging` (F15 — the base kit this workflow ships inside)
 
@@ -101,7 +103,7 @@ Delivers the AI-guided upgrade path defined in `cpt-frontx-seq-ai-driven-templat
 
 **Steps**:
 1. [x] - `p1` - Extract the selected applied template's identity and current version from its provenance record - `inst-extract-provenance`
-2. [x] - `p1` - Invoke the single CLI change-set engine (F14) with the selected applied template, its current version, and the target version - `inst-invoke-engine`
+2. [x] - `p1` - Invoke the single CLI change-set engine (F14) for the project root and target version; the selected template's identity and current version stay with the orchestration for enrichment (see the recorded debt in §1.1) - `inst-invoke-engine`
 3. [x] - `p1` - Receive the proposed reviewable change set from the engine (the identical change set the direct CLI upgrade path would produce) - `inst-receive-changeset`
 4. [x] - `p1` - **IF** the change set is empty or unresolvable - `inst-check-empty`
    1. [x] - `p1` - **RETURN** empty change set signal to the caller - `inst-empty-signal`

@@ -13,7 +13,10 @@ export type UniformApplyResult =
 // scopes the content read from the installed content path per
 // inst-ua-compute-contribution.
 function isWithinDeclaredBoundaries(item: ContentItem, boundaries: OwnershipBoundary): boolean {
-  const inExclusiveSubtree = boundaries.exclusiveSubtrees.some((subtree) => item.path.startsWith(subtree));
+  const inExclusiveSubtree = boundaries.exclusiveSubtrees.some((subtree) => {
+    const prefix = subtree.endsWith('/') ? subtree : `${subtree}/`;
+    return item.path === subtree || item.path.startsWith(prefix);
+  });
   const inSharedFile = boundaries.sharedFiles.some((sharedFile) => sharedFile.path === item.path);
   return inExclusiveSubtree || inSharedFile;
 }

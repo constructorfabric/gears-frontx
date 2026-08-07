@@ -47,7 +47,7 @@ The framework must reach consuming projects through the AI Tooling CLI so that A
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Dependencies**: None
 
@@ -77,7 +77,7 @@ User-facing interactions that start with an actor (human or external system) and
 2. [x] - `p1` - AI Tooling CLI locates the kit registration at `[kits.cyber-pilot-kit-frontx]` in `core.toml` - `inst-locate-registration`
 3. [x] - `p1` - **IF** the kit registration is missing or `core.toml` is unreadable - `inst-if-no-registration`
    1. [x] - `p1` - Surface a diagnostic error indicating the kit is not installed; agent session proceeds without AI Tooling capabilities - `inst-no-registration-error`
-   2. [x] - `p1` - **RETURN** partial-capability state - `inst-return-no-kit`
+   2. [x] - `p1` - **RETURN** partial-capability state, reported as `PACKAGED` — the kit is not installed - `inst-return-no-kit`
 4. [x] - `p1` - Read the kit's `.cf-studio-kit.toml` from the path recorded in `[kits.cyber-pilot-kit-frontx].path` - `inst-read-manifest`
 5. [x] - `p1` - Invoke **Process**: `cpt-frontx-algo-ai-kit-packaging-manifest-validation` to validate the manifest and enforce `frontx_`-prefix and solution-agnostic-base rules - `inst-invoke-validation`
 6. [x] - `p1` - **IF** manifest validation fails - `inst-if-manifest-invalid`
@@ -148,6 +148,8 @@ Internal system functions and procedures that do not interact with actors direct
 2. [x] - `p1` - **FROM** `INSTALLED` **TO** `SESSION_ACTIVE` **WHEN** an AI agent session starts, locates the kit registration, reads the manifest, passes manifest validation (including `frontx_`-prefix and solution-agnostic-base checks), and exposes all available resources to the agent session - `inst-transition-installed-to-active`
 3. [x] - `p1` - **FROM** `SESSION_ACTIVE` **TO** `INSTALLED` **WHEN** the agent session ends; the kit registration and installed resources remain on disk unchanged - `inst-transition-active-to-installed`
 4. [x] - `p1` - **FROM** `INSTALLED` **TO** `PACKAGED` **WHEN** the AI Tooling CLI uninstalls or removes the kit from the consuming project, deleting the `[kits.cyber-pilot-kit-frontx]` registration and installed resources - `inst-transition-installed-to-packaged`
+
+Transitions 1, 3, and 4 are performed outside this package: the AI Tooling CLI writes and deletes the registration, and a session ends with its process. This package realizes transition 2 (`loadKitSession` returning `SESSION_ACTIVE`) and names the states; no code here writes `core.toml`.
 
 ## 5. Definitions of Done
 

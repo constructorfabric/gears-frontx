@@ -29,10 +29,10 @@
 
 <!-- /toc -->
 
-- [x] `p1` - **ID**: `cpt-frontx-featstatus-template-resolution`
+- [ ] `p1` - **ID**: `cpt-frontx-featstatus-template-resolution`
 ## 1. Feature Context
 
-- [x] `p2` - `cpt-frontx-feature-template-resolution`
+- [ ] `p2` - `cpt-frontx-feature-template-resolution`
 
 ### 1.1 Overview
 
@@ -55,7 +55,7 @@ This feature ensures the CLI command surface is fully decoupled from the content
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Dependencies**: None
 

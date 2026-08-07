@@ -48,8 +48,9 @@ export function validateBundleForPublish(bundle: AiExtensionBundle): PrePublishV
 }
 
 /**
- * Install-discover-activate leg (Project Developer): invoked once the CLI
- * signals that an installed template is present (cross-package edge F16 <- F10).
+ * Install-discover-activate leg (Project Developer): invoked on the kit's own
+ * next run once an installed template's bundle is present on disk — a
+ * filesystem handoff, no CLI-to-Kit signal (cross-package edge F16 <- F10).
  * Runs the contract scan and composes the discovered conforming extensions
  * with the base kit's capability set into the agent-visible activation
  * result.
@@ -61,8 +62,9 @@ export function discoverAndActivateForInstalledTemplate(
 ): ScanAndActivateResult {
   // @cpt-begin:cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate:p1:inst-install-template
   // Installation itself is performed by the CLI's template-resolution path
-  // (cpt-frontx-feature-template-resolution); this function runs once the CLI
-  // signals that an installed template is present.
+  // (cpt-frontx-feature-template-resolution); this function runs when the kit
+  // finds the installed template's bundle on disk — a filesystem handoff, with
+  // no CLI-to-Kit signal.
   // @cpt-end:cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate:p1:inst-install-template
 
   // @cpt-begin:cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate:p1:inst-initiate-discovery

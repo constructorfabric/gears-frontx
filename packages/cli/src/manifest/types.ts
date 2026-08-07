@@ -25,11 +25,12 @@ export interface OwnershipBoundary {
   sharedFiles: SharedFileEntry[]; // per-shared-file ownership declarations
 }
 
-// Referenced-templates category (4): a template a preset applies together, each
-// with the target location it is applied at.
+// Referenced-templates category (4): a template a preset applies together,
+// declared by reference alone — where its content lands is decided by that
+// template's own ownership boundaries, never by the reference
+// (cpt-frontx-adr-composed-template-resolution).
 export interface ReferencedTemplate {
-  ref: string;       // well-formed template reference (source-spec or registered name)
-  appliedAt: string; // the target location the referenced template is applied at
+  ref: string; // well-formed template reference (source-spec or registered name)
 }
 
 // Single authoritative contract — cpt-frontx-contract-template-manifest.

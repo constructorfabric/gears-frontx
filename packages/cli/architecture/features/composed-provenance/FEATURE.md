@@ -35,6 +35,8 @@ Resolves a preset's referenced templates recursively through the shared resolver
 
 This feature realizes the preset (referenced-template) recursive resolution decided in `cpt-frontx-adr-composed-template-resolution` and the per-applied-template provenance decided in `cpt-frontx-adr-project-provenance-record`, and owns the concrete provenance schema per `cpt-frontx-adr-contract-schema-ownership`. It covers the recursive resolution of a preset's referenced templates through the shared resolver into a deterministic per-template composition set handed unmodified to the pre-flight ownership-boundary conflict check for pre-write collision arbitration, the assembly of the full set in one operation, and the writing of one provenance record per applied template. The provenance is a set of records, one per applied template, with no single whole-repository origin. The provenance store is a single file `.frontx/provenance.json` at the repository root, holding the SET of records — one record per applied template, so this single file contains the whole set, consistent with "no single whole-repository origin record"; each record's field layout is already documented in this feature. This feature is the OWNER of `cpt-frontx-contract-project-provenance`.
 
+Recorded debt — occupied ownership boundary: the shipped writer fills each record's occupied-ownership-boundary field with the whole-repository placeholder `.` because no caller yet threads the assembly's declared boundaries into the records (`packages/cli/src/provenance/write.ts`). This feature's status stays unchecked until records carry each template's actual occupied boundary and upgrade diffs scope to it (tracked by issue #530).
+
 **Requirements**: `cpt-frontx-fr-cli-composed-template-resolution`
 
 **Contracts (owned)**: `cpt-frontx-contract-project-provenance`
@@ -48,7 +50,7 @@ This feature realizes the preset (referenced-template) recursive resolution deci
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Dependencies**:
   - `cpt-frontx-feature-template-resolution` (F10 — Template Externalization & Source-Spec Resolution)
@@ -95,7 +97,7 @@ This feature realizes the preset (referenced-template) recursive resolution deci
 11. [x] - `p1` - CLI invokes the provenance write algorithm (`cpt-frontx-algo-composed-provenance-provenance-write`) to write one provenance record per applied template — each capturing that template's identity, applied-from version, source-spec, and occupied ownership boundary — into the repository - `inst-invoke-provenance-write`
 12. [x] - `p1` - **IF** materializing the assembly is refused (`cpt-frontx-algo-cli-scaffolding-compose-shared-files`, e.g. an unrecorded on-disk block owner) or any provenance record write fails - `inst-check-provenance-write-fail`
     1. [x] - `p1` - CLI reports the failure to the developer, distinguishing a user-fixable materialization refusal — no file was written — from a provenance-write failure — files were already written, only the provenance record failed - `inst-report-provenance-fail`
-13. [x] - `p1` - **RETURN** the assembled repository — its files, its `.frontx/ai/` extension bundles, and one provenance record per applied template — to the developer; the AI Tooling Framework discovers and activates those bundles on its own next invocation by scanning the repository's `.frontx/ai/` (no CLI-to-Kit signal; see `cpt-frontx-feature-template-ai-extensions` and DESIGN §3.4) - `inst-return-success`
+13. [x] - `p1` - **RETURN** the assembled repository — its files, its `.frontx/ai/` extension bundles, and one provenance record per applied template — to the developer; the AI Tooling Framework discovers and activates those bundles on its own next invocation by scanning the repository's `.frontx/ai/` (no CLI-to-Kit signal; see `cpt-frontx-feature-template-ai-extensions` and root DESIGN §3.4) - `inst-return-success`
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -206,5 +208,5 @@ The system **MUST** write one in-repository provenance record per applied templa
 - [x] When an unresolvable collision is detected, the CLI reports the conflicting target path and contributing unit identities, and no files are written to disk.
 - [x] When a reference cycle is detected in the preset tree, the CLI reports the cycle and aborts before writing any files.
 - [x] An assembled repository contains one provenance record per applied template, each capturing that template's identity, its applied-from version, a re-resolvable source-spec, and its occupied ownership boundary — with no single whole-repository origin record.
-- [x] `cfs --json validate --artifact architecture/features/composed-provenance/FEATURE.md --skip-code` returns PASS.
-- [x] `cfs --json validate-toc architecture/features/composed-provenance/FEATURE.md` returns PASS.
+- [x] `cfs --json validate --artifact packages/cli/architecture/features/composed-provenance/FEATURE.md --skip-code` returns PASS.
+- [x] `cfs --json validate-toc packages/cli/architecture/features/composed-provenance/FEATURE.md` returns PASS.

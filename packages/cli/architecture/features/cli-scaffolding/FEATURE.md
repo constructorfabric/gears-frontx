@@ -55,7 +55,7 @@ A template's AI-extension bundle root `.frontx/ai/<template-identity>/` is an or
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **ADR**: `cpt-frontx-adr-uniform-template-mechanism`, `cpt-frontx-adr-template-ownership-boundary-declaration`, `cpt-frontx-adr-assembly-conflict-prevention`, `cpt-frontx-adr-composed-template-resolution`, `cpt-frontx-adr-cli-internal-decomposition`
 - **Dependencies**: `cpt-frontx-feature-template-resolution`
@@ -126,7 +126,7 @@ User-facing interactions that start with an actor and describe the end-to-end fl
    1. [x] - `p1` - **RETURN** apply aborted — template reference not found in local inventory. - `inst-add-abort-not-found`
 3. [x] - `p1` - The CLI resolves the referenced template and any templates its preset references into the set to apply. - `inst-add-resolve-set`
 4. [x] - `p1` - The CLI stages the resolved set as an assembly against the existing repository through the same uniform apply path used to seed a repository (`cpt-frontx-algo-cli-scaffolding-uniform-apply`). - `inst-add-stage`
-5. [x] - `p1` - The CLI establishes the boundaries already occupied by matching each existing provenance record to an installed template — first by the identity the record names, and failing that by the source address the record records, so that a record written before identity came from the manifest still resolves — and reading the matched template's declared boundaries. - `inst-add-resolve-occupied`
+5. [x] - `p1` - The CLI establishes the boundaries already occupied by matching each existing provenance record to an installed template — first by the identity the record names, trusted only when that entry's source address also matches the record's, and failing that by the source address alone, so that a record written before identity came from the manifest still resolves — and reading the matched template's declared boundaries. - `inst-add-resolve-occupied`
 6. [x] - `p1` - **IF** any existing record matches no installed template by either identity or source address, matches more than one by source address, or matches a template that does not satisfy the manifest contract - `inst-add-check-occupied`
    1. [x] - `p1` - **RETURN** apply aborted — the unresolvable record's identity and its source-spec are reported; no files written, because an incomplete occupied set would let the conflict check pass a claim it should refuse. - `inst-add-abort-occupied-unknown`
 7. [x] - `p1` - The CLI submits the staged assembly, together with the boundaries already occupied by the repository's applied templates, to the pre-flight conflict check (`cpt-frontx-algo-cli-scaffolding-conflict-check`). - `inst-add-conflict-check`

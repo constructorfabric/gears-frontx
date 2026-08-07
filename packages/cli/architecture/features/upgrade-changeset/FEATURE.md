@@ -34,6 +34,8 @@
 
 The Upgrade Change-Set Engine is the single `target` CLI-owned mechanism (`cpt-frontx-component-cli`) that upgrades each applied template independently: for a selected applied template it re-resolves the baseline version through the shared resolver using the source-spec its provenance record carries, computes a diff to a target version scoped to that template's occupied ownership boundary (whole files for exclusive subtrees, owned regions only for shared files), presents it as a reviewable and approvable change set, applies it non-destructively within that boundary on approval, and supports rollback to the pre-upgrade repository state. Each applied template adopts a newer version on its own cadence — there is no forced whole-repository upgrade, and one template's upgrade never touches another template's regions in a shared file.
 
+Recorded debt — upgrade-target selection: how a developer names WHICH applied template to upgrade is a not-yet-made design decision. The shipped command surface takes no template argument (`upgrade <projectRoot> <targetVersion>`), and the engine resolves its baseline from the first provenance record in the set, printing a which-record-was-picked notice when more records exist (`packages/cli/src/adapters/provenance-io.ts`). This feature's status stays unchecked until selection lands and the flow's first two instructions are true as written (tracked by issue #508).
+
 ### 1.2 Purpose
 
 This feature exists to let a project developer safely adopt newer versions of any applied template without hand-editing files or risking unreviewed changes. It satisfies the requirement that upgrades are expressed as approvable change sets (`cpt-frontx-fr-cli-project-upgrade-changeset`) and that no modification reaches repository files until the developer grants explicit approval (`cpt-frontx-fr-cli-upgrade-review-approval`). Each applied template is diffed and applied independently against its own provenance record. The engine is reusable across invokers — direct CLI and AI orchestration (F17) both drive the same engine without a second implementation.
@@ -50,7 +52,7 @@ This feature exists to let a project developer safely adopt newer versions of an
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Dependencies**: `cpt-frontx-feature-composed-provenance` (F13) — owns `ProjectProvenance` and `cpt-frontx-contract-project-provenance`; this engine reads the per-applied-template provenance records written at apply time but does not redefine the entity or the contract.
 

@@ -517,7 +517,7 @@ describe('dispatch: seed (cpt-frontx-flow-cli-scaffolding-seed-repository)', () 
       'github:acme/clash-a@v1.0.0',
       makeManifest('clash-a', '1.0.0', {
         ownershipBoundaries: { exclusiveSubtrees: ['shared/'], sharedFiles: [] },
-        referencedTemplates: [{ ref: 'clash-b', appliedAt: 'clash-b/' }],
+        referencedTemplates: [{ ref: 'clash-b' }],
       }),
     );
     registerManifest(

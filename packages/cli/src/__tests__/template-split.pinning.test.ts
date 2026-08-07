@@ -105,8 +105,8 @@ describe('Fixture 7 (F6-fixed, issue #487) — region-union composition reconcil
     version: '1.0.0',
     ownershipBoundaries: { exclusiveSubtrees: [], sharedFiles: [] },
     referencedTemplates: [
-      { ref: 'region-fixture-a', appliedAt: '.' },
-      { ref: 'region-fixture-b', appliedAt: '.' },
+      { ref: 'region-fixture-a' },
+      { ref: 'region-fixture-b' },
     ],
   };
 

@@ -62,7 +62,7 @@ The **merge strategy** on a shared-file ownership-boundary entry is drawn from a
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **ADR**: `cpt-frontx-adr-template-manifest-contract`
 - **Dependencies**: `cpt-frontx-feature-template-resolution` (F10)

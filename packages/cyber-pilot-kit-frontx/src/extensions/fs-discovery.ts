@@ -160,7 +160,6 @@ function discoverSingleBundle(identity: string, bundleRoot: string, reader: Bund
 
   const structuralErrors: StructuralError[] = [];
 
-  // @cpt-begin:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-identify-slot-entries
   const bundleRootDirs = reader.listDir(bundleRoot) ?? [];
   for (const name of bundleRootDirs) {
     if (!KNOWN_SLOT_DIRS.has(name)) {
@@ -171,7 +170,6 @@ function discoverSingleBundle(identity: string, bundleRoot: string, reader: Bund
       });
     }
   }
-  // @cpt-end:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-identify-slot-entries
 
   const bundle: unknown[] = [];
   for (const raw of declaredEntries) {

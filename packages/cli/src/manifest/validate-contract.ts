@@ -229,13 +229,12 @@ export function validateManifestContract(raw: string): ManifestValidationResult 
     if (
       entryObj === null ||
       typeof path !== 'string' || path.trim() === '' ||
-      typeof mergeStrategy !== 'string' || mergeStrategy.trim() === '' ||
-      !Array.isArray(ownedRegions)
+      typeof mergeStrategy !== 'string' || mergeStrategy.trim() === ''
     ) {
       // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-shared-file-violation
       violations.push({
         field: `ownershipBoundaries.sharedFiles[${i}]`,
-        message: 'a shared-file entry must declare a path, a merge strategy, and the owned keys/regions',
+        message: 'a shared-file entry must declare a path and a merge strategy',
       });
       // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-shared-file-violation
     }
@@ -302,16 +301,14 @@ export function validateManifestContract(raw: string): ManifestValidationResult 
         ? (entry as Record<string, unknown>)
         : null;
     const ref = entryObj?.['ref'];
-    const appliedAt = entryObj?.['appliedAt'];
     const refIsWellFormed = typeof ref === 'string' && ref.trim() !== '';
-    const targetIsPresent = typeof appliedAt === 'string' && appliedAt.trim() !== '';
     // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-check-referenced-entry
     // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-referenced-invalid
-    if (entryObj === null || !refIsWellFormed || !targetIsPresent) {
+    if (entryObj === null || !refIsWellFormed) {
       // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-referenced-violation
       violations.push({
         field: `referencedTemplates[${i}]`,
-        message: 'a referenced-template entry must declare a well-formed reference and a target location it is applied at',
+        message: 'a referenced-template entry must declare a well-formed template reference',
       });
       // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-referenced-violation
     }

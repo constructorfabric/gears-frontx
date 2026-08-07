@@ -39,7 +39,7 @@ export async function loadKitSession(
     errors.push('cyber-pilot-kit-frontx is not installed: kit registration not found in core.toml');
     // @cpt-end:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-no-registration-error
     // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-return-no-kit
-    return { state: KitLifecycleState.INSTALLED, capabilities, errors, warnings };
+    return { state: KitLifecycleState.PACKAGED, capabilities, errors, warnings };
     // @cpt-end:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-return-no-kit
   }
   // @cpt-end:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-if-no-registration
@@ -134,10 +134,10 @@ export async function loadKitSession(
   }
   // @cpt-end:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-if-partial
 
-  // @cpt-begin:cpt-frontx-dod-ai-kit-packaging-install-and-activate:p1:inst-transition-packaged-to-installed
+  // @cpt-begin:cpt-frontx-state-ai-kit-packaging-kit-lifecycle:p1:inst-transition-installed-to-active
   // @cpt-begin:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-return-session-active
   return { state: KitLifecycleState.SESSION_ACTIVE, capabilities, errors, warnings };
   // @cpt-end:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-return-session-active
-  // @cpt-end:cpt-frontx-dod-ai-kit-packaging-install-and-activate:p1:inst-transition-packaged-to-installed
+  // @cpt-end:cpt-frontx-state-ai-kit-packaging-kit-lifecycle:p1:inst-transition-installed-to-active
 }
 // @cpt-end:cpt-frontx-flow-ai-kit-packaging-session-availability:p1:inst-session-start

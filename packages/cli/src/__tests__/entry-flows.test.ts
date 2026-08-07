@@ -364,7 +364,7 @@ describe('seedRepository empty-target guard — cpt-frontx-dod-cli-scaffolding-s
 describe('seedRepository — cpt-frontx-flow-cli-scaffolding-seed-repository', () => {
   it('seeds an empty target: resolves the referenced set incl. preset references, stages via P14, passes P29, materializes, writes one provenance record per applied template', async () => {
     const preset = makeEntry('preset-template', [{ path: 'preset-template/README.md', content: 'preset' }], {
-      referencedTemplates: [{ ref: 'mfe-a', appliedAt: 'mfe-a/' }],
+      referencedTemplates: [{ ref: 'mfe-a' }],
     });
     const mfeA = makeEntry('mfe-a', [{ path: 'mfe-a/index.ts', content: 'export const mfeA = true;' }]);
     const entries: Record<string, InventoryEntry> = { 'preset-template': preset, 'mfe-a': mfeA };
@@ -397,7 +397,7 @@ describe('seedRepository — cpt-frontx-flow-cli-scaffolding-seed-repository', (
   it('aborts BEFORE any file write when two templates in the staged assembly claim the same exclusive subtree', async () => {
     const templateA = makeEntry('template-a', [{ path: 'shared/a.ts', content: 'a' }], {
       ownershipBoundaries: { exclusiveSubtrees: ['shared/'], sharedFiles: [] },
-      referencedTemplates: [{ ref: 'template-b', appliedAt: 'template-b/' }],
+      referencedTemplates: [{ ref: 'template-b' }],
     });
     const templateB = makeEntry('template-b', [{ path: 'shared/b.ts', content: 'b' }], {
       ownershipBoundaries: { exclusiveSubtrees: ['shared/'], sharedFiles: [] },

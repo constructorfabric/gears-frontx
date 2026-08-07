@@ -45,21 +45,21 @@ This feature provides the mechanism by which template-specific AI expertise trav
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Dependencies**:
-  - `cpt-frontx-feature-template-resolution` (F10) — discovery reads what the CLI materialized: F10 (with `cpt-frontx-feature-cli-scaffolding`) writes each applied template's `.frontx/ai/<template-identity>/` bundle into the scaffolded project; this feature's scan reads every such bundle on the AI Tooling Framework's own invocation. The edge is a filesystem handoff via the project, not a CLI-to-Kit signal (DESIGN §3.4).
+  - `cpt-frontx-feature-template-resolution` (F10) — discovery reads what the CLI materialized: F10 (with `cpt-frontx-feature-cli-scaffolding`) writes each applied template's `.frontx/ai/<template-identity>/` bundle into the scaffolded project; this feature's scan reads every such bundle on the AI Tooling Framework's own invocation. The edge is a filesystem handoff via the project, not a CLI-to-Kit signal (root DESIGN §3.4).
   - `cpt-frontx-feature-ai-kit-packaging` (F15) — bundled extensions activate into the base kit's capability set
 
 ### 1.5 AI-Extension Bundle Convention
 
 This is the concrete on-disk shape the fs-discovery scan reads. A template author places the bundle at the template's content root; after apply the FrontX CLI materializes that bundle into the scaffolded project (`cpt-frontx-feature-cli-scaffolding`), and the discovery scan reads it from the scaffolded project — the same on-disk shape in both places. It is the schema this FEATURE owns per `cpt-frontx-adr-contract-schema-ownership` (design altitude fixes the contract's existence and closed-set categories in `cpt-frontx-adr-template-ai-extension-contract`; this section fixes the concrete layout).
 
-**Bundle root**: `.frontx/ai/<template-identity>/` — a per-template, identity-scoped subtree whose `<template-identity>` segment is the applying template's manifest identity. At authoring time it is relative to the template's content root; after apply the FrontX CLI materializes it at the same identity-scoped path under the scaffolded project root, where the discovery scan reads it. Because each applied template owns a distinct `.frontx/ai/<template-identity>/` subtree, any number of co-applied templates' bundles co-locate under `.frontx/ai/` without colliding as assembly content — disjoint id-scoped subtrees never intersect (see **Ownership-boundary declaration** below and DESIGN §3.4). Same-named-slot precedence across bundles is resolved at activation time by the AI Tooling Framework (below), not by the assembly conflict check.
+**Bundle root**: `.frontx/ai/<template-identity>/` — a per-template, identity-scoped subtree whose `<template-identity>` segment is the applying template's manifest identity. At authoring time it is relative to the template's content root; after apply the FrontX CLI materializes it at the same identity-scoped path under the scaffolded project root, where the discovery scan reads it. Because each applied template owns a distinct `.frontx/ai/<template-identity>/` subtree, any number of co-applied templates' bundles co-locate under `.frontx/ai/` without colliding as assembly content — disjoint id-scoped subtrees never intersect (see **Ownership-boundary declaration** below and root DESIGN §3.4). Same-named-slot precedence across bundles is resolved at activation time by the AI Tooling Framework (below), not by the assembly conflict check.
 
 **Anchor**: `.frontx/ai/<template-identity>/extension.json` — declares the bundle's identity (`id`, non-empty string), a contract version (`contractVersion`), and the declared entry list (`entries: { id, category, path }[]`), where `category` is one of the closed-set `ExtensionCategory` values and `path` is relative to the bundle root `.frontx/ai/<template-identity>/`. A bundle whose anchor is missing, unparseable as JSON, or lacks a non-empty `id` yields a structural error and contributes no entries to discovery.
 
-**Ownership-boundary declaration**: a template declares its `.frontx/ai/<template-identity>/` bundle root as an **exclusive subtree** in its manifest ownership boundaries (`cpt-frontx-feature-template-manifest`). Because every template's bundle subtree is scoped to its own identity, the pre-flight conflict check sees only disjoint subtrees and accepts co-located bundles, and the post-materialization boundary-honesty guard treats the bundle as a declared write rather than an undeclared one (`cpt-frontx-feature-cli-scaffolding`, DESIGN §3.4).
+**Ownership-boundary declaration**: a template declares its `.frontx/ai/<template-identity>/` bundle root as an **exclusive subtree** in its manifest ownership boundaries (`cpt-frontx-feature-template-manifest`). Because every template's bundle subtree is scoped to its own identity, the pre-flight conflict check sees only disjoint subtrees and accepts co-located bundles, and the post-materialization boundary-honesty guard treats the bundle as a declared write rather than an undeclared one (`cpt-frontx-feature-cli-scaffolding`, root DESIGN §3.4).
 
 **Slot subdirs** (closed set — a subdirectory of the bundle root `.frontx/ai/<template-identity>/` outside this set is a structural error, "category outside the closed set"):
 
@@ -106,11 +106,11 @@ User-facing interactions that start with an actor (human or external system) and
 
 *Install, discover, and activate leg — Project Developer*
 
-5. [x] - `p1` - Project Developer applies the template into the project via the CLI (`cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-cli-scaffolding`), which materializes the template's `.frontx/ai/<template-identity>/` bundle into the scaffolded project as owned content within its declared exclusive subtree — no CLI-to-Kit signal is sent (DESIGN §3.4) - `inst-install-template`
+5. [x] - `p1` - Project Developer applies the template into the project via the CLI (`cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-cli-scaffolding`), which materializes the template's `.frontx/ai/<template-identity>/` bundle into the scaffolded project as owned content within its declared exclusive subtree — no CLI-to-Kit signal is sent (root DESIGN §3.4) - `inst-install-template`
 6. [x] - `p1` - On its own next invocation the AI Tooling Framework's extension-host component (`cpt-frontx-component-ai-extension-host`, within the package anchor `cpt-frontx-component-ai-tooling-kit`) initiates extension discovery by scanning each `.frontx/ai/<template-identity>/` bundle under the scaffolded project's `.frontx/ai/`, invoking the contract scan algorithm parameterized by the closed-set extension contract - `inst-initiate-discovery`
 7. [x] - `p1` - **FOR EACH** named typed slot in the closed-set contract (skills, workflows, guidelines, reference artifacts) - `inst-scan-each-slot`
    1. [x] - `p1` - Scan the installed template's declared extension bundle for entries targeting the current slot - `inst-scan-slot-entries`
-   2. [x] - `p1` - **IF** a located entry does not conform structurally to the current slot's required shape - `inst-check-slot-conformance`
+   2. [x] - `p1` - **IF** a located entry does not conform structurally to the contract's entry shape — a declared identifier, its slot, and a resolvable path; the check is slot-generic, and per-slot format enforcement is recorded debt - `inst-check-slot-conformance`
       1. [x] - `p1` - Record a structural error for the non-conforming entry; mark the entry as REJECTED - `inst-record-structural-error`
    3. [x] - `p1` - **ELSE** add the conforming entry to the discovered set for the current slot - `inst-add-to-discovered`
 8. [x] - `p1` - **IF** any structural errors were recorded during the scan - `inst-check-errors`
@@ -139,14 +139,14 @@ Internal system functions and procedures that do not interact with actors direct
 5. [x] - `p1` - **FOR EACH** named typed slot defined by the closed-set contract - `inst-iterate-slots`
    1. [x] - `p1` - Identify all declared entries in the bundle that target the current slot - `inst-identify-slot-entries`
    2. [x] - `p1` - **FOR EACH** identified entry - `inst-validate-each-entry`
-      1. [x] - `p1` - Validate the entry's structural shape against the required elements for the current slot - `inst-validate-entry-shape`
+      1. [x] - `p1` - Validate the entry's structural shape against the contract's entry requirements — identifier, slot, and resolvable path; the validation is slot-generic, and enforcing each slot's own file-format shape is recorded debt - `inst-validate-entry-shape`
       2. [x] - `p1` - **IF** the entry is malformed or missing a required structural element - `inst-check-malformed`
          1. [x] - `p1` - Append a structural error to the error list, naming the slot and the offending entry - `inst-append-error`
          2. [x] - `p1` - **SKIP TO** the next entry; do not add to the discovered map - `inst-skip-malformed`
       3. [x] - `p1` - Add the conforming entry to the discovered-extensions map under the current slot - `inst-add-conforming`
 6. [x] - `p1` - **IF** the structural-error list is non-empty - `inst-check-error-list`
    1. [x] - `p1` - Surface all structural errors; each errored entry is permanently excluded from the activation set - `inst-surface-errors`
-7. [x] - `p1` - Compose the discovered-extensions map with the base kit's capability set under the explicit precedence rule (`target`: template-contributed entries supersede base-kit entries for the same named slot; among entries from multiple installed templates targeting the same named slot, the defined installation-order precedence determines the surviving entry) - `inst-compose-precedence`
+7. [x] - `p1` - Compose the discovered-extensions map with the base kit's capability set under the explicit precedence rule (`target`): entries compose per named slot **and entry identifier** — entries with different identifiers coexist within a slot, a template-contributed entry supersedes the base-kit entry carrying the same identifier, and among entries from multiple installed templates sharing slot and identifier, the defined installation-order precedence determines the surviving entry - `inst-compose-precedence`
 8. [x] - `p1` - **RETURN** the composed capability set and the structural-error list - `inst-return-result`
 
 ## 4. States (CDSL)
@@ -164,7 +164,7 @@ Internal system functions and procedures that do not interact with actors direct
 2. [x] - `p1` - **FROM** DISCOVERED **TO** VALIDATED **WHEN** the entry's structural shape is confirmed to conform to the required elements for its slot - `inst-trans-discovered-to-validated`
 3. [x] - `p1` - **FROM** DISCOVERED **TO** REJECTED **WHEN** the entry's structural shape is malformed or missing a required element for its slot - `inst-trans-discovered-to-rejected`
    1. [x] - `p1` - Report a structural error to the Project Developer identifying the slot and the non-conforming entry - `inst-action-report-rejection`
-4. [x] - `p1` - **FROM** VALIDATED **TO** ACTIVATED **WHEN** the composed capability set is committed to the AI agent's visible surface after explicit precedence resolution - `inst-trans-validated-to-activated`
+4. [x] - `p1` - **FROM** VALIDATED **TO** ACTIVATED **WHEN** the entry passes the contract scan — the lifecycle records activation at scan time, before precedence composition, so an entry later superseded during composition still reports ACTIVATED - `inst-trans-validated-to-activated`
 
 ## 5. Definitions of Done
 
