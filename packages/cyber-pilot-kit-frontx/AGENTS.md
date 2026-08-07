@@ -10,6 +10,12 @@ description: "Agent navigation rules for FrontX ecosystem package boundaries, CL
 - Template packages: the active template (external, source-spec-resolved) and its sub-packages
 - Never add ecosystem→template imports; never add template→ecosystem src-level coupling
 
+## When searching the filesystem
+
+- Scope every search to the tree being worked in: the project directory, the repository, or the single package under change. Never search from `/`, from the home directory, or from any parent of the working tree
+- An unscoped search is not thorough, it is a scan of everything the machine holds. One `find /` issued during a scaffolding run cost 93.6 seconds of pure filesystem walk and surfaced nothing the project tree did not already carry
+- A path that is not where it should be is absent. Widen the search inside the tree, or report the absence; widening past the tree answers a different question than the one asked
+
 ## When adding code to ecosystem packages
 
 - Check DESIGN.md for the relevant component boundary constraint (MFES-*, API-*, CLI-*, KIT-*)
