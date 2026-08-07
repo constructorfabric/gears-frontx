@@ -19,9 +19,9 @@ The `package.json` next to this README is **not part of the template**: it is a
 monorepo dev harness, deliberately absent from `frontx-template.json`'s
 `ownershipBoundaries`, so `frontx add` never copies it anywhere. Inside this
 monorepo the pins above would fetch registry tarballs instead of resolving to
-local source, so the harness redirects each pinned name to its local source
-via `overrides`. It redirects rather than re-declares, so the installed
-versions still satisfy the pins.
+local source, so the harness redirects the pinned names a developer edits to
+their local source via `overrides`. It redirects rather than re-declares, so
+the installed versions still satisfy the pins.
 
 This makes local edits to `template-shell/packages/*` (`react`, `auth`,
 `framework`, `i18n`, `state`) visible immediately, since the MFE packages
@@ -33,7 +33,18 @@ pre-built `dist-lib/build/mf-gts` — `template-shell/package.json` pins
 `gts-plugin`/`mfes`/`api` to their own published versions with no local
 override of its own, so whatever `frontxMfGts` bundles at `template-shell`'s
 build time reflects those registry versions, not edits made here, until
-`template-shell` is rebuilt. The same not-part-of-the-template status applies
+`template-shell` is rebuilt.
+
+`@gears-frontx/ui-kit` is deliberately **not** redirected. It is a published
+component library an MFE consumes, not a layer the MFE is developed against,
+so leaving it on its exact pin is what makes the scaffold resolve in this
+monorepo exactly what a seeded project resolves — the point of depending on
+the kit instead of vendoring its components. Edits to `packages/ui-kit` are
+therefore invisible from here: develop and demo a kit change in its own
+workspace (`npm run demo:ui-kit` at the repo root), then re-pin the MFEs once
+it ships.
+
+The same not-part-of-the-template status applies
 to `frontx-template.json` and this README — a template directory holds
 shipped payload *and* authoring machinery, and the manifest's boundaries are
 what separate the two.
