@@ -2,7 +2,12 @@
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-add-template:p1
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-boundary-declared-assembly:p1
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-add-undeclared-content:p1
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, it, expect } from 'vitest';
+import { createFsWriteFileFn } from '../adapters/fs-project-io';
+import { createFsReadTargetPathStateFn } from '../adapters/fs-target-path';
 import { seedRepository } from '../commands/seed-repository';
 import { addTemplate } from '../commands/add-template';
 import type { InventoryEntry } from '../inventory/types';
@@ -970,6 +975,128 @@ describe('addTemplate occupied-ground guard — cpt-frontx-dod-cli-scaffolding-a
     expect(files.get('/target/srcx.ts')).toBe('work this repository already had');
   });
 
+  // The conflict check compares declared claims for equality, so a path strictly
+  // inside ANOTHER template's recorded subtree passes it untouched. Exempting
+  // such a path from the guard as well would leave nothing between the incoming
+  // whole-file write and the content already there.
+  it('refuses a path nested inside another template\'s recorded subtree, which no check arbitrates', async () => {
+    const applied = makeEntry('subtree-owner', [], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/'], sharedFiles: [] },
+    });
+    const nested = makeEntry('nested-template', [{ path: 'src/config/app.json', content: 'from the template' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/config/'], sharedFiles: [] },
+    });
+    const entries: Record<string, InventoryEntry> = { 'subtree-owner': applied, 'nested-template': nested };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'subtree-owner', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/subtree-owner@v1.0.0' },
+      ]),
+    );
+    files.set('/target/src/config/app.json', 'work this repository already had');
+
+    const result = await addTemplate(
+      'nested-template',
+      '/target',
+      (name: string) => entries[name],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readTargetPathStateFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-holds-undeclared-content');
+    expect(files.get('/target/src/config/app.json')).toBe('work this repository already had');
+  });
+
+  // The same hole in its other shape: the conflict check never compares a
+  // shared-file claim against a subtree claim at all, so a shared file declared
+  // under someone else's recorded subtree reaches materialization unarbitrated.
+  it('refuses a shared file declared under another template\'s recorded subtree', async () => {
+    const applied = makeEntry('subtree-owner', [], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/'], sharedFiles: [] },
+    });
+    const sharing = makeEntry('sharing-template', [{ path: 'src/config.json', content: 'from the template' }], {
+      ownershipBoundaries: {
+        exclusiveSubtrees: [],
+        sharedFiles: [{ path: 'src/config.json', mergeStrategy: 'exclusive', ownedRegions: [] }],
+      },
+    });
+    const entries: Record<string, InventoryEntry> = { 'subtree-owner': applied, 'sharing-template': sharing };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'subtree-owner', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/subtree-owner@v1.0.0' },
+      ]),
+    );
+    files.set('/target/src/config.json', 'work this repository already had');
+
+    const result = await addTemplate(
+      'sharing-template',
+      '/target',
+      (name: string) => entries[name],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readTargetPathStateFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('target-holds-undeclared-content');
+    expect(files.get('/target/src/config.json')).toBe('work this repository already had');
+  });
+
+  // Ground both claims declare identically IS arbitrated, and the conflict check
+  // is the authority that names the contestants. The guard stepping in first
+  // would report contested ground as unaccounted-for content and hide which
+  // template it contests with.
+  it('leaves ground both claims declare identically to the conflict check, which names the contestants', async () => {
+    const applied = makeEntry('subtree-owner', [], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/'], sharedFiles: [] },
+    });
+    const contender = makeEntry('contending-template', [{ path: 'src/index.ts', content: 'from the template' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/'], sharedFiles: [] },
+    });
+    const entries: Record<string, InventoryEntry> = { 'subtree-owner': applied, 'contending-template': contender };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'subtree-owner', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/subtree-owner@v1.0.0' },
+      ]),
+    );
+    files.set('/target/src/index.ts', 'written by the recorded template');
+
+    const result = await addTemplate(
+      'contending-template',
+      '/target',
+      (name: string) => entries[name],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readTargetPathStateFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('conflict');
+    expect(files.get('/target/src/index.ts')).toBe('written by the recorded template');
+  });
+
   it('refuses a target path that exists and is not a directory, writing no file', async () => {
     const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
 
@@ -1024,6 +1151,45 @@ describe('addTemplate occupied-ground guard — cpt-frontx-dod-cli-scaffolding-a
     // The point of re-probing at all: nothing was written despite the
     // pre-flight probe having cleared the ground.
     expect(files.size).toBe(0);
+  });
+
+  // The one case here that touches a real filesystem: a dangling symlink cannot
+  // be represented by the in-memory fake at all, and what makes it dangerous is
+  // precisely what the real `stat`/`writeFileSync` pair does with it — resolve
+  // the link, find nothing, then create the file the link names, which for
+  // `claimed.txt -> ../escaped.txt` lands outside the directory being guarded.
+  it('refuses a claimed path held by a dangling symlink, so no write escapes the target directory', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'frontx-escape-'));
+    const targetDir = path.join(root, 'repo');
+    fs.mkdirSync(targetDir);
+    fs.symlinkSync('../escaped.txt', path.join(targetDir, 'claimed.txt'));
+    const escaping = makeEntry('escape-template', [{ path: 'claimed.txt', content: 'from the template' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['claimed.txt'], sharedFiles: [] },
+    });
+
+    try {
+      const result = await addTemplate(
+        'escape-template',
+        targetDir,
+        () => escaping,
+        async () => [escaping],
+        readContentFn,
+        createFsWriteFileFn(),
+        async () => [],
+        async () => undefined,
+        createFsReadTargetPathStateFn(),
+        async () => null,
+      );
+
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.reason).toBe('target-holds-undeclared-content');
+      // The escape itself: the write would have created this file one level
+      // above the directory the developer named.
+      expect(fs.existsSync(path.join(root, 'escaped.txt'))).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   // A probe that cannot answer must not be read as free ground: a guard that

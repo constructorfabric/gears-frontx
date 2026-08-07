@@ -70,6 +70,18 @@ describe('createFsReadTargetPathStateFn — cpt-frontx-dod-cli-scaffolding-add-u
     expect(await readTargetPathState(path.join(dir, 'link.ts'))).toBe('file');
   });
 
+  // The link resolves to nothing, so the resolving `stat` reports it missing —
+  // but the link IS an entry, and a write through it creates the file it names,
+  // which for a link pointing outside the target lands outside the directory
+  // being guarded. Reported as occupied so the guard refuses it.
+  it('reports a dangling symlink as a file, since a write through it creates the file it names', async () => {
+    const dir = tmpDir();
+    fs.symlinkSync(path.join(dir, 'never-created.ts'), path.join(dir, 'dangling.ts'));
+    const readTargetPathState = createFsReadTargetPathStateFn();
+
+    expect(await readTargetPathState(path.join(dir, 'dangling.ts'))).toBe('file');
+  });
+
   // An unreadable path says nothing about what stands there; swallowing the
   // error would read it as free ground and wave the assembly through.
   //

@@ -10,13 +10,16 @@
  * `stat` RESOLVES symlinks, as the seed guard's `readdir` probe does: a symlink
  * standing at a path the incoming template owns reports what it points at, and a
  * write through it would land on that target, so reporting the link as occupied
- * ground is the answer that refuses. A DANGLING symlink is the one case this
- * probe calls absent while something is on disk: nothing exists at the path it
- * names, and a write would create that file rather than overwrite anything.
+ * ground is the answer that refuses. A DANGLING symlink resolves to nothing and
+ * would therefore read as free ground, which is the worst answer available: the
+ * link is an entry no provenance accounts for, and a write through
+ * `claimed.txt -> ../escaped.txt` creates the target OUTSIDE the directory the
+ * guard is protecting. `lstat` is consulted for exactly that case, so a link
+ * whose target is missing is reported as occupied.
  *
  * @packageDocumentation
  */
-import { stat } from 'node:fs/promises';
+import { lstat, stat } from 'node:fs/promises';
 
 import { isErrnoCode } from './is-errno-code';
 import type { ReadTargetPathStateFn, TargetPathState } from '../commands/add-template';
@@ -28,7 +31,7 @@ export function createFsReadTargetPathStateFn(): ReadTargetPathStateFn {
       const stats = await stat(absolutePath);
       return stats.isDirectory() ? 'directory' : 'file';
     } catch (error) {
-      if (isErrnoCode(error, 'ENOENT')) return 'absent';
+      if (isErrnoCode(error, 'ENOENT')) return (await standsAsDanglingLink(absolutePath)) ? 'file' : 'absent';
       // ENOTDIR: a regular file stands on the way to this path — at the path
       // itself for the target directory, at one of its ancestors for a path
       // beneath it. Nothing can be written here without destroying that file,
@@ -42,4 +45,20 @@ export function createFsReadTargetPathStateFn(): ReadTargetPathStateFn {
       throw error;
     }
   };
+}
+
+// Whether an entry the resolving `stat` could not find nevertheless exists as a
+// link. Only reached on ENOENT, where the two possible worlds are "nothing is
+// here" and "a symlink is here whose target is gone" — `lstat` answers for the
+// link itself and separates them. A non-ENOENT rejection propagates for the same
+// reason it does above: a path this probe cannot read must never be reported as
+// free ground.
+async function standsAsDanglingLink(absolutePath: string): Promise<boolean> {
+  try {
+    await lstat(absolutePath);
+    return true;
+  } catch (error) {
+    if (isErrnoCode(error, 'ENOENT')) return false;
+    throw error;
+  }
 }

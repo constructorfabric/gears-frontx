@@ -8,6 +8,7 @@ import { isUserFixableMaterializeFailure, materializeAssembly, occupiedBoundarie
 import { summarizeEntries } from './summarize-entries';
 import type { ReadProvenanceRecordsFn } from '../scaffold/materialize';
 import type { InventoryEntry } from '../inventory/types';
+import type { OwnershipBoundary } from '../manifest/types';
 import type { ReadContentItemsFn, ReadProjectFileFn, StagedAssembly, WriteFileFn } from '../scaffold/types';
 import type { BoundaryConflictEntry, OccupiedBoundaryEntry } from '../scaffold/state';
 import type { ProvenanceWriteFn } from '../provenance/types';
@@ -287,21 +288,37 @@ async function refuseUnlessGroundFree(
   // materialization creates it — so no path beneath it needs probing.
   if (targetState === 'absent') return undefined;
 
+  // Each contributor's own declared boundary, needed below to tell the ground an
+  // incoming claim SHARES with a recorded one from ground it merely falls
+  // inside.
+  const declaredByContributor = new Map(
+    assembly.contributions.map((contribution) => [contribution.templateName, contribution.ownershipBoundaries]),
+  );
+
   const occupiedPaths: string[] = [];
   // The paths this assembly would write, taken from the SAME grouping
   // materialization composes from (`groupContributionsByPath`), so the guard
   // cannot check a set the writes then differ from.
-  for (const path of groupContributionsByPath(assembly).keys()) {
-    // What licenses the skip is the record itself: ground an applied template's
-    // provenance accounts for holds what this tool wrote through that template's
-    // declared boundary. The pre-flight conflict check is NOT the license — it
-    // compares declared claims for string equality (`subtreeA !== subtreeB`,
-    // `sharedA.path !== sharedB.path`), so a shared file nested inside a
-    // recorded subtree is never arbitrated there at all. Refusing here would
-    // make `add` into a repository this tool itself seeded impossible —
-    // including the region-union shared file whose earlier contributors
-    // materialization carries forward verbatim.
-    if (isRecordedGround(path, occupied)) continue;
+  for (const [path, entries] of groupContributionsByPath(assembly)) {
+    const claimed = claimedGroundOf(entries.map((entry) => entry.templateName), declaredByContributor);
+    // Exempt only the ground an incoming claim and a recorded claim hold in
+    // COMMON — the same shared-file path, or the same exclusive subtree — which
+    // is exactly what the pre-flight conflict check compares (`subtreeA !==
+    // subtreeB`, `sharedA.path !== sharedB.path`). Two templates co-owning one
+    // `region-union` file, and re-applying a template over the subtree it
+    // already occupies, both land here and are left to that check, which reports
+    // them as the contested claims they are.
+    //
+    // A path that merely falls INSIDE another template's recorded subtree is not
+    // exempt, because nothing arbitrates it: the conflict check compares subtree
+    // strings for equality, so a nested subtree or a shared file declared under
+    // someone else's subtree passes it untouched, and exempting such a path here
+    // would hand it straight to a whole-file write over existing content. No
+    // supported flow needs the wider exemption — the reference templates declare
+    // disjoint ground on purpose (the shell claims `src-app/app/` and its
+    // siblings rather than `src-app/`, leaving `src-app/mfe_packages/` to the
+    // MFE template).
+    if (isArbitratedGround(path, claimed, occupied)) continue;
     if ((await readTargetPathStateFn(`${targetDir}/${path}`)) === 'absent') continue;
     occupiedPaths.push(path);
   }
@@ -325,14 +342,40 @@ async function refuseUnlessGroundFree(
   };
 }
 
-// Whether a repository-relative path falls inside ground an already-applied
-// template declared: a shared file it claims by path, or anything at or beneath
-// an exclusive subtree it claims. A subtree is compared with a trailing
-// separator so that "srcx.ts" does not read as being inside "src".
-function isRecordedGround(path: string, occupied: OccupiedBoundaryEntry[]): boolean {
+// The ground the templates contributing one path declare for themselves — the
+// only ground of theirs a recorded claim can be compared against, since the
+// conflict check compares declared claims and nothing else.
+function claimedGroundOf(
+  contributors: string[],
+  declaredByContributor: Map<string, OwnershipBoundary>,
+): { subtrees: ReadonlySet<string>; sharedFiles: ReadonlySet<string> } {
+  const subtrees = new Set<string>();
+  const sharedFiles = new Set<string>();
+  for (const contributor of contributors) {
+    const boundary = declaredByContributor.get(contributor);
+    if (!boundary) continue;
+    for (const subtree of boundary.exclusiveSubtrees) subtrees.add(subtree);
+    for (const entry of boundary.sharedFiles) sharedFiles.add(entry.path);
+  }
+  return { subtrees, sharedFiles };
+}
+
+// Whether a repository-relative path stands on ground a recorded claim and an
+// incoming claim BOTH declare: the same shared-file path, or the same exclusive
+// subtree containing it. A subtree is compared with a trailing separator so that
+// "srcx.ts" does not read as being inside "src".
+function isArbitratedGround(
+  path: string,
+  claimed: { subtrees: ReadonlySet<string>; sharedFiles: ReadonlySet<string> },
+  occupied: OccupiedBoundaryEntry[],
+): boolean {
   return occupied.some(
     ({ boundary }) =>
-      boundary.sharedFiles.some((entry) => entry.path === path) ||
-      boundary.exclusiveSubtrees.some((subtree) => path === subtree || path.startsWith(subtree.endsWith('/') ? subtree : `${subtree}/`)),
+      (claimed.sharedFiles.has(path) && boundary.sharedFiles.some((entry) => entry.path === path)) ||
+      boundary.exclusiveSubtrees.some(
+        (subtree) =>
+          claimed.subtrees.has(subtree) &&
+          (path === subtree || path.startsWith(subtree.endsWith('/') ? subtree : `${subtree}/`)),
+      ),
   );
 }
