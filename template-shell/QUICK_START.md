@@ -21,14 +21,9 @@ are present under `src-app/mfe_packages/`. Until you add one the menu stays
 empty and `generate:mfe-manifests` writes an empty manifest set - both expected.
 
 The packages [`frontx-template-mfe`](../template-mfe/README.md) contributes -
-`demo-mfe` `:3001`, `_blank-mfe` `:3099`, widget fixtures `:3201` / `:3202` —
-do not change that: they are that template's own examples, marked
-`"templateExample": true` in their `mfe.json`, and discovery skips them so your
-menu holds your screens alone. To watch them run instead of reading them:
-
-```bash
-FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 npm run dev:all
-```
+`demo-mfe` `:3001`, `_blank-mfe` `:3099`, widget fixtures `:3201` / `:3202` - do
+not change that: they are that template's own examples and stay out of your app,
+per `src-app/mfe_packages/README.md`.
 
 > First paint may briefly show an empty menu — the MFE system registers screens
 > asynchronously after the manifest loads, then the menu populates.
@@ -127,13 +122,12 @@ cp -r src-app/mfe_packages/_blank-mfe src-app/mfe_packages/my-mfe
 ```
 
 Then update its `package.json` name and preview `--port`, and in `mfe.json`
-delete the scaffold's `"templateExample": true` line before declaring your
-entries and screen extensions - that line is what keeps the scaffold itself out
-of the app, and a copy that keeps it is skipped in the same silence. Expose your
-lifecycle modules in its `vite.config.ts`. `dev:all` discovers MFEs
-automatically by scanning `src-app/mfe_packages/` — there is no registry file to
-edit. See the shell's `mfe-package-contract` AI guideline for the exact shape a
-new package must have.
+delete the scaffold's `"templateExample": true` line (see
+`src-app/mfe_packages/README.md` for why) before declaring your entries and
+screen extensions. Expose your lifecycle modules in its `vite.config.ts`.
+`dev:all` discovers MFEs automatically by scanning `src-app/mfe_packages/` —
+there is no registry file to edit. See the shell's `mfe-package-contract` AI
+guideline for the exact shape a new package must have.
 
 ## Layout & navigation
 

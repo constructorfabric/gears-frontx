@@ -22,10 +22,14 @@ not a separate spec. If the scanners change, this file must be updated to match
   both scanners as well. It is content a template ships to be read and copied -
   a worked example, or the scaffold new packages are copied from - and a project
   that registered it would offer screens nobody asked for. Setting
-  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` puts those packages back into every
-  scanner at once, for a run that means to watch the shipped examples work.
-  A package copied from a flagged scaffold **must drop the flag**, or the copy
-  is invisible to the shell for the same reason the scaffold is.
+  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES` set to `1` or `true` puts those packages
+  back into both scanners at once, for a run that means to watch the shipped
+  examples work. A package copied from a flagged scaffold **must drop the flag**,
+  or the copy is invisible to the shell for the same reason the scaffold is.
+  The flag is honoured by those two scanners and by nothing else, deliberately:
+  `run-mfe-type-checks.mjs` and the root `workspaces` glob still cover a flagged
+  package, because a scaffold that no longer installs or compiles is a scaffold
+  nobody can copy.
 
 ## Required files
 

@@ -5,21 +5,12 @@ Profile, Current Theme, UIKit Elements, Widgets Host), `_blank-mfe` (a minimal
 scaffold to copy for a new MFE), and two widget fixtures (`widgets-fixture-a`,
 `widgets-fixture-b`).
 
-All four are this template's own examples, and each says so with
-`"templateExample": true` in its `mfe.json`. The shell's manifest generation and
-`dev:all` skip a package that declares it, so a project this template was applied
-to runs the packages its developer added and nothing else - the menu the seeded
-project shows is the developer's own screens, not this template's demonstration
-of them (constructorfabric/gears-frontx#550). Running the examples anyway, from
-inside such a project, takes `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1`:
-
-```bash
-FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 npm run dev:all
-```
-
-They cannot be run from this monorepo: the shell template holds no
-`src-app/mfe_packages/` of its own, so these packages first reach a runnable
-shell when `frontx add` puts them into one.
+All four declare `"templateExample": true` and so stay out of the application a
+project builds on this template - see
+[`src-app/mfe_packages/README.md`](src-app/mfe_packages/README.md), which is
+where that rule is written down. They cannot be run from this monorepo either
+way: the shell template holds no `src-app/mfe_packages/` of its own, so these
+packages first reach a runnable shell when `frontx add` puts them into one.
 
 ## Add-only — requires `template-shell`
 

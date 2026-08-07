@@ -65,16 +65,26 @@ example — Hello World, Profile, Theme, UIKit, Widgets Host), `_blank-mfe`
 
 ## Reference packages do not run in your application
 
+**This section is the one place this rule is written down.** Every other mention
+of it in this project points here.
+
 Every package listed above declares `"templateExample": true` in its `mfe.json`.
-They ship here to be read and copied, so the shell's manifest generation and
-`dev:all` skip them: your application's menu holds the screens you added and
-nothing else. To run them anyway - to see a worked example rather than read it -
-set `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` for the command:
+They ship to be read and copied, so the shell's two package scanners leave them
+out: `generate:mfe-manifests` keeps them out of the aggregate the host registers
+from, and `dev:all` neither builds nor serves them. Your application's menu holds
+the screens you added and nothing else.
+
+To run them anyway - to watch a worked example rather than read it - set
+`FRONTX_INCLUDE_TEMPLATE_EXAMPLES` to `1` or `true` for the command:
 
 ```bash
 FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 npm run dev:all
 ```
 
-The flag is why step 2 above deletes it from your copy. A package that keeps it
-builds and type-checks like any other and is skipped in silence, so its screen is
-simply missing from the menu with nothing reported as having failed.
+That flag is why step 2 above deletes it from your copy, and a copy that keeps
+it fails nothing: the package still installs, type-checks and runs its tests,
+because it is the thing new packages are copied from and has to stay
+compilable. What reports the skip is a single line in the
+`generate:mfe-manifests` / `dev:all` output naming the packages left out. Inside
+the running application there is no sign of it at all - the screen is simply not
+in the menu.

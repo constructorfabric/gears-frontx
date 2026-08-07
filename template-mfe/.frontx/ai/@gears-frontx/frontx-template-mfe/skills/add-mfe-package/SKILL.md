@@ -57,8 +57,9 @@ to mount into an extension domain).
 4. **Drop the scaffold's `templateExample` flag** - `_blank-mfe/mfe.json` declares
    `"templateExample": true`, which is what keeps the scaffold itself out of the
    running application. Delete that line from the copy. A package that keeps it
-   builds and type-checks but never reaches the manifest, so the new screen is
-   absent from the menu with nothing reported as failing.
+   still builds and type-checks, and the only report of the skip is one line in
+   the `generate:mfe-manifests` / `dev:all` output naming the packages left out -
+   nothing fails, and the new screen is simply absent from the menu.
 5. **Assign GTS IDs** — rewrite every placeholder ID in `mfe.json` following
    template-mfe's ID taxonomy (see the `gts-id-conventions` guideline and the
    `gts-id-patterns-reference` reference artifact in this same bundle): a manifest ID,
