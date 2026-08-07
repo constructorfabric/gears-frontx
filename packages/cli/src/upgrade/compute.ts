@@ -3,6 +3,7 @@
 import { readManifestFromContent } from '../manifest/validate-contract';
 import { extractOwnedRegion } from '../scaffold/compose-shared-files';
 import { resolveTemplateAtVersion } from './resolve-template';
+import { verifyTemplateIdentity } from './verify-identity';
 import type { ReadContentItemsFn } from '../scaffold/types';
 import type { OwnershipBoundary } from '../manifest/types';
 import type {
@@ -19,7 +20,16 @@ export type ComputeResult =
   | { ok: true; changeSet: ChangeSet; provenance: ProvenanceRecord }
   | {
       ok: false;
-      reason: 'no-provenance' | 'baseline-not-found' | 'target-not-found' | 'manifest-error';
+      reason:
+        | 'no-provenance'
+        | 'baseline-not-found'
+        | 'target-not-found'
+        // The address no longer serves one template across the two versions,
+        // or the record names a template neither version declares — see
+        // verify-identity.ts for why these are two distinguishable refusals.
+        | 'identity-drift-between-versions'
+        | 'record-identity-unrecognized'
+        | 'manifest-error';
       message: string;
     };
 
@@ -95,6 +105,28 @@ export async function computeChangeSet(
   }
   const targetEntry = targetResolved.entry;
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-resolve-target
+
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-verify-identity
+  // Each entry's `name` is the identity that version's OWN manifest declares:
+  // `resolveToInventory` reads it there and refuses content whose manifest is
+  // unreadable, so a resolved entry always carries a declared identity and the
+  // unreadable case never reaches this comparison as a match.
+  //
+  // Placed before `readContentItems` below so a refused pair costs no content
+  // read, and before the diff so no change set is ever built from boundaries
+  // and markers belonging to a different template than the content.
+  const identityVerdict = verifyTemplateIdentity({
+    recordedIdentity: templateIdentity,
+    sourceSpec,
+    baselineIdentity: baselineEntry.name,
+    baselineVersion: scaffoldedFromVersion,
+    targetIdentity: targetEntry.name,
+    targetVersion,
+  });
+  if (!identityVerdict.ok) {
+    return { ok: false, reason: identityVerdict.reason, message: identityVerdict.message };
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-verify-identity
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-diff-files
   // Manifests are still read to confirm each is well-formed and to obtain the

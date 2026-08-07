@@ -44,6 +44,15 @@ export type OccupiedBoundariesResult =
 // makes the migration silent where it can be, and leaves a loud failure only
 // where the template genuinely is not installed.
 //
+// The upgrade path recognizes the same pre-manifest-identity record by a
+// different mechanic, and the two must stay in step rather than silently
+// diverge: matching by address discriminates HERE because it picks one entry
+// out of many installed, whereas upgrade re-resolves both diff sides from the
+// record's own single source-spec, where an address comparison is true by
+// construction and would admit every record. That side therefore derives the
+// previous scheme's value from the address instead — see
+// `verifyTemplateIdentity` in packages/cli/src/upgrade/verify-identity.ts.
+//
 // One claim per resolved installed template, however many records point at it:
 // a template owns its boundaries once, and the reason is at the skip below.
 export function occupiedBoundariesFromProvenance(

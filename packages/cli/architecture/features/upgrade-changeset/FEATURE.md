@@ -74,6 +74,8 @@ User-facing interactions that start with an actor (human or external system) and
 **Error Scenarios**:
 - Developer declines the change set; no project files are written and the project remains at its current version.
 - Target template version cannot be resolved; the engine reports the failure and aborts before any file is written.
+- The recorded source-spec address serves a different template at the target version than at the baseline version; the engine reports both declared identities and aborts before computing a diff or writing any file.
+- The provenance record names an identity that neither resolved version declares and that is not the repository its own source-spec addresses; the engine reports the refusal and aborts before computing a diff or writing any file.
 - Change set contains conflicts with developer modifications; engine surfaces them in the presented change set for manual resolution before approval.
 
 **Steps**:
@@ -107,14 +109,22 @@ Internal system functions and procedures that do not interact with actors direct
 1. [x] - `p1` - Read `target` the selected applied template's provenance record from the repository via `cpt-frontx-contract-project-provenance`; extract that template's identity, current (baseline) version, re-resolvable source-spec, and occupied ownership boundary - `inst-cmp-read-provenance`
 2. [x] - `p1` - Resolve `target` the baseline-version template content by re-fetching it through the shared resolver (`cpt-frontx-feature-template-resolution`) using the provenance record's source-spec at the baseline version — never from the local inventory, which retains only one version per entry and cannot supply an older baseline - `inst-cmp-resolve-baseline`
 3. [x] - `p1` - Resolve `target` the target-version template content through the same shared resolver using the same source-spec at the target version - `inst-cmp-resolve-target`
-4. [x] - `p1` - Compute the file-level diff between the baseline-version and target-version template files, scoped to the template's occupied ownership boundary: for an exclusive subtree, diff whole files; for a `region-union` shared file, diff only within that template's owned marker-delimited region(s), leaving co-owning templates' regions out of the diff - `inst-cmp-diff-files`
-5. [x] - `p1` - **FOR EACH** changed file in the diff: - `inst-cmp-for-each-file`
+4. [x] - `p1` - Verify `target`, before computing any diff, that the baseline-resolved and target-resolved content are two versions of the one template the provenance record describes — the record's identity is what the diff scopes ownership and matches region markers by, so a mismatch would diff one template's boundaries and markers against another template's content - `inst-cmp-verify-identity`
+   1. [x] - `p1` - **IF** the identity the target version's manifest declares differs from the identity the baseline version's manifest declares: - `inst-cmp-if-identity-drift`
+      1. [x] - `p1` - Report that the recorded source-spec address serves a different template at the target version than at the baseline version, naming both declared identities, the address and both versions, and **RETURN** failure having computed no diff - `inst-cmp-abort-identity-drift`
+   2. [x] - `p1` - **IF** the provenance record's identity differs from the identity both resolved versions declare: - `inst-cmp-if-record-identity-differs`
+      1. [x] - `p1` - **IF** the record's identity is the repository name its own source-spec addresses and that source-spec addresses no subtree — the shape of a record written before identity came from the manifest, which no resolved version can declare any more: - `inst-cmp-if-legacy-record`
+         1. [x] - `p1` - Accept the record as naming this template, treating the difference as the identity-scheme change it is, and continue - `inst-cmp-accept-legacy-record`
+      2. [x] - `p1` - **ELSE**: - `inst-cmp-else-record-unrecognized`
+         1. [x] - `p1` - Report that the record's identity is neither the identity the resolved versions declare nor the repository its own source-spec addresses, so the template being upgraded cannot be established, and **RETURN** failure having computed no diff - `inst-cmp-abort-record-unrecognized`
+5. [x] - `p1` - Compute the file-level diff between the baseline-version and target-version template files, scoped to the template's occupied ownership boundary: for an exclusive subtree, diff whole files; for a `region-union` shared file, diff only within that template's owned marker-delimited region(s), leaving co-owning templates' regions out of the diff - `inst-cmp-diff-files`
+6. [x] - `p1` - **FOR EACH** changed file in the diff: - `inst-cmp-for-each-file`
    1. [x] - `p1` - Check whether the developer has locally modified the file in the project - `inst-cmp-check-local-mod`
    2. [x] - `p1` - **IF** both the template diff and a local developer modification affect the same file: - `inst-cmp-if-conflict`
       1. [x] - `p1` - Mark the file as a conflict in the change set, recording both the template-level change and the local modification - `inst-cmp-flag-conflict`
    3. [x] - `p1` - **ELSE**: - `inst-cmp-else-clean`
       1. [x] - `p1` - Add the file as a clean change-set entry (add / modify / remove) - `inst-cmp-add-clean-entry`
-6. [x] - `p1` - Assemble and **RETURN** the computed change set (clean entries + flagged conflicts) - `inst-cmp-return-changeset`
+7. [x] - `p1` - Assemble and **RETURN** the computed change set (clean entries + flagged conflicts) - `inst-cmp-return-changeset`
 
 ### Apply Change Set Non-Destructively; Support Rollback; Update Provenance
 
@@ -178,6 +188,10 @@ Internal system functions and procedures that do not interact with actors direct
 
 The system **MUST** compute a reviewable change set by re-resolving the baseline version through the shared resolver from the source-spec recorded in the selected template's provenance record (not from the single-version local inventory), diffing the target template version against that baseline scoped to the template's occupied ownership boundary — whole files for exclusive subtrees and owned marker-delimited regions only for shared files — and presenting it to the developer before writing any project file; no project file may be created, modified, or deleted until the developer explicitly approves.
 
+Because a source-spec address may legitimately begin serving a different template, the system **MUST**, before computing any diff, confirm that the baseline-resolved and target-resolved content declare one and the same template identity, and that the provenance record's recorded identity is either that declared identity or the repository name its own subtree-less source-spec addresses — the identity a record written before identity came from the manifest carried. Any other combination **MUST** be refused with the identities that were compared named, and no diff computed; an identity that cannot be read is never treated as a match.
+
+The change set for a record admitted on the repository-name match covers that template's exclusive subtrees only. Owned regions are matched by the identity the record carries while the content's region markers carry the declared identity, so a `region-union` shared file contributes no entry: a region present in both versions is read as absent from both, and a region whose markers carry the declared identity in only one of the two versions is read as added or removed.
+
 **Implements**:
 - `cpt-frontx-flow-upgrade-changeset-review-approval`
 - `cpt-frontx-algo-upgrade-changeset-compute`
@@ -234,3 +248,6 @@ The system **MUST** provide exactly one change-set engine in `cpt-frontx-compone
 - [x] Applying a change set and then rolling it back restores the exact pre-upgrade project state, including the provenance record.
 - [x] Both direct CLI invocation and AI-driven orchestration (F17) drive the same change-set engine; no second diff-and-apply implementation exists.
 - [x] A target version that cannot be resolved causes the engine to report the failure and abort before writing any project file.
+- [x] An address whose target version declares a different template identity than its baseline version causes the engine to refuse the upgrade, naming both declared identities, and to compute no diff and write no project file.
+- [x] A provenance record written before identity came from the manifest — its recorded identity being the repository name its subtree-less source-spec addresses — still upgrades without a refusal, provided both resolved versions declare one identity, and the change set it produces covers that template's exclusive subtrees while no `region-union` shared file contributes an entry to it.
+- [x] A provenance record whose identity is neither the identity the resolved versions declare nor the repository its own source-spec addresses causes the engine to refuse rather than assume a match.
