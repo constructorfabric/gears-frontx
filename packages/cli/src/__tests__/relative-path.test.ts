@@ -30,20 +30,26 @@ describe('pathWithinSubtree — containment by whole path segments', () => {
     { path: 'src', subtree: 'src/config', within: false },
     // Unrelated paths.
     { path: 'docs/index.md', subtree: 'src', within: false },
-    // An empty declaration addresses no location, so it claims nothing — not
-    // even the repository root. A bare prefix test would have it claim
-    // everything.
+    // An empty declaration captures no real content path — not even the
+    // repository root. A bare prefix test would have it capture everything.
     { path: 'src/main.ts', subtree: '', within: false },
+    // Reflexivity on two raw equal strings, and nothing more: this predicate is
+    // a containment primitive and does not judge whether its arguments are
+    // well-formed declarations. It is also unreachable — the manifest contract
+    // rejects an empty declaration, and no content item has an empty path — and
+    // the caller for which an empty value IS a declaration (`pathsNest`) answers
+    // false for it under its own guard.
     { path: '', subtree: '', within: true },
     // A doubled separator is not collapsed, and the two sides of the comparison
     // are affected differently. On the PATH side leniency is harmless and
     // arguably right — `src//main.ts` names the same file as `src/main.ts`, which
     // is inside `src`. On the SUBTREE side only one trailing slash is stripped,
-    // so a declaration written `src//` matches nothing at all, including the
+    // so a declaration written `src//` captures nothing at all, including the
     // directory it was meant to name. Neither is repaired here: this predicate
     // would then be a second authority on what a declared path means, after the
     // manifest contract that admitted the spelling (degenerate declarations are
-    // issue #546's ground).
+    // issue #546's ground). `pathsNest` is where that shape stops producing a
+    // verdict, because there both sides are declarations.
     { path: 'src//main.ts', subtree: 'src', within: true },
     { path: 'src/main.ts', subtree: 'src//', within: false },
     { path: 'src/', subtree: 'src//', within: false },
@@ -67,6 +73,19 @@ describe('pathsNest — containment asked in both directions', () => {
     { a: 'src/', b: 'src-app/', nest: false },
     { a: 'src', b: 'srcx.ts', nest: false },
     { a: 'docs/', b: 'src/', nest: false },
+    // A declaration addressing no location nests with nothing, in either
+    // position. `src//` is the case that matters: it reads as a near-miss for
+    // `src`, and treating it as one would refuse an assembly over a claim the
+    // assembler hands no file for — a refusal with no ground under it. Empty and
+    // slash-only values answer the same way for the same reason.
+    { a: 'src//', b: 'src', nest: false },
+    { a: 'src', b: 'src//', nest: false },
+    { a: 'src//', b: 'src//', nest: false },
+    { a: 'src//', b: 'src/', nest: false },
+    { a: '', b: 'src', nest: false },
+    { a: '', b: '', nest: false },
+    { a: '/', b: 'src', nest: false },
+    { a: '//', b: 'src', nest: false },
     // Template identities, the other caller: a scoped identity and one nested
     // under it occupy nested directories in the inventory root.
     { a: '@acme/tools', b: '@acme/tools/extra', nest: true },
@@ -76,7 +95,7 @@ describe('pathsNest — containment asked in both directions', () => {
   });
 
   it('is symmetric for every pair the consumers can hand it', () => {
-    const paths = ['src', 'src/', 'src/config', 'src-app/', 'srcx.ts', '', 'package.json', '@acme/tools'];
+    const paths = ['src', 'src/', 'src//', 'src/config', 'src-app/', 'srcx.ts', '', '/', 'package.json', '@acme/tools'];
 
     const asymmetric = paths.flatMap((a) =>
       paths.filter((b) => pathsNest(a, b) !== pathsNest(b, a)).map((b) => `${a} vs ${b}`),

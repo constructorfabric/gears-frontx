@@ -80,6 +80,22 @@ describe('checkAssemblyConflicts — F12 pre-flight assembly conflict check (cpt
     ]);
   });
 
+  // A degenerate claim reaches this check because the manifest contract admits
+  // it (issue #546), and the assembler hands it no file: `src//` matches no
+  // content path. Refusing an assembly over it would be a refusal naming ground
+  // that no template can occupy and no developer can vacate — the claim is not
+  // a near-miss for `src`, it is a claim on nothing.
+  it('passes a claim that addresses no location, rather than reading it as a near-miss for the subtree it resembles', () => {
+    const assembly = assemblyOf(
+      contribution('degenerate-template', { exclusiveSubtrees: ['src//'], sharedFiles: noSharedFiles }),
+      contribution('real-template', { exclusiveSubtrees: ['src/'], sharedFiles: noSharedFiles }),
+    );
+
+    const verdict = checkAssemblyConflicts(assembly, []);
+
+    expect(verdict.ok).toBe(true);
+  });
+
   // The bound on the widened refusal: these assemblies write to no common file.
   it('passes two claims that share a string prefix without sharing a path segment', () => {
     const assembly = assemblyOf(

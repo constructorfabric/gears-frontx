@@ -53,17 +53,43 @@ export function pathWithinSubtree(path: string, subtree: string): boolean {
   return target === root || target.startsWith(`${root}/`);
 }
 
+// A declaration that addresses no location: empty, or still carrying a trailing
+// separator once the one directory-spelling slash is taken off, as `src//` and
+// `/` do. Only the directory-spelling slash is meaningful; a second one is a
+// spelling this module refuses to guess at, so such a value names no directory
+// any content item can be inside of.
+function addressesNoLocation(value: string): boolean {
+  const stripped = withoutTrailingSlash(value);
+  return stripped === '' || stripped.endsWith('/');
+}
+
 // Whether two paths address ground that cannot be held independently — the same
 // location, or one inside the other — which is `pathWithinSubtree` asked in both
-// directions.
+// directions, with the difference that BOTH sides here are declarations rather
+// than one declaration and one concrete path.
+//
+// That is what makes the degenerate guard belong here and not in
+// `pathWithinSubtree`: a declaration addressing no location nests with nothing,
+// because there is no file it and another claim could both own. Without the
+// guard `src//` would contest `src` — the one slash comes off, `src/` prefixes
+// `src/`, and the check refuses an assembly over a claim from which
+// `pathWithinSubtree` hands the assembler no file at all. The asymmetry that
+// leaves `src//main.ts` inside `src` is deliberate and stays: there the value is
+// a concrete content path, where a doubled separator still names a real file in
+// a real directory. Refusing the degenerate declaration outright is the manifest
+// contract's job, not this predicate's (issue #546).
 //
 // Over two template identities this is the inventory's nesting check: identity
 // is used as a path under the inventory root, so a scoped `@acme/tools` and an
 // `@acme/tools/extra` occupy nested directories, and a bounded update of the
 // outer one clears its directory recursively and takes the inner one's files
 // with it, leaving the inner template listed in the index with nothing on disk.
+// The guard cannot change that caller's verdicts — `isSafeRelativePath` rejects
+// an identity with an empty segment, so no identity reaching here carries a
+// slash for it to fire on.
 // Over two manifests' exclusive-subtree claims it is the overlap the pre-flight
 // conflict check refuses (`cpt-frontx-dod-cli-scaffolding-conflict-check`).
 export function pathsNest(a: string, b: string): boolean {
+  if (addressesNoLocation(a) || addressesNoLocation(b)) return false;
   return pathWithinSubtree(a, b) || pathWithinSubtree(b, a);
 }
