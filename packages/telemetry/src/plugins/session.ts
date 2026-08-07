@@ -1,6 +1,9 @@
 import type { TelemetryRecord } from '../utils/eventTypes';
 import type { TelemetryPlugin, TelemetryPluginContext } from '../utils/types';
 
+// Enrichment reaches the record only through the `event` hook, the same surface a consumer plugin
+// uses — the SDK gives itself no privileged path.
+// @cpt-dod:cpt-frontx-telemetry-dod-event-collection-builtin-context:p1
 export function sessionPlugin(): TelemetryPlugin {
   return {
     name: 'session',

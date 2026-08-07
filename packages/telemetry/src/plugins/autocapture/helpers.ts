@@ -44,6 +44,7 @@ export const noCaptureAttribute = 'data-telemetry-no-capture';
 
 export const attributeIgnoreList = ['style', 'fill', 'viewBox', 'xmlns', noCaptureAttribute];
 
+// @cpt-algo:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1
 export function shouldCaptureValue(
   value: string | undefined | null,
   anchorRegexes = true,
@@ -55,29 +56,40 @@ export function shouldCaptureValue(
   }
 
   // check to see if input value looks like a credit card number
+  // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1:inst-reject-card-pattern
   const ccRegex = anchorRegexes ? anchoredCCRegex : unanchoredCCRegex;
   if (ccRegex.test(text.replace(/[- ]/g, ''))) {
     return false;
   }
+  // @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1:inst-reject-card-pattern
 
   // check to see if input value looks like a social security number
+  // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1:inst-reject-national-id
   const ssnRegex = anchorRegexes ? anchoredSSNRegex : unanchoredSSNRegex;
   if (ssnRegex.test(text)) {
     return false;
   }
+  // @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1:inst-reject-national-id
 
+  // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1:inst-return-decisions
   return true;
+  // @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1:inst-return-decisions
 }
 
+// Returning false here abandons the whole autocapture event in the caller's walk, not merely this
+// element's fields — a partial record from a sensitive form still discloses that it was used.
 export function shouldCaptureElement(el: Element) {
   // don't include hidden or password fields
+  // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1:inst-sensitive-input-type
   const type = (el as HTMLInputElement).type || '';
   // it's possible for el.type to be a DOM element if el is a form with a child input[name="type"]
   if (['hidden', 'password'].includes(type.toLowerCase())) {
     return false;
   }
+  // @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1:inst-sensitive-input-type
 
   // filter out data from fields that look like sensitive fields
+  // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1:inst-sensitive-name-pattern
   const name = (el as HTMLInputElement).name || el.id || '';
   // it's possible for el.name or el.id to be a DOM element if el is a form with a child input[name="name"]
   if (typeof name === 'string') {
@@ -87,6 +99,7 @@ export function shouldCaptureElement(el: Element) {
       return false;
     }
   }
+  // @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1:inst-sensitive-name-pattern
 
   return true;
 }
@@ -167,12 +180,16 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+// A contribution counts as usable when it carries either attribution or data, which is what makes
+// the closest hook's whole field set — context and data together — win as a unit.
+// @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1:inst-closest-data-wins
 function isUsableContribution(contribution: AutocaptureElementContribution): boolean {
   return (
     Object.values(contribution.context).some((value) => value !== undefined) ||
     Object.keys(contribution.data).length > 0
   );
 }
+// @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1:inst-closest-data-wins
 
 /**
  * Keeps only the fields an element hook is allowed to set on the record (an allowlist, not a
@@ -180,6 +197,7 @@ function isUsableContribution(contribution: AutocaptureElementContribution): boo
  * every caller, so a type-unsafe caller's other fields — or fields from an older/newer build of
  * the type — must never reach the merged record.
  */
+// @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1:inst-allowlist-attribution
 function pickAttributionFields(
   source: Record<string, unknown>,
 ): Partial<TelemetryElementHookAttribution> {
@@ -191,12 +209,14 @@ function pickAttributionFields(
   }
   return picked as Partial<TelemetryElementHookAttribution>;
 }
+// @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1:inst-allowlist-attribution
 
 /**
  * Drops any key a hook's `data` sets starting with `$`: that prefix is reserved for autocapture's
  * own `$el_*`/`$external_*` keys, so a future one can never be silently shadowed by a
  * hook-contributed key of the same name.
  */
+// @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1:inst-strip-reserved-keys
 function stripReservedDataKeys(source: Record<string, unknown>): Record<string, unknown> {
   const picked: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(source)) {
@@ -206,6 +226,7 @@ function stripReservedDataKeys(source: Record<string, unknown>): Record<string, 
   }
   return picked;
 }
+// @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1:inst-strip-reserved-keys
 
 function buildElementHookContribution(
   result: Exclude<TelemetryElementHookResult, void>,
@@ -218,6 +239,7 @@ function buildElementHookContribution(
   };
 }
 
+// @cpt-algo:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1
 export function mergeElementHookContribution(
   target: AutocaptureElementContribution,
   result: Exclude<TelemetryElementHookResult, void>,
@@ -228,12 +250,18 @@ export function mergeElementHookContribution(
   // holds whatever the closest hook visited so far already contributed; once it's usable, no
   // farther-out hook is allowed to override or partially fill it — a registering element's whole
   // contribution wins together, or not at all.
+  // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1:inst-closest-attribution-wins
   if (isUsableContribution(target)) {
     return target;
   }
+  // @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1:inst-closest-attribution-wins
 
+  // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1:inst-adopt-whole-set
+  // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1:inst-return-contribution
   const contribution = buildElementHookContribution(result);
   return isUsableContribution(contribution) ? contribution : target;
+  // @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1:inst-return-contribution
+  // @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-merge-contribution:p1:inst-adopt-whole-set
 }
 
 export function* eachParentElement(target: Element, includeTarget = false) {

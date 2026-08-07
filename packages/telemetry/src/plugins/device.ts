@@ -3,6 +3,7 @@ import type { TelemetryRecord } from '../utils/eventTypes';
 import type { TelemetryPlugin, TelemetryPluginContext } from '../utils/types';
 import { getLocalStorageKey } from '../utils/utils';
 
+// @cpt-dod:cpt-frontx-telemetry-dod-event-collection-builtin-context:p1
 export function devicePlugin(): TelemetryPlugin {
   return {
     name: 'device',

@@ -1,6 +1,7 @@
 import type { TelemetryRecord, TelemetryRecordId } from '../utils/eventTypes';
 import type { TelemetryPlugin, TelemetryPluginContext } from '../utils/types';
 
+// @cpt-dod:cpt-frontx-telemetry-dod-event-collection-builtin-context:p1
 export function navigationPlugin(): TelemetryPlugin {
   return {
     name: 'navigation',

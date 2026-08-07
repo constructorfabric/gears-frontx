@@ -6,9 +6,14 @@ import type { TelemetryEventRecord } from '../../utils/eventTypes';
  * mint a distinct identity per instance, silently breaking the handshake between autocapture and
  * an element's registered hook.
  */
+// @cpt-dod:cpt-frontx-telemetry-dod-dom-autocapture-hook-contract:p1
+// @cpt-begin:cpt-frontx-telemetry-flow-dom-autocapture-attribute:p1:inst-assign-hook
+// @cpt-begin:cpt-frontx-telemetry-flow-dom-autocapture-attribute:p1:inst-user-interacts
 export const telemetryElementHookKey: unique symbol = Symbol.for(
   '@gears-frontx/telemetry/element-hook',
 );
+// @cpt-end:cpt-frontx-telemetry-flow-dom-autocapture-attribute:p1:inst-user-interacts
+// @cpt-end:cpt-frontx-telemetry-flow-dom-autocapture-attribute:p1:inst-assign-hook
 
 /**
  * The only `TelemetryEventRecord` fields an element hook may set: the attribution fields

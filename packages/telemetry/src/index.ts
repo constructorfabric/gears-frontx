@@ -13,4 +13,9 @@ export type {
   TelemetryLogEventParams,
   TelemetryData,
 } from './utils/eventTypes';
-export type { TelemetryConfig } from './utils/types';
+export type {
+  TelemetryConfig,
+  TelemetryPlugin,
+  TelemetryPluginContext,
+  TelemetryPluginOption,
+} from './utils/types';
