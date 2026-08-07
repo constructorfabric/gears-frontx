@@ -8,87 +8,76 @@
  * import-graph check and the manifest check cannot disagree about what the
  * layering is.
  *
- * The model here is the boundary model of `architecture/DESIGN.md` §1.3
- * (`cpt-frontx-adr-core-package-boundaries`), NOT the historic L1/L2/L3
- * SDK -> framework -> react chain. That chain described packages
+ * The model here is the ecosystem layer partition of `architecture/DESIGN.md`
+ * §1.3: three layers — published libraries, templates, projects orchestration —
+ * with membership defined by property, plus the two stated non-layer categories
+ * (build internals; non-package code). Templates are hosted outside this
+ * repository and resolved by versioned source-spec, so no template-side package
+ * may appear in this file; the template owns and enforces its own internal
+ * layering in `template-shell/.dependency-cruiser.cjs`. This is NOT the historic
+ * L1/L2/L3 SDK -> framework -> react chain — that chain described packages
  * (`state`, `i18n`, `framework`, `react`, `auth`, `studio`) that emigrated to
- * the self-contained `template-shell/` tree; the template owns and enforces
- * its own internal layering in `template-shell/.dependency-cruiser.cjs`.
- * Nothing in this file may reference template-side packages.
+ * the self-contained `template-shell/` tree.
  */
 
 /**
- * TWO WAYS A PACKAGE CAN BE AWAITING #495, AND WHY THEY ARE NOT THE SAME
+ * Published-libraries layer (DESIGN §1.3): units consumed as versioned
+ * dependencies that do not drive a project's lifecycle. Keyed by directory name
+ * under `packages/`, each carrying the layer's two independent properties:
  *
- * `telemetry` and `ui-kit` both arrived after DESIGN §1.3 was written and both
- * wait on #495 for a permanent home. They are nonetheless handled differently,
- * and the difference is deliberate rather than an oversight:
+ * - `core` — the library must remain UI-framework-agnostic
+ *   (`cpt-frontx-principle-agnostic-core`). Enforced by `core-no-react` over
+ *   `CORE_SRC_PATTERN` below, so a `true` here is what puts the package under
+ *   that rule; flipping it to `false` is an architecture decision, not a fix.
+ * - `standalone` — the library declares no intra-ecosystem package dependency,
+ *   with the single exception of the type-substrate port. Asserted against
+ *   `ALLOWED_ECOSYSTEM_EDGES` by `arch:edges`, so a standalone library's
+ *   allowlist cannot quietly grow a non-port runtime edge while the property
+ *   still claims otherwise.
  *
- * - **Provisional member of a real layer** (`telemetry`, in Core Framework
- *   below). Use when a layer's rules are *all true* of the package today. The
- *   package gets that layer's full rule set, enforced — for Core Framework that
- *   means no React, no cross-package edge, and inclusion in the source set
- *   `arch:deps:core` cruises. What #495 may change is the label, not whether
- *   the package is guarded.
- * - **`INTERIM_UNCLASSIFIED_PACKAGES`** (`ui-kit`). Use when *no* layer's rules
- *   are true, so joining one would assert something false. The package is still
- *   named, allowlisted and covered by rules that mention it directly, but no
- *   layer rule set is applied to it.
- *
- * The test is "are this layer's rules true of the package", not "is this layer
- * a plausible eventual home". Pick the strictest layer whose rules genuinely
- * hold; if none does, use the interim list. Enforcement is what matters while
- * the taxonomy is unsettled — moving `telemetry` to the interim list for the
- * sake of symmetry would trade real guards for tidiness.
+ * The two are independent: a library may hold either, both, or neither.
+ * `ui-kit` is the current example of the split — a React component library,
+ * so not `core`, yet a full layer member that is `standalone`. Its import-graph
+ * isolation is additionally carried by the `frontx-ui-kit-interim-*` rules in
+ * the root `.dependency-cruiser.cjs` until its extraction PR replaces them with
+ * the approved, traced dependency policy.
  */
+const PUBLISHED_LIBRARY_PROPERTIES = Object.freeze({
+  api: Object.freeze({ core: true, standalone: true }),
+  'gts-plugin': Object.freeze({ core: true, standalone: true }),
+  mfes: Object.freeze({ core: true, standalone: true }),
+  telemetry: Object.freeze({ core: true, standalone: true }),
+  'ui-kit': Object.freeze({ core: false, standalone: true }),
+});
 
-// Core Framework layer (DESIGN §1.3): the agnostic runtime substrate, the
-// concrete type-system provider behind its opaque port, and the protocol
-// surface. Directory names under `packages/`.
-//
-// `telemetry` is a provisional member (see the note above). Core Framework's
-// rules are all true of it today — it is a standalone browser SDK with one
-// third-party dependency and zero `@gears-frontx` edges, which is exactly what
-// `frontx-single-intra-ecosystem-edge-telemetry-standalone` in the root
-// `.dependency-cruiser.cjs` already asserts. #495 decides the label; if it
-// moves telemetry somewhere looser, nothing was under-enforced in the meantime.
-const CORE_FRAMEWORK_PACKAGES = Object.freeze(['api', 'gts-plugin', 'mfes', 'telemetry']);
+const PUBLISHED_LIBRARY_PACKAGES = Object.freeze(Object.keys(PUBLISHED_LIBRARY_PROPERTIES));
 
-// Tooling layer (DESIGN §1.3): the lifecycle CLI and the AI Tooling Framework
-// kit that drives it. Directory names under `packages/`.
-const TOOLING_PACKAGES = Object.freeze(['cli', 'cyber-pilot-kit-frontx']);
+// The core subset, derived from the property rather than authored — the list
+// `['api', 'gts-plugin', 'mfes', 'telemetry']` is a consequence, not a
+// definition (DESIGN §1.3: membership is a property of the package).
+const CORE_PACKAGES = Object.freeze(
+  PUBLISHED_LIBRARY_PACKAGES.filter((name) => PUBLISHED_LIBRARY_PROPERTIES[name].core)
+);
 
-// Build-time config packages. `internal/*` is a root workspace just like
-// `packages/*`, so these are `@gears-frontx/*` packages the layering has to
-// account for — a package consuming one is declaring a real workspace edge, even
-// though the edge only exists at lint/build time. Directory names under
-// `internal/`.
-const INTERNAL_TOOLING_PACKAGES = Object.freeze(['eslint-config', 'depcruise-config']);
+// Projects-orchestration layer (DESIGN §1.3): units that act on a project's
+// lifecycle across the other layers — the lifecycle CLI and the AI Tooling
+// Framework kit that drives it. Directory names under `packages/`.
+const PROJECTS_ORCHESTRATION_PACKAGES = Object.freeze(['cli', 'cyber-pilot-kit-frontx']);
 
-/**
- * Packages for which no existing layer's rules are true — see the note above
- * for how this differs from provisional membership of a real layer.
- *
- * This is not an escape hatch, and membership here is not free: a package
- * listed here still gets its manifest edges allowlisted below, still has to be
- * added deliberately, still fails the workspace coverage check if dropped, and
- * is still covered by whatever import-graph rules name it directly. What it
- * does *not* get is a layer's rule set applied to it on a guess.
- *
- * `ui-kit` is here because it is a React component library: Core Framework
- * forbids React outright, and Tooling is about lifecycle commands, so asserting
- * either would be false. #495 owns the decision — the root config's two
- * `frontx-ui-kit-interim-*` rules isolate it in the meantime and say the same
- * thing. This list should be empty; a non-empty entry is a debt with a ticket.
- */
-const INTERIM_UNCLASSIFIED_PACKAGES = Object.freeze(['ui-kit']);
+// Build internals (DESIGN §1.3): packages that exist only to configure the
+// build, are never published, and belong to no layer. Still subject to the
+// dependency-edge guard — `internal/*` is a root workspace just like
+// `packages/*`, so a package consuming one is declaring a real workspace edge,
+// even though the edge only exists at lint/build time. Exempt from the member
+// artifact chain and the publication gate, with that scope stated in the
+// DESIGN rather than implied. Directory names under `internal/`.
+const BUILD_INTERNALS_PACKAGES = Object.freeze(['eslint-config', 'depcruise-config']);
 
 // Every ecosystem package, in layer order.
 const ECOSYSTEM_PACKAGES = Object.freeze([
-  ...CORE_FRAMEWORK_PACKAGES,
-  ...TOOLING_PACKAGES,
-  ...INTERNAL_TOOLING_PACKAGES,
-  ...INTERIM_UNCLASSIFIED_PACKAGES,
+  ...PUBLISHED_LIBRARY_PACKAGES,
+  ...PROJECTS_ORCHESTRATION_PACKAGES,
+  ...BUILD_INTERNALS_PACKAGES,
 ]);
 
 /**
@@ -99,10 +88,9 @@ const ECOSYSTEM_PACKAGES = Object.freeze([
  */
 const ECOSYSTEM_PACKAGE_DIRS = Object.freeze(
   Object.fromEntries([
-    ...CORE_FRAMEWORK_PACKAGES.map((name) => [name, `packages/${name}`]),
-    ...TOOLING_PACKAGES.map((name) => [name, `packages/${name}`]),
-    ...INTERNAL_TOOLING_PACKAGES.map((name) => [name, `internal/${name}`]),
-    ...INTERIM_UNCLASSIFIED_PACKAGES.map((name) => [name, `packages/${name}`]),
+    ...PUBLISHED_LIBRARY_PACKAGES.map((name) => [name, `packages/${name}`]),
+    ...PROJECTS_ORCHESTRATION_PACKAGES.map((name) => [name, `packages/${name}`]),
+    ...BUILD_INTERNALS_PACKAGES.map((name) => [name, `internal/${name}`]),
   ])
 );
 
@@ -130,7 +118,7 @@ const ECOSYSTEM_PACKAGE_DIRS = Object.freeze(
  * An omitted or empty list means "zero @gears-frontx dependencies in that group".
  */
 const ALLOWED_ECOSYSTEM_EDGES = Object.freeze({
-  // ---- Core Framework ----
+  // ---- Published libraries ----
   api: Object.freeze({
     runtime: Object.freeze([]),
     dev: Object.freeze([
@@ -160,13 +148,17 @@ const ALLOWED_ECOSYSTEM_EDGES = Object.freeze({
       // The type-substrate port: the provider implements the runtime's opaque
       // port, so it imports the port's types from the runtime. This is the
       // `GTS -- "type-substrate port" --> MFES` edge of the DESIGN §1.3
-      // diagram, specified in `architecture/features/type-substrate-port/`.
+      // diagram, specified in `packages/mfes/architecture/features/type-substrate-port/`.
       '@gears-frontx/mfes',
     ]),
     dev: Object.freeze([]),
   }),
+  // React and react-dom are peers, not `@gears-frontx` edges, so the standalone
+  // property holds; the `frontx-ui-kit-interim-*` depcruise rules assert the
+  // same isolation at the import-graph level.
+  'ui-kit': Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([]) }),
 
-  // ---- Tooling ----
+  // ---- Projects orchestration ----
   cli: Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([]) }),
   // KIT --> CLI is a *command-surface* relationship, not a package edge: the AI
   // upgrade orchestration (`cpt-frontx-adr-ai-driven-upgrade-orchestration`)
@@ -180,17 +172,11 @@ const ALLOWED_ECOSYSTEM_EDGES = Object.freeze({
     dev: Object.freeze([]),
   }),
 
-  // ---- Build-time config (internal/*) ----
+  // ---- Build internals (internal/*) ----
   // These sit below everything: a config package depending on another ecosystem
   // package would invert the build order.
   'eslint-config': Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([]) }),
   'depcruise-config': Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([]) }),
-
-  // ---- Layer pending (#495) ----
-  // React and react-dom are peers, not `@gears-frontx` edges, so the isolation
-  // asserted here is the same one the interim depcruise rules assert: no
-  // intra-ecosystem package edge in either direction.
-  'ui-kit': Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([]) }),
 });
 
 /**
@@ -203,22 +189,38 @@ const REQUIRED_ECOSYSTEM_EDGES = Object.freeze([
 ]);
 
 /**
- * The one ecosystem package permitted to import another. Kept separate from
- * `ALLOWED_ECOSYSTEM_EDGES` because `mfes -> gts-plugin` is a manifest-level
- * injection contract with no matching import edge: at the import-graph level
- * the Core Framework is import-acyclic and only this package may reach across.
+ * The type-substrate port: the one intra-ecosystem coupling the standalone
+ * property exempts, in both of its shapes. At the manifest level it is
+ * `mfes -> gts-plugin` (an optional peer, the injection contract); at the
+ * import-graph level it is `gts-plugin -> mfes` (the provider imports the
+ * port's types from the runtime it implements). Kept separate from
+ * `ALLOWED_ECOSYSTEM_EDGES` because the import edge has no matching manifest
+ * entry of its own: at the import-graph level the published libraries are
+ * import-acyclic and only this package may reach across.
  */
-const CORE_FRAMEWORK_IMPORT_PORT = Object.freeze({
+const TYPE_SUBSTRATE_IMPORT_PORT = Object.freeze({
   from: 'gts-plugin',
   to: 'mfes',
 });
 
 /**
- * Regex source matching every Core Framework package's src root, for depcruise
- * `from`/`to` path rules. Derived from the membership list above so the rules
+ * The manifest-level runtime edges the type-substrate port accounts for —
+ * the exception written into the standalone property (DESIGN §1.3). Both
+ * directions appear because the port is one contract with two shapes (see
+ * TYPE_SUBSTRATE_IMPORT_PORT above). `arch:edges` uses this to verify that a
+ * standalone library's allowlist permits nothing the port does not explain.
+ */
+const TYPE_SUBSTRATE_PORT_MANIFEST_EDGES = Object.freeze([
+  Object.freeze(['gts-plugin', '@gears-frontx/mfes']),
+  Object.freeze(['mfes', '@gears-frontx/gts-plugin']),
+]);
+
+/**
+ * Regex source matching every core package's src root, for depcruise
+ * `from`/`to` path rules. Derived from the core property above so the rules
  * and the manifest guard cannot drift.
  */
-const CORE_FRAMEWORK_SRC_PATTERN = `^packages/(${CORE_FRAMEWORK_PACKAGES.join('|')})/src`;
+const CORE_SRC_PATTERN = `^packages/(${CORE_PACKAGES.join('|')})/src`;
 
 /**
  * A `@gears-frontx/*` import reaches dependency-cruiser under one of three
@@ -252,16 +254,18 @@ const GEARS_FRONTX_TARGET_PATTERNS = Object.freeze([
 ]);
 
 module.exports = {
-  CORE_FRAMEWORK_PACKAGES,
-  TOOLING_PACKAGES,
-  INTERNAL_TOOLING_PACKAGES,
-  INTERIM_UNCLASSIFIED_PACKAGES,
+  PUBLISHED_LIBRARY_PROPERTIES,
+  PUBLISHED_LIBRARY_PACKAGES,
+  CORE_PACKAGES,
+  PROJECTS_ORCHESTRATION_PACKAGES,
+  BUILD_INTERNALS_PACKAGES,
   ECOSYSTEM_PACKAGES,
   ECOSYSTEM_PACKAGE_DIRS,
   ALLOWED_ECOSYSTEM_EDGES,
   REQUIRED_ECOSYSTEM_EDGES,
-  CORE_FRAMEWORK_IMPORT_PORT,
-  CORE_FRAMEWORK_SRC_PATTERN,
+  TYPE_SUBSTRATE_IMPORT_PORT,
+  TYPE_SUBSTRATE_PORT_MANIFEST_EDGES,
+  CORE_SRC_PATTERN,
   ECOSYSTEM_TARGET_PATTERN,
   BARE_SPECIFIER_PATTERN,
   GEARS_FRONTX_TARGET_PATTERNS,

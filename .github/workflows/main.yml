@@ -198,11 +198,34 @@ jobs:
         # honest coverage is ~41%; the bar sits just below it with headroom.
         # Raise it as core-substrate (api/mfes/gts-plugin) traceability
         # density improves over time.
+        #
+        # --min-coverage stays at 38. The scan is 10255 lines over 139 files, so
+        # 3 points below the honest 41% is ~308 lines of slack — a normal-sized
+        # change, not room for a whole unmarked package. Tightening it further
+        # buys ~100 lines and costs every in-flight PR a rebase.
+        #
+        # --min-granularity is the gap worth closing: 0.28 against an actual
+        # 0.7276 permitted covered code to be marked in blocks far coarser than
+        # anything in the tree today, which is the failure mode markers exist to
+        # prevent. 0.60 keeps 0.12 of headroom.
+        #
+        # The per-file flags cannot be used yet, and this is measured rather
+        # than assumed:
+        #   --min-file-coverage    fails on "any file", and 48 of the 139
+        #                          scanned files carry no markers at all, so any
+        #                          value above 0 fails today.
+        #   --min-file-granularity fails on "any covered file", and a small file
+        #                          fully covered by one block scores 0.00 — so it
+        #                          would fail on the best-covered files in the
+        #                          repo, not the worst.
+        # Per-system floors (--system) are the useful next step and need more than one
+        # registered system; today there is only `frontx`, so a per-system floor
+        # is the aggregate under another name.
         run: >-
           python3 .cf-studio/.core/skills/studio/scripts/studio.py
           spec-coverage
           --min-coverage 38
-          --min-granularity 0.28
+          --min-granularity 0.60
 
   dependency-graph:
     runs-on: ubuntu-latest

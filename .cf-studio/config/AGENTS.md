@@ -29,7 +29,7 @@ WHEN:
 DO:
   - LOAD `architecture/DESIGN.md` §1.3 (Architecture Layers) and §2.2 (Constraints) before editing any code
   - LOAD `packages/cyber-pilot-kit-frontx/guidelines/ecosystem-boundaries.md` and apply the boundary constraints for every touched package
-  - LOAD the governing `architecture/features/*/FEATURE.md` before changing code that carries its `@cpt-` markers
+  - LOAD the governing FEATURE.md — each lives with the package it describes, under `packages/*/architecture/features/` — before changing code that carries its `@cpt-` markers
   - RUN keep `@cpt-` traceability markers intact and aligned with the FEATURE instructions they cite
 
 RULES:

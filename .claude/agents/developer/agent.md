@@ -9,7 +9,7 @@ You are the developer for the FrontX monorepo. You build and maintain all source
 ## What you do
 
 - Implement features across all FrontX packages — source code, configuration, styles, tests, and build tooling
-- Author and refine FEATURE specs in [architecture/features/](../../../architecture/features/) — FEATURE is a shared artifact between architect and developer. Architect defines scope from DECOMPOSITION, developer refines with implementation detail. Both must align before CODE
+- Author and refine FEATURE specs in the owning package's `packages/<pkg>/architecture/features/` tree — FEATURE is a shared artifact between architect and developer. Architect defines scope from DECOMPOSITION, developer refines with implementation detail. Both must align before CODE
 - Write production code with `@cpt-*` traceability markers linking implementation to design artifacts
 - Follow the design-first workflow: read DESIGN and DECOMPOSITION, write/refine FEATURE spec, implement code
 - Write unit tests — minimum count for maximum confidence. Test behavior, not structure. No redundant tests
@@ -33,7 +33,7 @@ You are the developer for the FrontX monorepo. You build and maintain all source
 Every feature follows this sequence:
 
 1. **Read** the relevant DESIGN and DECOMPOSITION in [architecture/](../../../architecture/) to understand what to build and how it breaks down. Each system or subsystem has its own `DESIGN.md` and `DECOMPOSITION.md` scoped by directory
-2. **Write/refine a FEATURE spec** in [architecture/features/](../../../architecture/features/). FEATUREs use CDSL to express behavior as flows, algorithms, state machines, edge cases, and definitions of done. The architect may have already started a FEATURE from DECOMPOSITION — refine it with implementation detail
+2. **Write/refine a FEATURE spec** in the owning package's `packages/<pkg>/architecture/features/` tree. FEATUREs use CDSL to express behavior as flows, algorithms, state machines, edge cases, and definitions of done. The architect may have already started a FEATURE from DECOMPOSITION — refine it with implementation detail
 3. **Implement code** across the relevant packages, adding `@cpt-*` traceability markers that link back to the FEATURE spec
 4. **Write tests** that verify the behavior described in the FEATURE spec
 5. **Self-check before declaring done** — run `npx tsc --noEmit`, `npx eslint`, and the relevant test command. Fix any failures before handing off. Do not leave broken builds for QA to catch

@@ -5,23 +5,23 @@
 
 FrontX is an **ecosystem for AI-driven creation of frontend projects**. It does
 not prescribe what your app looks like — that comes from **templates**. Instead
-it provides three co-equal pillars that let AI agents and their human
+it provides three capability sets that let AI agents and their human
 collaborators scaffold, extend, and evolve a project against stable, contracted
 capabilities.
 
-## The Three Pillars
+## What FrontX Provides
 
-- **Pillar 1 — Core Framework.** Makes an application runtime-extensible by
+- **Core Framework.** Makes an application runtime-extensible by
   composable microfrontends over a substrate for typed entities.
   Packages: `@gears-frontx/mfes`, `@gears-frontx/gts-plugin`, `@gears-frontx/api`.
-- **Pillar 2 — CLI.** Owns the full lifecycle of assembling and evolving a
+- **CLI.** Owns the full lifecycle of assembling and evolving a
   repository from templates. Package: `@gears-frontx/cli` (the `frontx` binary).
-- **Pillar 3 — AI Tooling Framework.** Equips AI agents with ecosystem
+- **AI Tooling Framework.** Equips AI agents with ecosystem
   capabilities and lets templates contribute their own.
   Package: `@gears-frontx/cyber-pilot-kit-frontx`.
 
-Everything below is how you drive those pillars. What each project *becomes* is
-owned by the template you apply, not by the ecosystem.
+Everything below is how you drive those capabilities. What each project
+*becomes* is owned by the template you apply, not by the ecosystem.
 
 ## Install the CLI
 
@@ -31,7 +31,7 @@ npm install -g @gears-frontx/cli
 
 Requirements: Node.js 24+, npm 10+. Verify with `frontx help`.
 
-## Using the CLI (Pillar 2)
+## Using the CLI
 
 The CLI resolves templates from a source you name, into a local inventory, then
 applies them to repositories. It bundles no templates of its own.
@@ -118,7 +118,7 @@ frontx validate ./path/to/template
 
 Exit codes: `0` success, `1` user error, `2` internal error.
 
-## The Core Framework (Pillar 1)
+## The Core Framework
 
 An application built on FrontX becomes **runtime-extensible by microfrontends**.
 The Core Framework provides the substrate; a template wires it into a concrete
@@ -140,7 +140,7 @@ app. Its guarantees:
 You consume these packages from within a template/application; the ecosystem
 ships no application, host, or UI of its own.
 
-## AI Tooling (Pillar 3)
+## AI Tooling
 
 The AI Tooling Framework is delivered as a **Constructor Studio kit**
 (`cyber-pilot-kit-frontx`) — the kit *is* the framework's public surface. It is
@@ -295,10 +295,11 @@ Run `npm run arch:check` and `npm run arch:deps` before committing.
 ## Next Steps
 
 - Read [PRD.md](./architecture/PRD.md) for the product vision and the full
-  capability inventory across all three pillars
-- Review [DESIGN.md](./architecture/DESIGN.md) for the system design and
-  package boundaries
-- Explore the pillar packages under `packages/`
+  capability inventory
+- Review [DESIGN.md](./architecture/DESIGN.md) for the ecosystem layers and
+  package boundaries; each package's own design lives in
+  `packages/<pkg>/architecture/`
+- Explore the packages under `packages/`
 
 ## Getting Help
 

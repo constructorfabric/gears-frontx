@@ -1,9 +1,12 @@
 /**
- * FrontX Dependency Cruiser Core Framework Configuration
- * Rules for the Core Framework layer: @gears-frontx/api, @gears-frontx/gts-plugin,
- * @gears-frontx/mfes (architecture/DESIGN.md §1.3).
+ * FrontX Dependency Cruiser Core Configuration
+ * Rules for the published libraries holding the `core` property — the
+ * UI-framework-agnostic subset of the published-libraries layer
+ * (architecture/DESIGN.md §1.3). Membership is the property, not this file's
+ * choice: the source set derives from `PUBLISHED_LIBRARY_PROPERTIES` in
+ * layer-constants.cjs.
  *
- * Core Framework packages MUST have:
+ * Core packages MUST have:
  * - NO @gears-frontx/* imports, with exactly one exception: the type-substrate
  *   port (gts-plugin -> mfes), the `GTS -- "type-substrate port" --> MFES` edge
  *   of the DESIGN §1.3 diagram.
@@ -17,21 +20,21 @@
 
 const base = require('./base.cjs');
 const {
-  CORE_FRAMEWORK_SRC_PATTERN,
-  CORE_FRAMEWORK_IMPORT_PORT,
+  CORE_SRC_PATTERN,
+  TYPE_SUBSTRATE_IMPORT_PORT,
   GEARS_FRONTX_TARGET_PATTERNS,
 } = require('./layer-constants.cjs');
 
-const PORT_SRC_PATTERN = `^packages/${CORE_FRAMEWORK_IMPORT_PORT.from}/src`;
+const PORT_SRC_PATTERN = `^packages/${TYPE_SUBSTRATE_IMPORT_PORT.from}/src`;
 
 // The port's permitted target, in every shape it can resolve to (see
 // GEARS_FRONTX_TARGET_PATTERNS in layer-constants.cjs).
 const PORT_TARGET_PATTERNS = [
-  `^packages/${CORE_FRAMEWORK_IMPORT_PORT.to}/`,
-  `(^|/)@gears-frontx/${CORE_FRAMEWORK_IMPORT_PORT.to}(/|$)`,
+  `^packages/${TYPE_SUBSTRATE_IMPORT_PORT.to}/`,
+  `(^|/)@gears-frontx/${TYPE_SUBSTRATE_IMPORT_PORT.to}(/|$)`,
 ];
 
-// `CORE_FRAMEWORK_SRC_PATTERN` captures the owning package name in group 1, and
+// `CORE_SRC_PATTERN` captures the owning package name in group 1, and
 // `ECOSYSTEM_TARGET_PATTERN` captures the target's. depcruise substitutes `$1`
 // in `to.pathNot` from the `from.path` match, so this exempts a module from
 // "importing" its own package — without it every intra-package import in
@@ -63,14 +66,14 @@ module.exports = {
     ...base.forbidden.filter((rule) => rule.name !== 'no-circular'),
     runtimeOnlyNoCircular,
 
-    // ============ CORE FRAMEWORK ISOLATION RULES ============
+    // ============ CORE ISOLATION RULES ============
     {
       name: 'core-no-gears-frontx-imports',
       severity: 'error',
-      from: { path: CORE_FRAMEWORK_SRC_PATTERN, pathNot: PORT_SRC_PATTERN },
+      from: { path: CORE_SRC_PATTERN, pathNot: PORT_SRC_PATTERN },
       to: { path: GEARS_FRONTX_TARGET_PATTERNS, pathNot: OWN_PACKAGE_PATTERN },
       comment:
-        'CORE VIOLATION: Core Framework packages must have ZERO @gears-frontx imports. The only permitted cross-package edge is the type-substrate port (gts-plugin -> mfes).',
+        'CORE VIOLATION: core published libraries must have ZERO @gears-frontx imports. The only permitted cross-package edge is the type-substrate port (gts-plugin -> mfes).',
     },
     {
       name: 'core-port-provider-only-imports-runtime',
@@ -78,7 +81,7 @@ module.exports = {
       from: { path: PORT_SRC_PATTERN },
       to: {
         path: GEARS_FRONTX_TARGET_PATTERNS,
-        pathNot: [`^packages/${CORE_FRAMEWORK_IMPORT_PORT.from}/`, ...PORT_TARGET_PATTERNS],
+        pathNot: [`^packages/${TYPE_SUBSTRATE_IMPORT_PORT.from}/`, ...PORT_TARGET_PATTERNS],
       },
       comment:
         'CORE VIOLATION: The type-system provider may only import the runtime it implements the type-substrate port for. No other @gears-frontx import is permitted.',
@@ -86,14 +89,14 @@ module.exports = {
     {
       name: 'core-no-react',
       severity: 'error',
-      from: { path: CORE_FRAMEWORK_SRC_PATTERN },
+      from: { path: CORE_SRC_PATTERN },
       // Both React packages, in both resolution shapes. `react-dom` is not
       // reachable via the `react` pattern, and an uninstalled tree yields the
       // bare specifier — see GEARS_FRONTX_TARGET_PATTERNS in layer-constants.cjs
       // for the same three-shape reasoning applied to workspace packages.
       to: { path: '(^|/)node_modules/react(-dom)?(/|$)|^react(-dom)?(/|$)' },
       comment:
-        'CORE VIOLATION: Core Framework packages cannot import React. The substrate must stay UI-framework-agnostic (cpt-frontx-principle-agnostic-core).',
+        'CORE VIOLATION: core published libraries cannot import React. The substrate must stay UI-framework-agnostic (cpt-frontx-principle-agnostic-core).',
     },
   ],
   options: {
