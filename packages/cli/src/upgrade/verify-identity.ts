@@ -129,10 +129,11 @@ export function verifyTemplateIdentity(
       message:
         `Provenance records this project as scaffolded from the template "${input.recordedIdentity}", but ` +
         `source-spec "${input.sourceSpec}" resolves to "${declaredIdentity}" at both the recorded baseline ` +
-        `version "${input.baselineVersion}" and the target version "${input.targetVersion}", and ` +
-        `"${input.recordedIdentity}" is not the repository that source-spec addresses either. The template ` +
-        'being upgraded cannot be established, so no change set was computed. Correct the provenance ' +
-        "record's identity or its source-spec to name one template.",
+        `version "${input.baselineVersion}" and the target version "${input.targetVersion}", and that ` +
+        `address cannot account for "${input.recordedIdentity}" under the earlier scheme that took a ` +
+        "template's identity from its repository name — which accounts only for an address naming no " +
+        'subtree. The template being upgraded cannot be established, so no change set was computed. ' +
+        "Correct the provenance record's identity or its source-spec to name one template.",
     };
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-abort-record-unrecognized
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-else-record-unrecognized

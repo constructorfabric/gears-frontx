@@ -1,6 +1,6 @@
+// @cpt-algo:cpt-frontx-algo-upgrade-changeset-compute:p1
+// @cpt-dod:cpt-frontx-dod-upgrade-changeset-computation:p1
 import { describe, it, expect, vi } from 'vitest';
-// cpt-frontx-algo-upgrade-changeset-compute inst-cmp-verify-identity
-// cpt-frontx-dod-upgrade-changeset-computation
 import { verifyTemplateIdentity } from '../upgrade/verify-identity';
 import type { VerifyTemplateIdentityInput } from '../upgrade/verify-identity';
 import { computeChangeSet } from '../upgrade/compute';
@@ -225,5 +225,44 @@ describe('computeChangeSet identity verification (inst-cmp-verify-identity)', ()
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.changeSet).toMatchObject({ clean: [], conflicts: [] });
+  });
+
+  // The other half of the same DoD sentence: where only ONE version carries the
+  // recorded identity in its markers, that side resolves and the other does not,
+  // so a region the target still owns is reported as a removal. Nothing about
+  // this change set is correct, which is the point of pinning it.
+  it('reports a removal for a region-union file when only the baseline markers carry the recorded identity', async () => {
+    const boundaries: OwnershipBoundary = {
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts'] }],
+    };
+    const regionOwnedBy = (identity: string): string =>
+      ['{', `  // frontx:region ${identity}:scripts`, '    "build": "x"', `  // frontx:endregion ${identity}:scripts`, '}'].join('\n');
+
+    const result = await computeChangeSet(PROJ_ROOT, '2.0.0', {
+      readProvenance: async () => ({
+        templateIdentity: 'my-template',
+        scaffoldedFromVersion: '1.0.0',
+        sourceSpec: SUBTREE_LESS_SPEC,
+      }),
+      fetchFn: fetchServing(
+        new Map([
+          ['1.0.0', manifest('@acme/web-template', '1.0.0', boundaries)],
+          ['2.0.0', manifest('@acme/web-template', '2.0.0', boundaries)],
+        ]),
+      ),
+      // The project on disk carries the recorded identity, as a scaffold from
+      // that era wrote it, so the region reads as unmodified rather than conflicting.
+      readProjectFile: async () => regionOwnedBy('my-template'),
+      readContentItems: async (entry) => [
+        { path: 'package.json', content: regionOwnedBy(entry.ref === '2.0.0' ? '@acme/web-template' : 'my-template') },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.changeSet.clean).toEqual([
+      { kind: 'remove', path: 'package.json', content: undefined, regionKey: 'scripts' },
+    ]);
   });
 });
