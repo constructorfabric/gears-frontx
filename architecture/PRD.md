@@ -143,7 +143,7 @@ The root layer model does not require a specific UI framework, build tool, state
 
 #### Published libraries
 
-The units an application consumes as versioned dependencies. Runtime composition — registering, loading, placing, validating, and mediating microfrontends — belongs to the MFE Runtime ([mfes PRD](../packages/mfes/architecture/PRD.md)). The concrete type system belongs to the Type System provider ([gts-plugin PRD](../packages/gts-plugin/architecture/PRD.md)). Protocol-separated service communication belongs to the API Protocol Surface ([api PRD](../packages/api/architecture/PRD.md)). Browser telemetry belongs to the Telemetry SDK ([telemetry PRD](../packages/telemetry/architecture/PRD.md)). This root PRD keeps only what binds them all: any UI framework works, versioned evolution with compatibility commitments, and no architectural ceiling (§5.1).
+The units an application consumes as versioned dependencies. Each unit's capability is owned by that member's own PRD; the current members and their artifacts are located through the [DESIGN's member pointers](./DESIGN.md#member-pointers). This root PRD keeps only what binds them all: any UI framework works, versioned evolution with compatibility commitments, and no architectural ceiling (§5.1).
 
 #### Templates
 
@@ -151,11 +151,11 @@ Externally hosted, versioned generators of project content. What a template prod
 
 #### Projects orchestration
 
-The units that act on a project's lifecycle. The repository lifecycle — install, list, update, validate, seed, add, assemble with conflict refusal, and upgrade with review — belongs to the CLI ([cli PRD](../packages/cli/architecture/PRD.md)). AI capabilities for agents — skills, declared resources, template AI extensions, upgrade orchestration, session-start knowledge — belong to the AI Tooling Framework ([kit PRD](../packages/cyber-pilot-kit-frontx/architecture/PRD.md)). Root governance classifies every FrontX-owned workspace package into the layer model and accounts for each member's artifact chain (§5.1).
+The units that act on a project's lifecycle across the other two layers — creating, assembling, and upgrading projects, and giving AI agents the fluency to do so. Each lifecycle or AI capability is owned by the PRD of the member that implements it, located through the [DESIGN's member pointers](./DESIGN.md#member-pointers). Root governance classifies every FrontX-owned workspace package into the layer model and accounts for each member's artifact chain (§5.1).
 
 ### 4.2 Out of Scope
 
-- Member-specific runtime, CLI, telemetry, AI-tooling, API, type-system or UI-kit behavior — owned by member PRDs.
+- Member-specific behavior in any layer — owned by member PRDs.
 - The runtime substrate and the lifecycle tooling do not dictate a UI component library (buttons, modals, forms, and the like) or a theming and styling system. FrontX-published libraries may provide such capabilities as ordinary published libraries, and a template may choose a different library in the same role; nothing in the platform's contracts privileges one choice.
 - FrontX does not include a specific state management library.
 - FrontX does not include specific internationalization or locale handling.
@@ -168,7 +168,7 @@ The units that act on a project's lifecycle. The repository lifecycle — instal
 
 ## 5. Functional Requirements
 
-The requirements below bind every published member equally; no member can own them. Every member-specific requirement is owned by the member's own PRD: the runtime's by [mfes](../packages/mfes/architecture/PRD.md#5-functional-requirements), the type provider's by [gts-plugin](../packages/gts-plugin/architecture/PRD.md#5-functional-requirements), the service surface's by [api](../packages/api/architecture/PRD.md#5-functional-requirements), telemetry's by [telemetry](../packages/telemetry/architecture/PRD.md#5-functional-requirements), the repository lifecycle's by [cli](../packages/cli/architecture/PRD.md#5-functional-requirements), and the AI tooling's by [cyber-pilot-kit-frontx](../packages/cyber-pilot-kit-frontx/architecture/PRD.md#5-functional-requirements).
+The requirements below bind every published member equally; no member can own them. Every member-specific requirement is owned by the member's own PRD §5; the members and their artifacts are located through the [DESIGN's member pointers](./DESIGN.md#member-pointers).
 
 ### 5.1 Ecosystem-Level Requirements
 
@@ -268,7 +268,7 @@ The ecosystem's contract to templates and its AI-tooling contracts are owned by 
 
 ## 8. Use Cases
 
-Member-level use cases are owned by member PRDs — the template lifecycle by [cli PRD §8](../packages/cli/architecture/PRD.md#8-use-cases), AI bundling and AI-driven upgrades by [cyber-pilot-kit-frontx PRD §8](../packages/cyber-pilot-kit-frontx/architecture/PRD.md#8-use-cases), runtime composition by [mfes PRD §8](../packages/mfes/architecture/PRD.md#8-use-cases). The use case below is the cross-layer journey only the root can own.
+Member-level use cases are owned by each member's own PRD §8, located through the [DESIGN's member pointers](./DESIGN.md#member-pointers). The use case below is the cross-layer journey only the root can own.
 
 #### A project crosses all three layers from scaffold to running application
 
@@ -281,9 +281,9 @@ Member-level use cases are owned by member PRDs — the template lifecycle by [c
 - The published libraries are available on the package registry (`cpt-frontx-actor-package-registry`).
 
 **Main Flow**:
-1. The Project Developer assembles a repository from templates using the projects-orchestration layer (the CLI's lifecycle, [cli PRD](../packages/cli/architecture/PRD.md)); AI agents assist with the framework's capabilities active ([cyber-pilot-kit-frontx PRD](../packages/cyber-pilot-kit-frontx/architecture/PRD.md)).
+1. The Project Developer assembles a repository from templates using the projects-orchestration layer's repository lifecycle; AI agents assist with that layer's AI capabilities active.
 2. The assembled project depends on the published-libraries layer as versioned dependencies installed from the package registry (`cpt-frontx-contract-package-registry-distribution`).
-3. At runtime the application composes microfrontends over the published libraries ([mfes PRD](../packages/mfes/architecture/PRD.md)); any UI framework works (`cpt-frontx-fr-ui-framework-agnostic`).
+3. At runtime the application composes microfrontends over the published libraries; any UI framework works (`cpt-frontx-fr-ui-framework-agnostic`).
 4. As the ecosystem evolves, each artifact upgrades on its own version line (`cpt-frontx-fr-versioned-platform-evolution`), and the project grows without an architectural ceiling (`cpt-frontx-fr-no-architectural-ceiling`).
 
 **Postconditions**:
