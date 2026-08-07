@@ -1,0 +1,111 @@
+/*
+ * Screen-local layout for the blank MFE.
+ *
+ * Every value resolves through an @gears-frontx/ui-kit token, which the
+ * lifecycle re-anchors onto this shadow root's host (see lifecycle.tsx).
+ *
+ * No Tailwind utility appears in this screen, deliberately. The host's compiled
+ * Tailwind does reach here — ThemeAwareReactLifecycle clones the document's
+ * stylesheets into the shadow root — but its colour utilities read the shell's
+ * HSL-triplet tokens through the same names the kit re-declares as complete
+ * colours, so `text-muted-foreground` would resolve to `hsl(oklch(...))` and be
+ * dropped. Layout utilities would still work, which is the trap: a scaffold
+ * every new screen is copied from must not be one where some classes silently
+ * do nothing.
+ */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-8);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  font-size: var(--text-heading-1-size);
+  font-weight: var(--text-heading-1-weight);
+  letter-spacing: var(--text-heading-1-tracking);
+  line-height: var(--text-heading-1-line-height);
+}
+
+.description {
+  color: var(--muted-foreground);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
+
+.sectionTitle {
+  font-size: var(--text-heading-2-size);
+  font-weight: var(--text-heading-2-weight);
+  letter-spacing: var(--text-heading-2-tracking);
+  line-height: var(--text-heading-2-line-height);
+  margin-bottom: var(--space-3);
+}
+
+.definitions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.term {
+  font-size: var(--text-label-size);
+  font-weight: var(--text-label-weight);
+}
+
+.value {
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-line-height);
+}
+
+.error {
+  color: var(--destructive);
+  font-size: var(--text-body-size);
+}
+
+.payload {
+  background-color: var(--code-background);
+  border-radius: var(--radius-md);
+  color: var(--code-foreground);
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-line-height);
+  overflow-x: auto;
+  padding: var(--space-4);
+}
+
+.placeholders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/*
+ * Kit Skeleton bakes in no dimension by design — the consumer sizes each
+ * instance. These four shape the placeholder roughly like the content it
+ * stands in for.
+ */
+.placeholderTitle {
+  height: var(--control-height-lg);
+  width: 16rem;
+}
+
+.placeholderLine {
+  height: var(--space-4);
+}
+
+.placeholderLineShort {
+  height: var(--space-4);
+  width: 75%;
+}
+
+.placeholderBlock {
+  height: 5rem;
+}

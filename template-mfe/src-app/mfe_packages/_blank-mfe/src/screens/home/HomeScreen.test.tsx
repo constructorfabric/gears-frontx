@@ -109,7 +109,7 @@ describe('HomeScreen', () => {
     expect(await screen.findByText('status fetch failed')).toBeTruthy();
   });
 
-  it('renders the translation-loading skeleton before localized content is ready', () => {
+  it('announces a busy region instead of bridge values before translations are ready', () => {
     useScreenTranslationsMock.mockReturnValue({ t: (key: string) => key, loading: true });
 
     const { bridge } = createMfeBridgeFixture({
@@ -121,13 +121,13 @@ describe('HomeScreen', () => {
       },
     });
 
-    const { container } = render(<HomeScreen bridge={bridge} />);
+    render(<HomeScreen bridge={bridge} />);
 
-    expect(container.querySelectorAll('.animate-pulse')).toHaveLength(5);
+    expect(screen.getByRole('status').getAttribute('aria-busy')).toBe('true');
     expect(screen.queryByText(TEST_DOMAIN_ID)).toBeNull();
   });
 
-  it('renders the status-loading skeleton while the API request is pending', async () => {
+  it('announces a busy region beside the bridge values while the API request is pending', async () => {
     useApiQueryMock.mockReturnValue({
       data: null,
       isLoading: true,
@@ -144,10 +144,34 @@ describe('HomeScreen', () => {
       },
     });
 
-    const { container } = render(<HomeScreen bridge={bridge} />);
+    render(<HomeScreen bridge={bridge} />);
 
     expect(await screen.findByText(TEST_DOMAIN_ID)).toBeTruthy();
-    expect(container.querySelectorAll('.animate-pulse')).toHaveLength(3);
+    expect(screen.getByRole('status').getAttribute('aria-busy')).toBe('true');
+  });
+
+  // The kit scopes its design tokens with data-theme; a screen carrying neither
+  // value inherits whatever prefers-color-scheme resolved on the shadow host.
+  it('scopes the screen to the kit dark tokens only when the host theme names them', async () => {
+    const bridgeFixture = createMfeBridgeFixture({
+      domainId: TEST_DOMAIN_ID,
+      instanceId: TEST_INSTANCE_ID,
+      initialProperties: {
+        [FRONTX_SHARED_PROPERTY_THEME]: TEST_THEME,
+        [FRONTX_SHARED_PROPERTY_LANGUAGE]: TEST_LANGUAGE,
+      },
+    });
+
+    const { container } = render(<HomeScreen bridge={bridgeFixture.bridge} />);
+
+    expect(await screen.findByText(TEST_DOMAIN_ID)).toBeTruthy();
+    expect(container.firstElementChild?.getAttribute('data-theme')).toBe('light');
+
+    act(() => {
+      bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_THEME, 'dark');
+    });
+
+    expect(container.firstElementChild?.getAttribute('data-theme')).toBe('dark');
   });
 
   it('reacts to bridge property updates and unsubscribes on unmount', async () => {

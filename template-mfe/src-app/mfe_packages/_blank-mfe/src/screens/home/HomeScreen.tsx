@@ -6,10 +6,10 @@ import {
   useApiQuery,
   apiRegistry,
 } from '@gears-frontx/react';
-import { Card, CardContent } from '../../components/ui/card';
-import { Skeleton } from '../../components/ui/skeleton';
+import { Card, CardContent, Skeleton } from '@gears-frontx/ui-kit';
 import { useScreenTranslations } from '../../shared/useScreenTranslations';
 import { _BlankApiService } from '../../api/_BlankApiService';
+import styles from './HomeScreen.module.css';
 
 // Stable reference for translation modules (hoisted to module level to prevent re-render loops)
 const languageModules = import.meta.glob('./i18n/*.json') as Record<
@@ -33,7 +33,7 @@ interface HomeScreenProps {
  * - Theme property subscription
  * - Language property subscription
  * - MFE-local i18n with dynamic translation loading
- * - UIKit components for consistent styling
+ * - Components from @gears-frontx/ui-kit, styled from its design tokens
  *
  * To use this template:
  * 1. Copy the entire _blank-mfe directory to a new name
@@ -102,18 +102,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
     };
   }, [bridge]);
 
+  const kitThemeScope = kitThemeScopeFor(theme);
+
   // Show skeleton while translations are loading
   if (loading) {
     return (
-      <div ref={containerRef} className="p-8">
-        <Skeleton className="h-8 w-64 mb-4" />
-        <Skeleton className="h-4 w-96 mb-6" />
+      // A Skeleton carries no loading semantics of its own; the region announces them.
+      <div
+        ref={containerRef}
+        className={styles.screen}
+        data-theme={kitThemeScope}
+        role="status"
+        aria-busy="true"
+      >
+        <div className={styles.placeholders}>
+          <Skeleton className={styles.placeholderTitle} />
+          <Skeleton className={styles.placeholderLine} />
+        </div>
         <Card>
-          <CardContent className="p-6">
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
+          <CardContent>
+            <div className={styles.placeholders}>
+              <Skeleton className={styles.placeholderLine} />
+              <Skeleton className={styles.placeholderLine} />
+              <Skeleton className={styles.placeholderLineShort} />
             </div>
           </CardContent>
         </Card>
@@ -124,66 +135,76 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
   let statusCardBody: React.ReactNode;
   if (isStatusLoading) {
     statusCardBody = (
-      <div className="space-y-3">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-5/6" />
-        <Skeleton className="h-20 w-full" />
+      <div role="status" aria-busy="true" className={styles.placeholders}>
+        <Skeleton className={styles.placeholderLine} />
+        <Skeleton className={styles.placeholderLineShort} />
+        <Skeleton className={styles.placeholderBlock} />
       </div>
     );
   } else if (isStatusError) {
-    statusCardBody = (
-      <p className="text-sm text-destructive">{statusError?.message}</p>
-    );
+    statusCardBody = <p className={styles.error}>{statusError?.message}</p>;
   } else {
     statusCardBody = (
-      <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs text-muted-foreground">
-        {JSON.stringify(statusData, null, 2)}
-      </pre>
+      <pre className={styles.payload}>{JSON.stringify(statusData, null, 2)}</pre>
     );
   }
 
   return (
-    <div ref={containerRef} className="p-8">
-      <h1 className="text-3xl font-bold mb-4">
-        {t('title')}
-      </h1>
-      <p className="text-muted-foreground mb-6">
-        {t('description')}
-      </p>
-
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-xl font-semibold mb-3">
-              {t('bridge_info')}
-            </h2>
-            <dl className="grid gap-2">
-              <div>
-                <dt className="font-medium">{t('domain_id')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground">{bridge.domainId}</dd>
-              </div>
-              <div>
-                <dt className="font-medium">{t('instance_id')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground">{bridge.instanceId}</dd>
-              </div>
-              <div>
-                <dt className="font-medium">{t('current_theme')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground">{theme}</dd>
-              </div>
-              <div>
-                <dt className="font-medium">{t('current_language')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground">{language}</dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">{statusCardBody}</CardContent>
-        </Card>
+    <div ref={containerRef} className={styles.screen} data-theme={kitThemeScope}>
+      <div className={styles.intro}>
+        <h1 className={styles.title}>{t('title')}</h1>
+        <p className={styles.description}>{t('description')}</p>
       </div>
+
+      <Card>
+        <CardContent>
+          <h2 className={styles.sectionTitle}>{t('bridge_info')}</h2>
+          <dl className={styles.definitions}>
+            <div>
+              <dt className={styles.term}>{t('domain_id')}</dt>
+              <dd className={styles.value}>{bridge.domainId}</dd>
+            </div>
+            <div>
+              <dt className={styles.term}>{t('instance_id')}</dt>
+              <dd className={styles.value}>{bridge.instanceId}</dd>
+            </div>
+            <div>
+              <dt className={styles.term}>{t('current_theme')}</dt>
+              <dd className={styles.value}>{theme}</dd>
+            </div>
+            <div>
+              <dt className={styles.term}>{t('current_language')}</dt>
+              <dd className={styles.value}>{language}</dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>{statusCardBody}</CardContent>
+      </Card>
     </div>
   );
 };
 
 HomeScreen.displayName = 'HomeScreen';
+
+/**
+ * Map a host theme identifier onto the token scope `@gears-frontx/ui-kit`
+ * understands.
+ *
+ * The kit scopes its tokens with `data-theme="light" | "dark"`. Host theme
+ * identifiers are the host's own vocabulary, and only `dark` happens to name
+ * the same thing; every other identifier resolves to the light scope rather
+ * than to no scope at all, because an element carrying neither value inherits
+ * whatever the kit's `prefers-color-scheme` fallback resolved on the shadow
+ * host — which is how a screen ends up dark inside a light shell.
+ *
+ * This is a bridge, not the answer: making kit-built screens track every host
+ * theme means unifying the two token grammars, a decision above this template.
+ *
+ * @param hostTheme - Value of the host's shared theme property
+ */
+function kitThemeScopeFor(hostTheme: string): 'light' | 'dark' {
+  return hostTheme === 'dark' ? 'dark' : 'light';
+}
