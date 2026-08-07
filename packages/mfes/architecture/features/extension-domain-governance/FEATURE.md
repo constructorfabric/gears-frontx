@@ -56,7 +56,7 @@ The feature realizes the design principle that nothing is granted until explicit
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Dependencies**:
   - `cpt-frontx-feature-mfe-registry` — admission and mount strategies act on registry-resolved extensions; domain registration is an MFE Registry concern.
@@ -90,8 +90,8 @@ User-facing interactions that start with an actor and describe the end-to-end fl
    2. [x] - `p1` - **RETURN** domain registration failure - `inst-domain-reg-fail`
 5. [x] - `p1` - System registers the domain with its strategy instance as the mount executor - `inst-domain-registered`
 6. [x] - `p1` - Developer registers an extension entry into the registry (via `cpt-frontx-component-mfe-runtime`), declaring the entry's required properties, supported capabilities, and required domain capabilities - `inst-register-extension`
-7. [x] - `p1` - Developer issues a mount action targeting the registered domain, specifying the extension to admit - `inst-mount-action`
-8. [x] - `p1` - System runs subset-rule contract matching between the extension entry and the target domain - `inst-contract-match`
+7. [x] - `p1` - System runs subset-rule contract matching between the extension entry and the target domain as part of that registration — before any mount action is issued - `inst-contract-match`
+8. [x] - `p1` - Developer issues a mount action targeting the registered domain, specifying the (already contract-matched) extension to admit - `inst-mount-action`
 9. [x] - `p1` - **IF** contract matching returns any error - `inst-contract-fail-check`
    1. [x] - `p1` - System rejects the extension admission with an error naming each unsatisfied rule (missing property, unsupported action, or unhandled domain action) - `inst-contract-reject`
    2. [x] - `p1` - **RETURN** extension admission failure - `inst-admission-fail`
@@ -191,8 +191,8 @@ Internal system functions and procedures that do not interact with actors direct
 **Transitions**:
 1. [x] - `p1` - **FROM** SUBMITTED **TO** CONTRACT_MATCHED **WHEN** all three subset-rule containment checks pass (no missing properties, no unsupported actions, no unhandled domain actions) - `inst-adm-t1`
 2. [x] - `p1` - **FROM** SUBMITTED **TO** REJECTED **WHEN** any subset-rule containment check fails (contract matching returns at least one error) - `inst-adm-t2`
-3. [x] - `p1` - **FROM** CONTRACT_MATCHED **TO** ADMITTED **WHEN** the domain's cardinality row is already satisfied (domain was admitted at registration time) and the mount strategy accepts the incoming extension - `inst-adm-t3`
-4. [x] - `p1` - **FROM** CONTRACT_MATCHED **TO** REJECTED **WHEN** an internal admission guard vetoes the extension for a strategy-level reason (defensive path; admission normally proceeds after contract match) - `inst-adm-t4`
+3. [x] - `p1` - **FROM** CONTRACT_MATCHED **TO** ADMITTED **WHEN** the extension's state is stored and its init lifecycle fires — the mount strategy executes occupancy and holds no accept/veto authority of its own - `inst-adm-t3`
+4. [x] - `p1` - **FROM** CONTRACT_MATCHED **TO** REJECTED **WHEN** the internal admission guard finds no registered handler covering the entry's type (defensive path; admission normally proceeds after contract match) - `inst-adm-t4`
 5. [x] - `p1` - **FROM** ADMITTED **TO** MOUNTED **WHEN** the domain's strategy mount execution completes without error - `inst-adm-t5`
 6. [x] - `p1` - **FROM** ADMITTED **TO** REJECTED **WHEN** the strategy mount execution fails (error from mounter or container hooks) - `inst-adm-t6`
 

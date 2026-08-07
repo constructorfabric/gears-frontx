@@ -24,11 +24,11 @@
 
 <!-- /toc -->
 
-- [x] `p1` - **ID**: `cpt-frontx-featstatus-mfe-isolation`
+- [ ] `p1` - **ID**: `cpt-frontx-featstatus-mfe-isolation`
 
 ## 1. Feature Context
 
-- [x] `p2` - `cpt-frontx-feature-mfe-isolation`
+- [ ] `p2` - `cpt-frontx-feature-mfe-isolation`
 
 ### 1.1 Overview
 
@@ -50,7 +50,7 @@ A registered microfrontend must evaluate as its own module instance so distinct 
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **ADR**: `cpt-frontx-adr-mfe-load-isolation`
 - **Component**: `cpt-frontx-component-mfe-runtime` (shared with F4, F5, F6, F7)
@@ -246,11 +246,11 @@ The system **MUST** accept an entry's manifest either as the document itself or 
 
 ## 6. Acceptance Criteria
 
-- [ ] Each loaded microfrontend evaluates as its own isolated module instance; two extensions sharing the same entry definition receive distinct instance-keyed cache entries and distinct module evaluations
-- [ ] All dynamic-code primitives (dynamic import of inline content, dynamic construction of specifier matchers) are confined to the single audited trust-kernel file; a lint rule enforces this boundary
-- [ ] The trust-kernel import primitive rejects any input URL that does not begin with `blob:` or `data:` before any import executes
-- [ ] All blob URLs in the instance-keyed load cache are retained for the page lifetime and are never revoked after the import resolves
-- [ ] Shared-dependency source text is deduplicated across MFE loads using a cross-MFE LRU cache keyed by `name@version`; cache entries for failed fetches are evicted to permit retry
-- [ ] On load failure, the cache entry for the failed extension instance is evicted so a subsequent call can attempt a fresh load
+- [x] Each loaded microfrontend evaluates as its own isolated module instance; two extensions sharing the same entry definition receive distinct instance-keyed cache entries and distinct module evaluations
+- [x] All dynamic-code primitives (dynamic import of inline content, dynamic construction of specifier matchers) are confined to the single audited trust-kernel file; a lint rule enforces this boundary
+- [x] The trust-kernel import primitive rejects any input URL that does not begin with `blob:` or `data:` before any import executes
+- [x] All blob URLs in the instance-keyed load cache are retained for the page lifetime and are never revoked after the import resolves
+- [x] Shared-dependency source text is deduplicated across MFE loads using a cross-MFE LRU cache keyed by `name@version`; cache entries for failed fetches are evicted to permit retry
+- [x] On load failure, the cache entry for the failed extension instance is evicted so a subsequent call can attempt a fresh load
 - [ ] An entry whose manifest is named by id loads when the manifest is registered with the type system of the registry the handler was registered into, without the id ever being cached by an earlier load
 - [ ] An entry whose manifest id no source resolves fails the load with a diagnostic naming that reference, both when a type system was supplied and when the handler belongs to no registry

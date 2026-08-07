@@ -22,10 +22,10 @@
 
 <!-- /toc -->
 
-- [x] `p1` - **ID**: `cpt-frontx-featstatus-mfe-loading`
+- [ ] `p1` - **ID**: `cpt-frontx-featstatus-mfe-loading`
 ## 1. Feature Context
 
-- [x] `p2` - `cpt-frontx-feature-mfe-loading`
+- [ ] `p2` - `cpt-frontx-feature-mfe-loading`
 
 ### 1.1 Overview
 
@@ -47,7 +47,7 @@ The MFE Runtime must locate a microfrontend's chunks without parsing bundler-emi
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **ADRs**: `cpt-frontx-adr-mfe-asset-discovery`, `cpt-frontx-adr-lazy-import-resolution`
 - **Component**: `cpt-frontx-component-mfe-runtime` (shared with F4, F6, F7, F8)
@@ -74,20 +74,22 @@ User-facing interactions that start with an actor (human or external system) and
 - A lazy chunk's relative path cannot be resolved within the load's chunk set — lazy resolution fails and the load transitions to LOAD_FAILED.
 
 **Steps**:
-1. [x] - `p1` - Developer supplies a microfrontend entry to the registry, including the entry's manifest reference (`MfeEntry` with manifest field) — `inst-register-entry`
+1. [x] - `p1` - Registry receives the microfrontend entry with its manifest reference (`MfeEntry` with manifest field) and, at load start, resolves and caches the declared manifest — `inst-register-entry`
 2. [x] - `p1` - Registry triggers on-demand load for the entry when the extension is first needed — `inst-trigger-load`
-3. [x] - `p1` - System validates that the entry's manifest carries the required declared fields (`metaData.publicPath`, `exposeAssets`, `shared[]`) — `inst-validate-manifest-fields`
-4. [x] - `p1` - **IF** required manifest fields are absent or malformed — `inst-if-manifest-invalid`
-   1. [x] - `p1` - **RETURN** load failure; entry transitions to LOAD_FAILED — `inst-manifest-invalid-fail`
-5. [x] - `p1` - System derives the asset base URL from `manifest.metaData.publicPath` — `inst-derive-base-url`
+3. [ ] - `p1` - System validates that the entry's manifest carries the required declared fields (`metaData.publicPath`, `exposeAssets`, `shared[]`) — `inst-validate-manifest-fields`
+4. [ ] - `p1` - **IF** required manifest fields are absent or malformed — `inst-if-manifest-invalid`
+   1. [ ] - `p1` - **RETURN** load failure; entry transitions to LOAD_FAILED — `inst-manifest-invalid-fail`
+5. [ ] - `p1` - System derives the asset base URL from `manifest.metaData.publicPath` — `inst-derive-base-url`
 6. [x] - `p1` - System executes manifest-driven discovery (see §3 `cpt-frontx-algo-mfe-loading-manifest-discovery`) to build shared-dependency blob URLs and locate the expose chunk — `inst-run-manifest-discovery`
-7. [x] - `p1` - System mints a per-load lazy-import ABI resolver stub and registers it with the host-side registry (see §3 `cpt-frontx-algo-mfe-loading-lazy-import-abi`) — `inst-mint-lazy-stub`
-8. [x] - `p1` - System fetches and rewrites the expose chunk's bare specifiers to the per-load blob URLs, producing an isolated module blob URL — `inst-rewrite-expose-chunk`
-9. [x] - `p1` - System imports the expose chunk blob URL and extracts the lifecycle module factory — `inst-import-expose-chunk`
-10. [x] - `p1` - **IF** lazy chunks are exercised during mount — `inst-if-lazy-exercised`
-    1. [x] - `p1` - System resolves each `__frontx_lazy(path)` call via the per-load ABI resolver; each lazy chunk joins the same isolated graph and inherits the parent load's shared-dependency bindings — `inst-resolve-lazy-chunks`
-11. [x] - `p1` - System collects CSS paths from `exposeAssets.css.sync` and `exposeAssets.css.async` for stylesheet injection at mount — `inst-collect-css`
+7. [ ] - `p1` - System mints a per-load lazy-import ABI resolver stub and registers it with the host-side registry (see §3 `cpt-frontx-algo-mfe-loading-lazy-import-abi`) — `inst-mint-lazy-stub`
+8. [ ] - `p1` - System fetches and rewrites the expose chunk's bare specifiers to the per-load blob URLs, producing an isolated module blob URL — `inst-rewrite-expose-chunk`
+9. [ ] - `p1` - System imports the expose chunk blob URL and extracts the lifecycle module factory — `inst-import-expose-chunk`
+10. [ ] - `p1` - **IF** lazy chunks are exercised during mount — `inst-if-lazy-exercised`
+    1. [ ] - `p1` - System resolves each `__frontx_lazy(path)` call via the per-load ABI resolver; each lazy chunk joins the same isolated graph and inherits the parent load's shared-dependency bindings — `inst-resolve-lazy-chunks`
+11. [ ] - `p1` - System collects CSS paths from `exposeAssets.css.sync` and `exposeAssets.css.async` for stylesheet injection at mount — `inst-collect-css`
 12. [x] - `p1` - **RETURN** lifecycle module factory and stylesheet paths to the registry — `inst-return-lifecycle`
+
+**Recorded debt — flow specified ahead of the runtime**: the unchecked steps above stay unchecked on the same ground §4 records — where the behaviour exists in code at all, it lives under mfe-isolation's marked regions rather than under anchors of this feature's own.
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -110,7 +112,7 @@ Internal system functions and procedures that do not interact with actors direct
    2. [x] - `p1` - Fetch the standalone ESM source text for this shared dependency — `inst-md-fetch-shared-dep`
    3. [x] - `p1` - Rewrite bare specifiers in the fetched source to the already-resolved blob URLs of earlier (already processed) shared dependencies — `inst-md-rewrite-specifiers`
    4. [x] - `p1` - Mint a blob URL for this shared dependency and record it in the per-load shared-dep blob URL map — `inst-md-mint-shared-blob`
-5. [x] - `p1` - **RETURN** asset base URL, expose chunk filename, stylesheet paths, and the completed shared-dep blob URL map — `inst-md-return`
+5. [ ] - `p1` - **RETURN** asset base URL, expose chunk filename, stylesheet paths, and the completed shared-dep blob URL map — `inst-md-return`
 
 ### Lazy-Import ABI Resolution
 
@@ -123,18 +125,20 @@ Internal system functions and procedures that do not interact with actors direct
 **Steps**:
 1. [x] - `p1` - At load time, mint a per-load loader stub (tiny ESM blob) that re-exports `__frontx_lazy` as a function closed over this load's resolver identifier — `inst-lai-mint-stub`
 2. [x] - `p1` - Register the per-load resolver in the host-side `__FRONTX_LAZY__` global registry, keyed by the load's resolver identifier — `inst-lai-register-resolver`
-3. [x] - `p1` - Inject the loader stub's blob URL into every chunk in this load that references the `__frontx_lazy` identifier, so compiled lazy calls reach this load's resolver — `inst-lai-inject-stub`
+3. [ ] - `p1` - Inject the loader stub's blob URL into every chunk in this load that references the `__frontx_lazy` identifier, so compiled lazy calls reach this load's resolver — `inst-lai-inject-stub`
 4. [x] - `p1` - **WHEN** `__frontx_lazy(path)` is first exercised in a loaded chunk — `inst-lai-when-exercised`
    1. [x] - `p1` - Resolve the relative path against the entry chunk's directory to obtain a filename relative to the asset base URL — `inst-lai-resolve-relative-path`
-   2. [x] - `p1` - **IF** a blob URL for this filename already exists in the per-load blob URL map — `inst-lai-if-cached`
-      1. [x] - `p1` - **RETURN** the cached blob URL, skipping re-fetch and re-rewrite — `inst-lai-return-cached`
+   2. [ ] - `p1` - **IF** a blob URL for this filename already exists in the per-load blob URL map — `inst-lai-if-cached`
+      1. [ ] - `p1` - **RETURN** the cached blob URL, skipping re-fetch and re-rewrite — `inst-lai-return-cached`
    3. [x] - `p1` - Fetch the lazy chunk source from the asset base URL — `inst-lai-fetch-lazy-chunk`
-   4. [x] - `p1` - Rewrite bare specifiers in the lazy chunk source to the parent load's shared-dep blob URLs (inherited from the same `LoadState`) — `inst-lai-rewrite-lazy-specifiers`
-   5. [x] - `p1` - Rewrite any nested `__frontx_lazy` references in the lazy chunk to the same per-load loader stub URL — `inst-lai-rewrite-nested-lazy`
-   6. [x] - `p1` - Mint a blob URL for the lazy chunk and record it in the per-load blob URL map — `inst-lai-mint-lazy-blob`
+   4. [ ] - `p1` - Rewrite bare specifiers in the lazy chunk source to the parent load's shared-dep blob URLs (inherited from the same `LoadState`) — `inst-lai-rewrite-lazy-specifiers`
+   5. [ ] - `p1` - Rewrite any nested `__frontx_lazy` references in the lazy chunk to the same per-load loader stub URL — `inst-lai-rewrite-nested-lazy`
+   6. [ ] - `p1` - Mint a blob URL for the lazy chunk and record it in the per-load blob URL map — `inst-lai-mint-lazy-blob`
    7. [x] - `p1` - **RETURN** the lazy chunk's blob URL; the caller imports it, joining the parent load's isolated graph — `inst-lai-return-lazy-blob`
-5. [x] - `p1` - **IF** the relative path cannot be resolved to a known sibling chunk — `inst-lai-if-unknown`
-   1. [x] - `p1` - **RETURN** load failure — `inst-lai-unknown-fail`
+5. [x] - `p1` - **IF** a lazy call reaches a loader identifier no resolver is registered for — the unresolvable-path failure itself surfaces inside the lazy-blob resolution above — `inst-lai-if-unknown`
+   1. [ ] - `p1` - **RETURN** load failure — `inst-lai-unknown-fail`
+
+**Recorded debt — algorithms specified ahead of the runtime**: the unchecked steps in both algorithms stay unchecked on the same ground §4 records — where the behaviour exists in code at all, it lives under mfe-isolation's marked regions rather than under anchors of this feature's own.
 
 ## 4. States (CDSL)
 
@@ -146,12 +150,14 @@ Internal system functions and procedures that do not interact with actors direct
 
 **Initial State**: PENDING
 
+**Recorded debt — machine specified ahead of the runtime**: no code reifies these states; the mount manager tracks `loadState: 'idle' | 'loading' | 'loaded' | 'error'` per extension instance instead, and several unchecked steps above describe behaviour that exists in code only under mfe-isolation's marked regions (the expose-chunk import and CSS collection, for instance). The transitions below stay unchecked until this feature's own anchors are placed or the machine is restated over `loadState`.
+
 **Transitions**:
-1. [x] - `p1` - **FROM** PENDING **TO** MANIFEST_RESOLVED **WHEN** the entry's manifest is present and all required fields (`metaData.publicPath`, `exposeAssets`, `shared[]`) are validated — `inst-lt-pending-to-resolved`
-2. [x] - `p1` - **FROM** PENDING **TO** LOAD_FAILED **WHEN** the manifest is absent, malformed, or required fields are missing — `inst-lt-pending-to-failed`
-3. [x] - `p1` - **FROM** MANIFEST_RESOLVED **TO** LOADING **WHEN** shared-dep blob URLs are built, expose chunk filename is confirmed, and the per-load lazy-import ABI resolver stub is minted — `inst-lt-resolved-to-loading`
-4. [x] - `p1` - **FROM** LOADING **TO** LOADED **WHEN** the expose chunk blob URL is minted, imported, and a valid lifecycle module factory is extracted — `inst-lt-loading-to-loaded`
-5. [x] - `p1` - **FROM** LOADING **TO** LOAD_FAILED **WHEN** any step in blob URL chain construction, expose chunk fetch, or lifecycle import fails — `inst-lt-loading-to-failed`
+1. [ ] - `p1` - **FROM** PENDING **TO** MANIFEST_RESOLVED **WHEN** the entry's manifest is present and all required fields (`metaData.publicPath`, `exposeAssets`, `shared[]`) are validated — `inst-lt-pending-to-resolved`
+2. [ ] - `p1` - **FROM** PENDING **TO** LOAD_FAILED **WHEN** the manifest is absent, malformed, or required fields are missing — `inst-lt-pending-to-failed`
+3. [ ] - `p1` - **FROM** MANIFEST_RESOLVED **TO** LOADING **WHEN** shared-dep blob URLs are built, expose chunk filename is confirmed, and the per-load lazy-import ABI resolver stub is minted — `inst-lt-resolved-to-loading`
+4. [ ] - `p1` - **FROM** LOADING **TO** LOADED **WHEN** the expose chunk blob URL is minted, imported, and a valid lifecycle module factory is extracted — `inst-lt-loading-to-loaded`
+5. [ ] - `p1` - **FROM** LOADING **TO** LOAD_FAILED **WHEN** any step in blob URL chain construction, expose chunk fetch, or lifecycle import fails — `inst-lt-loading-to-failed`
 
 ## 5. Definitions of Done
 

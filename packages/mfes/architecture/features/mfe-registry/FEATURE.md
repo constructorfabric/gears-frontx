@@ -51,10 +51,10 @@ The registry façade gives host applications a stable contract for registering e
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
-- **ADR 0003**: [ADR/0003-mfe-runtime-public-surface.md](../../ADR/0003-mfe-runtime-public-surface.md)
-- **ADR 0006**: [ADR/0006-mfe-handler-resolution.md](../../ADR/0006-mfe-handler-resolution.md)
+- **ADR 0003**: [ADR/0003-mfe-runtime-public-surface.md](../../../../../architecture/ADR/0003-mfe-runtime-public-surface.md)
+- **ADR 0006**: [ADR/0006-mfe-handler-resolution.md](../../../../../architecture/ADR/0006-mfe-handler-resolution.md)
 - **Dependencies**: `cpt-frontx-feature-type-substrate-port`
 
 ## 2. Actor Flows (CDSL)
@@ -248,10 +248,10 @@ The system **MUST** define the `MfeHandler` abstract class with `handledBaseType
 ## 6. Acceptance Criteria
 
 - [ ] The abstract `MfeRegistry` is the only exported public runtime contract; consumers obtain instances via `createMfeRegistryFactory().build({ typeSystem })`.
-- [ ] Handler resolution uses `typeSystem.isTypeOf(entryTypeId, handler.handledBaseTypeId)` exclusively — no type-format string literals appear in the registry's resolution logic.
-- [ ] `MfeHandler` declares `handledBaseTypeId`, `priority`, `bridgeFactory`, `load`, and `attachTypeSystem` — no self-selection predicate.
-- [ ] A handler constructed with no type system and passed to the registry through `mfeHandlers` resolves its own type-system-owned references after registration, with no change at the construction site.
-- [ ] The factory-with-cache pattern returns the same instance on repeated calls with matching configuration, and throws on configuration mismatch.
-- [ ] An extension whose type validation fails is rejected without being placed into its extension domain.
-- [ ] An extension with no matching handler is rejected with a handler-not-found error.
+- [x] Handler resolution uses `typeSystem.isTypeOf(entryTypeId, handler.handledBaseTypeId)` exclusively — no type-format string literals appear in the registry's resolution logic.
+- [x] `MfeHandler` declares `handledBaseTypeId`, `priority`, `bridgeFactory`, `load`, and `attachTypeSystem` — no self-selection predicate.
+- [x] A handler constructed with no type system and passed to the registry through `mfeHandlers` resolves its own type-system-owned references after registration, with no change at the construction site.
+- [x] The factory-with-cache pattern returns the same instance on repeated calls with matching configuration, and throws on configuration mismatch.
+- [x] An extension whose type validation fails is rejected without being placed into its extension domain.
+- [x] An extension with no matching handler is rejected with a handler-not-found error.
 - [ ] The `MfeEntry` state machine (UNREGISTERED → REGISTERED → HANDLER_RESOLVED → ADMITTED → MOUNTED / REJECTED) is honored by the runtime.

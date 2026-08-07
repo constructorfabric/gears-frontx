@@ -44,7 +44,7 @@ No actor — this surface is consumer-invoked and sits below interface altitude 
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Dependencies**: None
 
@@ -138,7 +138,7 @@ No PRD usecase — this flow describes the consumer-issued service-call interact
    1. [x] - `p1` - Execute the request through the protocol directly without shared-cache routing - `inst-direct-fetch`
    2. [x] - `p1` - **RETURN** the result to the consumer - `inst-direct-return`
 3. [x] - `p1` - **ELSE** derive the preparation key: scope the key to this protocol instance by combining the instance scope ID with the raw URL, initial headers, and params - `inst-derive-prep-key`
-4. [x] - `p1` - Resolve the prepared request through the cache using the preparation key: if already cached or in-flight, reuse the result; otherwise run the plugin request chain and store the outcome - `inst-prepare-via-cache`
+4. [x] - `p1` - Resolve the prepared request through the cache using the preparation key: a concurrent in-flight preparation for the same key is joined; otherwise run the plugin request chain — preparation pins staleTime to zero, so the outcome is dropped on resolution rather than reused later - `inst-prepare-via-cache`
 5. [x] - `p1` - Derive the shared cache key from the processed request context: method, full URL (with base URL), resolved headers, params, body, and credentials flag - `inst-derive-shared-key`
 6. [x] - `p1` - Call getOrFetch on the cache with the shared key - `inst-getorfetch`
 7. [x] - `p1` - **IF** the cache contains a fresh CACHED entry for the key (resolvedAt + staleTime is in the future) - `inst-cache-hit`
@@ -152,7 +152,7 @@ No PRD usecase — this flow describes the consumer-issued service-call interact
     1. [x] - `p1` - Store the resolved data in the entry, record resolvedAt, and transition the entry to CACHED - `inst-store-cached`
 11. [x] - `p1` - **ELSE IF** staleTime is zero - `inst-staletime-zero`
     1. [x] - `p1` - Remove the entry from the cache immediately after resolution - `inst-remove-after-resolve`
-12. [x] - `p1` - Execute the response plugin chain on the resolved response context and **RETURN** the final data to the consumer - `inst-post-fetch-response-chain`
+12. [x] - `p1` - **RETURN** the resolved data to the consumer; the response plugin chain has already run on the resolved response context inside the dispatch algorithm (`inst-response-chain`) - `inst-post-fetch-response-chain`
 
 ### Declarative Endpoint and Stream Descriptor Derivation
 
@@ -176,17 +176,17 @@ No PRD usecase — this flow describes the consumer-issued service-call interact
 
 - [x] `p2` - **ID**: `cpt-frontx-state-api-protocol-surface-fetch-cache-entry`
 
-**States**: IDLE, IN_FLIGHT, CACHED, SHORT_CIRCUITED, RELEASED
+**States**: IDLE, IN_FLIGHT, CACHED, SHORT_CIRCUITED, RELEASED — SHORT_CIRCUITED is a modeling alias for a CACHED entry whose data came from a plugin short-circuit; the runtime does not distinguish the two
 
 **Initial State**: IDLE
 
 **Transitions**:
 1. [x] - `p1` - **FROM** IDLE **TO** IN_FLIGHT **WHEN** a consumer calls getOrFetch for a key with no fresh cache entry and a new cache entry is created with pending set to true - `inst-t-idle-inflight`
 2. [x] - `p1` - **FROM** IN_FLIGHT **TO** CACHED **WHEN** the fetcher resolves successfully and staleTime is greater than zero; data and resolvedAt are recorded and pending is cleared - `inst-t-inflight-cached`
-3. [x] - `p1` - **FROM** IN_FLIGHT **TO** SHORT_CIRCUITED **WHEN** the plugin request chain returns a short-circuit response; the response is stored as the resolved data in the entry - `inst-t-inflight-sc`
+3. [x] - `p1` - **FROM** IN_FLIGHT **TO** SHORT_CIRCUITED **WHEN** the plugin request chain returns a short-circuit response; the response resolves through the ordinary success path and is stored as a normal cached entry - `inst-t-inflight-sc`
 4. [x] - `p1` - **FROM** IN_FLIGHT **TO** IDLE **WHEN** the fetch fails, is invalidated, or staleTime is zero causing the entry to be removed on resolution - `inst-t-inflight-idle`
 5. [x] - `p1` - **FROM** CACHED **TO** IDLE **WHEN** the freshness window elapses (resolvedAt + staleTime ≤ now on next lookup) or an explicit invalidation is applied to the key - `inst-t-cached-idle`
-6. [x] - `p1` - **FROM** SHORT_CIRCUITED **TO** IDLE **WHEN** the entry is invalidated or its freshness window elapses - `inst-t-sc-idle`
+6. [x] - `p1` - **FROM** SHORT_CIRCUITED **TO** IDLE **WHEN** the entry is invalidated or its freshness window elapses — through the same paths as any CACHED entry, with no separate transition of its own - `inst-t-sc-idle`
 7. [x] - `p1` - **FROM** CACHED **TO** RELEASED **WHEN** the retainer count on the realm global decrements to zero (the last holder calls releaseSharedFetchCache), causing the entire cache to be torn down - `inst-t-cached-released`
 8. [x] - `p1` - **FROM** IN_FLIGHT **TO** RELEASED **WHEN** the retainer count reaches zero while a fetch is still pending; the in-flight AbortController fires and the cache is reset - `inst-t-inflight-released`
 
@@ -212,7 +212,7 @@ The system **MUST** implement `ApiProtocol` as an abstract base parameterized by
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-api-protocol-surface-shared-cache`
 
-The system **MUST** implement a shared fetch cache stored on the realm global via the well-known symbol `SHARED_FETCH_CACHE_SYMBOL`, keyed by auto-derived request identity, that deduplicates concurrent consumers of the same key by attaching them to a single in-flight promise, remains completely bypassed when no retainer is held, and is reclaimable by retainer counting — releasing and clearing all state when the retainer count reaches zero — so that independently bundled units in one realm share in-flight and completed fetches without imposing a runtime library dependency.
+The system **MUST** implement a shared fetch cache stored on the realm global via the well-known symbol `SHARED_FETCH_CACHE_SYMBOL`, keyed by auto-derived request identity, that deduplicates concurrent consumers of the same key by attaching them to a single in-flight promise, remains completely bypassed while the cache symbol is absent from the realm global, and is reclaimable by retainer counting — releasing and clearing all state when the retainer count reaches zero — so that independently bundled units in one realm share in-flight and completed fetches without imposing a runtime library dependency.
 
 **Implements**:
 - `cpt-frontx-algo-api-protocol-surface-shared-cache`

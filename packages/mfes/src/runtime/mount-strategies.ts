@@ -39,9 +39,7 @@ export class ConcurrentMountStrategy extends MountStrategy {
   // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-match-strategy
   // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-concurrent
   async mount(payload: ActionPayload): Promise<void> {
-    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-get-mounted
     const extensionId = payload.subject;
-    // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-get-mounted
     const container = this.hooks.create(extensionId);
     try {
       await this.mounter.mount(extensionId, container);

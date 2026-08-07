@@ -1,9 +1,3 @@
----
-kind: FEATURE
-system: frontx
-slug: type-substrate-port
----
-
 # Feature: Opaque Type-Substrate Port
 
 
@@ -54,7 +48,7 @@ The MFE Runtime must validate microfrontends and their extensions against type d
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **ADRs**: `cpt-frontx-adr-runtime-type-system-coupling`, `cpt-frontx-adr-core-package-boundaries`
 - **Dependencies**: None
@@ -81,7 +75,7 @@ User-facing interactions that start with an actor (human or external system) and
 **Steps**:
 1. [ ] - `p1` - Developer supplies application-specific type definition schemas to the injected type-substrate port - `inst-supply-schemas`
 2. [x] - `p1` - Port records each schema by its identifier (opaque string; runtime has no access to schema structure) - `inst-port-register`
-3. [ ] - `p1` - Developer configures the MFE runtime with the injected type-substrate port at construction time - `inst-configure-runtime`
+3. [ ] - `p1` - Developer configures the MFE Runtime with the injected type-substrate port at construction time - `inst-configure-runtime`
 4. [ ] - `p1` - Developer registers a microfrontend with the runtime, providing its declared type identifier - `inst-register-mfe`
 5. [ ] - `p1` - Runtime extracts the declared type identifier from the microfrontend entry as an opaque string (no schema structure accessed) - `inst-extract-type-id`
 6. [x] - `p1` - Runtime delegates entity validation to the port, passing only the opaque type identifier - `inst-delegate-validate`
@@ -178,7 +172,7 @@ The system **MUST** define and ship the `TypeSystemPlugin` port contract in `@ge
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-type-substrate-port-opaque-boundary`
 
-The system **MUST** ensure the MFE runtime holds the type-substrate port exclusively through the port interface, carrying no concrete type-definition format literals, no schema field access beyond the identifier, and no format-specific import or dependency — enforced as a CI-checkable invariant.
+The system **MUST** ensure the MFE Runtime holds the type-substrate port exclusively through the port interface, carrying no concrete type-definition format literals, no schema field access beyond the identifier, and no format-specific import or dependency — enforced as a CI-checkable invariant.
 
 **Implements**:
 - `cpt-frontx-flow-type-substrate-port-register-validate`
@@ -205,8 +199,8 @@ The system **MUST** delegate every schema validation and type-hierarchy-resoluti
 
 ## 6. Acceptance Criteria
 
-- [ ] The `TypeSystemPlugin` port contract is published from `@gears-frontx/mfes` (target: extracted from `packages/screensets/src/mfe/plugins/types.ts`)
-- [ ] A CI boundary check on MFE runtime source returns 0 hits for any concrete type-definition format literals, schema field access beyond identifier, or format-specific imports
-- [ ] A conforming `TypeSystemPlugin` implementation can be injected into the runtime without any runtime modification
-- [ ] The runtime correctly rejects a microfrontend whose declared type identifier fails port validation, surfacing port-supplied error details to the caller
-- [ ] The runtime correctly resolves type hierarchy through the port for handler-selection decisions, without local identifier parsing
+- [x] The `TypeSystemPlugin` port contract is published from `@gears-frontx/mfes` (target: extracted from `packages/screensets/src/mfe/plugins/types.ts`)
+- [x] A CI boundary check on MFE Runtime source returns 0 hits for any concrete type-definition format literals, schema field access beyond identifier, or format-specific imports
+- [x] A conforming `TypeSystemPlugin` implementation can be injected into the runtime without any runtime modification
+- [x] The runtime correctly rejects a microfrontend whose declared type identifier fails port validation, surfacing port-supplied error details to the caller
+- [x] The runtime correctly resolves type hierarchy through the port for handler-selection decisions, without local identifier parsing

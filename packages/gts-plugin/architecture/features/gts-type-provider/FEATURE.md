@@ -24,10 +24,10 @@
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-frontx-featstatus-gts-type-provider`
+- [x] `p1` - **ID**: `cpt-frontx-featstatus-gts-type-provider`
 ## 1. Feature Context
 
-- [ ] `p2` - `cpt-frontx-feature-gts-type-provider`
+- [x] `p2` - `cpt-frontx-feature-gts-type-provider`
 
 ### 1.1 Overview
 
@@ -35,7 +35,7 @@ The GTS Default Type-System Provider (`@gears-frontx/gts-plugin` — target) imp
 
 ### 1.2 Purpose
 
-This feature makes the MFE Runtime ready to validate microfrontends and extensions without requiring every consumer to author a type system. It confines the concrete type-definition specification to a single injectable component, keeping every other Core Framework concern agnostic of the schema format.
+This feature makes the MFE Runtime ready to validate microfrontends and extensions without requiring every consumer to author a type system. It confines the concrete type-definition specification to a single injectable component, keeping every other published-libraries concern agnostic of the schema format.
 
 **Requirements**: `cpt-frontx-fr-mfe-type-validation`, `cpt-frontx-fr-application-type-definitions`
 
@@ -49,7 +49,7 @@ This feature makes the MFE Runtime ready to validate microfrontends and extensio
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Dependencies**: `cpt-frontx-feature-type-substrate-port`
 
@@ -149,6 +149,9 @@ Internal system functions and procedures that do not interact with actors direct
 2. [x] - `p1` - **IF** `typeId` equals `baseTypeId` or `typeId` starts with `baseTypeId`: - `inst-tr-02`
    1. [x] - `p1` - **RETURN** true — the type is the same as or derives from the base type. - `inst-tr-02a`
 3. [x] - `p1` - **RETURN** false — no derivation relationship exists. - `inst-tr-03`
+
+Steps 4–10 stand apart from the hierarchy check above: they take neither `typeId` nor `baseTypeId` and return identifiers rather than the Boolean — each is an independent well-known-ID resolver the runtime calls directly.
+
 4. [x] - `p1` - Resolve this plugin's own GTS action-type ID for the framework's well-known `load_ext` lifecycle action - `inst-tr-04`
 5. [x] - `p1` - Resolve this plugin's own GTS action-type ID for the framework's well-known `mount_ext` lifecycle action - `inst-tr-05`
 6. [x] - `p1` - Resolve this plugin's own GTS action-type ID for the framework's well-known `unmount_ext` lifecycle action - `inst-tr-06`

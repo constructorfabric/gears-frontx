@@ -47,7 +47,7 @@ This feature details the host–MFE dispatch mechanism and the child-facing brid
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../PRD.md)
+- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **ADRs**: `cpt-frontx-adr-action-dispatch-and-chaining`, `cpt-frontx-adr-child-mfe-host-access`
 - **Dependencies**: `cpt-frontx-feature-mfe-registry`
@@ -72,9 +72,9 @@ This feature details the host–MFE dispatch mechanism and the child-facing brid
 
 **Steps**:
 1. [ ] - `p1` - Developer assembles an actions chain with an action that identifies the target and action type - `inst-assemble-chain`
-2. [ ] - `p1` - Developer invokes `executeActionsChain` on the host runtime with the assembled chain and an optional timeout override - `inst-invoke-execute`
+2. [x] - `p1` - Developer invokes `executeActionsChain` on the host runtime with the assembled chain and an optional timeout override - `inst-invoke-execute`
 3. [ ] - `p1` - Runtime delegates action admission to the injected type-system provider, which validates the action against its registered schema - `inst-admit-action`
-4. [ ] - `p1` - Runtime checks that the target entry declares the action type in its receivable-action set; infrastructure lifecycle actions are exempt - `inst-decl-check`
+4. [x] - `p1` - Runtime checks that the target entry declares the action type in its receivable-action set; infrastructure lifecycle actions are exempt - `inst-decl-check`
 5. [ ] - `p1` - **IF** the target entry exists and does not declare the action type - `inst-decl-fail-check`
    1. [ ] - `p1` - **RETURN** non-completed result with a declaration error - `inst-decl-fail-return`
 6. [ ] - `p1` - Runtime resolves the handler for the `(target, action type)` pair; on no specific match, falls back to the per-target catch-all handler - `inst-resolve-handler`
@@ -110,29 +110,30 @@ This feature details the host–MFE dispatch mechanism and the child-facing brid
 **Output**: A chain result with completion flag, accumulated path, optional error, optional timeout flag, and elapsed time
 
 **Steps**:
-1. [ ] - `p1` - Check whether the accumulated elapsed time exceeds the chain timeout; if exceeded, throw a chain-timeout error - `inst-check-chain-timeout`
-2. [ ] - `p1` - Delegate action admission to the injected type-system provider - `inst-delegate-admit`
-3. [ ] - `p1` - Look up the handler for the `(targetId, actionTypeId)` pair in the keyed handler registry - `inst-keyed-lookup`
+1. [x] - `p1` - Check whether the accumulated elapsed time exceeds the chain timeout; if exceeded, throw a chain-timeout error - `inst-check-chain-timeout`
+2. [x] - `p1` - Delegate action admission to the injected type-system provider - `inst-delegate-admit`
+3. [x] - `p1` - Look up the handler for the `(targetId, actionTypeId)` pair in the keyed handler registry - `inst-keyed-lookup`
 4. [ ] - `p1` - **IF** no keyed handler is found for the pair - `inst-no-keyed`
-   1. [ ] - `p1` - Look up the per-target catch-all handler; the catch-all tier enables forwarding to child domains whose action vocabulary is not enumerated in the parent - `inst-catchall-lookup`
-5. [ ] - `p1` - **IF** neither a keyed nor a catch-all handler exists for the target - `inst-no-handler`
-   1. [ ] - `p1` - Throw a missing-handler error that propagates to the chain fallback or outer result - `inst-throw-no-handler`
-6. [ ] - `p1` - Resolve the per-action timeout from the action's explicit timeout field or, if absent, from the domain's default action timeout - `inst-resolve-timeout`
-7. [ ] - `p1` - Add the action dispatch to the in-flight tracking set for the target - `inst-add-inflight`
-8. [ ] - `p1` - Invoke the resolved handler within the per-action timeout bound - `inst-invoke-within-timeout`
-9. [ ] - `p1` - Remove the action from the in-flight tracking set once the promise settles - `inst-remove-inflight`
-10. [ ] - `p1` - **IF** handler execution succeeds - `inst-success`
-    1. [ ] - `p1` - Append the action type to the execution path - `inst-append-path-success`
-    2. [ ] - `p1` - **IF** the chain carries a `next` continuation - `inst-has-next`
-       1. [ ] - `p1` - Recurse into `next` with the updated path and remaining time budget - `inst-recurse-success`
-    3. [ ] - `p1` - **IF** no `next` continuation is declared - `inst-chain-done`
-       1. [ ] - `p1` - **RETURN** completed result - `inst-return-done`
-11. [ ] - `p1` - **IF** handler execution throws or times out - `inst-failure`
-    1. [ ] - `p1` - Append the action type to the execution path - `inst-append-path-failure`
-    2. [ ] - `p1` - **IF** the chain carries a `fallback` continuation - `inst-has-fallback`
-       1. [ ] - `p1` - Recurse into `fallback` with the updated path and remaining time budget - `inst-recurse-fallback-algo`
-    3. [ ] - `p1` - **IF** no `fallback` continuation is declared - `inst-no-fallback-algo`
-       1. [ ] - `p1` - Re-throw the error so the outer chain execution resolves it to a non-completed result - `inst-rethrow`
+   1. [x] - `p1` - Match the dispatched action type against each registered key through the type system's derivation check, in either direction, and use the first matching handler - `inst-hierarchy-lookup`
+   2. [x] - `p1` - Look up the per-target catch-all handler; the catch-all tier enables forwarding to child domains whose action vocabulary is not enumerated in the parent - `inst-catchall-lookup`
+5. [x] - `p1` - **IF** neither a keyed nor a catch-all handler exists for the target - `inst-no-handler`
+   1. [x] - `p1` - Throw a missing-handler error that propagates to the chain fallback or outer result - `inst-throw-no-handler`
+6. [x] - `p1` - Resolve the per-action timeout from the action's explicit timeout field or, if absent, from the domain's default action timeout - `inst-resolve-timeout`
+7. [x] - `p1` - Add the action dispatch to the in-flight tracking set for the target - `inst-add-inflight`
+8. [x] - `p1` - Invoke the resolved handler within the per-action timeout bound - `inst-invoke-within-timeout`
+9. [x] - `p1` - Remove the action from the in-flight tracking set once the promise settles - `inst-remove-inflight`
+10. [x] - `p1` - **IF** handler execution succeeds - `inst-success`
+    1. [x] - `p1` - Append the action type to the execution path - `inst-append-path-success`
+    2. [x] - `p1` - **IF** the chain carries a `next` continuation - `inst-has-next`
+       1. [x] - `p1` - Recurse into `next` with the updated path and remaining time budget - `inst-recurse-success`
+    3. [x] - `p1` - **IF** no `next` continuation is declared - `inst-chain-done`
+       1. [x] - `p1` - **RETURN** completed result - `inst-return-done`
+11. [x] - `p1` - **IF** handler execution throws or times out - `inst-failure`
+    1. [x] - `p1` - Append the action type to the execution path - `inst-append-path-failure`
+    2. [x] - `p1` - **IF** the chain carries a `fallback` continuation - `inst-has-fallback`
+       1. [x] - `p1` - Recurse into `fallback` with the updated path and remaining time budget - `inst-recurse-fallback-algo`
+    3. [x] - `p1` - **IF** no `fallback` continuation is declared - `inst-no-fallback-algo`
+       1. [x] - `p1` - Re-throw the error so the outer chain execution resolves it to a non-completed result - `inst-rethrow`
 
 ### Bridge Delegation to Registry
 
@@ -144,17 +145,17 @@ This feature details the host–MFE dispatch mechanism and the child-facing brid
 
 **Steps**:
 1. [ ] - `p1` - **IF** the child requests to execute an actions chain - `inst-child-exec-chain`
-   1. [ ] - `p1` - Child bridge forwards the chain to the injected `executeActionsChain` registry callback without adding coordination logic - `inst-fwd-exec-chain`
+   1. [x] - `p1` - Child bridge forwards the chain to the injected `executeActionsChain` registry callback without adding coordination logic - `inst-fwd-exec-chain`
 2. [ ] - `p1` - **IF** the child registers an action handler for a specific action type - `inst-child-reg-handler`
-   1. [ ] - `p1` - Child bridge invokes the injected mediator-registration callback with the action type identifier and handler instance - `inst-fwd-reg-handler`
+   1. [x] - `p1` - Child bridge invokes the injected mediator-registration callback with the action type identifier and handler instance - `inst-fwd-reg-handler`
 3. [ ] - `p1` - **IF** the child registers a child domain for cross-runtime action forwarding - `inst-child-reg-domain`
-   1. [ ] - `p1` - Child bridge invokes the injected child-domain-registration callback with the domain identifier - `inst-fwd-reg-domain`
-   2. [ ] - `p1` - Parent runtime registers a catch-all forwarding handler in the mediator, keyed to the child domain identifier - `inst-register-catchall`
-   3. [ ] - `p1` - The catch-all forwarding handler wraps any incoming action in an actions chain and delivers it through the bridge transport to the child runtime's mediator - `inst-catchall-forward`
-4. [ ] - `p1` - **IF** the parent runtime sends an action chain to the child's domain - `inst-parent-send-chain`
-   1. [ ] - `p1` - Parent bridge delivers the chain to the child bridge's registered actions-chain handler - `inst-deliver-to-child`
+   1. [x] - `p1` - Child bridge invokes the injected child-domain-registration callback with the domain identifier - `inst-fwd-reg-domain`
+   2. [x] - `p1` - Parent runtime registers a catch-all forwarding handler in the mediator, keyed to the child domain identifier - `inst-register-catchall`
+   3. [x] - `p1` - The catch-all forwarding handler wraps any incoming action in an actions chain and delivers it through the bridge transport to the child runtime's mediator - `inst-catchall-forward`
+4. [x] - `p1` - **IF** the parent runtime sends an action chain to the child's domain - `inst-parent-send-chain`
+   1. [x] - `p1` - Parent bridge delivers the chain to the child bridge's registered actions-chain handler - `inst-deliver-to-child`
    2. [ ] - `p1` - Child bridge invokes its registered handler; if no handler is registered, throws a no-handler error - `inst-child-invoke`
-5. [ ] - `p1` - Parent bridge exposes `instanceId` and `dispose()` as its complete narrow public surface; disposal invokes child bridge cleanup - `inst-parent-handle`
+5. [x] - `p1` - Parent bridge exposes `instanceId` and `dispose()` as its complete narrow public surface; disposal invokes child bridge cleanup - `inst-parent-handle`
 
 ## 4. States (CDSL)
 
