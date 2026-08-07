@@ -541,9 +541,10 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       readProjectFileFn,
     );
 
-    // One claim per occupant, so `applied/` is not contested by itself and the
-    // disjoint `new/` claim passes. Two claims would have made every add in
-    // this repository fail with the occupant named under both identities.
+    // One claim per occupant, and the disjoint `new/` claim passes. The pass
+    // does not depend on the deduplication — pairs of occupied claims are not
+    // judged at all — so what this pins is the claim count reaching the check;
+    // the companion case below is where a duplicate would have been visible.
     expect(result.ok).toBe(true);
     expect(files.get('/target/new/index.ts')).toBe('new');
   });
@@ -593,6 +594,99 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
     // of the first record that resolved, not under both.
     expect(result.conflicts).toEqual([{ ground: 'applied/', contestants: ['intruder', 'legacy-repo-name'] }]);
     expect(files.get('/target/applied/other.ts')).toBeUndefined();
+  });
+
+  // inst-cc-foreach-pair — arbitration is about the incoming assembly against
+  // the existing state, so two records already on disk are never tried against
+  // each other. A repository assembled before the boundary comparison became
+  // segment-aware can hold a nested occupied pair: the equality check that
+  // admitted the inner template is gone, but its provenance record is not, and
+  // re-judging that pair would refuse every later add with a contest the
+  // developer cannot resolve from either side.
+  it('adds a disjoint template into a repository whose two already-applied templates hold nested boundaries', async () => {
+    const outer = makeEntry('outer-applied', [{ path: 'src/index.ts', content: 'outer' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/'], sharedFiles: [] },
+    });
+    const inner = makeEntry('inner-applied', [{ path: 'src/config/app.ts', content: 'inner' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/config/'], sharedFiles: [] },
+    });
+    const incoming = makeEntry('incoming', [{ path: 'docs/readme.md', content: 'incoming' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['docs/'], sharedFiles: [] },
+    });
+    const entries: Record<string, InventoryEntry> = { 'outer-applied': outer, 'inner-applied': inner, incoming };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'outer-applied', scaffoldedFromVersion: '1.0.0', sourceSpec: outer.source },
+        { templateIdentity: 'inner-applied', scaffoldedFromVersion: '1.0.0', sourceSpec: inner.source },
+      ]),
+    );
+
+    const result = await addTemplate(
+      'incoming',
+      '/target',
+      (n: string) => entries[n],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(files.get('/target/docs/readme.md')).toBe('incoming');
+  });
+
+  // The companion bound: narrowing the pairs must not stop the incoming claim
+  // from being tried against every occupant, including the inner one of a
+  // nested pair, and the refusal names that occupant rather than the pair the
+  // check no longer judges.
+  it('still refuses an incoming claim that nests into one of two already-applied nested boundaries', async () => {
+    const outer = makeEntry('outer-applied', [{ path: 'src/index.ts', content: 'outer' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/'], sharedFiles: [] },
+    });
+    const inner = makeEntry('inner-applied', [{ path: 'src/config/app.ts', content: 'inner' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/config/'], sharedFiles: [] },
+    });
+    const intruder = makeEntry('intruder', [{ path: 'src/config/deep/x.ts', content: 'intruder' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/config/deep/'], sharedFiles: [] },
+    });
+    const entries: Record<string, InventoryEntry> = { 'outer-applied': outer, 'inner-applied': inner, intruder };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'outer-applied', scaffoldedFromVersion: '1.0.0', sourceSpec: outer.source },
+        { templateIdentity: 'inner-applied', scaffoldedFromVersion: '1.0.0', sourceSpec: inner.source },
+      ]),
+    );
+
+    const result = await addTemplate(
+      'intruder',
+      '/target',
+      (n: string) => entries[n],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('conflict');
+    if (result.reason !== 'conflict') return;
+    // Both occupants contain the intruder's claim, so both contests are real and
+    // both are reported; the `src/` against `src/config/` pair between the two
+    // occupants is absent.
+    expect(result.conflicts).toEqual([
+      { ground: 'src/config/deep/ overlaps src/', contestants: ['intruder', 'outer-applied'] },
+      { ground: 'src/config/deep/ overlaps src/config/', contestants: ['intruder', 'inner-applied'] },
+    ]);
+    expect(files.get('/target/src/config/deep/x.ts')).toBeUndefined();
   });
 
   // inst-add-resolve-occupied

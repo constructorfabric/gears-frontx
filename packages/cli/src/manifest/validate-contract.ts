@@ -1,6 +1,6 @@
 // @cpt-algo:cpt-frontx-algo-template-manifest-validate-contract:p1
 import { readBundleFiles } from '../bundle/envelope';
-import { isSafeRelativePath } from '../paths/relative-path';
+import { isSafeRelativePath, pathWithinSubtree } from '../paths/relative-path';
 import { MANIFEST_FILENAME } from './types';
 import type { ManifestViolation, ManifestValidationResult, TemplateManifest } from './types';
 
@@ -82,10 +82,14 @@ function isReservedEnvironmentPath(pathValue: string): boolean {
 // declarable ownership ground for that template (FEATURE §1.2, ADR-0027).
 function isReservedFrontxPath(pathValue: string, templateIdentity: string): boolean {
   const normalized = pathValue.replace(/\\/g, '/').replace(/\/+$/, '');
-  if (normalized !== '.frontx' && !normalized.startsWith('.frontx/')) return false;
-  const ownBundleSubtree = `.frontx/ai/${templateIdentity}`;
-  if (normalized === ownBundleSubtree || normalized.startsWith(`${ownBundleSubtree}/`)) return false;
-  return true;
+  if (!pathWithinSubtree(normalized, '.frontx')) return false;
+  // An absent or non-string identity arrives here as the empty string, which
+  // would make the exemption read `.frontx/ai` — the shared parent of every
+  // template's bundle, not one template's ground. Such a manifest is already
+  // rejected for its identity; the guard keeps it from also being handed the
+  // whole bundle namespace on the way out.
+  if (templateIdentity === '') return true;
+  return !pathWithinSubtree(normalized, `.frontx/ai/${templateIdentity}`);
 }
 
 // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-read-manifest

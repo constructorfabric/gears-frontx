@@ -1,6 +1,7 @@
 import type { InventoryEntry } from '../inventory/types';
 import { readManifestFromContent } from '../manifest/validate-contract';
 import type { OwnershipBoundary, TemplateManifest } from '../manifest/types';
+import { pathWithinSubtree } from '../paths/relative-path';
 import type { ContentItem, ContributionEntry, ReadContentItemsFn, StagedAssembly } from './types';
 
 export type UniformApplyResult =
@@ -12,11 +13,13 @@ export type UniformApplyResult =
 // one of its exclusive subtrees or is one of its declared shared files —
 // scopes the content read from the installed content path per
 // inst-ua-compute-contribution.
+//
+// Subtree membership is `pathWithinSubtree`, which is what makes this filter
+// safe to run after arbitration: both seed and add materialize from it, and the
+// conflict check only ever saw the declarations, so anything this filter admits
+// beyond them reaches the repository as ground nothing arbitrated.
 function isWithinDeclaredBoundaries(item: ContentItem, boundaries: OwnershipBoundary): boolean {
-  const inExclusiveSubtree = boundaries.exclusiveSubtrees.some((subtree) => {
-    const prefix = subtree.endsWith('/') ? subtree : `${subtree}/`;
-    return item.path === subtree || item.path.startsWith(prefix);
-  });
+  const inExclusiveSubtree = boundaries.exclusiveSubtrees.some((subtree) => pathWithinSubtree(item.path, subtree));
   const inSharedFile = boundaries.sharedFiles.some((sharedFile) => sharedFile.path === item.path);
   return inExclusiveSubtree || inSharedFile;
 }

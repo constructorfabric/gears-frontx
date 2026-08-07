@@ -262,6 +262,40 @@ describe('validateManifestContract', () => {
     expect(result.status).toBe('VALIDATED');
   });
 
+  // The reserved `.frontx/` namespace is matched by path segment, so a directory
+  // whose name merely starts with it is a different location and stays
+  // declarable. Reserving it would take ordinary ground away from a template
+  // over a name collision that is not one.
+  it.each(['.frontxx', '.frontxx/tools/', '.frontx-notes/'])(
+    'admits the exclusive subtree %s, which starts with the reserved namespace without being inside it',
+    (subtree) => {
+      const result = validateManifestContract(
+        validManifest({ ownershipBoundaries: { exclusiveSubtrees: [subtree], sharedFiles: [] } }),
+      );
+
+      expect(result.status).toBe('VALIDATED');
+    },
+  );
+
+  // The own-bundle exemption is keyed on the template's identity, so a manifest
+  // that declares no identity has no bundle subtree to be exempted: `.frontx/ai`
+  // is the shared parent of every template's bundle, not one template's ground.
+  // Without the guard the missing identity would widen the exemption to that
+  // parent and the reserved-namespace violation would disappear from a manifest
+  // that is claiming the whole bundle namespace.
+  it('still reports the reserved-namespace violation for a .frontx/ai subtree when the manifest declares no identity', () => {
+    const raw = JSON.stringify({
+      version: '1.0.0',
+      ownershipBoundaries: { exclusiveSubtrees: ['.frontx/ai/some-other-tpl'], sharedFiles: [] },
+    });
+
+    const result = validateManifestContract(raw);
+
+    expect(result.status).toBe('REJECTED');
+    if (result.status !== 'REJECTED') return;
+    expect(result.violations.some((v) => v.field.startsWith('ownershipBoundaries.exclusiveSubtrees'))).toBe(true);
+  });
+
   // inst-if-subtree-reserved / inst-add-subtree-reserved-violation — the
   // environment-owned half of the reserved set. It exists because the seed flow
   // treats these entries as carrying no content, so a template permitted to

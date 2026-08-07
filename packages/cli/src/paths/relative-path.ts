@@ -1,8 +1,12 @@
 // Path-shape predicates shared by the modules that accept a path-like string
-// from outside the CLI: a subtree segment in a developer-supplied source-spec
-// and an identity a template's manifest declares. Both end up addressing a
-// location under a root the CLI owns, so both answer to one rule rather than to
-// two that can drift apart.
+// from outside the CLI: a subtree segment in a developer-supplied source-spec,
+// an identity a template's manifest declares, and the exclusive subtrees a
+// manifest claims as ownership ground. All of them end up addressing a location
+// under a root the CLI owns, so all of them answer to one rule rather than to
+// several that can drift apart — the drift this module exists to prevent is one
+// caller deciding containment by bare string prefix while another decides it by
+// path segment, which makes the same two paths overlap for one and not the
+// other.
 
 // A safe relative path: no surrounding whitespace, not absolute, no backslash,
 // no unsafe character, and no empty, "." or ".." segment. Rejecting rather than
@@ -30,11 +34,36 @@ function hasUnsafePathChar(value: string): boolean {
   return false;
 }
 
-// Whether one identity would be materialized inside the other's content path.
-// Identity is used as a path under the inventory root, so a scoped `@acme/tools`
-// and an `@acme/tools/extra` occupy nested directories: a bounded update of the
+// A trailing slash spells a declaration as a directory; it is not part of the
+// location addressed. A manifest may write `"src/"` or `"src"` and mean the same
+// subtree, so every comparison below strips it first — otherwise the two
+// spellings would disagree about the same ground and one of them would slip past
+// the check the other is refused by.
+function withoutTrailingSlash(value: string): string {
+  return value.endsWith('/') ? value.slice(0, -1) : value;
+}
+
+// Whether `path` addresses `subtree` itself or a location inside it, compared by
+// whole path segments. A bare `path.startsWith(subtree)` places `src-app/main.ts`
+// and `srcx.ts` inside a claim on `src`, so a template declaring one directory
+// would silently capture every sibling whose name merely extends it.
+export function pathWithinSubtree(path: string, subtree: string): boolean {
+  const root = withoutTrailingSlash(subtree);
+  const target = withoutTrailingSlash(path);
+  return target === root || target.startsWith(`${root}/`);
+}
+
+// Whether two paths address ground that cannot be held independently — the same
+// location, or one inside the other — which is `pathWithinSubtree` asked in both
+// directions.
+//
+// Over two template identities this is the inventory's nesting check: identity
+// is used as a path under the inventory root, so a scoped `@acme/tools` and an
+// `@acme/tools/extra` occupy nested directories, and a bounded update of the
 // outer one clears its directory recursively and takes the inner one's files
 // with it, leaving the inner template listed in the index with nothing on disk.
+// Over two manifests' exclusive-subtree claims it is the overlap the pre-flight
+// conflict check refuses (`cpt-frontx-dod-cli-scaffolding-conflict-check`).
 export function pathsNest(a: string, b: string): boolean {
-  return a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
+  return pathWithinSubtree(a, b) || pathWithinSubtree(b, a);
 }

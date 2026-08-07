@@ -100,6 +100,62 @@ describe('uniformApply — the ONE apply path (cpt-frontx-algo-cli-scaffolding-u
     expect(contribution.files).toEqual([{ path: 'template-a/index.ts', content: 'in-bounds' }]);
   });
 
+  // inst-ua-compute-contribution, and the DoD's reason for it in
+  // `cpt-frontx-dod-cli-scaffolding-boundary-declared-assembly`.
+  it('takes only what lies under a declared subtree by path segment — "src" takes src/main.ts, never src-app/main.ts or srcx.ts', async () => {
+    const entry = makeEntry('template-a', {
+      ownershipBoundaries: { exclusiveSubtrees: ['src'], sharedFiles: [] },
+    });
+    contentRegistry.set('template-a', [
+      { path: 'src/main.ts', content: 'claimed' },
+      { path: 'src-app/main.ts', content: 'sibling tree' },
+      { path: 'srcx.ts', content: 'sibling file' },
+    ]);
+    const lookupFn = vi.fn(() => entry);
+
+    const result = await uniformApply(['template-a'], false, lookupFn, readContentFn);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.assembly.contributions[0].files).toEqual([{ path: 'src/main.ts', content: 'claimed' }]);
+  });
+
+  // The shipped shell template declares `package.json` and `README.md` as
+  // exclusive ground, so a single file is a real declaration shape and not only
+  // the degenerate half of the segment rule.
+  it('takes a file declared by its exact path and not a sibling whose name extends it', async () => {
+    const entry = makeEntry('template-a', {
+      ownershipBoundaries: { exclusiveSubtrees: ['README.md'], sharedFiles: [] },
+    });
+    contentRegistry.set('template-a', [
+      { path: 'README.md', content: 'declared' },
+      { path: 'README.md.bak', content: 'not declared' },
+    ]);
+    const lookupFn = vi.fn(() => entry);
+
+    const result = await uniformApply(['template-a'], false, lookupFn, readContentFn);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.assembly.contributions[0].files).toEqual([{ path: 'README.md', content: 'declared' }]);
+  });
+
+  // Both spellings materialize the same content, or a punctuation choice the
+  // manifest contract never fixed would decide what a template ships.
+  it.each(['assets/', 'assets'])('takes assets/logo.svg under a subtree declared as "%s"', async (subtree) => {
+    const entry = makeEntry('template-a', {
+      ownershipBoundaries: { exclusiveSubtrees: [subtree], sharedFiles: [] },
+    });
+    contentRegistry.set('template-a', [{ path: 'assets/logo.svg', content: 'declared' }]);
+    const lookupFn = vi.fn(() => entry);
+
+    const result = await uniformApply(['template-a'], false, lookupFn, readContentFn);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.assembly.contributions[0].files).toEqual([{ path: 'assets/logo.svg', content: 'declared' }]);
+  });
+
   // Multiple templates in one resolved set are each staged with their own identity.
   it('stages one contribution per template in the resolved set, tagged with identity', async () => {
     const entries: Record<string, InventoryEntry> = {

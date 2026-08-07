@@ -542,6 +542,38 @@ describe('dispatch: seed (cpt-frontx-flow-cli-scaffolding-seed-repository)', () 
     expect(outcome.stderr).toContain('clash-a');
     expect(outcome.stderr).toContain('clash-b');
   });
+
+  // A nested pair's contested ground carries both claims, so what the developer
+  // reads is a composed line rather than one declared string echoed back. Asserted
+  // verbatim through `run()` — the only place that formats it — because a ground
+  // that is correct in the verdict and garbled on stderr is still a refusal
+  // nobody can act on.
+  it('prints both claims on one line when the contested ground is a nested pair rather than an identical claim', async () => {
+    const { deps, registerManifest, registerContent } = makeDeps();
+    registerManifest(
+      'github:acme/nest-outer@v1.0.0',
+      makeManifest('nest-outer', '1.0.0', {
+        ownershipBoundaries: { exclusiveSubtrees: ['src/'], sharedFiles: [] },
+        referencedTemplates: [{ ref: 'nest-inner', appliedAt: 'src/config/' }],
+      }),
+    );
+    registerManifest(
+      'github:acme/nest-inner@v1.0.0',
+      makeManifest('nest-inner', '1.0.0', {
+        ownershipBoundaries: { exclusiveSubtrees: ['src/config/'], sharedFiles: [] },
+      }),
+    );
+    registerContent('nest-outer', [{ path: 'src/index.ts', content: 'outer' }]);
+    registerContent('nest-inner', [{ path: 'src/config/app.ts', content: 'inner' }]);
+    await run(['install', 'github:acme/nest-outer@v1.0.0'], deps);
+    await run(['install', 'github:acme/nest-inner@v1.0.0'], deps);
+
+    const outcome = await run(['seed', 'nest-outer', '/tmp/target-repo'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toContain('  ground "src/ overlaps src/config/" contested by: nest-outer, nest-inner');
+    expect(deps.writeFileFn).not.toHaveBeenCalled();
+  });
 });
 
 describe('dispatch: add (cpt-frontx-flow-cli-scaffolding-add-template)', () => {

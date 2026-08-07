@@ -19,6 +19,7 @@ import { addTemplate } from '../commands/add-template';
 import { installCommand } from '../commands/install';
 import { createLocalFetchFn } from '../adapters/local-fetch';
 import { checkAssemblyConflicts } from '../scaffold/conflict';
+import { pathWithinSubtree } from '../paths/relative-path';
 import type { ContributionEntry, StagedAssembly } from '../scaffold/types';
 import type { ProvenanceRecord } from '../provenance/types';
 import {
@@ -284,23 +285,22 @@ describe("Fixture 4 — conflict-check on REAL templates: a synthetic 'mfe-dup' 
   });
 });
 
-describe('Fixture 5 — characterizing R3(б): the exact-string conflict check has a nesting/spelling blind spot on the REAL shell declaration', () => {
+describe('Fixture 5 — the conflict check arbitrates nesting and spelling against the REAL shell declaration', () => {
   // Both cases are read directly from the real, on-disk template-shell
-  // manifest (not a hand-copied literal) so the characterization tracks that
-  // manifest's actual declared boundary rather than a stale assumption
-  // about it. checkAssemblyConflicts compares exclusiveSubtrees by strict
-  // string equality only (`subtreeA !== subtreeB → continue`,
-  // scaffold/conflict.ts) — it has no notion of "path A nests inside path B"
-  // or "same path, different trailing slash".
+  // manifest (not a hand-copied literal) so they track that manifest's actual
+  // declared boundary rather than a stale assumption about it, and so the
+  // expected conflicts are derived from it rather than pinned to a snapshot a
+  // future boundary edit would falsify.
   const shellManifest = readManifest(TEMPLATE_SHELL_DIR);
+  const shellSubtrees = shellManifest.ownershipBoundaries.exclusiveSubtrees;
   const shellContribution: ContributionEntry = {
     templateName: 'frontx-template-shell',
     files: [],
     ownershipBoundaries: shellManifest.ownershipBoundaries,
   };
 
-  it('KNOWN BLIND SPOT — a nested claim ("src-app/", which contains the real shell-owned "src-app/app/") is NOT detected as a conflict today', () => {
-    expect(shellManifest.ownershipBoundaries.exclusiveSubtrees).toContain('src-app/app/');
+  it('refuses a claim on "src-app/", which contains the real shell-owned "src-app/app/", naming every shell subtree it swallows', () => {
+    expect(shellSubtrees).toContain('src-app/app/');
 
     const nestedClaim: ContributionEntry = {
       templateName: 'nested-claim-fixture',
@@ -309,17 +309,29 @@ describe('Fixture 5 — characterizing R3(б): the exact-string conflict check h
     };
     const assembly: StagedAssembly = { contributions: [shellContribution, nestedClaim] };
 
-    // Characterizes TODAY's behavior, not the desired one: §7 defers a
-    // segment-aware comparison (`p === s || p.startsWith(s + '/')`) to a
-    // later phase (R3(б) in the SSOT). This assertion is expected to flip to
-    // `ok: false` once that lands — at which point this test should be
-    // updated into a real conflict-detection assertion, not deleted.
     const verdict = checkAssemblyConflicts(assembly, []);
-    expect(verdict.ok).toBe(true);
+
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    // Every shell subtree under `src-app/` is its own contested ground: the
+    // outer claim collides with each of them separately, and a report naming
+    // only the first would leave the rest for the developer to rediscover.
+    // The oracle selects them with the same predicate the check uses, so a
+    // shell that one day declares `src-app/` itself yields the equal-strings
+    // ground rather than an "overlaps" line this test would fail on for the
+    // wrong reason.
+    expect(verdict.conflicts).toEqual(
+      shellSubtrees
+        .filter((subtree) => pathWithinSubtree(subtree, 'src-app/'))
+        .map((subtree) => ({
+          ground: subtree === 'src-app/' ? subtree : `${subtree} overlaps src-app/`,
+          contestants: ['frontx-template-shell', 'nested-claim-fixture'],
+        })),
+    );
   });
 
-  it('KNOWN BLIND SPOT — the same ground under a different spelling ("src" vs. the real shell-owned "src/") is NOT detected as a conflict today', () => {
-    expect(shellManifest.ownershipBoundaries.exclusiveSubtrees).toContain('src/');
+  it('refuses the same ground under a different spelling — a claim on "src" against the real shell-owned "src/"', () => {
+    expect(shellSubtrees).toContain('src/');
 
     const misspelledClaim: ContributionEntry = {
       templateName: 'slash-mismatch-fixture',
@@ -328,9 +340,17 @@ describe('Fixture 5 — characterizing R3(б): the exact-string conflict check h
     };
     const assembly: StagedAssembly = { contributions: [shellContribution, misspelledClaim] };
 
-    // Same characterization as above, same expected-to-flip note.
     const verdict = checkAssemblyConflicts(assembly, []);
-    expect(verdict.ok).toBe(true);
+
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    // Exactly one conflict, and specifically not one against `src-app/app/`:
+    // the shell's other `src`-prefixed subtrees share a string prefix with the
+    // claim without sharing a path segment, so a comparison that refused them
+    // too would be refusing assemblies that are actually disjoint.
+    expect(verdict.conflicts).toEqual([
+      { ground: 'src/ overlaps src', contestants: ['frontx-template-shell', 'slash-mismatch-fixture'] },
+    ]);
   });
 });
 
@@ -370,16 +390,14 @@ describe('Fixture 6 — declaration coverage: every real file in template-shell/
   // inferred-ownership model ADR-0031 rejected.
   //
   // The assembler (`isWithinDeclaredBoundaries` in scaffold/assembler.ts)
-  // includes a file by PREFIX for exclusiveSubtrees (`item.path.startsWith(subtree)`)
-  // but by EXACT match for sharedFiles (`sharedFile.path === item.path`). A plain
-  // `.not.toContain('package.json')` on the exclusiveSubtrees array only checks
-  // array membership — it would stay green even if a subtree entry like
-  // `'package'` silently captured `package.json` and `package-lock.json` by
-  // prefix, and the harness would ship into a seeded project unnoticed. So
-  // exclusiveSubtrees must be checked through the same prefix function the
-  // assembler uses (`isPathWithinExclusiveSubtrees`); sharedFiles stays a plain
-  // membership check since that half of the assembler's test really is
-  // exact-equality.
+  // includes a file for exclusiveSubtrees by whole path segments
+  // (`pathWithinSubtree`) and for sharedFiles by exact match. Array membership
+  // answers neither question: a subtree entry like `'package.json/'`, or a
+  // future declaration of a directory that comes to hold these files, captures
+  // them without `'package.json'` ever appearing as an element. So
+  // exclusiveSubtrees is checked through the same predicate the assembler calls
+  // (`isPathWithinExclusiveSubtrees`); sharedFiles stays a plain membership
+  // check since that half of the assembler's test really is exact-equality.
   it('template-mfe/: the harness manifest stays undeclared — no claim on package.json or package-lock.json', () => {
     const { exclusiveSubtrees, sharedFiles } = readManifest(TEMPLATE_MFE_DIR).ownershipBoundaries;
     const sharedFilePaths = sharedFiles.map((entry: { path: string }) => entry.path);
@@ -389,40 +407,36 @@ describe('Fixture 6 — declaration coverage: every real file in template-shell/
     expect(sharedFilePaths).not.toContain('package-lock.json');
   });
 
-  // Negative control for the assertion style above. Three different manifest
-  // declarations capture the root package files by prefix — exactly as the
-  // assembler would — while array membership calls all three safe, because
-  // `'package.json'` is never itself an array element:
+  // Negative control for the assertion style above. Array membership calls
+  // every one of these declarations safe, because `'package.json'` is never
+  // itself an array element — and it is wrong about the last one, which is why
+  // the assertion above goes through the real predicate instead:
   //
-  //   ['package']   a missing trailing slash, the easy typo for an author
-  //                 reaching for "just the packages/ dir"
-  //   ['package-']  the same typo one character further along
-  //   ['']          the worst of the three: an empty prefix matches EVERY
-  //                 path, so this manifest claims the entire repository
+  //   ['package']        a missing trailing slash, the easy typo for an author
+  //                      reaching for "just the packages/ dir". It names a
+  //                      directory, and no root file lives inside one.
+  //   ['package-']       the same typo one character further along
+  //   ['']               an empty declaration addresses no location at all
+  //   ['package.json/']  the root file itself, spelled as a directory — the one
+  //                      row where membership is wrong and the file IS captured
   //
-  // Each case fails under the old `not.toContain(...)` style and is caught
-  // only because the fixed assertion above goes through the real prefix
-  // function the assembler uses.
-  // `['package-']` is the one asymmetric case: it captures package-lock.json
-  // but NOT package.json, which does not start with that prefix. Spelling the
-  // expectation out per file keeps the control honest — a blanket "captures
-  // both" would have been wrong here and would have hidden the asymmetry.
+  // The first three rows are also what pins the segment rule in place: each
+  // captures a root package file the moment `pathWithinSubtree` degrades back
+  // into a bare string-prefix test.
   it.each([
-    { label: 'missing trailing slash', subtrees: ['package'], capturesJson: true, capturesLock: true },
-    { label: 'partial prefix', subtrees: ['package-'], capturesJson: false, capturesLock: true },
-    { label: 'empty prefix — claims everything', subtrees: [''], capturesJson: true, capturesLock: true },
+    { label: 'missing trailing slash', subtrees: ['package'], capturesJson: false, capturesLock: false },
+    { label: 'partial prefix', subtrees: ['package-'], capturesJson: false, capturesLock: false },
+    { label: 'empty declaration', subtrees: [''], capturesJson: false, capturesLock: false },
+    { label: 'the file itself, spelled as a directory', subtrees: ['package.json/'], capturesJson: true, capturesLock: false },
   ])(
-    'negative control: exclusiveSubtrees $subtrees ($label) captures a root package file by prefix',
+    'negative control: exclusiveSubtrees $subtrees ($label) is judged by path segment, not by array membership',
     ({ subtrees, capturesJson, capturesLock }) => {
-      // What array membership says: safe. It is wrong for all three.
+      // What array membership says: safe. It is not the question the assembler asks.
       expect(subtrees).not.toContain('package.json');
       expect(subtrees).not.toContain('package-lock.json');
 
-      // What the assembler actually does — and what the fixed test above
-      // would have caught. At least one file is captured in every case.
       expect(isPathWithinExclusiveSubtrees('package.json', subtrees)).toBe(capturesJson);
       expect(isPathWithinExclusiveSubtrees('package-lock.json', subtrees)).toBe(capturesLock);
-      expect(capturesJson || capturesLock).toBe(true);
     },
   );
 });

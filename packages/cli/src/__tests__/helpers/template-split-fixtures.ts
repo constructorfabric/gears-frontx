@@ -20,6 +20,7 @@ import { createFsWriteFileFn } from '../../adapters/fs-project-io';
 import { createFsProvenanceWriteFn, readProvenanceRecords } from '../../adapters/provenance-io';
 import { createLocalFetchFn } from '../../adapters/local-fetch';
 import { installCommand } from '../../commands/install';
+import { pathWithinSubtree } from '../../paths/relative-path';
 import { MANIFEST_FILENAME } from '../../manifest/types';
 import type { TemplateManifest } from '../../manifest/types';
 import type { InventoryEntry } from '../../inventory/types';
@@ -107,15 +108,17 @@ export function listRealFiles(root: string, excludedDirs: Set<string> = EXCLUDED
   return files;
 }
 
-/** Mirrors the ownership-boundary content filter `scaffold/assembler.ts`'s
- * (unexported) `isWithinDeclaredBoundaries` applies for exclusive subtrees —
- * a plain string-prefix test (F3) — so these fixtures can compute an
- * independent "what should this template materialize" oracle without
- * reaching into that module's private helper. Deliberately narrower than the
- * real function: these fixtures' two real manifests both declare
- * `sharedFiles: []`, so shared-file membership is out of scope here. */
+/** The exclusive-subtree half of the ownership-boundary content filter
+ * `scaffold/assembler.ts`'s (unexported) `isWithinDeclaredBoundaries` applies,
+ * so these fixtures can compute a "what should this template materialize"
+ * oracle without reaching into that module's private helper. Calls the same
+ * `pathWithinSubtree` the assembler calls rather than restating the rule: a
+ * restated copy is an oracle that can agree with itself while disagreeing with
+ * the code under test. Deliberately narrower than the real function: these
+ * fixtures' two real manifests both declare `sharedFiles: []`, so shared-file
+ * membership is out of scope here. */
 export function isPathWithinExclusiveSubtrees(relPath: string, exclusiveSubtrees: string[]): boolean {
-  return exclusiveSubtrees.some((subtree) => relPath.startsWith(subtree));
+  return exclusiveSubtrees.some((subtree) => pathWithinSubtree(relPath, subtree));
 }
 
 export interface ShellMfeHarness {

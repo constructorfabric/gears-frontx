@@ -49,6 +49,73 @@ describe('checkAssemblyConflicts — F12 pre-flight assembly conflict check (cpt
     ]);
   });
 
+  // inst-cc-if-subtree-clash / inst-cc-record-subtree-conflict.
+  it('refuses two templates whose exclusive subtrees nest, naming both claims and both templates', () => {
+    const assembly = assemblyOf(
+      contribution('outer-template', { exclusiveSubtrees: ['src/'], sharedFiles: noSharedFiles }),
+      contribution('inner-template', { exclusiveSubtrees: ['src/config/'], sharedFiles: noSharedFiles }),
+    );
+
+    const verdict = checkAssemblyConflicts(assembly, []);
+
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    expect(verdict.conflicts).toEqual([
+      { ground: 'src/ overlaps src/config/', contestants: ['outer-template', 'inner-template'] },
+    ]);
+  });
+
+  it('refuses the same directory claimed under two spellings — with and without a trailing slash', () => {
+    const assembly = assemblyOf(
+      contribution('template-a', { exclusiveSubtrees: ['src/'], sharedFiles: noSharedFiles }),
+      contribution('template-b', { exclusiveSubtrees: ['src'], sharedFiles: noSharedFiles }),
+    );
+
+    const verdict = checkAssemblyConflicts(assembly, []);
+
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    expect(verdict.conflicts).toEqual([
+      { ground: 'src/ overlaps src', contestants: ['template-a', 'template-b'] },
+    ]);
+  });
+
+  // The bound on the widened refusal: these assemblies write to no common file.
+  it('passes two claims that share a string prefix without sharing a path segment', () => {
+    const assembly = assemblyOf(
+      contribution('template-a', { exclusiveSubtrees: ['src/', 'lib'], sharedFiles: noSharedFiles }),
+      contribution('template-b', { exclusiveSubtrees: ['src-app/', 'library.ts'], sharedFiles: noSharedFiles }),
+    );
+
+    const verdict = checkAssemblyConflicts(assembly, []);
+
+    expect(verdict.ok).toBe(true);
+  });
+
+  // The add flow's whole reason for submitting the occupied set: a new template
+  // whose claim swallows an already-applied template's subtree is arbitrated
+  // here, before any write, rather than discovered by materialization
+  // overwriting the occupant's files.
+  it('refuses a staged claim that nests around an exclusive subtree an already-applied template occupies', () => {
+    const assembly = assemblyOf(
+      contribution('new-template', { exclusiveSubtrees: ['src-app/'], sharedFiles: noSharedFiles }),
+    );
+    const alreadyOccupied: OccupiedBoundaryEntry[] = [
+      {
+        templateName: 'existing-template',
+        boundary: { exclusiveSubtrees: ['src-app/app/'], sharedFiles: noSharedFiles },
+      },
+    ];
+
+    const verdict = checkAssemblyConflicts(assembly, alreadyOccupied);
+
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    expect(verdict.conflicts).toEqual([
+      { ground: 'src-app/ overlaps src-app/app/', contestants: ['new-template', 'existing-template'] },
+    ]);
+  });
+
   // (a) Two `exclusive` claims on the same shared-file path are REFUSED —
   // inst-cc-if-exclusive-clash / inst-cc-record-exclusive-conflict.
   it('(a) refuses two exclusive claims on the same shared-file path', () => {
