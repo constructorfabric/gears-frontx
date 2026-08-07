@@ -226,6 +226,15 @@ pass runs on the framework's *next* invocation and makes the same capabilities
 available as activated resources from then on - it has not run in this session,
 and the flow does not need it to have run. What you need is on disk.
 
+**Realize the units one after another, here.** Finish each unit before starting
+the next, and hand none of them to a background agent to work alongside the
+others. Two units of the same kind, measured: 7m36s realized one after another,
+12m28s realized in parallel background agents. The sequential second unit is not
+merely no slower than the first, it is faster - 2m27s against the first unit's
+5m09s - because the conventions the first unit settled are still in this session
+and the second follows them. A background agent holds none of that and derives it
+again from the bundles per unit, which costs more than the concurrency returns.
+
 For each unit from step 3.11, in plan order:
 
 1. **Find the covering skill.** Look in the bundle of the template that owns the
