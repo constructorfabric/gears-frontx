@@ -44,18 +44,21 @@ export const TEMPLATE_MFE_DIR = path.resolve(__dirname, '../../../../../template
 export const TEMPLATE_SHELL_IDENTITY = '@gears-frontx/frontx-template-shell';
 export const TEMPLATE_MFE_IDENTITY = '@gears-frontx/frontx-template-mfe';
 
-// Mirrors `adapters/local-fetch.ts`'s `DEFAULT_EXCLUDED_DIRS`, plus `.omo` —
-// the one name this set still carries that the adapter's own list does not.
+// Mirrors `adapters/local-fetch.ts`'s `DEFAULT_EXCLUDED_DIRS` exactly. The two
+// sets are restated rather than shared because this one is also the fixtures'
+// own real-file oracle, and a fixture that imported the value under test could
+// not detect the adapter dropping an entry from it.
 //
-// Both `.omc` and `.omo` are agent session-state directories that can exist
-// under `template-shell/` during local development (confirmed on this checkout:
-// `template-shell/.omc/`, `template-shell/src-app/mfe_packages/.omc/`, and
-// `.omo/run-continuation/` at the repository root, all untracked). Neither is
-// template content, and left unexcluded such a directory both (a) inflates the
-// fixtures' own "declared vs. real files" oracle with unrelated noise, and (b)
-// has the walk read live session files that the agent session running these very
-// tests can be rewriting concurrently — a failure that reports as undeclared
-// template content and does not reproduce.
+// `.omc` and `.omo` are the agent session-state directories among them: both
+// can exist inside a template source tree during local development (confirmed
+// on this checkout: `template-shell/.omc/`,
+// `template-shell/src-app/mfe_packages/.omc/`, and `.omo/run-continuation/` at
+// the repository root, all untracked). Neither is template content, and left
+// unexcluded such a directory both (a) inflates the fixtures' "declared vs. real
+// files" oracle with unrelated noise, and (b) has the walk read live session
+// files that the agent session running these very tests can be rewriting
+// concurrently — a failure that reports as undeclared template content and does
+// not reproduce.
 //
 // Passed explicitly as `createLocalFetchFn`'s `excludedDirs` option (an existing
 // extension point, not a change to `local-fetch.ts`) wherever these fixtures

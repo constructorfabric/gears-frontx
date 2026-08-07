@@ -19,8 +19,12 @@ import path from 'node:path';
 import { BUNDLE_MARKER } from '../bundle/envelope';
 import type { FetchFn } from '../resolver/types';
 
-/** Directory names never included in the local bundle — build/dependency
- * artifacts the real template-shell `.gitignore` also excludes. */
+/** Directory names never included in the local bundle: build and dependency
+ * artifacts, plus the agent session-state directories (`.omc/`, `.omo/`) that
+ * can sit inside a template source tree during local development. The real
+ * template-shell `.gitignore` excludes all of them too — none is declared
+ * template content, and bundling one would seed a developer's repository with
+ * another session's scratch state. */
 const DEFAULT_EXCLUDED_DIRS = new Set([
   'node_modules',
   'dist',
@@ -33,6 +37,7 @@ const DEFAULT_EXCLUDED_DIRS = new Set([
   '.mf',
   '.__mf__temp',
   '.omc',
+  '.omo',
 ]);
 
 export interface LocalFetchOptions {

@@ -68,14 +68,18 @@ describe('createLocalFetchFn — TEST-ONLY local content adapter', () => {
     expect(Object.keys(bundle)).toEqual(['frontx-template.json']);
   });
 
-  // F-8 (issue #470 phase 4.5): a real `.omc/` agent-state directory can
-  // exist inside a template source dir (e.g. `template-shell/.omc/` today)
-  // without being part of the template's declared content — it must never
-  // leak into the offline bundle this test-only adapter builds.
-  it('skips .omc agent-state directories', async () => {
+  // F-8 (issue #470 phase 4.5): an agent-state directory can exist inside a
+  // template source dir (e.g. `template-shell/.omc/` today) without being part
+  // of the template's declared content — it must never leak into the offline
+  // bundle this test-only adapter builds. `.omo/` is the same class, written
+  // per agent session rather than per working directory.
+  it.each([
+    { dir: '.omc', child: 'state', file: 'notepad.md', content: 'agent scratch state' },
+    { dir: '.omo', child: 'run-continuation', file: 'ses_fixture.json', content: '{"session":"fixture"}' },
+  ])('skips $dir agent-state directories', async ({ dir, child, file, content: stateContent }) => {
     fs.writeFileSync(path.join(localDir, 'frontx-template.json'), '{"name":"fixture","version":"1.0.0"}');
-    fs.mkdirSync(path.join(localDir, '.omc', 'state'), { recursive: true });
-    fs.writeFileSync(path.join(localDir, '.omc', 'state', 'notepad.md'), 'agent scratch state');
+    fs.mkdirSync(path.join(localDir, dir, child), { recursive: true });
+    fs.writeFileSync(path.join(localDir, dir, child, file), stateContent);
 
     const fetchFn = createLocalFetchFn(localDir);
     const content = await fetchFn('unused://url');
@@ -144,9 +148,10 @@ describe('offline e2e — frontx install + seed assemble the real template-shell
       // No network / build-artifact directories were ever pulled into the target.
       expect(fs.existsSync(path.join(targetDir, 'node_modules'))).toBe(false);
       expect(fs.existsSync(path.join(targetDir, 'dist'))).toBe(false);
-      // F-8: template-shell/.omc/ is real agent-state on disk today; it must
-      // not be seeded as if it were declared template content.
+      // F-8: template-shell/.omc/ is real agent-state on disk today, and .omo/
+      // is the same class; neither may be seeded as declared template content.
       expect(fs.existsSync(path.join(targetDir, '.omc'))).toBe(false);
+      expect(fs.existsSync(path.join(targetDir, '.omo'))).toBe(false);
     } finally {
       fs.rmSync(inventoryRoot, { recursive: true, force: true });
       fs.rmSync(targetDir, { recursive: true, force: true });
