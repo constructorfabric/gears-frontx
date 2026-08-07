@@ -18,6 +18,14 @@ not a separate spec. If the scanners change, this file must be updated to match
 - `<name>` must not start with `.` and must not be `shared` — both scanners
   exclude these (`shared` is reserved for cross-MFE helper code the isolation
   boundary still applies to; it is never itself an MFE).
+- A package whose `mfe.json` declares `"templateExample": true` is excluded by
+  both scanners as well. It is content a template ships to be read and copied -
+  a worked example, or the scaffold new packages are copied from - and a project
+  that registered it would offer screens nobody asked for. Setting
+  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` puts those packages back into every
+  scanner at once, for a run that means to watch the shipped examples work.
+  A package copied from a flagged scaffold **must drop the flag**, or the copy
+  is invisible to the shell for the same reason the scaffold is.
 
 ## Required files
 
@@ -33,8 +41,9 @@ not a separate spec. If the scanners change, this file must be updated to match
    valid `package.json`. Declares `manifest` (this package's own MF manifest
    ID), `entries[]` (exposed modules + required/optional shared properties +
    actions), and `extensions[]` (domain + presentation metadata per screen or
-   widget the package contributes). See the `gts-id-conventions` guideline in
-   the `template-mfe` AI bundle for the ID taxonomy these fields use.
+   widget the package contributes), plus the optional `templateExample` flag
+   described above. See the `gts-id-conventions` guideline in the `template-mfe`
+   AI bundle for the ID taxonomy these fields use.
 3. **`vite.config.ts`** that runs `@module-federation/vite`'s `federation()`
    plugin, then `frontxMfGts()` (imported from
    `@gears-frontx/frontx-template-shell/build/mf-gts`) with `enforce: 'post'` so

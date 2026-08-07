@@ -51,9 +51,9 @@ Then, inside `my-mfe/`:
 
 1. **`package.json`** — rename it (`name`, and the `dev`/`preview` scripts'
    `vite preview --port <N>` to a port no other package here already uses).
-2. **`mfe.json`** — declare your entries and extensions (screen, sidebar,
-   popup, or overlay) with GTS IDs following this template's ID conventions
-   guideline.
+2. **`mfe.json`** — delete `"templateExample": true` (see below), then declare
+   your entries and extensions (screen, sidebar, popup, or overlay) with GTS IDs
+   following this template's ID conventions guideline.
 3. **`vite.config.ts`** — keep the `frontxMfGts` build plugin wired, and add
    your lifecycle modules to the Module Federation `exposes` map so the shell
    can load them at runtime.
@@ -62,3 +62,19 @@ Existing packages here for reference: `demo-mfe` (`:3001`, a full worked
 example — Hello World, Profile, Theme, UIKit, Widgets Host), `_blank-mfe`
 (`:3099`, the copy-from scaffold), and `widgets-fixture-a` / `widgets-fixture-b`
 (`:3201` / `:3202`, widgets mounting into `demo-mfe`'s widgets domain).
+
+## Reference packages do not run in your application
+
+Every package listed above declares `"templateExample": true` in its `mfe.json`.
+They ship here to be read and copied, so the shell's manifest generation and
+`dev:all` skip them: your application's menu holds the screens you added and
+nothing else. To run them anyway - to see a worked example rather than read it -
+set `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` for the command:
+
+```bash
+FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 npm run dev:all
+```
+
+The flag is why step 2 above deletes it from your copy. A package that keeps it
+builds and type-checks like any other and is skipped in silence, so its screen is
+simply missing from the menu with nothing reported as having failed.

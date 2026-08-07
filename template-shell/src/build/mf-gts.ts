@@ -135,6 +135,14 @@ interface MfeJsonSchema {
 }
 
 interface MfeJson {
+  /**
+   * Set by a package the template ships as an example or as the copy-from
+   * scaffold. The plugin builds such a package like any other and carries the
+   * flag through to the enriched output; what reads it is the shell's manifest
+   * generation and dev orchestration, which leave the package out of the
+   * aggregate so an applied project registers only its own packages.
+   */
+  templateExample?: boolean;
   manifest: MfeJsonManifest;
   entries: MfeJsonEntry[];
   extensions: MfeJsonExtension[];

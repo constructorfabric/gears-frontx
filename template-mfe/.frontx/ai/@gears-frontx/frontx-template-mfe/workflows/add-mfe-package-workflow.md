@@ -30,7 +30,10 @@ each step names the concrete command or file template-mfe ships.
    - `src-app/mfe_packages/{screenset}-mfe/vite.config.ts`:
      - Module Federation `name`: `{screenset}Mfe` (camelCase)
 
-4. **Rewrite `mfe.json` GTS IDs**
+4. **Rewrite `mfe.json`**
+   - Delete `"templateExample": true`, copied in from the scaffold. It is what keeps
+     the scaffold out of the running application; a package that keeps it is skipped
+     by manifest generation and by `dev:all`, and its screen never reaches the menu.
    - Replace the manifest ID, every entry ID, and every extension ID using
      template-mfe's ID taxonomy (`gts-id-conventions` guideline; worked examples in
      `gts-id-patterns-reference`).

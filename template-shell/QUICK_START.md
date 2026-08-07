@@ -17,12 +17,18 @@ npm run dev:all                                    # host + all MFE dev servers
 
 Open **http://localhost:5173**. The host shell boots, fetches the MFE manifest,
 and the left menu fills in with screens contributed by whatever MFE packages
-are present under `src-app/mfe_packages/`. This guide assumes the
-[`frontx-template-mfe`](../template-mfe/README.md) packages have been added —
+are present under `src-app/mfe_packages/`. Until you add one the menu stays
+empty and `generate:mfe-manifests` writes an empty manifest set - both expected.
+
+The packages [`frontx-template-mfe`](../template-mfe/README.md) contributes -
 `demo-mfe` `:3001`, `_blank-mfe` `:3099`, widget fixtures `:3201` / `:3202` —
-a shell-only seed has none yet: the menu stays empty and
-`generate:mfe-manifests` writes an empty manifest set, both expected until
-you add some.
+do not change that: they are that template's own examples, marked
+`"templateExample": true` in their `mfe.json`, and discovery skips them so your
+menu holds your screens alone. To watch them run instead of reading them:
+
+```bash
+FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 npm run dev:all
+```
 
 > First paint may briefly show an empty menu — the MFE system registers screens
 > asynchronously after the manifest loads, then the menu populates.
@@ -120,11 +126,14 @@ packages, so the lock must be regenerated). Start from the blank MFE:
 cp -r src-app/mfe_packages/_blank-mfe src-app/mfe_packages/my-mfe
 ```
 
-Then update its `package.json` name and preview `--port`, declare entries and
-screen extensions in `mfe.json`, and expose your lifecycle modules in its
-`vite.config.ts`. `dev:all` discovers MFEs automatically by scanning
-`src-app/mfe_packages/` — there is no registry file to edit. See the shell's
-`mfe-package-contract` AI guideline for the exact shape a new package must have.
+Then update its `package.json` name and preview `--port`, and in `mfe.json`
+delete the scaffold's `"templateExample": true` line before declaring your
+entries and screen extensions - that line is what keeps the scaffold itself out
+of the app, and a copy that keeps it is skipped in the same silence. Expose your
+lifecycle modules in its `vite.config.ts`. `dev:all` discovers MFEs
+automatically by scanning `src-app/mfe_packages/` — there is no registry file to
+edit. See the shell's `mfe-package-contract` AI guideline for the exact shape a
+new package must have.
 
 ## Layout & navigation
 

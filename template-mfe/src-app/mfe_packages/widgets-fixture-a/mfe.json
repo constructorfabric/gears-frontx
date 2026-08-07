@@ -1,4 +1,5 @@
 {
+  "templateExample": true,
   "manifest": {
     "id": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.widgets.fixture_a.manifest.v1",
     "remoteEntry": "http://localhost:3201/assets/remoteEntry.js"

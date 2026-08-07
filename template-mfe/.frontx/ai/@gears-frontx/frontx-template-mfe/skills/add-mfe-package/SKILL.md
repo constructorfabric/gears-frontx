@@ -36,6 +36,11 @@ to mount into an extension domain).
 - `npm run dev:all` (`scripts/dev-all.ts`), which auto-discovers any package under
   `src-app/mfe_packages/*/package.json` by reading the port out of its `dev`/`preview`
   script — no manual wiring required once the package exists.
+- Packages template-mfe ships as its own worked examples, and the scaffold itself,
+  all declare `"templateExample": true` in their `mfe.json`. Both the manifest
+  generation and `dev:all` leave those out, so a project runs the packages its
+  developer added and nothing else; `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` puts them
+  back for anyone wanting to see the shipped examples run.
 
 ## Steps
 
@@ -49,20 +54,25 @@ to mount into an extension domain).
    `preview`/`dev` script carrying `--port <N>` literally.
 3. **Rename package identity** — update the copied `package.json` `name` and the
    Module Federation `name` in `vite.config.ts` (camelCase, must match across both).
-4. **Assign GTS IDs** — rewrite every placeholder ID in `mfe.json` following
+4. **Drop the scaffold's `templateExample` flag** - `_blank-mfe/mfe.json` declares
+   `"templateExample": true`, which is what keeps the scaffold itself out of the
+   running application. Delete that line from the copy. A package that keeps it
+   builds and type-checks but never reaches the manifest, so the new screen is
+   absent from the menu with nothing reported as failing.
+5. **Assign GTS IDs** — rewrite every placeholder ID in `mfe.json` following
    template-mfe's ID taxonomy (see the `gts-id-conventions` guideline and the
    `gts-id-patterns-reference` reference artifact in this same bundle): a manifest ID,
    one entry ID per exposed module, and one extension ID per screen contributed to a
    domain (typically `gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1`
    for a screen-domain contribution).
-5. **Implement the lifecycle** — `src/lifecycle.tsx` extends `ThemeAwareReactLifecycle`
+6. **Implement the lifecycle** — `src/lifecycle.tsx` extends `ThemeAwareReactLifecycle`
    from `@gears-frontx/react`; the MFE's own `init.ts` builds its app instance with
    `createFrontX().use(effects()).use(queryCacheShared()).use(mock()).build()` so it
    joins the host's shared `QueryClient` without owning a second one.
-6. **Regenerate manifests** — run `npm run generate:mfe-manifests` so the host's
+7. **Regenerate manifests** — run `npm run generate:mfe-manifests` so the host's
    `public/generated-mfe-manifests.json` picks up the new package; this step is
    mandatory before the new MFE is discoverable at runtime.
-7. **Verify** — `npm run type-check`, `npm run arch:deps` (dependency-cruiser
+8. **Verify** — `npm run type-check`, `npm run arch:deps` (dependency-cruiser
    boundaries, shell-owned script), then `npm run dev:all` and confirm the new screen
    mounts with zero console errors.
 

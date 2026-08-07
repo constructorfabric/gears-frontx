@@ -27,6 +27,13 @@
  *      registration time, so consumers can pass entries opaquely to
  *      `typeSystem.register()`)
  *
+ * A package whose `mfe.json` declares `"templateExample": true` is left out of
+ * the aggregate entirely: it is content the template ships to be read and
+ * copied, and an applied project that registered it would offer screens its
+ * developer never asked for. `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` puts them
+ * back, for a run that means to watch the shipped examples rather than read
+ * them.
+ *
  * Usage:
  *   npx tsx scripts/generate-mfe-manifests.ts [--base-url <url>]
  *
@@ -36,6 +43,12 @@
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+import {
+  isTemplateExamplePackage,
+  templateExamplesIncluded,
+  templateExamplesSkippedNotice,
+} from './lib/mfe-tools.js';
 
 // ---------------------------------------------------------------------------
 // Raw JSON shape types (what we read from the enriched mfe-manifest.json on disk)
@@ -215,13 +228,36 @@ class ManifestGenerator {
     if (!existsSync(this.mfePackagesDir)) {
       return [];
     }
-    return readdirSync(this.mfePackagesDir).filter((dir) => {
+
+    const includeExamples = templateExamplesIncluded();
+    const skippedExamples: string[] = [];
+
+    const discovered = readdirSync(this.mfePackagesDir).filter((dir) => {
       if (ManifestGenerator.EXCLUDED.has(dir) || dir.startsWith('.')) {
         return false;
       }
       const pkgPath = join(this.mfePackagesDir, dir);
-      return existsSync(join(pkgPath, 'mfe.json'));
+      if (!existsSync(join(pkgPath, 'mfe.json'))) {
+        return false;
+      }
+      // A package the template ships as an example or as the copy-from scaffold
+      // contributes no extension to the aggregated manifest, so nothing of it
+      // reaches the registry the host's navigation menu is built from. Excluding
+      // it here rather than in the menu covers every consumer of the generated
+      // file at once, and spares the build and the dev orchestrator the work of
+      // producing something no product asked for.
+      if (!includeExamples && isTemplateExamplePackage(pkgPath)) {
+        skippedExamples.push(dir);
+        return false;
+      }
+      return true;
     });
+
+    if (skippedExamples.length > 0) {
+      console.log(templateExamplesSkippedNotice(skippedExamples));
+    }
+
+    return discovered;
   }
 
   private processPackage(packageDir: string): OutMfeManifestConfig {
