@@ -65,6 +65,15 @@ packages/cli/src/generated/
 # subdirectories); no committable content in this repo today
 .omc/
 
+# Agent session-continuation state (`.omo/run-continuation/ses_*.json`), written
+# per session wherever an agent's cwd is invoked from, same as .omc/ above.
+# Unanchored for the same reason: it can appear under a package or template
+# directory, not only at the repository root. Left tracked it both lands in
+# commits assembled with `git add -A` and, under `template-shell/` or
+# `template-mfe/`, shows up as undeclared template content to the fixtures that
+# walk those trees.
+.omo/
+
 # Local PR-review cache (cf-sdlc pr-review/pr-status workflow; data_dir set in
 # .cf-studio/config/pr-review.toml) — fetched PR metadata, diffs and comments
 # kept for offline review, not tracked source

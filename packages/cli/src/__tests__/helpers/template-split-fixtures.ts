@@ -44,16 +44,20 @@ export const TEMPLATE_MFE_DIR = path.resolve(__dirname, '../../../../../template
 export const TEMPLATE_SHELL_IDENTITY = '@gears-frontx/frontx-template-shell';
 export const TEMPLATE_MFE_IDENTITY = '@gears-frontx/frontx-template-mfe';
 
-// Mirrors `adapters/local-fetch.ts`'s `DEFAULT_EXCLUDED_DIRS` exactly, plus
-// `.omc` — a stray OMC-agent session-state directory that can exist under
-// `template-shell/` during local development (confirmed on this checkout:
-// `template-shell/.omc/`, `template-shell/src-app/mfe_packages/.omc/`, both
-// untracked). It is not template content and, left unexcluded, both (a)
-// inflates the fixtures' own "declared vs. real files" oracle with unrelated
-// noise, and (b) — since the real adapter's own default list does NOT
-// exclude `.omc` — would have the local-fetch walk read live session files
-// that this very agent session can be rewriting concurrently. Passed
-// explicitly as `createLocalFetchFn`'s `excludedDirs` option (an existing
+// Mirrors `adapters/local-fetch.ts`'s `DEFAULT_EXCLUDED_DIRS`, plus `.omo` —
+// the one name this set still carries that the adapter's own list does not.
+//
+// Both `.omc` and `.omo` are agent session-state directories that can exist
+// under `template-shell/` during local development (confirmed on this checkout:
+// `template-shell/.omc/`, `template-shell/src-app/mfe_packages/.omc/`, and
+// `.omo/run-continuation/` at the repository root, all untracked). Neither is
+// template content, and left unexcluded such a directory both (a) inflates the
+// fixtures' own "declared vs. real files" oracle with unrelated noise, and (b)
+// has the walk read live session files that the agent session running these very
+// tests can be rewriting concurrently — a failure that reports as undeclared
+// template content and does not reproduce.
+//
+// Passed explicitly as `createLocalFetchFn`'s `excludedDirs` option (an existing
 // extension point, not a change to `local-fetch.ts`) wherever these fixtures
 // fetch from `TEMPLATE_SHELL_DIR`/`TEMPLATE_MFE_DIR`, and reused as the same
 // exclusion set for the fixtures' own real-file listing so both sides of any
@@ -70,6 +74,7 @@ export const EXCLUDED_DIRS = new Set([
   '.mf',
   '.__mf__temp',
   '.omc',
+  '.omo',
 ]);
 
 export function makeTmpDir(prefix: string): string {
