@@ -1,5 +1,5 @@
 ---
-description: "Agent navigation rules for FrontX ecosystem package boundaries, CLI, and MFEs."
+description: "Agent navigation rules for FrontX ecosystem package boundaries, CLI, and MFEs, and the standing rules for how work in a FrontX project is searched for, built, and verified."
 ---
 
 # FrontX AI Tooling Kit — Agent Navigation Rules
@@ -21,6 +21,17 @@ description: "Agent navigation rules for FrontX ecosystem package boundaries, CL
 - Check DESIGN.md for the relevant component boundary constraint (MFES-*, API-*, CLI-*, KIT-*)
 - Run `npm run build` and `npm run test` inside the package before reporting done
 - All resource ids in kit manifests MUST begin with `frontx_` (KIT-1)
+
+## When implementing an action a user invokes
+
+- The action must let a user reach the outcome its own label names, carrying data they supplied. A handler that produces the payload itself - a constant, an empty field, a record nobody entered - is a stub: the control is there and the outcome the user came for is not reachable
+- Where an intent names an action but says nothing about how the user's data gets in, that gap is what to report. Filling it with a fixed value satisfies the wording of the intent and defeats the action
+
+## When verifying a user interface
+
+- Judge the rendered pixels, not the tree behind them. A DOM snapshot proves an element exists and a click proves it can be operated; neither proves a person can see it. Every interactive element must be visually distinguishable while at rest, in every theme the interface supports - one that emerges only under hover or focus fails
+- A screenshot is evidence only once it has been examined. Take one per screen per theme, in the states that carry the meaning - a form before it is submitted, a list before and after it changes - with no debug or development overlay across the surface, and read each for what a structural check cannot see: elements invisible or cramped, panels over content, layers colliding. Verification is not complete while a captured screenshot is unexamined
+- A workaround is a finding. If confirming something took piercing a shadow root, evaluating script, or reading markup the interface does not display, then the user cannot perceive it either. Record it as a defect - a check that needed the bypass did not pass
 
 ## When working with the CLI
 
