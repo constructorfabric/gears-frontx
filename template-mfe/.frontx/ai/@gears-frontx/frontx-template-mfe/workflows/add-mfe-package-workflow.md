@@ -43,12 +43,20 @@ each step names the concrete command or file template-mfe ships.
    - Keep `src/lifecycle.tsx` extending `ThemeAwareReactLifecycle`; keep `init.ts`'s
      plugin chain (`effects()`, `queryCacheShared()`, `mock()`) unless the new MFE has
      a documented reason to diverge.
-   - Every file carrying a `declare module '@gears-frontx/react'` block — the events
-     file under `src/events/`, the slice under `src/slices/` — must also carry a
-     top-level `import` or `export`; without one TypeScript reads the file as a script
-     and the block REPLACES the module instead of augmenting it, so every ecosystem
-     import in the package fails with TS2305 "has no exported member". `_blank-mfe`'s
+   - Every file carrying a `declare module '@gears-frontx/*'` block - the events file
+     under `src/events/`, the slice under `src/slices/` - must also carry a top-level
+     `import` or `export`; without one TypeScript reads the file as a script and the
+     block REPLACES the module instead of augmenting it, so every ecosystem import in
+     the package fails with TS2305 "has no exported member". `_blank-mfe`'s
      `src/events/homeEvents.ts` keeps an `export {}` for exactly this.
+   - Augment each interface on the package that declares it: `EventPayloadMap` on
+     `@gears-frontx/react`, `RootState` on `@gears-frontx/state`. `@gears-frontx/react`
+     re-declares `EventPayloadMap` but only re-exports `RootState`, so a `RootState`
+     augmentation naming `@gears-frontx/react` merges into that re-export alias and
+     reaches only part of the ecosystem: `useAppSelector` picks up the new state key
+     while `getStore().getState()` still types it `unknown` and fails with TS2571.
+     `_blank-mfe`'s `src/slices/homeSlice.ts` names `@gears-frontx/state` for exactly
+     this.
 
 6. **Regenerate manifests**
    ```bash
