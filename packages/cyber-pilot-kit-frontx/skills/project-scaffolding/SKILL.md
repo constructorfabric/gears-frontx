@@ -271,7 +271,10 @@ For each unit from step 3.11, in plan order:
 Then run the verification the covering skills declare for what they created,
 exactly as they declare it - this document does not know which checks a given
 template names, and must not substitute its own. Hand back a project that builds
-and runs, not one that was merely written.
+and runs, not one that was merely written. When that verification runs across
+every workspace in one command, capture it under Step 8's rule for aggregate
+runs: whatever the report will quote has to be visible in the output this run
+kept.
 
 **When a declared check is performed in a browser, conduct it this way.** Which
 checks exist stays the covering skill's to say, and nothing below adds one or
@@ -477,6 +480,31 @@ recall a figure from earlier in the session, do not add up per-suite numbers
 yourself, and do not carry one over from an earlier run. A total the report never
 read off a command's own output is a total the report invented, and two runs have
 now shipped one that disagreed with what the command printed.
+
+**Capture the aggregate run whole, so that rule has something to read.** The run
+whose figures the report quotes - the one covering every workspace at once - is
+captured without truncation that can hide a workspace's summary. Do not pipe it
+through `tail` or `head`: each cuts from one end, and the workspaces printed at
+the other end disappear with their summary lines, which is exactly how a run
+reported four of its nine figures off an earlier failed run and never observed a
+ninth workspace at all. When the output has to be reduced, filter **for** the
+summary lines instead of slicing the stream, and keep the whole log beside it:
+
+```bash
+<declared test command> 2>&1 | tee <targetDir>/.frontx/test-run.log \
+  | grep -E '<the per-workspace result line pattern>'
+```
+
+Then, reading figures off that capture:
+
+- **Take every total from the last fully green run and from no other.** A figure
+  read off a run that failed, or off a run that predates the fix, is not this
+  project's result, however unchanged that workspace looks. A green run replaces
+  the earlier output entirely; it does not top it up.
+- **Report no figure whose workspace summary was never observed in captured
+  output.** Do not infer it from the workspaces around it and do not drop the
+  workspace silently. Name it, say its result was not captured, and re-run to
+  capture it.
 
 ## Worked shape
 
