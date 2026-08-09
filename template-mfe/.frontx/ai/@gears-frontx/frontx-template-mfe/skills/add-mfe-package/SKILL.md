@@ -64,7 +64,9 @@ to mount into an extension domain).
    mandatory before the new MFE is discoverable at runtime.
 7. **Verify** — `npm run type-check`, `npm run arch:deps` (dependency-cruiser
    boundaries, shell-owned script), then `npm run dev:all` and confirm the new screen
-   mounts with zero console errors.
+   mounts with zero console errors. `type-check` and `test:unit` have a build
+   prerequisite — see step 7 of the `add-mfe-package-workflow` in this bundle before
+   running either.
 
 ## Boundaries
 
