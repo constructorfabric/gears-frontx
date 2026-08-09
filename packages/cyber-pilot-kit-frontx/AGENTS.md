@@ -10,6 +10,10 @@ description: "Agent navigation rules for FrontX ecosystem package boundaries, CL
 - Template packages: the active template (external, source-spec-resolved) and its sub-packages
 - Never add ecosystem→template imports; never add template→ecosystem src-level coupling
 
+## When running a command
+
+- macOS ships no `timeout` command, so a call wrapped in `timeout <seconds> ...` dies with "command not found" and reads as a broken tool rather than a missing binary. Bound a slow call with the timeout parameter the tool issuing it already carries, never with a shell wrapper
+
 ## When searching the filesystem
 
 - Scope every search to the tree being worked in: the project directory, the repository, or the single package under change. Never search from `/`, from the home directory, or from any parent of the working tree
@@ -30,8 +34,11 @@ description: "Agent navigation rules for FrontX ecosystem package boundaries, CL
 ## When verifying a user interface
 
 - Judge the rendered pixels, not the tree behind them. A DOM snapshot proves an element exists and a click proves it can be operated; neither proves a person can see it. Every interactive element must be visually distinguishable while at rest, in every theme the interface supports - one that emerges only under hover or focus fails
+- The theme an interface opens in is one of the themes it supports, never the set. A pass that captured only that theme has seen a fraction of the surface: switch into each remaining theme and capture it there, or report the verification as partial and name the themes left unopened. A run that reported a verified interface while a whole theme stayed unopened claimed a coverage it never had
 - A screenshot is evidence only once it has been examined. Take one per screen per theme, in the states that carry the meaning - a form before it is submitted, a list before and after it changes - with no debug or development overlay across the surface, and read each for what a structural check cannot see: elements invisible or cramped, panels over content, layers colliding. Verification is not complete while a captured screenshot is unexamined
+- A judgement on a screenshot names what it looked at: which elements, in which state, in which theme. "Looks correct" records a feeling and conceals whatever went unexamined, and a cramped button survived two consecutive runs behind judgements phrased that way
 - A workaround is a finding. If confirming something took piercing a shadow root, evaluating script, or reading markup the interface does not display, then the user cannot perceive it either. Record it as a defect - a check that needed the bypass did not pass
+- The headless browser starts through `npx --yes agent-browser`; its binary is not on `PATH`, and five consecutive runs each spent 20 to 40 seconds rediscovering that. When a Chrome debug port is already listening on 9222, attach to it with `agent-browser connect 9222` instead of launching a second browser: attaching returned every screenshot in the run that used it, where a self-launched browser hung three times in the run before
 
 ## When working with the CLI
 
