@@ -52,8 +52,10 @@ each step names the concrete command or file template-mfe ships.
 
 7. **Validate**
    ```bash
-   npm run type-check
-   npm run arch:deps
+   npm run type-check   # the aggregate script - every leg, not type-check:app or type-check:mfe alone
+   npm run lint         # eslint over the whole project
+   npm run test:unit    # the project's whole suite, not only the new package's
+   npm run arch:deps    # dependency-cruiser boundaries, shell-owned script
    ```
    - `type-check` and `test:unit` require the ecosystem packages to be built
      first - run this once per clone, before either, whether you invoke them at

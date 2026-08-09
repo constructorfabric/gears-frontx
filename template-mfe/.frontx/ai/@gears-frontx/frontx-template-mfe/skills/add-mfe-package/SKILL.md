@@ -62,11 +62,9 @@ to mount into an extension domain).
 6. **Regenerate manifests** — run `npm run generate:mfe-manifests` so the host's
    `public/generated-mfe-manifests.json` picks up the new package; this step is
    mandatory before the new MFE is discoverable at runtime.
-7. **Verify** — `npm run type-check`, `npm run arch:deps` (dependency-cruiser
-   boundaries, shell-owned script), then `npm run dev:all` and confirm the new screen
-   mounts with zero console errors. `type-check` and `test:unit` have a build
-   prerequisite — see step 7 of the `add-mfe-package-workflow` in this bundle before
-   running either.
+7. **Verify** — run every command step 7 of the `add-mfe-package-workflow` in this
+   bundle lists, and the build prerequisite it documents; then `npm run dev:all` and
+   confirm the new screen mounts with zero console errors.
 
 ## Boundaries
 
