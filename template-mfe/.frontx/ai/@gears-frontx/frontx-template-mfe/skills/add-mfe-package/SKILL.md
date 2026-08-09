@@ -64,7 +64,8 @@ to mount into an extension domain).
    mandatory before the new MFE is discoverable at runtime.
 7. **Verify** — run every command step 7 of the `add-mfe-package-workflow` in this
    bundle lists, and the build prerequisite it documents; then `npm run dev:all` and
-   confirm the new screen mounts with zero console errors.
+   run that workflow's step 8 in full - mount check, declared route, menu pathname,
+   every registered theme, and the coverage file it names.
 
 ## Boundaries
 

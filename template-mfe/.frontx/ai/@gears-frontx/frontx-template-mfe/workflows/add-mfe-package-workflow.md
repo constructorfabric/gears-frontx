@@ -161,6 +161,27 @@ transfers a pattern already proven against the gates.
    ```
    - Open the app, confirm the new screen mounts, and confirm zero console errors.
 
+   Then run the browser verification a realized screen gets during scaffolding. It is
+   written out here rather than referenced, because a brownfield run - a screen added
+   to an app that already exists - never loads the base kit's scaffolding skill and so
+   would otherwise stop at the mount check:
+
+   1. Start the servers in the background, record the PID, and stop them by that PID
+      when verification ends - an orphaned dev server holds the port against the next
+      run.
+   2. Open the new screen's declared route as a hard navigation to the URL, not only as
+      an in-app click, and confirm it mounts with zero console errors.
+   3. Click the screen's menu entry and confirm `location.pathname` equals the route the
+      extension declares - a screen reachable only by click, or mounting under a
+      different path, passes a mount check and fails a user.
+   4. Repeat that check under every theme registered in `src-app/app/main.tsx`
+      (`app.themeRegistry.register(...)`), resetting to a clean page load between themes
+      and capturing the screen in each - a token that resolves in one theme and not the
+      next is invisible without per-theme capture.
+   5. Record the outcome in `<project>/.frontx/verification-coverage.md`: one row per
+      screen and theme, naming what was opened and what was observed. A screen with no
+      row there counts as unverified regardless of what was on the display.
+
 ## Rollback
 
 If the addition is abandoned before being committed: delete
