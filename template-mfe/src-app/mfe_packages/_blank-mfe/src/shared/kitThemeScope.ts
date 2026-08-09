@@ -4,16 +4,6 @@
  *
  * Every kit-styled screen in this package needs the same mapping, so it lives
  * here rather than beside any one of them.
- *
- * `_blank-mfe` carries a copy of this module at the same path, for the same
- * reason its copy of `anchorKitThemeOnShadowHost` exists: an MFE package never
- * imports from a sibling MFE package, and the only shared homes available —
- * `@gears-frontx/ui-kit` and `@gears-frontx/mfes` — are respectively a
- * published surface this template does not own and a package no MFE takes as a
- * runtime dependency. The two copies stay at the same path under `src/shared/`
- * so that a package scaffolded from `_blank-mfe` and this one read the same;
- * folding them into one is a decision for whoever moves the helper into a
- * package both can depend on.
  */
 
 /**
