@@ -235,6 +235,12 @@ merely no slower than the first, it is faster - 2m27s against the first unit's
 and the second follows them. A background agent holds none of that and derives it
 again from the bundles per unit, which costs more than the concurrency returns.
 
+**A unit is finished only when the checks its covering skill declares have run
+green on it**, run here, before the next unit is started. Authoring every unit
+first and validating once at the end collects each unit's simple errors into a
+single block to debug together: one measured run spent 3m49s clearing type errors
+a per-unit check would have named one unit at a time, in seconds.
+
 For each unit from step 3.11, in plan order:
 
 1. **Find the covering skill.** Look in the bundle of the template that owns the
@@ -288,18 +294,42 @@ out in this order:
 3. **Enumerate every theme the host registers, and walk them.** The host's theme
    registry is the source of truth for the set - not the theme the browser opened
    in, and not the entries a switcher happens to show. For each registered theme
-   in turn: switch into it, drive and snapshot the screens under verification
-   there, and capture them. A theme that could not be opened is recorded as
-   not-opened, with the reason it could not be opened.
+   in turn: switch into it, confirm the switch landed, then drive and snapshot the
+   screens under verification there, and capture them.
+   **Confirm by re-reading the switcher in a fresh snapshot**: its label has to
+   name the theme just selected. A label still naming the previous theme means the
+   theme did not open, so record it as not-opened with that as the reason and
+   capture nothing in it as verified. Captures that come back byte-identical to the
+   previous theme's are what an unconfirmed switch looks like from the report side,
+   where it is indistinguishable from a theme that was really walked. A theme that
+   could not be opened is recorded as not-opened, with the reason it could not be
+   opened.
+   **The first capture of a screen in a theme is that screen untouched**, taken
+   before anything is filled, submitted or added in this theme; the interactions
+   follow, each with its own capture. A screen first captured after an earlier
+   interaction already changed it has no before-state left to take, and no later
+   capture recovers one.
 4. **Read state from the accessibility snapshot after every click and every
    navigation** - `npx --yes agent-browser snapshot -i`. A text-wait does not see
    into a shadow root, so it times out on text that was on screen the whole time.
    It is not used here.
-5. **Produce the coverage list.** The verification's required output is one line
-   per registered theme carrying verified or not-opened, and beside it the states
-   captured in that theme - a form before it is submitted, a list before and
-   after it changes. Step 8 carries that list verbatim. A verification that ends
-   without it is incomplete whatever it concluded.
+5. **Write the coverage table to a file.** The verification's deliverable is
+   `<targetDir>/.frontx/verification-coverage.md`, beside the project's provenance
+   record, written **before the final report is composed** and holding one row per
+   registered theme and one column per screen under verification:
+
+   ```markdown
+   | Theme | Opened | <screen> states captured | <screen> states captured |
+   |---|---|---|---|
+   | <registered theme> | verified / not-opened (reason) | <states> | <states> |
+   ```
+
+   Every registered theme gets a row, including each one recorded as not-opened.
+   A state is the point a capture was taken at, named: a form untouched and after
+   it is submitted, a list before and after it changes. Step 8 carries this file's
+   content verbatim. The file is the deliverable, not a suggestion - a run that
+   composed a report without writing it did not complete the verification,
+   whatever the report concluded.
 
 **If a declared verification fails**, stop there. Report the project as applied
 and realized but **not verified**, relay that verification's own output
@@ -315,7 +345,8 @@ Report, in this order:
 
 - the applied set, as read from provenance in step 6;
 - the units realized, and what each carries;
-- the coverage list from any browser verification step 7 ran, verbatim;
+- the content of the coverage file any browser verification in step 7 wrote,
+  verbatim, and the path it was written to;
 - the residual work - only the intent that no applied template's ground contains
   and no activated skill covers.
 
