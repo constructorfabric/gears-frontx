@@ -358,11 +358,20 @@ Carry the run out in this order:
       selected. A label still naming the previous theme means the theme did not
       open, so record it as not-opened with that as the reason, capture nothing
       in it as verified, and take the next theme.
-   3. **Capture each screen under verification in its fresh state first** - the
+   3. **Collapse the host's dev panel before the first capture in this theme.**
+      An expanded dev or tools panel is host chrome drawn over the screens under
+      verification, not part of them. Collapse it, then confirm from a fresh
+      snapshot that it is collapsed. **A capture taken while it overlays screen
+      content is not a valid baseline** and neither is a click aimed through it:
+      one run lost its first theme's baseline that way, and another spent 1m33s
+      on a pass aborted by `Element is covered` before collapsing the panel and
+      starting over. Run this once per theme, after the reload above, because
+      the reload at each theme boundary can bring the panel back expanded.
+   4. **Capture each screen under verification in its fresh state first** - the
       state the reload left it in, before anything is filled, submitted or added
       in this theme. The interactions the declared checks call for follow, each
       with its own capture.
-   4. **Byte-compare this theme's captures against the previous theme's.** For
+   5. **Byte-compare this theme's captures against the previous theme's.** For
       each screen and state, run the comparison as a command over the two capture
       files and read the verdict off what it returned:
 
@@ -427,13 +436,13 @@ Carry the run out in this order:
 7. **Write the coverage table to a file.** The verification's deliverable is
    `<targetDir>/.frontx/verification-coverage.md`, beside the project's provenance
    record, written **before the final report is composed** and holding one row per
-   registered theme, the byte-compare verdict from sub-step 4.4, and one column
+   registered theme, the byte-compare verdict from sub-step 4.5, and one column
    per screen under verification:
 
    ```markdown
    | Theme | Opened | Visually distinct from previous | <screen> states captured | <screen> states captured |
    |---|---|---|---|---|
-   | <registered theme> | verified / not-opened (reason) | yes (cmp exit 1) / no (cmp exit 0, captures identical) / not-compared (reason) / first theme | <states> | <states> |
+   | <registered theme> | verified / not-opened (reason) | yes (cmp exit 1) / no (cmp exit 0, captures identical) / not-compared (reason) / first theme | <state> (<capture file>), <state> driven, not captured | <state> (<capture file>) |
    ```
 
    The distinctness cell carries the comparison command's own result, in the
@@ -445,8 +454,24 @@ Carry the run out in this order:
    then: a form in its fresh state after the boundary reload and after it is
    submitted, a list fresh and after it changes. Name a state `fresh` only for a
    capture taken after that reload and before any interaction in this theme -
-   calling a later capture fresh reports a screen this run never saw. Step 8
-   carries this file's content verbatim. The file is the deliverable, not a
+   calling a later capture fresh reports a screen this run never saw.
+
+   **A states-captured cell names a state only when a capture artifact of that
+   state, in that theme, exists.** The test is whether there is a file or a
+   snapshot to point at, not whether the interaction looked like it worked.
+   Name, per state, the capture it is claimed from - the screenshot's file name,
+   or the accessibility snapshot taken at that point - in the cell itself or in a
+   notes line under the table. A state this theme only drove - a control clicked,
+   a form submitted, and the run moved on taking neither screenshot nor snapshot
+   - is listed apart from the captured ones, as `<state> driven, not captured`.
+   **Listing it among the captured states is a false report**: one run wrote
+   `fresh, submitted` on the row of every registered theme when a post-submit
+   capture existed for the first theme alone, and reported screenshots and
+   snapshots as confirming all of them. A state captured in one theme is
+   captured in that theme only, and every other theme's row is filled from that
+   theme's own artifacts.
+
+   Step 8 carries this file's content verbatim. The file is the deliverable, not a
    suggestion - a run that composed a report without writing it did not complete
    the verification, whatever the report concluded.
 
@@ -465,11 +490,13 @@ Report, in this order:
 - the applied set, as read from provenance in step 6;
 - the units realized, and what each carries;
 - the coverage table any browser verification in step 7 wrote, **reproduced in
-  full inside the report, between code fences**, followed by the path of the file
-  it was reproduced from. Copy every row and every column across. A link, a file
-  name, a row count or a sentence summarizing what the table says is not
-  acceptable in its place: the reader is being told what was verified, and a
-  pointer tells them where to go look instead;
+  full inside the report**, row for row and column for column, followed by the
+  path of the file it was reproduced from. **Fenced or as rendered markdown, both
+  satisfy this**: what is required is the faithful reproduction of every row, not
+  the fencing around it. A link, a file name, a row count or a sentence
+  summarizing what the table says is still not acceptable in its place: the
+  reader is being told what was verified, and a pointer tells them where to go
+  look instead;
 - the residual work - only the intent that no applied template's ground contains
   and no activated skill covers.
 
