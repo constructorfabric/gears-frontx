@@ -304,8 +304,9 @@ Carry the run out in this order:
    the host's default theme before the first capture.** An attached browser
    brings its profile's persisted selection with it, so the interface can open in
    a theme nobody in this run chose, and every capture after that silently
-   belongs to that theme. Read the active theme from the interface: a
-   screenshot's file name records what the run assumed, not what was on screen.
+   belongs to that theme. Read the active theme off the theme switcher's own
+   label, by the rule the theme walk states below: a screenshot's file name
+   records what the run assumed, not what was on screen.
 3. **Dispatch native pointer events when a click changes nothing.** A synthetic
    `.click()` arrives at the element carrying none of the pointer sequence around
    it, so a control listening for `pointerdown` sees nothing at all and the screen
@@ -337,7 +338,34 @@ Carry the run out in this order:
    a shadow root, resolve it through that host's `shadowRoot` rather than
    `document`, which does not see in. Then confirm the outcome the way every
    other click is confirmed here, by re-reading the accessibility snapshot.
-4. **Enumerate every theme the host registers, and walk them.** The host's theme
+4. **Exercise each screen's declared route, before the themes are walked.** The
+   address is part of the surface under verification: the host mounts the screen
+   whose route matches the URL at load, and a menu click puts the clicked
+   screen's route into the address bar. Neither fact shows up in a capture, so
+   both are established here, in the theme the run is currently in. **Routes come
+   from the manifests**: read each realized screen's own declared `route` value
+   out of the manifest that declares it, and navigate to no path this document,
+   the plan or the report named. Take each realized screen in turn:
+   1. **Navigate hard to that screen's declared route** - a full load of the dev
+      server's origin with that route as the path, not a menu click - and confirm
+      from a fresh accessibility snapshot that this is the screen that mounted. A
+      deep link that lands on a different screen is a defect.
+   2. **Then click another screen's menu item and read the address back.** Once
+      the click lands, read `window.location.pathname` back through
+      `npx --yes agent-browser eval` and confirm it now equals the clicked
+      screen's declared route, and confirm from a fresh snapshot that the clicked
+      screen is the one mounted. A screen that mounts while the address stays
+      where it was is a defect too - the URL is what a developer copies,
+      bookmarks and reloads.
+
+   **A failure here is a defect to report, not a sub-step to skip.** Report the
+   route asked for, the screen that mounted, and the pathname read back, and
+   report the project as not verified for routing. The report states, for each
+   realized screen, the route it was deep-linked at and the pathname read back
+   after the menu click. One run inherited screen routing, opened no deep link,
+   read no pathname, and handed back a report that never mentioned routing at
+   all: routing left unexercised is reported as unexercised, never as absent.
+5. **Enumerate every theme the host registers, and walk them.** The host's theme
    registry is the source of truth for the set - not the theme the browser opened
    in, and not the entries a switcher happens to show. **The walk covers every
    theme the registry reports, and that set is not negotiable**: no sample, no
@@ -355,9 +383,15 @@ Carry the run out in this order:
       arrived carrying a profile, not a fresh application.
    2. **Switch into the theme, then confirm the switch landed** by re-reading the
       switcher in a fresh snapshot: its label has to name the theme just
-      selected. A label still naming the previous theme means the theme did not
-      open, so record it as not-opened with that as the reason, capture nothing
-      in it as verified, and take the next theme.
+      selected. **That label is the only source of truth for which theme is
+      active.** Do not probe `data-*` attributes, CSS classes or computed styles
+      to detect it, and do not go reading shell or package sources for where a
+      theme is applied. Host implementations vary, which is precisely why the
+      check is a label check: one run spent 1m10s on a DOM probe that answered
+      `unknown` and a source hunt after it, then fell back to the label this
+      sub-step already prescribed. A label still naming the previous theme means
+      the theme did not open, so record it as not-opened with that as the reason,
+      capture nothing in it as verified, and take the next theme.
    3. **Collapse the host's dev panel before the first capture in this theme.**
       An expanded dev or tools panel is host chrome drawn over the screens under
       verification, not part of them. Collapse it, then confirm from a fresh
@@ -392,12 +426,12 @@ Carry the run out in this order:
       can differ only in tokens the screens under verification never consume, and
       a report that passed them as visibly distinct claimed something the run did
       not see. The first theme has no predecessor to compare against.
-5. **Read state from the accessibility snapshot after every click and every
+6. **Read state from the accessibility snapshot after every click and every
    navigation** - `npx --yes agent-browser snapshot -i`. A text-wait does not see
    into a shadow root, so it times out on text that was on screen the whole time.
    It does not stand in for the snapshot here; when a wait is what is needed, take
-   it from sub-step 6.
-6. **Wait for text with the shadow-descending poll below, not with `wait
+   it from sub-step 7.
+7. **Wait for text with the shadow-descending poll below, not with `wait
    --text`.** `wait --text` searches light DOM only, and this stack renders inside
    shadow roots, so it spends its whole timeout on text that was already on
    screen: one run lost 75s to three such timeouts. Reach for `wait --text` only
@@ -433,10 +467,10 @@ Carry the run out in this order:
    than a blind spot to wait out again. If the runner hands back the promise
    instead of its value, set `timeoutMs` to 0 and re-issue the helper until it
    returns `found` or the wait budget is spent.
-7. **Write the coverage table to a file.** The verification's deliverable is
+8. **Write the coverage table to a file.** The verification's deliverable is
    `<targetDir>/.frontx/verification-coverage.md`, beside the project's provenance
    record, written **before the final report is composed** and holding one row per
-   registered theme, the byte-compare verdict from sub-step 4.5, and one column
+   registered theme, the byte-compare verdict from sub-step 5.5, and one column
    per screen under verification:
 
    ```markdown
@@ -497,16 +531,35 @@ Report, in this order:
   summarizing what the table says is still not acceptable in its place: the
   reader is being told what was verified, and a pointer tells them where to go
   look instead;
+- the routing outcome from step 7's route sub-step, one line per realized screen:
+  the declared route it was deep-linked at, the screen that mounted, and the
+  pathname read back after the menu click. A report silent on routing reads as a
+  surface nobody exercised, because that is what it is;
 - the residual work - only the intent that no applied template's ground contains
   and no activated skill covers.
 
-**Quote every number in this report from the output of the command that produced
-it.** Test counts, lint counts, file counts: find the summary line the command
-printed, read the figure off that line, and name the command it came from. Do not
-recall a figure from earlier in the session, do not add up per-suite numbers
-yourself, and do not carry one over from an earlier run. A total the report never
-read off a command's own output is a total the report invented, and two runs have
-now shipped one that disagreed with what the command printed.
+**Publish only numbers a command printed.** Test counts, lint counts, file
+counts: find the summary line the command printed, read the figure off that line,
+and name the command it came from. Do not recall a figure from earlier in the
+session, and do not carry one over from an earlier run. **Before any figure is
+written down, point at the captured output line that carries it verbatim** - a
+figure no captured line carries is not a figure this run measured.
+
+**When no command printed a grand total, the report carries no grand total.** An
+aggregate run that prints one summary line per workspace has printed
+per-workspace figures and nothing else. Publish those lines as they stand, every
+one of them, and publish no number standing for the repository as a whole. A
+per-unit run is the same: publish the two per-unit lines and stop there. The
+words `N tests total` may appear only beside the output line that itself contains
+`N`.
+
+**Adding the summary lines up yourself is the failure this rule exists to stop.**
+Two consecutive runs teed the aggregate run correctly, grepped every workspace
+summary line correctly, then summed those lines themselves and shipped a
+repository-wide total no command had printed - the second reported 693 tests
+total where the captured lines summed to 737. Arithmetic performed over captured
+lines yields a number the run never observed, and a total the report never read
+off a command's own output is a total the report invented.
 
 **Capture the aggregate run whole, so that rule has something to read.** The run
 whose figures the report quotes - the one covering every workspace at once - is
