@@ -18,9 +18,11 @@
  *
  * Pipeline per MFE package:
  *   1. Read dist/mfe-manifest.json — enriched by the build plugin
- *   2. Inject resolved publicPath (overrides build-time placeholder)
- *   3. Copy shared dep `chunkPath` entries unchanged from the enriched manifest
- *   4. Map entries to MfeEntryMF shape with the resolved MfManifest object
+ *   2. Refuse the run when any identifier in it is not a parseable GTS id, so a
+ *      typo fails the build instead of the host's bootstrap
+ *   3. Inject resolved publicPath (overrides build-time placeholder)
+ *   4. Copy shared dep `chunkPath` entries unchanged from the enriched manifest
+ *   5. Map entries to MfeEntryMF shape with the resolved MfManifest object
  *      inlined into each entry's `manifest` field (the schema accepts both
  *      string ID and inline object; inline removes the need for any consumer
  *      to spread/override the entry to attach the manifest reference at
@@ -44,6 +46,8 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { Gts } from '@globaltypesystem/gts-ts';
 
 import {
   isTemplateExamplePackage,
@@ -271,6 +275,7 @@ export class ManifestGenerator {
     const pkgPath = join(this.mfePackagesDir, packageDir);
 
     const mfeJson = this.readEnrichedMfeJson(pkgPath, packageDir);
+    this.assertGtsIdsAreValid(mfeJson, pkgPath, packageDir);
     const publicPath = this.resolvePublicPath(mfeJson, packageDir);
 
     const outManifest = this.buildManifest(mfeJson.manifest, publicPath);
@@ -306,6 +311,51 @@ export class ManifestGenerator {
       );
     }
     return mfeJson;
+  }
+
+  /**
+   * Refuse a package whose enriched manifest carries an identifier GTS cannot
+   * parse.
+   *
+   * Without this gate every command stays green: an id one dot-token short of
+   * `vendor.package.namespace.type.vN` compiles, type-checks, builds and lands
+   * in the aggregate, and the only thing that rejects it is the host's
+   * bootstrap, which reports it as a console error and leaves an empty
+   * navigation menu behind. Nothing then names the file to edit, so the cost of
+   * the typo is a runtime hunt rather than a failed build.
+   *
+   * The check runs through the same parser the runtime registry parses ids
+   * with, so this gate cannot come to disagree with the runtime about what a
+   * valid id is: a grammar restated here would start rejecting ids GTS accepts
+   * the first time the id grammar moves.
+   *
+   * Every invalid id in the package is reported together. Stopping at the first
+   * would turn a manifest that carries several into one rebuild per typo.
+   */
+  private assertGtsIdsAreValid(
+    mfeJson: RawEnrichedMfeJson,
+    pkgPath: string,
+    packageDir: string
+  ): void {
+    const invalid = collectGtsIds(mfeJson)
+      .map(({ field, id }) => ({ field, id, result: Gts.validateGtsID(id) }))
+      .filter(({ result }) => !result.ok);
+
+    if (invalid.length === 0) {
+      return;
+    }
+
+    const detail = invalid
+      .map(({ field, id, result }) => `  - ${field}: "${id}"\n      ${result.error}`)
+      .join('\n');
+
+    throw new Error(
+      `[${packageDir}] ${invalid.length} invalid GTS identifier(s) in ${this.mfeManifestPath}:\n` +
+        `${detail}\n` +
+        `Every '~'-delimited segment carries the five dot-tokens ` +
+        `vendor.package.namespace.type.vN, optionally followed by a minor version. ` +
+        `Fix the ids in ${join(pkgPath, 'mfe.json')} and rebuild the package.`
+    );
   }
 
   /**
@@ -445,6 +495,72 @@ export class ManifestGenerator {
   }
 }
 // @cpt-end:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-2
+
+// ---------------------------------------------------------------------------
+// GTS identifier collection
+// ---------------------------------------------------------------------------
+
+/** One identifier from the enriched manifest, with the path that produced it. */
+interface LocatedGtsId {
+  field: string;
+  id: string;
+}
+
+/**
+ * Collect every GTS identifier the aggregate carries, each paired with its
+ * position in the enriched manifest.
+ *
+ * The position travels with the id because the value alone does not say where
+ * to edit: the same manifest id is repeated on every entry, so reporting only
+ * the string sends a reader looking through the whole file for it.
+ *
+ * The `schemas` documents are deliberately left out. Their `$id` and
+ * `x-gts-ref` values are URI-prefixed and nested at arbitrary depth, and the
+ * schema loader in @gears-frontx/gts-plugin already parses them on its own
+ * terms; a second traversal here would be a second opinion about a document
+ * this script otherwise copies through untouched.
+ */
+function collectGtsIds(mfeJson: RawEnrichedMfeJson): LocatedGtsId[] {
+  const ids: LocatedGtsId[] = [];
+
+  const add = (field: string, id: string): void => {
+    ids.push({ field, id });
+  };
+  const addEach = (field: string, values: string[] | undefined): void => {
+    values?.forEach((id, index) => add(`${field}[${index}]`, id));
+  };
+
+  add('manifest.id', mfeJson.manifest.id);
+
+  mfeJson.domains?.forEach((domain, index) => {
+    const at = `domains[${index}]`;
+    add(`${at}.id`, domain.id);
+    addEach(`${at}.sharedProperties`, domain.sharedProperties);
+    addEach(`${at}.actions`, domain.actions);
+    addEach(`${at}.extensionsActions`, domain.extensionsActions);
+    addEach(`${at}.lifecycleStages`, domain.lifecycleStages);
+    addEach(`${at}.extensionsLifecycleStages`, domain.extensionsLifecycleStages);
+  });
+
+  mfeJson.entries.forEach((entry, index) => {
+    const at = `entries[${index}]`;
+    add(`${at}.id`, entry.id);
+    add(`${at}.manifest`, entry.manifest);
+    addEach(`${at}.requiredProperties`, entry.requiredProperties);
+    addEach(`${at}.optionalProperties`, entry.optionalProperties);
+    addEach(`${at}.actions`, entry.actions);
+    addEach(`${at}.domainActions`, entry.domainActions);
+  });
+
+  mfeJson.extensions.forEach((extension, index) => {
+    const at = `extensions[${index}]`;
+    add(`${at}.id`, extension.id);
+    add(`${at}.domain`, extension.domain);
+    add(`${at}.entry`, extension.entry);
+  });
+
+  return ids;
+}
 
 // ---------------------------------------------------------------------------
 // CLI entry point

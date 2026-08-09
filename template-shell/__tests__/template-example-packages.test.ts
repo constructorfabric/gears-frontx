@@ -46,6 +46,24 @@ function packageWithMfeJson(name: string, body: string): string {
 }
 
 /**
+ * GTS ids for a fixture package, under a neutral `fixture` vendor.
+ *
+ * `ManifestGenerator` refuses a manifest whose ids GTS cannot parse, so a
+ * fixture has to carry real ones. They are derived from the package name
+ * instead of written out per case so an assertion still reads as "which
+ * package reached the aggregate"; the hyphens become underscores because a GTS
+ * segment token admits none.
+ */
+function fixtureGtsIds(name: string): { manifest: string; entry: string; extension: string } {
+  const instance = `fixture.${name.replace(/-/g, '_')}`;
+  return {
+    manifest: `gts.frontx.mfes.mfe.mf_manifest.v1~${instance}.mfe.manifest.v1`,
+    entry: `gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~${instance}.mfe.home.v1`,
+    extension: `gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~${instance}.screens.home.v1`,
+  };
+}
+
+/**
  * Writes a package complete enough for both scanners: an `mfe.json` carrying
  * the flag or not, a `package.json` whose `preview` script declares the port
  * `getMFEPackages` reads, and the enriched build output `ManifestGenerator`
@@ -62,12 +80,14 @@ function mfePackage(name: string, options: { templateExample: boolean; port: num
     'utf-8',
   );
 
+  const ids = fixtureGtsIds(name);
+
   mkdirSync(join(packagePath, 'dist'), { recursive: true });
   writeFileSync(
     join(packagePath, MFE_MANIFEST_PATH),
     JSON.stringify({
       manifest: {
-        id: `${name}.manifest`,
+        id: ids.manifest,
         name,
         remoteEntry: `http://localhost:${options.port}/assets/remoteEntry.js`,
         metaData: {
@@ -81,7 +101,13 @@ function mfePackage(name: string, options: { templateExample: boolean; port: num
         shared: [],
       },
       entries: [],
-      extensions: [{ id: `${name}.screen`, domain: 'screen', entry: `${name}.entry` }],
+      extensions: [
+        {
+          id: ids.extension,
+          domain: 'gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1',
+          entry: ids.entry,
+        },
+      ],
     }),
     'utf-8',
   );
@@ -183,7 +209,7 @@ describe('ManifestGenerator - what the host registers from', () => {
     mfePackage('tasks-mfe', { templateExample: false, port: 3010 });
     mfePackage('sample-mfe', { templateExample: true, port: 3020 });
 
-    expect(generatedManifestIds()).toEqual(['tasks-mfe.manifest']);
+    expect(generatedManifestIds()).toEqual([fixtureGtsIds('tasks-mfe').manifest]);
   });
 
   it('writes an aggregate holding the example package when the environment includes examples', () => {
@@ -191,6 +217,9 @@ describe('ManifestGenerator - what the host registers from', () => {
     mfePackage('sample-mfe', { templateExample: true, port: 3020 });
     process.env[TEMPLATE_EXAMPLES_ENV_VAR] = '1';
 
-    expect(generatedManifestIds()).toEqual(['sample-mfe.manifest', 'tasks-mfe.manifest']);
+    expect(generatedManifestIds()).toEqual([
+      fixtureGtsIds('sample-mfe').manifest,
+      fixtureGtsIds('tasks-mfe').manifest,
+    ]);
   });
 });
