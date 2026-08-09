@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ChildMfeBridge, JsonObject } from '@gears-frontx/react';
-import { ActionHandler, ThemeAwareReactLifecycle } from '@gears-frontx/react';
+import { ActionHandler } from '@gears-frontx/react';
+import { KitThemedLifecycle } from './shared/KitThemedLifecycle';
 import { mfeApp } from './init';
 import { ProfileScreen } from './screens/profile/ProfileScreen';
 import { fetchUser } from './actions/profileActions';
@@ -20,7 +21,7 @@ class ProfileRefreshHandler extends ActionHandler {
 }
 // @cpt-end:child-bridge-action-handler:p3:inst-1
 
-class ProfileLifecycle extends ThemeAwareReactLifecycle {
+class ProfileLifecycle extends KitThemedLifecycle {
   constructor() {
     super(mfeApp);
   }

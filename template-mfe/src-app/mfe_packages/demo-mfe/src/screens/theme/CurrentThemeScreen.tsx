@@ -1,9 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { ChildMfeBridge } from '@gears-frontx/react';
 import { FRONTX_SHARED_PROPERTY_THEME, FRONTX_SHARED_PROPERTY_LANGUAGE } from '@gears-frontx/react';
-import { Card, CardContent } from '../../components/ui/card';
-import { Skeleton } from '../../components/ui/skeleton';
 import { useScreenTranslations } from '../../shared/useScreenTranslations';
+
+/*
+ * This screen renders the SHELL's theme, so it paints from the shell's Tailwind
+ * colour utilities and takes no component from @gears-frontx/ui-kit. That is
+ * also why `lifecycle-theme` does not extend KitThemedLifecycle: the kit's
+ * tokens re-declare `--background`, `--primary` and their neighbours as
+ * complete colours, and the utilities below read the same names as HSL
+ * triplets. Anchoring kit tokens on this shadow host would blank every swatch
+ * the screen exists to display.
+ *
+ * `card` and `placeholder` below stand in for the kit's Card and Skeleton for
+ * that reason; they are the shell's own utility classes, not a second component
+ * library.
+ */
+const CARD_CLASS = 'rounded-lg border border-border bg-card text-card-foreground shadow-sm';
+const PLACEHOLDER_CLASS = 'animate-pulse rounded-md bg-muted';
 
 /**
  * Props for the CurrentThemeScreen component.
@@ -28,7 +42,6 @@ const languageModules = import.meta.glob('./i18n/*.json') as Record<
  * Receives a ChildMfeBridge for communication with the host application.
  * Demonstrates bridge usage by displaying domainId, instanceId, theme, and language.
  *
- * Uses local UI components (Card) for consistent styling.
  * Runs inside Shadow DOM with isolated styles.
  *
  * Subscribes to theme and language domain properties to demonstrate
@@ -94,18 +107,18 @@ export const CurrentThemeScreen: React.FC<CurrentThemeScreenProps> = ({ bridge }
   // Show skeleton while translations are loading
   if (loading) {
     return (
-      <div ref={containerRef} className="p-8">
-        <Skeleton className="h-8 w-64 mb-4" />
-        <Skeleton className="h-4 w-96 mb-6" />
-        <Card>
-          <CardContent className="p-6">
-            <Skeleton className="h-6 w-48 mb-4" />
+      <div ref={containerRef} className="p-8" role="status" aria-busy="true">
+        <div className={`${PLACEHOLDER_CLASS} h-8 w-64 mb-4`} />
+        <div className={`${PLACEHOLDER_CLASS} h-4 w-96 mb-6`} />
+        <div className={CARD_CLASS}>
+          <div className="p-6">
+            <div className={`${PLACEHOLDER_CLASS} h-6 w-48 mb-4`} />
             <div className="space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
+              <div className={`${PLACEHOLDER_CLASS} h-4 w-full`} />
+              <div className={`${PLACEHOLDER_CLASS} h-4 w-full`} />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -121,8 +134,8 @@ export const CurrentThemeScreen: React.FC<CurrentThemeScreenProps> = ({ bridge }
 
       <div className="max-w-4xl space-y-4">
         {/* Theme Info Card */}
-        <Card>
-          <CardContent className="p-6">
+        <div className={CARD_CLASS}>
+          <div className="p-6">
             <h2 className="text-xl font-semibold mb-3">
               {t('theme_information')}
             </h2>
@@ -132,12 +145,12 @@ export const CurrentThemeScreen: React.FC<CurrentThemeScreenProps> = ({ bridge }
                 <dd className="text-foreground font-mono text-lg">{theme}</dd>
               </div>
             </dl>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Color Swatches */}
-        <Card>
-          <CardContent className="p-6">
+        <div className={CARD_CLASS}>
+          <div className="p-6">
             <h2 className="text-xl font-semibold mb-3">
               {t('theme_color_swatches')}
             </h2>
@@ -152,12 +165,12 @@ export const CurrentThemeScreen: React.FC<CurrentThemeScreenProps> = ({ bridge }
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* CSS Variables Reference */}
-        <Card>
-          <CardContent className="p-6">
+        <div className={CARD_CLASS}>
+          <div className="p-6">
             <h2 className="text-xl font-semibold mb-3">
               {t('css_custom_properties')}
             </h2>
@@ -175,12 +188,12 @@ export const CurrentThemeScreen: React.FC<CurrentThemeScreenProps> = ({ bridge }
               <div>--destructive</div>
               <div>--destructive-foreground</div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Bridge Info Card */}
-        <Card>
-          <CardContent className="p-6">
+        <div className={CARD_CLASS}>
+          <div className="p-6">
             <h2 className="text-xl font-semibold mb-3">
               {t('bridge_info')}
             </h2>
@@ -202,8 +215,8 @@ export const CurrentThemeScreen: React.FC<CurrentThemeScreenProps> = ({ bridge }
                 <dd className="font-mono text-sm text-muted-foreground">{language}</dd>
               </div>
             </dl>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

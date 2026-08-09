@@ -1,11 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { trim } from 'lodash';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardFooter,
+  Field,
+  FieldLabel,
+  Input,
+} from '@gears-frontx/ui-kit';
 import type { ApiUser } from '../../../api/types';
-import { Card, CardContent, CardFooter } from '../../../components/ui/card';
-import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
-import { Label } from '../../../components/ui/label';
-import { ButtonVariant } from '../../../components/types';
+import styles from '../ProfileScreen.module.css';
 
 export type ProfileFormValues = {
   firstName: string;
@@ -53,9 +57,9 @@ export const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
   const initialValues = useMemo(() => getFormValues(user), [user]);
   const normalizedValues = useMemo(
     () => ({
-      firstName: trim(formValues.firstName),
-      lastName: trim(formValues.lastName),
-      department: trim(formValues.department),
+      firstName: formValues.firstName.trim(),
+      lastName: formValues.lastName.trim(),
+      department: formValues.department.trim(),
     }),
     [formValues]
   );
@@ -95,130 +99,111 @@ export const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
     }
   };
 
+  let body: React.ReactNode;
+  if (isEditing) {
+    body = (
+      /*
+       * The form sits inside CardContent rather than around the card's slots:
+       * Card spaces its slots with `gap: var(--card-spacing)` on the card root,
+       * so that rhythm only falls between Card's direct children. A wrapper
+       * around them leaves the card a single child and the gap applies to
+       * nothing, while the slots' horizontal padding still lands.
+       */
+      <form onSubmit={handleSubmit} className={styles.form}>
+        {/*
+          Field wires the label's `htmlFor`, the control's id and
+          `aria-describedby` itself — the ids these three fields used to carry
+          by hand would now compete with the ones it generates.
+        */}
+        <Field name="firstName" disabled={isSaving}>
+          <FieldLabel>{t('first_name_label')}</FieldLabel>
+          <Input value={formValues.firstName} onChange={handleFieldChange('firstName')} />
+        </Field>
+
+        <Field name="lastName" disabled={isSaving}>
+          <FieldLabel>{t('last_name_label')}</FieldLabel>
+          <Input value={formValues.lastName} onChange={handleFieldChange('lastName')} />
+        </Field>
+
+        <Field name="department" disabled={isSaving}>
+          <FieldLabel>{t('department_label')}</FieldLabel>
+          <Input value={formValues.department} onChange={handleFieldChange('department')} />
+        </Field>
+
+        {/*
+          The save failure belongs to the request, not to any one control, so it
+          stays outside the Fields rather than in a FieldError none of them owns.
+        */}
+        {saveErrorMessage ? <p className={styles.error}>{saveErrorMessage}</p> : null}
+
+        <div className={styles.actions}>
+          <Button type="submit" disabled={!isDirty || !isFormValid || isSaving}>
+            {isSaving ? t('saving') : t('save')}
+          </Button>
+          <Button type="button" variant="outline" disabled={isSaving} onClick={handleCancel}>
+            {t('cancel')}
+          </Button>
+        </div>
+      </form>
+    );
+  } else {
+    body = (
+      <dl className={styles.definitions}>
+        <div>
+          <dt className={styles.term}>{t('role_label')}</dt>
+          <dd>{user.role}</dd>
+        </div>
+        {user.extra?.department !== undefined && (
+          <div>
+            <dt className={styles.term}>{t('department_label')}</dt>
+            <dd>{String(user.extra.department)}</dd>
+          </div>
+        )}
+        <div>
+          <dt className={styles.term}>{t('id_label')}</dt>
+          <dd className={styles.value}>{user.id}</dd>
+        </div>
+        <div>
+          <dt className={styles.term}>{t('created_label')}</dt>
+          <dd>{new Date(user.createdAt).toLocaleString()}</dd>
+        </div>
+        <div>
+          <dt className={styles.term}>{t('last_updated_label')}</dt>
+          <dd>{new Date(user.updatedAt).toLocaleString()}</dd>
+        </div>
+      </dl>
+    );
+  }
+
   return (
     <Card>
-      <CardContent className="p-6">
-        <div className="mb-6">
+      <CardContent>
+        <div className={styles.identity}>
           {user.avatarUrl && (
             <img
               src={user.avatarUrl}
               alt={`${user.firstName} ${user.lastName}`}
-              className="w-20 h-20 rounded-full"
+              className={styles.avatar}
             />
           )}
-        </div>
-
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold mb-2">
+          <h2 className={styles.name}>
             {user.firstName} {user.lastName}
           </h2>
-          <p className="text-foreground font-mono text-sm">{user.email}</p>
+          <p className={styles.email}>{user.email}</p>
         </div>
-
-        {isEditing ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="profile-first-name">{t('first_name_label')}</Label>
-              <Input
-                id="profile-first-name"
-                value={formValues.firstName}
-                onChange={handleFieldChange('firstName')}
-                disabled={isSaving}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="profile-last-name">{t('last_name_label')}</Label>
-              <Input
-                id="profile-last-name"
-                value={formValues.lastName}
-                onChange={handleFieldChange('lastName')}
-                disabled={isSaving}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="profile-department">{t('department_label')}</Label>
-              <Input
-                id="profile-department"
-                value={formValues.department}
-                onChange={handleFieldChange('department')}
-                disabled={isSaving}
-              />
-            </div>
-
-            {saveErrorMessage ? (
-              <p className="text-sm text-destructive">{saveErrorMessage}</p>
-            ) : null}
-
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={!isDirty || !isFormValid || isSaving}>
-                {isSaving ? t('saving') : t('save')}
-              </Button>
-              <Button
-                type="button"
-                variant={ButtonVariant.Outline}
-                disabled={isSaving}
-                onClick={handleCancel}
-              >
-                {t('cancel')}
-              </Button>
-            </div>
-          </form>
-        ) : (
-          <dl className="grid gap-3">
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                {t('role_label')}
-              </dt>
-              <dd className="text-foreground">{user.role}</dd>
-            </div>
-            {user.extra?.department !== undefined && (
-              <div>
-                <dt className="text-sm font-medium text-muted-foreground">
-                  {t('department_label')}
-                </dt>
-                <dd className="text-foreground">{String(user.extra.department)}</dd>
-              </div>
-            )}
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                {t('id_label')}
-              </dt>
-              <dd className="text-foreground font-mono text-sm">{user.id}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                {t('created_label')}
-              </dt>
-              <dd className="text-foreground text-sm">
-                {new Date(user.createdAt).toLocaleString()}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                {t('last_updated_label')}
-              </dt>
-              <dd className="text-foreground text-sm">
-                {new Date(user.updatedAt).toLocaleString()}
-              </dd>
-            </div>
-          </dl>
-        )}
       </CardContent>
-      <CardFooter className="p-6 pt-0 gap-2">
-        <Button data-testid="profile-refresh-button" onClick={onRefresh} disabled={isSaving}>
-          {t('refresh')}
-        </Button>
-        {isEditing ? null : (
-          <Button
-            variant={ButtonVariant.Outline}
-            disabled={isSaving}
-            onClick={() => setIsEditing(true)}
-          >
-            {t('edit_profile')}
+      <CardContent>{body}</CardContent>
+      <CardFooter>
+        <div className={styles.actions}>
+          <Button data-testid="profile-refresh-button" onClick={onRefresh} disabled={isSaving}>
+            {t('refresh')}
           </Button>
-        )}
+          {isEditing ? null : (
+            <Button variant="outline" disabled={isSaving} onClick={() => setIsEditing(true)}>
+              {t('edit_profile')}
+            </Button>
+          )}
+        </div>
       </CardFooter>
     </Card>
   );
