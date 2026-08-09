@@ -11,3 +11,15 @@
  *   }
  * }
  */
+
+/*
+ * This file has to keep at least one top-level `import` or `export`, and the
+ * `export {}` below is it until a real one arrives. Without one TypeScript
+ * reads the file as a script rather than a module, and a `declare module
+ * '@gears-frontx/react'` written inside a script REPLACES that module's
+ * declarations instead of augmenting them: every other import from
+ * `@gears-frontx/react` in the package — `createSlice`, `eventBus`,
+ * `ChildMfeBridge` — then fails with TS2305 "has no exported member", pointing
+ * at the importing file rather than at this one.
+ */
+export {};

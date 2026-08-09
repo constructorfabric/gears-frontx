@@ -43,6 +43,12 @@ each step names the concrete command or file template-mfe ships.
    - Keep `src/lifecycle.tsx` extending `ThemeAwareReactLifecycle`; keep `init.ts`'s
      plugin chain (`effects()`, `queryCacheShared()`, `mock()`) unless the new MFE has
      a documented reason to diverge.
+   - Every file carrying a `declare module '@gears-frontx/react'` block — the events
+     file under `src/events/`, the slice under `src/slices/` — must also carry a
+     top-level `import` or `export`; without one TypeScript reads the file as a script
+     and the block REPLACES the module instead of augmenting it, so every ecosystem
+     import in the package fails with TS2305 "has no exported member". `_blank-mfe`'s
+     `src/events/homeEvents.ts` keeps an `export {}` for exactly this.
 
 6. **Regenerate manifests**
    ```bash
