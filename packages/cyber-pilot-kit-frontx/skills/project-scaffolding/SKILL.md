@@ -267,6 +267,40 @@ exactly as they declare it - this document does not know which checks a given
 template names, and must not substitute its own. Hand back a project that builds
 and runs, not one that was merely written.
 
+**When a declared check is performed in a browser, conduct it this way.** Which
+checks exist stays the covering skill's to say, and nothing below adds one or
+stands in for one. What follows is how the browser is driven and what the run
+has to report - which no template declares and every browser run needs - carried
+out in this order:
+
+1. **Probe before launching.** Ask `http://localhost:9222/json/version` once.
+   When it answers, attach to the browser already listening there with
+   `npx --yes agent-browser connect 9222`. When it does not, launch one with
+   `npx --yes agent-browser`. The probe is a single request, and it is worth
+   making every time: a self-launched browser has hung mid-run where an attached
+   one returned every capture asked of it.
+2. **Read the interface's active theme before verifying anything, and switch to
+   the host's default theme before the first capture.** An attached browser
+   brings its profile's persisted selection with it, so the interface can open in
+   a theme nobody in this run chose, and every capture after that silently
+   belongs to that theme. Read the active theme from the interface: a
+   screenshot's file name records what the run assumed, not what was on screen.
+3. **Enumerate every theme the host registers, and walk them.** The host's theme
+   registry is the source of truth for the set - not the theme the browser opened
+   in, and not the entries a switcher happens to show. For each registered theme
+   in turn: switch into it, drive and snapshot the screens under verification
+   there, and capture them. A theme that could not be opened is recorded as
+   not-opened, with the reason it could not be opened.
+4. **Read state from the accessibility snapshot after every click and every
+   navigation** - `npx --yes agent-browser snapshot -i`. A text-wait does not see
+   into a shadow root, so it times out on text that was on screen the whole time.
+   It is not used here.
+5. **Produce the coverage list.** The verification's required output is one line
+   per registered theme carrying verified or not-opened, and beside it the states
+   captured in that theme - a form before it is submitted, a list before and
+   after it changes. Step 8 carries that list verbatim. A verification that ends
+   without it is incomplete whatever it concluded.
+
 **If a declared verification fails**, stop there. Report the project as applied
 and realized but **not verified**, relay that verification's own output
 unreinterpreted, and name the units it covered. Do not report scaffolding
@@ -281,6 +315,7 @@ Report, in this order:
 
 - the applied set, as read from provenance in step 6;
 - the units realized, and what each carries;
+- the coverage list from any browser verification step 7 ran, verbatim;
 - the residual work - only the intent that no applied template's ground contains
   and no activated skill covers.
 
