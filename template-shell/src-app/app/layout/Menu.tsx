@@ -37,6 +37,13 @@ export interface MenuProps {
   children?: React.ReactNode;
 }
 
+/**
+ * How long registration discovery may stay empty before the menu is allowed to
+ * say there are no screens. Spans several poll cycles, so it covers the gap
+ * between the menu's first render and the MFEs finishing registration.
+ */
+export const EMPTY_STATE_GRACE_MS = 2000;
+
 export const Menu: React.FC<MenuProps> = ({ children }) => {
   const menuState = useAppSelector((state) => state['layout/menu'] as MenuState | undefined);
   const app = useFrontX();
@@ -53,6 +60,13 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   const mountedId = mountedScreens[0]?.id;
 
   const [extensions, setExtensions] = useState<ScreenExtension[]>([]);
+  // An empty registry means "not discovered yet" far more often than it means
+  // "nothing to discover": on a hard load the menu renders before the MFEs have
+  // registered. Showing the empty-state on that first empty poll would flash a
+  // false "no screens" claim through every normal boot, so the claim waits for
+  // discovery to settle - it is only trustworthy once polling has run for the
+  // whole grace window without ever finding a screen.
+  const [discoverySettled, setDiscoverySettled] = useState(false);
 
   useEffect(() => {
     if (!mfeRegistry) return;
@@ -66,7 +80,13 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
 
     refresh();
     const interval = setInterval(refresh, 500);
-    return () => clearInterval(interval);
+    // The window starts with discovery itself, not with the component, so a
+    // registry that arrives late still gets its full share of poll cycles.
+    const graceTimer = setTimeout(() => setDiscoverySettled(true), EMPTY_STATE_GRACE_MS);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(graceTimer);
+    };
   }, [mfeRegistry]);
 
   const handleToggleCollapse = () => {
@@ -103,31 +123,32 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
       {/* Menu items */}
       <SidebarContent>
         <SidebarMenu>
-          {extensions.length === 0 ? (
+          {extensions.map((ext) => {
+            const isActive = ext.id === mountedId;
+            const pres = ext.presentation;
+            return (
+              <SidebarMenuItem key={ext.id}>
+                <SidebarMenuButton
+                  isActive={isActive}
+                  onClick={() => handleMenuItemClick(ext)}
+                  tooltip={collapsed ? pres.label : undefined}
+                >
+                  {pres.icon && (
+                    <SidebarMenuIcon>
+                      <Icon icon={pres.icon} className="w-4 h-4" />
+                    </SidebarMenuIcon>
+                  )}
+                  <span>{pres.label}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+
+          {/* Until discovery settles the menu stays blank rather than guessing. */}
+          {extensions.length === 0 && discoverySettled && (
             <div className="px-3 py-4 text-sm text-muted-foreground">
               No screens yet. Add an MFE package by copying the <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">_blank-mfe</code> reference scaffold in <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">mfe_packages/</code>, then delete <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">templateExample</code> from the copy&rsquo;s <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">mfe.json</code> so it reaches this menu.
             </div>
-          ) : (
-            extensions.map((ext) => {
-              const isActive = ext.id === mountedId;
-              const pres = ext.presentation;
-              return (
-                <SidebarMenuItem key={ext.id}>
-                  <SidebarMenuButton
-                    isActive={isActive}
-                    onClick={() => handleMenuItemClick(ext)}
-                    tooltip={collapsed ? pres.label : undefined}
-                  >
-                    {pres.icon && (
-                      <SidebarMenuIcon>
-                        <Icon icon={pres.icon} className="w-4 h-4" />
-                      </SidebarMenuIcon>
-                    )}
-                    <span>{pres.label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })
           )}
         </SidebarMenu>
       </SidebarContent>

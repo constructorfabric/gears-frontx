@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ScreenExtension } from '@gears-frontx/react';
 
@@ -42,6 +42,12 @@ describe('Menu', () => {
     window.history.pushState(null, '', '/');
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const emptyState = () => screen.queryByText(/No screens yet/);
+
   it('pushes the screen route and mounts the screen when its menu item is clicked', async () => {
     const { Menu } = await import('./Menu');
     render(<Menu />);
@@ -70,5 +76,38 @@ describe('Menu', () => {
     await waitFor(() => {
       expect(app.mfeRegistry.executeActionsChain).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('stays blank instead of claiming there are no screens while the MFEs are still registering', async () => {
+    const { Menu, EMPTY_STATE_GRACE_MS } = await import('./Menu');
+    // The registry is empty on the first poll and populated on the next one -
+    // exactly what a hard page load looks like from the menu's side.
+    app.mfeRegistry.getExtensionsForDomain.mockReturnValueOnce([]).mockReturnValue([tasks]);
+    vi.useFakeTimers();
+    render(<Menu />);
+
+    expect(emptyState()).toBeNull();
+
+    await act(async () => {
+      vi.advanceTimersByTime(EMPTY_STATE_GRACE_MS);
+    });
+
+    expect(emptyState()).toBeNull();
+    expect(screen.getByText(tasks.presentation.label)).toBeTruthy();
+  });
+
+  it('shows the empty state once the grace window passes with nothing registered', async () => {
+    const { Menu, EMPTY_STATE_GRACE_MS } = await import('./Menu');
+    app.mfeRegistry.getExtensionsForDomain.mockReturnValue([]);
+    vi.useFakeTimers();
+    render(<Menu />);
+
+    expect(emptyState()).toBeNull();
+
+    await act(async () => {
+      vi.advanceTimersByTime(EMPTY_STATE_GRACE_MS);
+    });
+
+    expect(emptyState()).not.toBeNull();
   });
 });
