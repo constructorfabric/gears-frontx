@@ -21,6 +21,12 @@ export default [
     ignores: [
       'dist/**',
       '**/dist/**',
+      // tsup writes the package's own published build here, so it is present in
+      // any tree where `build:package` has run and is bundled JS rather than
+      // source. Without this entry `npm run lint` reports no-undef across it and
+      // a scaffolded project sees a lint failure it has no source to fix.
+      'dist-lib/**',
+      '**/dist-lib/**',
       '**/.__mf__temp/**',
       '**/coverage/**',
       'node_modules/**',
