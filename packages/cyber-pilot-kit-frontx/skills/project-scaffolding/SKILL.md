@@ -291,6 +291,24 @@ checks exist stays the covering skill's to say, and nothing below adds one or
 stands in for one. What follows is how the browser is driven and what the run
 has to report - which no template declares and every browser run needs.
 
+**The escape hatches this step carries, indexed.** Each is written out in full
+at the sub-step named. A run that hits one of these failures goes straight to
+it rather than deriving a replacement:
+
+- a click that lands and changes nothing - the native pointer sequence,
+  sub-step 3
+- text that never arrives, or a wait that times out on text already on screen -
+  the shadow-descending poll, sub-step 7
+- `Element is covered`, or a capture with host chrome drawn over it - the dev
+  panel rule, sub-step 5.3
+- a snapshot listing none of the text expected - the compact-snapshot rule,
+  sub-step 6
+
+The index exists because these are read once and needed later, mid-failure.
+Three separate runs re-derived the native pointer sequence from scratch, one of
+them authoring throwaway scripts to do it, at 46s to 4m30s each, while the
+helper sat in a sub-step none of them was re-reading at the time.
+
 **Narrow no declared scope without stating the reason in the visible output
 text.** The scope this verification declares - every registered theme, every
 screen under verification, every state the declared checks call for - is covered
@@ -302,6 +320,17 @@ reaches the developer as a bare gap they have no way to judge. An unexplained
 narrowing is a verification failure and is reported as one, not a scope decision
 this flow was free to make.
 
+**The reason has to answer the axis the narrowed check verifies.** A check is
+narrowed along the axis it covers, and only a reason on that axis closes it.
+The theme walk and the captures under it ask a visual question - what each
+state looks like once that theme's tokens are applied - so no argument about
+behavior closes them, however true the argument is. One run drove the
+interactive states in the default theme alone and justified it by the state
+logic never reading theme state. That was correct and beside the point: what
+the walk was there to establish is whether success, error and added states are
+styled differently per theme, and only those states rendered in each theme can
+show it. A reason that argues the wrong axis is an unexplained narrowing.
+
 **Start every dev server with its process id recorded, and stop it by that id.**
 Keep the pid the start reports, or use the runner's own stop mechanism where it
 declares one, and address the process that way for the rest of the run.
@@ -311,6 +340,18 @@ them: one run's `pkill -f` matched its own dev server, took down the environment
 in the middle of the verification it was running, and spent 43s rebuilding it
 before it could carry on. A server whose pid the run never captured is stopped
 by finding that pid first, not by widening the match.
+
+**Capture into a directory this run created, never a shared fixed path.** Make
+it once, before the first capture - `mktemp -d`, or a timestamped directory
+under the project's `.frontx/` - and write every screenshot of this run inside
+it. A path reused across runs leaves the previous run's files exactly where
+this one goes looking: one run found 16 screenshots left by an earlier run in
+the shared `/tmp` path it was about to write to, and they were captures of the
+very states it had decided not to take. It cited none of them, and nothing
+about the path stopped it from doing so. **A claim satisfied by another run's
+capture is a false report even when nobody intended it**, because the
+byte-compare in sub-step 5.5 and the states-captured cells in sub-step 8 both
+address capture files by name, and neither can tell which run wrote them.
 
 Carry the run out in this order:
 
@@ -387,9 +428,18 @@ Carry the run out in this order:
    all: routing left unexercised is reported as unexercised, never as absent.
 5. **Enumerate every theme the host registers, and walk them.** The host's theme
    registry is the source of truth for the set - not the theme the browser opened
-   in, and not the entries a switcher happens to show. **The walk covers every
-   theme the registry reports, and that set is not negotiable**: no sample, no
-   representative subset, and no theme set aside as out of scope for this run.
+   in, and not the entries a switcher happens to show. **Read the set from the
+   host's theme registration itself** - the source file where the themes are
+   registered, or the list it exports - and only then open the switcher, which
+   from that point serves to apply each theme and nothing else. A dropdown
+   enumerates what the switcher chose to offer, which is not necessarily
+   everything registered: one run took its set from the menu items and happened
+   to match, a match it had no way to confirm and did not. This is the one thing
+   read from source in this walk, and it is read for the set alone - which theme
+   is active at any moment stays the switcher label's to answer, under sub-step
+   5.2 below. **The walk covers every theme the registry reports, and that set
+   is not negotiable**: no sample, no representative subset, and no theme set
+   aside as out of scope for this run.
    The count of registered themes and the count of walked themes are the same
    number. A run that walks fewer has narrowed a declared scope, so it states the
    reason in its output text under the rule above and reports itself as not
