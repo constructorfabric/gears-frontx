@@ -42,12 +42,16 @@
   line-height: var(--text-body-line-height);
 }
 
+/*
+ * The heading element exists for the document outline — the kit's CardTitle
+ * renders a plain div and contributes nothing to it — so its type comes from
+ * the CardTitle it sits in, and this rule only has to stop the UA stylesheet's
+ * own h2 size and margins from overriding what it inherits. The space below it
+ * is Card's gap between its slots, which is why no margin is declared here.
+ */
 .sectionTitle {
-  font-size: var(--text-heading-2-size);
-  font-weight: var(--text-heading-2-weight);
-  letter-spacing: var(--text-heading-2-tracking);
-  line-height: var(--text-heading-2-line-height);
-  margin-bottom: var(--space-3);
+  font: inherit;
+  margin: 0;
 }
 
 .definitions {

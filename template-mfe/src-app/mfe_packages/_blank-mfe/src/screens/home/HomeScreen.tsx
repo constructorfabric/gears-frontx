@@ -6,7 +6,7 @@ import {
   useApiQuery,
   apiRegistry,
 } from '@gears-frontx/react';
-import { Card, CardContent, Skeleton } from '@gears-frontx/ui-kit';
+import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@gears-frontx/ui-kit';
 import { useScreenTranslations } from '../../shared/useScreenTranslations';
 import { _BlankApiService } from '../../api/_BlankApiService';
 import styles from './HomeScreen.module.css';
@@ -169,9 +169,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
         <p className={styles.description}>{t('description')}</p>
       </div>
 
+      {/*
+        Card spaces its slots with `gap: var(--card-spacing)` declared on the
+        card root, so that rhythm only ever falls between Card's DIRECT
+        children — the slots below stay directly under <Card>. A wrapper around
+        them (`<Card><form>…slots…</form></Card>`, the shape a form screen
+        invites) leaves the card a single child and the gap applies to nothing,
+        while the slots' horizontal padding still lands because the kit sets it
+        through descendant rules (`.card .cardContent`) — half-correct spacing
+        reads as a small visual glitch rather than as the composition mistake
+        it is. A form goes inside a slot; README "Styling" carries the shape.
+      */}
       <Card>
+        <CardHeader>
+          <CardTitle>
+            <h2 className={styles.sectionTitle}>{t('bridge_info')}</h2>
+          </CardTitle>
+        </CardHeader>
         <CardContent>
-          <h2 className={styles.sectionTitle}>{t('bridge_info')}</h2>
           <dl className={styles.definitions}>
             <div>
               <dt className={styles.term}>{t('domain_id')}</dt>

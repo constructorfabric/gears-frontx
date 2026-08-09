@@ -206,11 +206,51 @@ a dependency, not a folder of copied files — do not vendor primitives into thi
 package.
 
 ```tsx
-import { Card, CardContent, Skeleton } from '@gears-frontx/ui-kit';
+import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@gears-frontx/ui-kit';
 ```
 
 Each kit component carries its own CSS Module; importing the component pulls
 its styles in with it, and the build ships only the components you imported.
+
+**A kit component's spacing can depend on what its direct children are.**
+`Card` is the case that bites: it spaces its slots with a
+`gap: var(--card-spacing)` declared on the card root, so that gap only ever
+falls between `Card`'s *direct* children. Wrap the slots and it applies to
+nothing.
+
+```tsx
+// Correct — the slots stay direct children of Card, the form lives in a slot.
+<Card>
+  <CardHeader>
+    <CardTitle>Sign in</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <form id="sign-in" onSubmit={handleSubmit}>…</form>
+  </CardContent>
+  <CardFooter>
+    <Button type="submit" form="sign-in">Continue</Button>
+  </CardFooter>
+</Card>
+
+// Wrong — Card has a single child now, and its gap applies to nothing.
+<Card>
+  <form onSubmit={handleSubmit}>
+    <CardHeader>…</CardHeader>
+    <CardContent>…</CardContent>
+    <CardFooter>…</CardFooter>
+  </form>
+</Card>
+```
+
+The wrong shape does not look broken at a glance, which is why it keeps getting
+shipped: the slots' horizontal padding comes from descendant rules
+(`.card .cardContent`) and still lands, so only the vertical rhythm disappears
+and the submit button ends up flush against the last field. The native `form`
+attribute above is what keeps a submit button in `CardFooter` while its fields
+live in `CardContent`; a form whose actions sit inside the form itself needs no
+`CardFooter` at all, which is how `demo-mfe`'s `ProfileDetailsCard` composes
+one. `Card` cannot render as a `<form>` element instead — the kit's card parts
+are plain `div`s with no element-swapping `render` prop.
 
 Screen-local layout goes in a `*.module.css` beside the screen and reads the
 kit's semantic tokens — `var(--space-6)`, `var(--radius-md)`,
@@ -284,6 +324,11 @@ shadow root: it must declare the kit's tokens on `:host`, not on `:root`.
 If a colour is wrong or missing while spacing and layout are right, something
 is reading the shell's tokens rather than the kit's. A Tailwind colour utility
 in this package is the usual cause — see [Styling](#styling).
+
+If a `Card`'s parts are crammed together vertically — a footer button flush
+against the last field — while its left and right padding looks right, an
+element wraps the card's slots and swallows the card's gap. Make the slots
+direct children of `Card` again — see [Styling](#styling).
 
 If a component's own styles are missing, the CSS is not reaching the shadow
 root at all: confirm the component is imported statically (a lazily imported
