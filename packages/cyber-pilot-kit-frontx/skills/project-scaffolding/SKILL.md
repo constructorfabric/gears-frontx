@@ -241,6 +241,16 @@ first and validating once at the end collects each unit's simple errors into a
 single block to debug together: one measured run spent 3m49s clearing type errors
 a per-unit check would have named one unit at a time, in seconds.
 
+**Every ecosystem symbol has an address, so grep the address rather than hunt
+for the symbol.** The types and symbols of every `@gears-frontx` package the
+project depends on are shipped as declarations under
+`<project>/node_modules/@gears-frontx/<package>/dist/`. Grep there first for any
+`@gears-frontx` name whose declaration a unit needs; either that directory
+carries it or the project does not have it, and the second answer is as usable
+as the first. A filesystem-wide search issued from outside the project tree is a
+defect, not a search strategy: one run spent 2m00s on `find / -iname` for a type
+that was sitting in `node_modules/@gears-frontx/api/dist/` the whole time.
+
 For each unit from step 3.11, in plan order:
 
 1. **Find the covering skill.** Look in the bundle of the template that owns the
@@ -291,6 +301,16 @@ was covered and cannot carry the reason, so a narrowing recorded only there
 reaches the developer as a bare gap they have no way to judge. An unexplained
 narrowing is a verification failure and is reported as one, not a scope decision
 this flow was free to make.
+
+**Start every dev server with its process id recorded, and stop it by that id.**
+Keep the pid the start reports, or use the runner's own stop mechanism where it
+declares one, and address the process that way for the rest of the run.
+**Stopping by pattern is forbidden.** A pattern matches every process whose
+command line happens to contain it, and the shell issuing the kill is one of
+them: one run's `pkill -f` matched its own dev server, took down the environment
+in the middle of the verification it was running, and spent 43s rebuilding it
+before it could carry on. A server whose pid the run never captured is stopped
+by finding that pid first, not by widening the match.
 
 Carry the run out in this order:
 
@@ -431,6 +451,17 @@ Carry the run out in this order:
    into a shadow root, so it times out on text that was on screen the whole time.
    It does not stand in for the snapshot here; when a wait is what is needed, take
    it from sub-step 7.
+
+   **What a compact snapshot leaves out is not evidence of anything.** It
+   enumerates the interactive nodes; static text, and the list structure around
+   it, are absent from perfectly sound markup by construction. Judge static
+   content by a screenshot or by reading the DOM through `npx --yes
+   agent-browser eval`, and never from the snapshot's silence. **A snapshot-only
+   signal is not grounds for touching product source.** One run read that
+   absence as broken list semantics, stopped its dev servers, added redundant
+   roles to the screen's source, and then concluded it had never been a real
+   defect - by which point the edit and the lost environment were the run's only
+   lasting output.
 7. **Wait for text with the shadow-descending poll below, not with `wait
    --text`.** `wait --text` searches light DOM only, and this stack renders inside
    shadow roots, so it spends its whole timeout on text that was already on
@@ -585,6 +616,15 @@ Then, reading figures off that capture:
   output.** Do not infer it from the workspaces around it and do not drop the
   workspace silently. Name it, say its result was not captured, and re-run to
   capture it.
+
+**Every figure in the report postdates the last source edit.** A gate's numbers
+describe the tree as it stood when that gate ran, so a source file changed
+afterwards voids them - all of them, not only the ones covering the file that
+changed. When it happens, re-run the unit legs and then the aggregate gates, and
+report from that run alone. One run edited a screen after its final aggregate
+gates, re-ran only that one unit's own checks, and published root-level numbers
+that predated the source they were presented as measuring: the numbers were
+real, and they were not this project's.
 
 ## Worked shape
 
