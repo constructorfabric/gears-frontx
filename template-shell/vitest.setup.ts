@@ -12,12 +12,17 @@
 // template-shell only, so Vite/Vitest would reject a `/@fs` read one level
 // up. The ecosystem keeps its own copy for its own tests.
 //
-// The afterEach block below clears every shared slot that tests in this repo
-// have been observed to mutate: timers, mocks, DOM storage/cookies, fetch, and
-// the Module Federation shared-scope global owned by the screensets MFE
-// handler. New leak surfaces (e.g. IndexedDB, future runtime registries) can
-// be added here once a concrete test relies on them; we deliberately do not
-// ship speculative cleanup for globals no source or test references.
+// The file carries two responsibilities. At load it installs the browser
+// globals jsdom leaves missing but component code legitimately expects (Web
+// Storage, `PointerEvent`), so every jsdom suite starts from the same platform
+// surface instead of each test file shimming what it happens to trip over.
+//
+// The afterEach block below then clears every shared slot that tests in this
+// repo have been observed to mutate: timers, mocks, DOM storage/cookies,
+// fetch, and the Module Federation shared-scope global owned by the screensets
+// MFE handler. New leak surfaces (e.g. IndexedDB, future runtime registries)
+// can be added here once a concrete test relies on them; we deliberately do
+// not ship speculative cleanup for globals no source or test references.
 import { afterEach, vi } from 'vitest';
 import { trim } from 'lodash';
 import { cleanup as cleanupReactRendering } from '@testing-library/react';
@@ -129,6 +134,75 @@ function ensureUsableWebStorage(target: Window & typeof globalThis): void {
   installMemoryStorageIfNeeded(target, 'sessionStorage', target.sessionStorage);
 }
 
+/**
+ * Install a `PointerEvent` constructor on `target` when it has none.
+ *
+ * jsdom implements no `PointerEvent`, while component libraries built on Base
+ * UI construct one off the element's owner window to forward a click onto the
+ * hidden native input behind a checkbox, radio or switch. A suite that renders
+ * such a component therefore dies on
+ * `TypeError: ownerWindow(...).PointerEvent is not a constructor` before it
+ * asserts anything, and it dies once per MFE package, which is why the shim
+ * belongs to this shared setup rather than to whichever test file meets it
+ * first.
+ *
+ * The class is declared inside the function, not at module scope, because
+ * `MouseEvent` is itself absent under `environment: 'node'`, the setting the
+ * logic-only packages that also load this file run with, and a module-scope
+ * `extends MouseEvent` would fail those suites at import time.
+ *
+ * A `MouseEvent` subclass carrying the pointer-specific half of
+ * `PointerEventInit` is the whole surface those code paths read; the
+ * coalesced- and predicted-event accessors of the real interface are left off
+ * deliberately, since nothing in this repo consumes them and a fabricated
+ * answer would be worse than a missing method.
+ *
+ * One target is enough: under Vitest's jsdom environment the worker global IS
+ * the jsdom window, so the same installation answers both a lookup off an
+ * element's owner window and a bare `new PointerEvent(...)`.
+ */
+function installPointerEventConstructor(target: Window & typeof globalThis): void {
+  if (typeof target.PointerEvent === 'function') {
+    return;
+  }
+
+  // Defaults follow the PointerEvent specification's own `PointerEventInit`
+  // defaults, so a shimmed event reads the same as a real one to code that
+  // omits a field.
+  class PointerEventShim extends MouseEvent {
+    readonly pointerId: number;
+    readonly width: number;
+    readonly height: number;
+    readonly pressure: number;
+    readonly tangentialPressure: number;
+    readonly tiltX: number;
+    readonly tiltY: number;
+    readonly twist: number;
+    readonly pointerType: string;
+    readonly isPrimary: boolean;
+
+    constructor(type: string, params: PointerEventInit = {}) {
+      super(type, params);
+      this.pointerId = params.pointerId ?? 0;
+      this.width = params.width ?? 1;
+      this.height = params.height ?? 1;
+      this.pressure = params.pressure ?? 0;
+      this.tangentialPressure = params.tangentialPressure ?? 0;
+      this.tiltX = params.tiltX ?? 0;
+      this.tiltY = params.tiltY ?? 0;
+      this.twist = params.twist ?? 0;
+      this.pointerType = params.pointerType ?? '';
+      this.isPrimary = params.isPrimary ?? false;
+    }
+  }
+
+  Object.defineProperty(target, 'PointerEvent', {
+    value: PointerEventShim,
+    writable: true,
+    configurable: true,
+  });
+}
+
 function safeClearWebStorage(storage: Storage | null | undefined): void {
   if (!storage) {
     return;
@@ -225,6 +299,7 @@ export function runSharedTestCleanup(): void {
 
 if ('window' in globalThis) {
   ensureUsableWebStorage(globalThis.window);
+  installPointerEventConstructor(globalThis.window);
 }
 
 afterEach(() => {
