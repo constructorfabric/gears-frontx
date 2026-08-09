@@ -127,6 +127,12 @@ transfers a pattern already proven against the gates.
    npm run test:unit    # the project's whole suite, not only the new package's
    npm run arch:deps    # dependency-cruiser boundaries, shell-owned script
    ```
+   - Drive interactive `@gears-frontx/ui-kit` components in tests with
+     `@testing-library/user-event`, not `fireEvent`. The kit builds Select, Switch and
+     their siblings on Base UI, whose pointer handling jsdom does not satisfy from a
+     synthetic `fireEvent.click`: the control stays closed or unchanged and the
+     assertion fails with nothing to point at. The skeleton ships
+     `@testing-library/user-event` in devDependencies for this.
    - `npm run build:mfes` (step 6), `type-check`, and `test:unit` all require the
      project's build outputs to exist first - run this pair once per clone, before
      any of the three, whether you invoke them at the project root or inside the new
