@@ -194,6 +194,36 @@ export function getMFEPackages(mfePackagesDir: string = MFE_PACKAGES_DIR): MfeDi
   return { packages, skippedExamples };
 }
 
+/**
+ * The message a failed `vite build` rejects with.
+ *
+ * The child runs on inherited stdio, so this function is deliberately not in
+ * the business of reproducing its output - everything Vite and the Module
+ * Federation plugin printed is already on the terminal above this line, and
+ * re-printing a captured copy would only duplicate it.
+ *
+ * What is missing there is a next step. The federation plugin reports a failed
+ * type generation as a bare `TYPE-001` code: it says the DTS build gave up but
+ * not which declaration provoked it, because the plugin swallows the tsc
+ * diagnostics behind its own code. Reading that line, the exit code was the
+ * only other signal, and recovering the real one-line type error meant knowing
+ * that each MFE package carries its own `type-check` script and guessing the
+ * invocation - a detour measured at 30-60 s per occurrence across two runs.
+ * So the hint names that exact command rather than describing it.
+ */
+export function buildFailureMessage(
+  name: string,
+  code: number | null,
+  packageDir: string,
+): string {
+  return [
+    `MFE build failed for ${name} with exit code ${code}.`,
+    `If the output above ends in a Module Federation TYPE-001 error, that code stands in for a`,
+    `TypeScript error the plugin did not print. To see the actual diagnostics, run:`,
+    `  npm run type-check --prefix ${packageDir}`,
+  ].join('\n');
+}
+
 /** Build MFE packages sequentially using vite build in each package directory. */
 export async function buildMfesSequentially(mfes: MfeInfo[]): Promise<void> {
   if (mfes.length === 0) return;
@@ -209,14 +239,15 @@ export async function buildMfesSequentially(mfes: MfeInfo[]): Promise<void> {
         NODE_BIN_DIR,
         process.platform === 'win32' ? 'npx.cmd' : 'npx',
       );
+      const packageDir = join(MFE_PACKAGES_DIR, mfe.name);
       const proc = spawn(npxPath, ['vite', 'build'], {
         stdio: 'inherit',
-        cwd: join(MFE_PACKAGES_DIR, mfe.name),
+        cwd: packageDir,
       });
       proc.on('error', reject);
       proc.on('exit', (code) => {
         if (code === 0) resolve();
-        else reject(new Error(`MFE build failed for ${mfe.name} with exit code ${code}`));
+        else reject(new Error(buildFailureMessage(mfe.name, code, packageDir)));
       });
     });
   }

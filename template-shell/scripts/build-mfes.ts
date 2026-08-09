@@ -26,7 +26,10 @@ async function main() {
   await buildMfesSequentially(packages);
 }
 
+// `buildMfesSequentially` already phrases its rejection as a full report (which
+// package, which exit code, which command shows the underlying type error), so
+// it is printed as-is. Prefixing it would only restate its first line.
 main().catch((err) => {
-  console.error('❌ MFE build failed:', err instanceof Error ? err.message : String(err));
+  console.error(`❌ ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });
