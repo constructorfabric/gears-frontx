@@ -7,7 +7,7 @@ each step names the concrete command or file template-mfe ships.
 ## Preconditions
 
 - An applied `template-shell` is already in the project (root `package.json`,
-  `src-app/app/`, build/test/manifest pipeline) — `template-mfe` adds MFE packages
+  `src-app/app/`, build/test/manifest pipeline) - `template-mfe` adds MFE packages
   into that shell and does not scaffold a repository on its own.
 - The screenset/screen the new MFE will contribute to is already decided.
 
@@ -48,8 +48,22 @@ each step names the concrete command or file template-mfe ships.
 
 5. **Implement the screen**
    - Rename/replace `src/screens/home/HomeScreen.tsx` with the real screen.
-   - Update `src/screens/home/i18n/*.json` (or rename the directory) with real copy
-     for every locale the template ships.
+   - Author the screen's real copy in `src/screens/home/i18n/en.json` only (rename the
+     directory alongside the screen), then propagate that one file over every other
+     locale the skeleton ships:
+     ```bash
+     cd src-app/mfe_packages/{screenset}-mfe/src/screens/home/i18n   # or the renamed directory
+     for f in *.json; do [ "$f" = en.json ] || cp en.json "$f"; done
+     ```
+     The skeleton ships one JSON per locale (36 files at this revision, `ar.json`
+     through `zh-TW.json`), and every non-English one carries the English copy by
+     design - real translations arrive later from translators, not from this workflow.
+     Authoring per-locale content, or writing a generator script to produce it, is
+     wasted work. The skeleton's `es.json` carries sample Spanish that the loop
+     overwrites, which is intended. Keep the full file set rather than deleting the
+     untranslated locales: `useScreenTranslations` falls back to `en` for a language
+     with no file, but logs a `No translation module found` warning on every such
+     load, which then shows up in step 8's console check.
    - Keep `src/lifecycle.tsx` extending `ThemeAwareReactLifecycle`; keep `init.ts`'s
      plugin chain (`effects()`, `queryCacheShared()`, `mock()`) unless the new MFE has
      a documented reason to diverge.
@@ -70,6 +84,8 @@ each step names the concrete command or file template-mfe ships.
 
 6. **Regenerate manifests**
    ```bash
+   npm run build:package    # prerequisite - see step 7
+   npm run build:packages   # prerequisite - see step 7
    npm run build:mfes
    npm run generate:mfe-manifests
    ```
@@ -81,20 +97,27 @@ each step names the concrete command or file template-mfe ships.
    npm run test:unit    # the project's whole suite, not only the new package's
    npm run arch:deps    # dependency-cruiser boundaries, shell-owned script
    ```
-   - `type-check` and `test:unit` require the ecosystem packages to be built
-     first - run this once per clone, before either, whether you invoke them at
-     the project root or inside the new package:
+   - `npm run build:mfes` (step 6), `type-check`, and `test:unit` all require the
+     project's build outputs to exist first - run this pair once per clone, before
+     any of the three, whether you invoke them at the project root or inside the new
+     package:
      ```bash
-     npm run build:packages
+     npm run build:package    # tsup, produces dist-lib
+     npm run build:packages   # produces packages/*/dist
      ```
-     An MFE package's `tsconfig.json` carries no `@gears-frontx/*` path mapping,
-     so `tsc` (and `vitest`) resolve those imports through `node_modules` to each
-     package's built entry under `packages/*/dist`. The shell's
+     `build:mfes` needs `dist-lib`: every MFE's `vite.config.ts` imports
+     `frontxMfGts` from `@gears-frontx/frontx-template-shell/build/mf-gts`, which the
+     root package exports as `./dist-lib/build/mf-gts.js`, so without `build:package`
+     the build dies while loading the first MFE's Vite config with
+     `ERR_MODULE_NOT_FOUND ... dist-lib/build/mf-gts.js`. `type-check` and
+     `test:unit` need `packages/*/dist`: an MFE package's `tsconfig.json` carries no
+     `@gears-frontx/*` path mapping, so `tsc` (and `vitest`) resolve those imports
+     through `node_modules` to each package's built entry there. The shell's
      `tsconfig.app.json` maps them to `packages/*/src` instead, which is why the
      shell type-checks on a fresh clone while an MFE reports `TS2307: Cannot find
-     module '@gears-frontx/react'` for every ecosystem import. Steps 2-6 are
-     unaffected: `vite build` externalizes the ecosystem packages, so
-     `npm run build:mfes` needs no `dist`.
+     module '@gears-frontx/react'` for every ecosystem import. Run both commands as
+     one prerequisite - the shell's own `build` script orders them exactly this way,
+     ahead of `build:mfes`.
 
 8. **Run and confirm**
    ```bash
