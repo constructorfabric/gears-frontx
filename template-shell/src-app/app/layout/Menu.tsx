@@ -3,6 +3,10 @@
  *
  * Side navigation menu displaying MFE extensions with presentation metadata.
  * Uses local shadcn/ui Sidebar components for proper styling and collapsible behavior.
+ *
+ * A click mounts the screen and pushes its `presentation.route`, so the URL
+ * tracks the mounted screen and the resulting link is shareable;
+ * `mfe/MfeScreenContainer.tsx` reads that URL back on load and on back/forward.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -11,11 +15,11 @@ import {
   useFrontX,
   useMountedExtensions,
   eventBus,
-  FRONTX_ACTION_MOUNT_EXT,
   FRONTX_SCREEN_DOMAIN,
   type MenuState,
   type ScreenExtension,
 } from '@gears-frontx/react';
+import { mountScreenExtension } from '@/app/mfe/screenRouting';
 import {
   Sidebar,
   SidebarContent,
@@ -43,6 +47,8 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   // Currently-mounted screen extension (subscribes to store changes; no polling).
   // Index 0 is meaningful because the host registers the screen domain with
   // ExclusiveMountStrategy in `bootstrap.ts` (single mount per domain).
+  // Reading the mount set rather than tracking clicks is what makes the active
+  // item correct for a screen mounted from the URL, which no click announced.
   const mountedScreens = useMountedExtensions(FRONTX_SCREEN_DOMAIN);
   const mountedId = mountedScreens[0]?.id;
 
@@ -68,15 +74,18 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   };
 
   const handleMenuItemClick = useCallback(
-    async (extensionId: string) => {
+    async (extension: ScreenExtension) => {
       if (!mfeRegistry) return;
-      await mfeRegistry.executeActionsChain({
-        action: {
-          type: FRONTX_ACTION_MOUNT_EXT,
-          target: FRONTX_SCREEN_DOMAIN,
-          payload: { subject: extensionId },
-        },
-      });
+      // The URL is pushed before the mount so a screen that fails to mount still
+      // leaves the address bar on the screen the user asked for, and so the entry
+      // exists before any code the screen runs can push its own.
+      // `presentation.route` is schema-required, so an empty one means a manifest
+      // that never should have registered - mount it, just without a URL.
+      const { route } = extension.presentation;
+      if (route && route !== window.location.pathname) {
+        window.history.pushState(null, '', route);
+      }
+      await mountScreenExtension(mfeRegistry, extension.id);
     },
     [mfeRegistry]
   );
@@ -106,7 +115,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
                 <SidebarMenuItem key={ext.id}>
                   <SidebarMenuButton
                     isActive={isActive}
-                    onClick={() => handleMenuItemClick(ext.id)}
+                    onClick={() => handleMenuItemClick(ext)}
                     tooltip={collapsed ? pres.label : undefined}
                   >
                     {pres.icon && (
