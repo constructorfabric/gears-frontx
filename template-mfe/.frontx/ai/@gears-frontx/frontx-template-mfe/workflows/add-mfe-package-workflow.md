@@ -61,22 +61,28 @@ transfers a pattern already proven against the gates.
 
 5. **Implement the screen**
    - Rename/replace `src/screens/home/HomeScreen.tsx` with the real screen.
-   - Author the screen's real copy in `src/screens/home/i18n/en.json` only (rename the
-     directory alongside the screen), then propagate that one file over every other
-     locale the skeleton ships:
+   - Author the screen's real copy in the ONE locale file whose name matches the
+     language of the product phrase driving this run - `en.json` for an English phrase,
+     `ru.json` for a Russian one (rename the i18n directory alongside the screen), then
+     propagate that one file over every other locale the skeleton ships:
      ```bash
      cd src-app/mfe_packages/{screenset}-mfe/src/screens/home/i18n   # or the renamed directory
-     for f in *.json; do [ "$f" = en.json ] || cp en.json "$f"; done
+     SRC=en.json   # the locale the product speaks; ru.json for a Russian phrase, etc.
+     for f in *.json; do [ "$f" = "$SRC" ] || cp "$SRC" "$f"; done
      ```
+     A locale file carries the language its name declares. Authoring Russian copy into
+     `en.json` renders correctly on screen and still fails review, because every later
+     reader takes `en.json` as English. When the source locale is not `en.json`,
+     `en.json` is simply another target of the loop.
      The skeleton ships one JSON per locale (36 files at this revision, `ar.json`
-     through `zh-TW.json`), and every non-English one carries the English copy by
-     design - real translations arrive later from translators, not from this workflow.
-     Authoring per-locale content, or writing a generator script to produce it, is
-     wasted work. The skeleton's `es.json` carries sample Spanish that the loop
-     overwrites, which is intended. Keep the full file set rather than deleting the
-     untranslated locales: `useScreenTranslations` falls back to `en` for a language
-     with no file, but logs a `No translation module found` warning on every such
-     load, which then shows up in step 8's console check.
+     through `zh-TW.json`). The source locale is the one the product speaks today, and
+     every other file carries that same copy by design - real translations arrive later
+     from translators, not from this workflow. Authoring per-locale content, or writing
+     a generator script to produce it, is wasted work. The skeleton's `es.json` carries
+     sample Spanish that the loop overwrites, which is intended. Keep the full file set
+     rather than deleting the untranslated locales: `useScreenTranslations` falls back
+     to `en` for a language with no file, but logs a `No translation module found`
+     warning on every such load, which then shows up in step 8's console check.
    - Put the screen's business state in the package's own flux layers, not in the
      component. State shape and reducers go in `src/slices/`, registered through
      `registerSlice` in `init.ts`; every mutation is reached through an action in
