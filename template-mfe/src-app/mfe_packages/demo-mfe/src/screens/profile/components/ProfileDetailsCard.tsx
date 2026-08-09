@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Button,
   Card,
@@ -43,18 +43,22 @@ export const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
   onRefresh,
   onSubmit,
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [formValues, setFormValues] = useState<ProfileFormValues>(() =>
-    getFormValues(user)
-  );
-
-  useEffect(() => {
-    if (!isEditing) {
-      setFormValues(getFormValues(user));
-    }
-  }, [isEditing, user]);
+  /*
+   * The edit buffer is the only state the card holds, and its presence is what
+   * "editing" means. The pair it replaces — an `isEditing` flag beside a
+   * `formValues` copy — had to be re-synced from `user` in an effect whenever a
+   * refetch delivered a new profile while the form was closed, and a setState
+   * called synchronously in an effect body re-renders the card before paint
+   * (`react-hooks/set-state-in-effect`). With the buffer absent outside editing,
+   * the displayed values are derived from `user` on every render and there is
+   * nothing left to re-sync; a refetch arriving mid-edit still leaves the
+   * buffer alone, exactly as the effect's `!isEditing` guard did.
+   */
+  const [editingValues, setEditingValues] = useState<ProfileFormValues | null>(null);
+  const isEditing = editingValues !== null;
 
   const initialValues = useMemo(() => getFormValues(user), [user]);
+  const formValues = editingValues ?? initialValues;
   const normalizedValues = useMemo(
     () => ({
       firstName: formValues.firstName.trim(),
@@ -73,15 +77,14 @@ export const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
   const handleFieldChange =
     (field: keyof ProfileFormValues) =>
       (event: React.ChangeEvent<HTMLInputElement>) => {
-        setFormValues((current) => ({
-          ...current,
+        setEditingValues((current) => ({
+          ...(current ?? initialValues),
           [field]: event.target.value,
         }));
       };
 
   const handleCancel = () => {
-    setFormValues(initialValues);
-    setIsEditing(false);
+    setEditingValues(null);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -93,7 +96,7 @@ export const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
 
     try {
       await onSubmit(normalizedValues);
-      setIsEditing(false);
+      setEditingValues(null);
     } catch {
       // Parent surfaces the error via saveErrorMessage; keep editing open.
     }
@@ -199,7 +202,7 @@ export const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
             {t('refresh')}
           </Button>
           {isEditing ? null : (
-            <Button variant="outline" disabled={isSaving} onClick={() => setIsEditing(true)}>
+            <Button variant="outline" disabled={isSaving} onClick={() => setEditingValues(initialValues)}>
               {t('edit_profile')}
             </Button>
           )}

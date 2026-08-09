@@ -46,8 +46,23 @@ interface HomeScreenProps {
  */
 export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [theme, setTheme] = useState<string>('default');
-  const [language, setLanguage] = useState<string>('en');
+  /*
+   * The bridge's current values are read here, in lazy useState initializers,
+   * rather than at the top of the effect below. A setState called synchronously
+   * in an effect body re-renders the screen before paint, which is why
+   * `react-hooks/set-state-in-effect` rejects it; the effect only has to
+   * SUBSCRIBE. Reading during the first render is equivalent because the
+   * lifecycle hands one bridge to the screen for the whole mounted life of the
+   * root, so there is no later bridge whose values this would miss.
+   */
+  const [theme, setTheme] = useState<string>(() => {
+    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
+    return initialTheme && typeof initialTheme.value === 'string' ? initialTheme.value : 'default';
+  });
+  const [language, setLanguage] = useState<string>(() => {
+    const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
+    return initialLang && typeof initialLang.value === 'string' ? initialLang.value : 'en';
+  });
 
   // @cpt-begin:implement-endpoint-descriptors:p4:inst-blank-home-query
   const service = apiRegistry.getService(_BlankApiService);
@@ -61,16 +76,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
   // @cpt-end:implement-endpoint-descriptors:p4:inst-blank-home-query
 
   useEffect(() => {
-    // Read initial property values
-    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
-    if (initialTheme && typeof initialTheme.value === 'string') {
-      setTheme(initialTheme.value);
-    }
-    const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
-    if (initialLang && typeof initialLang.value === 'string') {
-      setLanguage(initialLang.value);
-    }
-
     // Subscribe to theme domain property
     const themeUnsubscribe = bridge.subscribeToProperty(
       FRONTX_SHARED_PROPERTY_THEME,

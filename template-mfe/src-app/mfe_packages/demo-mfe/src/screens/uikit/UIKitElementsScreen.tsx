@@ -89,22 +89,39 @@ export const UIKitElementsScreen: React.FC<UIKitElementsScreenProps> = ({ bridge
    */
   const portalContainerRef = useRef<HTMLDivElement>(null);
   const [activeElement, setActiveElement] = useState<string | undefined>();
-  const [theme, setTheme] = useState<string>('default');
-  const [language, setLanguage] = useState<string>('en');
+  /*
+   * The bridge's current values are read here, in lazy useState initializers,
+   * rather than at the top of the effect below. A setState called synchronously
+   * in an effect body re-renders the screen before paint, which is why
+   * `react-hooks/set-state-in-effect` rejects it; the effect only has to
+   * SUBSCRIBE. Reading during the first render is equivalent because the
+   * lifecycle hands one bridge to the screen for the whole mounted life of the
+   * root, so there is no later bridge whose values this would miss.
+   */
+  const [theme, setTheme] = useState<string>(() => {
+    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
+    return initialTheme && typeof initialTheme.value === 'string' ? initialTheme.value : 'default';
+  });
+  const [language, setLanguage] = useState<string>(() => {
+    const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
+    return initialLang && typeof initialLang.value === 'string' ? initialLang.value : 'en';
+  });
 
   // Load translations
   const { t, loading: translationsLoading } = useScreenTranslations(languageModules, bridge);
 
   // Handle theme subscription; language + direction come from useScreenTranslations
   useEffect(() => {
-    // Read initial property values
-    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
-    if (initialTheme && typeof initialTheme.value === 'string') {
-      setTheme(initialTheme.value);
-    }
+    /*
+     * The initial direction stays in the effect rather than joining the
+     * initializers above: it writes to the shadow host, which `containerRef`
+     * only reaches once the first render has been committed. The language value
+     * is re-read from the bridge instead of taken from state so that this effect
+     * keeps `bridge` as its only dependency — depending on `language` would tear
+     * down and re-create both subscriptions on every language change.
+     */
     const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
     if (initialLang && typeof initialLang.value === 'string') {
-      setLanguage(initialLang.value);
       const rootNode = containerRef.current?.getRootNode();
       if (rootNode && 'host' in rootNode) {
         const rtlLanguages = ['ar', 'he', 'fa', 'ur'];
