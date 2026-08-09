@@ -212,13 +212,67 @@ function runTypeCheck(project, { buffered, timeoutMs }) {
   });
 }
 
-async function runSequential(projects, { timeoutMs }) {
-  for (const project of projects) {
-    console.log(`\n==> Type-checking ${project.name}`);
-    await runTypeCheck(project, { buffered: false, timeoutMs });
+/**
+ * Raise one error naming every package that failed, or return quietly.
+ *
+ * Each package's own reason is repeated here because by the time this prints,
+ * a multi-package run has scrolled far past the first failure, and a timeout
+ * has to stay distinguishable from a type error.
+ *
+ * @param {{ name: string; reason: unknown }[]} failures
+ */
+function throwOnFailures(failures) {
+  if (failures.length === 0) {
+    return;
   }
+
+  const detail = failures
+    .map((failure) => {
+      const reason =
+        failure.reason instanceof Error ? failure.reason.message : String(failure.reason);
+      return `  - ${failure.name}: ${reason}`;
+    })
+    .join('\n');
+
+  throw new Error(
+    `Type-check failed for ${failures.length} MFE package(s):\n${detail}`,
+  );
 }
 
+/**
+ * Type-check every project one at a time, collecting failures instead of
+ * stopping at the first one.
+ *
+ * Awaiting each child directly would abort the loop on the first red package
+ * and leave every later package unchecked, so a single broken MFE would hide
+ * the state of all its siblings and turn one fix-and-rerun cycle into as many
+ * cycles as there are broken packages.
+ *
+ * @param {{ cwd: string; name: string }[]} projects
+ * @param {{ timeoutMs: number }} options
+ * @returns {Promise<{ name: string; reason: unknown }[]>}
+ */
+async function runSequential(projects, { timeoutMs }) {
+  /** @type {{ name: string; reason: unknown }[]} */
+  const failures = [];
+
+  for (const project of projects) {
+    console.log(`\n==> Type-checking ${project.name}`);
+    try {
+      await runTypeCheck(project, { buffered: false, timeoutMs });
+    } catch (error) {
+      failures.push({ name: project.name, reason: error });
+    }
+  }
+
+  return failures;
+}
+
+/**
+ * @param {{ cwd: string; name: string }[]} projects
+ * @param {{ timeoutMs: number }} options
+ * @returns {Promise<{ name: string; reason: unknown }[]>}
+ */
 async function runParallel(projects, { timeoutMs }) {
   console.log(`\n==> Type-checking ${projects.length} MFE package(s) in parallel`);
 
@@ -250,12 +304,7 @@ async function runParallel(projects, { timeoutMs }) {
     failures.push({ name: project.name, reason });
   });
 
-  if (failures.length > 0) {
-    const summary = failures.map((failure) => failure.name).join(', ');
-    throw new Error(
-      `Type-check failed for ${failures.length} MFE package(s): ${summary}.`,
-    );
-  }
+  return failures;
 }
 
 async function main() {
@@ -279,11 +328,11 @@ async function main() {
     return;
   }
 
-  if (parallel) {
-    await runParallel(projects, { timeoutMs });
-  } else {
-    await runSequential(projects, { timeoutMs });
-  }
+  const failures = parallel
+    ? await runParallel(projects, { timeoutMs })
+    : await runSequential(projects, { timeoutMs });
+
+  throwOnFailures(failures);
 }
 
 try {
