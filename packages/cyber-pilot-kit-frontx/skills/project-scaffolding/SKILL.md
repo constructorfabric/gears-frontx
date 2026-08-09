@@ -276,8 +276,20 @@ and runs, not one that was merely written.
 **When a declared check is performed in a browser, conduct it this way.** Which
 checks exist stays the covering skill's to say, and nothing below adds one or
 stands in for one. What follows is how the browser is driven and what the run
-has to report - which no template declares and every browser run needs - carried
-out in this order:
+has to report - which no template declares and every browser run needs.
+
+**Narrow no declared scope without stating the reason in the visible output
+text.** The scope this verification declares - every registered theme, every
+screen under verification, every state the declared checks call for - is covered
+in full. When something forces a narrowing anyway, write into the text the
+developer reads, not only into the coverage file, which part of the scope is
+being narrowed, what is left out of it, and why. The coverage file records what
+was covered and cannot carry the reason, so a narrowing recorded only there
+reaches the developer as a bare gap they have no way to judge. An unexplained
+narrowing is a verification failure and is reported as one, not a scope decision
+this flow was free to make.
+
+Carry the run out in this order:
 
 1. **Probe before launching.** Ask `http://localhost:9222/json/version` once.
    When it answers, attach to the browser already listening there with
@@ -324,8 +336,14 @@ out in this order:
    other click is confirmed here, by re-reading the accessibility snapshot.
 4. **Enumerate every theme the host registers, and walk them.** The host's theme
    registry is the source of truth for the set - not the theme the browser opened
-   in, and not the entries a switcher happens to show. Take each registered theme
-   in turn, and in this order:
+   in, and not the entries a switcher happens to show. **The walk covers every
+   theme the registry reports, and that set is not negotiable**: no sample, no
+   representative subset, and no theme set aside as out of scope for this run.
+   The count of registered themes and the count of walked themes are the same
+   number. A run that walks fewer has narrowed a declared scope, so it states the
+   reason in its output text under the rule above and reports itself as not
+   verified for every theme it left out. Take each registered theme in turn, and
+   in this order:
    1. **Reload the page and wait for it to come back.** This is the theme
       boundary reset. It discards every field filled, item added and dialog
       opened while checking the previous theme, so the captures below start from
@@ -342,18 +360,68 @@ out in this order:
       in this theme. The interactions the declared checks call for follow, each
       with its own capture.
    4. **Byte-compare this theme's captures against the previous theme's.** For
-      each screen and state, compare the two capture files exactly, with
-      `cmp -s` or with a hash of each, and record one verdict for the theme in
-      its coverage row. Identical captures are a recorded fact, not a failure: two
-      registered themes can differ only in tokens the screens under verification
-      never consume, and a report that passed them as visibly distinct claimed
-      something the run did not see. The first theme has no predecessor to
-      compare against.
+      each screen and state, run the comparison as a command over the two capture
+      files and read the verdict off what it returned:
+
+      ```bash
+      cmp -s <previous-theme-capture> <this-theme-capture>; echo "cmp exit $?"
+      # or, when hashes are preferred:
+      shasum -a 256 <previous-theme-capture> <this-theme-capture>
+      ```
+
+      `cmp -s` exits 0 for identical files and 1 for differing ones; two hashes
+      are identical or they are not. **The coverage cell cites that result - the
+      exit code, or the two hashes - and is filled from nothing else.** Opening
+      the two captures and judging them different by eye is not a comparison, and
+      a cell filled that way reports a fact the run never established, however
+      honestly the eye judged it. A capture pair the command was never run over
+      gets no verdict: record it as not-compared and say so in the report.
+      Identical captures are a recorded fact, not a failure: two registered themes
+      can differ only in tokens the screens under verification never consume, and
+      a report that passed them as visibly distinct claimed something the run did
+      not see. The first theme has no predecessor to compare against.
 5. **Read state from the accessibility snapshot after every click and every
    navigation** - `npx --yes agent-browser snapshot -i`. A text-wait does not see
    into a shadow root, so it times out on text that was on screen the whole time.
-   It is not used here.
-6. **Write the coverage table to a file.** The verification's deliverable is
+   It does not stand in for the snapshot here; when a wait is what is needed, take
+   it from sub-step 6.
+6. **Wait for text with the shadow-descending poll below, not with `wait
+   --text`.** `wait --text` searches light DOM only, and this stack renders inside
+   shadow roots, so it spends its whole timeout on text that was already on
+   screen: one run lost 75s to three such timeouts. Reach for `wait --text` only
+   for content known to live in light DOM. For everything else, poll through
+   `npx --yes agent-browser eval`:
+
+   ```js
+   (async () => {
+     const needle = '<text>';
+     const timeoutMs = 10000;
+     const pollMs = 250;
+     const holds = (root) => {
+       const scope = root === document ? document.body : root;
+       if (scope && (scope.textContent ?? '').includes(needle)) return true;
+       for (const el of root.querySelectorAll('*')) {
+         if (el.shadowRoot && holds(el.shadowRoot)) return true;
+       }
+       return false;
+     };
+     const deadline = Date.now() + timeoutMs;
+     for (;;) {
+       if (holds(document)) return 'found';
+       if (Date.now() >= deadline) return 'not found';
+       await new Promise((resolve) => setTimeout(resolve, pollMs));
+     }
+   })()
+   ```
+
+   Put the text to wait for in `<text>`. `holds` reads the light DOM once and
+   then descends into every element's `shadowRoot` recursively, so text at any
+   nesting depth is seen. `found` means the text arrived; `not found` means it
+   did not arrive inside the timeout, which is a real absence to act on rather
+   than a blind spot to wait out again. If the runner hands back the promise
+   instead of its value, set `timeoutMs` to 0 and re-issue the helper until it
+   returns `found` or the wait budget is spent.
+7. **Write the coverage table to a file.** The verification's deliverable is
    `<targetDir>/.frontx/verification-coverage.md`, beside the project's provenance
    record, written **before the final report is composed** and holding one row per
    registered theme, the byte-compare verdict from sub-step 4.4, and one column
@@ -362,8 +430,12 @@ out in this order:
    ```markdown
    | Theme | Opened | Visually distinct from previous | <screen> states captured | <screen> states captured |
    |---|---|---|---|---|
-   | <registered theme> | verified / not-opened (reason) | yes / no (captures identical) / first theme | <states> | <states> |
+   | <registered theme> | verified / not-opened (reason) | yes (cmp exit 1) / no (cmp exit 0, captures identical) / not-compared (reason) / first theme | <states> | <states> |
    ```
+
+   The distinctness cell carries the comparison command's own result, in the
+   parentheses shown - the `cmp` exit code, or the differing hashes. A cell
+   without one is a cell no command backed.
 
    Every registered theme gets a row, including each one recorded as not-opened.
    A state is the point a capture was taken at, named for what the screen held
