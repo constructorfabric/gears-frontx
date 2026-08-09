@@ -1,6 +1,10 @@
 /**
  * Home Domain - Slice
- * Add your domain state, reducers, and selectors here.
+ * The screen's business state lives here: everything user-visible behavior reads or
+ * writes (form outcomes, lists, session/status flags, dialog open state). Fill the
+ * state, reducers, and selectors for every screen that has behavior; an empty slice
+ * behind a working screen means the state went into the component instead. Only a
+ * purely presentational screen leaves this file as shipped.
  * Replace '_blank/home' with your screenset/domain name.
  */
 

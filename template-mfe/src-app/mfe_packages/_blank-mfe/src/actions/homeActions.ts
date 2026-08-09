@@ -1,6 +1,8 @@
 /**
  * Home Domain - Actions
- * Add your domain action functions here.
+ * Every mutation the screen triggers is reached through an action here; the component
+ * calls an action, never a dispatch. Fill this file for every screen that has
+ * behavior.
  * Actions emit events via eventBus to trigger the flux cycle.
  *
  * Example:

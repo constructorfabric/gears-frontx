@@ -1,6 +1,7 @@
 /**
  * Home Domain - Events
- * Add your domain event types here.
+ * Every event an action emits is declared here. Fill this file for every screen that
+ * has behavior; the augmentation below is what types the action/effect pair.
  * Follow the mfe/<domain>/<event-name> naming convention (past tense).
  *
  * Uncomment the module augmentation below and add your event types:

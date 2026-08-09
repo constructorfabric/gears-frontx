@@ -77,6 +77,17 @@ transfers a pattern already proven against the gates.
      untranslated locales: `useScreenTranslations` falls back to `en` for a language
      with no file, but logs a `No translation module found` warning on every such
      load, which then shows up in step 8's console check.
+   - Put the screen's business state in the package's own flux layers, not in the
+     component. State shape and reducers go in `src/slices/`, registered through
+     `registerSlice` in `init.ts`; every mutation is reached through an action in
+     `src/actions/` that emits an event declared in `src/events/`; effects in
+     `src/effects/` are the only place that dispatches. `useState` carries uncommitted
+     input drafts and bridge-delivered values (theme, language) and nothing else. A
+     screen with user-visible behavior - a form that succeeds or fails, a list, a
+     session or status flag, an open dialog - leaves those four files filled. Leaving
+     them as the shipped anchors while the behavior lives in `useState` bypasses the
+     architecture, and the screen looks correct while doing it. A purely presentational
+     screen needs no flux and keeps the files as they are.
    - Keep `src/lifecycle.tsx` extending `ThemeAwareReactLifecycle`; keep `init.ts`'s
      plugin chain (`effects()`, `queryCacheShared()`, `mock()`) unless the new MFE has
      a documented reason to diverge.

@@ -68,8 +68,20 @@ to mount into an extension domain).
 
 ## Boundaries
 
-- Do not add Redux/host-store imports inside the MFE; MFEs stay isolated and consume
-  only bridge-provided shared properties and mock/local state.
+- Do not add Redux/host-store imports inside the MFE; MFEs stay isolated and reach
+  state only through `@gears-frontx/react`'s `createSlice`/`registerSlice` and through
+  the bridge - shared properties in, events out.
+- A screen's business state lives in the MFE's own state layers, not in the component.
+  Everything user-visible behavior reads or writes - form outcomes, lists,
+  session/status flags, dialog open state - belongs to the slice (registered via
+  `registerSlice`), is reached through actions that emit events, and is dispatched
+  only from effects. Component-local `useState` holds uncommitted input drafts and
+  bridge-delivered values, and nothing else. This is the default architecture for a
+  screen that has behavior, not one option among several; a purely presentational
+  screen needs no flux.
+- Fill the skeleton's `slices/`, `actions/`, `effects/`, and `events/` files for every
+  screen that has behavior - they are the state layer, not anchors to leave empty. An
+  empty slice behind a working screen means the architecture was bypassed.
 - Do not hand-edit `public/generated-mfe-manifests.json`; it is a generated artifact —
   always regenerate via `npm run generate:mfe-manifests`.
 - This skill does not cover ecosystem-level MFE runtime concepts (registration,
