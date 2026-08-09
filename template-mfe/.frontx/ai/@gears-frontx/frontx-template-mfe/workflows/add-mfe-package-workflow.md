@@ -17,10 +17,20 @@ each step names the concrete command or file template-mfe ships.
    - Name: `{screenset}-mfe` (kebab-case), placed at `src-app/mfe_packages/{screenset}-mfe/`.
    - Port: next free `30N0` slot after the reserved `3001` (`demo-mfe`).
 
-2. **Copy the scaffold**
+2. **Copy the scaffold, without `node_modules`**
+   ```bash
+   rsync -a --exclude node_modules src-app/mfe_packages/_blank-mfe/ src-app/mfe_packages/{screenset}-mfe/
+   ```
+   Where `rsync` is unavailable, copy and then delete the copied `node_modules`:
    ```bash
    cp -r src-app/mfe_packages/_blank-mfe src-app/mfe_packages/{screenset}-mfe
+   rm -rf src-app/mfe_packages/{screenset}-mfe/node_modules
    ```
+   A copied `node_modules` carries `_blank-mfe`'s own resolution state into the new
+   package, where it shadows the workspace install. An MFE resolves `@gears-frontx/*`
+   through `node_modules` rather than through path mapping (step 7), so `tsc` then
+   type-checks the new package against the skeleton's tree and reports resolution
+   errors that no edit to the new package's own files can clear.
 
 3. **Edit package metadata**
    - `src-app/mfe_packages/{screenset}-mfe/package.json`:
