@@ -291,45 +291,89 @@ out in this order:
    a theme nobody in this run chose, and every capture after that silently
    belongs to that theme. Read the active theme from the interface: a
    screenshot's file name records what the run assumed, not what was on screen.
-3. **Enumerate every theme the host registers, and walk them.** The host's theme
+3. **Dispatch native pointer events when a click changes nothing.** A synthetic
+   `.click()` arrives at the element carrying none of the pointer sequence around
+   it, so a control listening for `pointerdown` sees nothing at all and the screen
+   stays as it was. Do not retry the synthetic click, and do not record the
+   control as broken. Re-issue that one click as the full native sequence through
+   `npx --yes agent-browser eval`:
+
+   ```js
+   (() => {
+     const el = document.querySelector('<selector>');
+     if (!el) return 'not found';
+     const box = el.getBoundingClientRect();
+     const init = {
+       bubbles: true, cancelable: true, composed: true,
+       clientX: box.left + box.width / 2, clientY: box.top + box.height / 2,
+       pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1,
+     };
+     const up = { ...init, buttons: 0 };
+     el.dispatchEvent(new PointerEvent('pointerdown', init));
+     el.dispatchEvent(new MouseEvent('mousedown', init));
+     el.dispatchEvent(new PointerEvent('pointerup', up));
+     el.dispatchEvent(new MouseEvent('mouseup', up));
+     el.dispatchEvent(new MouseEvent('click', up));
+     return 'dispatched';
+   })()
+   ```
+
+   Put the control's own selector in `<selector>`. When the control lives inside
+   a shadow root, resolve it through that host's `shadowRoot` rather than
+   `document`, which does not see in. Then confirm the outcome the way every
+   other click is confirmed here, by re-reading the accessibility snapshot.
+4. **Enumerate every theme the host registers, and walk them.** The host's theme
    registry is the source of truth for the set - not the theme the browser opened
-   in, and not the entries a switcher happens to show. For each registered theme
-   in turn: switch into it, confirm the switch landed, then drive and snapshot the
-   screens under verification there, and capture them.
-   **Confirm by re-reading the switcher in a fresh snapshot**: its label has to
-   name the theme just selected. A label still naming the previous theme means the
-   theme did not open, so record it as not-opened with that as the reason and
-   capture nothing in it as verified. Captures that come back byte-identical to the
-   previous theme's are what an unconfirmed switch looks like from the report side,
-   where it is indistinguishable from a theme that was really walked. A theme that
-   could not be opened is recorded as not-opened, with the reason it could not be
-   opened.
-   **The first capture of a screen in a theme is that screen untouched**, taken
-   before anything is filled, submitted or added in this theme; the interactions
-   follow, each with its own capture. A screen first captured after an earlier
-   interaction already changed it has no before-state left to take, and no later
-   capture recovers one.
-4. **Read state from the accessibility snapshot after every click and every
+   in, and not the entries a switcher happens to show. Take each registered theme
+   in turn, and in this order:
+   1. **Reload the page and wait for it to come back.** This is the theme
+      boundary reset. It discards every field filled, item added and dialog
+      opened while checking the previous theme, so the captures below start from
+      a state this run knows rather than from wherever the last theme's
+      interactions left the app. Reload for the first theme too: the browser
+      arrived carrying a profile, not a fresh application.
+   2. **Switch into the theme, then confirm the switch landed** by re-reading the
+      switcher in a fresh snapshot: its label has to name the theme just
+      selected. A label still naming the previous theme means the theme did not
+      open, so record it as not-opened with that as the reason, capture nothing
+      in it as verified, and take the next theme.
+   3. **Capture each screen under verification in its fresh state first** - the
+      state the reload left it in, before anything is filled, submitted or added
+      in this theme. The interactions the declared checks call for follow, each
+      with its own capture.
+   4. **Byte-compare this theme's captures against the previous theme's.** For
+      each screen and state, compare the two capture files exactly, with
+      `cmp -s` or with a hash of each, and record one verdict for the theme in
+      its coverage row. Identical captures are a recorded fact, not a failure: two
+      registered themes can differ only in tokens the screens under verification
+      never consume, and a report that passed them as visibly distinct claimed
+      something the run did not see. The first theme has no predecessor to
+      compare against.
+5. **Read state from the accessibility snapshot after every click and every
    navigation** - `npx --yes agent-browser snapshot -i`. A text-wait does not see
    into a shadow root, so it times out on text that was on screen the whole time.
    It is not used here.
-5. **Write the coverage table to a file.** The verification's deliverable is
+6. **Write the coverage table to a file.** The verification's deliverable is
    `<targetDir>/.frontx/verification-coverage.md`, beside the project's provenance
    record, written **before the final report is composed** and holding one row per
-   registered theme and one column per screen under verification:
+   registered theme, the byte-compare verdict from sub-step 4.4, and one column
+   per screen under verification:
 
    ```markdown
-   | Theme | Opened | <screen> states captured | <screen> states captured |
-   |---|---|---|---|
-   | <registered theme> | verified / not-opened (reason) | <states> | <states> |
+   | Theme | Opened | Visually distinct from previous | <screen> states captured | <screen> states captured |
+   |---|---|---|---|---|
+   | <registered theme> | verified / not-opened (reason) | yes / no (captures identical) / first theme | <states> | <states> |
    ```
 
    Every registered theme gets a row, including each one recorded as not-opened.
-   A state is the point a capture was taken at, named: a form untouched and after
-   it is submitted, a list before and after it changes. Step 8 carries this file's
-   content verbatim. The file is the deliverable, not a suggestion - a run that
-   composed a report without writing it did not complete the verification,
-   whatever the report concluded.
+   A state is the point a capture was taken at, named for what the screen held
+   then: a form in its fresh state after the boundary reload and after it is
+   submitted, a list fresh and after it changes. Name a state `fresh` only for a
+   capture taken after that reload and before any interaction in this theme -
+   calling a later capture fresh reports a screen this run never saw. Step 8
+   carries this file's content verbatim. The file is the deliverable, not a
+   suggestion - a run that composed a report without writing it did not complete
+   the verification, whatever the report concluded.
 
 **If a declared verification fails**, stop there. Report the project as applied
 and realized but **not verified**, relay that verification's own output
