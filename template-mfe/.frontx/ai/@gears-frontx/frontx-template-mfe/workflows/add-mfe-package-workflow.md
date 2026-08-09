@@ -55,6 +55,20 @@ each step names the concrete command or file template-mfe ships.
    npm run type-check
    npm run arch:deps
    ```
+   - `type-check` and `test:unit` require the ecosystem packages to be built
+     first - run this once per clone, before either, whether you invoke them at
+     the project root or inside the new package:
+     ```bash
+     npm run build:packages
+     ```
+     An MFE package's `tsconfig.json` carries no `@gears-frontx/*` path mapping,
+     so `tsc` (and `vitest`) resolve those imports through `node_modules` to each
+     package's built entry under `packages/*/dist`. The shell's
+     `tsconfig.app.json` maps them to `packages/*/src` instead, which is why the
+     shell type-checks on a fresh clone while an MFE reports `TS2307: Cannot find
+     module '@gears-frontx/react'` for every ecosystem import. Steps 2-6 are
+     unaffected: `vite build` externalizes the ecosystem packages, so
+     `npm run build:mfes` needs no `dist`.
 
 8. **Run and confirm**
    ```bash
