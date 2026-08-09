@@ -11,6 +11,15 @@ each step names the concrete command or file template-mfe ships.
   into that shell and does not scaffold a repository on its own.
 - The screenset/screen the new MFE will contribute to is already decided.
 
+## One package per run
+
+Steps 1-8 realize a single package. When realizing multiple packages, complete this
+workflow - through a green step 7 - for the current package before starting the next
+package's copy step (step 2). Interleaving two packages' authoring defers every failure
+into one mixed debug block, which past runs paid for and per-unit gates repeatedly
+avoided: once the first package validates, the second is strictly cheaper, because it
+transfers a pattern already proven against the gates.
+
 ## Steps
 
 1. **Choose a name and port**
@@ -18,6 +27,10 @@ each step names the concrete command or file template-mfe ships.
    - Port: next free `30N0` slot after the reserved `3001` (`demo-mfe`).
 
 2. **Copy the scaffold, without `node_modules`**
+   Do not copy or rename workspace packages while an `npm install` is running - finish
+   or await the install first. npm scans the workspaces at start, and a tree caught
+   mid-copy still carrying the skeleton's name produces duplicate-workspace failures
+   (`EDUPLICATEWORKSPACE`).
    ```bash
    rsync -a --exclude node_modules src-app/mfe_packages/_blank-mfe/ src-app/mfe_packages/{screenset}-mfe/
    ```
