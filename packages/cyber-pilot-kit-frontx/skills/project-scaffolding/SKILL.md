@@ -389,10 +389,22 @@ Report, in this order:
 
 - the applied set, as read from provenance in step 6;
 - the units realized, and what each carries;
-- the content of the coverage file any browser verification in step 7 wrote,
-  verbatim, and the path it was written to;
+- the coverage table any browser verification in step 7 wrote, **reproduced in
+  full inside the report, between code fences**, followed by the path of the file
+  it was reproduced from. Copy every row and every column across. A link, a file
+  name, a row count or a sentence summarizing what the table says is not
+  acceptable in its place: the reader is being told what was verified, and a
+  pointer tells them where to go look instead;
 - the residual work - only the intent that no applied template's ground contains
   and no activated skill covers.
+
+**Quote every number in this report from the output of the command that produced
+it.** Test counts, lint counts, file counts: find the summary line the command
+printed, read the figure off that line, and name the command it came from. Do not
+recall a figure from earlier in the session, do not add up per-suite numbers
+yourself, and do not carry one over from an earlier run. A total the report never
+read off a command's own output is a total the report invented, and two runs have
+now shipped one that disagreed with what the command printed.
 
 ## Worked shape
 
