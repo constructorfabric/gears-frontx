@@ -49,23 +49,38 @@ function getAuthRuntime(app: FrontXApp): AuthRuntime | null {
 }
 
 /**
+ * The state a query starts in before any decision has been applied.
+ * Without an auth runtime the guard is already at its final answer, so it must
+ * not claim to be resolving — no decision will ever arrive to clear the flag.
+ */
+function pessimisticResult(auth: AuthRuntime | null): UseCanAccessResult {
+  return { allow: false, isResolving: auth !== null };
+}
+
+/**
  * Declarative RBAC guard hook.
  *
  * Pessimistic: `allow` is false until an explicit 'allow' decision arrives.
  * Aborts the in-flight canAccess call on unmount and on query change.
  *
  * State machine:
- *   mount               -> Pending (allow=false, isResolving=true)
+ *   mount, auth runtime present -> Pending (allow=false, isResolving=true)
+ *   mount, no auth runtime      -> Denied  (allow=false, isResolving=false)
  *   Pending -> 'allow'  -> Allowed (allow=true,  isResolving=false)
  *   Pending -> 'deny'   -> Denied  (allow=false, isResolving=false)
  *   Pending -> error    -> Denied  (allow=false, isResolving=false)
  *   Allowed -> query-change -> Pending  (re-pessimize)
  *   Denied  -> query-change -> Pending  (re-pessimize)
+ *
+ * An app without an auth runtime has no decision to wait for, so the hook lands
+ * on Denied in the first render instead of reporting a resolving state that
+ * nothing will ever end.
  */
 export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
   query: AccessQuery<TRecord>,
 ): UseCanAccessResult {
   const app = useFrontX();
+  const auth = getAuthRuntime(app);
 
   // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-stable-key
   const stableKey = accessQueryKey(query as AccessQuery);
@@ -74,26 +89,26 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
   // refresh it during render whenever `stableKey` changes (React derived-state
   // pattern) so the effect can depend on the stored value directly — its
   // referential identity tracks the access intent, not the parent render cycle.
+  // The auth runtime is stored beside it because swapping the runtime under the
+  // hook invalidates the standing decision exactly as a new query does.
   const [stableQuery, setStableQuery] = useState<AccessQuery>(() => query as AccessQuery);
   const [storedKey, setStoredKey] = useState(stableKey);
-  const [result, setResult] = useState<UseCanAccessResult>({ allow: false, isResolving: true });
+  const [storedAuth, setStoredAuth] = useState(auth);
+  const [result, setResult] = useState<UseCanAccessResult>(() => pessimisticResult(auth));
 
-  if (storedKey !== stableKey) {
+  if (storedKey !== stableKey || storedAuth !== auth) {
     setStoredKey(stableKey);
+    setStoredAuth(auth);
     setStableQuery(query as AccessQuery);
-    setResult({ allow: false, isResolving: true });
+    setResult(pessimisticResult(auth));
   }
   // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-stable-key
 
   useEffect(() => {
     // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-pending-effect
-    const auth = getAuthRuntime(app);
     if (!auth) {
-      setResult({ allow: false, isResolving: false });
       return;
     }
-
-    setResult({ allow: false, isResolving: true });
 
     let alive = true;
     const controller = new AbortController();
@@ -120,7 +135,7 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
       controller.abort();
     };
     // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-abort
-  }, [app, stableQuery]);
+  }, [auth, stableQuery]);
 
   return result;
 }

@@ -113,7 +113,10 @@ export function useApiStream<TEvent>(
 
   const [data, setData] = useState<TEvent | undefined>(undefined);
   const [events, setEvents] = useState<TEvent[]>([]);
-  const [status, setStatus] = useState<StreamStatus>('idle');
+  // A hook that mounts enabled opens its connection in the same commit, so the
+  // first render already reports 'connecting'. 'idle' describes a stream nothing
+  // is trying to open, which is only the `enabled: false` case.
+  const [status, setStatus] = useState<StreamStatus>(() => (enabled ? 'connecting' : 'idle'));
   const [error, setError] = useState<Error | null>(null);
 
   // Tracks the in-flight connect() promise so cleanup can await it.
@@ -129,11 +132,33 @@ export function useApiStream<TEvent>(
   // JSON.stringify avoids join('/') collisions when a segment contains '/'.
   const descriptorKey = useMemo(() => JSON.stringify(descriptor.key), [descriptor.key]);
 
-  useEffect(() => {
-    setData(undefined);
-    setEvents([]);
-    setError(null);
-  }, [descriptorKey, mode]);
+  // Reset boundaries are derived during render rather than applied from an
+  // effect: an effect reset lets a consumer observe one render of the previous
+  // stream's payload under the new descriptor before it is cleared.
+  //
+  // The payload (data/events/error) belongs to a (descriptor, mode) pair; the
+  // status belongs to a (descriptor, mode, enabled) connection attempt. Turning
+  // `enabled` off therefore changes only the status: a consumer that pauses a
+  // stream keeps showing the last payload it received.
+  const [storedDescriptorKey, setStoredDescriptorKey] = useState(descriptorKey);
+  const [storedMode, setStoredMode] = useState(mode);
+  const [storedEnabled, setStoredEnabled] = useState(enabled);
+
+  const streamChanged = storedDescriptorKey !== descriptorKey || storedMode !== mode;
+
+  if (streamChanged || storedEnabled !== enabled) {
+    setStoredDescriptorKey(descriptorKey);
+    setStoredMode(mode);
+    setStoredEnabled(enabled);
+
+    if (streamChanged || enabled) {
+      setData(undefined);
+      setEvents([]);
+      setError(null);
+    }
+
+    setStatus(enabled ? 'connecting' : 'idle');
+  }
 
   const disconnect = useCallback(() => {
     disconnectRequestedRef.current = true;
@@ -150,7 +175,6 @@ export function useApiStream<TEvent>(
 
   useEffect(() => {
     if (!enabled) {
-      setStatus('idle');
       return;
     }
 
@@ -159,11 +183,6 @@ export function useApiStream<TEvent>(
     disconnectRequestedRef.current = false;
 
     const d = descriptorRef.current;
-
-    setData(undefined);
-    setEvents([]);
-    setStatus('connecting');
-    setError(null);
 
     const connectPromise = d.connect(
       (event) => {

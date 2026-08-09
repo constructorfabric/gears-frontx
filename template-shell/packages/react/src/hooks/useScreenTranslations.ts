@@ -75,14 +75,19 @@ export function useScreenTranslations(
   const app = useFrontX();
   const { i18nRegistry } = app;
 
-  // Track loading state per language to handle language changes
+  // Track loading state per language to handle language changes.
+  // `loadedLanguage` is the whole progress record: a load is in flight exactly
+  // while it disagrees with the current language. A separate in-flight flag
+  // would have to be raised from the effect, one render after render already
+  // knows the language moved, and it would stay raised forever whenever a load
+  // is superseded before it settles (en -> fr -> en leaves the fr load cancelled
+  // with nothing left to lower the flag).
   // @cpt-begin:cpt-frontx-state-react-bindings-screen-translation:p1:inst-begin-load
   // @cpt-begin:cpt-frontx-state-react-bindings-screen-translation:p1:inst-load-success
   // @cpt-begin:cpt-frontx-state-react-bindings-screen-translation:p1:inst-load-error
   // @cpt-begin:cpt-frontx-state-react-bindings-screen-translation:p1:inst-reload-on-lang-change
   // @cpt-begin:cpt-frontx-state-react-bindings-screen-translation:p2:inst-retry-on-lang-change
   const [loadedLanguage, setLoadedLanguage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   // @cpt-end:cpt-frontx-state-react-bindings-screen-translation:p1:inst-begin-load
   // @cpt-end:cpt-frontx-state-react-bindings-screen-translation:p1:inst-load-success
@@ -143,7 +148,6 @@ export function useScreenTranslations(
     // @cpt-end:cpt-frontx-algo-react-bindings-load-screen-translations:p1:inst-skip-if-loaded
 
     let cancelled = false;
-    setIsLoading(true);
 
     const loadTranslations = async () => {
       try {
@@ -166,7 +170,6 @@ export function useScreenTranslations(
         // @cpt-begin:cpt-frontx-algo-react-bindings-load-screen-translations:p1:inst-cancel-on-unmount
         if (!cancelled) {
           setLoadedLanguage(currentLanguage);
-          setIsLoading(false);
           setError(null);
         }
         // @cpt-end:cpt-frontx-algo-react-bindings-load-screen-translations:p1:inst-cancel-on-unmount
@@ -174,7 +177,6 @@ export function useScreenTranslations(
         // @cpt-begin:cpt-frontx-algo-react-bindings-load-screen-translations:p1:inst-handle-load-error
         if (!cancelled) {
           setError(err instanceof Error ? err : new Error(String(err)));
-          setIsLoading(false);
         }
         // @cpt-end:cpt-frontx-algo-react-bindings-load-screen-translations:p1:inst-handle-load-error
       }
@@ -192,7 +194,7 @@ export function useScreenTranslations(
 
   // @cpt-begin:cpt-frontx-flow-react-bindings-use-screen-translations:p1:inst-return-loading-state
   // Derive isLoaded from whether we've loaded translations for the current language
-  const isLoaded = currentLanguage !== null && currentLanguage === loadedLanguage && !isLoading;
+  const isLoaded = currentLanguage !== null && currentLanguage === loadedLanguage;
 
   // @cpt-begin:cpt-frontx-flow-react-bindings-use-screen-translations:p1:inst-gate-render
   // isLoaded is the gate value: consumers must check this before rendering translation-dependent UI
