@@ -6,6 +6,11 @@
       "id": "mfe-package-contract",
       "category": "guidelines",
       "path": "guidelines/mfe-package-contract.md"
+    },
+    {
+      "id": "navigation-composition",
+      "category": "guidelines",
+      "path": "guidelines/navigation-composition.md"
     }
   ]
 }

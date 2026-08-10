@@ -18,6 +18,11 @@
       "path": "guidelines/gts-id-conventions.md"
     },
     {
+      "id": "navigation-contribution",
+      "category": "guidelines",
+      "path": "guidelines/navigation-contribution.md"
+    },
+    {
       "id": "gts-id-patterns-reference",
       "category": "reference_artifacts",
       "path": "reference-artifacts/gts-id-patterns-reference.json"
