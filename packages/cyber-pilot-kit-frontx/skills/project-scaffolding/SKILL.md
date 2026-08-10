@@ -306,6 +306,11 @@ straight to it rather than deriving a replacement:
 - `Element not found` on a selector that reads perfectly well - the
   selector-form rule under "Address every control by the stable handle" below,
   which names the forms this runner resolves and the ones it rejects
+- a batch line that blocks for a full timeout, or a wait that matches nothing -
+  the argument-vector rule in that same list: a flag-shaped token inside a batch
+  line is read as a selector
+- a batch that bails on its first click after an `open` - the settle rule in
+  that same list
 
 The index exists because these are read once and needed later, mid-failure.
 Three separate runs re-derived the native pointer sequence from scratch, one of
@@ -344,10 +349,37 @@ in the middle of the verification it was running, and spent 43s rebuilding it
 before it could carry on. A server whose pid the run never captured is stopped
 by finding that pid first, not by widening the match.
 
+**A stopped parent is not a stopped server: after the kill, verify the ports are
+free.** The recorded pid is the process this run started, not the children it
+spawned, and killing it can leave those children running and still bound. One
+run killed its recorded pid, reported the server stopped, and left three orphans
+holding the ports. So ask the ports themselves, once per port this run started:
+
+```bash
+kill <recorded pid>
+lsof -ti tcp:<port>
+```
+
+Every pid `lsof` prints is a survivor still holding that port. Kill each one **by
+that printed pid**, never by pattern, exactly as the rule above requires, and
+re-run the `lsof` until it prints nothing. The run is finished with a server when
+its ports come back, not when a kill command exits zero.
+
 **Capture into a directory this run created, never a shared fixed path.** Make
-it once, before the first capture - `mktemp -d`, or a timestamped directory
-under the project's `.frontx/` - and write every screenshot of this run inside
-it. A path reused across runs leaves the previous run's files exactly where
+it once, before the first capture, with this command:
+
+```bash
+CAPDIR="<targetDir>/.frontx/verify-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$CAPDIR"; echo "$CAPDIR"
+```
+
+**Every capture path in this walk starts with `$CAPDIR`.** The batch heredocs
+below are quoted (`<<'JSON'`), which is what keeps their escaped quotes intact
+and also means `$CAPDIR` does not expand inside them - that is why the command
+prints the directory: each `screenshot` line is written with the resolved path
+in it. Prose describing a run-unique directory was not enough on its own, and a
+run under it wrote into a fixed shared path anyway.
+
+A path reused across runs leaves the previous run's files exactly where
 this one goes looking: one run found 16 screenshots left by an earlier run in
 the shared `/tmp` path it was about to write to, and they were captures of the
 very states it had decided not to take. It cited none of them, and nothing
@@ -362,7 +394,7 @@ reference pays for it twice: those references are re-issued on every
 navigation and every theme switch, so each interaction costs a fresh snapshot
 taken for no reason but to learn the handle again. One measured run spent 24 of
 its 87 browser calls that way, and 8m31s of wall time around 50s of actual
-command time. Four things make the difference, and all four were established
+command time. Six things make the difference, and all six were established
 against this runner rather than assumed:
 
 - **`[data-testid="<value>"]` is the selector form to write, and the pseudo
@@ -382,8 +414,31 @@ against this runner rather than assumed:
   for - each screen's menu item, the dev panel's expand and collapse controls,
   the theme switcher and its per-theme options - and read each one's
   `data-testid` off the page. Every command afterwards is written against those
-  values, and no further snapshot is taken to re-find a control. **A host that
-  marks nothing has no handles to learn**: fall back to accessibility
+  values, and no further snapshot is taken to re-find a control.
+  **The controls inside a screen are learned the same way, but not off that
+  snapshot**: screen content renders inside a shadow root, so read their handles
+  with one `npx --yes agent-browser eval` that descends into every `shadowRoot`
+  and collects what the scaffold marked:
+
+  ```js
+  (() => {
+    const found = [];
+    const walk = (root) => {
+      for (const el of root.querySelectorAll('[data-testid]')) {
+        found.push(`${el.tagName.toLowerCase()} ${el.getAttribute('data-testid')}`);
+      }
+      for (const el of root.querySelectorAll('*')) if (el.shadowRoot) walk(el.shadowRoot);
+    };
+    walk(document);
+    return found;
+  })()
+  ```
+
+  Every value it returns is written as `[data-testid="<value>"]` from then on,
+  exactly as the host's own controls are. A screen control the scaffold marks
+  with nothing is reached by a reference from a snapshot taken at that point,
+  and that is the only reason to take a further one.
+  **A host that marks nothing has no handles to learn**: fall back to accessibility
   references, say in the report that the interface exposed none, and expect the
   snapshot-per-interaction cost this rule exists to remove.
 - **Chain the commands with `batch --bail`, fed as JSON on stdin.** One
@@ -397,6 +452,23 @@ against this runner rather than assumed:
   JSON stdin mode each command is its own argument vector and nothing is
   re-parsed. `--bail` stops at the first failing command and exits non-zero, so
   a pass that broke halfway through cannot be read as one that ran.
+- **A batch line is an argument vector, so every argument in it is positional
+  and bare.** A flag-shaped token is not read as a flag: `["wait", "--ms",
+  "800"]` hands `--ms` to `wait` as the *selector* to wait for, and the line
+  then sits out the full 25s default timeout before failing. One run lost about
+  40s to that single line. **A wait is written `["wait", "800"]`** - the
+  milliseconds as a bare string, nothing else - and every other line reads the
+  same way: what follows the op name is its operands, and a token starting with
+  `-` becomes one of them rather than a switch.
+- **After an `open`, the next line settles the page; it does not interact with
+  it.** A batch that chains `["open", "<route>"]` straight into a click on a
+  screen's handle bails on that click: the load is still in flight, the handle
+  is not in the document yet, and `--bail` stops the pass on a page that was
+  about to be fine. Follow every `open`, and every other navigation, with
+  `["wait", "800"]` or an `["is", "visible", "[data-testid=\"<a handle that
+  screen shows>\"]"]`, and put the first interaction after that. The routing
+  batch in sub-step 4 carries its `snapshot` line in exactly that position; a
+  batch composed here needs the settle written in.
 - **`get` prints, `is` enforces, and `fill` does neither.** A `get text` line
   hands its answer back for the run to read, and the run has to read it,
   because the batch carries on either way. An `is visible` line exits non-zero
@@ -406,6 +478,15 @@ against this runner rather than assumed:
   there. `fill` reports `✓ Done` even when its selector matched nothing, typing
   into whatever held focus instead; confirm every fill with a `get value` on
   the same handle rather than believing its exit code.
+  **A plain CSS selector aimed at screen content is that case by
+  construction.** Screen fields live in a shadow root and an outside selector
+  does not see in, so `fill input[name=...]` matches nothing, types into
+  whatever held focus, and still reports success - one run filled a form that
+  way and read the report as proof the form worked. Fill screen controls by the
+  testids read in the handle-learning rule above, and let the `get value` this
+  bullet already requires be what establishes the text landed where it was
+  aimed. Where a control carries no testid, drive it by a reference from a
+  snapshot taken at that point, and read it back the same way.
 
 Carry the run out in this order:
 
@@ -542,7 +623,7 @@ Carry the run out in this order:
      ["click", "[data-testid=\"<the dev panel's collapse handle>\"]"],
      ["is", "visible", "[data-testid=\"<the dev panel's expand handle>\"]"],
      ["click", "[data-testid=\"<a screen's menu handle>\"]"],
-     ["screenshot", "<this run's capture directory>/<theme>-<screen>-fresh.png"]
+     ["screenshot", "<$CAPDIR resolved>/<theme>-<screen>-fresh.png"]
    ]
    JSON
    ```
