@@ -3,11 +3,10 @@
   "workspaces": {
     ".": {
       "entry": [
-        "src/app/main.tsx",
-        "src/screensets/*/*[Ss]creenset.tsx"
+        "scripts/**/*.test.{mjs,ts}"
       ],
-      "project": ["src/**/*.{ts,tsx}"],
-      "ignore": ["src/screensets/_blank/**"]
+      "project": ["scripts/**/*.{ts,mjs}"],
+      "ignore": ["scripts/manual-auth-tests/**"]
     },
     "packages/cli": {
       "ignore": ["templates/**", "template-sources/**"]
@@ -20,20 +19,10 @@
     "**/node_modules/**",
     "**/templates/**",
     "**/template-sources/**",
-    "eslint-plugin-local/**",
-    "**/*.config.{ts,js,cjs,mjs}",
-    "vite.config.ts",
-    ".eslintrc.cjs"
-  ],
-  "ignoreDependencies": [
-    "@types/*",
-    "@gears-frontx/depcruise-config/*"
+    "**/*.config.{ts,js,cjs,mjs}"
   ],
   "ignoreBinaries": [
     "dot"
   ],
-  "ignoreExportsUsedInFile": true,
-  "ignoreIssues": {
-    "**/*Screen.tsx": ["duplicates"]
-  }
+  "ignoreExportsUsedInFile": true
 }

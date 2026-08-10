@@ -30,21 +30,6 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    # MFE packages under `src/mfe_packages/*` are NOT npm workspaces — each
-    # has its own lockfile because Module Federation runtimes load them as
-    # isolated apps. The root `npm ci` above does not install their deps, so
-    # `type-check:mfe` and MFE-scoped unit tests can't resolve third-party
-    # packages (@radix-ui, @tanstack/react-table, recharts, vaul, …) until
-    # each MFE is installed in place.
-    - name: Install MFE dependencies
-      run: |
-        for mfe in src/mfe_packages/*/; do
-          if [ -f "$mfe/package-lock.json" ]; then
-            echo "==> npm ci in $mfe"
-            (cd "$mfe" && npm ci)
-          fi
-        done
-
     # Consumer packages (framework, react, studio, cli) resolve workspace deps
     # via their sibling packages' `dist/` types. A fresh `npm ci` has no dist,
     # so `type-check:packages:*` fails to resolve `@gears-frontx/*` imports.
