@@ -4,15 +4,17 @@
  * Tests for the rule that keeps a template's own example and scaffold MFE
  * packages out of the running application (constructorfabric/gears-frontx#550).
  *
- * Two scanners decide it and both are exercised here against a fixture tree
+ * Three scanners decide it and all are exercised here against a fixture tree
  * rather than against a restatement of their rules: `getMFEPackages`, which
- * feeds `dev-all.ts` and `build-mfes.ts`, and `ManifestGenerator`, which writes
- * the aggregate the host registers from. Testing only the predicates would have
- * left either scanner free to stop calling them with every case still green.
+ * feeds `dev-all.ts` and `build-mfes.ts`; `ManifestGenerator`, which writes the
+ * aggregate the host registers from; and `discoverMfeProjects`, which picks the
+ * packages `type-check:mfe` spawns a child for. Testing only the predicates
+ * would have left any of them free to stop calling them with every case still
+ * green.
  *
- * Both take their directory as an argument for that reason. The module-level
- * defaults resolve against the working directory at import time, which a test
- * cannot move afterwards.
+ * All three take their directory as an argument for that reason. The
+ * module-level defaults resolve against the working directory at import time,
+ * which a test cannot move afterwards.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -27,6 +29,7 @@ import {
   templateExamplesIncluded,
 } from '../scripts/lib/mfe-tools';
 import { ManifestGenerator } from '../scripts/generate-mfe-manifests';
+import { discoverMfeProjects } from '../scripts/run-mfe-type-checks';
 
 const MFE_MANIFEST_PATH = 'dist/mfe-manifest.json';
 
@@ -64,11 +67,12 @@ function fixtureGtsIds(name: string): { manifest: string; entry: string; extensi
 }
 
 /**
- * Writes a package complete enough for both scanners: an `mfe.json` carrying
- * the flag or not, a `package.json` whose `preview` script declares the port
- * `getMFEPackages` reads, and the enriched build output `ManifestGenerator`
- * aggregates. Every value is neutral fixture data - no identifier here is
- * borrowed from a shipped package.
+ * Writes a package complete enough for all three scanners: an `mfe.json`
+ * carrying the flag or not, a `package.json` whose `preview` script declares the
+ * port `getMFEPackages` reads and whose `type-check` script is what
+ * `discoverMfeProjects` requires, and the enriched build output
+ * `ManifestGenerator` aggregates. Every value is neutral fixture data - no
+ * identifier here is borrowed from a shipped package.
  */
 function mfePackage(name: string, options: { templateExample: boolean; port: number }): void {
   const flag = options.templateExample ? '"templateExample": true, ' : '';
@@ -76,7 +80,13 @@ function mfePackage(name: string, options: { templateExample: boolean; port: num
 
   writeFileSync(
     join(packagePath, 'package.json'),
-    JSON.stringify({ name, scripts: { preview: `vite preview --port ${options.port}` } }),
+    JSON.stringify({
+      name,
+      scripts: {
+        preview: `vite preview --port ${options.port}`,
+        'type-check': 'tsc --noEmit',
+      },
+    }),
     'utf-8',
   );
 
@@ -201,6 +211,51 @@ describe('getMFEPackages - what dev:all builds and serves', () => {
       ],
       skippedExamples: [],
     });
+  });
+});
+
+describe('discoverMfeProjects - what type-check:mfe spawns a child for', () => {
+  it('leaves an example package out of the checked set and names it as skipped', async () => {
+    mfePackage('tasks-mfe', { templateExample: false, port: 3010 });
+    mfePackage('sample-mfe', { templateExample: true, port: 3020 });
+
+    const discovery = await discoverMfeProjects(mfePackagesDir);
+
+    expect(discovery).toEqual({
+      projects: [{ name: 'tasks-mfe', cwd: join(mfePackagesDir, 'tasks-mfe') }],
+      missingTypeCheckScript: [],
+      skippedExamples: ['sample-mfe'],
+    });
+  });
+
+  it('checks the example package too when the environment includes template examples', async () => {
+    mfePackage('tasks-mfe', { templateExample: false, port: 3010 });
+    mfePackage('sample-mfe', { templateExample: true, port: 3020 });
+    process.env[TEMPLATE_EXAMPLES_ENV_VAR] = '1';
+
+    const { projects, skippedExamples } = await discoverMfeProjects(mfePackagesDir);
+
+    expect(projects.map((project) => project.name)).toEqual(['sample-mfe', 'tasks-mfe']);
+    expect(skippedExamples).toEqual([]);
+  });
+
+  // A missing `type-check` script fails the whole run, product packages
+  // included. The example filter runs ahead of that check for exactly this
+  // case: a scaffold nothing intends to check must not be able to refuse the
+  // run over a script it was never required to declare.
+  it('reports no missing type-check script for an example package it skipped', async () => {
+    mfePackage('tasks-mfe', { templateExample: false, port: 3010 });
+    const scaffold = packageWithMfeJson('_blank-mfe', '{ "templateExample": true }');
+    writeFileSync(
+      join(scaffold, 'package.json'),
+      JSON.stringify({ name: '_blank-mfe' }),
+      'utf-8',
+    );
+
+    const { missingTypeCheckScript, skippedExamples } = await discoverMfeProjects(mfePackagesDir);
+
+    expect(missingTypeCheckScript).toEqual([]);
+    expect(skippedExamples).toEqual(['_blank-mfe']);
   });
 });
 

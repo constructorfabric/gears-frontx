@@ -51,7 +51,7 @@
     "type-check:packages:react": "npm run type-check --workspace=@gears-frontx/react",
     "type-check:packages:studio": "npm run type-check --workspace=@gears-frontx/studio",
     "type-check:packages": "npm run type-check:packages:auth && npm run type-check:packages:state && npm run type-check:packages:i18n && npm run type-check:packages:framework && npm run type-check:packages:react && npm run type-check:packages:studio",
-    "type-check:mfe": "node scripts/run-mfe-type-checks.mjs",
+    "type-check:mfe": "npx tsx scripts/run-mfe-type-checks.ts",
     "type-check": "npm run type-check:package && npm run type-check:package:test && npm run type-check:app && npm run type-check:packages && npm run type-check:mfe",
     "lint:sdk": "eslint packages/state/src packages/i18n/src --max-warnings 0",
     "lint:framework": "eslint packages/framework/src --max-warnings 0",

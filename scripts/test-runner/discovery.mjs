@@ -52,7 +52,7 @@ export async function loadProjects(repoRoot = defaultRepoRoot) {
  * workspaces (they have their own install boundary), so they can't come from
  * `discoverWorkspaceProjects`. Dynamic discovery keeps this runner in sync
  * when MFEs are added or removed without editing this script — mirrors the
- * pattern used by `scripts/run-mfe-type-checks.mjs`.
+ * pattern used by `template-shell/scripts/run-mfe-type-checks.ts`.
  *
  * A directory counts as an MFE project only when it contains a `package.json`
  * that declares a `test:unit` script; otherwise the runner has nothing to
