@@ -11,6 +11,15 @@ each step names the concrete command or file template-mfe ships.
   into that shell and does not scaffold a repository on its own.
 - The screenset/screen the new MFE will contribute to is already decided.
 
+## Read first
+
+Before reading any `dist/*.d.ts` under `node_modules/@gears-frontx/`, read the
+`ecosystem-api-quick-reference` reference artifact in this same bundle - it carries the
+signatures screens actually need (`createSlice`/`registerSlice`, `eventBus`,
+`useAppSelector`, `useApiQuery`/`useApiMutation` with `queryCache`, the endpoint-descriptor
+and mock shapes, the bridge's theme/language properties, and the augmentation-target
+table), verified against those same declarations.
+
 ## One package per run
 
 Steps 1-8 realize a single package. When realizing multiple packages, complete this
