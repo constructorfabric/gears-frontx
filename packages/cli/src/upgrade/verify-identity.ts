@@ -21,7 +21,17 @@
 import { parseSourceSpec } from '../spec-parser/parse';
 
 export type VerifyTemplateIdentityResult =
-  | { ok: true }
+  | {
+      ok: true;
+      /**
+       * Set only where the record was admitted on the pre-manifest-identity
+       * tolerance below, and absent where all three identities agree. The
+       * caller needs the distinction because such a record's identity matches
+       * no marker the resolved content carries, so every owned-region lookup
+       * it drives misses.
+       */
+      legacyRecord?: true;
+    }
   | {
       ok: false;
       reason: 'identity-drift-between-versions';
@@ -68,8 +78,8 @@ export interface VerifyTemplateIdentityInput {
  *
  * @param input - The record's identity and source-spec, plus each resolved
  *   side's manifest-declared identity and the version it was resolved at
- * @returns `ok` when the upgrade may proceed, including the tolerated
- *   pre-manifest-identity case; otherwise the refusal and the identities compared
+ * @returns `ok` when the upgrade may proceed, carrying `legacyRecord` on the
+ *   tolerated pre-manifest-identity case; otherwise the refusal and the identities compared
  */
 export function verifyTemplateIdentity(
   input: VerifyTemplateIdentityInput,
@@ -108,13 +118,15 @@ export function verifyTemplateIdentity(
       // What passes here is an identity the region-marker lookup downstream
       // cannot serve: `computeChangeSet` matches regions by the record's
       // `templateIdentity`, while the content's markers carry the manifest
-      // identity. A `region-union` shared file therefore diffs no region for
-      // such a record, and a marker set that changed identity between the two
-      // versions reads as a removal. Admitting the record is still the right
-      // call — the whole-file diff of every exclusive subtree is correct, and
-      // the alternative is refusing the upgrade outright — but the boundary of
-      // what it buys is this. Tracked in #543.
-      return { ok: true };
+      // identity. No `region-union` region can be compared under such a
+      // record, and where one version's markers happen to carry the recorded
+      // identity and the other's do not, the one-sided match reads as an add
+      // or a removal of a region the template still owns — applying which
+      // would splice the developer's own region out of a shared file. The
+      // discriminant is what makes the caller drop every `region-union` file
+      // from the diff, so admitting the record buys the whole-file diff of its
+      // exclusive subtrees and nothing that could be wrong. Tracked in #543.
+      return { ok: true, legacyRecord: true };
       // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-accept-legacy-record
     }
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-if-legacy-record

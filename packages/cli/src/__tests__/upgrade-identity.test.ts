@@ -30,6 +30,8 @@ describe('verifyTemplateIdentity (inst-cmp-verify-identity)', () => {
   it('passes when the record and both resolved versions name one identity', () => {
     const verdict = verifyTemplateIdentity(AGREEING);
 
+    // The absent `legacyRecord` is the assertion: an agreeing record must not
+    // carry the discriminant that costs the caller its `region-union` files.
     expect(verdict).toEqual({ ok: true });
   });
 
@@ -63,10 +65,10 @@ describe('verifyTemplateIdentity (inst-cmp-verify-identity)', () => {
   });
 
   // inst-cmp-if-legacy-record / inst-cmp-accept-legacy-record
-  it('passes a record whose identity is the repository name its subtree-less source-spec addresses', () => {
+  it('passes a record whose identity is the repository name its subtree-less source-spec addresses, flagged as legacy', () => {
     const verdict = verifyTemplateIdentity({ ...AGREEING, recordedIdentity: 'my-template' });
 
-    expect(verdict).toEqual({ ok: true });
+    expect(verdict).toEqual({ ok: true, legacyRecord: true });
   });
 
   // inst-cmp-else-record-unrecognized / inst-cmp-abort-record-unrecognized
@@ -191,9 +193,9 @@ describe('computeChangeSet identity verification (inst-cmp-verify-identity)', ()
   });
 
   // Pins the boundary the admitted pre-manifest-identity record buys, stated in
-  // this feature's computation DoD: owned regions are matched by the identity
-  // the RECORD carries, while the content's markers carry the DECLARED one, so
-  // the region-union file yields nothing even though its region did change.
+  // this feature's computation DoD: an admitted record's change set covers
+  // exclusive subtrees only, so the region-union file is dropped before any
+  // region is compared even though its region did change between the versions.
   it('yields no entry for a region-union shared file when the record predates manifest identity', async () => {
     const boundaries: OwnershipBoundary = {
       exclusiveSubtrees: [],
@@ -227,11 +229,12 @@ describe('computeChangeSet identity verification (inst-cmp-verify-identity)', ()
     expect(result.changeSet).toMatchObject({ clean: [], conflicts: [] });
   });
 
-  // The other half of the same DoD sentence: where only ONE version carries the
-  // recorded identity in its markers, that side resolves and the other does not,
-  // so a region the target still owns is reported as a removal. Nothing about
-  // this change set is correct, which is the point of pinning it.
-  it('reports a removal for a region-union file when only the baseline markers carry the recorded identity', async () => {
+  // The case the exclusion exists for: a one-sided marker match. Comparing
+  // regions here would resolve the baseline's and miss the target's, reporting
+  // a region the target still owns as a removal that apply would splice out of
+  // the developer's shared file. The exclusion holds whichever identity the
+  // markers carry, so this file is dropped exactly like the two-sided one.
+  it('yields no entry for a region-union file even where one side of it carries the recorded identity', async () => {
     const boundaries: OwnershipBoundary = {
       exclusiveSubtrees: [],
       sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts'] }],
@@ -252,7 +255,8 @@ describe('computeChangeSet identity verification (inst-cmp-verify-identity)', ()
         ]),
       ),
       // The project on disk carries the recorded identity, as a scaffold from
-      // that era wrote it, so the region reads as unmodified rather than conflicting.
+      // that era wrote it: the state under which the removal would read as
+      // unmodified and land as a clean entry rather than as a conflict.
       readProjectFile: async () => regionOwnedBy('my-template'),
       readContentItems: async (entry) => [
         { path: 'package.json', content: regionOwnedBy(entry.ref === '2.0.0' ? '@acme/web-template' : 'my-template') },
@@ -261,8 +265,6 @@ describe('computeChangeSet identity verification (inst-cmp-verify-identity)', ()
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.changeSet.clean).toEqual([
-      { kind: 'remove', path: 'package.json', content: undefined, regionKey: 'scripts' },
-    ]);
+    expect(result.changeSet).toMatchObject({ clean: [], conflicts: [] });
   });
 });

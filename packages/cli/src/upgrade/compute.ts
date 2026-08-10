@@ -128,6 +128,13 @@ export async function computeChangeSet(
   }
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-verify-identity
 
+  // A record admitted on the pre-manifest-identity tolerance names an identity
+  // the resolved content's region markers do not carry, so every owned-region
+  // lookup below is answered from the wrong key. What the region diff would
+  // report for such a record is not a weaker result but a wrong one, which is
+  // why the flag exists rather than being inferred from an empty region.
+  const recordPredatesManifestIdentity = identityVerdict.legacyRecord === true;
+
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-diff-files
   // Manifests are still read to confirm each is well-formed and to obtain the
   // declared ownership boundary before diffing; they carry no content —
@@ -165,6 +172,16 @@ export async function computeChangeSet(
 
     // @cpt-begin:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-diff-files
     if (mergeStrategy === 'region-union') {
+      // @cpt-begin:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-skip-region-union-legacy
+      // Leaving the file out entirely is the only outcome that cannot be
+      // wrong for a pre-manifest-identity record: its identity matches no
+      // marker in the content, so a comparison here reads one side's region as
+      // absent and reports a region the template still owns as added or
+      // removed. An empty change set asks the developer to migrate the
+      // record's identity; a remove-only one deletes the region on approval.
+      if (recordPredatesManifestIdentity) continue;
+      // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-skip-region-union-legacy
+
       // `region-union` shared file — diff ONLY within this template's owned
       // marker-delimited region(s); co-owning templates' regions are never
       // compared or touched.
