@@ -76,17 +76,30 @@ to mount into an extension domain).
 - Do not add Redux/host-store imports inside the MFE; MFEs stay isolated and reach
   state only through `@gears-frontx/react`'s `createSlice`/`registerSlice` and through
   the bridge - shared properties in, events out.
-- A screen's business state lives in the MFE's own state layers, not in the component.
-  Everything user-visible behavior reads or writes - form outcomes, lists,
-  session/status flags, dialog open state - belongs to the slice (registered via
-  `registerSlice`), is reached through actions that emit events, and is dispatched
-  only from effects. Component-local `useState` holds uncommitted input drafts and
-  bridge-delivered values, and nothing else. This is the default architecture for a
-  screen that has behavior, not one option among several; a purely presentational
-  screen needs no flux.
-- Fill the skeleton's `slices/`, `actions/`, `effects/`, and `events/` files for every
-  screen that has behavior - they are the state layer, not anchors to leave empty. An
-  empty slice behind a working screen means the architecture was bypassed.
+- A screen's CLIENT-owned state lives in the MFE's own state layers, not in the
+  component. Everything the user changes that no server owns - form outcomes,
+  session/status flags, dialog open state, selection, a locally ordered or filtered
+  view - belongs to the slice (registered via `registerSlice`), is reached through
+  actions that emit events, and is dispatched only from effects. Component-local
+  `useState` holds uncommitted input drafts and bridge-delivered values, and nothing
+  else. This is the default architecture for a screen that has client-owned state, not
+  one option among several.
+- SERVER-owned state does NOT go in a slice. Data that is read from and written through
+  an API service - the fetch/mutate/invalidate cycle - lives in the shared query cache,
+  reached through `useApiQuery` and `useApiMutation`. That is the pattern demo-mfe's
+  Profile screen ships, it is legitimate, and a screen following it is not bypassing the
+  architecture: a slice mirroring server data would be a second copy of it, with its own
+  staleness. A list is server-owned when a server returns it and client-owned when the
+  user builds it, so the question is who owns the data, never what shape it has.
+- A screen with both kinds uses both, each where it belongs: the query cache for what
+  the API owns, the slice for what the user owns. Deleting the skeleton's `slices/`,
+  `actions/`, `effects/`, and `events/` files is right ONLY when the screen has no
+  client-owned state at all. Record that call in one sentence - in the package's README
+  or the screen component's doc comment - naming which side owns the state and why, so
+  the next reader sees a decision rather than a missing layer.
+- Fill those four files for every screen that does have client-owned state - they are
+  the state layer, not anchors to leave empty. An empty slice behind a screen whose
+  user-owned state sits in `useState` means the architecture was bypassed.
 - Do not hand-edit `public/generated-mfe-manifests.json`; it is a generated artifact -
   always regenerate via `npm run generate:mfe-manifests`.
 - This skill does not cover ecosystem-level MFE runtime concepts (registration,
