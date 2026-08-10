@@ -44,6 +44,30 @@ export interface MenuProps {
  */
 export const EMPTY_STATE_GRACE_MS = 2000;
 
+/**
+ * Test id of the menu item that mounts `extensionId`.
+ *
+ * This is a verification API, not a styling hook: an unattended browser run
+ * clicks screens through it, so the value is part of what the host promises
+ * and may not be renamed to suit a stylesheet. Nothing in the app selects on
+ * it. Without a stable handle a run addresses menu items through
+ * accessibility references, which are re-issued on every navigation and every
+ * theme switch, so each click costs a snapshot taken only to learn the
+ * reference again.
+ *
+ * The extension id goes in verbatim, and it is the extension id rather than
+ * `presentation.route` for two reasons. It is the identity the registry keys
+ * on - the same value this component already uses as the React key and as the
+ * mount subject - so two menu items cannot carry one id. The route is
+ * presentation metadata beside it: nothing stops two extensions declaring the
+ * same route, and an extension may declare none at all, which the click
+ * handler below already allows for. A route-derived id could therefore either
+ * collide or collapse to the bare prefix. Verbatim also means no slug step,
+ * which is its own collision risk - `a.b` and `a-b` slug to one string, and
+ * extension ids are built from punctuation a slug would flatten.
+ */
+export const menuItemTestId = (extensionId: string): string => `menu-item-${extensionId}`;
+
 export const Menu: React.FC<MenuProps> = ({ children }) => {
   const menuState = useAppSelector((state) => state['layout/menu'] as MenuState | undefined);
   const app = useFrontX();
@@ -129,6 +153,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
             return (
               <SidebarMenuItem key={ext.id}>
                 <SidebarMenuButton
+                  data-testid={menuItemTestId(ext.id)}
                   isActive={isActive}
                   onClick={() => handleMenuItemClick(ext)}
                   tooltip={collapsed ? pres.label : undefined}

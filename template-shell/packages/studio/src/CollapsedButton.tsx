@@ -6,6 +6,7 @@ import { useDraggable } from './hooks/useDraggable';
 import { BUTTON_SIZE, STORAGE_KEYS } from './types';
 import { GlassmorphicButton } from './uikit/composite/GlassmorphicButton';
 import { StudioIcon } from './uikit/icons/StudioIcon';
+import { STUDIO_EXPAND_TESTID } from './testIds';
 
 interface CollapsedButtonProps {
   toggleCollapsed: () => void;
@@ -46,6 +47,7 @@ export const CollapsedButton: React.FC<CollapsedButtonProps> = ({ toggleCollapse
       }}
     >
       <GlassmorphicButton
+        data-testid={STUDIO_EXPAND_TESTID}
         icon={<StudioIcon className="w-6 h-6 text-foreground" />}
         onMouseDown={handleButtonMouseDown}
         onClick={handleButtonClick}
