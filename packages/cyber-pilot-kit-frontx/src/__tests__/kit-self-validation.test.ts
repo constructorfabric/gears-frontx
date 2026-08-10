@@ -415,4 +415,63 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
   it('names no concrete template, solution, or framework in the routing document', () => {
     expect(findForbiddenSolutionName(shippedBody(ROUTING_ID))).toBeUndefined();
   });
+
+  // The scaffolding flow's verification is accounted for by a checklist shipped
+  // beside the skill: the skill holds the mechanics, the checklist holds what
+  // those mechanics have to establish, and the report walks its categories.
+  // Three things can break that arrangement silently, so each is asserted here.
+  describe('verification checklist resource', () => {
+    const CHECKLIST_ID = 'frontx_verification_checklist';
+
+    // Studio infers `kind` from a source whose file name ends in `checklist.md`
+    // (`_resource_kind_from_path`, studio engine v1.6.2). A rename to any other
+    // file name would leave the declared kind and the inferred one disagreeing,
+    // which no other assertion in this suite would notice.
+    it('is declared as a non-public checklist whose file name backs the kind inference', () => {
+      const resource = resourceById(CHECKLIST_ID);
+
+      expect(resource).toMatchObject({
+        kind: 'checklist',
+        type: 'file',
+        source: 'skills/project-scaffolding/verification-checklist.md',
+      });
+      // Absent rather than false: Studio rejects `public = true` for this kind
+      // outright, so the key is left off exactly as it is for frontx_guidelines.
+      expect(resource?.public).toBeUndefined();
+      expect(resource?.source.endsWith('checklist.md')).toBe(true);
+    });
+
+    // The format of record for a Studio checklist: MUST HAVE / MUST NOT HAVE
+    // partitions, and every item carrying a severity from the document's own
+    // dictionary. An item added without one reads as unprioritized and gives a
+    // report no basis for deciding whether a failure blocks.
+    it('partitions into MUST HAVE / MUST NOT HAVE and gives every item a declared severity', () => {
+      const body = shippedBody(CHECKLIST_ID);
+
+      expect(body).toContain('\n# MUST HAVE\n');
+      expect(body).toContain('\n# MUST NOT HAVE\n');
+
+      const items = [...body.matchAll(/^### (VER-[A-Z-]*\d{3}): .+\n\*\*Severity\*\*: (\w+)$/gm)];
+      const headings = [...body.matchAll(/^### (VER-[A-Z-]*\d{3}):/gm)];
+
+      // Every item heading matched the stricter pattern, so none is missing the
+      // severity line that has to sit directly under it.
+      expect(items.length).toBe(headings.length);
+      expect(items.length).toBeGreaterThan(0);
+      for (const [, id, severity] of items) {
+        expect(['CRITICAL', 'HIGH', 'MEDIUM'], `${id} carries severity "${severity}"`).toContain(severity);
+      }
+    });
+
+    // The wiring is what makes the checklist load-bearing rather than a file
+    // nobody opens: Step 7 names it as the browser walk's definition of done,
+    // and Step 8 requires the per-category status walk over it.
+    it('is named by the scaffolding document as the walk definition of done and as the report status walk', () => {
+      const body = shippedBody(SCAFFOLDING_ID);
+
+      expect(body).toContain('verification-checklist.md');
+      expect(body).toContain(CHECKLIST_ID);
+      expect(body).toContain('per-category status walk');
+    });
+  });
 });

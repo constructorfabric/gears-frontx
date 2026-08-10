@@ -291,6 +291,19 @@ checks exist stays the covering skill's to say, and nothing below adds one or
 stands in for one. What follows is how the browser is driven and what the run
 has to report - which no template declares and every browser run needs.
 
+**`verification-checklist.md`, beside this document, is the browser walk's
+definition of done.** This step is the mechanics: how the browser is driven, and
+what each incident behind each rule cost the run that learned it. That file is the
+accounting layer over the same mechanics - the categories a claim has to satisfy,
+each with a stable id, and every item in it tracing back to a rule written out
+here. It adds no requirement this step does not already carry.
+
+Read it before the walk, so the walk is driven toward what will be accounted for,
+and walk it again before the report is composed. Step 8 carries its per-category
+status, and a category the report leaves out fails there. The kit declares it as
+the `frontx_verification_checklist` resource, so an installed copy sits beside an
+installed copy of this document.
+
 **The escape hatches this step carries, indexed.** Each is written out in full
 at the rule or sub-step named. A run that hits one of these failures goes
 straight to it rather than deriving a replacement:
@@ -834,8 +847,32 @@ Report, in this order:
   the declared route it was deep-linked at, the screen that mounted, and the
   pathname read back after the menu click. A report silent on routing reads as a
   surface nobody exercised, because that is what it is;
+- **the per-category status walk of `verification-checklist.md`**, written out
+  below;
 - the residual work - only the intent that no applied template's ground contains
   and no activated skill covers.
+
+**Walk every category of the checklist, one line each.** The file beside this
+document partitions the browser walk into categories with stable ids, and the
+report states each one's outcome in the form that file's Reporting section fixes:
+
+```
+<ID>: PASS | FAIL (<what the run did not establish>) | N/A (<why out of reach>)
+```
+
+Take the categories in the order the checklist lists them and leave none out.
+**An unmentioned category is a failure of the report, not of the run** - the run
+may well have satisfied it, and a report that does not say so has not established
+that it did. A blanket sentence covering several categories at once is not a walk:
+each id gets its own line, and a PASS is claimed only where this report carries
+the evidence that category's items ask for. `N/A` is available only for the
+categories the checklist's own Applicability section admits it for, with the
+reason; a category the run skipped is a FAIL.
+
+Prose alone did not carry this. Two runs re-derived facts that were sitting in
+this document, already read, because nothing made them account for each one by
+name. Walking a fixed list of ids is what makes an omission visible - to the run
+writing the report, and to the developer reading it.
 
 **Publish only numbers a command printed.** Test counts, lint counts, file
 counts: find the summary line the command printed, read the figure off that line,
