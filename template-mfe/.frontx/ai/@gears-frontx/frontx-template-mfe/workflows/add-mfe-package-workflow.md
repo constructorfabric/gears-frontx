@@ -102,6 +102,11 @@ failure it ever caught per unit was local to the new package (a TS2322 in its ow
      - `preview`: `vite preview --port {port}`
    - `src-app/mfe_packages/{screenset}-mfe/vite.config.ts`:
      - Module Federation `name`: `{screenset}Mfe` (camelCase)
+   - `src-app/mfe_packages/{screenset}-mfe/README.md`: rewrite it to name the new
+     package and its screens - the title, one line per screen, and how to run the
+     package's tests. The copied file still opens `# Blank MFE Template` and instructs
+     the reader to `cp -r _blank-mfe`, so leaving it ships template residue into a
+     product package.
 
 4. **Rewrite `mfe.json` GTS IDs**
    - Replace the manifest ID, every entry ID, and every extension ID using
@@ -243,6 +248,13 @@ failure it ever caught per unit was local to the new package (a TS2322 in its ow
    5. Record the outcome in `<project>/.frontx/verification-coverage.md`: one row per
       screen and theme, naming what was opened and what was observed. A screen with no
       row there counts as unverified regardless of what was on the display.
+
+   Wherever those steps shell out to a node-based CLI and parse its output, set
+   `NODE_NO_WARNINGS=1` and filter stderr rather than taking the last line - node's
+   deprecation warnings interleave with the values and read as values themselves. One
+   run split every browser-driver result on its last line, took
+   `(Use node --trace-warnings ...)` for a theme label, and produced a whole passing
+   walk that never happened plus a corrupted routing record.
 
 ## Rollback
 
