@@ -253,3 +253,68 @@ without setting the native `disabled` property, so a `:disabled` selector misses
 Card's slots stay DIRECT children - the card's `gap` falls between them, so a `<form>`
 wrapped around them spaces nothing; put the form inside a slot. Skeleton carries no
 loading semantics - `role="status"` and `aria-busy` belong on the region around it.
+
+## Screen skeleton (edit, do not re-derive)
+
+Copy this shape and edit the names. Every signature in it is the one the packages
+declare at this revision; re-deriving them costs a red gate cycle each.
+
+```tsx
+import React, { useState } from 'react';  // the default import is what puts React.FormEvent in scope
+import { apiRegistry, useApiMutation, useApiQuery, useAppSelector } from '@gears-frontx/react';
+import { Button, Card, CardContent, Field, FieldError, FieldLabel, Input } from '@gears-frontx/ui-kit';
+import { BillingApiService } from '../../api/BillingApiService';
+import type { GetStatusResponse } from '../../api/types';
+import { requestSave } from '../../actions/homeActions';
+
+export const HomeScreen = () => {
+  const service = apiRegistry.getService(BillingApiService);
+  const [name, setName] = useState('');  // uncommitted draft - the ONLY thing useState holds
+  // The outcome the screen keeps showing after the mutation settles is client-owned.
+  const status = useAppSelector((state) => state['billing/home']?.status);
+
+  const { data, isLoading, isError, error } = useApiQuery(service.getStatus);  // TData from the descriptor - narrow, never cast
+
+  // ApiMutationResult has exactly: mutate, mutateAsync, isPending, error, data, reset.
+  const { mutateAsync, isPending } = useApiMutation<GetStatusResponse, Error, { name: string }, { snapshot?: GetStatusResponse }>({
+    endpoint: service.saveName,
+    // MutationCallbackContext ({ queryCache }) is always the LAST argument.
+    onMutate: async (_variables, { queryCache }) => {
+      await queryCache.cancel(service.getStatus);
+      return { snapshot: queryCache.get<GetStatusResponse>(service.getStatus) };
+    },
+    onError: (_error, _variables, context, { queryCache }) => {
+      if (context?.snapshot) queryCache.set(service.getStatus, context.snapshot);
+    },
+    onSettled: async (_data, _error, _variables, _context, { queryCache }) => {
+      await queryCache.invalidate(service.getStatus);
+    },
+  });
+
+  if (isLoading) return <div role="status" aria-busy="true" data-testid="screen-loading" />;
+  if (isError) return <p data-testid="screen-status-error">{error?.message}</p>;
+
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await mutateAsync({ name });
+    requestSave(name);  // the action emits, the effect dispatches, the slice keeps the outcome
+  };
+
+  return (
+    <Card>
+      <CardContent>
+        <form onSubmit={onSubmit}>
+          <Field name="name">
+            <FieldLabel>Name</FieldLabel>
+            <Input required value={name} onValueChange={setName} data-testid="screen-name-input" />
+            {/* Without `match` a FieldError shows for any invalid state. */}
+            <FieldError match="valueMissing">Name is required.</FieldError>
+          </Field>
+          <Button type="submit" disabled={isPending} data-testid="screen-submit">Save</Button>
+        </form>
+        <p data-testid="screen-status">{status ?? data?.message}</p>
+      </CardContent>
+    </Card>
+  );
+};
+```
