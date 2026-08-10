@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parse as parseToml } from 'smol-toml';
@@ -553,6 +554,111 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       expect(JSON.parse(fs.readFileSync(path.join(capdir, 'verify-walk.json'), 'utf8')).ok).toBe(false);
 
       fs.rmSync(capdir, { recursive: true, force: true });
+    });
+
+    // The runner evaluates every script in one persistent page scope, so the
+    // prelude is re-entered on each call rather than once per run. Declared
+    // lexically, its helpers throw "already been declared" from the second eval
+    // onward, and the callers read that throw as an element holding nothing:
+    // three agent hosts driven from identical sources each reported empty theme
+    // labels on every theme rather than the redeclaration underneath.
+    it('installs its page helpers as globals, so evaluating the prelude twice in one scope does not throw', () => {
+      const preludeMatch = /const PRELUDE = `([\s\S]*?)`;/.exec(fs.readFileSync(driverPath(), 'utf8'));
+      if (preludeMatch === null) throw new Error('the driver no longer carries a PRELUDE template literal');
+      const prelude = preludeMatch[1];
+
+      // Column zero is the prelude's own top level; the indented declarations
+      // are inside the helper bodies, where a fresh scope makes them safe.
+      expect(prelude).not.toMatch(/^(?:const|let|class)\b/m);
+
+      const context = vm.createContext({});
+      vm.runInContext(prelude, context);
+
+      expect(() => vm.runInContext(prelude, context)).not.toThrow();
+      expect(vm.runInContext('typeof __find', context)).toBe('function');
+      expect(vm.runInContext('__MISSING', context)).toBe('__verify_walk_missing__');
+    });
+
+    // A refused eval and an element holding an empty string leave the same empty
+    // stdout behind. Reading only stdout made the first indistinguishable from
+    // the second, and a run spent its budget diagnosing a rendering race that
+    // was a redeclaration throw. The refusal now has a stage of its own.
+    it('records a refused browser eval as an eval-error failure carrying the runner stderr', () => {
+      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-eval-'));
+
+      // The driver reaches the browser only through `npx agent-browser`, so a
+      // stub earlier on PATH is the whole of the failure injection: no real
+      // browser is launched and nothing on the machine is touched.
+      const stubDir = path.join(workdir, 'bin');
+      fs.mkdirSync(stubDir, { recursive: true });
+      fs.writeFileSync(path.join(stubDir, 'npx'),
+        "#!/bin/sh\necho \"SyntaxError: Identifier '__find' has already been declared\" >&2\nexit 1\n",
+        { mode: 0o755 });
+
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        // A data URL is the stand-in for a served origin: it answers the host
+        // probe, which is all the probe asks of it, and it keeps this test off
+        // the network and off any port a parallel run might also want.
+        '--host', 'data:text/plain,ok',
+        '--themes', 'light',
+        '--screens', 'orders:/orders:screen-orders',
+        '--capdir', path.join(workdir, 'shots'),
+        '--switcher', 'theme-switcher',
+        '--theme-option', 'theme-option-{theme}',
+        '--menu', 'nav-{screen}',
+        // Port 1 answers nothing, so the driver takes its no-debugger path and
+        // never asks the stub to attach to a browser.
+        '--cdp-port', '1',
+        '--ready-timeout', '5000',
+      ], { encoding: 'utf8', env: { ...process.env, PATH: `${stubDir}${path.delimiter}${process.env.PATH ?? ''}` } });
+
+      expect(run.status).not.toBe(0);
+
+      const parsed = JSON.parse(run.stdout) as { ok: boolean; failures: { stage: string; detail: string }[] };
+      const evalErrors = parsed.failures.filter((failure) => failure.stage === 'eval-error');
+
+      expect(parsed.ok).toBe(false);
+      expect(evalErrors.length).toBeGreaterThan(0);
+      expect(evalErrors[0].detail).toContain("Identifier '__find' has already been declared");
+      // The readiness poll gives up on a refused eval rather than re-asking every
+      // 400ms: unguarded, the 5s budget alone would file a dozen identical
+      // records and bury the reason under them.
+      expect(evalErrors.length).toBeLessThan(10);
+      // The caller of a refused eval gets a sentinel of its own rather than an
+      // empty string or the missing-element marker, so the theme that never
+      // opened says why in its own record too.
+      const themeSwitch = parsed.failures.find((failure) => failure.stage === 'theme-switch');
+      expect(themeSwitch?.detail).toContain('__verify_walk_eval_error__');
+
+      fs.rmSync(workdir, { recursive: true, force: true });
+    });
+
+    // The runner resolves a relative screenshot path against its own temporary
+    // working directory and still reports the write as a success, so captures
+    // taken under a relative capdir land where neither the byte-compare nor the
+    // coverage cells look. Every path the driver hands out is absolute.
+    it('resolves a relative capture directory against the caller, not the runner', () => {
+      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-cwd-'));
+
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        '--host', 'http://127.0.0.1:1',
+        '--themes', 'light',
+        '--screens', 'orders:/orders:screen-orders',
+        '--capdir', 'shots',
+        '--switcher', 'theme-switcher',
+        '--theme-option', 'theme-option-{theme}',
+        '--menu', 'nav-{screen}',
+      ], { encoding: 'utf8', cwd: workdir });
+
+      const parsed = JSON.parse(run.stdout) as { capdir: string };
+
+      expect(path.isAbsolute(parsed.capdir)).toBe(true);
+      expect(path.basename(parsed.capdir)).toBe('shots');
+      expect(fs.existsSync(path.join(workdir, 'shots', 'verify-walk.json'))).toBe(true);
+
+      fs.rmSync(workdir, { recursive: true, force: true });
     });
   });
 });

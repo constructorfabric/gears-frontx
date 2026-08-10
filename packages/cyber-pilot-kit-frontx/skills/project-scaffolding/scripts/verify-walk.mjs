@@ -148,8 +148,16 @@ function lastLine(stdout) {
 // see in: a plain CSS fill matches nothing, types into whatever held focus, and
 // still reports success. Every read and every drive in this driver descends
 // through shadowRoot instead.
+//
+// Every name here is installed on globalThis rather than declared. The runner
+// evaluates each script in the page's one persistent global scope, so a
+// top-level `const __find` from the first eval is still bound when the second
+// arrives and the runtime refuses it with "Identifier '__find' has already been
+// declared" - a page-side throw that reads, through the callers, as an element
+// holding an empty string. `??=` installs the helper once per page lifetime and
+// a reload reinstalls it, so no eval after the first has anything to redeclare.
 const PRELUDE = `
-const __find = (id) => {
+globalThis.__find ??= (id) => {
   const sel = '[data-testid="' + id + '"]';
   const walk = (root) => {
     const hit = root.querySelector(sel);
@@ -161,18 +169,48 @@ const __find = (id) => {
   };
   return walk(document);
 };
-const __MISSING = '__verify_walk_missing__';
+globalThis.__MISSING ??= '__verify_walk_missing__';
 `;
+
+// Returned in place of a value the eval never produced. Distinct from
+// __MISSING on purpose: "the page holds no such element" and "the script never
+// ran" call for different repairs, and collapsing both into an empty string is
+// what sent a run hunting a rendering race that did not exist.
+const EVAL_ERROR = '__verify_walk_eval_error__';
+
+// A page-side throw reaches the driver either as a non-zero exit or as a line
+// on stderr, depending on the runner build, and in both cases stdout is empty -
+// indistinguishable from a script that legitimately returned nothing. Both
+// shapes are treated as a failed eval here, at the one place that can still see
+// the status; a caller reading only stdout has already lost the difference.
+// The launcher's own `npm warn exec` chatter does not carry an Error name.
+const ERROR_SHAPED = /\b\w*Error\b/;
 
 function evaluate(script) {
   const proc = browser(['eval', '--stdin'], `${PRELUDE}\n${script}`);
-  return { status: proc.status, value: lastLine(proc.stdout), stderr: proc.stderr };
+  const stderr = (proc.stderr ?? '').trim();
+  if (proc.status !== 0 || ERROR_SHAPED.test(stderr)) {
+    fail('eval-error', `browser eval exited ${proc.status}: ${stderr || '(nothing on stderr)'}`, { script });
+    return EVAL_ERROR;
+  }
+  return lastLine(proc.stdout);
 }
 
-const exists = (testid) => evaluate(`(() => (__find(${JSON.stringify(testid)}) ? 'yes' : 'no'))()`).value === 'yes';
+// 'yes' | 'no' | EVAL_ERROR. The tri-state exists for waitFor: a poll that
+// cannot tell a refused eval from an absent element keeps asking until the
+// timeout and files the same failure on every turn.
+const probeExists = (testid) => evaluate(`(() => (__find(${JSON.stringify(testid)}) ? 'yes' : 'no'))()`);
+
+const exists = (testid) => probeExists(testid) === 'yes';
 
 const readText = (testid) =>
-  evaluate(`(() => { const el = __find(${JSON.stringify(testid)}); return el ? (el.textContent || '').trim() : __MISSING; })()`).value;
+  evaluate(`(() => { const el = __find(${JSON.stringify(testid)}); return el ? (el.textContent || '').trim() : __MISSING; })()`);
+
+// Why a driven step did not take. A missing control and a refused eval are
+// different repairs, and one shared "not found" message is what made a broken
+// eval look like a screen that had not rendered yet.
+const outcomeReason = (outcome) =>
+  (outcome === EVAL_ERROR ? 'the eval did not run' : 'no control carries that data-testid');
 
 // A synthetic .click() carries none of the pointer sequence around it, so a
 // control listening for pointerdown sees nothing and the screen stays as it
@@ -191,7 +229,7 @@ const click = (testid) => evaluate(`(() => {
   el.dispatchEvent(new MouseEvent('mouseup', up));
   el.dispatchEvent(new MouseEvent('click', up));
   return 'dispatched';
-})()`).value;
+})()`);
 
 // The fill returns the field's own value afterwards, so the caller reads back
 // what landed instead of believing an exit report. The native value setter is
@@ -205,7 +243,7 @@ const fill = (testid, value) => evaluate(`(() => {
   el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
   el.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   return el.value;
-})()`).value;
+})()`);
 
 // Synchronous by design: the whole driver is a straight line of blocking calls,
 // and a timer would need the loop to be free, which it is not between polls.
@@ -218,7 +256,12 @@ const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 
 function waitFor(testid, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    if (exists(testid)) return true;
+    const probe = probeExists(testid);
+    if (probe === 'yes') return true;
+    // A refused eval refuses again on the next turn, so polling on would spend
+    // the whole budget filing the same failure over and over. The first one is
+    // already recorded and carries the reason.
+    if (probe === EVAL_ERROR) return false;
     if (Date.now() >= deadline) return false;
     sleep(400);
   }
@@ -317,6 +360,11 @@ for (const required of ['host', 'themes', 'screens', 'capdir', 'switcher', 'them
   }
 }
 
+// Resolved before anything reads it, and every capture path is built from it,
+// because the runner takes a relative screenshot path as relative to its own
+// temporary working directory and reports the write as a success. The files
+// land somewhere the byte-compare and the coverage cells never look, and the
+// run reads as a walk that captured nothing it can point at.
 const capdir = path.resolve(opts.capdir);
 const jsonOut = path.resolve(opts['json-out'] ?? path.join(capdir, 'verify-walk.json'));
 const coveragePath = path.resolve(opts.coverage ?? path.join(capdir, 'verification-coverage.md'));
@@ -489,10 +537,11 @@ for (const theme of result.themeSet.themes) {
           const outcome = click(action.testid);
           const ok = outcome === 'dispatched';
           record.readBacks.push({ screen: screen.name, state: declared.state, action: 'click', testid: action.testid, actual: outcome, ok });
-          if (!ok) fail('click', `control "${action.testid}" was not found under theme "${theme}"`);
+          if (!ok) fail('click', `control "${action.testid}" was not clicked under theme "${theme}": ${outcomeReason(outcome)}`);
         } else if (action.kind === 'read') {
           const text = readText(action.testid);
-          const ok = action.contains ? text.includes(action.contains) : text !== '__verify_walk_missing__';
+          const ok = text !== EVAL_ERROR
+            && (action.contains ? text.includes(action.contains) : text !== '__verify_walk_missing__');
           record.readBacks.push({ screen: screen.name, state: declared.state, action: 'read', testid: action.testid, expected: action.contains ?? null, actual: text, ok });
           if (!ok) fail('read', `reading "${action.testid}" under theme "${theme}" gave "${text}"`);
         } else {
