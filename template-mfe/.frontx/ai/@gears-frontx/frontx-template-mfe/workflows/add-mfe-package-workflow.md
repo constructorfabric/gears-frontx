@@ -23,11 +23,17 @@ table), verified against those same declarations.
 ## One package per run
 
 Steps 1-8 realize a single package. When realizing multiple packages, complete this
-workflow - through a green step 7 - for the current package before starting the next
-package's copy step (step 2). Interleaving two packages' authoring defers every failure
-into one mixed debug block, which past runs paid for and per-unit gates repeatedly
+workflow - through a green TIER 1 of step 7 - for the current package before starting the
+next package's copy step (step 2). Interleaving two packages' authoring defers every
+failure into one mixed debug block, which past runs paid for and per-unit gates repeatedly
 avoided: once the first package validates, the second is strictly cheaper, because it
 transfers a pattern already proven against the gates.
+
+Tier 1 is the whole per-unit gate; tier 2 runs ONCE, after the last package, and closes
+the run. Do not run tier 2 per package. Timing runs measured the repo-wide quartet at
+10-11 minutes of npm time for a two-package scaffold - 28% of the whole run - and every
+failure it ever caught per unit was local to the new package (a TS2322 in its own
+`mocks.ts`, for instance), which tier 1 catches in under a minute.
 
 ## Steps
 
@@ -50,7 +56,7 @@ transfers a pattern already proven against the gates.
    ```
    A copied `node_modules` carries `_blank-mfe`'s own resolution state into the new
    package, where it shadows the workspace install. An MFE resolves `@gears-frontx/*`
-   through `node_modules` rather than through path mapping (step 7), so `tsc` then
+   through `node_modules` rather than through path mapping (step 6), so `tsc` then
    type-checks the new package against the skeleton's tree and reports resolution
    errors that no edit to the new package's own files can clear.
 
@@ -121,48 +127,74 @@ transfers a pattern already proven against the gates.
      `_blank-mfe`'s `src/slices/homeSlice.ts` names `@gears-frontx/state` for exactly
      this.
 
-6. **Regenerate manifests**
+6. **Build the project's outputs once per clone**
    ```bash
-   npm run build:package    # prerequisite - see step 7
-   npm run build:packages   # prerequisite - see step 7
-   npm run build:mfes
-   npm run generate:mfe-manifests
+   npm run build:package    # tsup, produces dist-lib
+   npm run build:packages   # produces packages/*/dist
    ```
+   Every gate below - the new package's own build and type-check in tier 1, and
+   `build:mfes`, `type-check` and `test:unit` in tier 2 - needs these outputs to exist
+   first, whether invoked at the project root or inside the new package. This is the one
+   home for that rule; the tiers point back here rather than restating it.
+
+   `build:mfes` needs `dist-lib`: every MFE's `vite.config.ts` imports `frontxMfGts` from
+   `@gears-frontx/frontx-template-shell/build/mf-gts`, which the root package exports as
+   `./dist-lib/build/mf-gts.js`, so without `build:package` the build dies while loading
+   the first MFE's Vite config with `ERR_MODULE_NOT_FOUND ... dist-lib/build/mf-gts.js`.
+   `type-check` and `test:unit` need `packages/*/dist`: an MFE package's `tsconfig.json`
+   carries no `@gears-frontx/*` path mapping, so `tsc` (and `vitest`) resolve those
+   imports through `node_modules` to each package's built entry there. The shell's
+   `tsconfig.app.json` maps them to `packages/*/src` instead, which is why the shell
+   type-checks on a fresh clone while an MFE reports `TS2307: Cannot find module
+   '@gears-frontx/react'` for every ecosystem import. Run both commands as one
+   prerequisite - the shell's own `build` script orders them exactly this way, ahead of
+   `build:mfes`.
 
 7. **Validate**
+
+   Two tiers. TIER 1 runs per package and is the gate "One package per run" points at;
+   TIER 2 runs once, after the last package.
+
+   **Tier 1 - per unit, scoped to the new package.** Substitute the package's own name
+   from step 3; these are the literal commands, run from the project root:
    ```bash
-   npm run type-check   # the aggregate script - every leg, not type-check:app or type-check:mfe alone
-   npm run lint         # eslint over the whole project
-   npm run test:unit    # the project's whole suite, not only the new package's
-   npm run arch:deps    # dependency-cruiser boundaries, shell-owned script
+   npm run type-check --workspace=@gears-frontx/{screenset}-mfe    # tsc --noEmit against the package's tsconfig
+   npx eslint src-app/mfe_packages/{screenset}-mfe --max-warnings 0
+   npm run test:unit --workspace=@gears-frontx/{screenset}-mfe     # vitest --run --passWithNoTests=false, scoped
+   npm run build --workspace=@gears-frontx/{screenset}-mfe         # vite build + Module Federation manifest enrichment
    ```
+   Under a minute together against a warm tree, versus 10-11 minutes for tier 2,
+   and it catches everything local to the unit: a type error anywhere in the package, a
+   lint error, a failing test of its own. The package build type-checks nothing (Vite
+   strips types through esbuild, and the build exits 0 with a `TS2322` sitting in the
+   package) - it is there to prove the MFE bundles and that its shared-deps and manifest
+   enrichment step completes, which no other tier-1 command exercises.
+
+   Failures here name the package that caused them, which is the point of running them
+   per unit rather than deferring to the aggregate.
+
+   **Tier 2 - once, after the LAST package.** This is what proves cross-package integrity,
+   and ITS numbers are the ones a report may quote; tier 1's are not a substitute:
+   ```bash
+   npm run type-check              # the aggregate script - every leg, not type-check:app or type-check:mfe alone
+   npm run lint                    # eslint over the whole project
+   npm run test:unit               # the project's whole suite, not only the new packages'
+   npm run arch:deps               # dependency-cruiser boundaries, shell-owned script
+   npm run build:mfes              # every MFE, against the final set of packages
+   npm run generate:mfe-manifests  # aggregates into public/generated-mfe-manifests.json
+   ```
+   `generate:mfe-manifests` is what makes the new packages discoverable at runtime, so
+   tier 2 is mandatory before step 8 even for a single-package run.
+
    - Drive interactive `@gears-frontx/ui-kit` components in tests with
      `@testing-library/user-event`, not `fireEvent`. The kit builds Select, Switch and
      their siblings on Base UI, whose pointer handling jsdom does not satisfy from a
      synthetic `fireEvent.click`: the control stays closed or unchanged and the
      assertion fails with nothing to point at. The skeleton ships
      `@testing-library/user-event` in devDependencies for this.
-   - `npm run build:mfes` (step 6), `type-check`, and `test:unit` all require the
-     project's build outputs to exist first - run this pair once per clone, before
-     any of the three, whether you invoke them at the project root or inside the new
-     package:
-     ```bash
-     npm run build:package    # tsup, produces dist-lib
-     npm run build:packages   # produces packages/*/dist
-     ```
-     `build:mfes` needs `dist-lib`: every MFE's `vite.config.ts` imports
-     `frontxMfGts` from `@gears-frontx/frontx-template-shell/build/mf-gts`, which the
-     root package exports as `./dist-lib/build/mf-gts.js`, so without `build:package`
-     the build dies while loading the first MFE's Vite config with
-     `ERR_MODULE_NOT_FOUND ... dist-lib/build/mf-gts.js`. `type-check` and
-     `test:unit` need `packages/*/dist`: an MFE package's `tsconfig.json` carries no
-     `@gears-frontx/*` path mapping, so `tsc` (and `vitest`) resolve those imports
-     through `node_modules` to each package's built entry there. The shell's
-     `tsconfig.app.json` maps them to `packages/*/src` instead, which is why the
-     shell type-checks on a fresh clone while an MFE reports `TS2307: Cannot find
-     module '@gears-frontx/react'` for every ecosystem import. Run both commands as
-     one prerequisite - the shell's own `build` script orders them exactly this way,
-     ahead of `build:mfes`.
+   - Both tiers require step 6's build outputs. A tier-1 run against a tree that never
+     ran them reports `TS2307` for every ecosystem import, which is a missing
+     prerequisite rather than a defect in the new package.
 
 8. **Run and confirm**
    ```bash

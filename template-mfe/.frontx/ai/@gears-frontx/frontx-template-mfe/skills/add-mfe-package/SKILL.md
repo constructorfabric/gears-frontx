@@ -59,13 +59,16 @@ to mount into an extension domain).
    from `@gears-frontx/react`; the MFE's own `init.ts` builds its app instance with
    `createFrontX().use(effects()).use(queryCacheShared()).use(mock()).build()` so it
    joins the host's shared `QueryClient` without owning a second one.
-6. **Regenerate manifests** - run `npm run generate:mfe-manifests` so the host's
-   `public/generated-mfe-manifests.json` picks up the new package; this step is
-   mandatory before the new MFE is discoverable at runtime.
-7. **Verify** - run every command step 7 of the `add-mfe-package-workflow` in this
-   bundle lists, and the build prerequisite it documents; then `npm run dev:all` and
-   run that workflow's step 8 in full - mount check, declared route, menu pathname,
-   every registered theme, and the coverage file it names.
+6. **Regenerate manifests** - `npm run generate:mfe-manifests` makes the new package
+   discoverable at runtime by rewriting the host's
+   `public/generated-mfe-manifests.json`; it runs in the workflow's tier 2, once, after
+   the last package.
+7. **Verify** - run step 7 of the `add-mfe-package-workflow` in this bundle as it tiers
+   the work: the scoped tier-1 commands per package, the repo-wide tier-2 quartet plus
+   `build:mfes`/`generate:mfe-manifests` once after the last one, and the build
+   prerequisite step 6 documents; then `npm run dev:all` and run that workflow's step 8
+   in full - mount check, declared route, menu pathname, every registered theme, and the
+   coverage file it names.
 
 ## Boundaries
 
