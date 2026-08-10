@@ -148,6 +148,11 @@ failure it ever caught per unit was local to the new package (a TS2322 in its ow
      A screen with both kinds uses both. Delete the four flux files only when the screen
      has no client-owned state at all, and say so in one sentence in the package's README
      or the screen's doc comment - see the skill's Boundaries for the full ruling.
+   - Keep a `data-testid` on every interactive control the copy renames or adds, and on
+     the screen's status/result region, following the scaffold's `screen-<control>`
+     scheme. Browser verification in step 7 drives the screen through these ids: a screen
+     renders inside a shadow root, selectors issued from outside it cannot pierce that
+     boundary, and the ids are read from an eval running inside the root.
    - Keep `src/lifecycle.tsx` extending `ThemeAwareReactLifecycle`; keep `init.ts`'s
      plugin chain (`effects()`, `queryCacheShared()`, `mock()`) unless the new MFE has
      a documented reason to diverge.

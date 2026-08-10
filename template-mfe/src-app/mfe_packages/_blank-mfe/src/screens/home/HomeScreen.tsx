@@ -110,6 +110,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
 
   const kitThemeScope = kitThemeScopeFor(theme);
 
+  /*
+   * The `data-testid` attributes below are verification API, not decoration.
+   * A screen renders inside a shadow root, so selectors issued from outside it
+   * cannot reach these nodes; browser verification runs an eval inside the root
+   * and addresses controls by testid. Accessibility-snapshot refs are ephemeral
+   * and have to be re-learned after every navigation, which these ids replace.
+   * Every screen copied from this scaffold inherits the contract: keep a
+   * `screen-<control>` testid on each interactive control and on the status
+   * region, and rename the id with the control rather than dropping it.
+   */
+
   // Show skeleton while translations are loading
   if (loading) {
     return (
@@ -118,10 +129,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
         ref={containerRef}
         className={styles.screen}
         data-theme={kitThemeScope}
+        data-testid="screen-root"
         role="status"
         aria-busy="true"
       >
-        <div className={styles.placeholders}>
+        <div className={styles.placeholders} data-testid="screen-loading">
           <Skeleton className={styles.placeholderTitle} />
           <Skeleton className={styles.placeholderLine} />
         </div>
@@ -141,24 +153,42 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
   let statusCardBody: React.ReactNode;
   if (isStatusLoading) {
     statusCardBody = (
-      <div role="status" aria-busy="true" className={styles.placeholders}>
+      <div
+        role="status"
+        aria-busy="true"
+        className={styles.placeholders}
+        data-testid="screen-status-loading"
+      >
         <Skeleton className={styles.placeholderLine} />
         <Skeleton className={styles.placeholderLineShort} />
         <Skeleton className={styles.placeholderBlock} />
       </div>
     );
   } else if (isStatusError) {
-    statusCardBody = <p className={styles.error}>{statusError?.message}</p>;
+    statusCardBody = (
+      <p className={styles.error} data-testid="screen-status-error">
+        {statusError?.message}
+      </p>
+    );
   } else {
     statusCardBody = (
-      <pre className={styles.payload}>{JSON.stringify(statusData, null, 2)}</pre>
+      <pre className={styles.payload} data-testid="screen-status-payload">
+        {JSON.stringify(statusData, null, 2)}
+      </pre>
     );
   }
 
   return (
-    <div ref={containerRef} className={styles.screen} data-theme={kitThemeScope}>
+    <div
+      ref={containerRef}
+      className={styles.screen}
+      data-theme={kitThemeScope}
+      data-testid="screen-root"
+    >
       <div className={styles.intro}>
-        <h1 className={styles.title}>{t('title')}</h1>
+        <h1 className={styles.title} data-testid="screen-title">
+          {t('title')}
+        </h1>
         <p className={styles.description}>{t('description')}</p>
       </div>
 
@@ -183,26 +213,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
           <dl className={styles.definitions}>
             <div>
               <dt className={styles.term}>{t('domain_id')}</dt>
-              <dd className={styles.value}>{bridge.domainId}</dd>
+              <dd className={styles.value} data-testid="screen-domain-id">
+                {bridge.domainId}
+              </dd>
             </div>
             <div>
               <dt className={styles.term}>{t('instance_id')}</dt>
-              <dd className={styles.value}>{bridge.instanceId}</dd>
+              <dd className={styles.value} data-testid="screen-instance-id">
+                {bridge.instanceId}
+              </dd>
             </div>
             <div>
               <dt className={styles.term}>{t('current_theme')}</dt>
-              <dd className={styles.value}>{theme}</dd>
+              <dd className={styles.value} data-testid="screen-theme">
+                {theme}
+              </dd>
             </div>
             <div>
               <dt className={styles.term}>{t('current_language')}</dt>
-              <dd className={styles.value}>{language}</dd>
+              <dd className={styles.value} data-testid="screen-language">
+                {language}
+              </dd>
             </div>
           </dl>
         </CardContent>
       </Card>
 
       <Card>
-        <CardContent>{statusCardBody}</CardContent>
+        <CardContent data-testid="screen-status">{statusCardBody}</CardContent>
       </Card>
     </div>
   );
