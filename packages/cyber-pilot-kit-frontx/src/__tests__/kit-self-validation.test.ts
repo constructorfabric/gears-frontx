@@ -1,7 +1,9 @@
 // @cpt-algo:cpt-frontx-algo-ai-kit-packaging-manifest-validation:p1
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parse as parseToml } from 'smol-toml';
 import { FORBIDDEN_BODY_NAMES, findForbiddenSolutionName, validateKitManifest } from '../validate-manifest.js';
@@ -472,6 +474,85 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       expect(body).toContain('verification-checklist.md');
       expect(body).toContain(CHECKLIST_ID);
       expect(body).toContain('per-category status walk');
+    });
+  });
+
+  // The theme walk's mechanics ship twice over: as prose in the scaffolding
+  // document, and as a program that performs them. The prose copy did not
+  // survive a change of agent host, which is the whole reason the program
+  // exists, so the wiring that makes it reachable and runnable is asserted here.
+  describe('verification driver resource', () => {
+    const DRIVER_ID = 'frontx_verify_walk';
+    const DRIVER_SOURCE = 'skills/project-scaffolding/scripts/verify-walk.mjs';
+    const driverPath = () => path.join(kitRoot, DRIVER_SOURCE);
+
+    it('is declared as a non-public script resource at the path the skill names', () => {
+      const resource = resourceById(DRIVER_ID);
+
+      expect(resource).toMatchObject({ kind: 'script', type: 'file', source: DRIVER_SOURCE });
+      // Absent rather than false, exactly as for the checklist: Studio rejects
+      // `public = true` outside the skill/agent/rule kinds outright.
+      expect(resource?.public).toBeUndefined();
+    });
+
+    it('ships as an executable node program', () => {
+      expect(fs.readFileSync(driverPath(), 'utf8').startsWith('#!/usr/bin/env node')).toBe(true);
+    });
+
+    // Without this, the driver could ship, validate and still be reached by
+    // nobody: the document is the only thing that sends a run to it.
+    it('is named by the scaffolding document as what the theme walk runs, with hand-driving as the fallback', () => {
+      const body = shippedBody(SCAFFOLDING_ID);
+
+      expect(body).toContain(DRIVER_ID);
+      expect(body).toContain(DRIVER_SOURCE);
+      expect(body).toContain('Hand-authored browser calls are the fallback');
+    });
+
+    it('prints its flag surface and exits 0 on --help', () => {
+      const help = spawnSync(process.execPath, [driverPath(), '--help'], { encoding: 'utf8' });
+
+      expect(help.status).toBe(0);
+      expect(help.stdout).toContain('--capdir');
+      expect(help.stdout).toContain('--themes');
+    });
+
+    // The failure path is the one that matters: a driver that exits 0 on a run
+    // it could not perform hands back a pass nobody established. Against an
+    // origin nothing serves, it must refuse before a browser is involved, and
+    // the refusal must be readable by machine.
+    it('exits non-zero with a well-formed JSON failure record when nothing serves the host', () => {
+      const capdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-'));
+      fs.rmdirSync(capdir); // the driver creates it, and refuses one that already holds files
+
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        '--host', 'http://127.0.0.1:1',
+        '--themes', 'light,dark',
+        '--screens', 'orders:/orders:screen-orders',
+        '--capdir', capdir,
+        '--switcher', 'theme-switcher',
+        '--theme-option', 'theme-option-{theme}',
+        '--menu', 'nav-{screen}',
+      ], { encoding: 'utf8' });
+
+      expect(run.status).not.toBe(0);
+
+      const parsed = JSON.parse(run.stdout) as {
+        ok: boolean;
+        themeSet: { source: string; themes: string[] };
+        failures: { stage: string; detail: string }[];
+      };
+      expect(parsed.ok).toBe(false);
+      expect(parsed.failures[0].stage).toBe('host-probe');
+      // The set's provenance is recorded, so a report cannot claim a hand-typed
+      // set was read out of the host's theme registration.
+      expect(parsed.themeSet).toEqual({ source: 'literal', themes: ['light', 'dark'] });
+      // Written to disk as well as printed: the run's own record survives the
+      // conversation that produced it.
+      expect(JSON.parse(fs.readFileSync(path.join(capdir, 'verify-walk.json'), 'utf8')).ok).toBe(false);
+
+      fs.rmSync(capdir, { recursive: true, force: true });
     });
   });
 });

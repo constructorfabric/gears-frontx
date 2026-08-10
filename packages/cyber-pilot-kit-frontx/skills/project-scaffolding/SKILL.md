@@ -298,11 +298,76 @@ accounting layer over the same mechanics - the categories a claim has to satisfy
 each with a stable id, and every item in it tracing back to a rule written out
 here. It adds no requirement this step does not already carry.
 
-Read it before the walk, so the walk is driven toward what will be accounted for,
-and walk it again before the report is composed. Step 8 carries its per-category
-status, and a category the report leaves out fails there. The kit declares it as
-the `frontx_verification_checklist` resource, so an installed copy sits beside an
-installed copy of this document.
+**Read it in full before the browser walk begins.** It is installed beside this
+document, at `skills/project-scaffolding/verification-checklist.md` under the
+installed kit root, and the kit declares it as the
+`frontx_verification_checklist` resource. Open that path and read it end to end,
+first line to last. **A partial read does not count**: a head, a line limit, an
+excerpt, a section jumped to, or the table of contents read as if it were the
+items. One run read 120 of its 406 lines and asserted every category passed off
+the contents list, which named the categories and not one of the items under
+them. **A PASS line in the report may be written only against items this run
+actually read**, so a checklist read partly is a checklist whose unread items
+cannot be passed. Read it before the walk, so the walk is driven toward what will
+be accounted for, and walk it again before the report is composed. Step 8 carries
+its per-category status, and a category the report leaves out fails there.
+
+**The theme walk runs the shipped driver.** The kit installs it as the
+`frontx_verify_walk` resource, beside this document at
+`skills/project-scaffolding/scripts/verify-walk.mjs` under the installed kit
+root. Resolve that path from the same installed kit root this document was read
+from, and run it:
+
+```bash
+node <installed kit root>/skills/project-scaffolding/scripts/verify-walk.mjs \
+  --host <dev server origin> \
+  --themes registry --theme-registry <file the registered set was read into> \
+  --screens <name>:<declared route>:<that screen's ready testid>,... \
+  --capdir "$CAPDIR" \
+  --switcher <the theme switcher's testid> \
+  --theme-option '<the per-theme option testid, with {theme} in it>' \
+  --menu '<a screen menu item testid, with {screen} in it>' \
+  --panel-expand <the dev panel's expand testid> \
+  --panel-collapse <the dev panel's collapse testid> \
+  --states <file of declared per-screen interactions> \
+  --coverage <targetDir>/.frontx/verification-coverage.md
+```
+
+`node <that path> --help` prints the whole flag surface. `$CAPDIR` is the
+run-unique capture directory made under the capture rule below, and the driver
+refuses a directory that already holds files rather than write into another
+run's captures. The driver exits 0 only when every theme opened against its own
+switcher label, every read-back agreed, and every declared capture landed; on
+any failure it exits non-zero with the reason in its JSON result, and it never
+retries on its own.
+
+The JSON result is what the coverage table and the report are filled from: it
+carries, per theme, whether the switcher label confirmed the theme opened, every
+capture file with the state it was taken at, every byte-compare verdict with the
+`cmp` exit code that produced it, every fill and click read-back with the value
+read off the page afterwards, and the failure list. It also records where the
+theme set came from - the registry file, or a set typed in by hand - so a claim
+that the set came from the host's theme registration is a claim the result file
+either backs or contradicts.
+
+Everything from here to the end of this step is **the specification the driver
+implements** - which mechanic exists, and what each one cost the run that learned
+it. Read it to know what the driver is doing on your behalf, to compose its
+arguments, and to drive by hand when you have to.
+
+**Hand-authored browser calls are the fallback, and only when the driver itself
+fails.** Not when it is inconvenient, not when its flags need working out, and
+not when a hand-written batch looks quicker. Three separate agent hosts driven
+from these same sources each wrote a browser driver of their own rather than
+follow the prose, and each broke the discipline somewhere different; the driver
+exists so the mechanics stop depending on which host is reading.
+
+**Every driver failure and every retry is disclosed in the report** - the number
+of attempts, and one line per attempt saying what failed and why. Retrying a
+harness failure is legal. Retrying it in silence is not: it turns a run that
+needed three attempts into a report that reads like a run that needed one. That
+applies to a hand-authored fallback too - state that the driver failed, with its
+own reported reason, before the report shows anything the fallback captured.
 
 **The escape hatches this step carries, indexed.** Each is written out in full
 at the rule or sub-step named. A run that hits one of these failures goes
@@ -340,6 +405,17 @@ was covered and cannot carry the reason, so a narrowing recorded only there
 reaches the developer as a bare gap they have no way to judge. An unexplained
 narrowing is a verification failure and is reported as one, not a scope decision
 this flow was free to make.
+
+**A scope change is declared in both directions, and widening is declared exactly
+as narrowing is.** Where the set actually walked is wider than what the
+developer's own phrasing asked for - more themes than the intent named, screens
+the intent did not mention, states nobody asked to see - the report says so in
+one sentence of the same form: asked X, declared set Y, walked Y. Nothing about
+walking more is wrong, and everything about walking more in silence is: the
+developer reads the coverage table as the answer to the question they asked, and
+a table answering a wider question without saying so is a table they cannot size.
+The sentence costs one line and it is the only thing that keeps the declared set
+and the asked-for set distinguishable in the report.
 
 **The reason has to answer the axis the narrowed check verifies.** A check is
 narrowed along the axis it covers, and only a reason on that axis closes it.
@@ -831,6 +907,18 @@ success over it would hand back the one problem this step exists to catch.
 
 ## Step 8 - Report
 
+**The completion test for this step is a file on disk.** Where step 7 performed a
+browser verification, this step is not complete until
+`<targetDir>/.frontx/verification-coverage.md` exists at that path and holds the
+coverage table. Check for it, by reading that path, before the report is
+composed. A table written into the report, a table shown in the conversation, or
+a table the driver printed and nobody kept is not that file and does not stand in
+for it: the developer keeps the project, not the transcript, and the coverage
+record has to still be there tomorrow. One run published a complete-looking
+coverage table and wrote nothing to disk, and its verification ended when the
+conversation scrolled. A report composed over an absent coverage file states that
+the file is absent and reports the verification as not complete.
+
 Report, in this order:
 
 - the applied set, as read from provenance in step 6;
@@ -848,9 +936,38 @@ Report, in this order:
   pathname read back after the menu click. A report silent on routing reads as a
   surface nobody exercised, because that is what it is;
 - **the per-category status walk of `verification-checklist.md`**, written out
-  below;
+  below, and the verdict line the walk decides;
+- **the attempt record**: how many verification attempts this run made, and one
+  line per attempt naming what failed and why. A single clean attempt is written
+  as one line saying so;
 - the residual work - only the intent that no applied template's ground contains
   and no activated skill covers.
+
+**A FAIL on any CRITICAL item decides the verdict line, and no wording gets
+around it.** The report carries a verdict line, and where any CRITICAL item of
+the checklist is FAIL, that line says the verification did not pass. There is no
+form of words that converts it into something else. Restating it as "hygiene
+gaps", as "minor findings", as "notes for follow-up", or closing the report with
+"residual: none" over a standing CRITICAL FAIL is not a summary of the run - it
+is the report stating something the run established the opposite of, which is the
+one thing the checklist exists to stop. The checklist records that as a VER-NO
+violation in its own right, on top of whatever the original FAIL was. A run that
+walked the categories honestly and then softened the verdict has failed the
+verification twice.
+
+**Every attempt is disclosed, and a retry is only legal disclosed.** Verification
+attempts fail for reasons that have nothing to do with the project: a driver that
+could not reach the host, a browser that hung, a dev server that had not finished
+starting. Retrying those is right. What is not permitted is a report shaped like
+the last attempt was the only one. Name the attempt count, and for each failed
+attempt name what failed and the reason it reported, before the report shows what
+the successful attempt captured. **An undisclosed retry invalidates the whole
+report** under VER-REPORT, however sound the final attempt was, because a reader
+cannot tell a first-time pass from a fourth-time pass and the difference is
+exactly what tells them how much to trust the environment. A retry meant to make
+a *failing declared verification* pass is a different thing and is forbidden
+outright under the no-correction-loop rule; disclosure does not make that one
+legal.
 
 **Walk every category of the checklist, one line each.** The file beside this
 document partitions the browser walk into categories with stable ids, and the
@@ -858,16 +975,21 @@ report states each one's outcome in the form that file's Reporting section fixes
 
 ```
 <ID>: PASS | FAIL (<what the run did not establish>) | N/A (<why out of reach>)
+Verdict: the verification passed | the verification did not pass (<the CRITICAL items that failed>)
 ```
 
 Take the categories in the order the checklist lists them and leave none out.
+The verdict line follows the walk and is decided by it, not written before it.
 **An unmentioned category is a failure of the report, not of the run** - the run
 may well have satisfied it, and a report that does not say so has not established
 that it did. A blanket sentence covering several categories at once is not a walk:
 each id gets its own line, and a PASS is claimed only where this report carries
 the evidence that category's items ask for. `N/A` is available only for the
 categories the checklist's own Applicability section admits it for, with the
-reason; a category the run skipped is a FAIL.
+reason; a category the run skipped is a FAIL. **A PASS is also claimed only
+against items this run read**, under the full-read rule in step 7: a category
+whose items were never read cannot have been checked, whatever the walk asserts
+about it.
 
 Prose alone did not carry this. Two runs re-derived facts that were sitting in
 this document, already read, because nothing made them account for each one by
