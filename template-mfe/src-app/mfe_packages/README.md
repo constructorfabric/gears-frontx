@@ -69,10 +69,11 @@ example — Hello World, Profile, Theme, UIKit, Widgets Host), `_blank-mfe`
 of it in this project points here.
 
 Every package listed above declares `"templateExample": true` in its `mfe.json`.
-They ship to be read and copied, so the shell's two package scanners leave them
-out: `generate:mfe-manifests` keeps them out of the aggregate the host registers
-from, and `dev:all` neither builds nor serves them. Your application's menu holds
-the screens you added and nothing else.
+They ship to be read and copied, so the shell's three package scanners leave
+them out: `generate:mfe-manifests` keeps them out of the aggregate the host
+registers from, `dev:all` neither builds nor serves them, and `type-check:mfe`
+skips them too. Your application's menu holds the screens you added and
+nothing else.
 
 To run them anyway - to watch a worked example rather than read it - set
 `FRONTX_INCLUDE_TEMPLATE_EXAMPLES` to `1` or `true` for the command:
@@ -82,9 +83,11 @@ FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 npm run dev:all
 ```
 
 That flag is why step 2 above deletes it from your copy, and a copy that keeps
-it fails nothing: the package still installs, type-checks and runs its tests,
-because it is the thing new packages are copied from and has to stay
-compilable. What reports the skip is a single line in the
-`generate:mfe-manifests` / `dev:all` output naming the packages left out. Inside
-the running application there is no sign of it at all - the screen is simply not
-in the menu.
+it still installs and still runs its own tests, because it is the thing new
+packages are copied from and has to stay usable. Type-checking is the
+exception: `type-check:mfe` skips a flagged package by default, the same as
+the other two scanners, so it type-checks only when the run sets
+`FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1`. What reports the skip is a single line in
+the `generate:mfe-manifests` / `dev:all` / `type-check:mfe` output naming the
+packages left out. Inside the running application there is no sign of it at
+all - the screen is simply not in the menu.

@@ -37,10 +37,11 @@ to mount into an extension domain).
   `src-app/mfe_packages/*/package.json` by reading the port out of its `dev`/`preview`
   script — no manual wiring required once the package exists.
 - Packages template-mfe ships as its own worked examples, and the scaffold itself,
-  all declare `"templateExample": true` in their `mfe.json`. Both the manifest
-  generation and `dev:all` leave those out, so a project runs the packages its
-  developer added and nothing else; `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` puts them
-  back for anyone wanting to see the shipped examples run.
+  all declare `"templateExample": true` in their `mfe.json`. Manifest generation,
+  `dev:all`, and `type-check:mfe` all leave those out, so a project runs and
+  type-checks the packages its developer added and nothing else;
+  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` puts them back for anyone wanting to see
+  the shipped examples run and compile.
 
 ## Steps
 
@@ -57,9 +58,12 @@ to mount into an extension domain).
 4. **Drop the scaffold's `templateExample` flag** - `_blank-mfe/mfe.json` declares
    `"templateExample": true`, which is what keeps the scaffold itself out of the
    running application. Delete that line from the copy. A package that keeps it
-   still builds and type-checks, and the only report of the skip is one line in
-   the `generate:mfe-manifests` / `dev:all` output naming the packages left out -
-   nothing fails, and the new screen is simply absent from the menu.
+   still installs and runs its own tests, but `type-check:mfe` skips it by
+   default too - it type-checks only when the run sets
+   `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1`. The only report of the skip is one line
+   in the `generate:mfe-manifests` / `dev:all` / `type-check:mfe` output naming
+   the packages left out - nothing fails, and the new screen is simply absent
+   from the menu.
 5. **Assign GTS IDs** — rewrite every placeholder ID in `mfe.json` following
    template-mfe's ID taxonomy (see the `gts-id-conventions` guideline and the
    `gts-id-patterns-reference` reference artifact in this same bundle): a manifest ID,
