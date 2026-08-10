@@ -292,8 +292,8 @@ stands in for one. What follows is how the browser is driven and what the run
 has to report - which no template declares and every browser run needs.
 
 **The escape hatches this step carries, indexed.** Each is written out in full
-at the sub-step named. A run that hits one of these failures goes straight to
-it rather than deriving a replacement:
+at the rule or sub-step named. A run that hits one of these failures goes
+straight to it rather than deriving a replacement:
 
 - a click that lands and changes nothing - the native pointer sequence,
   sub-step 3
@@ -303,6 +303,9 @@ it rather than deriving a replacement:
   panel rule, sub-step 5.3
 - a snapshot listing none of the text expected - the compact-snapshot rule,
   sub-step 6
+- `Element not found` on a selector that reads perfectly well - the
+  selector-form rule under "Address every control by the stable handle" below,
+  which names the forms this runner resolves and the ones it rejects
 
 The index exists because these are read once and needed later, mid-failure.
 Three separate runs re-derived the native pointer sequence from scratch, one of
@@ -353,6 +356,57 @@ capture is a false report even when nobody intended it**, because the
 byte-compare in sub-step 5.5 and the states-captured cells in sub-step 8 both
 address capture files by name, and neither can tell which run wrote them.
 
+**Address every control by the stable handle the interface puts on it, and
+drive a whole pass in one invocation.** A run that clicks by accessibility
+reference pays for it twice: those references are re-issued on every
+navigation and every theme switch, so each interaction costs a fresh snapshot
+taken for no reason but to learn the handle again. One measured run spent 24 of
+its 87 browser calls that way, and 8m31s of wall time around 50s of actual
+command time. Four things make the difference, and all four were established
+against this runner rather than assumed:
+
+- **`[data-testid="<value>"]` is the selector form to write, and the pseudo
+  forms are not.** Plain attribute and id selectors resolve for `click`, `fill`
+  and `get`. `button:has-text('...')`, `text=...` and `role=...[name=...]` each
+  come back `✗ Element not found` and exit non-zero - and it was exactly that
+  rejection, read as "this control cannot be addressed", that pushed the
+  measured run onto accessibility references to begin with. The runner does
+  offer the semantic locators as their own subcommands (`find role ... click
+  --name ...`), which work; what does not work is folding them into a selector
+  string. An `@eN` reference stays valid inside one navigation lifetime and is
+  void after a reload, which is what the theme walk performs at every boundary.
+- **Learn the handles once, from the interface itself.** Which controls a host
+  marks, and what it calls them, is the host's business - this document names
+  no handle and must not. Take one accessibility snapshot at the start of the
+  run, locate the controls the declared checks and the sub-steps below reach
+  for - each screen's menu item, the dev panel's expand and collapse controls,
+  the theme switcher and its per-theme options - and read each one's
+  `data-testid` off the page. Every command afterwards is written against those
+  values, and no further snapshot is taken to re-find a control. **A host that
+  marks nothing has no handles to learn**: fall back to accessibility
+  references, say in the report that the interface exposed none, and expect the
+  snapshot-per-interaction cost this rule exists to remove.
+- **Chain the commands with `batch --bail`, fed as JSON on stdin.** One
+  `batch` invocation carries a whole sequence in a single process, which is
+  what turns a theme's pass from a dozen round trips into one. Feed it JSON
+  rather than quoted argument strings: argument mode re-parses each string and
+  strips the quotes inside it, so a handle carrying dots or tildes arrives at
+  the runner as an unquoted attribute value and stops resolving, while a handle
+  that happens to be a bare word keeps working - which is the worst kind of
+  breakage, one that passes on the simple case and fails on the real ids. In
+  JSON stdin mode each command is its own argument vector and nothing is
+  re-parsed. `--bail` stops at the first failing command and exits non-zero, so
+  a pass that broke halfway through cannot be read as one that ran.
+- **`get` prints, `is` enforces, and `fill` does neither.** A `get text` line
+  hands its answer back for the run to read, and the run has to read it,
+  because the batch carries on either way. An `is visible` line exits non-zero
+  when the element is absent, so under `--bail` the runner itself stops the
+  pass when that confirmation fails - which is why the confirmations below are
+  written as `is visible` wherever the expected state is an element being
+  there. `fill` reports `✓ Done` even when its selector matched nothing, typing
+  into whatever held focus instead; confirm every fill with a `get value` on
+  the same handle rather than believing its exit code.
+
 Carry the run out in this order:
 
 1. **Probe before launching.** Ask `http://localhost:9222/json/version` once.
@@ -368,6 +422,14 @@ Carry the run out in this order:
    belongs to that theme. Read the active theme off the theme switcher's own
    label, by the rule the theme walk states below: a screenshot's file name
    records what the run assumed, not what was on screen.
+
+   **This is also where the run learns its handles.** The snapshot taken to find
+   the switcher is the one snapshot the selector rule above allows for locating
+   controls, so locate the rest of them from it in the same pass - the menu
+   items, the dev panel's two controls, the switcher's per-theme options - and
+   read each one's `data-testid`. Everything after this sub-step is written
+   against those values, and settling the dev panel's collapsed state here is
+   what lets each theme's block run without a branch.
 3. **Dispatch native pointer events when a click changes nothing.** A synthetic
    `.click()` arrives at the element carrying none of the pointer sequence around
    it, so a control listening for `pointerdown` sees nothing at all and the screen
@@ -398,7 +460,8 @@ Carry the run out in this order:
    Put the control's own selector in `<selector>`. When the control lives inside
    a shadow root, resolve it through that host's `shadowRoot` rather than
    `document`, which does not see in. Then confirm the outcome the way every
-   other click is confirmed here, by re-reading the accessibility snapshot.
+   other click is confirmed here, under sub-step 6: by reading the resulting
+   state back off the page, never off the command's own `✓`.
 4. **Exercise each screen's declared route, before the themes are walked.** The
    address is part of the surface under verification: the host mounts the screen
    whose route matches the URL at load, and a menu click puts the clicked
@@ -406,18 +469,36 @@ Carry the run out in this order:
    both are established here, in the theme the run is currently in. **Routes come
    from the manifests**: read each realized screen's own declared `route` value
    out of the manifest that declares it, and navigate to no path this document,
-   the plan or the report named. Take each realized screen in turn:
-   1. **Navigate hard to that screen's declared route** - a full load of the dev
-      server's origin with that route as the path, not a menu click - and confirm
-      from a fresh accessibility snapshot that this is the screen that mounted. A
-      deep link that lands on a different screen is a defect.
-   2. **Then click another screen's menu item and read the address back.** Once
-      the click lands, read `window.location.pathname` back through
-      `npx --yes agent-browser eval` and confirm it now equals the clicked
-      screen's declared route, and confirm from a fresh snapshot that the clicked
-      screen is the one mounted. A screen that mounts while the address stays
-      where it was is a defect too - the URL is what a developer copies,
-      bookmarks and reloads.
+   the plan or the report named. Take each realized screen in turn, one batch
+   per screen:
+
+   ```bash
+   npx --yes agent-browser batch --bail <<'JSON'
+   [
+     ["open", "<dev server origin><this screen's declared route>"],
+     ["snapshot", "-i"],
+     ["click", "[data-testid=\"<another screen's menu handle>\"]"],
+     ["get", "url"],
+     ["snapshot", "-i"]
+   ]
+   JSON
+   ```
+
+   1. **Navigate hard to that screen's declared route** - the `open` line, a
+      full load of the dev server's origin with that route as the path, not a
+      menu click - and confirm from the snapshot after it that this is the
+      screen that mounted. A deep link that lands on a different screen is a
+      defect. The snapshot earns its place here under sub-step 6: the question
+      is which screen mounted, and only a reading of the whole page answers it.
+   2. **Then click another screen's menu item and read the address back** - the
+      click, the `get url`, and the snapshot after them. Confirm the path in the
+      URL now equals the clicked screen's declared route, and confirm from that
+      last snapshot that the clicked screen is the one mounted. `get url` is the
+      reading to take rather than a scripted `location.pathname`: it is a
+      command like the others, so it rides in this same batch instead of costing
+      its own invocation. A screen that mounts while the address stays where it
+      was is a defect too - the URL is what a developer copies, bookmarks and
+      reloads.
 
    **A failure here is a defect to report, not a sub-step to skip.** Report the
    route asked for, the screen that mounted, and the pathname read back, and
@@ -443,38 +524,86 @@ Carry the run out in this order:
    The count of registered themes and the count of walked themes are the same
    number. A run that walks fewer has narrowed a declared scope, so it states the
    reason in its output text under the rule above and reports itself as not
-   verified for every theme it left out. Take each registered theme in turn, and
-   in this order:
-   1. **Reload the page and wait for it to come back.** This is the theme
-      boundary reset. It discards every field filled, item added and dialog
-      opened while checking the previous theme, so the captures below start from
-      a state this run knows rather than from wherever the last theme's
-      interactions left the app. Reload for the first theme too: the browser
-      arrived carrying a profile, not a fresh application.
-   2. **Switch into the theme, then confirm the switch landed** by re-reading the
-      switcher in a fresh snapshot: its label has to name the theme just
-      selected. **That label is the only source of truth for which theme is
+   verified for every theme it left out.
+
+   **Take each registered theme in turn, and drive its whole pass as one
+   invocation** rather than as a click-by-click conversation. The handles come
+   from the one-time read in the selector rule above; the theme's own option
+   handle and the screens' menu handles are the per-theme and per-screen parts:
+
+   ```bash
+   npx --yes agent-browser batch --bail <<'JSON'
+   [
+     ["reload"],
+     ["click", "[data-testid=\"<the dev panel's expand handle>\"]"],
+     ["click", "[data-testid=\"<the theme switcher's handle>\"]"],
+     ["click", "[data-testid=\"<this theme's option handle>\"]"],
+     ["get", "text", "[data-testid=\"<the theme switcher's handle>\"]"],
+     ["click", "[data-testid=\"<the dev panel's collapse handle>\"]"],
+     ["is", "visible", "[data-testid=\"<the dev panel's expand handle>\"]"],
+     ["click", "[data-testid=\"<a screen's menu handle>\"]"],
+     ["screenshot", "<this run's capture directory>/<theme>-<screen>-fresh.png"]
+   ]
+   JSON
+   ```
+
+   The last two lines repeat, one pair per screen under verification. The
+   interactions the declared checks call for then follow as a second batch of
+   the same shape - the driving clicks and fills, each state's own `screenshot`
+   line after them, and a `get value` after every fill under the rule above.
+
+   **The block ends with the dev panel collapsed, and that is what lets the next
+   theme's block start with a bare expand click.** Settle the starting state
+   once, before the first theme, and the walk needs no branch anywhere. If the
+   block stops on its expand line, this host brought the panel back expanded
+   across the reload instead: drop that line, re-run the block, and use the
+   shorter form for every remaining theme, because which of the two a host does
+   is fixed for that host and is now known. Either way `--bail` turned an
+   unknown into a stated fact at the cost of one failed invocation, and no
+   capture was taken while the answer was still open.
+
+   Packaging the pass this way changes what it costs, not what it checks. Each
+   line still answers to one of the sub-steps below, and every one of them
+   holds:
+   1. **Reload the page and wait for it to come back** - the block's first
+      line. This is the theme boundary reset. It discards every field filled,
+      item added and dialog opened while checking the previous theme, so the
+      captures below start from a state this run knows rather than from wherever
+      the last theme's interactions left the app. Reload for the first theme
+      too: the browser arrived carrying a profile, not a fresh application.
+   2. **Switch into the theme, then confirm the switch landed** - the two clicks
+      that open the switcher and pick this theme, and the `get text` line after
+      them. That line prints the switcher's label, and the label has to name the
+      theme just selected. **It is the only source of truth for which theme is
       active.** Do not probe `data-*` attributes, CSS classes or computed styles
       to detect it, and do not go reading shell or package sources for where a
       theme is applied. Host implementations vary, which is precisely why the
       check is a label check: one run spent 1m10s on a DOM probe that answered
       `unknown` and a source hunt after it, then fell back to the label this
-      sub-step already prescribed. A label still naming the previous theme means
-      the theme did not open, so record it as not-opened with that as the reason,
-      capture nothing in it as verified, and take the next theme.
-   3. **Collapse the host's dev panel before the first capture in this theme.**
-      An expanded dev or tools panel is host chrome drawn over the screens under
-      verification, not part of them. Collapse it, then confirm from a fresh
-      snapshot that it is collapsed. **A capture taken while it overlays screen
-      content is not a valid baseline** and neither is a click aimed through it:
-      one run lost its first theme's baseline that way, and another spent 1m33s
-      on a pass aborted by `Element is covered` before collapsing the panel and
-      starting over. Run this once per theme, after the reload above, because
-      the reload at each theme boundary can bring the panel back expanded.
+      sub-step already prescribed. **This is the one confirmation the batch will
+      not make for the run**: `get text` prints and moves on, so a block whose
+      label line came back naming the previous theme has still run every line
+      after it, captures included. Read that line. A label still naming the
+      previous theme means the theme did not open, so record it as not-opened
+      with that as the reason, discard what the block captured under it, capture
+      nothing in it as verified, and take the next theme.
+   3. **Collapse the host's dev panel before the first capture in this theme** -
+      the collapse click and the `is visible` line after it. An expanded dev or
+      tools panel is host chrome drawn over the screens under verification, not
+      part of them. **A capture taken while it overlays screen content is not a
+      valid baseline** and neither is a click aimed through it: one run lost its
+      first theme's baseline that way, and another spent 1m33s on a pass aborted
+      by `Element is covered` before collapsing the panel and starting over.
+      Here the confirmation enforces itself - the expand control is only in the
+      document while the panel is collapsed, so `is visible` on it exits
+      non-zero and `--bail` stops the block before a single capture is taken.
+      The line sits inside every theme's block, not once at the start of the
+      walk, because the reload at each theme boundary can put the panel back.
    4. **Capture each screen under verification in its fresh state first** - the
-      state the reload left it in, before anything is filled, submitted or added
-      in this theme. The interactions the declared checks call for follow, each
-      with its own capture.
+      menu-click and `screenshot` pairs that close the block. This is the state
+      the reload left the screen in, before anything is filled, submitted or
+      added in this theme. The interactions the declared checks call for follow
+      in the second batch, each with its own capture.
    5. **Byte-compare this theme's captures against the previous theme's.** For
       each screen and state, run the comparison as a command over the two capture
       files and read the verdict off what it returned:
@@ -496,11 +625,19 @@ Carry the run out in this order:
       can differ only in tokens the screens under verification never consume, and
       a report that passed them as visibly distinct claimed something the run did
       not see. The first theme has no predecessor to compare against.
-6. **Read state from the accessibility snapshot after every click and every
-   navigation** - `npx --yes agent-browser snapshot -i`. A text-wait does not see
-   into a shadow root, so it times out on text that was on screen the whole time.
-   It does not stand in for the snapshot here; when a wait is what is needed, take
-   it from sub-step 7.
+6. **Read state back after every click and every navigation, from something
+   that looked at the page.** `✓ Done` is the runner reporting that it issued a
+   command, and it is never the reading. Two readings qualify. When the run
+   already knows which element carries the answer, a `get text`, `get value` or
+   `is visible` line on that element's handle is the reading, and it costs
+   nothing extra because it rides in the same batch as the click. When the run
+   needs to see what is on screen at all - which controls exist now, what the
+   navigation mounted - the reading is the accessibility snapshot, `npx --yes
+   agent-browser snapshot -i`. Reach for the snapshot for that question and not
+   as a reflex after every click, which is the habit that cost the measured run
+   24 of its 87 calls. A text-wait qualifies as neither: it does not see into a
+   shadow root, so it times out on text that was on screen the whole time. When
+   a wait is what is needed, take it from sub-step 7.
 
    **What a compact snapshot leaves out is not evidence of anything.** It
    enumerates the interactive nodes; static text, and the list structure around
