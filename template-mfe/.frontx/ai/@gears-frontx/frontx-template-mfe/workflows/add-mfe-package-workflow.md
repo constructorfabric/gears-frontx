@@ -133,24 +133,21 @@ failure it ever caught per unit was local to the new package (a TS2322 in its ow
      rather than deleting the untranslated locales: `useScreenTranslations` falls back
      to `en` for a language with no file, but logs a `No translation module found`
      warning on every such load, which then shows up in step 7's console check.
-   - Put the screen's CLIENT-owned state in the package's own flux layers, not in the
-     component. State shape and reducers go in `src/slices/`, registered through
-     `registerSlice` in `init.ts`; every mutation is reached through an action in
-     `src/actions/` that emits an event declared in `src/events/`; effects in
-     `src/effects/` are the only place that dispatches. `useState` carries uncommitted
-     input drafts and bridge-delivered values (theme, language) and nothing else. A
-     screen that owns state the user changes - a form that succeeds or fails, a session
-     or status flag, an open dialog, a selection - leaves those four files filled.
-     Leaving them as the shipped anchors while that state lives in `useState` bypasses
-     the architecture, and the screen looks correct while doing it.
+   - Keep the screen's CLIENT-owned state inside the MFE, never in the host. For such
+     state that its components share or that outlives one of them, use the package's flux
+     layers - the mechanism this template ships: state shape and reducers go in
+     `src/slices/`, registered through `registerSlice` in `init.ts`; every mutation is
+     reached through an action in `src/actions/` that emits an event declared in
+     `src/events/`; effects in `src/effects/` are the only place that dispatches. State
+     that lives and dies with one component may stay in `useState` - an uncommitted input
+     draft, a submit outcome only that component displays, the open/closed flag of a
+     control it owns - as do bridge-delivered values (theme, language).
    - SERVER-owned data stays out of the slice: read and write it through the API service
      with `useApiQuery`/`useApiMutation`, which is what `demo-mfe`'s Profile screen does.
-     A screen with both kinds uses both, and a screen that calls a mutation is normally
-     one of them: the call belongs to the query cache, the outcome it keeps displaying
-     afterwards - who is signed in, what was saved, the error still on screen - belongs
-     to the slice. Delete the four flux files only when the screen has no client-owned
-     state at all, and say so in one sentence in the package's README, the screen's doc
-     comment, or `init.ts` - see the skill's Boundaries for the full ruling.
+     A screen with both kinds uses both, each where it belongs. Keep or delete the four
+     flux files as the screen's own state calls for, and say which in one sentence in the
+     package's README, the screen's doc comment, or `init.ts` - see the skill's Boundaries
+     for the full ruling.
    - Keep a `data-testid` on every interactive control the copy renames or adds, and on
      the screen's status/result region, following the scaffold's `screen-<control>`
      scheme. Browser verification in step 7 drives the screen through these ids: a screen

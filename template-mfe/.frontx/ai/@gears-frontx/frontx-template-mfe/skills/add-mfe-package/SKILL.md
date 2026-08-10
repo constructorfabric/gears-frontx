@@ -76,20 +76,16 @@ to mount into an extension domain).
 - Do not add Redux/host-store imports inside the MFE; MFEs stay isolated and reach
   state only through `@gears-frontx/react`'s `createSlice`/`registerSlice` and through
   the bridge - shared properties in, events out.
-- A screen's CLIENT-owned state lives in the MFE's own state layers, not in the
-  component. Everything the user changes that no server owns - form outcomes,
-  session/status flags, dialog open state, selection, a locally ordered or filtered
-  view - belongs to the slice (registered via `registerSlice`), is reached through
-  actions that emit events, and is dispatched only from effects. Component-local
-  `useState` holds uncommitted input drafts and bridge-delivered values, and nothing
-  else. This is the default architecture for a screen that has client-owned state, not
-  one option among several.
-- Calling a server does not make a flow server-owned. The RESULT a screen keeps showing
-  after a mutation settles - who is signed in, what was saved, the success or error the
-  user still sees - is client-owned session/status state and lives in the slice; the
-  query cache owns the request/response cycle, not the screen's lasting account of it. A
-  mutation-calling screen therefore usually has BOTH: `useApiMutation` for the call, a
-  slice for the outcome it displays.
+- A screen's CLIENT-owned state stays INSIDE the MFE. Everything the user changes that no
+  server owns - form outcomes, session/status flags, dialog open state, selection, a
+  locally ordered or filtered view - belongs to the package that renders it and never to
+  the host; that boundary is the non-negotiable part. The slice (registered via
+  `registerSlice`), actions that emit events, and effects as the only dispatcher are the
+  mechanism this template currently ships for that state - use them for client-owned state
+  that outlives a single component or is shared across the screen's components. State that
+  lives and dies with one component may stay in component-local `useState`: an uncommitted
+  input draft, a submit outcome only that component displays, the open/closed flag of a
+  control it owns. Bridge-delivered values (theme, language) stay component-local too.
 - SERVER-owned state does NOT go in a slice. Data that is read from and written through
   an API service - the fetch/mutate/invalidate cycle - lives in the shared query cache,
   reached through `useApiQuery` and `useApiMutation`. That is the pattern demo-mfe's
@@ -98,15 +94,18 @@ to mount into an extension domain).
   staleness. A list is server-owned when a server returns it and client-owned when the
   user builds it, so the question is who owns the data, never what shape it has.
 - A screen with both kinds uses both, each where it belongs: the query cache for what
-  the API owns, the slice for what the user owns. Deleting the skeleton's `slices/`,
-  `actions/`, `effects/`, and `events/` files is right ONLY when the screen has no
-  client-owned state at all. Record that call in one sentence - in the package's README,
-  the screen component's doc comment, or `init.ts` beside the registration that is now
-  absent - naming which side owns the state and why, so the next reader sees a decision
-  rather than a missing layer.
-- Fill those four files for every screen that does have client-owned state - they are
-  the state layer, not anchors to leave empty. An empty slice behind a screen whose
-  user-owned state sits in `useState` means the architecture was bypassed.
+  the API owns, the MFE's own state for what the user owns. Keeping the skeleton's
+  `slices/`, `actions/`, `effects/`, and `events/` files and deleting them are both
+  decisions - record whichever call is made in one sentence, in the package's README, the
+  screen component's doc comment, or `init.ts` beside the registration that is now absent,
+  naming who owns the screen's state and where it lives, so the next reader sees a
+  decision rather than a missing layer.
+- Fill those four files when the screen has client-owned state that its components share
+  or that outlives them - they are the state layer for exactly that, not anchors to leave
+  empty. An empty slice behind a screen that shares user-owned state across components -
+  lifted into a parent's `useState` and passed down - means the layer was bypassed; an
+  empty slice behind a screen whose client state lives and dies inside single components
+  does not.
 - Do not hand-edit `public/generated-mfe-manifests.json`; it is a generated artifact -
   always regenerate via `npm run generate:mfe-manifests`.
 - This skill does not cover ecosystem-level MFE runtime concepts (registration,
