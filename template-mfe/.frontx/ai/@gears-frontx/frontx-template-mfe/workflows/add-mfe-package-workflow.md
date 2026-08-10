@@ -145,9 +145,12 @@ failure it ever caught per unit was local to the new package (a TS2322 in its ow
      the architecture, and the screen looks correct while doing it.
    - SERVER-owned data stays out of the slice: read and write it through the API service
      with `useApiQuery`/`useApiMutation`, which is what `demo-mfe`'s Profile screen does.
-     A screen with both kinds uses both. Delete the four flux files only when the screen
-     has no client-owned state at all, and say so in one sentence in the package's README
-     or the screen's doc comment - see the skill's Boundaries for the full ruling.
+     A screen with both kinds uses both, and a screen that calls a mutation is normally
+     one of them: the call belongs to the query cache, the outcome it keeps displaying
+     afterwards - who is signed in, what was saved, the error still on screen - belongs
+     to the slice. Delete the four flux files only when the screen has no client-owned
+     state at all, and say so in one sentence in the package's README, the screen's doc
+     comment, or `init.ts` - see the skill's Boundaries for the full ruling.
    - Keep a `data-testid` on every interactive control the copy renames or adds, and on
      the screen's status/result region, following the scaffold's `screen-<control>`
      scheme. Browser verification in step 7 drives the screen through these ids: a screen

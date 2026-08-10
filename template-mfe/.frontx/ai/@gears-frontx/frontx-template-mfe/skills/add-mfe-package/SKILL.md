@@ -84,6 +84,12 @@ to mount into an extension domain).
   `useState` holds uncommitted input drafts and bridge-delivered values, and nothing
   else. This is the default architecture for a screen that has client-owned state, not
   one option among several.
+- Calling a server does not make a flow server-owned. The RESULT a screen keeps showing
+  after a mutation settles - who is signed in, what was saved, the success or error the
+  user still sees - is client-owned session/status state and lives in the slice; the
+  query cache owns the request/response cycle, not the screen's lasting account of it. A
+  mutation-calling screen therefore usually has BOTH: `useApiMutation` for the call, a
+  slice for the outcome it displays.
 - SERVER-owned state does NOT go in a slice. Data that is read from and written through
   an API service - the fetch/mutate/invalidate cycle - lives in the shared query cache,
   reached through `useApiQuery` and `useApiMutation`. That is the pattern demo-mfe's
@@ -94,9 +100,10 @@ to mount into an extension domain).
 - A screen with both kinds uses both, each where it belongs: the query cache for what
   the API owns, the slice for what the user owns. Deleting the skeleton's `slices/`,
   `actions/`, `effects/`, and `events/` files is right ONLY when the screen has no
-  client-owned state at all. Record that call in one sentence - in the package's README
-  or the screen component's doc comment - naming which side owns the state and why, so
-  the next reader sees a decision rather than a missing layer.
+  client-owned state at all. Record that call in one sentence - in the package's README,
+  the screen component's doc comment, or `init.ts` beside the registration that is now
+  absent - naming which side owns the state and why, so the next reader sees a decision
+  rather than a missing layer.
 - Fill those four files for every screen that does have client-owned state - they are
   the state layer, not anchors to leave empty. An empty slice behind a screen whose
   user-owned state sits in `useState` means the architecture was bypassed.
