@@ -1,7 +1,7 @@
 # Scaffolding Verification Checklist
 
 **Artifact**: the verification a scaffolding run performs in Step 7 and reports in Step 8
-**Version**: 1.0
+**Version**: 1.1
 **Purpose**: the accounting layer over Step 7's browser walk and Step 8's report - what must be true for a claim to stand
 
 This checklist states **what must hold**. The skill document beside it states **how**
@@ -12,6 +12,14 @@ rule is the wording that governs and this file is what is out of date.
 Nothing here adds a check to what a covering skill declares. Which checks exist is
 the covering skill's to say; this file governs only how honestly the run reports
 whatever it ran.
+
+Many of the mechanics these items account for are performed by the driver the skill
+ships and runs, so several items below are satisfied by that program's own result
+file rather than by anything a run has to remember to do. That does not narrow the
+accounting: **the driver having run is not by itself a PASS on anything**. Each item
+is judged against what this run's result file, capture directory and coverage file
+actually carry, and a driver that failed, was fallen back from, or was never run
+leaves every item under it to be established some other way and disclosed as such.
 
 ## Table of Contents
 
@@ -45,9 +53,13 @@ whatever it ran.
 
 Before walking this checklist, confirm:
 
+- [ ] I have read this file end to end, first line to last, before the browser walk
+      began - not a head, not a line limit, not an excerpt, and not the table of
+      contents read as if it were the items
 - [ ] I will check every item in MUST HAVE and verify every item in MUST NOT HAVE
 - [ ] I will judge each item against what this run captured, not against what it intended
 - [ ] I will report a category as FAIL when its evidence is absent, rather than omit it
+- [ ] I will claim PASS only against items I actually read
 - [ ] I will use the [Reporting](#reporting) status walk at the end of this document
 
 ---
@@ -106,6 +118,16 @@ under VER-SCOPE-002 as such.
       is not closed by an argument about behavior, however true that argument is
 - [ ] A reason arguing another axis is recorded as an unexplained narrowing and
       handled under VER-SCOPE-002
+
+### VER-SCOPE-004: A Widening Is Declared Exactly as a Narrowing Is
+**Severity**: HIGH
+
+- [ ] Where the walked set is wider than what the developer's own phrasing asked
+      for, the report says so in one sentence: asked X, declared set Y, walked Y
+- [ ] That sentence sits in the text the developer reads, beside the coverage table
+- [ ] The asked-for set and the declared set stay distinguishable in the report, so
+      the coverage table can be read against the question that was actually asked
+- [ ] Walking wider is not itself a finding; walking wider in silence is
 
 ---
 
@@ -281,12 +303,16 @@ under VER-SCOPE-002 as such.
 ### VER-REPORT-001: The Coverage File Exists and Was Written First
 **Severity**: CRITICAL
 
-- [ ] The coverage file exists beside the project's provenance record, at the path the
-      skill names
+- [ ] The coverage file exists **on disk** beside the project's provenance record, at
+      the path the skill names, and that path was read to establish it
 - [ ] It was written before the final report was composed
 - [ ] It holds one row per registered theme, including every theme recorded as not-opened
 - [ ] It holds the distinctness verdict and one states-captured column per screen under
       verification
+- [ ] Nothing stood in for it: a table inside the report, a table shown in the
+      conversation, and a table a driver printed and nobody kept are not this file.
+      The report step is not complete while the file is absent, and a report composed
+      over an absent one says so and reports the verification as not complete
 
 ### VER-REPORT-002: The Coverage Table Is Reproduced in Full
 **Severity**: CRITICAL
@@ -314,6 +340,32 @@ under VER-SCOPE-002 as such.
       verification's own output relayed unreinterpreted
 - [ ] No correction retry was attempted
 - [ ] Scaffolding is not reported as complete over a failing gate
+
+### VER-REPORT-005: This Checklist Was Read in Full Before the Walk
+**Severity**: CRITICAL
+
+- [ ] This file was read end to end, first line to last, before the browser walk began
+- [ ] The read was not a head, a line limit, an excerpt, a section jumped to, or the
+      table of contents read as if it were the items under it
+- [ ] Every PASS in the status walk is claimed against an item this run actually read
+- [ ] The read happened before the walk, so the walk was driven toward what would be
+      accounted for, and this file was walked again before the report was composed
+
+### VER-REPORT-006: Every Attempt Is Disclosed
+**Severity**: CRITICAL
+
+- [ ] The report names how many verification attempts this run made
+- [ ] Each failed attempt carries one line saying what failed and the reason it reported,
+      including attempts that failed in the harness rather than in the product
+- [ ] A driver failure, and any fall back to hand-authored browser calls after one, is
+      disclosed with the driver's own reported reason before anything the fallback
+      captured is shown
+- [ ] No attempt was left out: an undisclosed retry invalidates this category however
+      sound the final attempt was, because a first-time pass and a fourth-time pass
+      read identically without it
+- [ ] Retrying a harness failure is legal here; retrying a *failing declared
+      verification* to make it pass is not, and stays forbidden under VER-REPORT-004
+      and VER-NO-005
 
 ---
 
@@ -356,6 +408,8 @@ under VER-SCOPE-002 as such.
 - [ ] No theme, screen or state dropped without its reason in the visible output text
 - [ ] No reason arguing an axis other than the one the narrowed check covers
 - [ ] No sample or subset presented as the registered set
+- [ ] No set walked wider than what was asked for without the declaring sentence
+      VER-SCOPE-004 requires
 
 **Where the evidence belongs**: the report's own text, beside the coverage table
 
@@ -379,6 +433,22 @@ under VER-SCOPE-002 as such.
 
 **Where it belongs**: the [Reporting](#reporting) status walk below
 
+### VER-NO-007: No Verdict Softening a CRITICAL FAIL
+**Severity**: CRITICAL
+
+**What to check**:
+- [ ] No verdict line reporting the verification as passed while any CRITICAL item is FAIL
+- [ ] No CRITICAL FAIL restated as "hygiene gaps", "minor findings", "notes for
+      follow-up", or any other wording that turns it into something the run may close over
+- [ ] No closing line of "residual: none", or its equivalent, over a standing CRITICAL FAIL
+- [ ] No verdict written before the status walk that decides it
+
+**Where it belongs**: the verdict line beneath the status walk, which says the
+verification did not pass and names the CRITICAL items that failed. This is a
+violation in its own right, recorded on top of whatever the original FAIL was: a
+run that walked the categories honestly and then softened the verdict has failed
+the verification twice.
+
 ---
 
 ## Reporting
@@ -394,6 +464,7 @@ VER-NUM:    ...
 VER-ENV:    ...
 VER-REPORT: ...
 VER-NO:     ...
+Verdict:    the verification passed | the verification did not pass (<the CRITICAL items that failed>)
 ```
 
 - **PASS** means every item in that category holds and the report carries the evidence
@@ -402,5 +473,8 @@ VER-NO:     ...
   on any CRITICAL item means the verification is not reported as passed.
 - **N/A** names why the category was out of reach, under [Applicability](#applicability).
   A category the run simply skipped is a FAIL, not an N/A.
+- **Verdict** is decided by the walk above it and written after it. Where any CRITICAL
+  item is FAIL, this line says the verification did not pass, and no rewording of the
+  finding changes that - see [VER-NO-007](#ver-no-007-no-verdict-softening-a-critical-fail).
 
 An absent line is a FAIL of the report, not a category that passed.
