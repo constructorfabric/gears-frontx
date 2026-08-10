@@ -292,9 +292,11 @@ describe('scaffoldComposedProject', () => {
     expect(record).toHaveProperty('templateIdentity');
     expect(record).toHaveProperty('scaffoldedFromVersion');
     expect(record).toHaveProperty('sourceSpec');
-    expect(record).toHaveProperty('occupiedOwnershipBoundary');
     expect(record['templateIdentity']).toBe('simple-project');
     expect(record['scaffoldedFromVersion']).toBe('2.1.0');
+    // issue #530: the recorded boundary must be what the template actually
+    // occupies (its declared exclusive subtree), never the '.' fallback.
+    expect(record['occupiedOwnershipBoundary']).toBe('index.ts');
   });
 
   // (g) A multi-template composition (no boundary clash) writes the FULL
@@ -340,6 +342,11 @@ describe('scaffoldComposedProject', () => {
     const records = JSON.parse(provenanceContent) as Array<Record<string, unknown>>;
     expect(records).toHaveLength(2);
     expect(records.map((r) => r['templateIdentity']).sort()).toEqual(['mfe-a', 'root-project']);
+    // issue #530: each template's record carries ITS OWN occupied boundary,
+    // not the same '.' fallback for every applied template.
+    const byIdentity = new Map(records.map((r) => [r['templateIdentity'], r['occupiedOwnershipBoundary']]));
+    expect(byIdentity.get('root-project')).toBe('root/index.ts');
+    expect(byIdentity.get('mfe-a')).toBe('src/a.ts');
   });
 
   // (h) review #500 round 2 (P2-3): a materialization refusal (composeSharedFiles'

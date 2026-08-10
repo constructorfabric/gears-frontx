@@ -568,4 +568,35 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     expect(writes.size).toBe(0);
     expect(removed.size).toBe(0);
   });
+
+  // issue #506 — the final `deps.writeProvenance` used to run AFTER the
+  // for-each-entry loop's try/catch closed, so a write failure there threw
+  // past `ApplyResult`'s `{ok:false}` contract with the loop's project-file
+  // mutations already on disk and no rollback. Moved inside the same try —
+  // a throwing `writeProvenance` is now caught by the existing restore-on-
+  // error loop, which already covers `provPath` (snapshotted at the top of
+  // `applyChangeSet`), so both the mutated project file AND the provenance
+  // file land back at their exact pre-upgrade bytes.
+  it('(o) a throwing writeProvenance is restored: the mutated project file and provenance.json are returned to pre-upgrade bytes, and ApplyResult reports failure instead of throwing', async () => {
+    const files = new Map<string, string>([
+      [`${PROJ_ROOT}/src/App.tsx`, 'v1 content'],
+      [`${PROJ_ROOT}/.frontx/provenance.json`, JSON.stringify([BASE_PROVENANCE], null, 2)],
+    ]);
+
+    const applyResult = await applyChangeSet(trivialChangeSet, PROJ_ROOT, BASE_PROVENANCE, {
+      readProjectFile: async (p) => files.get(p) ?? null,
+      writeProjectFile: async (p, c) => { files.set(p, c); },
+      removeProjectFile: async (p) => { files.delete(p); },
+      writeProvenance: async () => { throw new Error('disk full'); },
+    });
+
+    expect(applyResult.ok).toBe(false);
+    if (applyResult.ok) return;
+    expect(applyResult.message).toMatch(/disk full/);
+    // The for-each-entry loop's mutation to App.tsx was rolled back...
+    expect(files.get(`${PROJ_ROOT}/src/App.tsx`)).toBe('v1 content');
+    // ...and provenance.json was never left holding a version bump with no
+    // matching project-file changes applied — restored byte-for-byte.
+    expect(files.get(`${PROJ_ROOT}/.frontx/provenance.json`)).toBe(JSON.stringify([BASE_PROVENANCE], null, 2));
+  });
 });
