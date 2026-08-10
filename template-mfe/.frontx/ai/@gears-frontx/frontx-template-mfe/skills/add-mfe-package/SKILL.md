@@ -63,11 +63,12 @@ to mount into an extension domain).
    discoverable at runtime by rewriting the host's
    `public/generated-mfe-manifests.json`; it runs in the workflow's tier 2, once, after
    the last package.
-7. **Verify** - run step 7 of the `add-mfe-package-workflow` in this bundle as it tiers
-   the work: the scoped tier-1 commands per package, the repo-wide tier-2 quartet plus
-   `build:mfes`/`generate:mfe-manifests` once after the last one, and the build
-   prerequisite step 6 documents; then `npm run dev:all` and run that workflow's step 8
-   in full - mount check, declared route, menu pathname, every registered theme, and the
+7. **Verify** - run step 6 of the `add-mfe-package-workflow` in this bundle as it tiers
+   the work: the scoped tier-1 commands per package, and the repo-wide tier-2 quartet plus
+   `build:mfes`/`generate:mfe-manifests` once after the last one. Both tiers assume that
+   workflow's step 0 - `npm install`, `build:package`, `build:packages` - already ran,
+   before any of the authoring above. Then `npm run dev:all` and run that workflow's step
+   7 in full - mount check, declared route, menu pathname, every registered theme, and the
    coverage file it names.
 
 ## Boundaries

@@ -13,6 +13,9 @@ each step names the concrete command or file template-mfe ships.
 
 ## Read first
 
+Step 0 has to have run before any of this: both `node_modules/@gears-frontx/` and
+`packages/*/dist` are produced there, and neither exists on a fresh clone.
+
 Before reading any `dist/*.d.ts` under `node_modules/@gears-frontx/`, read the
 `ecosystem-api-quick-reference` reference artifact in this same bundle - it carries the
 signatures screens actually need (`createSlice`/`registerSlice`, `eventBus`,
@@ -22,8 +25,9 @@ table), verified against those same declarations.
 
 ## One package per run
 
-Steps 1-8 realize a single package. When realizing multiple packages, complete this
-workflow - through a green TIER 1 of step 7 - for the current package before starting the
+Step 0 runs once per clone. Steps 1-7 realize a single package. When realizing multiple
+packages, complete this workflow - through a green TIER 1 of step 6 - for the current
+package before starting the
 next package's copy step (step 2). Interleaving two packages' authoring defers every
 failure into one mixed debug block, which past runs paid for and per-unit gates repeatedly
 avoided: once the first package validates, the second is strictly cheaper, because it
@@ -36,6 +40,37 @@ failure it ever caught per unit was local to the new package (a TS2322 in its ow
 `mocks.ts`, for instance), which tier 1 catches in under a minute.
 
 ## Steps
+
+0. **Install and build the project's outputs - before reading or authoring anything**
+   ```bash
+   npm install              # populates node_modules, @gears-frontx/* included
+   npm run build:package    # tsup, produces dist-lib
+   npm run build:packages   # produces packages/*/dist
+   ```
+   Run all three before the first grep, the first `.d.ts` read, and the first line of
+   authoring - on a fresh clone, and again after any pull that touched `packages/`. The
+   ecosystem's types are read from `packages/*/dist` and from `node_modules`, and both
+   exist only after these commands finish. A probe sent before them searches empty
+   directories and comes back empty, which reads as "that symbol does not exist" and
+   sends the run off renaming correct imports: one measured run spent 2m50s of wall time
+   on 31 such probes to buy 26s of machine work, then had to undo the renames. Treat an
+   empty result from a tree that has not been built as no answer at all.
+
+   This is the one home for that rule; every later step points back here rather than
+   restating it.
+
+   `build:mfes` needs `dist-lib`: every MFE's `vite.config.ts` imports `frontxMfGts` from
+   `@gears-frontx/frontx-template-shell/build/mf-gts`, which the root package exports as
+   `./dist-lib/build/mf-gts.js`, so without `build:package` the build dies while loading
+   the first MFE's Vite config with `ERR_MODULE_NOT_FOUND ... dist-lib/build/mf-gts.js`.
+   `type-check` and `test:unit` need `packages/*/dist`: an MFE package's `tsconfig.json`
+   carries no `@gears-frontx/*` path mapping, so `tsc` (and `vitest`) resolve those
+   imports through `node_modules` to each package's built entry there. The shell's
+   `tsconfig.app.json` maps them to `packages/*/src` instead, which is why the shell
+   type-checks on a fresh clone while an MFE reports `TS2307: Cannot find module
+   '@gears-frontx/react'` for every ecosystem import. Run the two build commands as one
+   prerequisite - the shell's own `build` script orders them exactly this way, ahead of
+   `build:mfes`.
 
 1. **Choose a name and port**
    - Name: `{screenset}-mfe` (kebab-case), placed at `src-app/mfe_packages/{screenset}-mfe/`.
@@ -56,7 +91,7 @@ failure it ever caught per unit was local to the new package (a TS2322 in its ow
    ```
    A copied `node_modules` carries `_blank-mfe`'s own resolution state into the new
    package, where it shadows the workspace install. An MFE resolves `@gears-frontx/*`
-   through `node_modules` rather than through path mapping (step 6), so `tsc` then
+   through `node_modules` rather than through path mapping (step 0), so `tsc` then
    type-checks the new package against the skeleton's tree and reports resolution
    errors that no edit to the new package's own files can clear.
 
@@ -97,7 +132,7 @@ failure it ever caught per unit was local to the new package (a TS2322 in its ow
      sample Spanish that the loop overwrites, which is intended. Keep the full file set
      rather than deleting the untranslated locales: `useScreenTranslations` falls back
      to `en` for a language with no file, but logs a `No translation module found`
-     warning on every such load, which then shows up in step 8's console check.
+     warning on every such load, which then shows up in step 7's console check.
    - Put the screen's business state in the package's own flux layers, not in the
      component. State shape and reducers go in `src/slices/`, registered through
      `registerSlice` in `init.ts`; every mutation is reached through an action in
@@ -127,30 +162,7 @@ failure it ever caught per unit was local to the new package (a TS2322 in its ow
      `_blank-mfe`'s `src/slices/homeSlice.ts` names `@gears-frontx/state` for exactly
      this.
 
-6. **Build the project's outputs once per clone**
-   ```bash
-   npm run build:package    # tsup, produces dist-lib
-   npm run build:packages   # produces packages/*/dist
-   ```
-   Every gate below - the new package's own build and type-check in tier 1, and
-   `build:mfes`, `type-check` and `test:unit` in tier 2 - needs these outputs to exist
-   first, whether invoked at the project root or inside the new package. This is the one
-   home for that rule; the tiers point back here rather than restating it.
-
-   `build:mfes` needs `dist-lib`: every MFE's `vite.config.ts` imports `frontxMfGts` from
-   `@gears-frontx/frontx-template-shell/build/mf-gts`, which the root package exports as
-   `./dist-lib/build/mf-gts.js`, so without `build:package` the build dies while loading
-   the first MFE's Vite config with `ERR_MODULE_NOT_FOUND ... dist-lib/build/mf-gts.js`.
-   `type-check` and `test:unit` need `packages/*/dist`: an MFE package's `tsconfig.json`
-   carries no `@gears-frontx/*` path mapping, so `tsc` (and `vitest`) resolve those
-   imports through `node_modules` to each package's built entry there. The shell's
-   `tsconfig.app.json` maps them to `packages/*/src` instead, which is why the shell
-   type-checks on a fresh clone while an MFE reports `TS2307: Cannot find module
-   '@gears-frontx/react'` for every ecosystem import. Run both commands as one
-   prerequisite - the shell's own `build` script orders them exactly this way, ahead of
-   `build:mfes`.
-
-7. **Validate**
+6. **Validate**
 
    Two tiers. TIER 1 runs per package and is the gate "One package per run" points at;
    TIER 2 runs once, after the last package.
@@ -184,7 +196,7 @@ failure it ever caught per unit was local to the new package (a TS2322 in its ow
    npm run generate:mfe-manifests  # aggregates into public/generated-mfe-manifests.json
    ```
    `generate:mfe-manifests` is what makes the new packages discoverable at runtime, so
-   tier 2 is mandatory before step 8 even for a single-package run.
+   tier 2 is mandatory before step 7 even for a single-package run.
 
    - Drive interactive `@gears-frontx/ui-kit` components in tests with
      `@testing-library/user-event`, not `fireEvent`. The kit builds Select, Switch and
@@ -192,11 +204,11 @@ failure it ever caught per unit was local to the new package (a TS2322 in its ow
      synthetic `fireEvent.click`: the control stays closed or unchanged and the
      assertion fails with nothing to point at. The skeleton ships
      `@testing-library/user-event` in devDependencies for this.
-   - Both tiers require step 6's build outputs. A tier-1 run against a tree that never
-     ran them reports `TS2307` for every ecosystem import, which is a missing
+   - Both tiers require step 0's install and build outputs. A tier-1 run against a tree
+     that never ran them reports `TS2307` for every ecosystem import, which is a missing
      prerequisite rather than a defect in the new package.
 
-8. **Run and confirm**
+7. **Run and confirm**
    ```bash
    npm run dev:all
    ```
