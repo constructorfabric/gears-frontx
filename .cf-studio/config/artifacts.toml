@@ -32,6 +32,10 @@ patterns = ["packages/ui-kit/**"]
 reason = "Unmarked build/test tooling in scripts/ has no CDSL backing. NOTE: scripts/ecosystem-version-policy.mjs (ecosystem-distribution), scripts/package-edge-tests.ts and scripts/verify-guard-configs.ts (ecosystem-governance), and scripts/test-architecture.ts carry @cpt markers and MUST stay scanned — they are deliberately NOT ignored here."
 patterns = ["scripts/test-runner/*", "scripts/manual-auth-tests/*", "scripts/check-test-dependency-versions.mjs", "scripts/run-monorepo-unit-tests.mjs"]
 
+[[ignore]]
+reason = "A kit skill's helper script is tooling the kit installs for an agent to run, not ecosystem behaviour a numbered instruction specifies, so no marker has an instruction to point at. The registry already says as much: the kit's own registered codebase is packages/cyber-pilot-kit-frontx/src with .ts only (see its [[systems.children.codebase]] below), and these .mjs helpers reach the scan solely through the root system's packages/ + .mjs catch-all. Removal criterion: this entry is lifted once the kit registers a skills/ path in its own [[systems.children.codebase]] and a kit FEATURE gives the script numbered instructions to carry. NOT satisfied by adding skills/ to the root system's codebase — that is the catch-all this entry corrects. Scoped to skills/*/scripts/* rather than the package or all of skills/, so the kit's src/ stays scanned and its SKILL.md and checklist assets keep their current treatment."
+patterns = ["packages/cyber-pilot-kit-frontx/skills/*/scripts/*"]
+
 [[systems]]
 name = "FrontX Dev Kit"
 slug = "frontx"
