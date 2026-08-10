@@ -37,8 +37,8 @@ describe('pathWithinSubtree — containment by whole path segments', () => {
     // a containment primitive and does not judge whether its arguments are
     // well-formed declarations. It is also unreachable — the manifest contract
     // rejects an empty declaration, and no content item has an empty path — and
-    // the caller for which an empty value IS a declaration (`pathsNest`) answers
-    // false for it under its own guard.
+    // the caller for which an empty value IS a declaration (`pathsNest`) settles
+    // this pair on its own equality test without ever reaching here.
     { path: '', subtree: '', within: true },
     // A doubled separator is not collapsed, and the two sides of the comparison
     // are affected differently. On the PATH side leniency is harmless and
@@ -49,7 +49,8 @@ describe('pathWithinSubtree — containment by whole path segments', () => {
     // would then be a second authority on what a declared path means, after the
     // manifest contract that admitted the spelling (degenerate declarations are
     // issue #546's ground). `pathsNest` is where that shape stops producing a
-    // verdict, because there both sides are declarations.
+    // verdict against a DISTINCT claim, because there both sides are
+    // declarations.
     { path: 'src//main.ts', subtree: 'src', within: true },
     { path: 'src/main.ts', subtree: 'src//', within: false },
     { path: 'src/', subtree: 'src//', within: false },
@@ -73,17 +74,21 @@ describe('pathsNest — containment asked in both directions', () => {
     { a: 'src/', b: 'src-app/', nest: false },
     { a: 'src', b: 'srcx.ts', nest: false },
     { a: 'docs/', b: 'src/', nest: false },
-    // A declaration addressing no location nests with nothing, in either
-    // position. `src//` is the case that matters: it reads as a near-miss for
-    // `src`, and treating it as one would refuse an assembly over a claim the
+    // A declaration addressing no location nests with no DISTINCT claim, in
+    // either position. `src//` is the case that matters: it reads as a near-miss
+    // for `src`, and treating it as one would refuse an assembly over a claim the
     // assembler hands no file for — a refusal with no ground under it. Empty and
     // slash-only values answer the same way for the same reason.
     { a: 'src//', b: 'src', nest: false },
     { a: 'src', b: 'src//', nest: false },
-    { a: 'src//', b: 'src//', nest: false },
     { a: 'src//', b: 'src/', nest: false },
     { a: '', b: 'src', nest: false },
-    { a: '', b: '', nest: false },
+    // Two identical claims are one declaration written by two templates, which
+    // is a contest whatever it addresses. Answering false here would admit an
+    // assembly that then contributes no file for either template while recording
+    // ownership for both.
+    { a: 'src//', b: 'src//', nest: true },
+    { a: '', b: '', nest: true },
     { a: '/', b: 'src', nest: false },
     { a: '//', b: 'src', nest: false },
     // Template identities, the other caller: a scoped identity and one nested

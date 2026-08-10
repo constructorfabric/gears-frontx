@@ -40,10 +40,14 @@ interface BoundaryClaim {
  * is written; conflicting claims are never silently merged. On no conflict,
  * returns a pass so the P14 uniform-apply core can proceed.
  *
- * This is the SOLE authority for boundary-collision arbitration — the A2
- * reframe relocated arbitration OUT of composed-provenance recursive
- * resolution (`cpt-frontx-algo-composed-provenance-recursive-resolution`)
- * INTO this check.
+ * This is the SOLE authority for boundary-collision arbitration over the shapes
+ * it judges - the A2 reframe relocated arbitration OUT of composed-provenance
+ * recursive resolution (`cpt-frontx-algo-composed-provenance-recursive-resolution`)
+ * INTO this check, and nothing downstream re-examines what it waves through. The
+ * shapes are exclusive subtree against exclusive subtree and shared file against
+ * shared file; a cross-kind collision, where one template's exclusive subtree
+ * contains another's declared shared-file path, is compared by neither loop and
+ * is not yet judged anywhere (issue #546).
  */
 export function checkAssemblyConflicts(
   assembly: StagedAssembly,
@@ -77,18 +81,20 @@ export function checkAssemblyConflicts(
 
       // Every pair judged here has a staged claim in it. Two claims already
       // recorded in the target repository describe what it holds, not what this
-      // operation would do to it, and the developer has no move that resolves a
-      // contest between them: both records are on disk and neither is the thing
-      // being applied. Refusing on such a pair would make every later add
-      // impossible for a reason no later add introduced.
+      // operation would do to it: an inconsistency between them is one this add
+      // did not create, and refusing an unrelated add cannot repair it. Without
+      // the narrowing, one such pair would make every later operation on that
+      // repository impossible for a reason no later operation introduced.
       //
-      // The pair reaches here at all because a repository can hold one:
-      // arbitration only became segment-aware after these records were written,
-      // and the equality comparison that admitted a nested occupant is gone
-      // while its provenance record remains. Under that comparison an EQUAL
-      // occupied pair was unreachable — the second template's own add would have
-      // been refused — which is why the narrowing was not needed before and is
-      // not a relaxation of anything that used to be caught.
+      // The cost is that an occupied-occupied overlap is never surfaced at add
+      // time. Occupied boundaries are not frozen when a template is applied:
+      // `occupiedBoundariesFromProvenance` reads each installed template's
+      // CURRENT manifest, so a `frontx install` or `update-local` that widens
+      // one manifest can leave two occupied claims overlapping, or even equal,
+      // after both were admitted, and this check stays silent about it. The
+      // developer does have moves there (roll the widened install back, or
+      // relocate one of the templates); what they do not get from here is a
+      // report telling them to.
       if (!claimA.staged && !claimB.staged) continue;
 
       // @cpt-begin:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-if-subtree-clash

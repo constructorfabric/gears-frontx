@@ -69,15 +69,23 @@ function addressesNoLocation(value: string): boolean {
 // than one declaration and one concrete path.
 //
 // That is what makes the degenerate guard belong here and not in
-// `pathWithinSubtree`: a declaration addressing no location nests with nothing,
-// because there is no file it and another claim could both own. Without the
-// guard `src//` would contest `src` — the one slash comes off, `src/` prefixes
-// `src/`, and the check refuses an assembly over a claim from which
-// `pathWithinSubtree` hands the assembler no file at all. The asymmetry that
-// leaves `src//main.ts` inside `src` is deliberate and stays: there the value is
-// a concrete content path, where a doubled separator still names a real file in
-// a real directory. Refusing the degenerate declaration outright is the manifest
-// contract's job, not this predicate's (issue #546).
+// `pathWithinSubtree`: a declaration addressing no location nests with no
+// DISTINCT claim, because there is no file it and another claim could both own.
+// Without the guard `src//` would contest `src` — the one slash comes off,
+// `src/` prefixes `src/`, and the check refuses an assembly over a claim from
+// which `pathWithinSubtree` hands the assembler no file at all. The asymmetry
+// that leaves `src//main.ts` inside `src` is deliberate and stays: there the
+// value is a concrete content path, where a doubled separator still names a real
+// file in a real directory. Refusing the degenerate declaration outright is the
+// manifest contract's job, not this predicate's (issue #546).
+//
+// Two IDENTICAL claims are the exception the equality test carries, and it has
+// to come first: `src//` against `src//` is one declaration two templates both
+// wrote, which is the plainest contest there is. Letting the degenerate guard
+// answer false for it would admit the assembly, and since `pathWithinSubtree`
+// then scopes both contributions to no content item, seed would report success
+// and write a provenance record for each template over a repository that
+// received none of their files.
 //
 // Over two template identities this is the inventory's nesting check: identity
 // is used as a path under the inventory root, so a scoped `@acme/tools` and an
@@ -90,6 +98,7 @@ function addressesNoLocation(value: string): boolean {
 // Over two manifests' exclusive-subtree claims it is the overlap the pre-flight
 // conflict check refuses (`cpt-frontx-dod-cli-scaffolding-conflict-check`).
 export function pathsNest(a: string, b: string): boolean {
+  if (a === b) return true;
   if (addressesNoLocation(a) || addressesNoLocation(b)) return false;
   return pathWithinSubtree(a, b) || pathWithinSubtree(b, a);
 }

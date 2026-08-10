@@ -84,7 +84,8 @@ describe('checkAssemblyConflicts — F12 pre-flight assembly conflict check (cpt
   // it (issue #546), and the assembler hands it no file: `src//` matches no
   // content path. Refusing an assembly over it would be a refusal naming ground
   // that no template can occupy and no developer can vacate — the claim is not
-  // a near-miss for `src`, it is a claim on nothing.
+  // a near-miss for `src`, it is a claim on nothing. The two claims here are
+  // DISTINCT declarations, which is what the pass is scoped to.
   it('passes a claim that addresses no location, rather than reading it as a near-miss for the subtree it resembles', () => {
     const assembly = assemblyOf(
       contribution('degenerate-template', { exclusiveSubtrees: ['src//'], sharedFiles: noSharedFiles }),
@@ -94,6 +95,25 @@ describe('checkAssemblyConflicts — F12 pre-flight assembly conflict check (cpt
     const verdict = checkAssemblyConflicts(assembly, []);
 
     expect(verdict.ok).toBe(true);
+  });
+
+  // The other side of that scoping, and the reason the degenerate pass cannot be
+  // written as "a claim on nothing never contests": one declaration written by
+  // two templates is a contest whatever it addresses. Passing it would leave the
+  // assembler contributing no file for either template while apply reports
+  // success and writes a provenance record per template: ownership recorded
+  // over ground the repository never received.
+  it('refuses two templates that declare the identical claim, even when that claim addresses no location', () => {
+    const assembly = assemblyOf(
+      contribution('template-a', { exclusiveSubtrees: ['src//'], sharedFiles: noSharedFiles }),
+      contribution('template-b', { exclusiveSubtrees: ['src//'], sharedFiles: noSharedFiles }),
+    );
+
+    const verdict = checkAssemblyConflicts(assembly, []);
+
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    expect(verdict.conflicts).toEqual([{ ground: 'src//', contestants: ['template-a', 'template-b'] }]);
   });
 
   // The bound on the widened refusal: these assemblies write to no common file.
