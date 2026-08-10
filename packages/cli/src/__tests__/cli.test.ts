@@ -554,7 +554,7 @@ describe('dispatch: seed (cpt-frontx-flow-cli-scaffolding-seed-repository)', () 
       'github:acme/nest-outer@v1.0.0',
       makeManifest('nest-outer', '1.0.0', {
         ownershipBoundaries: { exclusiveSubtrees: ['src/'], sharedFiles: [] },
-        referencedTemplates: [{ ref: 'nest-inner', appliedAt: 'src/config/' }],
+        referencedTemplates: [{ ref: 'nest-inner' }],
       }),
     );
     registerManifest(

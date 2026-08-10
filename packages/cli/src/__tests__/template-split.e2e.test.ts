@@ -11,7 +11,7 @@
 // (a CI job) is explicitly out of phase 3's scope.
 import fs from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { seedRepository } from '../commands/seed-repository';
 import { createFsReadTargetDirFn } from '../adapters/fs-target-dir';
 import { createFsReadTargetPathStateFn } from '../adapters/fs-target-path';
@@ -35,6 +35,16 @@ import {
   sha256,
 } from './helpers/template-split-fixtures';
 import type { ShellMfeHarness } from './helpers/template-split-fixtures';
+
+// Each fixture here drives the real install/seed/add pipeline across the whole
+// on-disk `template-shell/` and `template-mfe/` trees — reading, hashing and
+// re-materializing every declared file — so one of them costs seconds of real
+// filesystem work, not the milliseconds vitest's 5s default is sized for. That
+// default leaves so little headroom over the actual cost that a fixture fails
+// on how loaded the machine is rather than on what the CLI did. The budget is
+// set from the work the fixtures perform; it is not a retry, and a fixture that
+// exceeds it is genuinely stuck rather than merely slow.
+vi.setConfig({ testTimeout: 20_000 });
 
 // Tracks every tmp dir created by the current test so `afterEach` can sweep
 // them regardless of which `it` ran or how it exited — keeps the fixtures

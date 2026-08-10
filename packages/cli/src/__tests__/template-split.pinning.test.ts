@@ -21,7 +21,7 @@
 // be rewritten into a real correctness assertion, not deleted.
 import fs from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { seedRepository } from '../commands/seed-repository';
 import { createFsReadTargetDirFn } from '../adapters/fs-target-dir';
 import { createFsReadTargetPathStateFn } from '../adapters/fs-target-path';
@@ -54,6 +54,12 @@ import {
   setupShellAndMfeInventory,
 } from './helpers/template-split-fixtures';
 import type { ShellMfeHarness } from './helpers/template-split-fixtures';
+
+// Same budget, and for the same reason, as `template-split.e2e.test.ts`: these
+// fixtures seed, add and upgrade against the real on-disk template trees, so
+// they cost seconds of filesystem work rather than the milliseconds vitest's 5s
+// default assumes.
+vi.setConfig({ testTimeout: 20_000 });
 
 let tmpDirs: string[] = [];
 let harness: ShellMfeHarness | undefined;
