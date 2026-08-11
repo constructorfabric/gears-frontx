@@ -2,6 +2,9 @@
 # Run: npx prek install (to install git hooks)
 # Run: npx prek run --all-files (to run all hooks)
 
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+
 repos:
   # Built-in hooks (fast, Rust-native)
   - repo: builtin
@@ -62,3 +65,8 @@ repos:
         entry: npm run arch:guards
         language: system
         pass_filenames: false
+      - id: require-signoff
+        name: Require Signed-off-by trailer (commit with `git commit -s`)
+        entry: 'bash -c ''grep -qE "^Signed-off-by: .+ <.+>$" "$1" || { echo "Commit rejected: missing Signed-off-by trailer. Commit with: git commit -s"; exit 1; }'' --'
+        language: system
+        stages: [commit-msg]
