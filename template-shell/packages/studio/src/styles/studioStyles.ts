@@ -253,6 +253,20 @@ export const STUDIO_CSS = /* css */ `
 .data-\\[state\\=open\\]\\:animate-in[data-state=open] { animation: frontx-fade-in 150ms ease-out, frontx-zoom-in 150ms ease-out; }
 .data-\\[state\\=closed\\]\\:animate-out[data-state=closed] { animation: frontx-fade-out 100ms ease-in, frontx-zoom-out 100ms ease-in; animation-fill-mode: forwards; }
 
+/* The same two rules again, scoped to the portal (specificity 0-3-0 against the
+   0-2-0 of the bare utility). A host running tailwindcss-animate emits these
+   exact class names with \`animation-name: exit\`, so the pair above wins only
+   while the studio's <style> is last in the document — which it is at mount and
+   need not stay: any stylesheet appended afterwards (a lazily mounted route or
+   MFE chunk) takes the cascade back on equal specificity.
+   Losing it is not cosmetic. Radix keeps the dropdown mounted after close and
+   waits for \`animationend\` before unmounting; if the winning rule names
+   keyframes the document does not define, no animation runs, that event never
+   fires, and the closed menu stays visible and clickable over the app until the
+   next navigation. Scoping pins the winner to keyframes defined right here. */
+.studio-portal-container .data-\\[state\\=open\\]\\:animate-in[data-state=open] { animation: frontx-fade-in 150ms ease-out, frontx-zoom-in 150ms ease-out; }
+.studio-portal-container .data-\\[state\\=closed\\]\\:animate-out[data-state=closed] { animation: frontx-fade-out 100ms ease-in, frontx-zoom-out 100ms ease-in; animation-fill-mode: forwards; }
+
 /* --- Studio portal: scoped dropdown color overrides ---
    Dropdown content portaled here inherits host-app Tailwind utilities that
    may reference broken theme variables (e.g. --popover-foreground identical

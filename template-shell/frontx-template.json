@@ -9,6 +9,7 @@
       "src/",
       "src-app/app/",
       "src-app/__test-utils__/",
+      "src-app/__tests__/",
       "src-app/vite-env.d.ts",
       "src-app/vitest.config.ts",
       "src-app/vitest.mfe.base.ts",

@@ -18,14 +18,23 @@
  *
  * Pipeline per MFE package:
  *   1. Read dist/mfe-manifest.json — enriched by the build plugin
- *   2. Inject resolved publicPath (overrides build-time placeholder)
- *   3. Copy shared dep `chunkPath` entries unchanged from the enriched manifest
- *   4. Map entries to MfeEntryMF shape with the resolved MfManifest object
+ *   2. Refuse the run when any identifier in it is not a parseable GTS id, so a
+ *      typo fails the build instead of the host's bootstrap
+ *   3. Inject resolved publicPath (overrides build-time placeholder)
+ *   4. Copy shared dep `chunkPath` entries unchanged from the enriched manifest
+ *   5. Map entries to MfeEntryMF shape with the resolved MfManifest object
  *      inlined into each entry's `manifest` field (the schema accepts both
  *      string ID and inline object; inline removes the need for any consumer
  *      to spread/override the entry to attach the manifest reference at
  *      registration time, so consumers can pass entries opaquely to
  *      `typeSystem.register()`)
+ *
+ * A package whose `mfe.json` declares `"templateExample": true` is left out of
+ * the aggregate entirely: it is content the template ships to be read and
+ * copied, and an applied project that registered it would offer screens its
+ * developer never asked for. `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` puts them
+ * back, for a run that means to watch the shipped examples rather than read
+ * them.
  *
  * Usage:
  *   npx tsx scripts/generate-mfe-manifests.ts [--base-url <url>]
@@ -35,7 +44,16 @@
  */
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { Gts } from '@globaltypesystem/gts-ts';
+
+import {
+  isTemplateExamplePackage,
+  templateExamplesIncluded,
+  templateExamplesSkippedNotice,
+} from './lib/mfe-tools.js';
 
 // ---------------------------------------------------------------------------
 // Raw JSON shape types (what we read from the enriched mfe-manifest.json on disk)
@@ -168,7 +186,13 @@ interface OutMfeManifestConfig {
 // ---------------------------------------------------------------------------
 
 // @cpt-begin:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-2
-class ManifestGenerator {
+/**
+ * Exported for `__tests__/template-example-packages.test.ts`, which runs the
+ * real discovery against a fixture tree rather than a copy of its rules. The
+ * CLI entry at the foot of this file guards on being the process entry point so
+ * that import writes no manifest of its own.
+ */
+export class ManifestGenerator {
   private readonly mfePackagesDir: string;
   private readonly outputFile: string;
   private readonly globalBaseUrl: string | null;
@@ -215,19 +239,43 @@ class ManifestGenerator {
     if (!existsSync(this.mfePackagesDir)) {
       return [];
     }
-    return readdirSync(this.mfePackagesDir).filter((dir) => {
-      if (ManifestGenerator.EXCLUDED.has(dir) || dir.startsWith('.')) {
-        return false;
-      }
+
+    const includeExamples = templateExamplesIncluded();
+    const discovered: string[] = [];
+    const skippedExamples: string[] = [];
+
+    for (const dir of readdirSync(this.mfePackagesDir)) {
+      if (ManifestGenerator.EXCLUDED.has(dir) || dir.startsWith('.')) continue;
+
       const pkgPath = join(this.mfePackagesDir, dir);
-      return existsSync(join(pkgPath, 'mfe.json'));
-    });
+      if (!existsSync(join(pkgPath, 'mfe.json'))) continue;
+
+      // A package the template ships as an example or as the copy-from scaffold
+      // contributes no extension to the aggregated manifest, so nothing of it
+      // reaches the registry the host's navigation menu is built from. Excluding
+      // it here rather than in the menu covers every consumer of the generated
+      // file at once, and spares the build and the dev orchestrator the work of
+      // producing something no product asked for.
+      if (!includeExamples && isTemplateExamplePackage(pkgPath)) {
+        skippedExamples.push(dir);
+        continue;
+      }
+
+      discovered.push(dir);
+    }
+
+    if (skippedExamples.length > 0) {
+      console.log(templateExamplesSkippedNotice(skippedExamples));
+    }
+
+    return discovered;
   }
 
   private processPackage(packageDir: string): OutMfeManifestConfig {
     const pkgPath = join(this.mfePackagesDir, packageDir);
 
     const mfeJson = this.readEnrichedMfeJson(pkgPath, packageDir);
+    this.assertGtsIdsAreValid(mfeJson, pkgPath, packageDir);
     const publicPath = this.resolvePublicPath(mfeJson, packageDir);
 
     const outManifest = this.buildManifest(mfeJson.manifest, publicPath);
@@ -263,6 +311,51 @@ class ManifestGenerator {
       );
     }
     return mfeJson;
+  }
+
+  /**
+   * Refuse a package whose enriched manifest carries an identifier GTS cannot
+   * parse.
+   *
+   * Without this gate every command stays green: an id one dot-token short of
+   * `vendor.package.namespace.type.vN` compiles, type-checks, builds and lands
+   * in the aggregate, and the only thing that rejects it is the host's
+   * bootstrap, which reports it as a console error and leaves an empty
+   * navigation menu behind. Nothing then names the file to edit, so the cost of
+   * the typo is a runtime hunt rather than a failed build.
+   *
+   * The check runs through the same parser the runtime registry parses ids
+   * with, so this gate cannot come to disagree with the runtime about what a
+   * valid id is: a grammar restated here would start rejecting ids GTS accepts
+   * the first time the id grammar moves.
+   *
+   * Every invalid id in the package is reported together. Stopping at the first
+   * would turn a manifest that carries several into one rebuild per typo.
+   */
+  private assertGtsIdsAreValid(
+    mfeJson: RawEnrichedMfeJson,
+    pkgPath: string,
+    packageDir: string
+  ): void {
+    const invalid = collectGtsIds(mfeJson)
+      .map(({ field, id }) => ({ field, id, result: Gts.validateGtsID(id) }))
+      .filter(({ result }) => !result.ok);
+
+    if (invalid.length === 0) {
+      return;
+    }
+
+    const detail = invalid
+      .map(({ field, id, result }) => `  - ${field}: "${id}"\n      ${result.error}`)
+      .join('\n');
+
+    throw new Error(
+      `[${packageDir}] ${invalid.length} invalid GTS identifier(s) in ${this.mfeManifestPath}:\n` +
+        `${detail}\n` +
+        `Every '~'-delimited segment carries the five dot-tokens ` +
+        `vendor.package.namespace.type.vN, optionally followed by a minor version. ` +
+        `Fix the ids in ${join(pkgPath, 'mfe.json')} and rebuild the package.`
+    );
   }
 
   /**
@@ -404,6 +497,72 @@ class ManifestGenerator {
 // @cpt-end:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-2
 
 // ---------------------------------------------------------------------------
+// GTS identifier collection
+// ---------------------------------------------------------------------------
+
+/** One identifier from the enriched manifest, with the path that produced it. */
+interface LocatedGtsId {
+  field: string;
+  id: string;
+}
+
+/**
+ * Collect every GTS identifier the aggregate carries, each paired with its
+ * position in the enriched manifest.
+ *
+ * The position travels with the id because the value alone does not say where
+ * to edit: the same manifest id is repeated on every entry, so reporting only
+ * the string sends a reader looking through the whole file for it.
+ *
+ * The `schemas` documents are deliberately left out. Their `$id` and
+ * `x-gts-ref` values are URI-prefixed and nested at arbitrary depth, and the
+ * schema loader in @gears-frontx/gts-plugin already parses them on its own
+ * terms; a second traversal here would be a second opinion about a document
+ * this script otherwise copies through untouched.
+ */
+function collectGtsIds(mfeJson: RawEnrichedMfeJson): LocatedGtsId[] {
+  const ids: LocatedGtsId[] = [];
+
+  const add = (field: string, id: string): void => {
+    ids.push({ field, id });
+  };
+  const addEach = (field: string, values: string[] | undefined): void => {
+    values?.forEach((id, index) => add(`${field}[${index}]`, id));
+  };
+
+  add('manifest.id', mfeJson.manifest.id);
+
+  mfeJson.domains?.forEach((domain, index) => {
+    const at = `domains[${index}]`;
+    add(`${at}.id`, domain.id);
+    addEach(`${at}.sharedProperties`, domain.sharedProperties);
+    addEach(`${at}.actions`, domain.actions);
+    addEach(`${at}.extensionsActions`, domain.extensionsActions);
+    addEach(`${at}.lifecycleStages`, domain.lifecycleStages);
+    addEach(`${at}.extensionsLifecycleStages`, domain.extensionsLifecycleStages);
+  });
+
+  mfeJson.entries.forEach((entry, index) => {
+    const at = `entries[${index}]`;
+    add(`${at}.id`, entry.id);
+    add(`${at}.manifest`, entry.manifest);
+    addEach(`${at}.requiredProperties`, entry.requiredProperties);
+    addEach(`${at}.optionalProperties`, entry.optionalProperties);
+    addEach(`${at}.actions`, entry.actions);
+    addEach(`${at}.domainActions`, entry.domainActions);
+  });
+
+  mfeJson.extensions.forEach((extension, index) => {
+    const at = `extensions[${index}]`;
+    add(`${at}.id`, extension.id);
+    add(`${at}.domain`, extension.domain);
+    add(`${at}.entry`, extension.entry);
+  });
+
+  return ids;
+}
+
+// ---------------------------------------------------------------------------
 // CLI entry point
 // ---------------------------------------------------------------------------
 
@@ -413,15 +572,26 @@ function parseArgs(argv: string[]): { baseUrl: string | null } {
   return { baseUrl };
 }
 
-const { baseUrl } = parseArgs(process.argv.slice(2));
-
-const MFE_PACKAGES_DIR = join(process.cwd(), 'src-app/mfe_packages');
-const OUTPUT_FILE = join(process.cwd(), 'public/generated-mfe-manifests.json');
 const MFE_MANIFEST_PATH = 'dist/mfe-manifest.json';
 
-try {
-  new ManifestGenerator(MFE_PACKAGES_DIR, OUTPUT_FILE, MFE_MANIFEST_PATH, baseUrl).run();
-} catch (err) {
-  console.error('Error generating MFE manifests:', err instanceof Error ? err.message : String(err));
-  process.exit(1);
+// Generating is what running this file does, and only running it: a test that
+// imports `ManifestGenerator` must not also rewrite the real project's
+// `public/generated-mfe-manifests.json` as a side effect of the import. The
+// comparison is against the resolved path of the file node was told to run, so
+// it holds under `tsx scripts/generate-mfe-manifests.ts` as well as under node.
+const invokedPath = process.argv[1];
+const isProcessEntryPoint =
+  invokedPath !== undefined && resolve(invokedPath) === fileURLToPath(import.meta.url);
+
+if (isProcessEntryPoint) {
+  const { baseUrl } = parseArgs(process.argv.slice(2));
+  const mfePackagesDir = join(process.cwd(), 'src-app/mfe_packages');
+  const outputFile = join(process.cwd(), 'public/generated-mfe-manifests.json');
+
+  try {
+    new ManifestGenerator(mfePackagesDir, outputFile, MFE_MANIFEST_PATH, baseUrl).run();
+  } catch (err) {
+    console.error('Error generating MFE manifests:', err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
 }

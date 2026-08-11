@@ -1,7 +1,10 @@
 // @cpt-algo:cpt-frontx-algo-ai-kit-packaging-manifest-validation:p1
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import vm from 'node:vm';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parse as parseToml } from 'smol-toml';
 import { FORBIDDEN_BODY_NAMES, findForbiddenSolutionName, validateKitManifest } from '../validate-manifest.js';
@@ -414,5 +417,436 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
   it('names no concrete template, solution, or framework in the routing document', () => {
     expect(findForbiddenSolutionName(shippedBody(ROUTING_ID))).toBeUndefined();
+  });
+
+  // The scaffolding flow's verification is accounted for by a checklist shipped
+  // beside the skill: the skill holds the mechanics, the checklist holds what
+  // those mechanics have to establish, and the report walks its categories.
+  // Three things can break that arrangement silently, so each is asserted here.
+  describe('verification checklist resource', () => {
+    const CHECKLIST_ID = 'frontx_verification_checklist';
+
+    // Studio infers `kind` from a source whose file name ends in `checklist.md`
+    // (`_resource_kind_from_path`, studio engine v1.6.2). A rename to any other
+    // file name would leave the declared kind and the inferred one disagreeing,
+    // which no other assertion in this suite would notice.
+    it('is declared as a non-public checklist whose file name backs the kind inference', () => {
+      const resource = resourceById(CHECKLIST_ID);
+
+      expect(resource).toMatchObject({
+        kind: 'checklist',
+        type: 'file',
+        source: 'skills/project-scaffolding/verification-checklist.md',
+      });
+      // Absent rather than false: Studio rejects `public = true` for this kind
+      // outright, so the key is left off exactly as it is for frontx_guidelines.
+      expect(resource?.public).toBeUndefined();
+      expect(resource?.source.endsWith('checklist.md')).toBe(true);
+    });
+
+    // The format of record for a Studio checklist: MUST HAVE / MUST NOT HAVE
+    // partitions, and every item carrying a severity from the document's own
+    // dictionary. An item added without one reads as unprioritized and gives a
+    // report no basis for deciding whether a failure blocks.
+    it('partitions into MUST HAVE / MUST NOT HAVE and gives every item a declared severity', () => {
+      const body = shippedBody(CHECKLIST_ID);
+
+      expect(body).toContain('\n# MUST HAVE\n');
+      expect(body).toContain('\n# MUST NOT HAVE\n');
+
+      const items = [...body.matchAll(/^### (VER-[A-Z-]*\d{3}): .+\n\*\*Severity\*\*: (\w+)$/gm)];
+      const headings = [...body.matchAll(/^### (VER-[A-Z-]*\d{3}):/gm)];
+
+      // Every item heading matched the stricter pattern, so none is missing the
+      // severity line that has to sit directly under it.
+      expect(items.length).toBe(headings.length);
+      expect(items.length).toBeGreaterThan(0);
+      for (const [, id, severity] of items) {
+        expect(['CRITICAL', 'HIGH', 'MEDIUM'], `${id} carries severity "${severity}"`).toContain(severity);
+      }
+    });
+
+    // The wiring is what makes the checklist load-bearing rather than a file
+    // nobody opens: Step 7 names it as the browser walk's definition of done,
+    // and Step 8 requires the per-category status walk over it.
+    it('is named by the scaffolding document as the walk definition of done and as the report status walk', () => {
+      const body = shippedBody(SCAFFOLDING_ID);
+
+      expect(body).toContain('verification-checklist.md');
+      expect(body).toContain(CHECKLIST_ID);
+      expect(body).toContain('per-category status walk');
+    });
+  });
+
+  // The theme walk's mechanics ship twice over: as prose in the scaffolding
+  // document, and as a program that performs them. The prose copy did not
+  // survive a change of agent host, which is the whole reason the program
+  // exists, so the wiring that makes it reachable and runnable is asserted here.
+  describe('verification driver resource', () => {
+    const DRIVER_ID = 'frontx_verify_walk';
+    const DRIVER_SOURCE = 'skills/project-scaffolding/scripts/verify-walk.mjs';
+    const driverPath = () => path.join(kitRoot, DRIVER_SOURCE);
+
+    it('is declared as a non-public script resource at the path the skill names', () => {
+      const resource = resourceById(DRIVER_ID);
+
+      expect(resource).toMatchObject({ kind: 'script', type: 'file', source: DRIVER_SOURCE });
+      // Absent rather than false, exactly as for the checklist: Studio rejects
+      // `public = true` outside the skill/agent/rule kinds outright.
+      expect(resource?.public).toBeUndefined();
+    });
+
+    it('ships as an executable node program', () => {
+      expect(fs.readFileSync(driverPath(), 'utf8').startsWith('#!/usr/bin/env node')).toBe(true);
+    });
+
+    // Without this, the driver could ship, validate and still be reached by
+    // nobody: the document is the only thing that sends a run to it.
+    it('is named by the scaffolding document as what the theme walk runs, with hand-driving as the fallback', () => {
+      const body = shippedBody(SCAFFOLDING_ID);
+
+      expect(body).toContain(DRIVER_ID);
+      expect(body).toContain(DRIVER_SOURCE);
+      expect(body).toContain('Hand-authored browser calls are the fallback');
+    });
+
+    it('prints its flag surface and exits 0 on --help', () => {
+      const help = spawnSync(process.execPath, [driverPath(), '--help'], { encoding: 'utf8' });
+
+      expect(help.status).toBe(0);
+      expect(help.stdout).toContain('--capdir');
+      expect(help.stdout).toContain('--themes');
+    });
+
+    // The failure path is the one that matters: a driver that exits 0 on a run
+    // it could not perform hands back a pass nobody established. Against an
+    // origin nothing serves, it must refuse before a browser is involved, and
+    // the refusal must be readable by machine.
+    it('exits non-zero with a well-formed JSON failure record when nothing serves the host', () => {
+      const capdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-'));
+      fs.rmdirSync(capdir); // the driver creates it, and refuses one that already holds files
+
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        '--host', 'http://127.0.0.1:1',
+        '--themes', 'light,dark',
+        '--screens', 'orders:/orders:screen-orders',
+        '--capdir', capdir,
+        '--switcher', 'theme-switcher',
+        '--theme-option', 'theme-option-{theme}',
+        '--menu', 'nav-{screen}',
+      ], { encoding: 'utf8' });
+
+      expect(run.status).not.toBe(0);
+
+      const parsed = JSON.parse(run.stdout) as {
+        ok: boolean;
+        themeSet: { source: string; themes: string[] };
+        failures: { stage: string; detail: string }[];
+      };
+      expect(parsed.ok).toBe(false);
+      expect(parsed.failures[0].stage).toBe('host-probe');
+      // The set's provenance is recorded, so a report cannot claim a hand-typed
+      // set was read out of the host's theme registration.
+      expect(parsed.themeSet).toEqual({ source: 'literal', themes: ['light', 'dark'] });
+      // Written to disk as well as printed: the run's own record survives the
+      // conversation that produced it.
+      expect(JSON.parse(fs.readFileSync(path.join(capdir, 'verify-walk.json'), 'utf8')).ok).toBe(false);
+
+      fs.rmSync(capdir, { recursive: true, force: true });
+    });
+
+    // The runner evaluates every script in one persistent page scope, so the
+    // prelude is re-entered on each call rather than once per run. Declared
+    // lexically, its helpers throw "already been declared" from the second eval
+    // onward, and the callers read that throw as an element holding nothing:
+    // three agent hosts driven from identical sources each reported empty theme
+    // labels on every theme rather than the redeclaration underneath.
+    it('installs its page helpers as globals, so evaluating the prelude twice in one scope does not throw', () => {
+      const preludeMatch = /const PRELUDE = `([\s\S]*?)`;/.exec(fs.readFileSync(driverPath(), 'utf8'));
+      if (preludeMatch === null) throw new Error('the driver no longer carries a PRELUDE template literal');
+      const prelude = preludeMatch[1];
+
+      // Column zero is the prelude's own top level; the indented declarations
+      // are inside the helper bodies, where a fresh scope makes them safe.
+      expect(prelude).not.toMatch(/^(?:const|let|class)\b/m);
+
+      const context = vm.createContext({});
+      vm.runInContext(prelude, context);
+
+      expect(() => vm.runInContext(prelude, context)).not.toThrow();
+      expect(vm.runInContext('typeof __find', context)).toBe('function');
+      expect(vm.runInContext('__MISSING', context)).toBe('__verify_walk_missing__');
+    });
+
+    // A refused eval and an element holding an empty string leave the same empty
+    // stdout behind. Reading only stdout made the first indistinguishable from
+    // the second, and a run spent its budget diagnosing a rendering race that
+    // was a redeclaration throw. The refusal now has a stage of its own.
+    it('records a refused browser eval as an eval-error failure carrying the runner stderr', () => {
+      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-eval-'));
+
+      // The driver reaches the browser only through `npx agent-browser`, so a
+      // stub earlier on PATH is the whole of the failure injection: no real
+      // browser is launched and nothing on the machine is touched.
+      const stubDir = path.join(workdir, 'bin');
+      fs.mkdirSync(stubDir, { recursive: true });
+      fs.writeFileSync(path.join(stubDir, 'npx'),
+        "#!/bin/sh\necho \"SyntaxError: Identifier '__find' has already been declared\" >&2\nexit 1\n",
+        { mode: 0o755 });
+
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        // A data URL is the stand-in for a served origin: it answers the host
+        // probe, which is all the probe asks of it, and it keeps this test off
+        // the network and off any port a parallel run might also want.
+        '--host', 'data:text/plain,ok',
+        '--themes', 'light',
+        '--screens', 'orders:/orders:screen-orders',
+        '--capdir', path.join(workdir, 'shots'),
+        '--switcher', 'theme-switcher',
+        '--theme-option', 'theme-option-{theme}',
+        '--menu', 'nav-{screen}',
+        // Port 1 answers nothing, so the driver takes its no-debugger path and
+        // never asks the stub to attach to a browser.
+        '--cdp-port', '1',
+        '--ready-timeout', '5000',
+      ], { encoding: 'utf8', env: { ...process.env, PATH: `${stubDir}${path.delimiter}${process.env.PATH ?? ''}` } });
+
+      expect(run.status).not.toBe(0);
+
+      const parsed = JSON.parse(run.stdout) as { ok: boolean; failures: { stage: string; detail: string }[] };
+      const evalErrors = parsed.failures.filter((failure) => failure.stage === 'eval-error');
+
+      expect(parsed.ok).toBe(false);
+      expect(evalErrors.length).toBeGreaterThan(0);
+      expect(evalErrors[0].detail).toContain("Identifier '__find' has already been declared");
+      // The readiness poll gives up on a refused eval rather than re-asking every
+      // 400ms: unguarded, the 5s budget alone would file a dozen identical
+      // records and bury the reason under them.
+      expect(evalErrors.length).toBeLessThan(10);
+      // The caller of a refused eval gets a sentinel of its own rather than an
+      // empty string or the missing-element marker, so the theme that never
+      // opened says why in its own record too.
+      const themeSwitch = parsed.failures.find((failure) => failure.stage === 'theme-switch');
+      expect(themeSwitch?.detail).toContain('__verify_walk_eval_error__');
+
+      fs.rmSync(workdir, { recursive: true, force: true });
+    });
+
+    // The runner resolves a relative screenshot path against its own temporary
+    // working directory and still reports the write as a success, so captures
+    // taken under a relative capdir land where neither the byte-compare nor the
+    // coverage cells look. Every path the driver hands out is absolute.
+    it('resolves a relative capture directory against the caller, not the runner', () => {
+      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-cwd-'));
+
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        '--host', 'http://127.0.0.1:1',
+        '--themes', 'light',
+        '--screens', 'orders:/orders:screen-orders',
+        '--capdir', 'shots',
+        '--switcher', 'theme-switcher',
+        '--theme-option', 'theme-option-{theme}',
+        '--menu', 'nav-{screen}',
+      ], { encoding: 'utf8', cwd: workdir });
+
+      const parsed = JSON.parse(run.stdout) as { capdir: string };
+
+      expect(path.isAbsolute(parsed.capdir)).toBe(true);
+      expect(path.basename(parsed.capdir)).toBe('shots');
+      expect(fs.existsSync(path.join(workdir, 'shots', 'verify-walk.json'))).toBe(true);
+
+      fs.rmSync(workdir, { recursive: true, force: true });
+    });
+
+    // A page the driver can complete a walk against, standing in for the
+    // browser at the one seam the driver has: `npx agent-browser`. It answers
+    // from a declared id list rather than a real DOM, and records every command
+    // it was given, so a test asserts on what the driver actually drove instead
+    // of on the driver's own account of it. Nothing here mocks the driver.
+    const STUB_AGENT_BROWSER = `
+const fs = require('node:fs');
+const path = require('node:path');
+
+const log = (line) => fs.appendFileSync(process.env.STUB_LOG, line + '\\n');
+const ids = JSON.parse(process.env.STUB_IDS);
+const argv = process.argv.slice(4); // past node, this file, --yes, agent-browser
+const command = argv[0];
+
+if (command === 'open' && process.env.STUB_FAIL_OPEN === '1') {
+  log('open-refused ' + argv[1]);
+  process.stderr.write('NavigationError: net::ERR_CONNECTION_REFUSED\\n');
+  process.exit(3);
+}
+if (command === 'screenshot') {
+  fs.writeFileSync(argv[1], 'png:' + path.basename(argv[1]));
+  log('screenshot ' + path.basename(argv[1]));
+  process.exit(0);
+}
+if (command !== 'eval') {
+  log(argv.join(' '));
+  process.exit(0);
+}
+
+const script = fs.readFileSync(0, 'utf8');
+const found = /__find\\("([^"]*)"\\)/.exec(script);
+const id = found === null ? null : found[1];
+
+if (script.includes('__testids()')) {
+  process.stdout.write(JSON.stringify(ids) + '\\n');
+} else if (script.includes('dispatchEvent')) {
+  log('click ' + id);
+  process.stdout.write((ids.includes(id) ? 'dispatched' : '__verify_walk_missing__') + '\\n');
+} else if (script.includes("'yes' : 'no'")) {
+  process.stdout.write((ids.includes(id) ? 'yes' : 'no') + '\\n');
+} else {
+  // The switcher's label is the only text this walk reads back.
+  process.stdout.write((id === 'theme-switcher' ? 'Theme: light' : '') + '\\n');
+}
+process.exit(0);
+`;
+
+    interface StubRun {
+      status: number | null;
+      result: {
+        ok: boolean;
+        menuResolution: { screen: string; testid: string | null; extensionId: string | null; source: string }[];
+        themes: { captures: { screen: string; state: string }[] }[];
+        failures: { stage: string; detail: string }[];
+      };
+      commands: string[];
+      cleanup: () => void;
+    }
+
+    function runAgainstStub(args: string[], ids: string[], env: NodeJS.ProcessEnv = {}): StubRun {
+      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-walk-'));
+      const stubDir = path.join(workdir, 'bin');
+      fs.mkdirSync(stubDir, { recursive: true });
+
+      const stubFile = path.join(stubDir, 'agent-browser.cjs');
+      fs.writeFileSync(stubFile, STUB_AGENT_BROWSER);
+      // The shim hardcodes this interpreter rather than resolving `node` off the
+      // PATH it is itself prepended to, so the stub cannot end up running under
+      // whatever else that PATH happens to offer.
+      fs.writeFileSync(path.join(stubDir, 'npx'),
+        `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(stubFile)} "$@"\n`,
+        { mode: 0o755 });
+
+      const logFile = path.join(workdir, 'commands.log');
+      fs.writeFileSync(logFile, '');
+
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        // Answers the host probe without a port, exactly as in the eval test.
+        '--host', 'data:text/plain,ok',
+        '--themes', 'light',
+        '--capdir', path.join(workdir, 'shots'),
+        '--switcher', 'theme-switcher',
+        '--theme-option', 'theme-option-{theme}',
+        '--cdp-port', '1',
+        '--ready-timeout', '5000',
+        ...args,
+      ], {
+        encoding: 'utf8',
+        env: {
+          ...process.env, ...env,
+          PATH: `${stubDir}${path.delimiter}${process.env.PATH ?? ''}`,
+          STUB_LOG: logFile,
+          STUB_IDS: JSON.stringify(ids),
+        },
+      });
+
+      return {
+        status: run.status,
+        result: JSON.parse(run.stdout) as StubRun['result'],
+        commands: fs.readFileSync(logFile, 'utf8').split('\n').filter(Boolean),
+        cleanup: () => fs.rmSync(workdir, { recursive: true, force: true }),
+      };
+    }
+
+    const EXT_PREFIX = 'gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~best';
+    const LOGIN_EXT = `${EXT_PREFIX}.login.screens.login.v1`;
+    const TASKS_EXT = `${EXT_PREFIX}.tasks.screens.tasks.v1`;
+    const REPORTS_EXT = `${EXT_PREFIX}.reports.screens.reports.v1`;
+    const HOST_IDS = ['theme-switcher', 'theme-option-light', 'screen-login', 'screen-tasks', 'screen-reports'];
+
+    // The host keys each menu item by the screen's whole extension id, so a
+    // pattern holding only the short screen name can never name one. Run 30 hit
+    // exactly that, fell back to route navigation, and drove the menu clicks it
+    // still owed by hand at 78.6s of budget.
+    it('reaches a menu item keyed by the screen full extension id, discovered or declared', () => {
+      const run = runAgainstStub([
+        '--screens', `login:/login:screen-login,tasks:/tasks:screen-tasks,reports:/reports:screen-reports:${REPORTS_EXT}`,
+        '--menu', 'menu-item-{extensionId}',
+      ], [...HOST_IDS, `menu-item-${LOGIN_EXT}`, `menu-item-${TASKS_EXT}`, `menu-item-${REPORTS_EXT}`]);
+
+      // The whole walk completes through the menu: this is the run that
+      // previously had no expressible pattern at all.
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+
+      // `tasks` names no id, so the driver reads the page's ids back and keeps
+      // the one carrying "tasks" as a segment; `reports` declares its own and
+      // costs no eval. Both are disclosed with the source they came from.
+      expect(run.result.menuResolution).toEqual([
+        { screen: 'tasks', testid: `menu-item-${TASKS_EXT}`, extensionId: TASKS_EXT, source: 'discovered' },
+        { screen: 'reports', testid: `menu-item-${REPORTS_EXT}`, extensionId: REPORTS_EXT, source: 'declared' },
+      ]);
+      // The clicks landed on the full ids, not on anything derived from the
+      // short name - which is the part a JSON record alone could not prove.
+      expect(run.commands).toContain(`click menu-item-${TASKS_EXT}`);
+      expect(run.commands).toContain(`click menu-item-${REPORTS_EXT}`);
+
+      run.cleanup();
+    });
+
+    // The id machinery is additive. A host that does key its menu by the short
+    // name must keep resolving on the pattern alone, and without spending an
+    // eval to read a page it has no question for.
+    it('leaves the {screen} pattern resolving on its own, with no id read off the page', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login,tasks:/tasks:screen-tasks',
+        '--menu', 'nav-{screen}',
+      ], [...HOST_IDS, 'nav-login', 'nav-tasks']);
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.result.menuResolution).toEqual([
+        { screen: 'tasks', testid: 'nav-tasks', extensionId: null, source: 'pattern' },
+      ]);
+      expect(run.commands).toContain('click nav-tasks');
+
+      run.cleanup();
+    });
+
+    // `open` and `reload` were fired and forgotten. A navigation that never
+    // happened surfaced only as a readiness timeout a full budget later, and on
+    // a screen declared without a ready testid never at all - the walk carried
+    // on capturing whatever was still on screen under the next screen's name.
+    it('fails a navigation loudly on the runner exit status, and files nothing under the screen it never reached', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login,tasks:/tasks:screen-tasks',
+        '--menu', 'nav-{screen}',
+      ], [...HOST_IDS, 'nav-login', 'nav-tasks'], { STUB_FAIL_OPEN: '1' });
+
+      expect(run.status).not.toBe(0);
+
+      const navErrors = run.result.failures.filter((failure) => failure.stage === 'navigation-error');
+      expect(navErrors).toHaveLength(1);
+      expect(navErrors[0].detail).toContain('open data:text/plain,ok/login');
+      expect(navErrors[0].detail).toContain('net::ERR_CONNECTION_REFUSED');
+      // The failure is caught where it happened, not one readiness budget later.
+      expect(run.result.failures.some((failure) => failure.stage === 'ready')).toBe(false);
+
+      // Nothing is filed under the screen the page never reached; the screen
+      // that was reached is still walked, so one bad navigation does not cost
+      // the run its other coverage.
+      const captured = run.result.themes[0].captures.map((capture) => capture.screen);
+      expect(captured).not.toContain('login');
+      expect(captured).toContain('tasks');
+
+      run.cleanup();
+    });
   });
 });

@@ -91,6 +91,29 @@ export const COVERAGE_THRESHOLDS = Object.freeze({
 });
 
 /**
+ * Per-test and per-hook timeout for every Vitest config built from this module.
+ *
+ * Vitest's 5000 ms default runs from the moment a test starts, and on a freshly
+ * scaffolded project that same clock also covers the cold Vite transform of
+ * everything the first test file pulls in. A measured first `test:unit` in a
+ * newly scaffolded MFE package reported `setup 67.11s, environment 175.25s` and
+ * failed 3 of its 17 tests with `Test timed out in 5000ms`; the identical suite
+ * passed in 1.53 s on the next invocation against a warm cache. Those failures
+ * described the transform cache, not the code under test, and a red first run
+ * is the worst possible first impression of a generated project.
+ *
+ * 30 s absorbs a cold start with room to spare. It hides no genuine hang: a
+ * test that never settles still fails, and the per-project timeout in the
+ * monorepo test runner still bounds the run as a whole.
+ *
+ * Applied uniformly to every config this module produces (package configs, the
+ * MFE base, the host config and its scaffolded twin) because the cold cache
+ * belongs to the checkout rather than to any one kind of suite, and a timeout
+ * that differed by lane would move the false red rather than remove it.
+ */
+export const COLD_START_TIMEOUT_MS = 30_000;
+
+/**
  * Node.js 25+ enables experimental global Web Storage; without
  * `--localstorage-file`, worker processes print a warning whenever anything
  * touches `localStorage`. Vitest tests use jsdom's `window.localStorage`, so
@@ -191,6 +214,8 @@ export default defineConfig({
     environment: 'jsdom',
     execArgv: vitestNodeWorkerExecArgv(),
     setupFiles: [sharedSetupFile],
+    testTimeout: ${COLD_START_TIMEOUT_MS},
+    hookTimeout: ${COLD_START_TIMEOUT_MS},
     include: ${formatArrayLiteral([...TEST_INCLUDE_TSX, ...HOST_SCRIPT_TEST_INCLUDE], 6)},
     exclude: ${formatArrayLiteral(['src/mfe_packages/**', ...DEFAULT_TEST_EXCLUDE], 6)},
     coverage: {
@@ -269,6 +294,8 @@ export function definePackageVitestConfig(
       environment,
       execArgv: vitestNodeWorkerExecArgv(),
       setupFiles: [...SHARED_VITEST_SETUP_FILES],
+      testTimeout: COLD_START_TIMEOUT_MS,
+      hookTimeout: COLD_START_TIMEOUT_MS,
       include,
       exclude: [...DEFAULT_TEST_EXCLUDE],
       passWithNoTests: false,
@@ -301,6 +328,7 @@ export function definePackageVitestConfig(
  */
 export function renderStandaloneMfeVitestBase(): string {
   const inlineConstants = [
+    `const COLD_START_TIMEOUT_MS = ${COLD_START_TIMEOUT_MS};`,
     `const TEST_INCLUDE_TSX = ${formatArrayLiteral(TEST_INCLUDE_TSX, 0)};`,
     `const DEFAULT_TEST_EXCLUDE = ${formatArrayLiteral(DEFAULT_TEST_EXCLUDE, 0)};`,
     `const COVERAGE_EXCLUDE = ${formatArrayLiteral(COVERAGE_EXCLUDE, 0)};`,

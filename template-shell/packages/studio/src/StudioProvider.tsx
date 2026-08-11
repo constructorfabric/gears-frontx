@@ -83,8 +83,16 @@ interface StudioProviderProps {
 // @cpt-begin:cpt-frontx-state-studio-devtools-panel-visibility:p1:inst-1
 // @cpt-begin:cpt-frontx-dod-studio-devtools-persistence:p1:inst-1
 export const StudioProvider: React.FC<StudioProviderProps> = ({ children }) => {
+  // A first visit has nothing stored under STORAGE_KEYS.COLLAPSED, so this
+  // default is what every freshly scaffolded project shows. It is `true`
+  // because the expanded panel is a ~400x500 fixed overlay at z-index 10000
+  // that sits over the product's own UI and swallows clicks on whatever it
+  // covers — in scaffolded runs it has blocked primary screen controls
+  // outright. The collapsed button is one click (or Shift+`) away, so
+  // defaulting closed costs a developer one gesture and defaulting open costs
+  // an unrelated user a broken screen.
   const [collapsed, setCollapsed] = useState(() =>
-    loadStudioState(STORAGE_KEYS.COLLAPSED, false)
+    loadStudioState(STORAGE_KEYS.COLLAPSED, true)
   );
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
 

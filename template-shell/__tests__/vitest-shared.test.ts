@@ -10,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  COLD_START_TIMEOUT_MS,
   COVERAGE_EXCLUDE,
   COVERAGE_THRESHOLDS,
   DEFAULT_TEST_EXCLUDE,
@@ -81,6 +82,8 @@ describe('renderStandaloneVitestConfig', () => {
     expect(rendered).toContain('passWithNoTests: false');
     expect(rendered).toContain("environment: 'jsdom'");
     expect(rendered).toContain('setupFiles: [sharedSetupFile]');
+    expect(rendered).toContain(`testTimeout: ${COLD_START_TIMEOUT_MS}`);
+    expect(rendered).toContain(`hookTimeout: ${COLD_START_TIMEOUT_MS}`);
     expect(rendered).toContain('@vitejs/plugin-react');
     expect(rendered).toContain('execArgv: vitestNodeWorkerExecArgv()');
     expect(rendered).toContain('--no-experimental-webstorage');
@@ -134,6 +137,7 @@ describe('renderStandaloneMfeVitestBase', () => {
       "const sharedSetupFile = path.resolve(__dirname, '../../vitest.setup.ts');",
     );
     expect(rendered).toContain('setupFiles: [sharedSetupFile]');
+    expect(rendered).toContain(`const COLD_START_TIMEOUT_MS = ${COLD_START_TIMEOUT_MS};`);
     expect(rendered).toContain('const TEST_INCLUDE_TSX = [');
     expect(rendered).toContain('const DEFAULT_TEST_EXCLUDE = [');
     expect(rendered).toContain('const COVERAGE_EXCLUDE = [');
@@ -145,6 +149,8 @@ describe('renderStandaloneMfeVitestBase', () => {
     expect(rendered).toContain('export function defineMfeProject');
     expect(rendered).toContain("'@frontx-test-utils'");
     expect(rendered).toContain('passWithNoTests: false');
+    expect(rendered).toContain('testTimeout: COLD_START_TIMEOUT_MS');
+    expect(rendered).toContain('hookTimeout: COLD_START_TIMEOUT_MS');
     expect(rendered).toContain('execArgv: vitestNodeWorkerExecArgv()');
     expect(rendered).toContain('--no-experimental-webstorage');
   });

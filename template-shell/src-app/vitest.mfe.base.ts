@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, mergeConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import {
+  COLD_START_TIMEOUT_MS,
   COVERAGE_EXCLUDE,
   COVERAGE_THRESHOLDS,
   DEFAULT_TEST_EXCLUDE,
@@ -37,6 +38,11 @@ export const mfeVitestBaseConfig = defineConfig({
     passWithNoTests: false,
     execArgv: vitestNodeWorkerExecArgv(),
     setupFiles: [...SHARED_VITEST_SETUP_FILES],
+    // A newly scaffolded MFE package pays its whole Vite transform inside the
+    // first test's own budget; see COLD_START_TIMEOUT_MS for the measurement
+    // that fixed the value.
+    testTimeout: COLD_START_TIMEOUT_MS,
+    hookTimeout: COLD_START_TIMEOUT_MS,
     include: [...TEST_INCLUDE_TSX],
     exclude: [...DEFAULT_TEST_EXCLUDE],
     coverage: {

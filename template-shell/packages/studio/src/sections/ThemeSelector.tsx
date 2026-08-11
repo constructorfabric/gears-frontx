@@ -12,6 +12,7 @@ import {
 } from '../uikit/base/dropdown-menu';
 import { DropdownButton } from '../uikit/composite/DropdownButton';
 import { useStudioContext } from '../StudioProvider';
+import { STUDIO_THEME_TRIGGER_TESTID, studioThemeOptionTestId } from '../testIds';
 
 /**
  * ThemeSelector Component
@@ -44,7 +45,15 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
       </label>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <DropdownButton variant={ButtonVariant.Outline}>
+          {/*
+            The trigger's own text is the active theme, so a verification run
+            reads which theme is applied off this one element rather than
+            probing classes or computed styles for it.
+          */}
+          <DropdownButton
+            variant={ButtonVariant.Outline}
+            data-testid={STUDIO_THEME_TRIGGER_TESTID}
+          >
             {formatThemeName(currentTheme || '')}
           </DropdownButton>
         </DropdownMenuTrigger>
@@ -52,6 +61,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
           {themes.map((theme) => (
             <DropdownMenuItem
               key={theme.id}
+              data-testid={studioThemeOptionTestId(theme.id)}
               onClick={() => setTheme(theme.id)}
             >
               {formatThemeName(theme.name || theme.id)}

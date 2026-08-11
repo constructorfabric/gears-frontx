@@ -191,13 +191,32 @@ module.exports = {
     },
   ],
   options: {
-    // `packages/*/dist` is here rather than in `exclude` on purpose. `exclude`
-    // removes a module from the graph outright, and since every package's
-    // `exports`/`main` points at `./dist/...`, excluding it deletes the very node
-    // every cross-package layer rule needs as its `to` — silently making the
-    // layer chain unenforceable. `doNotFollow` keeps the node visible as an
-    // un-traversed leaf, which is all the noise reduction that was wanted.
-    doNotFollow: { path: ['^node_modules', '^packages/[^/]+/dist'] },
+    // `node_modules` is matched at any depth, not anchored at the start of the
+    // path. An `^node_modules` anchor reaches only this directory's own
+    // top-level tree and silently lets the cruise walk into every other one it
+    // can reach: each workspace package's nested `packages/*/node_modules`, and
+    // `../node_modules` in a tree that sits inside a larger repo. Measured on
+    // this template with the anchored pattern, 1268 of 1670 modules came from
+    // nested trees and 958 more from `../node_modules` — third-party code no
+    // rule below can fire on, type-parsed anyway because
+    // `tsPreCompilationDeps` runs the TS compiler over every module. In a
+    // scaffolded project, where `src-app/mfe_packages/*` each add a tree of
+    // their own, that traversal is what exhausts the default heap.
+    //
+    // `packages/*/dist` and `src-app/mfe_packages/*/dist` are here rather than
+    // in `exclude` on purpose. `exclude` removes a module from the graph
+    // outright, and since every package's `exports`/`main` points at
+    // `./dist/...`, excluding it deletes the very node every cross-package layer
+    // rule needs as its `to` — silently making the layer chain unenforceable.
+    // `doNotFollow` keeps the node visible as an un-traversed leaf, which is all
+    // the noise reduction that was wanted.
+    doNotFollow: {
+      path: [
+        '(^|/)node_modules/',
+        '^packages/[^/]+/dist/',
+        '^src-app/mfe_packages/[^/]+/dist/',
+      ],
+    },
     // Nothing is path-excluded. `exclude` drops modules from the graph outright,
     // so anything listed here becomes unusable as a rule's `to` — which is how
     // both `node_modules` (React) and `packages/*/dist` (every cross-package

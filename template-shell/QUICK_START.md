@@ -17,12 +17,13 @@ npm run dev:all                                    # host + all MFE dev servers
 
 Open **http://localhost:5173**. The host shell boots, fetches the MFE manifest,
 and the left menu fills in with screens contributed by whatever MFE packages
-are present under `src-app/mfe_packages/`. This guide assumes the
-[`frontx-template-mfe`](../template-mfe/README.md) packages have been added —
-`demo-mfe` `:3001`, `_blank-mfe` `:3099`, widget fixtures `:3201` / `:3202` —
-a shell-only seed has none yet: the menu stays empty and
-`generate:mfe-manifests` writes an empty manifest set, both expected until
-you add some.
+are present under `src-app/mfe_packages/`. Until you add one the menu stays
+empty and `generate:mfe-manifests` writes an empty manifest set - both expected.
+
+The packages [`frontx-template-mfe`](../template-mfe/README.md) contributes -
+`demo-mfe` `:3001`, `_blank-mfe` `:3099`, widget fixtures `:3201` / `:3202` - do
+not change that: they are that template's own examples and stay out of your app,
+per `src-app/mfe_packages/README.md`.
 
 > First paint may briefly show an empty menu — the MFE system registers screens
 > asynchronously after the manifest loads, then the menu populates.
@@ -57,7 +58,8 @@ The host shell is intentionally empty. Screens come from **microfrontends**:
 2. The build produces a manifest; `src-app/app/mfe/bootstrap.ts` fetches
    `/generated-mfe-manifests.json` and registers everything at runtime.
 3. `src-app/app/layout/Menu.tsx` reads the registered screen extensions and
-   renders the menu — mounting the corresponding MFE remote on click.
+   renders the menu — mounting the corresponding MFE remote on click and pushing
+   its `presentation.route`, which the shell resolves back to a screen on load.
 
 You extend the app by adding screens/MFEs, not by editing a central registry.
 
@@ -120,11 +122,13 @@ packages, so the lock must be regenerated). Start from the blank MFE:
 cp -r src-app/mfe_packages/_blank-mfe src-app/mfe_packages/my-mfe
 ```
 
-Then update its `package.json` name and preview `--port`, declare entries and
-screen extensions in `mfe.json`, and expose your lifecycle modules in its
-`vite.config.ts`. `dev:all` discovers MFEs automatically by scanning
-`src-app/mfe_packages/` — there is no registry file to edit. See the shell's
-`mfe-package-contract` AI guideline for the exact shape a new package must have.
+Then update its `package.json` name and preview `--port`, and in `mfe.json`
+delete the scaffold's `"templateExample": true` line (see
+`src-app/mfe_packages/README.md` for why) before declaring your entries and
+screen extensions. Expose your lifecycle modules in its `vite.config.ts`.
+`dev:all` discovers MFEs automatically by scanning `src-app/mfe_packages/` —
+there is no registry file to edit. See the shell's `mfe-package-contract` AI
+guideline for the exact shape a new package must have.
 
 ## Layout & navigation
 
@@ -134,9 +138,14 @@ the screen container). You compose *into* it:
 - **Menu** is populated from screen extensions (`presentation.label`/`icon`/`order`).
 - **Screen container** mounts one screen at a time (exclusive mount strategy).
 - **Sidebar / popup / overlay** are optional domains an MFE can target the same way.
+- **URL** tracks the mounted screen through `presentation.route`: a menu click
+  pushes that route, and on load or back/forward the shell mounts the screen the
+  path names, so deep links are shareable. A path no screen claims mounts the
+  first menu screen and stays in the address bar as typed.
 
 `src-app/app/layout/Menu.tsx` is the canonical reference — it subscribes to the
-MFE registry and dispatches mount actions on click.
+MFE registry and dispatches mount actions on click; `src-app/app/mfe/screenRouting.ts`
+is the path-to-screen resolution both it and the screen container share.
 
 ## State
 
