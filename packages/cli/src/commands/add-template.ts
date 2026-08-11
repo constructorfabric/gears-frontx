@@ -1,6 +1,7 @@
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-add-template:p1
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-add-undeclared-content:p1
 import { resolveComposition } from '../composition/resolve';
+import { pathWithinSubtree } from '../paths/relative-path';
 import { uniformApply } from '../scaffold/assembler';
 import { groupContributionsByPath } from '../scaffold/compose-shared-files';
 import { checkAssemblyConflicts } from '../scaffold/conflict';
@@ -373,8 +374,9 @@ function claimedGroundOf(
 
 // Whether a repository-relative path stands on ground a recorded claim and an
 // incoming claim BOTH declare: the same shared-file path, or the same exclusive
-// subtree containing it. A subtree is compared with a trailing separator so that
-// "srcx.ts" does not read as being inside "src".
+// subtree containing it. Containment is `pathWithinSubtree`, the same predicate
+// the conflict check and the assembler decide it by, so this exemption cannot
+// come to disagree with the check it defers those paths to.
 function isArbitratedGround(
   path: string,
   claimed: { subtrees: ReadonlySet<string>; sharedFiles: ReadonlySet<string> },
@@ -384,9 +386,7 @@ function isArbitratedGround(
     ({ boundary }) =>
       (claimed.sharedFiles.has(path) && boundary.sharedFiles.some((entry) => entry.path === path)) ||
       boundary.exclusiveSubtrees.some(
-        (subtree) =>
-          claimed.subtrees.has(subtree) &&
-          (path === subtree || path.startsWith(subtree.endsWith('/') ? subtree : `${subtree}/`)),
+        (subtree) => claimed.subtrees.has(subtree) && pathWithinSubtree(path, subtree),
       ),
   );
 }

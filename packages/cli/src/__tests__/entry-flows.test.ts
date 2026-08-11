@@ -614,7 +614,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       ownershipBoundaries: { exclusiveSubtrees: ['docs/'], sharedFiles: [] },
     });
     const entries: Record<string, InventoryEntry> = { 'outer-applied': outer, 'inner-applied': inner, incoming };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([
@@ -632,6 +632,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readTargetPathStateFn,
       readProjectFileFn,
     );
 
@@ -654,7 +655,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       ownershipBoundaries: { exclusiveSubtrees: ['src/config/deep/'], sharedFiles: [] },
     });
     const entries: Record<string, InventoryEntry> = { 'outer-applied': outer, 'inner-applied': inner, intruder };
-    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn } = makeFsFake();
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([
@@ -672,6 +673,7 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
       writeFileFn,
       readProvenanceFn,
       provenanceWriteFn,
+      readTargetPathStateFn,
       readProjectFileFn,
     );
 
