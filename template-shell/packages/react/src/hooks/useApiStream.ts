@@ -1,10 +1,9 @@
 /**
  * useApiStream - Declarative SSE streaming hook
  *
- * Accepts a StreamDescriptor from @gears-frontx/api and manages the EventSource
- * lifecycle: connects on mount, disconnects on unmount/descriptor change.
- * Returns the latest event, accumulated events, connection status, and
- * a manual disconnect function.
+ * Accepts a StreamDescriptor from @gears-frontx/api and returns the latest
+ * event, accumulated events, connection status, and a manual disconnect
+ * function.
  *
  * @example
  * ```tsx
@@ -17,10 +16,6 @@
  * const { events, status } = useApiStream(service.messageStream, { mode: 'accumulate' });
  * ```
  */
-
-// @cpt-dod:cpt-frontx-dod-request-lifecycle-use-api-stream:p2
-// @cpt-flow:cpt-frontx-flow-request-lifecycle-use-api-stream:p2
-// @cpt-FEATURE:cpt-frontx-fr-sse-stream-descriptors:p3
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { StreamDescriptor, StreamStatus } from '@gears-frontx/framework';
@@ -39,19 +34,76 @@ export interface ApiStreamOptions {
 
 /** Return type of useApiStream. */
 export interface ApiStreamResult<TEvent> {
-  /** Latest event payload (always set in both modes). */
+  /** Latest event payload, set in both modes — `undefined` until the first event and after each connect attempt resets it. */
   data: TEvent | undefined;
   /** All received events when `mode: 'accumulate'`; empty array in `'latest'` mode. */
   events: TEvent[];
   /** Connection lifecycle status. */
   status: StreamStatus;
-  /** Error if the connection failed. */
+  /** Last connect error — set when a connect attempt rejects, cleared when the next attempt starts. */
   error: Error | null;
   /** Manually close the connection. */
   disconnect: () => void;
 }
 
-// @cpt-begin:cpt-frontx-flow-request-lifecycle-use-api-stream:p2:inst-use-api-stream
+/**
+ * Manages the status lifecycle for a single SSE stream connection.
+ *
+ * **Status values**
+ * - `'idle'` — no connection is being attempted. This is the initial status
+ *   before the first connect effect runs, and it is ordinarily the status
+ *   while `enabled` is `false`. Consumers must not assume `'idle'` means "never
+ *   connected" — a stream that is disabled after having connected returns to
+ *   `'idle'` too, and `data`/`events` from the earlier connection are not
+ *   cleared by that transition alone (they are cleared by mode/key changes,
+ *   see below).
+ * - `'connecting'` — `descriptor.connect()` has been called and its promise
+ *   has not yet settled.
+ * - `'connected'` — set both when `connect()` resolves (unless a disconnect
+ *   was requested while it was pending) and, independently, whenever the
+ *   `onEvent` callback delivers a new event. Because every event re-asserts
+ *   `'connected'`, this status also serves as "still receiving events."
+ * - `'disconnected'` — reached via any of: the descriptor's `onComplete`
+ *   callback firing (the stream ended normally), `connect()` rejecting while
+ *   a disconnect was requested concurrently, or the manual `disconnect()`
+ *   function being called. `disconnect()` has no `enabled` guard: called
+ *   while the stream is disabled it still sets `'disconnected'`, which
+ *   persists until the next connect-effect run.
+ * - `'error'` — `connect()` rejected and no disconnect was requested while it
+ *   was pending. `error` holds the rejection, coerced to an `Error` if it
+ *   wasn't one already.
+ *
+ * **Transitions**
+ * - Mount / `enabled` becomes `true` / `descriptor.key` or `mode` changes:
+ *   `data`, `events`, and `error` are reset, then status goes to
+ *   `'connecting'` and `connect()` is called.
+ * - `enabled` becomes `false` (or starts `false`): status is forced to
+ *   `'idle'` and `connect()` is never called; no other field is reset by
+ *   this transition alone.
+ * - Unmount, `descriptor.key` change, `mode` change, or `enabled` flipping to
+ *   `false` while connected or connecting: the previous connection is torn
+ *   down via `descriptor.disconnect()` once its `connect()` promise settles
+ *   (or immediately skipped if it rejected). All four share the same cleanup
+ *   path: the effect's cleanup runs on every dependency change and on unmount.
+ * - Calling `disconnect()`: if a connection id is already resolved, it is
+ *   disconnected immediately and status becomes `'disconnected'`. If
+ *   `connect()` is still pending, the request is recorded and honored when
+ *   the promise settles — the newly resolved connection is torn down instead
+ *   of being adopted, and status is `'disconnected'`. One caveat:
+ *   `disconnect()` does not cancel the event callback, so a buffered or
+ *   in-flight event landing after the call re-asserts `'connected'` — and in
+ *   the pending-connect case the settle handler tears the connection down
+ *   without touching status, so that stray `'connected'` persists.
+ * - Stream completion while `connect()` is still pending: the current
+ *   implementation lets `onComplete` set `'disconnected'`, then the settle
+ *   handler adopts the connection id and re-asserts `'connected'` anyway.
+ *   This is known current behavior, not a durable guarantee: a pending
+ *   upstream derived-status rewrite is expected to remove this transition.
+ *
+ * `enabled` (default `true`) is the only way to defer connecting past mount;
+ * flipping it back to `true` re-runs the same connect sequence as a fresh
+ * mount would.
+ */
 export function useApiStream<TEvent>(
   descriptor: StreamDescriptor<TEvent>,
   options?: ApiStreamOptions,
@@ -169,4 +221,3 @@ export function useApiStream<TEvent>(
 
   return { data, events, status, error, disconnect };
 }
-// @cpt-end:cpt-frontx-flow-request-lifecycle-use-api-stream:p2:inst-use-api-stream

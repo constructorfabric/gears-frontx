@@ -95,3 +95,28 @@ describe('MANIFEST_FILENAME sync guard', () => {
     expect(MANIFEST_FILENAME).toBe(match[1]);
   });
 });
+
+// Same drift class, different surface: template territory is defined by
+// manifest presence (ADR-0018, cpt-frontx-adr-template-territory-traceability),
+// but the artifact registry's ignore entry can only hold literal globs. A
+// manifest-backed template directory added without updating those globs would
+// be outside the marker policy in prose while `cfs validate` still scans it.
+describe('artifacts.toml template-territory ignore sync guard', () => {
+  it('ignore globs cover exactly the manifest-discovered template directories', () => {
+    const repoRoot = fileURLToPath(new URL('..', import.meta.url));
+    const toml = readFileSync(path.join(repoRoot, '.cf-studio', 'config', 'artifacts.toml'), 'utf8');
+    const entry = toml
+      .split('[[ignore]]')
+      .find((block) => block.includes('cpt-frontx-adr-template-territory-traceability'));
+
+    expect(entry, 'template-territory ignore entry not found - did artifacts.toml drop its ADR citation?').toBeDefined();
+
+    const patternsLine = /patterns\s*=\s*\[([^\]]*)\]/.exec(entry);
+    expect(patternsLine, 'template-territory ignore entry carries no patterns array').not.toBeNull();
+
+    const globbed = [...patternsLine[1].matchAll(/"([^"]+)\/\*\*"/g)].map((m) => m[1]).sort();
+    const discovered = findTemplateDirs(repoRoot).map((d) => path.basename(d)).sort();
+
+    expect(globbed).toEqual(discovered);
+  });
+});

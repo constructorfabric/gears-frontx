@@ -442,7 +442,6 @@ export interface RestRequestContext {
   readonly signal?: AbortSignal;
 }
 
-// @cpt-FEATURE:cpt-frontx-dod-request-lifecycle-abort-signal:p1
 /**
  * REST Request Options
  * Per-request options for REST protocol HTTP methods.
@@ -925,7 +924,6 @@ export interface MutationDescriptor<TData, TVariables> {
 // Stream Descriptor Types
 // ============================================================================
 
-// @cpt-FEATURE:cpt-frontx-fr-sse-stream-descriptors:p2
 /**
  * Stream connection status.
  */

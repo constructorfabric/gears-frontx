@@ -8,6 +8,6 @@ ALWAYS resolve and enforce prerequisites of skills/workflows/commands BEFORE app
 
 AI tooling and FrontX development guidelines are provided by the Constructor Studio kit under `.cf-studio/`.
 
-Treat `architecture/` as the authority on what the system is and why: PRD for intent, DESIGN for structure, ADRs for decisions, and each FEATURE for the behaviour its numbered instructions specify. Code carries `@cpt-` markers back to those instructions; `cfs validate` checks that the chain holds.
+Treat `architecture/` as the authority on what the system is and why: PRD for intent, DESIGN for structure, ADRs for decisions, and each FEATURE for the behaviour its numbered instructions specify. Ecosystem code carries `@cpt-` markers back to those instructions; `cfs validate` checks that the chain holds. Template territory — any top-level directory carrying a `frontx-template.json` manifest (how `scripts/template-discovery.mjs` finds templates) — sits outside this chain: markers found there are non-authoritative residue being retired as files change (`cpt-frontx-adr-template-territory-traceability`).
 
 ALL user requests MUST be handled by the Orchestrator agent.

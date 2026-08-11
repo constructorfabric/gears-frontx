@@ -8,9 +8,6 @@
  * @packageDocumentation
  */
 
-// @cpt-FEATURE:implement-endpoint-descriptors:p3
-// @cpt-FEATURE:cpt-frontx-dod-request-lifecycle-use-api-stream:p2
-
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import {
@@ -414,7 +411,6 @@ describe('useApiStream', () => {
     expect(result.current.events).toEqual(['b1']);
   });
 
-  // @cpt-begin:cpt-frontx-dod-request-lifecycle-use-api-stream:p2:inst-test-same-key-no-reconnect
   it('does not call connect again when a new descriptor object shares the same key', async () => {
     const client = buildTestQueryClient();
     const wrapper = makeQueryWrapper(client);
@@ -448,5 +444,4 @@ describe('useApiStream', () => {
     await waitFor(() => expect(connectSecond).not.toHaveBeenCalled());
     expect(connectFirst).toHaveBeenCalledTimes(1);
   });
-  // @cpt-end:cpt-frontx-dod-request-lifecycle-use-api-stream:p2:inst-test-same-key-no-reconnect
 });

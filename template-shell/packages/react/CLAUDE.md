@@ -98,7 +98,7 @@ endpoint descriptors directly (e.g., `queryCache.get(service.getCurrentUser)`).
 
 ### SSE Streaming with Stream Descriptors
 
-Services declare SSE endpoints as stream descriptors. Components consume them via `useApiStream`, which manages the EventSource lifecycle automatically (connect on mount, disconnect on unmount).
+Services declare SSE endpoints as stream descriptors. Components consume them via `useApiStream`, which manages the connection lifecycle automatically (connect on mount, disconnect on unmount).
 
 ```tsx
 import { useApiStream, apiRegistry } from '@gears-frontx/react';
@@ -124,18 +124,38 @@ function ChatStream() {
   );
 
   if (status === 'connecting') return <Loading />;
-  if (error) return <Error error={error} />;
+  if (status === 'error') return <Error error={error} />;
 
   return <div>{data?.text}</div>;
 }
 ```
 
 `useApiStream` returns `{ data, events, status, error, disconnect }`:
-- `data` — latest event payload (always set in both modes)
+- `data` — latest event payload (set in both modes)
 - `events` — all received events when `mode: 'accumulate'`; empty array in `'latest'` mode
-- `status` — `'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'`
-- `error` — connection error if any
-- `disconnect()` — manually close the connection
+- `status` — connection lifecycle state, `StreamStatus` (see below)
+- `error` — the last connect attempt's error; retained until the next connect attempt resets it, so check `status` rather than `error` truthiness
+- `disconnect()` — close the connection manually
+
+#### Status lifecycle
+
+`status` is a `StreamStatus`: `'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'`.
+
+The TSDoc block on `useApiStream` in `src/hooks/useApiStream.ts` is the detailed and authoritative state-machine reference, including teardown edge cases. This guide summarizes consumer-facing usage and gating.
+
+`disconnect()` closes the connection and does not reconnect. There is no reconnect function: to open a new connection, change the descriptor key, change `mode`, or toggle `enabled` back to true.
+
+#### The `enabled` option
+
+`enabled` (default `true`) gates whether the hook connects at all. While it is false the hook never calls the descriptor's `connect()` and ordinarily holds `status: 'idle'` (calling `disconnect()` while disabled is the one exception — see the TSDoc). Flipping it to true re-runs the connect effect and starts a fresh connection; flipping it back to false tears the connection down and returns `status` to `'idle'`.
+
+Tearing down via `enabled` does not clear `data` or `events` — a descriptor-key or `mode` change, or re-enabling, does. A component reading `data` while the stream is disabled still sees the last event from the previous connection.
+
+Gating advice, since `'idle'` covers both "not started yet" and "deferred by `enabled`":
+
+- Gate the loading state on `'connecting'` alone. Treating `'idle'` as loading renders a permanent spinner for a stream deliberately held at `enabled: false`.
+- Handle `'idle'` as "not started / deferred". A component that both defers and shows loading should key its spinner off its own active flag, not off `'idle'`.
+- Check `status === 'error'` rather than the truthiness of `error` to render failures.
 
 ### Available Hooks
 

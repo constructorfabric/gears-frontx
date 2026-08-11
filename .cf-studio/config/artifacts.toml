@@ -21,7 +21,7 @@ reason = "In-package demos exercise a package's public surface rather than imple
 patterns = ["*/demo/*"]
 
 [[ignore]]
-reason = "template-shell/template-mfe are template territory (Phase 11 template-move, split in issue #470); code carries pre-redesign markers that reference archived IDs — no active FEATURE artifact backs these packages"
+reason = "These globs cover template territory — top-level directories carrying a frontx-template.json manifest — outside the ecosystem artifact universe (cpt-frontx-adr-template-territory-traceability); residue markers bind nothing and are removed as files are touched — no active FEATURE artifact backs these packages"
 patterns = ["template-shell/**", "template-mfe/**"]
 
 [[ignore]]

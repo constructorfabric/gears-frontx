@@ -82,6 +82,7 @@ Foundational:
 * `cpt-frontx-adr-artifact-versioning-and-distribution` — Distributes the ecosystem as independently published, per-concern, independently versioned artifacts.
 * `cpt-frontx-adr-core-package-boundaries` — Partitions the published libraries into boundary-governed concerns (runtime, type-system provider, protocol surface).
 * `cpt-frontx-adr-contract-schema-ownership` — Ends the circular DESIGN↔ADR schema deferral by assigning each owned contract's role to DESIGN, its decision rationale to the ADR, and its concrete field-level schema to the owning FEATURE.
+* `cpt-frontx-adr-template-territory-traceability` — Fixes this artifact tree's subject as the ecosystem's own artifacts, leaves template payload unspecified by it, and declares the `@cpt-` markers surviving in template territory to be non-authoritative residue removed as files are touched.
 
 Published libraries:
 

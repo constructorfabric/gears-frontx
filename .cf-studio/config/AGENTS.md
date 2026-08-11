@@ -59,14 +59,16 @@ WHEN:
 DO:
   - LOAD `architecture/DESIGN.md` §1.3 (Architecture Layers) and §2.2 (Constraints) before editing any code
   - LOAD `packages/cyber-pilot-kit-frontx/guidelines/ecosystem-boundaries.md` and apply the boundary constraints for every touched package
-  - LOAD the governing FEATURE.md — each lives with the package it describes, under `packages/*/architecture/features/` — before changing code that carries its `@cpt-` markers
-  - RUN keep `@cpt-` traceability markers intact and aligned with the FEATURE instructions they cite
+  - LOAD `architecture/ADR/0033-template-territory-traceability.md` before changing template territory (any top-level directory carrying a `frontx-template.json` manifest)
+  - LOAD the governing FEATURE.md — each lives with the package it describes, under `packages/*/architecture/features/` — before changing ecosystem code that carries its `@cpt-` markers
+  - RUN keep `@cpt-` traceability markers intact and aligned with the FEATURE instructions they cite — in ecosystem code only
+  - RUN apply the template-territory marker policy from `cpt-frontx-adr-template-territory-traceability` to template code changes
 
 RULES:
   - ALWAYS read the named DESIGN constraint (MFES-*, GTS-PLUGIN-*, API-*, CLI-*, KIT-*) before editing code it governs; NEVER code from assumed rules
   - ALWAYS stop and ask when a change would cross a DESIGN §2.2 constraint or a package boundary from `ecosystem-boundaries.md`
-  - ALWAYS stop and ask when no FEATURE covers behaviour the change introduces
-  - NEVER restate architecture rules in artifacts or prompts; reference `architecture/DESIGN.md` and the kit guideline instead
+  - ALWAYS stop and ask when no FEATURE covers behaviour the change introduces in ecosystem code; no ecosystem FEATURE covers template territory by decision, so template consumer-visible behaviour is governed by `cpt-frontx-adr-template-territory-traceability`
+  - NEVER restate architecture rules in artifacts or prompts; reference `architecture/DESIGN.md`, ADRs, and the kit guideline instead
 ```
 
 ```pdsl
@@ -81,9 +83,9 @@ WHEN:
   - REQUIRE reviewing code changes in this repository
 
 DO:
-  - LOAD `architecture/DESIGN.md` §2.2 and `packages/cyber-pilot-kit-frontx/guidelines/ecosystem-boundaries.md`; NEVER review from memory of their rules
+  - LOAD `architecture/DESIGN.md` §2.2, `packages/cyber-pilot-kit-frontx/guidelines/ecosystem-boundaries.md`, and `architecture/ADR/0033-template-territory-traceability.md`; NEVER review from memory of their rules
   - RUN FX-001 Constraints: every changed package complies with its named DESIGN §2.2 constraints and its package boundary in `ecosystem-boundaries.md`; ambiguous ownership was raised, not guessed
-  - RUN FX-002 Traceability: changed code keeps `@cpt-` markers consistent with the governing FEATURE, and `cfs validate` passes
+  - RUN FX-002 Traceability: changed ecosystem code keeps `@cpt-` markers consistent with the governing FEATURE, and `cfs validate` passes; changed template territory (any top-level directory carrying a `frontx-template.json` manifest) follows the marker policy in `cpt-frontx-adr-template-territory-traceability`
   - RUN FX-003 Architecture checks: `npm run arch:check` passes for the changed packages
 
 RULES:
