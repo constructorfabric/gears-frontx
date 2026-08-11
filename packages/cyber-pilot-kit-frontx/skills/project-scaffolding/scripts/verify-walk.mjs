@@ -197,18 +197,23 @@ globalThis.__testids ??= () => {
 // what sent a run hunting a rendering race that did not exist.
 const EVAL_ERROR = '__verify_walk_eval_error__';
 
-// A page-side throw reaches the driver either as a non-zero exit or as a line
-// on stderr, depending on the runner build, and in both cases stdout is empty -
-// indistinguishable from a script that legitimately returned nothing. Both
-// shapes are treated as a failed eval here, at the one place that can still see
-// the status; a caller reading only stdout has already lost the difference.
-// The launcher's own `npm warn exec` chatter does not carry an Error name.
+// A runner invocation fails either as a non-zero exit or as a line on stderr,
+// depending on the runner build, and in both cases stdout is empty -
+// indistinguishable from a command that legitimately printed nothing. Both
+// shapes are read here, at the one place that can still see the status; a
+// caller reading only stdout has already lost the difference. The launcher's
+// own `npm warn exec` chatter does not carry an Error name.
 const ERROR_SHAPED = /\b\w*Error\b/;
+
+function invocationFailed(proc) {
+  const stderr = (proc.stderr ?? '').trim();
+  return { failed: proc.status !== 0 || ERROR_SHAPED.test(stderr), stderr };
+}
 
 function evaluate(script) {
   const proc = browser(['eval', '--stdin'], `${PRELUDE}\n${script}`);
-  const stderr = (proc.stderr ?? '').trim();
-  if (proc.status !== 0 || ERROR_SHAPED.test(stderr)) {
+  const { failed, stderr } = invocationFailed(proc);
+  if (failed) {
     fail('eval-error', `browser eval exited ${proc.status}: ${stderr || '(nothing on stderr)'}`, { script });
     return EVAL_ERROR;
   }
@@ -569,21 +574,46 @@ function menuTestid(screen) {
   return testid;
 }
 
+// ---------------------------------------------------------------------------
+// Navigation
+
+// What reaching a screen established, which is not the same question as whether
+// a command succeeded: a screen may be arrived at and still carry no handle to
+// confirm the arrival with.
+const NAV_FAILED = 'failed';
+const NAV_UNCONFIRMED = 'unconfirmed';
+const NAV_READY = 'ready';
+
+// open and reload used to be fired and forgotten. A navigation that never
+// happened then surfaced only as a readiness timeout a full budget later, and
+// on a screen declared without a ready testid it never surfaced at all - the
+// walk carried on capturing the previous screen under this one's name. Same
+// class as the discarded eval status: the runner said so, and nobody read it.
+function navigate(args, screen) {
+  const proc = browser(args);
+  const { failed, stderr } = invocationFailed(proc);
+  if (!failed) return true;
+  fail('navigation-error', `"${args.join(' ')}" for screen "${screen.name}" exited ${proc.status}: ${stderr || '(nothing on stderr)'}`);
+  return false;
+}
+
 function reachScreen(screen, hard) {
   if (hard) {
-    browser(['open', `${opts.host}${screen.route}`]);
-    browser(['reload']);
+    if (!navigate(['open', `${opts.host}${screen.route}`], screen)) return NAV_FAILED;
+    if (!navigate(['reload'], screen)) return NAV_FAILED;
   } else {
     const testid = menuTestid(screen);
-    // An unresolved menu item is already recorded as a failure; clicking the
-    // unsubstituted pattern would only add a second, less informative one.
-    if (testid === null) return false;
-    click(testid);
+    if (testid === null) return NAV_FAILED;
+    const outcome = click(testid);
+    if (outcome !== 'dispatched') {
+      fail('navigation-error', `menu item "${testid}" for screen "${screen.name}" was not clicked: ${outcomeReason(outcome)}`);
+      return NAV_FAILED;
+    }
   }
-  if (!screen.readyTestid) return false;
-  if (waitFor(screen.readyTestid, readyTimeout)) return true;
+  if (!screen.readyTestid) return NAV_UNCONFIRMED;
+  if (waitFor(screen.readyTestid, readyTimeout)) return NAV_READY;
   fail('ready', `screen "${screen.name}" never showed ${screen.readyTestid} within ${readyTimeout}ms`);
-  return false;
+  return NAV_UNCONFIRMED;
 }
 
 for (const theme of result.themeSet.themes) {
@@ -596,7 +626,7 @@ for (const theme of result.themeSet.themes) {
   // The reload is the theme boundary reset: it discards every field filled and
   // dialog opened under the previous theme, so a capture named fresh is fresh.
   const first = screens[0];
-  const firstReady = reachScreen(first, true);
+  const firstNav = reachScreen(first, true);
 
   if (opts['panel-expand']) click(opts['panel-expand']);
   click(opts.switcher);
@@ -633,7 +663,13 @@ for (const theme of result.themeSet.themes) {
   }
 
   for (const [index, screen] of screens.entries()) {
-    const ready = index === 0 ? firstReady : reachScreen(screen, navigation === 'route');
+    const nav = index === 0 ? firstNav : reachScreen(screen, navigation === 'route');
+    // A screen the page never reached files nothing under its name. A capture
+    // taken here would show whichever screen the failed navigation left on
+    // screen, and its coverage cell would claim a state no run ever saw.
+    if (nav === NAV_FAILED) continue;
+
+    const ready = nav === NAV_READY;
     const freshFile = capture(theme, screen.name, 'fresh');
     if (freshFile) record.captures.push({ screen: screen.name, state: 'fresh', file: freshFile, readyConfirmed: ready });
 

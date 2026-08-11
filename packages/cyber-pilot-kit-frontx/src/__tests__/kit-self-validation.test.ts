@@ -675,6 +675,11 @@ const ids = JSON.parse(process.env.STUB_IDS);
 const argv = process.argv.slice(4); // past node, this file, --yes, agent-browser
 const command = argv[0];
 
+if (command === 'open' && process.env.STUB_FAIL_OPEN === '1') {
+  log('open-refused ' + argv[1]);
+  process.stderr.write('NavigationError: net::ERR_CONNECTION_REFUSED\\n');
+  process.exit(3);
+}
 if (command === 'screenshot') {
   fs.writeFileSync(argv[1], 'png:' + path.basename(argv[1]));
   log('screenshot ' + path.basename(argv[1]));
@@ -815,5 +820,33 @@ process.exit(0);
       run.cleanup();
     });
 
+    // `open` and `reload` were fired and forgotten. A navigation that never
+    // happened surfaced only as a readiness timeout a full budget later, and on
+    // a screen declared without a ready testid never at all - the walk carried
+    // on capturing whatever was still on screen under the next screen's name.
+    it('fails a navigation loudly on the runner exit status, and files nothing under the screen it never reached', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login,tasks:/tasks:screen-tasks',
+        '--menu', 'nav-{screen}',
+      ], [...HOST_IDS, 'nav-login', 'nav-tasks'], { STUB_FAIL_OPEN: '1' });
+
+      expect(run.status).not.toBe(0);
+
+      const navErrors = run.result.failures.filter((failure) => failure.stage === 'navigation-error');
+      expect(navErrors).toHaveLength(1);
+      expect(navErrors[0].detail).toContain('open data:text/plain,ok/login');
+      expect(navErrors[0].detail).toContain('net::ERR_CONNECTION_REFUSED');
+      // The failure is caught where it happened, not one readiness budget later.
+      expect(run.result.failures.some((failure) => failure.stage === 'ready')).toBe(false);
+
+      // Nothing is filed under the screen the page never reached; the screen
+      // that was reached is still walked, so one bad navigation does not cost
+      // the run its other coverage.
+      const captured = run.result.themes[0].captures.map((capture) => capture.screen);
+      expect(captured).not.toContain('login');
+      expect(captured).toContain('tasks');
+
+      run.cleanup();
+    });
   });
 });
