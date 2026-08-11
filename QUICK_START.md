@@ -265,7 +265,7 @@ npm run lint                  # ESLint across the repo
 npm run type-check            # type-check all ecosystem packages
 npm run arch:check            # architecture tests (must pass)
 npm run arch:deps             # dependency-boundary rules
-npm run arch:unused           # unused-code report (knip)
+npm run arch:unused           # unused-code report (knip); config hints fail the run
 
 # Tests
 npm run test:unit             # all package unit tests (packages/*)
