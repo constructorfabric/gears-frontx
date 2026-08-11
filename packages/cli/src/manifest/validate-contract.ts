@@ -53,6 +53,11 @@ function isWellFormedRepoRelativePath(value: unknown): value is string {
   return !value.split(/[\\/]/).includes('..');
 }
 
+function isStrictJsonPath(pathValue: string): boolean {
+  const normalized = pathValue.replace(/\\/g, '/').toLowerCase();
+  return normalized.split('/').pop()?.endsWith('.json') ?? false;
+}
+
 // Environment-owned names no template may declare as ownership ground, at the
 // root or nested at any depth: version-control metadata and platform droppings.
 //
@@ -216,6 +221,7 @@ export function validateManifestContract(raw: string): ManifestValidationResult 
   // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-for-each-subtree
 
   // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-for-each-shared-file
+  const seenRegionClaims = new Set<string>();
   for (let i = 0; i < sharedFiles.length; i++) {
     const entry = sharedFiles[i];
     const entryObj =
@@ -253,16 +259,49 @@ export function validateManifestContract(raw: string): ManifestValidationResult 
     }
     // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-merge-strategy-invalid
 
+    let duplicatesPathRegionClaim = false;
+    if (mergeStrategy === 'region-union' && typeof path === 'string' && Array.isArray(ownedRegions)) {
+      for (const region of ownedRegions) {
+        if (typeof region !== 'string') continue;
+        const claim = path + '\0' + region;
+        if (seenRegionClaims.has(claim)) {
+          duplicatesPathRegionClaim = true;
+        } else {
+          seenRegionClaims.add(claim);
+        }
+      }
+    }
+
     // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-region-keys-missing
-    if (mergeStrategy === 'region-union' && (!Array.isArray(ownedRegions) || ownedRegions.length === 0)) {
+    if (
+      mergeStrategy === 'region-union' &&
+      (!Array.isArray(ownedRegions) ||
+        ownedRegions.length === 0 ||
+        ownedRegions.some((region) => typeof region !== 'string' || region.trim() === '' || /\s/.test(region)) ||
+        new Set(ownedRegions).size !== ownedRegions.length ||
+        duplicatesPathRegionClaim)
+    ) {
       // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-region-keys-violation
       violations.push({
         field: `ownershipBoundaries.sharedFiles[${i}].ownedRegions`,
-        message: 'a region-union shared-file entry must declare at least one owned region key',
+        message:
+          'a region-union shared-file entry must declare at least one unique owned region key, ' +
+          'every owned region key must be a non-empty whitespace-free string, and no path/region pair may be declared twice',
       });
       // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-region-keys-violation
     }
     // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-region-keys-missing
+
+    // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-region-host-invalid
+    if (mergeStrategy === 'region-union' && typeof path === 'string' && isStrictJsonPath(path)) {
+      // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-region-host-violation
+      violations.push({
+        field: `ownershipBoundaries.sharedFiles[${i}].path`,
+        message: 'region-union shared-file paths must be append-safe marker text hosts; strict JSON files cannot carry marker comments',
+      });
+      // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-region-host-violation
+    }
+    // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-region-host-invalid
 
     // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-shared-file-reserved
     if (typeof path === 'string' && (isReservedFrontxPath(path, templateIdentity) || isReservedEnvironmentPath(path))) {

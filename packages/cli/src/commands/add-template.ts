@@ -4,7 +4,12 @@ import { resolveComposition } from '../composition/resolve';
 import { uniformApply } from '../scaffold/assembler';
 import { groupContributionsByPath } from '../scaffold/compose-shared-files';
 import { checkAssemblyConflicts } from '../scaffold/conflict';
-import { isUserFixableMaterializeFailure, materializeAssembly, occupiedBoundariesFromProvenance } from '../scaffold/materialize';
+import {
+  isUserFixableMaterializeFailure,
+  materializeAssembly,
+  occupiedBoundariesFromProvenance,
+  provenanceRecordsForMaterialization,
+} from '../scaffold/materialize';
 import { summarizeEntries } from './summarize-entries';
 import type { ReadProvenanceRecordsFn } from '../scaffold/materialize';
 import type { InventoryEntry } from '../inventory/types';
@@ -142,10 +147,11 @@ export async function addTemplate(
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve-occupied
   const existingProvenance = await readProvenanceFn(targetDir);
+  const installedTemplates = await listInstalledFn();
   const alreadyOccupied = occupiedBoundariesFromProvenance(
     existingProvenance,
     lookupFn,
-    await listInstalledFn(),
+    installedTemplates,
   );
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve-occupied
 
@@ -218,11 +224,24 @@ export async function addTemplate(
   // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-checked-aborted-ground-occupied
   // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p2:inst-as-checked-aborted-target-not-directory
 
+  const materializationProvenance = provenanceRecordsForMaterialization(
+    existingProvenance,
+    lookupFn,
+    installedTemplates,
+  );
+  if (!materializationProvenance.ok) {
+    return {
+      ok: false,
+      reason: materializationProvenance.reason,
+      message: `Apply aborted — ${materializationProvenance.message} No files written.`,
+    };
+  }
+
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
   const materializeResult = await materializeAssembly(
     applyResult.assembly,
     targetDir,
-    existingProvenance,
+    materializationProvenance.records,
     lookupFn,
     writeFileFn,
     provenanceWriteFn,

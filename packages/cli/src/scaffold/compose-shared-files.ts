@@ -1,3 +1,4 @@
+import { parseOccupiedBoundary } from '../provenance/boundary';
 import type { OwnershipBoundary } from '../manifest/types';
 import type { ProvenanceRecord } from '../provenance/types';
 import type { ReadProjectFileFn, StagedAssembly, WriteFileFn } from './types';
@@ -21,6 +22,12 @@ interface PathContribution {
   mergeStrategy: string;
   ownedRegions: string[];
   content: string;
+}
+
+interface RecordedRegionOwnership {
+  identity: string;
+  path: string;
+  regionKeys: Set<string>;
 }
 
 // One contributing template's extracted region-union content for a shared
@@ -113,6 +120,21 @@ export type ComposeSharedFilesResult =
       kind: 'malformed' | 'unterminated' | 'orphan-end';
       identity?: string;
       regionKey?: string;
+      message: string;
+    }
+  | {
+      ok: false;
+      reason: 'missing-region';
+      path: string;
+      templateIdentity: string;
+      regionKey: string;
+      message: string;
+    }
+  | {
+      ok: false;
+      reason: 'host-document-conflict';
+      path: string;
+      templateIdentity: string;
       message: string;
     };
 
@@ -233,7 +255,7 @@ function parseMarkerLine(line: string, prefix: string): { identity: string; regi
       const afterPrefix = line.slice(prefixIndex + prefix.length).trimStart();
       const token = afterPrefix.split(/\s/)[0] ?? '';
       const colonIndex = token.indexOf(':');
-      if (colonIndex === -1) return 'malformed';
+      if (colonIndex <= 0 || colonIndex === token.length - 1) return 'malformed';
       return { identity: token.slice(0, colonIndex), regionKey: token.slice(colonIndex + 1) };
     }
     // This occurrence had no boundary (e.g. "regional" continuing past
@@ -302,6 +324,23 @@ export function extractOwnedRegion(content: string, templateName: string, region
   return lines.slice(span.beginIndex, span.endIndex + 1).join('\n');
 }
 
+export function extractOwnedRegionStrict(
+  content: string,
+  templateName: string,
+  regionKey: string,
+): { ok: true; markerBlock: string } | { ok: false; reason: 'missing' | 'duplicate' } | { ok: false; reason: 'malformed'; unlocatable: UnlocatableMarker } {
+  const scanned = locateAllMarkerBlocks(content);
+  const firstUnlocatable = scanned.unlocatable[0];
+  if (firstUnlocatable) return { ok: false, reason: 'malformed', unlocatable: firstUnlocatable };
+
+  const located = scanned.blocks.filter(
+    (block) => block.identity === templateName && block.regionKey === regionKey,
+  );
+  if (located.length === 0) return { ok: false, reason: 'missing' };
+  if (located.length > 1) return { ok: false, reason: 'duplicate' };
+  return { ok: true, markerBlock: located[0].text };
+}
+
 // A block discovered by scanning a file for ANY begin/end sentinel-marker
 // pair, without prior knowledge of the owning identity or region key — the
 // reverse of `locateRegionSpan`/`extractOwnedRegion` above, which locate one
@@ -314,6 +353,82 @@ export interface LocatedBlock {
   regionKey: string;
   span: RegionSpan;
   text: string; // verbatim, INCLUSIVE of marker lines — carried forward as-is, never re-derived
+}
+
+function recordedRegionOwnershipByIdentity(records: ProvenanceRecord[]): Map<string, RecordedRegionOwnership[]> {
+  const ownership = new Map<string, RecordedRegionOwnership[]>();
+  for (const record of records) {
+    const boundary = parseOccupiedBoundary(record.occupiedOwnershipBoundary);
+    if (!boundary) continue;
+    const regionOwnership = boundary.sharedFiles
+      .filter((entry) => entry.mergeStrategy === 'region-union')
+      .map((entry) => ({
+        identity: record.templateIdentity,
+        path: entry.path,
+        regionKeys: new Set(entry.ownedRegions),
+      }));
+    if (regionOwnership.length === 0) continue;
+    ownership.set(record.templateIdentity, [...(ownership.get(record.templateIdentity) ?? []), ...regionOwnership]);
+  }
+  return ownership;
+}
+
+function isRecordedRegionBlock(block: LocatedBlock, path: string, recordedOwnership: Map<string, RecordedRegionOwnership[]>): boolean {
+  return (
+    recordedOwnership
+      .get(block.identity)
+      ?.some((entry) => entry.path === path && entry.regionKeys.has(block.regionKey)) ?? false
+  );
+}
+
+function unmarkedHostText(content: string, blocks: LocatedBlock[]): string {
+  const lines = content === '' ? [] : content.split('\n');
+  const output: string[] = [];
+  let cursor = 0;
+  for (const block of [...blocks].sort((a, b) => a.span.beginIndex - b.span.beginIndex)) {
+    if (block.span.beginIndex < cursor) continue;
+    output.push(...lines.slice(cursor, block.span.beginIndex));
+    cursor = block.span.endIndex + 1;
+  }
+  output.push(...lines.slice(cursor));
+  return output.join('\n');
+}
+
+function composeHostDocument(
+  hostContent: string,
+  hostBlocks: LocatedBlock[],
+  regions: Array<{ templateName: string; regionKey: string; markerBlock: string }>,
+): string {
+  const replacementsByRegionKey = new Map(regions.map((region) => [region.regionKey, region]));
+  const replacedRegionKeys = new Set<string>();
+  const outputLines: string[] = [];
+  const hostLines = hostContent === '' ? [] : hostContent.split('\n');
+  let cursor = 0;
+
+  for (const block of [...hostBlocks].sort((a, b) => a.span.beginIndex - b.span.beginIndex)) {
+    if (block.span.beginIndex < cursor) continue;
+    outputLines.push(...hostLines.slice(cursor, block.span.beginIndex));
+    const replacement = replacementsByRegionKey.get(block.regionKey);
+    if (replacement) {
+      outputLines.push(...replacement.markerBlock.split('\n'));
+      replacedRegionKeys.add(replacement.regionKey);
+    }
+    cursor = block.span.endIndex + 1;
+  }
+
+  outputLines.push(...hostLines.slice(cursor));
+
+  const missingRegions = regions
+    .filter((region) => !replacedRegionKeys.has(region.regionKey))
+    .sort((a, b) => {
+      if (a.templateName !== b.templateName) return a.templateName < b.templateName ? -1 : 1;
+      return a.regionKey < b.regionKey ? -1 : 1;
+    });
+  for (const region of missingRegions) {
+    outputLines.push(...region.markerBlock.split('\n'));
+  }
+
+  return outputLines.join('\n');
 }
 
 // `locateAllMarkerBlocks`'s full result: every block it COULD locate, plus
@@ -520,14 +635,12 @@ export async function composeSharedFiles(
 ): Promise<ComposeSharedFilesResult> {
   const grouped = groupContributionsByPath(assembly);
   const materializedFiles: MaterializedFile[] = [];
-  // Identities of templates already applied to the target repository, per
-  // its existing provenance records — empty for a seed. Used ONLY to tell a
-  // recorded-but-not-contributing owner apart from an unrecorded one
-  // (inst-cs-if-unrecorded-block-owner / inst-cs-carry-forward-recorded-blocks);
-  // never resolved to an installed template's own ownership boundary here,
-  // because a carried block is written back verbatim from disk — never
-  // re-derived from any template's installed content.
-  const appliedIdentities = new Set(existingProvenance.map((record) => record.templateIdentity));
+  // Structured region ownership already applied to the target repository,
+  // per existing provenance records. A carried block must match identity,
+  // path, AND region key; identity alone is insufficient because a hand-added
+  // marker block under a recorded template's identity is not arbitrated
+  // ownership.
+  const recordedOwnership = recordedRegionOwnershipByIdentity(existingProvenance);
 
   for (const [path, entries] of grouped) {
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-foreach-single
@@ -572,15 +685,12 @@ export async function composeSharedFiles(
     }
 
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-read-existing-blocks
-    // The file already on disk at this path, if any — the ONLY source for a
-    // block owned by a template this assembly does not contribute. Composing
-    // without ever consulting it is exactly what issue #487 pinned as a
-    // defect: a `region-union` file was rebuilt from the incoming assembly's
-    // contribution alone, discarding whatever an earlier `add` had already
-    // written there.
+    // The host document is the file already on disk when one exists; at seed,
+    // it is the first contributor's installed file for this path. Unmarked host
+    // text is preserved, while marker blocks are replaced or inserted below.
     const existingContent = await readProjectFileFn(`${targetDir}/${path}`);
-    const { blocks: existingBlocks, unlocatable } =
-      existingContent !== null ? locateAllMarkerBlocks(existingContent) : { blocks: [], unlocatable: [] };
+    const hostContent = existingContent ?? entries.find((entry) => entry.mergeStrategy === 'region-union')?.content ?? '';
+    const { blocks: existingBlocks, unlocatable } = locateAllMarkerBlocks(hostContent);
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-read-existing-blocks
 
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-malformed-marker
@@ -634,9 +744,50 @@ export async function composeSharedFiles(
 
     const contributorIdentities = new Set(entries.map((entry) => entry.templateName));
 
+    let hostBlockConflict:
+      | { kind: 'contributor-duplicate' | 'overlap'; first: LocatedBlock; second: LocatedBlock }
+      | undefined;
+    // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-host-document-conflict
+    for (let i = 0; i < existingBlocks.length && !hostBlockConflict; i++) {
+      for (let j = i + 1; j < existingBlocks.length; j++) {
+        const first = existingBlocks[i];
+        const second = existingBlocks[j];
+        if (
+          first.regionKey === second.regionKey &&
+          (contributorIdentities.has(first.identity) || contributorIdentities.has(second.identity))
+        ) {
+          hostBlockConflict = { kind: 'contributor-duplicate', first, second };
+          break;
+        }
+        if (first.span.beginIndex <= second.span.endIndex && second.span.beginIndex <= first.span.endIndex) {
+          hostBlockConflict = { kind: 'overlap', first, second };
+          break;
+        }
+      }
+    }
+    // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-host-document-conflict
+    if (hostBlockConflict) {
+      // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-host-document-conflict
+      const { kind, first, second } = hostBlockConflict;
+      return {
+        ok: false,
+        reason: 'host-document-conflict',
+        path,
+        templateIdentity: first.identity,
+        message:
+          kind === 'contributor-duplicate'
+            ? `Materialization refused — path "${path}" carries more than one host marker block for region ` +
+              `"${first.regionKey}". Fix the duplicate marker blocks and retry. No file was written.`
+            : `Materialization refused — path "${path}" carries overlapping or nested host marker blocks ` +
+              `(${first.identity}:${first.regionKey} and ${second.identity}:${second.regionKey}). Fix the marker ` +
+              'boundaries and retry. No file was written.',
+      };
+      // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-host-document-conflict
+    }
+
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-unrecorded-block-owner
     const unrecordedBlock = existingBlocks.find(
-      (block) => !contributorIdentities.has(block.identity) && !appliedIdentities.has(block.identity),
+      (block) => !contributorIdentities.has(block.identity) && !isRecordedRegionBlock(block, path, recordedOwnership),
     );
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-unrecorded-block-owner
     if (unrecordedBlock) {
@@ -670,7 +821,9 @@ export async function composeSharedFiles(
     // must leave untouched. Carried verbatim, never re-derived from
     // installed content, so `add` cannot silently upgrade a template outside
     // this assembly's own reviewable change-set.
-    const carriedBlocks = existingBlocks.filter((block) => !contributorIdentities.has(block.identity));
+    const carriedBlocks = existingBlocks.filter(
+      (block) => !contributorIdentities.has(block.identity) && isRecordedRegionBlock(block, path, recordedOwnership),
+    );
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-carry-forward-recorded-blocks
 
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-carried-block-conflict
@@ -749,16 +902,83 @@ export async function composeSharedFiles(
       // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-carried-block-conflict
     }
 
+    let contributorHostSkeleton: { templateName: string; skeleton: string } | undefined;
+    // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-contributor-region-invalid
+    for (const entry of entries) {
+      if (entry.mergeStrategy !== 'region-union') continue;
+      const contributorScan = locateAllMarkerBlocks(entry.content);
+      const contributorSkeleton = unmarkedHostText(entry.content, contributorScan.blocks);
+      if (contributorSkeleton.trim() === '') continue;
+      if (contributorHostSkeleton === undefined) {
+        contributorHostSkeleton = { templateName: entry.templateName, skeleton: contributorSkeleton };
+        continue;
+      }
+      if (contributorSkeleton !== contributorHostSkeleton.skeleton) {
+        // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-contributor-region-invalid
+        return {
+          ok: false,
+          reason: 'host-document-conflict',
+          path,
+          templateIdentity: entry.templateName,
+          message:
+            `Materialization refused — path "${path}" has conflicting unmarked host-document text in template ` +
+            `"${entry.templateName}". Region-union preserves exactly one append-safe host skeleton; additional ` +
+            'contributors must provide marker blocks only or the same host skeleton. No file was written.',
+        };
+        // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-contributor-region-invalid
+      }
+    }
+
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-extract-regions
     const extracted: ExtractedRegion[] = [];
     for (const entry of entries) {
       if (entry.mergeStrategy !== 'region-union') continue;
       for (const regionKey of entry.ownedRegions) {
-        const markerBlock = extractOwnedRegion(entry.content, entry.templateName, regionKey);
-        if (markerBlock === undefined) continue;
-        extracted.push({ templateName: entry.templateName, regionKey, markerBlock });
+        const extractedRegion = extractOwnedRegionStrict(entry.content, entry.templateName, regionKey);
+        if (!extractedRegion.ok) {
+          if (extractedRegion.reason === 'malformed') {
+            const lineNumber = extractedRegion.unlocatable.lineIndex + 1;
+            // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-contributor-region-invalid
+            return {
+              ok: false,
+              reason: 'malformed-marker-block',
+              path,
+              lineNumber,
+              kind: extractedRegion.unlocatable.kind,
+              ...(extractedRegion.unlocatable.kind !== 'malformed'
+                ? { identity: extractedRegion.unlocatable.identity, regionKey: extractedRegion.unlocatable.regionKey }
+                : {}),
+              message:
+                `Materialization refused — path "${path}" line ${lineNumber} in template "${entry.templateName}"'s ` +
+                'installed content has an unlocatable marker, so its declared region boundaries cannot be trusted. ' +
+                'Fix the template content and retry. No file was written.',
+            };
+            // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-contributor-region-invalid
+          }
+          // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-contributor-region-invalid
+          return {
+            ok: false,
+            reason: 'missing-region',
+            path,
+            templateIdentity: entry.templateName,
+            regionKey,
+            message:
+              extractedRegion.reason === 'missing'
+                ? `Materialization refused — path "${path}" declares region "${regionKey}" for template ` +
+                  `"${entry.templateName}", but that template's installed content has no matching ` +
+                  `"frontx:region ${entry.templateName}:${regionKey}" ... ` +
+                  `"frontx:endregion ${entry.templateName}:${regionKey}" marker block. No file was written.`
+                : `Materialization refused — path "${path}" declares region "${regionKey}" for template ` +
+                  `"${entry.templateName}", but that template's installed content has more than one matching ` +
+                  `"frontx:region ${entry.templateName}:${regionKey}" ... ` +
+                  `"frontx:endregion ${entry.templateName}:${regionKey}" marker block. No file was written.`,
+          };
+          // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-return-contributor-region-invalid
+        }
+        extracted.push({ templateName: entry.templateName, regionKey, markerBlock: extractedRegion.markerBlock });
       }
     }
+    // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-contributor-region-invalid
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-extract-regions
 
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-if-key-collision
@@ -885,11 +1105,9 @@ export async function composeSharedFiles(
     }
 
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-compose-union
-    // Deterministic order — by owning identity, then region key — applied
-    // uniformly across freshly extracted regions AND carried-forward blocks,
-    // so re-materializing the same collision-free assembly always produces
-    // byte-identical output regardless of whether a block was extracted or
-    // carried forward.
+    // Host-document order is preserved for blocks already present in the host;
+    // regions absent from the host are appended in deterministic identity/key
+    // order so a repeated materialization stays byte-identical.
     const allRegions: Array<{ templateName: string; regionKey: string; markerBlock: string }> = [
       ...extracted,
       ...carriedBlocks.map((block) => ({
@@ -898,17 +1116,13 @@ export async function composeSharedFiles(
         markerBlock: block.text,
       })),
     ];
-    // Compared by UTF-16 code unit (`<`/`>`), never `localeCompare` — this
-    // composition is byte-for-byte deterministic by contract, and
-    // `localeCompare`'s collation order for non-ASCII identities or region
-    // keys varies by locale/ICU data across environments, which would make
-    // the "same" collision-free assembly materialize in a different order
-    // depending on where it runs (review #500 round-4 P3).
+    // Compared by UTF-16 code unit (`<`/`>`), never `localeCompare`; appended
+    // regions absent from the host document use this deterministic order.
     const orderedRegions = allRegions.sort((a, b) => {
       if (a.templateName !== b.templateName) return a.templateName < b.templateName ? -1 : 1;
       return a.regionKey < b.regionKey ? -1 : 1;
     });
-    const composedContent = orderedRegions.map((region) => region.markerBlock).join('\n');
+    const composedContent = composeHostDocument(hostContent, existingBlocks, orderedRegions);
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-compose-union
 
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-compose-shared-files:p1:inst-cs-write-composed

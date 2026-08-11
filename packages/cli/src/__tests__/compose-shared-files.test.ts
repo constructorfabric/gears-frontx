@@ -34,6 +34,18 @@ function fakeWriter(): { writeFileFn: (path: string, content: string) => Promise
 const noExistingFile: ReadProjectFileFn = async () => null;
 const noExistingProvenance: ProvenanceRecord[] = [];
 
+function provenanceWithRegion(templateIdentity: string, path: string, ownedRegions: string[]): ProvenanceRecord {
+  return {
+    templateIdentity,
+    scaffoldedFromVersion: '1.0.0',
+    sourceSpec: `local:x/${templateIdentity}@offline`,
+    occupiedOwnershipBoundary: JSON.stringify({
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path, mergeStrategy: 'region-union', ownedRegions }],
+    }),
+  };
+}
+
 describe('groupContributionsByPath (inst-cs-group-by-path)', () => {
   it('groups a template exclusive-subtree file and a region-union shared file by their target path', () => {
     const assembly = assemblyOf(
@@ -41,11 +53,11 @@ describe('groupContributionsByPath (inst-cs-group-by-path)', () => {
         'template-a',
         {
           exclusiveSubtrees: ['template-a/'],
-          sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] }],
+          sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] }],
         },
         [
           { path: 'template-a/index.ts', content: 'export const a = 1;' },
-          { path: 'package.json', content: '{}' },
+          { path: 'shared.txt', content: '{}' },
         ],
       ),
     );
@@ -55,7 +67,7 @@ describe('groupContributionsByPath (inst-cs-group-by-path)', () => {
     expect(grouped.get('template-a/index.ts')).toEqual([
       { templateName: 'template-a', mergeStrategy: 'exclusive', ownedRegions: [], content: 'export const a = 1;' },
     ]);
-    expect(grouped.get('package.json')).toEqual([
+    expect(grouped.get('shared.txt')).toEqual([
       { templateName: 'template-a', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'], content: '{}' },
     ]);
   });
@@ -64,19 +76,19 @@ describe('groupContributionsByPath (inst-cs-group-by-path)', () => {
     const assembly = assemblyOf(
       contribution(
         'template-a',
-        { exclusiveSubtrees: [], sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
-        [{ path: 'package.json', content: 'content-a' }],
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [{ path: 'shared.txt', content: 'content-a' }],
       ),
       contribution(
         'template-b',
-        { exclusiveSubtrees: [], sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['b'] }] },
-        [{ path: 'package.json', content: 'content-b' }],
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }] },
+        [{ path: 'shared.txt', content: 'content-b' }],
       ),
     );
 
     const grouped = groupContributionsByPath(assembly);
 
-    expect(grouped.get('package.json')).toHaveLength(2);
+    expect(grouped.get('shared.txt')).toHaveLength(2);
   });
 });
 
@@ -169,6 +181,27 @@ describe('locateAllMarkerBlocks (inst-cs-read-existing-blocks) — raw scanner b
       unlocatable: [
         { kind: 'malformed', lineIndex: 0 },
         { kind: 'malformed', lineIndex: 2 },
+      ],
+    });
+  });
+
+  it('reports marker tokens with an empty identity or empty region key as malformed', () => {
+    const content = [
+      'frontx:region :key',
+      'body',
+      'frontx:endregion :key',
+      'frontx:region identity:',
+      'body',
+      'frontx:endregion identity:',
+    ].join('\n');
+
+    expect(locateAllMarkerBlocks(content)).toEqual({
+      blocks: [],
+      unlocatable: [
+        { kind: 'malformed', lineIndex: 0 },
+        { kind: 'malformed', lineIndex: 2 },
+        { kind: 'malformed', lineIndex: 3 },
+        { kind: 'malformed', lineIndex: 5 },
       ],
     });
   });
@@ -350,32 +383,28 @@ describe('composeSharedFiles — part 1 (cpt-frontx-algo-cli-scaffolding-compose
     const assembly = assemblyOf(
       contribution(
         'template-a',
-        { exclusiveSubtrees: [], sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts-build'] }] },
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['scripts-build'] }] },
         [
           {
-            path: 'package.json',
+            path: 'shared.txt',
             content: [
-              '{',
               '  // frontx:region template-a:scripts-build',
               '  "build": "tsup"',
               '  // frontx:endregion template-a:scripts-build',
-              '}',
             ].join('\n'),
           },
         ],
       ),
       contribution(
         'template-b',
-        { exclusiveSubtrees: [], sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts-test'] }] },
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['scripts-test'] }] },
         [
           {
-            path: 'package.json',
+            path: 'shared.txt',
             content: [
-              '{',
               '  // frontx:region template-b:scripts-test',
               '  "test": "vitest"',
               '  // frontx:endregion template-b:scripts-test',
-              '}',
             ].join('\n'),
           },
         ],
@@ -387,7 +416,9 @@ describe('composeSharedFiles — part 1 (cpt-frontx-algo-cli-scaffolding-compose
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // Deterministic order: by owning template identity, then region key.
+    // The first contributor supplies the seed host document; its unmarked
+    // skeleton is preserved and the second contributor's absent block is
+    // appended deterministically.
     const expectedComposed = [
       '  // frontx:region template-a:scripts-build',
       '  "build": "tsup"',
@@ -396,8 +427,8 @@ describe('composeSharedFiles — part 1 (cpt-frontx-algo-cli-scaffolding-compose
       '  "test": "vitest"',
       '  // frontx:endregion template-b:scripts-test',
     ].join('\n');
-    expect(writes).toEqual([{ path: '/target/package.json', content: expectedComposed }]);
-    expect(result.files).toEqual([{ path: 'package.json', content: expectedComposed }]);
+    expect(writes).toEqual([{ path: '/target/shared.txt', content: expectedComposed }]);
+    expect(result.files).toEqual([{ path: 'shared.txt', content: expectedComposed }]);
   });
 
   it('composes and writes a single region-union contributor even alone on its path (one contributor case of inst-cs-foreach-multi)', async () => {
@@ -454,13 +485,13 @@ describe('composeSharedFiles — part 1 (cpt-frontx-algo-cli-scaffolding-compose
     const assembly = assemblyOf(
       contribution(
         'template-a',
-        { exclusiveSubtrees: [], sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts-build'] }] },
-        [{ path: 'package.json', content: '// frontx:region template-a:scripts-build\nA\n// frontx:endregion template-a:scripts-build' }],
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['scripts-build'] }] },
+        [{ path: 'shared.txt', content: '// frontx:region template-a:scripts-build\nA\n// frontx:endregion template-a:scripts-build' }],
       ),
       contribution(
         'template-b',
-        { exclusiveSubtrees: [], sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts-build'] }] },
-        [{ path: 'package.json', content: '// frontx:region template-b:scripts-build\nB\n// frontx:endregion template-b:scripts-build' }],
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['scripts-build'] }] },
+        [{ path: 'shared.txt', content: '// frontx:region template-b:scripts-build\nB\n// frontx:endregion template-b:scripts-build' }],
       ),
     );
     const { writeFileFn, writes } = fakeWriter();
@@ -470,7 +501,7 @@ describe('composeSharedFiles — part 1 (cpt-frontx-algo-cli-scaffolding-compose
     expect(result.ok).toBe(false);
     if (result.ok || result.reason !== 'key-collision') return;
     expect(result.reason).toBe('key-collision');
-    expect(result.path).toBe('package.json');
+    expect(result.path).toBe('shared.txt');
     expect(result.regionKey).toBe('scripts-build');
     expect(result.contestants).toEqual(['template-a', 'template-b']);
     expect(writes).toEqual([]);
@@ -482,11 +513,11 @@ describe('composeSharedFiles — part 1 (cpt-frontx-algo-cli-scaffolding-compose
         'template-a',
         {
           exclusiveSubtrees: [],
-          sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['key1', 'key2'] }],
+          sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['key1', 'key2'] }],
         },
         [
           {
-            path: 'package.json',
+            path: 'shared.txt',
             content: [
               '// frontx:region template-a:key1',
               'line1',
@@ -506,11 +537,9 @@ describe('composeSharedFiles — part 1 (cpt-frontx-algo-cli-scaffolding-compose
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.reason).toBe('span-overlap');
-    if (result.reason !== 'span-overlap') return;
-    expect(result.path).toBe('package.json');
-    expect(result.contestants).toEqual(['template-a', 'template-a']);
-    expect(result.regionKeys).toEqual(['key1', 'key2']);
+    expect(result.reason).toBe('host-document-conflict');
+    if (result.reason !== 'host-document-conflict') return;
+    expect(result.path).toBe('shared.txt');
     expect(writes).toEqual([]);
   });
 
@@ -531,13 +560,13 @@ describe('composeSharedFiles — part 1 (cpt-frontx-algo-cli-scaffolding-compose
     const assembly = assemblyOf(
       contribution(
         'template-a',
-        { exclusiveSubtrees: [], sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['build'] }] },
-        [{ path: 'package.json', content: sharedContent }],
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['build'] }] },
+        [{ path: 'shared.txt', content: sharedContent }],
       ),
       contribution(
         'template-b',
-        { exclusiveSubtrees: [], sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['test'] }] },
-        [{ path: 'package.json', content: sharedContent }],
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['test'] }] },
+        [{ path: 'shared.txt', content: sharedContent }],
       ),
     );
     const { writeFileFn, writes } = fakeWriter();
@@ -546,11 +575,9 @@ describe('composeSharedFiles — part 1 (cpt-frontx-algo-cli-scaffolding-compose
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.reason).toBe('span-overlap');
-    if (result.reason !== 'span-overlap') return;
-    expect(result.path).toBe('package.json');
-    expect(result.contestants).toEqual(['template-a', 'template-b']);
-    expect(result.regionKeys).toEqual(['build', 'test']);
+    expect(result.reason).toBe('host-document-conflict');
+    if (result.reason !== 'host-document-conflict') return;
+    expect(result.path).toBe('shared.txt');
     expect(writes).toEqual([]);
   });
 });
@@ -562,9 +589,7 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
     // assembly); region-fixture-b is the only contributor here.
     const onDisk = 'frontx:region region-fixture-a:a\nContent owned by A.\nfrontx:endregion region-fixture-a:a';
     const readProjectFileFn: ReadProjectFileFn = async (path) => (path === '/target/shared.txt' ? onDisk : null);
-    const existingProvenance: ProvenanceRecord[] = [
-      { templateIdentity: 'region-fixture-a', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/a@offline' },
-    ];
+    const existingProvenance: ProvenanceRecord[] = [provenanceWithRegion('region-fixture-a', 'shared.txt', ['a'])];
     const assembly = assemblyOf(
       contribution(
         'region-fixture-b',
@@ -588,6 +613,346 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
       'frontx:endregion region-fixture-b:b',
     ].join('\n');
     expect(writes).toEqual([{ path: '/target/shared.txt', content: expectedComposed }]);
+  });
+
+  it('preserves edited on-disk host-document text even when a contributor carries the original host skeleton', async () => {
+    const onDisk = [
+      '# developer edited host',
+      '',
+      'frontx:region template-a:a',
+      'old A.',
+      'frontx:endregion template-a:a',
+      '',
+      '# edited footer',
+    ].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async (path) => (path === '/target/shared.txt' ? onDisk : null);
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [
+          {
+            path: 'shared.txt',
+            content: ['# generated host', '', 'frontx:region template-a:a', 'new A.', 'frontx:endregion template-a:a', '', '# generated footer'].join('\n'),
+          },
+        ],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, noExistingProvenance);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(writes).toEqual([
+      {
+        path: '/target/shared.txt',
+        content: [
+          '# developer edited host',
+          '',
+          'frontx:region template-a:a',
+          'new A.',
+          'frontx:endregion template-a:a',
+          '',
+          '# edited footer',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('preserves unmarked host-document text while inserting a newly contributed region block', async () => {
+    const onDisk = [
+      '# shared host file',
+      '',
+      'frontx:region region-fixture-a:a',
+      'Content owned by A.',
+      'frontx:endregion region-fixture-a:a',
+      '',
+      '# developer-maintained footer',
+    ].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async (path) => (path === '/target/shared.txt' ? onDisk : null);
+    const existingProvenance: ProvenanceRecord[] = [provenanceWithRegion('region-fixture-a', 'shared.txt', ['a'])];
+    const assembly = assemblyOf(
+      contribution(
+        'region-fixture-b',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region region-fixture-b:b\nContent owned by B.\nfrontx:endregion region-fixture-b:b' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, existingProvenance);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const expectedComposed = [
+      '# shared host file',
+      '',
+      'frontx:region region-fixture-a:a',
+      'Content owned by A.',
+      'frontx:endregion region-fixture-a:a',
+      '',
+      '# developer-maintained footer',
+      'frontx:region region-fixture-b:b',
+      'Content owned by B.',
+      'frontx:endregion region-fixture-b:b',
+    ].join('\n');
+    expect(writes).toEqual([{ path: '/target/shared.txt', content: expectedComposed }]);
+  });
+
+  it('uses a contributing template as the seed host document when no file exists yet, preserving its unmarked text', async () => {
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [
+          {
+            path: 'shared.txt',
+            content: ['# generated host', 'frontx:region template-a:a', 'A.', 'frontx:endregion template-a:a', '# footer'].join('\n'),
+          },
+        ],
+      ),
+      contribution(
+        'template-b',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-b:b\nB.\nfrontx:endregion template-b:b' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, noExistingFile, noExistingProvenance);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(writes).toEqual([
+      {
+        path: '/target/shared.txt',
+        content: [
+          '# generated host',
+          'frontx:region template-a:a',
+          'A.',
+          'frontx:endregion template-a:a',
+          '# footer',
+          'frontx:region template-b:b',
+          'B.',
+          'frontx:endregion template-b:b',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('refuses a seed host document with duplicate contributor-owned region keys before extracting contributor regions', async () => {
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [
+          {
+            path: 'shared.txt',
+            content: [
+              'frontx:region template-a:a',
+              'A1.',
+              'frontx:endregion template-a:a',
+              'frontx:region template-a:a',
+              'A2.',
+              'frontx:endregion template-a:a',
+            ].join('\n'),
+          },
+        ],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, noExistingFile, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('host-document-conflict');
+    expect(writes).toEqual([]);
+  });
+
+  it('refuses a seed host document with overlapping marker spans before writing any file', async () => {
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [
+          {
+            path: 'shared.txt',
+            content: [
+              'frontx:region template-a:a',
+              'A.',
+              'frontx:region template-b:b',
+              'B.',
+              'frontx:endregion template-a:a',
+              'frontx:endregion template-b:b',
+            ].join('\n'),
+          },
+        ],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, noExistingFile, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('host-document-conflict');
+    expect(writes).toEqual([]);
+  });
+
+  it('refuses the assembly, writing no file, when another contributor brings conflicting unmarked host-document text', async () => {
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['a'] }] },
+        [{ path: 'shared.txt', content: ['# host from A', 'frontx:region template-a:a', 'A.', 'frontx:endregion template-a:a'].join('\n') }],
+      ),
+      contribution(
+        'template-b',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }] },
+        [{ path: 'shared.txt', content: ['# different host from B', 'frontx:region template-b:b', 'B.', 'frontx:endregion template-b:b'].join('\n') }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, noExistingFile, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('host-document-conflict');
+    if (result.reason !== 'host-document-conflict') return;
+    expect(result.path).toBe('shared.txt');
+    expect(result.templateIdentity).toBe('template-b');
+    expect(writes).toEqual([]);
+  });
+
+  it('drops a stale contributor-owned host marker block that is no longer declared by the incoming template', async () => {
+    const onDisk = [
+      '# shared host file',
+      'frontx:region template-a:old',
+      'old generated content',
+      'frontx:endregion template-a:old',
+      '# footer',
+    ].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async (path) => (path === '/target/shared.txt' ? onDisk : null);
+    const existingProvenance: ProvenanceRecord[] = [provenanceWithRegion('template-a', 'shared.txt', ['old'])];
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['new'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-a:new\nnew generated content\nfrontx:endregion template-a:new' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, existingProvenance);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(writes).toEqual([
+      {
+        path: '/target/shared.txt',
+        content: [
+          '# shared host file',
+          '# footer',
+          'frontx:region template-a:new',
+          'new generated content',
+          'frontx:endregion template-a:new',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('refuses the assembly, writing no file, when a declared region is missing from the contributing template content', async () => {
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['missing'] }] },
+        [{ path: 'shared.txt', content: 'no declared region marker here' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, noExistingFile, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('missing-region');
+    if (result.reason !== 'missing-region') return;
+    expect(result.path).toBe('shared.txt');
+    expect(result.templateIdentity).toBe('template-a');
+    expect(result.regionKey).toBe('missing');
+    expect(writes).toEqual([]);
+  });
+
+  it('refuses the assembly, writing no file, when a contributor defines the declared region more than once', async () => {
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['dup'] }] },
+        [
+          {
+            path: 'shared.txt',
+            content: [
+              'frontx:region template-a:dup',
+              'first',
+              'frontx:endregion template-a:dup',
+              'frontx:region template-a:dup',
+              'second',
+              'frontx:endregion template-a:dup',
+            ].join('\n'),
+          },
+        ],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, noExistingFile, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('host-document-conflict');
+    if (result.reason !== 'host-document-conflict') return;
+    expect(result.path).toBe('shared.txt');
+    expect(result.templateIdentity).toBe('template-a');
+    expect(result.message).toMatch(/more than one host marker block/);
+    expect(writes).toEqual([]);
+  });
+
+  it('refuses the assembly, writing no file, when a contributor has a nested duplicate declared marker begin', async () => {
+    const assembly = assemblyOf(
+      contribution(
+        'template-a',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['dup'] }] },
+        [
+          {
+            path: 'shared.txt',
+            content: [
+              'frontx:region template-a:dup',
+              'first',
+              'frontx:region template-a:dup',
+              'second',
+              'frontx:endregion template-a:dup',
+            ].join('\n'),
+          },
+        ],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, noExistingFile, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('malformed-marker-block');
+    if (result.reason !== 'malformed-marker-block') return;
+    expect(result.path).toBe('shared.txt');
+    expect(result.kind).toBe('unterminated');
+    expect(result.identity).toBe('template-a');
+    expect(result.regionKey).toBe('dup');
+    expect(result.lineNumber).toBe(3);
+    expect(writes).toEqual([]);
   });
 
   it('refuses the assembly, writing no file, when the file on disk carries a block whose owner is neither a contributor nor recorded in provenance (inst-cs-if-unrecorded-block-owner / inst-cs-return-unrecorded-owner)', async () => {
@@ -615,6 +980,30 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
     expect(writes).toEqual([]);
   });
 
+  it('refuses the assembly, writing no file, when an on-disk block uses a recorded identity but an unrecorded region key for this path', async () => {
+    const onDisk = 'frontx:region template-a:rogue\nUnarbitrated content.\nfrontx:endregion template-a:rogue';
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const existingProvenance: ProvenanceRecord[] = [provenanceWithRegion('template-a', 'shared.txt', ['recorded'])];
+    const assembly = assemblyOf(
+      contribution(
+        'template-b',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-b:b\nB.\nfrontx:endregion template-b:b' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, existingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('unrecorded-owner');
+    if (result.reason !== 'unrecorded-owner') return;
+    expect(result.templateIdentity).toBe('template-a');
+    expect(result.regionKey).toBe('rogue');
+    expect(writes).toEqual([]);
+  });
+
   it('returns a materialization-invariant error when a carried-forward block and an extracted region resolve the same declared region key under DIFFERENT identities (inst-cs-if-carried-key-collision / inst-cs-return-carried-key-invariant)', async () => {
     // Mirrors the pre-flight conflict check's own region-key-clash comparison
     // (checkAssemblyConflicts, cpt-frontx-algo-cli-scaffolding-conflict-check
@@ -632,9 +1021,7 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
     // any materialization was attempted.
     const onDisk = 'frontx:region template-a:shared\nA content.\nfrontx:endregion template-a:shared';
     const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
-    const existingProvenance: ProvenanceRecord[] = [
-      { templateIdentity: 'template-a', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/a@offline' },
-    ];
+    const existingProvenance: ProvenanceRecord[] = [provenanceWithRegion('template-a', 'shared.txt', ['shared'])];
     const assembly = assemblyOf(
       contribution(
         'template-b',
@@ -674,9 +1061,7 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
       'frontx:endregion template-b:shared',
     ].join('\n');
     const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
-    const existingProvenance: ProvenanceRecord[] = [
-      { templateIdentity: 'template-b', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/b@offline' },
-    ];
+    const existingProvenance: ProvenanceRecord[] = [provenanceWithRegion('template-b', 'shared.txt', ['shared'])];
     const assembly = assemblyOf(
       contribution(
         'template-a',
@@ -699,7 +1084,7 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
     expect(writes).toEqual([]);
   });
 
-  it('refuses the assembly, writing no file, when two carried-forward blocks have overlapping on-disk marker spans (inst-cs-if-carried-block-conflict / inst-cs-return-carried-block-conflict, overlap)', async () => {
+  it('refuses the assembly, writing no file, when host marker blocks overlap before carried blocks are trusted', async () => {
     // template-b and template-c are both recorded in provenance and neither
     // contributes to this assembly, so both blocks are eligible to be
     // carried forward — but their marker pairs are interleaved on disk, a
@@ -716,8 +1101,8 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
     ].join('\n');
     const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
     const existingProvenance: ProvenanceRecord[] = [
-      { templateIdentity: 'template-b', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/b@offline' },
-      { templateIdentity: 'template-c', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/c@offline' },
+      provenanceWithRegion('template-b', 'shared.txt', ['shared']),
+      provenanceWithRegion('template-c', 'shared.txt', ['shared2']),
     ];
     const assembly = assemblyOf(
       contribution(
@@ -732,12 +1117,11 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.reason).toBe('carried-block-conflict');
-    if (result.reason !== 'carried-block-conflict') return;
+    expect(result.reason).toBe('host-document-conflict');
+    if (result.reason !== 'host-document-conflict') return;
     expect(result.path).toBe('shared.txt');
-    expect(result.contestants).toEqual(['template-b', 'template-c']);
-    expect(result.regionKeys).toEqual(['shared', 'shared2']);
-    expect(result.message).toMatch(/hand-edited|corrupted/i);
+    expect(result.templateIdentity).toBe('template-b');
+    expect(result.message).toMatch(/overlapping or nested host marker blocks/i);
     expect(writes).toEqual([]);
   });
 
@@ -764,8 +1148,8 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
     ].join('\n');
     const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
     const existingProvenance: ProvenanceRecord[] = [
-      { templateIdentity: 'template-a', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/a@offline' },
-      { templateIdentity: 'template-b', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/b@offline' },
+      provenanceWithRegion('template-a', 'shared.txt', ['shared']),
+      provenanceWithRegion('template-b', 'shared.txt', ['shared']),
     ];
     const assembly = assemblyOf(
       contribution(
@@ -825,7 +1209,7 @@ describe('composeSharedFiles — part 2 (issue #487: reconciling with what is al
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.reason).toBe('span-overlap');
+    expect(result.reason).toBe('host-document-conflict');
     // clean.txt composed without any conflict, ahead of shared.txt in
     // iteration order, yet must NOT have been written once shared.txt's
     // overlap refused the whole assembly.
@@ -894,6 +1278,30 @@ describe('composeSharedFiles — review #500 round-2 P1-1: unlocatable markers o
     expect(result.regionKey).toBeUndefined();
     expect(writes).toEqual([]);
   });
+
+  it('refuses the assembly, writing no file, when the file on disk carries a marker with an empty identity', async () => {
+    const onDisk = ['frontx:region :key', 'body', 'frontx:endregion :key'].join('\n');
+    const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
+    const assembly = assemblyOf(
+      contribution(
+        'template-b',
+        { exclusiveSubtrees: [], sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['b'] }] },
+        [{ path: 'shared.txt', content: 'frontx:region template-b:b\nB.\nfrontx:endregion template-b:b' }],
+      ),
+    );
+    const { writeFileFn, writes } = fakeWriter();
+
+    const result = await composeSharedFiles(assembly, '/target', writeFileFn, readProjectFileFn, noExistingProvenance);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('malformed-marker-block');
+    if (result.reason !== 'malformed-marker-block') return;
+    expect(result.path).toBe('shared.txt');
+    expect(result.kind).toBe('malformed');
+    expect(result.lineNumber).toBe(1);
+    expect(writes).toEqual([]);
+  });
 });
 
 describe('composeSharedFiles — review #500 round-2 P1-2: a declared region key must not be closed by another key it prefixes', () => {
@@ -913,9 +1321,7 @@ describe('composeSharedFiles — review #500 round-2 P1-2: a declared region key
       'frontx:endregion identity:scripts-dev',
     ].join('\n');
     const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
-    const existingProvenance: ProvenanceRecord[] = [
-      { templateIdentity: 'identity', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/identity@offline' },
-    ];
+    const existingProvenance: ProvenanceRecord[] = [provenanceWithRegion('identity', 'shared.txt', ['scripts', 'scripts-dev'])];
     const assembly = assemblyOf(
       contribution(
         'template-a',
@@ -1013,9 +1419,7 @@ describe('composeSharedFiles — review #500 round-3 P1: orphaned/malformed end 
   it('does not refuse when the on-disk file carries only a legitimately-closed marker block (no false orphan-end refusal)', async () => {
     const onDisk = 'frontx:region identity:ok\nbody\nfrontx:endregion identity:ok';
     const readProjectFileFn: ReadProjectFileFn = async () => onDisk;
-    const existingProvenance: ProvenanceRecord[] = [
-      { templateIdentity: 'identity', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/identity@offline' },
-    ];
+    const existingProvenance: ProvenanceRecord[] = [provenanceWithRegion('identity', 'shared.txt', ['ok'])];
     const assembly = assemblyOf(
       contribution(
         'template-a',
@@ -1142,22 +1546,18 @@ describe('composeSharedFiles — review #500 round-4 P2: prefix-boundary text do
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     // The on-disk "frontx:regional configuration" line carries no marker at
-    // all, so it contributes no carried block — only template-a's freshly
-    // extracted region is composed.
-    const expectedComposed = 'frontx:region template-a:a\nA.\nfrontx:endregion template-a:a';
+    // all, so it remains host-document text and template-a's freshly extracted
+    // region is inserted after it.
+    const expectedComposed = ['// frontx:regional configuration', 'kept as-is', 'frontx:region template-a:a', 'A.', 'frontx:endregion template-a:a'].join('\n');
     expect(writes).toEqual([{ path: '/target/shared.txt', content: expectedComposed }]);
   });
 });
 
-describe('composeSharedFiles — review #500 round-4 P3: deterministic composition order is independent of locale collation', () => {
-  it('orders two region keys by UTF-16 code unit, not by `localeCompare` collation, for a pair where the two orders disagree', async () => {
-    // `'école'.localeCompare('zebra')` is negative (accented "e" collates
-    // near "e", so "école" sorts before "zebra" under typical ICU rules),
-    // but `'école' < 'zebra'` by UTF-16 code unit is false ('é' is U+00E9 =
-    // 233, greater than 'z' = U+007A = 122) — so "zebra" must sort first.
-    // Composition promises byte-identical output regardless of environment
-    // (inst-cs-compose-union), which a locale-dependent comparator cannot
-    // guarantee.
+describe('composeSharedFiles — host-document region order is stable', () => {
+  it('preserves authored host-document order for regions already present in the host', async () => {
+    // The host document controls placement for marker blocks already present in
+    // it. Locale-independent sorting still applies to blocks appended because
+    // no host marker exists for them, but it must not reorder an authored host.
     expect('école'.localeCompare('zebra')).toBeLessThan(0);
     expect('école' < 'zebra').toBe(false);
 
@@ -1187,12 +1587,12 @@ describe('composeSharedFiles — review #500 round-4 P3: deterministic compositi
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const expectedComposed = [
-      '// frontx:region template-a:zebra',
-      'ascii',
-      '// frontx:endregion template-a:zebra',
       '// frontx:region template-a:école',
       'accented',
       '// frontx:endregion template-a:école',
+      '// frontx:region template-a:zebra',
+      'ascii',
+      '// frontx:endregion template-a:zebra',
     ].join('\n');
     expect(writes).toEqual([{ path: '/target/shared.txt', content: expectedComposed }]);
   });
@@ -1273,9 +1673,7 @@ describe('composeSharedFiles — review #500 round-5: a carried-forward block be
       '// frontx:endregionally note; frontx:endregion prior:k',
     ].join('\n');
     const readProjectFileFn: ReadProjectFileFn = async (path) => (path === '/target/shared.txt' ? onDisk : null);
-    const existingProvenance: ProvenanceRecord[] = [
-      { templateIdentity: 'prior', scaffoldedFromVersion: '1.0.0', sourceSpec: 'local:x/prior@offline' },
-    ];
+    const existingProvenance: ProvenanceRecord[] = [provenanceWithRegion('prior', 'shared.txt', ['k'])];
     const assembly = assemblyOf(
       contribution(
         'template-b',

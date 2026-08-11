@@ -33,7 +33,7 @@ function validManifest(overrides: Partial<TemplateManifest> = {}): string {
     ownershipBoundaries: {
       exclusiveSubtrees: ['src/generated'],
       sharedFiles: [
-        { path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] },
+        { path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] },
       ],
     },
     referencedTemplates: [{ ref: 'github:acme/mfe-a@v1.0.0' }],
@@ -207,13 +207,66 @@ describe('validateManifestContract', () => {
       version: '1.0.0',
       ownershipBoundaries: {
         exclusiveSubtrees: [],
-        sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: [] }],
+        sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: [] }],
       },
     });
     const result = validateManifestContract(raw);
     expect(result.status).toBe('REJECTED');
     if (result.status !== 'REJECTED') return;
     expect(result.violations.some((v) => v.field.endsWith('.ownedRegions'))).toBe(true);
+  });
+
+  it('region-union shared-file entry with duplicate, empty, or whitespace owned region keys → region-keys violation', () => {
+    const raw = JSON.stringify({
+      name: 'my-tpl',
+      version: '1.0.0',
+      ownershipBoundaries: {
+        exclusiveSubtrees: [],
+        sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['ok', 'ok', '', 'has space'] }],
+      },
+      referencedTemplates: [],
+    });
+    const result = validateManifestContract(raw);
+    expect(result.status).toBe('REJECTED');
+    if (result.status !== 'REJECTED') return;
+    expect(result.violations.some((v) => v.field.endsWith('.ownedRegions'))).toBe(true);
+  });
+
+  it('region-union duplicate path and region key across entries → region-keys violation', () => {
+    const raw = JSON.stringify({
+      name: 'my-tpl',
+      version: '1.0.0',
+      ownershipBoundaries: {
+        exclusiveSubtrees: [],
+        sharedFiles: [
+          { path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['build'] },
+          { path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['build'] },
+        ],
+      },
+      referencedTemplates: [],
+    });
+    const result = validateManifestContract(raw);
+    expect(result.status).toBe('REJECTED');
+    if (result.status !== 'REJECTED') return;
+    expect(result.violations).toContainEqual(
+      expect.objectContaining({ field: 'ownershipBoundaries.sharedFiles[1].ownedRegions' }),
+    );
+  });
+
+  it('region-union shared-file entry targeting a strict JSON path → shared-file path violation', () => {
+    const raw = JSON.stringify({
+      name: 'my-tpl',
+      version: '1.0.0',
+      ownershipBoundaries: {
+        exclusiveSubtrees: [],
+        sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] }],
+      },
+      referencedTemplates: [],
+    });
+    const result = validateManifestContract(raw);
+    expect(result.status).toBe('REJECTED');
+    if (result.status !== 'REJECTED') return;
+    expect(result.violations.some((v) => v.field.endsWith('.path'))).toBe(true);
   });
 
   // inst-if-subtree-reserved / inst-add-subtree-reserved-violation

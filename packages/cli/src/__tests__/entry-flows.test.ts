@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createFsWriteFileFn } from '../adapters/fs-project-io';
 import { createFsReadTargetPathStateFn } from '../adapters/fs-target-path';
 import { seedRepository } from '../commands/seed-repository';
@@ -703,7 +703,12 @@ describe('addTemplate — cpt-frontx-flow-cli-scaffolding-add-template', () => {
     files.set(
       '/target/.frontx/provenance.json',
       JSON.stringify([
-        { templateIdentity: 'applied-template', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/applied-template@v1.0.0' },
+        {
+          templateIdentity: 'applied-template',
+          scaffoldedFromVersion: '1.0.0',
+          sourceSpec: 'github:acme/applied-template@v1.0.0',
+          occupiedOwnershipBoundary: '.',
+        },
       ]),
     );
 
@@ -885,16 +890,16 @@ describe('addTemplate occupied-ground guard — cpt-frontx-dod-cli-scaffolding-a
     const applied = makeEntry('applied-template', [], {
       ownershipBoundaries: {
         exclusiveSubtrees: [],
-        sharedFiles: [{ path: 'shared.json', mergeStrategy: 'region-union', ownedRegions: ['applied'] }],
+        sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['applied'] }],
       },
     });
     const contributor = makeEntry(
       'contributing-template',
-      [{ path: 'shared.json', content: 'frontx:region contributing-template:incoming\nincoming\nfrontx:endregion contributing-template:incoming' }],
+      [{ path: 'shared.txt', content: 'frontx:region contributing-template:incoming\nincoming\nfrontx:endregion contributing-template:incoming' }],
       {
         ownershipBoundaries: {
           exclusiveSubtrees: [],
-          sharedFiles: [{ path: 'shared.json', mergeStrategy: 'region-union', ownedRegions: ['incoming'] }],
+          sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['incoming'] }],
         },
       },
     );
@@ -907,7 +912,7 @@ describe('addTemplate occupied-ground guard — cpt-frontx-dod-cli-scaffolding-a
       ]),
     );
     files.set(
-      '/target/shared.json',
+      '/target/shared.txt',
       'frontx:region applied-template:applied\nalready applied\nfrontx:endregion applied-template:applied',
     );
 
@@ -925,8 +930,68 @@ describe('addTemplate occupied-ground guard — cpt-frontx-dod-cli-scaffolding-a
     );
 
     expect(result.ok).toBe(true);
-    expect(files.get('/target/shared.json')).toContain('already applied');
-    expect(files.get('/target/shared.json')).toContain('incoming');
+    expect(files.get('/target/shared.txt')).toContain('already applied');
+    expect(files.get('/target/shared.txt')).toContain('incoming');
+  });
+
+  it('carries a legacy-identity shared region when duplicate provenance records resolve to one installed template', async () => {
+    const applied = makeEntry('applied-template', [], {
+      ownershipBoundaries: {
+        exclusiveSubtrees: [],
+        sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['applied'] }],
+      },
+    });
+    const contributor = makeEntry(
+      'contributing-template',
+      [{ path: 'shared.txt', content: 'frontx:region contributing-template:incoming\nincoming\nfrontx:endregion contributing-template:incoming' }],
+      {
+        ownershipBoundaries: {
+          exclusiveSubtrees: [],
+          sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['incoming'] }],
+        },
+      },
+    );
+    const entries: Record<string, InventoryEntry> = { 'applied-template': applied, 'contributing-template': contributor };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        {
+          templateIdentity: 'applied-template',
+          scaffoldedFromVersion: '1.0.0',
+          sourceSpec: 'github:acme/applied-template@v1.0.0',
+          occupiedOwnershipBoundary: '.',
+        },
+        {
+          templateIdentity: 'legacy-repository-name',
+          scaffoldedFromVersion: '1.0.0',
+          sourceSpec: 'github:acme/applied-template@v1.0.0',
+          occupiedOwnershipBoundary: '.',
+        },
+      ]),
+    );
+    files.set(
+      '/target/shared.txt',
+      'frontx:region legacy-repository-name:applied\nalready applied\nfrontx:endregion legacy-repository-name:applied',
+    );
+
+    const result = await addTemplate(
+      'contributing-template',
+      '/target',
+      (name: string) => entries[name],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readTargetPathStateFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(files.get('/target/shared.txt')).toContain('frontx:region legacy-repository-name:applied');
+    expect(files.get('/target/shared.txt')).toContain('already applied');
+    expect(files.get('/target/shared.txt')).toContain('incoming');
   });
 
   // A recorded subtree is a path prefix only at a separator boundary: "srcx.ts"
@@ -1155,22 +1220,22 @@ describe('addTemplate occupied-ground guard — cpt-frontx-dod-cli-scaffolding-a
     });
     const root = makeEntry(
       'union-root',
-      [{ path: 'src/shared.json', content: 'frontx:region union-root:root\nroot\nfrontx:endregion union-root:root' }],
+      [{ path: 'src/shared.txt', content: 'frontx:region union-root:root\nroot\nfrontx:endregion union-root:root' }],
       {
         ownershipBoundaries: {
           exclusiveSubtrees: [],
-          sharedFiles: [{ path: 'src/shared.json', mergeStrategy: 'region-union', ownedRegions: ['root'] }],
+          sharedFiles: [{ path: 'src/shared.txt', mergeStrategy: 'region-union', ownedRegions: ['root'] }],
         },
         referencedTemplates: [{ ref: 'union-branch' }],
       },
     );
     const branch = makeEntry(
       'union-branch',
-      [{ path: 'src/shared.json', content: 'frontx:region union-branch:branch\nbranch\nfrontx:endregion union-branch:branch' }],
+      [{ path: 'src/shared.txt', content: 'frontx:region union-branch:branch\nbranch\nfrontx:endregion union-branch:branch' }],
       {
         ownershipBoundaries: {
           exclusiveSubtrees: ['src/'],
-          sharedFiles: [{ path: 'src/shared.json', mergeStrategy: 'region-union', ownedRegions: ['branch'] }],
+          sharedFiles: [{ path: 'src/shared.txt', mergeStrategy: 'region-union', ownedRegions: ['branch'] }],
         },
       },
     );
@@ -1186,7 +1251,7 @@ describe('addTemplate occupied-ground guard — cpt-frontx-dod-cli-scaffolding-a
         { templateIdentity: 'subtree-owner', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/subtree-owner@v1.0.0' },
       ]),
     );
-    files.set('/target/src/shared.json', 'written by the recorded template');
+    files.set('/target/src/shared.txt', 'written by the recorded template');
 
     const result = await addTemplate(
       'union-root',
@@ -1204,7 +1269,7 @@ describe('addTemplate occupied-ground guard — cpt-frontx-dod-cli-scaffolding-a
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.reason).toBe('conflict');
-    expect(files.get('/target/src/shared.json')).toBe('written by the recorded template');
+    expect(files.get('/target/src/shared.txt')).toBe('written by the recorded template');
   });
 
   // The pre-flight probe deliberately runs ahead of the conflict check

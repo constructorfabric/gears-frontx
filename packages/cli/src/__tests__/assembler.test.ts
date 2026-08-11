@@ -64,7 +64,7 @@ describe('uniformApply — the ONE apply path (cpt-frontx-algo-cli-scaffolding-u
     const entry = makeEntry('template-a', {
       ownershipBoundaries: {
         exclusiveSubtrees: ['template-a/'],
-        sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] }],
+        sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] }],
       },
     });
     const lookupFn = vi.fn(() => entry);
@@ -79,7 +79,7 @@ describe('uniformApply — the ONE apply path (cpt-frontx-algo-cli-scaffolding-u
     expect(contribution.files).toEqual([{ path: 'template-a/index.ts', content: 'export const template_a = true;' }]);
     expect(contribution.ownershipBoundaries.exclusiveSubtrees).toEqual(['template-a/']);
     expect(contribution.ownershipBoundaries.sharedFiles).toEqual([
-      { path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] },
+      { path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] },
     ]);
   });
 
