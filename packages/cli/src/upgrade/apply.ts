@@ -130,6 +130,23 @@ export async function applyChangeSet(
     const message = err instanceof Error ? err.message : String(err);
     return { ok: false, message: `Apply aborted before any file was written: ${message}` };
   }
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-if-duplicate-provenance
+  const seenTemplateIdentities = new Set<string>();
+  for (const record of existingRecords) {
+    if (seenTemplateIdentities.has(record.templateIdentity)) {
+      // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-abort-duplicate-provenance
+      return {
+        ok: false,
+        message:
+          `Apply aborted before any file was written: provenance file at "${provPath}" contains more than one ` +
+          `record for templateIdentity "${record.templateIdentity}".`,
+      };
+      // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-abort-duplicate-provenance
+    }
+    seenTemplateIdentities.add(record.templateIdentity);
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-if-duplicate-provenance
+
   const targetIndex = existingRecords.findIndex(
     (record) => record.templateIdentity === currentProvenance.templateIdentity,
   );
@@ -176,6 +193,32 @@ export async function applyChangeSet(
       // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-apply-entry
     }
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-for-each-entry
+
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-update-prov
+    // Provenance is a SET — one record per applied template (ADR-0019) — never
+    // a single whole-repository record. `existingRecords`/`targetIndex` were
+    // already validated above, before any file was written, so this step is a
+    // pure substitution into an already-known-good array — it cannot itself
+    // throw building its input, but the write itself (`deps.writeProvenance`)
+    // can (issue #506) — kept INSIDE this try so a write failure here is
+    // restored by the same catch below, exactly like a project-file write
+    // failure, rather than throwing past `ApplyResult`'s `{ok:false}` contract
+    // with already-applied project files left in place and unrestored. Only
+    // the record for the template this upgrade targets changes; every other
+    // applied template's record is re-serialized untouched (ADR-0021
+    // Confirmation (d): "the other applied template and its provenance record
+    // are unaffected").
+    const updatedRecords = existingRecords.map((record, index) =>
+      index === targetIndex
+        ? {
+            ...record,
+            scaffoldedFromVersion: changeSet.targetVersion,
+            occupiedOwnershipBoundary: changeSet.targetOccupiedOwnershipBoundary,
+          }
+        : record,
+    );
+    await deps.writeProvenance(provPath, JSON.stringify(updatedRecords, null, 2));
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-update-prov
   } catch (err) {
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-try
     // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-catch
@@ -198,21 +241,6 @@ export async function applyChangeSet(
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-return-failure
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-catch
   }
-
-  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-update-prov
-  // Provenance is a SET — one record per applied template (ADR-0019) — never
-  // a single whole-repository record. `existingRecords`/`targetIndex` were
-  // already validated above, before any file was written, so this step is a
-  // pure substitution into an already-known-good array — it cannot itself
-  // throw. Only the record for the template this upgrade targets changes;
-  // every other applied template's record is re-serialized untouched
-  // (ADR-0021 Confirmation (d): "the other applied template and its
-  // provenance record are unaffected").
-  const updatedRecords = existingRecords.map((record, index) =>
-    index === targetIndex ? { ...record, scaffoldedFromVersion: changeSet.targetVersion } : record,
-  );
-  await deps.writeProvenance(provPath, JSON.stringify(updatedRecords, null, 2));
-  // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-update-prov
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-retain-snapshot
   // Snapshot is returned to the caller for rollback — retained until a new upgrade cycle

@@ -1,7 +1,8 @@
 // @cpt-algo:cpt-frontx-algo-upgrade-changeset-compute:p1
 // @cpt-dod:cpt-frontx-dod-upgrade-changeset-computation:p1
 import { readManifestFromContent } from '../manifest/validate-contract';
-import { extractOwnedRegion } from '../scaffold/compose-shared-files';
+import { formatOccupiedBoundary } from '../provenance/boundary';
+import { extractOwnedRegionStrict } from '../scaffold/compose-shared-files';
 import { resolveTemplateAtVersion } from './resolve-template';
 import type { ReadContentItemsFn } from '../scaffold/types';
 import type { OwnershipBoundary } from '../manifest/types';
@@ -19,7 +20,7 @@ export type ComputeResult =
   | { ok: true; changeSet: ChangeSet; provenance: ProvenanceRecord }
   | {
       ok: false;
-      reason: 'no-provenance' | 'baseline-not-found' | 'target-not-found' | 'manifest-error';
+      reason: 'no-provenance' | 'baseline-not-found' | 'target-not-found' | 'manifest-error' | 'region-error';
       message: string;
     };
 
@@ -37,6 +38,34 @@ function ownershipForPath(
     return { mergeStrategy: 'exclusive', ownedRegions: [] };
   }
   return { mergeStrategy: sharedEntry.mergeStrategy, ownedRegions: sharedEntry.ownedRegions };
+}
+
+function extractRegionForUpgrade(
+  content: string | undefined,
+  templateIdentity: string,
+  regionKey: string,
+  label: string,
+  options: { requirePresent: boolean },
+): { ok: true; markerBlock: string | undefined } | { ok: false; message: string } {
+  if (content === undefined) {
+    return options.requirePresent
+      ? {
+          ok: false,
+          message:
+            `Cannot compute upgrade because ${label} content for template "${templateIdentity}" is missing ` +
+            `declared region "${regionKey}".`,
+        }
+      : { ok: true, markerBlock: undefined };
+  }
+  const result = extractOwnedRegionStrict(content, templateIdentity, regionKey);
+  if (result.ok) return { ok: true, markerBlock: result.markerBlock };
+  if (result.reason === 'missing' && !options.requirePresent) return { ok: true, markerBlock: undefined };
+  return {
+    ok: false,
+    message:
+      `Cannot compute upgrade because ${label} content for template "${templateIdentity}" has ` +
+      `a ${result.reason} marker structure for region "${regionKey}".`,
+  };
 }
 
 // @cpt-begin:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-read-provenance
@@ -117,8 +146,27 @@ export async function computeChangeSet(
   // Ownership boundary the diff is scoped to — the target manifest's declared
   // boundary (the version the project is moving TO governs what this template
   // owns going forward).
-  const ownershipBoundary = targetResult.manifest.ownershipBoundaries;
-  const allPaths = new Set<string>([...baselineFiles.keys(), ...targetFiles.keys()]);
+  const legacyRecord = templateIdentity !== targetResult.manifest.name;
+  const legacyRegionUnionPaths = new Set(
+    legacyRecord
+      ? targetResult.manifest.ownershipBoundaries.sharedFiles
+          .filter((entry) => entry.mergeStrategy === 'region-union')
+          .map((entry) => entry.path)
+      : [],
+  );
+  const ownershipBoundary = legacyRecord
+    ? {
+        exclusiveSubtrees: targetResult.manifest.ownershipBoundaries.exclusiveSubtrees,
+        sharedFiles: targetResult.manifest.ownershipBoundaries.sharedFiles.filter(
+          (entry) => entry.mergeStrategy !== 'region-union',
+        ),
+      }
+    : targetResult.manifest.ownershipBoundaries;
+  const allPaths = new Set<string>([
+    ...[...baselineFiles.keys()].filter((path) => !legacyRegionUnionPaths.has(path)),
+    ...[...targetFiles.keys()].filter((path) => !legacyRegionUnionPaths.has(path)),
+    ...ownershipBoundary.sharedFiles.map((entry) => entry.path),
+  ]);
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-diff-files
 
   const clean: CleanEntry[] = [];
@@ -137,10 +185,16 @@ export async function computeChangeSet(
       // marker-delimited region(s); co-owning templates' regions are never
       // compared or touched.
       for (const regionKey of ownedRegions) {
-        const baselineRegion =
-          baselineContent !== undefined ? extractOwnedRegion(baselineContent, templateIdentity, regionKey) : undefined;
-        const targetRegion =
-          targetContent !== undefined ? extractOwnedRegion(targetContent, templateIdentity, regionKey) : undefined;
+        const baselineRegionResult = extractRegionForUpgrade(baselineContent, templateIdentity, regionKey, 'baseline', {
+          requirePresent: false,
+        });
+        if (!baselineRegionResult.ok) return { ok: false, reason: 'region-error', message: baselineRegionResult.message };
+        const targetRegionResult = extractRegionForUpgrade(targetContent, templateIdentity, regionKey, 'target', {
+          requirePresent: true,
+        });
+        if (!targetRegionResult.ok) return { ok: false, reason: 'region-error', message: targetRegionResult.message };
+        const baselineRegion = baselineRegionResult.markerBlock;
+        const targetRegion = targetRegionResult.markerBlock;
 
         if (baselineRegion === targetRegion) continue; // this template's region did not change
 
@@ -148,8 +202,15 @@ export async function computeChangeSet(
 
         // @cpt-begin:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-check-local-mod
         const localFileContent = await deps.readProjectFile(absolutePath);
-        const localRegion =
-          localFileContent !== null ? extractOwnedRegion(localFileContent, templateIdentity, regionKey) : undefined;
+        const localRegionResult = extractRegionForUpgrade(
+          localFileContent === null ? undefined : localFileContent,
+          templateIdentity,
+          regionKey,
+          'local project',
+          { requirePresent: false },
+        );
+        if (!localRegionResult.ok) return { ok: false, reason: 'region-error', message: localRegionResult.message };
+        const localRegion = localRegionResult.markerBlock;
         // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-check-local-mod
 
         if (localFileContent !== null && localRegion !== baselineRegion) {
@@ -247,6 +308,7 @@ export async function computeChangeSet(
       templateIdentity,
       baselineVersion: scaffoldedFromVersion,
       targetVersion,
+      targetOccupiedOwnershipBoundary: formatOccupiedBoundary(ownershipBoundary),
       clean,
       conflicts,
     },

@@ -1,10 +1,12 @@
 import { readManifestFromContent } from '../manifest/validate-contract';
+import { formatOccupiedBoundary, parseOccupiedBoundary } from '../provenance/boundary';
 import { writeProvenance } from '../provenance/write';
 import { formatTemplateAddress, parseSourceSpec } from '../spec-parser/parse';
 import { composeSharedFiles } from './compose-shared-files';
 import type { ComposeSharedFilesResult } from './compose-shared-files';
 import type { ProvenanceRecord, ProvenanceWriteFn } from '../provenance/types';
 import type { InventoryEntry } from '../inventory/types';
+import type { OwnershipBoundary } from '../manifest/types';
 import type { OccupiedBoundaryEntry } from './state';
 import type { ReadProjectFileFn, StagedAssembly, WriteFileFn } from './types';
 
@@ -13,15 +15,17 @@ import type { ReadProjectFileFn, StagedAssembly, WriteFileFn } from './types';
 // current records for an add (cpt-frontx-flow-cli-scaffolding-add-template).
 export type ReadProvenanceRecordsFn = (targetDir: string) => Promise<ProvenanceRecord[]>;
 
-export type OccupiedBoundariesResult =
-  | { ok: true; occupied: OccupiedBoundaryEntry[] }
-  | {
-      ok: false;
-      reason: 'occupied-not-installed' | 'occupied-manifest-unreadable' | 'occupied-source-ambiguous';
-      templateIdentity: string;
-      sourceSpec: string;
-      message: string;
-    };
+export type OccupiedBoundariesFailure = {
+  ok: false;
+  reason: 'occupied-not-installed' | 'occupied-manifest-unreadable' | 'occupied-source-ambiguous';
+  templateIdentity: string;
+  sourceSpec: string;
+  message: string;
+};
+
+export type OccupiedBoundariesResult = { ok: true; occupied: OccupiedBoundaryEntry[] } | OccupiedBoundariesFailure;
+
+export type MaterializationProvenanceResult = { ok: true; records: ProvenanceRecord[] } | OccupiedBoundariesFailure;
 
 // Derives the ownership boundaries already occupied by a repository's
 // previously-applied templates by cross-referencing each existing provenance
@@ -54,41 +58,8 @@ export function occupiedBoundariesFromProvenance(
   const occupied: OccupiedBoundaryEntry[] = [];
   const claimed = new Set<string>();
   for (const record of records) {
-    // An identity hit is trusted only when the entry came from the address the
-    // record names. An inventory written before the collision guard existed can
-    // hold this key pointing at another template, and its boundaries would then
-    // be checked in place of the real occupant's — a claim over ground the
-    // actual owner holds would pass.
-    const byIdentity = lookupFn(record.templateIdentity);
-    const candidates =
-      byIdentity !== undefined && sameSourceAddress(byIdentity.source, record.sourceSpec)
-        ? [byIdentity]
-        : matchBySourceAddress(record.sourceSpec, installed);
-    const [entry, ...surplus] = candidates;
-
-    if (entry === undefined) {
-      return {
-        ok: false,
-        reason: 'occupied-not-installed',
-        templateIdentity: record.templateIdentity,
-        sourceSpec: record.sourceSpec,
-        message:
-          `Applied template "${record.templateIdentity}" is recorded in this repository but is not installed locally, ` +
-          `so the ground it owns cannot be checked. Install it with "frontx install ${record.sourceSpec}" and retry.`,
-      };
-    }
-    if (surplus.length > 0) {
-      return {
-        ok: false,
-        reason: 'occupied-source-ambiguous',
-        templateIdentity: record.templateIdentity,
-        sourceSpec: record.sourceSpec,
-        message:
-          `Applied template "${record.templateIdentity}" is not installed under that identity, and more than one ` +
-          `installed template was acquired from "${record.sourceSpec}", so the ground it owns cannot be established. ` +
-          'Remove the duplicate from the local inventory and retry.',
-      };
-    }
+    const resolved = resolveInstalledRecord(record, lookupFn, installed);
+    if (!resolved.ok) return resolved;
 
     // Two records resolving to one installed template describe one occupant,
     // not two. The conflict check pairs every claim with every other one,
@@ -100,27 +71,90 @@ export function occupiedBoundariesFromProvenance(
     // record for one template both resolve here: one by identity, one by
     // address. The first record's identity is the one reported, and either
     // names ground the same entry owns.
-    if (claimed.has(entry.name)) continue;
-    claimed.add(entry.name);
+    if (claimed.has(resolved.entry.name)) continue;
+    claimed.add(resolved.entry.name);
 
-    const manifestResult = readManifestFromContent(entry.content);
-    if (!manifestResult.ok) {
-      return {
-        ok: false,
-        reason: 'occupied-manifest-unreadable',
-        templateIdentity: record.templateIdentity,
-        sourceSpec: record.sourceSpec,
-        message:
-          `Applied template "${record.templateIdentity}" is installed locally but does not satisfy the manifest ` +
-          `contract, so the ground it owns cannot be checked: ${manifestResult.message}. ` +
-          `Reinstall it with "frontx install ${record.sourceSpec}" and retry.`,
-      };
-    }
     // The record's identity, not the entry's, names the occupant: it is what
     // this repository's own region markers and provenance already carry.
-    occupied.push({ templateName: record.templateIdentity, boundary: manifestResult.manifest.ownershipBoundaries });
+    occupied.push({ templateName: record.templateIdentity, boundary: resolved.boundary });
   }
   return { ok: true, occupied };
+}
+
+export function provenanceRecordsForMaterialization(
+  records: ProvenanceRecord[],
+  lookupFn: (name: string) => InventoryEntry | undefined,
+  installed: InventoryEntry[],
+): MaterializationProvenanceResult {
+  const normalized: ProvenanceRecord[] = [];
+  for (const record of records) {
+    const parsedBoundary = parseOccupiedBoundary(record.occupiedOwnershipBoundary);
+    if (parsedBoundary !== undefined) {
+      normalized.push(record);
+      continue;
+    }
+    const resolved = resolveInstalledRecord(record, lookupFn, installed);
+    if (!resolved.ok) return resolved;
+    normalized.push({ ...record, occupiedOwnershipBoundary: formatOccupiedBoundary(resolved.boundary) });
+  }
+  return { ok: true, records: normalized };
+}
+
+function resolveInstalledRecord(
+  record: ProvenanceRecord,
+  lookupFn: (name: string) => InventoryEntry | undefined,
+  installed: InventoryEntry[],
+): { ok: true; entry: InventoryEntry; boundary: OwnershipBoundary } | OccupiedBoundariesFailure {
+  // An identity hit is trusted only when the entry came from the address the
+  // record names. An inventory written before the collision guard existed can
+  // hold this key pointing at another template, and its boundaries would then
+  // be checked in place of the real occupant's — a claim over ground the
+  // actual owner holds would pass.
+  const byIdentity = lookupFn(record.templateIdentity);
+  const candidates =
+    byIdentity !== undefined && sameSourceAddress(byIdentity.source, record.sourceSpec)
+      ? [byIdentity]
+      : matchBySourceAddress(record.sourceSpec, installed);
+  const [entry, ...surplus] = candidates;
+
+  if (entry === undefined) {
+    return {
+      ok: false,
+      reason: 'occupied-not-installed',
+      templateIdentity: record.templateIdentity,
+      sourceSpec: record.sourceSpec,
+      message:
+        `Applied template "${record.templateIdentity}" is recorded in this repository but is not installed locally, ` +
+        `so the ground it owns cannot be checked. Install it with "frontx install ${record.sourceSpec}" and retry.`,
+    };
+  }
+  if (surplus.length > 0) {
+    return {
+      ok: false,
+      reason: 'occupied-source-ambiguous',
+      templateIdentity: record.templateIdentity,
+      sourceSpec: record.sourceSpec,
+      message:
+        `Applied template "${record.templateIdentity}" is not installed under that identity, and more than one ` +
+        `installed template was acquired from "${record.sourceSpec}", so the ground it owns cannot be established. ` +
+        'Remove the duplicate from the local inventory and retry.',
+    };
+  }
+
+  const manifestResult = readManifestFromContent(entry.content);
+  if (!manifestResult.ok) {
+    return {
+      ok: false,
+      reason: 'occupied-manifest-unreadable',
+      templateIdentity: record.templateIdentity,
+      sourceSpec: record.sourceSpec,
+      message:
+        `Applied template "${record.templateIdentity}" is installed locally but does not satisfy the manifest ` +
+        `contract, so the ground it owns cannot be checked: ${manifestResult.message}. ` +
+        `Reinstall it with "frontx install ${record.sourceSpec}" and retry.`,
+    };
+  }
+  return { ok: true, entry, boundary: manifestResult.manifest.ownershipBoundaries };
 }
 
 // Installed templates acquired from the same address as `sourceSpec`, ignoring
@@ -205,6 +239,8 @@ const USER_FIXABLE_COMPOSE_REASONS: Record<ComposeFailureReason, boolean> = {
   'span-overlap': true,
   'carried-block-conflict': true,
   'malformed-marker-block': true,
+  'missing-region': true,
+  'host-document-conflict': true,
   'exclusive-contested': false,
   'key-collision': false,
   'carried-key-collision': false,
@@ -290,6 +326,11 @@ export async function materializeAssembly(
       templateIdentity: contribution.templateName,
       scaffoldedFromVersion: manifestResult && manifestResult.ok ? manifestResult.manifest.version : '',
       sourceSpec: entry?.source ?? '',
+      // The boundary this template actually occupies at materialization time
+      // (issue #530) — not the '.' every record fell back to when this field
+      // was left unset, which was indistinguishable from a legitimate
+      // root-owning template for every template, always.
+      occupiedOwnershipBoundary: formatOccupiedBoundary(contribution.ownershipBoundaries),
     };
   });
 

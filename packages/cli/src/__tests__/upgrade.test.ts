@@ -8,6 +8,7 @@ import {
 import { computeChangeSet } from '../upgrade/compute';
 import { applyChangeSet } from '../upgrade/apply';
 import { rollbackChangeSet } from '../upgrade/rollback';
+import { formatOccupiedBoundary } from '../provenance/boundary';
 import type { ChangeSet, ConflictEntry } from '../upgrade/types';
 import type { ContentItem, ReadContentItemsFn } from '../scaffold/types';
 import type { FetchFn } from '../resolver/types';
@@ -311,7 +312,15 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
   // own marker-delimited region, leaving a co-owning template's region
   // byte-for-byte untouched, both in the computed diff and after apply.
   it('(i) region-union shared file: diff and apply are scoped to this template\'s own owned region only', async () => {
-    const SHARED_PATH = 'shared.config.js';
+    const SHARED_PATH = 'shared.txt';
+    const baselineSharedBoundary: OwnershipBoundary = {
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+    };
+    const targetSharedBoundary: OwnershipBoundary = {
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup', 'teardown'] }],
+    };
     // Distinct versions from the top-level fixture — this test registers its
     // own baseline/target so it cannot clobber the shared '1.0.0'/'2.0.0'
     // entries other tests in this file rely on.
@@ -319,10 +328,7 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
       templateIdentity: 'my-template',
       scaffoldedFromVersion: '1.1.0',
       sourceSpec: 'local:acme/my-template@1.1.0',
-    };
-    const sharedBoundary: OwnershipBoundary = {
-      exclusiveSubtrees: [],
-      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+      occupiedOwnershipBoundary: formatOccupiedBoundary(baselineSharedBoundary),
     };
 
     registerVersion(
@@ -341,7 +347,7 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
           ].join('\n'),
         },
       ],
-      sharedBoundary,
+      baselineSharedBoundary,
     );
     registerVersion(
       'my-template',
@@ -353,10 +359,13 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
             '// frontx:region my-template:setup',
             'const setupV2 = true;',
             '// frontx:endregion my-template:setup',
+            '// frontx:region my-template:teardown',
+            'const teardownV2 = true;',
+            '// frontx:endregion my-template:teardown',
           ].join('\n'),
         },
       ],
-      sharedBoundary,
+      targetSharedBoundary,
     );
 
     // The current project file — this template's region at the v1.1.0
@@ -385,6 +394,9 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     // Only the owned region's NEW content is carried — not the whole file.
     expect(regionEntry!.content).toContain('setupV2');
     expect(regionEntry!.content).not.toContain('otherStaysPut');
+    expect(changeSet.targetOccupiedOwnershipBoundary).toBe(
+      '{"exclusiveSubtrees":[],"sharedFiles":[{"path":"shared.txt","mergeStrategy":"region-union","ownedRegions":["setup","teardown"]}]}',
+    );
 
     // Apply: only this template's region is rewritten in the shared file;
     // the co-owning template's region is left byte-for-byte untouched.
@@ -409,6 +421,217 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     expect(appliedContent).toContain('// frontx:region other-template:extra');
     expect(appliedContent).toContain('const otherStaysPut = true;');
     expect(appliedContent).toContain('// frontx:endregion other-template:extra');
+
+    const updatedProvenance = JSON.parse(files.get(`${PROJ_ROOT}/.frontx/provenance.json`)!) as Array<
+      Record<string, unknown>
+    >;
+    expect(updatedProvenance).toHaveLength(1);
+    expect(updatedProvenance[0]['scaffoldedFromVersion']).toBe('2.1.0');
+    expect(updatedProvenance[0]['occupiedOwnershipBoundary']).toBe(changeSet.targetOccupiedOwnershipBoundary);
+  });
+
+  it('(i2) region-union upgrade refuses duplicate owned marker blocks instead of diffing the first match', async () => {
+    const SHARED_PATH = 'shared.txt';
+    const sharedBoundary: OwnershipBoundary = {
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+    };
+    const REGION_PROVENANCE = {
+      templateIdentity: 'my-template',
+      scaffoldedFromVersion: '1.2.0',
+      sourceSpec: 'local:acme/my-template@1.2.0',
+      occupiedOwnershipBoundary: formatOccupiedBoundary(sharedBoundary),
+    };
+
+    registerVersion(
+      'my-template',
+      '1.2.0',
+      [
+        {
+          path: SHARED_PATH,
+          content: [
+            'frontx:region my-template:setup',
+            'const setupV1 = true;',
+            'frontx:endregion my-template:setup',
+          ].join('\n'),
+        },
+      ],
+      sharedBoundary,
+    );
+    registerVersion(
+      'my-template',
+      '2.2.0',
+      [
+        {
+          path: SHARED_PATH,
+          content: [
+            'frontx:region my-template:setup',
+            'first target block',
+            'frontx:endregion my-template:setup',
+            'frontx:region my-template:setup',
+            'second target block',
+            'frontx:endregion my-template:setup',
+          ].join('\n'),
+        },
+      ],
+      sharedBoundary,
+    );
+
+    const result = await computeChangeSet(PROJ_ROOT, '2.2.0', {
+      readProvenance: async () => REGION_PROVENANCE,
+      fetchFn,
+      readProjectFile: async () => null,
+      readContentItems,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('region-error');
+    expect(result.message).toMatch(/duplicate/);
+  });
+
+  it('(i3) region-union upgrade refuses a target manifest declared region missing from target content', async () => {
+    const SHARED_PATH = 'shared-missing-body.txt';
+    const sharedBoundary: OwnershipBoundary = {
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+    };
+    const REGION_PROVENANCE = {
+      templateIdentity: 'my-template',
+      scaffoldedFromVersion: '1.3.0',
+      sourceSpec: 'local:acme/my-template@1.3.0',
+      occupiedOwnershipBoundary: formatOccupiedBoundary(sharedBoundary),
+    };
+
+    registerVersion(
+      'my-template',
+      '1.3.0',
+      [
+        {
+          path: SHARED_PATH,
+          content: [
+            'frontx:region my-template:setup',
+            'const setupV1 = true;',
+            'frontx:endregion my-template:setup',
+          ].join('\n'),
+        },
+      ],
+      sharedBoundary,
+    );
+    registerVersion(
+      'my-template',
+      '2.3.0',
+      [
+        {
+          path: SHARED_PATH,
+          content: 'target accidentally dropped the declared marker block',
+        },
+      ],
+      sharedBoundary,
+    );
+
+    const result = await computeChangeSet(PROJ_ROOT, '2.3.0', {
+      readProvenance: async () => REGION_PROVENANCE,
+      fetchFn,
+      readProjectFile: async () => null,
+      readContentItems,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('region-error');
+    expect(result.message).toMatch(/missing|declared region "setup"/);
+  });
+
+  it('(i4) region-union upgrade refuses a target manifest declared shared file missing from target inventory', async () => {
+    const SHARED_PATH = 'shared-missing-file.txt';
+    const sharedBoundary: OwnershipBoundary = {
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+    };
+    const REGION_PROVENANCE = {
+      templateIdentity: 'my-template',
+      scaffoldedFromVersion: '1.4.0',
+      sourceSpec: 'local:acme/my-template@1.4.0',
+      occupiedOwnershipBoundary: formatOccupiedBoundary(sharedBoundary),
+    };
+
+    registerVersion(
+      'my-template',
+      '1.4.0',
+      [
+        {
+          path: SHARED_PATH,
+          content: [
+            'frontx:region my-template:setup',
+            'const setupV1 = true;',
+            'frontx:endregion my-template:setup',
+          ].join('\n'),
+        },
+      ],
+      sharedBoundary,
+    );
+    registerVersion('my-template', '2.4.0', [], sharedBoundary);
+
+    const result = await computeChangeSet(PROJ_ROOT, '2.4.0', {
+      readProvenance: async () => REGION_PROVENANCE,
+      fetchFn,
+      readProjectFile: async () => null,
+      readContentItems,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('region-error');
+    expect(result.message).toMatch(/target content.*missing declared region "setup"/);
+  });
+
+  it('(i5) legacy provenance does not upgrade target region-union shared files it cannot prove it owns', async () => {
+    const SHARED_PATH = 'legacy-shared.txt';
+    const sharedBoundary: OwnershipBoundary = {
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+    };
+    const LEGACY_PROVENANCE = {
+      templateIdentity: 'legacy-repository-name',
+      scaffoldedFromVersion: '1.5.0',
+      sourceSpec: 'local:acme/my-template@1.5.0',
+    };
+
+    registerVersion(
+      'my-template',
+      '1.5.0',
+      [{ path: SHARED_PATH, content: 'legacy unmarked shared content' }],
+      sharedBoundary,
+    );
+    registerVersion(
+      'my-template',
+      '2.5.0',
+      [
+        {
+          path: SHARED_PATH,
+          content: [
+            'frontx:region my-template:setup',
+            'const setupV2 = true;',
+            'frontx:endregion my-template:setup',
+          ].join('\n'),
+        },
+      ],
+      sharedBoundary,
+    );
+
+    const result = await computeChangeSet(PROJ_ROOT, '2.5.0', {
+      readProvenance: async () => LEGACY_PROVENANCE,
+      fetchFn,
+      readProjectFile: async () => 'developer-owned file content',
+      readContentItems,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.changeSet.clean.some((entry) => entry.path === SHARED_PATH)).toBe(false);
+    expect(result.changeSet.conflicts.some((entry) => entry.path === SHARED_PATH)).toBe(false);
+    expect(result.changeSet.targetOccupiedOwnershipBoundary).toBe('.');
   });
 
   // (j)/(k) #488 follow-up: a bad provenance precondition — either the file
@@ -424,6 +647,7 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     templateIdentity: 'my-template',
     baselineVersion: '1.0.0',
     targetVersion: '2.0.0',
+    targetOccupiedOwnershipBoundary: '.',
     clean: [{ kind: 'modify', path: 'src/App.tsx', content: 'v2 content' }],
     conflicts: [],
   };
@@ -474,6 +698,33 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
 
     expect(applyResult.ok).toBe(false);
     if (applyResult.ok) return;
+    expect(applyResult.message).toMatch(/my-template/);
+    expect(writes.size).toBe(0);
+    expect(removed.size).toBe(0);
+  });
+
+  it('(k2) duplicate provenance records for one template identity abort before any project file is written', async () => {
+    const writes = new Map<string, string>();
+    const removed = new Set<string>();
+    const duplicateRecord = {
+      ...BASE_PROVENANCE,
+      scaffoldedFromVersion: '0.9.0',
+    };
+
+    const applyResult = await applyChangeSet(trivialChangeSet, PROJ_ROOT, BASE_PROVENANCE, {
+      readProjectFile: async (p) => {
+        if (p === PROJ_ROOT + '/.frontx/provenance.json') return JSON.stringify([BASE_PROVENANCE, duplicateRecord]);
+        if (p === PROJ_ROOT + '/src/App.tsx') return 'v1 content';
+        return null;
+      },
+      writeProjectFile: async (p, c) => { writes.set(p, c); },
+      removeProjectFile: async (p) => { removed.add(p); },
+      writeProvenance: async (p, c) => { writes.set(p, c); },
+    });
+
+    expect(applyResult.ok).toBe(false);
+    if (applyResult.ok) return;
+    expect(applyResult.message).toMatch(/more than one record/);
     expect(applyResult.message).toMatch(/my-template/);
     expect(writes.size).toBe(0);
     expect(removed.size).toBe(0);
@@ -567,5 +818,39 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     expect(applyResult.message).toMatch(/index 0/);
     expect(writes.size).toBe(0);
     expect(removed.size).toBe(0);
+  });
+
+  // issue #506 — the final `deps.writeProvenance` used to run AFTER the
+  // for-each-entry loop's try/catch closed, so a write failure there threw
+  // past `ApplyResult`'s `{ok:false}` contract with the loop's project-file
+  // mutations already on disk and no rollback. Moved inside the same try —
+  // a throwing `writeProvenance` is now caught by the existing restore-on-
+  // error loop, which already covers `provPath` (snapshotted at the top of
+  // `applyChangeSet`), so both the mutated project file AND the provenance
+  // file land back at their exact pre-upgrade bytes.
+  it('(o) a throwing writeProvenance is restored: the mutated project file and provenance.json are returned to pre-upgrade bytes, and ApplyResult reports failure instead of throwing', async () => {
+    const files = new Map<string, string>([
+      [`${PROJ_ROOT}/src/App.tsx`, 'v1 content'],
+      [`${PROJ_ROOT}/.frontx/provenance.json`, JSON.stringify([BASE_PROVENANCE], null, 2)],
+    ]);
+
+    const applyResult = await applyChangeSet(trivialChangeSet, PROJ_ROOT, BASE_PROVENANCE, {
+      readProjectFile: async (p) => files.get(p) ?? null,
+      writeProjectFile: async (p, c) => { files.set(p, c); },
+      removeProjectFile: async (p) => { files.delete(p); },
+      writeProvenance: async (p, c) => {
+        files.set(p, c);
+        throw new Error('disk full');
+      },
+    });
+
+    expect(applyResult.ok).toBe(false);
+    if (applyResult.ok) return;
+    expect(applyResult.message).toMatch(/disk full/);
+    // The for-each-entry loop's mutation to App.tsx was rolled back...
+    expect(files.get(`${PROJ_ROOT}/src/App.tsx`)).toBe('v1 content');
+    // ...and provenance.json was never left holding a version bump with no
+    // matching project-file changes applied — restored byte-for-byte.
+    expect(files.get(`${PROJ_ROOT}/.frontx/provenance.json`)).toBe(JSON.stringify([BASE_PROVENANCE], null, 2));
   });
 });

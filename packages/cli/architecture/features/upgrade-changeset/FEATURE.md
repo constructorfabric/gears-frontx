@@ -107,7 +107,7 @@ Internal system functions and procedures that do not interact with actors direct
 1. [x] - `p1` - Read `target` the selected applied template's provenance record from the repository via `cpt-frontx-contract-project-provenance`; extract that template's identity, current (baseline) version, re-resolvable source-spec, and occupied ownership boundary - `inst-cmp-read-provenance`
 2. [x] - `p1` - Resolve `target` the baseline-version template content by re-fetching it through the shared resolver (`cpt-frontx-feature-template-resolution`) using the provenance record's source-spec at the baseline version — never from the local inventory, which retains only one version per entry and cannot supply an older baseline - `inst-cmp-resolve-baseline`
 3. [x] - `p1` - Resolve `target` the target-version template content through the same shared resolver using the same source-spec at the target version - `inst-cmp-resolve-target`
-4. [x] - `p1` - Compute the file-level diff between the baseline-version and target-version template files, scoped to the template's occupied ownership boundary: for an exclusive subtree, diff whole files; for a `region-union` shared file, diff only within that template's owned marker-delimited region(s), leaving co-owning templates' regions out of the diff - `inst-cmp-diff-files`
+4. [x] - `p1` - Compute the file-level diff between the baseline-version and target-version template files, scoped to the target manifest's declared ownership boundary: for an exclusive subtree, diff whole files; for a `region-union` shared file, diff only within that template's owned marker-delimited region(s), leaving co-owning templates' regions out of the diff. The path set includes shared-file paths declared by the target manifest even when target content omitted the file, so a missing declared region is refused instead of silently absent from the change set. When the provenance identity is legacy and differs from the target manifest identity, exclude `region-union` shared files from this upgrade because the legacy record cannot prove marker identity/key ownership under the target manifest identity. - `inst-cmp-diff-files`
 5. [x] - `p1` - **FOR EACH** changed file in the diff: - `inst-cmp-for-each-file`
    1. [x] - `p1` - Check whether the developer has locally modified the file in the project - `inst-cmp-check-local-mod`
    2. [x] - `p1` - **IF** both the template diff and a local developer modification affect the same file: - `inst-cmp-if-conflict`
@@ -126,15 +126,17 @@ Internal system functions and procedures that do not interact with actors direct
 
 **Steps**:
 1. [x] - `p1` - Capture `target` a pre-upgrade snapshot of all files affected by the change set so rollback can restore exact pre-upgrade state - `inst-app-snapshot`
-2. [x] - `p1` - **TRY**: - `inst-app-try`
+2. [x] - `p1` - **IF** the provenance record set contains more than one record for the same template identity - `inst-app-if-duplicate-provenance`
+   1. [x] - `p1` - **RETURN** apply refused before any project file is written, naming the duplicate template identity and leaving the provenance set unchanged - `inst-app-abort-duplicate-provenance`
+3. [x] - `p1` - **TRY**: - `inst-app-try`
    1. [x] - `p1` - **FOR EACH** clean entry in the change set, in dependency order: - `inst-app-for-each-entry`
       1. [x] - `p1` - Apply the entry to the project root within the template's ownership boundary: for an exclusive subtree, write or remove the whole file; for a `region-union` shared file, rewrite only the template's own marker-delimited region(s) in place, leaving every co-owning template's region byte-for-byte untouched - `inst-app-apply-entry`
-3. [x] - `p1` - **CATCH** application error: - `inst-app-catch`
+4. [x] - `p1` - **CATCH** application error: - `inst-app-catch`
    1. [x] - `p1` - Restore `target` all affected files from the pre-upgrade snapshot, leaving the project byte-for-byte unchanged - `inst-app-restore-on-error`
    2. [x] - `p1` - Report the error and **RETURN** failure without updating provenance - `inst-app-return-failure`
-4. [x] - `p1` - Update `target` the selected applied template's provenance record to the newer version - `inst-app-update-prov`
-5. [x] - `p1` - Retain `target` the pre-upgrade snapshot for rollback until the developer explicitly releases it or a new upgrade cycle begins - `inst-app-retain-snapshot`
-6. [x] - `p1` - **RETURN** success: applied entries, updated provenance, rollback available - `inst-app-return-success`
+5. [x] - `p1` - Update `target` the selected applied template's provenance record to the newer version - `inst-app-update-prov`
+6. [x] - `p1` - Retain `target` the pre-upgrade snapshot for rollback until the developer explicitly releases it or a new upgrade cycle begins - `inst-app-retain-snapshot`
+7. [x] - `p1` - **RETURN** success: applied entries, updated provenance, rollback available - `inst-app-return-success`
 
 ### Rollback an Applied Change Set
 
@@ -176,7 +178,7 @@ Internal system functions and procedures that do not interact with actors direct
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-upgrade-changeset-computation`
 
-The system **MUST** compute a reviewable change set by re-resolving the baseline version through the shared resolver from the source-spec recorded in the selected template's provenance record (not from the single-version local inventory), diffing the target template version against that baseline scoped to the template's occupied ownership boundary — whole files for exclusive subtrees and owned marker-delimited regions only for shared files — and presenting it to the developer before writing any project file; no project file may be created, modified, or deleted until the developer explicitly approves.
+The system **MUST** compute a reviewable change set by re-resolving the baseline version through the shared resolver from the source-spec recorded in the selected template's provenance record (not from the single-version local inventory), diffing the target template version against that baseline scoped to the target manifest's declared ownership boundary — whole files for exclusive subtrees and owned marker-delimited regions only for shared files — and presenting it to the developer before writing any project file; no project file may be created, modified, or deleted until the developer explicitly approves. The computation **MUST** validate every target-declared `region-union` shared path even when the target content inventory omits the file, and **MUST** exclude `region-union` shared files for legacy provenance identities that differ from the target manifest identity because such records cannot prove marker ownership under the target identity.
 
 **Implements**:
 - `cpt-frontx-flow-upgrade-changeset-review-approval`
@@ -189,7 +191,7 @@ The system **MUST** compute a reviewable change set by re-resolving the baseline
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-upgrade-changeset-apply`
 
-The system **MUST** apply the approved change set non-destructively by writing only the approved entries to the repository within the selected template's ownership boundary — rewriting only that template's own marker-delimited region(s) in a shared file and leaving every co-owning template's region untouched — retain a pre-upgrade snapshot for rollback, and update the selected applied template's provenance record to the newer version upon successful application.
+The system **MUST** apply the approved change set non-destructively by writing only the approved entries to the repository within the selected template's ownership boundary — rewriting only that template's own marker-delimited region(s) in a shared file and leaving every co-owning template's region untouched — retain a pre-upgrade snapshot for rollback, and update the selected applied template's provenance record to the newer version upon successful application. Before any project file is written, the system **MUST** reject a provenance set containing duplicate template identities, because updating only the first matching record would leave stale duplicate ownership state behind.
 
 **Implements**:
 - `cpt-frontx-flow-upgrade-changeset-review-approval`

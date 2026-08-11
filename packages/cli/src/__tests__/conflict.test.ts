@@ -103,11 +103,11 @@ describe('checkAssemblyConflicts — F12 pre-flight assembly conflict check (cpt
     const assembly = assemblyOf(
       contribution('template-a', {
         exclusiveSubtrees: [],
-        sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] }],
+        sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] }],
       }),
       contribution('template-b', {
         exclusiveSubtrees: [],
-        sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] }],
+        sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] }],
       }),
     );
 
@@ -116,7 +116,7 @@ describe('checkAssemblyConflicts — F12 pre-flight assembly conflict check (cpt
     expect(verdict.ok).toBe(false);
     if (verdict.ok) return;
     expect(verdict.conflicts).toEqual([
-      { ground: 'package.json#scripts.build', contestants: ['template-a', 'template-b'] },
+      { ground: 'shared.txt#scripts.build', contestants: ['template-a', 'template-b'] },
     ]);
   });
 
@@ -126,11 +126,11 @@ describe('checkAssemblyConflicts — F12 pre-flight assembly conflict check (cpt
     const assembly = assemblyOf(
       contribution('template-a', {
         exclusiveSubtrees: [],
-        sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] }],
+        sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] }],
       }),
       contribution('template-b', {
         exclusiveSubtrees: [],
-        sharedFiles: [{ path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts.test'] }],
+        sharedFiles: [{ path: 'shared.txt', mergeStrategy: 'region-union', ownedRegions: ['scripts.test'] }],
       }),
     );
 
