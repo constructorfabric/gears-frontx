@@ -1,4 +1,5 @@
 import { readManifestFromContent } from '../manifest/validate-contract';
+import { formatOccupiedBoundary } from '../provenance/boundary';
 import { writeProvenance } from '../provenance/write';
 import { formatTemplateAddress, parseSourceSpec } from '../spec-parser/parse';
 import { composeSharedFiles } from './compose-shared-files';
@@ -290,6 +291,11 @@ export async function materializeAssembly(
       templateIdentity: contribution.templateName,
       scaffoldedFromVersion: manifestResult && manifestResult.ok ? manifestResult.manifest.version : '',
       sourceSpec: entry?.source ?? '',
+      // The boundary this template actually occupies at materialization time
+      // (issue #530) — not the '.' every record fell back to when this field
+      // was left unset, which was indistinguishable from a legitimate
+      // root-owning template for every template, always.
+      occupiedOwnershipBoundary: formatOccupiedBoundary(contribution.ownershipBoundaries),
     };
   });
 

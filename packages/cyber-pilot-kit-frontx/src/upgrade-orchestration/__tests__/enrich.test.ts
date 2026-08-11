@@ -19,6 +19,7 @@ const RESOLVED_CHANGESET: ChangeSet = {
   templateIdentity: 'my-template',
   baselineVersion: '1.0.0',
   targetVersion: '2.0.0',
+  targetOccupiedOwnershipBoundary: '{"exclusiveSubtrees":["src/"],"sharedFiles":[]}',
   clean: [{ kind: 'add', path: 'src/new.ts', content: 'x' }],
   conflicts: [
     { path: 'src/App.tsx', templateKind: 'modify', templateContent: 'v2', localContent: 'local-edit' },
@@ -29,6 +30,7 @@ const EMPTY_CHANGESET: ChangeSet = {
   templateIdentity: 'my-template',
   baselineVersion: '1.0.0',
   targetVersion: '1.0.0',
+  targetOccupiedOwnershipBoundary: '{"exclusiveSubtrees":["src/"],"sharedFiles":[]}',
   clean: [],
   conflicts: [],
 };

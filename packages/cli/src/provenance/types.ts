@@ -6,10 +6,12 @@ export interface ProvenanceRecord {
   scaffoldedFromVersion: string;
   sourceSpec: string;
   /**
-   * The ownership boundary this template occupied within the composed
-   * project (cpt-frontx-contract-project-provenance). Optional at the input
-   * boundary so callers that have not yet resolved a boundary can omit it;
-   * `writeProvenance` always fills a concrete value on the written record.
+   * Canonical string encoding of the ownership boundary this template
+   * occupied within the composed project (cpt-frontx-contract-project-
+   * provenance). Current writers use lossless JSON for every resolved
+   * boundary, including an empty owns-nothing boundary; `.` is retained only
+   * as the legacy/omitted-field sentinel. Optional at the input boundary so
+   * older callers that have not yet resolved a boundary can omit it.
    */
   occupiedOwnershipBoundary?: string;
 }

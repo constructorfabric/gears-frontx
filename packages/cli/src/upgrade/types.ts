@@ -36,6 +36,10 @@ export interface ChangeSet {
   templateIdentity: string;
   baselineVersion: string;
   targetVersion: string;
+  // Canonical `ProvenanceRecord.occupiedOwnershipBoundary` for the target
+  // version's ownership boundary. Apply persists it with the version bump so
+  // the next upgrade starts from the ground this template now occupies.
+  targetOccupiedOwnershipBoundary: string;
   clean: CleanEntry[];
   conflicts: ConflictEntry[];
 }

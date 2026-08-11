@@ -8,6 +8,7 @@ import {
 import { computeChangeSet } from '../upgrade/compute';
 import { applyChangeSet } from '../upgrade/apply';
 import { rollbackChangeSet } from '../upgrade/rollback';
+import { formatOccupiedBoundary } from '../provenance/boundary';
 import type { ChangeSet, ConflictEntry } from '../upgrade/types';
 import type { ContentItem, ReadContentItemsFn } from '../scaffold/types';
 import type { FetchFn } from '../resolver/types';
@@ -53,23 +54,26 @@ const fetchFn: FetchFn = async (url) => {
 };
 
 const PROJ_ROOT = '/proj';
+const EMPTY_BOUNDARY = formatOccupiedBoundary({ exclusiveSubtrees: [], sharedFiles: [] });
+const DEFAULT_SRC_BOUNDARY: OwnershipBoundary = { exclusiveSubtrees: ['src/'], sharedFiles: [] };
 
 const BASE_PROVENANCE = {
   templateIdentity: 'my-template',
   scaffoldedFromVersion: '1.0.0',
   sourceSpec: 'local:acme/my-template@1.0.0',
+  occupiedOwnershipBoundary: formatOccupiedBoundary(DEFAULT_SRC_BOUNDARY),
 };
 
 registerVersion('my-template', '1.0.0', [
   { path: 'src/App.tsx', content: 'v1 content' },
   { path: 'src/old.ts', content: 'old file' },
-]);
+], DEFAULT_SRC_BOUNDARY);
 
 registerVersion('my-template', '2.0.0', [
   { path: 'src/App.tsx', content: 'v2 content' },
   { path: 'src/new.ts', content: 'new file' },
   // 'src/old.ts' intentionally removed in target version
-]);
+], DEFAULT_SRC_BOUNDARY);
 
 describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
   // (a) Produces reviewable change set, writes NO project files until developer approves
@@ -312,6 +316,14 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
   // byte-for-byte untouched, both in the computed diff and after apply.
   it('(i) region-union shared file: diff and apply are scoped to this template\'s own owned region only', async () => {
     const SHARED_PATH = 'shared.config.js';
+    const baselineSharedBoundary: OwnershipBoundary = {
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+    };
+    const targetSharedBoundary: OwnershipBoundary = {
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup', 'teardown'] }],
+    };
     // Distinct versions from the top-level fixture — this test registers its
     // own baseline/target so it cannot clobber the shared '1.0.0'/'2.0.0'
     // entries other tests in this file rely on.
@@ -319,10 +331,7 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
       templateIdentity: 'my-template',
       scaffoldedFromVersion: '1.1.0',
       sourceSpec: 'local:acme/my-template@1.1.0',
-    };
-    const sharedBoundary: OwnershipBoundary = {
-      exclusiveSubtrees: [],
-      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+      occupiedOwnershipBoundary: formatOccupiedBoundary(baselineSharedBoundary),
     };
 
     registerVersion(
@@ -341,7 +350,7 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
           ].join('\n'),
         },
       ],
-      sharedBoundary,
+      baselineSharedBoundary,
     );
     registerVersion(
       'my-template',
@@ -353,10 +362,13 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
             '// frontx:region my-template:setup',
             'const setupV2 = true;',
             '// frontx:endregion my-template:setup',
+            '// frontx:region my-template:teardown',
+            'const teardownV2 = true;',
+            '// frontx:endregion my-template:teardown',
           ].join('\n'),
         },
       ],
-      sharedBoundary,
+      targetSharedBoundary,
     );
 
     // The current project file — this template's region at the v1.1.0
@@ -385,6 +397,9 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     // Only the owned region's NEW content is carried — not the whole file.
     expect(regionEntry!.content).toContain('setupV2');
     expect(regionEntry!.content).not.toContain('otherStaysPut');
+    expect(changeSet.targetOccupiedOwnershipBoundary).toBe(
+      '{"exclusiveSubtrees":[],"sharedFiles":[{"path":"shared.config.js","mergeStrategy":"region-union","ownedRegions":["setup","teardown"]}]}',
+    );
 
     // Apply: only this template's region is rewritten in the shared file;
     // the co-owning template's region is left byte-for-byte untouched.
@@ -409,9 +424,63 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     expect(appliedContent).toContain('// frontx:region other-template:extra');
     expect(appliedContent).toContain('const otherStaysPut = true;');
     expect(appliedContent).toContain('// frontx:endregion other-template:extra');
+
+    const updatedProvenance = JSON.parse(files.get(`${PROJ_ROOT}/.frontx/provenance.json`)!) as Array<
+      Record<string, unknown>
+    >;
+    expect(updatedProvenance).toHaveLength(1);
+    expect(updatedProvenance[0]['scaffoldedFromVersion']).toBe('2.1.0');
+    expect(updatedProvenance[0]['occupiedOwnershipBoundary']).toBe(changeSet.targetOccupiedOwnershipBoundary);
   });
 
-  // (j)/(k) #488 follow-up: a bad provenance precondition — either the file
+  it('(j) an empty target ownership boundary owns no files and persists the lossless empty boundary, not the legacy dot sentinel', async () => {
+    const baselineBoundary: OwnershipBoundary = { exclusiveSubtrees: ['src/'], sharedFiles: [] };
+    const emptyBoundary: OwnershipBoundary = { exclusiveSubtrees: [], sharedFiles: [] };
+    const provenance = {
+      templateIdentity: 'my-template',
+      scaffoldedFromVersion: '3.0.0',
+      sourceSpec: 'local:acme/my-template@3.0.0',
+      occupiedOwnershipBoundary: formatOccupiedBoundary(baselineBoundary),
+    };
+
+    registerVersion('my-template', '3.0.0', [{ path: 'src/App.tsx', content: 'v3 content' }], baselineBoundary);
+    registerVersion('my-template', '3.1.0', [{ path: 'src/App.tsx', content: 'v3.1 content' }], emptyBoundary);
+
+    const computeResult = await computeChangeSet(PROJ_ROOT, '3.1.0', {
+      readProvenance: async () => provenance,
+      fetchFn,
+      readProjectFile: async (p) => (p === `${PROJ_ROOT}/src/App.tsx` ? 'v3 content' : null),
+      readContentItems,
+    });
+
+    expect(computeResult.ok).toBe(true);
+    const changeSet = (computeResult as Extract<typeof computeResult, { ok: true }>).changeSet;
+    expect(changeSet.clean).toEqual([]);
+    expect(changeSet.conflicts).toEqual([]);
+    expect(changeSet.targetOccupiedOwnershipBoundary).toBe(EMPTY_BOUNDARY);
+
+    const files = new Map<string, string>([
+      [`${PROJ_ROOT}/src/App.tsx`, 'v3 content'],
+      [`${PROJ_ROOT}/.frontx/provenance.json`, JSON.stringify([provenance], null, 2)],
+    ]);
+
+    const applyResult = await applyChangeSet(changeSet, PROJ_ROOT, provenance, {
+      readProjectFile: async (p) => files.get(p) ?? null,
+      writeProjectFile: async (p, c) => { files.set(p, c); },
+      removeProjectFile: async (p) => { files.delete(p); },
+      writeProvenance: async (p, c) => { files.set(p, c); },
+    });
+
+    expect(applyResult.ok).toBe(true);
+    expect(files.get(`${PROJ_ROOT}/src/App.tsx`)).toBe('v3 content');
+    const updatedProvenance = JSON.parse(files.get(`${PROJ_ROOT}/.frontx/provenance.json`)!) as Array<
+      Record<string, unknown>
+    >;
+    expect(updatedProvenance[0]['scaffoldedFromVersion']).toBe('3.1.0');
+    expect(updatedProvenance[0]['occupiedOwnershipBoundary']).toBe(EMPTY_BOUNDARY);
+  });
+
+  // (k)/(l) #488 follow-up: a bad provenance precondition — either the file
   // isn't the JSON array the SET schema requires, or it IS an array but
   // holds no record for the template being upgraded — must abort BEFORE any
   // project file is written, returning `{ok:false}` per `ApplyResult`'s
@@ -424,6 +493,7 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     templateIdentity: 'my-template',
     baselineVersion: '1.0.0',
     targetVersion: '2.0.0',
+    targetOccupiedOwnershipBoundary: EMPTY_BOUNDARY,
     clean: [{ kind: 'modify', path: 'src/App.tsx', content: 'v2 content' }],
     conflicts: [],
   };
@@ -567,5 +637,39 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     expect(applyResult.message).toMatch(/index 0/);
     expect(writes.size).toBe(0);
     expect(removed.size).toBe(0);
+  });
+
+  // issue #506 — the final `deps.writeProvenance` used to run AFTER the
+  // for-each-entry loop's try/catch closed, so a write failure there threw
+  // past `ApplyResult`'s `{ok:false}` contract with the loop's project-file
+  // mutations already on disk and no rollback. Moved inside the same try —
+  // a throwing `writeProvenance` is now caught by the existing restore-on-
+  // error loop, which already covers `provPath` (snapshotted at the top of
+  // `applyChangeSet`), so both the mutated project file AND the provenance
+  // file land back at their exact pre-upgrade bytes.
+  it('(o) a throwing writeProvenance is restored: the mutated project file and provenance.json are returned to pre-upgrade bytes, and ApplyResult reports failure instead of throwing', async () => {
+    const files = new Map<string, string>([
+      [`${PROJ_ROOT}/src/App.tsx`, 'v1 content'],
+      [`${PROJ_ROOT}/.frontx/provenance.json`, JSON.stringify([BASE_PROVENANCE], null, 2)],
+    ]);
+
+    const applyResult = await applyChangeSet(trivialChangeSet, PROJ_ROOT, BASE_PROVENANCE, {
+      readProjectFile: async (p) => files.get(p) ?? null,
+      writeProjectFile: async (p, c) => { files.set(p, c); },
+      removeProjectFile: async (p) => { files.delete(p); },
+      writeProvenance: async (p, c) => {
+        files.set(p, c);
+        throw new Error('disk full');
+      },
+    });
+
+    expect(applyResult.ok).toBe(false);
+    if (applyResult.ok) return;
+    expect(applyResult.message).toMatch(/disk full/);
+    // The for-each-entry loop's mutation to App.tsx was rolled back...
+    expect(files.get(`${PROJ_ROOT}/src/App.tsx`)).toBe('v1 content');
+    // ...and provenance.json was never left holding a version bump with no
+    // matching project-file changes applied — restored byte-for-byte.
+    expect(files.get(`${PROJ_ROOT}/.frontx/provenance.json`)).toBe(JSON.stringify([BASE_PROVENANCE], null, 2));
   });
 });

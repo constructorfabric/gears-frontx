@@ -40,6 +40,7 @@ export interface ChangeSet {
   templateIdentity: string;
   baselineVersion: string;
   targetVersion: string;
+  targetOccupiedOwnershipBoundary: string;
   clean: CleanEntry[];
   conflicts: ConflictEntry[];
 }

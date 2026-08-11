@@ -37,6 +37,7 @@ const CHANGE_SET: ChangeSet = {
   templateIdentity: 'my-template',
   baselineVersion: '1.0.0',
   targetVersion: '2.0.0',
+  targetOccupiedOwnershipBoundary: '{"exclusiveSubtrees":["src/"],"sharedFiles":[]}',
   clean: [{ kind: 'modify', path: 'src/App.tsx', content: 'v2' }],
   conflicts: [],
 };

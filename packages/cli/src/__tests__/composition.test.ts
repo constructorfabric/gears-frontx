@@ -3,6 +3,7 @@
 // @cpt-algo:cpt-frontx-algo-composed-provenance-provenance-write:p1
 import { describe, it, expect, vi } from 'vitest';
 import { scaffoldComposedProject } from '../scaffold/composed';
+import { formatOccupiedBoundary } from '../provenance/boundary';
 import type { InventoryEntry } from '../inventory/types';
 import { InventoryState } from '../inventory/types';
 import type { ContentItem, ReadContentItemsFn, ReadProjectFileFn } from '../scaffold/types';
@@ -21,6 +22,8 @@ const readContentFn: ReadContentItemsFn = async (entry) => contentRegistry.get(e
 const readProjectFileFn: ReadProjectFileFn = async () => null;
 
 const NO_BOUNDARY: OwnershipBoundary = { exclusiveSubtrees: [], sharedFiles: [] };
+
+const occupiedBoundary = (boundary: OwnershipBoundary): string => formatOccupiedBoundary(boundary);
 
 // Helper: build a minimal inventory entry with a serialized manifest (no `files`).
 // `boundary` declares the real ownership boundary the uniform-apply staging
@@ -292,9 +295,13 @@ describe('scaffoldComposedProject', () => {
     expect(record).toHaveProperty('templateIdentity');
     expect(record).toHaveProperty('scaffoldedFromVersion');
     expect(record).toHaveProperty('sourceSpec');
-    expect(record).toHaveProperty('occupiedOwnershipBoundary');
     expect(record['templateIdentity']).toBe('simple-project');
     expect(record['scaffoldedFromVersion']).toBe('2.1.0');
+    // issue #530: the recorded boundary must be what the template actually
+    // occupies (its declared exclusive subtree), never the '.' fallback.
+    expect(record['occupiedOwnershipBoundary']).toBe(
+      occupiedBoundary({ exclusiveSubtrees: ['index.ts'], sharedFiles: [] }),
+    );
   });
 
   // (g) A multi-template composition (no boundary clash) writes the FULL
@@ -340,9 +347,114 @@ describe('scaffoldComposedProject', () => {
     const records = JSON.parse(provenanceContent) as Array<Record<string, unknown>>;
     expect(records).toHaveLength(2);
     expect(records.map((r) => r['templateIdentity']).sort()).toEqual(['mfe-a', 'root-project']);
+    // issue #530: each template's record carries ITS OWN occupied boundary,
+    // not the same '.' fallback for every applied template.
+    const byIdentity = new Map(records.map((r) => [r['templateIdentity'], r['occupiedOwnershipBoundary']]));
+    expect(byIdentity.get('root-project')).toBe(
+      occupiedBoundary({ exclusiveSubtrees: ['root/index.ts'], sharedFiles: [] }),
+    );
+    expect(byIdentity.get('mfe-a')).toBe(occupiedBoundary({ exclusiveSubtrees: ['src/a.ts'], sharedFiles: [] }));
   });
 
-  // (h) review #500 round 2 (P2-3): a materialization refusal (composeSharedFiles'
+  it('(h) region-union shared-file provenance preserves merge strategy and owned regions', async () => {
+    const SHARED_PATH = 'shared.config.js';
+    const registry = new Map<string, InventoryEntry>([
+      [
+        'simple-project',
+        makeEntry(
+          'simple-project',
+          '1.0.0',
+          [
+            {
+              path: SHARED_PATH,
+              content: [
+                '// frontx:region simple-project:setup',
+                'const a = 1;',
+                '// frontx:endregion simple-project:setup',
+              ].join('\n'),
+            },
+          ],
+          [],
+          {
+            exclusiveSubtrees: [],
+            sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+          },
+        ),
+      ],
+    ]);
+
+    const lookupFn = (name: string) => registry.get(name);
+    const writeFileFn = vi.fn().mockResolvedValue(undefined);
+    const provenanceWriteFn = vi.fn().mockResolvedValue(undefined);
+
+    const result = await scaffoldComposedProject(
+      'simple-project',
+      '/target',
+      lookupFn,
+      writeFileFn,
+      provenanceWriteFn,
+      readContentFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(true);
+    const provenanceContent = provenanceWriteFn.mock.calls.at(-1)?.[1] as string;
+    const [record] = JSON.parse(provenanceContent) as Array<Record<string, unknown>>;
+    expect(record['occupiedOwnershipBoundary']).toBe(
+      occupiedBoundary({
+        exclusiveSubtrees: [],
+        sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+      }),
+    );
+    expect(JSON.parse(record['occupiedOwnershipBoundary'] as string)).toEqual({
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+    });
+  });
+
+  it('(i) scaffold provenance uses the canonical occupied-boundary serializer', async () => {
+    const registry = new Map<string, InventoryEntry>([
+      [
+        'simple-project',
+        makeEntry(
+          'simple-project',
+          '1.0.0',
+          [{ path: 'zeta/index.ts', content: 'export const z = true;' }],
+          [],
+          {
+            exclusiveSubtrees: ['zeta/', 'alpha/', 'zeta/'],
+            sharedFiles: [
+              {
+                path: 'package.json',
+                mergeStrategy: 'region-union',
+                ownedRegions: ['scripts.test', 'scripts.build', 'scripts.test'],
+              },
+            ],
+          },
+        ),
+      ],
+    ]);
+
+    const provenanceWriteFn = vi.fn().mockResolvedValue(undefined);
+    const result = await scaffoldComposedProject(
+      'simple-project',
+      '/target',
+      (name) => registry.get(name),
+      vi.fn().mockResolvedValue(undefined),
+      provenanceWriteFn,
+      readContentFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(true);
+    const provenanceContent = provenanceWriteFn.mock.calls.at(-1)?.[1] as string;
+    const [record] = JSON.parse(provenanceContent) as Array<Record<string, unknown>>;
+    expect(record['occupiedOwnershipBoundary']).toBe(
+      '{"exclusiveSubtrees":["alpha/","zeta/"],"sharedFiles":[{"path":"package.json","mergeStrategy":"region-union","ownedRegions":["scripts.build","scripts.test"]}]}',
+    );
+  });
+
+  // (j) review #500 round 2 (P2-3): a materialization refusal (composeSharedFiles'
   // `unrecorded-owner`, reachable now that a real `readProjectFileFn` is
   // plumbed through) is NOT a provenance-write failure — composeSharedFiles
   // writes ZERO files on any refusal, so claiming "Scaffold completed" is a
@@ -350,7 +462,7 @@ describe('scaffoldComposedProject', () => {
   // template's provenance and retry), which `seedRepository`/`addTemplate`
   // already surface as `reason: 'materialization-refused'` via
   // `isUserFixableMaterializeFailure`.
-  it('(h) an unrecorded on-disk region-union block refuses materialization — reason materialization-refused, no "completed" claim', async () => {
+  it('(j) an unrecorded on-disk region-union block refuses materialization — reason materialization-refused, no "completed" claim', async () => {
     const SHARED_PATH = 'shared.config.js';
     const registry = new Map<string, InventoryEntry>([
       [
