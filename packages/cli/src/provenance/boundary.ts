@@ -9,17 +9,12 @@ function compareStrings(a: string, b: string): number {
 
 /**
  * Serializes the declared/staged `OwnershipBoundary` into the single string
- * `ProvenanceRecord.occupiedOwnershipBoundary` holds. Non-empty boundaries use
- * canonical JSON so shared-file region ownership stays durable while the
- * provenance schema remains backward-compatible with a string field.
- *
- * A boundary with neither exclusive nor shared ownership is legitimately
- * root-owning (issue #530) and collapses to '.', the same sentinel
- * `provenance/write.ts` fills in when a caller omits the field entirely.
+ * `ProvenanceRecord.occupiedOwnershipBoundary` holds. Boundaries use canonical
+ * JSON so shared-file region ownership stays durable while the provenance
+ * schema remains backward-compatible with a string field. `.` remains only the
+ * legacy/omitted-field sentinel filled by `provenance/write.ts`.
  */
 export function formatOccupiedBoundary(boundary: OwnershipBoundary): string {
-  if (boundary.exclusiveSubtrees.length === 0 && boundary.sharedFiles.length === 0) return '.';
-
   const canonicalBoundary: OwnershipBoundary = {
     exclusiveSubtrees: [...new Set(boundary.exclusiveSubtrees)].sort(compareStrings),
     sharedFiles: boundary.sharedFiles

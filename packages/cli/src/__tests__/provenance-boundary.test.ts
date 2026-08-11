@@ -1,3 +1,4 @@
+// @cpt-dod:cpt-frontx-dod-composed-provenance-provenance-at-scaffold:p1
 import { describe, expect, it } from 'vitest';
 import { formatOccupiedBoundary } from '../provenance/boundary';
 
@@ -26,7 +27,9 @@ describe('formatOccupiedBoundary', () => {
     );
   });
 
-  it('keeps the existing empty-boundary sentinel', () => {
-    expect(formatOccupiedBoundary({ exclusiveSubtrees: [], sharedFiles: [] })).toBe('.');
+  it('serializes an empty ownership boundary as the lossless owns-nothing boundary', () => {
+    expect(formatOccupiedBoundary({ exclusiveSubtrees: [], sharedFiles: [] })).toBe(
+      '{"exclusiveSubtrees":[],"sharedFiles":[]}',
+    );
   });
 });

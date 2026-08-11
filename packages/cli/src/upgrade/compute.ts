@@ -32,12 +32,15 @@ export type ComputeResult =
 function ownershipForPath(
   path: string,
   boundary: OwnershipBoundary,
-): { mergeStrategy: string; ownedRegions: string[] } {
+): { mergeStrategy: string; ownedRegions: string[] } | undefined {
   const sharedEntry = boundary.sharedFiles.find((entry) => entry.path === path);
-  if (!sharedEntry) {
+  if (sharedEntry) {
+    return { mergeStrategy: sharedEntry.mergeStrategy, ownedRegions: sharedEntry.ownedRegions };
+  }
+  if (boundary.exclusiveSubtrees.some((subtree) => path.startsWith(subtree))) {
     return { mergeStrategy: 'exclusive', ownedRegions: [] };
   }
-  return { mergeStrategy: sharedEntry.mergeStrategy, ownedRegions: sharedEntry.ownedRegions };
+  return undefined;
 }
 
 // @cpt-begin:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-read-provenance
@@ -127,7 +130,9 @@ export async function computeChangeSet(
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-for-each-file
   for (const filePath of allPaths) {
-    const { mergeStrategy, ownedRegions } = ownershipForPath(filePath, ownershipBoundary);
+    const ownership = ownershipForPath(filePath, ownershipBoundary);
+    if (!ownership) continue;
+    const { mergeStrategy, ownedRegions } = ownership;
     const baselineContent = baselineFiles.get(filePath);
     const targetContent = targetFiles.get(filePath);
     const absolutePath = `${projectRoot}/${filePath}`;

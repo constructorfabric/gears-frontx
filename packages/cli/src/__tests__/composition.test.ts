@@ -3,6 +3,7 @@
 // @cpt-algo:cpt-frontx-algo-composed-provenance-provenance-write:p1
 import { describe, it, expect, vi } from 'vitest';
 import { scaffoldComposedProject } from '../scaffold/composed';
+import { formatOccupiedBoundary } from '../provenance/boundary';
 import type { InventoryEntry } from '../inventory/types';
 import { InventoryState } from '../inventory/types';
 import type { ContentItem, ReadContentItemsFn, ReadProjectFileFn } from '../scaffold/types';
@@ -22,8 +23,7 @@ const readProjectFileFn: ReadProjectFileFn = async () => null;
 
 const NO_BOUNDARY: OwnershipBoundary = { exclusiveSubtrees: [], sharedFiles: [] };
 
-const occupiedBoundary = (boundary: OwnershipBoundary): string =>
-  boundary.exclusiveSubtrees.length === 0 && boundary.sharedFiles.length === 0 ? '.' : JSON.stringify(boundary);
+const occupiedBoundary = (boundary: OwnershipBoundary): string => formatOccupiedBoundary(boundary);
 
 // Helper: build a minimal inventory entry with a serialized manifest (no `files`).
 // `boundary` declares the real ownership boundary the uniform-apply staging

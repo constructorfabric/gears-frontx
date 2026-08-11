@@ -54,23 +54,26 @@ const fetchFn: FetchFn = async (url) => {
 };
 
 const PROJ_ROOT = '/proj';
+const EMPTY_BOUNDARY = formatOccupiedBoundary({ exclusiveSubtrees: [], sharedFiles: [] });
+const DEFAULT_SRC_BOUNDARY: OwnershipBoundary = { exclusiveSubtrees: ['src/'], sharedFiles: [] };
 
 const BASE_PROVENANCE = {
   templateIdentity: 'my-template',
   scaffoldedFromVersion: '1.0.0',
   sourceSpec: 'local:acme/my-template@1.0.0',
+  occupiedOwnershipBoundary: formatOccupiedBoundary(DEFAULT_SRC_BOUNDARY),
 };
 
 registerVersion('my-template', '1.0.0', [
   { path: 'src/App.tsx', content: 'v1 content' },
   { path: 'src/old.ts', content: 'old file' },
-]);
+], DEFAULT_SRC_BOUNDARY);
 
 registerVersion('my-template', '2.0.0', [
   { path: 'src/App.tsx', content: 'v2 content' },
   { path: 'src/new.ts', content: 'new file' },
   // 'src/old.ts' intentionally removed in target version
-]);
+], DEFAULT_SRC_BOUNDARY);
 
 describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
   // (a) Produces reviewable change set, writes NO project files until developer approves
@@ -430,7 +433,54 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     expect(updatedProvenance[0]['occupiedOwnershipBoundary']).toBe(changeSet.targetOccupiedOwnershipBoundary);
   });
 
-  // (j)/(k) #488 follow-up: a bad provenance precondition — either the file
+  it('(j) an empty target ownership boundary owns no files and persists the lossless empty boundary, not the legacy dot sentinel', async () => {
+    const baselineBoundary: OwnershipBoundary = { exclusiveSubtrees: ['src/'], sharedFiles: [] };
+    const emptyBoundary: OwnershipBoundary = { exclusiveSubtrees: [], sharedFiles: [] };
+    const provenance = {
+      templateIdentity: 'my-template',
+      scaffoldedFromVersion: '3.0.0',
+      sourceSpec: 'local:acme/my-template@3.0.0',
+      occupiedOwnershipBoundary: formatOccupiedBoundary(baselineBoundary),
+    };
+
+    registerVersion('my-template', '3.0.0', [{ path: 'src/App.tsx', content: 'v3 content' }], baselineBoundary);
+    registerVersion('my-template', '3.1.0', [{ path: 'src/App.tsx', content: 'v3.1 content' }], emptyBoundary);
+
+    const computeResult = await computeChangeSet(PROJ_ROOT, '3.1.0', {
+      readProvenance: async () => provenance,
+      fetchFn,
+      readProjectFile: async (p) => (p === `${PROJ_ROOT}/src/App.tsx` ? 'v3 content' : null),
+      readContentItems,
+    });
+
+    expect(computeResult.ok).toBe(true);
+    const changeSet = (computeResult as Extract<typeof computeResult, { ok: true }>).changeSet;
+    expect(changeSet.clean).toEqual([]);
+    expect(changeSet.conflicts).toEqual([]);
+    expect(changeSet.targetOccupiedOwnershipBoundary).toBe(EMPTY_BOUNDARY);
+
+    const files = new Map<string, string>([
+      [`${PROJ_ROOT}/src/App.tsx`, 'v3 content'],
+      [`${PROJ_ROOT}/.frontx/provenance.json`, JSON.stringify([provenance], null, 2)],
+    ]);
+
+    const applyResult = await applyChangeSet(changeSet, PROJ_ROOT, provenance, {
+      readProjectFile: async (p) => files.get(p) ?? null,
+      writeProjectFile: async (p, c) => { files.set(p, c); },
+      removeProjectFile: async (p) => { files.delete(p); },
+      writeProvenance: async (p, c) => { files.set(p, c); },
+    });
+
+    expect(applyResult.ok).toBe(true);
+    expect(files.get(`${PROJ_ROOT}/src/App.tsx`)).toBe('v3 content');
+    const updatedProvenance = JSON.parse(files.get(`${PROJ_ROOT}/.frontx/provenance.json`)!) as Array<
+      Record<string, unknown>
+    >;
+    expect(updatedProvenance[0]['scaffoldedFromVersion']).toBe('3.1.0');
+    expect(updatedProvenance[0]['occupiedOwnershipBoundary']).toBe(EMPTY_BOUNDARY);
+  });
+
+  // (k)/(l) #488 follow-up: a bad provenance precondition — either the file
   // isn't the JSON array the SET schema requires, or it IS an array but
   // holds no record for the template being upgraded — must abort BEFORE any
   // project file is written, returning `{ok:false}` per `ApplyResult`'s
@@ -443,7 +493,7 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     templateIdentity: 'my-template',
     baselineVersion: '1.0.0',
     targetVersion: '2.0.0',
-    targetOccupiedOwnershipBoundary: '.',
+    targetOccupiedOwnershipBoundary: EMPTY_BOUNDARY,
     clean: [{ kind: 'modify', path: 'src/App.tsx', content: 'v2 content' }],
     conflicts: [],
   };

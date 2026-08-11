@@ -220,7 +220,7 @@ export async function applyChangeSet(
     const message = err instanceof Error ? err.message : String(err);
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-restore-on-error
     // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-return-failure
-    return { ok: false, message: `Apply failed and was restored: ${message}` };
+    return { ok: false, message: `Apply failed; attempted restore from pre-upgrade snapshot: ${message}` };
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-return-failure
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-catch
   }

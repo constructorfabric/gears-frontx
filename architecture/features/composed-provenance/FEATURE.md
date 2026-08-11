@@ -133,16 +133,18 @@ This feature realizes the preset (referenced-template) recursive resolution deci
 
 **Input**: repository root path; the set of applied templates, each with its identity, applied-from version, source-spec that re-resolves it, and the ownership boundary it occupied
 
-**Output**: one in-repository provenance record written per applied template — the provenance set; or a write error. The concrete schema (`cpt-frontx-contract-project-provenance`): a set of records, one per applied template, each record `{ template identity, applied-from version, source-spec, occupied ownership boundary }`, with no single whole-repository origin record. The whole set is held in a single file `.frontx/provenance.json` at the repository root.
+**Output**: one in-repository provenance record written per applied template — the provenance set; or a write error. The concrete schema (`cpt-frontx-contract-project-provenance`): a set of records, one per applied template, each record `{ templateIdentity: string, scaffoldedFromVersion: string, sourceSpec: string, occupiedOwnershipBoundary: string }`, with no single whole-repository origin record. The whole set is held in a single file `.frontx/provenance.json` at the repository root.
 
 Terminology (owned here as the provenance schema owner): a template's **declared ownership boundary** is what its manifest declares (`cpt-frontx-feature-template-manifest`) and what the pre-flight conflict check and assembler read before apply (`cpt-frontx-feature-cli-scaffolding`); the **occupied ownership boundary** is that same boundary recorded into the provenance record at apply time. The two terms name the one boundary at two lifecycle stages — declared before apply, occupied once recorded — and later upgrade reads the occupied boundary (`cpt-frontx-feature-upgrade-changeset`).
+
+Encoding (owned here as the concrete schema owner): `occupiedOwnershipBoundary` is a string field for backward compatibility. Current writers store canonical JSON for every resolved boundary, including an empty owns-nothing boundary: `{"exclusiveSubtrees":[],"sharedFiles":[]}`. Non-empty canonical JSON has `exclusiveSubtrees` deduplicated and lexically sorted, and `sharedFiles` sorted by path, merge strategy, and owned-region list; each `ownedRegions` list is also deduplicated and sorted. The legacy `.` value remains readable only as a pre-schema or omitted-field sentinel and is not written for a resolved empty boundary, because an empty boundary owns no files while `.` is ambiguous with a historical whole-repository placeholder. Repositories that already carry `.` require an explicit migration or re-derivation pass before that value can be interpreted precisely; that migration remains tracked by issue #530 and is outside this feature's current write contract.
 
 **Steps**:
 
 1. [x] - `p1` - Accept the repository root path and the set of applied templates with their identities, applied-from versions, source-specs, and occupied ownership boundaries - `inst-accept-provenance-inputs`
 2. [x] - `p1` - Determine the provenance store location inside the repository root — the single file `.frontx/provenance.json` at the repository root (per `cpt-frontx-contract-project-provenance`) - `inst-determine-storage-location`
 3. [x] - `p1` - **FOR EACH** applied template in the set - `inst-foreach-applied`
-   1. [x] - `p1` - Construct one provenance record capturing that template's identity, its applied-from version, its source-spec (in the shape decided by `cpt-frontx-adr-source-spec-syntax`, retaining the subtree segment when the reference carries one so a later re-resolution addresses the same template), and its occupied ownership boundary - `inst-construct-provenance`
+   1. [x] - `p1` - Construct one provenance record capturing that template's identity, its applied-from version, its source-spec (in the shape decided by `cpt-frontx-adr-source-spec-syntax`, retaining the subtree segment when the reference carries one so a later re-resolution addresses the same template), and its occupied ownership boundary encoded as the canonical `occupiedOwnershipBoundary` string - `inst-construct-provenance`
    2. [x] - `p1` - Write the record into the provenance set in a durable, human-readable format - `inst-write-record`
    3. [x] - `p1` - **IF** the write fails - `inst-check-write-fail`
       1. [x] - `p1` - **RETURN** a provenance-write error; the assembly is considered incomplete without a record for every applied template - `inst-return-write-error`
@@ -188,7 +190,7 @@ The system **MUST** implement recursive resolution of a preset's referenced temp
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-composed-provenance-provenance-at-scaffold`
 
-The system **MUST** write one in-repository provenance record per applied template at apply time — each capturing that template's identity, its applied-from version, a re-resolvable source-spec, and its occupied ownership boundary — as a set of records with no single whole-repository origin, so a later per-template upgrade can establish a precise diff baseline from the matching record — realizing `cpt-frontx-algo-composed-provenance-provenance-write`.
+The system **MUST** write one in-repository provenance record per applied template at apply time — each capturing that template's identity, its applied-from version, a re-resolvable source-spec, and its occupied ownership boundary as the canonical `occupiedOwnershipBoundary` string — as a set of records with no single whole-repository origin, so a later per-template upgrade can establish a precise diff baseline from the matching record — realizing `cpt-frontx-algo-composed-provenance-provenance-write`.
 
 **Implements**:
 - `cpt-frontx-algo-composed-provenance-provenance-write`
@@ -205,6 +207,6 @@ The system **MUST** write one in-repository provenance record per applied templa
 - [x] When two branches of a preset contribute a unit at the same target path, the resolution algorithm does not arbitrate the collision itself; both contributing templates appear unmodified in the per-template composition set for the pre-flight ownership-boundary conflict check to evaluate, and the same preset resolves to the same per-template set on every invocation.
 - [x] When an unresolvable collision is detected, the CLI reports the conflicting target path and contributing unit identities, and no files are written to disk.
 - [x] When a reference cycle is detected in the preset tree, the CLI reports the cycle and aborts before writing any files.
-- [x] An assembled repository contains one provenance record per applied template, each capturing that template's identity, its applied-from version, a re-resolvable source-spec, and its occupied ownership boundary — with no single whole-repository origin record.
+- [x] An assembled repository contains one provenance record per applied template, each capturing that template's identity, its applied-from version, a re-resolvable source-spec, and its canonical occupied-boundary string — with no single whole-repository origin record.
 - [x] `cfs --json validate --artifact architecture/features/composed-provenance/FEATURE.md --skip-code` returns PASS.
 - [x] `cfs --json validate-toc architecture/features/composed-provenance/FEATURE.md` returns PASS.
