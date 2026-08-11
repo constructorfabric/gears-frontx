@@ -54,6 +54,8 @@ const fetchFn: FetchFn = async (url) => {
 
 const PROJ_ROOT = '/proj';
 
+const occupiedBoundary = (boundary: OwnershipBoundary): string => JSON.stringify(boundary);
+
 const BASE_PROVENANCE = {
   templateIdentity: 'my-template',
   scaffoldedFromVersion: '1.0.0',
@@ -312,6 +314,10 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
   // byte-for-byte untouched, both in the computed diff and after apply.
   it('(i) region-union shared file: diff and apply are scoped to this template\'s own owned region only', async () => {
     const SHARED_PATH = 'shared.config.js';
+    const sharedBoundary: OwnershipBoundary = {
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+    };
     // Distinct versions from the top-level fixture — this test registers its
     // own baseline/target so it cannot clobber the shared '1.0.0'/'2.0.0'
     // entries other tests in this file rely on.
@@ -319,10 +325,7 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
       templateIdentity: 'my-template',
       scaffoldedFromVersion: '1.1.0',
       sourceSpec: 'local:acme/my-template@1.1.0',
-    };
-    const sharedBoundary: OwnershipBoundary = {
-      exclusiveSubtrees: [],
-      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+      occupiedOwnershipBoundary: occupiedBoundary(sharedBoundary),
     };
 
     registerVersion(
@@ -409,6 +412,14 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     expect(appliedContent).toContain('// frontx:region other-template:extra');
     expect(appliedContent).toContain('const otherStaysPut = true;');
     expect(appliedContent).toContain('// frontx:endregion other-template:extra');
+
+    const updatedProvenance = JSON.parse(files.get(`${PROJ_ROOT}/.frontx/provenance.json`)!) as Array<
+      Record<string, unknown>
+    >;
+    expect(updatedProvenance).toHaveLength(1);
+    expect(updatedProvenance[0]['scaffoldedFromVersion']).toBe('2.1.0');
+    expect(updatedProvenance[0]['occupiedOwnershipBoundary']).toBe(occupiedBoundary(sharedBoundary));
+    expect(JSON.parse(updatedProvenance[0]['occupiedOwnershipBoundary'] as string)).toEqual(sharedBoundary);
   });
 
   // (j)/(k) #488 follow-up: a bad provenance precondition — either the file
