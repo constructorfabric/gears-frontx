@@ -50,9 +50,12 @@ export interface ApiStreamResult<TEvent> {
  * Manages the status lifecycle for a single SSE stream connection.
  *
  * **Status values**
- * - `'idle'` — no connection is being attempted. This is the initial status
- *   before the first connect effect runs, and it is ordinarily the status
- *   while `enabled` is `false`. Consumers must not assume `'idle'` means "never
+ * - `'idle'` — no connection is being attempted. This is the status whenever
+ *   `enabled` is `false`, including on mount: a hook that mounts disabled
+ *   never reports anything but `'idle'` until `enabled` flips to `true`. A
+ *   hook that mounts enabled skips `'idle'` entirely — status is derived
+ *   synchronously during render, so its very first render already reports
+ *   `'connecting'`. Consumers must not assume `'idle'` means "never
  *   connected" — a stream that is disabled after having connected returns to
  *   `'idle'` too, and `data`/`events` from the earlier connection are not
  *   cleared by that transition alone (they are cleared by mode/key changes,
@@ -68,15 +71,17 @@ export interface ApiStreamResult<TEvent> {
  *   a disconnect was requested concurrently, or the manual `disconnect()`
  *   function being called. `disconnect()` has no `enabled` guard: called
  *   while the stream is disabled it still sets `'disconnected'`, which
- *   persists until the next connect-effect run.
+ *   persists until `enabled` flips back to `true` (the render-derived reset
+ *   that precedes the next `connect()` call).
  * - `'error'` — `connect()` rejected and no disconnect was requested while it
  *   was pending. `error` holds the rejection, coerced to an `Error` if it
  *   wasn't one already.
  *
  * **Transitions**
  * - Mount / `enabled` becomes `true` / `descriptor.key` or `mode` changes:
- *   `data`, `events`, and `error` are reset, then status goes to
- *   `'connecting'` and `connect()` is called.
+ *   `data`, `events`, and `error` are reset and status is set to
+ *   `'connecting'` synchronously during render (not from an effect); `connect()`
+ *   is then called from an effect that runs after that render commits.
  * - `enabled` becomes `false` (or starts `false`): status is forced to
  *   `'idle'` and `connect()` is never called; no other field is reset by
  *   this transition alone.
