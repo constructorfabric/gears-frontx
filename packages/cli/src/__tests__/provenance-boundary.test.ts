@@ -4,9 +4,13 @@ import { formatOccupiedBoundary } from '../provenance/boundary';
 describe('formatOccupiedBoundary', () => {
   it('serializes non-empty ownership boundaries as deterministic lossless JSON', () => {
     const formatted = formatOccupiedBoundary({
-      exclusiveSubtrees: ['zeta/', 'alpha/'],
+      exclusiveSubtrees: ['zeta/', 'alpha/', 'zeta/'],
       sharedFiles: [
-        { path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts.test', 'scripts.build'] },
+        {
+          path: 'package.json',
+          mergeStrategy: 'region-union',
+          ownedRegions: ['scripts.test', 'scripts.build', 'scripts.test'],
+        },
         { path: 'tsconfig.json', mergeStrategy: 'exclusive', ownedRegions: [] },
       ],
     });

@@ -1,6 +1,7 @@
 // @cpt-algo:cpt-frontx-algo-upgrade-changeset-compute:p1
 // @cpt-dod:cpt-frontx-dod-upgrade-changeset-computation:p1
 import { readManifestFromContent } from '../manifest/validate-contract';
+import { formatOccupiedBoundary } from '../provenance/boundary';
 import { extractOwnedRegion } from '../scaffold/compose-shared-files';
 import { resolveTemplateAtVersion } from './resolve-template';
 import type { ReadContentItemsFn } from '../scaffold/types';
@@ -247,6 +248,7 @@ export async function computeChangeSet(
       templateIdentity,
       baselineVersion: scaffoldedFromVersion,
       targetVersion,
+      targetOccupiedOwnershipBoundary: formatOccupiedBoundary(ownershipBoundary),
       clean,
       conflicts,
     },

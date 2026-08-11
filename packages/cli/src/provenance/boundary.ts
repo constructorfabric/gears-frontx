@@ -21,12 +21,12 @@ export function formatOccupiedBoundary(boundary: OwnershipBoundary): string {
   if (boundary.exclusiveSubtrees.length === 0 && boundary.sharedFiles.length === 0) return '.';
 
   const canonicalBoundary: OwnershipBoundary = {
-    exclusiveSubtrees: [...boundary.exclusiveSubtrees].sort(compareStrings),
+    exclusiveSubtrees: [...new Set(boundary.exclusiveSubtrees)].sort(compareStrings),
     sharedFiles: boundary.sharedFiles
       .map((file) => ({
         path: file.path,
         mergeStrategy: file.mergeStrategy,
-        ownedRegions: [...file.ownedRegions].sort(compareStrings),
+        ownedRegions: [...new Set(file.ownedRegions)].sort(compareStrings),
       }))
       .sort((a, b) => {
         const byPath = compareStrings(a.path, b.path);

@@ -192,7 +192,13 @@ export async function applyChangeSet(
     // Confirmation (d): "the other applied template and its provenance record
     // are unaffected").
     const updatedRecords = existingRecords.map((record, index) =>
-      index === targetIndex ? { ...record, scaffoldedFromVersion: changeSet.targetVersion } : record,
+      index === targetIndex
+        ? {
+            ...record,
+            scaffoldedFromVersion: changeSet.targetVersion,
+            occupiedOwnershipBoundary: changeSet.targetOccupiedOwnershipBoundary,
+          }
+        : record,
     );
     await deps.writeProvenance(provPath, JSON.stringify(updatedRecords, null, 2));
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-update-prov

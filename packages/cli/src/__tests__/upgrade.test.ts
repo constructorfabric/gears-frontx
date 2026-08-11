@@ -8,6 +8,7 @@ import {
 import { computeChangeSet } from '../upgrade/compute';
 import { applyChangeSet } from '../upgrade/apply';
 import { rollbackChangeSet } from '../upgrade/rollback';
+import { formatOccupiedBoundary } from '../provenance/boundary';
 import type { ChangeSet, ConflictEntry } from '../upgrade/types';
 import type { ContentItem, ReadContentItemsFn } from '../scaffold/types';
 import type { FetchFn } from '../resolver/types';
@@ -53,8 +54,6 @@ const fetchFn: FetchFn = async (url) => {
 };
 
 const PROJ_ROOT = '/proj';
-
-const occupiedBoundary = (boundary: OwnershipBoundary): string => JSON.stringify(boundary);
 
 const BASE_PROVENANCE = {
   templateIdentity: 'my-template',
@@ -314,9 +313,13 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
   // byte-for-byte untouched, both in the computed diff and after apply.
   it('(i) region-union shared file: diff and apply are scoped to this template\'s own owned region only', async () => {
     const SHARED_PATH = 'shared.config.js';
-    const sharedBoundary: OwnershipBoundary = {
+    const baselineSharedBoundary: OwnershipBoundary = {
       exclusiveSubtrees: [],
       sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup'] }],
+    };
+    const targetSharedBoundary: OwnershipBoundary = {
+      exclusiveSubtrees: [],
+      sharedFiles: [{ path: SHARED_PATH, mergeStrategy: 'region-union', ownedRegions: ['setup', 'teardown'] }],
     };
     // Distinct versions from the top-level fixture — this test registers its
     // own baseline/target so it cannot clobber the shared '1.0.0'/'2.0.0'
@@ -325,7 +328,7 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
       templateIdentity: 'my-template',
       scaffoldedFromVersion: '1.1.0',
       sourceSpec: 'local:acme/my-template@1.1.0',
-      occupiedOwnershipBoundary: occupiedBoundary(sharedBoundary),
+      occupiedOwnershipBoundary: formatOccupiedBoundary(baselineSharedBoundary),
     };
 
     registerVersion(
@@ -344,7 +347,7 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
           ].join('\n'),
         },
       ],
-      sharedBoundary,
+      baselineSharedBoundary,
     );
     registerVersion(
       'my-template',
@@ -356,10 +359,13 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
             '// frontx:region my-template:setup',
             'const setupV2 = true;',
             '// frontx:endregion my-template:setup',
+            '// frontx:region my-template:teardown',
+            'const teardownV2 = true;',
+            '// frontx:endregion my-template:teardown',
           ].join('\n'),
         },
       ],
-      sharedBoundary,
+      targetSharedBoundary,
     );
 
     // The current project file — this template's region at the v1.1.0
@@ -388,6 +394,9 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     // Only the owned region's NEW content is carried — not the whole file.
     expect(regionEntry!.content).toContain('setupV2');
     expect(regionEntry!.content).not.toContain('otherStaysPut');
+    expect(changeSet.targetOccupiedOwnershipBoundary).toBe(
+      '{"exclusiveSubtrees":[],"sharedFiles":[{"path":"shared.config.js","mergeStrategy":"region-union","ownedRegions":["setup","teardown"]}]}',
+    );
 
     // Apply: only this template's region is rewritten in the shared file;
     // the co-owning template's region is left byte-for-byte untouched.
@@ -418,8 +427,7 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     >;
     expect(updatedProvenance).toHaveLength(1);
     expect(updatedProvenance[0]['scaffoldedFromVersion']).toBe('2.1.0');
-    expect(updatedProvenance[0]['occupiedOwnershipBoundary']).toBe(occupiedBoundary(sharedBoundary));
-    expect(JSON.parse(updatedProvenance[0]['occupiedOwnershipBoundary'] as string)).toEqual(sharedBoundary);
+    expect(updatedProvenance[0]['occupiedOwnershipBoundary']).toBe(changeSet.targetOccupiedOwnershipBoundary);
   });
 
   // (j)/(k) #488 follow-up: a bad provenance precondition — either the file
@@ -435,6 +443,7 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
     templateIdentity: 'my-template',
     baselineVersion: '1.0.0',
     targetVersion: '2.0.0',
+    targetOccupiedOwnershipBoundary: '.',
     clean: [{ kind: 'modify', path: 'src/App.tsx', content: 'v2 content' }],
     conflicts: [],
   };
@@ -598,7 +607,10 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
       readProjectFile: async (p) => files.get(p) ?? null,
       writeProjectFile: async (p, c) => { files.set(p, c); },
       removeProjectFile: async (p) => { files.delete(p); },
-      writeProvenance: async () => { throw new Error('disk full'); },
+      writeProvenance: async (p, c) => {
+        files.set(p, c);
+        throw new Error('disk full');
+      },
     });
 
     expect(applyResult.ok).toBe(false);
