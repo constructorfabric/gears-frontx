@@ -1078,6 +1078,50 @@ describe('addTemplate occupied-ground guard — cpt-frontx-dod-cli-scaffolding-a
   // `srcx.ts` would read as ground inside `src` that both sides declare, be
   // exempted, and reach the conflict check, which reports the contested `src`
   // subtree and never mentions the content standing on `srcx.ts`.
+  // The companion to the sibling case below: there the two claims are spelled
+  // the same and the PATH is outside, here the path is inside and the two
+  // claims spell one directory two ways. Matching the claims by raw string
+  // would make this the guard's refusal — content no provenance accounts for,
+  // remedied by moving files the occupant legitimately wrote — instead of the
+  // conflict check's, which names both templates and both claims.
+  it('leaves ground an occupied claim and an incoming claim spell differently to the conflict check', async () => {
+    const applied = makeEntry('slash-owner', [{ path: 'src/main.ts', content: 'from the occupant' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src/'], sharedFiles: [] },
+    });
+    const incoming = makeEntry('bare-claimer', [{ path: 'src/main.ts', content: 'from the incoming template' }], {
+      ownershipBoundaries: { exclusiveSubtrees: ['src'], sharedFiles: [] },
+    });
+    const entries: Record<string, InventoryEntry> = { 'slash-owner': applied, 'bare-claimer': incoming };
+    const { files, writeFileFn, provenanceWriteFn, readProvenanceFn, readProjectFileFn, readTargetPathStateFn } = makeFsFake();
+    files.set(
+      '/target/.frontx/provenance.json',
+      JSON.stringify([
+        { templateIdentity: 'slash-owner', scaffoldedFromVersion: '1.0.0', sourceSpec: 'github:acme/slash-owner@v1.0.0' },
+      ]),
+    );
+    files.set('/target/src/main.ts', 'work the occupant wrote');
+
+    const result = await addTemplate(
+      'bare-claimer',
+      '/target',
+      (name: string) => entries[name],
+      async () => Object.values(entries),
+      readContentFn,
+      writeFileFn,
+      readProvenanceFn,
+      provenanceWriteFn,
+      readTargetPathStateFn,
+      readProjectFileFn,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('conflict');
+    if (result.reason !== 'conflict') return;
+    expect(result.conflicts).toEqual([{ ground: 'src overlaps src/', contestants: ['bare-claimer', 'slash-owner'] }]);
+    expect(files.get('/target/src/main.ts')).toBe('work the occupant wrote');
+  });
+
   it('refuses a sibling of a subtree both claims declare, since only the separator makes a path inside it', async () => {
     const applied = makeEntry('subtree-owner', [], {
       ownershipBoundaries: { exclusiveSubtrees: ['src'], sharedFiles: [] },

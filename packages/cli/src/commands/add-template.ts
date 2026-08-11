@@ -372,11 +372,22 @@ function claimedGroundOf(
   return { subtrees, sharedFiles };
 }
 
+// Whether two subtree declarations address the same directory, which mutual
+// containment says exactly: `src` and `src/` each contain the other, while a
+// nested pair contains in one direction only. Nesting deliberately does NOT
+// qualify — the exemption below is for ground both sides declare, and a path
+// merely inside another template's subtree is arbitrated by nothing.
+function subtreesAddressSameDirectory(a: string, b: string): boolean {
+  return pathWithinSubtree(a, b) && pathWithinSubtree(b, a);
+}
+
 // Whether a repository-relative path stands on ground a recorded claim and an
 // incoming claim BOTH declare: the same shared-file path, or the same exclusive
-// subtree containing it. Containment is `pathWithinSubtree`, the same predicate
-// the conflict check and the assembler decide it by, so this exemption cannot
-// come to disagree with the check it defers those paths to.
+// subtree containing it. Both halves of that question are decided by
+// `pathWithinSubtree`, the same predicate the conflict check and the assembler
+// decide them by — matching the claims by raw string would refuse `src` against
+// an occupied `src/` here, as content no provenance accounts for, ahead of the
+// check whose job is to report that pair as the contest it is.
 function isArbitratedGround(
   path: string,
   claimed: { subtrees: ReadonlySet<string>; sharedFiles: ReadonlySet<string> },
@@ -386,7 +397,9 @@ function isArbitratedGround(
     ({ boundary }) =>
       (claimed.sharedFiles.has(path) && boundary.sharedFiles.some((entry) => entry.path === path)) ||
       boundary.exclusiveSubtrees.some(
-        (subtree) => claimed.subtrees.has(subtree) && pathWithinSubtree(path, subtree),
+        (subtree) =>
+          pathWithinSubtree(path, subtree) &&
+          [...claimed.subtrees].some((claimedSubtree) => subtreesAddressSameDirectory(claimedSubtree, subtree)),
       ),
   );
 }
