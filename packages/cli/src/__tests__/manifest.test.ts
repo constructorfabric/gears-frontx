@@ -36,7 +36,7 @@ function validManifest(overrides: Partial<TemplateManifest> = {}): string {
         { path: 'package.json', mergeStrategy: 'region-union', ownedRegions: ['scripts.build'] },
       ],
     },
-    referencedTemplates: [{ ref: 'github:acme/mfe-a@v1.0.0', appliedAt: 'packages/mfe-a' }],
+    referencedTemplates: [{ ref: 'github:acme/mfe-a@v1.0.0' }],
   };
   return JSON.stringify({ ...base, ...overrides });
 }
@@ -125,18 +125,17 @@ describe('validateManifestContract', () => {
     expect(result.violations.some((v) => v.field.startsWith('ownershipBoundaries.sharedFiles'))).toBe(true);
   });
 
-  // inst-for-each-referenced / inst-check-referenced-entry / inst-if-referenced-invalid
-  it('referenced-template entry missing target location → referenced violation', () => {
+  // inst-for-each-referenced / inst-check-referenced-entry — the reference
+  // carries no separate target location (cpt-frontx-adr-composed-template-resolution)
+  it('referenced-template entry declaring only a well-formed reference → validated', () => {
     const raw = JSON.stringify({
       name: 'my-project',
       version: '1.0.0',
       ownershipBoundaries: { exclusiveSubtrees: [], sharedFiles: [] },
-      referencedTemplates: [{ ref: 'github:acme/mfe@v1' }], // missing appliedAt
+      referencedTemplates: [{ ref: 'github:acme/mfe@v1' }],
     });
     const result = validateManifestContract(raw);
-    expect(result.status).toBe('REJECTED');
-    if (result.status !== 'REJECTED') return;
-    expect(result.violations.some((v) => v.field.startsWith('referencedTemplates'))).toBe(true);
+    expect(result.status).toBe('VALIDATED');
   });
 
   // inst-for-each-referenced — malformed reference
@@ -145,7 +144,7 @@ describe('validateManifestContract', () => {
       name: 'my-project',
       version: '1.0.0',
       ownershipBoundaries: { exclusiveSubtrees: [], sharedFiles: [] },
-      referencedTemplates: [{ ref: '   ', appliedAt: 'packages/x' }], // whitespace-only ref
+      referencedTemplates: [{ ref: '   ' }], // whitespace-only ref
     });
     const result = validateManifestContract(raw);
     expect(result.status).toBe('REJECTED');

@@ -90,7 +90,6 @@ export interface SelectContentProps
       | 'alignOffset'
       | 'side'
       | 'sideOffset'
-      | 'alignItemWithTrigger'
       | 'positionMethod'
       | 'collisionBoundary'
       | 'collisionPadding'
@@ -112,7 +111,6 @@ export function SelectContent({
   sideOffset = 4,
   align = 'center',
   alignOffset = 0,
-  alignItemWithTrigger = true,
   positionMethod,
   collisionBoundary,
   collisionPadding,
@@ -125,19 +123,24 @@ export function SelectContent({
         sideOffset={sideOffset}
         align={align}
         alignOffset={alignOffset}
-        alignItemWithTrigger={alignItemWithTrigger}
+        /*
+         * Never the Base UI default overlay mode (selected item aligned over
+         * the trigger): the popup always opens on `side`, below by default.
+         * With nothing selected the list starts at the top; a selected item
+         * beyond the fold is scrolled into view natively on open — Floating
+         * UI's useListNavigation calls scrollIntoView({block: 'nearest'})
+         * when a selectedIndex exists (verified against @base-ui/react 1.6.0
+         * sources), so no scroll code of ours is needed.
+         */
+        alignItemWithTrigger={false}
         positionMethod={positionMethod}
         collisionBoundary={collisionBoundary}
         collisionPadding={collisionPadding}
         className={styles.positioner}
       >
-        <SelectPrimitive.Popup
-          data-align-trigger={alignItemWithTrigger}
-          className={cx(styles.popup, className)}
-          {...props}
-        >
+        <SelectPrimitive.Popup className={cx(styles.popup, className)} {...props}>
           <SelectScrollUpButton />
-          <SelectPrimitive.List>{children}</SelectPrimitive.List>
+          <SelectPrimitive.List className={styles.list}>{children}</SelectPrimitive.List>
           <SelectScrollDownButton />
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>

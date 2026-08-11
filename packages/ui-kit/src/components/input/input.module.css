@@ -82,7 +82,9 @@
     var(--ring);
 }
 
-/* See button.module.css: forced-colors drops box-shadow, restore UA outline. */
+/* The ring above is an inset box-shadow, and forced-colors mode doesn't
+ * render box-shadow at all — add an explicit outline or the focus
+ * indicator disappears entirely under the mode. */
 @media (forced-colors: active) {
   .input:focus-visible {
     outline: 2px solid Highlight;
@@ -112,29 +114,67 @@
 }
 
 /*
- * type="search" plumbing (see input.tsx): the wrapper positions the
- * magnifier over the field; the input just clears space for it. The icon
- * is aria-hidden decoration — the search semantic comes from the native
- * type.
+ * icon/end slot plumbing (see input.tsx): the wrapper positions the slots
+ * over the field; the input just clears space for whichever slots are
+ * present. The icon slot is aria-hidden decoration with pointer events
+ * off; the end slot is live content overlaid on the field's end padding.
  */
-.searchWrap {
+.wrap {
   position: relative;
   display: block;
   width: 100%;
 }
 
-.searchIcon {
+.icon {
   position: absolute;
   inset-inline-start: var(--space-3);
   top: 50%;
   translate: 0 -50%;
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
+  display: inline-flex;
   color: var(--muted-foreground);
   pointer-events: none;
 }
 
-.searchInput {
-  /* Icon inset + the icon + a gap, so the text clears the magnifier. */
+.icon svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.end {
+  position: absolute;
+  inset-inline-end: var(--space-2);
+  top: 50%;
+  translate: 0 -50%;
+  display: inline-flex;
+  align-items: center;
+}
+
+/*
+ * .icon renders before .input in the DOM (leading slot) and .end after
+ * (trailing slot), so a plain `~` sibling combinator can reach only one of
+ * them — a prior `.input:disabled ~ .end` rule matched .end but never
+ * .icon, leaving a disabled search field's magnifier at full strength
+ * while its border, text and placeholder dimmed. `:has()` lets .wrap test
+ * the input's disabled state and dim both slots from there regardless of
+ * DOM order — and regardless of *why* .input is disabled, since the direct
+ * `disabled` prop and a `<Field disabled>` ancestor both land on the real
+ * <input>, so this selector fires either way. `pointer-events: none` still
+ * only disarms the mouse, not Tab/Enter — see input.tsx's `inert` on .end
+ * for the keyboard fix, which only the direct-prop path can apply.
+ */
+.wrap:has(.input:disabled) .icon,
+.wrap:has(.input:disabled) .end {
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+/* Icon inset + the icon + a gap, so the text clears the leading icon. */
+.hasIcon {
   padding-inline-start: calc(var(--space-3) + var(--icon-size-sm) + var(--space-2));
+}
+
+/* The end slot's stated maximum — a compact 32px icon-button — plus its
+ * inset and a gap. Wider end content is the consumer's padding to extend. */
+.hasEnd {
+  padding-inline-end: calc(var(--space-2) + var(--control-height-sm) + var(--space-1));
 }

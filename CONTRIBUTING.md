@@ -1,6 +1,6 @@
 # Contributing to Gears FrontX
 
-> **TARGET AUDIENCE:** Humans
+> **TARGET AUDIENCE:** Humans and agents
 > **PURPOSE:** Contribution guidelines and workflow for developers
 
 ## Branching Model (Gitflow)
@@ -17,11 +17,30 @@
 ### Standard Workflow
 
 1. Create a `feature/*` branch from `develop`
-2. Make changes, commit, push, open PR targeting `develop`
+2. Make changes, commit (signed off - see [Commit Requirements](#commit-requirements)), push, open PR targeting `develop`
 3. After review and merge, CI publishes alpha versions
 4. When ready for release, create `release/X.Y.Z` from `develop`
 5. Finalize version bumps, merge `release/X.Y.Z` into `main`
 6. CI publishes stable versions, merge back to `develop`
+
+### Resolving Conflicts with `develop`
+
+**For any branch with a PR targeting `develop` (`feature/*`, `fix/*`, or otherwise), always rebase onto `develop`; never merge `develop` into your branch.** If your branch falls behind canonical `develop` and needs conflicts resolved, rebase onto it:
+
+```bash
+git fetch origin develop
+git rebase origin/develop
+# for each conflicted commit: resolve conflicts, then stage every resolved path
+git add -- path/to/resolved-file
+# substitute every actual resolved path before continuing
+git rebase --continue
+# repeat resolve/add/continue until the rebase completes
+git push --force-with-lease
+```
+
+To abandon the rebase and return to the previous branch state instead, run `git rebase --abort`. In a fork-based setup, replace `origin` with the remote that tracks `constructorfabric/gears-frontx`.
+
+A merge from `develop` into a work branch makes the merge commit and any conflict-resolution combined diff durable in branch history, which is hard to review.
 
 ### Previous-Major Maintenance
 
@@ -33,6 +52,16 @@ When a new major is released, the previous major gets a long-lived `release/vN` 
 4. If the fix also applies to v2, cherry-pick to `develop` or `main`
 
 Users install old majors explicitly: `npm install @gears-frontx/react@v1`
+
+## Commit Requirements
+
+**Sign off every commit (DCO).** Each commit must carry a `Signed-off-by` line certifying the [Developer Certificate of Origin](https://developercertificate.org/). Pass `-s` when committing:
+
+```bash
+git commit -s -m "feat: describe the change"
+```
+
+To add a missing sign-off to the latest commit, run `git commit --amend -s --no-edit`. To sign off a range of commits, run `git rebase --signoff <base>` (e.g. `git rebase --signoff HEAD~3` to cover the last three), then push with `--force-with-lease`. Note that `git rebase --signoff` appends the trailer even when a `Signed-off-by` already exists earlier in the message (it only skips when an identical sign-off is last), so rebasing over already-signed commits that end in `Co-Authored-By` adds a duplicate line - pick a `<base>` that spans only the commits missing the trailer.
 
 ## Versioning
 
@@ -81,8 +110,8 @@ Each package is versioned independently within a single major version.
 ## Development Setup
 
 ```bash
-git clone https://github.com/gears-frontx/frontx.git
-cd frontx
+git clone https://github.com/constructorfabric/gears-frontx.git
+cd gears-frontx
 npm ci
 npm run build:packages
 npm run dev
@@ -117,6 +146,8 @@ cd template-shell && npm run dev
 `dev:template:link` ([`scripts/link-template-ecosystem.mjs`](scripts/link-template-ecosystem.mjs)) only repoints the directories inside the template's `node_modules` that the template pins to the registry - it reads the template's own manifests to find out which those are, so a newly pinned package is linked without anyone editing the script. It never writes `package.json` or `package-lock.json`, so nothing from the dev loop can leak into a seeded project. What each linked directory then resolves through is its `dist/`, which is why the script refuses to link an unbuilt package instead of leaving the failure to surface later as a missing module.
 
 > **Forgetting to relink is silent.** The template builds, type-checks and tests green against the published pins on its own, so a missing relink produces no error anywhere - it just means the `packages/*` edits you are testing are not the code being run. Nothing warns you. Relink after every ecosystem change, and when a template-side result contradicts a change you just made in `packages/*`, suspect the link first.
+
+The silence is local only: the [Template Drift workflow](.github/workflows/template-drift.yml) runs this same relink-and-check sequence in CI for the in-repo inputs it watches, so a working tree that has drifted from `template-shell` goes red there even when every local check passes ([#518](https://github.com/constructorfabric/gears-frontx/issues/518)).
 
 This was not always the steady state. Until the pins reached `0.3.0-alpha.1` ([#485](https://github.com/constructorfabric/gears-frontx/issues/485)), the published `0.3.0-alpha.0` tarballs predated the move of `FRONTX_ACTION_*` into `@gears-frontx/gts-plugin` and the addition of `DomainContext.typeSystem` to `@gears-frontx/mfes`, so `type-check` and `build:packages` failed against the pins alone and linking was mandatory rather than an optimisation. That took two merges to clear - one to publish the fixed surfaces, one to move the pins onto them, because a lockfile cannot resolve a tarball that does not exist yet - and both have landed. A seeded project now builds from its pins with no monorepo present.
 

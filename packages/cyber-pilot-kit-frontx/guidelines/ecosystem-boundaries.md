@@ -1,6 +1,6 @@
 # FrontX Ecosystem Boundary Guidelines
 
-## Pillar 1 — Ecosystem Packages (extraction)
+## Published Libraries — Ecosystem Packages (extraction)
 
 These packages are the realized FrontX runtime substrate. Do NOT move content into
 template territory and do NOT add solution-specific logic.
@@ -11,13 +11,13 @@ template territory and do NOT add solution-specific logic.
 | `@gears-frontx/gts-plugin` | GTS-PLUGIN-2: no solution schemas |
 | `@gears-frontx/api` | API-1: handler-agnostic, no mocks |
 
-## Pillar 2 — CLI (greenfield)
+## Projects Orchestration — CLI (greenfield)
 
 `@gears-frontx/cli` must satisfy CLI-1 at all times:
 > The CLI has zero dependency on any template. It resolves templates by source-spec
 > at runtime and bundles none.
 
-## Pillar 3 — AI Tooling Kit (greenfield)
+## Projects Orchestration — AI Tooling Kit (greenfield)
 
 `@gears-frontx/cyber-pilot-kit-frontx` must satisfy KIT-1:
 > Every resource identifier carries the `frontx_` prefix.

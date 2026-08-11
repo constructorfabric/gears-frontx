@@ -12,6 +12,15 @@
  * 1. Loads each config and verifies it's a valid config array/object
  * 2. Checks that derived configs extend base configs correctly
  * 3. Verifies expected rules are present in each config
+ * 4. Verifies the rules that do exist are still pointed at something — that
+ *    `arch:deps:core` cruises every core published library, and that no
+ *    artifact-registry `[[ignore]]` names a path that is gone. A rule aimed at
+ *    nothing is as silent as a rule that was deleted, and both read as green.
+ * 5. Verifies the member artifact chain is registered for enforcement
+ *    (`cpt-frontx-constraint-member-artifact-chain`, root DESIGN §2.2): every
+ *    FrontX-owned layer member is registered in the artifacts registry as a
+ *    child system in the autodetect form with DESIGN and FEATURE required, or
+ *    is covered by a package-shaped `[[ignore]]` that records the debt.
  *
  * Layer *membership* and package.json edges are `npm run arch:edges`
  * (scripts/package-edge-tests.ts), not this script.
@@ -31,7 +40,7 @@
  * and load — ecosystem CI does not lint the template.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -42,6 +51,11 @@ interface TestResult {
   name: string;
   passed: boolean;
   message: string;
+}
+
+interface IgnoreEntry {
+  reason: string;
+  patterns: string[];
 }
 
 const colors = {
@@ -208,7 +222,7 @@ function verifyDepcruiseConfigs(): TestResult[] {
 }
 
 /**
- * Verify the Core Framework config carries the boundary restrictions.
+ * Verify the core config carries the boundary restrictions.
  *
  * Rule names are asserted literally, so a rename in core.cjs without a matching
  * update here fails the check. That is deliberate: the previous version of this
@@ -223,8 +237,8 @@ function verifyCoreRestrictions(): TestResult[] {
     const coreConfig = require(join(DEPCRUISE_CONFIG_DIR, 'core.cjs'));
 
     const requiredRules: [string, string][] = [
-      // Core Framework packages carry no @gears-frontx imports...
-      ['core-no-gears-frontx-imports', 'Core Framework isolation'],
+      // Core packages carry no @gears-frontx imports...
+      ['core-no-gears-frontx-imports', 'Core isolation'],
       // ...except the one type-substrate port edge, itself narrowed to the runtime.
       ['core-port-provider-only-imports-runtime', 'Type-substrate port narrowing'],
       // The substrate stays UI-framework-agnostic.
@@ -252,6 +266,570 @@ function verifyCoreRestrictions(): TestResult[] {
   }
 
   return results;
+}
+
+/**
+ * Verify `arch:deps:core` still cruises exactly the core membership.
+ *
+ * `layer-constants.cjs` calls itself the single source of truth for layer
+ * membership, and the depcruise rules do derive their path patterns from it —
+ * but the npm script that *invokes* dependency-cruiser names the source roots
+ * literally on the command line, so membership is duplicated there in a place
+ * no rule can see. A package whose `core` property is set in
+ * `PUBLISHED_LIBRARY_PROPERTIES` but is missing from the script gets the core
+ * rules compiled and then never applied to it: the cruise passes because that
+ * package's files were never in the set being cruised. That is the shape this
+ * whole script exists for, and it is the exact shape that let
+ * `packages/telemetry` land unguarded (#495) — an enumeration standing in for
+ * the membership list, failing open.
+ */
+function verifyCoreCruiseTargets(): TestResult[] {
+  const results: TestResult[] = [];
+
+  try {
+    const { CORE_PACKAGES } = require(
+      join(DEPCRUISE_CONFIG_DIR, 'layer-constants.cjs')
+    ) as { CORE_PACKAGES: readonly string[] };
+
+    const rootPkg = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf-8')) as {
+      scripts?: Record<string, string>;
+    };
+    const script = rootPkg.scripts?.['arch:deps:core'];
+
+    if (script === undefined) {
+      return [
+        {
+          name: 'arch:deps:core: Script present',
+          passed: false,
+          message:
+            'No `arch:deps:core` script in the root package.json — the core ' +
+            'import-graph rules have no invocation, so they enforce nothing.',
+        },
+      ];
+    }
+
+    // Positional source roots only: every token shaped like a package src root.
+    // Flags and their values never take this shape.
+    const cruised = script.split(/\s+/).filter((token) => /^packages\/[^/]+\/src$/.test(token));
+    const expected = CORE_PACKAGES.map((name) => `packages/${name}/src`);
+
+    const missing = expected.filter((dir) => !cruised.includes(dir));
+    const extra = cruised.filter((dir) => !expected.includes(dir));
+
+    results.push({
+      name: 'arch:deps:core: Cruises exactly the core membership',
+      passed: missing.length === 0 && extra.length === 0,
+      message:
+        missing.length === 0 && extra.length === 0
+          ? `All ${expected.length} core src roots cruised`
+          : [
+              missing.length > 0
+                ? `Not cruised, so unguarded: ${missing.join(', ')}`
+                : undefined,
+              extra.length > 0 ? `Cruised but not a member: ${extra.join(', ')}` : undefined,
+              'Reconcile the `arch:deps:core` script with the core property in ' +
+                'internal/depcruise-config/layer-constants.cjs (PUBLISHED_LIBRARY_PROPERTIES).',
+            ]
+              .filter(Boolean)
+              .join('. '),
+    });
+  } catch (error) {
+    results.push({
+      name: 'arch:deps:core: Verification',
+      passed: false,
+      message: `Error: ${(error as Error).message}`,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Every `[[ignore]]` entry in the Studio artifact registry, in file order.
+ *
+ * A deliberately narrow reader rather than a TOML dependency: it needs one
+ * table kind with two string-bearing keys. Every departure from the shape it
+ * expects throws instead of being skipped, because a parser that silently
+ * understood less than the file says would make these checks pass by finding
+ * nothing — the same fail-open they exist to detect.
+ */
+function ignoreEntries(tomlPath: string): IgnoreEntry[] {
+  const entries: IgnoreEntry[] = [];
+  let inIgnoreTable = false;
+  let sawPatterns = false;
+  let sawReason = false;
+  let pendingPatterns: string | null = null;
+  let currentEntry: IgnoreEntry | null = null;
+
+  const finalizeCurrentEntry = (lineNo: number): void => {
+    if (!inIgnoreTable) return;
+    if (!sawReason) {
+      throw new Error(
+        `${tomlPath}:${lineNo}: an [[ignore]] table with no reason key. The registry's ignore ` +
+          `shape has changed; update this reader.`
+      );
+    }
+    if (!sawPatterns) {
+      throw new Error(
+        `${tomlPath}:${lineNo}: an [[ignore]] table with no patterns key. The registry's ` +
+          `ignore shape has changed; update this reader.`
+      );
+    }
+    if (currentEntry === null || currentEntry.reason.trim() === '') {
+      throw new Error(
+        `${tomlPath}:${lineNo}: an [[ignore]] reason must be a non-empty double-quoted string.`
+      );
+    }
+    if (currentEntry.patterns.length === 0) {
+      throw new Error(
+        `${tomlPath}:${lineNo}: an [[ignore]] patterns array must contain at least one pattern.`
+      );
+    }
+  };
+
+  const collect = (raw: string, lineNo: number): void => {
+    const quoted = raw.match(/"[^"]*"/g);
+    if (quoted === null) {
+      throw new Error(
+        `${tomlPath}:${lineNo}: an [[ignore]] patterns array with no double-quoted entries. ` +
+          `This reader handles double-quoted strings only; extend it rather than letting ` +
+          `patterns go unchecked.`
+      );
+    }
+    currentEntry?.patterns.push(...quoted.map((entry) => entry.slice(1, -1)));
+  };
+
+  const readReason = (text: string, lineNo: number): void => {
+    const match = text.match(/^reason\s*=\s*"([^"]*)"\s*(#.*)?$/);
+    if (match === null) {
+      throw new Error(
+        `${tomlPath}:${lineNo}: an [[ignore]] reason must be a double-quoted string on one line.`
+      );
+    }
+    const reason = match[1].trim();
+    if (reason === '') {
+      throw new Error(`${tomlPath}:${lineNo}: an [[ignore]] reason must not be blank.`);
+    }
+    if (currentEntry === null) {
+      throw new Error(`${tomlPath}:${lineNo}: internal error: missing [[ignore]] entry state.`);
+    }
+    currentEntry.reason = reason;
+  };
+
+  const lines = readFileSync(tomlPath, 'utf-8').split('\n');
+
+  lines.forEach((line, index) => {
+    const lineNo = index + 1;
+    const text = line.trim();
+
+    if (pendingPatterns !== null) {
+      pendingPatterns += text;
+      if (text.includes(']')) {
+        collect(pendingPatterns, lineNo);
+        pendingPatterns = null;
+      }
+      return;
+    }
+
+    if (text.startsWith('[')) {
+      if (inIgnoreTable) {
+        finalizeCurrentEntry(lineNo);
+      }
+      inIgnoreTable = text === '[[ignore]]';
+      sawPatterns = false;
+      sawReason = false;
+      if (inIgnoreTable) {
+        currentEntry = { reason: '', patterns: [] };
+        entries.push(currentEntry);
+      } else {
+        currentEntry = null;
+      }
+      return;
+    }
+
+    if (!inIgnoreTable || text === '' || text.startsWith('#')) return;
+
+    if (/^reason\s*=/.test(text)) {
+      sawReason = true;
+      readReason(text, lineNo);
+      return;
+    }
+
+    if (/^patterns\s*=/.test(text)) {
+      sawPatterns = true;
+      if (text.includes(']')) {
+        collect(text, lineNo);
+      } else {
+        pendingPatterns = text;
+      }
+    }
+  });
+
+  if (pendingPatterns !== null) {
+    throw new Error(`${tomlPath}: unterminated patterns array at end of file.`);
+  }
+  if (inIgnoreTable) {
+    finalizeCurrentEntry(lines.length);
+  }
+
+  return entries;
+}
+
+function ignorePatterns(tomlPath: string): string[] {
+  return ignoreEntries(tomlPath).flatMap((entry) => entry.patterns);
+}
+
+function literalPrefix(pattern: string): string | null {
+  if (/^[*?[]/.test(pattern)) return null;
+  const wildcard = pattern.search(/[*?[]/);
+  const literal = (wildcard === -1 ? pattern : pattern.slice(0, wildcard)).replace(/\/+$/, '');
+  return literal === '' ? null : literal;
+}
+
+function memberDebtReasonStatus(reason: string): { ok: boolean; missing: string[] } {
+  const normalized = reason.trim();
+  const recordsDebt =
+    /\b(no|missing|without)\b[\s\S]{0,120}\b(backing|active)?\s*(cdsl|artifact)\b/i.test(normalized) ||
+    /\bno\b[\s\S]{0,120}\bartifact\b[\s\S]{0,80}\b(backs?|backing)\b/i.test(normalized);
+  const recordsRemovalCriterion =
+    /\bRemoval criterion\b/i.test(normalized) &&
+    /\bregister(?:ed|ing)?\b/i.test(normalized) &&
+    /\bPRD\b/.test(normalized) &&
+    /\bDESIGN\b/.test(normalized) &&
+    /\bFEATURE\b/.test(normalized);
+
+  return {
+    ok: recordsDebt && recordsRemovalCriterion,
+    missing: [
+      ...(recordsDebt ? [] : ['current artifact-chain debt']),
+      ...(recordsRemovalCriterion ? [] : ['objective removal criterion']),
+    ],
+  };
+}
+
+function matchingMemberDebtIgnore(
+  dir: string,
+  entries: readonly IgnoreEntry[]
+): { reason: string; missing: string[] } | null {
+  for (const entry of entries) {
+    for (const pattern of entry.patterns) {
+      if (literalPrefix(pattern) !== dir) continue;
+      const status = memberDebtReasonStatus(entry.reason);
+      if (status.ok) return { reason: entry.reason, missing: [] };
+      return { reason: entry.reason, missing: status.missing };
+    }
+  }
+  return null;
+}
+
+/**
+ * Verify no `[[ignore]]` names a path that cannot match anything.
+ *
+ * An ignore is an assertion that some code needs no traceability. Once the code
+ * it named is gone, the entry stops being an assertion and becomes a rule that
+ * can never fire — indistinguishable from an active exemption when read, and
+ * carrying a stale reason nobody will revisit. `packages/docs/*` and
+ * `packages/auth/*` sat here long after both directories were deleted.
+ *
+ * Checked by existence rather than by an expiry date, because a date needs a
+ * human to notice it passed, and the thing that makes these entries rot is
+ * precisely that nobody looks. Only the literal prefix is checked, so the
+ * *structural* ignores — the leading-wildcard patterns for dist, node_modules,
+ * test files, build configs and demos — are correctly left alone: they are
+ * permanent by nature and name no single location. That split is the one
+ * decided for the registry, and it falls out of each pattern's own shape rather
+ * than needing a second list to maintain.
+ */
+function verifyIgnoreFreshness(): TestResult[] {
+  const tomlPath = join(REPO_ROOT, '.cf-studio', 'config', 'artifacts.toml');
+
+  if (!existsSync(tomlPath)) {
+    return [
+      {
+        name: 'Artifact registry: Present',
+        passed: false,
+        message: `Not found: ${tomlPath}`,
+      },
+    ];
+  }
+
+  try {
+    const anchored = ignorePatterns(tomlPath).filter((pattern) => !/^[*?[]/.test(pattern));
+    const stale = anchored.filter((pattern) => {
+      const wildcard = pattern.search(/[*?[]/);
+      const literal = (wildcard === -1 ? pattern : pattern.slice(0, wildcard)).replace(/\/+$/, '');
+      return literal !== '' && !existsSync(join(REPO_ROOT, literal));
+    });
+
+    return [
+      {
+        name: 'Artifact registry: No ignore names a path that is gone',
+        passed: stale.length === 0,
+        message:
+          stale.length === 0
+            ? `All ${anchored.length} path-anchored ignore pattern(s) still name something on disk`
+            : `Stale ignore pattern(s): ${stale.join(', ')} — delete the entry, or correct the ` +
+              `path if the code moved. An ignore for code that no longer exists cannot fire.`,
+      },
+    ];
+  } catch (error) {
+    return [
+      {
+        name: 'Artifact registry: Ignore patterns readable',
+        passed: false,
+        message: (error as Error).message,
+      },
+    ];
+  }
+}
+
+interface ChildSystem {
+  slug: string | null;
+  artifactsDir: string | null;
+  /** Artifact kinds declared under the child's autodetect block: kind -> required. */
+  autodetectKinds: Record<string, boolean>;
+  /** True if the child declares artifacts outside an autodetect block. */
+  hasExplicitArtifacts: boolean;
+}
+
+/**
+ * Every `[[systems.children]]` node in the Studio artifact registry, with the
+ * artifact kinds its autodetect block declares and their `required` flags.
+ *
+ * The same deliberately narrow reader philosophy as `ignorePatterns`: it needs
+ * the child tables and three keys, and a parser that silently understood less
+ * than the file says would make the registration check pass by finding nothing.
+ * An unspecified `required` is `true` — that is the kit's own default (the root
+ * system's PRD/DESIGN/DECOMPOSITION carry no flag and are required).
+ */
+function childSystems(tomlPath: string): ChildSystem[] {
+  const children: ChildSystem[] = [];
+  let current: ChildSystem | null = null;
+  // Which table the following key lines belong to.
+  let context: 'child' | 'autodetect-kind' | 'explicit-artifacts' | 'other' = 'other';
+  let currentKind: string | null = null;
+
+  const lines = readFileSync(tomlPath, 'utf-8').split('\n');
+
+  lines.forEach((line, index) => {
+    const lineNo = index + 1;
+    const text = line.trim();
+    if (text === '' || text.startsWith('#')) return;
+
+    if (text.startsWith('[')) {
+      currentKind = null;
+      if (text === '[[systems.children]]') {
+        current = { slug: null, artifactsDir: null, autodetectKinds: {}, hasExplicitArtifacts: false };
+        children.push(current);
+        context = 'child';
+        return;
+      }
+      if (text === '[[systems.children.autodetect]]' || text === '[systems.children.autodetect.artifacts]') {
+        context = 'other';
+        return;
+      }
+      const kindHeader = text.match(/^\[systems\.children\.autodetect\.artifacts\.([A-Za-z0-9_-]+)\]$/);
+      if (kindHeader !== null) {
+        if (current === null) {
+          throw new Error(
+            `${tomlPath}:${lineNo}: a child autodetect artifact table before any [[systems.children]].`
+          );
+        }
+        currentKind = kindHeader[1];
+        current.autodetectKinds[currentKind] = true;
+        context = 'autodetect-kind';
+        return;
+      }
+      if (/^\[\[systems\.children\.artifacts\]\]$/.test(text)) {
+        if (current === null) {
+          throw new Error(
+            `${tomlPath}:${lineNo}: a child artifacts table before any [[systems.children]].`
+          );
+        }
+        current.hasExplicitArtifacts = true;
+        context = 'explicit-artifacts';
+        return;
+      }
+      // Any other table (root systems tables, children codebase, ignore, ...).
+      context = 'other';
+      return;
+    }
+
+    if (current === null) return;
+
+    if (context === 'child') {
+      const slugMatch = text.match(/^slug\s*=\s*"([^"]*)"/);
+      if (slugMatch !== null) current.slug = slugMatch[1];
+      const dirMatch = text.match(/^artifacts_dir\s*=\s*"([^"]*)"/);
+      if (dirMatch !== null) current.artifactsDir = dirMatch[1];
+      return;
+    }
+
+    if (context === 'autodetect-kind' && currentKind !== null) {
+      const requiredMatch = text.match(/^required\s*=\s*(true|false)\s*(#.*)?$/);
+      if (requiredMatch !== null) {
+        current.autodetectKinds[currentKind] = requiredMatch[1] === 'true';
+      }
+    }
+  });
+
+  return children;
+}
+
+/**
+ * Verify the member artifact chain is registered for enforcement.
+ *
+ * Root DESIGN §2.2, `cpt-frontx-constraint-member-artifact-chain` (LAYER-2):
+ * every layer member owned by this repository owns the artifacts that describe
+ * it, registered as its own child system with DESIGN and at least one FEATURE
+ * required — in the autodetect form, because `required` flags do not inherit
+ * and the explicit-artifact-list form validates while enforcing nothing. A
+ * member registered the unenforcing way, or not registered at all, silently
+ * reproduces the gap federation exists to close: `cfs validate` stays green
+ * because it was never asked to look.
+ *
+ * Scope is exactly the constraint's: FrontX-owned layer members — published
+ * libraries and projects orchestration, both read from layer-constants.cjs.
+ * Build internals are exempt from the chain by DESIGN §1.3, and templates are
+ * hosted outside this repository. A member whose package is still covered by a
+ * path-anchored `[[ignore]]` is accepted as recorded debt: the ignore's reason
+ * carries the removal criterion, `verifyIgnoreFreshness` keeps it honest, and
+ * lifting the ignore is what arms this check for that member (autodetect
+ * cannot see a member's artifacts through the ignore anyway — measured on
+ * telemetry, #495).
+ */
+// @cpt-dod:cpt-frontx-dod-ecosystem-governance-member-registration-enforced:p1
+// @cpt-algo:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1
+function verifyMemberRegistrationInRegistry(
+  tomlPath: string,
+  members: readonly string[],
+  packageDirs: Readonly<Record<string, string>>
+): TestResult[] {
+  try {
+    // @cpt-begin:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1:inst-mrg-members
+    const memberList = [...members];
+    // @cpt-end:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1:inst-mrg-members
+    // @cpt-begin:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1:inst-mrg-read
+    const children = childSystems(tomlPath);
+    const ignores = ignoreEntries(tomlPath);
+    // @cpt-end:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1:inst-mrg-read
+
+    return memberList.map((member) => {
+      const dir = packageDirs[member];
+      const testName = `Member ${member}: Artifact chain registered for enforcement`;
+
+      // @cpt-begin:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1:inst-mrg-debt
+      const ignored = matchingMemberDebtIgnore(dir, ignores);
+      if (ignored?.missing.length === 0) {
+        return {
+          name: testName,
+          passed: true,
+          message:
+            `Recorded debt: ${dir} is covered by a path-anchored [[ignore]] whose reason ` +
+            `carries the removal criterion. Lifting the ignore arms this check.`,
+        };
+      }
+      if (ignored !== null) {
+        return {
+          name: testName,
+          passed: false,
+          message:
+            `Ignored member debt for ${dir} is undocumented: the matching path-anchored [[ignore]] ` +
+            `reason is missing ${ignored.missing.join(' and ')}. Record both in the reason, or ` +
+            `register the member's PRD, DESIGN and FEATURE chain now.`,
+        };
+      }
+      // @cpt-end:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1:inst-mrg-debt
+
+      // @cpt-begin:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1:inst-mrg-unregistered
+      const child = children.find(
+        (candidate) =>
+          candidate.artifactsDir !== null && candidate.artifactsDir.startsWith(`${dir}/`)
+      );
+
+      if (child === undefined) {
+        return {
+          name: testName,
+          passed: false,
+          message:
+            `No [[systems.children]] node with artifacts_dir under ${dir}/ in the artifact ` +
+            `registry, and no [[ignore]] recording the debt. An unregistered member's chain ` +
+            `is an honour system (cpt-frontx-constraint-member-artifact-chain).`,
+        };
+      }
+      // @cpt-end:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1:inst-mrg-unregistered
+
+      // @cpt-begin:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1:inst-mrg-unenforcing
+      const declaredKinds = Object.keys(child.autodetectKinds);
+      if (declaredKinds.length === 0) {
+        return {
+          name: testName,
+          passed: false,
+          message:
+            `Child '${child.slug ?? dir}' declares no autodetect artifact kinds` +
+            (child.hasExplicitArtifacts
+              ? ' — the explicit-artifact-list form validates while enforcing nothing; use the autodetect form with required flags.'
+              : ' — nothing is enforced for this member.'),
+        };
+      }
+
+      const unenforced = ['DESIGN', 'FEATURE', 'PRD'].filter(
+        (kind) => child.autodetectKinds[kind] !== true
+      );
+      // @cpt-end:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1:inst-mrg-unenforcing
+
+      // @cpt-begin:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1:inst-mrg-pass
+      return {
+        name: testName,
+        passed: unenforced.length === 0,
+        message:
+          unenforced.length === 0
+            ? `Child '${child.slug ?? dir}' requires ${declaredKinds
+                .filter((kind) => child.autodetectKinds[kind])
+                .sort()
+                .join(', ')} via autodetect`
+            : `Child '${child.slug ?? dir}' does not require: ${unenforced.join(', ')} — the ` +
+              `member artifact chain needs PRD, DESIGN and FEATURE declared with ` +
+              `required = true in the autodetect form.`,
+      };
+      // @cpt-end:cpt-frontx-algo-ecosystem-governance-member-registration-gate:p1:inst-mrg-pass
+    });
+  } catch (error) {
+    return [
+      {
+        name: 'Member registration: Registry readable',
+        passed: false,
+        message: (error as Error).message,
+      },
+    ];
+  }
+}
+
+function verifyMemberRegistration(): TestResult[] {
+  const tomlPath = join(REPO_ROOT, '.cf-studio', 'config', 'artifacts.toml');
+
+  if (!existsSync(tomlPath)) {
+    return [
+      {
+        name: 'Artifact registry: Present',
+        passed: false,
+        message: `Not found: ${tomlPath}`,
+      },
+    ];
+  }
+
+  const { PUBLISHED_LIBRARY_PACKAGES, PROJECTS_ORCHESTRATION_PACKAGES, ECOSYSTEM_PACKAGE_DIRS } =
+    require(join(DEPCRUISE_CONFIG_DIR, 'layer-constants.cjs')) as {
+      PUBLISHED_LIBRARY_PACKAGES: readonly string[];
+      PROJECTS_ORCHESTRATION_PACKAGES: readonly string[];
+      ECOSYSTEM_PACKAGE_DIRS: Readonly<Record<string, string>>;
+    };
+
+  return verifyMemberRegistrationInRegistry(
+    tomlPath,
+    [...PUBLISHED_LIBRARY_PACKAGES, ...PROJECTS_ORCHESTRATION_PACKAGES],
+    ECOSYSTEM_PACKAGE_DIRS
+  );
 }
 
 /**
@@ -285,11 +863,35 @@ async function runVerification(): Promise<void> {
     );
   }
 
-  // Core Framework restrictions
-  log('\n🔒 Core Framework Boundary Restrictions', 'blue');
+  // Core boundary restrictions
+  log('\n🔒 Core Boundary Restrictions', 'blue');
   const coreResults = verifyCoreRestrictions();
   allResults.push(...coreResults);
   for (const result of coreResults) {
+    log(
+      `${result.passed ? '✅' : '❌'} ${result.name}: ${result.message}`,
+      result.passed ? 'green' : 'red'
+    );
+  }
+
+  // Guard invocation: rules that exist but are never pointed at anything
+  log('\n🎯 Guard Reach', 'blue');
+  const reachResults = [...verifyCoreCruiseTargets(), ...verifyIgnoreFreshness()];
+  allResults.push(...reachResults);
+  for (const result of reachResults) {
+    log(
+      `${result.passed ? '✅' : '❌'} ${result.name}: ${result.message}`,
+      result.passed ? 'green' : 'red'
+    );
+  }
+
+  // Member artifact chain: registered for enforcement, not on honour
+  log('\n🧾 Member Artifact Chain', 'blue');
+  // @cpt-begin:cpt-frontx-flow-ecosystem-governance-ci-guard-run:p1:inst-cgr-guards
+  const registrationResults = verifyMemberRegistration();
+  // @cpt-end:cpt-frontx-flow-ecosystem-governance-ci-guard-run:p1:inst-cgr-guards
+  allResults.push(...registrationResults);
+  for (const result of registrationResults) {
     log(
       `${result.passed ? '✅' : '❌'} ${result.name}: ${result.message}`,
       result.passed ? 'green' : 'red'
@@ -308,8 +910,10 @@ async function runVerification(): Promise<void> {
     log('\n💥 Guard config verification failed!', 'red');
     process.exit(1);
   } else {
+    // @cpt-begin:cpt-frontx-flow-ecosystem-governance-ci-guard-run:p1:inst-cgr-pass
     log('\n🎉 Guard config verification passed!', 'green');
     process.exit(0);
+    // @cpt-end:cpt-frontx-flow-ecosystem-governance-ci-guard-run:p1:inst-cgr-pass
   }
 }
 
@@ -325,4 +929,15 @@ if (isEntryPoint) {
   runVerification();
 }
 
-export { runVerification, verifyEslintConfigs, verifyDepcruiseConfigs, verifyCoreRestrictions };
+export {
+  runVerification,
+  verifyEslintConfigs,
+  verifyDepcruiseConfigs,
+  verifyCoreRestrictions,
+  verifyCoreCruiseTargets,
+  verifyIgnoreFreshness,
+  verifyMemberRegistration,
+  verifyMemberRegistrationInRegistry,
+  ignoreEntries,
+  memberDebtReasonStatus,
+};

@@ -1,7 +1,7 @@
 # Badge
 
-A status label: a colored dot plus an intent-colored caption, as a soft
-pill or a bare dot+label pair. Badge has no Base UI primitive — it's a
+A status label: an intent-colored caption with an optional status dot or
+icon, as a soft pill or a bare label. Badge has no Base UI primitive — it's a
 styled `span`, plus a `render` prop (via Base UI's `useRender`/`mergeProps`
 utilities) for the one case that needs it: rendering as a link.
 
@@ -19,10 +19,11 @@ orange is a misuse, not a style choice.
   `beta`/`new` → `info`, anything neutral (`draft`, `archived`, a count,
   a category) → `muted`.
 - `shape="pill"` (default) on busy surfaces where the label needs its own
-  soft fill; `shape="dot"` inline with text or in dense tables where a fill
-  would be noise — same dot and label, no pill behind them.
+  soft fill; `shape="plain"` inline with text or in dense tables where a
+  fill would be noise. Add `dot` when the state deserves a colored marker,
+  or pass `icon` for a more specific one — neither renders by default.
 - A clickable status filter — pass `render={<a href="..." />}`. The pill's
-  fill deepens on hover and the dot shape underlines, but only when actually
+  fill deepens on hover and the plain shape underlines, but only when actually
   rendered as a link; a plain badge stays visually inert and never looks
   clickable when it isn't. The kit's focus ring appears automatically once
   the anchor receives keyboard focus. Give it discernible text — a badge
@@ -41,7 +42,9 @@ orange is a misuse, not a style choice.
 | Prop | Type | Default |
 |------|------|---------|
 | `variant` | `success` \| `warning` \| `info` \| `danger` \| `muted` | `muted` |
-| `shape` | `pill` \| `dot` | `pill` |
+| `shape` | `pill` \| `plain` | `pill` |
+| `dot` | `boolean` — show the status dot in the variant's accent color; ignored when `icon` is set | `false` |
+| `icon` | `ReactNode` — leading icon, decorative (`aria-hidden`), 12px, accent-colored; replaces the dot | — |
 | `render` | `ReactElement` — replaces the root `span`, e.g. with an `<a>` | — |
 | `className` | `string` — merged after the variant/shape classes | — |
 
@@ -61,8 +64,14 @@ import { Badge } from '@gears-frontx/ui-kit';
 <Badge variant="info">Beta</Badge>
 <Badge>Draft</Badge>  // muted is the default variant
 
-// Bare dot+label for dense/inline placements
-<Badge variant="success" shape="dot">Online</Badge>
+// Status dot is opt-in
+<Badge variant="success" dot>Running</Badge>
+
+// Bare label for dense/inline placements (dot optional there too)
+<Badge variant="success" shape="plain" dot>Online</Badge>
+
+// A custom marker instead of the dot
+<Badge variant="info" icon={<BetaIcon />}>Beta</Badge>
 
 // A badge that is actually a link — hover feedback only applies here
 <Badge variant="info" render={<a href="/filters/open" />}>
@@ -80,3 +89,8 @@ import { Badge } from '@gears-frontx/ui-kit';
   appears when the badge actually renders as a link via `render`.
 - Do not nest interactive controls inside a Badge — it is a label, not a
   container.
+- Do not pass both `icon` and `dot` expecting both to render — `icon`
+  replaces the dot by design.
+- Do not drop an icon into Badge's children (`<Badge><Icon />label</Badge>`)
+  — the kit no longer sizes a bare svg child; use the `icon` prop, which is
+  sized and accent-colored automatically.

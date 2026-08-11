@@ -95,7 +95,13 @@ export function Button({
   // button stays a wide pill wrapping an empty label span instead of going
   // icon-only. `0` is deliberately NOT filtered — React renders it.
   const hasLabel = Children.toArray(children).some((child) => child !== '');
-  const iconOnly = icon != null && !hasLabel;
+  // Same predicate, applied to the icon slot: `icon != null` is true for
+  // `icon={false}` — a valid ReactNode that renders nothing — which is
+  // exactly what `icon={cond && <Icon/>}` passes when `cond` is false.
+  // Without this, a false condition still forced the button icon-only and
+  // rendered an empty square.
+  const hasIcon = Children.toArray(icon).some((child) => child !== '');
+  const iconOnly = hasIcon && !hasLabel;
   return (
     <ButtonPrimitive
       className={buttonVariants({ variant, size, className })}
@@ -123,7 +129,7 @@ export function Button({
       aria-busy={loading || undefined}
     >
       {loading && <span className={styles.spinner} aria-hidden="true" />}
-      {icon != null && (
+      {hasIcon && (
         <span className={styles.icon} aria-hidden="true">
           {icon}
         </span>

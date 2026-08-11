@@ -22,24 +22,24 @@
   - [2.16 Template AI-Extension Contract & Discovery/Activation - HIGH](#216-template-ai-extension-contract--discoveryactivation---high)
   - [2.17 AI-Driven Upgrade Orchestration - HIGH](#217-ai-driven-upgrade-orchestration---high)
   - [2.18 CLI Executable Invocation Surface - HIGH](#218-cli-executable-invocation-surface---high)
-  - [2.19 AI-Driven Project Scaffolding from Intent - HIGH](#219-ai-driven-project-scaffolding-from-intent---high)
+  - [2.19 Ecosystem Layer-Partition Governance - MEDIUM](#219-ecosystem-layer-partition-governance---medium)
+  - [2.20 Telemetry SDK Compatibility Anchor - MEDIUM](#220-telemetry-sdk-compatibility-anchor---medium)
+  - [2.21 AI-Driven Project Scaffolding from Intent - HIGH](#221-ai-driven-project-scaffolding-from-intent---high)
 - [3. Feature Dependencies](#3-feature-dependencies)
+- [4. Known Validator Debt](#4-known-validator-debt)
 
 <!-- /toc -->
 
 ## 1. Overview
 
-This decomposition breaks the FROZEN FrontX DESIGN into 19 work-package features, grouped along the three ecosystem pillars and ordered foundation-first. It is a work-package breakdown only: it states what each feature owns, what it depends on, and which upstream DESIGN/PRD elements it covers - it does not re-derive design, model behavior, or restate requirement text. All upstream elements are cited by ID; per-feature behavior is authored in each `features/{slug}/FEATURE.md`.
+This decomposition contains root-owned work packages plus temporary compatibility anchors required by the installed SDLC kit.
 
-**Decomposition strategy.** Each feature is a cohesive component/subsystem slice with loose coupling to its neighbours, sized so its dependencies form an acyclic graph with the foundations at the roots. Surviving Pillar-1 features (extraction + boundary-hardening of shipping runtime/type-system/API code) are kept distinct in nature from the greenfield Pillar-2/3 features; the two are never mixed in one feature.
+The root owns two behaviors:
 
-**Three pillars.**
-- **Pillar 1 — Core Framework** (`@gears-frontx/mfes`, `@gears-frontx/gts-plugin`, `@gears-frontx/api`): F2 type-substrate port, F4 registry & handler resolution, F3 GTS default type-system provider, F5 discovery & lazy-import loading, F6 host–MFE communication, F7 extension-domain governance, F8 runtime isolation, F9 API protocol surface.
-- **Pillar 2 — CLI** (`@gears-frontx/cli`): F10 template externalization & source-spec resolution, F11 template manifest contract, F12 kindless template assembly & conflict-checked composition, F13 preset resolution & per-applied-template provenance, F14 upgrade change-set engine, F18 CLI executable invocation surface.
-- **Pillar 3 - AI Tooling** (`cyber-pilot-kit-frontx`): F15 kit packaging & base content, F16 template AI-extension contract & discovery/activation, F17 AI-driven upgrade orchestration, F19 AI-driven project scaffolding from intent.
-- **Cross-cutting:** F1 ecosystem distribution & versioning policy governs all published artifacts.
+- Ecosystem distribution and versioning policy.
+- Ecosystem layer-partition governance.
 
-**Coverage and exclusivity.** Every DESIGN component (14), principle (7), constraint (19), and sequence (4), and every PRD functional (26) and non-functional (4) requirement, is assigned to at least one feature; `cfs validate` enforces the traceability links, and the DECOMPOSITION checklist's COV rule requires 100% coverage of the strict DESIGN elements. Each strict **component, constraint, and sequence** is owned by exactly one feature, with one explicit exception: the three package-anchor components `cpt-frontx-component-mfe-runtime`, `cpt-frontx-component-cli`, and `cpt-frontx-component-ai-tooling-kit` are each realized by several cohesive features and are therefore shared across those features, while each of their internal sub-components (for example `cpt-frontx-component-cli-template-resolver`, `cpt-frontx-component-cli-prepublish-validator`, `cpt-frontx-component-ai-base-kit`, `cpt-frontx-component-ai-extension-host`, `cpt-frontx-component-ai-upgrade-orchestration`) is owned by exactly one feature. The shared-component reason is the cohesion/coupling rule: these components decompose into multiple high-cohesion, loosely-coupled features that each own a distinct slice of the component, so listing the component reference in every owning feature preserves coverage without forcing an artificial single-feature monolith. **Design principles are not subject to single-feature exclusivity** - like PRD `fr`/`nfr` requirements they are cross-cutting and may appear in more than one feature's coverage (for example `cpt-frontx-principle-agnostic-core` across F2/F4/F6, `cpt-frontx-principle-opaque-type-substrate` across F2/F3, `cpt-frontx-principle-default-deny-admission` across F7/F8, and `cpt-frontx-principle-template-agnostic-tooling` across F10/F15/F19), because a principle constrains several features by nature. PRD `fr`/`nfr` requirements are likewise covered transitively and may appear in more than one feature's Requirements Covered.
+The installed SDLC kit currently defines feature-entry identifiers only in DECOMPOSITION and routes DESIGN coverage through DECOMPOSITION. Compatibility anchors below are therefore limited to feature IDs, member owner pointers and compact ID-only coverage references for member-owned components, constraints and principles; the previous central member-detail index remains removed.
 
 ## 2. Entries
 
@@ -47,926 +47,251 @@ This decomposition breaks the FROZEN FrontX DESIGN into 19 work-package features
 
 - [ ] `p1` - **ID**: `cpt-frontx-status-overall`
 
-### 2.1 [Opaque Type-Substrate Port](features/type-substrate-port/) - HIGH
+### 2.1 [Opaque Type-Substrate Port](../packages/mfes/architecture/features/type-substrate-port/) - HIGH
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-type-substrate-port`
 
-- **Purpose**: Define the MFE Runtime's opaque type-substrate port through which the runtime reasons about types solely by identity and delegates every schema/validation/hierarchy operation to an injected provider — keeping the runtime independent of any concrete type-definition specification.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/type-substrate-port/FEATURE.md).
 
-- **Depends On**: None
+**Installed-kit coverage references**:
+- `cpt-frontx-mfes-principle-opaque-substrate-vocabulary`
 
-- **Scope**:
-  - Opaque Schema identity surface on the runtime.
-  - The injected type-substrate port contract (validate, type-of/hierarchy resolution) the runtime calls.
-  - Extraction of the port out of `packages/screensets` into `@gears-frontx/mfes`.
-  - Hardening MFES-1/4/5 boundaries.
-
-- **Out of scope**:
-  - The concrete GTS provider implementation (F3).
-  - Handler resolution (F4).
-  - Registry mechanics (F4).
-
-- **Requirements Covered**:
-
-  - [ ] `p1` - `cpt-frontx-fr-application-type-definitions`
-  - [x] `p1` - `cpt-frontx-fr-mfe-type-validation`
-
-- **Design Principles Covered**:
-
-  - [ ] `p1` - `cpt-frontx-principle-opaque-type-substrate`
-  - [ ] `p1` - `cpt-frontx-principle-agnostic-core`
-
-- **Design Constraints Covered**:
-
-  - [ ] `p1` - `cpt-frontx-constraint-mfes-no-type-format-literals`
-  - [ ] `p1` - `cpt-frontx-constraint-mfes-no-type-format-dependency`
-  - [ ] `p1` - `cpt-frontx-constraint-mfes-opaque-schema-surface`
-
-- **Domain Model Entities**:
-  - Schema
-
-- **Design Components**:
-
-  - [ ] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
-
-- **API**:
-  - MFE Runtime type-substrate port (TS)
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
-
-### 2.2 [MFE Registry & Handler Resolution](features/mfe-registry/) - HIGH
+### 2.2 [MFE Registry & Handler Resolution](../packages/mfes/architecture/features/mfe-registry/) - HIGH
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-mfe-registry`
 
-- **Purpose**: Provide the abstract `MfeRegistry` façade (built via `mfeRegistryFactory` with the type-system provider injected) that owns microfrontend registration and on-demand load orchestration, resolving each unit's handler by its declared base type rather than by handler self-selection.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/mfe-registry/FEATURE.md).
 
-- **Depends On**: `cpt-frontx-feature-type-substrate-port`
+### 2.3 [GTS Default Type-System Provider](../packages/gts-plugin/architecture/features/gts-type-provider/) - HIGH
 
-- **Scope**:
-  - Registry façade + factory injection.
-  - Registration entry.
-  - Handler abstraction + resolution by declared base type (via `typeSystem.isTypeOf`).
-  - On-demand load orchestration entry.
-  - Ownership of the register→validate→mount sequence.
+- [x] `p1` - **ID**: `cpt-frontx-feature-gts-type-provider`
 
-- **Out of scope**:
-  - Manifest discovery + lazy-import ABI (F5).
-  - Mediation/bridge (F6).
-  - Domain admission/mount strategies (F7).
-  - Isolation (F8).
-  - The concrete type system (F3).
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/gts-plugin/architecture/features/gts-type-provider/FEATURE.md).
 
-- **Requirements Covered**:
+**Installed-kit coverage references**:
+- `cpt-frontx-gts-plugin-principle-format-confinement`
 
-  - [x] `p1` - `cpt-frontx-fr-mfe-runtime-registration`
-  - [ ] `p1` - `cpt-frontx-fr-ui-framework-agnostic`
+### 2.4 [MFE Discovery & Lazy-Import Loading](../packages/mfes/architecture/features/mfe-loading/) - HIGH
 
-- **Design Principles Covered**:
+- [ ] `p1` - **ID**: `cpt-frontx-feature-mfe-loading`
 
-  - [ ] `p1` - `cpt-frontx-principle-agnostic-core`
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/mfe-loading/FEATURE.md).
 
-- **Domain Model Entities**:
-  - MfeEntry
-  - Extension
-
-- **Design Components**:
-
-  - [ ] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
-
-- **API**:
-  - `cpt-frontx-interface-mfe-runtime` (registry facade)
-
-- **Sequences**:
-
-  - [ ] `p1` - `cpt-frontx-seq-mfe-register-validate-mount` (OWNER — orchestrating entry)
-
-- **Data**:
-
-  - N/A
-
-### 2.3 [GTS Default Type-System Provider](features/gts-type-provider/) - HIGH
-
-- [ ] `p1` - **ID**: `cpt-frontx-feature-gts-type-provider`
-
-- **Purpose**: Supply the ecosystem's default, injectable type-system provider (`@gears-frontx/gts-plugin`) implementing the runtime's opaque type-substrate port over a concrete type-definition specification, owning the infrastructure schemas + default lifecycle instances and providing schema validation and type-of resolution.
-
-- **Depends On**: `cpt-frontx-feature-type-substrate-port`
-
-- **Scope**:
-  - The `@gears-frontx/gts-plugin` provider implementing `TypeSystemPlugin`.
-  - Registration of infrastructure schemas + default lifecycle instances at construction.
-  - Schema validation + type-of/hierarchy resolution.
-  - Extraction out of `packages/screensets`.
-
-- **Out of scope**:
-  - The opaque port contract itself (F2).
-  - Runtime registry (F4).
-  - Solution-specific schemas (registered by their owners at runtime).
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-mfe-type-validation`
-  - [ ] `p1` - `cpt-frontx-fr-application-type-definitions`
-
-- **Design Principles Covered**:
-
-  - [ ] `p1` - `cpt-frontx-principle-opaque-type-substrate`
-
-- **Design Constraints Covered**:
-
-  - [ ] `p1` - `cpt-frontx-constraint-gts-plugin-owns-infra-schemas`
-  - [ ] `p1` - `cpt-frontx-constraint-gts-plugin-excludes-solution-schemas`
-
-- **Domain Model Entities**:
-  - Schema
-  - LifecycleStage
-
-- **Design Components**:
-
-  - [ ] `p1` - `cpt-frontx-component-type-system-plugin`
-
-- **API**:
-  - `cpt-frontx-interface-type-system`
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
-
-### 2.4 [MFE Discovery & Lazy-Import Loading](features/mfe-loading/) - HIGH
-
-- [x] `p1` - **ID**: `cpt-frontx-feature-mfe-loading`
-
-- **Purpose**: Drive microfrontend discovery from an enriched published manifest (asset base, per-entry backing files, stylesheets, ordered shared deps) and resolve lazy dynamic imports through a runtime ABI that inherits the parent load's shared-dependency bindings — keeping the runtime ABI distinct from the template-bound build and deferring build cost.
-
-- **Depends On**: `cpt-frontx-feature-mfe-registry`
-
-- **Scope**:
-  - Manifest-driven discovery (read declared fields, not parsed remote-entry).
-  - Lazy-import ABI separation (build-time rewrite to ABI call, per-load runtime resolver mapping to parent graph).
-  - On-demand load execution.
-
-- **Out of scope**:
-  - Registry façade/handler resolution (F4).
-  - Runtime isolation/trust kernel (F8).
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-mfe-runtime-registration`
-  - [x] `p1` - `cpt-frontx-nfr-runtime-performance`
-
-- **Domain Model Entities**:
-  - MfeEntry
-
-- **Design Components**:
-
-  - [ ] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
-
-- **API**:
-  - N/A
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
-
-### 2.5 [Host–MFE Communication: Actions-Chains Mediator & Parent–Child Bridge](features/mfe-host-communication/) - HIGH
+### 2.5 [Host–MFE Communication: Actions-Chains Mediator & Parent–Child Bridge](../packages/mfes/architecture/features/mfe-host-communication/) - HIGH
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-mfe-host-communication`
 
-- **Purpose**: Route host–microfrontend communication through an actions-chains mediator keyed by target and action type with recursive chain execution (success/fallback branching, in-flight tracking for safe teardown) over a narrow parent–child capability bridge that delegates to the registry.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/mfe-host-communication/FEATURE.md).
 
-- **Depends On**: `cpt-frontx-feature-mfe-registry`
-
-- **Scope**:
-  - Actions-chains mediator (keyed dispatch, per-target catch-all tier, recursive chain success/fallback, in-flight tracking).
-  - Narrow capability bridge (executeActionsChain, subscribeToProperty, getProperty, registerActionHandler) delegating to the registry.
-  - Matching narrow parent handle.
-
-- **Out of scope**:
-  - Domain admission/contract matching (F7).
-  - Type validation (F2/F3).
-
-- **Requirements Covered**:
-
-  - [ ] `p1` - `cpt-frontx-fr-mfe-host-communication`
-
-- **Design Principles Covered**:
-
-  - [ ] `p1` - `cpt-frontx-principle-agnostic-core`
-
-- **Design Constraints Covered**:
-
-  - [ ] `p1` - `cpt-frontx-constraint-mfes-no-solution-shared-properties`
-
-- **Domain Model Entities**:
-  - Action
-  - ActionsChain
-
-- **Design Components**:
-
-  - [ ] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
-
-- **API**:
-  - N/A
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
-
-### 2.6 [Extension-Domain Governance: Mount Strategies, Cardinality & Contract Matching](features/extension-domain-governance/) - HIGH
+### 2.6 [Extension-Domain Governance: Mount Strategies, Cardinality & Contract Matching](../packages/mfes/architecture/features/extension-domain-governance/) - HIGH
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-extension-domain-governance`
 
-- **Purpose**: Govern extension-domain occupancy through composable named mount strategies (concurrent/optional/exclusive) and a cardinality matrix, admitting extensions only by subset-rule contract matching with the scoped infrastructure-lifecycle-action exemption — realizing default-deny admission.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/extension-domain-governance/FEATURE.md).
 
-- **Depends On**: `cpt-frontx-feature-mfe-registry`, `cpt-frontx-feature-gts-type-provider`
+**Installed-kit coverage references**:
+- `cpt-frontx-principle-default-deny-admission`
+- `cpt-frontx-constraint-mfes-no-layout-domain-values`
 
-- **Scope**:
-  - Mount-strategy selection + cardinality matrix.
-  - Action–behavior consistency validation at admission.
-  - Subset-rule contract matching (three containment rules).
-  - Domain occupancy admit/reject.
+### 2.7 [MFE Runtime Isolation](../packages/mfes/architecture/features/mfe-isolation/) - HIGH
 
-- **Out of scope**:
-  - Registry/handler resolution (F4).
-  - Isolation (F8).
-  - Mediation (F6).
+- [ ] `p1` - **ID**: `cpt-frontx-feature-mfe-isolation`
 
-- **Requirements Covered**:
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/mfe-isolation/FEATURE.md).
 
-  - [x] `p1` - `cpt-frontx-fr-mfe-multi-occupant-domain`
-  - [x] `p1` - `cpt-frontx-fr-mfe-type-validation`
-  - [x] `p1` - `cpt-frontx-nfr-security`
-
-- **Design Principles Covered**:
-
-  - [x] `p1` - `cpt-frontx-principle-default-deny-admission`
-
-- **Design Constraints Covered**:
-
-  - [x] `p1` - `cpt-frontx-constraint-mfes-no-layout-domain-values`
-
-- **Domain Model Entities**:
-  - Extension
-  - ExtensionDomain
-
-- **Design Components**:
-
-  - [ ] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
-
-- **API**:
-  - N/A
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
-
-### 2.7 [MFE Runtime Isolation](features/mfe-isolation/) - HIGH
-
-- [x] `p1` - **ID**: `cpt-frontx-feature-mfe-isolation`
-
-- **Purpose**: Isolate each loaded microfrontend in its own module graph behind an audited trust kernel — concentrating dynamic-code primitives in one annotated trust-kernel file with a no-mutable-state contract and runtime guards, retaining backing references for the page lifetime to support top-level await.
-
-- **Depends On**: `cpt-frontx-feature-mfe-registry`, `cpt-frontx-feature-mfe-loading`
-
-- **Scope**:
-  - Per-unit module-graph isolation.
-  - The audited trust kernel (dynamic import + specifier-matcher construction) with safety annotations + guards.
-  - Backing-reference retention.
-
-- **Out of scope**:
-  - Load orchestration (F5).
-  - Registry (F4).
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-mfe-runtime-registration`
-  - [x] `p1` - `cpt-frontx-nfr-security`
-
-- **Design Principles Covered**:
-
-  - [x] `p1` - `cpt-frontx-principle-default-deny-admission`
-
-- **Domain Model Entities**:
-  - MfeEntry
-
-- **Design Components**:
-
-  - [x] `p1` - `cpt-frontx-component-mfe-runtime` (shared)
-
-- **API**:
-  - N/A
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
-
-### 2.8 [API Protocol Surface](features/api-protocol-surface/) - MEDIUM
+### 2.8 [API Protocol Surface](../packages/api/architecture/features/api-protocol-surface/) - MEDIUM
 
 - [x] `p2` - **ID**: `cpt-frontx-feature-api-protocol-surface`
 
-- **Purpose**: Provide a protocol-separated, solution-agnostic API surface (`@gears-frontx/api`): request/response and streaming behind a common abstract `ApiProtocol` with descriptor-based endpoints + auto-derived cache keys, a generic plugin short-circuit, and a realm-scoped retainer-counted shared fetch cache that lets independently bundled units reuse in-flight and cached results.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/api/architecture/features/api-protocol-surface/FEATURE.md).
 
-- **Depends On**: None
+**Installed-kit coverage references**:
+- `cpt-frontx-component-api-surface`
+- `cpt-frontx-constraint-api-no-solution-content`
+- `cpt-frontx-api-principle-solution-behavior-via-plugins`
 
-- **Scope**:
-  - `ApiProtocol` request/response + streaming protocols.
-  - Protocol-specific plugin hooks + uniform plugin contract.
-  - Short-circuit return contract.
-  - Realm-shared retainer-counted fetch cache (well-known global symbol, dedupe by key).
-
-- **Out of scope**:
-  - Any solution-specific plugin/endpoint/auth wiring (consumer-supplied).
-  - Intra-ecosystem package coupling.
-
-- **Requirements Covered**:
-
-  - [x] `p2` - `cpt-frontx-nfr-runtime-performance`
-
-- **Design Constraints Covered**:
-
-  - [x] `p2` - `cpt-frontx-constraint-api-no-solution-content`
-
-- **Domain Model Entities**:
-  - ApiService
-
-- **Design Components**:
-
-  - [x] `p2` - `cpt-frontx-component-api-surface`
-
-- **API**:
-  - TS library surface (no PRD interface ID by DESIGN §3.3)
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
-
-### 2.9 [Ecosystem Distribution & Versioning Policy](features/ecosystem-distribution/) - MEDIUM
+### 2.9 [Ecosystem Distribution & Versioning Policy](./features/ecosystem-distribution/) - MEDIUM
 
 - [x] `p2` - **ID**: `cpt-frontx-feature-ecosystem-distribution`
 
-- **Purpose**: Establish the per-concern independent versioning policy — each artifact published and versioned on its own semver line and cadence, a breaking change bounded to that one artifact's major version, cross-artifact compatibility on the single coupled edge (`mfes → gts-plugin`) expressed as a satisfiable semver range rather than a matched version, isolating breaking changes behind semver plus a registry-side deprecation cycle, and imposing no architectural ceiling on integrated units.
+**Purpose**: Define and enforce the ecosystem-wide publication and compatibility policy for independently versioned published members.
 
-- **Depends On**: None
+**Depends On**: None
 
-- **Scope**:
-  - Per-concern independent semver publication (each artifact on its own line/cadence; a breaking change bounded to that artifact's own major version).
-  - Compatibility check on the `mfes → gts-plugin` coupled edge (declared semver range satisfiable and not exact-pinned — no duplicate-runtime skew), not a matched-version assertion.
-  - Consumer independent upgrade (adopt one artifact without upgrading others).
-  - Registry-side deprecation cycle before removal (published notice + minimum window; no in-package lifecycle state).
-  - npm + GitHub-source distribution channels.
-  - The no-architectural-ceiling guarantee (growth governed by performance thresholds, not structure).
+**Scope**:
+- Independent version lines for published members.
+- Compatibility expectations for consuming projects.
+- Package-registry distribution rules.
+- Deprecation discipline before removals.
 
-- **Out of scope**:
-  - Per-component internal behavior (other features).
-  - CI implementation code.
+**Out of scope**:
+- Member public APIs and member internals.
+- Template resolution, scaffolding or upgrade behavior.
+- Member artifact-chain accounting.
 
-- **Requirements Covered**:
+**Requirements Covered**:
+- [x] `p1` - `cpt-frontx-fr-versioned-platform-evolution`
+- [x] `p2` - `cpt-frontx-fr-no-architectural-ceiling`
+- [x] `p1` - `cpt-frontx-nfr-evolvability`
+- [x] `p1` - `cpt-frontx-nfr-scalability-ceiling`
 
-  - [x] `p2` - `cpt-frontx-fr-versioned-platform-evolution`
-  - [x] `p2` - `cpt-frontx-fr-no-architectural-ceiling`
-  - [x] `p2` - `cpt-frontx-nfr-evolvability`
-  - [x] `p2` - `cpt-frontx-nfr-scalability-ceiling`
+**Design Principles Covered**:
+- [x] `p2` - `cpt-frontx-principle-per-concern-versioning`
 
-- **Design Principles Covered**:
+**Design Components**:
+- [x] `p2` - `cpt-frontx-component-ecosystem-version-policy`
 
-  - [x] `p2` - `cpt-frontx-principle-per-concern-versioning`
+**API / Contracts**:
+- `cpt-frontx-contract-package-registry-distribution`
+- `cpt-frontx-interface-package-registry-distribution`
 
-- **Domain Model Entities**:
-  - N/A
+### 2.10 [Template Externalization & Source-Spec Resolution](../packages/cli/architecture/features/template-resolution/) - HIGH
 
-- **API**:
-  - `cpt-frontx-contract-package-registry-distribution`
+- [ ] `p1` - **ID**: `cpt-frontx-feature-template-resolution`
 
-- **Sequences**:
-  - N/A
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cli/architecture/features/template-resolution/FEATURE.md).
 
-- **Data**:
+**Installed-kit coverage references**:
+- `cpt-frontx-component-cli-template-resolver`
+- `cpt-frontx-constraint-cli-template-independence`
+- `cpt-frontx-constraint-cli-shared-resolver`
+- `cpt-frontx-principle-template-agnostic-tooling`
 
-  - N/A
-
-### 2.10 [Template Externalization & Source-Spec Resolution](features/template-resolution/) - HIGH
-
-- [x] `p1` - **ID**: `cpt-frontx-feature-template-resolution`
-
-- **Purpose**: Make the CLI (`@gears-frontx/cli`) bundle no template and resolve each template from an external source by versioned source-spec (`host:owner/repo@ref`) at runtime into a tracked local inventory — install, local list, and local update bounded to that inventory, never disturbing scaffolded projects.
-
-- **Depends On**: None
-
-- **Scope**:
-  - Template install by versioned source-spec.
-  - Source-spec syntax (host-prefixed `host:owner/repo@ref`).
-  - Local inventory listing.
-  - Local update bounded to inventory.
-  - CLI-template-independence (CLI-1).
-
-- **Out of scope**:
-  - Manifest pre-publish validation (F11).
-  - Scaffolding/namespaces (F12).
-  - Composition (F13).
-  - Upgrade (F14).
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-cli-template-install`
-  - [x] `p1` - `cpt-frontx-fr-cli-template-list`
-  - [x] `p1` - `cpt-frontx-fr-cli-template-update-local`
-
-- **Design Principles Covered**:
-
-  - [x] `p1` - `cpt-frontx-principle-template-agnostic-tooling`
-
-- **Design Constraints Covered**:
-
-  - [x] `p1` - `cpt-frontx-constraint-cli-template-independence`
-  - [x] `p1` - `cpt-frontx-constraint-cli-shared-resolver`
-
-- **Domain Model Entities**:
-  - Template
-
-- **Design Components**:
-
-  - [x] `p1` - `cpt-frontx-component-cli` (shared)
-  - [x] `p1` - `cpt-frontx-component-cli-template-resolver`
-
-- **API**:
-  - CLI install/list/update commands
-  - `cpt-frontx-contract-source-spec`
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
-
-### 2.11 [Template Manifest Contract & Pre-Publish Validation](features/template-manifest/) - HIGH
+### 2.11 [Template Manifest Contract & Pre-Publish Validation](../packages/cli/architecture/features/template-manifest/) - HIGH
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-template-manifest`
 
-- **Purpose**: Define the single published template manifest as the conformance contract — every template declares itself in a versioned shape across exactly five categories (identity, version, ownership boundaries, referenced templates, description), checked at pre-publish validation and read at install, apply, assembly, and selection, giving one authoritative description.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cli/architecture/features/template-manifest/FEATURE.md).
 
-- **Depends On**: `cpt-frontx-feature-template-resolution`
+**Installed-kit coverage references**:
+- `cpt-frontx-component-cli-prepublish-validator`
 
-- **Scope**:
-  - Template manifest shape/contract.
-  - Pre-publish structure validation against the contract, including content self-containment of the manifest's declared exclusive subtrees and shared-file paths (no detected reference in registered, structurally parsed carriers resolving outside the template root).
-  - Manifest consumed at install + scaffold.
-
-- **Out of scope**:
-  - Source-spec resolution (F10).
-  - Composition recursion (F13).
-  - Scaffolding mechanics (F12).
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-cli-template-validate-prepublish`
-
-- **Domain Model Entities**:
-  - TemplateManifest
-
-- **Design Components**:
-
-  - [x] `p1` - `cpt-frontx-component-cli` (shared)
-  - [x] `p1` - `cpt-frontx-component-cli-prepublish-validator`
-
-- **API**:
-  - CLI validate (pre-publish) command
-  - `cpt-frontx-contract-template-manifest`
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
-
-### 2.12 [Kindless Template Assembly & Conflict-Checked Composition](features/cli-scaffolding/) - HIGH
+### 2.12 [Kindless Template Assembly & Conflict-Checked Composition](../packages/cli/architecture/features/cli-scaffolding/) - HIGH
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-cli-scaffolding`
 
-- **Purpose**: Apply any installed template through one uniform path — seeding a new repository or adding a template into an existing one is the same mechanism — reading each template's declared ownership boundaries from its manifest, running a pre-flight intersection check that refuses conflicting assembly before any write, and assembling a repository from one or more independently-applied templates including a preset's referenced templates.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cli/architecture/features/cli-scaffolding/FEATURE.md).
 
-- **Depends On**: `cpt-frontx-feature-template-resolution`
-
-- **Scope**:
-  - One uniform apply path (seed a repository / add a template into an existing repository).
-  - Ownership-boundary declaration read from the manifest (CLI-5).
-  - Pre-flight assembly conflict check before any write, never silently merging (CLI-6).
-  - Multi-template and preset (referenced-template) assembly in one operation.
-
-- **Out of scope**:
-  - Per-applied-template provenance write + recursion detail (F13).
-  - Upgrade (F14).
-  - Manifest validation (F11).
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-cli-seed-repository`
-  - [x] `p1` - `cpt-frontx-fr-cli-add-template-to-repository`
-  - [x] `p1` - `cpt-frontx-fr-cli-template-boundary-declaration`
-  - [x] `p1` - `cpt-frontx-fr-cli-assembly-conflict-prevention`
-  - [x] `p1` - `cpt-frontx-fr-cli-composed-template-resolution`
-
-- **Design Principles Covered**:
-
-  - [ ] `p1` - `cpt-frontx-principle-ownership-bounded-composition`
-
-- **Design Constraints Covered**:
-
-  - [ ] `p1` - `cpt-frontx-constraint-cli-boundary-declaration`
-  - [ ] `p1` - `cpt-frontx-constraint-cli-assembly-conflict-prevention`
-
-- **Domain Model Entities**:
-  - Template
-  - OwnershipBoundary
-  - Assembly
-
-- **Design Components**:
-
-  - [ ] `p1` - `cpt-frontx-component-cli` (shared)
-  - [ ] `p1` - `cpt-frontx-component-cli-assembler`
-  - [ ] `p1` - `cpt-frontx-component-cli-conflict-checker`
-
-- **API**:
-  - `cpt-frontx-interface-cli` (command surface)
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
-
-### 2.13 [Preset Resolution & Per-Applied-Template Provenance](features/composed-provenance/) - HIGH
+### 2.13 [Preset Resolution & Per-Applied-Template Provenance](../packages/cli/architecture/features/composed-provenance/) - HIGH
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-composed-provenance`
 
-- **Purpose**: Resolve a preset's referenced templates recursively in one operation under a defined collision rule (nearest-declaration-wins, collision reported before any write), apply the resolved set, and write the repository's provenance as one record per applied template — each capturing that template's identity, applied-from version, re-resolvable source-spec, and occupied ownership boundary — with no single whole-repository origin.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cli/architecture/features/composed-provenance/FEATURE.md).
 
-- **Depends On**: `cpt-frontx-feature-cli-scaffolding`, `cpt-frontx-feature-template-resolution`
-
-- **Scope**:
-  - Preset (referenced-template) recursive resolution through the shared resolver.
-  - Nearest-declaration-wins collision rule + pre-write collision report.
-  - One provenance record per applied template, written at apply time (CLI-7).
-
-- **Out of scope**:
-  - Uniform apply path + conflict check (F12).
-  - Install/source-spec (F10).
-  - Upgrade change-set (F14).
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-cli-composed-template-resolution`
-
-- **Design Constraints Covered**:
-
-  - [ ] `p1` - `cpt-frontx-constraint-cli-per-template-provenance`
-
-- **Domain Model Entities**:
-  - Template
-  - ProjectProvenance
-  - OwnershipBoundary
-
-- **Design Components**:
-
-  - [x] `p1` - `cpt-frontx-component-cli` (shared)
-  - [ ] `p1` - `cpt-frontx-component-cli-provenance-recorder`
-
-- **API**:
-  - `cpt-frontx-contract-project-provenance`
-
-- **Sequences**:
-
-  - [x] `p1` - `cpt-frontx-seq-composed-project-scaffold` (OWNER)
-
-- **Data**:
-
-  - N/A
-
-### 2.14 [Upgrade Change-Set Engine](features/upgrade-changeset/) - HIGH
+### 2.14 [Upgrade Change-Set Engine](../packages/cli/architecture/features/upgrade-changeset/) - HIGH
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-upgrade-changeset`
 
-- **Purpose**: Provide the single CLI-owned change-set engine that upgrades each applied template independently — computing a version diff against that template's own provenance record, presenting it for review and approval, applying it non-destructively, and supporting rollback — the one reviewable, reversible engine both direct CLI and AI orchestration drive.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cli/architecture/features/upgrade-changeset/FEATURE.md).
 
-- **Depends On**: `cpt-frontx-feature-composed-provenance`
+**Installed-kit coverage references**:
+- `cpt-frontx-cli-principle-reviewed-reversible-mutation`
 
-- **Scope**:
-  - Version-diff computation against the selected applied template's provenance record.
-  - Reviewable change-set presentation + explicit approval gate.
-  - Non-destructive apply.
-  - Rollback/reversibility.
-  - Per-applied-template provenance update on apply.
-
-- **Out of scope**:
-  - AI orchestration/enrichment of the engine (F17).
-  - Uniform apply path + conflict check (F12).
-  - Preset resolution + provenance write (F13).
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-cli-project-upgrade-changeset`
-  - [x] `p1` - `cpt-frontx-fr-cli-upgrade-review-approval`
-
-- **Design Principles Covered**:
-
-  - [ ] `p1` - `cpt-frontx-principle-reviewable-lifecycle`
-
-- **Design Constraints Covered**:
-
-  - [ ] `p1` - `cpt-frontx-constraint-cli-authoritative-change-set`
-  - [ ] `p1` - `cpt-frontx-constraint-cli-non-destructive-upgrade`
-
-- **Domain Model Entities**:
-  - ProjectProvenance
-
-- **Design Components**:
-
-  - [x] `p1` - `cpt-frontx-component-cli` (shared)
-  - [ ] `p1` - `cpt-frontx-component-cli-change-set-engine`
-
-- **API**:
-  - CLI upgrade command
-  - `cpt-frontx-contract-project-provenance` (reads baseline)
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
-
-### 2.15 [AI Tooling Kit Packaging & Base Content](features/ai-kit-packaging/) - HIGH
+### 2.15 [AI Tooling Kit Packaging & Base Content](../packages/cyber-pilot-kit-frontx/architecture/features/ai-kit-packaging/) - HIGH
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-ai-kit-packaging`
 
-- **Purpose**: Ship the AI Tooling Framework as a Constructor Studio kit (`cyber-pilot-kit-frontx`) with a declarative manifest, every resource identifier `frontx_`-prefixed, carrying solution-agnostic base ecosystem capabilities (skills, workflows, guidelines, reference artifacts) available to agents at session start — and no solution-specific content.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cyber-pilot-kit-frontx/architecture/features/ai-kit-packaging/FEATURE.md).
 
-- **Depends On**: None
+**Installed-kit coverage references**:
+- `cpt-frontx-component-ai-tooling-kit`
+- `cpt-frontx-component-ai-base-kit`
+- `cpt-frontx-constraint-kit-prefixed-resource-ids`
+- `cpt-frontx-constraint-kit-zero-solution-content`
+- `cpt-frontx-cyber-pilot-kit-frontx-principle-surface-only-integration`
 
-- **Scope**:
-  - Kit packaging + declarative manifest.
-  - `frontx_`-prefixed resource identifiers (KIT-1).
-  - Base ecosystem AI capabilities at session start.
-  - Solution-agnostic base / no solution content split.
-  - Install through the AI Tooling CLI.
-  - Declared skill/rule resource surface for public entry points, with applicability metadata (KIT-4).
-
-- **Out of scope**:
-  - Template-extension contract + discovery/activation (F16).
-  - AI upgrade orchestration (F17).
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-ai-session-start-knowledge`
-  - [x] `p1` - `cpt-frontx-fr-ai-frontx-skills`
-  - [x] `p1` - `cpt-frontx-fr-ai-tooling-template-agnostic`
-  - [x] `p1` - `cpt-frontx-fr-ai-agent-skill-resources`
-
-- **Design Principles Covered**:
-
-  - [x] `p1` - `cpt-frontx-principle-template-agnostic-tooling`
-
-- **Design Constraints Covered**:
-
-  - [x] `p1` - `cpt-frontx-constraint-kit-prefixed-resource-ids`
-  - [x] `p1` - `cpt-frontx-constraint-kit-zero-solution-content`
-  - [x] `p2` - `cpt-frontx-constraint-kit-declared-skill-rule-resources`
-
-- **Domain Model Entities**:
-  - Kit
-
-- **Design Components**:
-
-  - [x] `p1` - `cpt-frontx-component-ai-tooling-kit` (shared)
-  - [x] `p1` - `cpt-frontx-component-ai-base-kit`
-
-- **API**:
-  - `cpt-frontx-interface-ai-tooling-framework`
-  - `cpt-frontx-contract-kit-installation`
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
-
-### 2.16 [Template AI-Extension Contract & Discovery/Activation](features/template-ai-extensions/) - HIGH
+### 2.16 [Template AI-Extension Contract & Discovery/Activation](../packages/cyber-pilot-kit-frontx/architecture/features/template-ai-extensions/) - HIGH
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-template-ai-extensions`
 
-- **Purpose**: Define the closed-set extension-bundle contract a template's AI bundle conforms to (skills, workflows, guidelines, reference artifacts as named typed slots) and the generalized scan that discovers conforming installed-template extensions and activates them into the agent-visible capability set under explicit precedence — with no manual wiring; malformed extensions reported and not activated.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cyber-pilot-kit-frontx/architecture/features/template-ai-extensions/FEATURE.md).
 
-- **Depends On**: `cpt-frontx-feature-ai-kit-packaging`, `cpt-frontx-feature-template-resolution`
+**Installed-kit coverage references**:
+- `cpt-frontx-component-ai-extension-host`
+- `cpt-frontx-constraint-kit-declared-skill-rule-resources`
 
-- **Scope**:
-  - Template AI-extension contract (closed category set, named typed slots, structure independent of content).
-  - Discovery scan parameterized by the contract.
-  - Activation/composition under precedence.
-  - Structural-error reporting for malformed bundles.
-
-- **Out of scope**:
-  - Base kit packaging (F15).
-  - Upgrade orchestration (F17).
-  - CLI install mechanics (F10).
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-ai-template-bundle-extensions`
-  - [x] `p1` - `cpt-frontx-fr-ai-extension-discovery-activation`
-
-- **Domain Model Entities**:
-  - AiExtension
-
-- **Design Components**:
-
-  - [x] `p1` - `cpt-frontx-component-ai-tooling-kit` (shared)
-  - [x] `p1` - `cpt-frontx-component-ai-extension-host`
-
-- **API**:
-  - N/A
-
-- **Sequences**:
-
-  - [ ] `p1` - `cpt-frontx-seq-template-ai-extension-discovery-activation` (OWNER)
-
-- **Data**:
-
-  - N/A
-
-### 2.17 [AI-Driven Upgrade Orchestration](features/ai-upgrade-orchestration/) - HIGH
+### 2.17 [AI-Driven Upgrade Orchestration](../packages/cyber-pilot-kit-frontx/architecture/features/ai-upgrade-orchestration/) - HIGH
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-ai-upgrade-orchestration`
 
-- **Purpose**: Orchestrate AI-driven template upgrades over the single CLI change-set engine — reading project provenance, invoking and enriching the engine with change-impact analysis, review gates, and downstream-effect assessment, while applying the identical change set the direct CLI path would.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cyber-pilot-kit-frontx/architecture/features/ai-upgrade-orchestration/FEATURE.md).
 
-- **Depends On**: `cpt-frontx-feature-upgrade-changeset`, `cpt-frontx-feature-ai-kit-packaging`
+**Installed-kit coverage references**:
+- `cpt-frontx-component-ai-upgrade-orchestration`
+- `cpt-frontx-constraint-kit-orchestrates-not-reimplements`
 
-- **Scope**:
-  - AI workflow surface for template upgrades.
-  - Orchestration that invokes + enriches the CLI change-set engine (analysis, review gates, downstream-impact).
-  - No second engine.
-
-- **Out of scope**:
-  - The change-set engine itself (F14, CLI-owned).
-  - Base kit (F15).
-  - Extension discovery (F16).
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-ai-upgrade-orchestration`
-
-- **Design Constraints Covered**:
-
-  - [x] `p1` - `cpt-frontx-constraint-kit-orchestrates-not-reimplements`
-
-- **Domain Model Entities**:
-  - ProjectProvenance
-  - AiExtension
-
-- **Design Components**:
-
-  - [x] `p1` - `cpt-frontx-component-ai-tooling-kit` (shared)
-  - [x] `p1` - `cpt-frontx-component-ai-upgrade-orchestration`
-
-- **API**:
-  - N/A
-
-- **Sequences**:
-
-  - [ ] `p1` - `cpt-frontx-seq-ai-driven-template-upgrade` (OWNER)
-
-- **Data**:
-
-  - N/A
-
-### 2.18 [CLI Executable Invocation Surface](features/cli-invocation/) - HIGH
+### 2.18 [CLI Executable Invocation Surface](../packages/cli/architecture/features/cli-invocation/) - HIGH
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-cli-invocation`
 
-- **Purpose**: Specify the runnable `frontx` executable entrypoint — the cross-command invocation surface that parses argv, selects the named command, and dispatches `frontx <command> [args]` to the internal component that owns that lifecycle behavior — realizing at behavior altitude the command surface the package anchor `cpt-frontx-component-cli` owns and delegates from, and turning the declared `frontx` bin into a runnable command.
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cli/architecture/features/cli-invocation/FEATURE.md).
 
-- **Depends On**: `cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-template-manifest`, `cpt-frontx-feature-cli-scaffolding`, `cpt-frontx-feature-composed-provenance`, `cpt-frontx-feature-upgrade-changeset`
+### 2.19 [Ecosystem Layer-Partition Governance](./features/ecosystem-governance/) - MEDIUM
 
-- **Scope**:
-  - The single `frontx` executable entrypoint and argv parsing.
-  - Dispatch of each command to the owning behavior by canonical ID (install / list / update, pre-publish validate, seed, add, preset resolution & provenance, upgrade) through one dispatch path — no command behavior redefined here.
-  - Usage/help output for no-command, explicit help, and unrecognized command.
-  - Success / user-error / internal-error exit-code convention applied across every dispatched command.
+- [ ] `p1` - **ID**: `cpt-frontx-feature-ecosystem-governance`
 
-- **Out of scope**:
-  - Every dispatched command's behavior (owned by F10–F14).
-  - The concrete arg-parser library and exact usage strings (CODE).
-  - Template resolution/assembly/conflict-check/provenance/upgrade logic (F10–F14).
+**Purpose**: Account for layer membership and member artifact ownership so a new FrontX-owned package cannot bypass classification or artifact-chain visibility.
 
-- **Requirements Covered**:
-  - N/A — the CLI functional requirements are owned by the dispatched command features (F10–F14); this feature is the cross-command invocation surface that exposes them, covered transitively rather than owning any requirement.
+**Depends On**: None
 
-- **Domain Model Entities**:
-  - N/A
+**Scope**:
+- Workspace package classification into a layer or explicit non-layer category.
+- Member artifact-chain accounting through enforced registration or path-scoped debt.
+- CI-facing reporting for missing classification or missing accounting.
 
-- **Design Components**:
+**Out of scope**:
+- Template-manifest classification outside this repository.
+- Citation-direction enforcement beyond review-held documentation.
+- The version-policy check, owned by ecosystem distribution.
+- Member internals or member acceptance evidence.
 
-  - [ ] `p1` - `cpt-frontx-component-cli` (shared)
+**Requirements Covered**:
+- [x] `p1` - `cpt-frontx-fr-layer-member-governance`
 
-- **API**:
-  - `cpt-frontx-interface-cli` (executable command surface)
+**Design Constraints Covered**:
+- [x] `p2` - `cpt-frontx-constraint-layer-total-classification`
+- [x] `p2` - `cpt-frontx-constraint-member-artifact-chain`
+- [x] `p2` - `cpt-frontx-constraint-root-cites-no-member`
 
-- **Sequences**:
-  - N/A
+**Design Components**:
+- [x] `p2` - `cpt-frontx-component-ecosystem-governance-guard`
 
-- **Data**:
+**Sequences**:
+- [ ] `p2` - `cpt-frontx-seq-member-admission-accounting`
 
-  - N/A
+### 2.20 [Telemetry SDK Compatibility Anchor](../packages/telemetry/architecture/) - MEDIUM
 
-### 2.19 [AI-Driven Project Scaffolding from Intent](features/ai-project-scaffolding/) - HIGH
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [DESIGN.md](../packages/telemetry/architecture/DESIGN.md) and member FEATURE files.
+
+**Installed-kit coverage references**:
+- `cpt-frontx-telemetry-component-client`
+- `cpt-frontx-telemetry-component-events-manager`
+- `cpt-frontx-telemetry-component-session-manager`
+- `cpt-frontx-telemetry-component-user-info-manager`
+- `cpt-frontx-telemetry-component-plugins-manager`
+- `cpt-frontx-telemetry-component-builtin-plugins`
+- `cpt-frontx-telemetry-component-autocapture`
+- `cpt-frontx-telemetry-constraint-standalone-boundary`
+- `cpt-frontx-telemetry-constraint-browser-runtime`
+- `cpt-frontx-telemetry-constraint-external-record-schema`
+- `cpt-frontx-telemetry-constraint-reserved-plugin-names`
+- `cpt-frontx-telemetry-principle-enrichment-via-plugins`
+- `cpt-frontx-telemetry-principle-collection-delivery-separation`
+- `cpt-frontx-telemetry-principle-untrusted-extensions`
+- `cpt-frontx-telemetry-principle-sdk-owned-identity`
+- `cpt-frontx-telemetry-principle-additive-cross-version`
+
+### 2.21 [AI-Driven Project Scaffolding from Intent](../packages/cyber-pilot-kit-frontx/architecture/features/ai-project-scaffolding/) - HIGH
 
 <!-- The [x] below is the cfs coverage rollup - this entry's references resolve
-     and its DESIGN/PRD coverage holds - and NOT a claim that the feature is
-     implemented. Its FEATURE's own featstatus (`cpt-frontx-featstatus-ai-project-
+     and its coverage holds - and NOT a claim that the feature is implemented.
+     Its FEATURE's own featstatus (`cpt-frontx-featstatus-ai-project-
      scaffolding`) is unchecked and governs implementation status: both entry
      points ship as documents rather than compiled modules, so no code marker
      pairs with their CDSL instructions and none may be checked. -->
 - [x] `p1` - **ID**: `cpt-frontx-feature-ai-project-scaffolding`
 
-- **Purpose**: Close the gap between a stated project intent and the template reference the CLI's apply commands require - declaring a top-level routing entry point and a scaffolding entry point in the base AI kit that match the intent against the descriptions locally installed templates declare, plan one seed plus further distinct adds, drive the CLI assembler over the command surface to apply them, report the applied set back from provenance, and then realize each unit the intent names inside the applied ground by driving the applied templates' own activated extension skills once per unit and placing the intent's stated content into each unit created - so what the developer receives realizes the stated intent rather than describing it.
-
-- **Depends On**: `cpt-frontx-feature-ai-kit-packaging`, `cpt-frontx-feature-template-manifest`, `cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-cli-scaffolding`, `cpt-frontx-feature-composed-provenance`, `cpt-frontx-feature-template-ai-extensions`
-
-- **Scope**:
-  - Two declared agent entry points: top-level request routing, and scaffolding from a stated intent.
-  - Selection of the application set by matching intent against manifest-declared descriptions, over the locally installed inventory only.
-  - The application plan: at most one seed, then further distinct templates added, at most one application per template identity.
-  - Refusal without writing files when nothing is installed, nothing matches, candidates tie, or the target holds content no provenance accounts for.
-  - Reporting the applied set from the provenance record set.
-  - Realization of per-unit multiplicity inside an applied template's own ground: driving that template's activated extension skills (F16) once per unit the intent names, placing the intent's stated content into each unit created, and running the verification those skills declare - the sequencing and the intent-specific content are this feature's, while the structure, naming, identifiers and registration remain the applied template's own skill's to state.
-  - Reporting as residual only the intent that no applied template's ground contains and no activated extension skill covers.
-
-- **Out of scope**:
-  - The manifest's declared description field itself (F11 owns the schema).
-  - The listing command and the inventory it reads (F10).
-  - Seed, add, assembly, conflict checking (F12) and provenance writing (F13).
-  - The discovery and activation of the extension bundles this feature drives, and the per-unit procedure each activated skill states (F16 owns both); this feature invokes them and authors neither.
-  - Remote template discovery, template-content modification while applying, and any failure-correction retry loop.
-
-- **Requirements Covered**:
-
-  - [x] `p1` - `cpt-frontx-fr-ai-frontx-skills`
-  - [x] `p1` - `cpt-frontx-fr-ai-agent-skill-resources`
-
-- **Design Principles Covered**:
-
-  - [x] `p2` - `cpt-frontx-principle-template-agnostic-tooling`
-
-- **Design Constraints Covered**:
-  - N/A - the constraints this feature satisfies are owned elsewhere and cited from its DoD entries: KIT-2 `cpt-frontx-constraint-kit-zero-solution-content` and KIT-4 `cpt-frontx-constraint-kit-declared-skill-rule-resources` by F15, and KIT-3 `cpt-frontx-constraint-kit-orchestrates-not-reimplements` by F17, whose scope this feature extends to the assembler path without taking ownership of it.
-
-- **Domain Model Entities**:
-  - Template
-  - Assembly
-  - OwnershipBoundary
-  - ProjectProvenance
-  - AiExtension
-  - Kit
-
-- **Design Components**:
-
-  - [ ] `p1` - `cpt-frontx-component-ai-tooling-kit` (shared)
-
-- **API**:
-  - `cpt-frontx-interface-cli` (consumed as the executable command surface, not owned)
-
-- **Sequences**:
-  - N/A
-
-- **Data**:
-
-  - N/A
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cyber-pilot-kit-frontx/architecture/features/ai-project-scaffolding/FEATURE.md).
 
 ## 3. Feature Dependencies
 
@@ -986,9 +311,10 @@ F10 template-resolution          (foundation)
    └─→ F16 template-ai-extensions (also ← F15)
 F15 ai-kit-packaging             (foundation)
    ├─→ F16 template-ai-extensions
-   ├─→ F17 ai-upgrade-orchestration (also ← F14)
-   └─→ F19 ai-project-scaffolding   (also ← F10, F11, F12, F13, F16)
+   └─→ F17 ai-upgrade-orchestration (also ← F14)
 F18 cli-invocation               (aggregator ← F10, F11, F12, F13, F14 — dispatches to each)
+F19 ecosystem-governance         (foundation, standalone)
+F20 ai-project-scaffolding       (← F10, F11, F12, F13, F15, F16)
 ```
 
 **Dependency Rationale**:
@@ -1007,13 +333,14 @@ F18 cli-invocation               (aggregator ← F10, F11, F12, F13, F14 — dis
 - `cpt-frontx-feature-composed-provenance` requires `cpt-frontx-feature-template-resolution`: recursive composition resolves each composed template through the shared resolver.
 - `cpt-frontx-feature-upgrade-changeset` requires `cpt-frontx-feature-composed-provenance`: the change-set diffs against the provenance record written at scaffold time.
 - `cpt-frontx-feature-template-ai-extensions` requires `cpt-frontx-feature-ai-kit-packaging`: extensions activate into the base kit's capability set.
-- `cpt-frontx-feature-template-ai-extensions` requires `cpt-frontx-feature-template-resolution`: discovery is triggered on template install (cross-pillar edge F16 ← F10).
-- `cpt-frontx-feature-ai-upgrade-orchestration` requires `cpt-frontx-feature-upgrade-changeset`: orchestration drives the single CLI change-set engine (cross-pillar edge F17 ← F14).
+- `cpt-frontx-feature-template-ai-extensions` requires `cpt-frontx-feature-template-resolution`: discovery is triggered on template install (cross-package edge F16 ← F10).
+- `cpt-frontx-feature-ai-upgrade-orchestration` requires `cpt-frontx-feature-upgrade-changeset`: orchestration drives the single CLI change-set engine (cross-package edge F17 ← F14).
 - `cpt-frontx-feature-ai-upgrade-orchestration` requires `cpt-frontx-feature-ai-kit-packaging`: the orchestration workflow ships inside the base AI kit.
 - `cpt-frontx-feature-cli-invocation` requires `cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-template-manifest`, `cpt-frontx-feature-cli-scaffolding`, `cpt-frontx-feature-composed-provenance`, and `cpt-frontx-feature-upgrade-changeset`: the invocation surface is the cross-command aggregator that dispatches `frontx <command>` to each owning behavior; it sits above them in the graph and none depend back on it.
-- `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-ai-kit-packaging`: both entry points ship as declared resources of the base AI kit and are governed by its manifest-declaration rules.
-- `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-template-manifest`: selection matches a stated intent against the description the manifest declares, whose schema that feature owns (cross-pillar edge F19 ← F11).
-- `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-template-resolution`: the selectable set is the local inventory, obtained through the listing command that feature owns (cross-pillar edge F19 ← F10).
-- `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-cli-scaffolding`: the plan is applied by invoking the seed and add behavior that feature owns, which this feature drives and never reimplements (cross-pillar edge F19 ← F12).
-- `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-composed-provenance`: the applied set reported back, and the already-applied set read before planning, are the provenance records that feature writes (cross-pillar edge F19 ← F13).
-- `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-template-ai-extensions`: repetition of a unit inside an applied template's own ground is delegated to the extension skills that feature activates, not planned as a further application.
+- `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-ai-kit-packaging` (its entry points ship in the base kit), `cpt-frontx-feature-template-manifest` (selection matches intent against manifest-declared descriptions), `cpt-frontx-feature-template-resolution` (the local inventory it selects over), `cpt-frontx-feature-cli-scaffolding` (the seed/add assembly it drives over the command surface), `cpt-frontx-feature-composed-provenance` (the applied set is reported from provenance), and `cpt-frontx-feature-template-ai-extensions` (per-unit realization drives the applied templates' activated extension skills).
+
+## 4. Known Validator Debt
+
+The installed SDLC kit requires feature-entry definitions in root DECOMPOSITION and routes DESIGN coverage through DECOMPOSITION. The member compatibility anchors in this file are limited to feature IDs, owner pointers and compact ID-only component/constraint/principle coverage references; member purpose, scope, requirements, prose, flows, dependencies, algorithms, acceptance criteria and design decisions remain owned by member FEATURE and DESIGN files.
+
+This debt is removable when the upstream or project-installed SDLC kit supports member-scoped DECOMPOSITION coverage and member-owned FEATURE identity.

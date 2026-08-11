@@ -25,11 +25,15 @@ FrontX serves two groups of developers, each working alongside AI agents:
 
 ---
 
-## The Three Pillars
+## What FrontX Delivers
 
-FrontX delivers on the above through three co-equal pillars.
+FrontX delivers on the above through three capability sets. Architecturally the
+ecosystem is partitioned into three layers — **published libraries** (consumed as
+versioned dependencies), **templates** (applied to produce project content), and
+**projects orchestration** (tooling that drives a project's lifecycle) — described
+in [DESIGN.md](./architecture/DESIGN.md).
 
-### Pillar 1 — Core Framework
+### Core Framework
 
 Makes an application **runtime-extensible by composable microfrontends** over a
 substrate for typed entities:
@@ -45,7 +49,7 @@ substrate for typed entities:
 Packages: `@gears-frontx/mfes` (runtime substrate), `@gears-frontx/gts-plugin`
 (default type-system provider), `@gears-frontx/api` (API protocols + registry).
 
-### Pillar 2 — CLI
+### CLI
 
 Owns the **full lifecycle of assembling and evolving a repository from
 templates**:
@@ -60,7 +64,7 @@ templates**:
 Package: `@gears-frontx/cli` — the `frontx` executable, which ships zero bundled
 templates.
 
-### Pillar 3 — AI Tooling Framework
+### AI Tooling Framework
 
 Equips **AI agents with ecosystem-wide capabilities** and lets templates
 contribute their own:
@@ -74,7 +78,7 @@ contribute their own:
 
 Package: `@gears-frontx/cyber-pilot-kit-frontx` — the AI Tooling Kit.
 
-Together the pillars let an AI agent carry a project from first scaffold through
+Together these let an AI agent carry a project from first scaffold through
 ongoing extension and version upgrades, while **Template Developers** and
 **Project Developers** stay in control of intent and review.
 
@@ -139,7 +143,9 @@ frontx list
 # Here github:acme/starter-repo declares "@acme/web-app" in its manifest.
 frontx seed @acme/web-app ./my-app
 
-# Or add a template into an existing repository
+# Or add a template into an existing repository — writes only the ground the
+# template declares, and refuses, naming the paths, where that ground already
+# holds content no provenance accounts for
 frontx add @acme/web-app ./existing-repo
 
 # Later, upgrade an applied template to a newer version (reviewable change set)
@@ -160,7 +166,7 @@ within a project. It bundles no templates of its own.
 | `frontx install <spec>` | Install a template from a source-spec (`host:owner/repo[//subtree]@ref`) into the local inventory, tracked under the identity its manifest declares |
 | `frontx list [--json]` | List installed templates; `--json` emits one machine-readable record per entry, carrying its identity, pinned reference, source address and the description its manifest declares |
 | `frontx seed <templateRef> <targetDir>` | Seed a **new** repository from a template; `templateRef` is the identity shown by `frontx list`, not the repository name |
-| `frontx add <templateRef> <targetDir>` | Add a template into an **existing** repository |
+| `frontx add <templateRef> <targetDir>` | Add a template into an **existing** repository; writes only the ground the template declares and refuses, naming the paths, where that ground already holds content no applied template's provenance accounts for |
 | `frontx upgrade <projectRoot> <version>` | Upgrade an applied template (reviewable change set) |
 | `frontx validate <templateDir>` | Validate a template manifest for publication |
 | `frontx update-local <identity> <spec>` | Refresh a locally installed template from its source |
@@ -205,11 +211,13 @@ live and version outside this repository.
 FrontX/                              # Ecosystem repository root
 ├── architecture/                   # Constructor Studio SDLC artifacts (PRD, DESIGN, ADR, features)
 ├── packages/                       # Ecosystem packages (published to npm)
-│   ├── mfes/                       # P1: MFE runtime — registration, loading, mounting, isolation
-│   ├── gts-plugin/                 # P1: GTS default type-system provider plugin
-│   ├── api/                        # P1: API communication protocols + service registry
-│   ├── cli/                        # P2: template-resolution CLI (`frontx`)
-│   └── cyber-pilot-kit-frontx/     # P3: AI Tooling Kit
+│   ├── mfes/                       # Published library (core, standalone): MFE runtime — registration, loading, mounting, isolation
+│   ├── gts-plugin/                 # Published library (core, standalone): GTS default type-system provider plugin
+│   ├── api/                        # Published library (core, standalone): API communication protocols + service registry
+│   ├── telemetry/                  # Published library (core, standalone): browser telemetry SDK
+│   ├── ui-kit/                     # Published library (standalone): UI components (artifact chain is recorded debt)
+│   ├── cli/                        # Projects orchestration: template-resolution CLI (`frontx`)
+│   └── cyber-pilot-kit-frontx/     # Projects orchestration: AI Tooling Kit
 ├── template-shell/                 # Reference template: app shell (developed here, applied via `frontx seed`)
 ├── template-mfe/                   # Reference template: add-only MFE bundle (applied via `frontx add`)
 ├── internal/                       # Internal build/lint config workspaces

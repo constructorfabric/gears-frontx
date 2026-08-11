@@ -54,7 +54,7 @@ describe('loadKitSession', () => {
   // inst-if-no-registration / inst-no-registration-error / inst-return-no-kit
   it('missing registration → partial-capability with diagnostic error', async () => {
     const result = await loadKitSession(null, async () => validManifestContent, async () => true);
-    expect(result.state).toBe(KitLifecycleState.INSTALLED);
+    expect(result.state).toBe(KitLifecycleState.PACKAGED);
     expect(result.capabilities).toHaveLength(0);
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors[0]).toMatch(/not installed/i);

@@ -64,7 +64,9 @@
     var(--ring);
 }
 
-/* See button.module.css: forced-colors drops box-shadow, restore UA outline. */
+/* The ring above is an inset box-shadow, and forced-colors mode doesn't
+ * render box-shadow at all — add an explicit outline or the focus
+ * indicator disappears entirely under the mode. */
 @media (forced-colors: active) {
   .trigger:focus-visible {
     outline: 2px solid Highlight;
@@ -145,14 +147,34 @@
    * only).
    */
   box-sizing: border-box;
+  /*
+   * Declared once here rather than on .list/.scrollArrow individually:
+   * both are DOM children of .popup, and custom properties inherit, so an
+   * ancestor declaration plus descendant reads (`.popup .list`, `.popup
+   * .scrollArrow` below) satisfies tokens.test.ts's local-variable guard
+   * without the formula being duplicated — same shape as card.module.css's
+   * --card-spacing. The value is the scroll arrow's own geometry: one icon
+   * plus its own padding on both edges (--space-1 top AND bottom below,
+   * not a single --space-2 — the two only ever agreed numerically).
+   */
+  --select-scroll-arrow-height: calc(var(--icon-size-sm) + var(--space-1) * 2);
+  /*
+   * The popup itself does NOT scroll — .list does (see below). It stays a
+   * flex column that clips (`overflow: hidden`) so its child (the List,
+   * bracketed by the scroll arrows) is capped at `--available-height` and
+   * never spills past its border; `position: relative` remains because the
+   * arrows anchor to this box via their own `position: absolute` (set
+   * inline by Base UI's SelectScrollArrow).
+   */
+  display: flex;
+  flex-direction: column;
   position: relative;
   isolation: isolate;
   z-index: 50;
   max-height: var(--available-height);
   width: var(--anchor-width);
   min-width: 9rem;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   border-radius: var(--radius-md);
   border: var(--border-width) solid var(--popover-border);
   background-color: var(--popover);
@@ -184,14 +206,50 @@
   transform: scale(0.95);
 }
 
-/* When the popup aligns an item over the trigger (native-select feel),
- * entering with a scale animation would visibly shift it — skip it. */
-.popup[data-align-trigger='true'] {
-  transition: none;
+/*
+ * The list — not the group — carries the dropdown's inner padding, so a
+ * groupless list (items placed directly under SelectContent) is padded too.
+ *
+ * The list is also the scroller, not .popup. Base UI's own scroller styles
+ * (LIST_FUNCTIONAL_STYLES: position/max-height/overflow) apply to
+ * Select.List only in its retired align-with-trigger mode (see
+ * node_modules/@base-ui/react/select/list/SelectList.mjs) — this kit always
+ * renders the popup below the trigger (select.tsx pins
+ * `alignItemWithTrigger={false}`), so those styles never land and something
+ * here must scroll instead. It has to be THIS element specifically, not
+ * .popup: Base UI computes scroll-arrow visibility from `store.state.
+ * listElement` (set by SelectList's ref callback), reading ITS scrollTop/
+ * scrollHeight/clientHeight — a scrolling .popup with a non-overflowing
+ * .list leaves that element permanently maxed at zero scroll, so the up/
+ * down arrows compute as never-visible and never mount. `min-height: 0`
+ * is required alongside `overflow-y: auto`: as a child of .popup's flex
+ * column, .list would otherwise refuse to shrink below its content's
+ * height and grow the popup instead of scrolling within it.
+ */
+.list {
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 0;
+  padding: var(--space-1);
+}
+
+/*
+ * `scroll-padding-block` keeps a scrolled-into-view item clear of the
+ * arrows: Base UI scrolls the active item with `block: 'nearest'`, which
+ * can park it flush against the scrollport edge, and the arrows are
+ * `position: absolute` against .popup, overlaying that same edge — this
+ * reserves exactly one arrow's box height as scroll padding so `nearest`
+ * never lands an item underneath either arrow. Read via `.popup .list`
+ * rather than bare `.list` — ancestor declares, children inherit (see
+ * .popup's --select-scroll-arrow-height comment above) — so this rule,
+ * not the bare-class one above, is the one tokens.test.ts's local-variable
+ * guard exempts.
+ */
+.popup .list {
+  scroll-padding-block: var(--select-scroll-arrow-height);
 }
 
 .group {
-  padding: var(--space-1);
   scroll-margin: var(--space-1) 0;
 }
 
@@ -207,7 +265,7 @@
    * Substitutes for the preflight the kit lacks: without it, content-box
    * (this kit's ambient default) piles the 2.5rem of horizontal padding
    * on top of `width: 100%`, rendering each item 40px wider than the
-   * popup's content box — clipped by .popup's own overflow-x: hidden
+   * popup's content box — clipped by .popup's own `overflow: hidden`
    * above, which cuts off .itemIndicator (the checkmark, positioned
    * `right: var(--space-2)` from this box's now-invisible true right
    * edge) entirely. Found by auditing every module for this collision, not by
@@ -264,14 +322,36 @@
   justify-content: center;
 }
 
+/*
+ * The separator now carries the ENTIRE gap between sections, not half of
+ * it: before the list took over the dropdown's padding (see .list above),
+ * a separator's block margin (--space-1) combined with the adjoining
+ * group's own padding (--space-1) for an 8px gap on each side. .group no
+ * longer pads, so this rule alone must supply that 8px — hence
+ * --space-2 rather than --space-1 — and this holds whether or not the
+ * consumer wraps items in a SelectGroup, since it no longer depends on
+ * grouping at all. The inline value is untouched: it still cancels
+ * exactly against the list's own --space-1 padding, so the rule still
+ * bleeds to the popup's left/right edges.
+ */
 .separator {
   pointer-events: none;
-  margin: var(--space-1) calc(-1 * var(--space-1));
+  margin: var(--space-2) calc(-1 * var(--space-1));
   height: var(--border-width);
   background-color: var(--border);
 }
 
+/*
+ * `box-sizing: border-box` is required for the `height` below to equal
+ * this box's actual rendered size: without it (content-box, this kit's
+ * ambient default — see .trigger/.popup/.item above for the same
+ * substitution), the padding below would add on top of the 24px `height`
+ * instead of being absorbed into it, rendering the arrow 8px taller than
+ * .list's reserved scroll padding and leaving the selected item's edge
+ * visible underneath it again.
+ */
 .scrollArrow {
+  box-sizing: border-box;
   z-index: 10;
   display: flex;
   width: 100%;
@@ -280,6 +360,18 @@
   padding: var(--space-1) 0;
   cursor: default;
   background-color: var(--popover);
+}
+
+/*
+ * `height` is pinned explicitly (not left to the icon + padding to imply
+ * it) so it shares exactly one formula with .list's `scroll-padding-block`
+ * — both read `--select-scroll-arrow-height` from .popup (declared once,
+ * above), so the two can't drift into different numbers. Read via
+ * `.popup .scrollArrow`, same ancestor-declares/children-inherit shape as
+ * `.popup .list` above.
+ */
+.popup .scrollArrow {
+  height: var(--select-scroll-arrow-height);
 }
 
 .scrollArrowUp {

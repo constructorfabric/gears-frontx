@@ -15,8 +15,8 @@ Each agent owns distinct files — never assign overlapping areas:
 
 | Agent | Writes to |
 |---|---|
-| Developer | CODE (all source code), `architecture/features/` (FEATURE — shared with architect) |
-| Architect | `architecture/` artifacts (PRD, ADR, DESIGN, DECOMPOSITION, nested designs), `architecture/features/` (FEATURE — shared with developer) |
+| Developer | CODE (all source code), `packages/*/architecture/features/` (FEATURE — shared with architect) |
+| Architect | `architecture/` artifacts (PRD, ADR, DESIGN, DECOMPOSITION, nested designs), `packages/*/architecture/` (member artifacts; FEATURE shared with developer) |
 | Researcher | EXPLORATION artifacts (`architecture/explorations/`) |
 | Tech-writer | `CLAUDE.md`, `AGENTS.md`, `.claude/agents/`, `.claude/skills/`, content fixes in `architecture/` |
 | Architecture-critic | No files owned — read-only reviewer of `architecture/` artifacts |

@@ -22,6 +22,7 @@
  */
 import { readdir } from 'node:fs/promises';
 
+import { isErrnoCode } from './is-errno-code';
 import type { ReadTargetDirFn, TargetDirState } from '../commands/seed-repository';
 
 /** Builds the real `readdir`-backed target-directory probe the `frontx` executable uses. */
@@ -45,10 +46,4 @@ export function createFsReadTargetDirFn(): ReadTargetDirFn {
       throw error;
     }
   };
-}
-
-// Node's fs rejections carry a `code`; narrowing through a predicate keeps the
-// checks above off `any` and off a cast.
-function isErrnoCode(error: unknown, code: string): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
 }

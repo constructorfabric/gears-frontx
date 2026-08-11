@@ -84,12 +84,12 @@ its answer cannot disagree:
   work, not a project this flow started. Do not plan a seed against it. Report
   what was found and put the choice to the developer: a fresh directory to seed
   into, or `frontx add` applied to the directory as it stands - saying, when you
-  offer add, that it arbitrates declared template boundaries only, so it can
-  still overwrite an existing file at a path the template declares as its own -
-  it has no guard of its own against a directory holding content no template
-  recorded (constructorfabric/gears-frontx#539).
-  **Wait for their answer before running anything**; offering a choice and then
-  acting for them is how the flow would write over the work it just warned about.
+  offer add, that it writes only the ground the template declares and refuses,
+  naming the paths, if any of that ground already holds content, so the existing
+  work is either left alone or reported, never overwritten.
+  **Wait for their answer before running anything**; the choice of what happens
+  to their existing work is theirs, and a refusal you could have put to them
+  first reads as the flow having tried and failed.
   Planning the seed anyway only earns the CLI's refusal one step later, after you
   have already shown a plan that could not run.
 

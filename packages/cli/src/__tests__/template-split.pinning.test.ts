@@ -24,6 +24,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { seedRepository } from '../commands/seed-repository';
 import { createFsReadTargetDirFn } from '../adapters/fs-target-dir';
+import { createFsReadTargetPathStateFn } from '../adapters/fs-target-path';
 import { addTemplate } from '../commands/add-template';
 import { installCommand } from '../commands/install';
 import { createLocalFetchFn } from '../adapters/local-fetch';
@@ -105,8 +106,8 @@ describe('Fixture 7 (F6-fixed, issue #487) — region-union composition reconcil
     version: '1.0.0',
     ownershipBoundaries: { exclusiveSubtrees: [], sharedFiles: [] },
     referencedTemplates: [
-      { ref: 'region-fixture-a', appliedAt: '.' },
-      { ref: 'region-fixture-b', appliedAt: '.' },
+      { ref: 'region-fixture-a' },
+      { ref: 'region-fixture-b' },
     ],
   };
 
@@ -230,6 +231,7 @@ describe('Fixture 7 (F6-fixed, issue #487) — region-union composition reconcil
       writeFileFn,
       readProvenanceRecordsFn,
       provenanceWriteFn,
+      createFsReadTargetPathStateFn(),
       readProjectFileFn,
     );
     expect(addResult.ok).toBe(true);
@@ -282,6 +284,7 @@ describe('Fixture 9 (B1-fix, issue #488) — frontx upgrade preserves multi-reco
       harness.writeFileFn,
       harness.readProvenanceRecordsFn,
       harness.provenanceWriteFn,
+      createFsReadTargetPathStateFn(),
     );
     expect(addResult.ok).toBe(true);
 
@@ -368,6 +371,7 @@ describe('Fixture 9 (B1-fix, issue #488) — frontx upgrade preserves multi-reco
       harness.writeFileFn,
       readProvenanceRecords,
       harness.provenanceWriteFn,
+      createFsReadTargetPathStateFn(),
     );
     expect(addResult.ok).toBe(true);
 

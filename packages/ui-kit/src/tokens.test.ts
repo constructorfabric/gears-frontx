@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
@@ -120,6 +120,13 @@ describe('theme tokens', () => {
     const css = readFileSync(file, 'utf8');
     const rules = extractRules(css);
 
+    // A component's own public override hooks (button.module.css's
+    // --button-bg/-fg/-border{,-hover}, see button.md's "Custom colors")
+    // are named `--<component>-*`, derived from the module's own filename —
+    // NOT declared anywhere in the module, by design: the kit never sets
+    // them, a consumer class does. `--${basename(file, '.module.css')}-`.
+    const hookPrefix = `--${basename(file, '.module.css')}-`;
+
     // Collect each class's own locally-declared custom properties first...
     const locallyDeclaredByClass = new Map<string, Set<string>>();
     for (const rule of rules) {
@@ -143,15 +150,38 @@ describe('theme tokens', () => {
     // since there's no "part" to scope one to; they must be a real token.
     for (const rule of rules) {
       const cls = leadingClass(rule.selector);
+      // Captures whether a fallback follows the name (`match[2] === ','`)
+      // so the loop below can dedup by token+fallback-shape, not token
+      // alone — the same token consumed once with a fallback and once
+      // without (a bug: the fallback-less usage resolves to nothing at
+      // runtime if nobody sets it) must still be flagged for that second
+      // usage even though the first is exempt.
       const used = Array.from(
-        rule.body.matchAll(/var\((--[a-z0-9-]+)/g),
-        (match) => match[1] ?? '',
+        rule.body.matchAll(/var\((--[a-z0-9-]+)\s*([,)])/g),
+        (match) => ({ token: match[1] ?? '', hasFallback: match[2] === ',' }),
       );
-      for (const token of Array.from(new Set(used))) {
+      const seen = new Set<string>();
+      for (const { token, hasFallback } of used) {
+        const key = `${token}${hasFallback ? ',' : ''}`;
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
         if (BASE_UI_RUNTIME_VARS.has(token)) {
           continue;
         }
         if (cls && locallyDeclaredByClass.get(cls)?.has(token)) {
+          continue;
+        }
+        // Consumer-override hook: a `--<component>-*` property consumed
+        // WITH a fallback needs no declaration anywhere — the fallback IS
+        // the kit default, so the var() resolves by construction whether
+        // or not a consumer ever sets the property. This guard exists to
+        // catch vars that resolve to nothing; a hook with a fallback
+        // never does. The component-name prefix (not "any fallback var is
+        // exempt") keeps this from also waving through a typoed theme
+        // token that happens to carry a fallback.
+        if (hasFallback && token.startsWith(hookPrefix)) {
           continue;
         }
         expect(definedTokens.has(token), `${token} is not defined in theme.css`).toBe(true);
@@ -343,6 +373,7 @@ describe('theme tokens', () => {
       '--control-height-sm',
       '--control-height-md',
       '--control-height-lg',
+      '--icon-size-xs',
       '--icon-size-sm',
       '--icon-size-md',
       '--icon-size-lg',
@@ -434,9 +465,10 @@ describe('theme tokens', () => {
     // above, live off theme.css, so a token drifting back under its floor
     // fails this test instead of shipping a color no one re-measured.
     // Button's OWN focus-ring cases live in button.test.tsx instead: they
-    // need to read button.module.css's actual --button-focus-ring{,-inner}
-    // declarations per variant, which makes them a Button-specific guard,
-    // not a theme-level one — see that file for why, and for the shared
+    // need to read button.module.css's actual --button-focus-ring
+    // declaration (a single tone drawn outside the button via outline +
+    // outline-offset), which makes them a Button-specific guard, not a
+    // theme-level one — see that file for why, and for the shared
     // contrastRatio/extractRules utilities both files import.
     //
     // Every case below reads a token's LITERAL hex out of theme.css via

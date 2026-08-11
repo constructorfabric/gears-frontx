@@ -119,6 +119,9 @@
   --control-height-sm: 2rem;
   --control-height-md: 2.25rem;
   --control-height-lg: 2.5rem;
+  /* Badge's icon/dot slot only — no drawn specimen at any other size uses
+   * 12px; every other icon consumer sits on sm/md/lg above. */
+  --icon-size-xs: 0.75rem;
   --icon-size-sm: 1rem;
   --icon-size-md: 1.25rem;
   --icon-size-lg: 1.5rem;
@@ -126,14 +129,16 @@
   --border-width-focus: 2px;
   /*
    * The thickness a --border-width-focus ring adds INSIDE a --border-width
-   * border. Every 2px ring in the kit — focus, aria-invalid, and Table's
-   * selected row — is drawn as a recolored 1px border plus an inset shadow
-   * of this width rather than as a real border-width switch, so the ring
+   * border. Every 2px ring drawn this way — a recolored 1px border plus an
+   * inset shadow of this width, rather than a real border-width switch —
    * thickens without the element's box changing: a genuine width switch
    * grows it 1px on each edge, which shifts a control's text and, in a
-   * table, every row below the selected one. Named here rather than spelled
-   * out per module because it is one decision shared by eight components,
-   * not eight coincidences.
+   * table, every row below the selected one. Named here rather than
+   * spelled out per module because it is one decision shared by the seven
+   * components that draw it this way (Tabs, Input, Toast, Table's selected
+   * row, Textarea, Badge, Select), not seven coincidences. Button is the
+   * deliberate exception: its focus ring is drawn OUTSIDE the button as an
+   * `outline` (see button.module.css), so it never consumes --ring-inset.
    */
   --ring-inset: calc(var(--border-width-focus) - var(--border-width));
 
@@ -218,6 +223,16 @@
    * The dark value is Figma's own. */
   --primary-hover: #7c4fde;
   --primary-foreground: #ffffff;
+  /* Button default variant's focus-ring tone, measured against
+   * --background: 6.79:1 light / 7.23:1 dark (the dark values below carry
+   * no comment of their own — per this file's convention, a token's
+   * comment lives in the light block only). Literal hexes, not var()
+   * aliases, because the contrast tests parse hex directly (see
+   * src/__test-utils__/contrast.ts). A dedicated token, not --primary
+   * itself: the ring is drawn OUTSIDE the button (see button.module.css),
+   * so it only ever borders the page, and a violet a shade darker than
+   * --primary reads more clearly there than --primary's own value would. */
+  --primary-ring: #6d28d9;
   --secondary: #f1f5f9;
   --secondary-foreground: #0f172a;
   /* derived (dark only): light muted equals light secondary in the
@@ -246,6 +261,12 @@
    * on both modes' reds (4.7:1 light, 4.6:1 dark). */
   --destructive: #e11d48;
   --destructive-foreground: #ffffff;
+  /* Button destructive variant's focus-ring tone, measured against
+   * --background: 6.01:1 light / 7.89:1 dark. Literal hexes, not var()
+   * aliases, for the same reason as --primary-ring above: the contrast
+   * tests parse hex directly (see src/__test-utils__/contrast.ts). The
+   * ring is drawn outside the button, so it only ever borders the page. */
+  --destructive-ring: #be123c;
 
   /*
    * Link text token — Button's `link` variant, which has no drawn
@@ -344,6 +365,7 @@
   --primary: #7c4fde;
   --primary-hover: #8257e6;
   --primary-foreground: #ffffff;
+  --primary-ring: #a78bfa;
   --secondary: #1e293b;
   --secondary-foreground: #f8fafc;
   --muted: #1e293b;
@@ -353,6 +375,7 @@
   --accent-foreground: #ede9fe;
   --destructive: #d63853;
   --destructive-foreground: #ffffff;
+  --destructive-ring: #f87f8f;
   --link-foreground: #a78bfa;
   --success: #34d399;
   --success-soft: #0d2921;
@@ -393,6 +416,7 @@
     --primary: #7c4fde;
     --primary-hover: #8257e6;
     --primary-foreground: #ffffff;
+    --primary-ring: #a78bfa;
     --secondary: #1e293b;
     --secondary-foreground: #f8fafc;
     --muted: #1e293b;
@@ -402,6 +426,7 @@
     --accent-foreground: #ede9fe;
     --destructive: #d63853;
     --destructive-foreground: #ffffff;
+    --destructive-ring: #f87f8f;
     --link-foreground: #a78bfa;
     --success: #34d399;
     --success-soft: #0d2921;

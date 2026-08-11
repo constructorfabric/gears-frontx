@@ -20,21 +20,25 @@
    */
   box-sizing: border-box;
   /*
-   * Focus ring colors; the variants below override one or both (see
-   * :focus-visible). Two custom properties, not one: the ring is drawn as
-   * an outer 1px border plus an inner 1px inset shadow (see the geometry
-   * comment below), and those two painted pixels have different WCAG
-   * neighbors — the border sits against the page background outside the
-   * button, the inset shadow sits against the button's own fill just
-   * inside it. A single hue clears both for outline/secondary/ghost/link,
-   * but default and destructive's fills sit too close in luminance to any
-   * one drawn accent color to pass on that side too, so those two are
-   * genuinely two-toned. --button-focus-ring-inner defaults to the outer
-   * value so a variant that only sets --button-focus-ring still gets one
-   * matching color both places.
+   * Focus ring color; the variants below override it (see :focus-visible).
+   * One custom property is enough because the ring is drawn OUTSIDE the
+   * button (`outline` + `outline-offset`, see :focus-visible below), so
+   * its only WCAG neighbor is ever the page background — there is no
+   * second, fill-side surface a second tone would need to also clear.
+   * default and destructive still get their own family color (set below);
+   * everything else falls through to this kit-wide --ring, same as every
+   * non-Button control.
+   *
+   * The --button-bg/--button-fg/--button-bg-hover/--button-fg-hover/
+   * --button-border family below works the same way: consumer-override
+   * hooks that no kit rule ever declares — each variant CONSUMES them with
+   * its own token as the var() fallback, so a consumer class that sets them
+   * recolors the button without fighting the cascade, and hover falls back
+   * to the consumer's rest color (not the variant's token) via the
+   * var(--button-bg-hover, var(--button-bg, ...)) chain. See button.md's
+   * "Custom colors".
    */
   --button-focus-ring: var(--ring);
-  --button-focus-ring-inner: var(--button-focus-ring);
   /* Anchors the absolutely-centered .spinner. */
   position: relative;
   display: inline-flex;
@@ -42,7 +46,7 @@
   justify-content: center;
   gap: var(--space-2);
   white-space: nowrap;
-  border: var(--border-width) solid transparent;
+  border: var(--border-width) solid var(--button-border, transparent);
   border-radius: var(--radius-md);
   font-family: inherit;
   /* The drawn buttons (frame 182:371) are BOUND to the Studio/Label text
@@ -65,31 +69,35 @@
 }
 
 /*
- * Focus per the mockups' drawn state matrices (frames 184:413/191:406): a
- * 2px border in a color that contrasts the variant's fill — no translucent
- * halo. NOT implemented as an actual border-width switch: a button's width
- * is content-driven, so growing the border grows the button and shifts its
- * label sideways on every focus/blur. Instead the 1px border recolors and
- * an inset ring supplies the remaining thickness — same drawn 2px, zero
- * geometry change. The per-variant color arrives via --button-focus-ring
- * (set on .button below, overridden by the variants).
+ * The ring is drawn OUTSIDE the button, not on its edge: `outline` sits
+ * clear of the border box, offset a further 2px, so its only WCAG 1.4.11
+ * neighbor is ever the page background — never the button's own fill. That
+ * is what lets each variant use its own hue (see --button-focus-ring on
+ * .button and the per-variant overrides below) without needing a second,
+ * fill-side tone. `outline` is also layout-neutral — unlike a real
+ * border-width switch, it never changes the button's box, so the old
+ * reason for not simply thickening the border (the label shifting sideways
+ * on every focus/blur) no longer applies. The per-variant color arrives via
+ * --button-focus-ring (set on .button above, overridden by the variants
+ * below).
  */
 .button:focus-visible {
-  outline: none;
-  border-color: var(--button-focus-ring);
-  box-shadow: inset 0 0 0 var(--ring-inset)
-    var(--button-focus-ring-inner);
+  outline: var(--border-width-focus) solid var(--button-focus-ring);
+  outline-offset: 2px;
 }
 
 /*
- * Forced-colors mode drops box-shadow, so the ring above leaves the button with
- * no visible focus at all. Hand the indicator back to the UA outline, which the
- * mode does paint, and keep it off the shadow.
+ * Forced-colors mode replaces author colors with a fixed system palette, so
+ * the per-variant --button-focus-ring color (--primary-ring/
+ * --destructive-ring, or the kit-wide --ring) would be dropped anyway. Hand
+ * the ring to the system's Highlight color instead so it survives the mode.
+ * Only the color needs overriding: width/style/offset already match the
+ * base :focus-visible rule above, so redeclaring them here would just be a
+ * duplicate.
  */
 @media (forced-colors: active) {
   .button:focus-visible {
-    outline: 2px solid Highlight;
-    outline-offset: 2px;
+    outline-color: Highlight;
   }
 }
 
@@ -117,8 +125,8 @@
 }
 
 .variantDefault {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
+  background-color: var(--button-bg, var(--primary));
+  color: var(--button-fg, var(--primary-foreground));
 }
 
 /*
@@ -128,12 +136,13 @@
  * the fill stays fully opaque instead of letting the page tint through.
  */
 .variantDefault:hover {
-  background-color: var(--primary-hover);
+  background-color: var(--button-bg-hover, var(--button-bg, var(--primary-hover)));
+  color: var(--button-fg-hover, var(--button-fg, var(--primary-foreground)));
 }
 
 .variantDestructive {
-  background-color: var(--destructive);
-  color: var(--destructive-foreground);
+  background-color: var(--button-bg, var(--destructive));
+  color: var(--button-fg, var(--destructive-foreground));
 }
 
 /*
@@ -147,7 +156,8 @@
  * badge.module.css's destructive variant.
  */
 .variantDestructive:hover {
-  background-color: color-mix(in oklab, var(--destructive) 90%, var(--foreground) 10%);
+  background-color: var(--button-bg-hover, var(--button-bg, color-mix(in oklab, var(--destructive) 90%, var(--foreground) 10%)));
+  color: var(--button-fg-hover, var(--button-fg, var(--destructive-foreground)));
 }
 
 /*
@@ -157,23 +167,24 @@
  * border the shadcn translation started from.
  */
 .variantOutline {
-  border-color: var(--border-strong);
-  background-color: var(--surface-elevated);
-  color: var(--foreground);
+  border-color: var(--button-border, var(--border-strong));
+  background-color: var(--button-bg, var(--surface-elevated));
+  color: var(--button-fg, var(--foreground));
 }
 
 .variantOutline:hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--button-bg-hover, var(--button-bg, var(--accent)));
+  color: var(--button-fg-hover, var(--button-fg, var(--accent-foreground)));
 }
 
 .variantSecondary {
-  background-color: var(--secondary);
-  color: var(--secondary-foreground);
+  background-color: var(--button-bg, var(--secondary));
+  color: var(--button-fg, var(--secondary-foreground));
 }
 
 .variantSecondary:hover {
-  background-color: color-mix(in oklab, var(--secondary) 80%, transparent);
+  background-color: var(--button-bg-hover, var(--button-bg, color-mix(in oklab, var(--secondary) 80%, transparent)));
+  color: var(--button-fg-hover, var(--button-fg, var(--secondary-foreground)));
 }
 
 /*
@@ -184,13 +195,13 @@
  * 13px label text, so the alignment carries no WCAG cost.
  */
 .variantGhost {
-  background-color: transparent;
-  color: var(--muted-foreground);
+  background-color: var(--button-bg, transparent);
+  color: var(--button-fg, var(--muted-foreground));
 }
 
 .variantGhost:hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--button-bg-hover, var(--button-bg, var(--accent)));
+  color: var(--button-fg-hover, var(--button-fg, var(--accent-foreground)));
 }
 
 /*
@@ -204,51 +215,42 @@
  * theme.css).
  */
 .variantLink {
-  background-color: transparent;
-  color: var(--link-foreground);
+  background-color: var(--button-bg, transparent);
+  color: var(--button-fg, var(--link-foreground));
   text-underline-offset: 4px;
 }
 
 .variantLink:hover {
+  background-color: var(--button-bg-hover, var(--button-bg, transparent));
+  color: var(--button-fg-hover, var(--button-fg, var(--link-foreground)));
   text-decoration: underline;
 }
 
 /*
- * Focus colors. The constraint: the ring's two painted pixels touch two
- * different surfaces — the fill and the page background (see the
- * --button-focus-ring-inner comment on .button above) — and each must clear
- * WCAG 1.4.11's 3:1 floor.
- *
- * default and destructive need two TONES because no single hue clears both
- * of their surfaces at once: violet-on-violet vanishes against the primary
- * fill (the QA frame says so itself — "Primary focus uses the system info
- * ring for clear contrast", which is why --info is the outer tone), and the
- * mid-tone fills sit too close to a near-white/near-black page. ghost, link
- * and secondary take one tone, --primary-hover, which clears both of theirs.
- * outline gets no override at all: every drawn candidate (--border-strong)
- * reads too weak against both its --surface-elevated fill and the page, so
- * it falls through to .button's own --ring — the same ring every non-Button
- * kit control uses.
+ * Focus colors. The ring sits outside the button (see :focus-visible
+ * above), so it only ever borders the page — the one surface every
+ * variant needs to clear WCAG 1.4.11's 3:1 floor against. That single
+ * surface is what makes a single tone per variant enough: default and
+ * destructive keep a family color of their own (a violet a shade darker/
+ * lighter than --primary would otherwise be, and the destructive red's
+ * equivalent — see theme.css's --primary-ring/--destructive-ring), because
+ * their own accent reads better against the page than the plain kit-wide
+ * ring would. outline, secondary, ghost and link get no override at all:
+ * they fall through to .button's own --ring — the same ring every
+ * non-Button kit control uses.
  *
  * The ratios are not repeated here: button.test.tsx recomputes all six
- * variants against both surfaces in both themes from THIS file's live
- * values, so a token drift fails the suite instead of silently outdating a
- * hand-copied table. design-notes.md records the measured numbers.
+ * variants against the page background in both themes from THIS file's
+ * live values, so a token drift fails the suite instead of silently
+ * outdating a hand-copied table. design-notes.md records the measured
+ * numbers.
  */
 .variantDefault {
-  --button-focus-ring: var(--info);
-  --button-focus-ring-inner: var(--foreground);
+  --button-focus-ring: var(--primary-ring);
 }
 
 .variantDestructive {
-  --button-focus-ring: var(--primary-hover);
-  --button-focus-ring-inner: var(--destructive-foreground);
-}
-
-.variantGhost,
-.variantLink,
-.variantSecondary {
-  --button-focus-ring: var(--primary-hover);
+  --button-focus-ring: var(--destructive-ring);
 }
 
 /* Buttons sit on the control/height scale directly: sm/default/lg =

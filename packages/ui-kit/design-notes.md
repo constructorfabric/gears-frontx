@@ -223,11 +223,14 @@ Architecture's build bullet).
    "Studio / shadcn" variable collection. Landed: theme.css carries the
    palette and the new token groups (see Architecture's theme bullet), and
    the existing components follow the mockups' component specs — Badge on
-   semantic intents (pill/dot; the shadcn variant list retired), Button's
+   semantic intents (`pill`/`plain` shapes, with `dot` and `icon` both
+   opt-in; the shadcn variant list retired), Button's
    `icon` slot + auto icon-only + `loading`, Tabs on the trackless Kind=tab
    look (the spec's Kind=segment is the planned `toggle-group`'s styling,
    per the design file's own component description), the unified Field set
-   for Input/Textarea/Select with the `search` and `filter` types, Table
+   for Input/Textarea/Select with the `filter` type (Select's compact
+   toolbar chip) and `search`'s native searchbox role (no automatic icon;
+   pass one via `icon`), Table
    density + selected/stale/restricted row hooks, and component CSS on the
    metric tokens. The drawn-vs-spec control-height discrepancy was ruled
    in favor of the drawn specimens (32/36/40; buttons map sm/default/lg
@@ -259,27 +262,34 @@ Architecture's build bullet).
    instruction that a color failing WCAG gets a new color, not a "kept as
    drawn" footnote:
    - **Button focus rings** (every variant, both themes) now clear the
-     3:1 floor against both the fill and the page background — `default`
-     and `destructive` needed a genuinely two-toned ring (the geometry
-     already supported one: an outer border color plus a separately
-     colorable inset shadow), `outline` gave up on `--border-strong`
-     entirely and now falls back to the kit-wide `--ring`. Ratios as
-     measured (light/dark), with button.test.tsx recomputing them from
-     the live CSS on every run:
+     3:1 floor against the page background. Originally shipped two-toned
+     (an outer border color plus a separately colorable inset shadow,
+     because the ring was drawn ON the button's edge and so had two WCAG
+     neighbors — the page outside, the button's own fill inside) — revised
+     after ship because `--info` (the `default` variant's outer tone) is
+     cyan in dark mode and blue in light, a hue that appears nowhere else
+     near the violet button, and because two custom properties per variant
+     was more machinery than the fix needed. The ring now sits OUTSIDE the
+     button instead (`outline` + `outline-offset`, not a border recolor
+     plus inset shadow), so its only WCAG neighbor is ever the page
+     background and a single tone per variant is enough: `default` and
+     `destructive` get their own family color (new tokens
+     `--primary-ring`/`--destructive-ring`, since violet/red read better
+     against the page than the plain kit-wide ring does), everything else
+     (`outline`, `secondary`, `ghost`, `link`) falls through to the
+     kit-wide `--ring`. `outline` was already on `--ring`, unchanged by
+     this revision. Ratios as measured (light/dark), with button.test.tsx
+     recomputing them from the live CSS on every run:
 
-     | variant | outer tone vs page bg | inner tone vs fill |
-     |---|---|---|
-     | `default` | `--info` 3.91 / 10.89 | `--foreground` 3.79 / 4.86 |
-     | `destructive` | `--primary-hover` 4.98 / 4.18 | `--destructive-foreground` 4.70 / 4.62 |
-     | `secondary` | `--primary-hover` 4.98 / 4.18 | same tone vs `--secondary` 4.76 / 3.10 |
-     | `ghost`, `link` | `--primary-hover` 4.98 / 4.18 | no fill of their own — the page bg again |
-     | `outline` | `--ring` 4.05 / 3.78 | `--ring` vs `--surface-elevated` 4.23 / 3.40 |
+     | variant | ring tone vs page bg |
+     |---|---|
+     | `default` | `--primary-ring` 6.79 / 7.23 |
+     | `destructive` | `--destructive-ring` 6.01 / 7.89 |
+     | `outline`, `secondary`, `ghost`, `link` | `--ring` 4.05 / 3.78 |
 
-     `secondary`, `ghost` and `link` are single-tone: `--primary-hover`
-     alone clears 3:1 on both of their surfaces, so they set no inner
-     override. 3.10 (dark `secondary`, the ring against its own fill) is
-     the tightest number in the table and the one to watch if `--secondary`
-     or `--primary-hover` ever moves.
+     `outline`/`secondary`/`ghost`/`link` share one number because they all
+     resolve to the same `--ring` token; 3.78 (dark) is the tightest in the
+     table and the one to watch if `--ring` ever moves.
    - **`--subtle-foreground`** (the table header label): each mode's drawn
      value failed the 4.5:1 AA floor against the header's own `--surface`
      fill — light `#94a3b8` at 2.56:1, dark `#667085` at 3.74:1. Both
@@ -354,7 +364,8 @@ Architecture's build bullet).
      than by an axis name only this component used, so every component in
      the kit is driven by `variant` (+ `size`, or the occasional real extra
      axis: Badge's `shape`, Table's `density`). `shape` rather than `size`
-     because the values are pill vs. bare dot and Badge has no size axis;
+     because the values are pill vs. plain (dot is a separate opt-in flag,
+     orthogonal to shape) and Badge has no size axis;
      not `form`, which is a real HTML attribute a styling prop would shadow
      for anyone rendering a form-associated element via `render`.
    - Four new tokens: `--link-foreground` (Button's `link` variant text),

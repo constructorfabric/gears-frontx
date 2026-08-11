@@ -5,6 +5,7 @@ import { uniformApply } from '../scaffold/assembler';
 import { checkAssemblyConflicts } from '../scaffold/conflict';
 import { isUserFixableMaterializeFailure, materializeAssembly } from '../scaffold/materialize';
 import { RESERVED_ENVIRONMENT_ENTRIES } from '../manifest/validate-contract';
+import { summarizeEntries } from './summarize-entries';
 import type { InventoryEntry } from '../inventory/types';
 import type { ReadContentItemsFn, ReadProjectFileFn, WriteFileFn } from '../scaffold/types';
 import type { BoundaryConflictEntry } from '../scaffold/state';
@@ -48,12 +49,6 @@ export type SeedRepositoryResult =
 export type TargetDirState = string[] | 'not-a-directory' | undefined;
 
 export type ReadTargetDirFn = (path: string) => Promise<TargetDirState>;
-
-// How many entry names a refusal quotes before summarizing the rest. A
-// developer needs enough to recognize their own directory, not an inventory of
-// it — and a repository with thousands of files would otherwise produce a
-// message no terminal can show.
-const REFUSAL_ENTRY_SAMPLE = 5;
 
 // Entries whose presence says nothing about whether the ground is free: no
 // assembly writes to them, and materialization cannot collide with them.
@@ -285,12 +280,17 @@ async function refuseUnlessSeedable(
     targetState === undefined ? [] : targetState.filter((entry) => !NON_CONTENT_ENTRIES.has(entry));
   if (contentEntries.length === 0) return undefined;
 
-  // The add remedy carries its own limit. `add` checks the new template's
-  // declared boundaries against those of templates ALREADY APPLIED here, and
-  // this directory has none — so it will not refuse on account of the content
-  // found here, and it overwrites an existing file at any path the template
-  // declares as its own. Stating that is the difference between a remedy and a
-  // redirection into the same loss by another route.
+  // The add remedy carries its own boundary. `add` refuses any path it would
+  // write that this directory already holds and no applied template's
+  // provenance accounts for (cpt-frontx-dod-cli-scaffolding-add-undeclared-content),
+  // so it lands the template alongside content it does not claim and refuses
+  // rather than overwriting content it does. Stating what it leaves alone is
+  // what makes this a remedy rather than a redirection whose outcome the
+  // developer has to guess at — and the fresh-directory exit is named alongside
+  // it because add refuses this same directory whenever what it holds IS the
+  // template's own ground (a template declaring root files against a repository
+  // that already has them), which would otherwise send the developer from one
+  // refusal to the next with nothing left to try.
   return {
     ok: false,
     reason: 'target-not-empty',
@@ -299,21 +299,9 @@ async function refuseUnlessSeedable(
       `${contentEntries.length === 1 ? 'entry' : 'entries'} (${summarizeEntries(contentEntries)}). ` +
       'Seeding materializes a whole repository and would write over content no template declared, ' +
       `so no files were written. Run "frontx add ${templateRef} ${targetDir}" instead to apply this ` +
-      'template into a directory that already holds content — noting that add arbitrates declared ' +
-      'template boundaries only, so it can still overwrite an existing file at a path the template declares.',
+      'template into a directory that already holds content — add writes only the ground the template ' +
+      'declares, and refuses instead of overwriting where content already stands on it — or seed into ' +
+      'a fresh directory, which is the way through when the content here stands on the ground this ' +
+      'template declares and add therefore refuses it too.',
   };
-}
-
-// Quotes the first few entry names and counts the rest, so the refusal carries
-// enough evidence for a developer to recognize the directory they aimed at.
-// Sorted first: `readdir` order is filesystem-dependent, and a refusal whose
-// wording shifts between runs on one unchanged directory reads as instability
-// in the tool rather than as a fixed property of the directory.
-function summarizeEntries(entries: string[]): string {
-  const sorted = [...entries].sort();
-  const shown = sorted.slice(0, REFUSAL_ENTRY_SAMPLE).join(', ');
-  // `slice` already caps at the array length, so the remainder cannot go
-  // negative and needs no clamping.
-  const remaining = sorted.length - REFUSAL_ENTRY_SAMPLE;
-  return remaining <= 0 ? shown : `${shown}, and ${remaining} more`;
 }

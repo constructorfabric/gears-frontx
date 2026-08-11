@@ -29,6 +29,7 @@ import type {
 } from './hooks/useApiInfiniteQuery';
 import type { UseApiMutationOptions } from './hooks/useApiMutation';
 import { createQueryCache, type MutationCallbackContext, type QueryCacheKey } from './hooks/QueryCache';
+import { useLatest } from './hooks/useLatest';
 
 // @cpt-FEATURE:implement-endpoint-descriptors:p3
 // @cpt-dod:cpt-frontx-dod-request-lifecycle-query-provider:p2
@@ -437,19 +438,23 @@ export function useFrontXMutation<
 ) {
   useRequiredFrontXQueryClient();
 
-  const latestRef = React.useRef({ options, callbackCtx });
-  latestRef.current = { options, callbackCtx };
+  const latestRef = useLatest({ options, callbackCtx });
   const fetchAbortControllersRef = React.useRef<Set<AbortController>>(new Set());
 
-  React.useEffect(() => {
-    const fetchAbortControllers = fetchAbortControllersRef.current;
-    return () => {
-      if (latestRef.current.options.abortOnUnmount) {
-        for (const controller of fetchAbortControllers) {
-          controller.abort();
-        }
-        fetchAbortControllers.clear();
+  // Effect event: reads abortOnUnmount from the most recent render, not
+  // whatever option value was current when the unmount effect was set up.
+  const abortFetchesOnUnmount = React.useEffectEvent(() => {
+    if (options.abortOnUnmount) {
+      for (const controller of fetchAbortControllersRef.current) {
+        controller.abort();
       }
+      fetchAbortControllersRef.current.clear();
+    }
+  });
+
+  React.useEffect(() => {
+    return () => {
+      abortFetchesOnUnmount();
     };
   }, []);
 
@@ -479,7 +484,10 @@ export function useFrontXMutation<
       .finally(() => {
         fetchAbortControllersRef.current.delete(controller);
       });
-  }, []);
+    // latestRef's identity never changes (useLatest returns a stable ref
+    // object) — listing it satisfies exhaustive-deps without recreating this
+    // callback on every render.
+  }, [latestRef]);
 
   const onMutate = React.useCallback((variables: TVariables, _context: MutationFunctionContext) => {
     const current = latestRef.current;
@@ -488,17 +496,20 @@ export function useFrontXMutation<
     }
 
     return current.options.onMutate(variables, current.callbackCtx);
-  }, []);
+    // latestRef's identity never changes — see mutationFn above.
+  }, [latestRef]);
 
   const onSuccess = React.useCallback((data: TData, variables: TVariables, context: TContext | undefined) => {
     const current = latestRef.current;
     return current.options.onSuccess?.(data, variables, context, current.callbackCtx);
-  }, []);
+    // latestRef's identity never changes — see mutationFn above.
+  }, [latestRef]);
 
   const onError = React.useCallback((error: TError, variables: TVariables, context: TContext | undefined) => {
     const current = latestRef.current;
     return current.options.onError?.(error, variables, context, current.callbackCtx);
-  }, []);
+    // latestRef's identity never changes — see mutationFn above.
+  }, [latestRef]);
 
   const onSettled = React.useCallback((
     data: TData | undefined,
@@ -514,7 +525,8 @@ export function useFrontXMutation<
       context,
       current.callbackCtx
     );
-  }, []);
+    // latestRef's identity never changes — see mutationFn above.
+  }, [latestRef]);
 
   const mutation = useMutation<TData, TError, TVariables, TContext>({
     mutationFn,

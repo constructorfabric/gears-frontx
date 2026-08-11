@@ -127,7 +127,9 @@
     var(--ring);
 }
 
-/* See button.module.css: forced-colors drops box-shadow, restore UA outline. */
+/* The ring above is an inset box-shadow, and forced-colors mode doesn't
+ * render box-shadow at all — add an explicit outline or the focus
+ * indicator disappears entirely under the mode. */
 @media (forced-colors: active) {
   .toast:focus-visible {
     outline: 2px solid Highlight;

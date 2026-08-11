@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 // Guards the AI docs layer: every component ships a colocated usage doc, is
 // indexed in llms.txt, and the doc mentions every value of every cva styling
 // axis the component's CSS module actually defines (naming convention:
-// `.<axis>Xxx`, e.g. `.variantOutline` / `.sizeSm` / `.shapeDot` /
+// `.<axis>Xxx`, e.g. `.variantOutline` / `.sizeSm` / `.shapePlain` /
 // `.densityCompact`). AXES lists the axis names in use across the kit —
 // extend it when a component introduces a new one, or its values ship
 // undocumented.

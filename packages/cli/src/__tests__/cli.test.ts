@@ -14,6 +14,7 @@ import type { FetchFn } from '../resolver/types';
 import type { ContentItem, ReadContentItemsFn, WriteFileFn } from '../scaffold/types';
 import type { ProvenanceRecord, ProvenanceWriteFn } from '../provenance/types';
 import type { ReadProvenanceRecordsFn } from '../scaffold/materialize';
+import type { TargetPathState } from '../commands/add-template';
 import type { ListContentOwnedFilesFn, ReadFileFn, TemplateManifest } from '../manifest/types';
 
 // F18: cpt-frontx-flow-cli-invocation-run-command,
@@ -79,6 +80,9 @@ function makeDeps(overrides: Partial<CliDeps> = {}): DepsFixture {
     // the probe reports the target absent — the case seed creates. The
     // empty-target refusal case overrides this.
     readTargetDirFn: vi.fn(async () => undefined),
+    // Same notional paths seen from the add flow's probe: nothing stands at
+    // them, so its occupied-ground guard clears. The refusal cases override it.
+    readTargetPathStateFn: vi.fn(async (): Promise<TargetPathState> => 'absent'),
     readSingleProvenanceFn: vi.fn(async () => null),
     readProjectFile: vi.fn(async () => null),
     writeProjectFile: vi.fn(async () => undefined),
@@ -517,7 +521,7 @@ describe('dispatch: seed (cpt-frontx-flow-cli-scaffolding-seed-repository)', () 
       'github:acme/clash-a@v1.0.0',
       makeManifest('clash-a', '1.0.0', {
         ownershipBoundaries: { exclusiveSubtrees: ['shared/'], sharedFiles: [] },
-        referencedTemplates: [{ ref: 'clash-b', appliedAt: 'clash-b/' }],
+        referencedTemplates: [{ ref: 'clash-b' }],
       }),
     );
     registerManifest(
@@ -556,6 +560,28 @@ describe('dispatch: add (cpt-frontx-flow-cli-scaffolding-add-template)', () => {
     const { deps } = makeDeps();
     const outcome = await run(['add', 'bar', '/tmp/existing-repo'], deps);
     expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+  });
+
+  // cpt-frontx-dod-cli-scaffolding-add-undeclared-content — the refusal reaches
+  // the command surface as a user error, not an internal one: the developer
+  // aimed add at a directory holding work no template recorded, which is theirs
+  // to resolve. This also pins that the dispatch supplies the real probe at all;
+  // a dispatch that omitted it would drive the guard against nothing.
+  it('exits user-error and names the occupied paths when add targets content no provenance records', async () => {
+    const { deps, registerManifest, registerContent } = makeDeps({
+      readTargetPathStateFn: vi.fn(async (absolutePath: string): Promise<TargetPathState> =>
+        absolutePath.endsWith('/bar/src/Bar.tsx') ? 'file' : 'directory',
+      ),
+    });
+    registerManifest('github:acme/bar@v1.0.0', makeManifest('bar', '1.0.0'));
+    registerContent('bar', [{ path: 'bar/src/Bar.tsx', content: 'hello bar' }]);
+    await run(['install', 'github:acme/bar@v1.0.0'], deps);
+
+    const outcome = await run(['add', 'bar', '/tmp/existing-repo'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toContain('bar/src/Bar.tsx');
+    expect(deps.writeFileFn).not.toHaveBeenCalled();
   });
 
   // F-3 (issue #470 phase 4.5): symmetric with the `seed` case above —

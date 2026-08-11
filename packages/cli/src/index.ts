@@ -121,7 +121,8 @@ export { seedRepository } from './commands/seed-repository';
 export type { SeedRepositoryResult, ReadTargetDirFn } from './commands/seed-repository';
 export { createFsReadTargetDirFn } from './adapters/fs-target-dir';
 export { addTemplate } from './commands/add-template';
-export type { AddTemplateResult } from './commands/add-template';
+export type { AddTemplateResult, ReadTargetPathStateFn, TargetPathState } from './commands/add-template';
+export { createFsReadTargetPathStateFn } from './adapters/fs-target-path';
 
 // F14 Upgrade Change-Set Engine (cpt-frontx-dod-upgrade-changeset-single-engine)
 // There is exactly ONE engine. Direct CLI invocation uses these canonical

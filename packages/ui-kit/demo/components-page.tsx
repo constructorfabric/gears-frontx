@@ -34,7 +34,9 @@ import {
   RadioGroupItem,
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
   Skeleton,
@@ -56,13 +58,27 @@ import {
   TooltipTrigger,
 } from '@gears-frontx/ui-kit';
 
-import { DemoIcon, Row, Section } from './shared';
+import { CloseIcon, DemoIcon, Row, Section } from './shared';
 
 const REGIONS = [
   { value: 'eu-central', label: 'Frankfurt' },
   { value: 'eu-west', label: 'Dublin' },
   { value: 'us-east', label: 'Virginia' },
 ];
+
+const HOURS = Array.from({ length: 24 }, (_, hour) => ({
+  value: String(hour),
+  label: `${String(hour).padStart(2, '0')}:00`,
+}));
+
+function MagnifierIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="m10.5 10.5 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 function LoadingDemo() {
   const [busy, setBusy] = useState(false);
@@ -81,6 +97,7 @@ function LoadingDemo() {
 }
 
 export function ComponentsPage() {
+  const [query, setQuery] = useState('');
   const [region, setRegion] = useState<string | null>(null);
   return (
     <>
@@ -125,19 +142,27 @@ export function ComponentsPage() {
           <Badge>muted</Badge>
         </Row>
         <Row>
-          <Badge variant="success" shape="dot">
+          <Badge variant="success" shape="plain" dot>
             success
           </Badge>
-          <Badge variant="warning" shape="dot">
+          <Badge variant="warning" shape="plain" dot>
             warning
           </Badge>
-          <Badge variant="info" shape="dot">
+          <Badge variant="info" shape="plain" dot>
             info
           </Badge>
-          <Badge variant="danger" shape="dot">
+          <Badge variant="danger" shape="plain" dot>
             danger
           </Badge>
-          <Badge shape="dot">muted</Badge>
+          <Badge shape="plain" dot>muted</Badge>
+        </Row>
+        <Row>
+          <Badge variant="success" dot>
+            with dot
+          </Badge>
+          <Badge variant="info" icon={<DemoIcon />}>
+            with icon
+          </Badge>
         </Row>
       </Section>
 
@@ -156,7 +181,14 @@ export function ComponentsPage() {
           </Field>
           <Field name="query">
             <FieldLabel>Search</FieldLabel>
-            <Input type="search" placeholder="Search projects…" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.currentTarget.value)}
+              placeholder="Search projects…"
+              icon={<MagnifierIcon />}
+              end={<Button variant="ghost" size="sm" icon={<CloseIcon />} aria-label="Clear search" onClick={() => setQuery('')} />}
+            />
           </Field>
           <Field name="notes">
             <FieldLabel>Notes</FieldLabel>
@@ -185,6 +217,21 @@ export function ComponentsPage() {
                     {item.label}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select defaultValue="18" items={HOURS}>
+              <SelectTrigger aria-label="Hour">
+                <SelectValue placeholder="Hour" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Hours</SelectLabel>
+                  {HOURS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </Row>
@@ -289,7 +336,7 @@ export function ComponentsPage() {
             <TableRow data-state="restricted">
               <TableCell>gears-vault (restricted)</TableCell>
               <TableCell>
-                <Badge shape="dot">no access</Badge>
+                <Badge shape="plain" dot>no access</Badge>
               </TableCell>
               <TableCell>—</TableCell>
             </TableRow>

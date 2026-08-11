@@ -42,8 +42,8 @@
   "devDependencies": {
     "@gears-frontx/auth": "*",
     "@gears-frontx/frontx-template-shell": "file:../..",
-    "@gears-frontx/mfes": "0.3.0-alpha.1",
-    "@gears-frontx/gts-plugin": "0.3.0-alpha.1",
+    "@gears-frontx/mfes": "0.3.0-alpha.2",
+    "@gears-frontx/gts-plugin": "0.3.0-alpha.2",
     "@vitest/coverage-v8": "4.1.4",
     "@tanstack/query-core": "^5.0.0",
     "tsup": "8.0.0",

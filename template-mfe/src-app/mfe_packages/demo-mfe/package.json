@@ -58,7 +58,7 @@
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@vitejs/plugin-react": "4.3.4",
-    "@gears-frontx/frontx-template-shell": "0.1.0-alpha.1",
+    "@gears-frontx/frontx-template-shell": "0.1.0-alpha.2",
     "jsdom": "26.1.0",
     "typescript": "5.4.2",
     "vite": "6.4.3",

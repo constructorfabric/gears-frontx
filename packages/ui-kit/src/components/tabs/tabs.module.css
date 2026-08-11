@@ -147,7 +147,9 @@
     var(--ring);
 }
 
-/* See button.module.css: forced-colors drops box-shadow, restore UA outline. */
+/* The ring above is an inset box-shadow, and forced-colors mode doesn't
+ * render box-shadow at all — add an explicit outline or the focus
+ * indicator disappears entirely under the mode. */
 @media (forced-colors: active) {
   .trigger:focus-visible {
     outline: 2px solid Highlight;
@@ -249,7 +251,10 @@
   outline-offset: 2px;
 }
 
-/* See button.module.css: forced-colors drops box-shadow, restore UA outline. */
+/* The ring above is already an outline, not a box-shadow — forced-colors
+ * mode still flattens its author --ring color, so pin it to the system's
+ * Highlight color explicitly (same reasoning as button.module.css's own
+ * ring, restated here rather than delegated to it). */
 @media (forced-colors: active) {
   .content:focus-visible {
     outline: 2px solid Highlight;

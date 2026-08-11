@@ -1,6 +1,6 @@
 {
   "name": "@gears-frontx/frontx-template-shell",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "Standard FrontX application template — target scaffold for template-side code relocation",
   "type": "module",
   "main": "./dist-lib/index.cjs",
@@ -64,8 +64,8 @@
   },
   "dependencies": {
     "@gears-frontx/api": "0.3.0-alpha.1",
-    "@gears-frontx/gts-plugin": "0.3.0-alpha.1",
-    "@gears-frontx/mfes": "0.3.0-alpha.1",
+    "@gears-frontx/gts-plugin": "0.3.0-alpha.2",
+    "@gears-frontx/mfes": "0.3.0-alpha.2",
     "@hookform/resolvers": "5.2.2",
     "@iconify/react": "^6.0.2",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -111,7 +111,7 @@
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/lodash": "4.17.20",
-    "@types/react": "19.0.8",
+    "@types/react": "19.2.18",
     "@types/react-dom": "19.0.3",
     "@vitejs/plugin-react": "4.3.4",
     "@vitest/coverage-v8": "4.1.4",

@@ -28,6 +28,9 @@ export function isShadowRoot(el: Element | ParentNode | undefined | null): el is
   return !!el && el.nodeType === 11;
 }
 
+// Free-text and selection controls: attribute reading on these is narrowed by the caller to name,
+// identifier and accessible label. Unlike the whole-event drops, this one restricts fields.
+// @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1:inst-sensitive-free-text
 export function isSensitiveElement(el: Element): boolean {
   // don't send data from inputs or similar elements since there will always be
   // a risk of clientside javascript placing sensitive data in attributes
@@ -40,3 +43,4 @@ export function isSensitiveElement(el: Element): boolean {
     el.getAttribute('contenteditable') === 'true'
   );
 }
+// @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision:p1:inst-sensitive-free-text

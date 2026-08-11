@@ -73,7 +73,7 @@ accepts that format, so the migration is forward-compatibility rather than a
 compliance fix.
 
 The authoritative description of what this kit delivers is the architecture of
-record — `architecture/DECOMPOSITION.md` (`cpt-frontx-feature-ai-kit-packaging`)
-and `architecture/features/ai-kit-packaging/FEATURE.md`. The resource table above
+record — the root `architecture/DECOMPOSITION.md` (`cpt-frontx-feature-ai-kit-packaging`)
+and this package's `architecture/features/ai-kit-packaging/FEATURE.md`. The resource table above
 states what the manifest declares today; where the two differ, the artifacts
 govern.

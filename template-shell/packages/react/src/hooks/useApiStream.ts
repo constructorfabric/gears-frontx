@@ -24,6 +24,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { StreamDescriptor, StreamStatus } from '@gears-frontx/framework';
+import { useLatest } from './useLatest';
 
 /** Configuration options for useApiStream. */
 export interface ApiStreamOptions {
@@ -70,8 +71,7 @@ export function useApiStream<TEvent>(
   /** When true, connect's promise resolution must tear down the new id instead of adopting it. */
   const disconnectRequestedRef = useRef(false);
   // Latest descriptor for connect/disconnect without tying effect or callbacks to object identity.
-  const descriptorRef = useRef(descriptor);
-  descriptorRef.current = descriptor;
+  const descriptorRef = useLatest(descriptor);
 
   // Stable identity derived from descriptor key — used as effect dependency.
   // JSON.stringify avoids join('/') collisions when a segment contains '/'.
@@ -91,7 +91,10 @@ export function useApiStream<TEvent>(
       disconnectRequestedRef.current = false;
     }
     setStatus('disconnected');
-  }, []);
+    // descriptorRef's identity never changes (useLatest returns a stable ref
+    // object) — listing it here satisfies exhaustive-deps without altering
+    // when this callback is recreated.
+  }, [descriptorRef]);
 
   useEffect(() => {
     if (!enabled) {
@@ -159,7 +162,10 @@ export function useApiStream<TEvent>(
       connectPromiseRef.current = null;
       connectionIdRef.current = null;
     };
-  }, [descriptorKey, enabled, mode]);
+    // descriptorRef's identity never changes (useLatest returns a stable ref
+    // object) — listing it here satisfies exhaustive-deps without causing
+    // this effect to re-run on every render.
+  }, [descriptorKey, enabled, mode, descriptorRef]);
 
   return { data, events, status, error, disconnect };
 }

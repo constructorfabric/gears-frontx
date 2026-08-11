@@ -40,6 +40,7 @@ import type { ListContentOwnedFilesFn, ReadFileFn } from './manifest/types';
 import type { ProvenanceWriteFn } from './provenance/types';
 import type { ReadProvenanceRecordsFn } from './scaffold/materialize';
 import type { ReadTargetDirFn } from './commands/seed-repository';
+import type { ReadTargetPathStateFn } from './commands/add-template';
 import type {
   ReadProjectFileFn,
   WriteProjectFileFn,
@@ -55,6 +56,7 @@ import { createFsReadContentItemsFn } from './adapters/fs-read-content-items';
 import { createGithubFetchFn, resolveInventoryRoot } from './adapters/github-fetch';
 import { createLocalFetchFn } from './adapters/local-fetch';
 import { createFsReadTargetDirFn } from './adapters/fs-target-dir';
+import { createFsReadTargetPathStateFn } from './adapters/fs-target-path';
 import {
   createFsProvenanceWriteFn,
   readProvenanceRecords,
@@ -157,6 +159,7 @@ export interface CliDeps {
   provenanceWriteFn: ProvenanceWriteFn;
   readProvenanceRecordsFn: ReadProvenanceRecordsFn;
   readTargetDirFn: ReadTargetDirFn;
+  readTargetPathStateFn: ReadTargetPathStateFn;
   readSingleProvenanceFn: ReadProvenanceFn;
   readProjectFile: ReadProjectFileFn;
   writeProjectFile: WriteProjectFileFn;
@@ -184,6 +187,7 @@ export function createRealDeps(): CliDeps {
     provenanceWriteFn: createFsProvenanceWriteFn(),
     readProvenanceRecordsFn: readProvenanceRecords,
     readTargetDirFn: createFsReadTargetDirFn(),
+    readTargetPathStateFn: createFsReadTargetPathStateFn(),
     readSingleProvenanceFn: createFsReadSingleProvenanceFn(),
     readProjectFile: createFsReadProjectFileFn(),
     writeProjectFile: createFsWriteProjectFileFn(),
@@ -433,6 +437,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         deps.writeFileFn,
         deps.readProvenanceRecordsFn,
         deps.provenanceWriteFn,
+        deps.readTargetPathStateFn,
         deps.readProjectFile,
       );
       if (!result.ok) {

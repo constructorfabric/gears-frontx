@@ -14,6 +14,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { seedRepository } from '../commands/seed-repository';
 import { createFsReadTargetDirFn } from '../adapters/fs-target-dir';
+import { createFsReadTargetPathStateFn } from '../adapters/fs-target-path';
 import { addTemplate } from '../commands/add-template';
 import { installCommand } from '../commands/install';
 import { createLocalFetchFn } from '../adapters/local-fetch';
@@ -96,6 +97,7 @@ describe('Fixture 1 — union fidelity: seed frontx-template-shell + add frontx-
       harness.writeFileFn,
       harness.readProvenanceRecordsFn,
       harness.provenanceWriteFn,
+      createFsReadTargetPathStateFn(),
     );
     expect(addResult.ok).toBe(true);
 
@@ -188,6 +190,7 @@ describe('Fixture 3 — add-only integrity: seed shell, hash every file, add mfe
       harness.writeFileFn,
       harness.readProvenanceRecordsFn,
       harness.provenanceWriteFn,
+      createFsReadTargetPathStateFn(),
     );
     expect(addResult.ok).toBe(true);
 
@@ -231,6 +234,7 @@ describe("Fixture 4 — conflict-check on REAL templates: a synthetic 'mfe-dup' 
       harness.writeFileFn,
       harness.readProvenanceRecordsFn,
       harness.provenanceWriteFn,
+      createFsReadTargetPathStateFn(),
     );
     expect(addResult.ok).toBe(true);
 
@@ -264,6 +268,7 @@ describe("Fixture 4 — conflict-check on REAL templates: a synthetic 'mfe-dup' 
       harness.writeFileFn,
       harness.readProvenanceRecordsFn,
       harness.provenanceWriteFn,
+      createFsReadTargetPathStateFn(),
     );
 
     expect(dupAddResult.ok).toBe(false);

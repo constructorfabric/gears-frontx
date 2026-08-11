@@ -36,6 +36,42 @@ polymorphism, correct disabled/focus behavior, `type="button"` by default
 All other props are native `<button>` props (`onClick`, `disabled`, `type`,
 `aria-*`, ...) and are forwarded as-is.
 
+## Custom colors
+
+Variant colors are consumed through CSS custom properties, so a one-off
+brand/status button is a consumer class away — no new variant needed:
+
+| Property | Drives |
+|----------|--------|
+| `--button-bg` / `--button-fg` | fill / text at rest |
+| `--button-bg-hover` / `--button-fg-hover` | fill / text on hover |
+| `--button-border` | border color on every variant (transparent by default outside `outline`) |
+
+```css
+.buy { --button-bg: var(--success); --button-bg-hover: color-mix(in oklab, var(--success) 90%, var(--foreground) 10%); --button-fg: var(--primary-foreground); }
+```
+
+```tsx
+<Button className={styles.buy}>Buy now</Button>
+```
+
+Setting only `--button-bg` keeps the button that color in EVERY state
+(hover falls back to your rest color, never back to the variant's token);
+add `--button-bg-hover` to restore hover feedback. Contrast is yours to
+keep once you override: check your pairs against WCAG like the kit does
+for its own variants, and give the focus ring the same care via
+`--button-focus-ring` (see Anti-patterns) — it is drawn outside the button
+as an `outline`, so only one tone is needed; it only ever borders the page
+background, never your custom fill.
+
+These properties are inherited custom properties and `.button` never resets
+them, so where you set them matters: on the button's own class (`.buy`
+above) it recolors that one button; on a container it themes every Button
+underneath, including ones you didn't mean to touch — a clear button
+sitting in an Input's `end` slot inside that container, for instance. Use
+container-level scoping deliberately, or scope to the button itself to
+avoid the surprise.
+
 Icon-only is derived, not a size: `icon` with no children renders a square
 button of the current `size`. There is no `size="icon"`.
 
@@ -83,14 +119,13 @@ import { Button } from '@gears-frontx/ui-kit';
 
 ## Anti-patterns
 
-- Do not restyle via inline `style` or ad-hoc CSS — brand changes belong in
-  the theme tokens (`theme.css` CSS variables). If you rebrand the focus
-  ring specifically via `--button-focus-ring`, note that the `default` and
-  `destructive` variants also set an explicit `--button-focus-ring-inner`
-  of their own (a two-tone ring, needed to clear WCAG contrast against
-  their own fill) — overriding only `--button-focus-ring` on those two
-  leaves the old inner color in place instead of following it; set both
-  properties together when rebranding either variant's ring.
+- Do not restyle via inline `style` or ad-hoc CSS rules against the kit's
+  classes — kit-wide brand changes belong in the theme tokens (`theme.css`
+  CSS variables), one-off button colors in the `--button-*` properties
+  above. If you rebrand the focus ring specifically via
+  `--button-focus-ring`, check your color against WCAG 1.4.11's 3:1 floor
+  on `--background` — the only surface the ring touches, since it is drawn
+  outside the button as an `outline` rather than on its edge.
 - Do not put an icon in `children` next to text — it lands in the `icon`
   slot, which is what sizes it, spaces it, hides it during `loading`, and
   keeps it out of the accessible name.

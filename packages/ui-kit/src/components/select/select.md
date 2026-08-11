@@ -6,7 +6,10 @@ form submission (hidden native input on the root) come from Base UI.
 
 Composition: `Select` (root, holds the value) → `SelectTrigger` (+
 `SelectValue` for the current label) → `SelectContent` → `SelectGroup` /
-`SelectLabel` / `SelectItem` / `SelectSeparator`.
+`SelectLabel` / `SelectItem` / `SelectSeparator`. `SelectGroup` is only for
+labelled sections — it is optional; the dropdown's inner padding lives on
+the list itself, not on the group, so items placed directly under
+`SelectContent` are padded the same either way.
 
 ## When to use
 
@@ -35,12 +38,15 @@ raw value instead of the label until the popup has been opened once.
 | `className` | `string` — merged after the kit class | — |
 
 `SelectValue`: renders the selected item's label. Pass `placeholder`
-directly to `SelectValue` (see example). `SelectContent`
-accepts positioning props (`side`, `sideOffset`, `align`, `alignOffset`,
-`alignItemWithTrigger`, plus the escape hatch for triggers inside a
-`transform`/`filter` container: `positionMethod="fixed"`,
-`collisionBoundary`, `collisionPadding`) and `container` — the popup
-portals to `<body>`
+directly to `SelectValue` (see example). `SelectContent` always opens the
+list on its `side` (below the trigger by default) — it never overlays the
+trigger the way a native `<select>` does. With no value selected the list
+starts scrolled to the top; when the selected option is beyond the fold,
+it is scrolled into view on open. `SelectContent` accepts positioning
+props (`side`, `sideOffset`, `align`, `alignOffset`, plus the escape
+hatch for triggers inside a `transform`/`filter` container:
+`positionMethod="fixed"`, `collisionBoundary`, `collisionPadding`) and
+`container` — the popup portals to `<body>`
 by default, so if your theme lives on a subtree (`data-theme` on a
 section instead of `<html>`), pass that section as `container` or the
 popup renders with the root theme. `SelectItem` takes `value` (required) and
@@ -92,8 +98,6 @@ const REGIONS = [
 
 ## Anti-patterns
 
-- Do not put items directly under `SelectContent` without a `SelectGroup`
-  — the group carries the list padding.
 - Do not use a select for navigation — that is a menu/link pattern.
 - Do not omit a placeholder or default value — an empty trigger gives the
   user (and the agent) nothing to read.

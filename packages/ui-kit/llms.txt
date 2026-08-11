@@ -55,19 +55,23 @@ Rules for generated code:
 
 ## Components
 
-- [Badge](dist/docs/badge.md): status label, a colored dot + matching
-  caption; variants success|warning|info|danger|muted (semantic states ONLY
-  — pick by meaning, never by color; neutral/count/category = muted), shapes
-  pill|dot (pill adds a soft fill; dot is the bare pair for dense/inline
-  spots); no Base UI primitive; `render` (e.g. `<a>`) makes it a clickable
-  tag — hover feedback only appears once it is.
+- [Badge](dist/docs/badge.md): status label, an intent-colored caption with
+  an opt-in status dot (`dot`) or a leading `icon` slot prop (icon wins
+  when both are given; default is neither); variants
+  success|warning|info|danger|muted (semantic states ONLY — pick by meaning,
+  never by color; neutral/count/category = muted), shapes pill|plain (pill
+  adds a soft fill; plain is the bare label for dense/inline spots); no
+  Base UI primitive; `render` (e.g. `<a>`) makes it a clickable tag — hover
+  feedback only appears once it is.
 - [Button](dist/docs/button.md): action button; variants
-  default|destructive|outline|secondary|ghost|link, sizes default|sm|lg;
-  icons go in the `icon` slot prop, NEVER in children — `icon` with no
-  children makes a square icon-only button (always pass `aria-label`
-  then); `loading` spins, disables, and keeps the width and accessible
-  name; render prop for button-semantic actions over a real anchor (not
-  a link substitute).
+  default|destructive|outline|secondary|ghost|link, sizes default|sm|lg; a
+  consumer className can recolor a button in every state via
+  `--button-bg`/`--button-fg`/`--button-bg-hover`/`--button-fg-hover`/
+  `--button-border` — no new variant needed; icons go in the `icon` slot
+  prop, NEVER in children — `icon` with no children makes a square
+  icon-only button (always pass `aria-label` then); `loading` spins,
+  disables, and keeps the width and accessible name; render prop for
+  button-semantic actions over a real anchor (not a link substitute).
 - [Card](dist/docs/card.md): bounded content surface (Card/CardHeader/
   CardTitle/CardDescription/CardAction/CardContent/CardFooter); header
   becomes a two-column/two-row grid automatically when it contains a
@@ -91,9 +95,12 @@ Rules for generated code:
   aria-describedby, and validation display automatically — the default
   way to build forms.
 - [Input](dist/docs/input.md): single-line text field; `onValueChange`
-  for the string value, `aria-invalid` for the error state;
-  `type="search"` renders the leading magnifier and announces as a
-  searchbox — no extra prop; wires into Field automatically.
+  for the string value, `aria-invalid` for the error state; `icon` for a
+  leading decorative icon, `end` for trailing interactive content (e.g. a
+  clear button; rendered after the input, so tab order is field → slot) —
+  neither renders automatically; `type="search"` gives the searchbox role
+  but no icon by itself — pass one via `icon`; wires into Field
+  automatically.
 - [Label](dist/docs/label.md): caption for a form control; native
   `<label>` props; associate via `htmlFor` or by nesting the control.
 - [RadioGroup](dist/docs/radio-group.md): mutually exclusive options
@@ -102,8 +109,10 @@ Rules for generated code:
 - [Select](dist/docs/select.md): dropdown picking one value from a
   list (Select/SelectTrigger/SelectValue/SelectContent/SelectGroup/
   SelectItem); trigger sizes default|sm, trigger variants default|filter
-  (filter = compact toolbar filter chip, label stays muted); keyboard
-  and typeahead built in.
+  (filter = compact toolbar filter chip, label stays muted); the popup
+  always opens below the trigger (never overlays it), scrolling a selected
+  item into view when it sits beyond the fold; keyboard and typeahead
+  built in.
 - [Separator](dist/docs/separator.md): thin visual divider between content
   sections; orientation horizontal|vertical (default horizontal); no
   `decorative` prop — pass `aria-hidden="true"` for a purely visual

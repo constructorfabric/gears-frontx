@@ -54,6 +54,7 @@ Not applicable — there is no actor-facing usecase for this cross-cutting polic
 
 - **PRD**: [PRD.md](../../PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
+- **Component**: `cpt-frontx-component-ecosystem-version-policy` — this feature is that component's concrete spec: the version-policy check (`scripts/ecosystem-version-policy.mjs`) and the release conventions it asserts
 - **Dependencies**: None
 - **Contract**: `cpt-frontx-contract-package-registry-distribution`
 
@@ -100,7 +101,7 @@ Note: there is no actor-facing PRD usecase for this cross-cutting policy. The fl
 1. [x] - `p1` - Consuming project requests a version update for one specific FrontX artifact via the package registry - `inst-cu-request`
 2. [x] - `p1` - Resolve the requested artifact version against the package registry - `inst-cu-resolve`
 3. [x] - `p1` - **IF** the registry reports the requested version as deprecated (an `npm deprecate` notice is present): - `inst-cu-if-deprecated`
-   1. [x] - `p1` - Surface the registry deprecation warning, including the notice text and the recommended supported version - `inst-cu-warn-deprecated`
+   1. [x] - `p1` - Surface the registry deprecation warning, including the notice's publish date and the recommended supported version - `inst-cu-warn-deprecated`
 4. [x] - `p1` - **IF** the requested artifact is `@gears-frontx/mfes` or `@gears-frontx/gts-plugin` (the one coupled edge): - `inst-cu-if-coupled`
    1. [x] - `p1` - Verify the resolved `mfes` version's declared peer range on `gts-plugin` is satisfied by the `gts-plugin` version present in the project - `inst-cu-check-edge`
    2. [x] - `p1` - **IF** the peer range is not satisfied: - `inst-cu-if-edge-conflict`

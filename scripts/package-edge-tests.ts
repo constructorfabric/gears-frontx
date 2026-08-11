@@ -13,6 +13,9 @@
  *   edges the boundary model permits (ALLOWED_ECOSYSTEM_EDGES).
  * - The edges the model requires still exist (REQUIRED_ECOSYSTEM_EDGES) — so
  *   dropping the type-substrate port fails loudly instead of silently passing.
+ * - The `standalone` property each published library declares
+ *   (PUBLISHED_LIBRARY_PROPERTIES) is consistent with its edge allowlist, so the
+ *   model cannot claim a property its own permissions contradict.
  * - No ecosystem package declares a dependency on a template-side package.
  *   Enforced by shape: the allowlists name no template package, so this holds
  *   without the guard knowing the template's identity or location.
@@ -51,25 +54,29 @@ interface AllowedEdges {
 }
 
 const LAYER_CONSTANTS = require('../internal/depcruise-config/layer-constants.cjs') as {
-  CORE_FRAMEWORK_PACKAGES: readonly string[];
-  TOOLING_PACKAGES: readonly string[];
-  INTERNAL_TOOLING_PACKAGES: readonly string[];
-  INTERIM_UNCLASSIFIED_PACKAGES: readonly string[];
+  PUBLISHED_LIBRARY_PROPERTIES: Readonly<
+    Record<string, Readonly<{ core: boolean; standalone: boolean }>>
+  >;
+  PUBLISHED_LIBRARY_PACKAGES: readonly string[];
+  PROJECTS_ORCHESTRATION_PACKAGES: readonly string[];
+  BUILD_INTERNALS_PACKAGES: readonly string[];
   ECOSYSTEM_PACKAGES: readonly string[];
   ECOSYSTEM_PACKAGE_DIRS: Readonly<Record<string, string>>;
   ALLOWED_ECOSYSTEM_EDGES: Readonly<Record<string, AllowedEdges>>;
   REQUIRED_ECOSYSTEM_EDGES: readonly (readonly [string, string, string])[];
+  TYPE_SUBSTRATE_PORT_MANIFEST_EDGES: readonly (readonly [string, string])[];
 };
 
 const {
-  CORE_FRAMEWORK_PACKAGES,
-  TOOLING_PACKAGES,
-  INTERNAL_TOOLING_PACKAGES,
-  INTERIM_UNCLASSIFIED_PACKAGES,
+  PUBLISHED_LIBRARY_PROPERTIES,
+  PUBLISHED_LIBRARY_PACKAGES,
+  PROJECTS_ORCHESTRATION_PACKAGES,
+  BUILD_INTERNALS_PACKAGES,
   ECOSYSTEM_PACKAGES,
   ECOSYSTEM_PACKAGE_DIRS,
   ALLOWED_ECOSYSTEM_EDGES,
   REQUIRED_ECOSYSTEM_EDGES,
+  TYPE_SUBSTRATE_PORT_MANIFEST_EDGES,
 } = LAYER_CONSTANTS;
 
 /**
@@ -124,14 +131,28 @@ function resolvePackageDir(pkgName: string): string {
   return path.join(REPO_ROOT, dir);
 }
 
-/** Which layer a package belongs to, for test naming. */
+/**
+ * Which layer (or stated non-layer category) a package belongs to, for test
+ * naming.
+ *
+ * Throws rather than returning a catch-all, for the same reason
+ * `resolvePackageDir` does. `ECOSYSTEM_PACKAGES` is the concatenation of exactly
+ * the classifications tested here, and `testAllowedEdges` is the only caller, so
+ * no argument can reach the end of this function. The previous
+ * `return 'Unlayered'` looked like the safety net for an unclassified package
+ * and was not one — it was unreachable, while a package on disk that no list
+ * mentions was never visited at all. `testWorkspaceCoverage` is the real
+ * reciprocal check; leaving a dead fallback next to it invites the reader to
+ * believe this function shares the work.
+ */
 function layerOf(pkgName: string): string {
-  if (CORE_FRAMEWORK_PACKAGES.includes(pkgName)) return 'Core';
-  if (TOOLING_PACKAGES.includes(pkgName)) return 'Tooling';
-  if (INTERNAL_TOOLING_PACKAGES.includes(pkgName)) return 'Config';
-  // Named, guarded, but no layer asserted yet — see INTERIM_UNCLASSIFIED_PACKAGES.
-  if (INTERIM_UNCLASSIFIED_PACKAGES.includes(pkgName)) return 'Layer-pending';
-  return 'Unlayered';
+  if (PUBLISHED_LIBRARY_PACKAGES.includes(pkgName)) return 'Published lib';
+  if (PROJECTS_ORCHESTRATION_PACKAGES.includes(pkgName)) return 'Orchestration';
+  if (BUILD_INTERNALS_PACKAGES.includes(pkgName)) return 'Build internals';
+  throw new Error(
+    `'${pkgName}' is in ECOSYSTEM_PACKAGES but in none of the membership lists. ` +
+      `The lists and their concatenation have been edited apart in layer-constants.cjs.`
+  );
 }
 
 function readPackageJson(packageDir: string): PackageJson | null {
@@ -231,6 +252,7 @@ function testAllowedEdges(): TestResult[] {
  * check exists to find.
  */
 function discoverWorkspaceDirs(): string[] {
+  // @cpt-begin:cpt-frontx-algo-ecosystem-governance-total-classification:p1:inst-tc-discover
   const rootPkg = JSON.parse(
     readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')
   ) as { workspaces?: string[] };
@@ -261,6 +283,7 @@ function discoverWorkspaceDirs(): string[] {
   }
 
   return dirs.sort();
+  // @cpt-end:cpt-frontx-algo-ecosystem-governance-total-classification:p1:inst-tc-discover
 }
 
 /**
@@ -273,8 +296,11 @@ function discoverWorkspaceDirs(): string[] {
  * it at the new package. Without the second, `ALLOWED_ECOSYSTEM_EDGES[pkg] ?? {}`
  * quietly stands in for a reviewed decision.
  */
+// @cpt-dod:cpt-frontx-dod-ecosystem-governance-total-classification-enforced:p1
+// @cpt-algo:cpt-frontx-algo-ecosystem-governance-total-classification:p1
 function testWorkspaceCoverage(): TestResult[] {
   const results: TestResult[] = [];
+  // @cpt-begin:cpt-frontx-algo-ecosystem-governance-total-classification:p1:inst-tc-unmapped
   const known = new Set(Object.values(ECOSYSTEM_PACKAGE_DIRS));
   const unmapped = discoverWorkspaceDirs().filter((dir) => !known.has(dir));
 
@@ -284,12 +310,14 @@ function testWorkspaceCoverage(): TestResult[] {
     message:
       unmapped.length === 0
         ? `All ${known.size} workspaces are classified`
-        : `Unclassified workspace(s): ${unmapped.join(', ')} — add each to a layer list in ` +
-          `internal/depcruise-config/layer-constants.cjs (CORE_FRAMEWORK_PACKAGES, ` +
-          `TOOLING_PACKAGES or INTERNAL_TOOLING_PACKAGES). An unclassified package is ` +
-          `exempt from every boundary guard.`,
+        : `Unclassified workspace(s): ${unmapped.join(', ')} — classify each in ` +
+          `internal/depcruise-config/layer-constants.cjs (PUBLISHED_LIBRARY_PROPERTIES, ` +
+          `PROJECTS_ORCHESTRATION_PACKAGES or BUILD_INTERNALS_PACKAGES). An unclassified ` +
+          `package is exempt from every boundary guard.`,
   });
+  // @cpt-end:cpt-frontx-algo-ecosystem-governance-total-classification:p1:inst-tc-unmapped
 
+  // @cpt-begin:cpt-frontx-algo-ecosystem-governance-total-classification:p1:inst-tc-unlisted
   const unallowlisted = ECOSYSTEM_PACKAGES.filter(
     (pkgName) => ALLOWED_ECOSYSTEM_EDGES[pkgName] === undefined
   );
@@ -302,6 +330,52 @@ function testWorkspaceCoverage(): TestResult[] {
         ? 'All layer members have an ALLOWED_ECOSYSTEM_EDGES entry'
         : `No ALLOWED_ECOSYSTEM_EDGES entry for: ${unallowlisted.join(', ')}`,
   });
+  // @cpt-end:cpt-frontx-algo-ecosystem-governance-total-classification:p1:inst-tc-unlisted
+
+  // @cpt-begin:cpt-frontx-algo-ecosystem-governance-total-classification:p1:inst-tc-return
+  return results;
+  // @cpt-end:cpt-frontx-algo-ecosystem-governance-total-classification:p1:inst-tc-return
+}
+
+/**
+ * Test: the standalone property is consistent with the edge allowlist.
+ *
+ * `standalone` (DESIGN §1.3) means no intra-ecosystem runtime edge except the
+ * type-substrate port. The property and the allowlist are both authored data,
+ * so nothing structural stops them drifting apart — an allowlist entry widened
+ * while `PUBLISHED_LIBRARY_PROPERTIES` still claims `standalone: true` would
+ * leave the model asserting a property its own permissions contradict. Checked
+ * against the *allowlist* rather than the manifests because `testAllowedEdges`
+ * already holds the manifests to the allowlist; this closes the remaining gap
+ * between the allowlist and the property it is supposed to express. Dev-group
+ * edges are exempt: the property is about the shipped dependency graph, and
+ * build-time config edges are held to the allowlist separately.
+ */
+function testStandaloneProperty(): TestResult[] {
+  const results: TestResult[] = [];
+  const portEdges = new Set(
+    TYPE_SUBSTRATE_PORT_MANIFEST_EDGES.map(([pkgName, dep]) => `${pkgName} -> ${dep}`)
+  );
+
+  for (const pkgName of PUBLISHED_LIBRARY_PACKAGES) {
+    if (!PUBLISHED_LIBRARY_PROPERTIES[pkgName].standalone) continue;
+
+    const runtime = ALLOWED_ECOSYSTEM_EDGES[pkgName]?.runtime ?? [];
+    const unexplained = runtime.filter((dep) => !portEdges.has(`${pkgName} -> ${dep}`));
+
+    results.push({
+      name: `Published lib @gears-frontx/${pkgName}: standalone property holds`,
+      passed: unexplained.length === 0,
+      message:
+        unexplained.length === 0
+          ? runtime.length === 0
+            ? 'No intra-ecosystem runtime edge permitted'
+            : `Only the type-substrate port permitted: ${runtime.join(', ')}`
+          : `Allowlisted runtime edge(s) the standalone property forbids: ${unexplained.join(', ')} — ` +
+            `remove the edge, or change the property in PUBLISHED_LIBRARY_PROPERTIES (an ` +
+            `architecture decision, not a fix).`,
+    });
+  }
 
   return results;
 }
@@ -340,13 +414,13 @@ function runPackageEdgeTests(): { results: TestResult[]; summary: { passed: numb
   log('\n📦 Ecosystem Package Edge Tests', 'blue');
   log('='.repeat(40), 'blue');
   log(
-    `Core Framework: ${CORE_FRAMEWORK_PACKAGES.join(', ')}  |  Tooling: ${TOOLING_PACKAGES.join(
+    `Published libs: ${PUBLISHED_LIBRARY_PACKAGES.map((name) => {
+      const { core, standalone } = PUBLISHED_LIBRARY_PROPERTIES[name];
+      const props = [core ? 'core' : null, standalone ? 'standalone' : null].filter(Boolean);
+      return `${name}${props.length > 0 ? ` (${props.join(', ')})` : ''}`;
+    }).join(', ')}  |  Orchestration: ${PROJECTS_ORCHESTRATION_PACKAGES.join(
       ', '
-    )}  |  Config: ${INTERNAL_TOOLING_PACKAGES.join(', ')}${
-      INTERIM_UNCLASSIFIED_PACKAGES.length > 0
-        ? `  |  Layer pending (#495): ${INTERIM_UNCLASSIFIED_PACKAGES.join(', ')}`
-        : ''
-    }`,
+    )}  |  Build internals: ${BUILD_INTERNALS_PACKAGES.join(', ')}`,
     'yellow'
   );
 
@@ -361,6 +435,13 @@ function runPackageEdgeTests(): { results: TestResult[]; summary: { passed: numb
   const allowed = testAllowedEdges();
   allResults.push(...allowed);
   for (const result of allowed) {
+    log(`${result.passed ? '✅' : '❌'} ${result.name}: ${result.message}`, result.passed ? 'green' : 'red');
+  }
+
+  log('\n🧩 Standalone property', 'blue');
+  const standalone = testStandaloneProperty();
+  allResults.push(...standalone);
+  for (const result of standalone) {
     log(`${result.passed ? '✅' : '❌'} ${result.name}: ${result.message}`, result.passed ? 'green' : 'red');
   }
 
@@ -380,17 +461,22 @@ function runPackageEdgeTests(): { results: TestResult[]; summary: { passed: numb
   };
 }
 
+// @cpt-flow:cpt-frontx-flow-ecosystem-governance-ci-guard-run:p1
 function main(): void {
+  // @cpt-begin:cpt-frontx-flow-ecosystem-governance-ci-guard-run:p1:inst-cgr-edges
   const { summary } = runPackageEdgeTests();
+  // @cpt-end:cpt-frontx-flow-ecosystem-governance-ci-guard-run:p1:inst-cgr-edges
 
   log('\n📊 Summary', 'blue');
   log(`  ✅ Passed: ${summary.passed}`, 'green');
   log(`  ❌ Failed: ${summary.failed}`, summary.failed > 0 ? 'red' : 'green');
 
+  // @cpt-begin:cpt-frontx-flow-ecosystem-governance-ci-guard-run:p1:inst-cgr-fail
   if (summary.failed > 0) {
     log('\n💥 Package edge tests failed!', 'red');
     process.exit(1);
   }
+  // @cpt-end:cpt-frontx-flow-ecosystem-governance-ci-guard-run:p1:inst-cgr-fail
   log('\n🎉 Package edge tests passed!', 'green');
   process.exit(0);
 }
@@ -411,6 +497,7 @@ export {
   runPackageEdgeTests,
   testAllowedEdges,
   testRequiredEdges,
+  testStandaloneProperty,
   testWorkspaceCoverage,
   discoverWorkspaceDirs,
 };
