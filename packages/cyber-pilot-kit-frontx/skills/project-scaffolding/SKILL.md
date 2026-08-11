@@ -326,12 +326,23 @@ node <installed kit root>/skills/project-scaffolding/scripts/verify-walk.mjs \
   --capdir "$CAPDIR" \
   --switcher <the theme switcher's testid> \
   --theme-option '<the per-theme option testid, with {theme} in it>' \
-  --menu '<a screen menu item testid, with {screen} in it>' \
+  --menu '<a screen menu item testid, with {screen} or {extensionId} in it>' \
   --panel-expand <the dev panel's expand testid> \
   --panel-collapse <the dev panel's collapse testid> \
   --states <file of declared per-screen interactions> \
   --coverage <targetDir>/.frontx/verification-coverage.md
 ```
+
+**A menu item keyed by something other than the screen's short name is named
+with `{extensionId}`.** A host may mark each item with the whole identity of the
+extension behind it rather than a short label, and `{screen}` cannot spell that:
+one run found the pattern inexpressible, navigated by route instead, and then
+owed every menu click by hand at 78.6 seconds of budget. Where `{extensionId}`
+appears, the driver takes the id from the screen's fourth `--screens` field when
+one is declared, and otherwise reads the ids off the page and keeps the menu
+item whose id carries that screen's name as a whole segment - refusing, rather
+than picking, when none or several do. `{screen}` is unchanged and costs no
+read: a host whose items are keyed by the short name goes on as before.
 
 `node <that path> --help` prints the whole flag surface. `$CAPDIR` is the
 run-unique capture directory made under the capture rule below, and the driver

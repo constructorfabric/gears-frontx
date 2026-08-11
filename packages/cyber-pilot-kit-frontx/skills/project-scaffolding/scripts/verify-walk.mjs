@@ -32,8 +32,11 @@ Required:
   --themes <list|registry>  comma list of registered theme names, or the word
                             "registry" with --theme-registry naming the file the
                             set was read out of the host's theme registration into
-  --screens <list>          comma list of name:route[:ready-testid] entries, e.g.
+  --screens <list>          comma list of name:route[:ready-testid[:extension-id]]
+                            entries, e.g.
                             orders:/orders:screen-orders,stock:/stock:screen-stock
+                            The fourth field is the screen's full extension id, for
+                            a host that keys its menu items by id; see --menu.
   --capdir <path>           capture directory for this run; created when absent and
                             refused when it already holds files
   --switcher <testid>       data-testid of the theme switcher trigger
@@ -43,8 +46,13 @@ Optional:
   --theme-registry <path>   file the theme set was read from; recorded as the set's provenance
   --theme-labels <map>      theme=label pairs, comma separated, when a switcher label
                             does not carry the theme name verbatim
-  --menu <pattern>          data-testid of a screen's menu item, with {screen} in it;
-                            required when --nav is menu
+  --menu <pattern>          data-testid of a screen's menu item, with {screen} or
+                            {extensionId} in it; required when --nav is menu.
+                            {screen} takes the short name from --screens.
+                            {extensionId} takes that screen's fourth --screens field,
+                            or, when none is declared, the id read off the page from
+                            the menu item whose id carries the screen name as a
+                            whole segment.
   --nav <menu|route>        how screens after the first are reached (default: menu)
   --panel-expand <testid>   data-testid of the host dev panel's expand control
   --panel-collapse <testid> data-testid of the host dev panel's collapse control
@@ -89,15 +97,17 @@ function parseArgs(argv) {
   return opts;
 }
 
-// A screen is name:route[:ready-testid]. The ready testid is what the driver
-// waits for before capturing; a screen declared without one is captured after a
-// bare settle and marked readyConfirmed:false, so the weakness is disclosed in
-// the result rather than hidden behind a screenshot that looks fine.
+// A screen is name:route[:ready-testid[:extension-id]]. The ready testid is what
+// the driver waits for before capturing; a screen declared without one is
+// captured after a bare settle and marked readyConfirmed:false, so the weakness
+// is disclosed in the result rather than hidden behind a screenshot that looks
+// fine. The extension id is the menu resolver's certain path; a colon separates
+// the fields because an extension id is built from `.` and `~` and carries none.
 function parseScreens(spec) {
   return spec.split(',').filter(Boolean).map((entry) => {
-    const [name, route, ready] = entry.split(':');
-    if (!name || !route) throw new Error(`--screens entry "${entry}" is not name:route[:ready-testid]`);
-    return { name, route, readyTestid: ready ?? null };
+    const [name, route, ready, extensionId] = entry.split(':');
+    if (!name || !route) throw new Error(`--screens entry "${entry}" is not name:route[:ready-testid[:extension-id]]`);
+    return { name, route, readyTestid: ready || null, extensionId: extensionId || null };
   });
 }
 
@@ -170,6 +180,15 @@ globalThis.__find ??= (id) => {
   return walk(document);
 };
 globalThis.__MISSING ??= '__verify_walk_missing__';
+globalThis.__testids ??= () => {
+  const seen = [];
+  const walk = (root) => {
+    for (const el of root.querySelectorAll('[data-testid]')) seen.push(el.getAttribute('data-testid'));
+    for (const el of root.querySelectorAll('*')) { if (el.shadowRoot) walk(el.shadowRoot); }
+  };
+  walk(document);
+  return JSON.stringify(seen);
+};
 `;
 
 // Returned in place of a value the eval never produced. Distinct from
@@ -205,6 +224,25 @@ const exists = (testid) => probeExists(testid) === 'yes';
 
 const readText = (testid) =>
   evaluate(`(() => { const el = __find(${JSON.stringify(testid)}); return el ? (el.textContent || '').trim() : __MISSING; })()`);
+
+// Every data-testid the page carries, shadow roots included. Read as JSON
+// rather than as a delimited line because the ids this exists to find are
+// extension ids, built from exactly the punctuation any delimiter would have to
+// avoid. Null means the list could not be read at all, which is a different
+// answer from a page carrying none.
+function readTestids() {
+  const raw = evaluate('__testids()');
+  if (raw === EVAL_ERROR) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch {
+    // falls through to the one failure below, so both shapes of unreadable
+    // answer are reported the same way
+  }
+  fail('menu-resolve', `the page's data-testid list did not read back as JSON: "${raw}"`);
+  return null;
+}
 
 // Why a driven step did not take. A missing control and a refused eval are
 // different repairs, and one shared "not found" message is what made a broken
@@ -282,6 +320,7 @@ const result = {
   themeSet: { source: null, themes: [] },
   screens: [],
   navigation: null,
+  menuResolution: [],
   themes: [],
   failures: [],
   coverageFile: null,
@@ -462,12 +501,84 @@ function capture(theme, screen, state) {
   return file;
 }
 
+// ---------------------------------------------------------------------------
+// Menu resolution
+
+const MENU_SCREEN = '{screen}';
+const MENU_EXTENSION_ID = '{extensionId}';
+
+// An extension id is identifier segments joined by punctuation - a menu item
+// reads `menu-item-gts.frontx.mfes.ext.extension.v1~...~best.login.screens.login.v1`
+// - and the screen is named by one of those segments. Matching on a bare
+// substring would let a screen called "task" claim "tasks", so the name has to
+// stand as a whole segment or not at all.
+const idSegments = (id) => id.split(/[^A-Za-z0-9]+/).filter(Boolean);
+
+const menuTestids = new Map();
+
+// The host keys each menu item by the screen's full extension id, which the
+// short name in --screens cannot spell. Reading the ids back off the page is
+// what run 30 had to do by hand: the pattern was inexpressible, the run fell
+// back to route navigation, and the menu clicks it still owed were driven one
+// at a time outside the driver. One candidate is the answer; anything else is a
+// refusal, never a pick, because a wrong menu item navigates somewhere real and
+// every reading after it is a reading of the wrong screen.
+function discoverExtensionId(pattern, screen) {
+  const [prefix, suffix] = pattern.split(MENU_EXTENSION_ID);
+  const onPage = readTestids();
+  if (onPage === null) return null;
+
+  const candidates = [...new Set(onPage
+    .filter((id) => id.length > prefix.length + suffix.length && id.startsWith(prefix) && id.endsWith(suffix))
+    .map((id) => id.slice(prefix.length, id.length - suffix.length))
+    .filter((id) => idSegments(id).includes(screen.name)))];
+
+  if (candidates.length === 1) return candidates[0];
+  fail('menu-resolve', candidates.length === 0
+    ? `no data-testid on the page matches "${pattern}" with "${screen.name}" as a segment of its id; the page carries ${JSON.stringify(onPage)}`
+    : `${JSON.stringify(candidates)} all carry "${screen.name}" as a segment; declare the screen's extension id as the fourth field of its --screens entry`);
+  return null;
+}
+
+// Resolved once per screen and remembered: the menu is re-rendered at every
+// theme boundary but its ids are not re-issued, so a second discovery would
+// spend an eval to learn what the first one already knows.
+function menuTestid(screen) {
+  if (menuTestids.has(screen.name)) return menuTestids.get(screen.name);
+
+  // {screen} is substituted first and unconditionally, so a host whose menu
+  // items are keyed by the short name resolves exactly as it always did - and
+  // without an eval, since a pattern that spells the whole id needs nothing
+  // read off the page.
+  const pattern = opts.menu.split(MENU_SCREEN).join(screen.name);
+  let testid = pattern;
+  let extensionId = null;
+  let source = 'pattern';
+
+  if (pattern.includes(MENU_EXTENSION_ID)) {
+    extensionId = screen.extensionId ?? discoverExtensionId(pattern, screen);
+    source = extensionId === null ? 'unresolved' : screen.extensionId === null ? 'discovered' : 'declared';
+    testid = extensionId === null ? null : pattern.split(MENU_EXTENSION_ID).join(extensionId);
+  }
+
+  // Recorded for every screen, resolved or not: which handle the walk clicked
+  // is part of what the run has to be able to show, and "the pattern as given"
+  // is an answer a report may need as much as a discovered id.
+  result.menuResolution.push({ screen: screen.name, testid, extensionId, source });
+  menuTestids.set(screen.name, testid);
+  return testid;
+}
+
 function reachScreen(screen, hard) {
   if (hard) {
     browser(['open', `${opts.host}${screen.route}`]);
     browser(['reload']);
   } else {
-    click(opts.menu.replace('{screen}', screen.name));
+    const testid = menuTestid(screen);
+    // An unresolved menu item is already recorded as a failure; clicking the
+    // unsubstituted pattern would only add a second, less informative one.
+    if (testid === null) return false;
+    click(testid);
   }
   if (!screen.readyTestid) return false;
   if (waitFor(screen.readyTestid, readyTimeout)) return true;

@@ -660,5 +660,160 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
       fs.rmSync(workdir, { recursive: true, force: true });
     });
+
+    // A page the driver can complete a walk against, standing in for the
+    // browser at the one seam the driver has: `npx agent-browser`. It answers
+    // from a declared id list rather than a real DOM, and records every command
+    // it was given, so a test asserts on what the driver actually drove instead
+    // of on the driver's own account of it. Nothing here mocks the driver.
+    const STUB_AGENT_BROWSER = `
+const fs = require('node:fs');
+const path = require('node:path');
+
+const log = (line) => fs.appendFileSync(process.env.STUB_LOG, line + '\\n');
+const ids = JSON.parse(process.env.STUB_IDS);
+const argv = process.argv.slice(4); // past node, this file, --yes, agent-browser
+const command = argv[0];
+
+if (command === 'screenshot') {
+  fs.writeFileSync(argv[1], 'png:' + path.basename(argv[1]));
+  log('screenshot ' + path.basename(argv[1]));
+  process.exit(0);
+}
+if (command !== 'eval') {
+  log(argv.join(' '));
+  process.exit(0);
+}
+
+const script = fs.readFileSync(0, 'utf8');
+const found = /__find\\("([^"]*)"\\)/.exec(script);
+const id = found === null ? null : found[1];
+
+if (script.includes('__testids()')) {
+  process.stdout.write(JSON.stringify(ids) + '\\n');
+} else if (script.includes('dispatchEvent')) {
+  log('click ' + id);
+  process.stdout.write((ids.includes(id) ? 'dispatched' : '__verify_walk_missing__') + '\\n');
+} else if (script.includes("'yes' : 'no'")) {
+  process.stdout.write((ids.includes(id) ? 'yes' : 'no') + '\\n');
+} else {
+  // The switcher's label is the only text this walk reads back.
+  process.stdout.write((id === 'theme-switcher' ? 'Theme: light' : '') + '\\n');
+}
+process.exit(0);
+`;
+
+    interface StubRun {
+      status: number | null;
+      result: {
+        ok: boolean;
+        menuResolution: { screen: string; testid: string | null; extensionId: string | null; source: string }[];
+        themes: { captures: { screen: string; state: string }[] }[];
+        failures: { stage: string; detail: string }[];
+      };
+      commands: string[];
+      cleanup: () => void;
+    }
+
+    function runAgainstStub(args: string[], ids: string[], env: NodeJS.ProcessEnv = {}): StubRun {
+      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-walk-'));
+      const stubDir = path.join(workdir, 'bin');
+      fs.mkdirSync(stubDir, { recursive: true });
+
+      const stubFile = path.join(stubDir, 'agent-browser.cjs');
+      fs.writeFileSync(stubFile, STUB_AGENT_BROWSER);
+      // The shim hardcodes this interpreter rather than resolving `node` off the
+      // PATH it is itself prepended to, so the stub cannot end up running under
+      // whatever else that PATH happens to offer.
+      fs.writeFileSync(path.join(stubDir, 'npx'),
+        `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(stubFile)} "$@"\n`,
+        { mode: 0o755 });
+
+      const logFile = path.join(workdir, 'commands.log');
+      fs.writeFileSync(logFile, '');
+
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        // Answers the host probe without a port, exactly as in the eval test.
+        '--host', 'data:text/plain,ok',
+        '--themes', 'light',
+        '--capdir', path.join(workdir, 'shots'),
+        '--switcher', 'theme-switcher',
+        '--theme-option', 'theme-option-{theme}',
+        '--cdp-port', '1',
+        '--ready-timeout', '5000',
+        ...args,
+      ], {
+        encoding: 'utf8',
+        env: {
+          ...process.env, ...env,
+          PATH: `${stubDir}${path.delimiter}${process.env.PATH ?? ''}`,
+          STUB_LOG: logFile,
+          STUB_IDS: JSON.stringify(ids),
+        },
+      });
+
+      return {
+        status: run.status,
+        result: JSON.parse(run.stdout) as StubRun['result'],
+        commands: fs.readFileSync(logFile, 'utf8').split('\n').filter(Boolean),
+        cleanup: () => fs.rmSync(workdir, { recursive: true, force: true }),
+      };
+    }
+
+    const EXT_PREFIX = 'gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~best';
+    const LOGIN_EXT = `${EXT_PREFIX}.login.screens.login.v1`;
+    const TASKS_EXT = `${EXT_PREFIX}.tasks.screens.tasks.v1`;
+    const REPORTS_EXT = `${EXT_PREFIX}.reports.screens.reports.v1`;
+    const HOST_IDS = ['theme-switcher', 'theme-option-light', 'screen-login', 'screen-tasks', 'screen-reports'];
+
+    // The host keys each menu item by the screen's whole extension id, so a
+    // pattern holding only the short screen name can never name one. Run 30 hit
+    // exactly that, fell back to route navigation, and drove the menu clicks it
+    // still owed by hand at 78.6s of budget.
+    it('reaches a menu item keyed by the screen full extension id, discovered or declared', () => {
+      const run = runAgainstStub([
+        '--screens', `login:/login:screen-login,tasks:/tasks:screen-tasks,reports:/reports:screen-reports:${REPORTS_EXT}`,
+        '--menu', 'menu-item-{extensionId}',
+      ], [...HOST_IDS, `menu-item-${LOGIN_EXT}`, `menu-item-${TASKS_EXT}`, `menu-item-${REPORTS_EXT}`]);
+
+      // The whole walk completes through the menu: this is the run that
+      // previously had no expressible pattern at all.
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+
+      // `tasks` names no id, so the driver reads the page's ids back and keeps
+      // the one carrying "tasks" as a segment; `reports` declares its own and
+      // costs no eval. Both are disclosed with the source they came from.
+      expect(run.result.menuResolution).toEqual([
+        { screen: 'tasks', testid: `menu-item-${TASKS_EXT}`, extensionId: TASKS_EXT, source: 'discovered' },
+        { screen: 'reports', testid: `menu-item-${REPORTS_EXT}`, extensionId: REPORTS_EXT, source: 'declared' },
+      ]);
+      // The clicks landed on the full ids, not on anything derived from the
+      // short name - which is the part a JSON record alone could not prove.
+      expect(run.commands).toContain(`click menu-item-${TASKS_EXT}`);
+      expect(run.commands).toContain(`click menu-item-${REPORTS_EXT}`);
+
+      run.cleanup();
+    });
+
+    // The id machinery is additive. A host that does key its menu by the short
+    // name must keep resolving on the pattern alone, and without spending an
+    // eval to read a page it has no question for.
+    it('leaves the {screen} pattern resolving on its own, with no id read off the page', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login,tasks:/tasks:screen-tasks',
+        '--menu', 'nav-{screen}',
+      ], [...HOST_IDS, 'nav-login', 'nav-tasks']);
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.result.menuResolution).toEqual([
+        { screen: 'tasks', testid: 'nav-tasks', extensionId: null, source: 'pattern' },
+      ]);
+      expect(run.commands).toContain('click nav-tasks');
+
+      run.cleanup();
+    });
+
   });
 });
