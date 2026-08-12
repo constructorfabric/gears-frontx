@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { trim } from 'lodash';
 import type { ApiUser } from '../../../api/types';
 import { Card, CardContent, CardFooter } from '../../../components/ui/card';
@@ -44,11 +44,16 @@ export const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
     getFormValues(user)
   );
 
-  useEffect(() => {
+  // Re-derive the form values when the user changes or editing stops, using the
+  // "adjusting state during render" pattern (react.dev) instead of an effect:
+  // the reset lands in the same render pass instead of one commit later.
+  const [prevResetKey, setPrevResetKey] = useState({ isEditing, user });
+  if (prevResetKey.isEditing !== isEditing || prevResetKey.user !== user) {
+    setPrevResetKey({ isEditing, user });
     if (!isEditing) {
       setFormValues(getFormValues(user));
     }
-  }, [isEditing, user]);
+  }
 
   const initialValues = useMemo(() => getFormValues(user), [user]);
   const normalizedValues = useMemo(

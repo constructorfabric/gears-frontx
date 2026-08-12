@@ -53,8 +53,17 @@ const languageModules = import.meta.glob('./i18n/*.json') as Record<
 // @cpt-begin:implement-endpoint-descriptors:p4:inst-demo-profile-screen
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ bridge }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [theme, setTheme] = useState<string>('default');
-  const [language, setLanguage] = useState<string>('en');
+  // Initial values are read lazily during the first render so the first paint
+  // already reflects the host's shared properties; the effect below only
+  // subscribes to changes (setState inside an effect body is a lint error).
+  const [theme, setTheme] = useState<string>(() => {
+    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
+    return initialTheme && typeof initialTheme.value === 'string' ? initialTheme.value : 'default';
+  });
+  const [language, setLanguage] = useState<string>(() => {
+    const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
+    return initialLang && typeof initialLang.value === 'string' ? initialLang.value : 'en';
+  });
 
   const service = apiRegistry.getService(AccountsApiService);
 
@@ -107,15 +116,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ bridge }) => {
 
   // Subscribe to theme and language domain properties
   useEffect(() => {
-    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
-    if (initialTheme && typeof initialTheme.value === 'string') {
-      setTheme(initialTheme.value);
-    }
-    const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
-    if (initialLang && typeof initialLang.value === 'string') {
-      setLanguage(initialLang.value);
-    }
-
     const themeUnsubscribe = bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_THEME, (property) => {
       if (typeof property.value === 'string') {
         setTheme(property.value);
@@ -125,12 +125,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ bridge }) => {
     const languageUnsubscribe = bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, (property) => {
       if (typeof property.value === 'string') {
         setLanguage(property.value);
-        const rootNode = containerRef.current?.getRootNode();
-        if (rootNode && 'host' in rootNode) {
-          const rtlLanguages = ['ar', 'he', 'fa', 'ur'];
-          const direction = rtlLanguages.includes(property.value) ? 'rtl' : 'ltr';
-          (rootNode.host as HTMLElement).dir = direction;
-        }
       }
     });
 
@@ -139,6 +133,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ bridge }) => {
       languageUnsubscribe();
     };
   }, [bridge]);
+
+  // Keep the shadow host's text direction in sync with the language state —
+  // including the initial language read during render. A DOM host mutation has
+  // to wait for commit, so this lives in an effect rather than the render body.
+  useEffect(() => {
+    const rootNode = containerRef.current?.getRootNode();
+    if (rootNode && 'host' in rootNode) {
+      const rtlLanguages = ['ar', 'he', 'fa', 'ur'];
+      (rootNode.host as HTMLElement).dir = rtlLanguages.includes(language) ? 'rtl' : 'ltr';
+    }
+  }, [language]);
 
   // Show skeleton loader while translations are loading
   if (translationsLoading) {
