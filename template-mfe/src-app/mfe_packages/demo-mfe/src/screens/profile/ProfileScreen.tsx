@@ -10,14 +10,14 @@ import {
   useApiMutation,
   apiRegistry,
 } from '@gears-frontx/react';
-import { Card, CardContent, CardFooter } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Skeleton } from '../../components/ui/skeleton';
+import { Button, Card, CardContent, CardFooter, CardHeader, CardTitle, Skeleton } from '@gears-frontx/ui-kit';
 import { useScreenTranslations } from '../../shared/useScreenTranslations';
+import { kitThemeScopeFor } from '../../shared/kitThemeScope';
 import { AccountsApiService, type UpdateProfileVariables } from '../../api/AccountsApiService';
 import type { GetCurrentUserResponse } from '../../api/types';
 import { ProfileDetailsCard, type ProfileFormValues } from './components/ProfileDetailsCard';
 import { applyOptimisticProfileUpdate } from './profileOptimisticUpdate';
+import styles from './ProfileScreen.module.css';
 
 type UpdateProfileContext = {
   snapshot: GetCurrentUserResponse | undefined;
@@ -53,8 +53,23 @@ const languageModules = import.meta.glob('./i18n/*.json') as Record<
 // @cpt-begin:implement-endpoint-descriptors:p4:inst-demo-profile-screen
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ bridge }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [theme, setTheme] = useState<string>('default');
-  const [language, setLanguage] = useState<string>('en');
+  /*
+   * The bridge's current values are read here, in lazy useState initializers,
+   * rather than at the top of the effect below. A setState called synchronously
+   * in an effect body re-renders the screen before paint, which is why
+   * `react-hooks/set-state-in-effect` rejects it; the effect only has to
+   * SUBSCRIBE. Reading during the first render is equivalent because the
+   * lifecycle hands one bridge to the screen for the whole mounted life of the
+   * root, so there is no later bridge whose values this would miss.
+   */
+  const [theme, setTheme] = useState<string>(() => {
+    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
+    return initialTheme && typeof initialTheme.value === 'string' ? initialTheme.value : 'default';
+  });
+  const [language, setLanguage] = useState<string>(() => {
+    const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
+    return initialLang && typeof initialLang.value === 'string' ? initialLang.value : 'en';
+  });
 
   const service = apiRegistry.getService(AccountsApiService);
 
@@ -107,15 +122,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ bridge }) => {
 
   // Subscribe to theme and language domain properties
   useEffect(() => {
-    const initialTheme = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
-    if (initialTheme && typeof initialTheme.value === 'string') {
-      setTheme(initialTheme.value);
-    }
-    const initialLang = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
-    if (initialLang && typeof initialLang.value === 'string') {
-      setLanguage(initialLang.value);
-    }
-
     const themeUnsubscribe = bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_THEME, (property) => {
       if (typeof property.value === 'string') {
         setTheme(property.value);
@@ -140,18 +146,31 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ bridge }) => {
     };
   }, [bridge]);
 
+  const kitThemeScope = kitThemeScopeFor(theme);
+
   // Show skeleton loader while translations are loading
   if (translationsLoading) {
     return (
-      <div ref={containerRef} className="p-8">
-        <Skeleton className="h-8 w-64 mb-4" />
-        <Skeleton className="h-4 w-48 mb-6" />
+      // A Skeleton carries no loading semantics of its own; the region announces them.
+      <div
+        ref={containerRef}
+        className={styles.screen}
+        data-theme={kitThemeScope}
+        role="status"
+        aria-busy="true"
+      >
+        <div className={styles.placeholders}>
+          <Skeleton className={styles.placeholderTitle} />
+          <Skeleton className={styles.placeholderLine} />
+        </div>
         <Card>
-          <CardContent className="space-y-4 p-6">
-            <Skeleton className="h-20 w-20 rounded-full mb-4" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
+          <CardContent>
+            <div className={styles.placeholders}>
+              <Skeleton className={styles.placeholderAvatar} />
+              <Skeleton className={styles.placeholderLine} />
+              <Skeleton className={styles.placeholderLine} />
+              <Skeleton className={styles.placeholderLineShort} />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -161,21 +180,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ bridge }) => {
   // LOADING STATE: Show skeleton placeholders
   if (isLoading) {
     return (
-      <div ref={containerRef} className="p-8">
-        <h1 className="text-3xl font-bold mb-4">{t('title')}</h1>
-        <p className="text-muted-foreground mb-6">{t('loading')}</p>
+      <div ref={containerRef} className={styles.screen} data-theme={kitThemeScope}>
+        <div className={styles.intro}>
+          <h1 className={styles.title}>{t('title')}</h1>
+          <p className={styles.description}>{t('loading')}</p>
+        </div>
         <Card>
-          <CardContent className="space-y-4 p-6">
-            {/* Avatar skeleton */}
-            <Skeleton className="h-20 w-20 rounded-full mb-4" />
-            {/* Text skeletons */}
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="h-4 w-4/6" />
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="h-4 w-3/6" />
-            <Skeleton className="h-4 w-4/6" />
+          <CardContent>
+            <div className={styles.placeholders} role="status" aria-busy="true">
+              <Skeleton className={styles.placeholderAvatar} />
+              <Skeleton className={styles.placeholderLine} />
+              <Skeleton className={styles.placeholderLine} />
+              <Skeleton className={styles.placeholderLineShort} />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -185,16 +202,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ bridge }) => {
   // ERROR STATE: Show error message + Retry button
   if (isError) {
     return (
-      <div ref={containerRef} className="p-8">
-        <h1 className="text-3xl font-bold mb-4">{t('title')}</h1>
+      <div ref={containerRef} className={styles.screen} data-theme={kitThemeScope}>
+        <div className={styles.intro}>
+          <h1 className={styles.title}>{t('title')}</h1>
+        </div>
         <Card>
-          <CardContent className="p-6">
-            <p className="text-red-600 mb-4">
+          <CardContent>
+            <p className={styles.error}>
               {t('error_prefix')}
               {error?.message ?? 'Unknown error'}
             </p>
           </CardContent>
-          <CardFooter className="p-6 pt-0">
+          <CardFooter>
             <Button onClick={() => { refetch(); }}>{t('retry')}</Button>
           </CardFooter>
         </Card>
@@ -210,11 +229,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ bridge }) => {
   }
 
   return (
-    <div ref={containerRef} className="p-8">
-      <h1 className="text-3xl font-bold mb-4">{t('title')}</h1>
-      <p className="text-muted-foreground mb-6">{t('welcome')}</p>
+    <div ref={containerRef} className={styles.screen} data-theme={kitThemeScope}>
+      <div className={styles.intro}>
+        <h1 className={styles.title}>{t('title')}</h1>
+        <p className={styles.description}>{t('welcome')}</p>
+      </div>
 
-      <div className="max-w-2xl space-y-4">
+      <div className={styles.column}>
         <ProfileDetailsCard
           user={userData}
           isSaving={isUpdating}
@@ -226,24 +247,28 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ bridge }) => {
 
         {/* Bridge Info Card (for debugging) */}
         <Card>
-          <CardContent className="p-6">
-            <h2 className="text-xl font-semibold mb-3">{t('bridge_info')}</h2>
-            <dl className="grid gap-2">
+          <CardHeader>
+            <CardTitle>
+              <h2 className={styles.sectionTitle}>{t('bridge_info')}</h2>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className={styles.definitions}>
               <div>
-                <dt className="font-medium">{t('domain_id')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground">{bridge.domainId}</dd>
+                <dt className={styles.term}>{t('domain_id')}</dt>
+                <dd className={styles.value}>{bridge.domainId}</dd>
               </div>
               <div>
-                <dt className="font-medium">{t('instance_id')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground">{bridge.instanceId}</dd>
+                <dt className={styles.term}>{t('instance_id')}</dt>
+                <dd className={styles.value}>{bridge.instanceId}</dd>
               </div>
               <div>
-                <dt className="font-medium">{t('current_theme')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground">{theme}</dd>
+                <dt className={styles.term}>{t('current_theme')}</dt>
+                <dd className={styles.value}>{theme}</dd>
               </div>
               <div>
-                <dt className="font-medium">{t('current_language')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground">{language}</dd>
+                <dt className={styles.term}>{t('current_language')}</dt>
+                <dd className={styles.value}>{language}</dd>
               </div>
             </dl>
           </CardContent>

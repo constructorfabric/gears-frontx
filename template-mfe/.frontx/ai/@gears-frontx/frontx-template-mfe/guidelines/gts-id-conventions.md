@@ -23,6 +23,44 @@ gts.frontx.<subsystem>.<kind>.v1~<namespace-path>.v1[~]
   instance reference, matching the existing entries verbatim — keep it when
   following the pattern for a new action.
 
+### Every instance segment spends exactly five dot-separated tokens
+
+The instance segment is the same shape for every ID kind below — manifest,
+entry, extension, domain and action alike:
+
+```
+vendor.package.namespace.type.vN
+```
+
+`frontx.demo.screens.profile.v1` is `frontx` (vendor), `demo` (package),
+`screens` (namespace), `profile` (type), `v1`. Count the tokens before writing
+an ID: a four-token instance segment fails silently — the manifest still loads
+and the extension simply never resolves.
+
+`{app}` in the patterns below therefore stands for **two** tokens, vendor and
+package (`frontx.demo`, `frontx.blank`, `frontx.widgets`), not one. Spending a
+single token on it costs the manifest and entry families nothing — their
+patterns carry a literal `mfe` token that holds the count at five — and
+silently shortens every extension ID to four, which is why an extension ID is
+the one that breaks while the entry IDs beside it look right.
+
+### The instance segment is the last `~`-separated segment
+
+Its position varies by family: a manifest, a custom action, a widget domain and
+a widget-area extension carry one fixed segment before it, while an MF entry
+and a screen extension carry two — so a screen extension's instance segment,
+the one the five-token rule governs, is its **third**:
+
+```
+gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.blank.screens.home.v1
+```
+
+- `gts.frontx.mfes.ext.extension.v1` — fixed type-definition segment.
+- `frontx.screensets.layout.screen.v1` — the fixed screen domain, copied
+  verbatim; its five tokens are the ecosystem's, not the MFE's to author.
+- `frontx.blank.screens.home.v1` — the instance segment this MFE authors:
+  `frontx` + `blank` + `screens` + `home` + `v1`.
+
 ## Observed ID families in template-mfe
 
 | Family | Fixed prefix | template-mfe's instance pattern | Real example |
@@ -34,10 +72,11 @@ gts.frontx.<subsystem>.<kind>.v1~<namespace-path>.v1[~]
 | Custom action | `gts.frontx.mfes.comm.action.v1~` | `{app}.action.{name}.v1~` | `frontx.demo.action.refresh_profile.v1~` |
 | Widget domain | `gts.frontx.mfes.ext.domain.v1~` | `frontx.widgets.area.{area}.v1` | `frontx.widgets.area.main.v1` |
 
-`{app}` in every entry above is template-mfe's own namespace root (`demo`,
-`widgets`, `blank`) — a Project Developer forking template-mfe for a real
-solution replaces it with their solution's namespace (e.g. `acme.crm`), never with
-`frontx`.
+`{app}` in every entry above is the vendor + package pair template-mfe uses for
+its own MFEs — `frontx.demo`, `frontx.blank`, `frontx.widgets` — two tokens of
+the five. A Project Developer forking template-mfe for a real solution replaces
+both with their solution's own (e.g. `acme.crm`), never keeping `frontx` as the
+vendor, and never collapsing the pair to a single token.
 
 ## Fixed (do-not-invent) IDs
 
@@ -59,10 +98,13 @@ by every MFE package in template-mfe:
 
 1. Never redefine a fixed-family ID (subsystem/kind segment) — only append a new
    instance segment under the existing namespace root.
-2. Keep the instance segment's leaf name (`{screen}`, `{name}`, `{widget}`)
+2. Count the instance segment's tokens before writing it: five, every kind, no
+   exceptions — including the screen extension ID, whose instance segment is
+   its third `~`-separated segment.
+3. Keep the instance segment's leaf name (`{screen}`, `{name}`, `{widget}`)
    snake_case, matching every existing example above.
-3. An entry's `manifest` field must reference that same package's own manifest ID
+4. An entry's `manifest` field must reference that same package's own manifest ID
    — never another package's.
-4. A screen-domain extension always targets
+5. A screen-domain extension always targets
    `gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1`; only a
    non-screen (e.g. widget-area) extension targets a template-defined domain ID.

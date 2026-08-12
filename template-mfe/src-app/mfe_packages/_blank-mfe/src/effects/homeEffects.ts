@@ -1,6 +1,8 @@
 /**
  * Home Domain - Effects
- * Add your domain effects here.
+ * Effects are the only dispatchers in the package. Fill this file for every screen
+ * that has behavior; a screen whose data path runs on useApiQuery/useApiMutation and
+ * component state alone leaves the flux cycle unused.
  * Effects subscribe to events via eventBus and dispatch to the store.
  *
  * Example:
