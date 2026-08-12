@@ -70,8 +70,8 @@ The same posture governs how this package touches the rest of the ecosystem. It 
 - `cpt-frontx-adr-ai-driven-upgrade-orchestration`
 - `cpt-frontx-adr-contract-schema-ownership`
 - `cpt-frontx-adr-ai-tooling-internal-decomposition`
-- `cpt-frontx-adr-project-upgrade-mechanism`
-- `cpt-frontx-adr-project-provenance-record`
+- `cpt-frontx-adr-single-project-state-file`
+- `cpt-frontx-adr-atomic-all-targets-upgrade`
 
 ### 1.3 Architecture Layers
 
@@ -86,7 +86,7 @@ graph TD
     Base -- "frontx_-prefixed skill/rule/knowledge resources" --> Agent[AI agent session]
     Host -- "scans and activates" --> Bundle[".frontx/ai/<template-identity>/ bundle (CLI-materialized)"]
     Host -- "composed capability set" --> Agent
-    Upgrade -- "reads" --> Prov[".frontx/provenance.json (CLI-owned)"]
+    Upgrade -- "reads" --> Prov[".frontx/project.json (CLI-owned)"]
     Upgrade -- "orchestrates via frontx upgrade command surface" --> Engine["CLI change-set engine (@gears-frontx/cli)"]
     Base -- "reads installed template inventory (command output)" --> Surface["CLI command surface (@gears-frontx/cli)"]
     Base -- "drives seed/add assembly on the scaffolding path" --> Surface
@@ -98,7 +98,7 @@ graph TD
 | Kit manifest surface | The declarative resource manifest and the installation unit Constructor Studio installs | `.cf-studio-kit.toml`, TOML |
 | Base capability content | Solution-agnostic skills, navigation rules, and reference knowledge available at session start | `SKILL.md`, `AGENTS.md`, `guidelines/` (Markdown) |
 | Package logic | Manifest validation, session/lifecycle resolution, extension discovery and activation, upgrade enrichment | TypeScript library, single entry point |
-| Filesystem handoffs | Reading CLI-materialized content the kit does not own | `.frontx/ai/`, `.frontx/provenance.json` on disk |
+| Filesystem handoffs | Reading CLI-materialized content the kit does not own | `.frontx/ai/`, `.frontx/project.json` on disk |
 
 ## 2. Principles & Constraints
 
@@ -108,7 +108,7 @@ graph TD
 
 - [x] `p2` - **ID**: `cpt-frontx-cyber-pilot-kit-frontx-principle-surface-only-integration`
 
-This package has no compile-time dependency on any other ecosystem package and calls no internal API of another component. It interacts with the rest of the ecosystem in two ways only: it runs public commands, and it reads files another component has already written. The CLI has a single change-set engine; this package reaches it only by running `frontx upgrade` (KIT-3) and does not import the engine's functions or types. Its own types for the change set and the provenance record are defined locally and mirror the command's JSON output — they are not imports of the CLI package. It reads template-bundled AI content from `.frontx/ai/` and applied-template provenance from `.frontx/provenance.json` after the CLI has written them — on the upgrade path to select the applied template to upgrade, and on the scaffolding path to establish which templates a target directory already holds before planning an application and to report the applied set back to the developer afterwards; the CLI never calls or notifies this package. Everything this package learns about the CLI's own state — the installed template inventory included — reaches it as the output of an invoked command, never as a read of CLI-internal storage.
+This package has no compile-time dependency on any other ecosystem package and calls no internal API of another component. It interacts with the rest of the ecosystem in two ways only: it runs public commands, and it reads files another component has already written. The CLI has a single change-set engine; this package reaches it only by running `frontx upgrade` (KIT-3) and does not import the engine's functions or types. Its own types for the change set and the project state it reads are defined locally and mirror the command's JSON output — they are not imports of the CLI package. It reads template-bundled AI content from `.frontx/ai/` and the project's applied-template state from the project's single state document, `.frontx/project.json`, after the CLI has written it — on the upgrade path to select the registered template name to upgrade and every target listed under it, and on the scaffolding path to establish which templates a target directory already holds before planning an application and to report the applied set back to the developer afterwards; the CLI never calls or notifies this package. Everything this package learns about the CLI's own state — the installed template inventory included — reaches it as the output of an invoked command, never as a read of CLI-internal storage.
 
 Two checks enforce this. The package manifest declares no runtime dependency on another ecosystem package, and a source-string guard plus a dependency-cruiser rule fail the build if any import names the CLI package. A component that needs this package's cooperation has two options: write to a file this package reads, or expose a command this package can run.
 
@@ -157,7 +157,7 @@ Every capability the AI Tooling kit (`cyber-pilot-kit-frontx`) exposes as a publ
 | Kit | The AI Tooling delivery unit — the Constructor Studio kit installed into a consuming project, carrying declared resources under `frontx_`-prefixed identifiers. | `KitManifest` / `KitDefinition` / `KitResourceEntry` in [src/types.ts](../src/types.ts); the shipped manifest at [.cf-studio-kit.toml](../.cf-studio-kit.toml) |
 | KitCapability | A single resource exposed to an agent session once the manifest has been validated and the resource resolved — a skill, rule, or supporting knowledge resource made available under its `frontx_`-prefixed id. | `KitCapability` / `KitSessionResult` in [src/types.ts](../src/types.ts) |
 | AiExtension | A template-bundled AI capability entry (skill, workflow, guideline, or reference artifact) conforming to the closed-set extension contract, discovered from an installed template's `.frontx/ai/<template-identity>/` bundle and composed into the agent-visible capability set under explicit precedence. | `AiExtensionEntry` / `AiExtensionBundle` / `ComposedCapabilitySet` in [src/extensions/types.ts](../src/extensions/types.ts) |
-| ProjectProvenance (read-only view) | The set of per-applied-template provenance records this package reads to select an upgrade target and its current version; the CLI writes and owns the authoritative record — this package never writes it. | `ProvenanceRecord` (a structural mirror of the CLI command surface's record shape, not an import of it) in [src/upgrade-orchestration/types.ts](../src/upgrade-orchestration/types.ts) |
+| ProjectProvenance (read-only view) | The project's single state document, `.frontx/project.json` — its `templates` map keyed by registered name, each entry's `origin`, `version`, and applied `targets` — that this package reads to select an upgrade target and its current version; the CLI writes and owns the authoritative document — this package never writes it. | A structural mirror of the CLI's `.frontx/project.json` shape (not an import of it) in [src/upgrade-orchestration/types.ts](../src/upgrade-orchestration/types.ts) |
 
 ### 3.2 Component Model
 
@@ -288,7 +288,7 @@ AI-driven upgrade workflows must add review gating, change-impact analysis, and 
 
 ### 3.4 Internal Dependencies
 
-None. `package.json` declares no intra-ecosystem package dependency — its only runtime dependency is `smol-toml`, an external TOML parser, and its `devDependencies` are build and test tooling (`tsup`, `typescript`, `vitest`). Coordination with the CLI is an orchestration relationship over the CLI's command surface, not a compile-time package dependency: this package reaches the CLI's single change-set engine only through the `frontx upgrade` command/invocation surface, and it reaches template-bundled AI content and provenance only by reading `.frontx/ai/` and `.frontx/provenance.json` after the CLI has already written them into the scaffolded project — a filesystem handoff in the Kit-reads-project direction, never a CLI-to-Kit call (`cpt-frontx-cyber-pilot-kit-frontx-principle-surface-only-integration`).
+None. `package.json` declares no intra-ecosystem package dependency — its only runtime dependency is `smol-toml`, an external TOML parser, and its `devDependencies` are build and test tooling (`tsup`, `typescript`, `vitest`). Coordination with the CLI is an orchestration relationship over the CLI's command surface, not a compile-time package dependency: this package reaches the CLI's single change-set engine only through the `frontx upgrade` command/invocation surface, and it reaches template-bundled AI content and the project's applied-template state only by reading `.frontx/ai/` and `.frontx/project.json` after the CLI has already written them into the scaffolded project — a filesystem handoff in the Kit-reads-project direction, never a CLI-to-Kit call (`cpt-frontx-cyber-pilot-kit-frontx-principle-surface-only-integration`).
 
 **Dependency Rules** (per project conventions):
 - No circular dependencies at the design level: the CLI never imports this package, and this package never imports the CLI
@@ -355,25 +355,25 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant AI as AI agent (AI Tooling Framework)
-    participant Prov as Applied-template provenance record
+    participant Prov as Project's single state document (.frontx/project.json)
     participant Eng as Change-set engine (@gears-frontx/cli)
     participant Dev as Project Developer
     participant Repo as Repository files
-    AI->>Prov: read chosen applied template's record (template + applied-from version)
+    AI->>Prov: read the chosen registered template's templates[name] entry (origin, version, every target under it)
     AI->>Eng: orchestrate change analysis to newer version; enrich impact assessment
-    Eng-->>AI: proposed reviewable change set (bounded to that template)
+    Eng-->>AI: proposed reviewable change set (bounded to that name's targets)
     AI->>Dev: present change set + downstream impact
     alt approved
         Dev->>Eng: approve
-        Eng->>Repo: apply non-destructively within the template's boundary
-        Eng->>Prov: update that template's record to newer version
+        Eng->>Repo: apply non-destructively within each target's ownership, atomically across every target of that name
+        Eng->>Prov: update that name's origin/version entry, atomically
     else rejected or incompatibilities flagged
         Dev-->>Eng: decline
         Eng-->>Repo: no files written; repository unchanged
     end
 ```
 
-**Description**: An AI agent reads the chosen applied template's provenance record, orchestrates and enriches the CLI's single change-set engine to analyze that template's version transition, and presents a reviewable change set bounded to that template with downstream-impact assessment; the engine applies the approved set non-destructively within the template's boundary and updates that template's provenance record, leaving the other applied templates untouched ([AI-Driven Upgrade Orchestration over a Single CLI Change-Set Engine](../../../architecture/ADR/0026-ai-driven-upgrade-orchestration.md), [The Per-Applied-Template Upgrade Mechanism](../../../architecture/ADR/0021-project-upgrade-mechanism.md), [Per-Applied-Template Provenance for Independently Upgradeable Assembly](../../../architecture/ADR/0019-project-provenance-record.md)). If the developer declines or impact assessment flags incompatibilities, no files are written and the applied template remains at its current version.
+**Description**: An AI agent reads the chosen registered template's `templates[name]` entry from the project's single state document, orchestrates and enriches the CLI's single change-set engine to analyze that name's version transition, and presents a reviewable change set bounded to every target listed under that name with downstream-impact assessment; the engine applies the approved set non-destructively within each target's ownership, atomically across every target of that name, and updates that name's `origin`/`version` entry in the same atomic commit, leaving every other registered template untouched ([AI-Driven Upgrade Orchestration over a Single CLI Change-Set Engine](../../../architecture/ADR/0026-ai-driven-upgrade-orchestration.md), [Atomic All-Targets Upgrade as the Unit of the Upgrade Operation](../../../architecture/ADR/0041-atomic-all-targets-upgrade.md), [One Git-Tracked File for a Repository's CLI-Managed Template State](../../../architecture/ADR/0036-single-project-state-file.md); superseded history: [The Per-Applied-Template Upgrade Mechanism](../../../architecture/ADR/0021-project-upgrade-mechanism.md), [Per-Applied-Template Provenance for Independently Upgradeable Assembly](../../../architecture/ADR/0019-project-provenance-record.md)). If the developer declines or impact assessment flags incompatibilities, no files are written and every target of that name remains at its current version.
 
 #### Template AI-extension discovery and activation
 
@@ -410,7 +410,7 @@ sequenceDiagram
 
 ### 3.7 Database schemas & tables
 
-Not applicable. This package holds no database; its only persistence-adjacent state is the filesystem content it reads (an installed template's `.frontx/ai/` bundle and the CLI's `.frontx/provenance.json`) and the kit manifest it validates, none of which it owns or writes.
+Not applicable. This package holds no database; its only persistence-adjacent state is the filesystem content it reads (an installed template's `.frontx/ai/` bundle and the CLI's `.frontx/project.json`) and the kit manifest it validates, none of which it owns or writes.
 
 ## 4. Additional context
 

@@ -16,7 +16,7 @@
   - [2.10 Template Externalization & Source-Spec Resolution - HIGH](#210-template-externalization--source-spec-resolution---high)
   - [2.11 Template Manifest Contract & Pre-Publish Validation - HIGH](#211-template-manifest-contract--pre-publish-validation---high)
   - [2.12 Kindless Template Assembly & Conflict-Checked Composition - HIGH](#212-kindless-template-assembly--conflict-checked-composition---high)
-  - [2.13 Preset Resolution & Per-Applied-Template Provenance - HIGH](#213-preset-resolution--per-applied-template-provenance---high)
+  - [2.13 Project State, Registration & Ownership Management - HIGH](#213-project-state-registration--ownership-management---high)
   - [2.14 Upgrade Change-Set Engine - HIGH](#214-upgrade-change-set-engine---high)
   - [2.15 AI Tooling Kit Packaging & Base Content - HIGH](#215-ai-tooling-kit-packaging--base-content---high)
   - [2.16 Template AI-Extension Contract & Discovery/Activation - HIGH](#216-template-ai-extension-contract--discoveryactivation---high)
@@ -172,7 +172,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cli/architecture/features/cli-scaffolding/FEATURE.md).
 
-### 2.13 [Preset Resolution & Per-Applied-Template Provenance](../packages/cli/architecture/features/composed-provenance/) - HIGH
+### 2.13 [Project State, Registration & Ownership Management](../packages/cli/architecture/features/composed-provenance/) - HIGH
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-composed-provenance`
 
@@ -329,15 +329,16 @@ F20 ai-project-scaffolding       (← F10, F11, F12, F13, F15, F16)
 - `cpt-frontx-feature-mfe-isolation` requires `cpt-frontx-feature-mfe-loading`: isolation wraps the load execution path.
 - `cpt-frontx-feature-template-manifest` requires `cpt-frontx-feature-template-resolution`: the manifest is read at install/scaffold through the resolver.
 - `cpt-frontx-feature-cli-scaffolding` requires `cpt-frontx-feature-template-resolution`: scaffolding consumes templates from the resolved inventory.
-- `cpt-frontx-feature-composed-provenance` requires `cpt-frontx-feature-cli-scaffolding`: composition extends the scaffolding path.
-- `cpt-frontx-feature-composed-provenance` requires `cpt-frontx-feature-template-resolution`: recursive composition resolves each composed template through the shared resolver.
-- `cpt-frontx-feature-upgrade-changeset` requires `cpt-frontx-feature-composed-provenance`: the change-set diffs against the provenance record written at scaffold time.
+- `cpt-frontx-feature-composed-provenance` requires `cpt-frontx-feature-cli-scaffolding`: this FEATURE owns the single project-state document (`.frontx/project.json`) that scaffolding/apply reads and writes at materialization time (ADR 0036).
+- `cpt-frontx-feature-composed-provenance` requires `cpt-frontx-feature-template-resolution`: template registration (register/install) resolves through the same shared resolver, and the project-state store records the pinned origin it returns (ADR 0040).
+- `cpt-frontx-feature-cli-scaffolding` also requires `cpt-frontx-feature-composed-provenance`: the conflict checker's geometry check — run by `assemble`, `apply`, `delete`, and `ownership add|remove` alike — reads already-applied `targets[]` and `projectOwnedRoots` out of the single project-state document `composed-provenance` owns. Read together with the `composed-provenance` → `cli-scaffolding` edge above, this looks like a two-node cycle (F12↔F13) at feature altitude; it is not one at component altitude. The two edges name different components exchanging data at different points of the same command, not one component instantiating the other: the edge from `cli-scaffolding` is the conflict checker (a read-only geometry consumer) reading a value out of the project state store; the edge from `composed-provenance` is that same state store (the write target) being called into by the assembler at materialization time. Neither package imports the other's module at compile time (`cpt-frontx-component-cli` §3.4 has no internal-dependency edges); both interactions are two components of one CLI package cooperating within a single command invocation, not a package-level circular dependency.
+- `cpt-frontx-feature-upgrade-changeset` requires `cpt-frontx-feature-composed-provenance`: the change-set diffs against the `templates[name] = {origin, version, targets[]}` entry in the single project-state document this FEATURE owns, not a per-instance provenance record; the unit of upgrade is the whole template name — all of its targets — applied atomically (ADR 0041).
 - `cpt-frontx-feature-template-ai-extensions` requires `cpt-frontx-feature-ai-kit-packaging`: extensions activate into the base kit's capability set.
 - `cpt-frontx-feature-template-ai-extensions` requires `cpt-frontx-feature-template-resolution`: discovery is triggered on template install (cross-package edge F16 ← F10).
 - `cpt-frontx-feature-ai-upgrade-orchestration` requires `cpt-frontx-feature-upgrade-changeset`: orchestration drives the single CLI change-set engine (cross-package edge F17 ← F14).
 - `cpt-frontx-feature-ai-upgrade-orchestration` requires `cpt-frontx-feature-ai-kit-packaging`: the orchestration workflow ships inside the base AI kit.
 - `cpt-frontx-feature-cli-invocation` requires `cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-template-manifest`, `cpt-frontx-feature-cli-scaffolding`, `cpt-frontx-feature-composed-provenance`, and `cpt-frontx-feature-upgrade-changeset`: the invocation surface is the cross-command aggregator that dispatches `frontx <command>` to each owning behavior; it sits above them in the graph and none depend back on it.
-- `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-ai-kit-packaging` (its entry points ship in the base kit), `cpt-frontx-feature-template-manifest` (selection matches intent against manifest-declared descriptions), `cpt-frontx-feature-template-resolution` (the local inventory it selects over), `cpt-frontx-feature-cli-scaffolding` (the seed/add assembly it drives over the command surface), `cpt-frontx-feature-composed-provenance` (the applied set is reported from provenance), and `cpt-frontx-feature-template-ai-extensions` (per-unit realization drives the applied templates' activated extension skills).
+- `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-ai-kit-packaging` (its entry points ship in the base kit), `cpt-frontx-feature-template-manifest` (selection matches intent against manifest-declared descriptions), `cpt-frontx-feature-template-resolution` (the local inventory it selects over), `cpt-frontx-feature-cli-scaffolding` (the seed/add assembly it drives over the command surface), `cpt-frontx-feature-composed-provenance` (the applied set is reported from the single project-state document's `templates[name].targets`), and `cpt-frontx-feature-template-ai-extensions` (per-unit realization drives the applied templates' activated extension skills).
 
 ## 4. Known Validator Debt
 

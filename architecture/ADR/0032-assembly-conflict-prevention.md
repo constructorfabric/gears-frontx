@@ -1,5 +1,6 @@
 ---
-status: accepted
+status: superseded
+superseded_by: cpt-frontx-adr-nesting-aware-conflict-prevention
 date: 2026-07-16
 ---
 

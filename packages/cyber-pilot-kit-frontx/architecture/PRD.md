@@ -338,7 +338,7 @@ The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationaliz
 1. An AI agent uses the AI Tooling Framework's upgrade orchestration to analyse the change from the applied template's older version to the newer version (`cpt-frontx-fr-ai-upgrade-orchestration`).
 2. The AI agent prepares the per-template upgrade as a reviewable change set (`cpt-frontx-fr-cli-project-upgrade-changeset`).
 3. The Project Developer reviews and approves the upgrade changes before they apply to repository files (`cpt-frontx-fr-cli-upgrade-review-approval`).
-4. Only after approval, the change set is applied to the repository files and the applied template's provenance record is updated to the newer version.
+4. Only after approval, the change set is applied to the repository files and that template's entry in the project's single state document, `.frontx/project.json`, is updated to the newer version.
 
 **Postconditions**:
 - The applied template is upgraded to its newer version with all reviewable changes accepted; other applied templates are unaffected.
@@ -361,11 +361,11 @@ The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationaliz
 **Main Flow**:
 1. The Project Developer states what the project should be, in their own words, rather than naming a template (`cpt-frontx-fr-ai-frontx-skills`).
 2. An AI agent uses the AI Tooling Framework to read the locally installed templates and match the stated intent against the description each template declares about itself, producing an application plan it presents to the developer before anything is written.
-3. The AI agent applies the plan through the CLI: one template seeded to establish the repository (`cpt-frontx-fr-cli-seed-repository`), then each further distinct template added (`cpt-frontx-fr-cli-add-template-to-repository`), with the CLI checking declared ownership boundaries before every write (`cpt-frontx-fr-cli-assembly-conflict-prevention`).
-4. The AI agent reports the applied set back to the developer from the provenance record written per applied template, together with the work the applied templates do not themselves cover.
+3. The AI agent applies the plan through the CLI as one explicit, target-keyed batch naming every selected template and its target(s) — the template that establishes the repository together with each further distinct template — materialized through a single `apply` call, optionally previewed first by the stateless `assemble` command (`cpt-frontx-fr-cli-seed-repository`, `cpt-frontx-fr-cli-add-template-to-repository`), with the CLI checking declared ownership boundaries before every write (`cpt-frontx-fr-cli-assembly-conflict-prevention`).
+4. The AI agent reports the applied set back to the developer from the project's single state document, `.frontx/project.json`, together with the work the applied templates do not themselves cover.
 
 **Postconditions**:
-- A repository on disk assembled from the templates the stated intent selected, with one provenance record per applied template, reported back to the developer.
+- A repository on disk assembled from the templates the stated intent selected, recorded in the project's single state document, `.frontx/project.json`, and reported back to the developer.
 
 **Alternative Flows**:
 - **Nothing matches the intent**: the AI agent reports which templates are installed and which declare no description to match against, and writes no files.

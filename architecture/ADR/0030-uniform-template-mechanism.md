@@ -98,6 +98,8 @@ The self-describing manifest this decision relies on is decided in `cpt-frontx-a
 
 Applicability of the remaining checklist categories: **PERF** — Not applicable, because a taxonomy decision binds no latency or throughput budget. **SEC** — Not applicable, because it introduces no secret material or authentication surface. **REL** — Not applicable, because no service-availability target attaches to a local mechanism. **DATA** — Not applicable, because this decision fixes no schema; the manifest schema is owned by `cpt-frontx-feature-template-manifest` per `cpt-frontx-adr-contract-schema-ownership`. **INT** — addressed: removing a type field from the manifest keeps the published contract self-describing without a classification vocabulary. **OPS** — Not applicable, because no operational procedure attaches to the mechanism. **MAINT** — addressed directly: one mechanism over any template reduces the surface and removes a vocabulary to steward. **COMPL** — Not applicable. **UX** — addressed implicitly: a developer assembles any template through one predictable set of commands. **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
+**Post-redesign note (2026-08-12).** The core holding — no template taxonomy, one uniform mechanism for any template — remains in force and is reinforced by the redesign. The preset-specific clauses (composition expressed by manifest reference, `referencedTemplates`, cyclic-reference handling) are revised by `cpt-frontx-adr-explicit-batch-application`: any combination of templates is now expressed as an explicit target-keyed batch, applied through the same one mechanism.
+
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)
@@ -105,6 +107,6 @@ Applicability of the remaining checklist categories: **PERF** — Not applicable
 
 This decision directly addresses the following requirements and design elements:
 
-* `cpt-frontx-fr-cli-composed-template-resolution` — Establishes that multi-template assembly and preset resolution operate over any template without a template classification, so composition is expressed by reference rather than by type.
+* Historical — the PRD requirement this decision originally addressed under the identifier "cli-composed-template-resolution" has since been removed from the PRD entirely; its manifest-reference composition model was replaced by explicit batch application, `cpt-frontx-adr-explicit-batch-application`. At the time of this decision it established that multi-template assembly and preset resolution operate over any template without a template classification, so composition was expressed by reference rather than by type; that grounding is retained here as a traceability record of what this ADR addressed at the time, not as a live requirement to check this decision against.
 * `cpt-frontx-contract-template-manifest` — Fixes that the manifest carries no type field; a template is self-describing through what it produces and the boundaries it declares.
 * `cpt-frontx-component-cli` — The CLI component operates one uniform mechanism over every template; this decision constrains it to hold no branch on a template type.

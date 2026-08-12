@@ -1,5 +1,6 @@
 ---
-status: accepted
+status: superseded
+superseded_by: cpt-frontx-adr-single-project-state-file
 date: 2026-06-05
 ---
 

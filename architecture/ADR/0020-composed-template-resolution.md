@@ -1,5 +1,6 @@
 ---
-status: accepted
+status: superseded
+superseded_by: cpt-frontx-adr-explicit-batch-application
 date: 2026-06-04
 ---
 

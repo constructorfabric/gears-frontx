@@ -1,5 +1,6 @@
 ---
-status: accepted
+status: superseded
+superseded_by: cpt-frontx-adr-thin-template-manifest
 date: 2026-06-05
 ---
 

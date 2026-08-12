@@ -1,5 +1,6 @@
 ---
-status: accepted
+status: superseded
+superseded_by: cpt-frontx-adr-atomic-all-targets-upgrade
 date: 2026-06-04
 ---
 

@@ -1,5 +1,6 @@
 ---
-status: accepted
+status: superseded
+superseded_by: cpt-frontx-adr-template-registration-and-origin-pinning
 date: 2026-07-28
 ---
 

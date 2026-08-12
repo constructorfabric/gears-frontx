@@ -1,5 +1,7 @@
 # Exploration: Template Composition Model — Fixed Two-Kind vs. Kindless Multi-Template Assembly
 
+> **Superseded (2026-08-12).** This exploration's recommended option — Option C, ownership-bounded composition via exclusive subtrees, shared-file regions with a declared merge, transitive preset reference resolution, and one provenance record per applied template — was adopted as `cpt-frontx-adr-template-ownership-boundary-declaration` (ADR 0031), `cpt-frontx-adr-assembly-conflict-prevention` (ADR 0032), `cpt-frontx-adr-composed-template-resolution` (ADR 0020), and `cpt-frontx-adr-project-provenance-record` (ADR 0019). All four are now themselves superseded by a second redesign wave: `cpt-frontx-adr-whole-target-ownership` (ADR 0037), `cpt-frontx-adr-nesting-aware-conflict-prevention` (ADR 0039), `cpt-frontx-adr-explicit-batch-application` (ADR 0038), and `cpt-frontx-adr-single-project-state-file` (ADR 0036) respectively. The kindless, multi-template premise this document argued for still holds; the ownership, composition, and provenance mechanics below no longer reflect the accepted design. Kept for historical record only — do not implement from this document.
+
 <!-- toc -->
 
 - [Decision under study](#decision-under-study)
