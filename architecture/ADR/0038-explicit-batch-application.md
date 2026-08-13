@@ -62,6 +62,7 @@ The scope of this decision is what identifies an applied instance (its normalize
 * Good, because re-applying an already-applied target is a harmless no-op, so an accidental repeat of a batch cannot silently overwrite work; intentional overwrite has one explicit path, the upgrade mechanism.
 * Bad, because a preset-shaped combination of templates is no longer a single manifest-declared reference the tool expands automatically: whoever selects templates must name the same combination explicitly in the batch every time it is wanted.
 * Bad, because without a saved plan, `apply` fully repeats `assemble`'s resolution, ownership, and conflict checks at materialization time, doing that work twice whenever both commands are run in sequence on the same batch.
+* Bad, because record-determined idempotency means a repeated `apply` cannot repair a recorded target whose on-disk content has been deleted or corrupted outside the CLI: the record alone marks it applied, so `apply` never re-reads or rewrites it, and drift between the record and reality is never detected or fixed by this path. Repairing such a target today means `delete`ing it (under its own explicit confirmation, which removes both the record and the content) and then re-`apply`ing it fresh, or awaiting whatever the future changeset mechanism (`cpt-frontx-adr-atomic-all-targets-upgrade`, CLI DESIGN §4) eventually offers; drift repair is deliberately outside what `apply` itself does.
 
 ### Confirmation
 

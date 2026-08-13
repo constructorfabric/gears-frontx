@@ -275,7 +275,7 @@ The system **MUST** allow a developer to review and approve an atomic upgrade ch
 
 After an approved upgrade is applied, the system **MUST** allow a developer to restore the repository to the previously applied template state for that upgrade.
 
-**Rationale**: Keeps approved upgrades reversible, so a bad template update can be backed out without losing the audit trail of what changed.
+**Rationale**: Keeps approved upgrades reversible, so a bad template update can be backed out. Reversibility remains the goal; today, auditing what an upgrade changed is available only through the Git history of the Git-tracked project state file (`cpt-frontx-fr-cli-project-state`), since that file itself records only a template's current origin and version, not its history — a dedicated audit or history carrier beyond that Git history is a question for the same dedicated future changeset decision the restore mechanism itself is left to (see the Status note below).
 
 **Status note**: The obligation to restore stands from first release; the concrete restore mechanism is an open question left to the same dedicated future decision `cpt-frontx-fr-cli-project-upgrade-changeset` is blocked on (CLI DESIGN §4).
 
@@ -454,7 +454,7 @@ This package owns repository-lifecycle contracts for templates. The contracts be
 1. The Project Developer reads the catalog of default, registered, and installed templates, each with its description (`cpt-frontx-fr-cli-template-list`).
 2. The Project Developer registers each template to apply, pinning its resolved origin under the project (`cpt-frontx-fr-cli-template-registration`).
 3. The Project Developer composes an explicit batch naming each registered template and the target or targets to apply it to, and previews the batch's resolution, effective ownership, and conflicts without writing any files.
-4. The Project Developer applies the same batch: the CLI re-checks that no two targets coincide or improperly contain one another, honoring each template's whole-target ownership (`cpt-frontx-fr-cli-assembly-conflict-prevention`), seeds the new repository (`cpt-frontx-fr-cli-seed-repository`), writes the accepted content, and records every target under its template's entry in the project state file (`cpt-frontx-fr-cli-project-state`).
+4. The Project Developer applies the same batch: the CLI re-checks that no two targets coincide or improperly contain one another, honoring each template's whole-target ownership (`cpt-frontx-fr-cli-assembly-conflict-prevention`), writes the accepted content into the already-seeded repository (`cpt-frontx-fr-cli-add-template-to-repository`), and records every target under its template's entry in the project state file (`cpt-frontx-fr-cli-project-state`).
 
 **Postconditions**:
 - A repository on disk assembled from its templates, with one project state file recording every registered template's origin, version, and applied targets.
@@ -462,6 +462,7 @@ This package owns repository-lifecycle contracts for templates. The contracts be
 **Alternative Flows**:
 - **Source registry unreachable**: the CLI reports the failure and aborts the registration or assembly without writing any files.
 - **Conflicting assembly**: the CLI detects that two targets coincide or that one target contains another outside a declared exclusion, and reports and refuses the assembly before any files are written (`cpt-frontx-fr-cli-assembly-conflict-prevention`).
+- **Bootstrap from official defaults**: on a virgin directory that carries no `.frontx/project.json` yet, the Project Developer skips the register-then-apply steps above and instead runs `seed` naming the wanted official default templates and their targets in one batch; the CLI creates the project state file, auto-registers each named default exactly as an explicit registration would, and applies the batch in the same operation (`cpt-frontx-fr-cli-seed-repository`), so this use case's coverage of the seed requirement is exercised through this alternative flow rather than through the register-then-apply main flow, which presupposes a repository already carrying applied state to extend.
 
 #### Project Developer adds a template into an existing repository
 
@@ -523,7 +524,7 @@ This package owns repository-lifecycle contracts for templates. The contracts be
 **Main Flow**:
 1. The Project Developer registers the template using a local `path:` origin naming that folder (`cpt-frontx-fr-cli-template-registration`).
 2. The CLI validates the manifest at that path — its name, version, non-empty description, and well-formed exclusions — and records the path as given, together with the manifest's declared version, in the project state file; a local origin is not pinned, because it has no external publication to pin against.
-3. The Project Developer applies the registered template to one or more targets like any other registered template (`cpt-frontx-fr-cli-seed-repository`, `cpt-frontx-fr-cli-add-template-to-repository`).
+3. The Project Developer applies the registered template to one or more targets like any other registered template (`cpt-frontx-fr-cli-add-template-to-repository`).
 
 **Postconditions**:
 - The project state file records the template under its manifest name with the local path as its origin.

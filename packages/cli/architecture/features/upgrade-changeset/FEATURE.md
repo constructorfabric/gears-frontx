@@ -126,7 +126,7 @@ This feature exists to let a project developer safely adopt a newer origin for a
 2. [ ] - `p1` - **IF** no applied upgrade is available to restore for `templateName` - `inst-rst-if-unavailable`
    1. [ ] - `p1` - **RETURN** `NOTHING_TO_RESTORE` - `inst-rst-return-unavailable`
 3. [ ] - `p1` - **ELSE** - `inst-rst-else`
-   1. [ ] - `p1` - Reverse `templates[templateName].origin` and `.version` to the values recorded immediately before the upgrade being restored, atomically across every target of the name - `inst-rst-reverse-state`
+   1. [ ] - `p1` - Reverse `templates[templateName].origin` and `.version` to their pre-upgrade values, atomically across every target of the name — where those pre-upgrade values are retained, and for how long, is part of the same open question this feature does not resolve (§5 "Restore to Pre-Upgrade State", DESIGN §4): the project state document itself records only the name's *current* `origin`/`version`, not its history, and so is not, by itself, the state carrier this reversal needs (`cpt-frontx-adr-single-project-state-file`) - `inst-rst-reverse-state`
    2. [ ] - `p1` - Reverse the applied content within each target's effective ownership back to its pre-upgrade state — the concrete mechanism by which this reversal is carried out is not fixed by this feature (open question; see §5 "Restore to Pre-Upgrade State" and DESIGN §4) - `inst-rst-reverse-content`
    3. [ ] - `p1` - **RETURN** success: the name and every one of its targets are at the pre-upgrade state - `inst-rst-return-success`
 

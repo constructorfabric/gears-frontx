@@ -114,14 +114,14 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
 
 **Error Scenarios**:
 - `<dir>` already carries a `.frontx/project.json`: `seed` refuses with `INVALID_INPUT` — a project once seeded is extended through `apply`, never re-seeded; nothing written.
-- A batch entry names a template that is neither one of the CLI's built-in official default origins nor already registered in the (nonexistent) project state: `TEMPLATE_NOT_REGISTERED`; whole batch aborted, nothing written.
+- A batch entry names a template that is not one of the CLI's built-in official default origins: `seed` accepts only the official defaults, since no `.frontx/project.json` can yet exist for anything to already be registered against; the CLI refuses with `TEMPLATE_NOT_REGISTERED`, naming the entry and directing the developer to `register` the template first and then `apply` it, once the repository has been seeded; whole batch aborted, nothing written.
 - A named official default's origin cannot be resolved and pinned: `ORIGIN_UNAVAILABLE`; whole batch aborted, `.frontx/project.json` left uncreated.
 - Two batch entries collide or one contains another outside a declared `excludedSubtrees`, or a batch entry lands on `.frontx` or a reserved environment entry (there is no `projectOwnedRoots` yet to land on): `TARGET_CONFLICT`; whole batch aborted, nothing written.
 - A target's existing on-disk content differs from what the template's payload would write at a path the payload declares: `CONTENT_CONFLICT`; whole batch aborted, nothing written.
 - A target already holds content at a path the payload does not declare: `EXISTING_PATHS_REQUIRE_DECISION`; whole batch aborted unless `--adopt-existing` is given.
 
 **Steps**:
-1. [ ] - `p1` - Developer invokes `seed <dir> --input <batch>`, naming in the batch the official default templates (and any already-registered template) to apply - `inst-seed-invoke`
+1. [ ] - `p1` - Developer invokes `seed <dir> --input <batch>`, naming in the batch the official default templates to apply - `inst-seed-invoke`
 2. [ ] - `p1` - **IF** `<dir>` already carries a `.frontx/project.json` - `inst-seed-if-already-seeded`
    1. [ ] - `p1` - **RETURN** `INVALID_INPUT`, directing the developer to `apply` instead; nothing written - `inst-seed-return-already-seeded`
 3. [ ] - `p1` - The CLI creates `.frontx/project.json` with the initial empty shape (`cpt-frontx-algo-composed-provenance-project-state-io`) - `inst-seed-create-project-state`
