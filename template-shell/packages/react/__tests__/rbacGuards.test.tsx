@@ -247,6 +247,51 @@ describe('useCanAccess', () => {
     expect(canAccess.mock.calls.length).toBe(firstCallCount);
   });
 
+  it('does not re-run the access check when only the app reference changes under a stable auth runtime', async () => {
+    const canAccess = vi.fn().mockResolvedValue('allow' as AccessDecision);
+    const provider: AuthProvider = {
+      getSession: vi.fn().mockResolvedValue(MOCK_SESSION),
+      checkAuth: vi.fn<() => Promise<AuthCheckResult>>().mockResolvedValue({ authenticated: true }),
+      logout: vi.fn<() => Promise<AuthTransition>>().mockResolvedValue({ type: 'none' }),
+      canAccess,
+    };
+
+    const app = buildApp(provider);
+    // A host that rebuilds its app object around the runtime it already has:
+    // same `auth` reference, new app reference. Building a second app from the
+    // same provider would NOT reproduce this — `auth()` constructs a fresh
+    // runtime object per call, so two builds hand the hook two runtimes and a
+    // re-check is then correct.
+    const rebuiltApp = { ...app };
+    expect(rebuiltApp).not.toBe(app);
+    expect(rebuiltApp.auth).toBe(app.auth);
+
+    function Guard() {
+      const { allow, isResolving } = useCanAccess(QUERY_READ);
+      return <span data-testid="guard">{isResolving ? 'resolving' : String(allow)}</span>;
+    }
+
+    function Harness({ app: current }: { app: import('@gears-frontx/framework').FrontXApp }) {
+      return (
+        <FrontXProvider app={current}>
+          <Guard />
+        </FrontXProvider>
+      );
+    }
+
+    const { rerender } = render(<Harness app={app} />);
+
+    await waitFor(() => expect(screen.getByTestId('guard').textContent).toBe('true'));
+    const callsAfterFirstDecision = canAccess.mock.calls.length;
+
+    rerender(<Harness app={rebuiltApp} />);
+
+    // Re-pessimizing happens during render, so a tracked `app` would already
+    // have put 'resolving' in the DOM by the time this line runs.
+    expect(screen.getByTestId('guard').textContent).toBe('true');
+    expect(canAccess.mock.calls.length).toBe(callsAfterFirstDecision);
+  });
+
   it('treats typed record values as distinct query keys (1 !== "1")', async () => {
     const canAccess = vi.fn().mockResolvedValue('allow' as AccessDecision);
     const provider: AuthProvider = {
