@@ -85,18 +85,23 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
   // pattern) so the effect can depend on the stored value directly — its
   // referential identity tracks the access intent, not the parent render cycle.
   const [stableQuery, setStableQuery] = useState<AccessQuery>(() => query as AccessQuery);
-  // Tracks the (app, auth, stableKey) combination the effect below was last run for —
+  // Tracks the (auth, stableKey) combination the effect below was last run for —
   // exactly its dependency list — so every input that would restart the access check
   // also re-pessimizes `result` here, during render, instead of via a setState call
   // inside the effect.
-  const [runState, setRunState] = useState({ app, auth, stableKey });
+  //
+  // `app` is not part of it. The decision is the auth runtime's, and a host that
+  // rebuilds its app object around the same runtime has changed nothing the check
+  // reads; tracking it would re-pessimize an answered guard back to Pending and
+  // ask the same question again.
+  const [runState, setRunState] = useState({ auth, stableKey });
   const [result, setResult] = useState<UseCanAccessResult>({ allow: false, isResolving: true });
 
-  if (runState.app !== app || runState.auth !== auth || runState.stableKey !== stableKey) {
-    setRunState({ app, auth, stableKey });
+  if (runState.auth !== auth || runState.stableKey !== stableKey) {
+    setRunState({ auth, stableKey });
     setStableQuery(query as AccessQuery);
     // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-pending-effect
-    // Re-pessimize at render time: every (app, auth, stableKey) combination
+    // Re-pessimize at render time: every (auth, stableKey) combination
     // the effect below runs for enters Pending here, before the async
     // decision starts.
     setResult({ allow: false, isResolving: true });
@@ -112,7 +117,7 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
     }
 
     // `result` is re-pessimized during render (inst-pending-effect above) for
-    // every (app, auth, stableKey) combination this effect runs for — no
+    // every (auth, stableKey) combination this effect runs for — no
     // setState needed here before starting the async decision.
     let alive = true;
     const controller = new AbortController();
@@ -138,7 +143,7 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
       controller.abort();
     };
     // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-abort
-  }, [app, auth, stableQuery]);
+  }, [auth, stableQuery]);
 
   return auth ? result : DENIED_NO_AUTH;
 }
