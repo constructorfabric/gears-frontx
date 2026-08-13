@@ -347,7 +347,7 @@ The system **MUST** support both first-time learning and expert use through its 
 
 #### NFR Exclusions Addressed Elsewhere
 
-Two of the root PRD's §6.2 exclusion categories are addressed by this package's own requirements rather than excluded:
+Two NFR-exclusion categories that this package's own requirements address rather than exclude:
 
 - **Audit Requirements** (SEC-PRD-004): Addressed implicitly — every state mutation is committed to the Git-tracked project state file, so a repository's own Git history is the audit trail of every registration, apply, upgrade, and delete; no separate audit-logging facility is required.
 - **Data Lifecycle** (DATA-PRD-003): Addressed — a template's project-state entry lives exactly as long as it has an applied target (`cpt-frontx-fr-cli-project-state`), and `cpt-frontx-fr-cli-template-delete` purges that entry deterministically on removal; no retention question extends past the lifetime the repository's own state file already governs.
