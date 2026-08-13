@@ -41,6 +41,8 @@ Delivers the AI-guided upgrade path defined in `cpt-frontx-seq-ai-driven-templat
 
 **Components**: `cpt-frontx-component-ai-upgrade-orchestration` (the internal sub-component that owns this behavior), within the package anchor `cpt-frontx-component-ai-tooling-kit`
 
+**Applicability** (Often-N/A domains for an AI Tooling feature, per the FEATURE checklist's Applicability Context): PERF and OPS (observability) are not applicable — this feature owns no scale NFR of its own (upgrade throughput is bound by the CLI change-set engine it orchestrates, `cpt-frontx-feature-upgrade-changeset`, F14) and introduces no logging, metrics, or tracing surface beyond the reviewable change set it already presents. SEC is not applicable — this feature enforces no authentication or authorization boundary of its own; supply-chain integrity checks on the upgrade target belong to F14. COMPL is not applicable — no regulatory obligation attaches to a local, developer-approved upgrade workflow. UX is addressed by the mandatory review gate enforced before apply (§5, "Review Gate Enforced Before Apply").
+
 ### 1.3 Actors
 
 | Actor | Role in Feature |

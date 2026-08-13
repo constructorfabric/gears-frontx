@@ -97,7 +97,18 @@ The referenced set is inferred from filesystem layout or naming rather than decl
 
 The template manifest that carries the reference declaration is decided in `cpt-frontx-adr-template-manifest-contract`. Resolution of any single template reference to its source is performed by the one shared resolver decided in `cpt-frontx-adr-template-acquisition-and-location`. Clash arbitration among the resolved set is performed by the pre-flight conflict check decided in `cpt-frontx-adr-assembly-conflict-prevention`, comparing the boundaries shaped by `cpt-frontx-adr-template-ownership-boundary-declaration`. Applying a newer template version to an already-applied template is a separate, reviewable concern decided in `cpt-frontx-adr-project-upgrade-mechanism`. These are non-binding pointers to related decisions and are not part of this decision's durable identity.
 
-Applicability of the remaining checklist categories: **PERF** — Not applicable, because this is local developer tooling with no throughput or latency budget bound to the decision. **SEC** — Not applicable, because the decision introduces no secret material and no authentication surface. **REL** — Not applicable, because there is no service-availability target; the assembly runs locally and on demand, and its fail-before-write atomicity is captured under the drivers rather than as a service-reliability concern. **DATA** — Not applicable, because no persistent database or schema is defined here. **OPS** — Not applicable, because there are no runbooks or operational procedures for a local command. **COMPL** — Not applicable, because no regulatory obligation bears on reference resolution. **UX** — addressed implicitly: one operation yields the whole assembly, and a clash is reported clearly. **MAINT** — addressed: an explicit declared reference set is easier to reason about and review than an inferred one. **TEST** — the Confirmation defines the fixtures that exercise transitive resolution, cycles, and clash arbitration; test implementation lives in code, not here. **Review cadence**: revisit if presets routinely require reference-arbitration behavior other than refuse-on-clash, or if reference cycles become a common authoring pattern.
+Applicability of the remaining checklist categories:
+
+* **PERF** — Not applicable, because this is local developer tooling with no throughput or latency budget bound to the decision.
+* **SEC** — Not applicable, because the decision introduces no secret material and no authentication surface.
+* **REL** — Not applicable, because there is no service-availability target; the assembly runs locally and on demand, and its fail-before-write atomicity is captured under the drivers rather than as a service-reliability concern.
+* **DATA** — Not applicable, because no persistent database or schema is defined here.
+* **OPS** — Not applicable, because there are no runbooks or operational procedures for a local command.
+* **COMPL** — Not applicable, because no regulatory obligation bears on reference resolution.
+* **UX** — addressed implicitly: one operation yields the whole assembly, and a clash is reported clearly.
+* **MAINT** — addressed: an explicit declared reference set is easier to reason about and review than an inferred one.
+* **TEST** — the Confirmation defines the fixtures that exercise transitive resolution, cycles, and clash arbitration; test implementation lives in code, not here.
+* **Review cadence**: revisit if presets routinely require reference-arbitration behavior other than refuse-on-clash, or if reference cycles become a common authoring pattern.
 
 ## Traceability
 

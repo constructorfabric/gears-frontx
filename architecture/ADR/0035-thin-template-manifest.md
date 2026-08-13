@@ -118,6 +118,8 @@ Applicability of the remaining checklist categories:
 * **UX** — addressed implicitly: an author populates four fields instead of five categories, and an AI agent or human reads one field, `description`, for both selection and usage guidance instead of cross-referencing two.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
+**Review cadence**: revisit if the deferred field-layout decision (`cpt-frontx-adr-contract-schema-ownership`) surfaces a validated need for a fifth declared category beyond `name`, `version`, `description`, and `ownership.excludedSubtrees`, or once real-world template authoring shows the isolated migration path needs to accommodate a legacy manifest shape not yet seen.
+
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)

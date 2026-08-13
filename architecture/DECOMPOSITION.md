@@ -322,6 +322,7 @@ F15 ai-kit-packaging             (foundation)
 F18 cli-invocation               (aggregator ← F10, F11, F12, F13, F14 — dispatches to each)
 F19 ecosystem-governance         (foundation, standalone)
 F20 ai-project-scaffolding       (← F10, F11, F12, F13, F15, F16)
+F21 telemetry-sdk                (foundation, standalone)
 ```
 
 **Dependency Rationale**:
@@ -346,6 +347,7 @@ F20 ai-project-scaffolding       (← F10, F11, F12, F13, F15, F16)
 - `cpt-frontx-feature-ai-upgrade-orchestration` requires `cpt-frontx-feature-ai-kit-packaging`: the orchestration workflow ships inside the base AI kit.
 - `cpt-frontx-feature-cli-invocation` requires `cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-template-manifest`, `cpt-frontx-feature-cli-scaffolding`, `cpt-frontx-feature-composed-provenance`, and `cpt-frontx-feature-upgrade-changeset`: the invocation surface is the cross-command aggregator that dispatches `frontx <command>` to each owning behavior; it sits above them in the graph and none depend back on it.
 - `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-ai-kit-packaging` (its entry points ship in the base kit), `cpt-frontx-feature-template-manifest` (selection matches intent against manifest-declared descriptions), `cpt-frontx-feature-template-resolution` (the local inventory it selects over), `cpt-frontx-feature-cli-scaffolding` (the seed/add assembly it drives over the command surface), `cpt-frontx-feature-composed-provenance` (the applied set is reported from the single project-state document's `templates[name].targets`), and `cpt-frontx-feature-template-ai-extensions` (per-unit realization drives the applied templates' activated extension skills).
+- `cpt-frontx-feature-telemetry-sdk` has no feature-level dependency: the package imports no other package in this ecosystem (`cpt-frontx-telemetry-constraint-standalone-boundary`), so it stands alone in the graph like `cpt-frontx-feature-ecosystem-distribution` and `cpt-frontx-feature-ecosystem-governance`.
 
 ## 4. Known Validator Debt
 

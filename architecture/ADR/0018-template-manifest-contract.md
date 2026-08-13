@@ -101,7 +101,16 @@ This decision fixes the manifest's role and the categories it declares at decisi
 
 Integration analysis (**INT**): the manifest is a bidirectional internal contract (`cpt-frontx-contract-template-manifest`) between templates and the CLI — produced when a template is validated for publication, consumed when a template is installed, applied, or assembled. Its producer is the template author (through pre-publish validation); its consumers are the install, apply, and assembly operations, preset resolution, and the conflict check. Version-compatibility intent is forward-looking: the manifest shape is versioned so the contract can evolve while manifests already published stay readable; any change to the shape that is not backward-compatible follows the platform evolvability requirement. The contract names no external party; it is internal between templates and the command surface.
 
-Applicability of the remaining checklist categories: **PERF** — Not applicable, because reading a per-template manifest has no throughput or latency budget at decision altitude. **SEC** — Not applicable, because the manifest carries descriptive structure, not secret material or an authentication surface. **REL** — Not applicable, because there is no service availability target for a local manifest read. **DATA** — addressed by deliberate omission: this decision fixes the manifest's categories of information but does NOT define a complete schema; the full schema is owned by `cpt-frontx-feature-template-manifest` per `cpt-frontx-adr-contract-schema-ownership` (DATA-ADR-NO-001). **OPS** — Not applicable, because no operational procedure attaches to a manifest contract. **MAINT** — addressed: one versioned contract governs how every template describes itself, concentrating evolution in one place. **UX** — addressed implicitly: authors get a single descriptor to maintain and a single pre-publish check. **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+Applicability of the remaining checklist categories:
+
+* **PERF** — Not applicable, because reading a per-template manifest has no throughput or latency budget at decision altitude.
+* **SEC** — Not applicable, because the manifest carries descriptive structure, not secret material or an authentication surface.
+* **REL** — Not applicable, because there is no service availability target for a local manifest read.
+* **DATA** — addressed by deliberate omission: this decision fixes the manifest's categories of information but does NOT define a complete schema; the full schema is owned by `cpt-frontx-feature-template-manifest` per `cpt-frontx-adr-contract-schema-ownership` (DATA-ADR-NO-001).
+* **OPS** — Not applicable, because no operational procedure attaches to a manifest contract.
+* **MAINT** — addressed: one versioned contract governs how every template describes itself, concentrating evolution in one place.
+* **UX** — addressed implicitly: authors get a single descriptor to maintain and a single pre-publish check.
+* **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
 ## Traceability
 

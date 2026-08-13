@@ -46,9 +46,9 @@ AI agents do the ecosystem's work — scaffolding, extending, upgrading — but 
 
 ### 1.3 Goals (Business Outcomes)
 
-- **Automatic activation of allowed template AI extensions** — capabilities a trusted template bundles become available to agents with no developer activation work. Baseline: none (new product); Target: zero manual activation steps and 100% of declared applicable, policy-allowed template AI-extension resources discoverable on the first conforming-host invocation after installation; Timeframe: first platform release.
-- **Ecosystem-aware agents from the first interaction** — knowledge artifacts are available at session start with no training step. Baseline: none (new product); Target: 100% of declared applicable ecosystem-knowledge resources discoverable on the first conforming-host invocation after installation; Timeframe: first platform release.
-- **Nothing agent-facing undeclared** — every capability delivered into a project carries its identity and applicability. Baseline: none (new product); Target: 100% of agent-facing capabilities declared; Timeframe: first platform release.
+- **Automatic activation of allowed template AI extensions** — capabilities a trusted template bundles become available to agents with no developer activation work. Baseline: not yet measured (new product); Target: zero manual activation steps and 100% of declared applicable, policy-allowed template AI-extension resources discoverable on the first conforming-host invocation after installation; Timeframe: first platform release.
+- **Ecosystem-aware agents from the first interaction** — knowledge artifacts are available at session start with no training step. Baseline: not yet measured (new product); Target: 100% of declared applicable ecosystem-knowledge resources discoverable on the first conforming-host invocation after installation; Timeframe: first platform release.
+- **Nothing agent-facing undeclared** — every capability delivered into a project carries its identity and applicability. Baseline: not yet measured (new product); Target: 100% of agent-facing capabilities declared; Timeframe: first platform release.
 
 ### 1.4 Glossary
 
@@ -183,7 +183,7 @@ The supported template AI-extension categories are:
 
 When a template is installed in a project, the system **MUST** discover the template's AI extensions and activate allowed extensions for AI agents working in that project, without the developer needing to wire them up manually.
 
-The Project Developer **MUST** be able to own the project's trust policy for template AI extensions. Automatic activation applies only to extensions allowed by that policy. Activated capabilities **MUST** remain scoped to declared project-visible resources. Denied or untrusted capabilities **MUST NOT** activate.
+In v1, the project's trust policy for template AI extensions is registration-gated: automatic activation applies only to extensions whose template identity carries a registered, pinned origin in the project's single state document (`cpt-frontx-adr-template-registration-and-origin-pinning`). Activated capabilities **MUST** remain scoped to declared project-visible resources. Denied or untrusted capabilities **MUST NOT** activate. A configurable per-identity deny surface beyond registration-gating is out of scope for v1 (§11 Open Questions).
 
 **Rationale**: Delivers zero-configuration extensibility, so template-supplied AI capabilities become available with no developer activation work.
 
@@ -399,6 +399,10 @@ The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationaliz
 
 - AI agents capable of operating the framework are available to both human actor types during their work, subject to the consuming project's authorization and host availability.
 - Templates and their bundled AI extensions are versioned together and upgrade in step as stated in [root PRD §11](../../../architecture/PRD.md#11-assumptions).
+
+**Open Questions**:
+
+- **Configurable per-identity deny.** v1's trust policy for template AI extensions is registration-gated only — an identity backed by a registered, pinned origin activates, and no other one does — with no configurable surface for a Project Developer to deny a specific registered identity's extensions. Owner: not yet assigned, tracked as a future decision in this area. Milestone: resolved if a project's need to deny a specific registered identity's extensions is demonstrated.
 
 ## 12. Risks
 

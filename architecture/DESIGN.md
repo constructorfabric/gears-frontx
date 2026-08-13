@@ -29,7 +29,7 @@ status: final
 - [4. Additional context](#4-additional-context)
   - [Technology stack alignment](#technology-stack-alignment)
   - [Capacity and NFR thresholds](#capacity-and-nfr-thresholds)
-  - [Non-applicable checklist categories](#non-applicable-checklist-categories)
+  - [Applicability of the remaining checklist categories](#applicability-of-the-remaining-checklist-categories)
   - [Member Pointers](#member-pointers)
 - [5. Traceability](#5-traceability)
 
@@ -177,7 +177,7 @@ graph TD
 |-------|---------------|------------|
 | Published libraries | Runtime substrate, type-system provider, protocol surface, telemetry — consumed as versioned dependencies; the core subset stays UI-framework- and type-format-agnostic | TypeScript npm packages; module-federation runtime with lazy import (`@gears-frontx/mfes`); concrete type-definition specification confined to `@gears-frontx/gts-plugin`; transport as a peer dependency of `@gears-frontx/api` |
 | Templates | Producing and extending project content the receiving project owns | Externally hosted template repositories resolved by versioned source-spec; manifest publication contract |
-| Projects orchestration | Template and repository lifecycle (install, apply, assemble, upgrade) and AI-agent orchestration over it | Node.js CLI (`@gears-frontx/cli`); Constructor Studio kit (`cyber-pilot-kit-frontx`); GitHub source registry; npm package registry |
+| Projects orchestration | Template and repository lifecycle (install, apply, assemble, upgrade) and AI-agent orchestration over it | Node.js CLI (`@gears-frontx/cli`); Constructor Studio kit (`cyber-pilot-kit-frontx`, published as npm package `@gears-frontx/cyber-pilot-kit-frontx`); GitHub source registry; npm package registry |
 | Outside the layers | Build internals (never published) and non-package repository code | Private `@gears-frontx/*` configuration packages; `scripts/` tooling |
 
 Applications and microfrontends composed on top of the published libraries choose their UI technology freely — any UI framework (React, Vue, Svelte, vanilla JavaScript) over TypeScript; the platform constrains none of that choice. Each layer's technology choices align with the boundary constraints owned by the member DESIGNs and the NFRs: the runtime substrate stays UI-framework- and type-format-agnostic (MFES-1..MFES-5, owned by the [runtime's member DESIGN](../packages/mfes/architecture/DESIGN.md)) so it supports any UI stack, and the type-system provider is the only core library permitted a concrete type-definition specification (GTS-PLUGIN-1 and GTS-PLUGIN-2, owned by the [plugin's member DESIGN](../packages/gts-plugin/architecture/DESIGN.md)).
@@ -411,7 +411,7 @@ The technology stack per layer is recorded in §1.3 (`cpt-frontx-tech-ecosystem-
 
 Root capacity is expressed as an absence of structural caps. Concrete runtime or SDK thresholds belong to the member PRD that owns the behavior.
 
-### Non-applicable checklist categories
+### Applicability of the remaining checklist categories
 
 - Database and data architecture are not applicable at root altitude.
 - Hosted infrastructure operations are not applicable at root altitude.

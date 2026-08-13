@@ -136,6 +136,8 @@ Applicability of the remaining checklist categories:
 * **UX** — addressed: `frontx list --json` gives a developer or an AI one catalog of defaults, registered, and installed templates with their descriptions, and registration failures (a missing description, a name/origin conflict without `--replace`, an unregister blocked by live targets) are reported through the CLI's stable JSON envelope naming the exact reason.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
+**Review cadence**: revisit if a validated need emerges for re-pinning a registered origin without first unregistering it (for example a deliberate re-point to a newer commit under the same name), or once a source kind beyond immutable-commit-SHA/exact-package-version pinning requires its own resolution strategy.
+
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)

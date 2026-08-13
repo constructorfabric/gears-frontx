@@ -123,6 +123,8 @@ Applicability of the remaining checklist categories:
 * **UX** — addressed implicitly: a developer or reviewer can see a repository's entire CLI-managed template footprint in one file and one Git diff.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
+**Review cadence**: revisit if a validated need emerges to shard `.frontx/project.json` across multiple files (for example at a repository scale where one document's read/write cost or Git-diff size becomes a real developer complaint), or once the `formatVersion` migration seam is exercised for the first real schema change and the single-migration-point assumption can be checked against practice.
+
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)

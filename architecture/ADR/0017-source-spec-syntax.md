@@ -160,7 +160,15 @@ Integration analysis (**INT**): the source-spec is a client-supplied contract (`
 
 **SEC** — addressed: the subtree segment is the only developer- or third-party-supplied path fragment in a reference, and it reaches local filesystem selection and re-rooting. It arrives not only by hand but inside a third-party manifest, since a composed preset declares its sibling references (`cpt-frontx-adr-composed-template-resolution`). This decision therefore fixes as a property of the shape that a subtree segment MUST be usable as a repository-relative path and MUST resolve within the acquired content root; a segment that does not is rejected, and no path outside that root is ever written. The reference carries no secret material.
 
-Applicability of the remaining checklist categories: **PERF** — Not applicable at decision altitude, because parsing a short reference carries no throughput or latency budget; the acquisition cost of sibling templates is recorded as a consequence rather than as a performance target. **REL** — Not applicable, because there is no service availability target for a parsed reference. **DATA** — Not applicable, because no persistent schema is defined here; the reference is a transient input shape, and the record that stores it is decided in `cpt-frontx-adr-project-provenance-record`. **OPS** — Not applicable, because no operational procedure attaches to a reference shape. **MAINT** — addressed: one addressing vocabulary shared with the substrate, and one repository able to hold a family of templates, reduce both cognitive load and repository sprawl. **UX** — addressed: the reference remains a single compact, copy-pasteable token. **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+Applicability of the remaining checklist categories:
+
+* **PERF** — Not applicable at decision altitude, because parsing a short reference carries no throughput or latency budget; the acquisition cost of sibling templates is recorded as a consequence rather than as a performance target.
+* **REL** — Not applicable, because there is no service availability target for a parsed reference.
+* **DATA** — Not applicable, because no persistent schema is defined here; the reference is a transient input shape, and the record that stores it is decided in `cpt-frontx-adr-project-provenance-record`.
+* **OPS** — Not applicable, because no operational procedure attaches to a reference shape.
+* **MAINT** — addressed: one addressing vocabulary shared with the substrate, and one repository able to hold a family of templates, reduce both cognitive load and repository sprawl.
+* **UX** — addressed: the reference remains a single compact, copy-pasteable token.
+* **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
 ## Traceability
 

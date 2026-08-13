@@ -129,6 +129,8 @@ Applicability of the remaining checklist categories:
 * **UX** — addressed: a developer can see exactly what a template owns by reading one target path and two short exclusion lists, and can protect their own files with a single reversible `ownership add`.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
+**Review cadence**: revisit if a validated need emerges for ownership finer-grained than whole-target-minus-exclusions (for example a recurring shared-file-region use case the retired two-tier model used to serve), or once real template authoring shows `excludedSubtrees` lists growing large enough to erode the "read one target path and two short lists" usability property this decision relies on.
+
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)

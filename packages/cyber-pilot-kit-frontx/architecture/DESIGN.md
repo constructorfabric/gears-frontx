@@ -177,7 +177,7 @@ Every capability the AI Tooling kit (`cyber-pilot-kit-frontx`) exposes as a publ
 
 - [x] `p2` - **ID**: `cpt-frontx-component-ai-tooling-kit`
 
-Concrete artifact: `cyber-pilot-kit-frontx` (a Constructor Studio kit).
+Concrete artifact: `cyber-pilot-kit-frontx` (a Constructor Studio kit). Unscoped `cyber-pilot-kit-frontx` names the kit/system identity — the member of the ecosystem and Constructor Studio kit this DESIGN describes; `@gears-frontx/cyber-pilot-kit-frontx` is the npm name of the published package that ships it (see `package.json`).
 
 ##### Why this component exists
 

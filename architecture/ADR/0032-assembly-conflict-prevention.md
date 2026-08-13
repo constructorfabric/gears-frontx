@@ -102,7 +102,17 @@ The declared ownership boundaries this check compares are decided in `cpt-frontx
 
 Reliability treatment (REL): the refuse-before-write rule is the mechanism's reliability design. **Failure modes** — an intersection between two templates' boundaries, or a preset reference that cannot be resolved, surfaces during the pre-flight check before any file is written; the repository is untouched. **Non-destructive** — nothing is written until the staged assembly passes the check; a refused assembly writes zero files. **Recovery** — a refused assembly leaves the repository exactly as it was, so there is nothing to roll back. **Operational readiness (REL-ADR-002)** — service-oriented items (deployment, monitoring, alerting, runbooks, SLA) are Not applicable, because this is a local command with no running service; the post-materialization guard is the recovery point for a template that violated its declaration.
 
-Applicability of the remaining checklist categories: **PERF** — Not applicable, because there is no latency or throughput budget bound to a local pre-flight check. **SEC** — Not applicable, because the check introduces no secret material or authentication surface. **DATA** — Not applicable, because this decision fixes no schema; boundary shape is owned by `cpt-frontx-feature-template-manifest` per `cpt-frontx-adr-contract-schema-ownership`. **INT** — addressed: the check reads the manifest's boundary declarations, an internal contract between templates and the CLI. **OPS** — Not applicable, per the operational-readiness note above. **MAINT** — addressed: one pre-flight check localizes all conflict arbitration in a single mechanism. **COMPL** — Not applicable. **UX** — addressed: a refused assembly reports the contesting templates and the contested ground so a developer can act. **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+Applicability of the remaining checklist categories:
+
+* **PERF** — Not applicable, because there is no latency or throughput budget bound to a local pre-flight check.
+* **SEC** — Not applicable, because the check introduces no secret material or authentication surface.
+* **DATA** — Not applicable, because this decision fixes no schema; boundary shape is owned by `cpt-frontx-feature-template-manifest` per `cpt-frontx-adr-contract-schema-ownership`.
+* **INT** — addressed: the check reads the manifest's boundary declarations, an internal contract between templates and the CLI.
+* **OPS** — Not applicable, per the operational-readiness note above.
+* **MAINT** — addressed: one pre-flight check localizes all conflict arbitration in a single mechanism.
+* **COMPL** — Not applicable.
+* **UX** — addressed: a refused assembly reports the contesting templates and the contested ground so a developer can act.
+* **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
 ## Traceability
 

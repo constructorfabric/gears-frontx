@@ -120,6 +120,8 @@ Applicability of the remaining checklist categories:
 * **UX** — addressed directly: the human-readable mode renders the same result as text, so a person and an agent never see disagreeing accounts of the same operation.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
+**Review cadence**: revisit if a new command's result shape cannot be expressed within the shared code vocabulary without overloading an existing code's meaning, or once a validated need emerges for envelope versioning as the number of commands and codes sharing this contract grows.
+
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)

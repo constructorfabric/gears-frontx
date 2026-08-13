@@ -93,7 +93,18 @@ Each contract's full schema is fixed inside its ADR.
 
 The three FEATUREs that own these schemas already exist under `architecture/features/` (`template-manifest`, `composed-provenance`, `template-ai-extensions`); this decision assigns ownership to them and does not itself author or edit them. The contract role descriptions remain in DESIGN §3.1 and §3.3, and the decision rationale for each contract remains in its own ADR (`cpt-frontx-adr-template-manifest-contract`, `cpt-frontx-adr-project-provenance-record`, `cpt-frontx-adr-template-ai-extension-contract`), which are updated only to remove the mis-delegation to DESIGN. These are non-binding pointers and do not form part of this decision's durable identity.
 
-Applicability of the remaining checklist categories: **PERF** — Not applicable, because a documentation-ownership rule has no latency or throughput budget. **SEC** — Not applicable, because the rule introduces no secret material or authentication surface. **REL** — Not applicable, because no service-availability target attaches to an ownership rule. **DATA** — addressed directly: this decision governs where concrete schemas live and deliberately fixes none itself. **INT** — addressed: it stabilizes how three internal contracts are specified across artifacts. **OPS** — Not applicable, because no operational procedure attaches to the rule. **MAINT** — addressed: single-owner-per-concern reduces drift and makes contracts traceable. **COMPL** — Not applicable, because no regulatory obligation bears on the rule. **UX** — Not applicable, because the product ships no end-user interface affected by this rule. **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+Applicability of the remaining checklist categories:
+
+* **PERF** — Not applicable, because a documentation-ownership rule has no latency or throughput budget.
+* **SEC** — Not applicable, because the rule introduces no secret material or authentication surface.
+* **REL** — Not applicable, because no service-availability target attaches to an ownership rule.
+* **DATA** — addressed directly: this decision governs where concrete schemas live and deliberately fixes none itself.
+* **INT** — addressed: it stabilizes how three internal contracts are specified across artifacts.
+* **OPS** — Not applicable, because no operational procedure attaches to the rule.
+* **MAINT** — addressed: single-owner-per-concern reduces drift and makes contracts traceable.
+* **COMPL** — Not applicable, because no regulatory obligation bears on the rule.
+* **UX** — Not applicable, because the product ships no end-user interface affected by this rule.
+* **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
 **Post-redesign note (2026-08-12).** The rule this record fixes is unchanged and continues to govern every contract. One concrete assignment it names is affected: the project-provenance record schema previously owned by `cpt-frontx-feature-composed-provenance` no longer exists as its own document — provenance is folded into the single project-state file `.frontx/project.json` (`cpt-frontx-adr-single-project-state-file`). The assignment itself carries forward rather than lapsing: `cpt-frontx-feature-composed-provenance` remains the owning FEATURE, now scoped to `.frontx/project.json`'s concrete field-level schema in place of the standalone provenance record it previously owned.
 

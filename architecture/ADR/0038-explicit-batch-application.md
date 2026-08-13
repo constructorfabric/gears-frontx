@@ -118,6 +118,8 @@ Applicability of the remaining checklist categories:
 * **UX** — addressed implicitly: a developer or AI previews a batch with `assemble` and applies the identical batch with `apply`, with no separate plan artifact to track between the two.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
+**Review cadence**: revisit if a validated need emerges for a persisted, re-usable plan artifact beyond a call-time batch (for example very large multi-template compositions repeated across sessions), or if a future multi-instance-per-target model requires reintroducing a generated instance identifier this decision retires.
+
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)

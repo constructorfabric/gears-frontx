@@ -25,7 +25,7 @@
   - [5.6 Machine Interface](#56-machine-interface)
 - [6. Non-Functional Requirements](#6-non-functional-requirements)
   - [6.1 NFR Inclusions](#61-nfr-inclusions)
-  - [6.2 NFR Exclusions](#62-nfr-exclusions)
+  - [6.2 NFR Exclusions and Applicability Notes](#62-nfr-exclusions-and-applicability-notes)
 - [7. Public Library Interfaces](#7-public-library-interfaces)
   - [7.1 Public API Surface](#71-public-api-surface)
   - [7.2 External Integration Contracts](#72-external-integration-contracts)
@@ -345,7 +345,7 @@ The system **MUST** support both first-time learning and expert use through its 
 
 **Rationale**: A developer CLI must be teachable at the terminal and predictable enough for repeated expert use.
 
-### 6.2 NFR Exclusions
+### 6.2 NFR Exclusions and Applicability Notes
 
 The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationalization, inclusivity, regulatory compliance) apply here for the same reasons stated there.
 

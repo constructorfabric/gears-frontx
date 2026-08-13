@@ -96,7 +96,18 @@ The tool records what each template wrote and treats that as its boundary after 
 
 The manifest that carries the boundary declaration is decided in `cpt-frontx-adr-template-manifest-contract`; the pre-flight check that compares two templates' boundaries and refuses a conflicting assembly is decided in `cpt-frontx-adr-assembly-conflict-prevention`; the uniform mechanism this boundary model serves is decided in `cpt-frontx-adr-uniform-template-mechanism`. The concrete field-level schema of the boundary declaration is owned by `cpt-frontx-feature-template-manifest` per `cpt-frontx-adr-contract-schema-ownership`. These are non-binding pointers and do not form part of this decision's durable identity.
 
-Applicability of the remaining checklist categories: **PERF** — Not applicable, because a declaration-shape decision binds no latency or throughput budget. **SEC** — Not applicable, because the declaration carries descriptive structure, not secret material. **REL** — Not applicable, because there is no service-availability target for a local declaration. **DATA** — addressed by deliberate omission: this decision fixes the boundary's tiers but not its field-level schema, which is owned by `cpt-frontx-feature-template-manifest` per `cpt-frontx-adr-contract-schema-ownership` (DATA-ADR-NO-001). **INT** — addressed: the boundary declaration is part of the manifest conformance contract compared across templates. **OPS** — Not applicable, because no operational procedure attaches to the declaration. **MAINT** — addressed: an explicit two-tier boundary makes what a template owns clear and comparable. **COMPL** — Not applicable. **UX** — addressed implicitly: a developer can read what ground a template claims before applying it. **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+Applicability of the remaining checklist categories:
+
+* **PERF** — Not applicable, because a declaration-shape decision binds no latency or throughput budget.
+* **SEC** — Not applicable, because the declaration carries descriptive structure, not secret material.
+* **REL** — Not applicable, because there is no service-availability target for a local declaration.
+* **DATA** — addressed by deliberate omission: this decision fixes the boundary's tiers but not its field-level schema, which is owned by `cpt-frontx-feature-template-manifest` per `cpt-frontx-adr-contract-schema-ownership` (DATA-ADR-NO-001).
+* **INT** — addressed: the boundary declaration is part of the manifest conformance contract compared across templates.
+* **OPS** — Not applicable, because no operational procedure attaches to the declaration.
+* **MAINT** — addressed: an explicit two-tier boundary makes what a template owns clear and comparable.
+* **COMPL** — Not applicable.
+* **UX** — addressed implicitly: a developer can read what ground a template claims before applying it.
+* **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
 ## Traceability
 

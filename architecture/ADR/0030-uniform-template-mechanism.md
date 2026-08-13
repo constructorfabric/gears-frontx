@@ -96,7 +96,18 @@ The platform ships types but lets templates register new ones; the mechanism sti
 
 The self-describing manifest this decision relies on is decided in `cpt-frontx-adr-template-manifest-contract`; the ownership-boundary declaration that lets independently-applied templates be arbitrated is decided in `cpt-frontx-adr-template-ownership-boundary-declaration`; preset reference resolution is decided in `cpt-frontx-adr-composed-template-resolution`. These are non-binding pointers to related decisions and do not form part of this decision's durable identity.
 
-Applicability of the remaining checklist categories: **PERF** — Not applicable, because a taxonomy decision binds no latency or throughput budget. **SEC** — Not applicable, because it introduces no secret material or authentication surface. **REL** — Not applicable, because no service-availability target attaches to a local mechanism. **DATA** — Not applicable, because this decision fixes no schema; the manifest schema is owned by `cpt-frontx-feature-template-manifest` per `cpt-frontx-adr-contract-schema-ownership`. **INT** — addressed: removing a type field from the manifest keeps the published contract self-describing without a classification vocabulary. **OPS** — Not applicable, because no operational procedure attaches to the mechanism. **MAINT** — addressed directly: one mechanism over any template reduces the surface and removes a vocabulary to steward. **COMPL** — Not applicable. **UX** — addressed implicitly: a developer assembles any template through one predictable set of commands. **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+Applicability of the remaining checklist categories:
+
+* **PERF** — Not applicable, because a taxonomy decision binds no latency or throughput budget.
+* **SEC** — Not applicable, because it introduces no secret material or authentication surface.
+* **REL** — Not applicable, because no service-availability target attaches to a local mechanism.
+* **DATA** — Not applicable, because this decision fixes no schema; the manifest schema is owned by `cpt-frontx-feature-template-manifest` per `cpt-frontx-adr-contract-schema-ownership`.
+* **INT** — addressed: removing a type field from the manifest keeps the published contract self-describing without a classification vocabulary.
+* **OPS** — Not applicable, because no operational procedure attaches to the mechanism.
+* **MAINT** — addressed directly: one mechanism over any template reduces the surface and removes a vocabulary to steward.
+* **COMPL** — Not applicable.
+* **UX** — addressed implicitly: a developer assembles any template through one predictable set of commands.
+* **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
 **Post-redesign note (2026-08-12).** The core holding — no template taxonomy, one uniform mechanism for any template — remains in force and is reinforced by the redesign. The preset-specific clauses (composition expressed by manifest reference, `referencedTemplates`, cyclic-reference handling) are revised by `cpt-frontx-adr-explicit-batch-application`: any combination of templates is now expressed as an explicit target-keyed batch, applied through the same one mechanism.
 

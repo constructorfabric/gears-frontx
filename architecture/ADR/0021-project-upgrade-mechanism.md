@@ -101,7 +101,16 @@ The AI-driven upgrade orchestration that invokes and enriches this engine is dec
 
 Reliability treatment (REL): the change-set model is the engine's reliability design. **Failure modes** — a target version that cannot be resolved, or a change the engine cannot apply cleanly, surfaces during computation or review, before any repository file is written; the applied template stays at its current version and the other applied templates are untouched. **Non-destructive apply** — application is gated behind explicit approval and writes only the approved change set within the template's boundary. **Recovery / rollback** — an applied change set is reversible to the pre-upgrade state, so an unwanted upgrade is recoverable at the change-set level. **Single point of failure** — the single engine is deliberately the one authoritative computation; its reliability properties are proven once and apply to every invoker and every applied template (the Confirmation defines those checks). **Operational readiness (REL-ADR-002)**: rollback strategy is the change-set reversal above; service-oriented items — deployment complexity, monitoring, alerting, runbooks, SLA — are Not applicable, because this is a local developer command with no running service, no availability target, and no operational on-call surface.
 
-Applicability of the remaining checklist categories: **PERF** — Not applicable, because there is no latency or throughput budget bound to a local upgrade command. **SEC** — Not applicable, because the decision introduces no secret material and no authentication surface. **DATA** — Not applicable, because no persistent database or schema is defined here; the pre-upgrade state the engine retains for rollback is an implementation concern, not a schema decision. **OPS** — Not applicable, per the operational-readiness note above. **COMPL** — Not applicable, because no regulatory obligation bears on the engine. **UX** — addressed implicitly: review-then-approve keeps the developer in control. **MAINT** — addressed: one engine is one place to maintain the upgrade behaviour for every applied template. **Review cadence**: revisit if AI enrichment ever needs to alter the change set the engine computes (which would pressure the alongside-not-subordinate boundary), or if template-shaped changes routinely defeat automatic application.
+Applicability of the remaining checklist categories:
+
+* **PERF** — Not applicable, because there is no latency or throughput budget bound to a local upgrade command.
+* **SEC** — Not applicable, because the decision introduces no secret material and no authentication surface.
+* **DATA** — Not applicable, because no persistent database or schema is defined here; the pre-upgrade state the engine retains for rollback is an implementation concern, not a schema decision.
+* **OPS** — Not applicable, per the operational-readiness note above.
+* **COMPL** — Not applicable, because no regulatory obligation bears on the engine.
+* **UX** — addressed implicitly: review-then-approve keeps the developer in control.
+* **MAINT** — addressed: one engine is one place to maintain the upgrade behaviour for every applied template.
+* **Review cadence**: revisit if AI enrichment ever needs to alter the change set the engine computes (which would pressure the alongside-not-subordinate boundary), or if template-shaped changes routinely defeat automatic application.
 
 ## Traceability
 

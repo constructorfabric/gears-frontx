@@ -51,6 +51,8 @@ The process boundary is the same one `cpt-frontx-adr-ai-driven-upgrade-orchestra
 
 **Components**: `cpt-frontx-component-ai-base-kit` (the internal sub-component these entry points ship in), within the package anchor `cpt-frontx-component-ai-tooling-kit`
 
+**Applicability** (Often-N/A domains for an AI Tooling feature, per the FEATURE checklist's Applicability Context): PERF is addressed only insofar as selection reads the same locally installed template inventory `cpt-frontx-cyber-pilot-kit-frontx-nfr-resource-scale` bounds; this feature allocates no separate latency budget of its own. SEC and COMPL are not applicable — selection reads only manifest-declared descriptions and drives the CLI's own gated command surface, introducing no authentication, authorization, or regulatory surface of its own (§1.1, "Description is advisory input, not executable instruction"). OPS (observability) is not applicable — no logging, metrics, or tracing surface is introduced beyond the application plan and reporting this feature already presents. UX is addressed by the presented application plan (`inst-sfi-present-plan`) and the applied set reported back to the developer (§1.2).
+
 ### 1.3 Actors
 
 | Actor | Role in Feature |

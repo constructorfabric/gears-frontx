@@ -98,7 +98,16 @@ This decision fixes what each provenance record captures, that there is one per 
 
 Integration analysis (**INT**): provenance is a library-provided internal contract (`cpt-frontx-contract-project-provenance`) — one record written per applied template by the apply operation and read and updated by that template's upgrade operation, both within the CLI; it names no external party. Its producer is apply; its consumer is upgrade. Version-compatibility intent is forward-looking: provenance records remain readable across versions, and each record's shape evolves additively so that records written by an earlier apply remain readable by a later upgrade; any change to the shape that is not backward-compatible follows the platform evolvability requirement.
 
-Applicability of the remaining checklist categories: **PERF** — Not applicable, because writing and reading small per-template records has no throughput or latency budget at decision altitude. **SEC** — Not applicable, because a record holds a template identity, version, public source reference, and declared boundary, not secret material. **REL** — Not applicable, because there is no service availability target for local files; graceful handling of an absent record is covered under Confirmation. **DATA** — Not applicable as a complete schema, because the exact field layout is owned by `cpt-frontx-feature-composed-provenance` per `cpt-frontx-adr-contract-schema-ownership`; this decision fixes only the captured categories and the one-record-per-applied-template rule. **OPS** — Not applicable, because no operational procedure attaches to in-project records. **MAINT** — addressed: self-contained, minimal per-template records keep upgrade logic simple and resilient to repository relocation. **UX** — addressed implicitly: a developer can read each applied template's origin directly from the repository. **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+Applicability of the remaining checklist categories:
+
+* **PERF** — Not applicable, because writing and reading small per-template records has no throughput or latency budget at decision altitude.
+* **SEC** — Not applicable, because a record holds a template identity, version, public source reference, and declared boundary, not secret material.
+* **REL** — Not applicable, because there is no service availability target for local files; graceful handling of an absent record is covered under Confirmation.
+* **DATA** — Not applicable as a complete schema, because the exact field layout is owned by `cpt-frontx-feature-composed-provenance` per `cpt-frontx-adr-contract-schema-ownership`; this decision fixes only the captured categories and the one-record-per-applied-template rule.
+* **OPS** — Not applicable, because no operational procedure attaches to in-project records.
+* **MAINT** — addressed: self-contained, minimal per-template records keep upgrade logic simple and resilient to repository relocation.
+* **UX** — addressed implicitly: a developer can read each applied template's origin directly from the repository.
+* **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
 ## Traceability
 

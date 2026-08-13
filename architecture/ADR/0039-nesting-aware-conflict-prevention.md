@@ -123,6 +123,8 @@ Applicability of the remaining checklist categories:
 * **UX** — addressed: a refusal names the contesting templates and the contested ground in a stable, scriptable JSON envelope.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
+**Review cadence**: revisit if a validated need emerges for a supervised override of a refused ownership conflict (a `--force` escape hatch this decision deliberately omits), or once nesting scenarios beyond coincidence/ancestor/descendant surface an edge case the canonicalization algorithm does not yet cover.
+
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)
