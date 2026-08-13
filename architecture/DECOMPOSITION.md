@@ -306,7 +306,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 - [ ] `p2` - **ID**: `cpt-frontx-feature-template-territory-conversion`
 
-**Purpose**: Convert the ecosystem's own pre-existing templates (`template-shell`, `template-mfe`) from their legacy manifest shape onto the current four-field registration contract, so both become registrable and applicable under `cpt-frontx-adr-thin-template-manifest`, `cpt-frontx-adr-whole-target-ownership`, and `cpt-frontx-adr-single-project-state-file` by direct conversion at the source rather than by relying on any runtime compatibility path. Until this conversion completes, zero templates in this repository are registrable under the current contract.
+**Purpose**: Convert the ecosystem's own pre-existing templates (`template-shell`, `template-mfe`) from their legacy manifest shape onto the current four-field registration contract, so both become installable, registrable, and applicable under `cpt-frontx-adr-thin-template-manifest`, `cpt-frontx-adr-whole-target-ownership`, and `cpt-frontx-adr-single-project-state-file` by direct conversion at the source rather than by relying on any runtime compatibility path. Until this conversion completes, zero templates in this repository are installable under the current contract — a legacy manifest carrying a retired field is refused at `install` itself, the earliest gate, not merely at `register`.
 
 **Depends On**: `cpt-frontx-feature-template-manifest` (F11 — the four-field manifest contract both templates convert onto)
 
@@ -367,6 +367,7 @@ F19 ecosystem-governance         (foundation, standalone)
 F20 ai-project-scaffolding       (← F10, F11, F12, F13, F15, F16)
 F21 telemetry-sdk                (foundation, standalone)
 F22 template-territory-conversion (← F11)
+F23 identifier-rename-wave       (foundation, standalone)
 ```
 
 **Dependency Rationale**:
