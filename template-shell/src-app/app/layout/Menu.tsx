@@ -33,6 +33,9 @@ export interface MenuProps {
   children?: React.ReactNode;
 }
 
+/** Inline code styling for the empty-menu hint below. */
+const hintCodeClass = 'rounded bg-muted px-1.5 py-0.5 font-mono text-xs';
+
 export const Menu: React.FC<MenuProps> = ({ children }) => {
   const menuState = useAppSelector((state) => state['layout/menu'] as MenuState | undefined);
   const app = useFrontX();
@@ -95,8 +98,18 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
       <SidebarContent>
         <SidebarMenu>
           {extensions.length === 0 ? (
+            // Reached from two different states, so the hint names the step that
+            // tells them apart: a shell-only seed has no `src-app/mfe_packages/`
+            // at all until the MFE template is added, and pointing such a
+            // project at a scaffold it does not carry is a dead end.
             <div className="px-3 py-4 text-sm text-muted-foreground">
-              No screens yet. Add an MFE package by copying the <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">_blank-mfe</code> reference scaffold in <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">mfe_packages/</code>, then delete <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">templateExample</code> from the copy&rsquo;s <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">mfe.json</code> so it reaches this menu.
+              No screens yet. If this project has no{' '}
+              <code className={hintCodeClass}>src-app/mfe_packages/</code> directory, run{' '}
+              <code className={hintCodeClass}>frontx add frontx-template-mfe</code> and{' '}
+              <code className={hintCodeClass}>npm install</code> to get it. Then add a package by
+              copying the <code className={hintCodeClass}>_blank-mfe</code> scaffold, and delete{' '}
+              <code className={hintCodeClass}>templateExample</code> from the copy&rsquo;s{' '}
+              <code className={hintCodeClass}>mfe.json</code> so it reaches this menu.
             </div>
           ) : (
             extensions.map((ext) => {

@@ -65,8 +65,18 @@ example — Hello World, Profile, Theme, UIKit, Widgets Host), `_blank-mfe`
 
 ## Reference packages do not run in your application
 
-**This section is the one place this rule is written down.** Every other mention
-of it in this project points here.
+**This section is the package-level reference for this rule** - it ships next to
+the packages it governs, and the human-facing surfaces (both template READMEs and
+QUICK_START) point here rather than restating it.
+
+Three agent-facing surfaces carry their own copy, because each is read on its own
+with nothing else loaded, so a pointer in one of them would be a dead end:
+[the `add-mfe-package` skill](../../.frontx/ai/@gears-frontx/frontx-template-mfe/skills/add-mfe-package/SKILL.md),
+[its workflow](../../.frontx/ai/@gears-frontx/frontx-template-mfe/workflows/add-mfe-package-workflow.md),
+and the shell's own
+`.frontx/ai/@gears-frontx/frontx-template-shell/guidelines/mfe-package-contract.md`
+(under `template-shell/` in the template monorepo), which is the snapshot of what
+the scanners check. A change to the behaviour has to reach all of them.
 
 Every package listed above declares `"templateExample": true` in its `mfe.json`.
 They ship to be read and copied, so the shell's three package scanners leave

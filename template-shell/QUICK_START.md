@@ -64,7 +64,12 @@ You extend the app by adding screens/MFEs, not by editing a central registry.
 
 ## Create a screen
 
-Add a screen to an existing MFE (e.g. `src-app/mfe_packages/demo-mfe`):
+Add a screen to one of your own MFEs (e.g. `src-app/mfe_packages/my-mfe`, from
+[Add a microfrontend](#add-a-microfrontend) below). Adding it to a package the
+template ships instead - `demo-mfe`, `_blank-mfe`, either widgets fixture - works
+but the screen will not reach the menu: those declare `"templateExample": true`
+and are left out of discovery until that line is deleted, which is why the
+scaffold step deletes it.
 
 1. **Write the screen component**
    ```tsx
@@ -98,9 +103,9 @@ Add a screen to an existing MFE (e.g. `src-app/mfe_packages/demo-mfe`):
    `presentation` block drives the menu item:
    ```jsonc
    {
-     "id": "gts…screen.v1~frontx.demo.screens.my_screen.v1",
+     "id": "gts…screen.v1~frontx.my_mfe.screens.my_screen.v1",
      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1",
-     "entry": "gts…entry_mf.v1~frontx.demo.mfe.my_screen.v1",
+     "entry": "gts…entry_mf.v1~frontx.my_mfe.mfe.my_screen.v1",
      "presentation": { "label": "My Screen", "icon": "lucide:star", "route": "/my-screen", "order": 30 }
    }
    ```
