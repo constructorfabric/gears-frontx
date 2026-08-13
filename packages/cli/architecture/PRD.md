@@ -447,14 +447,14 @@ This package owns repository-lifecycle contracts for templates. The contracts be
 
 **Preconditions**:
 - The source registry (`cpt-frontx-actor-github`) is reachable.
-- A target directory is chosen.
+- A target directory is chosen, in either of two admissible starting states: a virgin directory carrying no `.frontx/project.json` yet, or a repository that already carries applied state and is being extended.
 - The product is installed.
 
 **Main Flow**:
 1. The Project Developer reads the catalog of default, registered, and installed templates, each with its description (`cpt-frontx-fr-cli-template-list`).
-2. The Project Developer registers each template to apply, pinning its resolved origin under the project (`cpt-frontx-fr-cli-template-registration`).
+2. The Project Developer registers each template to apply, pinning its resolved origin under the project (`cpt-frontx-fr-cli-template-registration`) — this step alone creates `.frontx/project.json` on its first mutation if the target directory does not carry one yet, so this main flow needs no prior `seed` call regardless of which admissible starting state the target directory is in.
 3. The Project Developer composes an explicit batch naming each registered template and the target or targets to apply it to, and previews the batch's resolution, effective ownership, and conflicts without writing any files.
-4. The Project Developer applies the same batch: the CLI re-checks that no two targets coincide or improperly contain one another, honoring each template's whole-target ownership (`cpt-frontx-fr-cli-assembly-conflict-prevention`), writes the accepted content into the already-seeded repository (`cpt-frontx-fr-cli-add-template-to-repository`), and records every target under its template's entry in the project state file (`cpt-frontx-fr-cli-project-state`).
+4. The Project Developer applies the same batch: the CLI re-checks that no two targets coincide or improperly contain one another, honoring each template's whole-target ownership (`cpt-frontx-fr-cli-assembly-conflict-prevention`), writes the accepted content into the repository (`cpt-frontx-fr-cli-add-template-to-repository`) — comparing against reserved ground only when no target was already applied, and against every already-applied target otherwise — and records every target under its template's entry in the project state file (`cpt-frontx-fr-cli-project-state`).
 
 **Postconditions**:
 - A repository on disk assembled from its templates, with one project state file recording every registered template's origin, version, and applied targets.
@@ -462,7 +462,7 @@ This package owns repository-lifecycle contracts for templates. The contracts be
 **Alternative Flows**:
 - **Source registry unreachable**: the CLI reports the failure and aborts the registration or assembly without writing any files.
 - **Conflicting assembly**: the CLI detects that two targets coincide or that one target contains another outside a declared exclusion, and reports and refuses the assembly before any files are written (`cpt-frontx-fr-cli-assembly-conflict-prevention`).
-- **Bootstrap from official defaults**: on a virgin directory that carries no `.frontx/project.json` yet, the Project Developer skips the register-then-apply steps above and instead runs `seed` naming the wanted official default templates and their targets in one batch; the CLI creates the project state file, auto-registers each named default exactly as an explicit registration would, and applies the batch in the same operation (`cpt-frontx-fr-cli-seed-repository`), so this use case's coverage of the seed requirement is exercised through this alternative flow rather than through the register-then-apply main flow, which presupposes a repository already carrying applied state to extend.
+- **Bootstrap from official defaults**: on a virgin directory that carries no `.frontx/project.json` yet, the Project Developer may skip the register-then-apply steps above and instead run `seed` naming the wanted official default templates and their targets in one batch; the CLI creates the project state file, auto-registers each named default exactly as an explicit registration would, and applies the batch in the same operation (`cpt-frontx-fr-cli-seed-repository`). This alternative flow exists only for the official-defaults case; the register-then-apply main flow above is the general path and, per its own step 2, is not limited to a repository that already carries applied state — it bootstraps a virgin directory equally well, and is the only path available for a non-official, forked, or `path:` template, which `seed` does not accept.
 
 #### Project Developer adds a template into an existing repository
 
