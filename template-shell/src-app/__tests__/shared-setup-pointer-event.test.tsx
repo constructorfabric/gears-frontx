@@ -1,4 +1,3 @@
-// @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-standard-test-convention:p1
 //
 // Contract test for the `PointerEvent` shim installed by the shared
 // `vitest.setup.ts`, which every jsdom suite in this template and in every

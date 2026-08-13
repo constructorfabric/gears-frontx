@@ -1,5 +1,3 @@
-// @cpt-FEATURE:cpt-frontx-feature-auth-plugin:p1
-// @cpt-flow:cpt-frontx-flow-auth-plugin-rbac-guard:p1
 import { useEffect, useState } from 'react';
 import type {
   AccessQuery,
@@ -77,7 +75,6 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
   // render time instead of requiring a synchronous setState from the effect.
   const auth = getAuthRuntime(app);
 
-  // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-stable-key
   const stableKey = accessQueryKey(query as AccessQuery);
 
   // Derived state: store the query value whose key matches `stableKey`. We
@@ -100,14 +97,11 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
   if (runState.auth !== auth || runState.stableKey !== stableKey) {
     setRunState({ auth, stableKey });
     setStableQuery(query as AccessQuery);
-    // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-pending-effect
     // Re-pessimize at render time: every (auth, stableKey) combination
     // the effect below runs for enters Pending here, before the async
     // decision starts.
     setResult({ allow: false, isResolving: true });
-    // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-pending-effect
   }
-  // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-stable-key
 
   useEffect(() => {
     if (!auth) {
@@ -122,7 +116,6 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
     let alive = true;
     const controller = new AbortController();
 
-    // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-decision-apply
     void auth
       .canAccess(stableQuery, { signal: controller.signal })
       .then((decision) => {
@@ -135,14 +128,11 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
           setResult({ allow: false, isResolving: false });
         }
       });
-    // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-decision-apply
 
-    // @cpt-begin:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-abort
     return () => {
       alive = false;
       controller.abort();
     };
-    // @cpt-end:cpt-frontx-flow-auth-plugin-rbac-guard:p1:inst-abort
   }, [auth, stableQuery]);
 
   return auth ? result : DENIED_NO_AUTH;

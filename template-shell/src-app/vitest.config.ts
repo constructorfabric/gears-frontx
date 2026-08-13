@@ -1,4 +1,3 @@
-// @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-standard-test-convention:p1
 // Host-app Vitest config: owns `template-shell/src-app/` (everything under
 // this directory) except nested MFE packages, which own their own Vitest
 // configs and are orchestrated as separate projects. Covering all of this

@@ -1,4 +1,3 @@
-// @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-standard-test-convention:p1
 //
 // Shared Vitest test setup for template-shell and every project scaffolded
 // from it. `renderStandaloneVitestSetupFile` in `vitest.shared.ts` reads this

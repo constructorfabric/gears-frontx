@@ -1,4 +1,3 @@
-// @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-standard-test-convention:p1
 //
 // Locks the rendered output of the standalone-scaffold helpers in
 // `vitest.shared.ts` against the canonical constants they are built from.

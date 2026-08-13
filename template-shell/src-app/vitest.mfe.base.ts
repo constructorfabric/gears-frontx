@@ -14,7 +14,6 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// @cpt-dod:cpt-frontx-dod-framework-composition-reexports:p1
 
 /**
  * Shared test-only helpers live at the top-level `src/__test-utils__/` boundary
@@ -23,7 +22,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  */
 const frontxTestUtilsRoot = path.resolve(__dirname, './__test-utils__');
 
-// @cpt-begin:cpt-frontx-dod-framework-composition-reexports:p1:inst-mfe-vitest-base-config
 export const mfeVitestBaseConfig = defineConfig({
   plugins: [react()],
   resolve: {
@@ -53,9 +51,7 @@ export const mfeVitestBaseConfig = defineConfig({
     },
   },
 });
-// @cpt-end:cpt-frontx-dod-framework-composition-reexports:p1:inst-mfe-vitest-base-config
 
-// @cpt-begin:cpt-frontx-dod-framework-composition-reexports:p1:inst-mfe-vitest-define-project
 export function defineMfeProject(rootDir: string) {
   return mergeConfig(
     mfeVitestBaseConfig,
@@ -64,4 +60,3 @@ export function defineMfeProject(rootDir: string) {
     }),
   );
 }
-// @cpt-end:cpt-frontx-dod-framework-composition-reexports:p1:inst-mfe-vitest-define-project

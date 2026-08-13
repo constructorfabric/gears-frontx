@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
 import type { ViteUserConfig } from 'vitest/config';
 
-// @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-standard-test-convention:p1
 //
 // Shared Vitest configuration primitives for the monorepo.
 //
