@@ -315,6 +315,7 @@ export class ManifestGenerator {
     const pkgPath = join(this.mfePackagesDir, packageDir);
 
     const mfeJson = this.readEnrichedMfeJson(pkgPath, packageDir);
+    this.assertRequiredCollectionsArePresent(mfeJson, packageDir);
     this.assertGtsIdsAreValid(mfeJson, pkgPath, packageDir);
     const publicPath = this.resolvePublicPath(mfeJson, packageDir);
 
@@ -351,6 +352,45 @@ export class ManifestGenerator {
       );
     }
     return mfeJson;
+  }
+
+  /**
+   * Refuse a manifest that does not carry both collections the aggregate is
+   * built from.
+   *
+   * `entries` and `extensions` are required by the contract, and the frontxMfGts
+   * plugin writes both, so an absent one means an incomplete build rather than a
+   * package that chose to have none - an MFE with no extensions writes
+   * `"extensions": []`.
+   *
+   * Treating absence as "nothing to check" is worse than it sounds in either
+   * direction. Without `entries`, validation passed and `buildEntries` then died
+   * on `Cannot read properties of undefined (reading 'map')`, a stack pointing
+   * at this script rather than at the package. Without `extensions`, the run
+   * stayed green: the aggregate was written with the key silently dropped, which
+   * is the empty navigation menu the id gate above exists to prevent, arrived at
+   * by a different road. Both are named here, before anything reads them.
+   */
+  private assertRequiredCollectionsArePresent(
+    mfeJson: RawEnrichedMfeJson,
+    packageDir: string
+  ): void {
+    const missing = (['entries', 'extensions'] as const).filter(
+      (field) => !Array.isArray(mfeJson[field])
+    );
+
+    if (missing.length === 0) {
+      return;
+    }
+
+    const named = missing.map((field) => `'${field}'`).join(' and ');
+    throw new Error(
+      `[${packageDir}] ${this.mfeManifestPath} carries no ${named} ` +
+        `${missing.length === 1 ? 'array' : 'arrays'}.\n` +
+        `Both are required, and the frontxMfGts plugin writes them, so this is an ` +
+        `incomplete build rather than a package without any: an MFE that contributes ` +
+        `nothing still writes an empty array. Rebuild the package.`
+    );
   }
 
   /**
@@ -590,12 +630,12 @@ function collectGtsIds(mfeJson: RawEnrichedMfeJson): LocatedGtsId[] {
     addEach(`${at}.extensionsLifecycleStages`, domain.extensionsLifecycleStages);
   });
 
-  // `?.` on all three collections, not just `domains`: a manifest that omits
-  // `entries` or `extensions` is malformed, but this gate must reach its own
-  // refusal to say so. A raw TypeError here reports a line of this script
-  // instead of the package at fault, and it travels through the same failure
-  // path that discards the previous good aggregate.
-  mfeJson.entries?.forEach((entry, index) => {
+  // `entries` and `extensions` are read without a guard because
+  // `assertRequiredCollectionsArePresent` has already refused a manifest missing
+  // either. Optional-chaining them here would turn absence into a silent pass
+  // and hand the aggregate back with a collection quietly unvalidated, which is
+  // the failure that check exists to make loud. `domains` is genuinely optional.
+  mfeJson.entries.forEach((entry, index) => {
     const at = `entries[${index}]`;
     add(`${at}.id`, entry.id);
     add(`${at}.manifest`, entry.manifest);
@@ -605,7 +645,7 @@ function collectGtsIds(mfeJson: RawEnrichedMfeJson): LocatedGtsId[] {
     addEach(`${at}.domainActions`, entry.domainActions);
   });
 
-  mfeJson.extensions?.forEach((extension, index) => {
+  mfeJson.extensions.forEach((extension, index) => {
     const at = `extensions[${index}]`;
     add(`${at}.id`, extension.id);
     add(`${at}.domain`, extension.domain);

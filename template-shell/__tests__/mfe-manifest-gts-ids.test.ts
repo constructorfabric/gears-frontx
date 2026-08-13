@@ -47,7 +47,6 @@ const EARLIER_GOOD_AGGREGATE = '{ "earlier": "run" }';
 // position, so the segment ends up one short. This is the exact shape that cost
 // two scaffolding runs their debug time.
 const FOUR_TOKEN_EXTENSION_ID = `${EXTENSION_TYPE}~fixture.billing.screens.v1`;
-const FOUR_TOKEN_ENTRY_ID = `${ENTRY_TYPE}~fixture.billing.home.v1`;
 
 let workspace: string;
 let mfePackagesDir: string;
@@ -57,8 +56,12 @@ interface ManifestOverrides {
   manifestId?: string;
   entryId?: string;
   extensionId?: string;
-  /** Writes the manifest with no `extensions` key at all, as a malformed build would. */
+  /** Writes the manifest with no `extensions` key at all, as an incomplete build would. */
   omitExtensions?: boolean;
+  /** Writes the manifest with no `entries` key at all, as an incomplete build would. */
+  omitEntries?: boolean;
+  /** Writes both collections present but empty, which is what a contributing-nothing MFE emits. */
+  emptyCollections?: boolean;
 }
 
 /**
@@ -90,27 +93,35 @@ function mfePackageWithIds(overrides: ManifestOverrides): void {
         },
         shared: [],
       },
-      entries: [
-        {
-          id: overrides.entryId ?? VALID_ENTRY_ID,
-          requiredProperties: [],
-          actions: [],
-          domainActions: [],
-          manifest: manifestId,
-          exposedModule: './lifecycle',
-          exposeAssets: { js: { async: [], sync: [] }, css: { async: [], sync: [] } },
-        },
-      ],
+      ...(overrides.omitEntries
+        ? {}
+        : {
+            entries: overrides.emptyCollections
+              ? []
+              : [
+                  {
+                    id: overrides.entryId ?? VALID_ENTRY_ID,
+                    requiredProperties: [],
+                    actions: [],
+                    domainActions: [],
+                    manifest: manifestId,
+                    exposedModule: './lifecycle',
+                    exposeAssets: { js: { async: [], sync: [] }, css: { async: [], sync: [] } },
+                  },
+                ],
+          }),
       ...(overrides.omitExtensions
         ? {}
         : {
-            extensions: [
-              {
-                id: overrides.extensionId ?? VALID_EXTENSION_ID,
-                domain: SCREEN_DOMAIN,
-                entry: overrides.entryId ?? VALID_ENTRY_ID,
-              },
-            ],
+            extensions: overrides.emptyCollections
+              ? []
+              : [
+                  {
+                    id: overrides.extensionId ?? VALID_EXTENSION_ID,
+                    domain: SCREEN_DOMAIN,
+                    entry: overrides.entryId ?? VALID_ENTRY_ID,
+                  },
+                ],
           }),
     }),
     'utf-8',
@@ -176,17 +187,42 @@ describe('ManifestGenerator - GTS identifier validation', () => {
     expect(Gts.validateGtsID(example as string).ok).toBe(true);
   });
 
-  it('refuses through the gate when the manifest carries no extensions at all', () => {
-    // `collectGtsIds` walks three collections; only `domains` was optional-chained,
-    // so a manifest without `extensions` died on a TypeError from this script
-    // instead of the gate's refusal - and took the previous good aggregate with it
-    // through the same failure path.
-    mfePackageWithIds({ entryId: FOUR_TOKEN_ENTRY_ID, omitExtensions: true });
+  it('refuses a manifest carrying no extensions array, rather than writing an aggregate without one', () => {
+    // The dangerous half: with every id valid, an absent `extensions` used to
+    // pass validation and reach the aggregate with the key silently dropped by
+    // JSON.stringify. That is a green build and an empty navigation menu, which
+    // is the failure the id gate exists to prevent, reached another way.
+    mfePackageWithIds({ omitExtensions: true });
 
     const message = messageFromRefusal();
 
-    expect(message).toContain(`entries[0].id: "${FOUR_TOKEN_ENTRY_ID}"`);
-    expect(message).not.toContain('TypeError');
+    expect(message).toContain("carries no 'extensions' array");
+    expect(existsSync(outputFile)).toBe(false);
+  });
+
+  it('refuses a manifest carrying no entries array, naming the package instead of dying inside buildEntries', () => {
+    // The loud half, but loud in the wrong voice: `buildEntries` died on
+    // `Cannot read properties of undefined (reading 'map')`, a stack pointing at
+    // the generator rather than at the package to rebuild.
+    mfePackageWithIds({ omitEntries: true });
+
+    const message = messageFromRefusal();
+
+    expect(message).toContain("carries no 'entries' array");
+    expect(message).not.toContain('reading \'map\'');
+  });
+
+  it('names both collections when both are absent', () => {
+    mfePackageWithIds({ omitEntries: true, omitExtensions: true });
+
+    expect(messageFromRefusal()).toContain("carries no 'entries' and 'extensions' arrays");
+  });
+
+  it('accepts empty collections, which is what an MFE contributing nothing writes', () => {
+    mfePackageWithIds({ emptyCollections: true });
+
+    expect(() => generate()).not.toThrow();
+    expect(existsSync(outputFile)).toBe(true);
   });
 
   it('writes no aggregate when an id is refused', () => {
