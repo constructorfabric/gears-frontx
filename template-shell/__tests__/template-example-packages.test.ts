@@ -111,7 +111,16 @@ function generatedManifestIds(): string[] {
   );
 }
 
+// The opt-in is read from the real environment, so a value already set where
+// this suite runs would put the default-exclusion cases in the wrong mode. It is
+// captured once, cleared per case, and put back afterwards, so the suite neither
+// inherits a caller's setting nor destroys it.
+let originalIncludeExamples: string | undefined;
+
 beforeEach(() => {
+  originalIncludeExamples = process.env[TEMPLATE_EXAMPLES_ENV_VAR];
+  delete process.env[TEMPLATE_EXAMPLES_ENV_VAR];
+
   workspace = mkdtempSync(join(tmpdir(), 'frontx-mfe-packages-'));
   mfePackagesDir = join(workspace, 'src-app', 'mfe_packages');
   mkdirSync(mfePackagesDir, { recursive: true });
@@ -120,7 +129,12 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(workspace, { recursive: true, force: true });
-  delete process.env[TEMPLATE_EXAMPLES_ENV_VAR];
+
+  if (originalIncludeExamples === undefined) {
+    delete process.env[TEMPLATE_EXAMPLES_ENV_VAR];
+  } else {
+    process.env[TEMPLATE_EXAMPLES_ENV_VAR] = originalIncludeExamples;
+  }
 });
 
 describe('isTemplateExamplePackage', () => {
@@ -230,6 +244,28 @@ describe('discoverMfeProjects - what type-check:mfe spawns a child for', () => {
 
     expect(missingTypeCheckScript).toEqual([]);
     expect(skippedExamples).toEqual(['_blank-mfe']);
+  });
+
+  // A shell-only seed has no packages directory at all, which is a legitimate
+  // empty rather than a failure.
+  it('reports an empty set when the packages directory does not exist', async () => {
+    const discovery = await discoverMfeProjects(join(workspace, 'nowhere'));
+
+    expect(discovery).toEqual({
+      projects: [],
+      missingTypeCheckScript: [],
+      skippedExamples: [],
+    });
+  });
+
+  // The counterpart to the case above, and the reason the two are told apart: a
+  // read that fails for any other reason must not read as "nothing to check",
+  // which would let type-check:mfe pass having checked nothing.
+  it('propagates a read failure that is not an absent directory', async () => {
+    const notADirectory = join(workspace, 'packages-file');
+    writeFileSync(notADirectory, 'not a directory', 'utf-8');
+
+    await expect(discoverMfeProjects(notADirectory)).rejects.toThrow();
   });
 });
 

@@ -163,7 +163,16 @@ function parseTimeoutValue(raw: string): number {
 export async function discoverMfeProjects(
   mfeRoot: string = MFE_PACKAGES_DIR,
 ): Promise<MfeProjectDiscovery> {
-  const entries = await readdir(mfeRoot, { withFileTypes: true }).catch(() => []);
+  // Only an absent directory means "no MFE packages": a shell-only seed has no
+  // `src-app/mfe_packages/` until a template overlay adds one. Every other
+  // failure - EACCES, EIO, a path that turns out to be a file - has to reach the
+  // caller, because swallowing it would report a clean type-check over a tree
+  // this never managed to read. `getMFEPackages` draws the same line with its
+  // `existsSync` guard ahead of an unguarded `readdirSync`.
+  const entries = await readdir(mfeRoot, { withFileTypes: true }).catch((error: unknown) => {
+    if (isMissingDirectory(error)) return [];
+    throw error;
+  });
   const projects: MfeProject[] = [];
   const missingTypeCheckScript: string[] = [];
   const skippedExamples: string[] = [];
@@ -203,6 +212,19 @@ export async function discoverMfeProjects(
   }
 
   return { projects, missingTypeCheckScript, skippedExamples };
+}
+
+/**
+ * Whether a rejection is the "directory is not there" case, told apart from
+ * every other reason a read can fail.
+ *
+ * The rejection arrives as `unknown`, so the hop down to `code` is checked
+ * rather than asserted; a `readdir` rejection carries it as a string.
+ */
+function isMissingDirectory(error: unknown): boolean {
+  return (
+    typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+  );
 }
 
 /**
@@ -278,11 +300,17 @@ function runTypeCheck(
     if (timeoutMs > 0) {
       timer = setTimeout(() => {
         timedOut = true;
-        if (!child.killed) {
+        if (child.exitCode === null) {
           child.kill('SIGTERM');
         }
+        // Gated on the exit status, not on `child.killed`: that flag reports
+        // that a signal was delivered, which our own SIGTERM above just made
+        // true, so testing it here would skip the escalation every time and
+        // leave a child that ignores SIGTERM running until the run ends. The
+        // `exit` handler clears this timer, so reaching it means no exit has
+        // been observed.
         killTimer = setTimeout(() => {
-          if (!child.killed) {
+          if (child.exitCode === null) {
             child.kill('SIGKILL');
           }
         }, 5_000);
