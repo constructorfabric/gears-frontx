@@ -46,6 +46,8 @@ This feature exists to let a project developer safely adopt a newer origin for a
 
 **Principles**: `cpt-frontx-cli-principle-reviewed-reversible-mutation`
 
+**Applicability** (Often-N/A domains for a CLI Command feature, per the FEATURE checklist's Applicability Context): SEC and COMPL are not applicable — this engine enforces no authentication or authorization boundary and carries no regulatory scope; the closest security-adjacent control is `REGISTRATION_CONFLICT` on an identity mismatch (`inst-val-if-identity-mismatch`), a supply-chain integrity check rather than an auth boundary. OPS (observability) is not applicable — no logging, metrics, or tracing surface is introduced beyond the reviewable transition this feature already presents. UX is addressed by the developer review-and-approval presentation (§2, "Developer Review and Approval of an Atomic All-Targets Upgrade"). PERF is addressed by `cpt-frontx-cli-nfr-template-scale` (§6, Acceptance Criteria).
+
 ### 1.3 Actors
 
 | Actor | Role in Feature |
@@ -60,7 +62,7 @@ This feature exists to let a project developer safely adopt a newer origin for a
 - **Dependencies**:
   - `cpt-frontx-feature-composed-provenance` — owns the single project state document; this engine reads the name's `{origin, version, targets[]}` entry as its baseline and commits the post-upgrade `origin`/`version` back into it, but does not redefine the document or the contract.
   - `cpt-frontx-feature-template-resolution` — resolves the new origin through the same shared resolver every other lifecycle command uses.
-  - `cpt-frontx-feature-cli-scaffolding` — owns the CLI-owned AI-extension bundle step (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) this engine invokes to refresh a name's `.frontx/ai/<name>/` bundle on a committed upgrade, without redefining that step.
+  - `cpt-frontx-feature-cli-scaffolding` — owns the CLI-owned AI-extension bundle step (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) this engine invokes to refresh a name's `.frontx/ai/<manifest-name>/` bundle on a committed upgrade, without redefining that step.
 
 ## 2. Actor Flows (CDSL)
 
@@ -166,7 +168,7 @@ This feature exists to let a project developer safely adopt a newer origin for a
    1. [ ] - `p1` - Leave every target and `templates[name]` exactly as they were before the attempt; no partial commit - `inst-com-restore-on-error`
    2. [ ] - `p1` - **RETURN** `INTERNAL` naming the error; `templates[name]` unchanged - `inst-com-return-failure`
 3. [ ] - `p1` - Commit `templates[name].origin` and `.version` to `to`'s values, as one atomic write to the project state store - `inst-com-commit-state`
-4. [ ] - `p1` - The engine refreshes `name`'s CLI-owned AI-extension bundle at `.frontx/ai/<name>/` from the new payload's own `.frontx/ai/<name>/` convention folder, when present, through the same CLI-owned step `apply` and `delete` use (`cpt-frontx-algo-cli-scaffolding-ai-bundle`, `cpt-frontx-feature-cli-scaffolding`) - `inst-com-refresh-bundle`
+4. [ ] - `p1` - The engine refreshes `name`'s CLI-owned AI-extension bundle at `.frontx/ai/<manifest-name>/` from the new payload's own `.frontx/ai/<manifest-name>/` convention folder, when present, through the same CLI-owned step `apply` and `delete` use (`cpt-frontx-algo-cli-scaffolding-ai-bundle`, `cpt-frontx-feature-cli-scaffolding`) - `inst-com-refresh-bundle`
 5. [ ] - `p1` - **RETURN** success: transition applied and `templates[name]` updated for every target - `inst-com-return-success`
 
 ## 4. States (CDSL)
@@ -210,7 +212,7 @@ The system **MUST** read a registered name's `{origin, version, targets[]}` entr
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-upgrade-changeset-apply`
 
-The system **MUST** commit an approved transition's `origin` and `version` to the project state store atomically across every target listed for the name — every target moves together, or none do — applying the transition within each target's effective ownership, and **MUST** leave every target and the project state store exactly as they were before the attempt when application fails for any target, with no partial commit. A successful commit **MUST** refresh the name's CLI-owned AI-extension bundle at `.frontx/ai/<name>/` from the new payload, through the same CLI-owned step `apply` and `delete` use (`cpt-frontx-algo-cli-scaffolding-ai-bundle`), never through the template's own ownership (`target`).
+The system **MUST** commit an approved transition's `origin` and `version` to the project state store atomically across every target listed for the name — every target moves together, or none do — applying the transition within each target's effective ownership, and **MUST** leave every target and the project state store exactly as they were before the attempt when application fails for any target, with no partial commit. A successful commit **MUST** refresh the name's CLI-owned AI-extension bundle at `.frontx/ai/<manifest-name>/` from the new payload, through the same CLI-owned step `apply` and `delete` use (`cpt-frontx-algo-cli-scaffolding-ai-bundle`), never through the template's own ownership (`target`).
 
 **Implements**:
 - `cpt-frontx-flow-upgrade-changeset-review-approval`
@@ -262,10 +264,11 @@ The system **MUST** provide exactly one change-set engine, `cpt-frontx-component
 - [ ] A new origin that fails to resolve returns `ORIGIN_UNAVAILABLE` before any target is validated.
 - [ ] A new origin whose manifest declares an identity different from the registered name being upgraded is refused with `REGISTRATION_CONFLICT`, naming both identities, with no target validated and no transition computed.
 - [ ] The reviewed transition equals the applied transition: the `origin`/`version` a developer approved is exactly what is committed to the project state store.
-- [ ] A successful, committed upgrade refreshes the name's CLI-owned `.frontx/ai/<name>/` bundle from the new payload, when the payload carries one, through the same CLI-owned step `apply`/`delete` use — never through the template's own ownership.
+- [ ] A successful, committed upgrade refreshes the name's CLI-owned `.frontx/ai/<manifest-name>/` bundle from the new payload, when the payload carries one, through the same CLI-owned step `apply`/`delete` use — never through the template's own ownership.
 - [ ] Both direct CLI invocation and AI-driven orchestration (`cpt-frontx-feature-ai-upgrade-orchestration`) drive the same change-set engine; no second upgrade implementation exists.
 - [ ] A developer can request restore of a name's most recently committed upgrade and observe the name and every one of its targets return to the pre-upgrade `origin`/`version` and applied content; requesting restore when no applied upgrade is available for that name returns `NOTHING_TO_RESTORE`.
 - [ ] This feature's DoD and CDSL make no claim about a file-level diff, three-way-merge, or per-file conflict-detection mechanism for either upgrade or restore — that mechanism is explicitly deferred to a future decision, consistent with `cpt-frontx-adr-atomic-all-targets-upgrade` and DESIGN §4.
 - [ ] Every `RETURN`-level refusal in this feature's flows and algorithms names a code from the shared error-code vocabulary (`cpt-frontx-adr-uniform-cli-json-envelope`).
+- [ ] `upgrade` satisfies `cpt-frontx-cli-nfr-template-scale`'s upgrade-preparation threshold: preparing a reviewable upgrade change set for one registered template in a project with at least 20 registered templates, without requiring any unrelated template to upgrade.
 - [ ] `cfs --json validate --artifact packages/cli/architecture/features/upgrade-changeset/FEATURE.md --skip-code` returns PASS.
 - [ ] `cfs --json validate-toc packages/cli/architecture/features/upgrade-changeset/FEATURE.md` returns PASS.

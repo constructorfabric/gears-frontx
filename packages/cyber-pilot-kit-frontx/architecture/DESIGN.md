@@ -25,7 +25,9 @@ status: draft
   - [3.5 External Dependencies](#35-external-dependencies)
   - [3.6 Interactions & Sequences](#36-interactions--sequences)
   - [3.7 Database schemas & tables](#37-database-schemas--tables)
+  - [3.8 Testability Architecture](#38-testability-architecture)
 - [4. Additional context](#4-additional-context)
+  - [Applicability of the remaining checklist categories](#applicability-of-the-remaining-checklist-categories)
 - [5. Traceability](#5-traceability)
 
 <!-- /toc -->
@@ -72,6 +74,13 @@ The same posture governs how this package touches the rest of the ecosystem. It 
 - `cpt-frontx-adr-ai-tooling-internal-decomposition`
 - `cpt-frontx-adr-single-project-state-file`
 - `cpt-frontx-adr-atomic-all-targets-upgrade`
+
+**Cross-package ADR dependencies.** The FEATUREs of this package (A, C) cite the following CLI-package ADRs directly; this DESIGN does not own their decisions, but the kit's own contracts depend on what they fix:
+
+- `cpt-frontx-adr-thin-template-manifest` — owns the manifest shape and the `name`/description fields the kit's scaffolding-selection and extension-discovery paths read (CLI DESIGN §3.1 `Template`).
+- `cpt-frontx-adr-explicit-batch-application` — owns the target-keyed batch shape the kit composes and hands to `assemble`/`apply` on the scaffolding path (CLI DESIGN §3.1 `Assembly`).
+- `cpt-frontx-adr-uniform-template-mechanism` — owns the CLI's guarantee that every conforming template resolves through the same lifecycle path, which is why the kit's selection entry point classifies no template kind of its own.
+- `cpt-frontx-adr-whole-target-ownership` — owns the unconditional subtraction of `.frontx` from every template's effective ownership, which is what makes the AI-extension bundle a CLI-owned write rather than part of any template's own content (CLI DESIGN §3.1 `OwnershipBoundary`).
 
 ### 1.3 Architecture Layers
 
@@ -156,8 +165,11 @@ Every capability the AI Tooling kit (`cyber-pilot-kit-frontx`) exposes as a publ
 |--------|------------|----------------|
 | Kit | The AI Tooling delivery unit — the Constructor Studio kit installed into a consuming project, carrying declared resources under `frontx_`-prefixed identifiers. | `KitManifest` / `KitDefinition` / `KitResourceEntry` in [src/types.ts](../src/types.ts); the shipped manifest at [.cf-studio-kit.toml](../.cf-studio-kit.toml) |
 | KitCapability | A single resource exposed to an agent session once the manifest has been validated and the resource resolved — a skill, rule, or supporting knowledge resource made available under its `frontx_`-prefixed id. | `KitCapability` / `KitSessionResult` in [src/types.ts](../src/types.ts) |
-| AiExtension | A template-bundled AI capability entry (skill, workflow, guideline, or reference artifact) conforming to the closed-set extension contract, discovered from an installed template's `.frontx/ai/<template-identity>/` bundle and composed into the agent-visible capability set under explicit precedence. | `AiExtensionEntry` / `AiExtensionBundle` / `ComposedCapabilitySet` in [src/extensions/types.ts](../src/extensions/types.ts) |
+| AiExtension | A template-bundled AI capability entry (skill, workflow, guideline, or reference artifact) conforming to the closed-set extension contract, discovered from an installed template's `.frontx/ai/<template-identity>/` bundle and composed into the agent-visible capability set under explicit precedence. `<template-identity>` is the value of the applying template's own manifest `name` field — called `<manifest-name>` in the CLI package's own documentation ([Manifest-Keyed Template Registration with Immutable Origin Pinning](../../../architecture/ADR/0040-template-registration-and-origin-pinning.md)). | `AiExtensionEntry` / `AiExtensionBundle` / `ComposedCapabilitySet` in [src/extensions/types.ts](../src/extensions/types.ts) |
 | ProjectProvenance (read-only view) | The project's single state document, `.frontx/project.json` — its `templates` map keyed by registered name, each entry's `origin`, `version`, and applied `targets` — that this package reads to select an upgrade target and its current version; the CLI writes and owns the authoritative document — this package never writes it. | A structural mirror of the CLI's `.frontx/project.json` shape (not an import of it) in [src/upgrade-orchestration/types.ts](../src/upgrade-orchestration/types.ts) |
+| Template (cross-reference) | The externally hosted, versioned unit this package selects by declared description (scaffolding) and reads AI-extension bundles from (extension host); role owned by [CLI DESIGN §3.1](../../cli/architecture/DESIGN.md#31-domain-model), referenced here as a dependency this package never writes. | Owned by the CLI package; this package holds no local type for it. |
+| Assembly (cross-reference) | The target-keyed batch operation this package composes and drives through `assemble`/`apply` on the scaffolding path; role owned by [CLI DESIGN §3.1](../../cli/architecture/DESIGN.md#31-domain-model), referenced here as a dependency this package never writes. | Owned by the CLI package; this package holds no local type for it. |
+| OwnershipBoundary (cross-reference) | A template's effective claim over its own target, computed by the CLI's conflict checker before every write this package's scaffolding path triggers; role owned by [CLI DESIGN §3.1](../../cli/architecture/DESIGN.md#31-domain-model), referenced here as a dependency this package never writes. | Owned by the CLI package; this package holds no local type for it. |
 
 ### 3.2 Component Model
 
@@ -344,6 +356,42 @@ sequenceDiagram
 
 **Description**: The portion of extension discovery and activation that runs entirely inside this package, on its own invocation, after the CLI has already materialized a template's bundle into the scaffolded project. The scan is parameterized by the closed-set extension contract rather than by any template's identity, so the same code path discovers any conforming template. A malformed entry is recorded as a structural error and excluded from composition without affecting its bundle's other, conforming entries. Composition resolves precedence explicitly — a template-contributed entry supersedes a base-kit entry for the same named slot, and installation order breaks ties across multiple installed templates — so the result is deterministic. Nothing in this walk is a CLI call: the CLI's own materialization of the bundle, and the Template Developer's authoring and publication of it, are the cross-package legs of the full flow and are traced at ecosystem altitude in the root DESIGN's `cpt-frontx-seq-template-ai-extension-discovery-activation`.
 
+#### AI-driven project scaffolding from a stated intent
+
+- [ ] `p1` - **ID**: `cpt-frontx-seq-ai-project-scaffolding-from-intent`
+
+**Use cases**: `cpt-frontx-usecase-ai-driven-project-scaffolding`
+
+**Actors**: `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-ai-agent-host`
+
+```mermaid
+sequenceDiagram
+    participant Dev as Project Developer
+    participant Agent as AI agent (AI Tooling Framework)
+    participant CLI as CLI command surface (@gears-frontx/cli)
+    participant Repo as Repository files
+    participant Prov as Project state file (.frontx/project.json)
+    Dev->>Agent: state project intent + target directory
+    Agent->>CLI: list installed templates (machine-readable listing)
+    CLI-->>Agent: inventory - identity, pinned reference, declared description
+    Agent->>Prov: read target directory's already-applied set
+    Agent->>Agent: select templates by matching intent against declared descriptions
+    Agent->>Dev: present application plan (before any command that writes files)
+    alt plan carries at least one template to apply
+        Agent->>CLI: apply composed, target-keyed batch (optionally previewed via assemble)
+        CLI->>Repo: materialize selected templates, incl. .frontx/ai/ bundles
+        CLI->>Prov: record newly applied targets
+        Agent->>Prov: read the applied set back
+        Agent->>Repo: realize each intent-named unit via the applied templates' own activated extension skills
+        Agent->>Agent: run each skill's own declared verification over the units it created
+        Agent-->>Dev: applied set, realized units, residual work
+    else selection refuses
+        Agent-->>Dev: refusal reason (nothing installed, nothing matched, nothing establishes the project, or a choice required) - no file-writing command invoked
+    end
+```
+
+**Description**: An AI agent reads the installed-template inventory over the CLI's command surface and the target directory's already-applied set from the project state file, selects templates by matching the developer's stated intent against each candidate's declared manifest description, and presents the application plan before invoking any command that writes files. On acceptance, the agent composes one explicit, target-keyed batch and drives it through the CLI's `apply` command (optionally previewed by the stateless `assemble` command) — the same assembler the direct CLI path uses, never a second one — reads the applied set back from the project state file, and then realizes each unit the intent names inside the applied templates' own ground by following that template's own activated extension skill, verifying what it created before reporting completion ([A Thin Manifest Where Description Carries All Selection and Usage Semantics](../../../architecture/ADR/0035-thin-template-manifest.md), [Explicit Target-Keyed Batch Application Replaces Manifest-Composed Presets and Saved Execution Plans](../../../architecture/ADR/0038-explicit-batch-application.md), [Whether the Platform Classifies Templates or Applies Any Template Uniformly](../../../architecture/ADR/0030-uniform-template-mechanism.md), [One Git-Tracked File for a Repository's CLI-Managed Template State](../../../architecture/ADR/0036-single-project-state-file.md)). If selection refuses, or the CLI's `apply` command exits non-zero, no file-writing command is invoked past the point of failure and the CLI's own reported reason is relayed unreinterpreted.
+
 #### AI-driven template upgrade
 
 - [ ] `p1` - **ID**: `cpt-frontx-seq-ai-driven-template-upgrade`
@@ -412,7 +460,29 @@ sequenceDiagram
 
 Not applicable. This package holds no database; its only persistence-adjacent state is the filesystem content it reads (an installed template's `.frontx/ai/` bundle and the CLI's `.frontx/project.json`) and the kit manifest it validates, none of which it owns or writes.
 
+### 3.8 Testability Architecture
+
+This package's test seams sit at the same two boundaries §3.4 and §3.5 already name as its only integration points with the rest of the ecosystem — testability needs no seam beyond what the decoupling already created:
+
+- **CLI invocation seam**: the upgrade-orchestration workflow never spawns `frontx` inline; it calls through the injected `InvokeUpgradeCommandFn` adapter (§3.5), so a test substitutes a fake invocation function that returns a scripted change set without spawning a real process or requiring a real CLI install.
+- **Filesystem handoff seam**: reads of `.frontx/ai/` and `.frontx/project.json` go through the same reader functions the runtime uses (`createFsResourceBodyReader` and the provenance reader, §3.3), so a test substitutes an in-memory or fixture filesystem at that boundary rather than exercising the real filesystem.
+- **Kit-manifest self-validation**: `kit-self-validation.test.ts` asserts `validateKitManifest`'s public-kind-restricted and applicability-metadata checks directly against the real shipped manifest and resource files (KIT-4, §2.2), anchoring the declared-resource contract to an executable check rather than to documentation alone.
+
+No database, network client, or external service boundary exists for this package beyond the two seams named above; there is nothing further to mock.
+
 ## 4. Additional context
+
+### Applicability of the remaining checklist categories
+
+- **PERF** — Addressed: `cpt-frontx-cyber-pilot-kit-frontx-nfr-resource-scale` (§1.2 NFR Allocation) sets the discovery-scale and latency thresholds for agent-resource discovery, verified by the discovery-test approach named there.
+- **SEC** — Not applicable as an independent security surface: the package holds no secret material of its own; it reads only project-visible template identity, origin, version, and target metadata the CLI already writes, and the project's own trust policy for template AI extensions gates which discovered capabilities activate (`cpt-frontx-fr-ai-extension-discovery-activation`).
+- **REL** — Not applicable as an independent reliability property: the package runs synchronously inside a developer's or agent's own invocation with no service of its own to keep available; the atomicity and recovery guarantees of the change set it orchestrates are owned by the CLI engine it drives (CLI DESIGN CLI-3, CLI-7), not reimplemented here.
+- **DATA** — Not applicable as a schema owner: this package holds no persistent store of its own; the only data-adjacent structures it reads — `ProjectProvenance` and the AI-extension bundle — are written and owned by the CLI (§3.1).
+- **OPS** — Not applicable: the package ships as a versioned npm package and Constructor Studio kit installed into a project rather than a deployed or hosted service; no operational procedure attaches to it beyond publishing a version.
+- **MAINT** — Addressed: the closed-set extension contract and the CLI's own command surface are this package's only two integration points (§3.4, `cpt-frontx-cyber-pilot-kit-frontx-principle-surface-only-integration`), so this package's maintenance line stays independent of the CLI's release line (`cpt-frontx-nfr-evolvability`).
+- **COMPL** — Not applicable: developer tooling that processes no regulated data, for the same reasons the PRD's §6.2 exclusions state.
+- **UX** — Addressed: KIT-4's declared-resource applicability metadata and the discovery/activation failure-surfacing rule (`cpt-frontx-contract-kit-installation`) make capabilities inspectable to developers and predictable for agent hosts, per the Usability NFR in §1.2.
+- **BIZ** — Not applicable as independent business rationale: product requirements live in the kit PRD and are cited here by ID; this DESIGN adds no business rationale of its own.
 
 The kit manifest was migrated from the legacy Cypilot `manifest.toml` format; Constructor Studio still accepts that format, so the migration this package ships is a forward-compatibility path rather than a compliance fix, and the manifest carries a code comment recording the tool and version used to normalize it.
 

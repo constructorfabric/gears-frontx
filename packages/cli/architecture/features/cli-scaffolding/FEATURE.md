@@ -55,6 +55,8 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
 
 **Principles**: `cpt-frontx-principle-ownership-bounded-composition`, `cpt-frontx-cli-principle-reviewed-reversible-mutation`
 
+**Applicability** (Often-N/A domains for a CLI Command feature, per the FEATURE checklist's Applicability Context): COMPL is not applicable — no regulatory or compliance scope attaches to file-lifecycle operations on a developer's own repository. OPS (observability) is not applicable — this feature introduces no logging, metrics, or tracing surface of its own beyond the uniform envelope and the `--dry-run`/preview reporting it already specifies. SEC is partially addressed rather than N/A: the Conflict Checker's fail-closed path canonicalization (`inst-cc-canonicalize`, `INVALID_PATH`) is a path-traversal control, though this feature enforces no authentication or authorization boundary. PERF is addressed by `cpt-frontx-cli-nfr-template-scale` (§6, Acceptance Criteria). UX is addressed by `assemble`'s preview report and `delete`'s confirmation/dry-run surface (§2).
+
 ### 1.3 Actors
 
 | Actor | Role in Feature |
@@ -137,7 +139,7 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
 10. [ ] - `p1` - **IF** any target reports a content conflict, or reports additional paths and `--adopt-existing` was not given - `inst-seed-if-existing-conflict`
     1. [ ] - `p1` - **RETURN** `CONTENT_CONFLICT` or `EXISTING_PATHS_REQUIRE_DECISION` naming the paths; nothing written for the whole batch - `inst-seed-return-existing-conflict`
 11. [ ] - `p1` - The CLI materializes every target in the batch in one operation, leaving any adopted additional paths untouched - `inst-seed-materialize`
-12. [ ] - `p1` - For each template name that just received its first target, the CLI materializes that name's CLI-owned AI-extension bundle (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) into `.frontx/ai/<name>/`, when the template's payload carries one - `inst-seed-materialize-bundle`
+12. [ ] - `p1` - For each template name that just received its first target, the CLI materializes that name's CLI-owned AI-extension bundle (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) into `.frontx/ai/<manifest-name>/`, when the template's payload carries one - `inst-seed-materialize-bundle`
 13. [ ] - `p1` - The CLI records every newly applied target under its template's entry in the project state store (`cpt-frontx-feature-composed-provenance`) - `inst-seed-record`
 14. [ ] - `p1` - **RETURN** success — repository seeded, every default registered, every target recorded - `inst-seed-return-done`
 
@@ -171,7 +173,7 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
 8. [ ] - `p1` - **IF** any unrecorded target reports a content conflict, or reports additional paths and `--adopt-existing` was not given - `inst-add-if-existing-conflict`
    1. [ ] - `p1` - **RETURN** `CONTENT_CONFLICT` or `EXISTING_PATHS_REQUIRE_DECISION` naming the paths; nothing written for the whole batch - `inst-add-return-existing-conflict`
 9. [ ] - `p1` - The CLI materializes every target in the batch that is not an idempotent no-op-by-record, leaving any adopted additional paths untouched - `inst-add-materialize`
-10. [ ] - `p1` - For each template name that just received its first target in this batch, the CLI materializes that name's CLI-owned AI-extension bundle (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) into `.frontx/ai/<name>/`, when the template's payload carries one - `inst-add-materialize-bundle`
+10. [ ] - `p1` - For each template name that just received its first target in this batch, the CLI materializes that name's CLI-owned AI-extension bundle (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) into `.frontx/ai/<manifest-name>/`, when the template's payload carries one - `inst-add-materialize-bundle`
 11. [ ] - `p1` - The CLI records every newly applied target under its template's entry in the project state store - `inst-add-record`
 12. [ ] - `p1` - **RETURN** success — new targets recorded; already-recorded targets reported as no-ops-by-record - `inst-add-return-done`
 
@@ -212,7 +214,7 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
 7. [ ] - `p1` - Remove the deletion plan's ground from disk, preserving every path in the plan's preserve list - `inst-del-remove`
 8. [ ] - `p1` - Remove `<target>` from its template's `targets` array in the project state store (`cpt-frontx-feature-composed-provenance`) - `inst-del-update-state`
 9. [ ] - `p1` - **IF** this removal empties the owning template name's `targets` array - `inst-del-if-last-target`
-   1. [ ] - `p1` - The CLI removes that name's CLI-owned AI-extension bundle at `.frontx/ai/<name>/`, if present (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) - `inst-del-remove-bundle`
+   1. [ ] - `p1` - The CLI removes that name's CLI-owned AI-extension bundle at `.frontx/ai/<manifest-name>/`, if present (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) - `inst-del-remove-bundle`
 10. [ ] - `p1` - **RETURN** success — the deleted and preserved lists - `inst-del-return-success`
 
 ## 3. Processes / Business Logic (CDSL)
@@ -320,16 +322,16 @@ Realizes resolution B1: a template's AI-extension bundle at `.frontx/ai/<manifes
 
 **Input**: A template name; whether the operation just gave that name its first target (`targets[]` was empty before this batch and non-empty after) or removed its last remaining target (`targets[]` was non-empty before this deletion and empty after); for a materialize trigger, the name's installed content path.
 
-**Output**: `.frontx/ai/<name>/` materialized from that name's installed content path's own `.frontx/ai/<name>/` convention folder (copied verbatim, when present), or removed; a no-op when the template's payload carries no such folder, or when neither trigger condition holds.
+**Output**: `.frontx/ai/<manifest-name>/` materialized from that name's installed content path's own `.frontx/ai/<manifest-name>/` convention folder (copied verbatim, when present), or removed; a no-op when the template's payload carries no such folder, or when neither trigger condition holds.
 
 **Steps**:
 1. [ ] - `p1` - **IF** this operation just gave `name` its first target - `inst-aib-if-first-target`
-   1. [ ] - `p1` - **IF** the name's installed content path contains a `.frontx/ai/<name>/` folder - `inst-aib-if-bundle-present`
-      1. [ ] - `p1` - Copy it verbatim into the project's `.frontx/ai/<name>/`, as a CLI-owned write attributed to no template's ownership - `inst-aib-copy`
+   1. [ ] - `p1` - **IF** the name's installed content path contains a `.frontx/ai/<manifest-name>/` folder - `inst-aib-if-bundle-present`
+      1. [ ] - `p1` - Copy it verbatim into the project's `.frontx/ai/<manifest-name>/`, as a CLI-owned write attributed to no template's ownership - `inst-aib-copy`
    2. [ ] - `p1` - **ELSE** - `inst-aib-else-no-bundle`
       1. [ ] - `p1` - No-op — the payload carries no bundle for this name - `inst-aib-noop-no-bundle`
 2. [ ] - `p1` - **IF** this operation just removed `name`'s last remaining target - `inst-aib-if-last-target`
-   1. [ ] - `p1` - **IF** the project's `.frontx/ai/<name>/` exists - `inst-aib-if-bundle-exists`
+   1. [ ] - `p1` - **IF** the project's `.frontx/ai/<manifest-name>/` exists - `inst-aib-if-bundle-exists`
       1. [ ] - `p1` - Remove it as a CLI-owned deletion - `inst-aib-remove`
    2. [ ] - `p1` - **ELSE** - `inst-aib-else-nothing-to-remove`
       1. [ ] - `p1` - No-op — there is nothing to remove - `inst-aib-noop-no-removal`
@@ -448,7 +450,7 @@ The system **MUST** compute a target's deletion plan as that target's effective 
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-cli-scaffolding-ai-bundle`
 
-The system **MUST** materialize a template name's AI-extension bundle at `.frontx/ai/<name>/` as a CLI-owned write — never through the template's own ownership, which unconditionally excludes `.frontx` — the first time `apply` or `seed` gives that name its first applied target, copying it verbatim from the name's installed content path's own `.frontx/ai/<name>/` convention folder when the payload carries one, and as a no-op otherwise. The system **MUST** remove that name's `.frontx/ai/<name>/` when `delete` removes the name's last remaining target, and **MUST** refresh it when `upgrade` commits a new version of the name whose payload carries a new bundle (`cpt-frontx-feature-upgrade-changeset`) (`target`).
+The system **MUST** materialize a template name's AI-extension bundle at `.frontx/ai/<manifest-name>/` as a CLI-owned write — never through the template's own ownership, which unconditionally excludes `.frontx` — the first time `apply` or `seed` gives that name its first applied target, copying it verbatim from the name's installed content path's own `.frontx/ai/<manifest-name>/` convention folder when the payload carries one, and as a no-op otherwise. The system **MUST** remove that name's `.frontx/ai/<manifest-name>/` when `delete` removes the name's last remaining target, and **MUST** refresh it when `upgrade` commits a new version of the name whose payload carries a new bundle (`cpt-frontx-feature-upgrade-changeset`) (`target`).
 
 **Implements**:
 - `cpt-frontx-flow-cli-scaffolding-seed-repository`
@@ -481,9 +483,10 @@ The system **MUST** materialize a template name's AI-extension bundle at `.front
 - [ ] `delete <target> --dry-run` reports the delete/preserve lists without deleting anything and without any confirmation step, in both interactive and `--json` modes.
 - [ ] A deletion plan preserves the target's declared `excludedSubtrees`, every nested target belonging to another template, every `projectOwnedRoots` entry beneath the target, and every reserved environment entry (`.git`, `.DS_Store`, `Thumbs.db`) beneath the target; a `delete .` on the project root never lists a reserved environment entry in its delete list or its `additionalPaths`.
 - [ ] `seed <dir> --input <batch>` on a directory that does not yet carry `.frontx/project.json` creates it, auto-registers each named official default template through the register algorithm (resolve → pin → write origin), and then applies the batch through the identical mechanism `apply` uses; `seed` on a directory that already carries `.frontx/project.json` is refused, directing the developer to `apply`.
-- [ ] The first `apply` or `seed` batch to give a template name its first target materializes that name's CLI-owned `.frontx/ai/<name>/` bundle from the template's payload, when the payload carries one, as a write attributed to the CLI, never to the template's own ownership; `delete` of a name's last remaining target removes that bundle.
+- [ ] The first `apply` or `seed` batch to give a template name its first target materializes that name's CLI-owned `.frontx/ai/<manifest-name>/` bundle from the template's payload, when the payload carries one, as a write attributed to the CLI, never to the template's own ownership; `delete` of a name's last remaining target removes that bundle.
 - [ ] No apply, assemble, or delete path silently merges conflicting claims or silently overwrites differing content.
 - [ ] Every `RETURN`-level refusal in this feature's flows and algorithms names a code from the shared error-code vocabulary (`cpt-frontx-adr-uniform-cli-json-envelope`).
 - [ ] The apply/assemble/seed/delete command surface is part of `cpt-frontx-interface-cli`; an incompatible change to the surface requires a major version bump per `cpt-frontx-adr-artifact-versioning-and-distribution`.
+- [ ] `assemble`/`apply` satisfy `cpt-frontx-cli-nfr-template-scale`'s assembly threshold: evaluating at least 20 templates in one batch and reporting every ownership conflict found — including containment between targets — before any repository file is written.
 - [ ] `cfs --json validate --artifact packages/cli/architecture/features/cli-scaffolding/FEATURE.md --skip-code` returns PASS.
 - [ ] `cfs --json validate-toc packages/cli/architecture/features/cli-scaffolding/FEATURE.md` returns PASS.

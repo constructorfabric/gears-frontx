@@ -46,6 +46,8 @@ This feature ensures the CLI command surface is fully decoupled from the content
 
 **Principles**: `cpt-frontx-principle-template-agnostic-tooling`
 
+**Applicability** (Often-N/A domains for a CLI Command feature, per the FEATURE checklist's Applicability Context): SEC and COMPL are not applicable — this feature enforces no authentication, authorization, or regulatory boundary; the closest security-adjacent control is the fail-closed path canonicalization a `path:` origin is checked against (`inst-resolve-local-path-check`), which is a path-traversal safeguard, not an auth boundary. OPS (observability) is not applicable — this feature introduces no logging, metrics, or tracing surface of its own beyond the uniform envelope and error-code vocabulary it already references. PERF is addressed by `cpt-frontx-cli-nfr-template-scale` (§6, Acceptance Criteria). UX is addressed by the human-readable and machine-readable forms of `list` (§2, "List Local Template Inventory").
+
 ### 1.3 Actors
 
 | Actor | Role in Feature |
@@ -80,13 +82,15 @@ On success, `data` reports the three sets a caller composing an explicit batch n
 }
 ```
 
+This literal JSON form is a sanctioned exception to the general rule against hardcoding literal schemas in a FEATURE: `cpt-frontx-adr-contract-schema-ownership` (ADR 0027) makes this feature the legitimate owner of this specific cross-boundary contract's field-level shape, so fixing its concrete form here is the schema's authoritative definition, not an accidental leak of implementation detail.
+
 - `defaults` - the platform's default templates, listed independently of the current project's `.frontx/project.json`.
 - `registered` - one record per entry in the current project's `templates` map: the manifest name that keys it, its pinned `origin` (immutable for a remote origin, the literal path for a `path:` origin), its registered `version`, and the `targets` it has been applied to.
 - `installed` - templates present in the local inventory but not (yet) registered to this project, each with the canonical origin `install` resolved it to.
 - Every entry in every set carries `description`, the same manifest-declared field that carries selection semantics (`cpt-frontx-adr-thin-template-manifest`). Under the current manifest contract `description` is required and non-empty (`cpt-frontx-feature-template-manifest`), so a conforming entry always declares one; **the key is absent, never empty and never a placeholder, only for a legacy-installed entry** - one materialized before `description` became required and read only through the isolated migration path `cpt-frontx-adr-thin-template-manifest` fixes for the retired five-category shape - a consumer selects templates by this value, and a substituted placeholder would be indistinguishable from a declaration the template never made.
 - An empty set is reported as `[]`, never an absent key.
 
-On failure, the command emits `{"ok": false, "error": {"code": ..., "message": ..., "details": {...}}}` with `error.code` drawn from the one stable vocabulary shared by every command - `INVALID_MANIFEST`, `VERSION_MISMATCH`, `TEMPLATE_NOT_REGISTERED`, `TARGET_CONFLICT`, `CONTENT_CONFLICT`, `EXISTING_PATHS_REQUIRE_DECISION`, `CONFIRMATION_REQUIRED`, `ORIGIN_UNAVAILABLE`, `PROJECT_INVALID` (`cpt-frontx-adr-uniform-cli-json-envelope`) - never a code this feature invents on its own. An unreadable `.frontx/project.json` is reported as `PROJECT_INVALID`, so a listing failure and a listing success are structurally distinguishable by `ok` rather than by an inventory-shaped absence.
+On failure, the command emits `{"ok": false, "error": {"code": ..., "message": ..., "details": {...}}}` where the code is drawn from the one stable vocabulary `cpt-frontx-adr-uniform-cli-json-envelope` fixes (`cpt-frontx-constraint-cli-machine-envelope` in CLI DESIGN CLI-9) - this feature never invents a code of its own, and does not re-enumerate that vocabulary here. An unreadable `.frontx/project.json` is reported as `PROJECT_INVALID`, so a listing failure and a listing success are structurally distinguishable by `ok` rather than by an inventory-shaped absence.
 
 The `data` payload's key names are the contract this feature owns; renaming one is a breaking change to the AI Tooling Framework's read path even though no compile-time edge would report it. The envelope's outer shape, its `ok` discriminant, and the `error.code` vocabulary are `cpt-frontx-adr-uniform-cli-json-envelope`'s contract, not this feature's, and are referenced rather than restated.
 
@@ -393,3 +397,6 @@ The system **MUST** take a template's identity from the identity its own manifes
 - [ ] No template content is bundled in the CLI distribution (zero template assets or dependencies in the CLI package)
 - [ ] Inventory template state machine cycles UNRESOLVED → RESOLVED → INSTALLED → UPDATED under successful install and update flows
 - [ ] Every `RETURN`-level refusal in this feature's flows and algorithms names a code from the shared error-code vocabulary (`cpt-frontx-adr-uniform-cli-json-envelope`).
+- [ ] `list` satisfies `cpt-frontx-cli-nfr-template-scale`'s inventory threshold: listing at least 100 installed templates with version identity completes in no more than 2 seconds at p95 on a normal developer workstation.
+- [ ] `cfs --json validate --artifact packages/cli/architecture/features/template-resolution/FEATURE.md --skip-code` returns PASS.
+- [ ] `cfs --json validate-toc packages/cli/architecture/features/template-resolution/FEATURE.md` returns PASS.

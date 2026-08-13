@@ -21,18 +21,18 @@
 
 <!-- /toc -->
 
-- [x] `p1` - **ID**: `cpt-frontx-featstatus-template-ai-extensions`
+- [ ] `p1` - **ID**: `cpt-frontx-featstatus-template-ai-extensions`
 ## 1. Feature Context
 
 - [x] `p2` - `cpt-frontx-feature-template-ai-extensions`
 
 ### 1.1 Overview
 
-Defines the closed-set extension-bundle contract a template's AI bundle conforms to — skills, workflows, guidelines, and reference artifacts as named typed slots — and the generalized scan that discovers conforming installed-template extensions and activates them into the agent-visible capability set under explicit precedence, with no manual wiring; malformed extensions are reported as structural errors and not activated.
+Defines the closed-set extension-bundle contract a template's AI bundle conforms to — skills, workflows, guidelines, and reference artifacts as named typed slots — and the generalized scan that discovers conforming installed-template extensions and activates them into the agent-visible capability set under explicit precedence, with no manual wiring; malformed extensions are reported as structural errors and not activated. A structurally conforming bundle is not activated on structure alone: its template identity must also be backed by a registered, pinned origin in the project's single state document, `.frontx/project.json`, or it is marked DENIED and excluded from activation — the trust gate that keeps a bundle placed under `.frontx/ai/` outside a legitimate `register`/`apply` operation from ever reaching an agent.
 
 ### 1.2 Purpose
 
-This feature provides the mechanism by which template-specific AI expertise travels with a template to any project that installs it. It addresses the requirement that templates carry AI bundles conforming to a declared extension contract (`cpt-frontx-fr-ai-template-bundle-extensions`) and that installed-template extensions are discovered and activated without manual configuration (`cpt-frontx-fr-ai-extension-discovery-activation`).
+This feature provides the mechanism by which template-specific AI expertise travels with a template to any project that installs it. It addresses the requirement that templates carry AI bundles conforming to a declared extension contract (`cpt-frontx-fr-ai-template-bundle-extensions`) and that installed-template extensions are discovered and activated without manual configuration (`cpt-frontx-fr-ai-extension-discovery-activation`). That same requirement fixes the trust boundary this feature enforces: the Project Developer owns the project's trust policy for template AI extensions, and denied or untrusted capabilities **MUST NOT** activate (kit PRD §5.2). This feature realizes that policy with the one trust fact already available to it without inventing a new mechanism — a bundle's identity is trusted exactly when that identity carries a registered, pinned origin in the project's single state document, because that pinning is what a legitimate `register`/`apply` operation produces and post-hoc content placed under `.frontx/ai/` outside the CLI cannot.
 
 **Requirements**: `cpt-frontx-fr-ai-template-bundle-extensions`, `cpt-frontx-fr-ai-extension-discovery-activation`
 
@@ -48,7 +48,7 @@ This feature provides the mechanism by which template-specific AI expertise trav
 - **PRD**: [PRD.md](../../PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Dependencies**:
-  - `cpt-frontx-feature-template-resolution` (F10) — discovery reads whatever bundle ends up materialized under a scaffolded project's `.frontx/ai/<template-identity>/`: this feature's scan reads every such bundle on the AI Tooling Framework's own invocation, over a filesystem handoff via the project, not a CLI-to-Kit signal (root DESIGN §3.4).
+  - `cpt-frontx-feature-template-resolution` (F10) — discovery reads whatever bundle ends up materialized under a scaffolded project's `.frontx/ai/<template-identity>/` (`<template-identity>` is the value of the applying template's own manifest `name` field — called `<manifest-name>` in the CLI package's own documentation, [Manifest-Keyed Template Registration with Immutable Origin Pinning](../../../../../architecture/ADR/0040-template-registration-and-origin-pinning.md)): this feature's scan reads every such bundle on the AI Tooling Framework's own invocation, over a filesystem handoff via the project, not a CLI-to-Kit signal (root DESIGN §3.4).
   - `cpt-frontx-feature-cli-scaffolding` (F12) — owns the CLI-owned materialization step that puts an identity's `.frontx/ai/<template-identity>/` bundle on disk and keeps it current: the assembler copies it from the template's payload on the `apply` that gives that identity its first target, updates it on `upgrade`, and removes it when `delete` removes that identity's last remaining target. `cpt-frontx-adr-whole-target-ownership` unconditionally subtracts `.frontx` from every template's own effective ownership, so no template's payload-write path ever claims this subtree — the CLI's assembler does, as a step distinct from writing the template's own target content (§1.5). This feature never writes the bundle, only discovers and activates what F12 has put there.
   - `cpt-frontx-feature-ai-kit-packaging` (F15) — bundled extensions activate into the base kit's capability set
 
@@ -87,7 +87,7 @@ User-facing interactions that start with an actor (human or external system) and
 
 ### Bundle, Publish, Install, Discover, and Activate AI Extensions
 
-- [x] `p1` - **ID**: `cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate`
+- [ ] `p1` - **ID**: `cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate`
 
 **Realizes**: `cpt-frontx-seq-template-ai-extension-discovery-activation`
 
@@ -115,16 +115,19 @@ User-facing interactions that start with an actor (human or external system) and
 
 5. [x] - `p1` - Project Developer applies the template into the project via the CLI (`cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-cli-scaffolding`); as the CLI-owned materialization step that `apply` performs when this identity gains its first target, the assembler copies the template's `.frontx/ai/<template-identity>/` bundle from its payload into the scaffolded project at that identity-scoped path, so by the time this flow's discovery leg runs the bundle is present there — no CLI-to-Kit signal is sent (root DESIGN §3.4). This flow's discovery leg does not depend on that step's internals, only on the bundle's shape (§1.5) being present where the convention says to look - `inst-install-template`
 6. [x] - `p1` - On its own next invocation the AI Tooling Framework's extension-host component (`cpt-frontx-component-ai-extension-host`, within the package anchor `cpt-frontx-component-ai-tooling-kit`) initiates extension discovery by scanning each `.frontx/ai/<template-identity>/` bundle under the scaffolded project's `.frontx/ai/`, invoking the contract scan algorithm parameterized by the closed-set extension contract - `inst-initiate-discovery`
-7. [x] - `p1` - **FOR EACH** named typed slot in the closed-set contract (skills, workflows, guidelines, reference artifacts) - `inst-scan-each-slot`
+7. [ ] - `p1` - **FOR EACH** discovered identity's bundle, before scanning any of its slots, the extension host checks whether that identity is backed by a registered, pinned origin in the project's single state document, `.frontx/project.json` (`templates[name].origin`) — the fact that the bundle arrived through a legitimate `register`/`apply` operation rather than through content placed under `.frontx/ai/` by some other means - `inst-check-bundle-trust`
+   1. [ ] - `p1` - **IF** the identity carries no such registered, pinned origin entry - `inst-if-untrusted-identity`
+      1. [ ] - `p1` - Mark every entry in that identity's bundle DENIED, report the denial naming the identity to the Project Developer, and exclude the whole bundle from discovery; proceed to the next identity's bundle without scanning any of its slots - `inst-deny-untrusted-bundle`
+8. [x] - `p1` - **FOR EACH** named typed slot in the closed-set contract (skills, workflows, guidelines, reference artifacts), for each identity's bundle that passed the trust check above - `inst-scan-each-slot`
    1. [x] - `p1` - Scan the installed template's declared extension bundle for entries targeting the current slot - `inst-scan-slot-entries`
    2. [x] - `p1` - **IF** a located entry does not conform structurally to the contract's entry shape — a declared identifier, its slot, and a resolvable path; the check is slot-generic, and per-slot format enforcement is recorded debt - `inst-check-slot-conformance`
       1. [x] - `p1` - Record a structural error for the non-conforming entry; mark the entry as REJECTED - `inst-record-structural-error`
    3. [x] - `p1` - **ELSE** add the conforming entry to the discovered set for the current slot - `inst-add-to-discovered`
-8. [x] - `p1` - **IF** any structural errors were recorded during the scan - `inst-check-errors`
+9. [x] - `p1` - **IF** any structural errors were recorded during the scan - `inst-check-errors`
    1. [x] - `p1` - Report all structural errors to the Project Developer; no errored entry is included in activation - `inst-report-errors`
-9. [x] - `p1` - Compose the discovered conforming entries with the base kit's capabilities under explicit precedence, as computed by `cpt-frontx-algo-template-ai-extensions-contract-scan-activate` - `inst-compose-under-precedence`
-10. [x] - `p1` - Activate the composed capability set into the AI agent's visible capability surface with no manual wiring required from the Project Developer - `inst-activate-capabilities`
-11. [x] - `p1` - **RETURN** the activated agent-visible capability set, now including the template-specific extensions alongside the base kit capabilities - `inst-return-activated`
+10. [x] - `p1` - Compose the discovered conforming entries with the base kit's capabilities under explicit precedence, as computed by `cpt-frontx-algo-template-ai-extensions-contract-scan-activate` - `inst-compose-under-precedence`
+11. [x] - `p1` - Activate the composed capability set into the AI agent's visible capability surface with no manual wiring required from the Project Developer - `inst-activate-capabilities`
+12. [x] - `p1` - **RETURN** the activated agent-visible capability set, now including the template-specific extensions alongside the base kit capabilities - `inst-return-activated`
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -132,18 +135,21 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### Extension Contract Scan and Activation
 
-- [x] `p2` - **ID**: `cpt-frontx-algo-template-ai-extensions-contract-scan-activate`
+- [ ] `p2` - **ID**: `cpt-frontx-algo-template-ai-extensions-contract-scan-activate`
 
-**Input**: Installed template's declared AI-extension bundle; closed-set extension contract (skills, workflows, guidelines, reference artifacts as named typed slots); base kit's capability set
+**Input**: Installed template's declared AI-extension bundle; closed-set extension contract (skills, workflows, guidelines, reference artifacts as named typed slots); base kit's capability set; the project's single state document, `.frontx/project.json`, read for the bundle's template identity's registered, pinned `origin`
 
-**Output**: Composed agent-visible capability set and a structural-error list for any non-conforming entries
+**Output**: Composed agent-visible capability set, a structural-error list for any non-conforming entries, and a denial list for any bundle excluded on trust grounds
 
 **Steps**:
 1. [x] - `p1` - Load the closed-set extension contract, enumerating all named typed slots: skills, workflows, guidelines, and reference artifacts - `inst-load-contract`
 2. [x] - `p1` - Load the installed template's declared AI-extension bundle - `inst-load-bundle`
-3. [x] - `p1` - Initialize an empty discovered-extensions map keyed by contract slot - `inst-init-discovered-map`
-4. [x] - `p1` - Initialize an empty structural-error list - `inst-init-error-list`
-5. [x] - `p1` - **FOR EACH** named typed slot defined by the closed-set contract - `inst-iterate-slots`
+3. [ ] - `p1` - Check whether the bundle's template identity is backed by a registered, pinned origin in the project's single state document, `.frontx/project.json` - `inst-check-identity-trust`
+   1. [ ] - `p1` - **IF** the identity carries no such registered, pinned origin entry - `inst-if-identity-untrusted`
+      1. [ ] - `p1` - Mark every entry in the bundle DENIED, append a denial to the denial list naming the identity and the reason — untrusted origin, distinct from a malformed-shape structural error — and **RETURN** the composed capability set unchanged by this bundle, the structural-error list, and the denial list - `inst-return-denied-bundle`
+4. [x] - `p1` - Initialize an empty discovered-extensions map keyed by contract slot - `inst-init-discovered-map`
+5. [x] - `p1` - Initialize an empty structural-error list - `inst-init-error-list`
+6. [x] - `p1` - **FOR EACH** named typed slot defined by the closed-set contract - `inst-iterate-slots`
    1. [x] - `p1` - Identify all declared entries in the bundle that target the current slot - `inst-identify-slot-entries`
    2. [x] - `p1` - **FOR EACH** identified entry - `inst-validate-each-entry`
       1. [x] - `p1` - Validate the entry's structural shape against the contract's entry requirements — identifier, slot, and resolvable path; the validation is slot-generic, and enforcing each slot's own file-format shape is recorded debt - `inst-validate-entry-shape`
@@ -151,35 +157,37 @@ Internal system functions and procedures that do not interact with actors direct
          1. [x] - `p1` - Append a structural error to the error list, naming the slot and the offending entry - `inst-append-error`
          2. [x] - `p1` - **SKIP TO** the next entry; do not add to the discovered map - `inst-skip-malformed`
       3. [x] - `p1` - Add the conforming entry to the discovered-extensions map under the current slot - `inst-add-conforming`
-6. [x] - `p1` - **IF** the structural-error list is non-empty - `inst-check-error-list`
+7. [x] - `p1` - **IF** the structural-error list is non-empty - `inst-check-error-list`
    1. [x] - `p1` - Surface all structural errors; each errored entry is permanently excluded from the activation set - `inst-surface-errors`
-7. [x] - `p1` - Compose the discovered-extensions map with the base kit's capability set under the explicit precedence rule (`target`): entries compose per named slot **and entry identifier** — entries with different identifiers coexist within a slot, a template-contributed entry supersedes the base-kit entry carrying the same identifier, and among entries from multiple installed templates sharing slot and identifier, the defined installation-order precedence determines the surviving entry - `inst-compose-precedence`
-8. [x] - `p1` - **RETURN** the composed capability set and the structural-error list - `inst-return-result`
+8. [x] - `p1` - Compose the discovered-extensions map with the base kit's capability set under the explicit precedence rule (`target`): entries compose per named slot **and entry identifier** — entries with different identifiers coexist within a slot, a template-contributed entry supersedes the base-kit entry carrying the same identifier, and among entries from multiple installed templates sharing slot and identifier, the defined installation-order precedence determines the surviving entry - `inst-compose-precedence`
+9. [x] - `p1` - **RETURN** the composed capability set, the structural-error list, and the denial list - `inst-return-result`
 
 ## 4. States (CDSL)
 
 ### AiExtension Lifecycle
 
-- [x] `p2` - **ID**: `cpt-frontx-state-template-ai-extensions-extension-lifecycle`
+- [ ] `p2` - **ID**: `cpt-frontx-state-template-ai-extensions-extension-lifecycle`
 
-**States**: BUNDLED, DISCOVERED, VALIDATED, ACTIVATED, REJECTED
+**States**: BUNDLED, DENIED, DISCOVERED, VALIDATED, ACTIVATED, REJECTED
 
 **Initial State**: BUNDLED
 
 **Transitions**:
-1. [x] - `p1` - **FROM** BUNDLED **TO** DISCOVERED **WHEN** the installed template's AI-extension bundle is scanned and an entry is located for a named typed slot in the closed-set contract - `inst-trans-bundled-to-discovered`
-2. [x] - `p1` - **FROM** DISCOVERED **TO** VALIDATED **WHEN** the entry's structural shape is confirmed to conform to the required elements for its slot - `inst-trans-discovered-to-validated`
-3. [x] - `p1` - **FROM** DISCOVERED **TO** REJECTED **WHEN** the entry's structural shape is malformed or missing a required element for its slot - `inst-trans-discovered-to-rejected`
+1. [ ] - `p1` - **FROM** BUNDLED **TO** DENIED **WHEN** the bundle's template identity carries no registered, pinned origin in the project's single state document, `.frontx/project.json` — checked before any entry in the bundle is scanned, so an untrusted bundle never reaches DISCOVERED - `inst-trans-bundled-to-denied`
+   1. [ ] - `p1` - Report a denial to the Project Developer identifying the untrusted identity - `inst-action-report-denial`
+2. [x] - `p1` - **FROM** BUNDLED **TO** DISCOVERED **WHEN** the bundle's template identity passes the trust check above and an entry is located for a named typed slot in the closed-set contract - `inst-trans-bundled-to-discovered`
+3. [x] - `p1` - **FROM** DISCOVERED **TO** VALIDATED **WHEN** the entry's structural shape is confirmed to conform to the required elements for its slot - `inst-trans-discovered-to-validated`
+4. [x] - `p1` - **FROM** DISCOVERED **TO** REJECTED **WHEN** the entry's structural shape is malformed or missing a required element for its slot - `inst-trans-discovered-to-rejected`
    1. [x] - `p1` - Report a structural error to the Project Developer identifying the slot and the non-conforming entry - `inst-action-report-rejection`
-4. [x] - `p1` - **FROM** VALIDATED **TO** ACTIVATED **WHEN** the entry passes the contract scan — the lifecycle records activation at scan time, before precedence composition, so an entry later superseded during composition still reports ACTIVATED - `inst-trans-validated-to-activated`
+5. [x] - `p1` - **FROM** VALIDATED **TO** ACTIVATED **WHEN** the entry passes the contract scan — the lifecycle records activation at scan time, before precedence composition, so an entry later superseded during composition still reports ACTIVATED - `inst-trans-validated-to-activated`
 
 ## 5. Definitions of Done
 
 ### Closed-Set Contract and Generalized Discovery Activation
 
-- [x] `p1` - **ID**: `cpt-frontx-dod-template-ai-extensions-contract-conformance`
+- [ ] `p1` - **ID**: `cpt-frontx-dod-template-ai-extensions-contract-conformance`
 
-The system **MUST** implement the closed-set extension contract (skills, workflows, guidelines, reference artifacts as named typed slots), the generalized scan parameterized by that contract, composition under explicit precedence, structural-error reporting for non-conforming entries, and the BUNDLED → DISCOVERED → VALIDATED → ACTIVATED / REJECTED lifecycle — realizing the sequence `cpt-frontx-seq-template-ai-extension-discovery-activation` as specified in the flow `cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate` and the algorithm `cpt-frontx-algo-template-ai-extensions-contract-scan-activate`.
+The system **MUST** implement the closed-set extension contract (skills, workflows, guidelines, reference artifacts as named typed slots), the generalized scan parameterized by that contract, composition under explicit precedence, structural-error reporting for non-conforming entries, and the BUNDLED → DISCOVERED → VALIDATED → ACTIVATED / REJECTED lifecycle — realizing the sequence `cpt-frontx-seq-template-ai-extension-discovery-activation` as specified in the flow `cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate` and the algorithm `cpt-frontx-algo-template-ai-extensions-contract-scan-activate`. The system **MUST** additionally check, before scanning any bundle's slots, that the bundle's template identity is backed by a registered, pinned origin in the project's single state document, `.frontx/project.json`; an identity that fails this check transitions the bundle's entries to DENIED and excludes the whole bundle from activation, closing the PRD's trust-policy requirement that denied or untrusted capabilities **MUST NOT** activate (`cpt-frontx-fr-ai-extension-discovery-activation`).
 
 **Implements**:
 - `cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate`
@@ -199,3 +207,4 @@ The system **MUST** implement the closed-set extension contract (skills, workflo
 - [x] When base kit capabilities and one or more installed-template extensions contribute entries for the same named slot, the composed result is deterministic and governed by the explicit precedence rule.
 - [x] A malformed extension entry (missing required element, unrecognized category name) is reported as a structural error and is not activated; conforming entries from the same bundle are not affected by the rejection.
 - [x] An AiExtension follows the lifecycle BUNDLED → DISCOVERED → VALIDATED → ACTIVATED; a non-conforming entry transitions to REJECTED instead of ACTIVATED, and no REJECTED entry is present in the activated capability set.
+- [ ] A discovered bundle whose template identity is not backed by a registered, pinned origin record in the project's single state document, `.frontx/project.json`, transitions to DENIED before any of its slots are scanned, is reported to the Project Developer naming the untrusted identity, and no entry from that bundle is present in the activated capability set — distinct from a structurally REJECTED entry.

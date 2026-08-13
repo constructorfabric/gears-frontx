@@ -46,13 +46,13 @@ AI agents do the ecosystem's work — scaffolding, extending, upgrading — but 
 
 ### 1.3 Goals (Business Outcomes)
 
-- **Automatic activation of allowed template AI extensions** — capabilities a trusted template bundles become available to agents with no developer activation work. Target: zero manual activation steps and 100% of declared applicable, policy-allowed template AI-extension resources discoverable on the first conforming-host invocation after installation; Timeframe: first platform release.
-- **Ecosystem-aware agents from the first interaction** — knowledge artifacts are available at session start with no training step. Target: 100% of declared applicable ecosystem-knowledge resources discoverable on the first conforming-host invocation after installation; Timeframe: first platform release.
-- **Nothing agent-facing undeclared** — every capability delivered into a project carries its identity and applicability. Target: 100% of agent-facing capabilities declared; Timeframe: first platform release.
+- **Automatic activation of allowed template AI extensions** — capabilities a trusted template bundles become available to agents with no developer activation work. Baseline: none (new product); Target: zero manual activation steps and 100% of declared applicable, policy-allowed template AI-extension resources discoverable on the first conforming-host invocation after installation; Timeframe: first platform release.
+- **Ecosystem-aware agents from the first interaction** — knowledge artifacts are available at session start with no training step. Baseline: none (new product); Target: 100% of declared applicable ecosystem-knowledge resources discoverable on the first conforming-host invocation after installation; Timeframe: first platform release.
+- **Nothing agent-facing undeclared** — every capability delivered into a project carries its identity and applicability. Baseline: none (new product); Target: 100% of agent-facing capabilities declared; Timeframe: first platform release.
 
 ### 1.4 Glossary
 
-This PRD uses the root PRD's shared vocabulary ([root PRD §1.4](../../../architecture/PRD.md#14-glossary)) for *template* and *project*, and relies on the root actors for *Template Developer* and *Project Developer*. Framework-specific terms are defined here.
+This PRD uses the root PRD's shared vocabulary ([root PRD §1.4](../../../architecture/PRD.md#14-glossary)) for *template* and *project*, the CLI PRD's glossary ([CLI PRD §1.4](../../cli/architecture/PRD.md#14-glossary)) for *project state file*, and relies on the root actors for *Template Developer* and *Project Developer*. Framework-specific terms are defined here.
 
 | Term | Definition |
 |------|------------|
@@ -60,6 +60,7 @@ This PRD uses the root PRD's shared vocabulary ([root PRD §1.4](../../../archit
 | declared agent resource | A named agent-facing capability or artifact that the project can discover and account for. |
 | AI agent host | The agent runtime that discovers the framework's declared resources and makes them available during a coding session. |
 | upgrade | An AI-driven template version change orchestrated through the CLI's reviewable change-set flow. |
+| project state file | The single Git-tracked document, `.frontx/project.json`, recording every registered template's origin, version, and applied targets. Owned and defined by the [CLI PRD §1.4](../../cli/architecture/PRD.md#14-glossary); this framework only reads it. |
 
 ## 2. Actors
 
@@ -67,14 +68,10 @@ This PRD uses the root PRD's shared vocabulary ([root PRD §1.4](../../../archit
 
 #### Template Developer
 
-**ID**: `cpt-frontx-cyber-pilot-kit-frontx-actor-template-developer`
-
 **Role**: Bundles template-specific AI extensions — skills, workflows, guidelines, reference artifacts — with the templates they publish. The root PRD's Template Developer (`cpt-frontx-actor-template-developer`) at the framework surface.
 **Needs**: A documented extension contract, and confidence the bundled expertise activates uniformly in every consuming project.
 
 #### Project Developer
-
-**ID**: `cpt-frontx-cyber-pilot-kit-frontx-actor-project-developer`
 
 **Role**: Works with AI agents in a FrontX project; directs AI-driven upgrades and reviews their change sets. The root PRD's Project Developer (`cpt-frontx-actor-project-developer`) at the framework surface.
 **Needs**: Agents that already know the ecosystem and the installed templates; upgrade orchestration with analysis and review built in.
@@ -83,13 +80,9 @@ This PRD uses the root PRD's shared vocabulary ([root PRD §1.4](../../../archit
 
 #### AI Agent Host
 
-**ID**: `cpt-frontx-cyber-pilot-kit-frontx-actor-ai-agent-host`
-
 **Role**: The coding-agent environment that discovers the framework's declared resources in a project and activates them for the agent. Third-party; honours the kit-installation contract (`cpt-frontx-contract-kit-installation`). The root PRD's AI Agent Host actor (`cpt-frontx-actor-ai-agent-host`).
 
 #### AI Tooling CLI
-
-**ID**: `cpt-frontx-cyber-pilot-kit-frontx-actor-ai-tooling-cli`
 
 **Role**: The command-line integration through which the framework is installed into a consuming project. The root PRD's AI Tooling CLI actor (`cpt-frontx-actor-ai-tooling-cli`).
 
@@ -264,6 +257,15 @@ The system **MUST** make framework capabilities understandable to developers and
 
 The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationalization, inclusivity, regulatory compliance) apply here for the same reasons stated there.
 
+- **Authentication** (SEC-PRD-001) — Not applicable: the framework introduces no login surface of its own; it runs inside a developer's own already-authenticated local environment and CLI session.
+- **Data Classification** (SEC-PRD-003) — Not applicable: the framework processes no end-user or sensitive data; the only content it reads is project-visible template identity, origin, version, and target metadata the CLI already writes.
+- **Audit** (SEC-PRD-004) — Not applicable: the framework keeps no audit trail of its own; every mutation it drives runs through the CLI's `frontx` command surface, which owns its own reporting.
+- **Availability** (REL-PRD-001) — Not applicable: the framework is not a hosted or deployed service; it runs synchronously inside a developer's own invocation, so no uptime expectation attaches to it.
+- **Data Lifecycle** (DATA-PRD-003) — Not applicable: the framework owns no persistent data store; the project state file and template AI-extension bundles it reads are owned and lifecycle-managed by the CLI ([CLI PRD](../../cli/architecture/PRD.md)).
+- **Deployment** (OPS-PRD-001) — Not applicable: the framework ships as a versioned npm package and Constructor Studio kit installed into a project, not a deployed or hosted service; publishing a version is the only "deployment" this product has.
+- **Monitoring** (OPS-PRD-002) — Not applicable: there is no running service to monitor; observability is local to the developer's own invoking session.
+- **Support** (MAINT-PRD-002) — Not applicable beyond the ecosystem's own channels: the framework is supported through the same repository issue tracker and developer documentation as the rest of the ecosystem, with no dedicated SLA-bound support tier.
+
 ## 7. Public Library Interfaces
 
 ### 7.1 Public API Surface
@@ -338,7 +340,7 @@ The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationaliz
 1. An AI agent uses the AI Tooling Framework's upgrade orchestration to analyse the change from the applied template's older version to the newer version (`cpt-frontx-fr-ai-upgrade-orchestration`).
 2. The AI agent prepares the per-template upgrade as a reviewable change set (`cpt-frontx-fr-cli-project-upgrade-changeset`).
 3. The Project Developer reviews and approves the upgrade changes before they apply to repository files (`cpt-frontx-fr-cli-upgrade-review-approval`).
-4. Only after approval, the change set is applied to the repository files and that template's entry in the project's single state document, `.frontx/project.json`, is updated to the newer version.
+4. Only after approval, the change set is applied to the repository files and that template's entry in the project state file (`.frontx/project.json`) is updated to the newer version.
 
 **Postconditions**:
 - The applied template is upgraded to its newer version with all reviewable changes accepted; other applied templates are unaffected.
@@ -362,10 +364,10 @@ The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationaliz
 1. The Project Developer states what the project should be, in their own words, rather than naming a template (`cpt-frontx-fr-ai-frontx-skills`).
 2. An AI agent uses the AI Tooling Framework to read the locally installed templates and match the stated intent against the description each template declares about itself, producing an application plan it presents to the developer before anything is written.
 3. The AI agent applies the plan through the CLI as one explicit, target-keyed batch naming every selected template and its target(s) — the template that establishes the repository together with each further distinct template — materialized through a single `apply` call, optionally previewed first by the stateless `assemble` command (`cpt-frontx-fr-cli-seed-repository`, `cpt-frontx-fr-cli-add-template-to-repository`), with the CLI checking declared ownership boundaries before every write (`cpt-frontx-fr-cli-assembly-conflict-prevention`).
-4. The AI agent reports the applied set back to the developer from the project's single state document, `.frontx/project.json`, together with the work the applied templates do not themselves cover.
+4. The AI agent reports the applied set back to the developer from the project state file (`.frontx/project.json`), together with the work the applied templates do not themselves cover.
 
 **Postconditions**:
-- A repository on disk assembled from the templates the stated intent selected, recorded in the project's single state document, `.frontx/project.json`, and reported back to the developer.
+- A repository on disk assembled from the templates the stated intent selected, recorded in the project state file (`.frontx/project.json`), and reported back to the developer.
 
 **Alternative Flows**:
 - **Nothing matches the intent**: the AI agent reports which templates are installed and which declare no description to match against, and writes no files.

@@ -248,10 +248,15 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 **Requirements Covered**:
 - [x] `p1` - `cpt-frontx-fr-layer-member-governance`
 
+**Design Principles Covered**:
+- [ ] `p2` - `cpt-frontx-principle-federated-artifacts`
+- [ ] `p2` - `cpt-frontx-principle-property-based-membership`
+
 **Design Constraints Covered**:
 - [x] `p2` - `cpt-frontx-constraint-layer-total-classification`
 - [x] `p2` - `cpt-frontx-constraint-member-artifact-chain`
 - [x] `p2` - `cpt-frontx-constraint-root-cites-no-member`
+- [ ] `p2` - `cpt-frontx-constraint-validator-warning-debt`
 
 **Design Components**:
 - [x] `p2` - `cpt-frontx-component-ecosystem-governance-guard`
@@ -260,6 +265,8 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - [ ] `p2` - `cpt-frontx-seq-member-admission-accounting`
 
 ### 2.20 [Telemetry SDK Compatibility Anchor](../packages/telemetry/architecture/) - MEDIUM
+
+- [ ] `p2` - **ID**: `cpt-frontx-feature-telemetry-sdk`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [DESIGN.md](../packages/telemetry/architecture/DESIGN.md) and member FEATURE files.
 
@@ -307,7 +314,7 @@ F2 type-substrate-port           (foundation)
 F9 api-protocol-surface          (foundation, standalone)
 F10 template-resolution          (foundation)
    ├─→ F11 template-manifest
-   ├─→ F12 cli-scaffolding ──→ F13 composed-provenance ──→ F14 upgrade-changeset
+   ├─→ F12 cli-scaffolding (also ← F13) ──→ F13 composed-provenance ──→ F14 upgrade-changeset
    └─→ F16 template-ai-extensions (also ← F15)
 F15 ai-kit-packaging             (foundation)
    ├─→ F16 template-ai-extensions
@@ -331,7 +338,7 @@ F20 ai-project-scaffolding       (← F10, F11, F12, F13, F15, F16)
 - `cpt-frontx-feature-cli-scaffolding` requires `cpt-frontx-feature-template-resolution`: scaffolding consumes templates from the resolved inventory.
 - `cpt-frontx-feature-composed-provenance` requires `cpt-frontx-feature-cli-scaffolding`: this FEATURE owns the single project-state document (`.frontx/project.json`) that scaffolding/apply reads and writes at materialization time (ADR 0036).
 - `cpt-frontx-feature-composed-provenance` requires `cpt-frontx-feature-template-resolution`: template registration (register/install) resolves through the same shared resolver, and the project-state store records the pinned origin it returns (ADR 0040).
-- `cpt-frontx-feature-cli-scaffolding` also requires `cpt-frontx-feature-composed-provenance`: the conflict checker's geometry check — run by `assemble`, `apply`, `delete`, and `ownership add|remove` alike — reads already-applied `targets[]` and `projectOwnedRoots` out of the single project-state document `composed-provenance` owns. Read together with the `composed-provenance` → `cli-scaffolding` edge above, this looks like a two-node cycle (F12↔F13) at feature altitude; it is not one at component altitude. The two edges name different components exchanging data at different points of the same command, not one component instantiating the other: the edge from `cli-scaffolding` is the conflict checker (a read-only geometry consumer) reading a value out of the project state store; the edge from `composed-provenance` is that same state store (the write target) being called into by the assembler at materialization time. Neither package imports the other's module at compile time (`cpt-frontx-component-cli` §3.4 has no internal-dependency edges); both interactions are two components of one CLI package cooperating within a single command invocation, not a package-level circular dependency.
+- `cpt-frontx-feature-cli-scaffolding` also requires `cpt-frontx-feature-composed-provenance`: the conflict checker's geometry check — run by `assemble`, `apply`, `delete`, and `ownership add|remove` alike — reads already-applied `targets[]` and `projectOwnedRoots` out of the single project-state document `composed-provenance` owns. Read together with the `composed-provenance` → `cli-scaffolding` edge above, F12 and F13 genuinely depend on each other at feature altitude — the diagram in §3 marks this with the `(also ← F13)` annotation on F12 rather than a one-way arrow. This is not a defect: both features decompose the behavior of one CLI package sharing a single command surface, and the concrete component-level structure that makes the mutual dependency safe — which component reads, which writes, and when — is owned by the [CLI's member DESIGN §3.2](../packages/cli/architecture/DESIGN.md#32-component-model) (CLI Conflict Checker and CLI Project State Store).
 - `cpt-frontx-feature-upgrade-changeset` requires `cpt-frontx-feature-composed-provenance`: the change-set diffs against the `templates[name] = {origin, version, targets[]}` entry in the single project-state document this FEATURE owns, not a per-instance provenance record; the unit of upgrade is the whole template name — all of its targets — applied atomically (ADR 0041).
 - `cpt-frontx-feature-template-ai-extensions` requires `cpt-frontx-feature-ai-kit-packaging`: extensions activate into the base kit's capability set.
 - `cpt-frontx-feature-template-ai-extensions` requires `cpt-frontx-feature-template-resolution`: discovery is triggered on template install (cross-package edge F16 ← F10).
@@ -345,3 +352,5 @@ F20 ai-project-scaffolding       (← F10, F11, F12, F13, F15, F16)
 The installed SDLC kit requires feature-entry definitions in root DECOMPOSITION and routes DESIGN coverage through DECOMPOSITION. The member compatibility anchors in this file are limited to feature IDs, owner pointers and compact ID-only component/constraint/principle coverage references; member purpose, scope, requirements, prose, flows, dependencies, algorithms, acceptance criteria and design decisions remain owned by member FEATURE and DESIGN files.
 
 This debt is removable when the upstream or project-installed SDLC kit supports member-scoped DECOMPOSITION coverage and member-owned FEATURE identity.
+
+Root requirement `cpt-frontx-fr-ui-framework-agnostic` (PRD:177) is realized through member-owned core-package boundaries (`cpt-frontx-adr-core-package-boundaries`) and is tracked in the MFE Runtime's own FEATURE-level requirements coverage, not in this file: compatibility anchors 2.1–2.7 carry no `Requirements Covered` field by convention (ID, Owner and optional Installed-kit coverage references only, matching every other member-owned anchor in this file), so this FR has no DECOMPOSITION-level coverage line. This is recorded here as debt rather than silently omitted; it is removable when the anchor convention is extended to carry a `Requirements Covered` field, or when the owning member FEATURE cites this root FR ID directly.

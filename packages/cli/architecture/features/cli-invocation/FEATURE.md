@@ -23,7 +23,7 @@
 
 <!-- /toc -->
 
-- [x] `p1` - **ID**: `cpt-frontx-featstatus-cli-invocation`
+- [ ] `p1` - **ID**: `cpt-frontx-featstatus-cli-invocation`
 ## 1. Feature Context
 
 - [x] `p1` - `cpt-frontx-feature-cli-invocation`
@@ -37,6 +37,8 @@
 This feature closes the gap between the declared `frontx` executable and the library command behaviors: it specifies the runnable entrypoint that turns a shell invocation into a dispatched command, so a Project Developer (or an AI agent acting for them) can run `frontx <command>` and reach the owning behavior. It realizes the command-surface responsibility the anchor `cpt-frontx-component-cli` holds under `cpt-frontx-adr-cli-internal-decomposition` — owning the surface and dispatching each command to one internal component — and dispatches over the single uniform mechanism decided in `cpt-frontx-adr-uniform-template-mechanism`. The command surface it exposes is `cpt-frontx-interface-cli`; its stability is governed by `cpt-frontx-adr-artifact-versioning-and-distribution`. The behaviors reached by dispatch — template install and catalog listing (`cpt-frontx-feature-template-resolution`), pre-publish `validate` (`cpt-frontx-feature-template-manifest`), registration, project state, project-state `validate --project`, and ownership management (`cpt-frontx-feature-composed-provenance`, referenced at feature level: that FEATURE's scope is reworked to the single project-state-store model DESIGN §3.1 `ProjectProvenance` fixes, and this feature dispatches to it as the consumer of that store rather than of any one per-instance provenance flow), batch assembly, apply, seed, and delete (`cpt-frontx-feature-cli-scaffolding`, whose `seed` flow registers a new project's official default templates before applying the batch — only against a new or empty project), and per-template atomic upgrade (`cpt-frontx-feature-upgrade-changeset`) — are owned by those features and are not redefined here.
 
 **Requirements**: N/A — the CLI functional requirements are owned by the dispatched command features and are exposed transitively by this invocation surface, not owned or covered here. The command-to-behavior dispatch targets are referenced by canonical ID in §1.2 Purpose and in the flows/algorithm below for dispatch-surface context only.
+
+**Applicability** (Often-N/A domains for a CLI Command feature, per the FEATURE checklist's Applicability Context): SEC and COMPL are not applicable — the entrypoint enforces no authentication or authorization boundary, since `frontx` runs as the invoking developer's own local process, and carries no regulatory scope. OPS (observability) is not applicable — this feature introduces no logging, metrics, or tracing surface beyond the exit-code convention and uniform envelope it already specifies. PERF is not applicable — no measurable NFR is allocated to entrypoint dispatch itself. UX is addressed by the usage/help flow (`cpt-frontx-flow-cli-invocation-help`).
 
 ### 1.3 Actors
 
@@ -157,9 +159,9 @@ Internal system functions and procedures called by actor flows above.
 
 ### Executable Entrypoint Dispatches Every Command
 
-- [x] `p1` - **ID**: `cpt-frontx-dod-cli-invocation-executable-entrypoint`
+- [ ] `p1` - **ID**: `cpt-frontx-dod-cli-invocation-executable-entrypoint`
 
-The system **MUST** provide a single `frontx` executable entrypoint that parses the process invocation and dispatches `frontx <command> [args]` to the one internal component that owns that command's behavior — referenced by ID and not redefined — across the full command surface (`install`, `register`, `unregister`, `list`, `validate`, `assemble`, `apply`, `seed`, `delete`, `upgrade`, `ownership add|remove|list`, per DESIGN §3.2 "CLI"), adding no second dispatch path (`target`).
+The system **MUST** provide a single `frontx` executable entrypoint that parses the process invocation and dispatches `frontx <command> [args]` to the one internal component that owns that command's behavior — referenced by ID and not redefined — across the full command surface (`install`, `register`, `unregister`, `list`, `validate`, `assemble`, `apply`, `seed`, `delete`, `upgrade`, `ownership add|remove|list`, per DESIGN §3.2 "CLI"), adding no second dispatch path (`target`). This DoD's own dispatch-table mechanism can be exercised against a stub, but it is not verified end-to-end for `register`, `unregister`, `ownership add|remove|list`, `assemble`, `apply`, `seed`, `delete`, and `upgrade` while the features that own those commands' behavior remain `[ ]` (`cpt-frontx-featstatus-composed-provenance`, `cpt-frontx-featstatus-cli-scaffolding`, `cpt-frontx-featstatus-upgrade-changeset`).
 
 **Implements**:
 - `cpt-frontx-flow-cli-invocation-run-command`
@@ -224,15 +226,17 @@ The system **MUST**, when a dispatched command is invoked with `--json`, render 
 ## 6. Acceptance Criteria
 
 - [x] `architecture/features/cli-invocation/FEATURE.md` exists with all template sections in order.
-- [x] Running the `frontx` executable with a recognized command dispatches to the internal component that owns that command's behavior through a single dispatch path. (`target`)
+- [ ] Running the `frontx` executable with a recognized command dispatches to the internal component that owns that command's behavior through a single dispatch path. (`target`) — not independently verifiable while the dispatched command-owning features remain `[ ]` (`cpt-frontx-featstatus-template-resolution`, `cpt-frontx-featstatus-template-manifest`, `cpt-frontx-featstatus-composed-provenance`, `cpt-frontx-featstatus-cli-scaffolding`, `cpt-frontx-featstatus-upgrade-changeset`)
 - [x] Running the executable with no command or an explicit help request emits the usage summary and exits with the success code. (`target`)
 - [x] Running the executable with an unrecognized command token emits usage (or, in `--json` mode, `{"ok": false, "error": {"code": "INVALID_INPUT", ...}}`) and exits with the user-error code. (`target`)
-- [x] A dispatched behavior's user/input failure exits with the user-error code and an unexpected failure exits with the internal-error code. (`target`)
+- [ ] A dispatched behavior's user/input failure exits with the user-error code and an unexpected failure exits with the internal-error code. (`target`) — depends on a dispatched command feature's own behavior; not independently verifiable while those features remain `[ ]`
 - [x] No command behavior is redefined in this feature; each dispatched behavior is referenced by its canonical ID. (`target`)
 - [x] The command surface is part of `cpt-frontx-interface-cli`; an incompatible change to it requires a major version bump per `cpt-frontx-adr-artifact-versioning-and-distribution`. (`target`)
-- [x] The command surface dispatched matches DESIGN §3.2 "CLI": `install`, `register`, `unregister`, `list`, `validate` (including `validate --project`), `assemble`, `apply`, `seed`, `delete`, `upgrade`, `ownership add|remove|list`. (`target`)
-- [x] `seed` dispatches to `cpt-frontx-flow-cli-scaffolding-seed-repository` — registering the batch's official default templates before applying it, only against a new or empty project — never to a second materialization path alongside `apply`. (`target`)
+- [ ] The command surface dispatched matches DESIGN §3.2 "CLI": `install`, `register`, `unregister`, `list`, `validate` (including `validate --project`), `assemble`, `apply`, `seed`, `delete`, `upgrade`, `ownership add|remove|list`. (`target`) — the surface named here matches DESIGN, but `register`/`unregister`/`ownership *`/`assemble`/`apply`/`seed`/`delete`/`upgrade` dispatch to command-owning features that are themselves `[ ]`; this AC does not assert those commands are ready, only that this feature's own dispatch table is complete
+- [ ] `seed` dispatches to `cpt-frontx-flow-cli-scaffolding-seed-repository` — registering the batch's official default templates before applying it, only against a new or empty project — never to a second materialization path alongside `apply`. (`target`) — `cpt-frontx-feature-cli-scaffolding` is `[ ]`
 - [x] Every code this feature's own dispatcher-level refusals emit (`INVALID_INPUT`) is drawn from the shared error-code vocabulary; this feature invents no code of its own. (`target`)
 - [x] Invoking any dispatched command with `--json` renders that command's outcome as the single uniform envelope value on stdout, with no other content on that stream. (`target`)
 - [x] No dispatched command reads from stdin or blocks on an interactive prompt while `--json` is active; a destructive operation's confirmation is rendered as `{"ok": false, "error": {"code": "CONFIRMATION_REQUIRED", ...}}` instead. (`target`)
 - [x] An `ok: false` envelope in `--json` mode, including `CONFIRMATION_REQUIRED`, maps to the same user-error exit code as any other user/input failure. (`target`)
+- [ ] `cfs --json validate --artifact packages/cli/architecture/features/cli-invocation/FEATURE.md --skip-code` returns PASS.
+- [ ] `cfs --json validate-toc packages/cli/architecture/features/cli-invocation/FEATURE.md` returns PASS.

@@ -56,6 +56,8 @@ The **description** field is **required and non-empty**: unlike the retired five
 
 **Principles**: none owned by this feature
 
+**Applicability** (Often-N/A domains for a CLI Command feature, per the FEATURE checklist's Applicability Context): PERF, OPS (observability), and COMPL are not applicable — pre-publish validation owns no scale NFR, introduces no logging/metrics/tracing surface, and carries no regulatory scope. SEC is partially addressed rather than N/A: content self-containment validation (`cpt-frontx-algo-template-manifest-validate-content-self-containment`) is itself a path-traversal-adjacent control, rejecting a template whose own content would escape its own directory; this feature otherwise enforces no authentication or authorization boundary. UX is addressed by the violations list reported to the template developer (§2).
+
 ### 1.3 Actors
 
 | Actor | Role in Feature |
@@ -253,3 +255,5 @@ The system **MUST** ensure the CLI pre-publish validate command additionally rej
 - [ ] A conforming manifest declaring exactly the four fields (`name`, `version`, `ownership.excludedSubtrees`, `description`) causes a PASS result and a zero exit code.
 - [x] The same manifest shape checked at pre-publish validation is consumed at install, register, apply, and assembly - no command reads a different or partial descriptor.
 - [x] The manifest shape is versioned so that previously published manifests remain readable when the contract evolves - a manifest published under the retired five-category shape is read only through an isolated migration path that produces the current four-field shape, per `cpt-frontx-adr-thin-template-manifest`.
+- [ ] `cfs --json validate --artifact packages/cli/architecture/features/template-manifest/FEATURE.md --skip-code` returns PASS.
+- [ ] `cfs --json validate-toc packages/cli/architecture/features/template-manifest/FEATURE.md` returns PASS.

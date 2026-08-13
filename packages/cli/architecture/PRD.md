@@ -49,9 +49,9 @@ Templates define what a project becomes, and they are authored independently of 
 
 ### 1.3 Goals (Business Outcomes)
 
-- **Single-operation scaffold** — a repository is assembled from a template through one contracted apply operation. Target: 100% of successful scaffold operations use one contracted apply operation; Timeframe: first platform release.
-- **Reviewable, approval-gated upgrades** — every upgrade of an applied template is a reviewable change set approved before it touches repository files. Target: 100% of upgrades review-gated before repository file writes; Timeframe: first platform release for the review-and-approval gate itself. The file-level change-set representation and diff mechanics that produce what a developer reviews are an open question left to a dedicated future decision (CLI DESIGN §4) and are not asserted as delivered within this timeframe.
-- **Conflicts refused, never merged** — no assembly writes a file two templates both claim. Target: zero silently merged ownership conflicts; Timeframe: first platform release.
+- **Single-operation scaffold** — a repository is assembled from a template through one contracted apply operation. Baseline: not yet measured (new product); Target: 100% of successful scaffold operations use one contracted apply operation; Timeframe: first platform release.
+- **Reviewable, approval-gated upgrades** — every upgrade of an applied template is a reviewable change set approved before it touches repository files. Baseline: not yet measured (new product); Target: 100% of upgrades review-gated before repository file writes; Timeframe: first platform release for the review-and-approval gate itself. The file-level change-set representation and diff mechanics that produce what a developer reviews are an open question left to a dedicated future decision (CLI DESIGN §4) and are not asserted as delivered within this timeframe.
+- **Conflicts refused, never merged** — no assembly writes a file two templates both claim. Baseline: not yet measured (new product); Target: zero silently merged ownership conflicts; Timeframe: first platform release.
 
 ### 1.4 Glossary
 
@@ -76,25 +76,17 @@ This PRD uses the root PRD's shared vocabulary ([root PRD §1.4](../../../archit
 
 #### Template Developer
 
-**ID**: `cpt-frontx-cli-actor-template-developer`
-
-**Role**: Authors, versions, validates, and publishes templates. Uses the CLI for pre-publish validation and local template management. The root PRD's Template Developer (`cpt-frontx-actor-template-developer`) at the CLI surface.
-**Needs**: Pre-publish validation against the publication contract; a way to declare ownership boundaries; deterministic versioned publication.
+The root PRD's Template Developer (`cpt-frontx-actor-template-developer`) at the CLI surface. **Role**: Authors, versions, validates, and publishes templates. Uses the CLI for pre-publish validation and local template management. **Needs**: Pre-publish validation against the publication contract; a way to declare ownership boundaries; deterministic versioned publication. Every FR, use case, and acceptance criterion below cites the root-level ID directly; no package-scoped actor identity is declared for this actor.
 
 #### Project Developer
 
-**ID**: `cpt-frontx-cli-actor-project-developer`
-
-**Role**: Assembles repositories from templates and keeps them current. Uses the CLI to install, register, seed, add, assemble, upgrade, and delete. The root PRD's Project Developer (`cpt-frontx-actor-project-developer`) at the CLI surface.
-**Needs**: Reproducible registration and assembly; per-template upgrades that are reviewable before they apply; refusal instead of corruption when templates conflict; a way to manage project-owned exceptions and delete safely with confirmation.
+The root PRD's Project Developer (`cpt-frontx-actor-project-developer`) at the CLI surface. **Role**: Assembles repositories from templates and keeps them current. Uses the CLI to install, register, seed, add, assemble, upgrade, and delete. **Needs**: Reproducible registration and assembly; per-template upgrades that are reviewable before they apply; refusal instead of corruption when templates conflict; a way to manage project-owned exceptions and delete safely with confirmation. Every FR, use case, and acceptance criterion below cites the root-level ID directly; no package-scoped actor identity is declared for this actor.
 
 ### 2.2 System Actors
 
 #### Source Registry
 
-**ID**: `cpt-frontx-cli-actor-source-registry`
-
-**Role**: Hosts published templates, fetched by versioned source-spec at install and upgrade time. The root PRD's GitHub actor (`cpt-frontx-actor-github`).
+The root PRD's GitHub actor (`cpt-frontx-actor-github`) at the CLI surface. **Role**: Hosts published templates, fetched by versioned source-spec at install and upgrade time. Every FR and use case below cites the root-level ID directly; no package-scoped actor identity is declared for this actor.
 
 ## 3. Operational Concept & Environment
 
@@ -357,6 +349,15 @@ The system **MUST** support both first-time learning and expert use through its 
 
 The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationalization, inclusivity, regulatory compliance) apply here for the same reasons stated there.
 
+- **Authentication Requirements** (SEC-PRD-001): Not applicable — the CLI is a local command-line tool with no login surface; it acts under the invoking developer's own OS-level filesystem and network permissions.
+- **Data Classification** (SEC-PRD-003): Not applicable — the CLI's persisted state (`cpt-frontx-contract-project-provenance`) holds only template identity, origin, version, and target paths; it processes no PII or other sensitive data.
+- **Audit Requirements** (SEC-PRD-004): Addressed implicitly — every state mutation is committed to the Git-tracked project state file, so a repository's own Git history is the audit trail of every registration, apply, upgrade, and delete; no separate audit-logging facility is required.
+- **Availability Requirements** (REL-PRD-001): Not applicable — the CLI is a locally invoked, on-demand command-line tool with no hosted service and no uptime target of its own.
+- **Data Lifecycle** (DATA-PRD-003): Addressed — a template's project-state entry lives exactly as long as it has an applied target (`cpt-frontx-fr-cli-project-state`), and `cpt-frontx-fr-cli-template-delete` purges that entry deterministically on removal; no retention question extends past the lifetime the repository's own state file already governs.
+- **Deployment Requirements** (OPS-PRD-001): Not applicable — the CLI has no deployment environment or rollback of its own; its distribution is a package publish through the package registry, governed by the root NFR `cpt-frontx-nfr-evolvability`.
+- **Monitoring Requirements** (OPS-PRD-002): Not applicable — the CLI runs as a short-lived local command with no running service to monitor; failure discoverability is covered instead by `cpt-frontx-cli-nfr-discoverability`.
+- **Support Requirements** (MAINT-PRD-002): Not applicable — as internal developer tooling operated by the team that builds it, there is no external support tier or SLA; `cpt-frontx-cli-nfr-discoverability` covers self-service diagnosis.
+
 ## 7. Public Library Interfaces
 
 ### 7.1 Public API Surface
@@ -574,6 +575,10 @@ This package owns repository-lifecycle contracts for templates. The contracts be
 
 - Templates and their bundled AI extensions are versioned together as stated in [root PRD §11](../../../architecture/PRD.md#11-assumptions).
 - Semantic versioning remains the version discipline for templates and their references.
+
+**Open Questions**:
+
+- **File-level upgrade mechanics.** The file-level changeset representation, diff/three-way-merge algorithm, and restore mechanism that carry out `cpt-frontx-fr-cli-project-upgrade-changeset`, `cpt-frontx-fr-cli-upgrade-review-approval`, and `cpt-frontx-fr-cli-upgrade-restore` at the file level are undecided (CLI DESIGN §4). Owner: the dedicated future ADR that decision is deferred to — not yet assigned to an individual, tracked as the next architectural decision in this area. Milestone: resolved before upgrade implementation begins.
 
 ## 12. Risks
 

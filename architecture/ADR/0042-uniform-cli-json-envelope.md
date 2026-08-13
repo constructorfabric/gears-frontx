@@ -108,7 +108,17 @@ Each command emits a stream of newline-delimited JSON events — progress, diagn
 
 This decision generalizes and replaces the command-specific listing envelope that `cpt-frontx-feature-template-resolution` currently fixes in its own §1.5 (`{"ok": true, "templates": [...]}`, with no error variant and no code) and the unfixed "one-line result convention" its text attributes to the upgrade command; when that FEATURE's registration and listing surface is next revised, its machine-readable section is to be brought into conformance with this contract rather than continuing to fix its own bespoke shape. This decision fixes the envelope's structure, its two-way discriminant, that failure codes are drawn from one shared, stable vocabulary, and the non-interactive confirmation protocol for destructive operations; it does not fix any one command's `data` payload fields, which remain owned by that command's FEATURE per `cpt-frontx-adr-contract-schema-ownership`, nor does it fix the deferred `--jsonl` streaming mode's shape, left to a future decision if that need materializes.
 
-Applicability of the remaining checklist categories: **PERF** — Not applicable, because emitting one JSON object binds no latency or throughput budget beyond the command's own work. **SEC** — Not applicable, because the envelope carries operation results and paths, not secret material. **REL** — Not applicable, because there is no service-availability target for a local CLI invocation. **DATA** — Not applicable as a complete schema, because each command's `data` payload is owned by that command's FEATURE; this decision fixes only the envelope's outer shape and the shared code vocabulary. **INT** — addressed directly: this is the cross-boundary contract an external AI orchestrator or any scripted caller integrates against for every command, uniformly. **OPS** — Not applicable, because no operational procedure attaches to a command's output format. **MAINT** — addressed: one shared envelope and one shared code vocabulary keep new commands from each inventing their own machine-readable shape. **UX** — addressed directly: the human-readable mode renders the same result as text, so a person and an agent never see disagreeing accounts of the same operation. **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+Applicability of the remaining checklist categories:
+
+* **PERF** — Not applicable, because emitting one JSON object binds no latency or throughput budget beyond the command's own work.
+* **SEC** — Not applicable, because the envelope carries operation results and paths, not secret material.
+* **REL** — Not applicable, because there is no service-availability target for a local CLI invocation.
+* **DATA** — Not applicable as a complete schema, because each command's `data` payload is owned by that command's FEATURE; this decision fixes only the envelope's outer shape and the shared code vocabulary.
+* **INT** — addressed directly: this is the cross-boundary contract an external AI orchestrator or any scripted caller integrates against for every command, uniformly.
+* **OPS** — Not applicable, because no operational procedure attaches to a command's output format.
+* **MAINT** — addressed: one shared envelope and one shared code vocabulary keep new commands from each inventing their own machine-readable shape.
+* **UX** — addressed directly: the human-readable mode renders the same result as text, so a person and an agent never see disagreeing accounts of the same operation.
+* **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
 ## Traceability
 
