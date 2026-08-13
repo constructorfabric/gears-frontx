@@ -1,5 +1,3 @@
-// @vitest-environment node
-
 /**
  * Tests for the rule that keeps a template's own example and scaffold MFE
  * packages out of the running application (constructorfabric/gears-frontx#550).
@@ -29,7 +27,12 @@ import {
   templateExamplesIncluded,
 } from '../scripts/lib/mfe-tools';
 import { ManifestGenerator } from '../scripts/generate-mfe-manifests';
-import { discoverMfeProjects } from '../scripts/run-mfe-type-checks';
+import {
+  discoverMfeProjects,
+  refuseMissingTypeCheckScript,
+  runParallel,
+  runSequential,
+} from '../scripts/run-mfe-type-checks';
 
 const MFE_MANIFEST_PATH = 'dist/mfe-manifest.json';
 
@@ -161,13 +164,21 @@ describe('isTemplateExamplePackage', () => {
 });
 
 describe('templateExamplesIncluded', () => {
-  it('includes example packages for either accepted spelling of the variable', () => {
+  it('includes example packages when the variable is exactly 1', () => {
     expect(templateExamplesIncluded({ [TEMPLATE_EXAMPLES_ENV_VAR]: '1' })).toBe(true);
-    expect(templateExamplesIncluded({ [TEMPLATE_EXAMPLES_ENV_VAR]: 'TRUE' })).toBe(true);
   });
 
-  it('excludes example packages when the variable is unset or carries any other value', () => {
+  it('excludes example packages when the variable is unset', () => {
     expect(templateExamplesIncluded({})).toBe(false);
+  });
+
+  // One spelling, so a surface documenting `=true` would be documenting an
+  // opt-in that does not happen.
+  it('excludes example packages for a truthy spelling that is not 1', () => {
+    expect(templateExamplesIncluded({ [TEMPLATE_EXAMPLES_ENV_VAR]: 'true' })).toBe(false);
+  });
+
+  it('excludes example packages for an unrelated value', () => {
     expect(templateExamplesIncluded({ [TEMPLATE_EXAMPLES_ENV_VAR]: '0' })).toBe(false);
   });
 });
@@ -246,16 +257,15 @@ describe('discoverMfeProjects - what type-check:mfe spawns a child for', () => {
     expect(skippedExamples).toEqual(['_blank-mfe']);
   });
 
-  // `shared` declares no `type-check` script, so before this scanner applied the
-  // same non-package rule its siblings do, a tree holding one failed the whole
-  // run as a package missing its script.
+  // `shared` declares no `type-check` script, which the scan refuses a run over
+  // for a real package, so the non-package rule has to exclude it first.
   it('leaves the shared library and dot-directories out without reporting them', async () => {
     mfePackage('tasks-mfe', { templateExample: false, port: 3010 });
 
     // `shared` is a real workspace package, so it carries a `package.json`; what
     // it does not carry is a `type-check` script. That is the shape that reaches
-    // the hard failure, and a bare directory would not - it falls out at the
-    // manifest read whether the non-package rule ran or not.
+    // the hard failure. A bare directory would not: it falls out at the manifest
+    // read regardless, and so pins nothing.
     const shared = join(mfePackagesDir, 'shared');
     mkdirSync(shared, { recursive: true });
     writeFileSync(
@@ -352,5 +362,99 @@ describe('the non-package rule, across all three scanners', () => {
 
   it('keeps them out of the aggregate the host registers from', () => {
     expect(generatedManifestIds()).toEqual(['tasks-mfe.manifest']);
+  });
+});
+
+/**
+ * The orchestrators against a stand-in for the child process, which is what
+ * `runTypeCheck`'s injection seam exists for: the behaviour worth pinning is
+ * which packages get attempted and which failures survive to the report, and
+ * spawning real npm children would test tsc instead.
+ */
+describe('type-check orchestration', () => {
+  const project = (name: string): { name: string; cwd: string } => ({
+    name,
+    cwd: join(mfePackagesDir, name),
+  });
+
+  /** A stand-in that fails the named packages and records what it was asked to run. */
+  function checkerFailing(failing: readonly string[]): {
+    checkProject: (p: { name: string; cwd: string }) => Promise<
+      | { ok: true; output: string }
+      | { ok: false; reason: { kind: 'nonzero-exit'; exitCode: number | null }; output: string }
+    >;
+    attempted: string[];
+  } {
+    const attempted: string[] = [];
+    return {
+      attempted,
+      checkProject: (p) => {
+        attempted.push(p.name);
+        return Promise.resolve(
+          failing.includes(p.name)
+            ? { ok: false as const, reason: { kind: 'nonzero-exit' as const, exitCode: 2 }, output: '' }
+            : { ok: true as const, output: '' },
+        );
+      },
+    };
+  }
+
+  // The headline of this branch's runner change: awaiting each child directly
+  // ended the loop at the first red package and left every later one unchecked,
+  // so one broken MFE hid the state of all its siblings.
+  it('sequential: checks every package and reports all the red ones', async () => {
+    const { checkProject, attempted } = checkerFailing(['b-mfe', 'd-mfe']);
+
+    const failures = await runSequential([project('a-mfe'), project('b-mfe'), project('c-mfe'), project('d-mfe')], {
+      timeoutMs: 0,
+      checkProject,
+    });
+
+    expect(attempted).toEqual(['a-mfe', 'b-mfe', 'c-mfe', 'd-mfe']);
+    expect(failures).toEqual([
+      { name: 'b-mfe', reason: { kind: 'nonzero-exit', exitCode: 2 } },
+      { name: 'd-mfe', reason: { kind: 'nonzero-exit', exitCode: 2 } },
+    ]);
+  });
+
+  it('parallel: reports all the red ones too, on the same failure shape', async () => {
+    const { checkProject, attempted } = checkerFailing(['b-mfe']);
+
+    const failures = await runParallel([project('a-mfe'), project('b-mfe')], {
+      timeoutMs: 0,
+      checkProject,
+    });
+
+    expect(attempted).toEqual(['a-mfe', 'b-mfe']);
+    expect(failures).toEqual([{ name: 'b-mfe', reason: { kind: 'nonzero-exit', exitCode: 2 } }]);
+  });
+
+  it('reports a timeout as its own reason rather than as an exit code', async () => {
+    const failures = await runSequential([project('slow-mfe')], {
+      timeoutMs: 100,
+      checkProject: () =>
+        Promise.resolve({
+          ok: false as const,
+          reason: { kind: 'timeout' as const, timeoutMs: 100 },
+          output: '',
+        }),
+    });
+
+    expect(failures).toEqual([{ name: 'slow-mfe', reason: { kind: 'timeout', timeoutMs: 100 } }]);
+  });
+});
+
+describe('refuseMissingTypeCheckScript', () => {
+  // A package present in the tree and silently unchecked is the state this
+  // script exists to make impossible, so a missing script stops the run rather
+  // than dropping the package from it.
+  it('refuses the run and names every package missing the script', () => {
+    expect(() => refuseMissingTypeCheckScript(['tasks-mfe', 'login-mfe'])).toThrow(
+      /tasks-mfe, login-mfe/,
+    );
+  });
+
+  it('returns quietly when every package declares one', () => {
+    expect(() => refuseMissingTypeCheckScript([])).not.toThrow();
   });
 });

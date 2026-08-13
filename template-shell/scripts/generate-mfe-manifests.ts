@@ -39,7 +39,7 @@
  * in the enriched mfe-manifest.json (set by the build plugin from mf-manifest.json).
  */
 
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -456,14 +456,34 @@ function parseArgs(argv: string[]): { baseUrl: string | null } {
 
 const MFE_MANIFEST_PATH = 'dist/mfe-manifest.json';
 
+/**
+ * A path with symlinks resolved, or the path itself when it cannot be resolved.
+ *
+ * Node resolves the main module to its realpath, so a comparison against
+ * `import.meta.url` has to resolve both sides or a symlinked checkout leaves the
+ * two spellings different. `realpathSync` throws when the path does not exist,
+ * which is not a reason to fail: fall back to the input and let the comparison
+ * decide.
+ */
+function realPathOrSelf(target: string): string {
+  try {
+    return realpathSync(target);
+  } catch {
+    return target;
+  }
+}
+
 // Generating is what running this file does, and only running it: a test that
 // imports `ManifestGenerator` must not also rewrite the real project's
 // `public/generated-mfe-manifests.json` as a side effect of the import. The
-// comparison is against the resolved path of the file node was told to run, so
-// it holds under `tsx scripts/generate-mfe-manifests.ts` as well as under node.
+// comparison is against the real path of the file node was told to run, so it
+// holds under `tsx scripts/generate-mfe-manifests.ts` as well as under node, and
+// on a symlinked checkout - where comparing unresolved paths would make this
+// script exit 0 having generated nothing.
 const invokedPath = process.argv[1];
 const isProcessEntryPoint =
-  invokedPath !== undefined && resolve(invokedPath) === fileURLToPath(import.meta.url);
+  invokedPath !== undefined &&
+  realPathOrSelf(resolve(invokedPath)) === realPathOrSelf(fileURLToPath(import.meta.url));
 
 if (isProcessEntryPoint) {
   const { baseUrl } = parseArgs(process.argv.slice(2));

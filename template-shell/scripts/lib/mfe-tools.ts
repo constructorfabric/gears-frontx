@@ -93,29 +93,40 @@ export function isTemplateExamplePackage(packagePath: string): boolean {
 
 /**
  * Whether discovery includes packages that declare themselves template example
- * content. `1` and `true` (any casing) are the accepted spellings; an unset or
- * unrelated value leaves the product's own packages as the whole discovered set.
+ * content. Exactly `1` opts in; anything else, set or unset, leaves the
+ * product's own packages as the whole discovered set.
+ *
+ * One spelling on purpose. `FRONTX_CLI_FORCE_MAIN === '1'` is the ecosystem's
+ * only precedent for an opt-in flag, and a second accepted spelling has to be
+ * repeated on every surface that documents the flag - where the cost of one of
+ * them drifting is a developer who believes examples are included and reads an
+ * empty menu as a bug.
  *
  * @param env - Environment to read; defaults to the process environment
  */
 export function templateExamplesIncluded(env: NodeJS.ProcessEnv = process.env): boolean {
-  const value = env[TEMPLATE_EXAMPLES_ENV_VAR];
-  return value === '1' || value?.toLowerCase() === 'true';
+  return env[TEMPLATE_EXAMPLES_ENV_VAR] === '1';
 }
 
 /**
  * Human-readable line naming the example packages discovery left out and the
  * variable that puts them back.
  *
- * Printed once per flow, by whichever surface that flow actually passes
- * through. For anything that builds or serves MFEs that is manifest generation,
- * which every one of those flows ends in (`dev`, `build`, and `dev:all`'s own
- * generate step); printing it from the package scan as well would say the same
- * thing twice in one `dev:all` run, once from the orchestrator and once from the
- * generator it spawns. `type-check` generates no manifest - it chains
- * `:package`, `:package:test`, `:app`, `:packages` and `:mfe` - so
- * `run-mfe-type-checks.ts` prints it there, the only surface in that flow that
- * could.
+ * Printed once per process, by each surface that decides to leave a package out:
+ * manifest generation for the flows that build or serve, and
+ * `run-mfe-type-checks.ts` for `type-check`, which generates no manifest (it
+ * chains `:package`, `:package:test`, `:app`, `:packages` and `:mfe`) and so has
+ * no other surface that could report it.
+ *
+ * Not once per npm script. `npm run build` runs `build:mfes` and then
+ * `generate:mfe-manifests` as separate processes, so a project whose every
+ * package is flagged sees the same four names twice - once as
+ * `noDiscoveredPackagesNotice` from the build orchestrator, once from the
+ * generator. Deduplicating across processes would mean passing state between
+ * them, which is more machinery than a repeated informational line is worth. The
+ * one repeat worth removing was inside a single process, where `dev:all` printed
+ * from its own scan and again from the generator it spawns; that is why the
+ * package scan returns the skipped names instead of printing them.
  */
 export function templateExamplesSkippedNotice(skipped: readonly string[]): string {
   return (

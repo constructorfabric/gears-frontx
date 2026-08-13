@@ -19,13 +19,13 @@
  */
 
 import { spawn } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import {
-  MFE_PACKAGES_DIR,
   TEMPLATE_EXAMPLES_ENV_VAR,
   isNonPackageDirectory,
   isTemplateExamplePackage,
@@ -36,11 +36,50 @@ import {
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
+/**
+ * The packages root, resolved from this file's location rather than the working
+ * directory.
+ *
+ * `npm run type-check:mfe` always runs from the package root, so both spellings
+ * agree there. Invoked from anywhere else - a nested package, a CI step that
+ * forgot to `cd`, an editor task - a working-directory default finds no
+ * `src-app/mfe_packages`, reports "no MFE packages" and exits 0. That is the
+ * silent pass this script exists to prevent, so the default cannot be the thing
+ * that produces it.
+ */
+const defaultMfeRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'src-app/mfe_packages',
+);
+
+/**
+ * A path with symlinks resolved, or the path itself when it cannot be resolved.
+ *
+ * Node resolves the main module to its realpath, so a comparison against
+ * `import.meta.url` has to resolve both sides or a symlinked checkout leaves the
+ * two spellings different. `realpathSync` throws when the path does not exist,
+ * which is not a reason to fail: fall back to the input and let the comparison
+ * decide.
+ */
+function realPathOrSelf(target: string): string {
+  try {
+    return realpathSync(target);
+  } catch {
+    return target;
+  }
+}
+
 // Per-MFE type-check timeout. Type-checking rarely takes more than a couple
 // of minutes; 15m is a generous ceiling that still catches a genuinely hung
 // child without surprising an intentionally slow run. Overridable via
 // `--timeout=<ms>` on the CLI; 0 disables.
 const defaultTypeCheckTimeoutMs = 15 * 60 * 1000;
+
+// How long a timed-out child gets to honour SIGTERM before it is sent SIGKILL.
+// Interpolated into the usage text and the doc block on `runTypeCheck` rather
+// than restated in either, so what a reader is told matches what runs.
+const sigkillGraceMs = 5_000;
 
 interface CliOptions {
   parallel: boolean;
@@ -78,7 +117,7 @@ Options:
                  saves wall-clock time.
   --timeout=<ms> Per-child timeout in milliseconds. Default ${defaultTypeCheckTimeoutMs}
                  (15 minutes); 0 disables. On timeout the child is sent
-                 SIGTERM, then SIGKILL after a 5 s grace period.
+                 SIGTERM, then SIGKILL after ${sigkillGraceMs}ms.
   -h, --help     Print this message.
 
 Environment:
@@ -155,14 +194,12 @@ function parseTimeoutValue(raw: string): number {
  * entry at the foot of this file guards on being the process entry point, so
  * importing this spawns nothing.
  *
- * @param mfeRoot - Directory to scan. Defaults to the shared `MFE_PACKAGES_DIR`,
- *   so this script resolves the tree from the working directory exactly as
- *   `build-mfes`, `dev-all` and `generate:mfe-manifests` do rather than from its
- *   own file location; tests pass it explicitly, because they cannot move the
- *   working directory the default was resolved from at import time
+ * @param mfeRoot - Directory to scan. Defaults to `defaultMfeRoot`, resolved from
+ *   this file's location; tests pass it explicitly, since the default is fixed at
+ *   import time and a test cannot move it
  */
 export async function discoverMfeProjects(
-  mfeRoot: string = MFE_PACKAGES_DIR,
+  mfeRoot: string = defaultMfeRoot,
 ): Promise<MfeProjectDiscovery> {
   // Only an absent directory means "no MFE packages": a shell-only seed has no
   // `src-app/mfe_packages/` until a template overlay adds one. Every other
@@ -185,9 +222,11 @@ export async function discoverMfeProjects(
     }
 
     // `shared` and dot-directories are not MFE packages, on the same shared
-    // predicate `getMFEPackages` applies. Without this, `shared` reached the
-    // `type-check`-script lookup below and a library that declares none would
-    // fail the whole run as a package missing its script.
+    // predicate the other two scanners apply. It runs ahead of the
+    // `type-check`-script lookup below, which refuses the whole run for a
+    // package that declares no such script: `shared` is a library and declares
+    // none, so reaching that check would refuse a run over a directory that was
+    // never a package.
     if (isNonPackageDirectory(entry.name)) {
       continue;
     }
@@ -252,21 +291,41 @@ function declaresTypeCheckScript(packageJson: unknown): boolean {
 }
 
 /**
- * A failed type-check, carrying the child's buffered output.
+ * Why one package's type-check did not pass. Closed, so the reporter's `switch`
+ * has to account for every case a child can end in.
  *
- * Only a buffered (parallel) run has output to carry: a sequential child
- * inherits stdio, so everything it printed is already on the terminal. Making
- * the carrier a named error type rather than a field bolted onto `Error` is
- * what lets the parallel orchestrator recover the output with an `instanceof`
- * check instead of trusting a shape.
+ * `spawn-failed` is its own case rather than an exit code because a child that
+ * never started says nothing about the package's types - only that npm could not
+ * be run - and a reader deserves to be told which of the two happened.
  */
-class TypeCheckFailure extends Error {
-  readonly output: string;
+type TypeCheckFailureReason =
+  | { kind: 'timeout'; timeoutMs: number }
+  | { kind: 'nonzero-exit'; exitCode: number | null }
+  | { kind: 'spawn-failed'; message: string };
 
-  constructor(message: string, output: string) {
-    super(message);
-    this.name = 'TypeCheckFailure';
-    this.output = output;
+/**
+ * What one child's type-check came to.
+ *
+ * A failed check is an outcome this script is built to react to - collect it,
+ * print it, carry on to the next package - so it comes back as a value with a
+ * closed reason rather than as a rejection. That is what keeps the reason
+ * machine-readable: a caller asking "did this time out" reads `kind` instead of
+ * matching prose in a message, and the reporter formats the reason in one place
+ * rather than reconstructing it.
+ */
+type TypeCheckOutcome =
+  | { ok: true; output: string }
+  | { ok: false; reason: TypeCheckFailureReason; output: string };
+
+/** The one place a failure reason becomes prose. */
+function describeFailureReason(reason: TypeCheckFailureReason): string {
+  switch (reason.kind) {
+    case 'timeout':
+      return `timed out after ${reason.timeoutMs}ms`;
+    case 'nonzero-exit':
+      return `exit code ${reason.exitCode ?? 'unknown'}`;
+    case 'spawn-failed':
+      return `could not start ${npmCommand} (${reason.message})`;
   }
 }
 
@@ -279,14 +338,18 @@ class TypeCheckFailure extends Error {
  * produce interleaved output that's impossible to read.
  *
  * A positive `timeoutMs` guards against a hung child: the process is sent
- * SIGTERM first, then SIGKILL after a 5 s grace window if it's still alive.
- * Passing `0` disables the timeout entirely.
+ * SIGTERM first, then SIGKILL after a `sigkillGraceMs` grace window if it is
+ * still alive. Passing `0` disables the timeout entirely.
+ *
+ * Exported as the seam the orchestrators are tested against: injecting a stand-in
+ * for this is what lets the collect-every-failure behaviour be exercised without
+ * spawning npm.
  */
-function runTypeCheck(
+export function runTypeCheck(
   project: MfeProject,
   { buffered, timeoutMs }: { buffered: boolean; timeoutMs: number },
-): Promise<{ output: string }> {
-  return new Promise((resolve, reject) => {
+): Promise<TypeCheckOutcome> {
+  return new Promise((resolve) => {
     const child = spawn(npmCommand, ['run', 'type-check'], {
       cwd: project.cwd,
       stdio: buffered ? ['ignore', 'pipe', 'pipe'] : 'inherit',
@@ -322,7 +385,7 @@ function runTypeCheck(
           if (child.exitCode === null) {
             child.kill('SIGKILL');
           }
-        }, 5_000);
+        }, sigkillGraceMs);
         killTimer.unref();
       }, timeoutMs);
       timer.unref();
@@ -330,34 +393,57 @@ function runTypeCheck(
 
     child.on('error', (err) => {
       clearTimers();
-      reject(err);
+      resolve({ ok: false, reason: { kind: 'spawn-failed', message: err.message }, output: '' });
     });
     child.on('exit', (code) => {
       clearTimers();
       const output = buffered ? Buffer.concat(chunks).toString('utf8') : '';
 
       if (code === 0 && !timedOut) {
-        resolve({ output });
+        resolve({ ok: true, output });
         return;
       }
 
-      const reason = timedOut
-        ? `timed out after ${timeoutMs}ms`
-        : `exit code ${code ?? 'unknown'}`;
-      reject(
-        new TypeCheckFailure(
-          `Type-check failed for ${project.name} (${reason}).`,
-          output,
-        ),
-      );
+      resolve({
+        ok: false,
+        reason: timedOut ? { kind: 'timeout', timeoutMs } : { kind: 'nonzero-exit', exitCode: code },
+        output,
+      });
     });
   });
 }
 
-/** One package's failure, with whatever the rejection carried as its reason. */
-interface TypeCheckFailureReport {
+/** What an orchestrator needs of `runTypeCheck`, so a test can stand in for it. */
+type CheckProject = (
+  project: MfeProject,
+  options: { buffered: boolean; timeoutMs: number },
+) => Promise<TypeCheckOutcome>;
+
+/** One package's failure, with a reason a caller can branch on. */
+export interface TypeCheckFailureReport {
   name: string;
-  reason: unknown;
+  reason: TypeCheckFailureReason;
+}
+
+/**
+ * Refuse the whole run when any discovered package declares no `type-check`
+ * script.
+ *
+ * A hard refusal rather than a skip: a package present in the tree and silently
+ * unchecked is the state this script exists to make impossible, and a missing
+ * script is a mistake in the package rather than something a run can route
+ * around. Example packages never reach here - the flag filter runs ahead of the
+ * script lookup, so a scaffold that declares none cannot refuse a run that was
+ * never going to check it.
+ */
+export function refuseMissingTypeCheckScript(missingTypeCheckScript: readonly string[]): void {
+  if (missingTypeCheckScript.length === 0) {
+    return;
+  }
+
+  throw new Error(
+    `Missing \`type-check\` script in MFE package(s): ${missingTypeCheckScript.join(', ')}.`,
+  );
 }
 
 /**
@@ -367,17 +453,13 @@ interface TypeCheckFailureReport {
  * a multi-package run has scrolled far past the first failure, and a timeout
  * has to stay distinguishable from a type error.
  */
-function throwOnFailures(failures: TypeCheckFailureReport[]): void {
+export function throwOnFailures(failures: TypeCheckFailureReport[]): void {
   if (failures.length === 0) {
     return;
   }
 
   const detail = failures
-    .map((failure) => {
-      const reason =
-        failure.reason instanceof Error ? failure.reason.message : String(failure.reason);
-      return `  - ${failure.name}: ${reason}`;
-    })
+    .map((failure) => `  - ${failure.name}: ${describeFailureReason(failure.reason)}`)
     .join('\n');
 
   throw new Error(
@@ -394,56 +476,48 @@ function throwOnFailures(failures: TypeCheckFailureReport[]): void {
  * the state of all its siblings and turn one fix-and-rerun cycle into as many
  * cycles as there are broken packages.
  */
-async function runSequential(
+export async function runSequential(
   projects: MfeProject[],
-  { timeoutMs }: { timeoutMs: number },
+  { timeoutMs, checkProject = runTypeCheck }: { timeoutMs: number; checkProject?: CheckProject },
 ): Promise<TypeCheckFailureReport[]> {
   const failures: TypeCheckFailureReport[] = [];
 
   for (const project of projects) {
     console.log(`\n==> Type-checking ${project.name}`);
-    try {
-      await runTypeCheck(project, { buffered: false, timeoutMs });
-    } catch (error) {
-      failures.push({ name: project.name, reason: error });
+    const outcome = await checkProject(project, { buffered: false, timeoutMs });
+    if (!outcome.ok) {
+      failures.push({ name: project.name, reason: outcome.reason });
     }
   }
 
   return failures;
 }
 
-async function runParallel(
+export async function runParallel(
   projects: MfeProject[],
-  { timeoutMs }: { timeoutMs: number },
+  { timeoutMs, checkProject = runTypeCheck }: { timeoutMs: number; checkProject?: CheckProject },
 ): Promise<TypeCheckFailureReport[]> {
   console.log(`\n==> Type-checking ${projects.length} MFE package(s) in parallel`);
 
-  const results = await Promise.allSettled(
-    projects.map((project) => runTypeCheck(project, { buffered: true, timeoutMs })),
+  const outcomes = await Promise.all(
+    projects.map((project) => checkProject(project, { buffered: true, timeoutMs })),
   );
 
   const failures: TypeCheckFailureReport[] = [];
 
-  results.forEach((result, index) => {
+  outcomes.forEach((outcome, index) => {
     const project = projects[index];
     console.log(`\n==> ${project.name}`);
 
-    if (result.status === 'fulfilled') {
-      if (result.value.output) {
-        process.stdout.write(result.value.output);
-      }
-      return;
+    // Buffered output is worth printing either way: a red child's output is the
+    // diagnosis, and a green one's is the record that it ran.
+    if (outcome.output) {
+      process.stdout.write(outcome.output);
     }
 
-    const reason: unknown = result.reason;
-    // A spawn error (`child.on('error')`) rejects with a plain Error and has no
-    // captured output - only a completed-but-red child does.
-    const buffered = reason instanceof TypeCheckFailure ? reason.output : '';
-    if (buffered) {
-      process.stdout.write(buffered);
+    if (!outcome.ok) {
+      failures.push({ name: project.name, reason: outcome.reason });
     }
-
-    failures.push({ name: project.name, reason });
   });
 
   return failures;
@@ -459,11 +533,7 @@ async function main(): Promise<void> {
 
   const { projects, missingTypeCheckScript, skippedExamples } = await discoverMfeProjects();
 
-  if (missingTypeCheckScript.length > 0) {
-    throw new Error(
-      `Missing \`type-check\` script in MFE package(s): ${missingTypeCheckScript.join(', ')}.`,
-    );
-  }
+  refuseMissingTypeCheckScript(missingTypeCheckScript);
 
   if (projects.length === 0) {
     // `noDiscoveredPackagesNotice` already names the skipped examples when they
@@ -496,7 +566,8 @@ async function main(): Promise<void> {
 // `tsx scripts/run-mfe-type-checks.ts` as well as under node.
 const invokedPath = process.argv[1];
 const isProcessEntryPoint =
-  invokedPath !== undefined && path.resolve(invokedPath) === fileURLToPath(import.meta.url);
+  invokedPath !== undefined &&
+  realPathOrSelf(path.resolve(invokedPath)) === realPathOrSelf(fileURLToPath(import.meta.url));
 
 if (isProcessEntryPoint) {
   try {
