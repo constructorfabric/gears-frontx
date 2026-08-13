@@ -28,7 +28,7 @@ three, on one shared predicate per rule rather than a copy each.
   all three as well. It is content a template ships to be read and copied - a
   worked example, or the scaffold new packages are copied from - and a project
   that registered it would offer screens nobody asked for. Setting
-  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES` to `1` or `true` puts those packages back
+  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES` to exactly `1` puts those packages back
   into all three at once, for a run that means to watch the shipped examples
   work. A package copied from a flagged scaffold **must drop the flag**, or the
   copy is invisible to the shell for the same reason the scaffold is; the
@@ -87,8 +87,8 @@ three, on one shared predicate per rule rather than a copy each.
 - `npm run type-check:mfe` (`scripts/run-mfe-type-checks.ts`) type-checks every
   conforming, non-example package independently; it degrades to a no-op when
   none exist. A flagged package is skipped unless
-  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES` is set to `1` or `true`, same as manifest
-  generation and dev/build discovery.
+  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES` is set to `1`, same as manifest generation
+  and dev/build discovery.
 
 ## Non-requirements
 

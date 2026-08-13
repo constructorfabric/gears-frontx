@@ -41,10 +41,9 @@ lands.
 
 Copy the blank scaffold and adjust it — there is no registry file to edit;
 `generate:mfe-manifests` / `dev:all` (shell scripts) discover packages by
-scanning this directory:
-
-Copy it and drop the scaffold's example flag in one go - a copy that keeps the
-flag is invisible to the shell, and nothing fails to tell you so:
+scanning this directory. Copy it and drop the scaffold's example flag in one go,
+since a copy that keeps the flag is invisible to the shell and nothing fails to
+tell you so:
 
 ```bash
 NEW=src-app/mfe_packages/my-mfe
@@ -90,7 +89,7 @@ skips them too. Your application's menu holds the screens you added and
 nothing else.
 
 To run them anyway - to watch a worked example rather than read it - set
-`FRONTX_INCLUDE_TEMPLATE_EXAMPLES` to `1` or `true` for the command:
+`FRONTX_INCLUDE_TEMPLATE_EXAMPLES` to `1` for the command:
 
 ```bash
 FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 npm run dev:all

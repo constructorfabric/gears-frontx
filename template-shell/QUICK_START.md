@@ -123,13 +123,20 @@ isn't there yet, then `npm install` (the workspace glob picks up the new
 packages, so the lock must be regenerated). Start from the blank MFE:
 
 ```bash
-cp -r src-app/mfe_packages/_blank-mfe src-app/mfe_packages/my-mfe
+NEW=src-app/mfe_packages/my-mfe
+cp -r src-app/mfe_packages/_blank-mfe "$NEW"
+node -e 'const f=process.argv[1],fs=require("fs"),m=JSON.parse(fs.readFileSync(f,"utf8"));delete m.templateExample;fs.writeFileSync(f,JSON.stringify(m,null,2)+"\n")' "$NEW/mfe.json"
 ```
 
-Then update its `package.json` name and preview `--port`, and in `mfe.json`
-delete the scaffold's `"templateExample": true` line (see
-`src-app/mfe_packages/README.md` for why) before declaring your entries and
-screen extensions. Expose your lifecycle modules in its `vite.config.ts`.
+The second command strips the scaffold's `"templateExample": true` line, which is
+what would otherwise keep your copy out of the menu (see
+`src-app/mfe_packages/README.md` for why). It belongs to the copy rather than to a
+later step, because a copy that keeps the flag registers nothing and nothing
+fails to say so.
+
+Then update its `package.json` name and preview `--port`, declare your entries
+and screen extensions in `mfe.json`, and expose your lifecycle modules in its
+`vite.config.ts`.
 `dev:all` discovers MFEs automatically by scanning `src-app/mfe_packages/` —
 there is no registry file to edit. See the shell's `mfe-package-contract` AI
 guideline for the exact shape a new package must have.

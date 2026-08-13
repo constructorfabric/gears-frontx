@@ -7,7 +7,7 @@ scaffold to copy for a new MFE), and two widget fixtures (`widgets-fixture-a`,
 
 All four declare `"templateExample": true` and so stay out of the application a
 project builds on this template **by default**;
-`FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` (or `=true`) puts them back. See
+`FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` puts them back. See
 [`src-app/mfe_packages/README.md`](src-app/mfe_packages/README.md), the
 package-level reference for that rule. They cannot be run from this monorepo
 either way: the shell template holds no `src-app/mfe_packages/` of its own, so

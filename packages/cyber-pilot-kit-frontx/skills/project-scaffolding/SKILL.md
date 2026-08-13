@@ -228,11 +228,10 @@ and the flow does not need it to have run. What you need is on disk.
 
 **Realize the units one after another, here.** Finish each unit before starting
 the next, and hand none of them to a background agent to work alongside the
-others. Sequential realization is faster than parallel background agents, not
-merely safer, and the second unit is faster than the first: the conventions the
-first unit settled are still in this session and the second follows them. A
-background agent holds none of that and derives it again from the bundles per
-unit, which costs more than the concurrency returns.
+others. Each unit settles conventions the next one follows, and those conventions
+are in this session; a background agent holds none of them and derives them again
+from the bundles per unit, arriving at its own answers for questions the previous
+unit already closed.
 
 For each unit from step 3.11, in plan order:
 

@@ -357,7 +357,7 @@ jobs:
         # fail as out of sync. Re-installing after an `add` is the documented
         # workflow (template-mfe/README.md).
         npm install
-        # FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 on both steps below, because every
+        # FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 on both commands below, because every
         # MFE package this job composes is one the template ships as an example
         # and therefore declares `"templateExample": true`. Without the opt-in
         # the three package scanners skip all four, `build:mfes` and

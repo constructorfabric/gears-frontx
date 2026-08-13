@@ -65,14 +65,10 @@ export async function loadProjects(repoRoot = defaultRepoRoot) {
  * delegate to.
  *
  * Discovery is best-effort: any failure to read the root — absent, unreadable,
- * not a directory — yields no MFE projects rather than an error. This repository
- * has no `src/mfe_packages` of its own, so the ordinary case is an absent root,
- * and the aggregate run this feeds still has every workspace project to report
- * on. Note that this is a weaker contract than the template's own
- * `run-mfe-type-checks.ts`, which distinguishes an absent directory from an
- * unreadable one because a type-check gate that silently checks nothing would
- * pass; here an empty result costs coverage a caller can still see in the
- * reported project list.
+ * not a directory — yields no MFE projects rather than an error. The ordinary
+ * case is an absent root, since this repository has no `src/mfe_packages` of its
+ * own, and an empty result is visible to the caller in the reported project list
+ * rather than being mistaken for a clean run.
  *
  * @param {{ repoRoot?: string; readdir?: (path: string, options: { withFileTypes: true }) => Promise<DirEntryLike[]> }} [options]
  * @returns {Promise<import('./common.mjs').MfeProject[]>}

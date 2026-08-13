@@ -33,7 +33,6 @@ export interface MenuProps {
   children?: React.ReactNode;
 }
 
-/** Inline code styling for the empty-menu hint below. */
 const hintCodeClass = 'rounded bg-muted px-1.5 py-0.5 font-mono text-xs';
 
 export const Menu: React.FC<MenuProps> = ({ children }) => {
