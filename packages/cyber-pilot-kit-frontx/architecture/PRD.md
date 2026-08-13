@@ -183,7 +183,7 @@ The supported template AI-extension categories are:
 
 When a template is installed in a project, the system **MUST** discover the template's AI extensions and activate allowed extensions for AI agents working in that project, without the developer needing to wire them up manually.
 
-In v1, the project's trust policy for template AI extensions is registration-gated: automatic activation applies only to extensions whose template identity carries a registered, pinned origin in the project's single state document (`cpt-frontx-adr-template-registration-and-origin-pinning`). Activated capabilities **MUST** remain scoped to declared project-visible resources. Denied or untrusted capabilities **MUST NOT** activate. A configurable per-identity deny surface beyond registration-gating is out of scope for v1 (§11 Open Questions).
+In v1, the project's trust policy for template AI extensions is registration-gated: automatic activation applies only to extensions whose template identity carries a registered, pinned origin in the project's single state document. Activated capabilities **MUST** remain scoped to declared project-visible resources. Denied or untrusted capabilities **MUST NOT** activate. A configurable per-identity deny surface beyond registration-gating is out of scope for v1 (§11 Open Questions).
 
 **Rationale**: Delivers zero-configuration extensibility, so template-supplied AI capabilities become available with no developer activation work.
 

@@ -26,7 +26,7 @@ date: 2026-07-16
 
 ## Context and Problem Statement
 
-The CLI (`cpt-frontx-component-cli`, the `@gears-frontx/cli` package) installs, applies, and assembles templates it does not own, and a repository is assembled from one or more independently-applied templates (`cpt-frontx-fr-cli-composed-template-resolution`, `cpt-frontx-fr-cli-seed-repository`, `cpt-frontx-fr-cli-add-template-to-repository`). The question this decision settles is whether the platform fixes a taxonomy of template types that the mechanism branches on, or whether the assembly, resolution, and upgrade mechanism treats every template the same regardless of what it produces.
+The CLI (`cpt-frontx-component-cli`, the `@gears-frontx/cli` package) installs, applies, and assembles templates it does not own, and a repository is assembled from one or more independently-applied templates (the now-retired composed-template-resolution requirement, superseded by `cpt-frontx-adr-explicit-batch-application`; `cpt-frontx-fr-cli-seed-repository`; `cpt-frontx-fr-cli-add-template-to-repository`). The question this decision settles is whether the platform fixes a taxonomy of template types that the mechanism branches on, or whether the assembly, resolution, and upgrade mechanism treats every template the same regardless of what it produces.
 
 ## Decision Drivers
 

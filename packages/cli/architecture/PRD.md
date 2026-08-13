@@ -25,7 +25,7 @@
   - [5.6 Machine Interface](#56-machine-interface)
 - [6. Non-Functional Requirements](#6-non-functional-requirements)
   - [6.1 NFR Inclusions](#61-nfr-inclusions)
-  - [6.2 NFR Exclusions and Applicability Notes](#62-nfr-exclusions-and-applicability-notes)
+  - [6.2 NFR Exclusions](#62-nfr-exclusions)
 - [7. Public Library Interfaces](#7-public-library-interfaces)
   - [7.1 Public API Surface](#71-public-api-surface)
   - [7.2 External Integration Contracts](#72-external-integration-contracts)
@@ -345,15 +345,20 @@ The system **MUST** support both first-time learning and expert use through its 
 
 **Rationale**: A developer CLI must be teachable at the terminal and predictable enough for repeated expert use.
 
-### 6.2 NFR Exclusions and Applicability Notes
+#### NFR Exclusions Addressed Elsewhere
+
+Two of the root PRD's §6.2 exclusion categories are addressed by this package's own requirements rather than excluded:
+
+- **Audit Requirements** (SEC-PRD-004): Addressed implicitly — every state mutation is committed to the Git-tracked project state file, so a repository's own Git history is the audit trail of every registration, apply, upgrade, and delete; no separate audit-logging facility is required.
+- **Data Lifecycle** (DATA-PRD-003): Addressed — a template's project-state entry lives exactly as long as it has an applied target (`cpt-frontx-fr-cli-project-state`), and `cpt-frontx-fr-cli-template-delete` purges that entry deterministically on removal; no retention question extends past the lifetime the repository's own state file already governs.
+
+### 6.2 NFR Exclusions
 
 The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationalization, inclusivity, regulatory compliance) apply here for the same reasons stated there.
 
 - **Authentication Requirements** (SEC-PRD-001): Not applicable — the CLI is a local command-line tool with no login surface; it acts under the invoking developer's own OS-level filesystem and network permissions.
 - **Data Classification** (SEC-PRD-003): Not applicable — the CLI's persisted state (`cpt-frontx-contract-project-provenance`) holds only template identity, origin, version, and target paths; it processes no PII or other sensitive data.
-- **Audit Requirements** (SEC-PRD-004): Addressed implicitly — every state mutation is committed to the Git-tracked project state file, so a repository's own Git history is the audit trail of every registration, apply, upgrade, and delete; no separate audit-logging facility is required.
 - **Availability Requirements** (REL-PRD-001): Not applicable — the CLI is a locally invoked, on-demand command-line tool with no hosted service and no uptime target of its own.
-- **Data Lifecycle** (DATA-PRD-003): Addressed — a template's project-state entry lives exactly as long as it has an applied target (`cpt-frontx-fr-cli-project-state`), and `cpt-frontx-fr-cli-template-delete` purges that entry deterministically on removal; no retention question extends past the lifetime the repository's own state file already governs.
 - **Deployment Requirements** (OPS-PRD-001): Not applicable — the CLI has no deployment environment or rollback of its own; its distribution is a package publish through the package registry, governed by the root NFR `cpt-frontx-nfr-evolvability`.
 - **Monitoring Requirements** (OPS-PRD-002): Not applicable — the CLI runs as a short-lived local command with no running service to monitor; failure discoverability is covered instead by `cpt-frontx-cli-nfr-discoverability`.
 - **Support Requirements** (MAINT-PRD-002): Not applicable — as internal developer tooling operated by the team that builds it, there is no external support tier or SLA; `cpt-frontx-cli-nfr-discoverability` covers self-service diagnosis.

@@ -27,7 +27,7 @@ date: 2026-06-04
 
 ## Context and Problem Statement
 
-A repository is assembled from one or more independently-applied templates, and a template may reference other templates to be applied together as a set — a **preset** (`cpt-frontx-fr-cli-composed-template-resolution`). When a developer applies a preset, the templates it references should arrive as part of the same operation rather than being discovered and applied by hand afterwards. This raises two coupled questions the CLI (`cpt-frontx-component-cli`, the `@gears-frontx/cli` package) must answer at design altitude: where is the set of referenced templates declared and how is that set resolved into one assembly operation — including the case where a referenced template itself references further templates — and how is a clash arbitrated when two templates in the assembly claim the same ground?
+A repository is assembled from one or more independently-applied templates, and a template may reference other templates to be applied together as a set — a **preset** (the requirement this decision addressed, since retired and superseded by `cpt-frontx-adr-explicit-batch-application`). When a developer applies a preset, the templates it references should arrive as part of the same operation rather than being discovered and applied by hand afterwards. This raises two coupled questions the CLI (`cpt-frontx-component-cli`, the `@gears-frontx/cli` package) must answer at design altitude: where is the set of referenced templates declared and how is that set resolved into one assembly operation — including the case where a referenced template itself references further templates — and how is a clash arbitrated when two templates in the assembly claim the same ground?
 
 ## Decision Drivers
 
@@ -117,6 +117,6 @@ Applicability of the remaining checklist categories:
 
 This decision directly addresses the following requirements and design elements:
 
-* `cpt-frontx-fr-cli-composed-template-resolution` — Transitive, manifest-declared reference resolution through the shared resolver is the mechanism by which a preset's referenced templates are resolved and applied as part of the same assembly operation, with clashes arbitrated by declared ownership boundaries.
+* The retired composed-template-resolution requirement (superseded by `cpt-frontx-adr-explicit-batch-application`) — transitive, manifest-declared reference resolution through the shared resolver was the mechanism by which a preset's referenced templates were resolved and applied as part of the same assembly operation, with clashes arbitrated by declared ownership boundaries.
 * `cpt-frontx-usecase-scaffold-composed-project` — This decision defines the single assembly operation that delivers a preset's templates, and delegates the "conflicting assembly" alternative flow to the pre-flight ownership-boundary check (report and refuse before any write).
 * `cpt-frontx-component-cli` — The CLI component owns multi-template assembly and preset resolution; this decision constrains how that component resolves a preset into one assembly and arbitrates clashes.
