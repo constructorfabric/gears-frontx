@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# No job in this workflow pushes, comments, or writes any GitHub resource — it
+# only checks out, builds/tests, and validates. GITHUB_TOKEN is used solely to
+# clear the anonymous rate limit on GitHub API calls (see studio-validate*'s
+# GITHUB_TOKEN comment); read-only contents access is enough for that and for
+# actions/checkout, so no job needs the default token's org/repo-level scope.
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
