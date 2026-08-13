@@ -7,18 +7,11 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['__tests__/**/*.test.ts', 'src/**/__tests__/**/*.test.ts'],
-    // This lane was the one config the cold-start timeout never reached: every
-    // sibling gets it from `vitest.shared.ts` (package configs, the MFE base,
-    // the scaffolded host twin), while this hand-written host config kept
-    // Vitest's 5000 ms default. The suites here are import-bound rather than
-    // assertion-bound — a case covering `scripts/generate-mfe-manifests.ts`
-    // pulls in the GTS parser through it, which measured 3.43 s of `import`
-    // against 68 ms of actual test bodies on a warm idle checkout. Under a
-    // concurrent monorepo build that gap alone crosses 5 s, so a red here
-    // described the machine's load, not the code. Reusing
-    // the shared constant rather than a local literal keeps the lanes equal:
-    // a timeout that differed by lane would move the false red rather than
-    // remove it.
+    // The shared constant rather than a local literal, for the reason its own
+    // docstring gives. This lane is hand-written because it is the only one that
+    // is not a package or an app, so it has to opt in by hand; the suites here
+    // are import-bound rather than assertion-bound, which makes it the lane a
+    // per-lane timeout would have hurt first.
     testTimeout: COLD_START_TIMEOUT_MS,
     hookTimeout: COLD_START_TIMEOUT_MS,
     coverage: {

@@ -92,23 +92,22 @@ export const COVERAGE_THRESHOLDS = Object.freeze({
 /**
  * Per-test and per-hook timeout for every Vitest config built from this module.
  *
- * Vitest's 5000 ms default runs from the moment a test starts, and on a freshly
- * scaffolded project that same clock also covers the cold Vite transform of
- * everything the first test file pulls in. A measured first `test:unit` in a
- * newly scaffolded MFE package reported `setup 67.11s, environment 175.25s` and
- * failed 3 of its 17 tests with `Test timed out in 5000ms`; the identical suite
- * passed in 1.53 s on the next invocation against a warm cache. Those failures
- * described the transform cache, not the code under test, and a red first run
- * is the worst possible first impression of a generated project.
+ * Vitest's 5000 ms default runs from the moment a test starts, so on a cold
+ * transform cache that same clock also covers the Vite transform of everything
+ * the first test file pulls in. Measured cold first runs cross it by more than
+ * an order of magnitude and fail tests that pass in under two seconds on the
+ * next invocation, which reports the state of the cache rather than the code.
  *
- * 30 s absorbs a cold start with room to spare. It hides no genuine hang: a
+ * 30 s absorbs a cold start with room to spare and hides no genuine hang: a
  * test that never settles still fails, and the per-project timeout in the
  * monorepo test runner still bounds the run as a whole.
  *
  * Applied uniformly to every config this module produces (package configs, the
  * MFE base, the host config and its scaffolded twin) because the cold cache
- * belongs to the checkout rather than to any one kind of suite, and a timeout
- * that differed by lane would move the false red rather than remove it.
+ * belongs to the checkout rather than to any one kind of suite: a timeout that
+ * differed by lane would move the false red rather than remove it. Every other
+ * site that sets these two options points here instead of restating the
+ * reasoning.
  */
 export const COLD_START_TIMEOUT_MS = 30_000;
 
@@ -250,11 +249,19 @@ export default defineConfig({
 // `plugins`: extra Vite plugins — in practice this is `[react()]` for
 //   React-owning packages. Defaults to an empty list so node-only packages
 //   don't pay the plugin cost.
+// `alias`: extra `resolve.alias` entries. A package needs these when its own
+//   public entry must resolve to source for tests — otherwise a test importing
+//   by package name and a test importing by relative path get two module
+//   instances of the same file, and context published through one is invisible
+//   through the other. Passing them here is what keeps such a package on this
+//   helper: hand-rolling a config for the sake of two aliases silently opts the
+//   package out of the shared setup files and timeouts as well.
 export interface DefinePackageVitestConfigOptions {
   rootDir: string;
   environment: 'node' | 'jsdom';
   testInclude?: 'ts' | 'tsx';
   plugins?: Plugin[];
+  alias?: Record<string, string>;
 }
 
 // Build a per-package Vitest config from the monorepo-shared primitives.
@@ -270,6 +277,7 @@ export function definePackageVitestConfig(
     environment,
     testInclude = environment === 'jsdom' ? 'tsx' : 'ts',
     plugins = [],
+    alias,
   } = options;
 
   const include =
@@ -283,6 +291,7 @@ export function definePackageVitestConfig(
   return {
     plugins,
     root: rootDir,
+    ...(alias ? { resolve: { alias } } : {}),
     server: {
       fs: {
         allow: [REPO_ROOT],

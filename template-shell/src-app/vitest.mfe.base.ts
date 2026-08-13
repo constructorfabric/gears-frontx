@@ -37,8 +37,7 @@ export const mfeVitestBaseConfig = defineConfig({
     execArgv: vitestNodeWorkerExecArgv(),
     setupFiles: [...SHARED_VITEST_SETUP_FILES],
     // A newly scaffolded MFE package pays its whole Vite transform inside the
-    // first test's own budget; see COLD_START_TIMEOUT_MS for the measurement
-    // that fixed the value.
+    // first test's own budget; see COLD_START_TIMEOUT_MS.
     testTimeout: COLD_START_TIMEOUT_MS,
     hookTimeout: COLD_START_TIMEOUT_MS,
     include: [...TEST_INCLUDE_TSX],
