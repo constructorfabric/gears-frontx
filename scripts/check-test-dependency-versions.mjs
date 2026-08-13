@@ -38,7 +38,41 @@ export const sharedTestDependencies = [
 // shared test dependency. `peerDependencies` is included so packages like
 // `@gears-frontx/framework` — which pins `vitest` as a peer — cannot drift
 // away from the root monorepo pin without this guard catching it.
+/** @typedef {'devDependencies' | 'peerDependencies'} DependencyGroupName */
+
+/** @type {DependencyGroupName[]} */
 export const checkedDependencyGroups = ['devDependencies', 'peerDependencies'];
+
+/**
+ * Narrow shape of a `package.json` this script actually reads — just the
+ * fields the version guard compares. Kept intentionally narrower than "every
+ * possible package.json field" so indexing `devDependencies`/`overrides`
+ * stays a plain typed lookup instead of an `unknown` that every call site
+ * would have to re-narrow.
+ *
+ * @typedef {{
+ *   name?: string;
+ *   private?: boolean;
+ *   devDependencies?: Record<string, string>;
+ *   peerDependencies?: Record<string, string>;
+ *   overrides?: Record<string, string | Record<string, string>>;
+ * }} PackageJson
+ */
+
+/**
+ * Structural subset of `node:fs` that the recursive walker uses. Narrower
+ * than `Pick<typeof fs, ...>` — the real `fs.realpathSync` carries a `.native`
+ * variant and multiple encoding overloads that a test fake has no reason to
+ * implement; this shape is exactly the three single-arg calls made below.
+ *
+ * @typedef {import('./fs-types.mjs').DirEntryLike} DirEntryLike
+ *
+ * @typedef {{
+ *   existsSync: (path: string) => boolean;
+ *   realpathSync: (path: string) => string;
+ *   readdirSync: (path: string, options: { withFileTypes: true }) => DirEntryLike[];
+ * }} FileSystemLike
+ */
 
 // Directories to skip during recursive discovery. Walking every `package.json`
 // under the repo (instead of hardcoding a list of roots) keeps this script in
@@ -142,7 +176,7 @@ function isSafePathSegment(name) {
 /**
  * @param {string} packageJsonPath
  * @param {string} rootDir
- * @returns {Record<string, unknown>}
+ * @returns {PackageJson}
  */
 function readPackageJsonSync(packageJsonPath, rootDir) {
   const safePath = resolvePackageJsonPathWithinRoot(rootDir, packageJsonPath);
@@ -156,10 +190,10 @@ function readPackageJsonSync(packageJsonPath, rootDir) {
  * Exporting the pure scan lets Vitest cover the mismatch logic directly
  * without shelling out to a Node subprocess.
  *
- * @param {Record<string, unknown>} rootPackage
+ * @param {PackageJson} rootPackage
  * @param {string[]} packageJsonPaths
  * @param {{
- *   readPackageJson?: (packageJsonPath: string) => Record<string, unknown>;
+ *   readPackageJson?: (packageJsonPath: string) => PackageJson;
  *   rootDir?: string;
  *   rootPackagePath?: string;
  * }} [options]
@@ -193,6 +227,10 @@ export function checkMismatches(rootPackage, packageJsonPaths, options = {}) {
   ];
 }
 
+/**
+ * @param {{ rootDir?: string }} [options]
+ * @returns {number}
+ */
 export function runCli(options = {}) {
   const rootDir = options.rootDir ?? process.cwd();
   const rootPackagePath = resolveRootPackageJsonPath(rootDir);
@@ -215,16 +253,33 @@ export function runCli(options = {}) {
   return 0;
 }
 
+/**
+ * npm `overrides` entries are usually a bare version string or a nested
+ * object with a `.` sentinel for the top-level pin, but a hand-edited
+ * package.json can put anything there — the param type stays a JSON-value
+ * union (not `unknown`) so every branch below is a plain `typeof` narrowing.
+ *
+ * @param {string | number | boolean | null | undefined | Record<string, string>} overrideValue
+ * @returns {string | undefined}
+ */
 export function normalizeOverrideVersion(overrideValue) {
   if (typeof overrideValue === 'string') {
     return overrideValue;
   }
 
-  return overrideValue?.['.'];
+  // Numbers/booleans/null/undefined have no `.` sentinel — same "no pin"
+  // result as a per-importer-only object, just reached via a typeof guard
+  // instead of blind optional chaining (which TS can't narrow through a
+  // JSON-value union without a runtime check first).
+  if (overrideValue && typeof overrideValue === 'object') {
+    return overrideValue['.'];
+  }
+
+  return undefined;
 }
 
 /**
- * @param {Record<string, unknown>} rootPackage
+ * @param {PackageJson} rootPackage
  * @param {Record<string, string | undefined>} rootVersions
  * @returns {string[]}
  */
@@ -260,7 +315,7 @@ function collectRootMismatches(rootPackage, rootVersions) {
 /**
  * @param {string[]} packageJsonPaths
  * @param {{
- *   readPackageJson: (packageJsonPath: string) => Record<string, unknown>;
+ *   readPackageJson: (packageJsonPath: string) => PackageJson;
  *   rootDir: string;
  *   rootPackagePath: string;
  *   rootVersions: Record<string, string | undefined>;
@@ -304,9 +359,9 @@ function collectWorkspaceMismatches(packageJsonPaths, options) {
 /**
  * @param {{
  *   dependencyName: string;
- *   groupName: string;
+ *   groupName: DependencyGroupName;
  *   isRootPackage: boolean;
- *   packageJson: Record<string, unknown>;
+ *   packageJson: PackageJson;
  * }} options
  * @returns {string | undefined}
  */
@@ -352,7 +407,7 @@ const maxWalkDepth = 20;
  *
  * @param {string} directoryPath
  * @param {{
- *   fileSystem?: Pick<typeof fs, 'existsSync' | 'realpathSync' | 'readdirSync'>;
+ *   fileSystem?: FileSystemLike;
  *   warn?: (message: string) => void;
  * }} [options]
  * @returns {string[]}
@@ -406,7 +461,7 @@ export function collectPackageJsonPaths(directoryPath, options = {}) {
       results.push(rootManifest);
     }
 
-    /** @type {import('node:fs').Dirent[]} */
+    /** @type {DirEntryLike[]} */
     let entries;
     try {
       entries = fileSystem.readdirSync(current, { withFileTypes: true });

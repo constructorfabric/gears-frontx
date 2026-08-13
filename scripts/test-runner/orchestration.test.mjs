@@ -26,6 +26,8 @@ import {
   runSequentially,
 } from './cli.mjs';
 
+/** @typedef {import('./common.mjs').Project} Project */
+
 // Prefer dependency injection (`setSpawnImpl`) over `vi.mock('node:child_process')`.
 // Mocking Node built-ins via `importOriginal` is fragile in Vitest 4 (ESM
 // module-graph caching + node: prefix handling), and when the mock silently
@@ -42,6 +44,7 @@ const spawnMock = vi.fn();
  * consumes, so we implement just those.
  */
 class FakeChild extends EventEmitter {
+  /** @param {{ autoExitWith?: number }} [options] */
   constructor({ autoExitWith } = {}) {
     super();
     this.killed = false;
@@ -86,6 +89,7 @@ describe('npmSpawnArgs (routing contract)', () => {
   });
 
   it('routes workspace projects via `npm run -w <workspace>`', () => {
+    /** @type {Project} */
     const project = {
       kind: 'workspace',
       name: 'api',
@@ -102,6 +106,7 @@ describe('npmSpawnArgs (routing contract)', () => {
   });
 
   it('routes MFE projects via a local `test:unit` invocation (no -w)', () => {
+    /** @type {Project} */
     const project = {
       kind: 'mfe',
       name: 'demo-mfe',
@@ -112,6 +117,7 @@ describe('npmSpawnArgs (routing contract)', () => {
   });
 
   it('appends rewritten forward args after a `--` separator', () => {
+    /** @type {Project} */
     const project = {
       kind: 'workspace',
       name: 'api',
@@ -309,6 +315,7 @@ describe('waitForExit', () => {
 });
 
 describe('runSequentially', () => {
+  /** @type {Project[]} */
   const projects = [
     { kind: 'host', name: 'host-app', rootPath: 'src' },
     {
@@ -321,6 +328,7 @@ describe('runSequentially', () => {
   ];
 
   it('returns 0 when every project exits cleanly and runs them in order', async () => {
+    /** @type {string[]} */
     const spawnedNames = [];
     let callIndex = 0;
     spawnMock.mockImplementation(() => {
@@ -400,6 +408,7 @@ describe('runSequentially', () => {
 });
 
 describe('runInParallel', () => {
+  /** @type {Project[]} */
   const projects = [
     { kind: 'host', name: 'host-app', rootPath: 'src' },
     {

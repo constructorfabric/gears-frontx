@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { loadCliModule, runCli } from './validate-templates.mjs';
 
+/** @type {string | undefined} */
 let rootDir;
 
 afterEach(async () => {
@@ -30,6 +31,7 @@ describe('runCli', () => {
     const root = await makeRoot();
     await mkdir(path.join(root, 'template-shell'), { recursive: true });
     await writeFile(path.join(root, 'template-shell', 'frontx-template.json'), validManifest());
+    /** @type {string[]} */
     const logs = [];
 
     const exitCode = await runCli({ rootDir: root, log: (line) => logs.push(line) });
@@ -44,7 +46,9 @@ describe('runCli', () => {
     await writeFile(path.join(root, 'template-mfe', 'frontx-template.json'), JSON.stringify({}));
     await mkdir(path.join(root, 'template-shell'), { recursive: true });
     await writeFile(path.join(root, 'template-shell', 'frontx-template.json'), validManifest());
+    /** @type {string[]} */
     const logs = [];
+    /** @type {string[]} */
     const errors = [];
 
     const exitCode = await runCli({ rootDir: root, log: (l) => logs.push(l), logError: (l) => errors.push(l) });
@@ -65,6 +69,7 @@ describe('runCli', () => {
       path.join(root, 'template-shell', 'package.json'),
       JSON.stringify({ dependencies: { '@gears-frontx/api': 'file:../../packages/api' } }),
     );
+    /** @type {string[]} */
     const errors = [];
 
     const exitCode = await runCli({ rootDir: root, logError: (l) => errors.push(l) });
@@ -79,6 +84,7 @@ describe('runCli', () => {
   it('fails loudly, not vacuously, when no template is found', async () => {
     const root = await makeRoot();
     await mkdir(path.join(root, 'packages'), { recursive: true }); // no manifest anywhere
+    /** @type {string[]} */
     const errors = [];
 
     const exitCode = await runCli({ rootDir: root, logError: (l) => errors.push(l) });
@@ -98,6 +104,7 @@ describe('runCli', () => {
     const root = await makeRoot();
     await mkdir(path.join(root, 'template-shell'), { recursive: true });
     await writeFile(path.join(root, 'template-shell', 'frontx-template.json'), validManifest());
+    /** @type {string[]} */
     const errors = [];
 
     const exitCode = await runCli({

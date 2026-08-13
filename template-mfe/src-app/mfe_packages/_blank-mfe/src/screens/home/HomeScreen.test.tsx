@@ -150,6 +150,56 @@ describe('HomeScreen', () => {
     expect(container.querySelectorAll('.animate-pulse')).toHaveLength(3);
   });
 
+  it('re-reads current properties when the host swaps the bridge instance', async () => {
+    const first = createMfeBridgeFixture({
+      domainId: TEST_DOMAIN_ID,
+      instanceId: TEST_INSTANCE_ID,
+      initialProperties: {
+        [FRONTX_SHARED_PROPERTY_THEME]: TEST_THEME,
+        [FRONTX_SHARED_PROPERTY_LANGUAGE]: 'en',
+      },
+    });
+    const second = createMfeBridgeFixture({
+      domainId: TEST_DOMAIN_ID,
+      instanceId: TEST_INSTANCE_ID,
+      initialProperties: {
+        [FRONTX_SHARED_PROPERTY_THEME]: 'swapped-theme',
+        [FRONTX_SHARED_PROPERTY_LANGUAGE]: 'ar',
+      },
+    });
+    const host = document.createElement('div');
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    const mountNode = document.createElement('div');
+    shadowRoot.appendChild(mountNode);
+    document.body.appendChild(host);
+    const shadowQueries = within(mountNode);
+
+    const { rerender } = render(<HomeScreen bridge={first.bridge} />, {
+      container: mountNode,
+    });
+
+    expect(await shadowQueries.findByText(TEST_THEME)).toBeTruthy();
+    expect(host.dir).toBe('ltr');
+
+    rerender(<HomeScreen bridge={second.bridge} />);
+
+    // The new bridge's current values are re-read during render — its
+    // subscriptions only deliver future changes and never fire here.
+    expect(shadowQueries.getByText('swapped-theme')).toBeTruthy();
+    expect(shadowQueries.getByText('ar')).toBeTruthy();
+    expect(host.dir).toBe('rtl');
+
+    // The old bridge's subscriptions were torn down and re-registered on the
+    // new instance.
+    expect(first.unsubscriptions).toHaveLength(2);
+    for (const { unsubscribe } of first.unsubscriptions) {
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+    }
+    expect(second.subscribeToProperty).toHaveBeenCalledTimes(2);
+
+    host.remove();
+  });
+
   it('reacts to bridge property updates and unsubscribes on unmount', async () => {
     const bridgeFixture = createMfeBridgeFixture({
       domainId: TEST_DOMAIN_ID,

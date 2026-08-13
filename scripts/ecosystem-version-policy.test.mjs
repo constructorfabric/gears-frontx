@@ -420,6 +420,7 @@ describe('runCli', () => {
   it('fails when mfes exact-pins gts-plugin', async () => {
     const rootDir = await makeFixtureRoot({ mfesRange: '0.3.0-alpha.0', gtsPluginVersion: '0.3.0-alpha.0' });
 
+    /** @type {string[]} */
     const errorSpy = [];
     const originalError = console.error;
     console.error = (msg) => errorSpy.push(msg);

@@ -11,6 +11,10 @@ import {
   sharedTestDependencies,
 } from './check-test-dependency-versions.mjs';
 
+/**
+ * @param {string} [version]
+ * @returns {import('./check-test-dependency-versions.mjs').PackageJson}
+ */
 function createRootPackage(version = '1.2.3') {
   const devDependencies = Object.fromEntries(
     sharedTestDependencies.map((dependencyName) => [dependencyName, version])
@@ -24,6 +28,10 @@ function createRootPackage(version = '1.2.3') {
   };
 }
 
+/**
+ * @param {string | Record<string, string>} overrideValue
+ * @returns {import('./check-test-dependency-versions.mjs').PackageJson}
+ */
 function makeRootWithVitestOverride(overrideValue) {
   const rootPackage = createRootPackage();
   rootPackage.overrides = { ...rootPackage.overrides, vitest: overrideValue };
@@ -60,6 +68,7 @@ describe('checkMismatches', () => {
     const rootPackage = createRootPackage();
     const rootPackagePath = '/virtual/repo/package.json';
     const workspacePackagePath = '/virtual/repo/packages/api/package.json';
+    /** @type {Map<string, import('./check-test-dependency-versions.mjs').PackageJson>} */
     const packageJsonByPath = new Map([
       [rootPackagePath, rootPackage],
       [
@@ -82,7 +91,12 @@ describe('checkMismatches', () => {
       checkMismatches(rootPackage, [rootPackagePath, workspacePackagePath], {
         rootDir: '/virtual/repo',
         rootPackagePath,
-        readPackageJson: (packageJsonPath) => packageJsonByPath.get(packageJsonPath),
+        // Both keys are populated above; the map lookup can never miss for
+        // paths this test itself supplies as `packageJsonPaths`.
+        readPackageJson: (packageJsonPath) =>
+          /** @type {import('./check-test-dependency-versions.mjs').PackageJson} */ (
+            packageJsonByPath.get(packageJsonPath)
+          ),
       })
     ).toEqual([]);
   });
@@ -95,7 +109,7 @@ describe('checkMismatches', () => {
     const driftedAtWorkspace = sharedTestDependencies[sharedTestDependencies.length - 1];
 
     const rootPackage = createRootPackage();
-    delete rootPackage.devDependencies[missingAtRoot];
+    delete rootPackage.devDependencies?.[missingAtRoot];
 
     const mismatches = checkMismatches(
       rootPackage,
@@ -125,6 +139,13 @@ describe('normalizeOverrideVersion', () => {
   // be a bare version string, a nested object with a `.` sentinel for the
   // top-level override (plus per-importer pins), missing entirely, or
   // malformed in ways that must NOT crash the checker.
+  /**
+   * @type {{
+   *   label: string;
+   *   input: string | number | boolean | Record<string, string> | null | undefined;
+   *   expected: string | undefined;
+   * }[]}
+   */
   const cases = [
     { label: 'bare string pin', input: '1.2.3', expected: '1.2.3' },
     { label: 'caret range string', input: '^1.2.3', expected: '^1.2.3' },
@@ -292,6 +313,7 @@ describe('collectPackageJsonPaths', () => {
   it('warns once for non-ENOENT fs failures but still returns discovered manifests', () => {
     const rootDir = '/virtual/repo';
     const rootManifestPath = path.join(rootDir, 'package.json');
+    /** @param {string} name */
     const dirent = (name) => ({
       name,
       isDirectory: () => true,
@@ -389,7 +411,7 @@ describe('runCli', () => {
     // name silently broke this test when `@vitest/ui` was removed.
     const rootPackage = createRootPackage();
     const [removed] = sharedTestDependencies;
-    delete rootPackage.devDependencies[removed];
+    delete rootPackage.devDependencies?.[removed];
 
     await writeFile(
       path.join(fixtureRoot, 'package.json'),

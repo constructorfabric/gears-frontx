@@ -197,7 +197,14 @@ module.exports = {
     // every cross-package layer rule needs as its `to` — silently making the
     // layer chain unenforceable. `doNotFollow` keeps the node visible as an
     // un-traversed leaf, which is all the noise reduction that was wanted.
-    doNotFollow: { path: ['^node_modules', '^packages/[^/]+/dist'] },
+    //
+    // node_modules is matched at ANY depth, not just the root: after
+    // `frontx add mfe` (or CI's composition of template-mfe onto this shell),
+    // `npm install` nests a node_modules under each src-app/mfe_packages/*
+    // workspace whose pins conflict with the shell's. Anchored `^node_modules`
+    // misses those, and dependency-cruiser then traverses the entire installed
+    // dependency universe — which is not a rule violation but an OOM.
+    doNotFollow: { path: ['(^|/)node_modules/', '^packages/[^/]+/dist'] },
     // Nothing is path-excluded. `exclude` drops modules from the graph outright,
     // so anything listed here becomes unusable as a rule's `to` — which is how
     // both `node_modules` (React) and `packages/*/dist` (every cross-package

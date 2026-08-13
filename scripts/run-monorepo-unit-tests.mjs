@@ -46,6 +46,14 @@
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
+/**
+ * Re-exported so consumers (notably the unit test suite) can reference
+ * `import('./run-monorepo-unit-tests.mjs').Project` without reaching into
+ * the `test-runner/` submodule directly — this file is the public surface.
+ *
+ * @typedef {import('./test-runner/common.mjs').Project} Project
+ */
+
 export {
   CliError,
   defaultParallelBufferBytes,

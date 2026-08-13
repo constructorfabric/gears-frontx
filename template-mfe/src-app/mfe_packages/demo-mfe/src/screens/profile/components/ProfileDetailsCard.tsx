@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { trim } from 'lodash';
 import type { ApiUser } from '../../../api/types';
 import { Card, CardContent, CardFooter } from '../../../components/ui/card';
@@ -44,11 +44,17 @@ export const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
     getFormValues(user)
   );
 
-  useEffect(() => {
+  // Reset formValues from `user` whenever (isEditing, user) changes and we're not
+  // mid-edit, using the "adjusting state during render" pattern (react.dev) instead of
+  // an effect — this syncs before paint in the same render pass rather than committing
+  // stale values once and scheduling a second render from an effect.
+  const [prevSyncKey, setPrevSyncKey] = useState({ isEditing, user });
+  if (prevSyncKey.isEditing !== isEditing || prevSyncKey.user !== user) {
+    setPrevSyncKey({ isEditing, user });
     if (!isEditing) {
       setFormValues(getFormValues(user));
     }
-  }, [isEditing, user]);
+  }
 
   const initialValues = useMemo(() => getFormValues(user), [user]);
   const normalizedValues = useMemo(

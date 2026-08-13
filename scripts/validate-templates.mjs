@@ -41,7 +41,7 @@ import { findTemplateDirs } from './template-discovery.mjs';
  *   the shape a missing `packages/cli/dist` produces on `import('@gears-frontx/cli')`.
  */
 function isModuleNotFoundError(error) {
-  return Boolean(error) && typeof error === 'object' && 'code' in error && error.code === 'ERR_MODULE_NOT_FOUND';
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ERR_MODULE_NOT_FOUND';
 }
 
 /**

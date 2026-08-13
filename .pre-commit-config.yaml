@@ -16,7 +16,7 @@ repos:
       - id: check-yaml
         exclude: \.cf-studio/(\.core|\.gen|config/kits)/
       - id: check-json
-        exclude: (tsconfig\.json$|\.cf-studio/(\.core|\.gen|config/kits)/)
+        exclude: (tsconfig[^/]*\.json$|\.cf-studio/(\.core|\.gen|config/kits)/)
       - id: check-toml
         exclude: \.cf-studio/(\.core|\.gen|config/kits)/
       - id: check-added-large-files

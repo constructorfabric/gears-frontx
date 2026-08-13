@@ -113,7 +113,11 @@ export function useApiStream<TEvent>(
 
   const [data, setData] = useState<TEvent | undefined>(undefined);
   const [events, setEvents] = useState<TEvent[]>([]);
-  const [status, setStatus] = useState<StreamStatus>('idle');
+  // Lazy initializer mirrors what the "connecting" render-adjustment below would set on
+  // a later (descriptorKey, mode, enabled) change — the adjustment's before/after
+  // comparison can't itself detect "this is the very first render", since its own
+  // `prevConnectKey` state is seeded from the same initial connectKey.
+  const [status, setStatus] = useState<StreamStatus>(() => (enabled ? 'connecting' : 'idle'));
   const [error, setError] = useState<Error | null>(null);
 
   // Tracks the in-flight connect() promise so cleanup can await it.
@@ -129,11 +133,34 @@ export function useApiStream<TEvent>(
   // JSON.stringify avoids join('/') collisions when a segment contains '/'.
   const descriptorKey = useMemo(() => JSON.stringify(descriptor.key), [descriptor.key]);
 
-  useEffect(() => {
+  // Resets stream state when the descriptor or mode changes, using the "adjusting state
+  // during render" pattern (react.dev) instead of an effect: this clears stale data
+  // before paint in the same render pass rather than committing once with old data and
+  // scheduling a second render from an effect.
+  const resetKey = `${descriptorKey}:${mode}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
     setData(undefined);
     setEvents([]);
     setError(null);
-  }, [descriptorKey, mode]);
+  }
+
+  // Same pattern, scoped to when the connect effect below is about to (re)start a
+  // connection: also flips `status` to 'connecting' up front, exactly once per
+  // (descriptorKey, mode, enabled) combination — matching the effect's dependency list
+  // — instead of the effect setting it synchronously on every run.
+  const connectKey = `${resetKey}:${enabled}`;
+  const [prevConnectKey, setPrevConnectKey] = useState(connectKey);
+  if (connectKey !== prevConnectKey) {
+    setPrevConnectKey(connectKey);
+    if (enabled) {
+      setData(undefined);
+      setEvents([]);
+      setStatus('connecting');
+      setError(null);
+    }
+  }
 
   const disconnect = useCallback(() => {
     disconnectRequestedRef.current = true;
@@ -149,8 +176,11 @@ export function useApiStream<TEvent>(
   }, [descriptorRef]);
 
   useEffect(() => {
+    // Disabled: no connection attempt. `status` is displayed as 'idle' via the
+    // derived value below instead of writing it here — the stored `status` from a
+    // prior connection is left untouched so a later re-enable has nothing stale to
+    // clean up, and no synchronous setState is needed in this effect.
     if (!enabled) {
-      setStatus('idle');
       return;
     }
 
@@ -159,11 +189,8 @@ export function useApiStream<TEvent>(
     disconnectRequestedRef.current = false;
 
     const d = descriptorRef.current;
-
-    setData(undefined);
-    setEvents([]);
-    setStatus('connecting');
-    setError(null);
+    // data/events/status/error were already reset to the 'connecting' state above,
+    // during render, for this exact (descriptorKey, mode, enabled) combination.
 
     const connectPromise = d.connect(
       (event) => {
@@ -219,5 +246,8 @@ export function useApiStream<TEvent>(
     // this effect to re-run on every render.
   }, [descriptorKey, enabled, mode, descriptorRef]);
 
-  return { data, events, status, error, disconnect };
+  // Derived: while disabled the connection is deliberately not attempted, so the
+  // publicly visible status is always 'idle' regardless of what a prior connection
+  // left in `status` state.
+  return { data, events, status: enabled ? status : 'idle', error, disconnect };
 }

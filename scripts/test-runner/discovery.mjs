@@ -15,6 +15,13 @@ import path from 'node:path';
 import { defaultRepoRoot } from './common.mjs';
 
 /**
+ * Directory-entry shape shared with `check-test-dependency-versions.mjs` —
+ * see `../fs-types.mjs` for why this lives in one place now.
+ *
+ * @typedef {import('../fs-types.mjs').DirEntryLike} DirEntryLike
+ */
+
+/**
  * The repo-root `scripts/` toolchain, tested through the root
  * `vitest.scripts.config.mjs` and the private `_test:unit:host` script.
  *
@@ -58,7 +65,7 @@ export async function loadProjects(repoRoot = defaultRepoRoot) {
  * that declares a `test:unit` script; otherwise the runner has nothing to
  * delegate to.
  *
- * @param {{ repoRoot?: string; readdir?: typeof readdir }} [options]
+ * @param {{ repoRoot?: string; readdir?: (path: string, options: { withFileTypes: true }) => Promise<DirEntryLike[]> }} [options]
  * @returns {Promise<import('./common.mjs').MfeProject[]>}
  */
 export async function discoverMfeProjects({
@@ -66,7 +73,7 @@ export async function discoverMfeProjects({
   readdir: readdirFn = readdir,
 } = {}) {
   const mfeRoot = path.join(repoRoot, 'src/mfe_packages');
-  /** @type {import('node:fs').Dirent[]} */
+  /** @type {DirEntryLike[]} */
   let entries = [];
   try {
     entries = await readdirFn(mfeRoot, { withFileTypes: true });
@@ -252,7 +259,7 @@ function resolveWorkspaceProjectName(rootPath, packageName, claimed) {
  * stay stable on Windows.
  *
  * @param {string} entry
- * @param {{ repoRoot?: string; readdir?: typeof readdir }} [options]
+ * @param {{ repoRoot?: string; readdir?: (path: string, options: { withFileTypes: true }) => Promise<DirEntryLike[]> }} [options]
  * @returns {Promise<string[]>}
  */
 export async function resolveWorkspaceEntry(entry, options = {}) {

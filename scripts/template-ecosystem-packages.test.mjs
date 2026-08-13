@@ -18,6 +18,7 @@ import {
   templatePinnedPackageDirs,
 } from './template-ecosystem-packages.mjs';
 
+/** @type {string | undefined} */
 let rootDir;
 
 afterEach(async () => {
@@ -29,12 +30,20 @@ async function makeRoot() {
   return rootDir;
 }
 
+/**
+ * @param {string} filePath
+ * @param {unknown} value
+ */
 async function writeJson(filePath, value) {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, JSON.stringify(value));
 }
 
 /** The three packages the predecessor of this module used to name by hand. */
+/**
+ * @param {string} root
+ * @param {Record<string, string>} [versions]
+ */
 async function writeEcosystemPackages(root, versions = {}) {
   for (const dir of ['api', 'mfes', 'gts-plugin']) {
     await writeJson(path.join(root, 'packages', dir, 'package.json'), {
@@ -45,12 +54,19 @@ async function writeEcosystemPackages(root, versions = {}) {
 }
 
 /** Relative paths with POSIX separators, so an expectation reads the same on any platform. */
+/**
+ * @param {string} from
+ * @param {string[]} absolutePaths
+ */
 function relativePosix(from, absolutePaths) {
   return absolutePaths.map((p) => path.relative(from, p).split(path.sep).join('/')).sort();
 }
 
 // A minimal marker manifest - `findTemplateDirs` only checks for the file's
 // presence, never its content.
+/**
+ * @param {string} templateDir
+ */
 async function writeTemplateManifest(templateDir) {
   await writeJson(path.join(templateDir, 'frontx-template.json'), {});
 }
@@ -538,7 +554,7 @@ describe('duplicated-literal sync guard (#492 review finding 2)', () => {
     const match = /const DEPENDENCY_FIELDS = (\[[^\]]*\])/.exec(readFileSync(sourcePath, 'utf8'));
 
     expect(match, 'canonical DEPENDENCY_FIELDS declaration not found - did the algorithm module change shape?').not.toBeNull();
-    const canonicalFields = JSON.parse(match[1].replace(/'/g, '"'));
+    const canonicalFields = JSON.parse((match?.[1] ?? '[]').replace(/'/g, '"'));
     expect(DEPENDENCY_FIELDS).toEqual(canonicalFields);
   });
 });
