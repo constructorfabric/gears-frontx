@@ -105,8 +105,8 @@ code.
 # 1. Install dependencies
 npm install
 
-# 2. Build the library + solution packages
-npm run build:package && npm run build:packages
+# 2. Build the solution packages (the library builds first, via prebuild:packages)
+npm run build:packages
 
 # 3. Start everything — host + any MFE dev servers present
 npm run dev:all

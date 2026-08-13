@@ -11,8 +11,8 @@ standard template. For an overview of what the template contains, see
 
 ```bash
 npm install
-npm run build:package && npm run build:packages   # build the lib + solution packages
-npm run dev:all                                    # host + all MFE dev servers
+npm run build:packages   # solution packages; the lib builds first via prebuild:packages
+npm run dev:all          # host + all MFE dev servers
 ```
 
 Open **http://localhost:5173**. The host shell boots, fetches the MFE manifest,
