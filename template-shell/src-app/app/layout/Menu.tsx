@@ -96,7 +96,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
         <SidebarMenu>
           {extensions.length === 0 ? (
             <div className="px-3 py-4 text-sm text-muted-foreground">
-              No screens yet. Add an MFE package by copying the <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">_blank-mfe</code> reference scaffold in <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">mfe_packages/</code>.
+              No screens yet. Add an MFE package by copying the <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">_blank-mfe</code> reference scaffold in <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">mfe_packages/</code>, then delete <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">templateExample</code> from the copy&rsquo;s <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">mfe.json</code> so it reaches this menu.
             </div>
           ) : (
             extensions.map((ext) => {

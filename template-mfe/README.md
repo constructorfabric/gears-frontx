@@ -5,6 +5,13 @@ Profile, Current Theme, UIKit Elements, Widgets Host), `_blank-mfe` (a minimal
 scaffold to copy for a new MFE), and two widget fixtures (`widgets-fixture-a`,
 `widgets-fixture-b`).
 
+All four declare `"templateExample": true` and so stay out of the application a
+project builds on this template - see
+[`src-app/mfe_packages/README.md`](src-app/mfe_packages/README.md), which is
+where that rule is written down. They cannot be run from this monorepo either
+way: the shell template holds no `src-app/mfe_packages/` of its own, so these
+packages first reach a runnable shell when `frontx add` puts them into one.
+
 ## Add-only — requires `template-shell`
 
 This template is **add-only**. It claims ownership of no root `package.json`, no

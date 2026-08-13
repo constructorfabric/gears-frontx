@@ -13,7 +13,12 @@
 import { spawn } from 'child_process';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { buildMfesSequentially, getMFEPackages, MfeInfo } from './lib/mfe-tools.js';
+import {
+  buildMfesSequentially,
+  getMFEPackages,
+  noDiscoveredPackagesNotice,
+  MfeInfo,
+} from './lib/mfe-tools.js';
 
 // Determine main app command based on available scripts
 function getMainAppCommand(): string {
@@ -71,27 +76,28 @@ function generateManifests(): Promise<void> {
 async function main() {
   console.log('🚀 Starting dev:all...\n');
 
-  const mfes = getMFEPackages();
+  const { packages, skippedExamples } = getMFEPackages();
 
-  if (mfes.length === 0) {
-    console.log('ℹ️  No MFE packages found in src-app/mfe_packages/');
+  if (packages.length === 0) {
+    console.log(noDiscoveredPackagesNotice(skippedExamples));
     console.log('Starting main app only...\n');
   } else {
-    console.log(`✅ Found ${mfes.length} MFE package(s):`);
-    mfes.forEach((mfe, idx) => {
+    console.log(`✅ Found ${packages.length} MFE package(s):`);
+    packages.forEach((mfe, idx) => {
       console.log(`  [${idx}] ${mfe.name} (port ${mfe.port})`);
     });
     console.log();
   }
 
   // Step 1: Build all MFEs (produces dist/ with mf-manifest.json)
-  await buildMfesSequentially(mfes);
+  await buildMfesSequentially(packages);
 
-  // Step 2: Generate manifests (reads dist/mf-manifest.json, produces generated-mfe-manifests.ts)
+  // Step 2: Generate manifests (reads dist/mf-manifest.json, produces generated-mfe-manifests.ts).
+  // This child is also where the skipped-examples notice is printed, once per run.
   await generateManifests();
 
   // Step 3: Start host + MFE preview servers concurrently
-  const commands = buildPreviewCommands(mfes);
+  const commands = buildPreviewCommands(packages);
 
   // Quote each command properly for concurrently
   const quotedCommands = commands.map((cmd) => `"${cmd.replace(/"/g, '\\"')}"`);
