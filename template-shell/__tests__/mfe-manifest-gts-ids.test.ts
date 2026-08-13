@@ -2,7 +2,7 @@
 
 /**
  * Tests for the gate that stops an unparseable GTS identifier from reaching the
- * generated aggregate (constructorfabric/gears-frontx#550).
+ * generated aggregate.
  *
  * The failure this covers is silent everywhere else: an id one dot-token short
  * of `vendor.package.namespace.type.vN` builds, type-checks and generates, and
