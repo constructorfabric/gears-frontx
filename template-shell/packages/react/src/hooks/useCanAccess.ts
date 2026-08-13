@@ -110,9 +110,9 @@ export function useCanAccess<TRecord extends AccessRecord = AccessRecord>(
       return;
     }
 
-    // `result` is re-pessimized during render (inst-pending-effect above) for
-    // every (auth, stableKey) combination this effect runs for — no
-    // setState needed here before starting the async decision.
+    // `result` is re-pessimized during render above for every
+    // (auth, stableKey) combination this effect runs for — no setState needed
+    // here before starting the async decision.
     let alive = true;
     const controller = new AbortController();
 

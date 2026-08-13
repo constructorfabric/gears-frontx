@@ -242,12 +242,11 @@ export class ManifestGenerator {
    *
    * The invariant matters because the file outlives the run that wrote it. Every
    * refusal in `processPackage` - an unparseable GTS id, an unbuilt package, a
-   * manifest missing metaData - used to leave the previous run's
+   * manifest missing metaData - would otherwise leave the previous run's
    * `generated-mfe-manifests.json` in place, and the host reads that file at
    * bootstrap without knowing which run produced it. A red build followed by a
-   * dev server that mounts the last good manifest is the same lost afternoon the
-   * GTS gate above exists to prevent, one step further out: the screens come up,
-   * so nothing points at the failed generation.
+   * dev server that mounts the last good manifest shows working screens, so
+   * nothing points at the failed generation.
    *
    * The whole write is inside the guarded block rather than just the validation,
    * because the boundary belongs to the run and not to one gate. A future check

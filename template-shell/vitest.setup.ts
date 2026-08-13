@@ -145,6 +145,13 @@ function ensureUsableWebStorage(target: Window & typeof globalThis): void {
  * belongs to this shared setup rather than to whichever test file meets it
  * first.
  *
+ * A second, narrower copy of this shim lives in the ecosystem at
+ * `packages/ui-kit/src/__test-utils__/setup.ts`, carrying `pointerId` and
+ * `pointerType` only. The duplication is deliberate: template territory is
+ * copied into scaffolded projects that have no access to ecosystem packages, so
+ * this file cannot import from there. Anyone widening one copy should know the
+ * other exists and that the two are not interchangeable.
+ *
  * The class is declared inside the function, not at module scope, because
  * `MouseEvent` is itself absent under `environment: 'node'`, the setting the
  * logic-only packages that also load this file run with, and a module-scope

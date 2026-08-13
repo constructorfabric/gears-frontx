@@ -206,12 +206,15 @@ module.exports = {
     // `npm install` nests a node_modules under each src-app/mfe_packages/*
     // workspace whose pins conflict with the shell's. Anchored `^node_modules`
     // misses those, and dependency-cruiser then traverses the entire installed
-    // dependency universe — which is not a rule violation but an OOM.
+    // dependency universe — which is not a rule violation but an OOM. Those same
+    // overlaid workspaces build into `src-app/mfe_packages/*/dist`, listed below
+    // beside `packages/*/dist` for the same reason: bundled output no rule can
+    // fire on, which `tsPreCompilationDeps` would otherwise type-parse in full.
     doNotFollow: {
       path: [
         '(^|/)node_modules/',
         '^packages/[^/]+/dist',
-        '^src-app/mfe_packages/[^/]+/dist/',
+        '^src-app/mfe_packages/[^/]+/dist',
       ],
     },
     // Nothing is path-excluded. `exclude` drops modules from the graph outright,

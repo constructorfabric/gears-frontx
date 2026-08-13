@@ -1,5 +1,3 @@
-// @vitest-environment node
-
 /**
  * Tests for the gate that stops an unparseable GTS identifier from reaching the
  * generated aggregate.
