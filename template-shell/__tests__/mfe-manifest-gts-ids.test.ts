@@ -38,6 +38,11 @@ const VALID_MANIFEST_ID = `${MANIFEST_TYPE}~fixture.billing.mfe.manifest.v1`;
 const VALID_ENTRY_ID = `${ENTRY_TYPE}~fixture.billing.mfe.home.v1`;
 const VALID_EXTENSION_ID = `${EXTENSION_TYPE}~fixture.billing.screens.home.v1`;
 
+// Stands in for the output of a previous successful run. Its content is never
+// read back - what the cases assert is that the file is gone, so any marker the
+// generator would not itself produce serves.
+const EARLIER_GOOD_AGGREGATE = '{ "earlier": "run" }';
+
 // Four dot-tokens where GTS requires five: 'screens' is missing the namespace
 // position, so the segment ends up one short. This is the exact shape that cost
 // two scaffolding runs their debug time.
@@ -151,10 +156,36 @@ describe('ManifestGenerator - GTS identifier validation', () => {
     expect(message).toContain('vendor.package.namespace.type.vN');
   });
 
-  it('writes no aggregate when an id is refused, so a stale file cannot be mistaken for a good build', () => {
+  it('writes no aggregate when an id is refused', () => {
     mfePackageWithIds({ extensionId: FOUR_TOKEN_EXTENSION_ID });
 
     expect(() => generate()).toThrow();
+    expect(existsSync(outputFile)).toBe(false);
+  });
+
+  it('removes the aggregate an earlier good run left behind, and still names the offending id', () => {
+    writeFileSync(outputFile, EARLIER_GOOD_AGGREGATE, 'utf-8');
+    mfePackageWithIds({ extensionId: FOUR_TOKEN_EXTENSION_ID });
+
+    const message = messageFromRefusal();
+
+    // The case the clean-tree assertion above cannot make: the file outlives the
+    // run that wrote it, so a refusal has to unlink it rather than merely skip
+    // writing. Left in place, the host mounts the last good manifest at bootstrap
+    // and the failed generation leaves no visible trace.
+    expect(existsSync(outputFile)).toBe(false);
+    expect(message).toContain(FOUR_TOKEN_EXTENSION_ID);
+  });
+
+  it('removes the aggregate when a package fails for a reason other than its ids', () => {
+    writeFileSync(outputFile, EARLIER_GOOD_AGGREGATE, 'utf-8');
+    // An unbuilt package: discovery accepts it on `mfe.json` alone, and the read
+    // of its enriched manifest is what fails. Pins that the removal is scoped to
+    // the generation run rather than to the id gate.
+    mkdirSync(join(mfePackagesDir, PACKAGE_NAME), { recursive: true });
+    writeFileSync(join(mfePackagesDir, PACKAGE_NAME, 'mfe.json'), '{ "extensions": [] }', 'utf-8');
+
+    expect(() => generate()).toThrow(/not found/);
     expect(existsSync(outputFile)).toBe(false);
   });
 

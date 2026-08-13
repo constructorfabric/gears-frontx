@@ -41,7 +41,7 @@
  * in the enriched mfe-manifest.json (set by the build plugin from mf-manifest.json).
  */
 
-import { existsSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -225,10 +225,51 @@ export class ManifestGenerator {
     console.log(`Found ${packageDirs.length} MFE package(s):`);
     packageDirs.forEach((p) => console.log(`  - ${p}`));
 
-    const configs = packageDirs.map((dir) => this.processPackage(dir));
-    const output = this.renderOutputFile(configs);
-    writeFileSync(this.outputFile, output, 'utf-8');
+    try {
+      const configs = packageDirs.map((dir) => this.processPackage(dir));
+      const output = this.renderOutputFile(configs);
+      writeFileSync(this.outputFile, output, 'utf-8');
+    } catch (err) {
+      this.discardAggregate();
+      throw err;
+    }
+
     console.log(`\nGenerated ${this.outputFile}`);
+  }
+
+  /**
+   * Drop the aggregate, so that a run which fails leaves none behind.
+   *
+   * The invariant matters because the file outlives the run that wrote it. Every
+   * refusal in `processPackage` - an unparseable GTS id, an unbuilt package, a
+   * manifest missing metaData - used to leave the previous run's
+   * `generated-mfe-manifests.json` in place, and the host reads that file at
+   * bootstrap without knowing which run produced it. A red build followed by a
+   * dev server that mounts the last good manifest is the same lost afternoon the
+   * GTS gate above exists to prevent, one step further out: the screens come up,
+   * so nothing points at the failed generation.
+   *
+   * The whole write is inside the guarded block rather than just the validation,
+   * because the boundary belongs to the run and not to one gate. A future check
+   * added anywhere in `processPackage` inherits it, and a `writeFileSync` that
+   * dies partway through cannot leave a truncated aggregate either.
+   */
+  private discardAggregate(): void {
+    try {
+      // `force` makes a missing file a no-op, which is the common case: most
+      // failures happen on a tree that never generated successfully.
+      rmSync(this.outputFile, { force: true });
+    } catch (err) {
+      // A failure to unlink (a read-only mount, a directory in the file's place)
+      // must not replace the error that is already on its way to the operator -
+      // that one names the id or the package to fix, this one would only name
+      // the path. Reported as a warning and swallowed so the original throws.
+      console.error(
+        `Warning: could not remove ${this.outputFile} after a failed run ` +
+          `(${err instanceof Error ? err.message : String(err)}). ` +
+          `It may hold the output of an earlier run - delete it before trusting it.`
+      );
+    }
   }
 
   private discoverPackages(): string[] {
