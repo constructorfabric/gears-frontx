@@ -26,6 +26,7 @@
   - [2.20 Telemetry SDK Compatibility Anchor - MEDIUM](#220-telemetry-sdk-compatibility-anchor---medium)
   - [2.21 AI-Driven Project Scaffolding from Intent - HIGH](#221-ai-driven-project-scaffolding-from-intent---high)
   - [2.22 Template Territory Conversion to the Registration Contract - HIGH](#222-template-territory-conversion-to-the-registration-contract---high)
+  - [2.23 Identifier Rename Wave for Post-Redesign Scope Drift - LOW](#223-identifier-rename-wave-for-post-redesign-scope-drift---low)
 - [3. Feature Dependencies](#3-feature-dependencies)
 - [4. Known Validator Debt](#4-known-validator-debt)
 
@@ -323,6 +324,25 @@ A registered name using `/` as a path-segment separator (an npm-scoped name, as 
 
 **Note**: Template territory — the directories these manifests live in — sits outside this repository's `@cpt-` traceability chain (`cpt-frontx-adr-template-territory-traceability`); this entry is therefore a coordination work item tracking the conversion's completion, not a compatibility anchor into member architecture the way §2.10–§2.18 are.
 
+### 2.23 Identifier Rename Wave for Post-Redesign Scope Drift - LOW
+
+- [ ] `p3` - **ID**: `cpt-frontx-feature-identifier-rename-wave`
+
+**Purpose**: Rename four identifiers (one with its folder) whose literal names still describe scope the template-registration redesign retired, consolidating the "pending follow-up" notes each currently carries in its own isolated location into one tracked work item, per the precedent §2.22 sets for tracking a rename/conversion wave rather than scattering follow-up prose across unrelated sections.
+
+**Depends On**: None — a pure identifier/folder rename with no behavioral, contract, or schema change.
+
+**Scope** — four renames:
+
+1. `cpt-frontx-feature-composed-provenance` (and its folder, `packages/cli/architecture/features/composed-provenance/`) — the name and folder describe transitive preset ("composed") resolution and a per-applied-template provenance record, both retired by this redesign; current scope is the single project-state document, registration, and ownership management (`cpt-frontx-feature-composed-provenance/FEATURE.md` §1.1).
+2. `cpt-frontx-component-cli-provenance-recorder` — already renamed in [CLI DESIGN §4](../packages/cli/architecture/DESIGN.md) prose to "CLI Project State Store"; the identifier itself still names the retired per-instance provenance-record role.
+3. `cpt-frontx-constraint-cli-per-template-provenance` — its name asserts a per-template provenance record; the constraint it now fixes is the opposite, a single document shared across every template ([CLI DESIGN §3.1](../packages/cli/architecture/DESIGN.md)).
+4. `cpt-frontx-feature-upgrade-changeset` — its name asserts a file-level change-set (diff/merge/rollback) mechanism; that mechanism is explicitly deferred to a dedicated future decision ([CLI DESIGN §4](../packages/cli/architecture/DESIGN.md)), and this feature currently owns only the atomic name-level `origin`/`version` transition, not any change-set representation.
+
+**Out of scope**: Any change to behavior, contract, or schema — renames only. The dedicated future decision on file-level change-set mechanics may itself settle whether item 4 keeps "change-set" once that mechanism actually exists, rather than this entry pre-empting that decision.
+
+**Note**: Consolidates the "pending follow-up" notes at [composed-provenance/FEATURE.md §1.1](../packages/cli/architecture/features/composed-provenance/FEATURE.md), [CLI DESIGN §3.1](../packages/cli/architecture/DESIGN.md) (Domain Model table), and [CLI DESIGN §3.4](../packages/cli/architecture/DESIGN.md) (Applicability) into this one tracked item. Like §2.22, this is a coordination work item over identifier hygiene, not a compatibility anchor into member architecture the way §2.10–§2.18 are.
+
 ## 3. Feature Dependencies
 
 ```text
@@ -374,6 +394,7 @@ F22 template-territory-conversion (← F11)
 - `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-ai-kit-packaging` (its entry points ship in the base kit), `cpt-frontx-feature-template-manifest` (selection matches intent against manifest-declared descriptions), `cpt-frontx-feature-template-resolution` (the local inventory it selects over), `cpt-frontx-feature-cli-scaffolding` (the seed/add assembly it drives over the command surface), `cpt-frontx-feature-composed-provenance` (the applied set is reported from the single project-state document's `templates[name].targets`), and `cpt-frontx-feature-template-ai-extensions` (per-unit realization drives the applied templates' activated extension skills).
 - `cpt-frontx-feature-telemetry-sdk` has no feature-level dependency: the package imports no other package in this ecosystem (`cpt-frontx-telemetry-constraint-standalone-boundary`), so it stands alone in the graph like `cpt-frontx-feature-ecosystem-distribution` and `cpt-frontx-feature-ecosystem-governance`.
 - `cpt-frontx-feature-template-territory-conversion` requires `cpt-frontx-feature-template-manifest`: the conversion moves both legacy templates (`template-shell`, `template-mfe`) onto the four-field manifest contract F11 fixes; it is a coordination work item over template territory rather than a member-owned anchor (`cpt-frontx-adr-template-territory-traceability`), so it depends on F11 only and carries no dependents of its own in this graph.
+- `cpt-frontx-feature-identifier-rename-wave` has no feature-level dependency: it renames four identifiers (and one folder) whose current owners are already fixed by `cpt-frontx-feature-composed-provenance` (F13) and `cpt-frontx-feature-upgrade-changeset` (F14); the rename touches only how those two FEATUREs and their components are cited, not what they do, so it stands alone in the graph like `cpt-frontx-feature-telemetry-sdk` above.
 
 ## 4. Known Validator Debt
 
