@@ -62,7 +62,7 @@ This feature exists to let a project developer safely adopt a newer origin for a
 - **Dependencies**:
   - `cpt-frontx-feature-composed-provenance` — owns the single project state document; this engine reads the name's `{origin, version, targets[]}` entry as its baseline and commits the post-upgrade `origin`/`version` back into it, but does not redefine the document or the contract.
   - `cpt-frontx-feature-template-resolution` — resolves the new origin through the same shared resolver every other lifecycle command uses.
-  - `cpt-frontx-feature-cli-scaffolding` — owns the CLI-owned AI-extension bundle step (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) this engine invokes to refresh a name's `.frontx/ai/<manifest-name>/` bundle on a committed upgrade, without redefining that step.
+  - `cpt-frontx-feature-cli-scaffolding` (F12 — the engine applies a transition within each target's effective ownership, reusing the Conflict Checker's canonicalized geometry rather than redefining it; also owns the CLI-owned AI-extension bundle step (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) this engine invokes to refresh a name's `.frontx/ai/<manifest-name>/` bundle on a committed upgrade, without redefining that step).
 
 ## 2. Actor Flows (CDSL)
 

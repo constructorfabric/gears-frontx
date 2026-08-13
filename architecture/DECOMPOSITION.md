@@ -25,6 +25,7 @@
   - [2.19 Ecosystem Layer-Partition Governance - MEDIUM](#219-ecosystem-layer-partition-governance---medium)
   - [2.20 Telemetry SDK Compatibility Anchor - MEDIUM](#220-telemetry-sdk-compatibility-anchor---medium)
   - [2.21 AI-Driven Project Scaffolding from Intent - HIGH](#221-ai-driven-project-scaffolding-from-intent---high)
+  - [2.22 Template Territory Conversion to the Registration Contract - HIGH](#222-template-territory-conversion-to-the-registration-contract---high)
 - [3. Feature Dependencies](#3-feature-dependencies)
 - [4. Known Validator Debt](#4-known-validator-debt)
 
@@ -300,6 +301,28 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cyber-pilot-kit-frontx/architecture/features/ai-project-scaffolding/FEATURE.md).
 
+### 2.22 Template Territory Conversion to the Registration Contract - HIGH
+
+- [ ] `p2` - **ID**: `cpt-frontx-feature-template-territory-conversion`
+
+**Purpose**: Convert the ecosystem's own pre-existing templates (`template-shell`, `template-mfe`) from their legacy manifest shape onto the current four-field registration contract, so both become registrable and applicable under `cpt-frontx-adr-thin-template-manifest`, `cpt-frontx-adr-whole-target-ownership`, and `cpt-frontx-adr-single-project-state-file` by direct conversion at the source rather than by relying on any runtime compatibility path. Until this conversion completes, zero templates in this repository are registrable under the current contract.
+
+**Depends On**: `cpt-frontx-feature-template-manifest` (F11 — the four-field manifest contract both templates convert onto)
+
+**Scope** — five concrete changes, across both templates:
+
+1. Replace each legacy manifest (`schemaVersion` + `ownershipBoundaries`) with the current four-field shape: `name`, `version`, a required non-empty `description`, and `ownership.excludedSubtrees`.
+2. Widen `template-shell`'s ownership from its current file-subset claim to whole-target ownership (its target minus its declared `excludedSubtrees`) — extending what it owns, or moving previously unclaimed root files into `projectOwnedRoots`. This is a **behavioural change requiring its own review**, not a mechanical manifest edit, and is tracked here rather than folded into item 1.
+3. Remove both templates' own claim on `.frontx/ai/<manifest-name>/`; that bundle is a CLI-owned write (`cpt-frontx-adr-whole-target-ownership`), never template-owned.
+4. Add `src-app`/`mfe_packages` (as applicable to each template) to `template-shell`'s `ownership.excludedSubtrees` and stop carrying payload inside it.
+5. Extract each template's authoring/dev-harness machinery (a dev-only `package.json` with `file:` overrides, local build tooling) out of the template directory entirely, leaving pure payload plus the manifest and the conventional AI-extension bundle (`cpt-frontx-adr-thin-template-manifest`, "More Information").
+
+A registered name using `/` as a path-segment separator (an npm-scoped name, as both templates already use) is valid under the bundle-root prefix-uniqueness and non-empty-segment invariants `cpt-frontx-adr-thin-template-manifest` fixes for `name`.
+
+**Out of scope**: Any change to the registration contract, the conflict-checker geometry, or any other ecosystem template; this entry converts exactly the two named templates.
+
+**Note**: Template territory — the directories these manifests live in — sits outside this repository's `@cpt-` traceability chain (`cpt-frontx-adr-template-territory-traceability`); this entry is therefore a coordination work item tracking the conversion's completion, not a compatibility anchor into member architecture the way §2.10–§2.18 are.
+
 ## 3. Feature Dependencies
 
 ```text
@@ -314,7 +337,7 @@ F2 type-substrate-port           (foundation)
 F9 api-protocol-surface          (foundation, standalone)
 F10 template-resolution          (foundation)
    ├─→ F11 template-manifest
-   ├─→ F12 cli-scaffolding (also ← F13) ──→ F13 composed-provenance ──→ F14 upgrade-changeset
+   ├─→ F12 cli-scaffolding (also ← F13) ──→ F13 composed-provenance ──→ F14 upgrade-changeset (also ← F12)
    └─→ F16 template-ai-extensions (also ← F15)
 F15 ai-kit-packaging             (foundation)
    ├─→ F16 template-ai-extensions
@@ -323,6 +346,7 @@ F18 cli-invocation               (aggregator ← F10, F11, F12, F13, F14 — dis
 F19 ecosystem-governance         (foundation, standalone)
 F20 ai-project-scaffolding       (← F10, F11, F12, F13, F15, F16)
 F21 telemetry-sdk                (foundation, standalone)
+F22 template-territory-conversion (← F11)
 ```
 
 **Dependency Rationale**:
@@ -341,6 +365,7 @@ F21 telemetry-sdk                (foundation, standalone)
 - `cpt-frontx-feature-composed-provenance` requires `cpt-frontx-feature-template-resolution`: template registration (register/install) resolves through the same shared resolver, and the project-state store records the pinned origin it returns (ADR 0040).
 - `cpt-frontx-feature-cli-scaffolding` also requires `cpt-frontx-feature-composed-provenance`: the conflict checker's geometry check — run by `assemble`, `apply`, `delete`, and `ownership add|remove` alike — reads already-applied `targets[]` and `projectOwnedRoots` out of the single project-state document `composed-provenance` owns. Read together with the `composed-provenance` → `cli-scaffolding` edge above, F12 and F13 genuinely depend on each other at feature altitude — the diagram in §3 marks this with the `(also ← F13)` annotation on F12 rather than a one-way arrow. This is not a defect: both features decompose the behavior of one CLI package sharing a single command surface, and the concrete component-level structure that makes the mutual dependency safe — which component reads, which writes, and when — is owned by the [CLI's member DESIGN §3.2](../packages/cli/architecture/DESIGN.md#32-component-model) (CLI Conflict Checker and CLI Project State Store).
 - `cpt-frontx-feature-upgrade-changeset` requires `cpt-frontx-feature-composed-provenance`: the change-set diffs against the `templates[name] = {origin, version, targets[]}` entry in the single project-state document this FEATURE owns, not a per-instance provenance record; the unit of upgrade is the whole template name — all of its targets — applied atomically (ADR 0041).
+- `cpt-frontx-feature-upgrade-changeset` also requires `cpt-frontx-feature-cli-scaffolding`: the engine applies an approved transition within each target's effective ownership, reusing the Conflict Checker's canonicalized geometry (`cpt-frontx-algo-cli-scaffolding-conflict-check`) rather than redefining it — the same reuse `composed-provenance` already cites for `ownership add` and `validate --project` above (§3, F12 ← F13 rationale).
 - `cpt-frontx-feature-template-ai-extensions` requires `cpt-frontx-feature-ai-kit-packaging`: extensions activate into the base kit's capability set.
 - `cpt-frontx-feature-template-ai-extensions` requires `cpt-frontx-feature-template-resolution`: discovery is triggered on template install (cross-package edge F16 ← F10).
 - `cpt-frontx-feature-ai-upgrade-orchestration` requires `cpt-frontx-feature-upgrade-changeset`: orchestration drives the single CLI change-set engine (cross-package edge F17 ← F14).
@@ -348,6 +373,7 @@ F21 telemetry-sdk                (foundation, standalone)
 - `cpt-frontx-feature-cli-invocation` requires `cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-template-manifest`, `cpt-frontx-feature-cli-scaffolding`, `cpt-frontx-feature-composed-provenance`, and `cpt-frontx-feature-upgrade-changeset`: the invocation surface is the cross-command aggregator that dispatches `frontx <command>` to each owning behavior; it sits above them in the graph and none depend back on it.
 - `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-ai-kit-packaging` (its entry points ship in the base kit), `cpt-frontx-feature-template-manifest` (selection matches intent against manifest-declared descriptions), `cpt-frontx-feature-template-resolution` (the local inventory it selects over), `cpt-frontx-feature-cli-scaffolding` (the seed/add assembly it drives over the command surface), `cpt-frontx-feature-composed-provenance` (the applied set is reported from the single project-state document's `templates[name].targets`), and `cpt-frontx-feature-template-ai-extensions` (per-unit realization drives the applied templates' activated extension skills).
 - `cpt-frontx-feature-telemetry-sdk` has no feature-level dependency: the package imports no other package in this ecosystem (`cpt-frontx-telemetry-constraint-standalone-boundary`), so it stands alone in the graph like `cpt-frontx-feature-ecosystem-distribution` and `cpt-frontx-feature-ecosystem-governance`.
+- `cpt-frontx-feature-template-territory-conversion` requires `cpt-frontx-feature-template-manifest`: the conversion moves both legacy templates (`template-shell`, `template-mfe`) onto the four-field manifest contract F11 fixes; it is a coordination work item over template territory rather than a member-owned anchor (`cpt-frontx-adr-template-territory-traceability`), so it depends on F11 only and carries no dependents of its own in this graph.
 
 ## 4. Known Validator Debt
 
