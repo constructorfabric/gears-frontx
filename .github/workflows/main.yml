@@ -156,6 +156,10 @@ jobs:
       # on demand) — materialize it before invoking studio.py directly.
       - name: Bootstrap Constructor Studio runtime
         run: cfs update -y --no-interactive --with-kits yes
+        env:
+          # cfs resolves the Studio release via the GitHub API; anonymous
+          # requests from shared runner IPs hit the rate limit (HTTP 403).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate artifacts and traceability
         run: python3 .cf-studio/.core/skills/studio/scripts/studio.py validate
@@ -177,6 +181,10 @@ jobs:
 
       - name: Bootstrap Constructor Studio runtime
         run: cfs update -y --no-interactive --with-kits yes
+        env:
+          # cfs resolves the Studio release via the GitHub API; anonymous
+          # requests from shared runner IPs hit the rate limit (HTTP 403).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate installed kits
         run: python3 .cf-studio/.core/skills/studio/scripts/studio.py validate-kits
@@ -198,6 +206,10 @@ jobs:
 
       - name: Bootstrap Constructor Studio runtime
         run: cfs update -y --no-interactive --with-kits yes
+        env:
+          # cfs resolves the Studio release via the GitHub API; anonymous
+          # requests from shared runner IPs hit the rate limit (HTTP 403).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check spec coverage thresholds
         # Threshold rebased for the post-split ecosystem repo. The framework/
