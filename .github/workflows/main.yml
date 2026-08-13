@@ -266,6 +266,9 @@ jobs:
     # has an src-app/mfe_packages/** block, its dependency-cruiser config has
     # no-cross-mfe-imports, and its test:unit ends in
     # `--workspaces --if-present` — all three are no-ops until the overlay lands.
+    # `build:mfes` and `type-check:mfe` cover them too, but only under the
+    # FRONTX_INCLUDE_TEMPLATE_EXAMPLES opt-in set on those steps below, since
+    # every package composed here is one the template ships as an example.
     #
     # Nothing in the manifests says which shell an overlay belongs to, so this
     # requires exactly one self-contained template and composes every overlay
@@ -354,12 +357,30 @@ jobs:
         # fail as out of sync. Re-installing after an `add` is the documented
         # workflow (template-mfe/README.md).
         npm install
-        # Here `build` also compiles the overlaid MFEs (build:mfes) and emits
-        # their manifests, which the standalone run has nothing to do.
-        npm run build
+        # FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 on both steps below, because every
+        # MFE package this job composes is one the template ships as an example
+        # and therefore declares `"templateExample": true`. Without the opt-in
+        # the three package scanners skip all four, `build:mfes` and
+        # `type-check:mfe` report an empty set and exit 0, and this job — the
+        # only CI path that compiles the overlaid MFEs at all — passes having
+        # compiled nothing. That vacuous pass is the failure mode this job
+        # exists to catch, so the examples are opted back in here. A seeded
+        # project wants the opposite default, which is why the flag lives in the
+        # environment rather than in the packages.
+        #
+        # `build` compiles the overlaid MFEs (build:mfes) and emits their
+        # manifests into the aggregate, which the standalone run has nothing to
+        # do.
+        FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 npm run build
         # `type-check` ends in type-check:mfe, which reports "no MFE packages"
-        # in the standalone run above and only does real work here.
-        npm run type-check
+        # in the standalone run above and spawns a child per composed package
+        # here. It runs after `build`: each package type-checks against the
+        # workspace packages' `dist/` types, so on an unbuilt tree every one of
+        # them fails to resolve its `@gears-frontx/*` imports.
+        FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 npm run type-check
+        # No opt-in needed below: these three reach the composed packages
+        # through eslint's own glob and npm's workspaces, not through the
+        # scanners the flag governs.
         npm run arch:deps
         npm run lint
         npm run test:unit
