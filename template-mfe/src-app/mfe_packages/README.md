@@ -43,17 +43,21 @@ Copy the blank scaffold and adjust it — there is no registry file to edit;
 `generate:mfe-manifests` / `dev:all` (shell scripts) discover packages by
 scanning this directory:
 
+Copy it and drop the scaffold's example flag in one go - a copy that keeps the
+flag is invisible to the shell, and nothing fails to tell you so:
+
 ```bash
-cp -r src-app/mfe_packages/_blank-mfe src-app/mfe_packages/my-mfe
+NEW=src-app/mfe_packages/my-mfe
+cp -r src-app/mfe_packages/_blank-mfe "$NEW"
+node -e 'const f=process.argv[1],fs=require("fs"),m=JSON.parse(fs.readFileSync(f,"utf8"));delete m.templateExample;fs.writeFileSync(f,JSON.stringify(m,null,2)+"\n")' "$NEW/mfe.json"
 ```
 
 Then, inside `my-mfe/`:
 
 1. **`package.json`** — rename it (`name`, and the `dev`/`preview` scripts'
    `vite preview --port <N>` to a port no other package here already uses).
-2. **`mfe.json`** — delete `"templateExample": true` (see below), then declare
-   your entries and extensions (screen, sidebar, popup, or overlay) with GTS IDs
-   following this template's ID conventions guideline.
+2. **`mfe.json`** — declare your entries and extensions (screen, sidebar, popup,
+   or overlay) with GTS IDs following this template's ID conventions guideline.
 3. **`vite.config.ts`** — keep the `frontxMfGts` build plugin wired, and add
    your lifecycle modules to the Module Federation `exposes` map so the shell
    can load them at runtime.
@@ -92,7 +96,7 @@ To run them anyway - to watch a worked example rather than read it - set
 FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1 npm run dev:all
 ```
 
-That flag is why step 2 above deletes it from your copy, and a copy that keeps
+That flag is why the copy command above strips it, and a copy that keeps
 it still installs and still runs its own tests, because it is the thing new
 packages are copied from and has to stay usable. Type-checking is the
 exception: `type-check:mfe` skips a flagged package by default, the same as

@@ -58,12 +58,21 @@ export async function loadProjects(repoRoot = defaultRepoRoot) {
  * Discover nested MFE packages under `src/mfe_packages/*`. MFEs are not npm
  * workspaces (they have their own install boundary), so they can't come from
  * `discoverWorkspaceProjects`. Dynamic discovery keeps this runner in sync
- * when MFEs are added or removed without editing this script — mirrors the
- * pattern used by `template-shell/scripts/run-mfe-type-checks.ts`.
+ * when MFEs are added or removed without editing this script.
  *
  * A directory counts as an MFE project only when it contains a `package.json`
  * that declares a `test:unit` script; otherwise the runner has nothing to
  * delegate to.
+ *
+ * Discovery is best-effort: any failure to read the root — absent, unreadable,
+ * not a directory — yields no MFE projects rather than an error. This repository
+ * has no `src/mfe_packages` of its own, so the ordinary case is an absent root,
+ * and the aggregate run this feeds still has every workspace project to report
+ * on. Note that this is a weaker contract than the template's own
+ * `run-mfe-type-checks.ts`, which distinguishes an absent directory from an
+ * unreadable one because a type-check gate that silently checks nothing would
+ * pass; here an empty result costs coverage a caller can still see in the
+ * reported project list.
  *
  * @param {{ repoRoot?: string; readdir?: (path: string, options: { withFileTypes: true }) => Promise<DirEntryLike[]> }} [options]
  * @returns {Promise<import('./common.mjs').MfeProject[]>}

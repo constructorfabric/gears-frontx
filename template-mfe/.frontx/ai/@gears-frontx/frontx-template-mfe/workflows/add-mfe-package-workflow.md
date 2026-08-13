@@ -17,10 +17,18 @@ each step names the concrete command or file template-mfe ships.
    - Name: `{screenset}-mfe` (kebab-case), placed at `src-app/mfe_packages/{screenset}-mfe/`.
    - Port: next free `30N0` slot after the reserved `3001` (`demo-mfe`).
 
-2. **Copy the scaffold**
+2. **Copy the scaffold and strip its example flag** — together, so the flag cannot
+   outlive the copy. A copy that keeps it registers nothing, and nothing fails to
+   say so.
    ```bash
-   cp -r src-app/mfe_packages/_blank-mfe src-app/mfe_packages/{screenset}-mfe
+   NEW=src-app/mfe_packages/{screenset}-mfe
+   cp -r src-app/mfe_packages/_blank-mfe "$NEW"
+   node -e 'const f=process.argv[1],fs=require("fs"),m=JSON.parse(fs.readFileSync(f,"utf8"));delete m.templateExample;fs.writeFileSync(f,JSON.stringify(m,null,2)+"\n")' "$NEW/mfe.json"
+   grep -q templateExample "$NEW/mfe.json" && echo "FLAG STILL PRESENT - remove it" || echo "flag stripped"
    ```
+   `"templateExample": true` is what keeps the scaffold out of the running
+   application: a package carrying it is left out by manifest generation, by
+   `dev:all`, and by `type-check:mfe`, and its screen never reaches the menu.
 
 3. **Edit package metadata**
    - `src-app/mfe_packages/{screenset}-mfe/package.json`:
@@ -31,9 +39,6 @@ each step names the concrete command or file template-mfe ships.
      - Module Federation `name`: `{screenset}Mfe` (camelCase)
 
 4. **Rewrite `mfe.json`**
-   - Delete `"templateExample": true`, copied in from the scaffold. It is what keeps
-     the scaffold out of the running application; a package that keeps it is skipped
-     by manifest generation and by `dev:all`, and its screen never reaches the menu.
    - Replace the manifest ID, every entry ID, and every extension ID using
      template-mfe's ID taxonomy (`gts-id-conventions` guideline; worked examples in
      `gts-id-patterns-reference`).

@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 import {
   MFE_PACKAGES_DIR,
   TEMPLATE_EXAMPLES_ENV_VAR,
+  isNonPackageDirectory,
   isTemplateExamplePackage,
   noDiscoveredPackagesNotice,
   templateExamplesIncluded,
@@ -180,6 +181,14 @@ export async function discoverMfeProjects(
 
   for (const entry of entries) {
     if (!entry.isDirectory()) {
+      continue;
+    }
+
+    // `shared` and dot-directories are not MFE packages, on the same shared
+    // predicate `getMFEPackages` applies. Without this, `shared` reached the
+    // `type-check`-script lookup below and a library that declares none would
+    // fail the whole run as a package missing its script.
+    if (isNonPackageDirectory(entry.name)) {
       continue;
     }
 

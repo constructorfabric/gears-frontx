@@ -15,23 +15,29 @@ not a separate spec. If the scanners change, this file must be updated to match
 ## Directory-level rules
 
 - Must live directly under `src-app/mfe_packages/<name>/`.
-- `<name>` must not start with `.` and must not be `shared` — both scanners
-  exclude these (`shared` is reserved for cross-MFE helper code the isolation
-  boundary still applies to; it is never itself an MFE).
+Three scanners read this directory: manifest generation
+(`generate:mfe-manifests`), dev/build discovery (`getMFEPackages`, behind
+`dev:all` and `build:mfes`), and `type-check:mfe`. Every rule below holds in all
+three.
+
+- `<name>` must not start with `.` and must not be `shared` — all three exclude
+  these (`shared` is reserved for cross-MFE helper code the isolation boundary
+  still applies to; it is never itself an MFE).
 - A package whose `mfe.json` declares `"templateExample": true` is excluded by
-  both scanners as well. It is content a template ships to be read and copied -
-  a worked example, or the scaffold new packages are copied from - and a project
+  all three as well. It is content a template ships to be read and copied - a
+  worked example, or the scaffold new packages are copied from - and a project
   that registered it would offer screens nobody asked for. Setting
-  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES` set to `1` or `true` puts those packages
-  back into both scanners at once, for a run that means to watch the shipped
-  examples work. A package copied from a flagged scaffold **must drop the flag**,
-  or the copy is invisible to the shell for the same reason the scaffold is.
-  The flag is honoured by three scanners: manifest generation, dev/build
-  discovery, and `type-check:mfe`. The root `workspaces` glob is not one of
-  them - it still installs a flagged package unconditionally, so `npm install`
-  keeps working on a scaffold. The compile guarantee for a flagged example now
-  rests on running `type-check:mfe` with `FRONTX_INCLUDE_TEMPLATE_EXAMPLES` set
-  to `1` - that is a manual opt-in, not a CI step that runs it by default.
+  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES` to `1` or `true` puts those packages back
+  into all three at once, for a run that means to watch the shipped examples
+  work. A package copied from a flagged scaffold **must drop the flag**, or the
+  copy is invisible to the shell for the same reason the scaffold is; the
+  `add-mfe-package` procedure strips it as part of the copy so this cannot be
+  forgotten. The root `workspaces` glob is not one of the three - it installs a
+  flagged package unconditionally, so `npm install` keeps working on a scaffold.
+  The compile guarantee for a flagged example rests on `type-check:mfe` with
+  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1`, which the `template-validate` composition
+  job in CI sets for exactly that reason: every package it composes is a flagged
+  example, so without the opt-in it would compile nothing.
 
 ## Required files
 

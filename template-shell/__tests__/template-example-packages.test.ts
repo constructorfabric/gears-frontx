@@ -246,6 +246,37 @@ describe('discoverMfeProjects - what type-check:mfe spawns a child for', () => {
     expect(skippedExamples).toEqual(['_blank-mfe']);
   });
 
+  // `shared` declares no `type-check` script, so before this scanner applied the
+  // same non-package rule its siblings do, a tree holding one failed the whole
+  // run as a package missing its script.
+  it('leaves the shared library and dot-directories out without reporting them', async () => {
+    mfePackage('tasks-mfe', { templateExample: false, port: 3010 });
+
+    // `shared` is a real workspace package, so it carries a `package.json`; what
+    // it does not carry is a `type-check` script. That is the shape that reaches
+    // the hard failure, and a bare directory would not - it falls out at the
+    // manifest read whether the non-package rule ran or not.
+    const shared = join(mfePackagesDir, 'shared');
+    mkdirSync(shared, { recursive: true });
+    writeFileSync(
+      join(shared, 'package.json'),
+      JSON.stringify({ name: '@fixture/shared' }),
+      'utf-8',
+    );
+
+    const dotDir = join(mfePackagesDir, '.cache');
+    mkdirSync(dotDir, { recursive: true });
+    writeFileSync(join(dotDir, 'package.json'), JSON.stringify({ name: 'cache' }), 'utf-8');
+
+    const discovery = await discoverMfeProjects(mfePackagesDir);
+
+    expect(discovery).toEqual({
+      projects: [{ name: 'tasks-mfe', cwd: join(mfePackagesDir, 'tasks-mfe') }],
+      missingTypeCheckScript: [],
+      skippedExamples: [],
+    });
+  });
+
   // A shell-only seed has no packages directory at all, which is a legitimate
   // empty rather than a failure.
   it('reports an empty set when the packages directory does not exist', async () => {

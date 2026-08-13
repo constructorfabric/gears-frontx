@@ -45,9 +45,28 @@ to mount into an extension domain).
 
 ## Steps
 
-1. **Copy the scaffold** — duplicate `src-app/mfe_packages/_blank-mfe/` to a new
-   directory named after the screenset/screen being added
-   (`src-app/mfe_packages/{name}-mfe/`).
+1. **Copy the scaffold and strip its example flag** — one step, because a copy
+   that keeps the flag registers nothing and nothing fails to say so. Name the
+   new directory after the screenset/screen being added:
+
+   ```bash
+   NEW=src-app/mfe_packages/{name}-mfe
+   cp -r src-app/mfe_packages/_blank-mfe "$NEW"
+   node -e 'const f=process.argv[1],fs=require("fs"),m=JSON.parse(fs.readFileSync(f,"utf8"));delete m.templateExample;fs.writeFileSync(f,JSON.stringify(m,null,2)+"\n")' "$NEW/mfe.json"
+   ```
+
+   `_blank-mfe/mfe.json` declares `"templateExample": true`, which is what keeps
+   the scaffold itself out of the running application; a copy that keeps it is
+   invisible the same way. Such a copy still installs and still runs its own
+   tests, and `type-check:mfe` skips it by default too, so it compiles only when
+   the run sets `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1`. The only report is one line
+   in the `generate:mfe-manifests` / `dev:all` / `type-check:mfe` output naming
+   what was left out - nothing fails, and the new screen is simply absent from
+   the menu. Verify the strip landed before moving on:
+
+   ```bash
+   grep -q templateExample "$NEW/mfe.json" && echo "FLAG STILL PRESENT - remove it" || echo "flag stripped"
+   ```
 2. **Pick a free port** — template-mfe's convention reserves `3001` for `demo-mfe`;
    pick the next free `30N0` slot (`3010`, `3020`, ...) and set it in both the `dev`
    (`vite --port {port}`) and `preview` (`vite preview --port {port}`) scripts of the
@@ -55,29 +74,20 @@ to mount into an extension domain).
    `preview`/`dev` script carrying `--port <N>` literally.
 3. **Rename package identity** — update the copied `package.json` `name` and the
    Module Federation `name` in `vite.config.ts` (camelCase, must match across both).
-4. **Drop the scaffold's `templateExample` flag** - `_blank-mfe/mfe.json` declares
-   `"templateExample": true`, which is what keeps the scaffold itself out of the
-   running application. Delete that line from the copy. A package that keeps it
-   still installs and runs its own tests, but `type-check:mfe` skips it by
-   default too - it type-checks only when the run sets
-   `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1`. The only report of the skip is one line
-   in the `generate:mfe-manifests` / `dev:all` / `type-check:mfe` output naming
-   the packages left out - nothing fails, and the new screen is simply absent
-   from the menu.
-5. **Assign GTS IDs** — rewrite every placeholder ID in `mfe.json` following
+4. **Assign GTS IDs** — rewrite every placeholder ID in `mfe.json` following
    template-mfe's ID taxonomy (see the `gts-id-conventions` guideline and the
    `gts-id-patterns-reference` reference artifact in this same bundle): a manifest ID,
    one entry ID per exposed module, and one extension ID per screen contributed to a
    domain (typically `gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1`
    for a screen-domain contribution).
-6. **Implement the lifecycle** — `src/lifecycle.tsx` extends `ThemeAwareReactLifecycle`
+5. **Implement the lifecycle** — `src/lifecycle.tsx` extends `ThemeAwareReactLifecycle`
    from `@gears-frontx/react`; the MFE's own `init.ts` builds its app instance with
    `createFrontX().use(effects()).use(queryCacheShared()).use(mock()).build()` so it
    joins the host's shared `QueryClient` without owning a second one.
-7. **Regenerate manifests** — run `npm run generate:mfe-manifests` so the host's
+6. **Regenerate manifests** — run `npm run generate:mfe-manifests` so the host's
    `public/generated-mfe-manifests.json` picks up the new package; this step is
    mandatory before the new MFE is discoverable at runtime.
-8. **Verify** — `npm run type-check`, `npm run arch:deps` (dependency-cruiser
+7. **Verify** — `npm run type-check`, `npm run arch:deps` (dependency-cruiser
    boundaries, shell-owned script), then `npm run dev:all` and confirm the new screen
    mounts with zero console errors.
 

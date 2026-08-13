@@ -20,6 +20,20 @@ export const MFE_PACKAGES_DIR = join(process.cwd(), 'src-app/mfe_packages');
 const EXCLUDED_PACKAGES = new Set(['shared']);
 
 /**
+ * Whether a directory under `src-app/mfe_packages/` is not an MFE package at
+ * all: the `shared` library packages import from, or a dot-directory some tool
+ * left there.
+ *
+ * Distinct from the template-example rule, and not reported like it: this
+ * answers "never was a package", where the flag answers "a package this run is
+ * choosing to leave out", which is why one is announced and this one is not.
+ * Shared so every scanner draws the boundary in the same place.
+ */
+export function isNonPackageDirectory(name: string): boolean {
+  return EXCLUDED_PACKAGES.has(name) || name.startsWith('.');
+}
+
+/**
  * Environment variable that puts the template's own example packages back into
  * discovery. Off by default so an applied project runs only the packages its
  * developer added; set for a run that means to watch the shipped examples work
@@ -93,11 +107,15 @@ export function templateExamplesIncluded(env: NodeJS.ProcessEnv = process.env): 
  * Human-readable line naming the example packages discovery left out and the
  * variable that puts them back.
  *
- * Manifest generation is the single place this is printed, and every flow that
- * builds or serves MFEs ends in it (`dev`, `build`, and `dev:all`'s own
- * generate step). Printing it from the package scan as well would say the same
- * thing twice in one `dev:all` run, once from the orchestrator and once from
- * the generator it spawns.
+ * Printed once per flow, by whichever surface that flow actually passes
+ * through. For anything that builds or serves MFEs that is manifest generation,
+ * which every one of those flows ends in (`dev`, `build`, and `dev:all`'s own
+ * generate step); printing it from the package scan as well would say the same
+ * thing twice in one `dev:all` run, once from the orchestrator and once from the
+ * generator it spawns. `type-check` generates no manifest - it chains
+ * `:package`, `:package:test`, `:app`, `:packages` and `:mfe` - so
+ * `run-mfe-type-checks.ts` prints it there, the only surface in that flow that
+ * could.
  */
 export function templateExamplesSkippedNotice(skipped: readonly string[]): string {
   return (
@@ -156,8 +174,7 @@ export function getMFEPackages(mfePackagesDir: string = MFE_PACKAGES_DIR): MfeDi
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    if (EXCLUDED_PACKAGES.has(entry.name)) continue;
-    if (entry.name.startsWith('.')) continue;
+    if (isNonPackageDirectory(entry.name)) continue;
 
     // Ahead of the port lookup: an example package is left out whether or not
     // its scripts carry a `--port`, and the "could not find --port" warning
