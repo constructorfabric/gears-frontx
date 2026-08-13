@@ -20,17 +20,44 @@ const PACKAGE_DIR = '/repo/src-app/mfe_packages/billing-mfe';
 
 describe('buildFailureMessage', () => {
   it('names the package that failed and its exit code, so one red in a sequential run is attributable', () => {
-    const message = buildFailureMessage(PACKAGE_NAME, PACKAGE_DIR, { kind: 'exit', code: 1 });
+    const message = buildFailureMessage(PACKAGE_NAME, PACKAGE_DIR, { kind: 'exit', code: 1, signal: null });
 
     expect(message).toContain(PACKAGE_NAME);
     expect(message).toContain('exit code 1');
   });
 
   it('carries a runnable command scoped to the failing package, which is the step TYPE-001 omits', () => {
-    const message = buildFailureMessage(PACKAGE_NAME, PACKAGE_DIR, { kind: 'exit', code: 1 });
+    const message = buildFailureMessage(PACKAGE_NAME, PACKAGE_DIR, { kind: 'exit', code: 1, signal: null });
 
     expect(message).toContain('TYPE-001');
     expect(message).toContain(`npm run type-check --prefix ${PACKAGE_DIR}`);
+  });
+
+  it('names the signal when the build was killed, since Node reports that as a null exit code', () => {
+    // `code=null, signal=SIGKILL` used to print "exit code null" beside the
+    // TYPE-001 hint: a name for nothing, followed by a false lead.
+    const message = buildFailureMessage(PACKAGE_NAME, PACKAGE_DIR, {
+      kind: 'exit',
+      code: null,
+      signal: 'SIGKILL',
+    });
+
+    expect(message).toContain(PACKAGE_NAME);
+    expect(message).toContain('SIGKILL');
+    expect(message).not.toContain('exit code null');
+  });
+
+  it('does not send a killed build chasing a type error either', () => {
+    // Same reasoning as the spawn branch: the build was stopped from outside, so
+    // there are no diagnostics above to interpret.
+    const message = buildFailureMessage(PACKAGE_NAME, PACKAGE_DIR, {
+      kind: 'exit',
+      code: null,
+      signal: 'SIGTERM',
+    });
+
+    expect(message).not.toContain('TYPE-001');
+    expect(message).not.toContain('type-check');
   });
 
   it('reports a build that never started as an MFE build failure, carrying the spawn reason', () => {

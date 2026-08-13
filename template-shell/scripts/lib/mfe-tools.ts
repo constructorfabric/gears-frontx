@@ -249,7 +249,11 @@ export function getMFEPackages(mfePackagesDir: string = MFE_PACKAGES_DIR): MfeDi
  * through one report rather than one report and a raw spawn error.
  */
 export type MfeBuildFailure =
-  | { readonly kind: 'exit'; readonly code: number | null }
+  | {
+      readonly kind: 'exit';
+      readonly code: number | null;
+      readonly signal: NodeJS.Signals | null;
+    }
   | { readonly kind: 'spawn'; readonly cause: unknown };
 
 /**
@@ -273,12 +277,27 @@ export type MfeBuildFailure =
  * underlying reason instead, because a bare `spawn ... ENOENT` does not say
  * which of the two commands could not be found or that an MFE build is what
  * failed.
+ *
+ * A signal kill is reported the same way, and for the same reason. Node reports
+ * it as a null exit code with the signal alongside, so pairing it with the
+ * TYPE-001 hint sent the reader looking for a type error in a build that was
+ * stopped from outside - and "exit code null" named nothing at all. The two
+ * likely causes are worth stating, since neither is a compile failure.
  */
 export function buildFailureMessage(
   name: string,
   packageDir: string,
   failure: MfeBuildFailure,
 ): string {
+  if (failure.kind === 'exit' && failure.signal !== null) {
+    return [
+      `MFE build for ${name} was terminated by signal ${failure.signal}.`,
+      `The build was stopped from outside rather than failing to compile, so the output`,
+      `above holds no diagnostics for it. On ${failure.signal} the usual causes are the`,
+      `system running out of memory during the declaration build and a manual interrupt.`,
+    ].join('\n');
+  }
+
   if (failure.kind === 'spawn') {
     const reason =
       failure.cause instanceof Error ? failure.cause.message : String(failure.cause);
@@ -321,9 +340,13 @@ export async function buildMfesSequentially(mfes: MfeInfo[]): Promise<void> {
       proc.on('error', (cause) => {
         reject(new Error(buildFailureMessage(mfe.name, packageDir, { kind: 'spawn', cause })));
       });
-      proc.on('exit', (code) => {
+      proc.on('exit', (code, signal) => {
         if (code === 0) resolve();
-        else reject(new Error(buildFailureMessage(mfe.name, packageDir, { kind: 'exit', code })));
+        else {
+          reject(
+            new Error(buildFailureMessage(mfe.name, packageDir, { kind: 'exit', code, signal })),
+          );
+        }
       });
     });
   }
