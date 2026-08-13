@@ -242,6 +242,17 @@ export function getMFEPackages(mfePackagesDir: string = MFE_PACKAGES_DIR): MfeDi
 }
 
 /**
+ * How a package's `vite build` failed: the child ran and rejected the build, or
+ * it never started at all.
+ *
+ * Both are the same event to the operator - this MFE did not build - so both go
+ * through one report rather than one report and a raw spawn error.
+ */
+export type MfeBuildFailure =
+  | { readonly kind: 'exit'; readonly code: number | null }
+  | { readonly kind: 'spawn'; readonly cause: unknown };
+
+/**
  * The message a failed `vite build` rejects with.
  *
  * The child runs on inherited stdio, so this function is deliberately not in
@@ -252,19 +263,35 @@ export function getMFEPackages(mfePackagesDir: string = MFE_PACKAGES_DIR): MfeDi
  * What is missing there is a next step. The federation plugin reports a failed
  * type generation as a bare `TYPE-001` code: it says the DTS build gave up but
  * not which declaration provoked it, because the plugin swallows the tsc
- * diagnostics behind its own code. Reading that line, the exit code was the
- * only other signal, and recovering the real one-line type error meant knowing
- * that each MFE package carries its own `type-check` script and guessing the
- * invocation - a detour measured at 30-60 s per occurrence across two runs.
- * So the hint names that exact command rather than describing it.
+ * diagnostics behind its own code. That leaves the exit code as the only other
+ * signal, and recovering the real one-line type error means knowing that each
+ * MFE package carries its own `type-check` script, so the hint names that exact
+ * command rather than describing it.
+ *
+ * A spawn failure gets the opposite treatment: nothing ran, so there is no
+ * output above to interpret and no type error to chase. It carries the
+ * underlying reason instead, because a bare `spawn ... ENOENT` does not say
+ * which of the two commands could not be found or that an MFE build is what
+ * failed.
  */
 export function buildFailureMessage(
   name: string,
-  code: number | null,
   packageDir: string,
+  failure: MfeBuildFailure,
 ): string {
+  if (failure.kind === 'spawn') {
+    const reason =
+      failure.cause instanceof Error ? failure.cause.message : String(failure.cause);
+    return [
+      `MFE build for ${name} could not start: ${reason}`,
+      `Nothing was built. This is the build command failing to launch rather than a`,
+      `compile error, so check that dependencies are installed:`,
+      `  npm install --prefix ${packageDir}`,
+    ].join('\n');
+  }
+
   return [
-    `MFE build failed for ${name} with exit code ${code}.`,
+    `MFE build failed for ${name} with exit code ${failure.code}.`,
     `If the output above ends in a Module Federation TYPE-001 error, that code stands in for a`,
     `TypeScript error the plugin did not print. To see the actual diagnostics, run:`,
     `  npm run type-check --prefix ${packageDir}`,
@@ -291,10 +318,12 @@ export async function buildMfesSequentially(mfes: MfeInfo[]): Promise<void> {
         stdio: 'inherit',
         cwd: packageDir,
       });
-      proc.on('error', reject);
+      proc.on('error', (cause) => {
+        reject(new Error(buildFailureMessage(mfe.name, packageDir, { kind: 'spawn', cause })));
+      });
       proc.on('exit', (code) => {
         if (code === 0) resolve();
-        else reject(new Error(buildFailureMessage(mfe.name, code, packageDir)));
+        else reject(new Error(buildFailureMessage(mfe.name, packageDir, { kind: 'exit', code })));
       });
     });
   }

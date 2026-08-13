@@ -114,7 +114,7 @@ async function main() {
   });
 
   proc.on('error', (error) => {
-    console.error('❌ Failed to start dev:all:', error);
+    console.error(`❌ Failed to start dev:all: ${error.message}`);
     process.exit(1);
   });
 
@@ -123,7 +123,12 @@ async function main() {
   });
 }
 
-main().catch((error) => {
-  console.error('❌ Error:', error);
+// The rejection is already phrased as a full report - `buildMfesSequentially`
+// names the package, how it failed and the command that shows the real error -
+// so it is printed as its message rather than as a value. `console.error` with
+// an Error object prints a stack trace, which buries a multi-line hint in frames
+// that point at this script instead of at the package to fix.
+main().catch((err) => {
+  console.error(`❌ ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });
