@@ -44,6 +44,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  isNonPackageDirectory,
   isTemplateExamplePackage,
   templateExamplesIncluded,
   templateExamplesSkippedNotice,
@@ -191,9 +192,6 @@ export class ManifestGenerator {
   private readonly globalBaseUrl: string | null;
   private readonly mfeManifestPath: string;
 
-  // Packages to skip (hidden dirs, non-MFE directories)
-  private static readonly EXCLUDED = new Set(['.git', '.DS_Store']);
-
   constructor(
     mfePackagesDir: string,
     outputFile: string,
@@ -238,7 +236,11 @@ export class ManifestGenerator {
     const skippedExamples: string[] = [];
 
     for (const dir of readdirSync(this.mfePackagesDir)) {
-      if (ManifestGenerator.EXCLUDED.has(dir) || dir.startsWith('.')) continue;
+      // The same non-package rule the other two scanners apply, so `shared` and
+      // dot-directories are out of all three. A local set here answered only
+      // for dot-prefixed names and let a `shared/` carrying an `mfe.json` reach
+      // the aggregate that the other two had already dropped.
+      if (isNonPackageDirectory(dir)) continue;
 
       const pkgPath = join(this.mfePackagesDir, dir);
       if (!existsSync(join(pkgPath, 'mfe.json'))) continue;

@@ -15,10 +15,11 @@ not a separate spec. If the scanners change, this file must be updated to match
 ## Directory-level rules
 
 - Must live directly under `src-app/mfe_packages/<name>/`.
+
 Three scanners read this directory: manifest generation
 (`generate:mfe-manifests`), dev/build discovery (`getMFEPackages`, behind
 `dev:all` and `build:mfes`), and `type-check:mfe`. Every rule below holds in all
-three.
+three, on one shared predicate per rule rather than a copy each.
 
 - `<name>` must not start with `.` and must not be `shared` — all three exclude
   these (`shared` is reserved for cross-MFE helper code the isolation boundary

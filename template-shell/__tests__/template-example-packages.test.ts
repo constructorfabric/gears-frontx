@@ -316,3 +316,41 @@ describe('ManifestGenerator - what the host registers from', () => {
     expect(generatedManifestIds()).toEqual(['sample-mfe.manifest', 'tasks-mfe.manifest']);
   });
 });
+
+/**
+ * The three scanners against one tree, so a rule that stops holding in one of
+ * them fails here rather than showing up as a project whose menu, build and
+ * type-check disagree about which directories are packages.
+ *
+ * `shared` and `.cache` carry the full shape of a package - `mfe.json`,
+ * `package.json` with both scripts, built manifest - so the only thing that can
+ * exclude them is the rule about their names. A fixture missing any of that
+ * would fall out for an unrelated reason and pin nothing.
+ */
+describe('the non-package rule, across all three scanners', () => {
+  beforeEach(() => {
+    mfePackage('tasks-mfe', { templateExample: false, port: 3010 });
+    mfePackage('shared', { templateExample: false, port: 3030 });
+    mfePackage('.cache', { templateExample: false, port: 3040 });
+  });
+
+  it('keeps them out of what dev:all builds and serves', () => {
+    const { packages, skippedExamples } = getMFEPackages(mfePackagesDir);
+
+    expect(packages.map((mfe) => mfe.name)).toEqual(['tasks-mfe']);
+    expect(skippedExamples).toEqual([]);
+  });
+
+  it('keeps them out of what type-check:mfe spawns a child for', async () => {
+    const { projects, missingTypeCheckScript, skippedExamples } =
+      await discoverMfeProjects(mfePackagesDir);
+
+    expect(projects.map((project) => project.name)).toEqual(['tasks-mfe']);
+    expect(missingTypeCheckScript).toEqual([]);
+    expect(skippedExamples).toEqual([]);
+  });
+
+  it('keeps them out of the aggregate the host registers from', () => {
+    expect(generatedManifestIds()).toEqual(['tasks-mfe.manifest']);
+  });
+});
