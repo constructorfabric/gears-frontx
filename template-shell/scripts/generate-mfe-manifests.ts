@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-// @cpt-dod:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1
-
 /**
  * MFE Manifest Generation Script
  *
@@ -181,7 +179,6 @@ interface OutMfeManifestConfig {
 // ManifestGenerator — class-based implementation
 // ---------------------------------------------------------------------------
 
-// @cpt-begin:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-2
 /**
  * Exported for `__tests__/template-example-packages.test.ts`, which runs the
  * real discovery against a fixture tree rather than a copy of its rules. The
@@ -444,7 +441,6 @@ export class ManifestGenerator {
     return JSON.stringify(configs, null, 2) + '\n';
   }
 }
-// @cpt-end:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-2
 
 // ---------------------------------------------------------------------------
 // CLI entry point
