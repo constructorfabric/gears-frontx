@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import {
+  COLD_START_TIMEOUT_MS,
   COVERAGE_EXCLUDE,
   COVERAGE_THRESHOLDS,
   DEFAULT_TEST_EXCLUDE,
@@ -62,6 +63,12 @@ export default defineConfig({
     environment: 'jsdom',
     execArgv: vitestNodeWorkerExecArgv(),
     setupFiles: [...SHARED_VITEST_SETUP_FILES],
+    // Observed here, not only in scaffolded projects: the first run after a
+    // rebuild of `packages/*` failed 3 of 22 tests on `Test timed out in
+    // 5000ms` while the same suite passed 22 of 22 in 948 ms immediately
+    // after. See COLD_START_TIMEOUT_MS.
+    testTimeout: COLD_START_TIMEOUT_MS,
+    hookTimeout: COLD_START_TIMEOUT_MS,
     include: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
     exclude: ['mfe_packages/**', ...DEFAULT_TEST_EXCLUDE],
     coverage: {
