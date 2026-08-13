@@ -359,16 +359,22 @@ export class ManifestGenerator {
    * parse.
    *
    * Without this gate every command stays green: an id one dot-token short of
-   * `vendor.package.namespace.type.vN` compiles, type-checks, builds and lands
-   * in the aggregate, and the only thing that rejects it is the host's
-   * bootstrap, which reports it as a console error and leaves an empty
-   * navigation menu behind. Nothing then names the file to edit, so the cost of
-   * the typo is a runtime hunt rather than a failed build.
+   * the grammar compiles, type-checks, builds and lands in the aggregate, and
+   * the only thing that rejects it is the host's bootstrap, which reports it as
+   * a console error and leaves an empty navigation menu behind. Nothing then
+   * names the file to edit, so the cost of the typo is a runtime hunt rather
+   * than a failed build.
    *
    * The check runs through the same parser the runtime registry parses ids
    * with, so this gate cannot come to disagree with the runtime about what a
    * valid id is: a grammar restated here would start rejecting ids GTS accepts
    * the first time the id grammar moves.
+   *
+   * Validating here does not widen anyone's ownership of id syntax
+   * (ADR 0005 keeps that in GTS): the plugin exposes no id-syntax surface to
+   * call instead, this aggregator is the last point that sees every package's
+   * ids at once, and it is a build script rather than runtime, so the
+   * confinement holds.
    *
    * Every invalid id in the package is reported together. Stopping at the first
    * would turn a manifest that carries several into one rebuild per typo.
@@ -393,8 +399,11 @@ export class ManifestGenerator {
     throw new Error(
       `[${packageDir}] ${invalid.length} invalid GTS identifier(s) in ${this.mfeManifestPath}:\n` +
         `${detail}\n` +
-        `Every '~'-delimited segment carries the five dot-tokens ` +
-        `vendor.package.namespace.type.vN, optionally followed by a minor version. ` +
+        `An id chains at least two '~'-delimited segments. The first carries the ` +
+        `'gts.' prefix ahead of its five dot-tokens ` +
+        `(gts.vendor.package.namespace.type.vN), every later segment carries the ` +
+        `five alone, and any segment may end in a minor version. For example: ` +
+        `gts.frontx.mfes.ext.extension.v1~acme.billing.screens.home.v1\n` +
         `Fix the ids in ${join(pkgPath, 'mfe.json')} and rebuild the package.`
     );
   }
@@ -582,7 +591,12 @@ function collectGtsIds(mfeJson: RawEnrichedMfeJson): LocatedGtsId[] {
     addEach(`${at}.extensionsLifecycleStages`, domain.extensionsLifecycleStages);
   });
 
-  mfeJson.entries.forEach((entry, index) => {
+  // `?.` on all three collections, not just `domains`: a manifest that omits
+  // `entries` or `extensions` is malformed, but this gate must reach its own
+  // refusal to say so. A raw TypeError here reports a line of this script
+  // instead of the package at fault, and it travels through the same failure
+  // path that discards the previous good aggregate.
+  mfeJson.entries?.forEach((entry, index) => {
     const at = `entries[${index}]`;
     add(`${at}.id`, entry.id);
     add(`${at}.manifest`, entry.manifest);
@@ -592,7 +606,7 @@ function collectGtsIds(mfeJson: RawEnrichedMfeJson): LocatedGtsId[] {
     addEach(`${at}.domainActions`, entry.domainActions);
   });
 
-  mfeJson.extensions.forEach((extension, index) => {
+  mfeJson.extensions?.forEach((extension, index) => {
     const at = `extensions[${index}]`;
     add(`${at}.id`, extension.id);
     add(`${at}.domain`, extension.domain);

@@ -5,10 +5,10 @@
  * generated aggregate.
  *
  * The failure this covers is silent everywhere else: an id one dot-token short
- * of `vendor.package.namespace.type.vN` builds, type-checks and generates, and
- * only the host's bootstrap rejects it, as a console error behind an empty
- * navigation menu. So the cases here assert the build refusal and the text that
- * names where to edit, not the parser, which is GTS's own.
+ * of the grammar builds, type-checks and generates, and only the host's
+ * bootstrap rejects it, as a console error behind an empty navigation menu. So
+ * the cases here assert the build refusal and the text that names where to edit,
+ * not the parser, which is GTS's own.
  *
  * `ManifestGenerator` takes its directories as arguments; the module-level
  * defaults resolve against the working directory at import time, which a test
@@ -19,6 +19,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { Gts } from '@globaltypesystem/gts-ts';
 
 import { ManifestGenerator } from '../scripts/generate-mfe-manifests';
 
@@ -47,6 +49,7 @@ const EARLIER_GOOD_AGGREGATE = '{ "earlier": "run" }';
 // position, so the segment ends up one short. This is the exact shape that cost
 // two scaffolding runs their debug time.
 const FOUR_TOKEN_EXTENSION_ID = `${EXTENSION_TYPE}~fixture.billing.screens.v1`;
+const FOUR_TOKEN_ENTRY_ID = `${ENTRY_TYPE}~fixture.billing.home.v1`;
 
 let workspace: string;
 let mfePackagesDir: string;
@@ -56,6 +59,8 @@ interface ManifestOverrides {
   manifestId?: string;
   entryId?: string;
   extensionId?: string;
+  /** Writes the manifest with no `extensions` key at all, as a malformed build would. */
+  omitExtensions?: boolean;
 }
 
 /**
@@ -98,13 +103,17 @@ function mfePackageWithIds(overrides: ManifestOverrides): void {
           exposeAssets: { js: { async: [], sync: [] }, css: { async: [], sync: [] } },
         },
       ],
-      extensions: [
-        {
-          id: overrides.extensionId ?? VALID_EXTENSION_ID,
-          domain: SCREEN_DOMAIN,
-          entry: overrides.entryId ?? VALID_ENTRY_ID,
-        },
-      ],
+      ...(overrides.omitExtensions
+        ? {}
+        : {
+            extensions: [
+              {
+                id: overrides.extensionId ?? VALID_EXTENSION_ID,
+                domain: SCREEN_DOMAIN,
+                entry: overrides.entryId ?? VALID_ENTRY_ID,
+              },
+            ],
+          }),
     }),
     'utf-8',
   );
@@ -147,13 +156,39 @@ describe('ManifestGenerator - GTS identifier validation', () => {
     expect(messageFromRefusal()).toContain(`extensions[0].id: "${FOUR_TOKEN_EXTENSION_ID}"`);
   });
 
-  it('names the mfe.json to edit and the five-token rule when it refuses', () => {
+  it('names the mfe.json to edit and teaches the grammar with an id that parses', () => {
     mfePackageWithIds({ extensionId: FOUR_TOKEN_EXTENSION_ID });
 
     const message = messageFromRefusal();
 
     expect(message).toContain(join(mfePackagesDir, PACKAGE_NAME, 'mfe.json'));
-    expect(message).toContain('vendor.package.namespace.type.vN');
+    expect(message).toContain('gts.vendor.package.namespace.type.vN');
+  });
+
+  it('offers an example the parser actually accepts, since the refusal is what teaches the shape', () => {
+    mfePackageWithIds({ extensionId: FOUR_TOKEN_EXTENSION_ID });
+
+    // Pull the example out of the message and put it back through GTS. Writing
+    // the shape by hand is how the previous wording came to describe five
+    // dot-tokens for a leading segment that needs the `gts.` prefix on top of
+    // them, so the case reads the parser rather than a second hand-written rule.
+    const example = messageFromRefusal().match(/For example: (\S+)/)?.[1];
+
+    expect(example).toBeDefined();
+    expect(Gts.validateGtsID(example as string).ok).toBe(true);
+  });
+
+  it('refuses through the gate when the manifest carries no extensions at all', () => {
+    // `collectGtsIds` walks three collections; only `domains` was optional-chained,
+    // so a manifest without `extensions` died on a TypeError from this script
+    // instead of the gate's refusal - and took the previous good aggregate with it
+    // through the same failure path.
+    mfePackageWithIds({ entryId: FOUR_TOKEN_ENTRY_ID, omitExtensions: true });
+
+    const message = messageFromRefusal();
+
+    expect(message).toContain(`entries[0].id: "${FOUR_TOKEN_ENTRY_ID}"`);
+    expect(message).not.toContain('TypeError');
   });
 
   it('writes no aggregate when an id is refused', () => {
