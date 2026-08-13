@@ -28,7 +28,6 @@ export default [
       '*.config.*',
       '**/*.config.*',
       '**/*.cjs',
-      'scripts/**',
     ],
   },
 
@@ -95,7 +94,6 @@ export default [
       '**/*.__mf__temp/**', // Module Federation generated temp files
       '**/.__mf__temp/**', // Module Federation generated temp files (dot-prefixed)
       'packages/**/templates/**',
-      'scripts/**',
       '**/.vitepress/**',
       '.dependency-cruiser.cjs',
     ],
