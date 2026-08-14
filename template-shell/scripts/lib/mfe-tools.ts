@@ -61,6 +61,31 @@ function declaresTemplateExample(mfeJson: unknown): boolean {
 }
 
 /**
+ * The script text a package's dev-server port is declared in: its `preview`
+ * script when it has one, otherwise `dev`, otherwise the empty string.
+ *
+ * `preview` comes first because it is the script `dev:all` actually spawns per
+ * package, so its `--port` is the one the shell will reach; `dev` is the
+ * fallback for a package that declares no `preview`.
+ *
+ * The body arrives as `unknown` straight from `JSON.parse`, so every hop down to
+ * the script text is checked rather than asserted - the same narrowing
+ * `declaresTemplateExample` applies to an `mfe.json` body.
+ */
+function portSourceScript(packageJson: unknown): string {
+  if (typeof packageJson !== 'object' || packageJson === null) return '';
+  if (!('scripts' in packageJson)) return '';
+
+  const scripts = packageJson.scripts;
+  if (typeof scripts !== 'object' || scripts === null) return '';
+
+  if ('preview' in scripts && typeof scripts.preview === 'string') return scripts.preview;
+  if ('dev' in scripts && typeof scripts.dev === 'string') return scripts.dev;
+
+  return '';
+}
+
+/**
  * Whether the MFE package at `packagePath` declares itself template example
  * content via `"templateExample": true` in its `mfe.json`.
  *
@@ -199,14 +224,8 @@ export function getMFEPackages(mfePackagesDir: string = MFE_PACKAGES_DIR): MfeDi
     if (!existsSync(pkgJsonPath)) continue;
 
     try {
-      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf-8')) as {
-        scripts?: Record<string, string>;
-      };
-      const scripts = pkgJson.scripts ?? {};
-
-      // Try preview first (stable port source), fall back to dev
-      const portSource = scripts['preview'] ?? scripts['dev'] ?? '';
-      const portMatch = portSource.match(/--port\s+(\d+)/);
+      const pkgJson: unknown = JSON.parse(readFileSync(pkgJsonPath, 'utf-8'));
+      const portMatch = portSourceScript(pkgJson).match(/--port\s+(\d+)/);
 
       if (!portMatch) {
         console.warn(`⚠️  Could not find --port in scripts for ${entry.name}, skipping`);

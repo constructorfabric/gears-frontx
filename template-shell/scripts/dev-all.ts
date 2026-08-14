@@ -17,7 +17,7 @@ import {
   buildMfesSequentially,
   getMFEPackages,
   noDiscoveredPackagesNotice,
-  MfeInfo,
+  type MfeInfo,
 } from './lib/mfe-tools.js';
 
 // Determine main app command based on available scripts

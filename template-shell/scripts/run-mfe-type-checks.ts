@@ -426,6 +426,26 @@ export interface TypeCheckFailureReport {
 }
 
 /**
+ * A refusal this script raises rather than returns: a run it will not perform,
+ * or a run whose packages did not pass.
+ *
+ * `code` is what an importer branches on. The CLI at the foot of this file
+ * prints `message` and exits 1 for either code, but the two are different
+ * events - one says the tree is misconfigured, the other says the types are
+ * broken - and a caller that has to tell them apart must not be left matching
+ * prose in the message.
+ */
+export class MfeTypeCheckError extends Error {
+  constructor(
+    message: string,
+    public readonly code: 'MISSING_TYPE_CHECK_SCRIPT' | 'TYPE_CHECK_FAILED',
+  ) {
+    super(message);
+    this.name = 'MfeTypeCheckError';
+  }
+}
+
+/**
  * Refuse the whole run when any discovered package declares no `type-check`
  * script.
  *
@@ -435,14 +455,18 @@ export interface TypeCheckFailureReport {
  * around. Example packages never reach here - the flag filter runs ahead of the
  * script lookup, so a scaffold that declares none cannot refuse a run that was
  * never going to check it.
+ *
+ * @throws {MfeTypeCheckError} `MISSING_TYPE_CHECK_SCRIPT`, naming every package
+ *   that declares none
  */
 export function refuseMissingTypeCheckScript(missingTypeCheckScript: readonly string[]): void {
   if (missingTypeCheckScript.length === 0) {
     return;
   }
 
-  throw new Error(
+  throw new MfeTypeCheckError(
     `Missing \`type-check\` script in MFE package(s): ${missingTypeCheckScript.join(', ')}.`,
+    'MISSING_TYPE_CHECK_SCRIPT',
   );
 }
 
@@ -452,6 +476,9 @@ export function refuseMissingTypeCheckScript(missingTypeCheckScript: readonly st
  * Each package's own reason is repeated here because by the time this prints,
  * a multi-package run has scrolled far past the first failure, and a timeout
  * has to stay distinguishable from a type error.
+ *
+ * @throws {MfeTypeCheckError} `TYPE_CHECK_FAILED`, listing each failed package
+ *   with its own reason
  */
 export function throwOnFailures(failures: TypeCheckFailureReport[]): void {
   if (failures.length === 0) {
@@ -462,8 +489,9 @@ export function throwOnFailures(failures: TypeCheckFailureReport[]): void {
     .map((failure) => `  - ${failure.name}: ${describeFailureReason(failure.reason)}`)
     .join('\n');
 
-  throw new Error(
+  throw new MfeTypeCheckError(
     `Type-check failed for ${failures.length} MFE package(s):\n${detail}`,
+    'TYPE_CHECK_FAILED',
   );
 }
 

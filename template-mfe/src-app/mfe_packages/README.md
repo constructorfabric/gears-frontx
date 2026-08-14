@@ -41,7 +41,7 @@ lands.
 
 Copy the blank scaffold and adjust it — there is no registry file to edit;
 `generate:mfe-manifests` / `dev:all` (shell scripts) discover packages by
-scanning this directory. Copy it and drop the scaffold's example flag in one go,
+scanning this directory. Drop the scaffold's example flag in the same step,
 since a copy that keeps the flag is invisible to the shell and nothing fails to
 tell you so:
 
