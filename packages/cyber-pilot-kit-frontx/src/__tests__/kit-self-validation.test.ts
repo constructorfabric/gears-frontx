@@ -19,10 +19,21 @@ const manifestPath = path.join(kitRoot, '.cf-studio-kit.toml');
 // Every spawnSync below drives the real driver, which drives a browser command
 // of its own. Without a bound here, a driver that stops returning does not fail
 // this suite - it holds CI open until the job is killed, and the suite reports
-// nothing about why. Well above the driver's own per-command budget, so a
-// timeout at this level means the driver itself hung rather than a child it
-// was already bounding.
-const DRIVER_TIMEOUT_MS = 60_000;
+// nothing about why.
+//
+// Strictly above the driver's own default --command-timeout (60000ms), and
+// deliberately not equal to it: at equal budgets a driver correctly killing a
+// stuck child races the parent killing the driver, and the run that loses that
+// race reports a hung driver where the driver was doing its job. A timeout at
+// this level therefore means the driver itself hung rather than a child it was
+// already bounding.
+const DRIVER_TIMEOUT_MS = 120_000;
+
+// Handed to every stub-driven run below, so no such run leans on the driver's
+// 60000ms default and every one of them is bounded well inside the parent bound
+// above. A test that needs the kill to happen sooner passes its own value after
+// these, and the later flag is the one the driver reads.
+const STUB_COMMAND_TIMEOUT_MS = '15000';
 
 // The manifest under test is the REAL shipped file, parsed from disk — not a
 // literal transcribed by hand. A hardcoded copy cannot detect the manifest
@@ -581,9 +592,18 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
     // three agent hosts driven from identical sources each reported empty theme
     // labels on every theme rather than the redeclaration underneath.
     it('installs its page helpers as globals, so evaluating the prelude twice in one scope does not throw', () => {
-      const preludeMatch = /const PRELUDE = `([\s\S]*?)`;/.exec(fs.readFileSync(driverPath(), 'utf8'));
+      const source = fs.readFileSync(driverPath(), 'utf8');
+      const preludeMatch = /const PRELUDE = `([\s\S]*?)`;/.exec(source);
       if (preludeMatch === null) throw new Error('the driver no longer carries a PRELUDE template literal');
-      const prelude = preludeMatch[1];
+
+      // What reaches the page is the interpolated prelude, so the sentinel's
+      // substitution is resolved here from the driver's own declaration of it -
+      // running the raw literal would be running a text no page ever sees. Any
+      // other substitution stops this test rather than being evaluated broken.
+      const sentinelMatch = /^const MISSING = ('[^']*');$/m.exec(source);
+      if (sentinelMatch === null) throw new Error('the driver no longer declares MISSING as a single-quoted literal');
+      const prelude = preludeMatch[1].replaceAll('${JSON.stringify(MISSING)}', sentinelMatch[1]);
+      if (prelude.includes('${')) throw new Error('the prelude carries a substitution this test cannot resolve');
 
       // Column zero is the prelude's own top level; the indented declarations
       // are inside the helper bodies, where a fresh scope makes them safe.
@@ -595,6 +615,21 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       expect(() => vm.runInContext(prelude, context)).not.toThrow();
       expect(vm.runInContext('typeof __find', context)).toBe('function');
       expect(vm.runInContext('__MISSING', context)).toBe('__verify_walk_missing__');
+    });
+
+    // The value the prelude installs into the page and the value the read check
+    // compares a reading against are the same claim, and they were written out
+    // as two literals. Changing one alone left the check comparing against a
+    // string the page never returns, which reads as an absent control passing a
+    // `read` action. One spelling in the whole file is what keeps them together.
+    it('spells the missing-element sentinel exactly once, so the prelude and the read check cannot drift', () => {
+      const source = fs.readFileSync(driverPath(), 'utf8');
+      const spellings = source.match(/__verify_walk_missing__/g) ?? [];
+
+      expect(spellings).toHaveLength(1);
+      // And that one spelling is a named definition rather than a use, so both
+      // sides are derived from it.
+      expect(source).toMatch(/^const MISSING = '__verify_walk_missing__';$/m);
     });
 
     // A refused eval and an element holding an empty string leave the same empty
@@ -730,9 +765,15 @@ const script = fs.readFileSync(0, 'utf8');
 const found = /__find\\("([^"]*)"\\)/.exec(script);
 const id = found === null ? null : found[1];
 const present = id !== null && ids.includes(id);
-const theme = () => (fs.existsSync(process.env.STUB_THEME)
-  ? fs.readFileSync(process.env.STUB_THEME, 'utf8')
-  : 'light');
+// A switcher whose option click dispatches and whose theme does not change:
+// the page goes on showing the theme named here whatever is clicked. It is the
+// application failure the label check exists to catch, and without it every
+// label read back agrees with what was just asked for.
+const theme = () => (process.env.STUB_STICKY_THEME
+  ? process.env.STUB_STICKY_THEME
+  : (fs.existsSync(process.env.STUB_THEME)
+    ? fs.readFileSync(process.env.STUB_THEME, 'utf8')
+    : 'light'));
 
 // One refused existence probe, for the difference between "the page holds no
 // such element" and "the script never ran". Scoped to the probe so the control
@@ -786,6 +827,7 @@ process.exit(0);
         themes: {
           theme: string;
           labelConfirmed: boolean;
+          labelRead: string | null;
           panelCollapsed: boolean | null;
           captures: { screen: string; state: string; readyConfirmed: boolean }[];
           readBacks: { action: string; testid: string; actual: string; ok: boolean }[];
@@ -796,6 +838,19 @@ process.exit(0);
       commands: string[];
       coverage: string;
       cleanup: () => void;
+    }
+
+    // The driver answers a run it cannot perform with a JSON result record, and
+    // exits 2 with nothing but help text on stderr only when a required flag is
+    // missing - which is an invocation this suite got wrong rather than a driver
+    // finding. Named here for the same reason `run.error` is: a bare JSON.parse
+    // failure never mentions the driver's own output, and the output is where the
+    // reason is.
+    function expectResultRecord(run: { stdout: string; stderr: string; status: number | null }): void {
+      if (!run.stdout.trimStart().startsWith('{')) {
+        throw new Error(`the driver printed no result record and exited ${run.status}`
+          + `\nstdout: ${run.stdout}\nstderr: ${run.stderr}`);
+      }
     }
 
     // `files` writes the driver's JSON inputs into the run's own directory and
@@ -846,6 +901,7 @@ process.exit(0);
         '--theme-option', 'theme-option-{theme}',
         '--cdp-port', '1',
         '--ready-timeout', '5000',
+        '--command-timeout', STUB_COMMAND_TIMEOUT_MS,
         ...declared,
         ...args,
       ], {
@@ -863,6 +919,7 @@ process.exit(0);
       // A driver killed at the bound above leaves no result to parse, and the
       // JSON.parse failure that follows says nothing about why. Named here.
       if (run.error) throw new Error(`the driver did not return: ${run.error.message}`);
+      expectResultRecord(run);
 
       const coverageFile = path.join(capdir, 'verification-coverage.md');
       return {
@@ -899,6 +956,7 @@ process.exit(0);
       ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
 
       if (run.error) throw new Error(`the driver did not return: ${run.error.message}`);
+      expectResultRecord(run);
 
       return {
         status: run.status,
@@ -906,6 +964,15 @@ process.exit(0);
         capdirExists: fs.existsSync(capdir),
         cleanup: () => fs.rmSync(workdir, { recursive: true, force: true }),
       };
+    }
+
+    // Counted on unescaped pipes only, which is what a markdown reader treats as
+    // a cell boundary: the row has to hold exactly the columns the header
+    // declares, whatever text was written into it.
+    function expectWholeRow(coverage: string): void {
+      const cellBoundary = /(?<!\\)\|/;
+      const lines = coverage.split('\n');
+      expect(lines[2].split(cellBoundary)).toHaveLength(lines[0].split(cellBoundary).length);
     }
 
     const EXT_PREFIX = 'gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~best';
@@ -1043,23 +1110,44 @@ process.exit(0);
       run.cleanup();
     });
 
-    // A cell filled from a page reading is a cell the page can corrupt: one `|`
-    // in a label closes it and shifts every column after it.
+    // A cell filled from a name the invocation supplied is a cell that name can
+    // corrupt: one `|` in it closes the cell and shifts every column after it.
+    it('escapes a pipe in a theme name instead of letting it close the cell', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+        // ONE theme whose name carries a pipe, not two themes. Its option testid
+        // becomes `theme-option-light|dark`, which the stub's ids do not carry,
+        // so the option click cannot be dispatched and the theme is recorded as
+        // not-opened. The pipe reaches the table through the theme-name cell and
+        // through the control failure written beside it.
+        '--themes', 'light|dark',
+      ], HOST_IDS);
+
+      expect(run.result.themes[0].labelConfirmed).toBe(false);
+      expect(run.coverage).toContain('| light\\|dark |');
+      expect(run.coverage).toContain('theme option for "light\\|dark" "theme-option-light\\|dark" was not clicked');
+      expectWholeRow(run.coverage);
+
+      run.cleanup();
+    });
+
+    // The other side of the same cell: a pipe the page itself put into a reading
+    // the table quotes back. The label of a theme that did not open is written
+    // into the row verbatim, so the page decides that text and not the caller.
     it('escapes a pipe read off the page instead of letting it close the cell', () => {
       const run = runAgainstStub([
         '--screens', 'login:/login:screen-login',
         '--nav', 'route',
-        // The stub answers a switcher label with the theme it was switched into,
-        // so the theme name is the reading that reaches the table.
-        '--themes', 'light|dark',
-      ], HOST_IDS);
+      ], HOST_IDS, { STUB_STICKY_THEME: 'da|rk' });
 
-      expect(run.coverage).toContain('| light\\|dark |');
-      // Counted on unescaped pipes only, which is what a markdown reader treats
-      // as a cell boundary: the row has to hold the columns the header declares.
-      const cellBoundary = /(?<!\\)\|/;
-      const lines = run.coverage.split('\n');
-      expect(lines[2].split(cellBoundary)).toHaveLength(lines[0].split(cellBoundary).length);
+      expect(run.status).not.toBe(0);
+      expect(run.result.themes[0].labelRead).toBe('Theme: da|rk');
+      expect(run.result.themes[0].labelConfirmed).toBe(false);
+      // Escaped in the cell, unescaped in the JSON record: the table is what a
+      // pipe corrupts, and the record is what a report reads the truth from.
+      expect(run.coverage).toContain('not-opened (label read "Theme: da\\|rk")');
+      expectWholeRow(run.coverage);
 
       run.cleanup();
     });
@@ -1107,6 +1195,73 @@ process.exit(0);
       expect(run.coverage).toContain('not-opened (dev panel expand control "panel-expand" was not clicked');
 
       run.cleanup();
+    });
+
+    // Confirmation used to be a substring test over the label with its
+    // punctuation stripped, so a registry holding `dark` and `darker` confirmed
+    // `dark` off a label reading "Darker" - and every capture in that block was
+    // filed against a theme that never opened. The requested name has to occupy
+    // whole words of the label.
+    it('does not confirm a theme off a label that merely carries its name inside another word', () => {
+      const wrong = runAgainstStub([
+        '--themes', 'dark',
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+        // The option click dispatches, and the page goes on showing "darker".
+      ], [...HOST_IDS, 'theme-option-dark'], { STUB_STICKY_THEME: 'darker' });
+
+      expect(wrong.status).not.toBe(0);
+      expect(wrong.result.themes[0].labelConfirmed).toBe(false);
+      // The click landed, so this is not a control failure being reported: the
+      // label is what refused the theme.
+      expect(wrong.commands).toContain('click theme-option-dark');
+      expect(wrong.result.failures.some((failure) => failure.stage === 'control')).toBe(false);
+
+      const refused = wrong.result.failures.filter((failure) => failure.stage === 'theme-switch');
+      expect(refused).toHaveLength(1);
+      expect(refused[0].detail).toContain('Theme: darker');
+      // Nothing is captured or compared under a theme that did not open.
+      expect(wrong.result.themes[0].captures).toEqual([]);
+      wrong.cleanup();
+
+      // The same rule still confirms the theme whose name the label does carry
+      // as a word, so this is not a check that refuses everything.
+      const right = runAgainstStub([
+        '--themes', 'darker',
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+      ], [...HOST_IDS, 'theme-option-darker'], { STUB_STICKY_THEME: 'darker' });
+
+      expect(right.result.failures).toEqual([]);
+      expect(right.status).toBe(0);
+      expect(right.result.themes[0].labelConfirmed).toBe(true);
+      right.cleanup();
+    });
+
+    // Where one theme's words are a whole run of another's, every label naming
+    // the longer one names the shorter one too. A confirmation cannot say which
+    // theme opened, so the run is refused on the theme set alone rather than
+    // filing captures under a guess.
+    it('refuses a theme set holding two names one switcher label could name at once', () => {
+      const run = runRefusal(['--themes', 'dark,dark mode']);
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain('cannot be told apart');
+      expect(run.failures[0].detail).toContain('--theme-labels');
+      // Refused on the arguments: no capture directory, no browser, no host.
+      expect(run.capdirExists).toBe(false);
+      run.cleanup();
+
+      // And a label declared per theme is the way out of it, so the refusal is a
+      // gate rather than a dead end.
+      const separated = runRefusal([
+        '--themes', 'dark,dark mode',
+        '--theme-labels', 'dark=Dark Classic,dark mode=Dark Mode',
+      ]);
+
+      expect(separated.failures.map((failure) => failure.stage)).toEqual(['host-probe']);
+      separated.cleanup();
     });
 
     // The collapse is the same class one control along, and it fails later: the
@@ -1184,6 +1339,60 @@ process.exit(0);
       expect(run.coverage).toContain('submitted (light-login-submitted.png, ready confirmed)');
 
       run.cleanup();
+    });
+
+    // The other half of the sentinel: a `read` of a control the page does not
+    // carry has to fail. It reads back the sentinel, and a check comparing
+    // against anything else - a second literal one edit out of step, say - would
+    // accept that reading and report the state as read.
+    it('fails a read of a control the page does not carry', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+      ], HOST_IDS, {}, {
+        states: {
+          login: [{ state: 'submitted', actions: [{ kind: 'read', testid: 'screen-status' }] }],
+        },
+      });
+
+      expect(run.status).not.toBe(0);
+
+      const reads = run.result.failures.filter((failure) => failure.stage === 'read');
+      expect(reads).toHaveLength(1);
+      expect(reads[0].detail).toContain('screen-status');
+      expect(run.result.themes[0].readBacks[0]).toMatchObject({
+        action: 'read', testid: 'screen-status', actual: '__verify_walk_missing__', ok: false,
+      });
+
+      run.cleanup();
+    });
+
+    // A value the read-back cannot return verbatim can never agree with itself,
+    // so the run would exit non-zero over a value the field actually took. The
+    // reading is the last non-empty line, trimmed, with surrounding quotes off,
+    // and a declared value outside that shape is refused before a browser is
+    // reached rather than discovered as a disagreement.
+    it.each([
+      ['a newline', 'first\nsecond'],
+      ['leading whitespace', '  Grace'],
+      ['trailing whitespace', 'Grace  '],
+      ['wrapping quotes', '"Grace"'],
+    ])('refuses a fill value carrying %s, on the arguments alone', (_what, value) => {
+      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-fill-'));
+      const statesFile = path.join(workdir, 'states.json');
+      fs.writeFileSync(statesFile, JSON.stringify({
+        orders: [{ state: 'typed', actions: [{ kind: 'fill', testid: 'name', value }] }],
+      }));
+
+      const run = runRefusal(['--states', statesFile]);
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain('the read-back cannot confirm');
+      expect(run.capdirExists).toBe(false);
+
+      run.cleanup();
+      fs.rmSync(workdir, { recursive: true, force: true });
     });
 
     it('fails the run when a fill reads back something other than what was typed', () => {
