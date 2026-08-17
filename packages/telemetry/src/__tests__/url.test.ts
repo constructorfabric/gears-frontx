@@ -102,7 +102,7 @@ describe('redactUrl', () => {
     const sanitizeUrl = () => {
       throw new Error('router lookup failed');
     };
-    const context = contextFor({ sanitizeUrl, verbose: true });
+    const context = contextFor({ sanitizeUrl });
     const logError = vi.spyOn(context.logger, 'logError');
 
     redactUrl('/users/12345', context);

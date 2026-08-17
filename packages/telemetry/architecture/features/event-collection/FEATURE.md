@@ -54,11 +54,11 @@ Covers the client's lifecycle and the path every record takes from a caller's ca
 
 Realizes the collection and delivery requirements of the SDK and the sequence `cpt-frontx-telemetry-seq-record-delivery`. The behaviour here is what makes an application's instrumentation reduce to naming events: everything else on a record — identity, timing, session, device, application and navigation context — is added by this feature or by the plugins it sets up.
 
-**Requirements**: `cpt-frontx-telemetry-fr-client-creation`, `cpt-frontx-telemetry-fr-client-lifecycle`, `cpt-frontx-telemetry-fr-custom-events`, `cpt-frontx-telemetry-fr-batched-delivery`, `cpt-frontx-telemetry-fr-collector-endpoint`, `cpt-frontx-telemetry-fr-delivery-disable`, `cpt-frontx-telemetry-fr-session-continuity`, `cpt-frontx-telemetry-fr-device-identity`, `cpt-frontx-telemetry-fr-builtin-context`, `cpt-frontx-telemetry-fr-locale-source`, `cpt-frontx-telemetry-fr-plugin-registration`, `cpt-frontx-telemetry-nfr-server-import-safety`
+**Requirements**: `cpt-frontx-telemetry-fr-client-creation`, `cpt-frontx-telemetry-fr-client-lifecycle`, `cpt-frontx-telemetry-fr-custom-events`, `cpt-frontx-telemetry-fr-batched-delivery`, `cpt-frontx-telemetry-fr-collector-endpoint`, `cpt-frontx-telemetry-fr-delivery-disable`, `cpt-frontx-telemetry-fr-session-continuity`, `cpt-frontx-telemetry-fr-device-identity`, `cpt-frontx-telemetry-fr-builtin-context`, `cpt-frontx-telemetry-fr-locale-source`, `cpt-frontx-telemetry-fr-plugin-registration`, `cpt-frontx-telemetry-fr-url-redaction`, `cpt-frontx-telemetry-nfr-server-import-safety`
 
 **Principles**: `cpt-frontx-telemetry-principle-enrichment-via-plugins`, `cpt-frontx-telemetry-principle-collection-delivery-separation`, `cpt-frontx-telemetry-principle-sdk-owned-identity`
 
-**Components**: `cpt-frontx-telemetry-component-client`, `cpt-frontx-telemetry-component-events-manager`, `cpt-frontx-telemetry-component-session-manager`, `cpt-frontx-telemetry-component-user-info-manager`, `cpt-frontx-telemetry-component-plugins-manager`, `cpt-frontx-telemetry-component-builtin-plugins`
+**Components**: `cpt-frontx-telemetry-component-client`, `cpt-frontx-telemetry-component-events-manager`, `cpt-frontx-telemetry-component-session-manager`, `cpt-frontx-telemetry-component-user-info-manager`, `cpt-frontx-telemetry-component-plugins-manager`, `cpt-frontx-telemetry-component-builtin-plugins`, `cpt-frontx-telemetry-component-url-redaction`
 
 ### 1.3 Actors
 
@@ -94,6 +94,7 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 - Start called a second time on the same client: refused and reported; the client stays in its already-started state.
 - Plugin registered after start: stored and never set up, so its enrichment silently does nothing.
 - Delivery rejected by the network or the collector: the batch is already drained from the queue and is lost; the rejection reaches the console only.
+- Configured url rewrite throws: reported through the logger, and the built-in patterns run over the raw url in its place, so the recording proceeds with whatever they recognize.
 
 **Steps**:
 1. [x] - `p1` - Developer calls the factory with application name, version and collector endpoint - `inst-create-client`
@@ -301,9 +302,9 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 **Steps**:
 1. [x] - `p2` - **IF** the application configured a rewrite hook - `inst-check-host-hook`
    1. [x] - `p2` - Apply it to the raw url, since only the application can map its own routes and it needs the real value to do so - `inst-apply-host-hook`
-   2. [x] - `p2` - **IF** the hook throws, report through the logger and fall through to the built-in patterns over the raw url even where configuration leaves them off, so a failed rewrite never publishes what it was meant to remove - `inst-recover-host-hook`
+   2. [x] - `p2` - **IF** the hook throws, report through the logger (surfaced when verbose) and fall through to the built-in patterns over the raw url even where configuration leaves them off, so a failed rewrite never publishes what it was meant to remove - `inst-recover-host-hook`
 2. [x] - `p2` - **IF** the built-in patterns are switched off, **RETURN** the url as it stands - `inst-check-patterns-enabled`
-3. [x] - `p2` - Separate path, query and fragment, and treat the fragment as a path so a hash-routed application is covered - `inst-split-url`
+3. [x] - `p2` - Separate path, query and fragment, and treat the fragment as a path, so a hash-routed link's target is covered - `inst-split-url`
 4. [x] - `p2` - Replace every whole path segment, query value and fragment segment matching a recognized shape with its placeholder, testing the percent-decoded form so an encoded value is not missed - `inst-replace-values`
 5. [x] - `p2` - **RETURN** the reassembled url - `inst-return-redacted`
 
@@ -482,7 +483,7 @@ The system **MUST** supply session, device, navigation and application-info enri
 
 - [x] `p2` - **ID**: `cpt-frontx-telemetry-dod-event-collection-url-redaction`
 
-The system **MUST** be able to record a url with its identifying values replaced by placeholders rather than dropped, so the address stays usable as the unit an adoption question is asked in, and **MUST** leave that off unless configuration turns it on. An application-supplied rewrite **MUST** run ahead of the built-in patterns and receive the raw url, its output **MUST** still be swept by them, and a rewrite that throws **MUST** be reported and **MUST NOT** result in the raw url being recorded. Recognition **MUST** stay conservative — whole-segment email, uuid, JWT, five-or-more-digit and long-hex shapes — so that a four-digit year and a title-cased slug survive; anything the SDK cannot separate from ordinary content is the application rewrite's to name.
+The system **MUST** be able to record a url with its identifying values replaced by placeholders rather than dropped, so the address stays usable as the unit an adoption question is asked in, and **MUST** leave that off unless configuration turns it on. An application-supplied rewrite **MUST** run ahead of the built-in patterns and receive the raw url, its output **MUST** be swept by them wherever configuration has them on, and a rewrite that throws **MUST** be reported through the logger (surfaced when verbose) and **MUST** fall back to the built-in patterns over the raw url even where configuration leaves them off, so that a failed rewrite is never the reason a recognized value reaches the collector. Recognition **MUST** stay conservative — whole-segment email, uuid, JWT, five-or-more-digit and long-hex shapes — so that a four-digit year and a title-cased slug survive; anything the SDK cannot separate from ordinary content is the application rewrite's to name.
 
 **Implements**:
 - `cpt-frontx-telemetry-algo-event-collection-url-redaction`
@@ -505,4 +506,4 @@ The system **MUST** be able to record a url with its identifying values replaced
 - [x] An activity burst produces one session write rather than one per event.
 - [x] Registering a plugin under an existing name replaces it; a falsy entry is ignored; a plugin registered after start is never set up.
 - [x] With url redaction on, a page view records placeholders in place of an email, uuid, JWT, five-digit and long-hex segment, while a four-digit year and a title-cased slug reach the collector intact.
-- [x] An application rewrite hook sees the raw url, its output is still swept by the built-in patterns, and a hook that throws is reported while the patterns run anyway.
+- [x] An application rewrite hook sees the raw url, its output is swept by the built-in patterns wherever those are switched on, and a hook that throws is reported while the patterns run anyway.

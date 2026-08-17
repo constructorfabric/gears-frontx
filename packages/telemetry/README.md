@@ -62,8 +62,8 @@ removes the listeners.
 | `appVersion`      | `string`   | *required* | Application version, sent as `context_source_app_version` and mirrored into `context_app_version`.                                                               |
 | `url`             | `string`   | see below  | Endpoint events are POSTed to. Defaults to the same-origin path `/api/events` when `apiVersion` is `1`, otherwise `/api/telemetry/v{apiVersion}/events`.         |
 | `autocapture`     | `boolean`  | `true`     | Automatically capture `click`, `change` and `submit` events from the page.                                                                                       |
-| `redactUrls`      | `boolean`  | `false`    | Replace identifying values in recorded urls with `:email`, `:uuid`, `:token`, `:id` and `:hash`. See *Urls* below.                                               |
-| `sanitizeUrl`     | `function` | none       | `(url: string) => string`, applied to the raw url before `redactUrls`. Your own route rules; its output is still swept by the built-in patterns.                 |
+| `redactUrls`      | `boolean`  | `false`    | Replace identifying values in recorded urls with `:email`, `:uuid`, `:token`, `:id` and `:hash`. See *Url redaction* below.                                      |
+| `sanitizeUrl`     | `function` | none       | `(url: string) => string`, applied to the raw url before `redactUrls`. Your own route rules; with `redactUrls` on, its output is then swept by the built-in patterns. |
 | `enabled`         | `boolean`  | `true`     | When `false`, events are still collected, enriched and drained from the queue - only the POST is skipped.                                                        |
 | `verbose`         | `boolean`  | `false`    | Log SDK activity to the console.                                                                                                                                 |
 | `storagePrefix`   | `string`   | none       | Infix for the `localStorage` keys the SDK owns: `telemetry_{storagePrefix}_device_id` and `telemetry_{storagePrefix}_session`. Set it to keep two clients apart. |
@@ -243,7 +243,7 @@ single-use, so the id is minted by the next client's `start()`:
 localStorage.removeItem('telemetry_device_id'); // or `telemetry_${storagePrefix}_device_id`
 ```
 
-## Urls
+## Url redaction
 
 Off by default. `redactUrls: true` rewrites identifying values in every url the SDK records - the
 `page_view` path, an autocaptured link's `$el_attr_href`, and `$external_click_url` - keeping the
@@ -273,12 +273,16 @@ createTelemetry({
 });
 ```
 
-Whatever it returns is still swept by the built-in patterns. If it throws, the error is logged and
-the built-in patterns run on the raw url anyway - a broken rule must not publish what it was written
-to remove.
+With `redactUrls` on, whatever it returns is then swept by the built-in patterns; with `redactUrls`
+off, its output is recorded as it returned it. Either way, a hook that throws is reported through
+the SDK logger - so visible when `verbose` - and the built-in patterns run on the raw url instead,
+because a broken rule must not publish what it was written to remove.
 
-Two gaps worth knowing: query **names** are never rewritten (only values), and `src` and `action`
-attributes are not treated as urls, so a form action carrying an id is recorded as-is.
+What the hook receives differs by recording site: the navigation plugin passes
+`location.pathname`, while the autocapture walk passes the anchor's `href` exactly as authored -
+absolute, `../relative`, `#/route` or `mailto:`. A rule anchored on `^` therefore rewrites the path
+change but not an absolute href carrying the same route. Match both forms if a route can be linked
+to as well as navigated to.
 
 ## Browser support
 
@@ -297,6 +301,11 @@ The SDK is being extracted from an internal codebase. These are tracked and will
 - `Content-Type` is not configurable.
 - Several `context_*` record fields are declared but never populated (tenant, user profile,
   screen size, touch support, DOM element id and value).
+- Url redaction rewrites query **values** only - a parameter *name* is never rewritten.
+- Url redaction treats an anchor's `href` and the `page_view` path as urls, and nothing else. A
+  `src`, an `action` or a `data-*` attribute carrying an id is recorded as-is.
+- A url nested inside a query value (`?next=/users/98765`) is left alone. Matching is whole-value,
+  and a value holding a path separator matches no rule.
 
 ## Development
 

@@ -216,6 +216,8 @@ graph LR
     Autocapture -->|logEvent| Events
     Builtin -->|logEvent| Events
     Session -.->|session accessors| Plugins
+    Builtin -->|redact url| UrlRedaction[Url redaction]
+    Autocapture -->|redact url| UrlRedaction
 ```
 
 #### Client Facade
@@ -434,7 +436,7 @@ Urls are recorded from two unrelated places — a path change and a clicked link
 - Reports a throwing application rewrite and applies its own patterns to the raw url instead, so a failed rewrite cannot publish what it was meant to remove.
 - Replaces whole path segments, query values and fragment segments that match a recognized identifying shape with a placeholder naming the shape.
 - Tests the percent-decoded form, so an encoded value is not missed.
-- Treats the fragment as a path, so a hash-routed application is covered.
+- Treats the fragment as a path, so a hash-routed link's target is covered. A hash-only route change emits no `page_view` — the navigation plugin records and dedupes on `location.pathname` — so this reaches fragments through captured hrefs, not through navigation.
 
 ##### Responsibility boundaries
 

@@ -55,6 +55,7 @@ type CaptureEventResult = { hookError?: { value: unknown } };
 // @cpt-dod:cpt-frontx-telemetry-dod-dom-autocapture-capture:p1
 // @cpt-dod:cpt-frontx-telemetry-dod-dom-autocapture-opt-out:p1
 // @cpt-dod:cpt-frontx-telemetry-dod-dom-autocapture-redaction:p1
+// @cpt-dod:cpt-frontx-telemetry-dod-dom-autocapture-anchor-url:p2
 // @cpt-dod:cpt-frontx-telemetry-dod-dom-autocapture-contribution:p1
 // @cpt-dod:cpt-frontx-telemetry-dod-dom-autocapture-hook-errors:p1
 // @cpt-dod:cpt-frontx-telemetry-dod-dom-autocapture-veto:p1
@@ -279,9 +280,9 @@ export function autocapturePlugin(): TelemetryPlugin {
 
         // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-ancestor-walk:p1:inst-check-anchor
         if (href) {
+          // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-ancestor-walk:p1:inst-mark-external
           const recordedHref = redactUrl(href, context);
           result.$el_attr_href = recordedHref;
-          // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-ancestor-walk:p1:inst-mark-external
           const hrefHost = convertToURL(href)?.host;
           const locationHost = window?.location?.host;
           if (hrefHost && locationHost && hrefHost !== locationHost && e.type === 'click') {

@@ -47,6 +47,8 @@ export function redactUrl(url: string, { config, logger }: UrlRedactionContext):
   return redactUrls ? applyRules(sanitized) : sanitized;
 }
 
+// Recording sites pass a bare pathname, a relative href or a `#/route`, and `URL` would absolutize
+// and re-encode those, changing the value that gets recorded.
 function applyRules(url: string): string {
   // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-url-redaction:p2:inst-split-url
   const hashAt = url.indexOf('#');

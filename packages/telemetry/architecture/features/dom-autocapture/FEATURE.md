@@ -26,6 +26,7 @@
   - [Interaction Capture Without Instrumentation](#interaction-capture-without-instrumentation)
   - [Subtree Opt-Out By Presence](#subtree-opt-out-by-presence)
   - [Whole-Event Redaction](#whole-event-redaction)
+  - [Anchor Url Redaction](#anchor-url-redaction)
   - [Cross-Realm Element Hook Contract](#cross-realm-element-hook-contract)
   - [Hook Contribution Semantics](#hook-contribution-semantics)
   - [Untrusted Hook Error Discipline](#untrusted-hook-error-discipline)
@@ -46,11 +47,11 @@ Covers recording user interaction from the DOM without per-element instrumentati
 
 Realizes the automatic-capture requirements and the sequence `cpt-frontx-telemetry-seq-autocapture-walk`. This is the feature that makes interaction data available without an instrumentation project, and it is also where every safety decision lives, because it is the only part of the SDK that records data nobody wrote for the purpose.
 
-**Requirements**: `cpt-frontx-telemetry-fr-dom-autocapture`, `cpt-frontx-telemetry-fr-element-attribution`, `cpt-frontx-telemetry-fr-capture-opt-out`, `cpt-frontx-telemetry-fr-redaction`, `cpt-frontx-telemetry-nfr-hook-compatibility`
+**Requirements**: `cpt-frontx-telemetry-fr-dom-autocapture`, `cpt-frontx-telemetry-fr-element-attribution`, `cpt-frontx-telemetry-fr-capture-opt-out`, `cpt-frontx-telemetry-fr-redaction`, `cpt-frontx-telemetry-fr-url-redaction`, `cpt-frontx-telemetry-nfr-hook-compatibility`
 
 **Principles**: `cpt-frontx-telemetry-principle-untrusted-extensions`, `cpt-frontx-telemetry-principle-additive-cross-version`, `cpt-frontx-telemetry-principle-enrichment-via-plugins`
 
-**Components**: `cpt-frontx-telemetry-component-autocapture`, `cpt-frontx-telemetry-component-events-manager`, `cpt-frontx-telemetry-component-plugins-manager`
+**Components**: `cpt-frontx-telemetry-component-autocapture`, `cpt-frontx-telemetry-component-events-manager`, `cpt-frontx-telemetry-component-plugins-manager`, `cpt-frontx-telemetry-component-url-redaction`
 
 ### 1.3 Actors
 
@@ -299,11 +300,20 @@ The system **MUST** abandon the entire event when any element from the target up
 
 The system **MUST** abandon the entire event, not merely the offending element's fields, when any element on the walked path is a password or hidden input or carries a name or identifier matching a sensitive pattern. For free-text and selection controls it **MUST** restrict attribute reading to name, identifier and accessible label. It **MUST** reject values matching payment-card and national-identifier patterns. The documentation **MUST** present this as a pattern-based safety net and not as a compliance guarantee, and **MUST** direct an application to the subtree opt-out or an element-hook veto as the authoritative control.
 
-The url a captured anchor contributes **MUST** pass through the shared url redaction policy rather than a rule of autocapture's own, so an identifying value in a link carries the same treatment as one in a path change.
-
 **Implements**:
 - `cpt-frontx-telemetry-algo-dom-autocapture-collect-attributes`
 - `cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision`
+
+**Touches**:
+- Entities: `Record`
+
+### Anchor Url Redaction
+
+- [x] `p2` - **ID**: `cpt-frontx-telemetry-dod-dom-autocapture-anchor-url`
+
+The url a captured anchor contributes **MUST** pass through the shared url redaction policy rather than a rule of autocapture's own, so an identifying value in a link carries the same treatment as one in a path change, and an external click **MUST** be marked with that same rewritten value rather than the raw one. The policy **MUST** run after the value-safety gate above, whose answer is to drop the whole event: a placeholder substitution never stands in where a drop is owed.
+
+**Implements**:
 - `cpt-frontx-telemetry-algo-event-collection-url-redaction`
 
 **Touches**:
