@@ -1,5 +1,3 @@
-// @cpt-flow:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2
-
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import type {
@@ -73,8 +71,9 @@ function MountRuntimeAwareProvider({
  *
  * Styling strategy:
  * 1. adoptHostStylesIntoShadowRoot() clones all host <style> and <link> into the
- *    shadow root, bringing the full compiled Tailwind CSS (including MFE utilities,
- *    since the host's content paths cover src/mfe_packages/**).
+ *    front of the shadow root, bringing the full compiled Tailwind CSS (including
+ *    MFE utilities, since the host's content paths cover src/mfe_packages/**).
+ *    Front, not back, so the MFE's own stylesheets outrank them - see the method.
  * 2. injectBaseResets() adds box-model resets and :host defaults that aren't part
  *    of Tailwind's compiled output but are needed for consistent rendering.
  * 3. Subclasses may override initializeStyles() to inject additional CSS that is
@@ -87,7 +86,6 @@ function MountRuntimeAwareProvider({
  * Concrete subclasses must provide:
  * - `renderContent(bridge)` - screen component rendering
  */
-// @cpt-dod:cpt-frontx-dod-mfe-isolation-author-state-lifecycle:p1
 export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<ChildMfeBridge> {
   private root: Root | null = null;
 
@@ -123,19 +121,52 @@ export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<Chil
   /**
    * Copy all inline <style> and <link rel="stylesheet"> from the host document
    * into the shadow root so that Tailwind and component styles apply inside the MFE.
+   *
+   * The clones are inserted ahead of everything already in the shadow root, never
+   * appended, because adopted host styles are context rather than authority: where
+   * they and the MFE's own CSS declare the same property at equal specificity, the
+   * MFE has to win. Appending inverted that. `MfeHandlerMF` injects the MFE's
+   * compiled stylesheet into the shadow root before it calls mount, so an appended
+   * clone of the shell's Tailwind preflight - whose
+   * `button, [type='button'], [type='reset'], [type='submit']` rule sets
+   * `background-color: transparent` at specificity (0,1,0) - tied with
+   * `@gears-frontx/ui-kit`'s single-class button rule and won on document order,
+   * leaving every kit Button transparent until it was hovered.
+   *
+   * Inserting at the front rather than pushing MFE styles to the back is what makes
+   * the invariant hold for stylesheets that appear after mount too - a lazily
+   * imported component's CSS module, or whatever initializeStyles() adds - since
+   * those land behind the adopted block by construction.
+   *
+   * A cascade layer around the adopted CSS was the alternative and is rejected:
+   * layered rules lose to unlayered ones at *any* specificity, so a host utility
+   * class would stop overriding an MFE element selector. Document order keeps
+   * specificity in charge and only settles the ties.
    */
   protected adoptHostStylesIntoShadowRoot(shadowRoot: ShadowRoot): void {
-    const styleElements = document.head.querySelectorAll('style');
-    styleElements.forEach((el) => {
-      const clone = document.createElement('style');
-      clone.textContent = el.textContent ?? '';
-      shadowRoot.appendChild(clone);
+    const adoptedStyles = document.createDocumentFragment();
+
+    // One query covering both kinds, because querySelectorAll returns document
+    // order: querying <style> and <link> separately would concatenate the two
+    // groups instead, so a host declaring <link A> before <style B> would get
+    // them adopted as B then A. That reordering decides which rule wins every
+    // specificity tie between them, which is the tie this whole method exists
+    // to settle - so the adopted block has to preserve the host's own order,
+    // not just sit ahead of the MFE's CSS.
+    const hostStyleNodes = document.head.querySelectorAll('style, link[rel="stylesheet"]');
+    hostStyleNodes.forEach((el) => {
+      if (el instanceof HTMLStyleElement) {
+        const clone = document.createElement('style');
+        clone.textContent = el.textContent ?? '';
+        adoptedStyles.appendChild(clone);
+        return;
+      }
+      adoptedStyles.appendChild(el.cloneNode(true));
     });
-    const linkElements = document.head.querySelectorAll('link[rel="stylesheet"]');
-    linkElements.forEach((el) => {
-      const clone = el.cloneNode(true) as HTMLLinkElement;
-      shadowRoot.appendChild(clone);
-    });
+
+    // Staged in a fragment so the adopted pieces keep their host-document order
+    // relative to each other while moving as one block to the front.
+    shadowRoot.insertBefore(adoptedStyles, shadowRoot.firstChild);
   }
 
   /**
