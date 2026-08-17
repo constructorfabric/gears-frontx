@@ -247,6 +247,19 @@ pattern = "features/*/FEATURE.md"
 traceability = "FULL"
 required = true
 
+# The CLI is the first member to own an ADR of its own: a decision about how a
+# template declares the ground it owns is the CLI's, not the ecosystem's, and
+# ADR-0031 was moved under this system for that reason. Declared `required =
+# false` because owning an ADR is a member's option, not its obligation. The
+# omission of ADR from the members above is not a rule against it - only
+# DECOMPOSITION is structurally forbidden to a member - and without this pattern
+# the moved file is discovered by nothing, leaving 25 references to
+# `cpt-frontx-adr-template-ownership-boundary-declaration` dangling.
+[systems.children.autodetect.artifacts.ADR]
+pattern = "ADR/**/*.md"
+traceability = "FULL"
+required = false
+
 [[systems.children.codebase]]
 path = "packages/cli/src"
 extensions = [".ts"]
