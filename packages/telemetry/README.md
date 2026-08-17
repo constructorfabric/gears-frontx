@@ -39,13 +39,24 @@ telemetry.logEvent('settings_saved', { theme: 'dark' });
 ```
 
 `start()` registers the built-in plugins - session, device, navigation, app info and autocapture -
-and installs their listeners. Out of the box that gives you a `session_start` event for a new
-session, a `page_view` on every path change (`pushState`, `replaceState`, `popstate`), device, OS,
-client, viewport and timezone fields on every record, and captured user interactions.
+and installs their listeners. All but navigation are registered unconditionally; see
+`navigationCapture` below. Out of the box that gives you a `session_start` event for a new session, a
+`page_view` on every path change (`pushState`, `replaceState`, `popstate`), device, OS, client,
+viewport and timezone fields on every record, and captured user interactions.
 
-An application that routes page views itself can turn that one off with `navigationCapture: false`.
-The navigation plugin is then never registered, so `window.history` is left alone and no record
-carries a `caused_by_id`.
+An application that routes page views itself can turn page-view capture off with
+`navigationCapture: false`. The navigation plugin is then never registered, which has four
+consequences worth knowing:
+
+- `window.history` is left alone. Nothing wraps `pushState` or `replaceState`.
+- No `page_view` event is emitted.
+- No record carries a `caused_by_id`, so autocapture events are no longer attributed to a page. A
+  host that owns its page views can stamp the field itself from an `event` hook - see *Writing a
+  plugin* - or register its own plugin under the `navigation` name, which is free once the built-in
+  is off.
+- A path change no longer refreshes the session. Scroll, keypress and click stay the only activity
+  the session manager watches, so an application that moves users by timer or redirect can see one
+  visit split across two sessions.
 
 Events are queued in memory and flushed on a 5 second debounce, reset by each new event, plus an
 immediate flush when the page goes to `visibilitychange` / hidden. The POST uses `keepalive`.

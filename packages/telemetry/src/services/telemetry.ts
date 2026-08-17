@@ -96,7 +96,9 @@ export function createTelemetry(configRaw: TelemetryConfig): TelemetryService {
 
     // @cpt-begin:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-start-collection
     // The built-ins are registered after anything the caller registered, so a caller plugin using
-    // a built-in name is the one that gets replaced. This is why those names are reserved.
+    // a built-in name is the one that gets replaced. This is why those names are reserved — for a
+    // built-in that registers: one switched off here occupies no name, so a caller plugin under it
+    // survives and is set up.
     // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-register-builtins
     plugin(
       sessionPlugin(),

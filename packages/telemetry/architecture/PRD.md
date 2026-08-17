@@ -227,7 +227,7 @@ The system **MUST** maintain a pseudonymous device identity per configured stora
 
 - [x] `p1` - **ID**: `cpt-frontx-telemetry-fr-builtin-context`
 
-The system **MUST** enrich records with common application, session, device, browser, viewport, timezone, locale and navigation context.
+The system **MUST** enrich records with common application, session, device, browser, viewport, timezone, locale and navigation context, and **MAY** let an application switch off an enrichment whose signal it already owns.
 
 **Rationale**: Events are useful only when consumers can relate them to the application state and user context around them.
 
