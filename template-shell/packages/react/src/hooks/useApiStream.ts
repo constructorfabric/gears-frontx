@@ -84,11 +84,18 @@ export interface ApiStreamResult<TEvent> {
  *   wasn't one already.
  *
  * **Transitions**
- * - Mount / `enabled` becomes `true` / `descriptor.key` or `mode` changes:
- *   `data`, `events`, and `error` are reset and status is set to
- *   `'connecting'` synchronously during render (not from an effect);
- *   `connect()` is then called from an effect that runs after that render
- *   commits.
+ * - Mounting enabled, `enabled` becoming `true`, or `descriptor.key` / `mode`
+ *   changing while `enabled` is `true`: `data`, `events`, and `error` are reset
+ *   and status is set to `'connecting'` synchronously during render (not from
+ *   an effect); `connect()` is then called from an effect that runs after that
+ *   render commits.
+ * - `descriptor.key` or `mode` changing while `enabled` is `false`: `data`,
+ *   `events`, and `error` are reset all the same, since that reset is not gated
+ *   on `enabled`, but the status write is - so no `'connecting'` is written and
+ *   the published status stays `'idle'`; `connect()` is not called. The skipped
+ *   `'connecting'` is not owed later either: the change counts as handled when
+ *   it happens, so what publishes `'connecting'` is the subsequent flip of
+ *   `enabled` to `true`, once, for whichever key and mode are in force by then.
  * - `enabled` becomes `false` (or starts `false`): the published status is
  *   `'idle'` for as long as `enabled` stays `false` — it is derived from
  *   `enabled` rather than written, so nothing a prior connection stored can
