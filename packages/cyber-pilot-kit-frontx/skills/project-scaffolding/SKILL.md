@@ -302,7 +302,7 @@ installed kit root, and the kit declares it as the
 `frontx_verification_checklist` resource. Open that path and read it end to end,
 first line to last. **A partial read does not count**: a head, a line limit, an
 excerpt, a section jumped to, or the table of contents read as if it were the
-items. One run read 120 of its 406 lines and asserted every category passed off
+items. One run read 120 of its 480 lines and asserted every category passed off
 the contents list, which named the categories and not one of the items under
 them. **A PASS line in the report may be written only against items this run
 actually read**, so a checklist read partly is a checklist whose unread items
@@ -345,10 +345,12 @@ keyed by the short name goes on as before.
 `node <that path> --help` prints the whole flag surface. `$CAPDIR` is the
 run-unique capture directory made under the capture rule below, and the driver
 refuses a directory that already holds files rather than write into another
-run's captures. The driver exits 0 only when every theme opened against its own
-switcher label, every read-back agreed, and every declared capture landed; on
-any failure it exits non-zero with the reason in its JSON result, and it never
-retries on its own.
+run's captures. The driver exits 0 only when every control it was given dispatched,
+every theme opened against its own switcher label, every read-back agreed, and
+every declared capture landed; on any failure - a refused invocation, an input file
+it cannot read, a browser command that stopped answering, an output path it cannot
+write - it exits non-zero with the reason in its JSON result, and it never retries
+on its own.
 
 The JSON result is what the coverage table and the report are filled from: it
 carries, per theme, whether the switcher label confirmed the theme opened, every
@@ -359,10 +361,36 @@ theme set came from - the registry file, or a set typed in by hand - so a claim
 that the set came from the host's theme registration is a claim the result file
 either backs or contradicts.
 
-Everything from here to the end of this step is **the specification the driver
-implements** - which mechanic exists, and what each one cost the run that learned
-it. Read it to know what the driver is doing on your behalf, to compose its
-arguments, and to drive by hand when you have to.
+Everything from here to the end of this step is **the specification of the
+mechanics** - which one exists, and what each cost the run that learned it. Read
+it to know what the driver is doing on your behalf, to compose its arguments, and
+to drive by hand when you have to.
+
+**The driver performs the theme walk and nothing else in this step.** It carries
+sub-step 1's probe, sub-step 3's native pointer sequence, sub-step 5's whole
+theme walk including the byte-compare, the read-backs sub-step 6 requires after
+its own clicks and navigations, a readiness poll of the shape sub-step 7
+prescribes, and sub-step 8's coverage file. **These it does not perform, and a run
+owes every one of them itself:**
+
+- **sub-step 4, the route exercise.** The driver never reads a URL back - no
+  command in it asks for one - so deep-linking each screen's declared route,
+  clicking another screen's menu item, and confirming the pathname that results
+  is the run's own work, and the CRITICAL routing items are satisfied by nothing
+  else. A run that read the driver as covering routing would skip the one
+  sub-step whose findings no capture can show.
+- **sub-step 2's default-theme settling and the one-time handle read.** The driver
+  is given its handles as arguments; learning them off the interface, and
+  starting the walk from the host's default theme rather than whatever an attached
+  profile persisted, happens before it runs.
+- **sub-step 6's snapshot reading.** The driver reads back the elements it was
+  told about; judging what is on screen at all, and what a compact snapshot's
+  silence does not mean, stays with the run.
+- **the dev-server rules above** - starting a server with its pid recorded,
+  stopping it by that pid, and confirming the ports came back.
+- **Step 8's report obligations.** The driver writes the coverage file; the
+  report, the per-category checklist walk, and every disclosure this step
+  requires are composed by the run from the driver's JSON result.
 
 **Hand-authored browser calls are the fallback, and only when the driver itself
 fails.** Not when it is inconvenient, not when its flags need working out, and
@@ -442,10 +470,10 @@ Keep the pid the start reports, or use the runner's own stop mechanism where it
 declares one, and address the process that way for the rest of the run.
 **Stopping by pattern is forbidden.** A pattern matches every process whose
 command line happens to contain it, and the shell issuing the kill is one of
-them: one run's `pkill -f` matched its own dev server, took down the environment
-in the middle of the verification it was running, and spent 43s rebuilding it
-before it could carry on. A server whose pid the run never captured is stopped
-by finding that pid first, not by widening the match.
+them: one run's `pkill -f` matched its own dev server and took down the
+environment in the middle of the verification it was running, which then had to
+be rebuilt before the run could carry on. A server whose pid the run never
+captured is stopped by finding that pid first, not by widening the match.
 
 **A stopped parent is not a stopped server: after the kill, verify the ports are
 free.** The recorded pid is the process this run started, not the children it
@@ -552,8 +580,8 @@ established against this runner rather than assumed:
 - **A batch line is an argument vector, so every argument in it is positional
   and bare.** A flag-shaped token is not read as a flag: `["wait", "--ms",
   "800"]` hands `--ms` to `wait` as the *selector* to wait for, and the line
-  then sits out the full 25s default timeout before failing. One run lost about
-  40s to that single line. **A wait is written `["wait", "800"]`** - the
+  then sits out the full 25s default timeout before failing. **A wait is written
+  `["wait", "800"]`** - the
   milliseconds as a bare string, nothing else - and every other line reads the
   same way: what follows the op name is its operands, and a token starting with
   `-` becomes one of them rather than a switch.
@@ -830,8 +858,8 @@ Carry the run out in this order:
 7. **Wait for text with the shadow-descending poll below, not with `wait
    --text`.** `wait --text` searches light DOM only, and this stack renders inside
    shadow roots, so it spends its whole timeout on text that was already on
-   screen: one run lost 75s to three such timeouts. Reach for `wait --text` only
-   for content known to live in light DOM. For everything else, poll through
+   screen, and one run spent three such timeouts before reading this. Reach for
+   `wait --text` only for content known to live in light DOM. For everything else, poll through
    `npx --yes agent-browser eval`:
 
    ```js
