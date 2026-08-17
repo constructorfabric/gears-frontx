@@ -271,6 +271,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-telemetry-component-plugins-manager`
 - `cpt-frontx-telemetry-component-builtin-plugins`
 - `cpt-frontx-telemetry-component-autocapture`
+- `cpt-frontx-telemetry-component-url-redaction`
 - `cpt-frontx-telemetry-constraint-standalone-boundary`
 - `cpt-frontx-telemetry-constraint-browser-runtime`
 - `cpt-frontx-telemetry-constraint-external-record-schema`

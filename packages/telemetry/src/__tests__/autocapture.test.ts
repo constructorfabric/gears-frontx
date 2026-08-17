@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, onTestFinished, test, vi } from 'vitest';
 import { createTelemetry } from '../index';
 import type { TelemetryApiPayload, TelemetryApiRecord } from '../utils/eventTypes';
+import type { TelemetryConfig } from '../utils/types';
 import { getSessionKey } from '../utils/sessionUtils';
 import { telemetryElementHookKey } from '../plugins/autocapture/elementHook';
 import type { TelemetryElementHook, TelemetryElementHookResult } from '../plugins/autocapture/elementHook';
@@ -70,7 +71,7 @@ describe('autocapture element hook', () => {
     document.body.innerHTML = '';
   });
 
-  function startClient(config: Partial<{ verbose: boolean }> = {}) {
+  function startClient(config: Partial<TelemetryConfig> = {}) {
     const telemetry = createTelemetry({ ...mockAppInfo, ...config });
     telemetry.start();
     onTestFinished(() => telemetry.destroy());
@@ -626,5 +627,32 @@ describe('autocapture element hook', () => {
     }
 
     removeSpy.mockRestore();
+  });
+  test('should redact identifying values from an autocaptured link url', () => {
+    startClient({ redactUrls: true });
+
+    const link = document.createElement('a');
+    link.setAttribute('href', '/invite/john@x.com?user=98765');
+    link.textContent = 'Accept';
+    document.body.appendChild(link);
+
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    const value = flushAutocaptureRecord('click');
+    expect(value.data?.$el_attr_href).toBe('"/invite/:email?user=:id"');
+  });
+
+  test('should redact identifying values from an external click url', () => {
+    startClient({ redactUrls: true });
+
+    const link = document.createElement('a');
+    link.setAttribute('href', 'https://other.example/u/9f8e7d6c-1a2b-4c3d-8e9f-0a1b2c3d4e5f');
+    link.textContent = 'Open';
+    document.body.appendChild(link);
+
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    const value = flushAutocaptureRecord('click');
+    expect(value.data?.$external_click_url).toBe('"https://other.example/u/:uuid"');
   });
 });

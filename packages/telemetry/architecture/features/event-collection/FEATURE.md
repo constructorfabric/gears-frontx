@@ -22,6 +22,7 @@
   - [Session Continuation](#session-continuation)
   - [Activity Observation](#activity-observation)
   - [Plugin Registration And Setup](#plugin-registration-and-setup)
+  - [Url Redaction](#url-redaction)
 - [4. States (CDSL)](#4-states-cdsl)
   - [Client Lifecycle State Machine](#client-lifecycle-state-machine)
   - [Session State Machine](#session-state-machine)
@@ -36,6 +37,7 @@
   - [Session Continuity](#session-continuity)
   - [Plugin Registry Semantics](#plugin-registry-semantics)
   - [Built-In Context Enrichment](#built-in-context-enrichment)
+  - [Recorded Url Redaction](#recorded-url-redaction)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
 
 <!-- /toc -->
@@ -123,10 +125,10 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 **Output**: Normalized configuration in which every option holds a concrete value
 
 **Steps**:
-1. [x] - `p1` - Carry the required application name and version through unchanged - `inst-carry-required`
+1. [x] - `p1` - Carry the required application name and version through unchanged, along with the optional storage prefix and the optional url rewrite hook - `inst-carry-required`
 2. [x] - `p1` - Resolve the collector endpoint: use the supplied value, otherwise derive a same-origin default path from the envelope version, defaulting the version when unset - `inst-resolve-endpoint`
 3. [x] - `p1` - Default delivery on and verbose logging off - `inst-default-flags`
-4. [x] - `p1` - Default autocapture on and the session inactivity window - `inst-default-values`
+4. [x] - `p1` - Default autocapture on, url redaction off, and the session inactivity window - `inst-default-values`
 5. [x] - `p1` - **RETURN** the normalized configuration, which is the only form any component reads - `inst-return-normalized`
 
 ### Client Start
@@ -287,6 +289,23 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 2. [x] - `p1` - On the setup pass, build the plugin context: normalized configuration, event logger, session accessors, logger, hook registrar - `inst-build-plugin-context`
 3. [x] - `p1` - **FOR EACH** registered plugin, invoke its setup with that context - `inst-invoke-setup`
 4. [x] - `p1` - Leave any plugin registered after this pass stored but not set up - `inst-late-plugin-unset`
+
+### Url Redaction
+
+- [x] `p2` - **ID**: `cpt-frontx-telemetry-algo-event-collection-url-redaction`
+
+**Input**: A url a recording site is about to put on a record, the application's rewrite hook where one is configured, and whether the built-in patterns are switched on
+
+**Output**: The url as it will be recorded, with recognized identifying values replaced by placeholders naming their shape
+
+**Steps**:
+1. [x] - `p2` - **IF** the application configured a rewrite hook - `inst-check-host-hook`
+   1. [x] - `p2` - Apply it to the raw url, since only the application can map its own routes and it needs the real value to do so - `inst-apply-host-hook`
+   2. [x] - `p2` - **IF** the hook throws, report through the logger and fall through to the built-in patterns over the raw url even where configuration leaves them off, so a failed rewrite never publishes what it was meant to remove - `inst-recover-host-hook`
+2. [x] - `p2` - **IF** the built-in patterns are switched off, **RETURN** the url as it stands - `inst-check-patterns-enabled`
+3. [x] - `p2` - Separate path, query and fragment, and treat the fragment as a path so a hash-routed application is covered - `inst-split-url`
+4. [x] - `p2` - Replace every whole path segment, query value and fragment segment matching a recognized shape with its placeholder, testing the percent-decoded form so an encoded value is not missed - `inst-replace-values`
+5. [x] - `p2` - **RETURN** the reassembled url - `inst-return-redacted`
 
 ## 4. States (CDSL)
 
@@ -459,6 +478,18 @@ The system **MUST** supply session, device, navigation and application-info enri
 **Touches**:
 - Entities: `Record`, `Session`, `Plugin`
 
+### Recorded Url Redaction
+
+- [x] `p2` - **ID**: `cpt-frontx-telemetry-dod-event-collection-url-redaction`
+
+The system **MUST** be able to record a url with its identifying values replaced by placeholders rather than dropped, so the address stays usable as the unit an adoption question is asked in, and **MUST** leave that off unless configuration turns it on. An application-supplied rewrite **MUST** run ahead of the built-in patterns and receive the raw url, its output **MUST** still be swept by them, and a rewrite that throws **MUST** be reported and **MUST NOT** result in the raw url being recorded. Recognition **MUST** stay conservative — whole-segment email, uuid, JWT, five-or-more-digit and long-hex shapes — so that a four-digit year and a title-cased slug survive; anything the SDK cannot separate from ordinary content is the application rewrite's to name.
+
+**Implements**:
+- `cpt-frontx-telemetry-algo-event-collection-url-redaction`
+
+**Touches**:
+- Entities: `Record`, `NormalizedConfiguration`
+
 ## 6. Acceptance Criteria
 
 - [x] A client created with only application name, version and endpoint collects and delivers enriched records, with every other option resolved to its documented default.
@@ -473,3 +504,5 @@ The system **MUST** supply session, device, navigation and application-info enri
 - [x] A session survives a page reload within the inactivity window and is replaced by a new identifier once that window elapses without scroll, keypress or click.
 - [x] An activity burst produces one session write rather than one per event.
 - [x] Registering a plugin under an existing name replaces it; a falsy entry is ignored; a plugin registered after start is never set up.
+- [x] With url redaction on, a page view records placeholders in place of an email, uuid, JWT, five-digit and long-hex segment, while a four-digit year and a title-cased slug reach the collector intact.
+- [x] An application rewrite hook sees the raw url, its output is still swept by the built-in patterns, and a hook that throws is reported while the patterns run anyway.

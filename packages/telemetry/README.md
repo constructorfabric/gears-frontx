@@ -56,17 +56,19 @@ removes the listeners.
 
 `createTelemetry(config: TelemetryConfig)`
 
-| Option            | Type      | Default    | Description                                                                                                                                                     |
-| ----------------- | --------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `appName`         | `string`  | *required* | Sent as `context_source_app_name`, and the default for `context_service_name` and `context_app_name`.                                                             |
-| `appVersion`      | `string`  | *required* | Application version, sent as `context_source_app_version` and mirrored into `context_app_version`.                                                                |
-| `url`             | `string`  | see below  | Endpoint events are POSTed to. Defaults to the same-origin path `/api/events` when `apiVersion` is `1`, otherwise `/api/telemetry/v{apiVersion}/events`.           |
-| `autocapture`     | `boolean` | `true`     | Automatically capture `click`, `change` and `submit` events from the page.                                                                                         |
-| `enabled`         | `boolean` | `true`     | When `false`, events are still collected, enriched and drained from the queue - only the POST is skipped.                                                          |
-| `verbose`         | `boolean` | `false`    | Log SDK activity to the console.                                                                                                                                  |
-| `storagePrefix`   | `string`  | none       | Infix for the `localStorage` keys the SDK owns: `telemetry_{storagePrefix}_device_id` and `telemetry_{storagePrefix}_session`. Set it to keep two clients apart.   |
-| `sessionDuration` | `number`  | `1800000`  | Inactivity window in milliseconds before a new session id is minted. 30 minutes.                                                                                  |
-| `apiVersion`      | `number`  | `1`        | Event envelope version. `2` hoists fields shared by every record in a multi-record batch into `meta`, and drops `context_user_id` and `context_tenant_id`.         |
+| Option            | Type       | Default    | Description                                                                                                                                                      |
+| ----------------- | ---------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `appName`         | `string`   | *required* | Sent as `context_source_app_name`, and the default for `context_service_name` and `context_app_name`.                                                            |
+| `appVersion`      | `string`   | *required* | Application version, sent as `context_source_app_version` and mirrored into `context_app_version`.                                                               |
+| `url`             | `string`   | see below  | Endpoint events are POSTed to. Defaults to the same-origin path `/api/events` when `apiVersion` is `1`, otherwise `/api/telemetry/v{apiVersion}/events`.         |
+| `autocapture`     | `boolean`  | `true`     | Automatically capture `click`, `change` and `submit` events from the page.                                                                                       |
+| `redactUrls`      | `boolean`  | `false`    | Replace identifying values in recorded urls with `:email`, `:uuid`, `:token`, `:id` and `:hash`. See *Urls* below.                                               |
+| `sanitizeUrl`     | `function` | none       | `(url: string) => string`, applied to the raw url before `redactUrls`. Your own route rules; its output is still swept by the built-in patterns.                 |
+| `enabled`         | `boolean`  | `true`     | When `false`, events are still collected, enriched and drained from the queue - only the POST is skipped.                                                        |
+| `verbose`         | `boolean`  | `false`    | Log SDK activity to the console.                                                                                                                                 |
+| `storagePrefix`   | `string`   | none       | Infix for the `localStorage` keys the SDK owns: `telemetry_{storagePrefix}_device_id` and `telemetry_{storagePrefix}_session`. Set it to keep two clients apart. |
+| `sessionDuration` | `number`   | `1800000`  | Inactivity window in milliseconds before a new session id is minted. 30 minutes.                                                                                 |
+| `apiVersion`      | `number`   | `1`        | Event envelope version. `2` hoists fields shared by every record in a multi-record batch into `meta`, and drops `context_user_id` and `context_tenant_id`.       |
 
 > **`url` defaults to the same-origin path `/api/events`, and a failed send loses the batch.**
 > Always set it explicitly - see *Known gaps* below.
@@ -241,6 +243,43 @@ single-use, so the id is minted by the next client's `start()`:
 localStorage.removeItem('telemetry_device_id'); // or `telemetry_${storagePrefix}_device_id`
 ```
 
+## Urls
+
+Off by default. `redactUrls: true` rewrites identifying values in every url the SDK records - the
+`page_view` path, an autocaptured link's `$el_attr_href`, and `$external_click_url` - keeping the
+address's shape so it still groups:
+
+| Segment or query value | Becomes |
+| --- | --- |
+| `john@x.com` | `:email` |
+| a UUID | `:uuid` |
+| a JWT (`eyJ…` with two dots) | `:token` |
+| 5 or more digits | `:id` |
+| 16 or more hex characters | `:hash` |
+
+Matching is whole-segment and deliberately narrow, so `/reports/2026` and
+`/docs/Chapter-2-Introduction` survive untouched. The cost of that is real: `/users/8` and
+`?name=Nikita` match nothing and reach the collector as they are.
+
+`sanitizeUrl` covers what the SDK cannot recognize. It runs first, on the raw url, because your
+router is the only thing that knows which segments are ids:
+
+```ts
+createTelemetry({
+  appName: 'cloud',
+  appVersion: '1.0.0',
+  redactUrls: true,
+  sanitizeUrl: (url) => url.replace(/^\/o\/\d+/, '/o/:orgId'),
+});
+```
+
+Whatever it returns is still swept by the built-in patterns. If it throws, the error is logged and
+the built-in patterns run on the raw url anyway - a broken rule must not publish what it was written
+to remove.
+
+Two gaps worth knowing: query **names** are never rewritten (only values), and `src` and `action`
+attributes are not treated as urls, so a form action carrying an id is recorded as-is.
+
 ## Browser support
 
 Modern evergreen browsers. Requires `fetch`, `localStorage`, `crypto.randomUUID` and `Intl.Locale`.
@@ -272,7 +311,8 @@ node scripts/run-monorepo-unit-tests.mjs --run --project=telemetry
 npm run demo:telemetry                                      # browser example on port 5273
 ```
 
-31 tests live in `src/__tests__/` - `telemetry.test.ts` (13) and `autocapture.test.ts` (18).
+61 tests live in `src/__tests__/` - `telemetry.test.ts` (20), `autocapture.test.ts` (26) and
+`url.test.ts` (15).
 `vitest` is pinned to an exact version, guarded repo-wide by
 `scripts/check-test-dependency-versions.mjs`. The vitest `globalSetup` pins `TZ=UTC`, so timezone
 assertions do not depend on the machine.

@@ -1,5 +1,6 @@
 import { getEventTarget, isSensitiveElement, isTextNode } from '../../utils/dom';
 import type { TelemetryData } from '../../utils/eventTypes';
+import { redactUrl } from '../../utils/url';
 import type { TelemetryPlugin, TelemetryPluginContext } from '../../utils/types';
 import type { TelemetryElementHookResult } from './elementHook';
 import type { AutocaptureElementContribution } from './helpers';
@@ -278,12 +279,13 @@ export function autocapturePlugin(): TelemetryPlugin {
 
         // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-ancestor-walk:p1:inst-check-anchor
         if (href) {
-          result.$el_attr_href = href;
+          const recordedHref = redactUrl(href, context);
+          result.$el_attr_href = recordedHref;
           // @cpt-begin:cpt-frontx-telemetry-algo-dom-autocapture-ancestor-walk:p1:inst-mark-external
           const hrefHost = convertToURL(href)?.host;
           const locationHost = window?.location?.host;
           if (hrefHost && locationHost && hrefHost !== locationHost && e.type === 'click') {
-            result.$external_click_url = href;
+            result.$external_click_url = recordedHref;
           }
           // @cpt-end:cpt-frontx-telemetry-algo-dom-autocapture-ancestor-walk:p1:inst-mark-external
         }

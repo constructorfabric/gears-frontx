@@ -61,6 +61,7 @@ Delivery is deliberately separated from collection. Records accumulate in an in-
 | `cpt-frontx-telemetry-fr-dom-autocapture` | The autocapture plugin installs passive capture-phase document listeners for the three interaction types and builds a record from the ancestor walk. |
 | `cpt-frontx-telemetry-fr-capture-opt-out` | The walk tests for presence of the opt-out attribute on every ancestor and abandons the event on the first one found, without reading the attribute's value. |
 | `cpt-frontx-telemetry-fr-redaction` | The walk consults element-sensitivity and value-safety predicates before recording anything: a sensitive element abandons the whole event, while a value-safety rejection suppresses only the offending field and lets the rest of the event proceed. |
+| `cpt-frontx-telemetry-fr-url-redaction` | `cpt-frontx-telemetry-component-url-redaction` holds one rewrite policy that both the navigation plugin and the autocapture walk call before a url reaches a record, so a single set of shapes governs every recorded address; an application-supplied rewrite runs first, on the raw value. |
 | `cpt-frontx-telemetry-fr-independent-publication` | The package declares its own version, a single entry point built to both module formats, and a published-file allowlist that admits the distribution, readme, license and notice while excluding the demo. |
 
 #### NFR Allocation
@@ -384,6 +385,7 @@ Supplies the context that makes an event stream answerable — session, device, 
 - `cpt-frontx-telemetry-component-plugins-manager` — registered and set up through it
 - `cpt-frontx-telemetry-component-events-manager` — enriches records through its hook, and logs its own events through it
 - `cpt-frontx-telemetry-component-session-manager` — the session plugin reads session state from it
+- `cpt-frontx-telemetry-component-url-redaction` — the navigation plugin rewrites the path it records through it
 
 #### Autocapture
 
@@ -416,6 +418,35 @@ Records interaction without per-element instrumentation, which is the part of an
 
 - `cpt-frontx-telemetry-component-plugins-manager` — registered and set up through it
 - `cpt-frontx-telemetry-component-events-manager` — emits captured events through it, and enriches through its hook
+- `cpt-frontx-telemetry-component-url-redaction` — rewrites an anchor's url before it is recorded
+
+#### Url Redaction
+
+- [x] `p2` - **ID**: `cpt-frontx-telemetry-component-url-redaction`
+
+##### Why this component exists
+
+Urls are recorded from two unrelated places — a path change and a clicked link — and an identifying value carries the same weight in both. One policy called by both keeps a single set of recognized shapes, rather than a rule per recording site that drifts apart.
+
+##### Responsibility scope
+
+- Applies an application-supplied rewrite to the raw url first, so a host maps its own routes against real values.
+- Reports a throwing application rewrite and applies its own patterns to the raw url instead, so a failed rewrite cannot publish what it was meant to remove.
+- Replaces whole path segments, query values and fragment segments that match a recognized identifying shape with a placeholder naming the shape.
+- Tests the percent-decoded form, so an encoded value is not missed.
+- Treats the fragment as a path, so a hash-routed application is covered.
+
+##### Responsibility boundaries
+
+- Does NOT drop a url. Dropping removes the unit of analysis; a placeholder keeps the address groupable.
+- Does NOT decide *which* fields are urls. Each recording site passes what it knows to be one.
+- Does NOT recognize a value shape it cannot separate from ordinary content — a short number, a name, a slug. Those belong to the application rewrite.
+- Does NOT run unless configuration turns it on, or an application rewrite threw.
+
+##### Related components (by ID)
+
+- `cpt-frontx-telemetry-component-builtin-plugins` — the navigation plugin redacts a path change through it
+- `cpt-frontx-telemetry-component-autocapture` — the walk redacts an anchor's url through it
 
 ### 3.3 API Contracts
 

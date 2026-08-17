@@ -10,6 +10,8 @@ export type TelemetryConfigNormalized = {
   verbose: boolean;
   url: string;
   autocapture: boolean;
+  redactUrls: boolean;
+  sanitizeUrl?: (url: string) => string;
   sessionDuration: number;
   apiVersion: number;
 };
@@ -33,6 +35,17 @@ export type TelemetryConfig = {
    * @default true
    */
   autocapture?: boolean;
+  /**
+   * Replace identifying values in recorded urls with placeholders: `:email`, `:uuid`, `:token`,
+   * `:id` and `:hash`. Applies to the `page_view` path and to autocaptured link urls.
+   * @default false
+   */
+  redactUrls?: boolean;
+  /**
+   * Rewrite a url before it is recorded. Runs on the raw value, ahead of `redactUrls`, so a host
+   * can map its own routes; whatever it returns is still swept by the built-in patterns.
+   */
+  sanitizeUrl?: (url: string) => string;
   /**
    * Enables or disables telemetry events
    */

@@ -160,7 +160,7 @@ Realizes the automatic-capture requirements and the sequence `cpt-frontx-telemet
 2. [x] - `p1` - **IF** no element on the path was one autocapture records - `inst-check-no-result`
    1. [x] - `p1` - **RETURN** abandonment - `inst-abandon-no-result`
 3. [x] - `p1` - **IF** an anchor target was remembered - `inst-check-anchor`
-   1. [x] - `p1` - Record it, and **IF** its host differs from the page's host on a click, mark the interaction as leaving the site - `inst-mark-external`
+   1. [x] - `p1` - Record it through the url redaction policy, and **IF** its host differs from the page's host on a click, mark the interaction as leaving the site with the same redacted url - `inst-mark-external`
 4. [x] - `p1` - **IF** the collected result holds no fields - `inst-check-empty-result`
    1. [x] - `p1` - **RETURN** abandonment - `inst-abandon-empty`
 5. [x] - `p1` - Merge the hook-contributed data first and autocapture's own fields last, so its own keys always win - `inst-merge-own-last`
@@ -299,9 +299,12 @@ The system **MUST** abandon the entire event when any element from the target up
 
 The system **MUST** abandon the entire event, not merely the offending element's fields, when any element on the walked path is a password or hidden input or carries a name or identifier matching a sensitive pattern. For free-text and selection controls it **MUST** restrict attribute reading to name, identifier and accessible label. It **MUST** reject values matching payment-card and national-identifier patterns. The documentation **MUST** present this as a pattern-based safety net and not as a compliance guarantee, and **MUST** direct an application to the subtree opt-out or an element-hook veto as the authoritative control.
 
+The url a captured anchor contributes **MUST** pass through the shared url redaction policy rather than a rule of autocapture's own, so an identifying value in a link carries the same treatment as one in a path change.
+
 **Implements**:
 - `cpt-frontx-telemetry-algo-dom-autocapture-collect-attributes`
 - `cpt-frontx-telemetry-algo-dom-autocapture-redaction-decision`
+- `cpt-frontx-telemetry-algo-event-collection-url-redaction`
 
 **Touches**:
 - Entities: `Record`
@@ -365,6 +368,7 @@ The system **MUST** suppress the whole event when any hook on the walked path ve
 - [x] With autocapture disabled, no document listener is installed and no interaction produces an event.
 - [x] Teardown removes every listener autocapture installed.
 - [x] The opt-out attribute on an ancestor suppresses the event whether it is bare, set to a truthy value, or set to a falsy one.
+- [x] With url redaction on, a captured link url and an external click url both carry placeholders in place of their identifying values.
 - [x] A password input, a hidden input, and an element whose name or identifier matches a sensitive pattern each cause the whole event to be dropped, with no partial record emitted.
 - [x] For a selection list, a multi-line text control and an editable region, only name, identifier and accessible label are read.
 - [x] A value matching a payment-card or national-identifier pattern is not recorded.
