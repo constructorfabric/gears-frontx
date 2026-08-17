@@ -699,13 +699,25 @@ const ids = JSON.parse(process.env.STUB_IDS);
 const argv = process.argv.slice(4); // past node, this file, --yes, agent-browser
 const command = argv[0];
 
+// A child that never returns anything, for the timeout path. The driver has to
+// kill it and record that; nothing else in the run can end it.
+if (process.env.STUB_HANG === '1') {
+  log('hang ' + argv.join(' '));
+  setInterval(() => {}, 1000);
+  return;
+}
+
 if (command === 'open' && process.env.STUB_FAIL_OPEN === '1') {
   log('open-refused ' + argv[1]);
   process.stderr.write('NavigationError: net::ERR_CONNECTION_REFUSED\\n');
   process.exit(3);
 }
 if (command === 'screenshot') {
-  fs.writeFileSync(argv[1], 'png:' + path.basename(argv[1]));
+  // Identical bytes across themes on request: two registered themes can differ
+  // only in tokens the captured screens never consume, and the identical
+  // verdict that produces is a recorded fact the driver has to be able to reach.
+  const body = process.env.STUB_IDENTICAL_SHOTS === '1' ? 'png:identical' : 'png:' + path.basename(argv[1]);
+  fs.writeFileSync(argv[1], body);
   log('screenshot ' + path.basename(argv[1]));
   process.exit(0);
 }
@@ -717,17 +729,49 @@ if (command !== 'eval') {
 const script = fs.readFileSync(0, 'utf8');
 const found = /__find\\("([^"]*)"\\)/.exec(script);
 const id = found === null ? null : found[1];
+const present = id !== null && ids.includes(id);
+const theme = () => (fs.existsSync(process.env.STUB_THEME)
+  ? fs.readFileSync(process.env.STUB_THEME, 'utf8')
+  : 'light');
+
+// One refused existence probe, for the difference between "the page holds no
+// such element" and "the script never ran". Scoped to the probe so the control
+// it names can still be clicked.
+if (script.includes("'yes' : 'no'") && id === process.env.STUB_EVAL_ERROR_PROBE) {
+  process.stderr.write('EvalError: the page refused the probe\\n');
+  process.exit(1);
+}
 
 if (script.includes('__testids()')) {
   process.stdout.write(JSON.stringify(ids) + '\\n');
+} else if (script.includes('setter.call')) {
+  // Checked before the click branch: a fill dispatches input and change events,
+  // so a stub that greps for dispatchEvent first answers every fill as a click.
+  const typed = /setter\\.call\\(el, "((?:[^"\\\\]|\\\\.)*)"\\)/.exec(script)[1];
+  log('fill ' + id + ' ' + typed);
+  // A field that took something other than what was typed into it. Without it
+  // the read-back is asserted only against a stub that always agrees, which is
+  // the one case a read-back cannot catch anything in.
+  const landed = process.env.STUB_FILL_DRIFT === '1' ? 'drift:' + typed : typed;
+  process.stdout.write((present ? landed : '__verify_walk_missing__') + '\\n');
 } else if (script.includes('dispatchEvent')) {
   log('click ' + id);
-  process.stdout.write((ids.includes(id) ? 'dispatched' : '__verify_walk_missing__') + '\\n');
+  // The event names are logged on their own line so a test can assert the whole
+  // native sequence arrived. Greping for dispatchEvent alone cannot: a driver
+  // reduced to one bare event still reads as a click here.
+  log('events ' + [...script.matchAll(/new (?:Pointer|Mouse)Event\\('([a-z]+)'/g)].map((m) => m[1]).join(','));
+  if (present && id.startsWith('theme-option-')) {
+    fs.writeFileSync(process.env.STUB_THEME, id.slice('theme-option-'.length));
+  }
+  process.stdout.write((present ? 'dispatched' : '__verify_walk_missing__') + '\\n');
 } else if (script.includes("'yes' : 'no'")) {
-  process.stdout.write((ids.includes(id) ? 'yes' : 'no') + '\\n');
+  process.stdout.write((present ? 'yes' : 'no') + '\\n');
 } else {
-  // The switcher's label is the only text this walk reads back.
-  process.stdout.write((id === 'theme-switcher' ? 'Theme: light' : '') + '\\n');
+  // The switcher's label answers with the theme this page was last switched
+  // into, so a walk over several themes is confirmed against a moving reading
+  // rather than against a constant that agrees with everything.
+  if (id === 'theme-switcher' && present) process.stdout.write('Theme: ' + theme() + '\\n');
+  else process.stdout.write((present ? 'text of ' + id : '__verify_walk_missing__') + '\\n');
 }
 process.exit(0);
 `;
@@ -736,15 +780,33 @@ process.exit(0);
       status: number | null;
       result: {
         ok: boolean;
+        coverageFile: string | null;
+        themeSet: { source: string; themes: string[] };
         menuResolution: { screen: string; testid: string | null; extensionId: string | null; source: string }[];
-        themes: { captures: { screen: string; state: string }[] }[];
+        themes: {
+          theme: string;
+          labelConfirmed: boolean;
+          panelCollapsed: boolean | null;
+          captures: { screen: string; state: string; readyConfirmed: boolean }[];
+          readBacks: { action: string; testid: string; actual: string; ok: boolean }[];
+          comparisons: { against: string; screen: string; state: string; command: string; exit: number | null; verdict: string }[];
+        }[];
         failures: { stage: string; detail: string }[];
       };
       commands: string[];
+      coverage: string;
       cleanup: () => void;
     }
 
-    function runAgainstStub(args: string[], ids: string[], env: NodeJS.ProcessEnv = {}): StubRun {
+    // `files` writes the driver's JSON inputs into the run's own directory and
+    // declares them, so a test states the states/registry content it needs
+    // rather than managing a second temporary tree for it.
+    function runAgainstStub(
+      args: string[],
+      ids: string[],
+      env: NodeJS.ProcessEnv = {},
+      files: { states?: unknown; registry?: unknown } = {},
+    ): StubRun {
       const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-walk-'));
       const stubDir = path.join(workdir, 'bin');
       fs.mkdirSync(stubDir, { recursive: true });
@@ -761,16 +823,30 @@ process.exit(0);
       const logFile = path.join(workdir, 'commands.log');
       fs.writeFileSync(logFile, '');
 
+      const declared: string[] = [];
+      if (files.states !== undefined) {
+        const statesFile = path.join(workdir, 'states.json');
+        fs.writeFileSync(statesFile, JSON.stringify(files.states));
+        declared.push('--states', statesFile);
+      }
+      if (files.registry !== undefined) {
+        const registryFile = path.join(workdir, 'themes.json');
+        fs.writeFileSync(registryFile, JSON.stringify(files.registry));
+        declared.push('--themes', 'registry', '--theme-registry', registryFile);
+      }
+
+      const capdir = path.join(workdir, 'shots');
       const run = spawnSync(process.execPath, [
         driverPath(),
         // Answers the host probe without a port, exactly as in the eval test.
         '--host', 'data:text/plain,ok',
         '--themes', 'light',
-        '--capdir', path.join(workdir, 'shots'),
+        '--capdir', capdir,
         '--switcher', 'theme-switcher',
         '--theme-option', 'theme-option-{theme}',
         '--cdp-port', '1',
         '--ready-timeout', '5000',
+        ...declared,
         ...args,
       ], {
         encoding: 'utf8',
@@ -780,13 +856,54 @@ process.exit(0);
           PATH: `${stubDir}${path.delimiter}${process.env.PATH ?? ''}`,
           STUB_LOG: logFile,
           STUB_IDS: JSON.stringify(ids),
+          STUB_THEME: path.join(workdir, 'active-theme'),
         },
       });
 
+      // A driver killed at the bound above leaves no result to parse, and the
+      // JSON.parse failure that follows says nothing about why. Named here.
+      if (run.error) throw new Error(`the driver did not return: ${run.error.message}`);
+
+      const coverageFile = path.join(capdir, 'verification-coverage.md');
       return {
         status: run.status,
         result: JSON.parse(run.stdout) as StubRun['result'],
         commands: fs.readFileSync(logFile, 'utf8').split('\n').filter(Boolean),
+        coverage: fs.existsSync(coverageFile) ? fs.readFileSync(coverageFile, 'utf8') : '',
+        cleanup: () => fs.rmSync(workdir, { recursive: true, force: true }),
+      };
+    }
+
+    // Every input-validation refusal has to happen on the arguments alone, so
+    // these runs need no stub, no server and no browser: what they assert is
+    // that the driver never got as far as one.
+    function runRefusal(extra: string[]): {
+      status: number | null;
+      failures: { stage: string; detail: string }[];
+      capdirExists: boolean;
+      cleanup: () => void;
+    } {
+      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-args-'));
+      const capdir = path.join(workdir, 'shots');
+
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        '--host', 'http://127.0.0.1:1',
+        '--themes', 'light',
+        '--screens', 'orders:/orders:screen-orders',
+        '--capdir', capdir,
+        '--switcher', 'theme-switcher',
+        '--theme-option', 'theme-option-{theme}',
+        '--menu', 'nav-{screen}',
+        ...extra,
+      ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
+
+      if (run.error) throw new Error(`the driver did not return: ${run.error.message}`);
+
+      return {
+        status: run.status,
+        failures: (JSON.parse(run.stdout) as { failures: { stage: string; detail: string }[] }).failures,
+        capdirExists: fs.existsSync(capdir),
         cleanup: () => fs.rmSync(workdir, { recursive: true, force: true }),
       };
     }
@@ -871,6 +988,430 @@ process.exit(0);
       expect(captured).not.toContain('login');
       expect(captured).toContain('tasks');
 
+      run.cleanup();
+    });
+
+    // One candidate is the answer and anything else is a refusal: a wrong menu
+    // item navigates somewhere real, and every reading after it is a reading of
+    // the wrong screen under this screen's name.
+    it('refuses an ambiguous menu candidate set rather than picking the first of them', () => {
+      const NEIGHBOUR_EXT = `${EXT_PREFIX}.tasks.screens.tasks_archive.v1`;
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login,tasks:/tasks:screen-tasks',
+        '--menu', 'menu-item-{extensionId}',
+      ], [...HOST_IDS, `menu-item-${LOGIN_EXT}`, `menu-item-${TASKS_EXT}`, `menu-item-${NEIGHBOUR_EXT}`]);
+
+      expect(run.status).not.toBe(0);
+
+      const ambiguous = run.result.failures.filter((failure) => failure.stage === 'menu-resolve');
+      expect(ambiguous).toHaveLength(1);
+      expect(ambiguous[0].detail).toContain(TASKS_EXT);
+      expect(ambiguous[0].detail).toContain(NEIGHBOUR_EXT);
+
+      // Unresolved is disclosed as unresolved, and no menu item is clicked at
+      // all - the failure mode a pick would produce is a click that landed.
+      expect(run.result.menuResolution).toEqual([
+        { screen: 'tasks', testid: null, extensionId: null, source: 'unresolved' },
+      ]);
+      expect(run.commands.some((line) => line.startsWith('click menu-item-'))).toBe(false);
+      expect(run.result.themes[0].captures.map((capture) => capture.screen)).not.toContain('tasks');
+
+      run.cleanup();
+    });
+
+    // The coverage file is this step's stated deliverable: a report is filled
+    // from it, and a run that composed one without writing the file left the
+    // developer with the project and none of the record.
+    it('writes the coverage rows to a file, with each capture and its readiness in the cell', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login,tasks:/tasks',
+        '--nav', 'route',
+      ], HOST_IDS);
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+      expect(run.result.coverageFile).not.toBeNull();
+
+      expect(run.coverage).toContain('| Theme | Opened | Visually distinct from previous |');
+      expect(run.coverage).toContain('| light | verified | first theme |');
+      // A screen declaring a ready handle is captured after that handle appears;
+      // one declaring none is captured after a bare settle. A cell that cannot
+      // tell them apart reports the weaker capture as the stronger one.
+      expect(run.coverage).toContain('fresh (light-login-fresh.png, ready confirmed)');
+      expect(run.coverage).toContain('fresh (light-tasks-fresh.png, ready unconfirmed)');
+
+      run.cleanup();
+    });
+
+    // A cell filled from a page reading is a cell the page can corrupt: one `|`
+    // in a label closes it and shifts every column after it.
+    it('escapes a pipe read off the page instead of letting it close the cell', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+        // The stub answers a switcher label with the theme it was switched into,
+        // so the theme name is the reading that reaches the table.
+        '--themes', 'light|dark',
+      ], HOST_IDS);
+
+      expect(run.coverage).toContain('| light\\|dark |');
+      // Counted on unescaped pipes only, which is what a markdown reader treats
+      // as a cell boundary: the row has to hold the columns the header declares.
+      const cellBoundary = /(?<!\\)\|/;
+      const lines = run.coverage.split('\n');
+      expect(lines[2].split(cellBoundary)).toHaveLength(lines[0].split(cellBoundary).length);
+
+      run.cleanup();
+    });
+
+    // The whole native sequence, not a synthetic click: a control listening for
+    // pointerdown sees nothing of a bare click() and the screen stays as it was,
+    // while the command still reports success.
+    it('drives every click as the full native pointer sequence', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+      ], HOST_IDS);
+
+      const sequences = run.commands.filter((line) => line.startsWith('events '));
+      expect(sequences.length).toBeGreaterThan(0);
+      for (const sequence of sequences) {
+        expect(sequence).toBe('events pointerdown,mousedown,pointerup,mouseup,click');
+      }
+
+      run.cleanup();
+    });
+
+    // Every declared control operation has to report as dispatched. Discarded,
+    // the outcome let a single-theme run already showing the requested theme
+    // pass with no theme option on the page at all: the label agreed, and
+    // nothing had switched.
+    it('fails the theme when a declared control is not on the page, naming the test id', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+        '--panel-expand', 'panel-expand',
+        '--panel-collapse', 'panel-collapse',
+        // The switcher is there and the label reads "light" either way, which is
+        // exactly how a missing option used to pass unnoticed.
+      ], ['theme-switcher', 'screen-login']);
+
+      expect(run.status).not.toBe(0);
+
+      const control = run.result.failures.filter((failure) => failure.stage === 'control');
+      expect(control).toHaveLength(1);
+      expect(control[0].detail).toContain('panel-expand');
+      expect(control[0].detail).toContain('no control carries that data-testid');
+      // Nothing is captured under a theme whose controls could not be operated.
+      expect(run.result.themes[0].captures).toEqual([]);
+      expect(run.coverage).toContain('not-opened (dev panel expand control "panel-expand" was not clicked');
+
+      run.cleanup();
+    });
+
+    // The collapse is the same class one control along, and it fails later: the
+    // label has already confirmed by then, so a discarded collapse outcome
+    // leaves the theme reading as opened and its captures carrying host chrome.
+    it('fails the theme when the panel collapse control is not on the page', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+        '--panel-expand', 'panel-expand',
+        '--panel-collapse', 'panel-collapse',
+      ], [...HOST_IDS, 'panel-expand']);
+
+      expect(run.status).not.toBe(0);
+      expect(run.result.themes[0].labelConfirmed).toBe(true);
+
+      const control = run.result.failures.filter((failure) => failure.stage === 'control');
+      expect(control).toHaveLength(1);
+      expect(control[0].detail).toContain('panel-collapse');
+      expect(run.result.themes[0].captures).toEqual([]);
+
+      run.cleanup();
+    });
+
+    // "The page holds no such element" and "the script never ran" call for
+    // different repairs, and collapsing both into absence is what sent a run
+    // hunting a rendering race that did not exist.
+    it('keeps a refused existence probe apart from an absent control', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+        '--panel-expand', 'panel-expand',
+        '--panel-collapse', 'panel-collapse',
+      ], [...HOST_IDS, 'panel-expand', 'panel-collapse'], { STUB_EVAL_ERROR_PROBE: 'panel-expand' });
+
+      expect(run.status).not.toBe(0);
+
+      const panel = run.result.failures.filter((failure) => failure.stage === 'panel');
+      expect(panel).toHaveLength(1);
+      expect(panel[0].detail).toContain('could not be confirmed');
+      expect(panel[0].detail).toContain('the eval did not run');
+      // Not false: the page was never asked, and a report cannot say the panel
+      // stayed open on the strength of a probe that did not run.
+      expect(run.result.themes[0].panelCollapsed).toBeNull();
+
+      run.cleanup();
+    });
+
+    // The states file is where every read-back comes from, and a read-back that
+    // cannot disagree is not one: the exit-code contract says every read-back
+    // agreed, so a fill whose field took something else has to break it.
+    it('records every declared read-back and passes the run when they all agree', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+      ], [...HOST_IDS, 'screen-name-input', 'screen-submit', 'screen-status'], {}, {
+        states: {
+          login: [{
+            state: 'submitted',
+            actions: [
+              { kind: 'fill', testid: 'screen-name-input', value: 'Grace' },
+              { kind: 'click', testid: 'screen-submit' },
+              { kind: 'read', testid: 'screen-status', contains: 'text of screen-status' },
+            ],
+          }],
+        },
+      });
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+      expect(run.result.themes[0].readBacks.map((back) => [back.action, back.ok])).toEqual([
+        ['fill', true], ['click', true], ['read', true],
+      ]);
+      expect(run.commands).toContain('fill screen-name-input Grace');
+      expect(run.coverage).toContain('submitted (light-login-submitted.png, ready confirmed)');
+
+      run.cleanup();
+    });
+
+    it('fails the run when a fill reads back something other than what was typed', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+      ], [...HOST_IDS, 'screen-name-input'], { STUB_FILL_DRIFT: '1' }, {
+        states: {
+          login: [{ state: 'submitted', actions: [{ kind: 'fill', testid: 'screen-name-input', value: 'Grace' }] }],
+        },
+      });
+
+      expect(run.status).not.toBe(0);
+
+      const readBack = run.result.failures.filter((failure) => failure.stage === 'read-back');
+      expect(readBack).toHaveLength(1);
+      expect(readBack[0].detail).toContain('screen-name-input');
+      expect(readBack[0].detail).toContain('drift:Grace');
+      expect(run.result.themes[0].readBacks[0].ok).toBe(false);
+
+      run.cleanup();
+    });
+
+    // The verdict is the comparison command's own exit code and nothing else.
+    // Identical captures are a recorded fact: two registered themes can differ
+    // only in tokens the captured screens never consume, and a run that reported
+    // them as visibly distinct claimed something it never saw.
+    it('records identical captures as identical, from the comparison command exit code', () => {
+      const run = runAgainstStub([
+        '--themes', 'light,dark',
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+      ], [...HOST_IDS, 'theme-option-dark'], { STUB_IDENTICAL_SHOTS: '1' });
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+      expect(run.result.themes.map((theme) => [theme.theme, theme.labelConfirmed])).toEqual([
+        ['light', true], ['dark', true],
+      ]);
+      expect(run.result.themes[1].comparisons).toEqual([{
+        against: 'light',
+        screen: 'login',
+        state: 'fresh',
+        command: 'cmp -s light-login-fresh.png dark-login-fresh.png',
+        exit: 0,
+        verdict: 'identical',
+      }]);
+      expect(run.coverage).toContain('login/fresh: identical (cmp exit 0)');
+
+      run.cleanup();
+    });
+
+    it('records a differing pair as differs, from that same exit code', () => {
+      const run = runAgainstStub([
+        '--themes', 'light,dark',
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+      ], [...HOST_IDS, 'theme-option-dark']);
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.result.themes[1].comparisons.map((cmp) => [cmp.verdict, cmp.exit])).toEqual([['differs', 1]]);
+      expect(run.coverage).toContain('login/fresh: differs (cmp exit 1)');
+
+      run.cleanup();
+    });
+
+    // Provenance: a report claiming the set came from the host's theme
+    // registration is a claim this field either backs or contradicts.
+    it('records a theme set read from a registry file as coming from that file', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+      ], [...HOST_IDS, 'theme-option-dark'], {}, { registry: { themes: ['light', 'dark'] } });
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.result.themeSet.themes).toEqual(['light', 'dark']);
+      expect(run.result.themeSet.source.startsWith('registry:')).toBe(true);
+      expect(run.result.themeSet.source.endsWith('themes.json')).toBe(true);
+
+      run.cleanup();
+    });
+
+    // The one hang the driver could not survive: every browser interaction is a
+    // child process, and an unbounded one blocks the walk forever on a runner
+    // that stopped answering.
+    it('kills a browser command that never returns, and records it as a timeout', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+        '--command-timeout', '800',
+      ], HOST_IDS, { STUB_HANG: '1' });
+
+      expect(run.status).not.toBe(0);
+
+      const timeouts = run.result.failures.filter((failure) => failure.stage === 'timeout');
+      expect(timeouts.length).toBeGreaterThan(0);
+      expect(timeouts[0].detail).toContain('killed after 800ms');
+      expect(run.result.themes[0].captures).toEqual([]);
+
+      run.cleanup();
+    });
+
+    // The result has to reach the caller even when the path it was asked for
+    // cannot be written: a record that went nowhere is indistinguishable from a
+    // run that never happened.
+    it('still prints its result, and says so, when the output path cannot be written', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+        // A path under a file rather than a directory: the mkdir fails ENOTDIR.
+        '--json-out', '/dev/null/nope/verify-walk.json',
+      ], HOST_IDS);
+
+      expect(run.status).not.toBe(0);
+      expect(run.result.ok).toBe(false);
+      const output = run.result.failures.filter((failure) => failure.stage === 'output');
+      expect(output).toHaveLength(1);
+      expect(output[0].detail).toContain('/dev/null/nope/verify-walk.json');
+
+      run.cleanup();
+    });
+
+    // A capture directory shared with an earlier run leaves that run's files
+    // exactly where this one goes looking, and neither the byte-compare nor the
+    // coverage cells can tell which run wrote a file they address by name.
+    it('refuses a capture directory that already holds files, before reaching the host', () => {
+      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-capdir-'));
+      fs.writeFileSync(path.join(workdir, 'light-orders-fresh.png'), 'an earlier run left this');
+
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        '--host', 'http://127.0.0.1:1',
+        '--themes', 'light',
+        '--screens', 'orders:/orders:screen-orders',
+        '--capdir', workdir,
+        '--switcher', 'theme-switcher',
+        '--theme-option', 'theme-option-{theme}',
+        '--menu', 'nav-{screen}',
+      ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
+
+      expect(run.status).not.toBe(0);
+
+      const parsed = JSON.parse(run.stdout) as { failures: { stage: string; detail: string }[] };
+      expect(parsed.failures.map((failure) => failure.stage)).toEqual(['capdir']);
+      expect(parsed.failures[0].detail).toContain('already holds files');
+      // The earlier run's file is still there: the refusal writes nothing over it.
+      expect(fs.readdirSync(workdir)).toEqual(['light-orders-fresh.png']);
+
+      fs.rmSync(workdir, { recursive: true, force: true });
+    });
+
+    // Unvalidated, `--ready-timeout nope` made the readiness deadline NaN and
+    // the poll asked every 400ms forever, printing nothing and ending never.
+    // The same class reached the debugging port. Each is refused on the
+    // arguments alone, before a directory exists or a browser is reached.
+    it.each([
+      ['--ready-timeout', 'nope'],
+      ['--ready-timeout', '0'],
+      ['--cdp-port', '99999'],
+      ['--cdp-port', '1.5'],
+      ['--command-timeout', 'soon'],
+    ])('refuses %s "%s" as an arguments failure and creates nothing', (flag, value) => {
+      const run = runRefusal([flag, value]);
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain(flag);
+      expect(run.capdirExists).toBe(false);
+
+      run.cleanup();
+    });
+
+    // Any string used to reach the walk, and everything that was not "route"
+    // took the menu branch, so `--nav manu` ran a split on undefined and ended
+    // the process on an uncaught TypeError with no result record at all.
+    it('refuses a --nav outside the closed set', () => {
+      const run = runRefusal(['--nav', 'manu']);
+
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain('manu');
+      expect(run.capdirExists).toBe(false);
+
+      run.cleanup();
+    });
+
+    // A pattern that substitutes nothing clicks one same control for every theme
+    // or every screen, which reads as a walk that covered all of them.
+    it.each<[string, string[]]>([
+      ['{theme}', ['--themes', 'light,dark', '--theme-option', 'theme-option-light']],
+      ['{screen}', ['--screens', 'login:/login,tasks:/tasks', '--menu', 'nav-login']],
+    ])('refuses a pattern carrying no %s placeholder when it has to vary', (token, extra) => {
+      const run = runRefusal(extra);
+
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain(token);
+
+      run.cleanup();
+    });
+
+    // A declared input file that is missing, malformed, or holds the wrong shape
+    // used to throw out of the top level: no result record, no coverage row, and
+    // a stack trace where the run's own account of itself belongs.
+    it.each<[string, string, string | null]>([
+      ['--theme-registry', 'is absent', null],
+      ['--theme-registry', 'is not JSON', '{ themes: [light] '],
+      ['--theme-registry', 'holds a null theme list', '{ "themes": null }'],
+      ['--theme-registry', 'lists something that is not a theme name', '{ "themes": [7] }'],
+      ['--states', 'is absent', null],
+      ['--states', 'is not JSON', '{'],
+      ['--states', 'holds a non-array under a screen', '{ "orders": { "state": "submitted" } }'],
+      ['--states', 'holds an action of an unknown kind', '{ "orders": [{ "state": "submitted", "actions": [{ "kind": "tap", "testid": "x" }] }] }'],
+      ['--states', 'holds a fill with no value to type', '{ "orders": [{ "state": "submitted", "actions": [{ "kind": "fill", "testid": "x" }] }] }'],
+      ['--states', 'names a screen the walk never visits', '{ "checkout": [] }'],
+    ])('refuses a %s file that %s', (flag, _situation, content) => {
+      const inputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-input-'));
+      const file = path.join(inputDir, 'input.json');
+      if (content !== null) fs.writeFileSync(file, content);
+
+      const run = runRefusal(flag === '--theme-registry'
+        ? ['--themes', 'registry', '--theme-registry', file]
+        : ['--states', file]);
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain(file);
+      expect(run.capdirExists).toBe(false);
+
+      fs.rmSync(inputDir, { recursive: true, force: true });
       run.cleanup();
     });
   });
