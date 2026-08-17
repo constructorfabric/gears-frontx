@@ -51,7 +51,9 @@ Required:
 Optional:
   --theme-registry <path>   file the theme set was read from; recorded as the set's provenance
   --theme-labels <map>      theme=label pairs, comma separated, when a switcher label
-                            does not carry the theme name verbatim
+                            does not carry the theme name as whole words, and where
+                            two registered names cannot be told apart from one label
+                            (the run is refused until each carries a label of its own)
   --menu <pattern>          data-testid of a screen's menu item, with {screen} or
                             {extensionId} in it; required when --nav is menu.
                             {screen} takes the short name from --screens.
@@ -160,6 +162,31 @@ function parseLabelMap(spec) {
   return map;
 }
 
+// A label cut into its alphanumeric words. Case and punctuation come off, so
+// "Theme: High Contrast" and "theme_high-contrast" both read as the same three
+// words, and the words stay separate rather than being run together.
+const segments = (text) => (text ?? '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+
+// Whether a switcher label NAMES a theme, which is not the same claim as
+// carrying its name somewhere inside. The name has to occupy a whole
+// uninterrupted run of the label's words: a registry holding `dark` and
+// `darker` used to confirm `dark` off a label reading "Darker", and every
+// capture taken in that block was then filed against a theme that never opened.
+// `light` against "Highlight" is the same mistake one word along.
+//
+// A label that does not carry the theme's name as words - "HighContrast" for
+// `high-contrast` - reads as not-opened rather than as opened, which is the
+// safe direction, and --theme-labels is where such a label is declared.
+function namesTheme(labelText, wantedText) {
+  const label = segments(labelText);
+  const wanted = segments(wantedText);
+  if (wanted.length === 0) return false;
+  for (let start = 0; start + wanted.length <= label.length; start += 1) {
+    if (wanted.every((word, offset) => label[start + offset] === word)) return true;
+  }
+  return false;
+}
+
 // A file read and a JSON parse at the top level used to throw straight out of
 // the program: a missing registry, a truncated states file or a stray comma
 // ended the run with a stack trace, no result record and no coverage row - the
@@ -236,6 +263,16 @@ function readStates(file, screens) {
         if (action.kind === 'fill' && typeof action.value !== 'string') {
           throw new Error(`--states "${resolved}": the fill of "${action.testid}" under "${screen}"/"${entry.state}" needs a string "value"`);
         }
+        // A fill is confirmed by comparing the field's own value afterwards
+        // against this string, and that reading comes back through `lastLine`:
+        // the last non-empty line, trimmed, with surrounding quotes off. A value
+        // that reading cannot return verbatim - one carrying a newline, leading
+        // or trailing whitespace, or wrapping quotes - can never read back as
+        // equal, so the run would exit non-zero over a value the field took.
+        // Refused here rather than discovered against a browser.
+        if (action.kind === 'fill' && typeof action.value === 'string' && lastLine(action.value) !== action.value) {
+          throw new Error(`--states "${resolved}": the fill of "${action.testid}" under "${screen}"/"${entry.state}" declares a value the read-back cannot confirm, because the field's value is read back as the last non-empty line with surrounding whitespace and quotes removed: ${JSON.stringify(action.value)}`);
+        }
         if (action.kind === 'read' && action.contains !== undefined && typeof action.contains !== 'string') {
           throw new Error(`--states "${resolved}": the read of "${action.testid}" under "${screen}"/"${entry.state}" declares a non-string "contains"`);
         }
@@ -300,6 +337,14 @@ function lastLine(stdout) {
 // still reports success. Every read and every drive in this driver descends
 // through shadowRoot instead.
 //
+// What every page-side helper answers in place of an element the page does not
+// carry. Spelled once, and both sides derive from this one name: the prelude
+// installs it into the page and the read check compares against it. Written out
+// twice, a change to the prelude's copy left the check comparing against a
+// string the page never returns, and an absent control then read as a `read`
+// action that passed.
+const MISSING = '__verify_walk_missing__';
+
 // Every name here is installed on globalThis rather than declared. The runner
 // evaluates each script in the page's one persistent global scope, so a
 // top-level `const __find` from the first eval is still bound when the second
@@ -320,7 +365,7 @@ globalThis.__find ??= (id) => {
   };
   return walk(document);
 };
-globalThis.__MISSING ??= '__verify_walk_missing__';
+globalThis.__MISSING ??= ${JSON.stringify(MISSING)};
 globalThis.__testids ??= () => {
   const seen = [];
   const walk = (root) => {
@@ -506,6 +551,13 @@ function fail(stage, detail, extra = {}) {
 // arrives truncated exactly when it is being piped into something. A pipe also
 // accepts partial writes, hence the loop, and a closed reader is not this
 // program's failure to report - the record has already been written to disk.
+//
+// A non-blocking pipe with a slow reader answers EAGAIN rather than accepting
+// the write, and a retry that comes straight back pins a core for as long as the
+// reader takes to drain. The wait between turns is what keeps this loop off the
+// CPU while it waits for room.
+const STDOUT_RETRY_MS = 10;
+
 function writeStdout(payload) {
   const bytes = Buffer.from(payload, 'utf8');
   let written = 0;
@@ -513,7 +565,10 @@ function writeStdout(payload) {
     try {
       written += fs.writeSync(1, bytes, written, bytes.length - written);
     } catch (error) {
-      if (error.code === 'EAGAIN') continue;
+      if (error.code === 'EAGAIN') {
+        sleep(STDOUT_RETRY_MS);
+        continue;
+      }
       return;
     }
   }
@@ -680,6 +735,20 @@ try {
   if (result.themeSet.themes.length === 0) throw new Error('the theme set is empty');
   if (result.themeSet.themes.length > 1 && !opts['theme-option'].includes(THEME_TOKEN)) {
     throw new Error(`--theme-option "${opts['theme-option']}" carries no ${THEME_TOKEN}, so every theme would click one same option`);
+  }
+
+  // Two themes one switcher label can name at once are refused rather than
+  // guessed at: where one theme's words are a whole run of another's, every
+  // label naming the longer names the shorter too, and the confirmation cannot
+  // say which theme actually opened. Declaring a label per theme with
+  // --theme-labels is how such a pair is separated, so the check reads the
+  // labels rather than the bare names.
+  const wantedNames = result.themeSet.themes.map((theme) => ({ theme, wanted: labels[theme] ?? theme }));
+  for (const shorter of wantedNames) {
+    for (const longer of wantedNames) {
+      if (shorter === longer || !namesTheme(longer.wanted, shorter.wanted)) continue;
+      throw new Error(`themes "${shorter.theme}" and "${longer.theme}" cannot be told apart from a switcher label: a label reading "${longer.wanted}" names "${shorter.wanted}" as well, so give each one a label of its own with --theme-labels`);
+    }
   }
 
   states = opts.states ? readStates(opts.states, screens) : {};
@@ -863,8 +932,8 @@ function reachScreen(screen, hard) {
 // already showing the requested theme reads a label that matches, so the label
 // check agrees and the walk captures a theme nothing switched. The failure names
 // the test id that was not found, because the symptom the run saw otherwise -
-// a switcher label reading `__verify_walk_missing__` - reads as a theme that did
-// not open rather than as a handle that does not exist.
+// a switcher label reading back the missing-element sentinel - reads as a theme
+// that did not open rather than as a handle that does not exist.
 function operate(record, testid, what) {
   const outcome = click(testid);
   if (outcome === 'dispatched') return true;
@@ -895,13 +964,15 @@ for (const theme of result.themeSet.themes) {
 
   // The switcher's own label is the only source of truth for which theme is
   // active. It is read twice: the second reading is a confirmation, not a
-  // retry, and both readings are recorded so a disagreement is visible.
-  const wanted = (labels[theme] ?? theme).toLowerCase();
-  const normalize = (text) => (text ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  // retry, and both readings are recorded so a disagreement is visible. Both
+  // readings have to name this theme, in the whole-word sense above; the theme
+  // set was refused before the walk if two of its names cannot be told apart
+  // that way.
+  const wanted = labels[theme] ?? theme;
   record.labelRead = readText(opts.switcher);
   record.labelReadBack = readText(opts.switcher);
-  record.labelConfirmed = normalize(record.labelRead).includes(normalize(wanted))
-    && normalize(record.labelReadBack).includes(normalize(wanted));
+  record.labelConfirmed = namesTheme(record.labelRead, wanted)
+    && namesTheme(record.labelReadBack, wanted);
 
   if (!record.labelConfirmed) {
     // Not-opened: capture nothing under it rather than file this theme's row
@@ -951,7 +1022,7 @@ for (const theme of result.themeSet.themes) {
         } else if (action.kind === 'read') {
           const text = readText(action.testid);
           const ok = text !== EVAL_ERROR
-            && (action.contains ? text.includes(action.contains) : text !== '__verify_walk_missing__');
+            && (action.contains ? text.includes(action.contains) : text !== MISSING);
           record.readBacks.push({ screen: screen.name, state: declared.state, action: 'read', testid: action.testid, expected: action.contains ?? null, actual: text, ok });
           if (!ok) fail('read', `reading "${action.testid}" under theme "${theme}" gave "${text}"`);
         } else {
