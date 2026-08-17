@@ -1,5 +1,3 @@
-// @cpt-flow:cpt-frontx-flow-studio-devtools-theme-change:p1
-// @cpt-dod:cpt-frontx-dod-studio-devtools-control-panel:p1
 import React from 'react';
 import { upperFirst } from 'lodash';
 import { useTheme, useTranslation } from '@gears-frontx/react';
@@ -12,6 +10,7 @@ import {
 } from '../uikit/base/dropdown-menu';
 import { DropdownButton } from '../uikit/composite/DropdownButton';
 import { useStudioContext } from '../StudioProvider';
+import { STUDIO_THEME_TRIGGER_TESTID, studioThemeOptionTestId } from '../testIds';
 
 /**
  * ThemeSelector Component
@@ -22,7 +21,6 @@ export interface ThemeSelectorProps {
   className?: string;
 }
 
-// @cpt-begin:cpt-frontx-flow-studio-devtools-theme-change:p1:inst-1
 export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   className = '',
 }) => {
@@ -44,7 +42,15 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
       </label>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <DropdownButton variant={ButtonVariant.Outline}>
+          {/*
+            The trigger's own text is the active theme, so a verification run
+            reads which theme is applied off this one element rather than
+            probing classes or computed styles for it.
+          */}
+          <DropdownButton
+            variant={ButtonVariant.Outline}
+            data-testid={STUDIO_THEME_TRIGGER_TESTID}
+          >
             {formatThemeName(currentTheme || '')}
           </DropdownButton>
         </DropdownMenuTrigger>
@@ -52,6 +58,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
           {themes.map((theme) => (
             <DropdownMenuItem
               key={theme.id}
+              data-testid={studioThemeOptionTestId(theme.id)}
               onClick={() => setTheme(theme.id)}
             >
               {formatThemeName(theme.name || theme.id)}
@@ -64,4 +71,3 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
 };
 
 ThemeSelector.displayName = 'ThemeSelector';
-// @cpt-end:cpt-frontx-flow-studio-devtools-theme-change:p1:inst-1

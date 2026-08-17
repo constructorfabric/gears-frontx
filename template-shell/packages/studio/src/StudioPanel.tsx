@@ -1,5 +1,3 @@
-// @cpt-dod:cpt-frontx-dod-studio-devtools-panel-overlay:p1
-// @cpt-algo:cpt-frontx-algo-studio-devtools-portal-management:p1
 import React from 'react';
 import { useTranslation } from '@gears-frontx/react';
 import { Card } from './uikit/base/card';
@@ -10,9 +8,8 @@ import { useResizable } from './hooks/useResizable';
 import { useStudioContext } from './StudioProvider';
 import { ControlPanel } from './sections/ControlPanel';
 import { STORAGE_KEYS } from './types';
+import { STUDIO_COLLAPSE_TESTID } from './testIds';
 
-// @cpt-begin:cpt-frontx-dod-studio-devtools-panel-overlay:p1:inst-1
-// @cpt-begin:cpt-frontx-algo-studio-devtools-portal-management:p1:inst-1
 export const StudioPanel: React.FC = () => {
   const { toggleCollapsed, setPortalContainer } = useStudioContext();
   const { t } = useTranslation();
@@ -61,6 +58,7 @@ export const StudioPanel: React.FC = () => {
             variant={ButtonVariant.Ghost}
             size={ButtonSize.Sm}
             onClick={toggleCollapsed}
+            data-testid={STUDIO_COLLAPSE_TESTID}
             className="h-7 w-7 p-0"
             aria-label={t('studio:aria.collapseButton')}
             title={t('studio:aria.collapseButton')}
@@ -110,5 +108,3 @@ export const StudioPanel: React.FC = () => {
 };
 
 StudioPanel.displayName = 'StudioPanel';
-// @cpt-end:cpt-frontx-dod-studio-devtools-panel-overlay:p1:inst-1
-// @cpt-end:cpt-frontx-algo-studio-devtools-portal-management:p1:inst-1
