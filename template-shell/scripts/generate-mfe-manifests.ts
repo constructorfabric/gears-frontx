@@ -221,11 +221,11 @@ export class ManifestGenerator {
       );
     }
 
-    const packageDirs = this.discoverPackages();
-    console.log(`Found ${packageDirs.length} MFE package(s):`);
-    packageDirs.forEach((p) => console.log(`  - ${p}`));
-
     try {
+      const packageDirs = this.discoverPackages();
+      console.log(`Found ${packageDirs.length} MFE package(s):`);
+      packageDirs.forEach((p) => console.log(`  - ${p}`));
+
       const configs = packageDirs.map((dir) => this.processPackage(dir));
       const output = this.renderOutputFile(configs);
       writeFileSync(this.outputFile, output, 'utf-8');
@@ -248,10 +248,12 @@ export class ManifestGenerator {
    * dev server that mounts the last good manifest shows working screens, so
    * nothing points at the failed generation.
    *
-   * The whole write is inside the guarded block rather than just the validation,
-   * because the boundary belongs to the run and not to one gate. A future check
-   * added anywhere in `processPackage` inherits it, and a `writeFileSync` that
-   * dies partway through cannot leave a truncated aggregate either.
+   * The guarded block spans discovery through the write rather than just the
+   * validation, because the boundary belongs to the run and not to one gate: an
+   * unreadable packages directory leaves the aggregate as stale as a rejected id
+   * does, a future check added anywhere in `processPackage` inherits the guard,
+   * and a `writeFileSync` that dies partway through cannot leave a truncated
+   * aggregate either.
    */
   private discardAggregate(): void {
     try {

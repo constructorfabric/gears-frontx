@@ -258,6 +258,19 @@ describe('ManifestGenerator - GTS identifier validation', () => {
     expect(existsSync(outputFile)).toBe(false);
   });
 
+  it('removes the aggregate when the packages directory cannot be read at all', () => {
+    writeFileSync(outputFile, EARLIER_GOOD_AGGREGATE, 'utf-8');
+    // A file where the packages directory belongs: `existsSync` is satisfied, so
+    // the run reaches `readdirSync` and dies there. Discovery failing is the one
+    // way to fail that runs before any package is processed, so it is the case
+    // that pins the guard around discovery rather than only around the packages.
+    rmSync(mfePackagesDir, { recursive: true, force: true });
+    writeFileSync(mfePackagesDir, 'not a directory', 'utf-8');
+
+    expect(() => generate()).toThrow();
+    expect(existsSync(outputFile)).toBe(false);
+  });
+
   it('reports every invalid id in the package rather than stopping at the first', () => {
     mfePackageWithIds({
       manifestId: `${MANIFEST_TYPE}~fixture.billing.manifest.v1`,
