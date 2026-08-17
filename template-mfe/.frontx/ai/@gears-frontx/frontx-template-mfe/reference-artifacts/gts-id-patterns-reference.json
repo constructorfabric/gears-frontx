@@ -1,6 +1,13 @@
 {
   "description": "Worked GTS ID examples drawn from template-mfe's own MFE packages (demo-mfe, _blank-mfe, widgets-fixture-a/b), for direct citation/reuse when authoring a new MFE package's mfe.json. Companion to the gts-id-conventions guideline in this same bundle.",
   "namespaceRoot": "frontx",
+  "instanceSegment": {
+    "shape": "vendor.package.namespace.type.vN",
+    "tokenCount": 5,
+    "appliesTo": "Every family below. The instance segment is the LAST ~-separated segment of the id: the second for mf_manifest, widget_area_extension, custom_action and the widget domain, the third for mfe_entry and screen_extension.",
+    "appPlaceholder": "{app} in every pattern below stands for TWO tokens, vendor + package (frontx.demo, frontx.blank, frontx.widgets), never one. Substituting a single token leaves the manifest and entry patterns at five tokens because they carry a literal `mfe` token, and silently shortens every extension id to four.",
+    "failureMode": "A four-token instance segment is accepted by the manifest loader and the extension never resolves at runtime."
+  },
   "families": [
     {
       "family": "mf_manifest",
