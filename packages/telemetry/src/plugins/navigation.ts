@@ -6,6 +6,10 @@ export function navigationPlugin(): TelemetryPlugin {
   return {
     name: 'navigation',
     setup: (context: TelemetryPluginContext) => {
+      if (!context.config.navigationCapture) {
+        return;
+      }
+
       let currentUrl: string | null = null;
       let currentPageRecordId: TelemetryRecordId | null = null;
       const originalPushState = window.history.pushState;

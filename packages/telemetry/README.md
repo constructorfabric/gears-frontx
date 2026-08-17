@@ -43,6 +43,9 @@ and installs their listeners. Out of the box that gives you a `session_start` ev
 session, a `page_view` on every path change (`pushState`, `replaceState`, `popstate`), device, OS,
 client, viewport and timezone fields on every record, and captured user interactions.
 
+An application that routes page views itself can turn that one off with `navigationCapture: false`;
+the SDK then leaves `window.history` alone and no record carries a `caused_by_id`.
+
 Events are queued in memory and flushed on a 5 second debounce, reset by each new event, plus an
 immediate flush when the page goes to `visibilitychange` / hidden. The POST uses `keepalive`.
 
@@ -56,17 +59,18 @@ removes the listeners.
 
 `createTelemetry(config: TelemetryConfig)`
 
-| Option            | Type      | Default    | Description                                                                                                                                                     |
-| ----------------- | --------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `appName`         | `string`  | *required* | Sent as `context_source_app_name`, and the default for `context_service_name` and `context_app_name`.                                                             |
-| `appVersion`      | `string`  | *required* | Application version, sent as `context_source_app_version` and mirrored into `context_app_version`.                                                                |
-| `url`             | `string`  | see below  | Endpoint events are POSTed to. Defaults to the same-origin path `/api/events` when `apiVersion` is `1`, otherwise `/api/telemetry/v{apiVersion}/events`.           |
-| `autocapture`     | `boolean` | `true`     | Automatically capture `click`, `change` and `submit` events from the page.                                                                                         |
-| `enabled`         | `boolean` | `true`     | When `false`, events are still collected, enriched and drained from the queue - only the POST is skipped.                                                          |
-| `verbose`         | `boolean` | `false`    | Log SDK activity to the console.                                                                                                                                  |
-| `storagePrefix`   | `string`  | none       | Infix for the `localStorage` keys the SDK owns: `telemetry_{storagePrefix}_device_id` and `telemetry_{storagePrefix}_session`. Set it to keep two clients apart.   |
-| `sessionDuration` | `number`  | `1800000`  | Inactivity window in milliseconds before a new session id is minted. 30 minutes.                                                                                  |
-| `apiVersion`      | `number`  | `1`        | Event envelope version. `2` hoists fields shared by every record in a multi-record batch into `meta`, and drops `context_user_id` and `context_tenant_id`.         |
+| Option              | Type      | Default    | Description                                                                                                                                                     |
+| ------------------- | --------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `appName`           | `string`  | *required* | Sent as `context_source_app_name`, and the default for `context_service_name` and `context_app_name`.                                                             |
+| `appVersion`        | `string`  | *required* | Application version, sent as `context_source_app_version` and mirrored into `context_app_version`.                                                                |
+| `url`               | `string`  | see below  | Endpoint events are POSTed to. Defaults to the same-origin path `/api/events` when `apiVersion` is `1`, otherwise `/api/telemetry/v{apiVersion}/events`.           |
+| `autocapture`       | `boolean` | `true`     | Automatically capture `click`, `change` and `submit` events from the page.                                                                                         |
+| `navigationCapture` | `boolean` | `true`     | Record a `page_view` on every path change, and stamp later records with `caused_by_id`. When `false`, `window.history` is left unwrapped.                           |
+| `enabled`           | `boolean` | `true`     | When `false`, events are still collected, enriched and drained from the queue - only the POST is skipped.                                                          |
+| `verbose`           | `boolean` | `false`    | Log SDK activity to the console.                                                                                                                                  |
+| `storagePrefix`     | `string`  | none       | Infix for the `localStorage` keys the SDK owns: `telemetry_{storagePrefix}_device_id` and `telemetry_{storagePrefix}_session`. Set it to keep two clients apart.   |
+| `sessionDuration`   | `number`  | `1800000`  | Inactivity window in milliseconds before a new session id is minted. 30 minutes.                                                                                  |
+| `apiVersion`        | `number`  | `1`        | Event envelope version. `2` hoists fields shared by every record in a multi-record batch into `meta`, and drops `context_user_id` and `context_tenant_id`.         |
 
 > **`url` defaults to the same-origin path `/api/events`, and a failed send loses the batch.**
 > Always set it explicitly - see *Known gaps* below.
@@ -272,7 +276,7 @@ node scripts/run-monorepo-unit-tests.mjs --run --project=telemetry
 npm run demo:telemetry                                      # browser example on port 5273
 ```
 
-31 tests live in `src/__tests__/` - `telemetry.test.ts` (13) and `autocapture.test.ts` (18).
+47 tests live in `src/__tests__/` - `telemetry.test.ts` (23) and `autocapture.test.ts` (24).
 `vitest` is pinned to an exact version, guarded repo-wide by
 `scripts/check-test-dependency-versions.mjs`. The vitest `globalSetup` pins `TZ=UTC`, so timezone
 assertions do not depend on the machine.

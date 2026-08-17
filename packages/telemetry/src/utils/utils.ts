@@ -23,6 +23,7 @@ export function normalizeOptions(config: TelemetryConfig): TelemetryConfigNormal
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-normalize-config:p2:inst-carry-required
     // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-normalize-config:p2:inst-default-values
     autocapture: config.autocapture ?? true,
+    navigationCapture: config.navigationCapture ?? true,
     sessionDuration: config.sessionDuration ?? 30 * 60 * 1000, // 30 minutes
     apiVersion,
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-normalize-config:p2:inst-default-values

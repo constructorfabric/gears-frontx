@@ -369,7 +369,7 @@ Supplies the context that makes an event stream answerable — session, device, 
 
 - Session: stamps the current session onto records and emits an event when a session begins.
 - Device: derives browser, operating system and platform fields from the user agent, plus viewport and timezone.
-- Navigation: emits an event on every path change, including History API transitions and back-forward navigation.
+- Navigation: emits an event on every path change, including History API transitions and back-forward navigation, unless navigation capture is switched off in configuration — in which case it wraps nothing and contributes nothing.
 - Application info: stamps application name and version, and prepends the application to the service call chain, warning when a hook-supplied chain does not contain its own service.
 - Locale: reads the application's locale source per record and normalizes it, falling back to the browser's reported language.
 

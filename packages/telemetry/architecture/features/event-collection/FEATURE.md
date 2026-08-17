@@ -126,7 +126,7 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 1. [x] - `p1` - Carry the required application name and version through unchanged - `inst-carry-required`
 2. [x] - `p1` - Resolve the collector endpoint: use the supplied value, otherwise derive a same-origin default path from the envelope version, defaulting the version when unset - `inst-resolve-endpoint`
 3. [x] - `p1` - Default delivery on and verbose logging off - `inst-default-flags`
-4. [x] - `p1` - Default autocapture on and the session inactivity window - `inst-default-values`
+4. [x] - `p1` - Default autocapture and navigation capture on, and the session inactivity window - `inst-default-values`
 5. [x] - `p1` - **RETURN** the normalized configuration, which is the only form any component reads - `inst-return-normalized`
 
 ### Client Start
@@ -450,7 +450,7 @@ The system **MUST** key plugins by name so a later registration replaces an earl
 
 - [x] `p1` - **ID**: `cpt-frontx-telemetry-dod-event-collection-builtin-context`
 
-The system **MUST** supply session, device, navigation and application-info enrichment as plugins registered through the ordinary plugin surface, **MUST** emit a session-start event at client start when no valid stored session exists (a session renewed mid-run after the inactivity window emits no event) and an event on every navigation path change including History API transitions — stamping each later record with that page view's identifier as its `caused_by_id`, so every record links to the page it occurred on — and **MUST** offer a locale plugin that reads the application's required locale source per record rather than capturing it at setup — when no locale enrichment sets a language, the device plugin fills the browser's reported one. Because the History API fires no event for `pushState` and `replaceState`, the navigation plugin **MUST** wrap those two methods to observe transitions, and **MUST** restore the original methods on teardown. Consumers should know the SDK patches `window.history`; any other code wrapping the same methods must compose with this.
+The system **MUST** supply session, device, navigation and application-info enrichment as plugins registered through the ordinary plugin surface, **MUST** emit a session-start event at client start when no valid stored session exists (a session renewed mid-run after the inactivity window emits no event) and an event on every navigation path change including History API transitions — stamping each later record with that page view's identifier as its `caused_by_id`, so every record links to the page it occurred on — and **MUST** offer a locale plugin that reads the application's required locale source per record rather than capturing it at setup — when no locale enrichment sets a language, the device plugin fills the browser's reported one. Because the History API fires no event for `pushState` and `replaceState`, the navigation plugin **MUST** wrap those two methods to observe transitions, and **MUST** restore the original methods on teardown. Consumers should know the SDK patches `window.history`; any other code wrapping the same methods must compose with this. Where navigation capture is disabled in configuration the plugin **MUST** wrap nothing, record no page view and attribute no record, so an application that owns its own page-view reporting keeps sole possession of `window.history`.
 
 **Implements**:
 - `cpt-frontx-telemetry-algo-event-collection-plugin-setup`
@@ -473,3 +473,5 @@ The system **MUST** supply session, device, navigation and application-info enri
 - [x] A session survives a page reload within the inactivity window and is replaced by a new identifier once that window elapses without scroll, keypress or click.
 - [x] An activity burst produces one session write rather than one per event.
 - [x] Registering a plugin under an existing name replaces it; a falsy entry is ignored; a plugin registered after start is never set up.
+- [x] A History API path change produces a page view carrying the new path.
+- [x] With navigation capture disabled, a path change produces no page view, the history methods are the browser's own, and no record carries a `caused_by_id`.

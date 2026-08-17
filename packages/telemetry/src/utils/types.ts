@@ -10,6 +10,7 @@ export type TelemetryConfigNormalized = {
   verbose: boolean;
   url: string;
   autocapture: boolean;
+  navigationCapture: boolean;
   sessionDuration: number;
   apiVersion: number;
 };
@@ -33,6 +34,12 @@ export type TelemetryConfig = {
    * @default true
    */
   autocapture?: boolean;
+  /**
+   * Send a `page_view` on every path change, and stamp later records with the page they happened on.
+   * With it off `window.history` is left unwrapped.
+   * @default true
+   */
+  navigationCapture?: boolean;
   /**
    * Enables or disables telemetry events
    */
