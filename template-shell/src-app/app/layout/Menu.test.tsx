@@ -116,6 +116,40 @@ describe('Menu', () => {
     expect(emptyState()).not.toBeNull();
   });
 
+  it('never claims there are no screens when a populated registry only appears after the grace window', async () => {
+    // The grace window is timed from mount, so it can close before a registry
+    // exists at all - the app object carries none until the microfrontends
+    // plugin has one to hand over.
+    mockUseFrontX.mockReturnValue({ mfeRegistry: undefined });
+    vi.useFakeTimers();
+    const { container, rerender } = render(<Menu />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(EMPTY_STATE_GRACE_MS);
+    });
+
+    // Sampled from inside the read rather than after it, because the render
+    // this guards against is not the one the test can assert on afterwards:
+    // discovery polls from an effect, so the first read of the late registry
+    // runs against the DOM committed for the render that introduced it - the
+    // exact render a settled-only gate renders the hint in, one commit before
+    // the screens land.
+    const domDuringReads: string[] = [];
+    app.mfeRegistry.getExtensionsForDomain.mockImplementation(() => {
+      domDuringReads.push(container.textContent ?? '');
+      return [tasks];
+    });
+    mockUseFrontX.mockReturnValue(app);
+    await act(async () => {
+      rerender(<Menu />);
+    });
+
+    expect(domDuringReads.length).toBeGreaterThan(0);
+    expect(domDuringReads.join('\n')).not.toMatch(/No screens yet/);
+    expect(emptyState()).toBeNull();
+    expect(screen.getByText(tasks.presentation.label)).toBeTruthy();
+  });
+
   it('shows the empty state once the grace window passes with nothing registered', async () => {
     app.mfeRegistry.getExtensionsForDomain.mockReturnValue([]);
     vi.useFakeTimers();

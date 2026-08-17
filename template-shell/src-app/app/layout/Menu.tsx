@@ -87,6 +87,10 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   // a grace window spanning several poll cycles before the menu is allowed to
   // make it.
   const [discoverySettled, setDiscoverySettled] = useState(false);
+  // Which registry the `extensions` above were last read from. Distinguishes
+  // "polled this registry and found nothing" from "this registry has not been
+  // polled yet", which the list alone cannot: both leave it empty.
+  const [readRegistry, setReadRegistry] = useState<typeof mfeRegistry>(undefined);
 
   useEffect(() => {
     if (!mfeRegistry) return;
@@ -96,6 +100,10 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
       const sorted = screenExts
         .sort((a, b) => (a.presentation.order ?? 999) - (b.presentation.order ?? 999));
       setExtensions(sorted);
+      // Marked here rather than beside the first `refresh()` call below so the
+      // flag cannot outrun the read it stands for. Every later poll re-sets the
+      // same reference, which React discards without a re-render.
+      setReadRegistry(mfeRegistry);
     };
 
     refresh();
@@ -108,13 +116,24 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   // optional on the app - a project without the microfrontends plugin never
   // gets one. Sharing the effect would leave `discoverySettled` false forever
   // in exactly the case the hint is written for, making it unreachable by the
-  // reader who most needs it. Counting from mount costs the other end of the
-  // range: a registry that arrives after the window has closed can show the
-  // hint for the moment before its first poll lands.
+  // reader who most needs it. The cost of counting from mount is that the
+  // window can close before a registry even arrives, which is why the gate
+  // below pairs this timer with the read check rather than trusting it alone.
   useEffect(() => {
     const graceTimer = setTimeout(() => setDiscoverySettled(true), EMPTY_STATE_GRACE_MS);
     return () => clearTimeout(graceTimer);
   }, []);
+
+  // Both halves are required before the menu may claim there are no screens.
+  // A registry that appears only after the grace window has closed is unread at
+  // the render that introduces it, and the timer says nothing about it: settled
+  // alone would flash the hint for that one render, until the discovery effect's
+  // first read lands. Waiting for the read covers that, and costs nothing when
+  // the registry is there from mount - it is read in the mount effect, long
+  // before the window closes. With no registry at all there is nothing to wait
+  // for, so the timer is the whole gate; that is the case the hint is written
+  // for and it must stay reachable.
+  const discoveryComplete = discoverySettled && (!mfeRegistry || readRegistry === mfeRegistry);
 
   const handleToggleCollapse = () => {
     eventBus.emit('layout/menu/collapsed', { collapsed: !collapsed });
@@ -148,10 +167,10 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
       <SidebarContent>
         <SidebarMenu>
           {/*
-            An empty list before discovery settles falls to the other branch and
-            renders nothing: the menu stays blank rather than guessing.
+            An empty list before discovery completes falls to the other branch
+            and renders nothing: the menu stays blank rather than guessing.
           */}
-          {extensions.length === 0 && discoverySettled ? (
+          {extensions.length === 0 && discoveryComplete ? (
             // Reached from two different states, so the hint names the step that
             // tells them apart: a shell-only seed has no `src-app/mfe_packages/`
             // at all until the MFE template is added, and pointing such a
