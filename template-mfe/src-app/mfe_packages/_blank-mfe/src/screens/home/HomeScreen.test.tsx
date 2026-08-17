@@ -1,4 +1,3 @@
-// @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-blank-mfe-tests:p1
 import { act, render, screen, within } from '@testing-library/react';
 import {
   FRONTX_SHARED_PROPERTY_LANGUAGE,
@@ -77,14 +76,22 @@ describe('HomeScreen', () => {
 
     render(<HomeScreen bridge={bridge} />);
 
-    // Bridge extDomainId, extensionId, theme, and language all flow through to the DOM.
-    expect(await screen.findByText(TEST_DOMAIN_ID)).toBeTruthy();
-    expect(screen.getByText(TEST_INSTANCE_ID)).toBeTruthy();
-    expect(screen.getByText(TEST_THEME)).toBeTruthy();
-    expect(screen.getByText(TEST_LANGUAGE)).toBeTruthy();
+    // Addressed through the testids the scaffold publishes as its verification
+    // API rather than by text, which also pins which value reaches which slot:
+    // a plain text query cannot tell the theme cell from the language one, and
+    // both carry values a browser run reads back after switching them.
+    expect((await screen.findByTestId('screen-domain-id')).textContent).toBe(TEST_DOMAIN_ID);
+    expect(screen.getByTestId('screen-instance-id').textContent).toBe(TEST_INSTANCE_ID);
+    expect(screen.getByTestId('screen-theme').textContent).toBe(TEST_THEME);
+    expect(screen.getByTestId('screen-language').textContent).toBe(TEST_LANGUAGE);
+
+    expect(screen.getByTestId('screen-root')).toBeTruthy();
+    expect(screen.getByTestId('screen-title')).toBeTruthy();
 
     // API response content is rendered (JSON-serialized blob contains the message field).
-    expect(screen.getByText((content) => content.includes(testStatusData.message))).toBeTruthy();
+    expect(screen.getByTestId('screen-status-payload').textContent).toContain(
+      testStatusData.message
+    );
   });
 
   it('renders the API error message when the status call fails', async () => {
@@ -106,7 +113,9 @@ describe('HomeScreen', () => {
 
     render(<HomeScreen bridge={bridge} />);
 
-    expect(await screen.findByText('status fetch failed')).toBeTruthy();
+    expect((await screen.findByTestId('screen-status-error')).textContent).toBe(
+      'status fetch failed'
+    );
   });
 
   it('renders the translation-loading skeleton before localized content is ready', () => {
@@ -125,6 +134,11 @@ describe('HomeScreen', () => {
 
     expect(container.querySelectorAll('.animate-pulse')).toHaveLength(5);
     expect(screen.queryByText(TEST_DOMAIN_ID)).toBeNull();
+
+    // `screen-root` is on both branches on purpose, so a run has one node to
+    // wait for; `screen-loading` beside it is what says which branch rendered.
+    expect(screen.getByTestId('screen-root')).toBeTruthy();
+    expect(screen.getByTestId('screen-loading')).toBeTruthy();
   });
 
   it('renders the status-loading skeleton while the API request is pending', async () => {
@@ -148,6 +162,7 @@ describe('HomeScreen', () => {
 
     expect(await screen.findByText(TEST_DOMAIN_ID)).toBeTruthy();
     expect(container.querySelectorAll('.animate-pulse')).toHaveLength(3);
+    expect(screen.getByTestId('screen-status-loading')).toBeTruthy();
   });
 
   it('re-reads current properties when the host swaps the bridge instance', async () => {

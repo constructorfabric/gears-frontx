@@ -72,7 +72,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
     setLanguage(readBridgeProperty(bridge, FRONTX_SHARED_PROPERTY_LANGUAGE, 'en'));
   }
 
-  // @cpt-begin:implement-endpoint-descriptors:p4:inst-blank-home-query
   const service = apiRegistry.getService(_BlankApiService);
   const { t, loading } = useScreenTranslations(languageModules, bridge);
   const {
@@ -81,7 +80,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
     isError: isStatusError,
     error: statusError,
   } = useApiQuery(service.getStatus);
-  // @cpt-end:implement-endpoint-descriptors:p4:inst-blank-home-query
 
   useEffect(() => {
     // Subscribe to theme domain property
@@ -120,15 +118,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
     }
   }, [language]);
 
+  /*
+   * The `data-testid` attributes below are verification API, not decoration.
+   * A screen renders inside a shadow root, so selectors issued from outside it
+   * cannot reach these nodes; browser verification runs an eval inside the root
+   * and addresses controls by testid. Accessibility-snapshot refs are ephemeral
+   * and have to be re-learned after every navigation, which these ids replace.
+   * `screen-root` is present in every branch, so a run has one node to wait for
+   * before deciding which state the screen settled into. Every screen copied
+   * from this scaffold inherits the contract: keep a `screen-<control>` testid
+   * on each interactive control and on the status region, and rename the id
+   * with the control rather than dropping it.
+   */
+
   // Show skeleton while translations are loading
   if (loading) {
     return (
-      <div ref={containerRef} className="p-8">
+      <div ref={containerRef} className="p-8" data-testid="screen-root">
         <Skeleton className="h-8 w-64 mb-4" />
         <Skeleton className="h-4 w-96 mb-6" />
         <Card>
           <CardContent className="p-6">
-            <div className="space-y-3">
+            <div className="space-y-3" data-testid="screen-loading">
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-3/4" />
@@ -142,7 +153,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
   let statusCardBody: React.ReactNode;
   if (isStatusLoading) {
     statusCardBody = (
-      <div className="space-y-3">
+      <div className="space-y-3" data-testid="screen-status-loading">
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-5/6" />
         <Skeleton className="h-20 w-full" />
@@ -150,19 +161,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
     );
   } else if (isStatusError) {
     statusCardBody = (
-      <p className="text-sm text-destructive">{statusError?.message}</p>
+      <p className="text-sm text-destructive" data-testid="screen-status-error">
+        {statusError?.message}
+      </p>
     );
   } else {
     statusCardBody = (
-      <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs text-muted-foreground">
+      <pre
+        className="overflow-x-auto rounded-md bg-muted p-4 text-xs text-muted-foreground"
+        data-testid="screen-status-payload"
+      >
         {JSON.stringify(statusData, null, 2)}
       </pre>
     );
   }
 
   return (
-    <div ref={containerRef} className="p-8">
-      <h1 className="text-3xl font-bold mb-4">
+    <div ref={containerRef} className="p-8" data-testid="screen-root">
+      <h1 className="text-3xl font-bold mb-4" data-testid="screen-title">
         {t('title')}
       </h1>
       <p className="text-muted-foreground mb-6">
@@ -178,26 +194,36 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
             <dl className="grid gap-2">
               <div>
                 <dt className="font-medium">{t('domain_id')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground">{bridge.extDomainId}</dd>
+                <dd className="font-mono text-sm text-muted-foreground" data-testid="screen-domain-id">
+                  {bridge.extDomainId}
+                </dd>
               </div>
               <div>
                 <dt className="font-medium">{t('instance_id')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground">{bridge.extensionId}</dd>
+                <dd className="font-mono text-sm text-muted-foreground" data-testid="screen-instance-id">
+                  {bridge.extensionId}
+                </dd>
               </div>
               <div>
                 <dt className="font-medium">{t('current_theme')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground">{theme}</dd>
+                <dd className="font-mono text-sm text-muted-foreground" data-testid="screen-theme">
+                  {theme}
+                </dd>
               </div>
               <div>
                 <dt className="font-medium">{t('current_language')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground">{language}</dd>
+                <dd className="font-mono text-sm text-muted-foreground" data-testid="screen-language">
+                  {language}
+                </dd>
               </div>
             </dl>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">{statusCardBody}</CardContent>
+          <CardContent className="p-6" data-testid="screen-status">
+            {statusCardBody}
+          </CardContent>
         </Card>
       </div>
     </div>
