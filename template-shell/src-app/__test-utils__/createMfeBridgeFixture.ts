@@ -8,7 +8,7 @@ type PropertyCallback = Parameters<ChildMfeBridge['subscribeToProperty']>[1];
 type CreateMfeBridgeFixtureOptions = {
   domainId: string;
   instanceId: string;
-  initialProperties?: Record<string, string | undefined>;
+  initialProperties?: Record<string, unknown>;
   executeActionsChain?: Mock<ChildMfeBridge['executeActionsChain']>;
   registerActionHandler?: Mock<ChildMfeBridge['registerActionHandler']>;
 };
@@ -24,7 +24,7 @@ export type MfeBridgeFixture = {
   getProperty: Mock<ChildMfeBridge['getProperty']>;
   propertyCallbacks: Map<string, PropertyCallback[]>;
   registerActionHandler: Mock<ChildMfeBridge['registerActionHandler']>;
-  setProperty: (propertyName: string, value: string | undefined) => void;
+  setProperty: (propertyName: string, value: unknown) => void;
   subscribeToProperty: Mock<ChildMfeBridge['subscribeToProperty']>;
   unsubscriptions: RecordedUnsubscribe[];
 };
@@ -36,7 +36,7 @@ export type MfeBridgeFixture = {
 export function createMfeBridgeFixture(
   options: CreateMfeBridgeFixtureOptions
 ): MfeBridgeFixture {
-  const propertyValues = new Map<string, string | undefined>(
+  const propertyValues = new Map<string, unknown>(
     Object.entries(options.initialProperties ?? {})
   );
   const propertyCallbacks = new Map<string, PropertyCallback[]>();
@@ -71,7 +71,7 @@ export function createMfeBridgeFixture(
     }
   );
 
-  const setProperty = (propertyName: string, value: string | undefined) => {
+  const setProperty = (propertyName: string, value: unknown) => {
     propertyValues.set(propertyName, value);
 
     for (const callback of propertyCallbacks.get(propertyName) ?? []) {
