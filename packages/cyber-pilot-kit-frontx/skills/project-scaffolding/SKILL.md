@@ -319,6 +319,7 @@ from, and run it:
 ```bash
 node <installed kit root>/skills/project-scaffolding/scripts/verify-walk.mjs \
   --host <dev server origin> \
+  --browser-cmd 'npx --yes agent-browser@<the version this run pinned>' \
   --themes registry --theme-registry <file the registered set was read into> \
   --screens <name>:<declared route>:<that screen's ready testid>,... \
   --capdir "$CAPDIR" \
@@ -341,6 +342,12 @@ otherwise reads the ids off the page and keeps the menu item whose id carries
 that screen's name as a whole segment - refusing, rather than picking, when none
 or several do. `{screen}` is unchanged and costs no read: a host whose items are
 keyed by the short name goes on as before.
+
+`--browser-cmd` is what pins the browser CLI. Left out, the driver falls back to
+`npx --yes agent-browser`, which resolves whatever version is newest at the
+moment each run asks - so two runs of the same walk can be driven by two
+different browsers, and a capture that changed has no fixed tool to be
+attributed to. Name the version the run installed, and record it in the report.
 
 `node <that path> --help` prints the whole flag surface. `$CAPDIR` is the
 run-unique capture directory made under the capture rule below, and the driver
@@ -793,6 +800,12 @@ Carry the run out in this order:
       previous theme means the theme did not open, so record it as not-opened
       with that as the reason, discard what the block captured under it, capture
       nothing in it as verified, and take the next theme.
+      **Names it, rather than carries its name somewhere.** The theme's name has
+      to occupy whole words of the label: a label reading "Darker" does not
+      confirm `dark`, and "Highlight" does not confirm `light`. A registry holding
+      such a pair - two names one label could name at once - is refused before the
+      walk rather than resolved by guess, and `--theme-labels` is where each is
+      given a label of its own.
    3. **Collapse the host's dev panel before the first capture in this theme** -
       the collapse click and the `is visible` line after it. An expanded dev or
       tools panel is host chrome drawn over the screens under verification, not
@@ -1009,7 +1022,7 @@ legal.
 document partitions the browser walk into categories with stable ids, and the
 report states each one's outcome in the form that file's Reporting section fixes:
 
-```
+```text
 <ID>: PASS | FAIL (<what the run did not establish>) | N/A (<why out of reach>)
 Verdict: the verification passed | the verification did not pass (<the CRITICAL items that failed>)
 ```

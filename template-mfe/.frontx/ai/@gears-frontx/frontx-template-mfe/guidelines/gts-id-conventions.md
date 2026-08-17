@@ -11,7 +11,7 @@ existing ones.
 
 ## General shape
 
-```
+```text
 gts.frontx.<subsystem>.<kind>.v1~<namespace-path>.v1[~]
 ```
 
@@ -28,7 +28,7 @@ gts.frontx.<subsystem>.<kind>.v1~<namespace-path>.v1[~]
 The instance segment is the same shape for every ID kind below - manifest,
 entry, extension, domain and action alike:
 
-```
+```text
 vendor.package.namespace.type.vN
 ```
 
@@ -70,7 +70,7 @@ a widget-area extension carry one fixed segment before it, while an MF entry
 and a screen extension carry two - so a screen extension's instance segment,
 the one the five-token rule governs, is its **third**:
 
-```
+```text
 gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.blank.screens.home.v1
 ```
 

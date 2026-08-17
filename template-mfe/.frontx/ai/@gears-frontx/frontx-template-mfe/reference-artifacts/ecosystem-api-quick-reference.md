@@ -44,6 +44,7 @@ the whole result. The slice `name` is the state key, and with `RootState` augmen
 `useAppSelector((state) => state['billing/home']?.status)` is typed without a cast.
 
 ```ts
+// src/slices/homeSlice.ts - where `setStatus` is declared and exported from
 import { createSlice, type ReducerPayload } from '@gears-frontx/react';
 
 const { slice, setStatus } = createSlice({
@@ -87,10 +88,20 @@ export function requestSave(name: string): void { eventBus.emit('mfe/home/save-r
 
 // src/effects/homeEffects.ts - the only place that dispatches
 import { eventBus, type AppDispatch } from '@gears-frontx/react';
+import { setStatus } from '../slices/homeSlice';
+import '../events/homeEvents';
 export function initHomeEffects(dispatch: AppDispatch): void {
   eventBus.on('mfe/home/save-requested', () => { dispatch(setStatus('saved')); });
 }
 ```
+
+The dispatched action creator comes from the slice above, and the effects file
+imports it: `setStatus` is declared by that `createSlice` call and by nothing in
+the ecosystem, so a file dispatching it without that import does not compile.
+`_blank-mfe` ships `src/slices/homeSlice.ts` beside `src/effects/homeEffects.ts`,
+which is where the relative path comes from; the shipped slice declares no
+reducers yet, so `setStatus` is a name this block adds rather than one to import
+from the template as it stands.
 
 ## API service and endpoint descriptors
 
