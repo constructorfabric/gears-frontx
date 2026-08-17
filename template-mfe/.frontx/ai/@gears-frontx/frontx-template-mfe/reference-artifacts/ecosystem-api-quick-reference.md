@@ -1,18 +1,30 @@
 # Ecosystem API Quick Reference (template-mfe)
 
 Signatures a screen actually needs, so a run does not re-derive them from
-`node_modules/@gears-frontx/*/dist/*.d.ts`. Each one is copied from the package that
-declares it; each snippet matches the shape `_blank-mfe` and `demo-mfe` ship. Read the
+`node_modules/@gears-frontx/*/dist/*.d.ts`. Each signature is copied from the package
+that declares it. A snippet is either quoted from a shipped file, which is then named,
+or it is a `BillingApiService`-shaped illustration of the pattern `_blank-mfe` and
+`demo-mfe` ship - a name that appears in no template is an illustration. Read the
 skeleton for anything not listed here. An MFE imports the whole ecosystem from
 `@gears-frontx/react`, which re-exports the framework and SDK surfaces; name another
 package only inside a `declare module` block.
+
+Four names below spell a shape without being importable from `@gears-frontx/react`:
+`FrontXSliceResult` (declared in `@gears-frontx/state`), `EffectInitializer`
+(`@gears-frontx/framework`), `MutationMethod` (`@gears-frontx/api`) and
+`QueryCacheKey` (internal to `react`'s own `QueryCache` module). They are written out
+so the signatures read; do not import them.
 
 ## Module augmentation targets
 
 | Interface | Augment on | Why |
 | --- | --- | --- |
-| `RootState` | `@gears-frontx/state` | Declared there once; `@gears-frontx/react` only re-exports it, so augmenting `react` reaches `useAppSelector` but leaves `getStore().getState()` typed `unknown` (TS2571). |
+| `RootState` | `@gears-frontx/react` | What template-mfe ships (`_blank-mfe/src/slices/homeSlice.ts`). The interface itself is declared once in `@gears-frontx/state` and re-exported through `framework` and `react`; augmenting the declaring package works too, and both reach the `RootState` that `useAppSelector` is typed on. Follow the template unless a package has a reason to differ, and state the reason where it does. |
 | `EventPayloadMap` | `@gears-frontx/react` | `react` re-declares the interface (`export interface EventPayloadMap extends FrameworkEventPayloadMap {}`) and types its own `eventBus` with it. |
+
+The base `RootState` carries an index signature (`[key: string]: unknown`), so an
+un-augmented selector compiles and hands back `unknown`: the augmentation buys the
+state key's type, not the ability to read it.
 
 Every file carrying a `declare module` block needs a top-level `import` or `export`, or
 TypeScript reads it as a script and the block REPLACES the module instead of augmenting
@@ -42,7 +54,7 @@ const { slice, setStatus } = createSlice({
 export const homeSlice = slice;
 export { setStatus };
 
-declare module '@gears-frontx/state' {
+declare module '@gears-frontx/react' {
   interface RootState { 'billing/home': { status: 'idle' | 'saved' } }
 }
 ```
@@ -55,7 +67,11 @@ on<K extends keyof TEvents>(event: K, handler: EventHandler<TEvents[K]>): Subscr
 once(...): Subscription;  clear(event: string): void;  clearAll(): void;
 ```
 
-Actions emit, effects subscribe and dispatch, components call actions.
+Actions emit, effects subscribe and dispatch, components call actions. **No shipped file
+demonstrates this cycle**: `_blank-mfe`'s `actions/`, `events/` and `effects/` files are
+comment-only stubs (`initHomeEffects` subscribes to nothing), and its slice registers with
+an empty state. The block below is the convention to write into them, not a copy of
+something already there.
 
 ```ts
 // src/events/homeEvents.ts - `export {}` keeps the file a module (see the augmentation note above)
@@ -84,9 +100,15 @@ queryWith<TData, TParams>(pathFn: (params: TParams) => string, options?: Endpoin
 mutation<TData, TVariables>(method: MutationMethod, path: string): MutationDescriptor<TData, TVariables>;
 ```
 
-Cache keys derive from `[baseURL, method, path]`; never write a key factory.
+Cache keys are built by the protocol, never by a screen: `query()` keys on
+`[baseURL, 'GET', path]` and `mutation()` on `[baseURL, method, path]`, while
+`queryWith()` appends the resolved parameters as a fourth element,
+`[baseURL, 'GET', resolvedPath, { ...params }]` (`RestEndpointProtocol.ts`). Pass the
+descriptor and let it produce the key; never write a key factory.
 
 ```ts
+// constructor(config: ApiServiceConfig, ...protocols: ApiProtocol[]) - variadic:
+// every protocol the service speaks is passed positionally after the config.
 export class BillingApiService extends BaseApiService {
   constructor() {
     const restProtocol = new RestProtocol({ timeout: 30000 });
@@ -125,7 +147,8 @@ useApiMutation<TData = unknown, TError = Error, TVariables = void, TContext = un
 ```
 
 Every mutation callback receives `MutationCallbackContext` (`{ queryCache }`) as its LAST
-argument. `QueryCache` takes descriptors directly, not raw key arrays:
+argument. Every `QueryCache` method accepts `EndpointDescriptor<unknown> | QueryCacheKey`;
+pass the descriptor, because the key it resolves to is the protocol's to decide:
 
 ```ts
 get<T>(k: EndpointDescriptor<unknown> | QueryCacheKey): T | undefined;
@@ -160,13 +183,25 @@ parameter. Annotate each factory's RETURN, narrow the request body once inside i
 assert the response type at the test's call site:
 
 ```ts
+// _blank-mfe/src/api/mocks.ts - one entry, a query, no request body to narrow:
 export const blankMockMap: MockMap = {
   'GET /api/blank/status': (): GetBlankStatusResponse => ({ message: '...', generatedAt: '...', capabilities: [] }),
-  // demo-mfe's mocks.ts narrows the body once, at the top of the factory:
-  'PUT /api/blank/name': (requestData): GetBlankStatusResponse => toStatus((requestData ?? {}) as Partial<UpdateNameRequest>),
 };
 const response = blankMockMap['GET /api/blank/status']() as GetBlankStatusResponse;  // mocks.test.ts
+
+// demo-mfe/src/api/mocks.ts is where a mutation mock ships, and it narrows the body
+// once, at the top of the factory:
+'PUT /api/accounts/user/profile': (requestData): GetCurrentUserResponse => {
+  const patch = (requestData ?? {}) as Partial<UpdateProfileRequest>;
+  // ...merge patch onto the stored mock user, return the shape the server would
+},
 ```
+
+Which template ships which: `_blank-mfe` is the query-only starting point - one `GET`
+descriptor, one mock entry, and no mutation anywhere. The mutation path shown through
+this document - a `PUT` descriptor, its mock, the optimistic-update callbacks - ships in
+`demo-mfe` as `updateProfile` over `/api/accounts/user/profile`, and `BillingApiService`
+here is that shape with the names changed.
 
 Screens never hit this: `useApiQuery(service.getStatus)` takes `TData` from the descriptor,
 so `data` is `GetBlankStatusResponse | undefined` - narrow with `isLoading`/`isError`.
@@ -177,20 +212,32 @@ of raising `lib` for one call, the way the shell does (`Popup.tsx`, `Header.tsx`
 `const last = items[items.length - 1];`
 
 **3. jest-dom matchers raise TS2339 - jest-dom is not installed.** The shared setup file
-(`vitest.setup.ts`, wired in through `SHARED_VITEST_SETUP_FILES` by `vitest.mfe.base.ts`)
+(`template-shell/vitest.setup.ts`, wired in through `SHARED_VITEST_SETUP_FILES` by
+`template-shell/src-app/vitest.mfe.base.ts` - both live in the shell, not here)
 registers React Testing Library cleanup and global teardown and nothing else, and
 `@testing-library/jest-dom` is in no `package.json` here - there is no import or
 `/// <reference>` that turns those matchers on, and adding the dependency is a repo-wide
 decision, not a test file's. Use plain Vitest matchers, as the shipped tests do:
 
 ```ts
-expect(screen.getByText(label)).toBeTruthy();       // not toBeInTheDocument()
-expect(screen.queryByText(label)).toBeNull();       // not not.toBeInTheDocument()
-expect(screen.getByRole('status').getAttribute('aria-busy')).toBe('true');
-expect(screen.getByLabelText<HTMLInputElement>('first_name_label').value).toBe('Grace');  // not toHaveValue()
+// _blank-mfe/src/screens/home/HomeScreen.test.tsx
+expect(await screen.findByText(TEST_DOMAIN_ID)).toBeTruthy();   // not toBeInTheDocument()
+expect(screen.getByText((content) => content.includes(status.message))).toBeTruthy();
+// demo-mfe/src/screens/profile/ProfileScreen.test.tsx drives a field by its label:
+fireEvent.change(screen.getByLabelText('first_name_label'), { target: { value: 'Grace' } });
 ```
 
 ## Screen translations: nothing calls `t()` during the load window
+
+**Two different hooks carry this name, and a screen wants the package-local one.**
+template-mfe ships its own in each MFE package and imports it by relative path
+(`import { useScreenTranslations } from '../../shared/useScreenTranslations';` in
+`_blank-mfe/src/screens/home/HomeScreen.tsx`); it takes the glob of language modules and
+the bridge. `@gears-frontx/react` exports a different hook of the same name -
+`useScreenTranslations(screensetId, screenId, translations)`, returning
+`{ isLoaded, error }` - which is the shell's registry-backed one. Importing the ecosystem
+name where the local one is meant type-errors on the first argument, and the rules below
+are about the local hook.
 
 `useScreenTranslations(languageModules, bridge)` returns `{ t, loading }`. It starts
 `loading: true` with an EMPTY translation map, loads the locale module asynchronously, and
@@ -203,9 +250,13 @@ screen out of it:
 first and read `t()` only after it - one early return covers the whole screen:
 
 ```tsx
+// _blank-mfe/src/screens/home/HomeScreen.tsx, with its skeleton branch shortened
 const { t, loading } = useScreenTranslations(languageModules, bridge);
-if (loading) return <div className={styles.screen} role="status" aria-busy="true" />;
+if (loading) return <div className="p-8"><Skeleton className="h-8 w-64 mb-4" /></div>;
 ```
+
+Class names are Tailwind utilities on the element: template-mfe ships no CSS module, so
+there is no `styles` object to reach for.
 
 **2. Derive translated collections with `useMemo(..., [t])`, never a `useState`
 initializer.** `t` is a `useCallback` keyed on the loaded map, so its identity CHANGES when
@@ -222,8 +273,8 @@ const filters = useMemo(() => [{ id: 'all', label: t('filter_all') }], [t]);
 
 Module scope is the same defect one level worse: a `const` array built at import time has no
 `t` at all. Two scaffolding runs lost a verification walk to this class - one shipped a
-filter bar of raw keys, the other logged ~20 missing-key warnings per mount - and both read
-as "translations broken" while the loader was working correctly.
+filter bar of raw keys, the other a mount that logged a missing-key warning per call - and
+both read as "translations broken" while the loader was working correctly.
 
 ## Bridge: theme and language
 
