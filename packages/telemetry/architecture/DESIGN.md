@@ -230,7 +230,7 @@ Gives the application one object to hold and one lifecycle to manage, and confin
 - Normalizes raw configuration once and builds the shared context: configuration, hook registry, logger.
 - Constructs the four managers and wires them to each other.
 - Owns the lifecycle: start, teardown, and the single-use rule that refuses a second start.
-- Registers the built-in plugins as part of start, after any the caller registered.
+- Registers the built-in plugins as part of start, after any the caller registered, omitting navigation where configuration switches navigation capture off.
 - Guards every lifecycle method on the presence of `window`.
 - Orders teardown so that session detach precedes plugin teardown hooks, which precede the events manager's flushing teardown.
 
@@ -369,7 +369,7 @@ Supplies the context that makes an event stream answerable — session, device, 
 
 - Session: stamps the current session onto records and emits an event when a session begins.
 - Device: derives browser, operating system and platform fields from the user agent, plus viewport and timezone.
-- Navigation: emits an event on every path change, including History API transitions and back-forward navigation, unless navigation capture is switched off in configuration — in which case it wraps nothing and contributes nothing.
+- Navigation: emits an event on every path change, including History API transitions and back-forward navigation. Registered only when configuration leaves navigation capture on, so switching it off costs the plugin nothing and it reads no flag of its own.
 - Application info: stamps application name and version, and prepends the application to the service call chain, warning when a hook-supplied chain does not contain its own service.
 - Locale: reads the application's locale source per record and normalizes it, falling back to the browser's reported language.
 

@@ -36,7 +36,7 @@ export type TelemetryConfig = {
   autocapture?: boolean;
   /**
    * Send a `page_view` on every path change, and stamp later records with the page they happened on.
-   * With it off `window.history` is left unwrapped.
+   * With it off the navigation plugin is not registered and `window.history` is left unwrapped.
    * @default true
    */
   navigationCapture?: boolean;

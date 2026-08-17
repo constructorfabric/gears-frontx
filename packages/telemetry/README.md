@@ -43,8 +43,9 @@ and installs their listeners. Out of the box that gives you a `session_start` ev
 session, a `page_view` on every path change (`pushState`, `replaceState`, `popstate`), device, OS,
 client, viewport and timezone fields on every record, and captured user interactions.
 
-An application that routes page views itself can turn that one off with `navigationCapture: false`;
-the SDK then leaves `window.history` alone and no record carries a `caused_by_id`.
+An application that routes page views itself can turn that one off with `navigationCapture: false`.
+The navigation plugin is then never registered, so `window.history` is left alone and no record
+carries a `caused_by_id`.
 
 Events are queued in memory and flushed on a 5 second debounce, reset by each new event, plus an
 immediate flush when the page goes to `visibilitychange` / hidden. The POST uses `keepalive`.
@@ -65,7 +66,7 @@ removes the listeners.
 | `appVersion`        | `string`  | *required* | Application version, sent as `context_source_app_version` and mirrored into `context_app_version`.                                                                |
 | `url`               | `string`  | see below  | Endpoint events are POSTed to. Defaults to the same-origin path `/api/events` when `apiVersion` is `1`, otherwise `/api/telemetry/v{apiVersion}/events`.           |
 | `autocapture`       | `boolean` | `true`     | Automatically capture `click`, `change` and `submit` events from the page.                                                                                         |
-| `navigationCapture` | `boolean` | `true`     | Record a `page_view` on every path change, and stamp later records with `caused_by_id`. When `false`, `window.history` is left unwrapped.                           |
+| `navigationCapture` | `boolean` | `true`     | Record a `page_view` on every path change, and stamp later records with `caused_by_id`. When `false` the navigation plugin is not registered and `window.history` is left unwrapped. |
 | `enabled`           | `boolean` | `true`     | When `false`, events are still collected, enriched and drained from the queue - only the POST is skipped.                                                          |
 | `verbose`           | `boolean` | `false`    | Log SDK activity to the console.                                                                                                                                  |
 | `storagePrefix`     | `string`  | none       | Infix for the `localStorage` keys the SDK owns: `telemetry_{storagePrefix}_device_id` and `telemetry_{storagePrefix}_session`. Set it to keep two clients apart.   |

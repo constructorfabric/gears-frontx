@@ -101,7 +101,7 @@ export function createTelemetry(configRaw: TelemetryConfig): TelemetryService {
     plugin(
       sessionPlugin(),
       devicePlugin(),
-      navigationPlugin(),
+      config.navigationCapture && navigationPlugin(),
       telemetryAppInfoPlugin(),
       autocapturePlugin(),
     );
