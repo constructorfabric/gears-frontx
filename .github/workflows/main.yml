@@ -26,6 +26,12 @@ jobs:
       uses: actions/checkout@v5
       with:
         persist-credentials: false
+        # #575: policy:version-bump-on-change needs a merge base with the
+        # PR's target branch, and a shallow (depth-1) checkout has no history
+        # to compute one from. Full history costs little here — this repo is
+        # small — and matches the same choice already made in docs.yml and
+        # publish-packages.yml for the same reason.
+        fetch-depth: 0
 
     - name: Setup Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v5
@@ -122,6 +128,25 @@ jobs:
     # files directly, not the built CLI.
     - name: Check template ecosystem pin-drift
       run: npm run policy:template-pin-drift
+
+    # #575, follow-up from #574 review: #574 changed `@gears-frontx/react`'s
+    # public API and shipped with no version bump, and neither policy check
+    # above would have caught it — both are CONSISTENCY checks (does the
+    # semver line make sense, do pins match the disk), not CHANGE checks (did
+    # a package with substantive changes bump). This diffs the PR branch
+    # against its merge base with the target branch and fails for any
+    # governed package — every `packages/*` artifact, plus `template-shell`
+    # itself and every `template-shell/packages/*` member (any non-`private`
+    # `@gears-frontx`-scoped package; `template-mfe` and its fixture apps are
+    # `private` and exempt) — whose `src/` (or package.json dependencies)
+    # changed without its own `version` changing — comparing actual ref
+    # content rather than the diff, so a version bumped then reverted within
+    # the same PR still fails. Pull-request-only: the merge base it needs is
+    # the PR's base branch, which only exists as `GITHUB_BASE_REF` on
+    # `pull_request` events.
+    - name: Check version bump on substantive package change
+      if: github.event_name == 'pull_request'
+      run: npm run policy:version-bump-on-change
 
     # #524: `npm install` reconciling an out-of-sync template lockfile drops
     # the template's `file:.` self-link entry, writing a lockfile its own

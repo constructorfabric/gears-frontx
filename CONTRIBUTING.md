@@ -80,6 +80,8 @@ The project is **pre-1.0** — backward compatibility is not guaranteed.
 - **Patch bump** (`0.1.0` → `0.1.1`) — non-breaking fixes/features
 - **Alpha increment** (`alpha.0` → `alpha.1`) — each merge to develop
 
+A PR that changes non-documentation source under `src/`, or the dependency fields of `package.json`, for a governed package (non-private `@gears-frontx`-scoped packages: `packages/*`, `template-shell`, and `template-shell/packages/*`) must bump that package's own `version` in the same PR — and update every exact pin on it (see `policy:template-pin-drift`). CI (`policy:version-bump-on-change`, pull requests only) compares the version at the PR's merge base against the version at its head, so a bump that is later reverted within the same PR does not count. Packages the PR itself adds or removes are exempt, as are private packages (e.g. the `template-mfe` fixture apps), which are pinned consumers rather than published sources.
+
 ## Publishing
 
 Publishing is automated via CI/CD. On push to a publishing branch, CI detects version changes and publishes affected packages.

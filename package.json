@@ -29,6 +29,7 @@
     "lint:deps": "node scripts/check-test-dependency-versions.mjs",
     "lint": "npm run lint:deps && eslint . --max-warnings 0",
     "policy:version-check": "node scripts/ecosystem-version-policy.mjs",
+    "policy:version-bump-on-change": "node scripts/version-bump-on-change-check.mjs",
     "policy:template-pin-drift": "node scripts/template-pin-drift-check.mjs",
     "policy:template-lockfile-selflink": "node scripts/template-lockfile-selflink-check.mjs",
     "validate:templates": "node scripts/validate-templates.mjs",
