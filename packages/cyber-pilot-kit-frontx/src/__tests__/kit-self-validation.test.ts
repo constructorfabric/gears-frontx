@@ -16,6 +16,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const kitRoot = path.resolve(__dirname, '../..');
 const manifestPath = path.join(kitRoot, '.cf-studio-kit.toml');
 
+// Every spawnSync below drives the real driver, which drives a browser command
+// of its own. Without a bound here, a driver that stops returning does not fail
+// this suite - it holds CI open until the job is killed, and the suite reports
+// nothing about why. Well above the driver's own per-command budget, so a
+// timeout at this level means the driver itself hung rather than a child it
+// was already bounding.
+const DRIVER_TIMEOUT_MS = 60_000;
+
 // The manifest under test is the REAL shipped file, parsed from disk — not a
 // literal transcribed by hand. A hardcoded copy cannot detect the manifest
 // drifting away from what this validator accepts, and previously did not:
@@ -511,11 +519,21 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
     });
 
     it('prints its flag surface and exits 0 on --help', () => {
-      const help = spawnSync(process.execPath, [driverPath(), '--help'], { encoding: 'utf8' });
+      const help = spawnSync(process.execPath, [driverPath(), '--help'], {
+        encoding: 'utf8',
+        timeout: DRIVER_TIMEOUT_MS,
+      });
 
       expect(help.status).toBe(0);
       expect(help.stdout).toContain('--capdir');
       expect(help.stdout).toContain('--themes');
+      // The Usage line carries every required flag. One that lists a flag as
+      // required and leaves it out of the invocation form teaches the shorter
+      // form, and the shorter form exits 2.
+      const usage = help.stdout.slice(help.stdout.indexOf('Usage:'), help.stdout.indexOf('Required:'));
+      for (const flag of ['--host', '--themes', '--screens', '--capdir', '--switcher', '--theme-option']) {
+        expect(usage, `Usage: omits the required ${flag}`).toContain(flag);
+      }
     });
 
     // The failure path is the one that matters: a driver that exits 0 on a run
@@ -535,7 +553,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
         '--switcher', 'theme-switcher',
         '--theme-option', 'theme-option-{theme}',
         '--menu', 'nav-{screen}',
-      ], { encoding: 'utf8' });
+      ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
 
       expect(run.status).not.toBe(0);
 
@@ -611,7 +629,11 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
         // never asks the stub to attach to a browser.
         '--cdp-port', '1',
         '--ready-timeout', '5000',
-      ], { encoding: 'utf8', env: { ...process.env, PATH: `${stubDir}${path.delimiter}${process.env.PATH ?? ''}` } });
+      ], {
+        encoding: 'utf8',
+        timeout: DRIVER_TIMEOUT_MS,
+        env: { ...process.env, PATH: `${stubDir}${path.delimiter}${process.env.PATH ?? ''}` },
+      });
 
       expect(run.status).not.toBe(0);
 
@@ -625,11 +647,13 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       // 400ms: unguarded, the 5s budget alone would file a dozen identical
       // records and bury the reason under them.
       expect(evalErrors.length).toBeLessThan(10);
-      // The caller of a refused eval gets a sentinel of its own rather than an
-      // empty string or the missing-element marker, so the theme that never
-      // opened says why in its own record too.
-      const themeSwitch = parsed.failures.find((failure) => failure.stage === 'theme-switch');
-      expect(themeSwitch?.detail).toContain('__verify_walk_eval_error__');
+      // The caller of a refused eval keeps the two apart rather than reporting
+      // an absent control: the switcher click is the first operation that cannot
+      // be dispatched, and its failure names the refused eval as the reason
+      // instead of "no control carries that data-testid".
+      const control = parsed.failures.find((failure) => failure.stage === 'control');
+      expect(control?.detail).toContain('theme switcher');
+      expect(control?.detail).toContain('the eval did not run');
 
       fs.rmSync(workdir, { recursive: true, force: true });
     });
@@ -650,7 +674,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
         '--switcher', 'theme-switcher',
         '--theme-option', 'theme-option-{theme}',
         '--menu', 'nav-{screen}',
-      ], { encoding: 'utf8', cwd: workdir });
+      ], { encoding: 'utf8', cwd: workdir, timeout: DRIVER_TIMEOUT_MS });
 
       const parsed = JSON.parse(run.stdout) as { capdir: string };
 
@@ -750,6 +774,7 @@ process.exit(0);
         ...args,
       ], {
         encoding: 'utf8',
+        timeout: DRIVER_TIMEOUT_MS,
         env: {
           ...process.env, ...env,
           PATH: `${stubDir}${path.delimiter}${process.env.PATH ?? ''}`,

@@ -11,11 +11,15 @@
 // read and not apply.
 //
 // Zero dependencies beyond the node standard library. The browser is reached by
-// shelling out to `npx --yes agent-browser`.
+// shelling out to a browser CLI, `npx --yes agent-browser` unless --browser-cmd
+// names another.
 //
 // The driver never retries a failure of its own accord. A failed step is
 // recorded in the JSON result and the process exits non-zero, so a retry is a
-// decision the run makes, in the open, and discloses.
+// decision the run makes, in the open, and discloses. Every failure path in here
+// ends in that record: an invocation this driver cannot perform, a file it cannot
+// read and a child that never returns all leave a JSON result behind rather than
+// a stack trace.
 
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -25,7 +29,9 @@ import process from 'node:process';
 const HELP = `verify-walk - drive one theme-walk pass over a scaffolded application
 
 Usage:
-  node verify-walk.mjs --host <url> --themes <list|registry> --screens <list> --capdir <path> [options]
+  node verify-walk.mjs --host <url> --themes <list|registry> --screens <list>
+                       --capdir <path> --switcher <testid>
+                       --theme-option <pattern> [options]
 
 Required:
   --host <url>              origin of the running dev server, e.g. http://localhost:3000
@@ -59,6 +65,11 @@ Optional:
   --states <path>           JSON file of declared per-screen interactions (see below)
   --cdp-port <n>            debugging port probed before any browser is launched (default: 9222)
   --ready-timeout <ms>      budget for a screen readiness poll (default: 15000)
+  --browser-cmd <cmd>       command line the browser CLI is driven through
+                            (default: npx --yes agent-browser); a caller pins a
+                            version or names an installed binary here
+  --command-timeout <ms>    budget for one browser command; past it the child is
+                            killed and the run records a timeout (default: 60000)
   --json-out <path>         machine-readable result (default: <capdir>/verify-walk.json)
   --coverage <path>         coverage markdown the theme rows are appended to
                             (default: <capdir>/verification-coverage.md)
@@ -80,8 +91,21 @@ declared capture landed. Any failure exits non-zero with the reason in the JSON.
 const FLAGS_WITH_VALUE = new Set([
   '--host', '--themes', '--theme-registry', '--theme-labels', '--screens', '--capdir',
   '--switcher', '--theme-option', '--menu', '--nav', '--panel-expand', '--panel-collapse',
-  '--states', '--cdp-port', '--ready-timeout', '--json-out', '--coverage',
+  '--states', '--cdp-port', '--ready-timeout', '--browser-cmd', '--command-timeout',
+  '--json-out', '--coverage',
 ]);
+
+// Substituted into the patterns their flags carry. Declared here rather than
+// beside the code that substitutes them because the argument validation below
+// runs first and reads them.
+const MENU_SCREEN = '{screen}';
+const MENU_EXTENSION_ID = '{extensionId}';
+const THEME_TOKEN = '{theme}';
+
+const NAVIGATIONS = new Set(['menu', 'route']);
+const ACTION_KINDS = new Set(['fill', 'click', 'read']);
+const MAX_TCP_PORT = 65535;
+const DEFAULT_BROWSER_COMMAND = 'npx --yes agent-browser';
 
 function parseArgs(argv) {
   const opts = {};
@@ -95,6 +119,21 @@ function parseArgs(argv) {
     i += 1;
   }
   return opts;
+}
+
+// `Number('nope')` is NaN, and a NaN deadline is never reached: the readiness
+// poll below then asks every 400ms forever, printing nothing and ending never.
+// So every numeric flag is a finite positive integer or the invocation is
+// refused, and the refusal happens before a directory is made or a browser is
+// reached.
+function positiveInt(flag, raw, fallback, max) {
+  if (raw === undefined) return fallback;
+  const value = Number(raw);
+  if (!/^[0-9]+$/.test(raw.trim()) || !Number.isSafeInteger(value) || value < 1) {
+    throw new Error(`${flag} "${raw}" is not a positive whole number`);
+  }
+  if (max !== undefined && value > max) throw new Error(`${flag} "${raw}" is above the highest valid value ${max}`);
+  return value;
 }
 
 // A screen is name:route[:ready-testid[:extension-id]]. The ready testid is what
@@ -121,8 +160,98 @@ function parseLabelMap(spec) {
   return map;
 }
 
+// A file read and a JSON parse at the top level used to throw straight out of
+// the program: a missing registry, a truncated states file or a stray comma
+// ended the run with a stack trace, no result record and no coverage row - the
+// one shape a caller cannot act on, because it cannot tell a driver that refused
+// from a driver that crashed. Both readers below raise instead, and the caller
+// turns that into an `arguments` failure in the record.
+function readJsonFile(flag, file) {
+  const resolved = path.resolve(file);
+  let raw;
+  try {
+    raw = fs.readFileSync(resolved, 'utf8');
+  } catch (error) {
+    throw new Error(`${flag} "${resolved}" could not be read: ${error.message}`, { cause: error });
+  }
+  try {
+    return { resolved, parsed: JSON.parse(raw) };
+  } catch (error) {
+    throw new Error(`${flag} "${resolved}" is not JSON: ${error.message}`, { cause: error });
+  }
+}
+
+// Accepts an array of names or `{ themes: [...] }`, and nothing else: a file
+// holding `{ themes: null }` used to leave the theme set undefined and the walk
+// iterating over nothing while the run still read as performed.
+function readThemeRegistry(file) {
+  const { resolved, parsed } = readJsonFile('--theme-registry', file);
+  const themes = Array.isArray(parsed) ? parsed : parsed?.themes;
+  if (!Array.isArray(themes) || themes.length === 0) {
+    throw new Error(`--theme-registry "${resolved}" holds neither a non-empty array of theme names nor { "themes": [...] }`);
+  }
+  for (const theme of themes) {
+    if (typeof theme !== 'string' || theme.trim() === '') {
+      throw new Error(`--theme-registry "${resolved}" lists ${JSON.stringify(theme)} where a theme name belongs`);
+    }
+  }
+  return { themes, source: `registry:${resolved}` };
+}
+
+// Validated whole before the first browser call, because a malformed entry
+// reached mid-walk costs the captures already taken: the throw came out of the
+// state loop, past `finish()`, and the run lost the record of everything that had
+// worked. Screen names are checked against the walked set for the same reason a
+// bad action kind is - a states file keyed by a screen nobody walks drives
+// nothing, reports nothing, and reads as a state that passed.
+function readStates(file, screens) {
+  const { resolved, parsed } = readJsonFile('--states', file);
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`--states "${resolved}" is not an object keyed by screen name`);
+  }
+  const walked = new Set(screens.map((screen) => screen.name));
+  for (const [screen, declared] of Object.entries(parsed)) {
+    if (!walked.has(screen)) throw new Error(`--states "${resolved}" declares screen "${screen}", which --screens does not name`);
+    if (!Array.isArray(declared)) throw new Error(`--states "${resolved}" holds ${JSON.stringify(declared)} under "${screen}" where an array of states belongs`);
+    for (const entry of declared) {
+      if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+        throw new Error(`--states "${resolved}": every entry under "${screen}" is an object with "state" and "actions"`);
+      }
+      if (typeof entry.state !== 'string' || entry.state.trim() === '') {
+        throw new Error(`--states "${resolved}": an entry under "${screen}" carries no non-empty "state"`);
+      }
+      if (!Array.isArray(entry.actions)) {
+        throw new Error(`--states "${resolved}": "${screen}"/"${entry.state}" carries no "actions" array`);
+      }
+      for (const action of entry.actions) {
+        if (action === null || typeof action !== 'object' || Array.isArray(action)) {
+          throw new Error(`--states "${resolved}": every action under "${screen}"/"${entry.state}" is an object`);
+        }
+        if (!ACTION_KINDS.has(action.kind)) {
+          throw new Error(`--states "${resolved}": action kind ${JSON.stringify(action.kind)} under "${screen}"/"${entry.state}" is not one of fill, click, read`);
+        }
+        if (typeof action.testid !== 'string' || action.testid === '') {
+          throw new Error(`--states "${resolved}": an action under "${screen}"/"${entry.state}" carries no "testid"`);
+        }
+        if (action.kind === 'fill' && typeof action.value !== 'string') {
+          throw new Error(`--states "${resolved}": the fill of "${action.testid}" under "${screen}"/"${entry.state}" needs a string "value"`);
+        }
+        if (action.kind === 'read' && action.contains !== undefined && typeof action.contains !== 'string') {
+          throw new Error(`--states "${resolved}": the read of "${action.testid}" under "${screen}"/"${entry.state}" declares a non-string "contains"`);
+        }
+      }
+    }
+  }
+  return parsed;
+}
+
 // ---------------------------------------------------------------------------
 // Process plumbing
+
+// Assigned from --command-timeout before the first child is spawned. Read at
+// call time rather than captured, so the bound is the one the invocation asked
+// for and not the default it was declared with.
+let commandTimeoutMs = 60000;
 
 // NODE_NO_WARNINGS on every invocation, and stdout captured on its own pipe.
 // Both guard the same failure from two sides: a deprecation warning printed by
@@ -130,16 +259,28 @@ function parseLabelMap(spec) {
 // off a polluted stream is a reading of the warning. Separate pipes make the
 // pollution structurally impossible; the flag keeps the noise out of the log a
 // human reads afterwards.
+//
+// `timeout` is what keeps the walk finite. Every browser interaction is a child
+// process, and an unbounded one blocks the driver forever on a browser that
+// stopped answering - the failure mode this file's own fetch probes are already
+// bounded against, and the one AGENTS.md requires bounding with the issuing
+// tool's own timeout parameter rather than a shell wrapper. SIGKILL because a
+// runner that ignored the budget is exactly the runner that ignores SIGTERM.
 function run(command, args, input) {
   return spawnSync(command, args, {
     input,
     encoding: 'utf8',
     env: { ...process.env, NODE_NO_WARNINGS: '1' },
     stdio: ['pipe', 'pipe', 'pipe'],
+    timeout: commandTimeoutMs,
+    killSignal: 'SIGKILL',
   });
 }
 
-const browser = (args, input) => run('npx', ['--yes', 'agent-browser', ...args], input);
+// Assigned during argument validation; `browser` reads it at call time.
+let browserCommand = DEFAULT_BROWSER_COMMAND.split(/\s+/);
+
+const browser = (args, input) => run(browserCommand[0], [...browserCommand.slice(1), ...args], input);
 
 // The runner prints human-facing lines before the value on some commands, so
 // the value is the last non-empty line of stdout and nothing else. Surrounding
@@ -205,16 +346,34 @@ const EVAL_ERROR = '__verify_walk_eval_error__';
 // own `npm warn exec` chatter does not carry an Error name.
 const ERROR_SHAPED = /\b\w*Error\b/;
 
-function invocationFailed(proc) {
+// A child that never returned carries its reason on `proc.error` and leaves
+// `status` null with empty pipes, which reads through every stdout-only path as
+// a command that printed nothing. Both no-return shapes get a stage of their
+// own, because "the runner hung" and "the runner rejected the script" are
+// different repairs and neither is the other.
+function invocationOutcome(proc) {
+  if (proc.error) {
+    const timedOut = proc.error.code === 'ETIMEDOUT';
+    return {
+      failed: true,
+      stage: timedOut ? 'timeout' : 'spawn',
+      detail: timedOut
+        ? `was killed after ${commandTimeoutMs}ms without returning`
+        : `could not be run: ${proc.error.message}`,
+    };
+  }
   const stderr = (proc.stderr ?? '').trim();
-  return { failed: proc.status !== 0 || ERROR_SHAPED.test(stderr), stderr };
+  if (proc.status !== 0 || ERROR_SHAPED.test(stderr)) {
+    return { failed: true, stage: null, detail: `exited ${proc.status}: ${stderr || '(nothing on stderr)'}` };
+  }
+  return { failed: false, stage: null, detail: '' };
 }
 
 function evaluate(script) {
   const proc = browser(['eval', '--stdin'], `${PRELUDE}\n${script}`);
-  const { failed, stderr } = invocationFailed(proc);
-  if (failed) {
-    fail('eval-error', `browser eval exited ${proc.status}: ${stderr || '(nothing on stderr)'}`, { script });
+  const outcome = invocationOutcome(proc);
+  if (outcome.failed) {
+    fail(outcome.stage ?? 'eval-error', `browser eval ${outcome.detail}`, { script });
     return EVAL_ERROR;
   }
   return lastLine(proc.stdout);
@@ -225,7 +384,14 @@ function evaluate(script) {
 // timeout and files the same failure on every turn.
 const probeExists = (testid) => evaluate(`(() => (__find(${JSON.stringify(testid)}) ? 'yes' : 'no'))()`);
 
-const exists = (testid) => probeExists(testid) === 'yes';
+// true | false | null, where null is "the page was never asked". Collapsing a
+// refused eval into "absent" is exactly the misdiagnosis EVAL_ERROR exists to
+// prevent, and a caller that treats it as absence reports a missing control
+// where the eval is what failed.
+const confirmExists = (testid) => {
+  const probe = probeExists(testid);
+  return probe === EVAL_ERROR ? null : probe === 'yes';
+};
 
 const readText = (testid) =>
   evaluate(`(() => { const el = __find(${JSON.stringify(testid)}); return el ? (el.textContent || '').trim() : __MISSING; })()`);
@@ -321,7 +487,7 @@ const result = {
   ok: false,
   host: null,
   capdir: null,
-  browser: { probe: null, mode: null, cdpPort: null },
+  browser: { probe: null, mode: null, cdpPort: null, command: null },
   themeSet: { source: null, themes: [] },
   screens: [],
   navigation: null,
@@ -335,30 +501,68 @@ function fail(stage, detail, extra = {}) {
   result.failures.push({ stage, detail, at: new Date().toISOString(), ...extra });
 }
 
+// fs.writeSync to fd 1 rather than process.stdout.write: the stream queues on a
+// pipe and process.exit() does not drain the queue, so the JSON a caller parses
+// arrives truncated exactly when it is being piped into something. A pipe also
+// accepts partial writes, hence the loop, and a closed reader is not this
+// program's failure to report - the record has already been written to disk.
+function writeStdout(payload) {
+  const bytes = Buffer.from(payload, 'utf8');
+  let written = 0;
+  while (written < bytes.length) {
+    try {
+      written += fs.writeSync(1, bytes, written, bytes.length - written);
+    } catch (error) {
+      if (error.code === 'EAGAIN') continue;
+      return;
+    }
+  }
+}
+
 function finish(options) {
   result.finishedAt = new Date().toISOString();
   result.ok = result.failures.length === 0;
-  const payload = `${JSON.stringify(result, null, 2)}\n`;
   if (options?.jsonOut) {
-    fs.mkdirSync(path.dirname(options.jsonOut), { recursive: true });
-    fs.writeFileSync(options.jsonOut, payload);
+    try {
+      fs.mkdirSync(path.dirname(options.jsonOut), { recursive: true });
+      fs.writeFileSync(options.jsonOut, `${JSON.stringify(result, null, 2)}\n`);
+    } catch (error) {
+      // The run's own account of itself could not be filed where it was asked
+      // for. It still has to reach the caller, so the write failure joins the
+      // record and stdout carries the whole thing: a result that went nowhere is
+      // indistinguishable from a run that never happened.
+      fail('output', `the result could not be written to "${options.jsonOut}": ${error.message}`);
+      result.ok = false;
+    }
   }
-  process.stdout.write(payload);
+  writeStdout(`${JSON.stringify(result, null, 2)}\n`);
   process.exit(result.ok ? 0 : 1);
 }
 
 // ---------------------------------------------------------------------------
 // Coverage rows
 
+// A `|` in a page reading or in a control's name closes the cell it is written
+// into and shifts every column after it, so a table filled from what the page
+// said is a table the page can corrupt. Newlines fold for the same reason.
+const cell = (text) => String(text ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+
 function appendCoverage(coveragePath, screens) {
-  const header = `| Theme | Opened | Visually distinct from previous | ${screens.map((s) => `${s.name} states captured`).join(' | ')} |\n`
+  const header = `| Theme | Opened | Visually distinct from previous | ${screens.map((s) => `${cell(s.name)} states captured`).join(' | ')} |\n`
     + `|${'---|'.repeat(3 + screens.length)}\n`;
   const firstOpened = result.themes.findIndex((t) => t.labelConfirmed);
   const rows = result.themes.map((theme) => {
-    const opened = theme.labelConfirmed ? 'verified' : `not-opened (label read "${theme.labelRead}")`;
+    let opened;
+    if (theme.labelConfirmed) {
+      opened = 'verified';
+    } else if (theme.controlFailure !== null) {
+      opened = `not-opened (${cell(theme.controlFailure)})`;
+    } else {
+      opened = `not-opened (label read "${cell(theme.labelRead)}")`;
+    }
     let distinct;
     if (theme.comparisons.length > 0) {
-      distinct = theme.comparisons.map((c) => `${c.screen}/${c.state}: ${c.verdict} (cmp exit ${c.exit})`).join('; ');
+      distinct = theme.comparisons.map((c) => `${cell(c.screen)}/${cell(c.state)}: ${c.verdict} (cmp exit ${c.exit})`).join('; ');
     } else if (!theme.labelConfirmed) {
       distinct = 'not-compared (theme did not open)';
     } else if (result.themes.findIndex((t) => t.theme === theme.theme) === firstOpened) {
@@ -369,17 +573,27 @@ function appendCoverage(coveragePath, screens) {
     const cells = screens.map((screen) => {
       const captured = theme.captures.filter((c) => c.screen === screen.name);
       const driven = theme.drivenOnly.filter((c) => c.screen === screen.name);
-      const parts = captured.map((c) => `${c.state} (${path.basename(c.file)})`)
-        .concat(driven.map((c) => `${c.state} driven, not captured`));
+      // readyConfirmed rides into the cell because a report filled from this
+      // file has no other way to tell a capture taken after its screen's ready
+      // handle appeared from one taken after a bare settle.
+      const parts = captured.map((c) => `${cell(c.state)} (${cell(path.basename(c.file))}, ready ${c.readyConfirmed ? 'confirmed' : 'unconfirmed'})`)
+        .concat(driven.map((c) => `${cell(c.state)} driven, not captured`));
       return parts.length > 0 ? parts.join(', ') : 'none';
     });
-    return `| ${theme.theme} | ${opened} | ${distinct} | ${cells.join(' | ')} |\n`;
+    return `| ${cell(theme.theme)} | ${opened} | ${distinct} | ${cells.join(' | ')} |\n`;
   }).join('');
 
-  fs.mkdirSync(path.dirname(coveragePath), { recursive: true });
-  const fresh = !fs.existsSync(coveragePath) || fs.readFileSync(coveragePath, 'utf8').trim() === '';
-  fs.appendFileSync(coveragePath, (fresh ? header : '') + rows);
-  result.coverageFile = coveragePath;
+  // The coverage file is this step's stated deliverable, so a filesystem refusal
+  // is a failure of the run rather than an exception out of its last line: the
+  // JSON result still lands and names the path that could not be written.
+  try {
+    fs.mkdirSync(path.dirname(coveragePath), { recursive: true });
+    const fresh = !fs.existsSync(coveragePath) || fs.readFileSync(coveragePath, 'utf8').trim() === '';
+    fs.appendFileSync(coveragePath, (fresh ? header : '') + rows);
+    result.coverageFile = coveragePath;
+  } catch (error) {
+    fail('coverage', `the coverage rows could not be written to "${coveragePath}": ${error.message}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -404,70 +618,99 @@ for (const required of ['host', 'themes', 'screens', 'capdir', 'switcher', 'them
   }
 }
 
-// Resolved before anything reads it, and every capture path is built from it,
-// because the runner takes a relative screenshot path as relative to its own
-// temporary working directory and reports the write as a success. The files
-// land somewhere the byte-compare and the coverage cells never look, and the
-// run reads as a walk that captured nothing it can point at.
-const capdir = path.resolve(opts.capdir);
-const jsonOut = path.resolve(opts['json-out'] ?? path.join(capdir, 'verify-walk.json'));
-const coveragePath = path.resolve(opts.coverage ?? path.join(capdir, 'verification-coverage.md'));
-const readyTimeout = Number(opts['ready-timeout'] ?? 15000);
-const cdpPort = Number(opts['cdp-port'] ?? 9222);
-const navigation = opts.nav ?? 'menu';
-const labels = parseLabelMap(opts['theme-labels']);
-
-result.host = opts.host;
-result.capdir = capdir;
-result.navigation = navigation;
-result.browser.cdpPort = cdpPort;
-
+// Everything the invocation itself has to get right is settled here, in one
+// place, before a directory is created or a browser is reached: an invocation
+// this driver cannot perform costs nothing on disk and says why in its own
+// result record rather than in a stack trace.
+//
+// capdir is resolved before anything reads it, and every capture path is built
+// from it, because the runner takes a relative screenshot path as relative to
+// its own temporary working directory and reports the write as a success. The
+// files land somewhere the byte-compare and the coverage cells never look, and
+// the run reads as a walk that captured nothing it can point at.
+let capdir;
+let jsonOut;
+let coveragePath;
+let readyTimeout;
+let cdpPort;
+let navigation;
+let labels;
 let screens;
+let states;
 try {
+  capdir = path.resolve(opts.capdir);
+  jsonOut = path.resolve(opts['json-out'] ?? path.join(capdir, 'verify-walk.json'));
+  coveragePath = path.resolve(opts.coverage ?? path.join(capdir, 'verification-coverage.md'));
+
+  readyTimeout = positiveInt('--ready-timeout', opts['ready-timeout'], 15000);
+  cdpPort = positiveInt('--cdp-port', opts['cdp-port'], 9222, MAX_TCP_PORT);
+  commandTimeoutMs = positiveInt('--command-timeout', opts['command-timeout'], 60000);
+
+  browserCommand = (opts['browser-cmd'] ?? DEFAULT_BROWSER_COMMAND).trim().split(/\s+/).filter(Boolean);
+  if (browserCommand.length === 0) throw new Error('--browser-cmd names no command to run');
+
+  navigation = opts.nav ?? 'menu';
+  if (!NAVIGATIONS.has(navigation)) {
+    // Unvalidated, any string reached the walk and everything that was not
+    // "route" took the menu branch, so `--nav manu` ran `opts.menu.split` on
+    // undefined and ended the process on an uncaught TypeError.
+    throw new Error(`--nav "${navigation}" is not one of ${[...NAVIGATIONS].join(', ')}`);
+  }
+
+  labels = parseLabelMap(opts['theme-labels']);
   screens = parseScreens(opts.screens);
-  result.screens = screens;
+  if (screens.length === 0) throw new Error('--screens names no screen to walk');
+
+  if (navigation === 'menu' && !opts.menu) {
+    throw new Error(`--nav menu needs --menu <pattern with ${MENU_SCREEN} or ${MENU_EXTENSION_ID}>`);
+  }
+  if (navigation === 'menu' && screens.length > 1
+    && !opts.menu.includes(MENU_SCREEN) && !opts.menu.includes(MENU_EXTENSION_ID)) {
+    throw new Error(`--menu "${opts.menu}" carries neither ${MENU_SCREEN} nor ${MENU_EXTENSION_ID}, so every screen after the first would click one same menu item`);
+  }
+
+  // The theme set is recorded with its provenance, so a report cannot claim it
+  // came from the host's theme registration when it was typed in by hand.
+  if (opts.themes === 'registry') {
+    if (!opts['theme-registry']) throw new Error('--themes registry needs --theme-registry <file the set was read into>');
+    result.themeSet = readThemeRegistry(opts['theme-registry']);
+  } else {
+    result.themeSet = { source: 'literal', themes: opts.themes.split(',').filter(Boolean) };
+  }
+  if (result.themeSet.themes.length === 0) throw new Error('the theme set is empty');
+  if (result.themeSet.themes.length > 1 && !opts['theme-option'].includes(THEME_TOKEN)) {
+    throw new Error(`--theme-option "${opts['theme-option']}" carries no ${THEME_TOKEN}, so every theme would click one same option`);
+  }
+
+  states = opts.states ? readStates(opts.states, screens) : {};
 } catch (error) {
   fail('arguments', error.message);
   finish({ jsonOut: null });
 }
 
-if (navigation === 'menu' && !opts.menu) {
-  fail('arguments', '--nav menu needs --menu <pattern with {screen}>');
-  finish({ jsonOut: null });
-}
+result.host = opts.host;
+result.capdir = capdir;
+result.navigation = navigation;
+result.screens = screens;
+result.browser.cdpPort = cdpPort;
+result.browser.command = browserCommand.join(' ');
 
 // A capture directory shared with an earlier run leaves that run's files exactly
 // where this one goes looking, and neither the byte-compare nor the coverage
 // cells can tell which run wrote a file they address by name.
-if (fs.existsSync(capdir)) {
-  if (fs.readdirSync(capdir).length > 0) {
-    fail('capdir', `capture directory "${capdir}" already holds files; give this run a directory of its own`);
-    finish({ jsonOut: null });
+try {
+  if (fs.existsSync(capdir)) {
+    if (fs.readdirSync(capdir).length > 0) {
+      fail('capdir', `capture directory "${capdir}" already holds files; give this run a directory of its own`);
+      finish({ jsonOut: null });
+    }
+  } else {
+    fs.mkdirSync(capdir, { recursive: true });
   }
-} else {
-  fs.mkdirSync(capdir, { recursive: true });
+} catch (error) {
+  fail('capdir', `capture directory "${capdir}" could not be prepared: ${error.message}`);
+  finish({ jsonOut: null });
 }
-
-// The theme set is recorded with its provenance, so a report cannot claim it
-// came from the host's theme registration when it was typed in by hand.
-if (opts.themes === 'registry') {
-  if (!opts['theme-registry']) {
-    fail('arguments', '--themes registry needs --theme-registry <file the set was read into>');
-    finish({ jsonOut });
-  }
-  const raw = JSON.parse(fs.readFileSync(path.resolve(opts['theme-registry']), 'utf8'));
-  result.themeSet.themes = Array.isArray(raw) ? raw : raw.themes;
-  result.themeSet.source = `registry:${path.resolve(opts['theme-registry'])}`;
-} else {
-  result.themeSet.themes = opts.themes.split(',').filter(Boolean);
-  result.themeSet.source = 'literal';
-}
-if (!Array.isArray(result.themeSet.themes) || result.themeSet.themes.length === 0) {
-  fail('arguments', 'the theme set is empty');
-  finish({ jsonOut });
-}
-
-const states = opts.states ? JSON.parse(fs.readFileSync(path.resolve(opts.states), 'utf8')) : {};
 
 // Fail fast on a dead application before a browser is involved: a runner error
 // against an origin nothing serves reads as a browser problem and sends the run
@@ -489,8 +732,9 @@ try {
 }
 if (result.browser.probe === 'answered') {
   const connected = browser(['connect', String(cdpPort)]);
-  result.browser.mode = connected.status === 0 ? 'connected' : 'connect-failed';
-  if (connected.status !== 0) fail('browser', `connect ${cdpPort} exited ${connected.status}: ${lastLine(connected.stderr)}`);
+  const outcome = invocationOutcome(connected);
+  result.browser.mode = outcome.failed ? 'connect-failed' : 'connected';
+  if (outcome.failed) fail(outcome.stage ?? 'browser', `connect ${cdpPort} ${outcome.detail}`);
 } else {
   result.browser.mode = 'launched';
 }
@@ -499,8 +743,9 @@ if (result.failures.length > 0) finish({ jsonOut });
 function capture(theme, screen, state) {
   const file = path.join(capdir, `${theme}-${screen}-${state}.png`);
   const shot = browser(['screenshot', file]);
-  if (shot.status !== 0 || !fs.existsSync(file)) {
-    fail('capture', `screenshot for ${theme}/${screen}/${state} did not land`, { file, exit: shot.status });
+  const outcome = invocationOutcome(shot);
+  if (outcome.failed || !fs.existsSync(file)) {
+    fail(outcome.stage ?? 'capture', `screenshot for ${theme}/${screen}/${state} did not land: ${outcome.detail || 'the runner reported success and wrote no file'}`, { file, exit: shot.status });
     return null;
   }
   return file;
@@ -508,9 +753,6 @@ function capture(theme, screen, state) {
 
 // ---------------------------------------------------------------------------
 // Menu resolution
-
-const MENU_SCREEN = '{screen}';
-const MENU_EXTENSION_ID = '{extensionId}';
 
 // An extension id is identifier segments joined by punctuation - a menu item
 // reads `menu-item-gts.frontx.mfes.ext.extension.v1~...~best.login.screens.login.v1`
@@ -591,9 +833,9 @@ const NAV_READY = 'ready';
 // class as the discarded eval status: the runner said so, and nobody read it.
 function navigate(args, screen) {
   const proc = browser(args);
-  const { failed, stderr } = invocationFailed(proc);
-  if (!failed) return true;
-  fail('navigation-error', `"${args.join(' ')}" for screen "${screen.name}" exited ${proc.status}: ${stderr || '(nothing on stderr)'}`);
+  const outcome = invocationOutcome(proc);
+  if (!outcome.failed) return true;
+  fail(outcome.stage ?? 'navigation-error', `"${args.join(' ')}" for screen "${screen.name}" ${outcome.detail}`);
   return false;
 }
 
@@ -616,9 +858,25 @@ function reachScreen(screen, hard) {
   return NAV_UNCONFIRMED;
 }
 
+// Every declared control operation has to report as dispatched. Discarded, the
+// outcome let a run pass with no switcher on the page at all: a single-theme run
+// already showing the requested theme reads a label that matches, so the label
+// check agrees and the walk captures a theme nothing switched. The failure names
+// the test id that was not found, because the symptom the run saw otherwise -
+// a switcher label reading `__verify_walk_missing__` - reads as a theme that did
+// not open rather than as a handle that does not exist.
+function operate(record, testid, what) {
+  const outcome = click(testid);
+  if (outcome === 'dispatched') return true;
+  record.controlFailure = `${what} "${testid}" was not clicked: ${outcomeReason(outcome)}`;
+  fail('control', `${what} "${testid}" was not clicked under theme "${record.theme}": ${outcomeReason(outcome)}`);
+  return false;
+}
+
 for (const theme of result.themeSet.themes) {
   const record = {
     theme, labelConfirmed: false, labelRead: null, labelReadBack: null,
+    controlFailure: null,
     panelCollapsed: null, captures: [], drivenOnly: [], readBacks: [], comparisons: [],
   };
   result.themes.push(record);
@@ -628,9 +886,12 @@ for (const theme of result.themeSet.themes) {
   const first = screens[0];
   const firstNav = reachScreen(first, true);
 
-  if (opts['panel-expand']) click(opts['panel-expand']);
-  click(opts.switcher);
-  click(opts['theme-option'].replace('{theme}', theme));
+  // A control operation that did not dispatch stops this theme where it stands:
+  // captures taken past a missing switcher belong to whatever theme was already
+  // on screen, and the label check cannot tell the difference.
+  if (opts['panel-expand'] && !operate(record, opts['panel-expand'], 'dev panel expand control')) continue;
+  if (!operate(record, opts.switcher, 'theme switcher')) continue;
+  if (!operate(record, opts['theme-option'].split(THEME_TOKEN).join(theme), `theme option for "${theme}"`)) continue;
 
   // The switcher's own label is the only source of truth for which theme is
   // active. It is read twice: the second reading is a confirmation, not a
@@ -654,10 +915,12 @@ for (const theme of result.themeSet.themes) {
   // verification. The collapse is confirmed by the expand control being present
   // afterwards, which it is only while the panel is collapsed.
   if (opts['panel-collapse']) {
-    click(opts['panel-collapse']);
-    record.panelCollapsed = opts['panel-expand'] ? exists(opts['panel-expand']) : null;
-    if (record.panelCollapsed === false) {
-      fail('panel', `dev panel did not collapse under theme "${theme}"; captures would carry host chrome`);
+    if (!operate(record, opts['panel-collapse'], 'dev panel collapse control')) continue;
+    record.panelCollapsed = opts['panel-expand'] ? confirmExists(opts['panel-expand']) : null;
+    if (opts['panel-expand'] && record.panelCollapsed !== true) {
+      fail('panel', record.panelCollapsed === null
+        ? `the dev panel's collapse under theme "${theme}" could not be confirmed: the eval did not run`
+        : `dev panel did not collapse under theme "${theme}"; captures would carry host chrome`);
       continue;
     }
   }
@@ -692,6 +955,9 @@ for (const theme of result.themeSet.themes) {
           record.readBacks.push({ screen: screen.name, state: declared.state, action: 'read', testid: action.testid, expected: action.contains ?? null, actual: text, ok });
           if (!ok) fail('read', `reading "${action.testid}" under theme "${theme}" gave "${text}"`);
         } else {
+          // Unreachable while the parse-time states validation holds. Kept so
+          // that loosening the validator cannot turn an unknown kind into a
+          // silent no-op the coverage table then reports as a captured state.
           fail('states', `action kind "${action.kind}" is not one of fill, click, read`);
         }
       }
@@ -709,7 +975,11 @@ for (const theme of result.themeSet.themes) {
     for (const shot of record.captures) {
       const before = previous.captures.find((c) => c.screen === shot.screen && c.state === shot.state);
       if (!before) continue;
-      const cmp = spawnSync('cmp', ['-s', before.file, shot.file], { encoding: 'utf8' });
+      const cmp = spawnSync('cmp', ['-s', before.file, shot.file], {
+        encoding: 'utf8',
+        timeout: commandTimeoutMs,
+        killSignal: 'SIGKILL',
+      });
       record.comparisons.push({
         against: previous.theme, screen: shot.screen, state: shot.state,
         command: `cmp -s ${path.basename(before.file)} ${path.basename(shot.file)}`,
