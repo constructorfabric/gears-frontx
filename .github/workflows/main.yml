@@ -134,6 +134,15 @@ jobs:
     - name: Check template lockfile self-link entries
       run: npm run policy:template-lockfile-selflink
 
+    # #540: the import-boundary check ADR-0003's confirmation section promised.
+    # The mfes barrel must not export concrete Default* implementations, and no
+    # code outside `packages/mfes` may import a concrete implementation name
+    # from `@gears-frontx/mfes` (or deep-import a subpath past the barrel) —
+    # consumers obtain the registry via `createMfeRegistryFactory()` alone.
+    # No build-order dependency: reads source files directly.
+    - name: Check mfes import boundary (ADR-0003)
+      run: npm run policy:mfes-import-boundary
+
   # The template-*/ trees carry their own arch:deps / lint / test:unit scripts,
   # and nothing else in this workflow enters them — so without this job their
   # checks are enforced only when someone runs them by hand, and they rot

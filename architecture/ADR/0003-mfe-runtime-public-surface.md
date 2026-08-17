@@ -38,7 +38,7 @@ The MFE Runtime registers microfrontends and their extension domains, loads them
 
 ## Considered Options
 
-* **Abstract registry facade with factory injection** — consumers depend only on an abstract `MfeRegistry` contract and obtain an instance from an injected factory (`mfeRegistryFactory.build({ typeSystem })`); the concrete implementation and its coordination machinery stay internal.
+* **Abstract registry facade with factory injection** — consumers depend only on an abstract `MfeRegistry` contract and obtain an instance from an injected factory (`createMfeRegistryFactory().build({ typeSystem })`); the concrete implementation and its coordination machinery stay internal.
 * **Direct dependency on concrete implementation classes** — consumers import and construct the concrete registry and its managers directly.
 * **Module-level singleton with free functions** — registration and loading are exposed as standalone functions over a hidden module-global runtime instance.
 
@@ -54,10 +54,11 @@ Chosen option: **abstract registry facade with factory injection**, because it i
 * Good, because the public/internal boundary is a continuous-integration-checkable invariant.
 * Bad, because the indirection of an abstract contract plus a factory adds a layer between the consumer and the working implementation.
 * Bad, because the factory's single-construction semantics require consumers to agree on one provider per composition root rather than constructing implementations ad hoc.
+* Bad, because the boundary is not yet complete: the barrel still exports a handful of concrete-but-not-`Default*`-named internals that the naming rule cannot detect, recorded with owner and removal criterion in the public-surface debt register of `packages/mfes/architecture/DESIGN.md` (§3.3).
 
 ### Confirmation
 
-Architecture review confirms the package's public surface exports only the abstract `MfeRegistry` contract and the `mfeRegistryFactory`, and that the concrete implementation and factory remain internal. A continuous-integration check (an import-boundary grep) confirms that no consumer outside the runtime package imports the concrete registry or factory classes, and that every instance is obtained through `mfeRegistryFactory.build({ typeSystem })`.
+Architecture review confirms that registry construction crosses the package's public surface only as the abstract `MfeRegistry` contract and the `createMfeRegistryFactory` creation function, and that the concrete implementation and factory remain internal. A continuous-integration check (`scripts/mfes-import-boundary-check.mjs`, wired as `npm run policy:mfes-import-boundary` in `.github/workflows/main.yml`) confirms both halves of the boundary: the barrel exports no concrete-implementation name (the `Default*` naming rule), and no consumer outside the runtime package imports a concrete class or deep-imports past the barrel — every instance is obtained through `createMfeRegistryFactory().build({ typeSystem })`.
 
 ## Pros and Cons of the Options
 
@@ -89,7 +90,7 @@ Registration and loading are standalone functions over a hidden global runtime i
 
 ## More Information
 
-The present concrete instantiation of the runtime is `@gears-frontx/mfes`; the contract is the abstract `MfeRegistry` and instances are built through `mfeRegistryFactory.build({ typeSystem })`. The factory itself is also an abstract contract (`packages/screensets/src/mfe/runtime/MfeRegistryFactory.ts`, which declares `build(config): MfeRegistry` and holds no knowledge of any concrete implementation), and the concrete implementation that satisfies the registry contract (`packages/screensets/src/mfe/runtime/DefaultMfeRegistry.ts`) is internal. This decision governs only the shape of the runtime's public surface and its construction; the internal coordination mechanisms it encapsulates (the actions-chains mediator, mount strategies, and the parent–child bridge) are decided in their own records, and the opaque type-substrate port the injected provider satisfies is decided in `cpt-frontx-adr-runtime-type-system-coupling`.
+The present concrete instantiation of the runtime is `@gears-frontx/mfes`; the contract is the abstract `MfeRegistry` and instances are built through `createMfeRegistryFactory().build({ typeSystem })`. The factory itself is also an abstract contract (`packages/screensets/src/mfe/runtime/MfeRegistryFactory.ts`, which declares `build(config): MfeRegistry` and holds no knowledge of any concrete implementation), and the concrete implementation that satisfies the registry contract (`packages/screensets/src/mfe/runtime/DefaultMfeRegistry.ts`) is internal. This decision governs only the shape of the runtime's public surface and its construction; the internal coordination mechanisms it encapsulates (the actions-chains mediator, mount strategies, and the parent–child bridge) are decided in their own records, and the opaque type-substrate port the injected provider satisfies is decided in `cpt-frontx-adr-runtime-type-system-coupling`.
 
 **Scope of impact.** Applies to the runtime's public surface and the way consumers obtain a runtime instance. It does not decide the internal structure of the concrete implementation, the choice of type-system provider (decided in `cpt-frontx-adr-default-type-substrate-provider`), or how microfrontend code is loaded and isolated.
 

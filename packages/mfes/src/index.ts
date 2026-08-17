@@ -65,8 +65,8 @@ export { InvalidatableDomainContext } from './runtime/DomainContext';
 export { RuntimeCoordinator } from './runtime/coordination/types';
 export type { RuntimeConnection } from './runtime/coordination/types';
 
-// Mediator concrete implementation (Phase 6)
-export { DefaultActionsChainsMediator, NoHandlerForActionTargetError } from './mediator/actions-chains-mediator';
+// Mediator error surface (Phase 6) — the concrete mediator stays internal (ADR-0003)
+export { NoHandlerForActionTargetError } from './mediator/actions-chains-mediator';
 
 // Bridge concrete implementations (Phase 6)
 export { ChildMfeBridgeImpl, ParentMfeBridgeImpl, ChildDomainForwardingHandler } from './bridge';
@@ -126,13 +126,10 @@ export type { ActionChainExecutor, LifecycleTrigger } from './runtime/mount-mana
 // Runtime bridge factory (Phase 7)
 export { RuntimeBridgeFactory } from './runtime/runtime-bridge-factory';
 
-// Governance concrete classes (Phase 7)
-export { DefaultExtensionManager } from './runtime/default-extension-manager';
-export { DefaultMountManager, type HandlerResolver } from './runtime/default-mount-manager';
-
 // MFE Isolation — handler, trust kernel, types (Phase 8)
+// MfeHandlerMF is sanctioned surface — do not remove in a barrel cleanup.
+// Rationale/table: packages/mfes/architecture/DESIGN.md, public-surface table.
 export { MfeHandlerMF, LruCache } from './handler/MfeHandlerMF';
-export { MfeBridgeFactoryDefault } from './handler/mfe-bridge-factory-default';
 export { RetryHandler } from './handler/retry-handler';
 export type { MfeEntryMF } from './types/mfe-entry-mf';
 export {
@@ -141,26 +138,15 @@ export {
   importBlobModule,
 } from './handler/mf-dynamic-module-ops';
 
-// Default registry — concrete facade implementation (Stage 1 extraction)
-export { DefaultMfeRegistry } from './runtime/DefaultMfeRegistry';
-// Only the creation function crosses the barrel: the concrete factory stays
-// internal so no consumer can build a rival registry past the composition root
+// Only the creation function crosses the barrel: the concrete registry and
+// factory stay internal so no consumer can build a rival registry past the
+// composition root (ADR-0003, enforced by scripts/mfes-import-boundary-check.mjs)
 export { createMfeRegistryFactory } from './runtime/DefaultMfeRegistryFactory';
 
-// Lifecycle manager — abstract contract and default implementation
+// Lifecycle manager — abstract contract; the default implementation stays internal (ADR-0003)
 // (aliased: distinct from mount-manager's ActionChainExecutor, which also carries ChainExecutionOptions)
 export { LifecycleManager } from './runtime/lifecycle-manager';
 export type { ActionChainExecutor as LifecycleActionChainExecutor } from './runtime/lifecycle-manager';
-export { DefaultLifecycleManager } from './runtime/default-lifecycle-manager';
-
-// Runtime bridge factory — default implementation
-export { DefaultRuntimeBridgeFactory } from './runtime/default-runtime-bridge-factory';
-
-// Extension mounter — default implementation
-export { DefaultExtensionMounter } from './runtime/DefaultExtensionMounter';
-
-// Domain lifecycle trigger — default implementation
-export { DefaultDomainLifecycleTrigger } from './runtime/DefaultDomainLifecycleTrigger';
 
 // Operation serializer — concurrency control for registry operations
 export { OperationSerializer } from './runtime/operation-serializer';
@@ -172,8 +158,8 @@ export type { LifecycleActionPayload } from './runtime/extension-lifecycle-actio
 // Runtime coordination — default WeakMap-based implementation
 export { WeakMapRuntimeCoordinator } from './runtime/coordination/weak-map-runtime-coordinator';
 
-// MFE state container — abstract contract and default implementation
-export { MfeStateContainer, DefaultMfeStateContainer } from './state';
+// MFE state container — abstract contract; the default implementation stays internal (ADR-0003)
+export { MfeStateContainer } from './state';
 export type { MfeStateContainerConfig } from './state';
 
 // GTS package extraction utility
