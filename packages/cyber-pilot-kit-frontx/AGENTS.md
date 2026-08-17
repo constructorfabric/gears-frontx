@@ -1,5 +1,5 @@
 ---
-description: "Agent navigation rules for FrontX ecosystem package boundaries, CLI, and MFEs."
+description: "Agent navigation rules for FrontX ecosystem package boundaries, CLI, and MFEs, and the standing rules for how work in a FrontX project is searched for, built, and verified."
 ---
 
 # FrontX AI Tooling Kit — Agent Navigation Rules
@@ -9,6 +9,10 @@ description: "Agent navigation rules for FrontX ecosystem package boundaries, CL
 - Ecosystem packages: `mfes`, `gts-plugin`, `api`, `cli`, `cyber-pilot-kit-frontx`
 - Template packages: the active template (external, source-spec-resolved) and its sub-packages
 - Never add ecosystem→template imports; never add template→ecosystem src-level coupling
+
+## When running a command
+
+- macOS ships no `timeout` command, so a call wrapped in `timeout <seconds> ...` dies with "command not found" and reads as a broken tool rather than a missing binary. Bound a slow call with the timeout parameter the tool issuing it already carries, never with a shell wrapper
 
 ## When searching the filesystem
 
@@ -21,6 +25,22 @@ description: "Agent navigation rules for FrontX ecosystem package boundaries, CL
 - Check DESIGN.md for the relevant component boundary constraint (MFES-*, API-*, CLI-*, KIT-*)
 - Run `npm run build` and `npm run test` inside the package before reporting done
 - All resource ids in kit manifests MUST begin with `frontx_` (KIT-1)
+
+## When implementing an action a user invokes
+
+- The action must let a user reach the outcome its own label names, carrying data they supplied. A handler that produces the payload itself - a constant, an empty field, a record nobody entered - is a stub: the control is there and the outcome the user came for is not reachable
+- Where an intent names an action but says nothing about how the user's data gets in, that gap is what to report. Filling it with a fixed value satisfies the wording of the intent and defeats the action
+
+## When verifying a user interface
+
+- Judge the rendered pixels, not the tree behind them. A DOM snapshot proves an element exists and a click proves it can be operated; neither proves a person can see it. Every interactive element must be visually distinguishable while at rest, in every theme the interface supports - one that emerges only under hover or focus fails. The archetype is a destructive action wearing a ghost or text-only variant: a delete control that renders as bare text is at rest indistinguishable from a caption, and it is the one control a person must be able to tell apart before they touch it. Shipped in a screenshot that was looked at and passed, it is the failure this rule exists to catch
+- The theme an interface opens in is one of the themes it supports, never the set - and on a browser attached to an existing profile it is not even a theme this run chose, it is whatever that profile last persisted. A pass that captured only the theme it happened to find has seen a fraction of the surface, and a run that reported a verified interface while a whole theme stayed unopened claimed a coverage it never had
+- A screenshot is evidence only once it has been examined. Take one per screen per theme, in the states that carry the meaning - a form before it is submitted, a list before and after it changes - with no debug or development overlay across the surface, and read each for what a structural check cannot see: elements invisible or cramped, panels over content, layers colliding. Verification is not complete while a captured screenshot is unexamined
+- A judgement on a screenshot names what it looked at: which elements, in which state, in which theme. "Looks correct" records a feeling and conceals whatever went unexamined, and a cramped button survived two consecutive runs behind judgements phrased that way
+- A verification reports its coverage, not its verdict. An unopened theme is a legitimate outcome and belongs in the report as one; a closing summary phrased so that no reader can tell it apart from full coverage is how two consecutive runs shipped a single theme as a verified interface. What the coverage list has to contain, and where it is produced, is stated by the procedure the run followed
+- A workaround is a finding. If confirming something took piercing a shadow root, evaluating script, or reading markup the interface does not display, then the user cannot perceive it either. Record it as a defect - a check that needed the bypass did not pass
+- The command that runs the headless browser is `npx --yes agent-browser`, and every later call repeats that exact prefix. The bare binary is not on `PATH`, so a call that drops the prefix fails as a command that does not exist, and six consecutive runs each rediscovered that
+- How a browser is reached, which themes are walked and how the run is driven between captures is procedure, and belongs in the numbered steps of the capability being run rather than here. Three consecutive runs read these rules as prose and produced none of it; the same runs executed every check that reached them as a numbered step. A rule of this kind that has to be obeyed is written where the steps are
 
 ## When working with the CLI
 
