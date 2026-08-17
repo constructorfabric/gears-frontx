@@ -64,11 +64,12 @@ export async function loadProjects(repoRoot = defaultRepoRoot) {
  * that declares a `test:unit` script; otherwise the runner has nothing to
  * delegate to.
  *
- * Discovery is best-effort: any failure to read the root — absent, unreadable,
- * not a directory — yields no MFE projects rather than an error. The ordinary
- * case is an absent root, since this repository has no `src/mfe_packages` of its
- * own, and an empty result is visible to the caller in the reported project list
- * rather than being mistaken for a clean run.
+ * Only an absent root means "no MFE projects", and that is the ordinary case
+ * here: this repository has no `src/mfe_packages` of its own. Every other
+ * failure to read it — EACCES, EIO, a path that turns out to be a file — reaches
+ * the caller, because swallowing it would report a clean run over a tree this
+ * never managed to read. `template-shell/scripts/run-mfe-type-checks.ts` draws
+ * the same line for its own MFE scan.
  *
  * @param {{ repoRoot?: string; readdir?: (path: string, options: { withFileTypes: true }) => Promise<DirEntryLike[]> }} [options]
  * @returns {Promise<import('./common.mjs').MfeProject[]>}
@@ -79,10 +80,13 @@ export async function discoverMfeProjects({
 } = {}) {
   const mfeRoot = path.join(repoRoot, 'src/mfe_packages');
   /** @type {DirEntryLike[]} */
-  let entries = [];
+  let entries;
   try {
     entries = await readdirFn(mfeRoot, { withFileTypes: true });
-  } catch {
+  } catch (err) {
+    if (!isMissingDirectory(err)) {
+      throw err;
+    }
     return [];
   }
 
@@ -115,6 +119,20 @@ export async function discoverMfeProjects({
   }
 
   return projects.sort((a, b) => a.rootPath.localeCompare(b.rootPath));
+}
+
+/**
+ * Whether a rejection is the "directory is not there" case, told apart from
+ * every other reason a read can fail.
+ *
+ * The rejection arrives untyped, so the hop down to `code` is checked rather
+ * than assumed; a `readdir` rejection carries it as a string.
+ *
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+function isMissingDirectory(err) {
+  return typeof err === 'object' && err !== null && 'code' in err && err.code === 'ENOENT';
 }
 
 /**

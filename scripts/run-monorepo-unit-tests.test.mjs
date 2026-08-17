@@ -636,6 +636,23 @@ describe('discoverMfeProjects (filesystem-backed)', () => {
       await rm(emptyRoot, { recursive: true, force: true });
     }
   });
+
+  it('rejects when src/mfe_packages is a file rather than a directory', async () => {
+    // The pair to the test above, and the reason discovery cannot simply
+    // swallow every read failure: a root that exists but is unreadable as a
+    // directory is a broken checkout, and reporting zero projects for it would
+    // hand back a clean run over a tree nothing was ever read from.
+    const brokenRoot = await mkdtemp(path.join(tmpdir(), 'runner-broken-'));
+    try {
+      await mkdir(path.join(brokenRoot, 'src'), { recursive: true });
+      await writeFile(path.join(brokenRoot, 'src', 'mfe_packages'), 'not a directory');
+      await expect(discoverMfeProjects({ repoRoot: brokenRoot })).rejects.toMatchObject({
+        code: 'ENOTDIR',
+      });
+    } finally {
+      await rm(brokenRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('discoverWorkspaceProjects + loadProjects (end-to-end discovery)', () => {
