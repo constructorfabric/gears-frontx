@@ -129,7 +129,7 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 1. [x] - `p1` - Carry the required application name and version through unchanged, along with the optional storage prefix and the optional url rewrite hook - `inst-carry-required`
 2. [x] - `p1` - Resolve the collector endpoint: use the supplied value, otherwise derive a same-origin default path from the envelope version, defaulting the version when unset - `inst-resolve-endpoint`
 3. [x] - `p1` - Default delivery on and verbose logging off - `inst-default-flags`
-4. [x] - `p1` - Default autocapture on, url redaction off, and the session inactivity window - `inst-default-values`
+4. [x] - `p1` - Default autocapture and navigation capture on, url redaction off, and the session inactivity window - `inst-default-values`
 5. [x] - `p1` - **RETURN** the normalized configuration, which is the only form any component reads - `inst-return-normalized`
 
 ### Client Start
@@ -147,7 +147,7 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
    1. [x] - `p1` - Report through the logger (surfaced when verbose) that the client is already started and a new client should be built - `inst-log-restart-refused`
    2. [x] - `p1` - **RETURN** the client unchanged - `inst-return-already-started`
 3. [x] - `p1` - Set the start flag, which teardown deliberately never clears - `inst-set-started`
-4. [x] - `p1` - Register the built-in session, device, navigation, application-info and autocapture plugins, after any the caller registered so a colliding caller plugin is replaced - `inst-register-builtins`
+4. [x] - `p1` - Register the built-in session, device, navigation, application-info and autocapture plugins, after any the caller registered so a colliding caller plugin is replaced, passing navigation through as falsy where navigation capture is disabled in configuration so it is never registered - `inst-register-builtins`
 5. [x] - `p1` - Start the session manager's activity listeners - `inst-start-session`
 6. [x] - `p1` - Start the events manager's visibility listener - `inst-start-events`
 7. [x] - `p1` - Run every registered plugin's setup in one pass - `inst-setup-plugins`
@@ -456,7 +456,7 @@ The system **MUST** persist the session record in browser storage, continue it w
 
 - [x] `p1` - **ID**: `cpt-frontx-telemetry-dod-event-collection-plugin-registry`
 
-The system **MUST** key plugins by name so a later registration replaces an earlier one, **MUST** ignore falsy entries, **MUST** run setup in a single pass triggered by client start, and **MUST** register the built-in plugins after any the caller registered. A plugin registered after the setup pass **MUST** be stored without being set up, and this ordering requirement **MUST** be documented along with the reservation of the built-in plugin names.
+The system **MUST** key plugins by name so a later registration replaces an earlier one, **MUST** ignore falsy entries, **MUST** run setup in a single pass triggered by client start, and **MUST** register the built-in plugins after any the caller registered. A plugin registered after the setup pass **MUST** be stored without being set up, and this ordering requirement **MUST** be documented along with the reservation of the built-in plugin names. A built-in switched off in configuration registers nothing, so it occupies no name: a caller plugin under that name survives and is set up, and the reservation holds only for a built-in that registers.
 
 **Implements**:
 - `cpt-frontx-telemetry-algo-event-collection-plugin-setup`
@@ -470,7 +470,7 @@ The system **MUST** key plugins by name so a later registration replaces an earl
 
 - [x] `p1` - **ID**: `cpt-frontx-telemetry-dod-event-collection-builtin-context`
 
-The system **MUST** supply session, device, navigation and application-info enrichment as plugins registered through the ordinary plugin surface, **MUST** emit a session-start event at client start when no valid stored session exists (a session renewed mid-run after the inactivity window emits no event) and an event on every navigation path change including History API transitions — stamping each later record with that page view's identifier as its `caused_by_id`, so every record links to the page it occurred on — and **MUST** offer a locale plugin that reads the application's required locale source per record rather than capturing it at setup — when no locale enrichment sets a language, the device plugin fills the browser's reported one. Because the History API fires no event for `pushState` and `replaceState`, the navigation plugin **MUST** wrap those two methods to observe transitions, and **MUST** restore the original methods on teardown. Consumers should know the SDK patches `window.history`; any other code wrapping the same methods must compose with this.
+The system **MUST** supply session, device, navigation and application-info enrichment as plugins registered through the ordinary plugin surface, **MUST** emit a session-start event at client start when no valid stored session exists (a session renewed mid-run after the inactivity window emits no event) and an event on every navigation path change including History API transitions — stamping each later record with that page view's identifier as its `caused_by_id`, so every record links to the page it occurred on — and **MUST** offer a locale plugin that reads the application's required locale source per record rather than capturing it at setup — when no locale enrichment sets a language, the device plugin fills the browser's reported one. Because the History API fires no event for `pushState` and `replaceState`, the navigation plugin **MUST** wrap those two methods to observe transitions, and **MUST** restore the original methods on teardown. Consumers should know the SDK patches `window.history`; any other code wrapping the same methods must compose with this. Where navigation capture is disabled in configuration the client **MUST NOT** register the navigation plugin at all, so nothing is wrapped, no page view is recorded, no record is attributed, and a path change no longer counts as session activity — leaving scroll, keypress and click as the only activity, so an application that navigates without them can have one visit split across two sessions. The documentation **MUST** name that fourth consequence rather than leaving it to be discovered.
 
 **Implements**:
 - `cpt-frontx-telemetry-algo-event-collection-plugin-setup`
@@ -505,5 +505,7 @@ The system **MUST** be able to record a url with its identifying values replaced
 - [x] A session survives a page reload within the inactivity window and is replaced by a new identifier once that window elapses without scroll, keypress or click.
 - [x] An activity burst produces one session write rather than one per event.
 - [x] Registering a plugin under an existing name replaces it; a falsy entry is ignored; a plugin registered after start is never set up.
+- [x] A History API path change produces a page view carrying the new path.
+- [x] With navigation capture disabled, the navigation plugin is never registered: a path change produces no page view, the history methods are the browser's own, and no record carries a `caused_by_id`.
 - [x] With url redaction on, a page view records placeholders in place of an email, uuid, JWT, five-digit and long-hex segment, while a four-digit year and a title-cased slug reach the collector intact.
 - [x] An application rewrite hook sees the raw url, its output is swept by the built-in patterns wherever those are switched on, and a hook that throws is reported while the patterns run anyway.

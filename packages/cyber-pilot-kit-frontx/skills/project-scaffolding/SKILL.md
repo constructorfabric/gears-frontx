@@ -226,6 +226,13 @@ pass runs on the framework's *next* invocation and makes the same capabilities
 available as activated resources from then on - it has not run in this session,
 and the flow does not need it to have run. What you need is on disk.
 
+**Realize the units one after another, here.** Finish each unit before starting
+the next, and hand none of them to a background agent to work alongside the
+others. Each unit settles conventions the next one follows, and those conventions
+are in this session; a background agent holds none of them and derives them again
+from the bundles per unit, arriving at its own answers for questions the previous
+unit already closed.
+
 For each unit from step 3.11, in plan order:
 
 1. **Find the covering skill.** Look in the bundle of the template that owns the

@@ -15,9 +15,30 @@ not a separate spec. If the scanners change, this file must be updated to match
 ## Directory-level rules
 
 - Must live directly under `src-app/mfe_packages/<name>/`.
-- `<name>` must not start with `.` and must not be `shared` — both scanners
-  exclude these (`shared` is reserved for cross-MFE helper code the isolation
-  boundary still applies to; it is never itself an MFE).
+
+Three scanners read this directory: manifest generation
+(`generate:mfe-manifests`), dev/build discovery (`getMFEPackages`, behind
+`dev:all` and `build:mfes`), and `type-check:mfe`. Every rule below holds in all
+three, on one shared predicate per rule rather than a copy each.
+
+- `<name>` must not start with `.` and must not be `shared` — all three exclude
+  these (`shared` is reserved for cross-MFE helper code the isolation boundary
+  still applies to; it is never itself an MFE).
+- A package whose `mfe.json` declares `"templateExample": true` is excluded by
+  all three as well. It is content a template ships to be read and copied - a
+  worked example, or the scaffold new packages are copied from - and a project
+  that registered it would offer screens nobody asked for. Setting
+  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES` to exactly `1` puts those packages back
+  into all three at once, for a run that means to watch the shipped examples
+  work. A package copied from a flagged scaffold **must drop the flag**, or the
+  copy is invisible to the shell for the same reason the scaffold is; the
+  `add-mfe-package` procedure strips it as part of the copy so this cannot be
+  forgotten. The root `workspaces` glob is not one of the three - it installs a
+  flagged package unconditionally, so `npm install` keeps working on a scaffold.
+  The compile guarantee for a flagged example rests on `type-check:mfe` with
+  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1`, which the `template-validate` composition
+  job in CI sets for exactly that reason: every package it composes is a flagged
+  example, so without the opt-in it would compile nothing.
 
 ## Required files
 
@@ -33,8 +54,9 @@ not a separate spec. If the scanners change, this file must be updated to match
    valid `package.json`. Declares `manifest` (this package's own MF manifest
    ID), `entries[]` (exposed modules + required/optional shared properties +
    actions), and `extensions[]` (domain + presentation metadata per screen or
-   widget the package contributes). See the `gts-id-conventions` guideline in
-   the `template-mfe` AI bundle for the ID taxonomy these fields use.
+   widget the package contributes), plus the optional `templateExample` flag
+   described above. See the `gts-id-conventions` guideline in the `template-mfe`
+   AI bundle for the ID taxonomy these fields use.
 3. **`vite.config.ts`** that runs `@module-federation/vite`'s `federation()`
    plugin, then `frontxMfGts()` (imported from
    `@gears-frontx/frontx-template-shell/build/mf-gts`) with `enforce: 'post'` so
@@ -62,14 +84,17 @@ not a separate spec. If the scanners change, this file must be updated to match
 - `npm run generate:mfe-manifests` aggregates every package's
   `dist/mfe-manifest.json` into `public/generated-mfe-manifests.json`, the file
   every FrontX app instance (host or nested) reads at runtime to discover MFEs.
-- `npm run type-check:mfe` (`scripts/run-mfe-type-checks.mjs`) type-checks every
-  conforming package independently; it degrades to a no-op when none exist.
+- `npm run type-check:mfe` (`scripts/run-mfe-type-checks.ts`) type-checks every
+  conforming, non-example package independently; it degrades to a no-op when
+  none exist. A flagged package is skipped unless
+  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES` is set to `1`, same as manifest generation
+  and dev/build discovery.
 
 ## Non-requirements
 
 - No MFE package name is ever referenced by shell code, config, or scripts —
   every shell-side consumer of this directory (`dev-all.ts`, `build-mfes.ts`,
-  `generate-mfe-manifests.ts`, `run-mfe-type-checks.mjs`, the `workspaces` glob,
+  `generate-mfe-manifests.ts`, `run-mfe-type-checks.ts`, the `workspaces` glob,
   the `eslint.config.js`/`tsconfig.app.json`/`vitest.config.ts` overrides) reads
   it by glob/scan. Comments in `src-app/app/mfe/bootstrap.ts` may mention example
   MFE names for illustration only — that is documentation, not a dependency.

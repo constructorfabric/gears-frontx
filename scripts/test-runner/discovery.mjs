@@ -58,12 +58,18 @@ export async function loadProjects(repoRoot = defaultRepoRoot) {
  * Discover nested MFE packages under `src/mfe_packages/*`. MFEs are not npm
  * workspaces (they have their own install boundary), so they can't come from
  * `discoverWorkspaceProjects`. Dynamic discovery keeps this runner in sync
- * when MFEs are added or removed without editing this script — mirrors the
- * pattern used by `scripts/run-mfe-type-checks.mjs`.
+ * when MFEs are added or removed without editing this script.
  *
  * A directory counts as an MFE project only when it contains a `package.json`
  * that declares a `test:unit` script; otherwise the runner has nothing to
  * delegate to.
+ *
+ * Only an absent root means "no MFE projects", and that is the ordinary case
+ * here: this repository has no `src/mfe_packages` of its own. Every other
+ * failure to read it — EACCES, EIO, a path that turns out to be a file — reaches
+ * the caller, because swallowing it would report a clean run over a tree this
+ * never managed to read. `template-shell/scripts/run-mfe-type-checks.ts` draws
+ * the same line for its own MFE scan.
  *
  * @param {{ repoRoot?: string; readdir?: (path: string, options: { withFileTypes: true }) => Promise<DirEntryLike[]> }} [options]
  * @returns {Promise<import('./common.mjs').MfeProject[]>}
@@ -74,10 +80,13 @@ export async function discoverMfeProjects({
 } = {}) {
   const mfeRoot = path.join(repoRoot, 'src/mfe_packages');
   /** @type {DirEntryLike[]} */
-  let entries = [];
+  let entries;
   try {
     entries = await readdirFn(mfeRoot, { withFileTypes: true });
-  } catch {
+  } catch (err) {
+    if (!isMissingDirectory(err)) {
+      throw err;
+    }
     return [];
   }
 
@@ -110,6 +119,20 @@ export async function discoverMfeProjects({
   }
 
   return projects.sort((a, b) => a.rootPath.localeCompare(b.rootPath));
+}
+
+/**
+ * Whether a rejection is the "directory is not there" case, told apart from
+ * every other reason a read can fail.
+ *
+ * The rejection arrives untyped, so the hop down to `code` is checked rather
+ * than assumed; a `readdir` rejection carries it as a string.
+ *
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+function isMissingDirectory(err) {
+  return typeof err === 'object' && err !== null && 'code' in err && err.code === 'ENOENT';
 }
 
 /**

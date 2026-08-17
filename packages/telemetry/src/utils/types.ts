@@ -10,6 +10,7 @@ export type TelemetryConfigNormalized = {
   verbose: boolean;
   url: string;
   autocapture: boolean;
+  navigationCapture: boolean;
   redactUrls: boolean;
   sanitizeUrl?: SanitizeUrlFn;
   sessionDuration: number;
@@ -35,6 +36,12 @@ export type TelemetryConfig = {
    * @default true
    */
   autocapture?: boolean;
+  /**
+   * Send a `page_view` on every path change, and stamp later records with the page they happened on.
+   * With it off the navigation plugin is not registered and `window.history` is left unwrapped.
+   * @default true
+   */
+  navigationCapture?: boolean;
   /**
    * Replace identifying values in recorded urls with placeholders: `:email`, `:uuid`, `:token`,
    * `:id` and `:hash`. Applies to the `page_view` path and to autocaptured link urls.

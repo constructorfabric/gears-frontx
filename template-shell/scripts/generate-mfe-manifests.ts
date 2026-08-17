@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-// @cpt-dod:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1
-
 /**
  * MFE Manifest Generation Script
  *
@@ -27,6 +25,13 @@
  *      registration time, so consumers can pass entries opaquely to
  *      `typeSystem.register()`)
  *
+ * A package whose `mfe.json` declares `"templateExample": true` is left out of
+ * the aggregate entirely: it is content the template ships to be read and
+ * copied, and an applied project that registered it would offer screens its
+ * developer never asked for. `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` puts them
+ * back, for a run that means to watch the shipped examples rather than read
+ * them.
+ *
  * Usage:
  *   npx tsx scripts/generate-mfe-manifests.ts [--base-url <url>]
  *
@@ -34,8 +39,16 @@
  * in the enriched mfe-manifest.json (set by the build plugin from mf-manifest.json).
  */
 
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import {
+  isNonPackageDirectory,
+  isTemplateExamplePackage,
+  templateExamplesIncluded,
+  templateExamplesSkippedNotice,
+} from './lib/mfe-tools.js';
 
 // ---------------------------------------------------------------------------
 // Raw JSON shape types (what we read from the enriched mfe-manifest.json on disk)
@@ -167,15 +180,17 @@ interface OutMfeManifestConfig {
 // ManifestGenerator — class-based implementation
 // ---------------------------------------------------------------------------
 
-// @cpt-begin:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-2
-class ManifestGenerator {
+/**
+ * Exported for `__tests__/template-example-packages.test.ts`, which runs the
+ * real discovery against a fixture tree rather than a copy of its rules. The
+ * CLI entry at the foot of this file guards on being the process entry point so
+ * that import writes no manifest of its own.
+ */
+export class ManifestGenerator {
   private readonly mfePackagesDir: string;
   private readonly outputFile: string;
   private readonly globalBaseUrl: string | null;
   private readonly mfeManifestPath: string;
-
-  // Packages to skip (hidden dirs, non-MFE directories)
-  private static readonly EXCLUDED = new Set(['.git', '.DS_Store']);
 
   constructor(
     mfePackagesDir: string,
@@ -215,13 +230,40 @@ class ManifestGenerator {
     if (!existsSync(this.mfePackagesDir)) {
       return [];
     }
-    return readdirSync(this.mfePackagesDir).filter((dir) => {
-      if (ManifestGenerator.EXCLUDED.has(dir) || dir.startsWith('.')) {
-        return false;
-      }
+
+    const includeExamples = templateExamplesIncluded();
+    const discovered: string[] = [];
+    const skippedExamples: string[] = [];
+
+    for (const dir of readdirSync(this.mfePackagesDir)) {
+      // The same non-package rule the other two scanners apply, so `shared` and
+      // dot-directories are out of all three. A local set here answered only
+      // for dot-prefixed names and let a `shared/` carrying an `mfe.json` reach
+      // the aggregate that the other two had already dropped.
+      if (isNonPackageDirectory(dir)) continue;
+
       const pkgPath = join(this.mfePackagesDir, dir);
-      return existsSync(join(pkgPath, 'mfe.json'));
-    });
+      if (!existsSync(join(pkgPath, 'mfe.json'))) continue;
+
+      // A package the template ships as an example or as the copy-from scaffold
+      // contributes no extension to the aggregated manifest, so nothing of it
+      // reaches the registry the host's navigation menu is built from. Excluding
+      // it here rather than in the menu covers every consumer of the generated
+      // file at once, and spares the build and the dev orchestrator the work of
+      // producing something no product asked for.
+      if (!includeExamples && isTemplateExamplePackage(pkgPath)) {
+        skippedExamples.push(dir);
+        continue;
+      }
+
+      discovered.push(dir);
+    }
+
+    if (skippedExamples.length > 0) {
+      console.log(templateExamplesSkippedNotice(skippedExamples));
+    }
+
+    return discovered;
   }
 
   private processPackage(packageDir: string): OutMfeManifestConfig {
@@ -401,7 +443,6 @@ class ManifestGenerator {
     return JSON.stringify(configs, null, 2) + '\n';
   }
 }
-// @cpt-end:cpt-frontx-dod-mfe-isolation-mf-vite-plugin:p1:inst-2
 
 // ---------------------------------------------------------------------------
 // CLI entry point
@@ -413,15 +454,46 @@ function parseArgs(argv: string[]): { baseUrl: string | null } {
   return { baseUrl };
 }
 
-const { baseUrl } = parseArgs(process.argv.slice(2));
-
-const MFE_PACKAGES_DIR = join(process.cwd(), 'src-app/mfe_packages');
-const OUTPUT_FILE = join(process.cwd(), 'public/generated-mfe-manifests.json');
 const MFE_MANIFEST_PATH = 'dist/mfe-manifest.json';
 
-try {
-  new ManifestGenerator(MFE_PACKAGES_DIR, OUTPUT_FILE, MFE_MANIFEST_PATH, baseUrl).run();
-} catch (err) {
-  console.error('Error generating MFE manifests:', err instanceof Error ? err.message : String(err));
-  process.exit(1);
+/**
+ * A path with symlinks resolved, or the path itself when it cannot be resolved.
+ *
+ * Node resolves the main module to its realpath, so a comparison against
+ * `import.meta.url` has to resolve both sides or a symlinked checkout leaves the
+ * two spellings different. `realpathSync` throws when the path does not exist,
+ * which is not a reason to fail: fall back to the input and let the comparison
+ * decide.
+ */
+function realPathOrSelf(target: string): string {
+  try {
+    return realpathSync(target);
+  } catch {
+    return target;
+  }
+}
+
+// Generating is what running this file does, and only running it: a test that
+// imports `ManifestGenerator` must not also rewrite the real project's
+// `public/generated-mfe-manifests.json` as a side effect of the import. The
+// comparison is against the real path of the file node was told to run, so it
+// holds under `tsx scripts/generate-mfe-manifests.ts` as well as under node, and
+// on a symlinked checkout - where comparing unresolved paths would make this
+// script exit 0 having generated nothing.
+const invokedPath = process.argv[1];
+const isProcessEntryPoint =
+  invokedPath !== undefined &&
+  realPathOrSelf(resolve(invokedPath)) === realPathOrSelf(fileURLToPath(import.meta.url));
+
+if (isProcessEntryPoint) {
+  const { baseUrl } = parseArgs(process.argv.slice(2));
+  const mfePackagesDir = join(process.cwd(), 'src-app/mfe_packages');
+  const outputFile = join(process.cwd(), 'public/generated-mfe-manifests.json');
+
+  try {
+    new ManifestGenerator(mfePackagesDir, outputFile, MFE_MANIFEST_PATH, baseUrl).run();
+  } catch (err) {
+    console.error('Error generating MFE manifests:', err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
 }

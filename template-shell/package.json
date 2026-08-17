@@ -1,7 +1,7 @@
 {
   "name": "@gears-frontx/frontx-template-shell",
   "version": "0.1.0-alpha.2",
-  "description": "Standard FrontX application template — target scaffold for template-side code relocation",
+  "description": "Standard FrontX application template \u2014 target scaffold for template-side code relocation",
   "type": "module",
   "main": "./dist-lib/index.cjs",
   "module": "./dist-lib/index.js",
@@ -50,8 +50,9 @@
     "type-check:packages:react": "npm run type-check --workspace=@gears-frontx/react",
     "type-check:packages:studio": "npm run type-check --workspace=@gears-frontx/studio",
     "type-check:packages": "npm run type-check:packages:auth && npm run type-check:packages:state && npm run type-check:packages:i18n && npm run type-check:packages:framework && npm run type-check:packages:react && npm run type-check:packages:studio",
-    "type-check:mfe": "node scripts/run-mfe-type-checks.mjs",
-    "type-check": "npm run type-check:package && npm run type-check:package:test && npm run type-check:app && npm run type-check:packages && npm run type-check:mfe",
+    "type-check:scripts": "tsc -p tsconfig.scripts.json",
+    "type-check:mfe": "npx tsx scripts/run-mfe-type-checks.ts",
+    "type-check": "npm run type-check:package && npm run type-check:package:test && npm run type-check:app && npm run type-check:scripts && npm run type-check:packages && npm run type-check:mfe",
     "lint:sdk": "eslint packages/state/src packages/i18n/src --max-warnings 0",
     "lint:framework": "eslint packages/framework/src --max-warnings 0",
     "lint:react": "eslint packages/react/src --max-warnings 0",
@@ -121,6 +122,7 @@
     "postcss": "8.5.10",
     "tailwindcss": "3.4.1",
     "tsup": "^8.0.0",
+    "tsx": "4.20.6",
     "typescript": "^5.4.2",
     "vite": "6.4.3",
     "vitest": "4.1.4"

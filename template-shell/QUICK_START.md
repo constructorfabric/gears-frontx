@@ -17,12 +17,13 @@ npm run dev:all                                    # host + all MFE dev servers
 
 Open **http://localhost:5173**. The host shell boots, fetches the MFE manifest,
 and the left menu fills in with screens contributed by whatever MFE packages
-are present under `src-app/mfe_packages/`. This guide assumes the
-[`frontx-template-mfe`](../template-mfe/README.md) packages have been added —
-`demo-mfe` `:3001`, `_blank-mfe` `:3099`, widget fixtures `:3201` / `:3202` —
-a shell-only seed has none yet: the menu stays empty and
-`generate:mfe-manifests` writes an empty manifest set, both expected until
-you add some.
+are present under `src-app/mfe_packages/`. Until you add one the menu stays
+empty and `generate:mfe-manifests` writes an empty manifest set - both expected.
+
+The packages [`frontx-template-mfe`](../template-mfe/README.md) contributes -
+`demo-mfe` `:3001`, `_blank-mfe` `:3099`, widget fixtures `:3201` / `:3202` - do
+not change that: they are that template's own examples and stay out of your app,
+per `src-app/mfe_packages/README.md`.
 
 > First paint may briefly show an empty menu — the MFE system registers screens
 > asynchronously after the manifest loads, then the menu populates.
@@ -63,7 +64,12 @@ You extend the app by adding screens/MFEs, not by editing a central registry.
 
 ## Create a screen
 
-Add a screen to an existing MFE (e.g. `src-app/mfe_packages/demo-mfe`):
+Add a screen to one of your own MFEs (e.g. `src-app/mfe_packages/my-mfe`, from
+[Add a microfrontend](#add-a-microfrontend) below). Adding it to a package the
+template ships instead - `demo-mfe`, `_blank-mfe`, either widgets fixture - works
+but the screen will not reach the menu: those declare `"templateExample": true`
+and are left out of discovery until that line is deleted, which is why the
+scaffold step deletes it.
 
 1. **Write the screen component**
    ```tsx
@@ -97,9 +103,9 @@ Add a screen to an existing MFE (e.g. `src-app/mfe_packages/demo-mfe`):
    `presentation` block drives the menu item:
    ```jsonc
    {
-     "id": "gts…screen.v1~frontx.demo.screens.my_screen.v1",
+     "id": "gts…screen.v1~frontx.my_mfe.screens.my_screen.v1",
      "domain": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1",
-     "entry": "gts…entry_mf.v1~frontx.demo.mfe.my_screen.v1",
+     "entry": "gts…entry_mf.v1~frontx.my_mfe.mfe.my_screen.v1",
      "presentation": { "label": "My Screen", "icon": "lucide:star", "route": "/my-screen", "order": 30 }
    }
    ```
@@ -117,14 +123,23 @@ isn't there yet, then `npm install` (the workspace glob picks up the new
 packages, so the lock must be regenerated). Start from the blank MFE:
 
 ```bash
-cp -r src-app/mfe_packages/_blank-mfe src-app/mfe_packages/my-mfe
+NEW=src-app/mfe_packages/my-mfe
+cp -r src-app/mfe_packages/_blank-mfe "$NEW"
+node -e 'const f=process.argv[1],fs=require("fs"),m=JSON.parse(fs.readFileSync(f,"utf8"));delete m.templateExample;fs.writeFileSync(f,JSON.stringify(m,null,2)+"\n")' "$NEW/mfe.json"
 ```
 
-Then update its `package.json` name and preview `--port`, declare entries and
-screen extensions in `mfe.json`, and expose your lifecycle modules in its
-`vite.config.ts`. `dev:all` discovers MFEs automatically by scanning
-`src-app/mfe_packages/` — there is no registry file to edit. See the shell's
-`mfe-package-contract` AI guideline for the exact shape a new package must have.
+The second command strips the scaffold's `"templateExample": true` line, which is
+what would otherwise keep your copy out of the menu (see
+`src-app/mfe_packages/README.md` for why). It belongs to the copy rather than to a
+later step, because a copy that keeps the flag registers nothing and nothing
+fails to say so.
+
+Then update its `package.json` name and preview `--port`, declare your entries
+and screen extensions in `mfe.json`, and expose your lifecycle modules in its
+`vite.config.ts`.
+`dev:all` discovers MFEs automatically by scanning `src-app/mfe_packages/` —
+there is no registry file to edit. See the shell's `mfe-package-contract` AI
+guideline for the exact shape a new package must have.
 
 ## Layout & navigation
 

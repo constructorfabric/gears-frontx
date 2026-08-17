@@ -607,6 +607,68 @@ describe('Telemetry Client', () => {
 
     expect(pageView?.value.data).toMatchObject({ url: '"/users/:id/profile"' });
   });
+
+  test('should record a page view on a history navigation', () => {
+    const telemetry = createTelemetry(mockAppInfo);
+
+    telemetry.start();
+    onTestFinished(() => telemetry.destroy());
+
+    window.history.pushState({}, '', '/dashboard');
+    vi.runAllTimers();
+
+    const payload: TelemetryApiPayload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const pageView = payload.records.find((r: TelemetryApiRecord) => r.value.name === 'page_view');
+
+    expect(pageView?.value.data).toMatchObject({ url: '"/dashboard"' });
+  });
+
+  test('should record no page view when navigation capture is off', () => {
+    const telemetry = createTelemetry({ ...mockAppInfo, navigationCapture: false });
+
+    telemetry.start();
+    onTestFinished(() => telemetry.destroy());
+
+    window.history.pushState({}, '', '/reports');
+    window.history.replaceState({}, '', '/reports/2026');
+    telemetry.logEvent('after_navigation');
+    vi.runAllTimers();
+
+    const payload: TelemetryApiPayload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const names = payload.records.map((r: TelemetryApiRecord) => r.value.name);
+
+    expect(names).not.toContain('page_view');
+  });
+
+  test('should leave the history methods unwrapped when navigation capture is off', () => {
+    const originalPushState = window.history.pushState;
+    const originalReplaceState = window.history.replaceState;
+    const telemetry = createTelemetry({ ...mockAppInfo, navigationCapture: false });
+
+    telemetry.start();
+    onTestFinished(() => telemetry.destroy());
+
+    expect(window.history.pushState).toBe(originalPushState);
+    expect(window.history.replaceState).toBe(originalReplaceState);
+  });
+
+  test('should attribute no record to a page view when navigation capture is off', () => {
+    const telemetry = createTelemetry({ ...mockAppInfo, navigationCapture: false });
+
+    telemetry.start();
+    onTestFinished(() => telemetry.destroy());
+
+    window.history.pushState({}, '', '/settings');
+    telemetry.logEvent('unattributed_event');
+    vi.runAllTimers();
+
+    const payload: TelemetryApiPayload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const record = payload.records.find(
+      (r: TelemetryApiRecord) => r.value.name === 'unattributed_event',
+    );
+
+    expect(record?.value.caused_by_id).toBeUndefined();
+  });
 });
 
 describe('normalizeLocale', () => {

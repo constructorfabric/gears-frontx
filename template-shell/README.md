@@ -26,7 +26,9 @@ working starting point; what you build on top is yours.
   [`frontx-template-mfe`](../template-mfe/README.md)) — `demo-mfe` (Hello World,
   Profile, Current Theme, UIKit Elements, Widgets Host), a minimal `_blank-mfe`
   to copy from, and two widget fixtures. A shell-only seed has zero MFEs; the
-  host, build, and manifest pipeline all work with none present.
+  host, build, and manifest pipeline all work with none present. These ship to be
+  read and copied and stay out of your running app; `src-app/mfe_packages/README.md`
+  says how, and how to run them anyway.
 - **Solution packages** (`packages/`) — `react`, `framework`, `state`, `i18n`,
   `studio`, `auth`: the application-layer libraries the FrontX ecosystem
   deliberately does not bundle.

@@ -36,12 +36,37 @@ to mount into an extension domain).
 - `npm run dev:all` (`scripts/dev-all.ts`), which auto-discovers any package under
   `src-app/mfe_packages/*/package.json` by reading the port out of its `dev`/`preview`
   script — no manual wiring required once the package exists.
+- Packages template-mfe ships as its own worked examples, and the scaffold itself,
+  all declare `"templateExample": true` in their `mfe.json`. Manifest generation,
+  `dev:all`, and `type-check:mfe` all leave those out, so a project runs and
+  type-checks the packages its developer added and nothing else;
+  `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1` puts them back for anyone wanting to see
+  the shipped examples run and compile.
 
 ## Steps
 
-1. **Copy the scaffold** — duplicate `src-app/mfe_packages/_blank-mfe/` to a new
-   directory named after the screenset/screen being added
-   (`src-app/mfe_packages/{name}-mfe/`).
+1. **Copy the scaffold and strip its example flag** — one step, because a copy
+   that keeps the flag registers nothing and nothing fails to say so. Name the
+   new directory after the screenset/screen being added:
+
+   ```bash
+   NEW=src-app/mfe_packages/{name}-mfe
+   cp -r src-app/mfe_packages/_blank-mfe "$NEW"
+   node -e 'const f=process.argv[1],fs=require("fs"),m=JSON.parse(fs.readFileSync(f,"utf8"));delete m.templateExample;fs.writeFileSync(f,JSON.stringify(m,null,2)+"\n")' "$NEW/mfe.json"
+   ```
+
+   `_blank-mfe/mfe.json` declares `"templateExample": true`, which is what keeps
+   the scaffold itself out of the running application; a copy that keeps it is
+   invisible the same way. Such a copy still installs and still runs its own
+   tests, and `type-check:mfe` skips it by default too, so it compiles only when
+   the run sets `FRONTX_INCLUDE_TEMPLATE_EXAMPLES=1`. The only report is one line
+   in the `generate:mfe-manifests` / `dev:all` / `type-check:mfe` output naming
+   what was left out - nothing fails, and the new screen is simply absent from
+   the menu. Verify the strip landed before moving on:
+
+   ```bash
+   grep -q templateExample "$NEW/mfe.json" && echo "FLAG STILL PRESENT - remove it" || echo "flag stripped"
+   ```
 2. **Pick a free port** — template-mfe's convention reserves `3001` for `demo-mfe`;
    pick the next free `30N0` slot (`3010`, `3020`, ...) and set it in both the `dev`
    (`vite --port {port}`) and `preview` (`vite preview --port {port}`) scripts of the
