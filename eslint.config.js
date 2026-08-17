@@ -62,6 +62,17 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
 
+  // Package-local build scripts (e.g. packages/mfes/scripts/) run under Node,
+  // unlike the root scripts/** which is still ignored pending #483.
+  {
+    files: ['packages/*/scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+
   // L0 BASE: Universal rules for all TS/TSX files
   {
     files: ['**/*.{ts,tsx}'],

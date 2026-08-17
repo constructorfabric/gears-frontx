@@ -82,7 +82,7 @@ exclude_paths:
   # dynamic import of blob URLs). Every function in it is required by a
   # custom ESLint rule to document its safety argument via `@safety-reviewed`
   # and `@why` JSDoc tags. Editing this file requires security review.
-  - "packages/screensets/src/mfe/handler/mf-dynamic-module-ops.ts"
+  - "packages/mfes/src/handler/mf-dynamic-module-ops.ts"
 
   # Monorepo package manifests.
   #
