@@ -59,6 +59,13 @@ const hintCodeClass = 'rounded bg-muted px-1.5 py-0.5 font-mono text-xs';
  */
 export const menuItemTestId = (extensionId: string): string => `menu-item-${extensionId}`;
 
+/**
+ * How long registration discovery may stay empty before the menu is allowed to
+ * say there are no screens. Spans several poll cycles, so it covers the gap
+ * between the menu's first render and the MFEs finishing registration.
+ */
+export const EMPTY_STATE_GRACE_MS = 2000;
+
 export const Menu: React.FC<MenuProps> = ({ children }) => {
   const menuState = useAppSelector((state) => state['layout/menu'] as MenuState | undefined);
   const app = useFrontX();
@@ -73,6 +80,13 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   const mountedId = mountedScreens[0]?.id;
 
   const [extensions, setExtensions] = useState<ScreenExtension[]>([]);
+  // An empty registry means "not discovered yet" far more often than it means
+  // "nothing to discover": on a hard load the menu renders before the MFEs have
+  // registered. Showing the empty-state on that first empty poll would flash a
+  // false "no screens" claim through every normal boot, so the claim waits out
+  // a grace window spanning several poll cycles before the menu is allowed to
+  // make it.
+  const [discoverySettled, setDiscoverySettled] = useState(false);
 
   useEffect(() => {
     if (!mfeRegistry) return;
@@ -88,6 +102,19 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
     const interval = setInterval(refresh, 500);
     return () => clearInterval(interval);
   }, [mfeRegistry]);
+
+  // Timed from mount, and deliberately not folded into the discovery effect
+  // above: that one returns early without a registry, and `mfeRegistry` is
+  // optional on the app - a project without the microfrontends plugin never
+  // gets one. Sharing the effect would leave `discoverySettled` false forever
+  // in exactly the case the hint is written for, making it unreachable by the
+  // reader who most needs it. Counting from mount costs the other end of the
+  // range: a registry that arrives after the window has closed can show the
+  // hint for the moment before its first poll lands.
+  useEffect(() => {
+    const graceTimer = setTimeout(() => setDiscoverySettled(true), EMPTY_STATE_GRACE_MS);
+    return () => clearTimeout(graceTimer);
+  }, []);
 
   const handleToggleCollapse = () => {
     eventBus.emit('layout/menu/collapsed', { collapsed: !collapsed });
@@ -120,7 +147,11 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
       {/* Menu items */}
       <SidebarContent>
         <SidebarMenu>
-          {extensions.length === 0 ? (
+          {/*
+            An empty list before discovery settles falls to the other branch and
+            renders nothing: the menu stays blank rather than guessing.
+          */}
+          {extensions.length === 0 && discoverySettled ? (
             // Reached from two different states, so the hint names the step that
             // tells them apart: a shell-only seed has no `src-app/mfe_packages/`
             // at all until the MFE template is added, and pointing such a
