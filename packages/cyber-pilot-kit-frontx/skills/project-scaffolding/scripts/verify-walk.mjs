@@ -174,6 +174,16 @@ function tokenizeCommand(flag, raw) {
     throw new Error(`${flag} "${raw}" carries an unbalanced ${quote === '"' ? 'double' : 'single'} quote`);
   }
   if (token !== null) tokens.push(token);
+  // A command line that names nothing is refused here, with every other reading
+  // of this flag, because the alternative is not a failed browser call: an empty
+  // command file reaches `spawnSync` as `ERR_INVALID_ARG_VALUE`, thrown out of
+  // the first browser interaction, past the validation that turns a refusal into
+  // the result record - a stack trace where the run's own account belongs.
+  // Whitespace alone tokenizes to no tokens; a quoted empty command - `'""'` -
+  // to one token that is the empty string, which a token count cannot see.
+  if (tokens.length === 0 || tokens[0] === '') {
+    throw new Error(`${flag} "${raw}" names no command to run`);
+  }
   return tokens;
 }
 
@@ -772,7 +782,6 @@ try {
   commandTimeoutMs = positiveInt('--command-timeout', opts['command-timeout'], 60000);
 
   browserCommand = tokenizeCommand('--browser-cmd', opts['browser-cmd'] ?? DEFAULT_BROWSER_COMMAND);
-  if (browserCommand.length === 0) throw new Error('--browser-cmd names no command to run');
 
   navigation = opts.nav ?? 'menu';
   if (!NAVIGATIONS.has(navigation)) {

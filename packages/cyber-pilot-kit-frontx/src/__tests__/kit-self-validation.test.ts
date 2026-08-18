@@ -1617,6 +1617,29 @@ process.exit(0);
       run.cleanup();
     });
 
+    // A --browser-cmd naming nothing is the one reading of this flag that cannot
+    // be answered by a failed browser call: an empty command file reaches
+    // spawnSync as ERR_INVALID_ARG_VALUE, thrown out of the first browser
+    // interaction and past the validation that records a refusal, so the caller
+    // gets a stack trace instead of a result record. Whitespace alone tokenizes
+    // to no tokens; a quoted empty command to one token that is empty, which the
+    // token count the tokenizer used to be trusted for cannot see.
+    it.each([
+      ['whitespace alone', '   '],
+      ['a quoted empty command', '""'],
+      ['a quoted empty command carrying flags', "'' --headless"],
+    ])('refuses a --browser-cmd that is %s, before a browser is reached', (_what, value) => {
+      const run = runRefusal(['--browser-cmd', value]);
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain('--browser-cmd');
+      expect(run.failures[0].detail).toContain('names no command to run');
+      expect(run.capdirExists).toBe(false);
+
+      run.cleanup();
+    });
+
     // The result has to reach the caller even when the path it was asked for
     // cannot be written: a record that went nowhere is indistinguishable from a
     // run that never happened.
