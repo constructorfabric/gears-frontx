@@ -8,7 +8,7 @@
   - [1.2 Purpose](#12-purpose)
   - [1.3 Actors](#13-actors)
   - [1.4 References](#14-references)
-  - [1.5 Port Shapes](#15-port-shapes)
+  - [1.5 Worked Example: Satisfying The Engine-Provider Port](#15-worked-example-satisfying-the-engine-provider-port)
 - [2. Actor Flows (CDSL)](#2-actor-flows-cdsl)
   - [Swap The Router Engine Used By One Microfrontend](#swap-the-router-engine-used-by-one-microfrontend)
 - [3. Processes / Business Logic (CDSL)](#3-processes--business-logic-cdsl)
@@ -58,22 +58,17 @@ A router engine renders routes and matches search parameters, and concrete engin
 - **Use case**: `cpt-frontx-routing-tanstack-usecase-swap-router-engine`
 - **Component**: `cpt-frontx-component-routing-engine-provider`
 - **Constraints**: `cpt-frontx-constraint-routing-tanstack-sole-engine-import`
-- **Dependencies**: `cpt-frontx-feature-routing-navigation-substrate` — the core package's own feature ([routing DESIGN](../../../../routing/architecture/DESIGN.md)); the provider implements the engine port the substrate defines, the same shape as the runtime's type-substrate port and its default GTS provider.
+- **Dependencies**: `cpt-frontx-feature-routing-navigation-substrate` — the core package's own feature ([routing DESIGN](../../../../routing/architecture/DESIGN.md)); the provider implements the engine port the substrate defines.
 
 **Territory boundary**: Replacing the engine provider used by one microfrontend is scoped to that microfrontend's own route tree and its own search-parameter handling. It reaches no further: the navigation substrate, the `basepath` contract, and the route ownership signal — all owned by the core package (`cpt-frontx-feature-routing-navigation-substrate`, `cpt-frontx-feature-routing-route-ownership-signal`, [routing DESIGN](../../../../routing/architecture/DESIGN.md)) — the host's code, and every sibling microfrontend are unaffected and may remain on a different engine provider of their own.
 
-### 1.5 Port Shapes
+### 1.5 Worked Example: Satisfying The Engine-Provider Port
 
-Field-level shape of the engine-provider port a replacement provider must satisfy, per `cpt-frontx-adr-contract-schema-ownership` (owned contract role in DESIGN, decision rationale in the ADR, field-level schema here in the owning FEATURE).
+The engine-provider port's normative schema — what a conforming provider **MUST** accept from the navigation substrate and what it is responsible for producing — is owned by the navigation substrate's own artifacts, not by this provider (`cpt-frontx-feature-routing-navigation-substrate` §1.5, Engine-provider port shape: [routing FEATURE](../../../../routing/architecture/features/navigation-substrate/FEATURE.md#15-contract-shapes)), per `cpt-frontx-adr-contract-schema-ownership` (owned contract role in DESIGN, decision rationale in the ADR, field-level schema in the owning FEATURE — here, the *port-declaring* feature, since the port belongs to the core package). What follows is this package's own worked example of satisfying that schema with a concrete engine; it demonstrates the normative form, it does not restate it.
 
-A replacement provider **MUST** accept:
-- The navigation substrate's `NavigationHistory` instance (`location`, `subscribe`, `push`, `replace`, `go`) as its history input — the same instance every other unit in the realm reads and writes, not a copy or a wrapper that diverges from it.
-- The `basepath` assigned to the microfrontend it is mounted for (absent or deployment-supplied in the standalone case, per `cpt-frontx-algo-routing-engine-provider-standalone-deployment`).
-- The microfrontend's own route tree, as an opaque value it does not require the navigation substrate to understand.
+This package accepts the navigation substrate's `NavigationHistory` instance, the assigned or deployment-supplied `basepath`, and the microfrontend's own route tree exactly as the port requires (linked above), and produces a constructed, mounted router by deriving its own engine's history-contract object from `NavigationHistory` — deriving the members `RouterHistory` requires beyond `location`/`subscribe`/`push`/`replace`/`go`, and translating `NavigationHistory`'s notification into the `SubscriberArgs` shape (`location`, `action`) `RouterHistory`'s `subscribe` callback expects; the full derivation this worked example follows is §3, History Adaptation, below.
 
-A replacement provider is responsible for producing its own engine's history-contract object from `NavigationHistory` — deriving whatever members its own engine's contract requires beyond `location`/`subscribe`/`push`/`replace`/`go`, and translating `NavigationHistory`'s notification into whatever shape its own engine's `subscribe` callback expects. This package makes no claim about a different engine's exact history-contract shape; the default provider's own translation into `RouterHistory`/`SubscriberArgs` (§3, History Adaptation) is a worked example, not a mandate on a replacement provider's own target contract.
-
-**Diagnostic of mismatch**: A replacement provider that cannot accept `NavigationHistory` as-is — for example, one whose own engine's history contract requires a constructor argument this port does not supply — fails at construction rather than at first navigation: it cannot receive the shared history, so the microfrontend's routing does not initialize (`cpt-frontx-routing-tanstack-usecase-swap-router-engine`, Alternative Flow). This failure is local to the microfrontend that adopted the mismatched provider; it does not reach the substrate, the host, or a sibling microfrontend.
+**Diagnostic of mismatch, for this worked example**: this provider fails at construction, not at first navigation, if it cannot accept `NavigationHistory` as-is — the same construction-time failure the port's normative definition records at the link above. For this package specifically, that means the router is never constructed and the microfrontend's routing does not initialize (`cpt-frontx-routing-tanstack-usecase-swap-router-engine`, Alternative Flow). This failure is local to the microfrontend that adopted the mismatched provider; it does not reach the substrate, the host, or a sibling microfrontend.
 
 ## 2. Actor Flows (CDSL)
 

@@ -36,7 +36,7 @@
 
 ### 1.1 Purpose
 
-`@gears-frontx/routing` is the ecosystem's navigation library: the published library through which a composed application and its independently bundled microfrontends share one browser navigation history and keep the URL and the screen a user is looking at in agreement. It exposes a framework-agnostic navigation substrate carrying that shared history, and an engine-provider port so a concrete routing engine can be swapped inside a single microfrontend's own territory without touching the substrate, the host, or any sibling microfrontend. This library carries no dependency on any concrete router engine itself; a separately published provider package satisfies the port — the ecosystem's own default is `@gears-frontx/routing-tanstack`. This PRD owns the library's requirements; ecosystem-level requirements are owned by the [root PRD](../../../architecture/PRD.md).
+`@gears-frontx/routing` is the ecosystem's navigation library: the published library through which a composed application and its independently bundled microfrontends share one browser navigation history and keep the URL and the screen a user is looking at in agreement. It exposes a framework-agnostic navigation substrate carrying that shared history, and an engine-provider port so a concrete routing engine can be swapped inside a single microfrontend's own territory without touching the substrate, the host, or any sibling microfrontend. This library carries no dependency on any concrete router engine itself; a separately published engine-provider package satisfies the port, and the ecosystem provides a default implementation of it. This PRD owns the library's requirements; ecosystem-level requirements are owned by the [root PRD](../../../architecture/PRD.md).
 
 ### 1.2 Background / Problem Statement
 
@@ -116,7 +116,7 @@ The same microfrontend runs under two deployment modes without a change to its r
 - Addressed action dispatch and shared-property broadcast between microfrontends and the host — owned by the runtime that provides those channels ([mfes PRD](../../mfes/architecture/PRD.md)); this library neither duplicates nor mediates either one.
 - Microfrontend loading, admission, placement, and isolation — owned by the runtime ([mfes PRD](../../mfes/architecture/PRD.md)).
 - The registry of route owners, the execution of a mount, and any reconciliation between a competing pair of mounts — all owned by the consumer's own mount mechanism, reached only through the plain-argument owner-prefix pairs source and the observable signal this library publishes, never through an injected port or an import of the runtime that implements them.
-- Any router-engine implementation, and any provider-side concern — router construction, deployment-mode parity for a microfrontend's own routing code, and location-preserving navigation helpers — all owned entirely by whichever separately published engine-provider package a microfrontend depends on, including the ecosystem's own default, `@gears-frontx/routing-tanstack` ([its own PRD](../../routing-tanstack/architecture/PRD.md)).
+- Any router-engine implementation, and any provider-side concern — router construction, deployment-mode parity for a microfrontend's own routing code, and location-preserving navigation helpers — all owned entirely by whichever separately published engine-provider package a microfrontend depends on, including the ecosystem's own default engine-provider package.
 
 ## 5. Functional Requirements
 
@@ -215,7 +215,7 @@ None owned here. The package is distributed under the root PRD's package-registr
 **Main Flow**:
 1. The route ownership signal's observer resolves the URL's pathname to a declared route owner by longest matching prefix and reports the owner appearing (`cpt-frontx-routing-fr-route-ownership-signal`).
 2. The host's own mount mechanism mounts that route owner in response to the reported transition.
-3. Once mounted, the microfrontend's own engine-provider package reads the current location from the shared history at start and matches the remainder of the path under its `basepath` — a guarantee the engine-provider port's consumer, not this library, makes about its own construction (owned by that provider's own PRD, e.g. `cpt-frontx-routing-tanstack-fr-scoped-navigation-zone` for the ecosystem's own default).
+3. Once mounted, the microfrontend's own engine-provider package reads the current location from the shared history at start and matches the remainder of the path under its `basepath` — a guarantee the engine-provider port's consumer, not this library, makes about its own construction (owned by that provider's own PRD).
 
 **Postconditions**:
 - The mounted screen and the URL agree without a blank screen, because the freshly mounted router reads the already-current location rather than starting from a blank route.

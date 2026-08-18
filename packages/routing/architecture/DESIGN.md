@@ -34,7 +34,7 @@ status: draft
 
 ### 1.1 Architectural Vision
 
-`@gears-frontx/routing` follows the same shape the ecosystem already uses to keep a core agnostic of a concrete external specification: an opaque substrate port with an injected, swappable concrete provider behind it, published as its own separate artifact — the pattern recorded for the runtime's type system in `cpt-frontx-adr-runtime-type-system-coupling` and `cpt-frontx-adr-default-type-substrate-provider`. Here the substrate is navigation rather than type validation, and the provider is a router engine rather than a type-definition specification, but the shape is the same: the navigation substrate never depends on a concrete engine, and a separately published engine-provider package satisfies the substrate's own history contract — the ecosystem's own default is `@gears-frontx/routing-tanstack` ([its own DESIGN](../../routing-tanstack/architecture/DESIGN.md)).
+`@gears-frontx/routing` keeps an agnostic navigation core behind an opaque substrate port, with the concrete router engine supplied by a separately published provider package. The navigation substrate never depends on a concrete engine, and a separately published engine-provider package satisfies the substrate's own history contract; the ecosystem provides a default implementation of it.
 
 Throughout this package's own artifacts, *navigation substrate* names the agnostic core component alone, described next; the published package `@gears-frontx/routing` is that core plus the Route Ownership Signal described after it. An engine provider is never part of this package — it is a distinct published member that depends on this one, never the reverse. (The root DESIGN and ADR 0002 use the term *navigation substrate* at package granularity, naming the whole published library — a broader use than this document's own; see root DESIGN §1.3.)
 
@@ -53,7 +53,7 @@ The package's requirements are owned by its own [PRD](./PRD.md).
 | Requirement | Design Response |
 |-------------|------------------|
 | `cpt-frontx-routing-fr-single-navigation-substrate` | The Navigation Substrate holds the shared history behind a well-known realm-global, fanning out one browser-history subscription to every subscriber (`cpt-frontx-component-routing-navigation-substrate`). |
-| `cpt-frontx-routing-fr-engine-provider-port` | The Navigation Substrate exposes `NavigationHistory` as the sole contract a router engine reaches the shared history through; no component of this package hands that history to a concrete engine, and no concrete engine dependency exists anywhere in this package's own module graph (`cpt-frontx-component-routing-navigation-substrate`, `cpt-frontx-routing-nfr-agnostic-core`). A separately published provider package — the ecosystem's own default, `@gears-frontx/routing-tanstack` — implements the port. |
+| `cpt-frontx-routing-fr-engine-provider-port` | The Navigation Substrate exposes `NavigationHistory` as the sole contract a router engine reaches the shared history through; no component of this package hands that history to a concrete engine, and no concrete engine dependency exists anywhere in this package's own module graph (`cpt-frontx-component-routing-navigation-substrate`, `cpt-frontx-routing-nfr-agnostic-core`). A separately published provider package — the ecosystem's own default — implements the port. |
 | `cpt-frontx-routing-fr-route-ownership-signal` | The Route Ownership Signal component exposes the owner-resolution primitive and an observable owner-change signal, plus a URL back-projection helper the consumer calls after a non-navigation-driven mount; the consumer's own mount mechanism does the actual mounting, and the two-way agreement between the URL and what is mounted is the consumer's own guarantee, built on this signal (`cpt-frontx-component-routing-screen-binding`, `cpt-frontx-routing-seq-deep-link-cold-mount`). |
 | `cpt-frontx-routing-fr-imperative-navigation` | The Navigation Substrate exposes `push`/`replace`/`go`/`location`/`subscribe` directly, independent of any mounted router or component tree (`cpt-frontx-component-routing-navigation-substrate`). |
 
@@ -64,7 +64,7 @@ The package's requirements are owned by its own [PRD](./PRD.md).
 | `cpt-frontx-routing-nfr-standalone` | No intra-ecosystem import; no call into the consumer at all | The published package | The manifest declares no intra-ecosystem dependency; route ownership reaches the package only through a consumer-supplied owner-prefix pairs source passed as a plain argument, and mount execution never reaches the package at all — the package only publishes a signal the consumer's own mount mechanism acts on (`cpt-frontx-constraint-routing-no-intra-ecosystem-dependency`). | The boundary guards (`arch:edges`, `arch:deps`) hold the manifest and the import graph to the declared standalone property. |
 | `cpt-frontx-routing-nfr-agnostic-core` | Package carries no router-engine or UI-framework dependency whatsoever | The whole published package | No module of this package imports any router engine or any UI-framework rendering primitive; every engine-specific dependency lives in a separately published engine-provider package instead (`cpt-frontx-constraint-routing-no-engine-leak`). | The boundary guards confirm this package's own import graph carries no engine or UI-framework edge at all. |
 
-This member records its decisions here rather than in a decision record of its own. Two existing records were amended where this member changes their picture: `cpt-frontx-adr-core-package-boundaries` states that the core partition covers the UI-framework-agnostic subset and that a member bound to a concrete engine introduces its own bounded concern, now carried by the separately published engine-provider package (`@gears-frontx/routing-tanstack`) rather than by this one; `cpt-frontx-adr-extension-domain-occupancy` states that domain occupancy gains a URL projection and that a navigation act enters the mount mechanism that record already governs. The port-and-provider pattern this design applies is the one accepted in `cpt-frontx-adr-runtime-type-system-coupling` and `cpt-frontx-adr-default-type-substrate-provider`, cited as precedent.
+This member records its decisions here rather than in a decision record of its own. Two existing records were amended where this member changes their picture: `cpt-frontx-adr-core-package-boundaries` states that the core partition covers the UI-framework-agnostic subset and that a member bound to a concrete engine introduces its own bounded concern, now carried by the separately published engine-provider package rather than by this one; `cpt-frontx-adr-extension-domain-occupancy` states that domain occupancy gains a URL projection and that a navigation act enters the mount mechanism that record already governs.
 
 ### 1.3 Architecture Layers
 
@@ -80,7 +80,7 @@ graph TD
     Signal -->|reports ownership transition| Host
     Host -->|mounts/unmounts via its own mount mechanism| MFE
     Host -.->|calls when a mount is not navigation-driven| Signal
-    Provider["Engine provider (separate package, e.g. routing-tanstack)"] -->|constructs and mounts router| MFE
+    Provider["Engine provider (separate package)"] -->|constructs and mounts router| MFE
     Substrate -.->|NavigationHistory port| Provider
 ```
 
@@ -89,7 +89,7 @@ graph TD
 | Navigation substrate | Realm-shared navigation history, fan-out subscription, `basepath` contract, imperative navigation surface | TypeScript, framework-agnostic, no router-engine or UI-framework dependency |
 | Route ownership signal | Exposes the substrate's longest-matching-prefix primitive as a public entry point, publishes an observable signal of every ownership-relevant transition, and provides a URL back-projection helper the consumer calls after a non-navigation-driven mount | TypeScript over a consumer-supplied owner-prefix pairs source (plain argument, no port) |
 
-The engine provider shown above is never part of this package; it is a distinct published member (the ecosystem's own default is `@gears-frontx/routing-tanstack`) that depends on the navigation substrate's `NavigationHistory` contract and is substitutable by any conforming provider — the technology and component detail for that provider belongs entirely to its own DESIGN, not to this one.
+The engine provider shown above is never part of this package; it is a distinct published member (the ecosystem provides a default) that depends on the navigation substrate's `NavigationHistory` contract and is substitutable by any conforming provider — the technology and component detail for that provider belongs entirely to its own DESIGN, not to this one.
 
 ## 2. Principles & Constraints
 
@@ -113,7 +113,7 @@ This package publishes the fact that a URL resolves to a declared route owner, a
 
 - [ ] `p2` - **ID**: `cpt-frontx-constraint-routing-no-engine-leak`
 
-`@gears-frontx/routing` contains no import of a concrete router engine or its packages, anywhere in the package — not merely outside a designated internal component, but absent from the package's own manifest and import graph entirely. Consumers of the navigation substrate and of the route ownership signal interact only with the substrate's own `NavigationHistory` contract (`location`, `subscribe`, `push`, `replace`, `go`); a concrete router engine is never a dependency of this package under any circumstance. The role of "the one place a router engine may be imported" belongs to whichever separately published engine-provider package a microfrontend depends on — for the ecosystem's own default, `@gears-frontx/routing-tanstack` and its own constraint `cpt-frontx-constraint-routing-tanstack-sole-engine-import` — never to this package.
+`@gears-frontx/routing` contains no import of a concrete router engine or its packages, anywhere in the package — not merely outside a designated internal component, but absent from the package's own manifest and import graph entirely. Consumers of the navigation substrate and of the route ownership signal interact only with the substrate's own `NavigationHistory` contract (`location`, `subscribe`, `push`, `replace`, `go`); a concrete router engine is never a dependency of this package under any circumstance. The role of "the one place a router engine may be imported" belongs to whichever separately published engine-provider package a microfrontend depends on — enforced there by that provider's own sole-engine-import constraint — never to this package.
 
 **ADRs**: `cpt-frontx-adr-core-package-boundaries` — cited for the partition context this constraint sits outside of (that record's `More Information` states the core partition's scope excludes an engine-bound member like this one); it does not own this constraint, which this DESIGN defines and owns directly.
 
@@ -163,7 +163,7 @@ Independently bundled units in the same realm need one navigation history to agr
 ##### Related components (by ID)
 
 - `cpt-frontx-component-routing-screen-binding` (Route Ownership Signal) — subscribes to the substrate's fan-out to compute and publish ownership-change transitions.
-- `cpt-frontx-component-routing-engine-provider` — an external consumer of this component's `NavigationHistory` contract, owned by a separately published engine-provider package (the ecosystem's own default, `@gears-frontx/routing-tanstack`), not by this package.
+- `cpt-frontx-component-routing-engine-provider` — an external consumer of this component's `NavigationHistory` contract, owned by a separately published engine-provider package (the ecosystem's own default), not by this package.
 
 #### Route Ownership Signal
 
@@ -178,7 +178,7 @@ A consumer's own mount mechanism needs to know, from the URL alone, which declar
 ##### Responsibility scope
 
 - Exposes the navigation substrate's longest-matching-prefix primitive as this package's own public owner-resolution entry point, without re-implementing the matching itself.
-- Lets a consumer create an observer, passing its own owner-prefix pairs source as a plain argument — never an injected port — that reports an ownership-change transition (appeared, disappeared, changed, or remainder-changed) on creation and on every subsequent ownership-relevant navigation.
+- Lets a consumer create an observer, passing its own owner-prefix pairs source as a plain argument — never an injected port — that reports an ownership-change transition (appeared, disappeared, changed, prefix-changed, or remainder-changed) on creation and on every subsequent ownership-relevant navigation.
 - Provides a URL back-projection helper the consumer calls to reflect a mount that happened for a reason other than navigation back into the URL, using a history `replace`.
 
 ##### Responsibility boundaries
@@ -207,7 +207,7 @@ A consumer's own mount mechanism needs to know, from the URL alone, which declar
 | `basepath` | The prefix contract a scoped router is built against. |
 | Engine-provider port | The contract a provider package must satisfy to receive the shared history and produce a constructed, mounted router; field-level shape owned by the engine-provider FEATURE (published in the provider's own package). |
 | Owner-prefix pairs source | A plain argument (never an injected port) supplying identifier-to-declared-prefix pairs the owner-resolution primitive matches against; field-level shape owned by the route-ownership-signal FEATURE. |
-| Ownership-change transition | The observable notification the route ownership signal delivers to a consumer-registered callback on creation and on every ownership-relevant navigation — appeared, disappeared, changed, or remainder-changed. Mounting itself stays entirely the consumer's own responsibility; this package only signals. Field-level shape owned by the route-ownership-signal FEATURE. |
+| Ownership-change transition | The observable notification the route ownership signal delivers to a consumer-registered callback on creation and on every ownership-relevant navigation — appeared, disappeared, changed, prefix-changed, or remainder-changed. Mounting itself stays entirely the consumer's own responsibility; this package only signals. Field-level shape owned by the route-ownership-signal FEATURE. |
 | URL back-projection helper | The helper a consumer calls to reflect a mount not driven by navigation back into the URL via a history `replace`. Field-level shape owned by the route-ownership-signal FEATURE. |
 
 ### 3.4 Internal Dependencies
@@ -221,7 +221,7 @@ None. The package imports no other package in this ecosystem — the standalone 
 
 ### 3.5 External Dependencies
 
-None. This package carries no external dependency on any router engine, UI framework, or other third-party library beyond the browser's own navigation-history API (PRD §3.1, §10). Every router-engine dependency lives entirely in a separately published engine-provider package's own external dependency list — for the ecosystem's own default, see [routing-tanstack DESIGN §3.5](../../routing-tanstack/architecture/DESIGN.md#35-external-dependencies).
+None. This package carries no external dependency on any router engine, UI framework, or other third-party library beyond the browser's own navigation-history API (PRD §3.1, §10). Every router-engine dependency lives entirely in a separately published engine-provider package's own external dependency list.
 
 ### 3.6 Interactions & Sequences
 
@@ -247,12 +247,14 @@ sequenceDiagram
     Pairs-->>Signal: declared pairs
     Signal->>Substrate: invoke longest-matching-prefix primitive (pathname, declared pairs)
     Substrate-->>Signal: route owner (or none)
-    Signal-->>HostGlue: report ownership transition (appeared / disappeared / changed / remainder-changed)
+    Signal-->>HostGlue: report ownership transition (appeared / disappeared / changed / prefix-changed / remainder-changed)
     alt owner appeared, not yet mounted
         HostGlue->>MFE: mount microfrontend via its own mount mechanism
         MFE->>Substrate: read current location at start
         MFE-->>Browser: render matched remainder under its basepath
-    else remainder-changed, already mounted
+    else prefix-changed, same owner already mounted under a different prefix
+        HostGlue->>MFE: remount microfrontend under the newly matched prefix
+    else remainder-changed, already mounted under the same prefix
         HostGlue-->>MFE: no mounting action needed
     else no declared owner matches
         HostGlue-->>Browser: host shows its own fallback
@@ -268,7 +270,7 @@ Not applicable. The package holds no database and no durable persistence; the sh
 
 ## 4. Additional context
 
-The library's central design tension is keeping the navigation substrate agnostic of any router engine while still letting a consumer reach a ready-to-use default: the same tension the type-substrate port resolves for the runtime by keeping the concrete GTS dependency confined to `@gears-frontx/gts-plugin`. Here that tension is resolved the same way, one level further: the agnostic substrate and its default provider live in *separate published packages* — `@gears-frontx/routing` and `@gears-frontx/routing-tanstack` — so it is the package boundary itself, not an intra-package constraint, that keeps the default provider's own router-engine dependency from ever reaching this package.
+The library's central design tension is keeping the navigation substrate agnostic of any router engine while still letting a consumer reach a ready-to-use default. It is resolved by separation of artifacts: the agnostic substrate and its default provider live in *separate published packages* — this package and a separately published engine-provider package — so it is the package boundary itself, not an intra-package constraint, that keeps the default provider's own router-engine dependency from ever reaching this package.
 
 Recorded failure modes:
 
