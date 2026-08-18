@@ -63,6 +63,30 @@ export const menuItemTestId = (extensionId: string): string => `menu-item-${exte
  * How long registration discovery may stay empty before the menu is allowed to
  * say there are no screens. Spans several poll cycles, so it covers the gap
  * between the menu's first render and the MFEs finishing registration.
+ *
+ * A floor on how early the claim may be made, not a guarantee that it is true
+ * when it is finally made. Registration has no upper bound - it waits on a
+ * manifest fetch and then on Module Federation resolving each remote - so on a
+ * slow enough network a screen still arrives after this window has closed and
+ * the hint has rendered. What the window buys is that a normal boot never
+ * flashes it; a boot slow enough to beat it shows a false hint for as long as
+ * the last remote takes, and then replaces it with the screens.
+ *
+ * Widening the window trades that risk for a longer blank menu on every boot,
+ * including the boots that have nothing to discover, which is the case the hint
+ * is written for. Two seconds is where that trade was set.
+ *
+ * Gating on the mfe slice's `registrationStates` instead was considered and
+ * does not close the gap. The shell's bootstrap registers extensions by calling
+ * `registry.registerExtension` directly (`src-app/app/mfe/bootstrap.ts`) rather
+ * than through the `mfe/registerExtensionRequested` event that
+ * `initMfeEffects` listens on, so those states stay empty for the whole real
+ * boot and a gate reading them would let the hint render immediately. Even
+ * routed through the event they would not help: they only know about
+ * registrations that have already STARTED, and the unbounded wait this window
+ * is about - the manifest fetch and the remote resolution - happens before the
+ * first `registering` is ever dispatched, where "nothing is registering" and
+ * "nothing exists to register" are the same empty record.
  */
 export const EMPTY_STATE_GRACE_MS = 2000;
 
@@ -96,14 +120,33 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
     if (!mfeRegistry) return;
 
     const refresh = () => {
-      const screenExts = mfeRegistry.getExtensionsForDomain(FRONTX_SCREEN_DOMAIN) as ScreenExtension[];
-      const sorted = screenExts
-        .sort((a, b) => (a.presentation.order ?? 999) - (b.presentation.order ?? 999));
-      setExtensions(sorted);
-      // Marked here rather than beside the first `refresh()` call below so the
-      // flag cannot outrun the read it stands for. Every later poll re-sets the
-      // same reference, which React discards without a re-render.
-      setReadRegistry(mfeRegistry);
+      try {
+        // The cast asserts `presentation` rather than checking it -
+        // `getExtensionsForDomain` returns the domain's extensions without that
+        // guarantee - so an extension registered without one throws on the
+        // `a.presentation.order` below.
+        const screenExts = mfeRegistry.getExtensionsForDomain(FRONTX_SCREEN_DOMAIN) as ScreenExtension[];
+        const sorted = screenExts
+          .sort((a, b) => (a.presentation.order ?? 999) - (b.presentation.order ?? 999));
+        setExtensions(sorted);
+      } catch (error) {
+        // Caught rather than left to escape, because `refresh` runs from two
+        // places with two different failures. From the effect body below an
+        // escaping throw takes the whole menu down. From the interval it is
+        // swallowed by the timer, but it also skips the `setReadRegistry` that
+        // used to sit at the end of this function, so `discoveryComplete` never
+        // resolves and the menu loses even its empty-state hint - the one thing
+        // still worth rendering when discovery is broken. The list keeps
+        // whatever the last successful poll read.
+        console.error('[Menu] Failed to read screen extensions from the MFE registry', error);
+      } finally {
+        // Marked here rather than beside the first `refresh()` call below so the
+        // flag cannot outrun the read it stands for, and in the `finally` rather
+        // than the `try` because it stands for the read having happened, not for
+        // it having succeeded. Every later poll re-sets the same reference,
+        // which React discards without a re-render.
+        setReadRegistry(mfeRegistry);
+      }
     };
 
     refresh();

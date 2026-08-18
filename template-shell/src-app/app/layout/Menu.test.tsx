@@ -150,6 +150,33 @@ describe('Menu', () => {
     expect(screen.getByText(tasks.presentation.label)).toBeTruthy();
   });
 
+  it('still reaches the empty-state hint when an extension without presentation metadata breaks the read', async () => {
+    // `getExtensionsForDomain` is typed loosely and cast, so `presentation` is
+    // asserted rather than checked and the sort throws on this one. The throw
+    // must not cost the menu its fallback: with the read left unmarked,
+    // discovery never completes and the hint - the only thing still worth
+    // rendering once discovery is broken - becomes unreachable for good.
+    // Paired with a well-formed extension because a one-element sort never
+    // calls the comparator: it takes a second element for the dereference the
+    // cast permits to actually run.
+    const withoutPresentation = { id: 'broken', domain: 'screen-domain', entry: 'broken.entry' };
+    app.mfeRegistry.getExtensionsForDomain.mockReturnValue([tasks, withoutPresentation]);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.useFakeTimers();
+
+    // Rendering at all is the first half of the claim: an escaping throw here
+    // comes out of the effect body, not the interval, and takes the tree down.
+    render(<Menu />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(EMPTY_STATE_GRACE_MS);
+    });
+
+    expect(emptyState()).not.toBeNull();
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
   it('shows the empty state once the grace window passes with nothing registered', async () => {
     app.mfeRegistry.getExtensionsForDomain.mockReturnValue([]);
     vi.useFakeTimers();
