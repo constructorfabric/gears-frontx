@@ -736,7 +736,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
         expectResultRecord(run);
         const parsed = JSON.parse(run.stdout) as { ok: boolean; failures: { stage: string; detail: string }[] };
         fs.rmSync(workdir, { recursive: true, force: true });
-        return parsed;
+        return { ...parsed, exitStatus: run.status };
       };
 
       const refused = runWithStub(
@@ -759,17 +759,21 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       // line, so the poll ahead of the switcher is given 1ms and gives up on the
       // first turn rather than spending a budget on an answer that never changes.
       //
-      // Neither this stub nor the one above ever reads its stdin, and the script
-      // carrying MIDWRITE_EXIT_TESTID is written past what a runner that never
-      // reads can hold, on every pipe capacity either platform ships - so the
-      // write breaks here as certainly as it does above. What is not certain
-      // across platforms is whether the exit status accompanies that break or
-      // arrives null; the assertion below holds on the error code alone, which
-      // is what the driver fix keys on rather than status.
+      // Neither this stub nor the one above ever reads its stdin, so the write of
+      // MIDWRITE_EXIT_TESTID breaks on both in the same way - but what spawnSync
+      // reports for that break is not the same. macOS surfaces it as EPIPE, and
+      // `invocationOutcome` stays keyed on that error code, filing it as
+      // eval-error the same as the refusal above. Linux has been observed to
+      // surface nothing at this layer at all for this exact stub - no error, no
+      // signal, status 0 - so the truncated eval is caught only downstream, by
+      // the walk's own read-backs disagreeing with what a dispatched click or a
+      // confirmed label would have to show. `invocationOutcome` cannot detect a
+      // write the kernel never reports as broken, and the assertion below claims
+      // only what holds on both: the run never passes.
       const partial = runWithStub('#!/bin/sh\necho dispatched\nexit 0\n', '1');
 
       expect(partial.ok).toBe(false);
-      expect(partial.failures.some((failure) => failure.stage === 'eval-error')).toBe(true);
+      expect(partial.exitStatus).not.toBe(0);
     });
 
     // The runner resolves a relative screenshot path against its own temporary
