@@ -8,6 +8,7 @@
  */
 import type React from 'react';
 import { describe, it, expect, afterEach } from 'vitest';
+import { act } from '@testing-library/react';
 import { createFrontX, type ChildMfeBridge } from '@gears-frontx/framework';
 import { ThemeAwareReactLifecycle } from '../ThemeAwareReactLifecycle';
 
@@ -25,6 +26,9 @@ const MFE_BUTTON_CSS = '._variantDefault { background-color: var(--primary); }';
 
 const MFE_LINK_HREF = 'https://remote.test/assets/blank-mfe.css';
 
+/** Stands in for a CSS module that reaches the shadow root after mounting has started. */
+const LATE_MODULE_CSS = '._lazyPanel { padding: 1rem; }';
+
 class ProbeLifecycle extends ThemeAwareReactLifecycle {
   /** Widens the protected hook so a case can exercise adoption without a full mount. */
   adoptInto(shadowRoot: ShadowRoot): void {
@@ -39,6 +43,9 @@ class ProbeLifecycle extends ThemeAwareReactLifecycle {
 function adoptIntoFreshLifecycle(shadowRoot: ShadowRoot): void {
   new ProbeLifecycle(createFrontX().build()).adoptInto(shadowRoot);
 }
+
+/** Nothing in these cases reaches the bridge - renderContent ignores it. */
+const noopBridge = {} as ChildMfeBridge;
 
 function appendHostStyle(css: string): void {
   const style = document.createElement('style');
@@ -130,5 +137,78 @@ describe('ThemeAwareReactLifecycle.adoptHostStylesIntoShadowRoot', () => {
       MFE_BUTTON_CSS,
       ':host { color: red; }',
     ]);
+  });
+});
+
+describe('ThemeAwareReactLifecycle remount', () => {
+  afterEach(() => {
+    document.head.querySelectorAll('style, link[rel="stylesheet"]').forEach((el) => el.remove());
+  });
+
+  it('leaves the same stylesheets in the same order after a second mount into the shadow root the first one used', async () => {
+    // The second mount is not hypothetical: createShadowRoot() hands back an
+    // existing element.shadowRoot rather than attaching a new one, and
+    // unmount() removes no styles, so a remounted container arrives here
+    // already carrying a full adopted block plus the base resets.
+    appendHostLink(HOST_LINK_HREF);
+    appendHostStyle(HOST_PREFLIGHT_CSS);
+    const shadowRoot = shadowRootHoldingMfeStyle(MFE_BUTTON_CSS);
+    const lifecycle = new ProbeLifecycle(createFrontX().build());
+
+    await act(async () => {
+      lifecycle.mount(shadowRoot, noopBridge);
+    });
+    const afterFirstMount = cascadeOrder(shadowRoot);
+
+    await act(async () => {
+      lifecycle.unmount(shadowRoot);
+      lifecycle.mount(shadowRoot, noopBridge);
+    });
+
+    // Equality across the two mounts covers both halves at once: the length
+    // pins that nothing accumulated - the defect was one extra adopted block
+    // per mount, each cloned <link> resolved again - and the sequence pins that
+    // replacing the block did not disturb the two ordering invariants the cases
+    // above establish.
+    expect(cascadeOrder(shadowRoot)).toEqual(afterFirstMount);
+    // Named explicitly rather than left to the equality, because an adoption
+    // that wiped the shadow root instead of replacing its own block would
+    // satisfy the equality and still take the MFE's own CSS with it.
+    expect(cascadeOrder(shadowRoot)).toContain(MFE_BUTTON_CSS);
+    expect(cascadeOrder(shadowRoot).slice(0, 3)).toEqual([
+      HOST_LINK_HREF,
+      HOST_PREFLIGHT_CSS,
+      MFE_BUTTON_CSS,
+    ]);
+  });
+
+  it('keeps the base resets behind a stylesheet that arrived between the two mounts', async () => {
+    // Re-appending the resets instead of overwriting them in place would move
+    // them past this one, and the resets are context like the adopted block is:
+    // moved to the back they start winning the specificity ties against the
+    // MFE's CSS that the front-insertion above exists to make the MFE win.
+    appendHostStyle(HOST_PREFLIGHT_CSS);
+    const shadowRoot = shadowRootHoldingMfeStyle(MFE_BUTTON_CSS);
+    const lifecycle = new ProbeLifecycle(createFrontX().build());
+
+    await act(async () => {
+      lifecycle.mount(shadowRoot, noopBridge);
+    });
+
+    // Stands for a lazily imported component's CSS module, which lands in the
+    // shadow root once mounting is under way rather than before it.
+    const lateStyle = document.createElement('style');
+    lateStyle.textContent = LATE_MODULE_CSS;
+    shadowRoot.appendChild(lateStyle);
+
+    await act(async () => {
+      lifecycle.unmount(shadowRoot);
+      lifecycle.mount(shadowRoot, noopBridge);
+    });
+
+    const order = cascadeOrder(shadowRoot);
+    const resetsIndex = order.findIndex((css) => css.includes('box-sizing: border-box'));
+    expect(resetsIndex).toBeGreaterThan(-1);
+    expect(resetsIndex).toBeLessThan(order.indexOf(LATE_MODULE_CSS));
   });
 });

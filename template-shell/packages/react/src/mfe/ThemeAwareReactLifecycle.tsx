@@ -9,6 +9,20 @@ import type {
 import { FrontXProvider } from '../FrontXProvider';
 import { hasFrontXQueryClientActivator, resolveFrontXQueryClient } from '../queryClient';
 
+/**
+ * Marks every node `adoptHostStylesIntoShadowRoot` puts into a shadow root, so
+ * a later mount can find its own previous block and replace it.
+ *
+ * A marker attribute rather than the single `id` that
+ * `injectStylesheet`/`injectCssVariables` key on in `@gears-frontx/mfes`'
+ * shadow utilities, because the adopted block is many nodes whose order
+ * relative to each other is load-bearing: one id can only name one of them.
+ */
+const ADOPTED_HOST_STYLE_ATTR = 'data-frontx-adopted-host-style';
+
+/** Identity of the base-resets node, so a remount overwrites it in place. */
+const BASE_RESETS_STYLE_ID = '__frontx-base-resets__';
+
 interface ProviderMountOptions {
   mfeBridge?: {
     bridge: ChildMfeBridge;
@@ -76,6 +90,10 @@ function MountRuntimeAwareProvider({
  *    Front, not back, so the MFE's own stylesheets outrank them - see the method.
  * 2. injectBaseResets() adds box-model resets and :host defaults that aren't part
  *    of Tailwind's compiled output but are needed for consistent rendering.
+ *
+ * Both steps replace what a previous mount left rather than adding beside it,
+ * because a remounted container arrives with its shadow root intact - see each
+ * method for why that is the shape the fix takes.
  * 3. Subclasses may override initializeStyles() to inject additional CSS that is
  *    not covered by the host stylesheet (e.g., MFE-specific @font-face rules).
  *
@@ -142,8 +160,23 @@ export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<Chil
    * layered rules lose to unlayered ones at *any* specificity, so a host utility
    * class would stop overriding an MFE element selector. Document order keeps
    * specificity in charge and only settles the ties.
+   *
+   * The block replaces its predecessor instead of stacking on it, the same
+   * upsert shape `injectStylesheet` and `injectCssVariables` use in
+   * `@gears-frontx/mfes`' shadow utilities, widened from one id-keyed node to a
+   * marked block. Replacement is required rather than tidy: `createShadowRoot`
+   * hands back an existing `element.shadowRoot` instead of attaching a new one,
+   * so remounting the same container runs this method again on a shadow root
+   * that already holds a full adopted block, and appending would grow it once
+   * per mount with no bound and re-resolve every cloned `<link>`.
+   *
+   * The block is rebuilt from the host head rather than left in place, because
+   * the head is not fixed: a lazily imported chunk adds stylesheets to it after
+   * the first mount, and the second mount has to pick those up.
    */
   protected adoptHostStylesIntoShadowRoot(shadowRoot: ShadowRoot): void {
+    shadowRoot.querySelectorAll(`[${ADOPTED_HOST_STYLE_ATTR}]`).forEach((el) => el.remove());
+
     const adoptedStyles = document.createDocumentFragment();
 
     // One query covering both kinds, because querySelectorAll returns document
@@ -158,10 +191,13 @@ export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<Chil
       if (el instanceof HTMLStyleElement) {
         const clone = document.createElement('style');
         clone.textContent = el.textContent ?? '';
+        clone.setAttribute(ADOPTED_HOST_STYLE_ATTR, '');
         adoptedStyles.appendChild(clone);
         return;
       }
-      adoptedStyles.appendChild(el.cloneNode(true));
+      const linkClone = el.cloneNode(true) as Element;
+      linkClone.setAttribute(ADOPTED_HOST_STYLE_ATTR, '');
+      adoptedStyles.appendChild(linkClone);
     });
 
     // Staged in a fragment so the adopted pieces keep their host-document order
@@ -173,9 +209,24 @@ export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<Chil
    * Box-model resets and :host defaults needed inside every shadow root.
    * These aren't part of Tailwind's compiled output but are required for
    * consistent rendering across browsers.
+   *
+   * Reuses the node a previous mount left behind, exactly as `injectStylesheet`
+   * does in `@gears-frontx/mfes`' shadow utilities: a remount runs against a
+   * shadow root that `createShadowRoot` handed back intact, and appending a
+   * second copy would add one node per mount forever. Overwriting in place also
+   * keeps the position this node earned on the first mount - behind the adopted
+   * host block and behind the MFE's own CSS - which a remove-and-append would
+   * not, since the container gains nodes between mounts.
+   *
+   * Looked up by attribute-selector form rather than `getElementById`, which
+   * `ShadowRoot` has but `Element` does not, and this hook takes either.
    */
   private injectBaseResets(container: Element | ShadowRoot): void {
-    const style = document.createElement('style');
+    const existing = container.querySelector<HTMLStyleElement>(
+      `style[id="${BASE_RESETS_STYLE_ID}"]`
+    );
+    const style = existing ?? document.createElement('style');
+    style.id = BASE_RESETS_STYLE_ID;
     style.textContent = `
       *, *::before, *::after {
         box-sizing: border-box;
@@ -193,7 +244,9 @@ export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<Chil
         background-color: hsl(var(--background));
       }
     `;
-    container.appendChild(style);
+    if (!existing) {
+      container.appendChild(style);
+    }
   }
 
   /**
