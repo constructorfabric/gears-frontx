@@ -73,14 +73,14 @@ The same posture governs how this package touches the rest of the ecosystem. It 
 - `cpt-frontx-adr-contract-schema-ownership`
 - `cpt-frontx-adr-ai-tooling-internal-decomposition`
 - `cpt-frontx-adr-single-project-state-file`
-- `cpt-frontx-adr-atomic-all-targets-upgrade`
+- `cpt-frontx-adr-project-upgrade-mechanism`
 
 **Cross-package ADR dependencies.** The FEATUREs of this package (A, C) cite the following CLI-package ADRs directly; this DESIGN does not own their decisions, but the kit's own contracts depend on what they fix:
 
 - `cpt-frontx-adr-template-manifest-contract` — owns the manifest shape and the `name`/description fields the kit's scaffolding-selection and extension-discovery paths read (CLI DESIGN §3.1 `Template`).
 - `cpt-frontx-adr-explicit-batch-application` — owns the target-keyed batch shape the kit composes and hands to `assemble`/`apply` on the scaffolding path (CLI DESIGN §3.1 `Assembly`).
 - `cpt-frontx-adr-uniform-template-mechanism` — owns the CLI's guarantee that every conforming template resolves through the same lifecycle path, which is why the kit's selection entry point classifies no template kind of its own.
-- `cpt-frontx-adr-whole-target-ownership` — owns the unconditional subtraction of `.frontx` from every template's effective ownership, which is what makes the AI-extension bundle a CLI-owned write rather than part of any template's own content (CLI DESIGN §3.1 `OwnershipBoundary`).
+- `cpt-frontx-adr-template-ownership-boundary-declaration` — owns the unconditional subtraction of `.frontx` from every template's effective ownership, which is what makes the AI-extension bundle a CLI-owned write rather than part of any template's own content (CLI DESIGN §3.1 `OwnershipBoundary`).
 
 ### 1.3 Architecture Layers
 
@@ -421,7 +421,7 @@ sequenceDiagram
     end
 ```
 
-**Description**: An AI agent reads the chosen registered template's `templates[name]` entry from the project's single state document, orchestrates and enriches the CLI's single change-set engine to analyze that name's version transition, and presents a reviewable change set bounded to every target listed under that name with downstream-impact assessment; the engine applies the approved set non-destructively within each target's ownership, atomically across every target of that name, and updates that name's `origin`/`version` entry in the same atomic commit, leaving every other registered template untouched ([AI-Driven Upgrade Orchestration over a Single CLI Change-Set Engine](../../../architecture/ADR/0026-ai-driven-upgrade-orchestration.md), [Atomic All-Targets Upgrade as the Unit of the Upgrade Operation](../../../architecture/ADR/0041-atomic-all-targets-upgrade.md), [One Git-Tracked File for a Repository's CLI-Managed Template State](../../../architecture/ADR/0036-single-project-state-file.md); superseded history: [The Per-Applied-Template Upgrade Mechanism](../../../architecture/ADR/0021-project-upgrade-mechanism.md), [Per-Applied-Template Provenance for Independently Upgradeable Assembly](../../../architecture/ADR/0019-project-provenance-record.md)). If the developer declines or impact assessment flags incompatibilities, no files are written and every target of that name remains at its current version.
+**Description**: An AI agent reads the chosen registered template's `templates[name]` entry from the project's single state document, orchestrates and enriches the CLI's single change-set engine to analyze that name's version transition, and presents a reviewable change set bounded to every target listed under that name with downstream-impact assessment; the engine applies the approved set non-destructively within each target's ownership, atomically across every target of that name, and updates that name's `origin`/`version` entry in the same atomic commit, leaving every other registered template untouched ([AI-Driven Upgrade Orchestration over a Single CLI Change-Set Engine](../../../architecture/ADR/0026-ai-driven-upgrade-orchestration.md), [How an Applied Template Adopts a Newer Version](../../../architecture/ADR/0021-project-upgrade-mechanism.md), [One Git-Tracked File for a Repository's CLI-Managed Template State](../../../architecture/ADR/0036-single-project-state-file.md); superseded history: [The Per-Applied-Template Upgrade Mechanism](../../../architecture/ADR/0021-project-upgrade-mechanism.md), [Per-Applied-Template Provenance for Independently Upgradeable Assembly](../../../architecture/ADR/0019-project-provenance-record.md)). If the developer declines or impact assessment flags incompatibilities, no files are written and every target of that name remains at its current version.
 
 #### Template AI-extension discovery and activation
 

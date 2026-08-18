@@ -306,7 +306,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 - [ ] `p2` - **ID**: `cpt-frontx-feature-template-territory-conversion`
 
-**Purpose**: Convert the ecosystem's own pre-existing templates (`template-shell`, `template-mfe`) from their legacy manifest shape onto the current four-field registration contract, so both become installable, registrable, and applicable under `cpt-frontx-adr-template-manifest-contract`, `cpt-frontx-adr-whole-target-ownership`, and `cpt-frontx-adr-single-project-state-file` by direct conversion at the source rather than by relying on any runtime compatibility path. Until this conversion completes, zero templates in this repository are installable under the current contract — a legacy manifest carrying a retired field is refused at `install` itself, the earliest gate, not merely at `register`.
+**Purpose**: Convert the ecosystem's own pre-existing templates (`template-shell`, `template-mfe`) from their legacy manifest shape onto the current four-field registration contract, so both become installable, registrable, and applicable under `cpt-frontx-adr-template-manifest-contract`, `cpt-frontx-adr-template-ownership-boundary-declaration`, and `cpt-frontx-adr-single-project-state-file` by direct conversion at the source rather than by relying on any runtime compatibility path. Until this conversion completes, zero templates in this repository are installable under the current contract — a legacy manifest carrying a retired field is refused at `install` itself, the earliest gate, not merely at `register`.
 
 **Depends On**: `cpt-frontx-feature-template-manifest` (F11 — the four-field manifest contract both templates convert onto)
 
@@ -314,7 +314,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 1. Replace each legacy manifest (`schemaVersion` + `ownershipBoundaries`) with the current four-field shape: `name`, `version`, a required non-empty `description`, and `ownership.excludedSubtrees`.
 2. Widen `template-shell`'s ownership from its current file-subset claim to whole-target ownership (its target minus its declared `excludedSubtrees`) — extending what it owns, or moving previously unclaimed root files into `projectOwnedRoots`. This is a **behavioural change requiring its own review**, not a mechanical manifest edit, and is tracked here rather than folded into item 1.
-3. Remove both templates' own claim on `.frontx/ai/<manifest-name>/`; that bundle is a CLI-owned write (`cpt-frontx-adr-whole-target-ownership`), never template-owned.
+3. Remove both templates' own claim on `.frontx/ai/<manifest-name>/`; that bundle is a CLI-owned write (`cpt-frontx-adr-template-ownership-boundary-declaration`), never template-owned.
 4. Add `src-app/mfe_packages/` to `template-shell`'s `ownership.excludedSubtrees` (a well-formed target-relative directory path with the trailing `/` the manifest schema requires — `cpt-frontx-feature-template-manifest` owns that field-level rule, which `cpt-frontx-adr-template-manifest-contract` deliberately leaves to it) and stop carrying payload inside it.
 5. Extract each template's authoring/dev-harness machinery (a dev-only `package.json` with `file:` overrides, local build tooling) out of the template directory entirely, leaving pure payload plus the manifest and the conventional AI-extension bundle (`cpt-frontx-adr-template-manifest-contract`, "More Information").
 
