@@ -26,7 +26,7 @@ date: 2026-07-16
 
 ## Context and Problem Statement
 
-The CLI (`cpt-frontx-component-cli`, the `@gears-frontx/cli` package) installs, applies, and assembles templates it does not own, and a repository is assembled from one or more independently-applied templates (the now-retired composed-template-resolution requirement, superseded by `cpt-frontx-adr-explicit-batch-application`; `cpt-frontx-fr-cli-seed-repository`; `cpt-frontx-fr-cli-add-template-to-repository`). The question this decision settles is whether the platform fixes a taxonomy of template types that the mechanism branches on, or whether the assembly, resolution, and upgrade mechanism treats every template the same regardless of what it produces.
+The CLI (`cpt-frontx-component-cli`, the `@gears-frontx/cli` package) installs, applies, and assembles templates it does not own, and a repository is assembled from one or more independently-applied templates (the now-retired composed-template-resolution requirement, superseded by `cpt-frontx-adr-composed-template-resolution`; `cpt-frontx-fr-cli-seed-repository`; `cpt-frontx-fr-cli-add-template-to-repository`). The question this decision settles is whether the platform fixes a taxonomy of template types that the mechanism branches on, or whether the assembly, resolution, and upgrade mechanism treats every template the same regardless of what it produces.
 
 ## Decision Drivers
 
@@ -109,7 +109,7 @@ Applicability of the remaining checklist categories:
 * **UX** — addressed implicitly: a developer assembles any template through one predictable set of commands.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
-**Post-redesign note (2026-08-12).** The core holding — no template taxonomy, one uniform mechanism for any template — remains in force and is reinforced by the redesign. The preset-specific clauses (composition expressed by manifest reference, `referencedTemplates`, cyclic-reference handling) are revised by `cpt-frontx-adr-explicit-batch-application`: any combination of templates is now expressed as an explicit target-keyed batch, applied through the same one mechanism.
+**Post-redesign note (2026-08-12).** The core holding — no template taxonomy, one uniform mechanism for any template — remains in force and is reinforced by the redesign. The preset-specific clauses (composition expressed by manifest reference, `referencedTemplates`, cyclic-reference handling) are revised by `cpt-frontx-adr-composed-template-resolution`: any combination of templates is now expressed as an explicit target-keyed batch, applied through the same one mechanism.
 
 ## Traceability
 
@@ -118,6 +118,6 @@ Applicability of the remaining checklist categories:
 
 This decision directly addresses the following requirements and design elements:
 
-* Historical — the PRD requirement this decision originally addressed under the identifier "cli-composed-template-resolution" has since been removed from the PRD entirely; its manifest-reference composition model was replaced by explicit batch application, `cpt-frontx-adr-explicit-batch-application`. At the time of this decision it established that multi-template assembly and preset resolution operate over any template without a template classification, so composition was expressed by reference rather than by type; that grounding is retained here as a traceability record of what this ADR addressed at the time, not as a live requirement to check this decision against.
+* Historical — the PRD requirement this decision originally addressed under the identifier "cli-composed-template-resolution" has since been removed from the PRD entirely; its manifest-reference composition model was replaced by explicit batch application, `cpt-frontx-adr-composed-template-resolution`. At the time of this decision it established that multi-template assembly and preset resolution operate over any template without a template classification, so composition was expressed by reference rather than by type; that grounding is retained here as a traceability record of what this ADR addressed at the time, not as a live requirement to check this decision against.
 * `cpt-frontx-contract-template-manifest` — Fixes that the manifest carries no type field; a template is self-describing through what it produces and the boundaries it declares.
 * `cpt-frontx-component-cli` — The CLI component operates one uniform mechanism over every template; this decision constrains it to hold no branch on a template type.
