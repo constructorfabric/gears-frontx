@@ -714,12 +714,25 @@ function appendCoverage(coveragePath, screens) {
 // ---------------------------------------------------------------------------
 // Walk
 
+// A malformed argument list and a missing required flag used to end in help text
+// on stderr, an exit of 2 and an empty stdout, which is the one shape a caller
+// cannot act on: it reads the same as a driver that died before it could say
+// anything. Both are refusals like every other, so both leave a result record
+// behind. It goes to stdout even here, where --json-out has not been read yet and
+// there is no file to write it to - stdout is the one channel every invocation
+// has, the same reason an unwritable --json-out still prints. The help text stays
+// on stderr, where it is this refusal's repair and cannot corrupt the record.
+function refuseArguments(detail) {
+  process.stderr.write(`${detail}\n\n${HELP}`);
+  fail('arguments', detail);
+  finish({ jsonOut: null });
+}
+
 let opts;
 try {
   opts = parseArgs(process.argv.slice(2));
 } catch (error) {
-  process.stderr.write(`${error.message}\n\n${HELP}`);
-  process.exit(2);
+  refuseArguments(error.message);
 }
 if (opts.help) {
   process.stdout.write(HELP);
@@ -727,10 +740,7 @@ if (opts.help) {
 }
 
 for (const required of ['host', 'themes', 'screens', 'capdir', 'switcher', 'theme-option']) {
-  if (!opts[required]) {
-    process.stderr.write(`missing required argument --${required}\n\n${HELP}`);
-    process.exit(2);
-  }
+  if (!opts[required]) refuseArguments(`missing required argument --${required}`);
 }
 
 // Everything the invocation itself has to get right is settled here, in one

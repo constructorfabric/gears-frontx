@@ -540,7 +540,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       expect(help.stdout).toContain('--themes');
       // The Usage line carries every required flag. One that lists a flag as
       // required and leaves it out of the invocation form teaches the shorter
-      // form, and the shorter form exits 2.
+      // form, and the shorter form is refused.
       const usage = help.stdout.slice(help.stdout.indexOf('Usage:'), help.stdout.indexOf('Required:'));
       for (const flag of ['--host', '--themes', '--screens', '--capdir', '--switcher', '--theme-option']) {
         expect(usage, `Usage: omits the required ${flag}`).toContain(flag);
@@ -846,12 +846,12 @@ process.exit(0);
       cleanup: () => void;
     }
 
-    // The driver answers a run it cannot perform with a JSON result record, and
-    // exits 2 with nothing but help text on stderr only when a required flag is
-    // missing - which is an invocation this suite got wrong rather than a driver
-    // finding. Named here for the same reason `run.error` is: a bare JSON.parse
-    // failure never mentions the driver's own output, and the output is where the
-    // reason is.
+    // The driver answers every run it cannot perform with a JSON result record,
+    // malformed arguments included, so a stdout that does not open with `{` means
+    // the driver died without recording anything rather than that it refused.
+    // Named here for the same reason `run.error` is: a bare JSON.parse failure
+    // never mentions the driver's own output, and the output is where the reason
+    // is.
     function expectResultRecord(run: { stdout: string; stderr: string; status: number | null }): void {
       if (!run.stdout.trimStart().startsWith('{')) {
         throw new Error(`the driver printed no result record and exited ${run.status}`
@@ -1761,6 +1761,53 @@ process.exit(0);
       expect(run.capdirExists).toBe(false);
 
       run.cleanup();
+    });
+
+    // A malformed argument list used to print help text on stderr, exit 2 and
+    // leave stdout empty - the one shape a caller cannot act on, because it reads
+    // exactly like a driver that died before it could say anything. A refusal on
+    // the argument list is a refusal like every other, so it carries a record.
+    it.each<[string, string[], string]>([
+      ['an unknown flag', ['--nope', 'x'], 'unknown argument "--nope"'],
+      ['a flag left without a value', ['--menu'], '--menu needs a value'],
+    ])('records %s as an arguments failure in its result record', (_what, argv, detail) => {
+      const run = runRefusal(argv);
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toBe(detail);
+      expect(run.capdirExists).toBe(false);
+
+      run.cleanup();
+    });
+
+    // The same for a required flag that is not there at all, which needs an
+    // invocation the refusal helper above cannot make: it supplies every required
+    // flag by construction.
+    it('records a missing required flag as an arguments failure in its result record', () => {
+      const capdir = path.join(os.tmpdir(), `verify-walk-missing-${process.pid}`);
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        '--themes', 'light',
+        '--screens', 'orders:/orders:screen-orders',
+        '--capdir', capdir,
+        '--switcher', 'theme-switcher',
+        '--theme-option', 'theme-option-{theme}',
+      ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
+
+      if (run.error) throw new Error(`the driver did not return: ${run.error.message}`);
+      expectResultRecord(run);
+
+      const parsed = JSON.parse(run.stdout) as { ok: boolean; failures: { stage: string; detail: string }[] };
+      expect(run.status).not.toBe(0);
+      expect(parsed.ok).toBe(false);
+      expect(parsed.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(parsed.failures[0].detail).toBe('missing required argument --host');
+      // The flag surface still reaches a human, on the channel the record does not
+      // use: stdout carries the record and nothing else, so a caller parsing it
+      // never has to step over help text.
+      expect(run.stderr).toContain('--host <url>');
+      expect(fs.existsSync(capdir)).toBe(false);
     });
   });
 });
