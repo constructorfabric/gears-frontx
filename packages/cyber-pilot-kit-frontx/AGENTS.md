@@ -37,6 +37,6 @@ description: "Agent navigation rules for FrontX ecosystem package boundaries, CL
 
 ## When working with MFEs
 
-- MFEs register through `@gears-frontx/mfes` DefaultMfeRegistry
+- MFEs register through the abstract `MfeRegistry` from `@gears-frontx/mfes`, obtained via `createMfeRegistryFactory().build({ typeSystem })`
 - Extension domains control which MFEs may mount (`cpt-frontx-component-extension-domain-governance`)
 - Isolation is via blob-URL sandboxing (`cpt-frontx-component-mfe-isolation`)

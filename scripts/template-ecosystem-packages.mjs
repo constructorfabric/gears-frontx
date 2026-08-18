@@ -66,10 +66,15 @@
  * the string `@gears-frontx` is written down here.
  *
  * Consumers: `template-pin-drift-check.mjs` (compares every pin site against
- * the truth map) and `link-template-ecosystem.mjs` (repoints exactly the
+ * the truth map); `link-template-ecosystem.mjs` (repoints exactly the
  * `packages/*` directories the template pins at their local builds - template
  * contributions never enter that linker, since a template's own workspace
- * member already resolves locally with nothing published to shadow it).
+ * member already resolves locally with nothing published to shadow it); and
+ * `version-bump-on-change-check.mjs` (reuses `readTemplateEcosystemPackages`
+ * directly, on top of the same `packages/*` walk, to enumerate the package
+ * ROOTS its CI gate governs - narrowed further there to the non-`private`
+ * ones, since a template's own scope-qualified fixture apps are pinned
+ * consumers rather than publishable sources).
  */
 import fs from 'node:fs';
 import path from 'node:path';

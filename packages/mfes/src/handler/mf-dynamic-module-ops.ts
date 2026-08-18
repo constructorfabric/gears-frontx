@@ -100,6 +100,19 @@ export function rewriteBareSpecifier(
  *      guard below makes that invariant executable so accidental call
  *      sites that pass a path or `http:`/`file:` URL fail fast rather than
  *      silently loading untrusted code.
+ *
+ *      **BUNDLER PRAGMAS — the two inline comments in the `import()` below
+ *      are load-bearing. Do not remove or reorder them.**
+ *      `webpackIgnore: true` tells webpack/rspack/rsbuild hosts, and
+ *      `@vite-ignore` tells Vite hosts, to leave this dynamic import native
+ *      instead of rewriting it into their chunk-loading runtime. A bundler
+ *      that rewrites it makes MFE mount fail at runtime under that host
+ *      with `Cannot find module 'blob:…'` (#504). The pragmas survive the
+ *      package's current tsup/esbuild build in both output formats, but
+ *      esbuild minification (`minify: true`) strips comments without a
+ *      diagnostic — so the build script runs
+ *      `scripts/verify-dist-import-pragmas.mjs`, which fails the build if
+ *      either pragma is missing from the published dist.
  * @inputs `blobUrl` — a `blob:` URL from `URL.createObjectURL(...)` or a
  *         `data:` URL from the same code path under test mocks.
  */
@@ -117,7 +130,7 @@ export async function importBlobModule(blobUrl: string): Promise<unknown> {
   // @cpt-end:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-inspect-scheme
   // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-exec-import
   // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-return-module
-  return await import(/* @vite-ignore */ blobUrl);
+  return await import(/* webpackIgnore: true */ /* @vite-ignore */ blobUrl);
   // @cpt-end:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-return-module
   // @cpt-end:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-exec-import
 }

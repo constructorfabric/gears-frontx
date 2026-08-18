@@ -25,7 +25,7 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node scripts/verify-dist-import-pragmas.mjs",
     "type-check": "tsc --noEmit",
     "type-check:test": "tsc -p tsconfig.test.json",
     "test": "npm run test:unit",
