@@ -349,6 +349,13 @@ moment each run asks - so two runs of the same walk can be driven by two
 different browsers, and a capture that changed has no fixed tool to be
 attributed to. Name the version the run installed, and record it in the report.
 
+An installed binary is named here too, and the value is read as a command line
+rather than as one word: quote a path that carries spaces, or the driver is handed
+a first word that names nothing and every browser command fails to spawn. Both
+quote characters work, and an unbalanced one is refused rather than guessed at, so
+`--browser-cmd '"/path/with a space/browser-cli" --headless'` reaches the child as
+the path and the flag, each whole.
+
 `node <that path> --help` prints the whole flag surface. `$CAPDIR` is the
 run-unique capture directory made under the capture rule below, and the driver
 refuses a directory that already holds files rather than write into another

@@ -1535,6 +1535,88 @@ process.exit(0);
       run.cleanup();
     });
 
+    // --browser-cmd may name an installed binary, and an installed binary's path
+    // carries spaces: a whitespace split cuts
+    // "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" into four
+    // pieces that name nothing, and every browser command then fails to spawn.
+    // The quoted path stays one argument, and what follows it stays an argument of
+    // its own rather than being glued onto the path.
+    it('drives a --browser-cmd whose quoted path carries spaces, keeping the rest as separate arguments', () => {
+      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-browser-cmd-'));
+      const spaced = path.join(workdir, 'dir with space');
+      fs.mkdirSync(spaced, { recursive: true });
+      const stubFile = path.join(spaced, 'agent-browser.cjs');
+      fs.writeFileSync(stubFile, STUB_AGENT_BROWSER);
+      const logFile = path.join(workdir, 'commands.log');
+      fs.writeFileSync(logFile, '');
+
+      // Records the argument handed to it after the path and then drops it, so
+      // what the stub itself sees is the argv shape the PATH shim produces
+      // everywhere else in this suite. Both halves of the assertion come out of
+      // that: the flag arrived on its own, and the whole walk ran through a
+      // launcher whose path a split would have destroyed.
+      const launcher = path.join(spaced, 'browser launcher');
+      fs.writeFileSync(launcher,
+        `#!/bin/sh\nprintf 'launched with %s\\n' "$1" >> ${JSON.stringify(logFile)}\nshift\n`
+        + `exec ${JSON.stringify(process.execPath)} ${JSON.stringify(stubFile)} --yes agent-browser "$@"\n`,
+        { mode: 0o755 });
+
+      const capdir = path.join(workdir, 'shots');
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        '--host', 'data:text/plain,ok',
+        '--themes', 'light',
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+        '--capdir', capdir,
+        '--switcher', 'theme-switcher',
+        '--theme-option', 'theme-option-{theme}',
+        '--cdp-port', '1',
+        '--ready-timeout', '5000',
+        '--command-timeout', STUB_COMMAND_TIMEOUT_MS,
+        // The launcher is reached by the path alone, so this run needs no stub on
+        // PATH at all: what is under test is the driver's reading of the value.
+        '--browser-cmd', `"${launcher}" --forwarded`,
+      ], {
+        encoding: 'utf8',
+        timeout: DRIVER_TIMEOUT_MS,
+        env: {
+          ...process.env,
+          STUB_LOG: logFile,
+          STUB_IDS: JSON.stringify(HOST_IDS),
+          STUB_THEME: path.join(workdir, 'active-theme'),
+        },
+      });
+
+      if (run.error) throw new Error(`the driver did not return: ${run.error.message}`);
+      expectResultRecord(run);
+
+      const result = JSON.parse(run.stdout) as StubRun['result'];
+      expect(result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+      expect(result.browser.command).toBe(`${launcher} --forwarded`);
+
+      const commands = fs.readFileSync(logFile, 'utf8').split('\n').filter(Boolean);
+      expect(commands).toContain('launched with --forwarded');
+      expect(commands).toContain('screenshot light-login-fresh.png');
+
+      fs.rmSync(workdir, { recursive: true, force: true });
+    });
+
+    // Either way of closing an unbalanced quote - dropping it, or ending the
+    // token where it opened - spawns a command line the caller did not write, so
+    // the invocation is refused instead of guessed at.
+    it('refuses a --browser-cmd carrying an unbalanced quote', () => {
+      const run = runRefusal(['--browser-cmd', '"/tmp/dir with space/stub --flag']);
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain('unbalanced double quote');
+      expect(run.capdirExists).toBe(false);
+
+      run.cleanup();
+    });
+
     // The result has to reach the caller even when the path it was asked for
     // cannot be written: a record that went nowhere is indistinguishable from a
     // run that never happened.

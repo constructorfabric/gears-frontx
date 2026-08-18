@@ -69,7 +69,9 @@ Optional:
   --ready-timeout <ms>      budget for a screen readiness poll (default: 15000)
   --browser-cmd <cmd>       command line the browser CLI is driven through
                             (default: npx --yes agent-browser); a caller pins a
-                            version or names an installed binary here
+                            version or names an installed binary here. Quote a
+                            path that carries spaces, single or double quotes
+                            alike: '"/path/with a space/browser-cli" --headless'
   --command-timeout <ms>    budget for one browser command; past it the child is
                             killed and the run records a timeout (default: 60000)
   --json-out <path>         machine-readable result (default: <capdir>/verify-walk.json)
@@ -136,6 +138,43 @@ function positiveInt(flag, raw, fallback, max) {
   }
   if (max !== undefined && value > max) throw new Error(`${flag} "${raw}" is above the highest valid value ${max}`);
   return value;
+}
+
+// --browser-cmd carries a command line, and an installed binary's path carries
+// spaces: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` is one
+// argument a whitespace split cuts into four that name nothing, after which the
+// run reads as a browser that could not be spawned. Quoted runs stay whole,
+// single and double quotes alike, and the quotes themselves come off. An
+// unbalanced quote is refused rather than closed by guesswork: both guesses -
+// dropping the quote, or ending the token where it opened - spawn a command line
+// the caller did not write.
+function tokenizeCommand(flag, raw) {
+  const tokens = [];
+  let token = null;
+  let quote = null;
+  for (const char of raw) {
+    if (quote !== null) {
+      if (char === quote) quote = null;
+      else token += char;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      token ??= '';
+      quote = char;
+      continue;
+    }
+    if (/\s/.test(char)) {
+      if (token !== null) tokens.push(token);
+      token = null;
+      continue;
+    }
+    token = (token ?? '') + char;
+  }
+  if (quote !== null) {
+    throw new Error(`${flag} "${raw}" carries an unbalanced ${quote === '"' ? 'double' : 'single'} quote`);
+  }
+  if (token !== null) tokens.push(token);
+  return tokens;
 }
 
 // Every part of a capture's file name is caller data - a theme name out of a
@@ -336,7 +375,7 @@ function run(command, args, input) {
 }
 
 // Assigned during argument validation; `browser` reads it at call time.
-let browserCommand = DEFAULT_BROWSER_COMMAND.split(/\s+/);
+let browserCommand = tokenizeCommand('--browser-cmd', DEFAULT_BROWSER_COMMAND);
 
 const browser = (args, input) => run(browserCommand[0], [...browserCommand.slice(1), ...args], input);
 
@@ -722,7 +761,7 @@ try {
   cdpPort = positiveInt('--cdp-port', opts['cdp-port'], 9222, MAX_TCP_PORT);
   commandTimeoutMs = positiveInt('--command-timeout', opts['command-timeout'], 60000);
 
-  browserCommand = (opts['browser-cmd'] ?? DEFAULT_BROWSER_COMMAND).trim().split(/\s+/).filter(Boolean);
+  browserCommand = tokenizeCommand('--browser-cmd', opts['browser-cmd'] ?? DEFAULT_BROWSER_COMMAND);
   if (browserCommand.length === 0) throw new Error('--browser-cmd names no command to run');
 
   navigation = opts.nav ?? 'menu';
