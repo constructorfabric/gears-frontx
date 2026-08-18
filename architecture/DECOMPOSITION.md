@@ -315,6 +315,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 **Installed-kit coverage references**:
 - `cpt-frontx-component-routing-screen-binding`
+- `cpt-frontx-routing-principle-publishes-not-orchestrates`
 - `cpt-frontx-constraint-routing-no-intra-ecosystem-dependency`
 
 ### 2.24 [Routing Engine Provider](../packages/routing/architecture/features/engine-provider/) - MEDIUM
