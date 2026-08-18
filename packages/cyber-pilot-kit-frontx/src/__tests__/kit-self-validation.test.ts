@@ -758,6 +758,14 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       // the page for. This stub answers every readiness probe with the same
       // line, so the poll ahead of the switcher is given 1ms and gives up on the
       // first turn rather than spending a budget on an answer that never changes.
+      //
+      // Neither this stub nor the one above ever reads its stdin, and the script
+      // carrying MIDWRITE_EXIT_TESTID is written past what a runner that never
+      // reads can hold, on every pipe capacity either platform ships - so the
+      // write breaks here as certainly as it does above. What is not certain
+      // across platforms is whether the exit status accompanies that break or
+      // arrives null; the assertion below holds on the error code alone, which
+      // is what the driver fix keys on rather than status.
       const partial = runWithStub('#!/bin/sh\necho dispatched\nexit 0\n', '1');
 
       expect(partial.ok).toBe(false);

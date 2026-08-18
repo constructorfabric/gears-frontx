@@ -463,21 +463,31 @@ const ERROR_SHAPED = /\b\w*Error\b/;
 
 // A child that never returned carries its reason on `proc.error` and leaves
 // `status` null with empty pipes, which reads through every stdout-only path as
-// a command that printed nothing. Both no-return shapes get a stage of their
-// own, because "the runner hung" and "the runner rejected the script" are
-// different repairs and neither is the other.
-//
-// An exit status is what separates them, and `proc.error` alone cannot: a script
-// is handed to the runner on its stdin, and a runner that rejects that script on
-// sight exits while the write is still in flight, so the write fails with EPIPE
-// and `proc.error` is set over a child that ran, reported, and said why. Keyed
-// on the error first, every such refusal was filed as a runner that could not be
-// run, under a stage naming the one repair - install the runner - that the run
-// did not need, while the reason the runner printed never reached the record.
-// So a child that reported outranks the parent's own broken plumbing, and the
-// error branch is only for a child that reported nothing.
+// a command that printed nothing. A child that ran, rejected the script it was
+// handed on its stdin, and exited also carries `proc.error` - EPIPE from the
+// write that broke - and the two are told apart by the error code, never by
+// whether `status` arrived. Reaping and pipe-teardown order are not specified
+// relative to each other, so the same EPIPE has been seen with `status` set and
+// with it left null; only an eval command passes input on stdin, so EPIPE is
+// structurally that command's failure and is read off the error code alone,
+// ahead of the status-less spawn/timeout check below. Collapsing it into "could
+// not be run" buries the reason the child printed under a stage naming the one
+// repair - install the runner - that the run did not need.
 function invocationOutcome(proc) {
-  if (proc.error && proc.status === null) {
+  const stderr = (proc.stderr ?? '').trim();
+  if (proc.error && proc.error.code === 'EPIPE') {
+    return {
+      failed: true,
+      stage: null,
+      detail: `${proc.status === null ? 'exited' : `exited ${proc.status}`} while the script was still being`
+        + ` written to it (EPIPE): ${stderr || '(nothing on stderr)'}`,
+    };
+  }
+  // Neither hang nor missing runner ever carries EPIPE, so both remain keyed on
+  // `proc.error` alone here - status is never consulted for this branch, since a
+  // status that arrives late or not at all is exactly the ambiguity EPIPE above
+  // exists to route around before this check is reached.
+  if (proc.error) {
     const timedOut = proc.error.code === 'ETIMEDOUT';
     return {
       failed: true,
@@ -485,20 +495,6 @@ function invocationOutcome(proc) {
       detail: timedOut
         ? `was killed after ${commandTimeoutMs}ms without returning`
         : `could not be run: ${proc.error.message}`,
-    };
-  }
-  const stderr = (proc.stderr ?? '').trim();
-  // A stdin the runner stopped taking is a script it was handed only part of, so
-  // its own exit code cannot clear the invocation: a zero exit here reports on
-  // some prefix of the script, and stdout under it answers a text the driver
-  // never sent. Failed whatever the status, with the runner's reason kept and
-  // the broken write named beside it.
-  if (proc.error) {
-    return {
-      failed: true,
-      stage: null,
-      detail: `exited ${proc.status} while the script was still being written to it`
-        + ` (${proc.error.code ?? proc.error.message}): ${stderr || '(nothing on stderr)'}`,
     };
   }
   if (proc.status !== 0 || ERROR_SHAPED.test(stderr)) {
