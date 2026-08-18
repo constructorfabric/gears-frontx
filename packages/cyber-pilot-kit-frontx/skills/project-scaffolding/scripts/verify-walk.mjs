@@ -466,8 +466,18 @@ const ERROR_SHAPED = /\b\w*Error\b/;
 // a command that printed nothing. Both no-return shapes get a stage of their
 // own, because "the runner hung" and "the runner rejected the script" are
 // different repairs and neither is the other.
+//
+// An exit status is what separates them, and `proc.error` alone cannot: a script
+// is handed to the runner on its stdin, and a runner that rejects that script on
+// sight exits while the write is still in flight, so the write fails with EPIPE
+// and `proc.error` is set over a child that ran, reported, and said why. Keyed
+// on the error first, every such refusal was filed as a runner that could not be
+// run, under a stage naming the one repair - install the runner - that the run
+// did not need, while the reason the runner printed never reached the record.
+// So a child that reported outranks the parent's own broken plumbing, and the
+// error branch is only for a child that reported nothing.
 function invocationOutcome(proc) {
-  if (proc.error) {
+  if (proc.error && proc.status === null) {
     const timedOut = proc.error.code === 'ETIMEDOUT';
     return {
       failed: true,
@@ -478,6 +488,19 @@ function invocationOutcome(proc) {
     };
   }
   const stderr = (proc.stderr ?? '').trim();
+  // A stdin the runner stopped taking is a script it was handed only part of, so
+  // its own exit code cannot clear the invocation: a zero exit here reports on
+  // some prefix of the script, and stdout under it answers a text the driver
+  // never sent. Failed whatever the status, with the runner's reason kept and
+  // the broken write named beside it.
+  if (proc.error) {
+    return {
+      failed: true,
+      stage: null,
+      detail: `exited ${proc.status} while the script was still being written to it`
+        + ` (${proc.error.code ?? proc.error.message}): ${stderr || '(nothing on stderr)'}`,
+    };
+  }
   if (proc.status !== 0 || ERROR_SHAPED.test(stderr)) {
     return { failed: true, stage: null, detail: `exited ${proc.status}: ${stderr || '(nothing on stderr)'}` };
   }

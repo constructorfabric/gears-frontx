@@ -693,6 +693,77 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       fs.rmSync(workdir, { recursive: true, force: true });
     });
 
+    // The script is handed to the runner on its stdin, so a script larger than
+    // the stdin pipe buffer is still being written when the runner exits. That
+    // makes the shape below certain here rather than a race a fast machine wins
+    // and a loaded one loses: the testid is carried into the eval script
+    // verbatim, and 100KB of it is past the 64KB a pipe holds while staying
+    // under the 128KB a single argument may carry.
+    const MIDWRITE_EXIT_TESTID = `theme-switcher-${'x'.repeat(100_000)}`;
+
+    // A runner that rejects the script on sight exits while that write is still
+    // in flight, and the write then fails with EPIPE - so `proc.error` is set
+    // over a child that ran, exited 1 and printed why. Classified off the error
+    // first, the refusal was filed as a runner that could not be run: the
+    // eval-error record above went missing, its stage named the one repair the
+    // run did not need, and the reason the runner printed reached nothing. The
+    // child's own report is what the record carries, and "could not be run" is
+    // left for a child that reported nothing at all.
+    it('reads an eval the runner exited from mid-write off its own report, not off the broken write', () => {
+      const runWithStub = (stub: string, readyTimeout: string) => {
+        const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-midwrite-'));
+        const stubDir = path.join(workdir, 'bin');
+        fs.mkdirSync(stubDir, { recursive: true });
+        fs.writeFileSync(path.join(stubDir, 'npx'), stub, { mode: 0o755 });
+
+        const run = spawnSync(process.execPath, [
+          driverPath(),
+          '--host', 'data:text/plain,ok',
+          '--themes', 'light',
+          '--screens', 'orders:/orders:screen-orders',
+          '--capdir', path.join(workdir, 'shots'),
+          '--switcher', MIDWRITE_EXIT_TESTID,
+          '--theme-option', 'theme-option-{theme}',
+          '--menu', 'nav-{screen}',
+          '--cdp-port', '1',
+          '--ready-timeout', readyTimeout,
+        ], {
+          encoding: 'utf8',
+          timeout: DRIVER_TIMEOUT_MS,
+          env: { ...process.env, PATH: `${stubDir}${path.delimiter}${process.env.PATH ?? ''}` },
+        });
+
+        expectResultRecord(run);
+        const parsed = JSON.parse(run.stdout) as { ok: boolean; failures: { stage: string; detail: string }[] };
+        fs.rmSync(workdir, { recursive: true, force: true });
+        return parsed;
+      };
+
+      const refused = runWithStub(
+        "#!/bin/sh\necho \"SyntaxError: Identifier '__find' has already been declared\" >&2\nexit 1\n",
+        '5000');
+      const evalErrors = refused.failures.filter((failure) => failure.stage === 'eval-error');
+
+      expect(refused.ok).toBe(false);
+      expect(evalErrors.length).toBeGreaterThan(0);
+      expect(evalErrors[0].detail).toContain("Identifier '__find' has already been declared");
+      // The stages for a runner that never reported, claimed over one that did,
+      // send the repair after an installation and a hang that were both fine.
+      expect(refused.failures.some((failure) => failure.stage === 'spawn' || failure.stage === 'timeout')).toBe(false);
+
+      // A zero exit over the same broken write cannot clear the invocation
+      // either: the runner answered some prefix of the script, so its stdout is
+      // an answer to a text the driver never sent. Trusted, it reads as a
+      // dispatched click - the walk then captures under a theme it never asked
+      // the page for. This stub answers every readiness probe with the same
+      // line, so the poll ahead of the switcher is given 1ms and gives up on the
+      // first turn rather than spending a budget on an answer that never changes.
+      const partial = runWithStub('#!/bin/sh\necho dispatched\nexit 0\n', '1');
+
+      expect(partial.ok).toBe(false);
+      expect(partial.failures.some((failure) => failure.stage === 'eval-error')).toBe(true);
+    });
+
     // The runner resolves a relative screenshot path against its own temporary
     // working directory and still reports the write as a success, so captures
     // taken under a relative capdir land where neither the byte-compare nor the
