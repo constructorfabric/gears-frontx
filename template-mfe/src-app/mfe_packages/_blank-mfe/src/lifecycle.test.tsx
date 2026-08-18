@@ -120,7 +120,9 @@ describe('blank-mfe lifecycle', () => {
 
     const injectedCss = shadowRoot.querySelector('style')?.textContent ?? '';
     expect(injectedCss).toContain(':host {');
-    expect(injectedCss).not.toMatch(/^\s*:root\b/m);
+    // Not "no `:root` starts a line": a survivor mid-line matches nothing in a
+    // shadow tree just as silently, so nothing named `:root` may remain at all.
+    expect(injectedCss).not.toContain(':root');
   });
 
   it('inherits base mount behavior from ThemeAwareReactLifecycle', async () => {

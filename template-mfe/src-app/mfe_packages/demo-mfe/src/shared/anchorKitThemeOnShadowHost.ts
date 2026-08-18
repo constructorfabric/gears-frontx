@@ -7,12 +7,13 @@
  * all. A stylesheet loaded there unchanged delivers no tokens, and every kit
  * component paints from unresolved `var()` references.
  *
- * `_blank-mfe` carries a byte-identical copy of this module. The duplication is
- * deliberate: an MFE package never imports from a sibling MFE package, and the
- * only shared homes available — `@gears-frontx/ui-kit` and `@gears-frontx/mfes`
- * — are respectively a published surface this template does not own and a
- * package no MFE takes as a runtime dependency. Folding the two copies into one
- * is a decision for whoever moves this helper into a package both can depend on.
+ * `_blank-mfe` carries a copy of this module at the same path, with the same
+ * implementation. The duplication is deliberate: an MFE package never imports
+ * from a sibling MFE package, and the only shared homes available —
+ * `@gears-frontx/ui-kit` and `@gears-frontx/mfes` — are respectively a
+ * published surface this template does not own and a package no MFE takes as a
+ * runtime dependency. Folding the two copies into one is a decision for whoever
+ * moves this helper into a package both can depend on.
  */
 
 /**
@@ -24,6 +25,23 @@
  * on a preceding `{`, `}` or start of input — buys nothing over replacing them
  * all and loses `[data-theme='light'],:root { … }`, which is the same
  * silent-partial-rewrite this function exists to avoid.
+ *
+ * What this buys instead is a constraint, and it is worth stating plainly: the
+ * rewrite is textual, not a parse, so it cannot tell a selector from the two
+ * other places `:root` may legally appear. Inside a quoted value (a string, or
+ * an attribute selector's value) it would rewrite text that is data, and inside
+ * a feature query such as `@supports selector(:root)` it would rewrite the
+ * condition being tested rather than a selector. The comment stripper has the
+ * same blind spot in reverse: a quoted value containing a comment delimiter
+ * would be eaten as prose.
+ *
+ * The pinned kit version satisfies the assumption. Every `:root` in its
+ * `theme.css` sits either in plain selector position or in prose, and neither
+ * a quoted value nor a feature query names it anywhere. Two things hold that:
+ * the exact version pin in this package's `package.json`, and the tests beside
+ * this file, which assert the real imported stylesheet comes back with no
+ * `:root` left in it. A kit upgrade that introduces either context needs a real
+ * CSS parser here, not a wider regex.
  *
  * @param css - Stylesheet source, minified or not
  */
