@@ -1,13 +1,14 @@
 /**
  * CategoryMenu Component
  *
- * Renders a tree of 9 categories, each with element sub-items.
+ * Renders a tree of the showcase's categories, each with element sub-items.
  * Clicking a category or element scrolls to it.
  * Active element is highlighted.
  */
 
 import React, { useState } from 'react';
 import { CATEGORIES, CATEGORY_ELEMENTS, type Category } from '../categories';
+import styles from '../UIKitElements.module.css';
 
 interface CategoryMenuProps {
   /**
@@ -66,9 +67,9 @@ export const CategoryMenu: React.FC<CategoryMenuProps> = ({ t, activeElement, co
   };
 
   return (
-    <nav className="sticky top-4 bg-background border border-border rounded-lg p-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
-      <h2 className="text-lg font-semibold mb-4">{t('title')}</h2>
-      <ul className="space-y-1">
+    <nav className={styles.menu}>
+      <h2 className={styles.menuTitle}>{t('title')}</h2>
+      <ul className={styles.menuList}>
         {Object.values(CATEGORIES).map(category => {
           const isExpanded = expandedCategories.has(category);
           const elements = CATEGORY_ELEMENTS[category];
@@ -76,19 +77,18 @@ export const CategoryMenu: React.FC<CategoryMenuProps> = ({ t, activeElement, co
           return (
             <li key={category}>
               <button
+                type="button"
                 onClick={() => {
                   toggleCategory(category);
                   scrollToElement(`category-${category}`);
                 }}
-                className="w-full text-left px-2 py-1.5 rounded hover:bg-muted transition-colors flex items-center justify-between font-medium"
+                className={styles.categoryButton}
               >
                 <span>{t(`category.${category}`)}</span>
-                <span className="text-xs text-muted-foreground">
-                  {isExpanded ? '▼' : '▶'}
-                </span>
+                <span className={styles.disclosure}>{isExpanded ? '▼' : '▶'}</span>
               </button>
               {isExpanded && (
-                <ul className="ml-4 mt-1 space-y-0.5">
+                <ul className={styles.menuSubList}>
                   {elements.map(element => {
                     const elementId = `element-${element}`;
                     const isActive = activeElement === elementId;
@@ -96,12 +96,13 @@ export const CategoryMenu: React.FC<CategoryMenuProps> = ({ t, activeElement, co
                     return (
                       <li key={element}>
                         <button
+                          type="button"
                           onClick={() => scrollToElement(elementId)}
-                          className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
+                          className={
                             isActive
-                              ? 'bg-primary text-primary-foreground font-medium'
-                              : 'hover:bg-muted text-muted-foreground'
-                          }`}
+                              ? `${styles.elementButton} ${styles.elementButtonActive}`
+                              : styles.elementButton
+                          }
                         >
                           {t(`element.${element}.title`)}
                         </button>

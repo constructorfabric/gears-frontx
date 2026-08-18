@@ -19,14 +19,10 @@ class MockIntersectionObserver {
 }
 
 // Stub children to isolate the screen's bridge wiring. No assertions are made on
-// their output; their only purpose is to keep JSDOM happy (Radix portals, toasts,
-// and the heavy UIKit tree would otherwise force additional global polyfills without
-// adding coverage over what E2E tests already cover).
+// their output; their only purpose is to keep JSDOM happy (portalled popups,
+// toasts, and the heavy kit tree would otherwise force additional global
+// polyfills without adding coverage over what E2E tests already cover).
 vi.mock('./components/CategoryMenu', () => ({ CategoryMenu: () => null }));
-vi.mock('../../components/ui/sonner', () => ({ Toaster: () => null }));
-vi.mock('../../components/ui/tooltip', () => ({
-  TooltipProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
 vi.mock('./components/LayoutElements', () => ({ LayoutElements: () => null }));
 vi.mock('./components/NavigationElements', () => ({ NavigationElements: () => null }));
 vi.mock('./components/FormElements', () => ({ FormElements: () => null }));
@@ -34,8 +30,14 @@ vi.mock('./components/ActionElements', () => ({ ActionElements: () => null }));
 vi.mock('./components/FeedbackElements', () => ({ FeedbackElements: () => null }));
 vi.mock('./components/DataDisplayElements', () => ({ DataDisplayElements: () => null }));
 vi.mock('./components/OverlayElements', () => ({ OverlayElements: () => null }));
-vi.mock('./components/MediaElements', () => ({ MediaElements: () => null }));
-vi.mock('./components/DisclosureElements', () => ({ DisclosureElements: () => null }));
+
+// Only the Toaster is replaced: it mounts a portalled viewport and a global
+// toast manager the screen never asserts on, while Card and Skeleton around it
+// stay real so the screen renders the tree it actually ships.
+vi.mock('@gears-frontx/ui-kit', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@gears-frontx/ui-kit')>();
+  return { ...actual, Toaster: () => null };
+});
 
 async function setupUIKitElementsScreen() {
   const { UIKitElementsScreen } = await import('./UIKitElementsScreen');
