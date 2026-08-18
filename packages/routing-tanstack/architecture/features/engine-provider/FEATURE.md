@@ -40,27 +40,27 @@ The Engine Provider is the sole component permitted to import a concrete router 
 
 A router engine renders routes and matches search parameters, and concrete engines evolve on their own release cadence, independent of the navigation substrate and of every other microfrontend in the realm. Confining engine choice to a swappable, per-microfrontend adapter is what keeps that evolution — or an outright engine replacement — from reaching the substrate, the host, or a sibling microfrontend. This feature exists to be that adapter: it is the only place a concrete engine's package is imported, and the only place `NavigationHistory` is translated into what `createRouter` expects as `RouterHistory`.
 
-**Requirements**: `cpt-frontx-routing-fr-engine-provider-port`, `cpt-frontx-routing-fr-scoped-navigation-zone`, `cpt-frontx-routing-fr-standalone-deployment`, `cpt-frontx-routing-fr-location-preserving-helpers`, `cpt-frontx-routing-nfr-agnostic-core`
+**Requirements**: `cpt-frontx-routing-fr-engine-provider-port` (core), `cpt-frontx-routing-tanstack-fr-engine-adaptation`, `cpt-frontx-routing-tanstack-fr-scoped-navigation-zone`, `cpt-frontx-routing-tanstack-fr-standalone-deployment`, `cpt-frontx-routing-tanstack-fr-location-preserving-helpers`, `cpt-frontx-routing-tanstack-nfr-single-ecosystem-edge`
 
-**Principles**: `cpt-frontx-routing-principle-engine-behind-port`
+**Principles**: `cpt-frontx-routing-tanstack-principle-engine-confined`
 
 ### 1.3 Actors
 
 | Actor | Role in Feature |
 |-------|-----------------|
-| `cpt-frontx-routing-actor-microfrontend-developer` | Builds a microfrontend's own router scoped to its declared `basepath`, may replace the engine provider inside that microfrontend's own build without touching anything outside it, and uses the location-preserving navigation helper for a redirect that must carry search and hash forward. |
-| `cpt-frontx-routing-actor-router-engine` | The pluggable, replaceable engine an engine provider binds the shared history to; TanStack Router is the default, constructed via `createRouter({ routeTree, history, basepath })`. |
+| `cpt-frontx-routing-tanstack-actor-microfrontend-developer` | Builds a microfrontend's own router scoped to its declared `basepath`, may replace the engine provider inside that microfrontend's own build without touching anything outside it, and uses the location-preserving navigation helper for a redirect that must carry search and hash forward. |
+| `cpt-frontx-routing-tanstack-actor-router-engine` | The pluggable, replaceable engine an engine provider binds the shared history to; TanStack Router is the default, constructed via `createRouter({ routeTree, history, basepath })`. |
 
 ### 1.4 References
 
 - **PRD**: [PRD.md](../../PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
-- **Use case**: `cpt-frontx-routing-usecase-swap-router-engine`
+- **Use case**: `cpt-frontx-routing-tanstack-usecase-swap-router-engine`
 - **Component**: `cpt-frontx-component-routing-engine-provider`
-- **Constraints**: `cpt-frontx-constraint-routing-no-engine-leak`
-- **Dependencies**: `cpt-frontx-feature-routing-navigation-substrate` — the provider implements the engine port the substrate defines, the same shape as the runtime's type-substrate port and its default GTS provider.
+- **Constraints**: `cpt-frontx-constraint-routing-tanstack-sole-engine-import`
+- **Dependencies**: `cpt-frontx-feature-routing-navigation-substrate` — the core package's own feature ([routing DESIGN](../../../../routing/architecture/DESIGN.md)); the provider implements the engine port the substrate defines, the same shape as the runtime's type-substrate port and its default GTS provider.
 
-**Territory boundary**: Replacing the engine provider used by one microfrontend is scoped to that microfrontend's own route tree and its own search-parameter handling. It reaches no further: the navigation substrate, the `basepath` contract, the route ownership signal (`cpt-frontx-feature-routing-route-ownership-signal`), the host's code, and every sibling microfrontend are unaffected and may remain on a different engine provider of their own.
+**Territory boundary**: Replacing the engine provider used by one microfrontend is scoped to that microfrontend's own route tree and its own search-parameter handling. It reaches no further: the navigation substrate, the `basepath` contract, and the route ownership signal — all owned by the core package (`cpt-frontx-feature-routing-navigation-substrate`, `cpt-frontx-feature-routing-route-ownership-signal`, [routing DESIGN](../../../../routing/architecture/DESIGN.md)) — the host's code, and every sibling microfrontend are unaffected and may remain on a different engine provider of their own.
 
 ### 1.5 Port Shapes
 
@@ -73,7 +73,7 @@ A replacement provider **MUST** accept:
 
 A replacement provider is responsible for producing its own engine's history-contract object from `NavigationHistory` — deriving whatever members its own engine's contract requires beyond `location`/`subscribe`/`push`/`replace`/`go`, and translating `NavigationHistory`'s notification into whatever shape its own engine's `subscribe` callback expects. This package makes no claim about a different engine's exact history-contract shape; the default provider's own translation into `RouterHistory`/`SubscriberArgs` (§3, History Adaptation) is a worked example, not a mandate on a replacement provider's own target contract.
 
-**Diagnostic of mismatch**: A replacement provider that cannot accept `NavigationHistory` as-is — for example, one whose own engine's history contract requires a constructor argument this port does not supply — fails at construction rather than at first navigation: it cannot receive the shared history, so the microfrontend's routing does not initialize (`cpt-frontx-routing-usecase-swap-router-engine`, Alternative Flow). This failure is local to the microfrontend that adopted the mismatched provider; it does not reach the substrate, the host, or a sibling microfrontend.
+**Diagnostic of mismatch**: A replacement provider that cannot accept `NavigationHistory` as-is — for example, one whose own engine's history contract requires a constructor argument this port does not supply — fails at construction rather than at first navigation: it cannot receive the shared history, so the microfrontend's routing does not initialize (`cpt-frontx-routing-tanstack-usecase-swap-router-engine`, Alternative Flow). This failure is local to the microfrontend that adopted the mismatched provider; it does not reach the substrate, the host, or a sibling microfrontend.
 
 ## 2. Actor Flows (CDSL)
 
@@ -81,9 +81,9 @@ A replacement provider is responsible for producing its own engine's history-con
 
 - [ ] `p1` - **ID**: `cpt-frontx-flow-routing-engine-provider-swap-engine`
 
-**Actor**: `cpt-frontx-routing-actor-microfrontend-developer`
+**Actor**: `cpt-frontx-routing-tanstack-actor-microfrontend-developer`
 
-**Use cases**: `cpt-frontx-routing-usecase-swap-router-engine`
+**Use cases**: `cpt-frontx-routing-tanstack-usecase-swap-router-engine`
 
 **Success Scenarios**:
 - A microfrontend mounted under a declared `basepath`, currently using the default TanStack Router engine provider, has its engine provider replaced with a different one satisfying the same engine-provider port (§1.5); the microfrontend's own route tree and search-parameter handling move to the new engine, and nothing outside the microfrontend's own territory changes.
@@ -152,7 +152,7 @@ A replacement provider is responsible for producing its own engine's history-con
 3. [ ] - `p1` - Carry that search and hash forward onto the target path, rather than requiring the caller to assemble the carry-forward itself - `inst-carry-search-hash`
 4. [ ] - `p1` - **RETURN** the `redirect` (or navigation call) to the target path with search and hash intact - `inst-return-redirect`
 
-**Rationale**: A redirect built from the target path alone silently drops the current location's search and hash — a mistake that looks correct until a query parameter or hash fragment disappears in front of a user. Generalizing this helper to any consumer redirect, rather than leaving it as private knowledge inside one application's own index-route handling, is what makes the correct behavior the path of least resistance for every redirect this package's consumers write (`cpt-frontx-routing-fr-location-preserving-helpers`).
+**Rationale**: A redirect built from the target path alone silently drops the current location's search and hash — a mistake that looks correct until a query parameter or hash fragment disappears in front of a user. Generalizing this helper to any consumer redirect, rather than leaving it as private knowledge inside one application's own index-route handling, is what makes the correct behavior the path of least resistance for every redirect this package's consumers write (`cpt-frontx-routing-tanstack-fr-location-preserving-helpers`).
 
 ### Teardown On Unmount
 
@@ -203,7 +203,7 @@ Not applicable. The Engine Provider adapts a history and constructs a router; it
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-routing-engine-provider-adaptation-and-creation`
 
-The system **MUST** adapt the navigation substrate's shared `NavigationHistory` into a `RouterHistory` object — exposing `location`, `push`, `replace`, `go` directly, deriving the members the engine's contract requires beyond those five, constructing `block` as the recognized, degraded adaptation specified in `cpt-frontx-algo-routing-engine-provider-history-adaptation` rather than a routinely derived member, and constructing `SubscriberArgs` (`location`, `action`) for `RouterHistory`'s `subscribe` callback from `NavigationHistory`'s own notification — and **MUST** construct the engine's router via `createRouter({ routeTree, history, basepath })`, scoped to the assigned `basepath` when one is supplied, and mount it into the microfrontend's own component tree via `RouterProvider`. Every component of this package other than the Engine Provider **MUST NOT** import a concrete router engine; the Engine Provider is the sole, deliberate exception to that prohibition.
+The system **MUST** adapt the navigation substrate's shared `NavigationHistory` into a `RouterHistory` object — exposing `location`, `push`, `replace`, `go` directly, deriving the members the engine's contract requires beyond those five, constructing `block` as the recognized, degraded adaptation specified in `cpt-frontx-algo-routing-engine-provider-history-adaptation` rather than a routinely derived member, and constructing `SubscriberArgs` (`location`, `action`) for `RouterHistory`'s `subscribe` callback from `NavigationHistory`'s own notification — and **MUST** construct the engine's router via `createRouter({ routeTree, history, basepath })`, scoped to the assigned `basepath` when one is supplied, and mount it into the microfrontend's own component tree via `RouterProvider`. No package in this ecosystem other than this one **MUST** import a concrete router engine; this package is the sole, deliberate exception to that prohibition.
 
 **Implements**:
 - `cpt-frontx-flow-routing-engine-provider-swap-engine`
@@ -212,11 +212,11 @@ The system **MUST** adapt the navigation substrate's shared `NavigationHistory` 
 
 **Addresses**:
 - `cpt-frontx-routing-fr-engine-provider-port`
-- `cpt-frontx-routing-fr-scoped-navigation-zone`
-- `cpt-frontx-routing-nfr-agnostic-core`
-- `cpt-frontx-routing-principle-engine-behind-port`
+- `cpt-frontx-routing-tanstack-fr-engine-adaptation`
+- `cpt-frontx-routing-tanstack-fr-scoped-navigation-zone`
+- `cpt-frontx-routing-tanstack-principle-engine-confined`
 
-**Constraints**: `cpt-frontx-constraint-routing-no-engine-leak`
+**Constraints**: `cpt-frontx-constraint-routing-tanstack-sole-engine-import`
 
 **Touches**:
 - Component: `cpt-frontx-component-routing-engine-provider`
@@ -232,8 +232,8 @@ The system **MUST** provide a reusable navigation helper that carries the curren
 - `cpt-frontx-algo-routing-engine-provider-standalone-deployment`
 
 **Addresses**:
-- `cpt-frontx-routing-fr-location-preserving-helpers`
-- `cpt-frontx-routing-fr-standalone-deployment`
+- `cpt-frontx-routing-tanstack-fr-location-preserving-helpers`
+- `cpt-frontx-routing-tanstack-fr-standalone-deployment`
 
 **Touches**:
 - Component: `cpt-frontx-component-routing-engine-provider`
@@ -261,7 +261,7 @@ The system **MUST** unsubscribe a constructed router's adapted `RouterHistory` f
 - [ ] When a `basepath` is assigned, the constructed router matches only the remainder of the URL beneath it.
 - [ ] Replacing the engine provider used by one microfrontend changes no file outside that microfrontend's own route tree and search-parameter handling.
 - [ ] A replacement provider that cannot accept the shared `NavigationHistory` and adapt it into its own engine's history contract fails to receive the shared history, and the microfrontend's routing does not initialize.
-- [ ] Every component of this package other than the Engine Provider does not import a concrete router engine or its packages directly; the Engine Provider is the sole exception.
+- [ ] No package in this ecosystem other than this one imports a concrete router engine or its packages directly; this package is the sole, deliberate exception (`cpt-frontx-constraint-routing-tanstack-sole-engine-import`).
 - [ ] The location-preserving navigation helper preserves the current location's search and hash for any consumer redirect, including but not limited to a redirect issued from an index route.
 - [ ] A microfrontend deployed on its own runs the same router construction, taking its `basepath` from the deployment's configuration or omitting it at a root, resolving an undeclared path to the engine's own `notFound` rather than a host-level fallback, with no route-ownership-signal observer created for this deployment.
 - [ ] When a microfrontend is unmounted, its constructed router's adapted `RouterHistory` is unsubscribed from the shared `NavigationHistory`, so it stops receiving further fan-out.

@@ -318,16 +318,16 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-routing-principle-publishes-not-orchestrates`
 - `cpt-frontx-constraint-routing-no-intra-ecosystem-dependency`
 
-### 2.24 [Routing Engine Provider](../packages/routing/architecture/features/engine-provider/) - MEDIUM
+### 2.24 [Routing Engine Provider](../packages/routing-tanstack/architecture/features/engine-provider/) - MEDIUM
 
 - [ ] `p2` - **ID**: `cpt-frontx-feature-routing-engine-provider`
 
-**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/routing/architecture/features/engine-provider/FEATURE.md).
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/routing-tanstack/architecture/features/engine-provider/FEATURE.md). This feature moved from `@gears-frontx/routing` to the separately published `@gears-frontx/routing-tanstack` under the package split recorded in `cpt-frontx-adr-core-package-boundaries`; its own identifiers (feature, featstatus, component, and every flow/algo/dod) kept their names unchanged across the move.
 
 **Installed-kit coverage references**:
 - `cpt-frontx-component-routing-engine-provider`
-- `cpt-frontx-routing-principle-engine-behind-port`
-- `cpt-frontx-constraint-routing-no-engine-leak`
+- `cpt-frontx-routing-tanstack-principle-engine-confined`
+- `cpt-frontx-constraint-routing-tanstack-sole-engine-import`
 
 ## 3. Feature Dependencies
 
@@ -353,7 +353,7 @@ F19 ecosystem-governance         (foundation, standalone)
 F20 ai-project-scaffolding       (← F10, F11, F12, F13, F15, F16)
 F21 routing-navigation-substrate (foundation, standalone)
    ├─→ F22 routing-route-ownership-signal
-   └─→ F23 routing-engine-provider
+   └─→ F23 routing-engine-provider (cross-package: routing-tanstack ← routing)
 ```
 
 **Dependency Rationale**:
@@ -378,7 +378,7 @@ F21 routing-navigation-substrate (foundation, standalone)
 - `cpt-frontx-feature-cli-invocation` requires `cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-template-manifest`, `cpt-frontx-feature-cli-scaffolding`, `cpt-frontx-feature-composed-provenance`, and `cpt-frontx-feature-upgrade-changeset`: the invocation surface is the cross-command aggregator that dispatches `frontx <command>` to each owning behavior; it sits above them in the graph and none depend back on it.
 - `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-ai-kit-packaging` (its entry points ship in the base kit), `cpt-frontx-feature-template-manifest` (selection matches intent against manifest-declared descriptions), `cpt-frontx-feature-template-resolution` (the local inventory it selects over), `cpt-frontx-feature-cli-scaffolding` (the seed/add assembly it drives over the command surface), `cpt-frontx-feature-composed-provenance` (the applied set is reported from provenance), and `cpt-frontx-feature-template-ai-extensions` (per-unit realization drives the applied templates' activated extension skills).
 - `cpt-frontx-feature-routing-route-ownership-signal` requires `cpt-frontx-feature-routing-navigation-substrate`: the owner-resolution primitive it exposes, and the observable signal it builds on top of that primitive, both bind against the single navigation history the substrate owns.
-- `cpt-frontx-feature-routing-engine-provider` requires `cpt-frontx-feature-routing-navigation-substrate`: the provider implements the engine port the substrate defines, the same shape as `cpt-frontx-feature-gts-type-provider` implementing the type-substrate port.
+- `cpt-frontx-feature-routing-engine-provider` requires `cpt-frontx-feature-routing-navigation-substrate`: the provider implements the engine port the substrate defines, the same shape as `cpt-frontx-feature-gts-type-provider` implementing the type-substrate port — a cross-package edge (`@gears-frontx/routing-tanstack` depends on `@gears-frontx/routing`) since the package split recorded in `cpt-frontx-adr-core-package-boundaries`, the same shape as the `mfes ← gts-plugin` edge.
 
 ## 4. Known Validator Debt
 

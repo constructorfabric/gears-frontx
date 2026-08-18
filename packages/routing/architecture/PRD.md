@@ -36,7 +36,7 @@
 
 ### 1.1 Purpose
 
-`@gears-frontx/routing` is the ecosystem's navigation library: the published library through which a composed application and its independently bundled microfrontends share one browser navigation history and keep the URL and the screen a user is looking at in agreement. It exposes a framework-agnostic navigation substrate carrying that shared history, and a pluggable engine provider — the default binds the substrate to TanStack Router — so a concrete routing engine can be swapped inside a single microfrontend's own territory without touching the substrate, the host, or any sibling microfrontend. This PRD owns the library's requirements; ecosystem-level requirements are owned by the [root PRD](../../../architecture/PRD.md).
+`@gears-frontx/routing` is the ecosystem's navigation library: the published library through which a composed application and its independently bundled microfrontends share one browser navigation history and keep the URL and the screen a user is looking at in agreement. It exposes a framework-agnostic navigation substrate carrying that shared history, and an engine-provider port so a concrete routing engine can be swapped inside a single microfrontend's own territory without touching the substrate, the host, or any sibling microfrontend. This library carries no dependency on any concrete router engine itself; a separately published provider package satisfies the port — the ecosystem's own default is `@gears-frontx/routing-tanstack`. This PRD owns the library's requirements; ecosystem-level requirements are owned by the [root PRD](../../../architecture/PRD.md).
 
 ### 1.2 Background / Problem Statement
 
@@ -56,7 +56,7 @@ This PRD uses the ecosystem's shared vocabulary: *application* means what the ro
 | Term | Definition |
 |------|------------|
 | navigation substrate | The framework-agnostic core owning the single shared navigation history, the `basepath` contract, and route-owner resolution; it depends on no router engine and no UI framework. |
-| engine provider | An adapter that binds the navigation substrate's shared history to a concrete router engine so the engine can drive rendering and matching; the default provider adapts TanStack Router. |
+| engine provider | A separately published package that binds the navigation substrate's shared history to a concrete router engine so the engine can drive rendering and matching, by satisfying this library's engine-provider port. Not owned by this library: an engine provider's own requirements, behavior, and package boundary are owned by that provider's own PRD and DESIGN — the ecosystem's own default is `@gears-frontx/routing-tanstack`. |
 | basepath | The URL path segment prefix a mounted microfrontend's own router is scoped to; the microfrontend's router matches only the remainder of the path beneath it. |
 | route owner | The opaque identifier of whichever unit currently owns a declared URL prefix, supplied to the navigation substrate by the host as a plain argument; the substrate never interprets what the identifier names. |
 | route ownership signal | The observable signal this library publishes when the URL's resolved route owner changes — an owner appearing, disappearing, changing, or its remainder beneath the prefix changing — together with the URL back-projection helper a consumer calls after a mount not driven by navigation. Two-way agreement between the URL and which unit is actually mounted is not this library's own guarantee; it is the consumer's, built on top of this signal (§11). |
@@ -85,7 +85,7 @@ This PRD uses the ecosystem's shared vocabulary: *application* means what the ro
 
 **ID**: `cpt-frontx-routing-actor-router-engine`
 
-**Role**: The pluggable, replaceable engine an engine provider binds the shared navigation history to; the default is TanStack Router, constructed as `createRouter({ routeTree, history, basepath })`. Treated as opaque and substitutable by the navigation substrate and by every microfrontend other than the one that chose it.
+**Role**: The pluggable, replaceable engine an engine-provider package binds the shared navigation history to, through this library's engine-provider port. Treated as opaque and substitutable by the navigation substrate and by every microfrontend other than the one that chose it; this library carries no concrete engine dependency of its own and no opinion on which engine a provider package chooses.
 
 ## 3. Operational Concept & Environment
 
@@ -95,12 +95,10 @@ The same microfrontend runs under two deployment modes without a change to its r
 
 ### 3.1 Module-Specific Environment Constraints
 
-- Requires a browser environment with a navigation-history API for the default engine provider's underlying implementation.
+- Requires a browser environment with a navigation-history API for the substrate's own realm-shared instance.
 - Requires a single JavaScript realm shared by the host and every independently bundled microfrontend: the navigation substrate's single-shared-history guarantee is a realm-scoped property, not a per-bundle one.
-- The router engine is confined to the engine-provider component: TanStack Router and its `RouterHistory` contract (`@tanstack/history`) are dependencies of that component only, never of the navigation substrate itself.
+- The router engine is never a dependency of the navigation substrate itself: every engine-specific dependency is confined to whichever separately published engine-provider package implements this library's engine-provider port (`cpt-frontx-routing-fr-engine-provider-port`).
 - Standalone by construction: no intra-ecosystem package dependency; the binding to route owners is expressed only through a consumer-supplied owner-prefix pairs source, passed as a plain argument, and the binding to mounting only through the observable signal this library publishes — never through an import of the runtime that manages either one. The composed and standalone modes differ only in whether a route-ownership-signal observer is created and in where the `basepath` comes from, not in any port supplied to the package.
-- A standalone deployment serving paths beneath its `basepath` requires its server to answer every such path with the application's entry document; without that rewrite a deep link fails before any code of this library runs. This is a deployment obligation, not a library capability.
-- A router's `basepath` and a build's asset base URL are independent values: the first decides where routes are matched, the second where chunks are fetched from. A standalone deployment commonly sets them to different values, and neither is derived from the other.
 - Third-party code on the page may call the browser's own navigation-history API directly, bypassing the shared navigation history. This is an environmental condition the library does not prevent, not a supported way to navigate: a call that bypasses the shared instance leaves its `location` stale and its fan-out silent for that change (see DESIGN §4 failure modes).
 
 ## 4. Scope
@@ -109,17 +107,16 @@ The same microfrontend runs under two deployment modes without a change to its r
 
 - A single, realm-shared navigation history with fan-out subscription: one real subscription to the browser's navigation history, redistributed to every listener.
 - Imperative navigation outside the UI tree: `push`, `replace`, `go`, `location`, `subscribe` against the shared history.
-- The `basepath` contract and a default engine provider adapting TanStack Router to it.
+- The `basepath` contract, and the engine-provider port a separately published provider package implements against it.
 - The route ownership signal: resolving a URL to its declared route owner, observing and reporting every ownership-relevant transition to the consumer, and a URL back-projection helper the consumer calls after a mount not driven by navigation — the two-way agreement between the URL and a mounted owner is the consumer's own guarantee, built on this signal (§11).
 - The channel boundary: this library owns the URL channel only, among the ecosystem's host–microfrontend communication channels.
-- Deployment-mode parity: the same microfrontend routing code running composed under a host and standalone under its own deployment.
 
 ### 4.2 Out of Scope
 
 - Addressed action dispatch and shared-property broadcast between microfrontends and the host — owned by the runtime that provides those channels ([mfes PRD](../../mfes/architecture/PRD.md)); this library neither duplicates nor mediates either one.
 - Microfrontend loading, admission, placement, and isolation — owned by the runtime ([mfes PRD](../../mfes/architecture/PRD.md)).
 - The registry of route owners, the execution of a mount, and any reconciliation between a competing pair of mounts — all owned by the consumer's own mount mechanism, reached only through the plain-argument owner-prefix pairs source and the observable signal this library publishes, never through an injected port or an import of the runtime that implements them.
-- Any specific router-engine implementation beyond the default provider; a consumer may supply its own provider for a different engine.
+- Any router-engine implementation, and any provider-side concern — router construction, deployment-mode parity for a microfrontend's own routing code, and location-preserving navigation helpers — all owned entirely by whichever separately published engine-provider package a microfrontend depends on, including the ecosystem's own default, `@gears-frontx/routing-tanstack` ([its own PRD](../../routing-tanstack/architecture/PRD.md)).
 
 ## 5. Functional Requirements
 
@@ -139,19 +136,9 @@ The system **MUST** expose exactly one navigation-history instance per realm, re
 
 - [ ] `p1` - **ID**: `cpt-frontx-routing-fr-engine-provider-port`
 
-The system **MUST** expose the shared navigation history to a router engine only through a pluggable engine-provider adapter, and **MUST** let a microfrontend replace the engine its own provider binds without changing the navigation substrate, the `basepath` contract, the host, or any sibling microfrontend.
+The system **MUST** expose the shared navigation history to a router engine only through a pluggable engine-provider port, satisfied by a separately published provider package, and **MUST** let a microfrontend replace its provider package with a different one without changing the navigation substrate, the `basepath` contract, the host, or any sibling microfrontend. The port describes only what a provider **MUST** accept from the substrate — the shared `NavigationHistory` instance, an assigned or deployment-supplied `basepath`, an opaque route tree — and that a provider is responsible for producing a constructed, mounted router from them; it names no concrete engine.
 
-**Rationale**: Concrete router engines evolve independently of the substrate; confining engine choice to a swappable adapter is what keeps that evolution from reaching outside the microfrontend that made the choice.
-
-**Actors**: `cpt-frontx-routing-actor-microfrontend-developer`
-
-#### Scoped navigation zone
-
-- [ ] `p1` - **ID**: `cpt-frontx-routing-fr-scoped-navigation-zone`
-
-The system **MUST** scope a microfrontend's own router to the `basepath` it is assigned, so its router matches only the remainder of the URL beneath that prefix and cannot navigate to a path outside it through its own routing table.
-
-**Rationale**: A `basepath` is a microfrontend's namespace; letting its router reach outside that namespace would let one microfrontend's routing table silently claim paths another microfrontend or the host owns.
+**Rationale**: Concrete router engines evolve independently of the substrate; confining engine choice to a swappable, separately published provider package is what keeps that evolution from reaching outside the microfrontend that made the choice, and what keeps the substrate itself free of any concrete engine dependency.
 
 **Actors**: `cpt-frontx-routing-actor-microfrontend-developer`
 
@@ -165,16 +152,6 @@ The system **MUST** resolve a URL to its declared route owner by longest matchin
 
 **Actors**: `cpt-frontx-routing-actor-application-developer`, `cpt-frontx-routing-actor-microfrontend-developer`
 
-#### Deployment-mode parity for a microfrontend's own routing
-
-- [ ] `p1` - **ID**: `cpt-frontx-routing-fr-standalone-deployment`
-
-The system **MUST** run a microfrontend's own router unchanged whether the microfrontend is composed into a host application or served as a standalone deployment, taking its `basepath` from the host in the first case and from the deployment's configuration in the second, and **MUST NOT** require a route ownership signal observer to exist for standalone operation to work — a standalone deployment is free to create one or not. A navigation to a path no route owner declares **MUST** resolve to the consumer's fallback in both modes rather than failing.
-
-**Rationale**: A microfrontend is developed, previewed, and sometimes shipped on its own, and composed into an application later. If either mode required different routing code, every microfrontend would carry two configurations that drift apart; making the mode a matter of which values are supplied, and whether an observer participates, keeps one code path honest in both.
-
-**Actors**: `cpt-frontx-routing-actor-microfrontend-developer`, `cpt-frontx-routing-actor-application-developer`
-
 #### Imperative navigation outside the UI tree
 
 - [ ] `p2` - **ID**: `cpt-frontx-routing-fr-imperative-navigation`
@@ -184,16 +161,6 @@ The system **MUST** expose `push`, `replace`, `go`, `location`, and `subscribe` 
 **Rationale**: Not every caller that needs to read or change the URL is a rendered component; a mounting resolver, a host action handler, or a bootstrapping routine needs the same navigation surface without needing a mounted router to reach it.
 
 **Actors**: `cpt-frontx-routing-actor-application-developer`, `cpt-frontx-routing-actor-microfrontend-developer`
-
-#### Location-preserving navigation helpers
-
-- [ ] `p2` - **ID**: `cpt-frontx-routing-fr-location-preserving-helpers`
-
-The system **MUST** provide reusable navigation helpers that carry the current location's search and hash forward onto a target path, so a consumer building a redirect or an imperative navigation does not have to assemble that carry-forward by hand.
-
-**Rationale**: Dropping search and hash on a redirect is an easy, repeatable mistake because the naive form — building a target from the path alone — looks correct until a query parameter or a hash fragment disappears; a shared helper makes the correct behavior the path of least resistance for every consumer that redirects, not only for one application's own index route.
-
-**Actors**: `cpt-frontx-routing-actor-microfrontend-developer`
 
 ## 6. Non-Functional Requirements
 
@@ -213,11 +180,11 @@ The system **MUST** import no other package in this ecosystem, and **MUST** call
 
 - [ ] `p1` - **ID**: `cpt-frontx-routing-nfr-agnostic-core`
 
-The navigation substrate **MUST** carry no dependency on a concrete router engine or UI framework; every dependency on a concrete engine **MUST** be confined to an engine-provider component behind the engine port.
+The navigation substrate **MUST** carry no dependency on any router engine or UI framework whatsoever; every dependency on a concrete engine **MUST** live in a separately published engine-provider package that implements the engine-provider port, never inside this package.
 
-**Threshold**: The navigation substrate's own module carries no import of the router engine or of a UI-framework rendering primitive; checked mechanically by the boundary guards, against the engine-confinement constraint the DESIGN owns.
+**Threshold**: This package's own module carries zero import of any router engine or of a UI-framework rendering primitive; checked mechanically by the boundary guards as a package-boundary property — no engine or UI-framework package can appear in this package's manifest or import graph at all, not merely inside a designated internal component.
 
-**Rationale**: Keeping the substrate free of engine or framework knowledge is what lets one microfrontend's routing table change engines, or lets the default engine itself be replaced ecosystem-wide, without the substrate, the host, or any other microfrontend noticing.
+**Rationale**: Keeping the substrate free of engine or framework knowledge is what lets one microfrontend's routing table change engines, or lets the default engine-provider package itself be replaced ecosystem-wide, without the substrate, the host, or any other microfrontend noticing. Making this a package boundary rather than an intra-package convention is what turns "confined to one component" into "absent from this package's own dependency graph, mechanically checkable without inspecting which module inside the package a given import lives in."
 
 ### 6.2 NFR Exclusions
 
@@ -248,7 +215,7 @@ None owned here. The package is distributed under the root PRD's package-registr
 **Main Flow**:
 1. The route ownership signal's observer resolves the URL's pathname to a declared route owner by longest matching prefix and reports the owner appearing (`cpt-frontx-routing-fr-route-ownership-signal`).
 2. The host's own mount mechanism mounts that route owner in response to the reported transition.
-3. Once mounted, the microfrontend's own engine provider reads the current location from the shared history at start and matches the remainder of the path under its `basepath` (`cpt-frontx-routing-fr-scoped-navigation-zone`).
+3. Once mounted, the microfrontend's own engine-provider package reads the current location from the shared history at start and matches the remainder of the path under its `basepath` — a guarantee the engine-provider port's consumer, not this library, makes about its own construction (owned by that provider's own PRD, e.g. `cpt-frontx-routing-tanstack-fr-scoped-navigation-zone` for the ecosystem's own default).
 
 **Postconditions**:
 - The mounted screen and the URL agree without a blank screen, because the freshly mounted router reads the already-current location rather than starting from a blank route.
@@ -257,42 +224,18 @@ None owned here. The package is distributed under the root PRD's package-registr
 - **No declared owner matches the path**: the observer reports no owner; the host's own fallback is shown and nothing is mounted.
 - **The URL later moves outside the mounted owner's declared prefix**: the observer reports the owner disappearing or changing, and the host unmounts that microfrontend through its own mount mechanism.
 
-#### Swap the router engine used by one microfrontend
-
-- [ ] `p2` - **ID**: `cpt-frontx-routing-usecase-swap-router-engine`
-
-**Actor**: `cpt-frontx-routing-actor-microfrontend-developer`
-
-**Preconditions**:
-- A microfrontend is mounted under a declared `basepath`, currently using the default TanStack Router engine provider.
-
-**Main Flow**:
-1. The Microfrontend Developer replaces the engine provider inside that microfrontend's own build with a different one, satisfying the same engine-provider port (`cpt-frontx-routing-fr-engine-provider-port`).
-2. The replacement provider is handed the same shared navigation history and the same `basepath` the previous provider used.
-3. The microfrontend's own route tree and search-parameter handling move to the new engine; nothing outside the microfrontend's own territory changes.
-
-**Postconditions**:
-- The navigation substrate, the host, and every sibling microfrontend observe no change.
-
-**Alternative Flows**:
-- **The replacement provider does not satisfy the engine-provider port's history contract**: it cannot receive the shared history, and the microfrontend's routing does not initialize.
-
 ## 9. Acceptance Criteria
 
 - [ ] A single navigation-history instance answers `push`/`replace`/`go`/`location`/`subscribe` for the host and for every independently bundled microfrontend registered in the same realm, and every one of those five members is callable by a caller with no mounted router or UI-framework component tree in its call path — verifiable via `cpt-frontx-routing-fr-single-navigation-substrate` and `cpt-frontx-routing-fr-imperative-navigation`.
-- [ ] A microfrontend's own router matches only the remainder of the URL beneath the `basepath` it is assigned, and no route inside its own routing table can navigate it to a path outside that prefix — verifiable via `cpt-frontx-routing-fr-scoped-navigation-zone`.
-- [ ] Replacing the router engine used by one microfrontend changes no file outside that microfrontend's own route tree and search-parameter handling — verifiable via `cpt-frontx-routing-fr-engine-provider-port`.
+- [ ] Replacing the engine-provider package used by one microfrontend changes no file outside that microfrontend's own route tree and search-parameter handling — verifiable via `cpt-frontx-routing-fr-engine-provider-port`.
 - [ ] A cold load, a reload, and a back/forward step all resolve the same declared route owner from the URL through the same resolution path, reported as an observable transition to the consumer — verifiable via `cpt-frontx-routing-fr-route-ownership-signal`.
-- [ ] The same microfrontend routing code runs composed under a host and standalone under its own deployment, differing only in where the `basepath` comes from and whether a route-ownership-signal observer exists at all — verifiable via `cpt-frontx-routing-fr-standalone-deployment`.
-- [ ] The package declares no intra-ecosystem dependency, and its navigation substrate carries no import of the router engine or a UI framework — verifiable via the boundary guards.
-- [ ] A redirect or an imperative navigation built with the library's location-preserving helper carries the current location's search and hash onto the target path — verifiable via `cpt-frontx-routing-fr-location-preserving-helpers`.
+- [ ] The package declares no intra-ecosystem dependency, and its navigation substrate carries no import of any router engine or a UI framework — verifiable via the boundary guards.
 
 ## 10. Dependencies
 
 | Dependency | Description | Criticality |
 |------------|-------------|-------------|
-| Browser navigation-history API | The primitive the default engine provider's shared-history implementation is built on. | p1 |
-| TanStack Router and `@tanstack/history` (default engine provider only) | The default concrete router engine and its `RouterHistory` contract; confined to the engine-provider component. The engine owns that contract's shape, and adapting to it is the engine provider's responsibility alone. | p1 |
+| Browser navigation-history API | The primitive the substrate's own realm-shared history implementation is built on. | p1 |
 
 ## 11. Assumptions
 
