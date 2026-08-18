@@ -6,10 +6,11 @@ import {
   useApiQuery,
   apiRegistry,
 } from '@gears-frontx/react';
-import { Card, CardContent } from '../../components/ui/card';
-import { Skeleton } from '../../components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@gears-frontx/ui-kit';
 import { useScreenTranslations } from '../../shared/useScreenTranslations';
+import { kitThemeScopeFor } from '../../shared/kitThemeScope';
 import { _BlankApiService } from '../../api/_BlankApiService';
+import styles from './HomeScreen.module.css';
 
 // Stable reference for translation modules (hoisted to module level to prevent re-render loops)
 const languageModules = import.meta.glob('./i18n/*.json') as Record<
@@ -40,7 +41,7 @@ interface HomeScreenProps {
  * - Theme property subscription
  * - Language property subscription
  * - MFE-local i18n with dynamic translation loading
- * - UIKit components for consistent styling
+ * - Components from @gears-frontx/ui-kit, styled from its design tokens
  *
  * To use this template:
  * 1. Copy the entire _blank-mfe directory to a new name
@@ -52,10 +53,13 @@ interface HomeScreenProps {
  */
 export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  // Initial value read directly from the bridge's lazy useState initializer (runs once,
-  // synchronously, during the first render) instead of via setState in a mount effect —
-  // this avoids an extra render and the set-state-in-effect anti-pattern. The effect
-  // below only subscribes for subsequent property changes.
+  /*
+   * The bridge's current values are read here, in lazy useState initializers,
+   * rather than at the top of the effect below. A setState called synchronously
+   * in an effect body re-renders the screen before paint, which is why
+   * `react-hooks/set-state-in-effect` rejects it; the effect only has to
+   * SUBSCRIBE.
+   */
   const [theme, setTheme] = useState<string>(() =>
     readBridgeProperty(bridge, FRONTX_SHARED_PROPERTY_THEME, 'default')
   );
@@ -118,6 +122,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
     }
   }, [language]);
 
+  const kitThemeScope = kitThemeScopeFor(theme);
+
   /*
    * The `data-testid` attributes below are verification API, not decoration.
    * A screen renders inside a shadow root, so selectors issued from outside it
@@ -134,15 +140,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
   // Show skeleton while translations are loading
   if (loading) {
     return (
-      <div ref={containerRef} className="p-8" data-testid="screen-root">
-        <Skeleton className="h-8 w-64 mb-4" />
-        <Skeleton className="h-4 w-96 mb-6" />
+      // A Skeleton carries no loading semantics of its own; the region announces them.
+      <div
+        ref={containerRef}
+        className={styles.screen}
+        data-theme={kitThemeScope}
+        data-testid="screen-root"
+        role="status"
+        aria-busy="true"
+      >
+        <div className={styles.placeholders} data-testid="screen-loading">
+          <Skeleton className={styles.placeholderTitle} />
+          <Skeleton className={styles.placeholderLine} />
+        </div>
         <Card>
-          <CardContent className="p-6">
-            <div className="space-y-3" data-testid="screen-loading">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
+          <CardContent>
+            <div className={styles.placeholders}>
+              <Skeleton className={styles.placeholderLine} />
+              <Skeleton className={styles.placeholderLine} />
+              <Skeleton className={styles.placeholderLineShort} />
             </div>
           </CardContent>
         </Card>
@@ -153,79 +169,95 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ bridge }) => {
   let statusCardBody: React.ReactNode;
   if (isStatusLoading) {
     statusCardBody = (
-      <div className="space-y-3" data-testid="screen-status-loading">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-5/6" />
-        <Skeleton className="h-20 w-full" />
+      <div
+        role="status"
+        aria-busy="true"
+        className={styles.placeholders}
+        data-testid="screen-status-loading"
+      >
+        <Skeleton className={styles.placeholderLine} />
+        <Skeleton className={styles.placeholderLineShort} />
+        <Skeleton className={styles.placeholderBlock} />
       </div>
     );
   } else if (isStatusError) {
     statusCardBody = (
-      <p className="text-sm text-destructive" data-testid="screen-status-error">
+      <p className={styles.error} data-testid="screen-status-error">
         {statusError?.message}
       </p>
     );
   } else {
     statusCardBody = (
-      <pre
-        className="overflow-x-auto rounded-md bg-muted p-4 text-xs text-muted-foreground"
-        data-testid="screen-status-payload"
-      >
+      <pre className={styles.payload} data-testid="screen-status-payload">
         {JSON.stringify(statusData, null, 2)}
       </pre>
     );
   }
 
   return (
-    <div ref={containerRef} className="p-8" data-testid="screen-root">
-      <h1 className="text-3xl font-bold mb-4" data-testid="screen-title">
-        {t('title')}
-      </h1>
-      <p className="text-muted-foreground mb-6">
-        {t('description')}
-      </p>
-
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-xl font-semibold mb-3">
-              {t('bridge_info')}
-            </h2>
-            <dl className="grid gap-2">
-              <div>
-                <dt className="font-medium">{t('domain_id')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground" data-testid="screen-domain-id">
-                  {bridge.extDomainId}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium">{t('instance_id')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground" data-testid="screen-instance-id">
-                  {bridge.extensionId}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium">{t('current_theme')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground" data-testid="screen-theme">
-                  {theme}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium">{t('current_language')}</dt>
-                <dd className="font-mono text-sm text-muted-foreground" data-testid="screen-language">
-                  {language}
-                </dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6" data-testid="screen-status">
-            {statusCardBody}
-          </CardContent>
-        </Card>
+    <div
+      ref={containerRef}
+      className={styles.screen}
+      data-theme={kitThemeScope}
+      data-testid="screen-root"
+    >
+      <div className={styles.intro}>
+        <h1 className={styles.title} data-testid="screen-title">
+          {t('title')}
+        </h1>
+        <p className={styles.description}>{t('description')}</p>
       </div>
+
+      {/*
+        Card spaces its slots with `gap: var(--card-spacing)` declared on the
+        card root, so that rhythm only ever falls between Card's DIRECT
+        children — the slots below stay directly under <Card>. A wrapper around
+        them (`<Card><form>…slots…</form></Card>`, the shape a form screen
+        invites) leaves the card a single child and the gap applies to nothing,
+        while the slots' horizontal padding still lands because the kit sets it
+        through descendant rules (`.card .cardContent`) — half-correct spacing
+        reads as a small visual glitch rather than as the composition mistake
+        it is. A form goes inside a slot; README "Styling" carries the shape.
+      */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <h2 className={styles.sectionTitle}>{t('bridge_info')}</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className={styles.definitions}>
+            <div>
+              <dt className={styles.term}>{t('domain_id')}</dt>
+              <dd className={styles.value} data-testid="screen-domain-id">
+                {bridge.extDomainId}
+              </dd>
+            </div>
+            <div>
+              <dt className={styles.term}>{t('instance_id')}</dt>
+              <dd className={styles.value} data-testid="screen-instance-id">
+                {bridge.extensionId}
+              </dd>
+            </div>
+            <div>
+              <dt className={styles.term}>{t('current_theme')}</dt>
+              <dd className={styles.value} data-testid="screen-theme">
+                {theme}
+              </dd>
+            </div>
+            <div>
+              <dt className={styles.term}>{t('current_language')}</dt>
+              <dd className={styles.value} data-testid="screen-language">
+                {language}
+              </dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent data-testid="screen-status">{statusCardBody}</CardContent>
+      </Card>
     </div>
   );
 };

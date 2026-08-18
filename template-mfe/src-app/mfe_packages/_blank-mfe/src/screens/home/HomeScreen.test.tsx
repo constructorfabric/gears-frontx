@@ -123,7 +123,7 @@ describe('HomeScreen', () => {
     );
   });
 
-  it('renders the translation-loading skeleton before localized content is ready', () => {
+  it('announces a busy region instead of bridge values before translations are ready', () => {
     useScreenTranslationsMock.mockReturnValue({ t: (key: string) => key, loading: true });
 
     const { bridge } = createMfeBridgeFixture({
@@ -135,9 +135,9 @@ describe('HomeScreen', () => {
       },
     });
 
-    const { container } = render(<HomeScreen bridge={bridge} />);
+    render(<HomeScreen bridge={bridge} />);
 
-    expect(container.querySelectorAll('.animate-pulse')).toHaveLength(5);
+    expect(screen.getByRole('status').getAttribute('aria-busy')).toBe('true');
     expect(screen.queryByText(TEST_DOMAIN_ID)).toBeNull();
 
     // `screen-root` is on both branches on purpose, so a run has one node to
@@ -146,7 +146,7 @@ describe('HomeScreen', () => {
     expect(screen.getByTestId('screen-loading')).toBeTruthy();
   });
 
-  it('renders the status-loading skeleton while the API request is pending', async () => {
+  it('announces a busy region beside the bridge values while the API request is pending', async () => {
     useApiQueryMock.mockReturnValue({
       data: null,
       isLoading: true,
@@ -163,11 +163,49 @@ describe('HomeScreen', () => {
       },
     });
 
-    const { container } = render(<HomeScreen bridge={bridge} />);
+    render(<HomeScreen bridge={bridge} />);
 
     expect(await screen.findByText(TEST_DOMAIN_ID)).toBeTruthy();
-    expect(container.querySelectorAll('.animate-pulse')).toHaveLength(3);
+    expect(screen.getByRole('status').getAttribute('aria-busy')).toBe('true');
     expect(screen.getByTestId('screen-status-loading')).toBeTruthy();
+  });
+
+  // Every dark palette the host registers has to reach the kit's dark scope:
+  // the screen paints its own surface from those tokens, so a miss puts a light
+  // card on dark host chrome. An unrecognised identifier falls back to the light
+  // scope rather than to no scope, which would inherit whatever
+  // prefers-color-scheme resolved on the shadow host.
+  it('scopes the screen to the kit dark tokens for every dark host theme and to light otherwise', async () => {
+    const bridgeFixture = createMfeBridgeFixture({
+      extDomainId: TEST_DOMAIN_ID,
+      extensionId: TEST_INSTANCE_ID,
+      initialProperties: {
+        [FRONTX_SHARED_PROPERTY_THEME]: TEST_THEME,
+        [FRONTX_SHARED_PROPERTY_LANGUAGE]: TEST_LANGUAGE,
+      },
+    });
+
+    const { container } = render(<HomeScreen bridge={bridgeFixture.bridge} />);
+
+    // TEST_THEME is an identifier the host never registers.
+    expect(await screen.findByText(TEST_DOMAIN_ID)).toBeTruthy();
+    expect(container.firstElementChild?.getAttribute('data-theme')).toBe('light');
+
+    for (const darkTheme of ['dark', 'dracula', 'dracula-large']) {
+      act(() => {
+        bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_THEME, darkTheme);
+      });
+
+      expect(container.firstElementChild?.getAttribute('data-theme')).toBe('dark');
+    }
+
+    for (const lightTheme of ['default', 'light']) {
+      act(() => {
+        bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_THEME, lightTheme);
+      });
+
+      expect(container.firstElementChild?.getAttribute('data-theme')).toBe('light');
+    }
   });
 
   it('re-reads current properties when the host swaps the bridge instance', async () => {
@@ -198,15 +236,15 @@ describe('HomeScreen', () => {
       container: mountNode,
     });
 
-    expect(await shadowQueries.findByText(TEST_THEME)).toBeTruthy();
+    expect((await shadowQueries.findByTestId('screen-theme')).textContent).toBe(TEST_THEME);
     expect(host.dir).toBe('ltr');
 
     rerender(<HomeScreen bridge={second.bridge} />);
 
     // The new bridge's current values are re-read during render — its
     // subscriptions only deliver future changes and never fire here.
-    expect(shadowQueries.getByText('swapped-theme')).toBeTruthy();
-    expect(shadowQueries.getByText('ar')).toBeTruthy();
+    expect(shadowQueries.getByTestId('screen-theme').textContent).toBe('swapped-theme');
+    expect(shadowQueries.getByTestId('screen-language').textContent).toBe('ar');
     expect(host.dir).toBe('rtl');
 
     // The old bridge's subscriptions were torn down and re-registered on the
