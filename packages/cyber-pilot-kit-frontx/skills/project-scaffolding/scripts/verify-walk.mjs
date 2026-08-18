@@ -138,6 +138,27 @@ function positiveInt(flag, raw, fallback, max) {
   return value;
 }
 
+// Every part of a capture's file name is caller data - a theme name out of a
+// registry, a screen name off the command line, a state name out of the states
+// file - and a part carrying a path separator leaves the run's own capture
+// directory: `../escape` resolves a level above it, and the file lands where
+// nothing in this run is entitled to write. Each part is therefore reduced to the
+// file-name alphabet, so no separator, no `..` segment and nothing a shell reads
+// specially survives into a path. A part that reduces to nothing at all still has
+// to name a file, hence the fallback.
+const CAPTURE_FALLBACK_SLUG = 'unnamed';
+
+const slug = (text) => String(text ?? '').toLowerCase()
+  .replace(/[^a-z0-9-]+/g, '-')
+  .replace(/^-+|-+$/g, '') || CAPTURE_FALLBACK_SLUG;
+
+const captureName = (theme, screen, state) => `${slug(theme)}-${slug(screen)}-${slug(state)}.png`;
+
+// The state every screen is captured at before anything is driven on it, named
+// here because the collision check below enumerates it alongside the declared
+// states and the walk takes its capture under the same name.
+const FRESH_STATE = 'fresh';
+
 // A screen is name:route[:ready-testid[:extension-id]]. The ready testid is what
 // the driver waits for before capturing; a screen declared without one is
 // captured after a bare settle and marked readyConfirmed:false, so the weakness
@@ -752,6 +773,31 @@ try {
   }
 
   states = opts.states ? readStates(opts.states, screens) : {};
+
+  // Reducing a name to the file-name alphabet can map two names the invocation
+  // tells apart onto one file, and the second capture would then overwrite the
+  // first while both coverage cells claim a capture of their own. Enumerated over
+  // the walk's whole capture set rather than checked per name, because the
+  // collision can also come from where the boundaries between the parts fall:
+  // theme "a-b" screen "c" and theme "a" screen "b-c" name one same file.
+  const declaredAs = (theme, screen, state) => `theme "${theme}" / screen "${screen}" / state "${state}"`;
+  const captureNames = new Map();
+  for (const theme of result.themeSet.themes) {
+    for (const screen of screens) {
+      const declaredStates = (states[screen.name] ?? []).map((declared) => declared.state);
+      for (const state of [FRESH_STATE, ...declaredStates]) {
+        const file = captureName(theme, screen.name, state);
+        const claim = declaredAs(theme, screen.name, state);
+        const taken = captureNames.get(file);
+        if (taken !== undefined) {
+          throw new Error(taken === claim
+            ? `${claim} is declared twice, and both captures would be written to "${file}"`
+            : `${taken} and ${claim} both name the capture file "${file}", because a capture name is reduced to lowercase letters, digits and hyphens; give one of them a name that stays distinct after that reduction`);
+        }
+        captureNames.set(file, claim);
+      }
+    }
+  }
 } catch (error) {
   fail('arguments', error.message);
   finish({ jsonOut: null });
@@ -809,8 +855,21 @@ if (result.browser.probe === 'answered') {
 }
 if (result.failures.length > 0) finish({ jsonOut });
 
+// The capture directory with a separator on the end, so a sibling whose name
+// merely starts with it - "<capdir>-old" beside "<capdir>" - is not read as a
+// path inside it.
+const CAPDIR_PREFIX = capdir.endsWith(path.sep) ? capdir : `${capdir}${path.sep}`;
+
 function capture(theme, screen, state) {
-  const file = path.join(capdir, `${theme}-${screen}-${state}.png`);
+  const file = path.resolve(capdir, captureName(theme, screen, state));
+  // The second lock on the escape the slug already closes: whatever the names
+  // reduce to, the path handed to the browser has to resolve inside this run's
+  // own capture directory. Unreachable while the slug holds, and kept because a
+  // file written outside it is not a failure this run can take back.
+  if (!file.startsWith(CAPDIR_PREFIX)) {
+    fail('capture', `the capture path for ${theme}/${screen}/${state} resolved to "${file}", which is outside this run's capture directory "${capdir}"`, { file });
+    return null;
+  }
   const shot = browser(['screenshot', file]);
   const outcome = invocationOutcome(shot);
   if (outcome.failed || !fs.existsSync(file)) {
@@ -1004,8 +1063,8 @@ for (const theme of result.themeSet.themes) {
     if (nav === NAV_FAILED) continue;
 
     const ready = nav === NAV_READY;
-    const freshFile = capture(theme, screen.name, 'fresh');
-    if (freshFile) record.captures.push({ screen: screen.name, state: 'fresh', file: freshFile, readyConfirmed: ready });
+    const freshFile = capture(theme, screen.name, FRESH_STATE);
+    if (freshFile) record.captures.push({ screen: screen.name, state: FRESH_STATE, file: freshFile, readyConfirmed: ready });
 
     for (const declared of states[screen.name] ?? []) {
       for (const action of declared.actions ?? []) {

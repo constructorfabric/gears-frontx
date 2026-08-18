@@ -822,6 +822,7 @@ process.exit(0);
       result: {
         ok: boolean;
         coverageFile: string | null;
+        browser: { command: string | null };
         themeSet: { source: string; themes: string[] };
         menuResolution: { screen: string; testid: string | null; extensionId: string | null; source: string }[];
         themes: {
@@ -837,6 +838,11 @@ process.exit(0);
       };
       commands: string[];
       coverage: string;
+      // Where the run was told to write, and the directory that holds it: a
+      // capture is confined to the first, and the second is where a name that
+      // escaped it would land.
+      capdir: string;
+      workdir: string;
       cleanup: () => void;
     }
 
@@ -927,6 +933,8 @@ process.exit(0);
         result: JSON.parse(run.stdout) as StubRun['result'],
         commands: fs.readFileSync(logFile, 'utf8').split('\n').filter(Boolean),
         coverage: fs.existsSync(coverageFile) ? fs.readFileSync(coverageFile, 'utf8') : '',
+        capdir,
+        workdir,
         cleanup: () => fs.rmSync(workdir, { recursive: true, force: true }),
       };
     }
@@ -1148,6 +1156,38 @@ process.exit(0);
       // pipe corrupts, and the record is what a report reads the truth from.
       expect(run.coverage).toContain('not-opened (label read "Theme: da\\|rk")');
       expectWholeRow(run.coverage);
+
+      run.cleanup();
+    });
+
+    // A theme name out of a registry and a screen name off the command line both
+    // reach the capture path, and a name carrying path separators used to resolve
+    // out of the run's own directory: `../escape` writes a level above the capture
+    // directory, where nothing in this run is entitled to write and where neither
+    // the byte-compare nor the coverage cells ever look. The name is reduced to
+    // the file-name alphabet rather than refused, so the walk still runs and the
+    // traversal is gone from the file it writes.
+    it.each<[string, string[], string]>([
+      ['a theme name', ['--themes', '../escape', '--screens', 'login:/login:screen-login'], 'escape-login-fresh.png'],
+      ['a screen name', ['--themes', 'light', '--screens', '../login:/login:screen-login'], 'light-login-fresh.png'],
+    ])('confines a capture to the capture directory when %s carries a path traversal', (_what, declared, file) => {
+      const run = runAgainstStub([...declared, '--nav', 'route'],
+        ['theme-switcher', 'theme-option-light', 'theme-option-../escape', 'screen-login']);
+
+      // The odd name costs the run nothing: the theme opens, and the capture is
+      // taken and recorded like any other.
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+      expect(run.result.themes[0].labelConfirmed).toBe(true);
+      expect(run.result.themes[0].captures.map((capture) => capture.state)).toEqual(['fresh']);
+
+      // Written inside the capture directory, under a name the traversal is
+      // reduced out of rather than resolved through.
+      expect(fs.readdirSync(run.capdir).sort()).toEqual([file, 'verification-coverage.md', 'verify-walk.json']);
+      expect(run.coverage).toContain(`fresh (${file}, ready confirmed)`);
+      // And nothing landed in the directory above it, which is where the
+      // unreduced name pointed.
+      expect(fs.readdirSync(run.workdir).filter((entry) => entry.endsWith('.png'))).toEqual([]);
 
       run.cleanup();
     });
@@ -1621,6 +1661,23 @@ process.exit(0);
       expect(run.capdirExists).toBe(false);
 
       fs.rmSync(inputDir, { recursive: true, force: true });
+      run.cleanup();
+    });
+
+    // Reducing a name to the file-name alphabet is what keeps a traversal out of
+    // the capture path, and it can map two names the invocation tells apart onto
+    // one file: the second capture overwrites the first, and both coverage cells
+    // go on claiming a capture of their own. Refused on the arguments, so no
+    // capture is taken under a name that cannot be told from another.
+    it('refuses two declared names that reduce to one capture file name', () => {
+      const run = runRefusal(['--screens', 'my screen:/a:screen-login,my-screen:/b:screen-login']);
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain('light-my-screen-fresh.png');
+      expect(run.failures[0].detail).toContain('my screen');
+      expect(run.capdirExists).toBe(false);
+
       run.cleanup();
     });
   });
