@@ -87,6 +87,8 @@ The present concrete instantiation of the Core Framework concerns is `@gears-fro
 
 **Review trigger.** Revisit if a requirement emerges for the runtime to depend directly on a single canonical type-system format, which would remove the rationale for the opaque-port boundary.
 
+**Scope relative to other published-libraries members (present detail, non-binding).** The partition decided here covers the core subset of the published-libraries layer: concerns that must stay UI-framework-agnostic. A layer member that is deliberately bound to a concrete UI framework and a concrete engine sits outside this partition and introduces its own bounded concern rather than extending this decision's boundary constraints. The navigation substrate (`@gears-frontx/routing`) is such a case: its routing engine is injected through a port using the same pattern already accepted for the type-system provider (`cpt-frontx-adr-runtime-type-system-coupling`, `cpt-frontx-adr-default-type-substrate-provider`), and it carries its own boundary constraints — labeled ROUTING-1 (no engine leak beyond the engine provider) and ROUTING-2 (no intra-ecosystem package dependency) in that member's own DESIGN at [packages/routing/architecture/DESIGN.md](../../packages/routing/architecture/DESIGN.md) §2.2, which owns and defines both — which extend no core constraint listed in this decision's Decision Outcome.
+
 **Checklist applicability.**
 
 * ARCH — applicable and addressed above (a fundamental, hard-to-reverse structural decision affecting all Core Framework consumers).

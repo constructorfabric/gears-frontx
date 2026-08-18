@@ -97,6 +97,8 @@ The present concrete instantiation ships three strategy classes — `ConcurrentM
 
 **Review trigger.** Revisit if an extension domain requires an occupancy behavior that none of the named strategies expresses, or if the action–behavior consistency rule needs to vary by domain beyond a fixed per-strategy matrix row.
 
+**URL projection of domain occupancy (present detail, non-binding).** Extension-domain occupancy gains a URL projection: an occupant extension's declared routing prefix makes the address bar an observable reflection of which strategy-governed occupant currently holds the domain, and a navigation act is an entry into the same mount mechanism this decision governs, not a second occupancy mechanism running alongside it. The URL is the source of truth for that reflection, and occupancy is its derivative; the reverse mapping — recovering the URL from an occupancy change — applies only when a mount is triggered by something other than navigation. The binding mechanics belong to the navigation substrate and its FEATURE `cpt-frontx-feature-routing-url-screen-binding`; this decision continues to own the mount strategies and the cardinality matrix.
+
 **Checklist applicability.**
 
 * ARCH — applicable and addressed above (a runtime placement decision affecting every extension domain and the microfrontends that occupy it, and hard to reverse once domains depend on the strategy catalog).
