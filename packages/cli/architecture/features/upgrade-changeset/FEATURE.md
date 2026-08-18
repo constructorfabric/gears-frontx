@@ -82,6 +82,7 @@ This feature exists to let a project developer safely adopt a newer origin for a
 **Error Scenarios**:
 - The name has no entry in the project state store: `TEMPLATE_NOT_REGISTERED`.
 - The name's `targets` array is empty: the engine refuses with `TARGET_NOT_APPLIED`, directing the developer to `register --replace` instead — there is no applied ground for `upgrade` to reconcile.
+- The name's recorded `version` no longer matches what its recorded `origin` reports: the engine refuses with `VERSION_MISMATCH` before resolving the candidate origin, because the baseline it would diff against is not the state the project actually holds.
 - The new origin cannot be resolved: `ORIGIN_UNAVAILABLE`; the engine reports the failure and aborts before writing anything.
 - The new origin's manifest declares a `name` different from the registered name being upgraded: the engine refuses with `REGISTRATION_CONFLICT`, naming both identities, and computes no transition — a registered name's identity comes from exactly one place, its own manifest, and `upgrade` must not silently re-key an entry to a different template.
 - Validation fails for any one target under the name: the engine refuses the entire upgrade — never moving some targets and not others — and `templates[name]` is left unchanged for every target.
@@ -138,20 +139,23 @@ This feature exists to let a project developer safely adopt a newer origin for a
 
 **Input**: The registered name's current baseline `{origin, version, targets[]}`; a candidate `new-origin`.
 
-**Output**: A validated transition `{ from: {origin, version}, to: {origin, version}, targets[] }` ready for review, or a failure naming why validation did not pass (`ORIGIN_UNAVAILABLE` for an unresolvable origin, `REGISTRATION_CONFLICT` for a declared-identity mismatch, or a validation failure naming a target that fails validation).
+**Output**: A validated transition `{ from: {origin, version}, to: {origin, version}, targets[] }` ready for review, or a failure naming why validation did not pass (`VERSION_MISMATCH` for a baseline the project state misreports, `ORIGIN_UNAVAILABLE` for an unresolvable origin, `REGISTRATION_CONFLICT` for a declared-identity mismatch, or a validation failure naming a target that fails validation).
 
 **Steps**:
-1. [ ] - `p1` - Resolve `new-origin` through the shared resolver (`cpt-frontx-feature-template-resolution`), installing and pinning it exactly as `register` would - `inst-val-resolve-new-origin`
-2. [ ] - `p1` - **IF** resolution fails - `inst-val-if-resolve-fail`
+1. [ ] - `p1` - Confirm the recorded baseline is still honest before anything is computed from it: resolve the name's currently recorded `origin` and compare the version it reports against the `version` recorded beside it in the project state document - `inst-val-check-baseline`
+2. [ ] - `p1` - **IF** the recorded `version` differs from the version the recorded origin now reports - `inst-val-if-baseline-drift`
+   1. [ ] - `p1` - **RETURN** `VERSION_MISMATCH` naming the template name, its recorded version, and the version its recorded origin now reports; no transition is computed and no target is inspected, because a transition computed from a baseline the project state misreports would diff against a version this project never actually had. For a pinned remote origin this can only mean `.frontx/project.json` was hand-edited or corrupted, since an immutable pin re-fetches identically (`cpt-frontx-adr-template-registration-and-origin-pinning`); for a `path:` origin it is genuine drift in the local folder, which has no publication to pin against — the same two cases `cpt-frontx-feature-composed-provenance`'s `validate --project` distinguishes for this code - `inst-val-return-baseline-drift`
+3. [ ] - `p1` - Resolve `new-origin` through the shared resolver (`cpt-frontx-feature-template-resolution`), installing and pinning it exactly as `register` would - `inst-val-resolve-new-origin`
+4. [ ] - `p1` - **IF** resolution fails - `inst-val-if-resolve-fail`
    1. [ ] - `p1` - **RETURN** `ORIGIN_UNAVAILABLE` - `inst-val-return-unavailable`
-3. [ ] - `p1` - Read the resolved manifest's declared `name` - `inst-val-read-name`
-4. [ ] - `p1` - **IF** the resolved `name` differs from the registered name being upgraded - `inst-val-if-identity-mismatch`
+5. [ ] - `p1` - Read the resolved manifest's declared `name` - `inst-val-read-name`
+6. [ ] - `p1` - **IF** the resolved `name` differs from the registered name being upgraded - `inst-val-if-identity-mismatch`
    1. [ ] - `p1` - **RETURN** `REGISTRATION_CONFLICT` naming both identities; no target is inspected - `inst-val-return-identity-mismatch`
-5. [ ] - `p1` - **FOR EACH** target in `targets[]` - `inst-val-foreach-target`
+7. [ ] - `p1` - **FOR EACH** target in `targets[]` - `inst-val-foreach-target`
    1. [ ] - `p1` - Validate the resolved new origin against that target — the concrete per-target check this step performs (structural conformance, ownership-boundary consistency, or any file-level comparison) is intentionally left to the future decision `cpt-frontx-adr-atomic-all-targets-upgrade` reserves for changeset representation and diff mechanics (DESIGN §4); this algorithm's contract is only that every target must be inspected and that any one target's failure fails the whole check - `inst-val-check-target`
    2. [ ] - `p1` - **IF** the target fails validation - `inst-val-if-target-fails`
       1. [ ] - `p1` - **RETURN** `CONTENT_CONFLICT` naming every failing target; do not continue checking remaining targets is optional, but no partial pass is ever returned - `inst-val-return-target-fail`
-6. [ ] - `p1` - **RETURN** the validated transition `{ from: {origin, version}, to: {origin: <resolved>, version: <resolved>}, targets[] }` - `inst-val-return-pass`
+8. [ ] - `p1` - **RETURN** the validated transition `{ from: {origin, version}, to: {origin: <resolved>, version: <resolved>}, targets[] }` - `inst-val-return-pass`
 
 ### Commit the Atomic All-Targets Transition
 
@@ -196,7 +200,7 @@ This feature exists to let a project developer safely adopt a newer origin for a
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-upgrade-changeset-computation`
 
-The system **MUST** read a registered name's `{origin, version, targets[]}` entry from the project state store (`cpt-frontx-feature-composed-provenance`) as the sole baseline, refusing with `TEMPLATE_NOT_REGISTERED` when the name has no entry and with `TARGET_NOT_APPLIED` when its `targets[]` is empty; resolve a candidate new origin through the shared resolver, confirm it declares the same manifest identity as the registered name, validate it against every target listed for the name, and present the validated transition to the developer before writing any project file; the system **MUST** refuse the entire upgrade — writing nothing and leaving every target's recorded `origin`/`version` unchanged — with `ORIGIN_UNAVAILABLE` when the origin cannot be resolved, with `REGISTRATION_CONFLICT` when it declares a different identity, or with a validation failure naming the target(s) when it fails validation for any one target (`target`).
+The system **MUST** read a registered name's `{origin, version, targets[]}` entry from the project state store (`cpt-frontx-feature-composed-provenance`) as the sole baseline, refusing with `TEMPLATE_NOT_REGISTERED` when the name has no entry, with `TARGET_NOT_APPLIED` when its `targets[]` is empty, and with `VERSION_MISMATCH` when the recorded `version` no longer matches what the recorded `origin` reports — a baseline the project state misreports is not a baseline to diff from; resolve a candidate new origin through the shared resolver, confirm it declares the same manifest identity as the registered name, validate it against every target listed for the name, and present the validated transition to the developer before writing any project file; the system **MUST** refuse the entire upgrade — writing nothing and leaving every target's recorded `origin`/`version` unchanged — with `ORIGIN_UNAVAILABLE` when the origin cannot be resolved, with `REGISTRATION_CONFLICT` when it declares a different identity, or with a validation failure naming the target(s) when it fails validation for any one target (`target`).
 
 **Implements**:
 - `cpt-frontx-flow-upgrade-changeset-review-approval`
@@ -261,6 +265,7 @@ The system **MUST** provide exactly one change-set engine, `cpt-frontx-component
 - [ ] Approving the transition commits `templates[templateName].origin`/`.version` atomically and applies the change within every target's effective ownership; declining leaves the repository and the project state store byte-for-byte unchanged.
 - [ ] A validation failure on any one target under the name refuses the entire upgrade, leaving `templates[templateName]` unchanged for every target of that name — never a partial commit.
 - [ ] `upgrade` against a name with no registered entry returns `TEMPLATE_NOT_REGISTERED`; against a name whose `targets` array is empty, the engine refuses with `TARGET_NOT_APPLIED` and directs the developer to `register --replace`.
+- [ ] A registered name whose recorded `version` no longer matches what its recorded `origin` reports is refused with `VERSION_MISMATCH` before the candidate origin is resolved and before any target is validated, naming the recorded and the reported version.
 - [ ] A new origin that fails to resolve returns `ORIGIN_UNAVAILABLE` before any target is validated.
 - [ ] A new origin whose manifest declares an identity different from the registered name being upgraded is refused with `REGISTRATION_CONFLICT`, naming both identities, with no target validated and no transition computed.
 - [ ] The reviewed transition equals the applied transition: the `origin`/`version` a developer approved is exactly what is committed to the project state store.
