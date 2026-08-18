@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CollapsedButton } from './CollapsedButton';
 
 const toggleCollapsed = vi.fn();
-const handleDragMouseDown = vi.fn();
+const { handleDragMouseDown } = vi.hoisted(() => ({ handleDragMouseDown: vi.fn() }));
 
 vi.mock('@gears-frontx/react', () => ({
   useTranslation: () => ({
