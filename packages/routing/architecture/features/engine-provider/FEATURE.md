@@ -60,7 +60,7 @@ A router engine renders routes and matches search parameters, and concrete engin
 - **Constraints**: `cpt-frontx-constraint-routing-no-engine-leak`
 - **Dependencies**: `cpt-frontx-feature-routing-navigation-substrate` — the provider implements the engine port the substrate defines, the same shape as the runtime's type-substrate port and its default GTS provider.
 
-**Territory boundary**: Replacing the engine provider used by one microfrontend is scoped to that microfrontend's own route tree and its own search-parameter handling. It reaches no further: the navigation substrate, the `basepath` contract, the screen-domain binding (`cpt-frontx-feature-routing-url-screen-binding`), the host's code, and every sibling microfrontend are unaffected and may remain on a different engine provider of their own.
+**Territory boundary**: Replacing the engine provider used by one microfrontend is scoped to that microfrontend's own route tree and its own search-parameter handling. It reaches no further: the navigation substrate, the `basepath` contract, the route ownership signal (`cpt-frontx-feature-routing-route-ownership-signal`), the host's code, and every sibling microfrontend are unaffected and may remain on a different engine provider of their own.
 
 ### 1.5 Port Shapes
 
@@ -160,7 +160,7 @@ A replacement provider is responsible for producing its own engine's history-con
 **Output**: The internal callback unsubscribed from the shared `NavigationHistory`, so the unmounted router's own `RouterHistory` stops receiving the fan-out.
 
 **Steps**:
-1. [ ] - `p1` - **WHEN** the microfrontend that owns this constructed router is unmounted (`cpt-frontx-feature-routing-url-screen-binding`'s unmount rule, or the host's own teardown outside a screen-binding-driven unmount) - `inst-when-unmount`
+1. [ ] - `p1` - **WHEN** the microfrontend that owns this constructed router is unmounted (the host's own mount mechanism unmounting it, informed by `cpt-frontx-feature-routing-route-ownership-signal`'s observable ownership-change transition, or the host's own teardown for any other reason) - `inst-when-unmount`
    1. [ ] - `p1` - Invoke the unsubscribe function returned when this adapter registered its internal callback against the shared `NavigationHistory`'s `subscribe` - `inst-invoke-unsubscribe`
 2. [ ] - `p1` - **RETURN** - `inst-return-teardown`
 
@@ -170,23 +170,21 @@ A replacement provider is responsible for producing its own engine's history-con
 
 - [ ] `p2` - **ID**: `cpt-frontx-algo-routing-engine-provider-standalone-deployment`
 
-**Input**: The microfrontend's own route tree and adapted history; a `basepath` taken from the deployment's own configuration rather than from a host assignment — absent when the microfrontend is served at a root, the publication sub-path otherwise; the injection state of the route-owner provider and the mounting executor — neither injected, both injected, or exactly one injected.
+**Input**: The microfrontend's own route tree and adapted history; a `basepath` taken from the deployment's own configuration rather than from a host assignment — absent when the microfrontend is served at a root, the publication sub-path otherwise; whether the consumer has created a route-ownership-signal observer (`cpt-frontx-feature-routing-route-ownership-signal`) for this deployment — a plain argument-driven choice the consumer makes, not a port-injection state.
 
-**Output**: A router constructed and mounted through the same path the composed case uses. The screen-binding resolver's own state depends on the injection state: inert when neither port is injected, active when both are, and misconfigured when exactly one is.
+**Output**: A router constructed and mounted through the same path the composed case uses, independent of whether the consumer has created a route-ownership-signal observer for this deployment.
 
 **Steps**:
 1. [ ] - `p1` - Take the `basepath` from the deployment's configuration rather than from a host assignment — absent when served at a root, the publication sub-path otherwise - `inst-basepath-from-deployment`
-2. [ ] - `p1` - **IF** no route-owner provider and no mounting executor are injected - `inst-if-no-ports`
-   1. [ ] - `p1` - The screen-binding resolver stays inert: no owner resolution, no mount, and no reflection back into the URL runs — the deliberate standalone-deployment case - `inst-resolver-inert`
-3. [ ] - `p1` - **ELSE IF** exactly one of the route-owner provider and the mounting executor is injected and the other is not - `inst-elseif-one-port`
-   1. [ ] - `p1` - The screen-binding resolver is neither inert nor active: this is a configuration error, not an autonomous mode. It runs no owner resolution, calls neither the port that was injected nor the one that was not, and reports its misconfigured state through its own diagnostic (`cpt-frontx-feature-routing-url-screen-binding` §1.5, Resolver diagnostic) rather than presenting as either a working standalone deployment or a working composed one - `inst-resolver-misconfigured`
-4. [ ] - `p1` - **ELSE** both the route-owner provider and the mounting executor are injected - `inst-else-both-ports`
-   1. [ ] - `p1` - The screen-binding resolver is active and resolution runs against both ports, as in the ordinary composed case - `inst-resolver-active`
-5. [ ] - `p1` - Construct the router through the same `createRouter({ routeTree, history, basepath })` call the composed case uses, passing the deployment-supplied `basepath` or omitting it when serving at a root - `inst-construct-with-deployment-basepath`
-6. [ ] - `p1` - Mount the router via `RouterProvider` through the same construction path as the composed case - `inst-mount-standalone-router`
-7. [ ] - `p1` - **IF** a navigation targets a path the microfrontend's own route tree does not declare, and the screen-binding resolver is inert (not misconfigured or active) - `inst-if-undeclared-path`
-   1. [ ] - `p1` - Resolution reaches the engine's own `notFound` route inside this microfrontend's own route tree — a different mechanism from the composed mode's host-level fallback (Screen Binding is not participating at all in standalone mode), even though the user-visible result is the same not-found screen either way - `inst-standalone-fallback`
-8. [ ] - `p1` - **RETURN** the mounted router — differing from the composed case only in where the `basepath` came from and in the injection state of the two ports - `inst-return-standalone-router`
+2. [ ] - `p1` - **IF** the consumer has not created a route-ownership-signal observer for this deployment - `inst-if-no-signal`
+   1. [ ] - `p1` - No owner resolution, no mount, and no URL back-projection runs — the deliberate standalone-deployment case - `inst-no-signal-inert`
+3. [ ] - `p1` - **ELSE** the consumer has created the observer, supplying its own owner-prefix pairs source - `inst-else-signal-created`
+   1. [ ] - `p1` - The observer resolves and reports ownership transitions exactly as in the composed case (`cpt-frontx-feature-routing-route-ownership-signal` §3), and the consumer's own mount mechanism acts on them - `inst-signal-active`
+4. [ ] - `p1` - Construct the router through the same `createRouter({ routeTree, history, basepath })` call the composed case uses, passing the deployment-supplied `basepath` or omitting it when serving at a root - `inst-construct-with-deployment-basepath`
+5. [ ] - `p1` - Mount the router via `RouterProvider` through the same construction path as the composed case - `inst-mount-standalone-router`
+6. [ ] - `p1` - **IF** a navigation targets a path the microfrontend's own route tree does not declare, and no route-ownership-signal observer is driving mounting for this deployment - `inst-if-undeclared-path`
+   1. [ ] - `p1` - Resolution reaches the engine's own `notFound` route inside this microfrontend's own route tree — a different mechanism from the composed mode's host-level fallback (no route-ownership-signal observer is participating at all in standalone mode), even though the user-visible result is the same not-found screen either way - `inst-standalone-fallback`
+7. [ ] - `p1` - **RETURN** the mounted router — differing from the composed case only in where the `basepath` came from and in whether a route-ownership-signal observer exists at all - `inst-return-standalone-router`
 
 Two conditions of this mode fall on the deployment rather than on this feature: the server answering every path beneath the `basepath` with the entry document, without which a deep link fails before any of this package's code runs; and the build's asset base URL, configured independently of the router's `basepath` since neither derives from the other.
 
@@ -194,7 +192,7 @@ Two conditions of this mode fall on the deployment rather than on this feature: 
 
 ### No Feature-Owned State Machine
 
-Not applicable. The Engine Provider adapts a history and constructs a router; it holds no binding lifecycle of its own to model as named states with guarded transitions — the screen-domain slot's binding lifecycle belongs to Screen Binding and is specified in `cpt-frontx-feature-routing-url-screen-binding` §4. A constructed router's internal request/route-matching state is the concrete engine's own concern, opaque to this adapter, and not something this package specifies, so no state machine is defined for this feature.
+Not applicable. The Engine Provider adapts a history and constructs a router; it holds no binding or occupancy lifecycle of its own to model as named states with guarded transitions — no feature in this package defines one, since mounting and occupancy belong entirely to whichever mount mechanism the consumer already runs (`cpt-frontx-feature-routing-route-ownership-signal` §4). A constructed router's internal request/route-matching state is the concrete engine's own concern, opaque to this adapter, and not something this package specifies, so no state machine is defined for this feature.
 
 ## 5. Definitions of Done
 
@@ -224,7 +222,7 @@ The system **MUST** adapt the navigation substrate's shared `NavigationHistory` 
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-routing-engine-provider-redirect-and-standalone`
 
-The system **MUST** provide a reusable navigation helper that carries the current location's search and hash forward onto any consumer-supplied redirect target, rather than dropping them as a naive redirect would — usable from an index-route redirect or any other consumer redirect alike — and **MUST** run the same router construction when the microfrontend is deployed on its own — taking the `basepath` from the deployment's configuration instead of a host assignment, omitting it when served at a root, resolving an undeclared path to the engine's own `notFound` rather than a host-level fallback when the screen-binding resolver is inert because neither port is injected, and reporting a misconfigured state through the resolver's own diagnostic — never falling back to the `notFound` route or to silent inertness — when exactly one of the two ports is injected.
+The system **MUST** provide a reusable navigation helper that carries the current location's search and hash forward onto any consumer-supplied redirect target, rather than dropping them as a naive redirect would — usable from an index-route redirect or any other consumer redirect alike — and **MUST** run the same router construction when the microfrontend is deployed on its own — taking the `basepath` from the deployment's configuration instead of a host assignment, omitting it when served at a root, and resolving an undeclared path to the engine's own `notFound` rather than a host-level fallback when no route-ownership-signal observer is driving mounting for this deployment.
 
 **Implements**:
 - `cpt-frontx-algo-routing-engine-provider-index-redirect`
@@ -261,6 +259,5 @@ The system **MUST** unsubscribe a constructed router's adapted `RouterHistory` f
 - [ ] A replacement provider that cannot accept the shared `NavigationHistory` and adapt it into its own engine's history contract fails to receive the shared history, and the microfrontend's routing does not initialize.
 - [ ] Every component of this package other than the Engine Provider does not import a concrete router engine or its packages directly; the Engine Provider is the sole exception.
 - [ ] The location-preserving navigation helper preserves the current location's search and hash for any consumer redirect, including but not limited to a redirect issued from an index route.
-- [ ] A microfrontend deployed on its own runs the same router construction, taking its `basepath` from the deployment's configuration or omitting it at a root, resolving an undeclared path to the engine's own `notFound` rather than a host-level fallback, with the screen-binding resolver inert because neither port is injected.
-- [ ] When exactly one of the route-owner provider and the mounting executor is injected and the other is not, the screen-binding resolver is neither treated as inert nor as active: it performs no resolution, calls neither port, and reports a misconfigured state through its own diagnostic — distinguishable from both the deliberate standalone (inert) case and the working composed (active) case.
+- [ ] A microfrontend deployed on its own runs the same router construction, taking its `basepath` from the deployment's configuration or omitting it at a root, resolving an undeclared path to the engine's own `notFound` rather than a host-level fallback, with no route-ownership-signal observer created for this deployment.
 - [ ] When a microfrontend is unmounted, its constructed router's adapted `RouterHistory` is unsubscribed from the shared `NavigationHistory`, so it stops receiving further fan-out.

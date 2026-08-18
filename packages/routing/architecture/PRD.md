@@ -58,9 +58,8 @@ This PRD uses the ecosystem's shared vocabulary: *application* means what the ro
 | navigation substrate | The framework-agnostic core owning the single shared navigation history, the `basepath` contract, and route-owner resolution; it depends on no router engine and no UI framework. |
 | engine provider | An adapter that binds the navigation substrate's shared history to a concrete router engine so the engine can drive rendering and matching; the default provider adapts TanStack Router. |
 | basepath | The URL path segment prefix a mounted microfrontend's own router is scoped to; the microfrontend's router matches only the remainder of the path beneath it. |
-| route owner | The opaque identifier of whichever unit currently owns a declared URL prefix, supplied to the navigation substrate by the host through an injected port; the substrate never interprets what the identifier names. |
-| mounting executor | The host-injected port the screen-binding resolver calls to make a resolved route owner mounted, and to unmount one whose declared prefix no longer contains the current pathname; the execution itself is host-owned. |
-| screen-domain binding | The two-way agreement this library maintains between the URL and which route owner is mounted: the URL resolves to a mounted owner (primary direction), and a mount not driven by the URL is reflected back into the URL (secondary direction). |
+| route owner | The opaque identifier of whichever unit currently owns a declared URL prefix, supplied to the navigation substrate by the host as a plain argument; the substrate never interprets what the identifier names. |
+| route ownership signal | The observable signal this library publishes when the URL's resolved route owner changes — an owner appearing, disappearing, changing, or its remainder beneath the prefix changing — together with the URL back-projection helper a consumer calls after a mount not driven by navigation. Two-way agreement between the URL and which unit is actually mounted is not this library's own guarantee; it is the consumer's, built on top of this signal (§11). |
 
 ## 2. Actors
 
@@ -70,7 +69,7 @@ This PRD uses the ecosystem's shared vocabulary: *application* means what the ro
 
 **ID**: `cpt-frontx-routing-actor-application-developer`
 
-**Role**: Mounts the navigation substrate at the host application, injects the route-owner provider and the mounting executor the substrate resolves against, and wires the host's own router to the shared history. Fills the root PRD's Project Developer role (`cpt-frontx-actor-project-developer`) at the navigation surface.
+**Role**: Mounts the navigation substrate at the host application, creates the route ownership signal's observer with its own source of declared identifier-to-prefix pairs, and wires the host's own router to the shared history. Fills the root PRD's Project Developer role (`cpt-frontx-actor-project-developer`) at the navigation surface.
 **Needs**: A single history usable from the host and from every independently bundled microfrontend, a declared way to bind a URL prefix to whichever unit currently owns it, and no obligation to standardize every microfrontend on one router-engine version.
 
 #### Microfrontend Developer
@@ -90,9 +89,9 @@ This PRD uses the ecosystem's shared vocabulary: *application* means what the ro
 
 ## 3. Operational Concept & Environment
 
-The host application mounts the navigation substrate once per realm and injects a route-owner provider and a mounting executor; the substrate exposes the shared history to the host's own router and to every microfrontend an engine provider mounts under its assigned `basepath`. Every navigation — a link click, a back/forward step, a cold load, a reload, an imperative call — is read from or written to the one shared history, and the screen-domain binding resolver keeps the URL and the mounted route owner in agreement in both directions.
+The host application mounts the navigation substrate once per realm and creates the route ownership signal's observer, supplying its own source of declared identifier-to-prefix pairs as a plain argument; the substrate exposes the shared history to the host's own router and to every microfrontend an engine provider mounts under its assigned `basepath`. Every navigation — a link click, a back/forward step, a cold load, a reload, an imperative call — is read from or written to the one shared history, and the route ownership signal reports the resulting ownership transition to the host; the host mounts or unmounts through its own mount mechanism and keeps the URL and the mounted route owner in agreement by acting on that signal and calling the URL back-projection helper when it mounts for a reason other than navigation.
 
-The same microfrontend runs under two deployment modes without a change to its routing code. **Composed**: the host mounts the substrate, injects the route-owner provider and the mounting executor, and assigns each microfrontend its prefix. **Standalone**: the microfrontend is served on its own, no ports are injected, the screen-binding resolver stays inert, and the prefix comes from the deployment's own configuration — empty when served at a root, or the sub-path it is published under. The substrate and the engine provider behave identically in both; only the presence of the injected ports differs.
+The same microfrontend runs under two deployment modes without a change to its routing code. **Composed**: the host mounts the substrate, creates the route ownership signal's observer, and assigns each microfrontend its prefix. **Standalone**: the microfrontend is served on its own, no observer is created, and the prefix comes from the deployment's own configuration — empty when served at a root, or the sub-path it is published under. The substrate and the engine provider behave identically in both; only whether an observer exists differs.
 
 ### 3.1 Module-Specific Environment Constraints
 
@@ -111,7 +110,7 @@ The same microfrontend runs under two deployment modes without a change to its r
 - A single, realm-shared navigation history with fan-out subscription: one real subscription to the browser's navigation history, redistributed to every listener.
 - Imperative navigation outside the UI tree: `push`, `replace`, `go`, `location`, `subscribe` against the shared history.
 - The `basepath` contract and a default engine provider adapting TanStack Router to it.
-- Two-way URL to screen-domain binding: resolving a URL to its declared route owner and mounting it if needed (primary direction), and reflecting a non-URL-driven mount back into the URL (secondary direction).
+- The route ownership signal: resolving a URL to its declared route owner, observing and reporting every ownership-relevant transition to the consumer, and a URL back-projection helper the consumer calls after a mount not driven by navigation — the two-way agreement between the URL and a mounted owner is the consumer's own guarantee, built on this signal (§11).
 - The channel boundary: this library owns the URL channel only, among the ecosystem's host–microfrontend communication channels.
 - Deployment-mode parity: the same microfrontend routing code running composed under a host and standalone under its own deployment.
 
@@ -119,7 +118,7 @@ The same microfrontend runs under two deployment modes without a change to its r
 
 - Addressed action dispatch and shared-property broadcast between microfrontends and the host — owned by the runtime that provides those channels ([mfes PRD](../../mfes/architecture/PRD.md)); this library neither duplicates nor mediates either one.
 - Microfrontend loading, admission, placement, and isolation — owned by the runtime ([mfes PRD](../../mfes/architecture/PRD.md)).
-- The registry of route owners and the execution of a mount once a resolver has picked one — both supplied by the host through injected ports, not implemented here.
+- The registry of route owners, the execution of a mount, and any reconciliation between a competing pair of mounts — all owned by the consumer's own mount mechanism, reached only through the plain-argument owner-prefix pairs source and the observable signal this library publishes, never through an injected port or an import of the runtime that implements them.
 - Any specific router-engine implementation beyond the default provider; a consumer may supply its own provider for a different engine.
 
 ## 5. Functional Requirements
@@ -156,13 +155,13 @@ The system **MUST** scope a microfrontend's own router to the `basepath` it is a
 
 **Actors**: `cpt-frontx-routing-actor-microfrontend-developer`
 
-#### URL to screen-domain binding
+#### Route ownership signal
 
-- [ ] `p1` - **ID**: `cpt-frontx-routing-fr-url-screen-binding`
+- [ ] `p1` - **ID**: `cpt-frontx-routing-fr-route-ownership-signal`
 
-The system **MUST** resolve a URL to its declared route owner by longest matching declared prefix and make that owner mounted, and **MUST** reflect a mount that was not driven by the URL back into the URL under that owner's declared prefix without discarding an in-progress back/forward navigation, so the URL and the mounted route owner never durably disagree.
+The system **MUST** resolve a URL to its declared route owner by longest matching declared prefix, and **MUST** publish an observable signal reporting every ownership-relevant transition — an owner appearing, disappearing, changing, or its remainder beneath the prefix changing — to a consumer that supplies its own set of declared identifier-to-prefix pairs as a plain argument, and **MUST** provide a URL back-projection helper the consumer calls to reflect a mount that was not driven by navigation back into the URL under that owner's declared prefix without discarding an in-progress back/forward navigation. Two-way agreement between the URL and which unit is actually mounted is the consumer's own guarantee, built on top of this signal and this helper — not a guarantee this library makes on its own (§11).
 
-**Rationale**: Treating the URL as the single source of truth is what makes deep links, reloads, and back/forward all resolve to the same mounted screen an ordinary click-driven navigation would reach.
+**Rationale**: Treating the URL as the single source of truth for occupancy, and publishing that fact as an observable signal rather than orchestrating mounting itself, is what lets a deep link, a reload, and a back/forward step all resolve to the same declared owner an ordinary click-driven navigation would reach, while leaving the actual mount mechanism — and the occupancy semantics governing it — to whichever runtime the consumer already uses for that.
 
 **Actors**: `cpt-frontx-routing-actor-application-developer`, `cpt-frontx-routing-actor-microfrontend-developer`
 
@@ -170,7 +169,7 @@ The system **MUST** resolve a URL to its declared route owner by longest matchin
 
 - [ ] `p1` - **ID**: `cpt-frontx-routing-fr-standalone-deployment`
 
-The system **MUST** run a microfrontend's own router unchanged whether the microfrontend is composed into a host application or served as a standalone deployment, taking its `basepath` from the host in the first case and from the deployment's configuration in the second, and **MUST** leave the screen-binding resolver inert when no route-owner provider and no mounting executor are injected. A navigation to a path no route owner declares **MUST** resolve to the consumer's fallback in both modes rather than failing.
+The system **MUST** run a microfrontend's own router unchanged whether the microfrontend is composed into a host application or served as a standalone deployment, taking its `basepath` from the host in the first case and from the deployment's configuration in the second, and **MUST** require no route ownership signal observer to exist for standalone operation to work — a standalone deployment simply never creates one. A navigation to a path no route owner declares **MUST** resolve to the consumer's fallback in both modes rather than failing.
 
 **Rationale**: A microfrontend is developed, previewed, and sometimes shipped on its own, and composed into an application later. If either mode required different routing code, every microfrontend would carry two configurations that drift apart; making the mode a matter of which values and ports are supplied keeps one code path honest in both.
 
@@ -243,20 +242,20 @@ None owned here. The package is distributed under the root PRD's package-registr
 **Actor**: `cpt-frontx-routing-actor-application-developer`
 
 **Preconditions**:
-- The navigation substrate is mounted at the host with a route-owner provider and a mounting executor injected.
+- The navigation substrate is mounted at the host, and the host has created the route ownership signal's observer with its own source of declared identifier-to-prefix pairs.
 - A URL under a declared prefix is opened cold, reloaded, or reached by back/forward, and the microfrontend that owns that prefix is not yet mounted.
 
 **Main Flow**:
-1. The host resolves the URL's pathname to a declared route owner by longest matching prefix (`cpt-frontx-routing-fr-url-screen-binding`).
-2. The mounting executor mounts that route owner.
+1. The route ownership signal's observer resolves the URL's pathname to a declared route owner by longest matching prefix and reports the owner appearing (`cpt-frontx-routing-fr-route-ownership-signal`).
+2. The host's own mount mechanism mounts that route owner in response to the reported transition.
 3. Once mounted, the microfrontend's own engine provider reads the current location from the shared history at start and matches the remainder of the path under its `basepath` (`cpt-frontx-routing-fr-scoped-navigation-zone`).
 
 **Postconditions**:
 - The mounted screen and the URL agree without a blank screen, because the freshly mounted router reads the already-current location rather than starting from a blank route.
 
 **Alternative Flows**:
-- **No declared owner matches the path**: the host's own fallback is shown; nothing is mounted.
-- **The URL later moves outside the mounted owner's declared prefix**: the host unmounts that microfrontend.
+- **No declared owner matches the path**: the observer reports no owner; the host's own fallback is shown and nothing is mounted.
+- **The URL later moves outside the mounted owner's declared prefix**: the observer reports the owner disappearing or changing, and the host unmounts that microfrontend through its own mount mechanism.
 
 #### Swap the router engine used by one microfrontend
 
@@ -282,8 +281,8 @@ None owned here. The package is distributed under the root PRD's package-registr
 
 - [ ] A single navigation-history instance answers `push`/`replace`/`go`/`location`/`subscribe` for the host and for every independently bundled microfrontend registered in the same realm — verifiable via `cpt-frontx-routing-fr-single-navigation-substrate`.
 - [ ] Replacing the router engine used by one microfrontend changes no file outside that microfrontend's own route tree and search-parameter handling — verifiable via `cpt-frontx-routing-fr-engine-provider-port`.
-- [ ] A cold load, a reload, and a back/forward step all resolve the same mounted route owner from the URL through the same resolution path — verifiable via `cpt-frontx-routing-fr-url-screen-binding`.
-- [ ] The same microfrontend routing code runs composed under a host and standalone under its own deployment, differing only in where the `basepath` comes from and whether the screen-binding ports are injected — verifiable via `cpt-frontx-routing-fr-standalone-deployment`.
+- [ ] A cold load, a reload, and a back/forward step all resolve the same declared route owner from the URL through the same resolution path, reported as an observable transition to the consumer — verifiable via `cpt-frontx-routing-fr-route-ownership-signal`.
+- [ ] The same microfrontend routing code runs composed under a host and standalone under its own deployment, differing only in where the `basepath` comes from and whether a route-ownership-signal observer exists at all — verifiable via `cpt-frontx-routing-fr-standalone-deployment`.
 - [ ] The package declares no intra-ecosystem dependency, and its navigation substrate carries no import of the router engine or a UI framework — verifiable via the boundary guards.
 - [ ] A redirect or an imperative navigation built with the library's location-preserving helper carries the current location's search and hash onto the target path — verifiable via `cpt-frontx-routing-fr-location-preserving-helpers`.
 
@@ -293,15 +292,14 @@ None owned here. The package is distributed under the root PRD's package-registr
 |------------|-------------|-------------|
 | Browser navigation-history API | The primitive the default engine provider's shared-history implementation is built on. | p1 |
 | TanStack Router and `@tanstack/history` (default engine provider only) | The default concrete router engine and its `RouterHistory` contract; confined to the engine-provider component. The engine owns that contract's shape, and adapting to it is the engine provider's responsibility alone. | p1 |
-| Host-injected route-owner provider | Supplies the identifier-to-declared-prefix pairs the screen-domain binding resolves against; supplied by the host, not by this package. | p1 |
-| Host-injected mounting executor | Performs the actual mount once a resolver has picked a route owner; supplied by the host, not by this package. | p1 |
 
 ## 11. Assumptions
 
 - The host and every independently bundled microfrontend composed into one application share a single JavaScript realm; the navigation substrate's sharing boundary is the realm.
-- The host mounts the navigation substrate, and injects its route-owner provider and mounting executor, before any deep link into a microfrontend's screen is resolved.
-- Nesting between declared prefixes is legal (see `cpt-frontx-routing-fr-url-screen-binding`): a conflict means two route owners declaring the *same* prefix, not one prefix nesting inside another. A same-prefix conflict is caught at the point the host registers its route owners, not by this library.
+- The host mounts the navigation substrate, and creates the route ownership signal's observer with its own owner-prefix pairs source, before any deep link into a microfrontend's screen is resolved.
+- Nesting between declared prefixes is legal (see `cpt-frontx-routing-fr-route-ownership-signal`): a conflict means two route owners declaring the *same* prefix, not one prefix nesting inside another. A same-prefix conflict is caught at the point the host registers its route owners, not by this library.
 - A microfrontend declares the routes in its own routing table relative to its `basepath`, never as absolute paths carrying the prefix. An absolute path pins the routing table to one deployment mode's prefix, which is what would make the composed and standalone modes diverge.
+- A consumer that needs the URL and the mounted route owner to durably agree in both directions implements that reconciliation itself, on top of the route ownership signal and the URL back-projection helper (`cpt-frontx-routing-fr-route-ownership-signal`); this library publishes the facts the reconciliation acts on but does not perform the reconciliation itself.
 
 ## 12. Risks
 

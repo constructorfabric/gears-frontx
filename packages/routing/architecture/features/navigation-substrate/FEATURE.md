@@ -31,7 +31,7 @@
 
 ### 1.1 Overview
 
-*Navigation substrate* in this document names this agnostic core component alone, not the whole published package: `@gears-frontx/routing` is this core plus the Engine Provider and Screen Binding components specified in the sibling FEATUREs (root DESIGN and ADR 0002 use the same term at package granularity — a broader use than this FEATURE's own; see the package's own [DESIGN §1.1](../../DESIGN.md#11-architectural-vision)).
+*Navigation substrate* in this document names this agnostic core component alone, not the whole published package: `@gears-frontx/routing` is this core plus the Engine Provider and Route Ownership Signal components specified in the sibling FEATUREs (root DESIGN and ADR 0002 use the same term at package granularity — a broader use than this FEATURE's own; see the package's own [DESIGN §1.1](../../DESIGN.md#11-architectural-vision)).
 
 The Navigation Substrate is exactly one navigation-history instance per realm, reachable by the host and by every independently bundled microfrontend, with one real subscription against the browser's own navigation history fanned out to every listener — a fan-out its own `push`/`replace` calls trigger directly as a second dispatch path, since neither call raises the `popstate` event the browser subscription listens for. A `go` call is not part of that direct-dispatch path: moving through history raises `popstate` too, but only asynchronously, so `go` is observed through the same underlying browser subscription as a back/forward step rather than dispatched at its own call site. It exposes that history's `push`, `replace`, `go`, `location`, and `subscribe` — its own `NavigationHistory` contract — for use outside any mounted UI-framework component tree, and it carries the primitive that names which declared route owner a pathname belongs to — the longest matching declared prefix, respecting path-segment boundaries. It carries no dependency on a concrete router engine or UI framework; `NavigationHistory` is deliberately narrower than the `RouterHistory` contract a concrete engine expects; the Engine Provider is the component that adapts one into the other.
 
@@ -39,7 +39,7 @@ The Navigation Substrate is exactly one navigation-history instance per realm, r
 
 Independently bundled units cannot share a compile-time singleton — each is its own module graph, built and shipped on its own schedule. A composed application built from such units still needs exactly one navigation history: programmatic navigation performed through `pushState` produces no `popstate` event, so it is invisible to any second copy of a history-managing module that did not perform the call itself. Left alone, two independently bundled copies of this package would each construct their own history instance, and a `push`/`replace`/`go` issued through one would leave the other holding a stale `location` — the two copies, and the routers built on top of them, would drift out of agreement with each other and with the address bar. The Navigation Substrate exists to make that divergence structurally impossible: every unit in the realm reaches the same instance, by construction, rather than by convention — which is also why the substrate's own `push`/`replace` must dispatch its fan-out directly rather than leaning on the `popstate` event alone: that event is exactly the signal a same-instance `push`/`replace` call never raises (a same-instance `go` call does eventually raise it, asynchronously, which is why `go` is observed through the subscription instead of dispatched directly).
 
-**Requirements**: `cpt-frontx-routing-fr-single-navigation-substrate`, `cpt-frontx-routing-fr-imperative-navigation`, `cpt-frontx-routing-fr-url-screen-binding`, `cpt-frontx-routing-nfr-agnostic-core`
+**Requirements**: `cpt-frontx-routing-fr-single-navigation-substrate`, `cpt-frontx-routing-fr-imperative-navigation`, `cpt-frontx-routing-nfr-agnostic-core`
 
 **Principles**: `cpt-frontx-routing-principle-single-history-authority`
 
@@ -55,7 +55,7 @@ Independently bundled units cannot share a compile-time singleton — each is it
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Component**: `cpt-frontx-component-routing-navigation-substrate`
 - **Constraints**: `cpt-frontx-constraint-routing-no-engine-leak`, `cpt-frontx-constraint-routing-no-intra-ecosystem-dependency`
-- **Dependencies**: None — this feature is the ecosystem-facing foundation of the package; `cpt-frontx-feature-routing-url-screen-binding` and `cpt-frontx-feature-routing-engine-provider` both depend on it.
+- **Dependencies**: None — this feature is the ecosystem-facing foundation of the package; `cpt-frontx-feature-routing-route-ownership-signal` and `cpt-frontx-feature-routing-engine-provider` both depend on it.
 
 ### 1.5 Contract Shapes
 
@@ -102,7 +102,7 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 
 ## 3. Processes / Business Logic (CDSL)
 
-Internal system functions that do not interact with actors directly. All three are the building blocks the Screen Binding resolver (`cpt-frontx-feature-routing-url-screen-binding`) and the Engine Provider (`cpt-frontx-feature-routing-engine-provider`) are built on.
+Internal system functions that do not interact with actors directly. All three are the building blocks the Route Ownership Signal (`cpt-frontx-feature-routing-route-ownership-signal`) and the Engine Provider (`cpt-frontx-feature-routing-engine-provider`) are built on.
 
 ### Realm-Global Singleton Resolution
 
@@ -149,7 +149,7 @@ Internal system functions that do not interact with actors directly. All three a
 5. [ ] - `p1` - **WHEN** the caller invokes the returned unsubscribe function - `inst-when-unsubscribe`
    1. [ ] - `p1` - Remove the callback from the subscriber registry - `inst-remove-subscriber`
 
-**Rationale**: Exactly one subscription reaches the browser's navigation-history API regardless of how many listeners the realm accumulates, and that subscription lives from instance construction onward rather than from a first `subscribe` call, so every listener's fan-out — and every reader's `location` — traces back to that same single, already-live subscription. Dispatch has two triggers rather than one because the browser's own `popstate` event never fires for a `pushState`/`replaceState` call made through this same instance — without step 3's direct dispatch, this instance's own `push` and `replace` would be invisible to every subscriber, including the very Screen Binding resolver that depends on observing them. `go` deliberately stays out of that direct path: it does eventually raise `popstate`, only asynchronously, so folding it into step 3 would notify subscribers with a `location` that does not yet reflect the completed move — step 2's subscription, the same one back/forward relies on, is what observes `go` correctly. The snapshot-and-defer rules in step 4 are what make a listener free to unsubscribe or navigate from inside its own callback without corrupting the round it is currently part of.
+**Rationale**: Exactly one subscription reaches the browser's navigation-history API regardless of how many listeners the realm accumulates, and that subscription lives from instance construction onward rather than from a first `subscribe` call, so every listener's fan-out — and every reader's `location` — traces back to that same single, already-live subscription. Dispatch has two triggers rather than one because the browser's own `popstate` event never fires for a `pushState`/`replaceState` call made through this same instance — without step 3's direct dispatch, this instance's own `push` and `replace` would be invisible to every subscriber, including the very Route Ownership Signal observer that depends on observing them. `go` deliberately stays out of that direct path: it does eventually raise `popstate`, only asynchronously, so folding it into step 3 would notify subscribers with a `location` that does not yet reflect the completed move — step 2's subscription, the same one back/forward relies on, is what observes `go` correctly. The snapshot-and-defer rules in step 4 are what make a listener free to unsubscribe or navigate from inside its own callback without corrupting the round it is currently part of.
 
 ### Route-Owner Resolution By Longest Matching Declared Prefix
 
@@ -176,13 +176,13 @@ Internal system functions that do not interact with actors directly. All three a
 
 **Trailing-separator note**: A declared prefix of `/a/` normalizes to the same single-segment list as `/a` (step 3.1 discards the empty piece the trailing separator produces), so the two declared forms match identically — both match `/a` itself and `/a/b`, and neither matches `/ab`, whose only segment is `ab`, not `a`.
 
-**Boundary note**: This is the matching primitive alone — naming an owner or naming "no owner." It performs no mounting, no unmounting, and no URL reflection. The orchestration that acts on this primitive's result — triggering a mount when the resolved owner is not yet mounted, reflecting a non-URL-driven mount back into the URL by `replace`, and unmounting an owner the URL has left — belongs to the Screen Binding resolver and is specified in `cpt-frontx-feature-routing-url-screen-binding`, which invokes this algorithm as the first step of its own URL-to-mount reconciliation.
+**Boundary note**: This is the matching primitive alone — naming an owner or naming "no owner." It performs no mounting, no unmounting, and no URL reflection. Route Ownership Signal exposes this same primitive as its own public entry point and builds an observable signal of ownership changes on top of it (`cpt-frontx-feature-routing-route-ownership-signal`), without re-implementing the matching rule; mounting, unmounting, and any reconciliation between the URL and what is actually mounted are the consumer's own responsibility, never this primitive's or that feature's.
 
 ## 4. States (CDSL)
 
 ### No Feature-Owned State Machine
 
-Not applicable. The Navigation Substrate itself is stateless beyond the realm-global singleton and its subscriber registry (§3) — neither is a state machine with named states and guarded transitions. The one genuine state machine this package's behavior calls for — the binding of a screen-domain slot to a route owner, moving through resolution, mounting, and rebinding — belongs to the Screen Binding resolver and is specified in `cpt-frontx-feature-routing-url-screen-binding` §4. Introducing a state machine here would duplicate that one without adding a distinct concern, so none is defined for this feature.
+Not applicable. The Navigation Substrate itself is stateless beyond the realm-global singleton and its subscriber registry (§3) — neither is a state machine with named states and guarded transitions. No feature in this package defines an occupancy or binding state machine: mounting, unmounting, and the lifecycle of which owner currently occupies a placement belong entirely to whichever mount mechanism the consumer already runs, never to this library (`cpt-frontx-principle-agnostic-core`; `cpt-frontx-feature-routing-route-ownership-signal` §4).
 
 ## 5. Definitions of Done
 
@@ -200,7 +200,7 @@ The system **MUST** expose exactly one navigation-history instance per realm and
 
 **Addresses**:
 - `cpt-frontx-routing-fr-single-navigation-substrate`
-- `cpt-frontx-routing-fr-url-screen-binding` (the prefix-resolution primitive this DoD exposes is what that requirement's owner-naming step invokes)
+- `cpt-frontx-routing-fr-route-ownership-signal` (the prefix-resolution primitive this DoD exposes is what that requirement's owner-resolution step, exposed publicly by `cpt-frontx-feature-routing-route-ownership-signal`, invokes)
 - `cpt-frontx-routing-nfr-agnostic-core`
 - `cpt-frontx-routing-principle-single-history-authority`
 

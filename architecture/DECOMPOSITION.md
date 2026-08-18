@@ -26,7 +26,7 @@
   - [2.20 Telemetry SDK Compatibility Anchor - MEDIUM](#220-telemetry-sdk-compatibility-anchor---medium)
   - [2.21 AI-Driven Project Scaffolding from Intent - HIGH](#221-ai-driven-project-scaffolding-from-intent---high)
   - [2.22 Routing Navigation Substrate - MEDIUM](#222-routing-navigation-substrate---medium)
-  - [2.23 Routing URL–Screen-Domain Binding - MEDIUM](#223-routing-urlscreen-domain-binding---medium)
+  - [2.23 Routing Route Ownership Signal - MEDIUM](#223-routing-route-ownership-signal---medium)
   - [2.24 Routing Engine Provider - MEDIUM](#224-routing-engine-provider---medium)
 - [3. Feature Dependencies](#3-feature-dependencies)
 - [4. Known Validator Debt](#4-known-validator-debt)
@@ -307,11 +307,11 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-routing-principle-single-history-authority`
 - `cpt-frontx-constraint-routing-no-intra-ecosystem-dependency`
 
-### 2.23 [Routing URL–Screen-Domain Binding](../packages/routing/architecture/features/url-screen-binding/) - MEDIUM
+### 2.23 [Routing Route Ownership Signal](../packages/routing/architecture/features/route-ownership-signal/) - MEDIUM
 
-- [ ] `p2` - **ID**: `cpt-frontx-feature-routing-url-screen-binding`
+- [ ] `p2` - **ID**: `cpt-frontx-feature-routing-route-ownership-signal`
 
-**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/routing/architecture/features/url-screen-binding/FEATURE.md).
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/routing/architecture/features/route-ownership-signal/FEATURE.md).
 
 **Installed-kit coverage references**:
 - `cpt-frontx-component-routing-screen-binding`
@@ -351,7 +351,7 @@ F18 cli-invocation               (aggregator ← F10, F11, F12, F13, F14 — dis
 F19 ecosystem-governance         (foundation, standalone)
 F20 ai-project-scaffolding       (← F10, F11, F12, F13, F15, F16)
 F21 routing-navigation-substrate (foundation, standalone)
-   ├─→ F22 routing-url-screen-binding
+   ├─→ F22 routing-route-ownership-signal
    └─→ F23 routing-engine-provider
 ```
 
@@ -376,7 +376,7 @@ F21 routing-navigation-substrate (foundation, standalone)
 - `cpt-frontx-feature-ai-upgrade-orchestration` requires `cpt-frontx-feature-ai-kit-packaging`: the orchestration workflow ships inside the base AI kit.
 - `cpt-frontx-feature-cli-invocation` requires `cpt-frontx-feature-template-resolution`, `cpt-frontx-feature-template-manifest`, `cpt-frontx-feature-cli-scaffolding`, `cpt-frontx-feature-composed-provenance`, and `cpt-frontx-feature-upgrade-changeset`: the invocation surface is the cross-command aggregator that dispatches `frontx <command>` to each owning behavior; it sits above them in the graph and none depend back on it.
 - `cpt-frontx-feature-ai-project-scaffolding` requires `cpt-frontx-feature-ai-kit-packaging` (its entry points ship in the base kit), `cpt-frontx-feature-template-manifest` (selection matches intent against manifest-declared descriptions), `cpt-frontx-feature-template-resolution` (the local inventory it selects over), `cpt-frontx-feature-cli-scaffolding` (the seed/add assembly it drives over the command surface), `cpt-frontx-feature-composed-provenance` (the applied set is reported from provenance), and `cpt-frontx-feature-template-ai-extensions` (per-unit realization drives the applied templates' activated extension skills).
-- `cpt-frontx-feature-routing-url-screen-binding` requires `cpt-frontx-feature-routing-navigation-substrate`: the URL projection binds against the single navigation history the substrate owns.
+- `cpt-frontx-feature-routing-route-ownership-signal` requires `cpt-frontx-feature-routing-navigation-substrate`: the owner-resolution primitive it exposes, and the observable signal it builds on top of that primitive, both bind against the single navigation history the substrate owns.
 - `cpt-frontx-feature-routing-engine-provider` requires `cpt-frontx-feature-routing-navigation-substrate`: the provider implements the engine port the substrate defines, the same shape as `cpt-frontx-feature-gts-type-provider` implementing the type-substrate port.
 
 ## 4. Known Validator Debt
