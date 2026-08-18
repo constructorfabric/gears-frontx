@@ -1138,8 +1138,12 @@ for (const theme of result.themeSet.themes) {
           if (!ok) fail('click', `control "${action.testid}" was not clicked under theme "${theme}": ${outcomeReason(outcome)}`);
         } else if (action.kind === 'read') {
           const text = readText(action.testid);
-          const ok = text !== EVAL_ERROR
-            && (action.contains ? text.includes(action.contains) : text !== MISSING);
+          // The sentinel is ruled out before `contains` is consulted rather than
+          // as its fallback: MISSING comes back as text, and a declared substring
+          // the sentinel itself carries - "missing" is one - confirmed a control
+          // the page never held, filing the state as read back.
+          const ok = text !== EVAL_ERROR && text !== MISSING
+            && (action.contains === undefined || text.includes(action.contains));
           record.readBacks.push({ screen: screen.name, state: declared.state, action: 'read', testid: action.testid, expected: action.contains ?? null, actual: text, ok });
           if (!ok) fail('read', `reading "${action.testid}" under theme "${theme}" gave "${text}"`);
         } else {

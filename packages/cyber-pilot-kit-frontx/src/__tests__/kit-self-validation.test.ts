@@ -831,7 +831,8 @@ process.exit(0);
           labelRead: string | null;
           panelCollapsed: boolean | null;
           captures: { screen: string; state: string; readyConfirmed: boolean }[];
-          readBacks: { action: string; testid: string; actual: string; ok: boolean }[];
+          // `expected` is absent on a click, which declares nothing to compare against.
+          readBacks: { action: string; testid: string; expected?: string | null; actual: string; ok: boolean }[];
           comparisons: { against: string; screen: string; state: string; command: string; exit: number | null; verdict: string }[];
         }[];
         failures: { stage: string; detail: string }[];
@@ -1402,6 +1403,39 @@ process.exit(0);
       expect(reads[0].detail).toContain('screen-status');
       expect(run.result.themes[0].readBacks[0]).toMatchObject({
         action: 'read', testid: 'screen-status', actual: '__verify_walk_missing__', ok: false,
+      });
+
+      run.cleanup();
+    });
+
+    // The sentinel is text, so a declared `contains` it happens to carry read an
+    // absent control as a state that was read back: "missing" is a substring of
+    // __verify_walk_missing__, the substring test passed on the sentinel itself,
+    // and the coverage row claimed a reading of a control the page never held.
+    it('fails a read of an absent control whose declared contains is a substring of the missing sentinel', () => {
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login',
+        '--nav', 'route',
+      ], HOST_IDS, {}, {
+        states: {
+          login: [{
+            state: 'submitted',
+            actions: [{ kind: 'read', testid: 'screen-status', contains: 'missing' }],
+          }],
+        },
+      });
+
+      expect(run.status).not.toBe(0);
+
+      const reads = run.result.failures.filter((failure) => failure.stage === 'read');
+      expect(reads).toHaveLength(1);
+      expect(reads[0].detail).toContain('screen-status');
+      expect(run.result.themes[0].readBacks[0]).toMatchObject({
+        action: 'read',
+        testid: 'screen-status',
+        expected: 'missing',
+        actual: '__verify_walk_missing__',
+        ok: false,
       });
 
       run.cleanup();
