@@ -58,7 +58,7 @@ This feature exists to let a project developer safely adopt a newer origin for a
 
 - **PRD**: [PRD.md](../../PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
-- **ADR**: `cpt-frontx-adr-project-upgrade-mechanism`, `cpt-frontx-adr-project-provenance-record`, `cpt-frontx-adr-source-spec-syntax`, `cpt-frontx-adr-uniform-cli-json-envelope`
+- **ADR**: `cpt-frontx-adr-project-upgrade-mechanism`, `cpt-frontx-adr-project-provenance-record`, `cpt-frontx-adr-source-spec-syntax`, `cpt-frontx-adr-cli-machine-readable-output`
 - **Dependencies**:
   - `cpt-frontx-feature-composed-provenance` — owns the single project state document; this engine reads the name's `{origin, version, targets[]}` entry as its baseline and commits the post-upgrade `origin`/`version` back into it, but does not redefine the document or the contract.
   - `cpt-frontx-feature-template-resolution` — resolves the new origin through the same shared resolver every other lifecycle command uses.
@@ -273,7 +273,7 @@ The system **MUST** provide exactly one change-set engine, `cpt-frontx-component
 - [ ] Both direct CLI invocation and AI-driven orchestration (`cpt-frontx-feature-ai-upgrade-orchestration`) drive the same change-set engine; no second upgrade implementation exists.
 - [ ] A developer can request restore of a name's most recently committed upgrade and observe the name and every one of its targets return to the pre-upgrade `origin`/`version` and applied content; requesting restore when no applied upgrade is available for that name returns `NOTHING_TO_RESTORE`.
 - [ ] This feature's DoD and CDSL make no claim about a file-level diff, three-way-merge, or per-file conflict-detection mechanism for either upgrade or restore — that mechanism is explicitly deferred to a future decision, consistent with `cpt-frontx-adr-project-upgrade-mechanism` and DESIGN §4.
-- [ ] Every `RETURN`-level refusal in this feature's flows and algorithms names a code from the shared error-code vocabulary (`cpt-frontx-adr-uniform-cli-json-envelope`).
+- [ ] Every `RETURN`-level refusal in this feature's flows and algorithms names a code from the shared error-code vocabulary (`cpt-frontx-adr-cli-machine-readable-output`).
 - [ ] `upgrade` satisfies `cpt-frontx-cli-nfr-template-scale`'s upgrade-preparation threshold: preparing a reviewable upgrade change set for one registered template in a project with at least 20 registered templates, without requiring any unrelated template to upgrade.
 - [ ] `cfs --json validate --artifact packages/cli/architecture/features/upgrade-changeset/FEATURE.md --skip-code` returns PASS.
 - [ ] `cfs --json validate-toc packages/cli/architecture/features/upgrade-changeset/FEATURE.md` returns PASS.

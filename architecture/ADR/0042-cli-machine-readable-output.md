@@ -3,7 +3,7 @@ status: accepted
 date: 2026-08-12
 ---
 
-# One Discriminated-Union JSON Envelope for Every CLI Command's Machine-Readable Output
+# What Every CLI Command's Machine-Readable Output Must Look Like
 
 <!-- toc -->
 
@@ -23,7 +23,7 @@ date: 2026-08-12
 
 <!-- /toc -->
 
-**ID**: `cpt-frontx-adr-uniform-cli-json-envelope`
+**ID**: `cpt-frontx-adr-cli-machine-readable-output`
 
 ## Context and Problem Statement
 

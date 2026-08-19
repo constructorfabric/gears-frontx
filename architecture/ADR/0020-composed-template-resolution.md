@@ -39,7 +39,7 @@ A repository is assembled from one or more independently-applied templates, whet
 
 ## Considered Options
 
-* **Manifest-declared transitive preset composition** — a template's manifest declares other templates it references as a preset; the CLI resolves those references transitively into the full set to apply, as accepted by the prior design (`cpt-frontx-adr-composed-template-resolution`).
+* **Manifest-declared transitive preset composition** — a template's manifest declares other templates it references as a preset; the CLI resolves those references transitively into the full set to apply.
 * **Explicit instance specifications with a persisted, fingerprinted execution plan** — an `assemble` step writes an execution plan to disk, generating an `instanceId` for each requested application and recording a content fingerprint per target; `apply` reads that saved plan, checks each target's fingerprint for staleness against what `assemble` last saw, and refuses or re-derives on mismatch before materializing from the plan.
 * **Explicit target-keyed batch, no saved plan** — a batch input names, for each registered template, the target or targets to apply it to (`{"templates": {"<manifestName>": ["<target>", ...]}}`); `assemble` is a stateless preview that runs the same resolution, ownership, and conflict checks `apply` will run but writes nothing; `apply` re-derives and re-validates directly from the batch input at call time and materializes it; an applied instance's identity is simply its normalized target.
 
@@ -72,7 +72,7 @@ Compliance is confirmed by design and code review plus a continuous-integration 
 
 ### Manifest-declared transitive preset composition
 
-A template's manifest declares other templates it references as a preset; the CLI resolves those references transitively into the full set to apply, as previously accepted in `cpt-frontx-adr-composed-template-resolution`.
+A template's manifest declares other templates it references as a preset; the CLI resolves those references transitively into the full set to apply.
 
 * Good, because a preset delivers a whole combination of templates in one operation with no extra step from the developer.
 * Good, because the referenced set is an authored, inspectable property of the manifest.
@@ -133,4 +133,3 @@ This decision directly addresses the following requirements and design elements:
 * `cpt-frontx-fr-cli-assembly-conflict-prevention` — The pre-flight ownership-boundary conflict check now runs over the batch's resolved targets and effective ownership rather than over a transitively-resolved preset reference graph; `assemble` previews this check without writing and `apply` repeats it before materializing.
 * `cpt-frontx-contract-template-manifest` — The manifest contract declares no `referencedTemplates` field: a template does not name other templates to be applied alongside it, and composition is expressed only through the caller's explicit batch.
 * `cpt-frontx-component-cli` — The CLI component's assembly mechanism is constrained by this decision to operate on an explicit, caller-supplied batch identified by target, with `assemble` as a stateless preview and `apply` as the self-sufficient, re-validating materializer.
-* `cpt-frontx-adr-composed-template-resolution` — Superseded by this decision in full: manifest-declared `referencedTemplates` and its transitive, cycle-detecting resolver are replaced by an explicit target-keyed batch that names every template and target to apply, with no reference resolution.

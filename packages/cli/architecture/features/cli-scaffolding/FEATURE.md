@@ -67,7 +67,7 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
 
 - **PRD**: [PRD.md](../../PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
-- **ADR**: `cpt-frontx-adr-composed-template-resolution`, `cpt-frontx-adr-template-ownership-boundary-declaration`, `cpt-frontx-adr-assembly-conflict-prevention`, `cpt-frontx-adr-source-spec-syntax`, `cpt-frontx-adr-uniform-cli-json-envelope`, `cpt-frontx-adr-cli-internal-decomposition`
+- **ADR**: `cpt-frontx-adr-composed-template-resolution`, `cpt-frontx-adr-template-ownership-boundary-declaration`, `cpt-frontx-adr-assembly-conflict-prevention`, `cpt-frontx-adr-source-spec-syntax`, `cpt-frontx-adr-cli-machine-readable-output`, `cpt-frontx-adr-cli-internal-decomposition`
 - **Dependencies**:
   - `cpt-frontx-feature-template-resolution` (F10 — resolves and auto-installs a registered template's content)
   - `cpt-frontx-feature-composed-provenance` (owns `.frontx/project.json`: this feature reads registered origins and every already-applied target and `projectOwnedRoots` from it, and records every newly applied or deleted target into it)
@@ -486,7 +486,7 @@ The system **MUST** materialize a template name's AI-extension bundle at `.front
 - [ ] `seed <dir> --input <batch>` on a directory that does not yet carry `.frontx/project.json` creates it, auto-registers each named official default template through the register algorithm (resolve → pin → write origin), and then applies the batch through the identical mechanism `apply` uses; `seed` on a directory that already carries `.frontx/project.json` is refused, directing the developer to `apply`.
 - [ ] The first `apply` or `seed` batch to give a template name its first target materializes that name's CLI-owned `.frontx/ai/<manifest-name>/` bundle from the template's payload, when the payload carries one, as a write attributed to the CLI, never to the template's own ownership; `delete` of a name's last remaining target removes that bundle.
 - [ ] No apply, assemble, or delete path silently merges conflicting claims or silently overwrites differing content.
-- [ ] Every `RETURN`-level refusal in this feature's flows and algorithms names a code from the shared error-code vocabulary (`cpt-frontx-adr-uniform-cli-json-envelope`).
+- [ ] Every `RETURN`-level refusal in this feature's flows and algorithms names a code from the shared error-code vocabulary (`cpt-frontx-adr-cli-machine-readable-output`).
 - [ ] The apply/assemble/seed/delete command surface is part of `cpt-frontx-interface-cli`; an incompatible change to the surface requires a major version bump per `cpt-frontx-adr-artifact-versioning-and-distribution`.
 - [ ] `assemble`/`apply` satisfy `cpt-frontx-cli-nfr-template-scale`'s assembly threshold: evaluating at least 20 templates in one batch and reporting every ownership conflict found — including containment between targets — before any repository file is written.
 - [ ] `cfs --json validate --artifact packages/cli/architecture/features/cli-scaffolding/FEATURE.md --skip-code` returns PASS.

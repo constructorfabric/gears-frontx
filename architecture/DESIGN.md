@@ -107,12 +107,12 @@ CLI (projects orchestration):
 * `cpt-frontx-adr-cli-internal-decomposition` — Decomposes the single `@gears-frontx/cli` package into internal template-resolver, pre-publish-validator, registration, assembler, conflict-checker, provenance-recorder, and change-set-&-upgrade-engine components.
 * `cpt-frontx-adr-template-manifest-contract` — Fixes the template manifest at exactly `name`, `version`, a required `description`, and `excludedSubtrees`, with `description` as the sole carrier of selection and usage semantics.
 * `cpt-frontx-adr-project-provenance-record` — Keeps template registration, applied-instance provenance, and project-owned exclusions in one Git-tracked `.frontx/project.json` document, and fixes how an entry enters and leaves it.
-* `cpt-frontx-adr-template-ownership-boundary-declaration` — Defines ownership as a template's whole target minus manifest-declared `excludedSubtrees` and project-declared `projectOwnedRoots`, arbitrating lifecycle rather than content.
+* `cpt-frontx-adr-template-ownership-boundary-declaration` — Defines ownership as a template's whole target minus the subtractions that record enumerates, arbitrating lifecycle rather than content; the enumeration is stated once there, not copied here.
 * `cpt-frontx-adr-composed-template-resolution` — Expresses composition as an explicit target-keyed batch that `assemble` previews statelessly and `apply` re-validates and materializes, with no manifest-declared preset and no saved execution plan.
 * `cpt-frontx-adr-assembly-conflict-prevention` — Treats ancestor/descendant containment as a conflict, alongside exact-path equality, over canonicalized, fail-closed targets, while admitting deliberate nesting at or inside declared `excludedSubtrees`.
 * `cpt-frontx-adr-source-spec-syntax` — Fixes the shape of a template reference — a host-prefixed remote token with an optional subtree segment, or a `path:` origin inside the project — and fixes that a stored remote origin holds the immutable value the resolver actually fetched, never the movable ref supplied.
 * `cpt-frontx-adr-project-upgrade-mechanism` — Upgrades every target recorded under a registered template name atomically, as one unit, using that name's own `{origin, version}` entry in `.frontx/project.json` as the baseline.
-* `cpt-frontx-adr-uniform-cli-json-envelope` — Standardizes every command's `--json` output as one discriminated-union envelope (`{ok: true, data}` / `{ok: false, error}`) drawn from a shared vocabulary of error codes.
+* `cpt-frontx-adr-cli-machine-readable-output` — Standardizes every command's `--json` output as one discriminated-union envelope (`{ok: true, data}` / `{ok: false, error}`) drawn from a shared vocabulary of error codes.
 
 AI Tooling (projects orchestration):
 
