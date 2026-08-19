@@ -26,10 +26,19 @@ interface ProfileDetailsCardProps {
   onSubmit: (values: ProfileFormValues) => Promise<void>;
 }
 
+/**
+ * Read the form's three values off a profile.
+ *
+ * The names are coalesced although `ApiUser` types them as `string`: that type
+ * describes a response body nothing validates, so a profile whose name fields
+ * came back null reaches here as one. Every value below is trimmed and rendered
+ * as a controlled input's value, and both of those turn a null into a thrown
+ * render rather than an empty field.
+ */
 function getFormValues(user: ApiUser): ProfileFormValues {
   return {
-    firstName: user.firstName,
-    lastName: user.lastName,
+    firstName: user.firstName ?? '',
+    lastName: user.lastName ?? '',
     department:
       typeof user.extra?.department === 'string' ? user.extra.department : '',
   };
@@ -77,10 +86,15 @@ export const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
   const handleFieldChange =
     (field: keyof ProfileFormValues) =>
       (event: React.ChangeEvent<HTMLInputElement>) => {
-        setEditingValues((current) => ({
-          ...(current ?? initialValues),
-          [field]: event.target.value,
-        }));
+        const { value } = event.target;
+
+        // Only the editing branch renders these inputs, so there is always a
+        // buffer to update. A change that somehow arrived after the buffer
+        // closed is dropped: reopening the form from `user` is the Edit
+        // button's decision, not this handler's.
+        setEditingValues((current) =>
+          current === null ? null : { ...current, [field]: value }
+        );
       };
 
   const handleCancel = () => {
