@@ -331,6 +331,10 @@ element wraps the card's slots and swallows the card's gap. Make the slots
 direct children of `Card` again — see [Styling](#styling).
 
 If a component's own styles are missing, the CSS is not reaching the shadow
-root at all: confirm the component is imported statically (a lazily imported
-one is not in this MFE's stylesheet) and that `dist/mf-manifest.json` lists a
-CSS file under the exposed module's assets.
+root at all. The loader injects every stylesheet an entry declares, both the
+synchronous ones and the ones behind a lazy import, so a lazily imported
+component is not the cause. Check instead that `dist/mf-manifest.json` lists a
+CSS file under the exposed module's `assets.css` - an entry with none there has
+nothing to inject - and that the tokens those styles read are anchored on
+`:host`, since a component whose own rules arrived but whose `var()` references
+resolve to nothing renders just as unstyled.

@@ -12,9 +12,12 @@ export default mergeConfig(
     test: {
       /*
        * Vitest resolves a stylesheet import to an empty string unless CSS is
-       * processed. KitThemedLifecycle re-anchors the ui-kit theme tokens onto
-       * the shadow host by rewriting the stylesheet it imports, so without this
-       * the one test covering that rewrite would assert against nothing.
+       * processed, so this flag is what puts the kit's real theme.css in front
+       * of the tests that rewrite it. Two of them depend on that content and
+       * not on a fixture: the one asserting no `:root` survives the rewrite,
+       * and the one pinning how many `:root` occurrences the pinned kit has and
+       * where they sit. Turn CSS off and both assert against an empty string
+       * and pass having checked nothing at all.
        */
       css: true,
       server: {
@@ -24,8 +27,8 @@ export default mergeConfig(
            * emitted chunk imports its own stylesheet. Left external, those
            * imports reach Node's ESM loader, which has no `.css` extension
            * handler and fails the whole suite before a single test runs.
-           * Inlining hands them back to Vite, which resolves a stylesheet
-           * import in a test environment to nothing.
+           * Inlining hands them back to Vite, and from there through the same
+           * CSS pipeline `css: true` above turns on.
            */
           inline: ['@gears-frontx/ui-kit'],
         },
