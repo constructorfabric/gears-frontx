@@ -22,11 +22,11 @@ async function setupCurrentThemeScreen() {
       [FRONTX_SHARED_PROPERTY_LANGUAGE]: 'fr',
     },
   });
-  const { container, rerender, unmount } = render(
-    <CurrentThemeScreen bridge={bridgeFixture.bridge} />
-  );
-  const rootElement = container.firstChild as HTMLElement | null;
-  const host = rootElement ? mockShadowHost(rootElement).host : document.createElement('div');
+  // Raised before the render, so the screen's mount effect has a host to write
+  // its direction on. Attached afterwards, that first pass reaches no host at
+  // all and the initial LTR direction is asserted by nothing.
+  const { host } = mockShadowHost(HTMLDivElement);
+  const { rerender, unmount } = render(<CurrentThemeScreen bridge={bridgeFixture.bridge} />);
 
   await screen.findByRole('heading', { level: 1 });
 
@@ -50,8 +50,10 @@ describe('CurrentThemeScreen', () => {
   });
 
   it('renders bridge values and theme swatches', async () => {
-    await setupCurrentThemeScreen();
+    const { host } = await setupCurrentThemeScreen();
 
+    // `fr` resolves to the left-to-right default, written on the shadow host.
+    expect(host.dir).toBe('ltr');
     expect(screen.getAllByText('solarized').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('fr')).toBeTruthy();
     expect(screen.getByText('theme-domain')).toBeTruthy();
@@ -71,6 +73,8 @@ describe('CurrentThemeScreen', () => {
 
   it('updates the language value and host direction', async () => {
     const { host, bridgeFixture } = await setupCurrentThemeScreen();
+
+    expect(host.dir).toBe('ltr');
 
     await act(async () => {
       bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, 'ar');

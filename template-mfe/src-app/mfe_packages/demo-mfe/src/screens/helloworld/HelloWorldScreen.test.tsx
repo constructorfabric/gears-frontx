@@ -43,11 +43,14 @@ async function setupHelloWorldScreen() {
     },
   });
 
+  // Raised before the render, so the screen's mount effect has a host to write
+  // its direction on. Attached afterwards, that first pass reaches no host at
+  // all and the initial LTR direction is asserted by nothing.
+  const { host } = mockShadowHost(HTMLDivElement);
   const { container, rerender, unmount } = render(
     <HelloWorldScreen bridge={bridgeFixture.bridge} />
   );
   const rootElement = container.firstChild as HTMLElement | null;
-  const host = rootElement ? mockShadowHost(rootElement).host : document.createElement('div');
 
   await screen.findByRole('heading', { level: 1 });
 
@@ -75,8 +78,11 @@ describe('HelloWorldScreen', () => {
   });
 
   it('renders bridge data and initial shared properties', async () => {
-    const { expectedLanguage, expectedTheme, rootElement } = await setupHelloWorldScreen();
+    const { expectedLanguage, expectedTheme, host, rootElement } = await setupHelloWorldScreen();
 
+    // The direction lands on the shadow host, not on the screen root, and `pl`
+    // resolves to the left-to-right default.
+    expect(host.dir).toBe(TextDirection.LeftToRight);
     expect(rootElement?.getAttribute('dir')).toBeNull();
     expect(screen.getByText('demo-domain')).toBeTruthy();
     expect(screen.getByText('hello-world')).toBeTruthy();
@@ -95,6 +101,8 @@ describe('HelloWorldScreen', () => {
 
   it('updates the language value and host direction', async () => {
     const { host, bridgeFixture } = await setupHelloWorldScreen();
+
+    expect(host.dir).toBe(TextDirection.LeftToRight);
 
     await act(async () => {
       bridgeFixture.setProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, 'ar');
