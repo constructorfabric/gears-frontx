@@ -68,7 +68,12 @@ export const CategoryMenu: React.FC<CategoryMenuProps> = ({ t, activeElement, co
 
   return (
     <nav className={styles.menu}>
-      <h2 className={styles.menuTitle}>{t('title')}</h2>
+      {/*
+        Its own key, not the page title's: this heading and the `h1` would
+        otherwise read as the same thing twice to a screen reader walking the
+        headings.
+      */}
+      <h2 className={styles.menuTitle}>{t('menu_title')}</h2>
       <ul className={styles.menuList}>
         {Object.values(CATEGORIES).map(category => {
           const isExpanded = expandedCategories.has(category);

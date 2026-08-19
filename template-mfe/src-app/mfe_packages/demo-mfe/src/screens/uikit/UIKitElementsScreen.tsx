@@ -92,7 +92,10 @@ export const UIKitElementsScreen: React.FC<UIKitElementsScreenProps> = ({ bridge
    * adopted component stylesheets and the tokens on this host both stop at the
    * boundary, so a popup left on the default renders unstyled in the light DOM.
    * They all take a `container`, and Base UI accepts a ref, so this one node
-   * serves all five without waiting a render for the element to exist.
+   * serves all five. It has to render before them: Base UI reads the ref in a
+   * layout effect on its consumer's first commit, and refs attach in tree order
+   * interleaved with those effects, so a consumer placed above this node reads
+   * `null` and falls back to `<body>` for good.
    */
   const portalContainerRef = useRef<HTMLDivElement>(null);
   const [activeElement, setActiveElement] = useState<string | undefined>();
@@ -119,7 +122,9 @@ export const UIKitElementsScreen: React.FC<UIKitElementsScreenProps> = ({ bridge
   // Load translations
   const { t, loading: translationsLoading } = useScreenTranslations(languageModules, bridge);
 
-  // Handle theme subscription; language + direction come from useScreenTranslations
+  // Subscribe to theme and language. Text direction is derived from
+  // `language` by the effect below only — useScreenTranslations consumes
+  // `language` for translation loading and has no role in direction.
   useEffect(() => {
     // Subscribe to theme domain property
     const themeUnsubscribe = bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_THEME, (property) => {
@@ -151,8 +156,22 @@ export const UIKitElementsScreen: React.FC<UIKitElementsScreenProps> = ({ bridge
     }
   }, [language]);
 
-  // Track active element on scroll (intersection observer)
+  /*
+   * Track which element is in view, for the menu's active highlight.
+   *
+   * Two things make the set of nodes to observe a moving target, and missing
+   * either one leaves the observer holding nothing at all - silently, since an
+   * observer with no targets never reports. The first commit renders the
+   * skeleton rather than the sections, so the effect has to wait for the
+   * translations; and each section then arrives in its own later commit from its
+   * own React.lazy chunk, which is what the MutationObserver picks up.
+   */
   useEffect(() => {
+    const container = containerRef.current;
+    if (translationsLoading || container === null) {
+      return;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -164,22 +183,32 @@ export const UIKitElementsScreen: React.FC<UIKitElementsScreenProps> = ({ bridge
       { rootMargin: '-100px 0px -50% 0px' }
     );
 
-    // Query elements from the correct root (shadow DOM or light DOM)
-    const root = containerRef.current?.getRootNode();
-    let elements: NodeListOf<Element>;
+    // Re-observing a node the observer already holds is a no-op; the set is
+    // what keeps the callback below from making that call for every section
+    // already mounted, on every mutation.
+    const observed = new WeakSet<Element>();
+    const observeElements = (): void => {
+      // Queried from the container rather than from the root node: the
+      // container is inside whichever root this screen mounted in - shadow or
+      // document - and every section is inside the container.
+      container.querySelectorAll('[id^="element-"]').forEach((element) => {
+        if (!observed.has(element)) {
+          observed.add(element);
+          observer.observe(element);
+        }
+      });
+    };
 
-    if (root && root instanceof ShadowRoot) {
-      // Inside Shadow DOM: query from shadow root
-      elements = root.querySelectorAll('[id^="element-"]');
-    } else {
-      // Fallback to light DOM for compatibility
-      elements = document.querySelectorAll('[id^="element-"]');
-    }
+    observeElements();
 
-    elements.forEach((el) => observer.observe(el));
+    const sections = new MutationObserver(observeElements);
+    sections.observe(container, { childList: true, subtree: true });
 
-    return () => observer.disconnect();
-  }, []);
+    return () => {
+      sections.disconnect();
+      observer.disconnect();
+    };
+  }, [translationsLoading]);
 
   const kitThemeScope = kitThemeScopeFor(theme);
 
@@ -274,14 +303,27 @@ export const UIKitElementsScreen: React.FC<UIKitElementsScreenProps> = ({ bridge
       </main>
 
       {/*
+        Ahead of the Toaster on purpose: every consumer of this ref resolves it
+        in a layout effect on its own first commit, and a ref belonging to a
+        later sibling is not attached yet when that runs.
+      */}
+      <div ref={portalContainerRef} className={styles.portalContainer} />
+
+      {/*
         Toast container, mounted once for the screen. The shell may run a Toaster
         of its own on the kit's shared manager; this one stays inside the shadow
         root through `container`, and a duplicate viewport on that same manager
         would render every toast twice.
-      */}
-      <Toaster container={portalContainerRef} />
 
-      <div ref={portalContainerRef} className={styles.portalContainer} />
+        Base UI names the viewport region "Notifications" and each close button
+        "Close toast", in English, whatever language the screen is in, so both
+        come from this screen's own namespace instead.
+      */}
+      <Toaster
+        container={portalContainerRef}
+        label={t('toast_region_label')}
+        closeLabel={t('toast_close_label')}
+      />
     </div>
   );
 };
