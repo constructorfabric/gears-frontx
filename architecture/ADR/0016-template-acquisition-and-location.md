@@ -95,7 +95,7 @@ The tool resolves and fetches a template from its source on each scaffold, holdi
 
 ## More Information
 
-This decision establishes the **CLI-1** design constraint (`cpt-frontx-constraint-cli-template-independence`) for the `@gears-frontx/cli` package and is the resolution mechanism that constraint links. The versioned-reference form a developer supplies is decided in `cpt-frontx-adr-source-spec-syntax`. The single shared resolver's standing as one CLI component is decided in `cpt-frontx-adr-cli-internal-decomposition`, and its use for preset reference resolution in `cpt-frontx-adr-composed-template-resolution`. The separate, reviewable application of a newer template version to an already-applied template is decided in `cpt-frontx-adr-project-upgrade-mechanism`. These are non-binding pointers to related decisions and do not form part of this decision's durable identity.
+This decision establishes the **CLI-1** design constraint (`cpt-frontx-constraint-cli-template-independence`) for the `@gears-frontx/cli` package and is the resolution mechanism that constraint links. The versioned-reference form a developer supplies, and what a stored reference holds, are decided in `cpt-frontx-adr-source-spec-syntax`. The single shared resolver's standing as one CLI component is decided in `cpt-frontx-adr-cli-internal-decomposition`, and its use when a caller applies several templates in one batch in `cpt-frontx-adr-composed-template-resolution`. The separate, reviewable application of a newer origin to a registered template's targets is decided in `cpt-frontx-adr-project-upgrade-mechanism`. Registration on top of this acquisition core — adopting a resolved origin into a project under the template's own name — is decided in `cpt-frontx-adr-project-provenance-record`. These are non-binding pointers to related decisions and do not form part of this decision's durable identity.
 
 Applicability of the remaining checklist categories:
 
@@ -107,8 +107,6 @@ Applicability of the remaining checklist categories:
 * **MAINT** — addressed: separating the command surface from template content reduces coupling and lets each evolve independently.
 * **UX** — addressed implicitly: a single predictable command surface with a listable inventory.
 * **BIZ** — Not applicable, because product requirements are stated in the PRD and only cited here by ID.
-
-**Post-redesign note (2026-08-12).** This record's core holding — the CLI bundles no template, resolves every reference through one shared resolver, and materializes content into a tracked local inventory — remains in force. Two of its non-binding pointers now resolve differently: preset reference resolution (`cpt-frontx-adr-composed-template-resolution`) is superseded by explicit batch application (`cpt-frontx-adr-composed-template-resolution`), and the per-template upgrade pointer now resolves to the atomic all-targets upgrade (`cpt-frontx-adr-project-upgrade-mechanism`). Project-level registration on top of this acquisition core — including the `register`/`unregister` commands and origin pinning — is decided in `cpt-frontx-adr-source-spec-syntax`.
 
 ## Traceability
 

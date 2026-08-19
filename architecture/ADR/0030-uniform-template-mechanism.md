@@ -34,7 +34,7 @@ The CLI (`cpt-frontx-component-cli`, the `@gears-frontx/cli` package) installs, 
 * **One mechanism, not per-type branches** — install, apply, assemble, conflict-check, and upgrade should be one code path over any template; branching the mechanism by type multiplies the surface and couples the tool to a closed vocabulary.
 * **Templates describe themselves** — what a template produces and the ground it claims are properties the template declares (its manifest and ownership boundaries), so the tool needs no type label to operate on it.
 * **Evolvability without a vocabulary change** — introducing a new sort of template must not require a platform release that widens a fixed enumeration, so the contract and the tool stay stable as the ecosystem's templates diversify.
-* **Composition expressed by reference, not by type** — a template that arranges others (a preset) does so by referencing them, an explicit relationship, rather than by a type that the tool special-cases.
+* **Composition expressed by the caller, not by type** — several templates are arranged into one repository by the caller naming them and their targets explicitly (`cpt-frontx-adr-composed-template-resolution`), not by a type the tool special-cases.
 
 ## Considered Options
 
@@ -57,7 +57,7 @@ The scope of this decision is that the platform fixes no template taxonomy and t
 * Good, because a template describes itself through its manifest and ownership boundaries, so the tool needs no type label to operate on it.
 * Good, because a new sort of template requires no widening of a fixed vocabulary and no platform release to admit it.
 * Bad, because without a declared type the tool cannot offer type-specific affordances or validation shortcuts; any such behavior must be derived from what a template declares, not from a label.
-* Bad, because a preset expresses composition by reference, so a malformed or cyclic reference must be detected by resolution rather than ruled out by a type constraint.
+* Bad, because composition carries no type constraint that could rule out a nonsensical combination in advance: an arrangement that does not make sense is refused by the ownership and conflict checks it fails, not by a taxonomy that would have forbidden it.
 
 ### Confirmation
 
@@ -67,13 +67,13 @@ Compliance is confirmed by design and code review plus a continuous-integration 
 
 ### Uniform template mechanism
 
-The platform fixes no taxonomy; templates self-describe, and one mechanism operates over any template, with composition expressed by reference.
+The platform fixes no taxonomy; templates self-describe, and one mechanism operates over any template, with composition expressed by the caller's explicit batch.
 
 * Good, because composition is open-ended and admits any authored template.
 * Good, because the mechanism is one path, not per-type branches.
 * Good, because templates need no platform-blessed type to be operated on.
 * Neutral, because it relies on the manifest and ownership-boundary contracts to carry the self-description the mechanism reads.
-* Bad, because type-specific affordances are unavailable and cyclic references must be caught by resolution.
+* Bad, because type-specific affordances are unavailable, and an unworkable combination surfaces only when the ownership and conflict checks refuse it.
 
 ### A fixed template classification
 
@@ -109,8 +109,6 @@ Applicability of the remaining checklist categories:
 * **UX** — addressed implicitly: a developer assembles any template through one predictable set of commands.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
-**Post-redesign note (2026-08-12).** The core holding — no template taxonomy, one uniform mechanism for any template — remains in force and is reinforced by the redesign. The preset-specific clauses (composition expressed by manifest reference, `referencedTemplates`, cyclic-reference handling) are revised by `cpt-frontx-adr-composed-template-resolution`: any combination of templates is now expressed as an explicit target-keyed batch, applied through the same one mechanism.
-
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)
@@ -118,6 +116,6 @@ Applicability of the remaining checklist categories:
 
 This decision directly addresses the following requirements and design elements:
 
-* Historical — the PRD requirement this decision originally addressed under the identifier "cli-composed-template-resolution" has since been removed from the PRD entirely; its manifest-reference composition model was replaced by explicit batch application, `cpt-frontx-adr-composed-template-resolution`. At the time of this decision it established that multi-template assembly and preset resolution operate over any template without a template classification, so composition was expressed by reference rather than by type; that grounding is retained here as a traceability record of what this ADR addressed at the time, not as a live requirement to check this decision against.
+* `cpt-frontx-adr-composed-template-resolution` — Multi-template assembly operates over any template without a template classification: the caller's explicit batch names what to apply and where, so composition needs no type to arrange by.
 * `cpt-frontx-contract-template-manifest` — Fixes that the manifest carries no type field; a template is self-describing through what it produces and the boundaries it declares.
 * `cpt-frontx-component-cli` — The CLI component operates one uniform mechanism over every template; this decision constrains it to hold no branch on a template type.
