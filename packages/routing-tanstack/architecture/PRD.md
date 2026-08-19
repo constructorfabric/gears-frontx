@@ -79,7 +79,7 @@ This PRD uses the ecosystem's shared vocabulary: *application* means what the ro
 
 A microfrontend declares this package as its engine-provider dependency. At mount, the package adapts the navigation substrate's shared `NavigationHistory` into TanStack Router's own history contract, constructs the router with the microfrontend's route tree and its assigned `basepath`, and mounts it into the microfrontend's own component tree. The microfrontend's own routing table matches only the remainder of the URL beneath that `basepath`; navigating outside it happens through the navigation substrate's imperative surface, never through this package's own routing table.
 
-The same microfrontend runs under two deployment modes without a change to its routing code. **Composed**: the host mounts the navigation substrate and assigns this microfrontend its `basepath`. **Standalone**: the microfrontend is served on its own, and the `basepath` comes from the deployment's own configuration — empty when served at a root, or the sub-path it is published under. This package runs the same construction path in both modes; only where `basepath` comes from, and whether the substrate's route ownership signal has an observer, differs.
+The same microfrontend runs under two deployment modes without a change to its routing code. **Composed**: the enclosing level assigns this microfrontend its `basepath` the moment it mounts it — the host is that enclosing level for a microfrontend mounted at the outermost domain, and another extension's own zone is that enclosing level for one mounted at any level nested deeper. **Standalone**: the microfrontend is served on its own, and the `basepath` comes from the deployment's own configuration — empty when served at a root, or the sub-path it is published under. This package runs the same construction path in both modes; only where `basepath` comes from, and whether the substrate's route ownership signal has an observer, differs.
 
 ### 3.1 Module-Specific Environment Constraints
 
@@ -133,7 +133,7 @@ The system **MUST** scope a microfrontend's own router to the `basepath` it is a
 
 - [ ] `p1` - **ID**: `cpt-frontx-routing-tanstack-fr-standalone-deployment`
 
-The system **MUST** run a microfrontend's router unchanged whether the microfrontend is composed into a host application or served as a standalone deployment, taking its `basepath` from the host in the first case and from the deployment's own configuration in the second. A navigation to a path the microfrontend's own route tree does not declare **MUST** resolve to the engine's own not-found route in both modes rather than failing.
+The system **MUST** run a microfrontend's router unchanged whether the microfrontend is composed within an application or served as a standalone deployment, taking its `basepath` from the enclosing level in the first case — the host, when the microfrontend sits at the outermost domain, or another extension's own zone, at any level nested deeper — and from the deployment's own configuration in the second. A navigation to a path the microfrontend's own route tree does not declare **MUST** resolve to the engine's own not-found route in both modes rather than failing.
 
 **Rationale**: A microfrontend is developed, previewed, and sometimes shipped on its own, and composed into an application later; one construction path that only varies in where `basepath` comes from is what keeps the two modes from silently diverging.
 
@@ -191,10 +191,10 @@ None owned here. The package is distributed under the root PRD's package-registr
 **Main Flow**:
 1. The Microfrontend Developer replaces this package inside that microfrontend's own build with a different one satisfying the same engine-provider port (`cpt-frontx-routing-tanstack-fr-engine-adaptation`).
 2. The replacement provider is handed the same navigation substrate's shared `NavigationHistory` instance and the same `basepath` this package used.
-3. The microfrontend's own route tree and search-parameter handling move to the new engine; nothing outside the microfrontend's own territory changes.
+3. The microfrontend's own route tree, its search-parameter handling, and every one of its own imports of this package — rewritten throughout that microfrontend's own code to the replacement provider's own hooks and components — move to the new engine; nothing outside that one microfrontend's own code changes.
 
 **Postconditions**:
-- The navigation substrate, the host, and every sibling microfrontend observe no change.
+- The navigation substrate, the host, and every sibling microfrontend observe no change; the rewrite is confined to the one microfrontend that swapped providers, across all of its own code, not only its route tree and search-parameter handling.
 
 **Alternative Flows**:
 - **The replacement provider does not satisfy the engine-provider port's history contract**: it cannot receive the shared history, and the microfrontend's routing does not initialize.
@@ -203,10 +203,10 @@ None owned here. The package is distributed under the root PRD's package-registr
 
 - [ ] The navigation substrate's shared `NavigationHistory` is adapted into TanStack Router's own history contract, and a router constructed from it is mounted into the microfrontend's own component tree — verifiable via `cpt-frontx-routing-tanstack-fr-engine-adaptation`.
 - [ ] A microfrontend's own router matches only the remainder of the URL beneath the `basepath` it is assigned — verifiable via `cpt-frontx-routing-tanstack-fr-scoped-navigation-zone`.
-- [ ] The same microfrontend routing code runs composed under a host and standalone under its own deployment, differing only in where the `basepath` comes from — verifiable via `cpt-frontx-routing-tanstack-fr-standalone-deployment`.
+- [ ] The same microfrontend routing code runs composed within an application, at any domain level, and standalone under its own deployment, differing only in where the `basepath` comes from — verifiable via `cpt-frontx-routing-tanstack-fr-standalone-deployment`.
 - [ ] A redirect or an imperative navigation built with this package's location-preserving helper carries the current location's search and hash onto the target path — verifiable via `cpt-frontx-routing-tanstack-fr-location-preserving-helpers`.
 - [ ] The package imports exactly one ecosystem package — the navigation substrate — and no other — verifiable via the boundary guards.
-- [ ] Replacing this package with a different engine-provider port implementation changes no file outside that microfrontend's own route tree and search-parameter handling — verifiable via `cpt-frontx-routing-tanstack-usecase-swap-router-engine`.
+- [ ] Replacing this package with a different engine-provider port implementation changes no file outside that one microfrontend's own code — its route tree, its search-parameter handling, and every one of its own imports of this package — and changes no file belonging to the navigation substrate, the host, or a sibling microfrontend — verifiable via `cpt-frontx-routing-tanstack-usecase-swap-router-engine`.
 
 ## 10. Dependencies
 

@@ -60,7 +60,7 @@ A router engine renders routes and matches search parameters, and concrete engin
 - **Constraints**: `cpt-frontx-constraint-routing-tanstack-sole-engine-import`
 - **Dependencies**: `cpt-frontx-feature-routing-navigation-substrate` — the core package's own feature ([routing DESIGN](../../../../routing/architecture/DESIGN.md)); the provider implements the engine port the substrate defines.
 
-**Territory boundary**: Replacing the engine provider used by one microfrontend is scoped to that microfrontend's own route tree and its own search-parameter handling. It reaches no further: the navigation substrate, the `basepath` contract, and the route ownership signal — all owned by the core package (`cpt-frontx-feature-routing-navigation-substrate`, `cpt-frontx-feature-routing-route-ownership-signal`, [routing DESIGN](../../../../routing/architecture/DESIGN.md)) — the host's code, and every sibling microfrontend are unaffected and may remain on a different engine provider of their own.
+**Territory boundary**: Replacing the engine provider used by one microfrontend is scoped to that microfrontend's own code — its route tree, its own search-parameter handling, and every one of its own imports of this package, since the package split means a microfrontend reaches this adapter only through such an import and a swap rewrites every one of them throughout that microfrontend. It reaches no further: the navigation substrate, the `basepath` contract, and the route ownership signal — all owned by the core package (`cpt-frontx-feature-routing-navigation-substrate`, `cpt-frontx-feature-routing-route-ownership-signal`, [routing DESIGN](../../../../routing/architecture/DESIGN.md)) — the host's code, and every sibling microfrontend are unaffected and may remain on a different engine provider of their own.
 
 ### 1.5 Worked Example: Satisfying The Engine-Provider Port
 
@@ -81,7 +81,7 @@ This package accepts the navigation substrate's `NavigationHistory` instance, th
 **Use cases**: `cpt-frontx-routing-tanstack-usecase-swap-router-engine`
 
 **Success Scenarios**:
-- A microfrontend mounted under a declared `basepath`, currently using the default TanStack Router engine provider, has its engine provider replaced with a different one satisfying the same engine-provider port (§1.5); the microfrontend's own route tree and search-parameter handling move to the new engine, and nothing outside the microfrontend's own territory changes.
+- A microfrontend mounted under a declared `basepath`, currently using the default TanStack Router engine provider, has its engine provider replaced with a different one satisfying the same engine-provider port (§1.5); the microfrontend's own route tree, its search-parameter handling, and every one of its own imports of this package move to the new engine, and nothing outside that one microfrontend's own code changes.
 
 **Error Scenarios**:
 - The replacement provider does not satisfy the engine-provider port (§1.5): it cannot accept the shared `NavigationHistory` instance and adapt it into whatever history contract its own engine requires, and the microfrontend's routing does not initialize.
@@ -93,7 +93,7 @@ This package accepts the navigation substrate's `NavigationHistory` instance, th
 4. [ ] - `p1` - **IF** the replacement provider does not satisfy the engine-provider port - `inst-if-contract-unsatisfied`
    1. [ ] - `p1` - **RETURN** failure — the microfrontend's routing does not initialize - `inst-return-init-failure`
 5. [ ] - `p1` - **ELSE** the replacement provider constructs its engine's router and mounts it under the assigned `basepath` (`cpt-frontx-algo-routing-engine-provider-router-creation`) - `inst-construct-and-mount`
-6. [ ] - `p1` - The microfrontend's own route tree and search-parameter handling move to the new engine; nothing outside the microfrontend's own territory changes - `inst-territory-confined`
+6. [ ] - `p1` - The microfrontend's own route tree, its search-parameter handling, and every one of its own imports of this package — rewritten throughout that microfrontend's own code to the replacement provider's own surface — move to the new engine; nothing outside that one microfrontend's own code changes - `inst-territory-confined`
 
 **Postconditions**:
 - The navigation substrate, the host, and every sibling microfrontend observe no change.
@@ -121,15 +121,15 @@ This package accepts the navigation substrate's `NavigationHistory` instance, th
 
 - [ ] `p2` - **ID**: `cpt-frontx-algo-routing-engine-provider-router-creation`
 
-**Input**: The adapted `RouterHistory` object; the microfrontend's own route tree; the `basepath` assigned to this microfrontend, when the microfrontend is mounted under a host.
+**Input**: The adapted `RouterHistory` object; the microfrontend's own route tree; the `basepath` assigned to this microfrontend by the enclosing level, when the microfrontend is mounted within a composed application — the host, at the outermost domain, or another extension's own zone, at any level nested deeper.
 
 **Output**: A router instance built via `createRouter({ routeTree, history, basepath })`, mounted into the microfrontend's own component tree via `RouterProvider`.
 
 **Steps**:
 1. [ ] - `p1` - Call `createRouter({ routeTree, history, basepath })` with the microfrontend's own route tree and the adapted history - `inst-call-create-router`
-2. [ ] - `p1` - **IF** a `basepath` was assigned (the microfrontend is mounted under a host) - `inst-if-basepath-assigned`
+2. [ ] - `p1` - **IF** a `basepath` was assigned (the microfrontend is mounted within a composed application, by whichever level encloses it) - `inst-if-basepath-assigned`
    1. [ ] - `p1` - The constructed router matches only the remainder of the URL beneath that `basepath` - `inst-scope-to-basepath`
-3. [ ] - `p1` - **ELSE** the `basepath` came from the deployment rather than from a host assignment, or is absent because the microfrontend is served at a root (`cpt-frontx-algo-routing-engine-provider-standalone-deployment`) - `inst-else-deployment-basepath`
+3. [ ] - `p1` - **ELSE** the `basepath` came from the deployment rather than from an enclosing-level assignment, or is absent because the microfrontend is served at a root (`cpt-frontx-algo-routing-engine-provider-standalone-deployment`) - `inst-else-deployment-basepath`
 4. [ ] - `p1` - Mount the constructed router into the microfrontend's own component tree via `RouterProvider` - `inst-mount-router-provider`
 5. [ ] - `p1` - **RETURN** the mounted router - `inst-return-mounted-router`
 
@@ -147,7 +147,7 @@ This package accepts the navigation substrate's `NavigationHistory` instance, th
 3. [ ] - `p1` - Carry that search and hash forward onto the target path, rather than requiring the caller to assemble the carry-forward itself - `inst-carry-search-hash`
 4. [ ] - `p1` - **RETURN** the `redirect` (or navigation call) to the target path with search and hash intact - `inst-return-redirect`
 
-**Rationale**: A redirect built from the target path alone silently drops the current location's search and hash — a mistake that looks correct until a query parameter or hash fragment disappears in front of a user. Generalizing this helper to any consumer redirect, rather than leaving it as private knowledge inside one application's own index-route handling, is what makes the correct behavior the path of least resistance for every redirect this package's consumers write (`cpt-frontx-routing-tanstack-fr-location-preserving-helpers`).
+**Rationale**: A redirect built from the target path alone silently drops the current location's search and hash — a mistake that looks correct until a query parameter or hash fragment disappears in front of a user. Generalizing this helper to any consumer redirect, rather than leaving it as private knowledge inside one application's own index-route handling, is what makes the correct behavior the path of least resistance for every redirect this package's consumers write (`cpt-frontx-routing-tanstack-fr-location-preserving-helpers`). This helper is this package's own instance of an explicit carry-forward, not an exception to it: the navigation substrate's own axial back-projection resets the search and the hash by default on an axial mount and carries either forward only when a caller explicitly supplies it (`cpt-frontx-algo-routing-route-ownership-signal-url-back-projection`), and an index-route redirect within an already-mounted microfrontend's own zone is exactly the ordinary, in-territory case where a caller wants that explicit carry-forward, since it is not itself an axial mount crossing a domain boundary.
 
 ### Teardown On Unmount
 
@@ -158,7 +158,7 @@ This package accepts the navigation substrate's `NavigationHistory` instance, th
 **Output**: The internal callback unsubscribed from the shared `NavigationHistory`, so the unmounted router's own `RouterHistory` stops receiving the fan-out.
 
 **Steps**:
-1. [ ] - `p1` - **WHEN** the microfrontend that owns this constructed router is unmounted (the host's own mount mechanism unmounting it, informed by `cpt-frontx-feature-routing-route-ownership-signal`'s observable ownership-change transition, or the host's own teardown for any other reason) - `inst-when-unmount`
+1. [ ] - `p1` - **WHEN** the microfrontend that owns this constructed router is unmounted (whichever level's own consumer mounted it — the host's, at the outermost domain, or an enclosing extension's, at any level nested deeper — unmounting it, informed by `cpt-frontx-feature-routing-route-ownership-signal`'s observable ownership-change transition, or that same consumer's own teardown for any other reason) - `inst-when-unmount`
    1. [ ] - `p1` - Invoke the unsubscribe function returned when this adapter registered its internal callback against the shared `NavigationHistory`'s `subscribe` - `inst-invoke-unsubscribe`
 2. [ ] - `p1` - **RETURN** - `inst-return-teardown`
 
@@ -168,12 +168,12 @@ This package accepts the navigation substrate's `NavigationHistory` instance, th
 
 - [ ] `p2` - **ID**: `cpt-frontx-algo-routing-engine-provider-standalone-deployment`
 
-**Input**: The microfrontend's own route tree and adapted history; a `basepath` taken from the deployment's own configuration rather than from a host assignment — absent when the microfrontend is served at a root, the publication sub-path otherwise; whether the consumer has created a route-ownership-signal observer (`cpt-frontx-feature-routing-route-ownership-signal`) for this deployment — a plain argument-driven choice the consumer makes, not a port-injection state.
+**Input**: The microfrontend's own route tree and adapted history; a `basepath` taken from the deployment's own configuration rather than from an enclosing-level assignment — absent when the microfrontend is served at a root, the publication sub-path otherwise; whether the consumer has created a route-ownership-signal observer (`cpt-frontx-feature-routing-route-ownership-signal`) for this deployment — a plain argument-driven choice the consumer makes, not a port-injection state.
 
 **Output**: A router constructed and mounted through the same path the composed case uses, independent of whether the consumer has created a route-ownership-signal observer for this deployment.
 
 **Steps**:
-1. [ ] - `p1` - Take the `basepath` from the deployment's configuration rather than from a host assignment — absent when served at a root, the publication sub-path otherwise - `inst-basepath-from-deployment`
+1. [ ] - `p1` - Take the `basepath` from the deployment's configuration rather than from an enclosing-level assignment — absent when served at a root, the publication sub-path otherwise - `inst-basepath-from-deployment`
 2. [ ] - `p1` - **IF** the consumer has not created a route-ownership-signal observer for this deployment - `inst-if-no-signal`
    1. [ ] - `p1` - No owner resolution, no mount, and no URL back-projection runs — the deliberate standalone-deployment case - `inst-no-signal-inert`
 3. [ ] - `p1` - **ELSE** the consumer has created the observer, supplying its own owner-prefix pairs source - `inst-else-signal-created`
@@ -181,7 +181,7 @@ This package accepts the navigation substrate's `NavigationHistory` instance, th
 4. [ ] - `p1` - Construct the router through the same `createRouter({ routeTree, history, basepath })` call the composed case uses, passing the deployment-supplied `basepath` or omitting it when serving at a root - `inst-construct-with-deployment-basepath`
 5. [ ] - `p1` - Mount the router via `RouterProvider` through the same construction path as the composed case - `inst-mount-standalone-router`
 6. [ ] - `p1` - **IF** a navigation targets a path the microfrontend's own route tree does not declare, and no route-ownership-signal observer is driving mounting for this deployment - `inst-if-undeclared-path`
-   1. [ ] - `p1` - Resolution reaches the engine's own `notFound` route inside this microfrontend's own route tree — a different mechanism from the composed mode's host-level fallback (no route-ownership-signal observer is participating at all in standalone mode), even though the user-visible result is the same not-found screen either way - `inst-standalone-fallback`
+   1. [ ] - `p1` - Resolution reaches the engine's own `notFound` route inside this microfrontend's own route tree — a different mechanism from the composed mode's own consumer-level fallback, whichever level that consumer holds (no route-ownership-signal observer is participating at all in standalone mode), even though the user-visible result is the same not-found screen either way - `inst-standalone-fallback`
 7. [ ] - `p1` - **RETURN** the mounted router — differing from the composed case only in where the `basepath` came from and in whether a route-ownership-signal observer exists at all - `inst-return-standalone-router`
 
 Two conditions of this mode fall on the deployment rather than on this feature: the server answering every path beneath the `basepath` with the entry document, without which a deep link fails before any of this package's code runs; and the build's asset base URL, configured independently of the router's `basepath` since neither derives from the other.
@@ -220,7 +220,7 @@ The system **MUST** adapt the navigation substrate's shared `NavigationHistory` 
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-routing-engine-provider-redirect-and-standalone`
 
-The system **MUST** provide a reusable navigation helper that carries the current location's search and hash forward onto any consumer-supplied redirect target, rather than dropping them as a naive redirect would — usable from an index-route redirect or any other consumer redirect alike — and **MUST** run the same router construction when the microfrontend is deployed on its own — taking the `basepath` from the deployment's configuration instead of a host assignment, omitting it when served at a root, and resolving an undeclared path to the engine's own `notFound` rather than a host-level fallback when no route-ownership-signal observer is driving mounting for this deployment.
+The system **MUST** provide a reusable navigation helper that carries the current location's search and hash forward onto any consumer-supplied redirect target, rather than dropping them as a naive redirect would — usable from an index-route redirect or any other consumer redirect alike — and **MUST** run the same router construction when the microfrontend is deployed on its own — taking the `basepath` from the deployment's configuration instead of an enclosing-level assignment, omitting it when served at a root, and resolving an undeclared path to the engine's own `notFound` rather than whichever level's own consumer would show a fallback in composed mode, when no route-ownership-signal observer is driving mounting for this deployment.
 
 **Implements**:
 - `cpt-frontx-algo-routing-engine-provider-index-redirect`
@@ -254,9 +254,9 @@ The system **MUST** unsubscribe a constructed router's adapted `RouterHistory` f
 - [ ] The constructed `block` stops only a navigation issued through the same constructed router's own `RouterHistory` object; it does not stop a back/forward step, a `go` call issued by another unit, or a navigation another unit performs directly through the shared `NavigationHistory` — this narrowed scope is documented, not silently assumed.
 - [ ] `createRouter({ routeTree, history, basepath })` is called with the adapted history and the microfrontend's own route tree; the resulting router is mounted via `RouterProvider`.
 - [ ] When a `basepath` is assigned, the constructed router matches only the remainder of the URL beneath it.
-- [ ] Replacing the engine provider used by one microfrontend changes no file outside that microfrontend's own route tree and search-parameter handling.
+- [ ] Replacing the engine provider used by one microfrontend changes no file outside that one microfrontend's own code — its route tree, its search-parameter handling, and every one of its own imports of this package — and changes no file belonging to the navigation substrate, the host, or a sibling microfrontend.
 - [ ] A replacement provider that cannot accept the shared `NavigationHistory` and adapt it into its own engine's history contract fails to receive the shared history, and the microfrontend's routing does not initialize.
 - [ ] No package in this ecosystem other than this one imports a concrete router engine or its packages directly; this package is the sole, deliberate exception (`cpt-frontx-constraint-routing-tanstack-sole-engine-import`).
 - [ ] The location-preserving navigation helper preserves the current location's search and hash for any consumer redirect, including but not limited to a redirect issued from an index route.
-- [ ] A microfrontend deployed on its own runs the same router construction, taking its `basepath` from the deployment's configuration or omitting it at a root, resolving an undeclared path to the engine's own `notFound` rather than a host-level fallback, with no route-ownership-signal observer created for this deployment.
+- [ ] A microfrontend deployed on its own runs the same router construction, taking its `basepath` from the deployment's configuration or omitting it at a root, resolving an undeclared path to the engine's own `notFound` rather than whichever level's own consumer would show a fallback in composed mode, with no route-ownership-signal observer created for this deployment.
 - [ ] When a microfrontend is unmounted, its constructed router's adapted `RouterHistory` is unsubscribed from the shared `NavigationHistory`, so it stops receiving further fan-out.
