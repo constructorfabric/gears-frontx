@@ -35,6 +35,16 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
       .join(' ');
   };
 
+  // Resolved through the registry list so the trigger reads back the same text
+  // the option carries: `currentTheme` is the registry id, and a theme whose
+  // `name` is not simply its id spelled out - `dracula-large` named
+  // `Dracula (Large)` - would otherwise have one label in the menu and another
+  // on the trigger, leaving a verification run unable to confirm from the
+  // trigger that the theme it clicked is the one applied. Falls back to the id
+  // for a `currentTheme` the list does not carry, which is what a theme applied
+  // before its registration lands looks like.
+  const activeThemeLabel = themes.find((theme) => theme.id === currentTheme)?.name || currentTheme;
+
   return (
     <div className={`flex items-center justify-between ${className}`}>
       <label className="text-sm text-muted-foreground whitespace-nowrap">
@@ -51,7 +61,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
             variant={ButtonVariant.Outline}
             data-testid={STUDIO_THEME_TRIGGER_TESTID}
           >
-            {formatThemeName(currentTheme || '')}
+            {formatThemeName(activeThemeLabel || '')}
           </DropdownButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" container={portalContainer} className="z-[99999] pointer-events-auto">

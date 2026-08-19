@@ -25,7 +25,12 @@ export const STUDIO_EXPAND_TESTID = 'studio-expand';
 /** The expanded panel's header control - clicking it collapses the panel. */
 export const STUDIO_COLLAPSE_TESTID = 'studio-collapse';
 
-/** The theme switcher's trigger. Its text is the active theme's label. */
+/**
+ * The theme switcher's trigger. Its text is the active theme's label - the
+ * registry `name` when the theme carries one, its id otherwise - which is the
+ * same text the matching option below carries, so a run reads back from the
+ * trigger exactly what it clicked.
+ */
 export const STUDIO_THEME_TRIGGER_TESTID = 'studio-theme-trigger';
 
 /**
