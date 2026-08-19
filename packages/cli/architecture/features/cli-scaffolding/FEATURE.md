@@ -41,7 +41,7 @@
 
 `@gears-frontx/cli` applies any registered template through one uniform batch path: `assemble` previews an explicit, target-keyed batch statelessly and writes nothing; `apply` independently re-resolves and re-validates the identical batch shape and materializes it, whether the target repository has never had a template applied (seed) or already carries applied templates (add). A pre-flight, nesting-aware conflict check canonicalizes every target and refuses the whole batch before any file is written when two targets coincide, when one contains another outside a declared exclusion, or when a target lands on reserved project ground. This feature also owns `delete`, which computes a target's deletion plan through the same conflict-checker geometry and executes it only under explicit confirmation. All CDSL behavior is `target` (GREENFIELD — grounded in `cpt-frontx-adr-composed-template-resolution`, `cpt-frontx-adr-template-ownership-boundary-declaration`, `cpt-frontx-adr-assembly-conflict-prevention`, and DESIGN §3.2/§3.6).
 
-Composition is no longer resolved from a manifest-declared reference graph: a batch names exactly the templates and targets a caller wants applied, and no template may pull in another through its own manifest. Ownership is no longer declared as a two-tier exclusive-subtree-plus-shared-file-region structure: a template owns its entire target by default, narrowed only by its manifest's `ownership.excludedSubtrees` and the project's `projectOwnedRoots`. There is no `sharedFiles` construct, no merge strategy, and no region marker of any kind — no two templates ever write into the same target, so there is nothing to compose at the file level.
+Composition is no longer resolved from a manifest-declared reference graph: a batch names exactly the templates and targets a caller wants applied, and no template may pull in another through its own manifest. Ownership is no longer declared as a two-tier exclusive-subtree-plus-shared-file-region structure: a template owns its entire target by default, narrowed only by its manifest's `excludedSubtrees` and the project's `projectOwnedRoots`. There is no `sharedFiles` construct, no merge strategy, and no region marker of any kind — no two templates ever write into the same target, so there is nothing to compose at the file level.
 
 ### 1.2 Purpose
 
@@ -226,7 +226,7 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
 
 **Input**: An explicit batch `{"templates": {"<manifestName>": ["<target>", ...]}}`; the project state store's current document.
 
-**Output**: A staged assembly — for each batch entry, the named template's resolved manifest, its installed content path, its declared `ownership.excludedSubtrees`, and the target(s) it is applied to — ready for the conflict check; or a resolution failure (`TEMPLATE_NOT_REGISTERED`, `ORIGIN_UNAVAILABLE`).
+**Output**: A staged assembly — for each batch entry, the named template's resolved manifest, its installed content path, its declared `excludedSubtrees`, and the target(s) it is applied to — ready for the conflict check; or a resolution failure (`TEMPLATE_NOT_REGISTERED`, `ORIGIN_UNAVAILABLE`).
 
 **Steps**:
 1. [ ] - `p1` - Receive the batch and the current project state document - `inst-ua-receive`
@@ -237,7 +237,7 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
       1. [ ] - `p1` - Auto-install it through the shared resolver (`cpt-frontx-feature-template-resolution`) using the registered, pinned origin - `inst-ua-auto-install`
       2. [ ] - `p1` - **IF** installation fails - `inst-ua-if-install-fail`
          1. [ ] - `p1` - **RETURN** `ORIGIN_UNAVAILABLE` naming the name and its origin - `inst-ua-return-unavailable`
-   3. [ ] - `p1` - Read the resolved manifest's declared `ownership.excludedSubtrees` - `inst-ua-read-manifest`
+   3. [ ] - `p1` - Read the resolved manifest's declared `excludedSubtrees` - `inst-ua-read-manifest`
    4. [ ] - `p1` - Compute the template's effective ownership for each of its batch targets as the target minus `excludedSubtrees` minus `projectOwnedRoots` minus `.frontx` minus the reserved environment entries (`.git`, `.DS_Store`, `Thumbs.db`) minus the template's own local origin folder (when installed by local path) - `inst-ua-compute-ownership`
    5. [ ] - `p1` - Stage the template's identity, installed content path, declared `excludedSubtrees`, and each target's effective ownership, tagged with the template's name - `inst-ua-stage-entry`
 3. [ ] - `p1` - **RETURN** the staged assembly for the conflict check to evaluate - `inst-ua-return-staged`
@@ -262,7 +262,7 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
    2. [ ] - `p1` - **IF** the two targets are identical and claimed by two different template names - `inst-cc-if-same-target-diff-template`
       1. [ ] - `p1` - Record a conflict naming the contested target and both templates - `inst-cc-record-same-target`
    3. [ ] - `p1` - **IF** one target is a strict ancestor of the other — decided by whole path segments of each canonicalized target, never by string-prefix comparison, so `packages/app` and `packages/app-shell` share a string prefix but no path segment and are siblings, not ancestor and descendant - `inst-cc-if-ancestor`
-      1. [ ] - `p1` - **IF** the inner (descendant) target lies at or inside one of the outer (ancestor) template's declared `ownership.excludedSubtrees` entries — a target equal to a declared entry is inside it, since the entry is ground the host reserved for a guest to occupy - `inst-cc-if-excluded-nest`
+      1. [ ] - `p1` - **IF** the inner (descendant) target lies at or inside one of the outer (ancestor) template's declared `excludedSubtrees` entries — a target equal to a declared entry is inside it, since the entry is ground the host reserved for a guest to occupy - `inst-cc-if-excluded-nest`
          1. [ ] - `p1` - Treat the nesting as permitted — the outer template deliberately carved out that ground - `inst-cc-permit-nest`
       2. [ ] - `p1` - **ELSE** - `inst-cc-else-undeclared-nest`
          1. [ ] - `p1` - Record a conflict naming both targets and both templates - `inst-cc-record-ancestor`
@@ -309,7 +309,7 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
       1. [ ] - `p1` - Record the owning template name and stop searching - `inst-dp-record-owner`
 2. [ ] - `p1` - **IF** no template's `targets` array contains `<target>` - `inst-dp-if-not-found`
    1. [ ] - `p1` - **RETURN** `TARGET_NOT_APPLIED` — `<target>` is not an applied instance of any registered template - `inst-dp-return-not-found`
-3. [ ] - `p1` - Read the owning template's declared `ownership.excludedSubtrees` and compute `<target>`'s effective ownership by the same six-term subtraction the apply path computes (`inst-ua-compute-ownership`, CLI-5): `<target>` minus `excludedSubtrees` minus `projectOwnedRoots` beneath it minus `.frontx` minus the reserved environment entries (`.git`, `.DS_Store`, `Thumbs.db`) beneath it minus the template's own local origin folder (when installed by local path). The local-origin term is not optional here: a `path:`-installed template whose origin folder sits beneath its own target would otherwise have that folder — the developer's own source for the template — computed into this target's owned ground and removed - `inst-dp-compute-ownership`
+3. [ ] - `p1` - Read the owning template's declared `excludedSubtrees` and compute `<target>`'s effective ownership by the same six-term subtraction the apply path computes (`inst-ua-compute-ownership`, CLI-5): `<target>` minus `excludedSubtrees` minus `projectOwnedRoots` beneath it minus `.frontx` minus the reserved environment entries (`.git`, `.DS_Store`, `Thumbs.db`) beneath it minus the template's own local origin folder (when installed by local path). The local-origin term is not optional here: a `path:`-installed template whose origin folder sits beneath its own target would otherwise have that folder — the developer's own source for the template — computed into this target's owned ground and removed - `inst-dp-compute-ownership`
 4. [ ] - `p1` - Identify every other template's target that is a strict descendant of `<target>` — a nested applied instance belonging to a different template - `inst-dp-find-nested`
 5. [ ] - `p1` - Set `toPreserve` to `excludedSubtrees` beneath `<target>`, every nested target found, every `projectOwnedRoots` entry beneath `<target>`, and every reserved environment entry beneath `<target>` — so a target `.` at the project root never lists `.git`, `.DS_Store`, or `Thumbs.db` in `toDelete`, since they were already subtracted from `<target>`'s effective ownership in the prior step - `inst-dp-set-preserve`
 6. [ ] - `p1` - Set `toDelete` to `<target>`'s effective ownership minus every path in `toPreserve` - `inst-dp-set-delete`

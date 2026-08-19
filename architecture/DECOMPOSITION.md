@@ -312,10 +312,10 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 **Scope** — five concrete changes, across both templates:
 
-1. Replace each legacy manifest (`schemaVersion` + `ownershipBoundaries`) with the current four-field shape: `name`, `version`, a required non-empty `description`, and `ownership.excludedSubtrees`.
+1. Replace each legacy manifest (`schemaVersion` + `ownershipBoundaries`) with the current four-field shape: `name`, `version`, a required non-empty `description`, and `excludedSubtrees`.
 2. Widen `template-shell`'s ownership from its current file-subset claim to whole-target ownership (its target minus its declared `excludedSubtrees`) — extending what it owns, or moving previously unclaimed root files into `projectOwnedRoots`. This is a **behavioural change requiring its own review**, not a mechanical manifest edit, and is tracked here rather than folded into item 1.
 3. Remove both templates' own claim on `.frontx/ai/<manifest-name>/`; that bundle is a CLI-owned write (`cpt-frontx-adr-template-ownership-boundary-declaration`), never template-owned.
-4. Add `src-app/mfe_packages/` to `template-shell`'s `ownership.excludedSubtrees` (a well-formed target-relative directory path with the trailing `/` the manifest schema requires — `cpt-frontx-feature-template-manifest` owns that field-level rule, which `cpt-frontx-adr-template-manifest-contract` deliberately leaves to it) and stop carrying payload inside it.
+4. Add `src-app/mfe_packages/` to `template-shell`'s `excludedSubtrees` (a well-formed target-relative directory path with the trailing `/` the manifest schema requires — `cpt-frontx-feature-template-manifest` owns that field-level rule, which `cpt-frontx-adr-template-manifest-contract` deliberately leaves to it) and stop carrying payload inside it.
 5. Extract each template's authoring/dev-harness machinery (a dev-only `package.json` with `file:` overrides, local build tooling) out of the template directory entirely, leaving pure payload plus the manifest and the conventional AI-extension bundle (`cpt-frontx-adr-template-manifest-contract`, "More Information").
 
 A registered name using `/` as a path-segment separator (an npm-scoped name, as both templates already use) is valid under the bundle-root prefix-uniqueness and non-empty-segment invariants `cpt-frontx-adr-template-manifest-contract` fixes for `name`.

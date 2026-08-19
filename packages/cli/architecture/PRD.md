@@ -105,7 +105,7 @@ The CLI runs as the `frontx` executable wherever the supported JavaScript/TypeSc
 - Installing a template — from the source registry by versioned reference or from a local `path:` origin — into the local inventory, without committing any project to depending on it.
 - Listing the platform's default templates, the templates registered to the current project, and the templates installed locally but not yet registered, each with its version and its description.
 - Updating an installed template locally to a newer version.
-- Validating a template's structure — including that its declared `ownership.excludedSubtrees` are well-formed — against the publication contract before publishing.
+- Validating a template's structure — including that its declared `excludedSubtrees` are well-formed — against the publication contract before publishing.
 - Registering a template's resolved origin under a project, pinning a remote origin to the immutable version it resolves to, and unregistering it once no target depends on it.
 - Seeding a new, empty repository from one or more registered templates applied to their targets in a single operation.
 - Applying a registered template into an existing repository at one or more targets, individually or as an explicit batch, previewed statelessly before it is materialized.
@@ -161,7 +161,7 @@ The system **MUST** allow a developer to update an installed template to a newer
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-cli-template-validate-prepublish`
 
-The system **MUST** allow a Template Developer to validate a template's structure — including that its declared `ownership.excludedSubtrees` are well-formed — against the publication contract before publishing it.
+The system **MUST** allow a Template Developer to validate a template's structure — including that its declared `excludedSubtrees` are well-formed — against the publication contract before publishing it.
 
 **Rationale**: Catches structural errors and malformed ownership exclusions before a template reaches other teams, so consumers are protected from malformed templates and from assembly conflicts, and the publisher avoids costly post-publication corrections.
 
@@ -429,7 +429,7 @@ This package owns repository-lifecycle contracts for templates. The contracts be
 
 **Main Flow**:
 1. The Template Developer authors the template's content, owning its entire target by default.
-2. Where the template is meant to host another template, the Template Developer declares that ground as an extension point in `ownership.excludedSubtrees` (`cpt-frontx-fr-cli-template-boundary-declaration`).
+2. Where the template is meant to host another template, the Template Developer declares that ground as an extension point in `excludedSubtrees` (`cpt-frontx-fr-cli-template-boundary-declaration`).
 3. The Template Developer validates the template's structure, including that its declared exclusions are well-formed and that its manifest carries a required, non-empty description, against the publication contract before publishing (`cpt-frontx-fr-cli-template-validate-prepublish`).
 4. The Template Developer publishes the template to the source registry (`cpt-frontx-actor-github`).
 

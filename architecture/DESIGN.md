@@ -105,7 +105,7 @@ CLI (projects orchestration):
 * `cpt-frontx-adr-template-acquisition-and-location` — Externalizes templates and resolves them by source-spec at runtime.
 * `cpt-frontx-adr-uniform-template-mechanism` — Establishes one uniform mechanism that operates over any template, each template declaring what it produces.
 * `cpt-frontx-adr-cli-internal-decomposition` — Decomposes the single `@gears-frontx/cli` package into internal template-resolver, pre-publish-validator, registration, assembler, conflict-checker, provenance-recorder, and change-set-&-upgrade-engine components.
-* `cpt-frontx-adr-template-manifest-contract` — Fixes the template manifest at exactly `name`, `version`, a required `description`, and `ownership.excludedSubtrees`, with `description` as the sole carrier of selection and usage semantics.
+* `cpt-frontx-adr-template-manifest-contract` — Fixes the template manifest at exactly `name`, `version`, a required `description`, and `excludedSubtrees`, with `description` as the sole carrier of selection and usage semantics.
 * `cpt-frontx-adr-project-provenance-record` — Keeps template registration, applied-instance provenance, and project-owned exclusions in one Git-tracked `.frontx/project.json` document, and fixes how an entry enters and leaves it.
 * `cpt-frontx-adr-template-ownership-boundary-declaration` — Defines ownership as a template's whole target minus manifest-declared `excludedSubtrees` and project-declared `projectOwnedRoots`, arbitrating lifecycle rather than content.
 * `cpt-frontx-adr-composed-template-resolution` — Expresses composition as an explicit target-keyed batch that `assemble` previews statelessly and `apply` re-validates and materializes, with no manifest-declared preset and no saved execution plan.
