@@ -68,6 +68,41 @@ function shadowRootHoldingMfeStyle(css: string): ShadowRoot {
   return shadowRoot;
 }
 
+/**
+ * Ids and text mirroring what `@gears-frontx/mfes` itself puts in a shadow root:
+ * `createShadowRoot` appends the isolation style when it attaches the root, and
+ * `MfeHandlerMF.upsertStyleElement` appends the MFE's compiled stylesheet under
+ * an id-keyed handle before every mount. Spelled out rather than imported
+ * because both are local constants over there, and the point of the remount case
+ * is to hold the lifecycle against the values that actually reach it.
+ */
+const SHADOW_ISOLATION_STYLE_ID = '__frontx-shadow-isolation__';
+const SHADOW_ISOLATION_CSS = ':host {\n  all: initial;\n  display: block;\n}';
+const MFE_RUNTIME_STYLE_ID = '__frontx-mfe-runtime-style-0';
+
+/** The shadow root a mount really arrives at: isolation style already appended. */
+function shadowRootWithIsolationStyle(): ShadowRoot {
+  const shadowRoot = document.createElement('div').attachShadow({ mode: 'open' });
+  const isolation = document.createElement('style');
+  isolation.id = SHADOW_ISOLATION_STYLE_ID;
+  isolation.textContent = SHADOW_ISOLATION_CSS;
+  shadowRoot.appendChild(isolation);
+  return shadowRoot;
+}
+
+/** Mirrors MfeHandlerMF appending the MFE's stylesheet ahead of each mount. */
+function appendMfeRuntimeStyle(shadowRoot: ShadowRoot, css: string): void {
+  const style = document.createElement('style');
+  style.id = MFE_RUNTIME_STYLE_ID;
+  style.textContent = css;
+  shadowRoot.appendChild(style);
+}
+
+/** Mirrors MfeHandlerMF removing its injected stylesheets on unmount. */
+function removeMfeRuntimeStyles(shadowRoot: ShadowRoot): void {
+  shadowRoot.querySelectorAll(`[id^="__frontx-mfe-runtime-style-"]`).forEach((el) => el.remove());
+}
+
 function shadowRootHoldingMfeLink(href: string): ShadowRoot {
   const shadowRoot = document.createElement('div').attachShadow({ mode: 'open' });
   const link = document.createElement('link');
@@ -175,18 +210,86 @@ describe('ThemeAwareReactLifecycle remount', () => {
     // that wiped the shadow root instead of replacing its own block would
     // satisfy the equality and still take the MFE's own CSS with it.
     expect(cascadeOrder(shadowRoot)).toContain(MFE_BUTTON_CSS);
-    expect(cascadeOrder(shadowRoot).slice(0, 3)).toEqual([
+    expect(cascadeOrder(shadowRoot)).toEqual([
       HOST_LINK_HREF,
       HOST_PREFLIGHT_CSS,
+      expect.stringContaining('box-sizing: border-box'),
       MFE_BUTTON_CSS,
     ]);
   });
 
+  it('leaves one identical order when the MFE stylesheet is removed and re-appended around the remount', async () => {
+    // The real remount, not a repeated mount: MfeHandlerMF wraps this lifecycle,
+    // removes the MFE's stylesheet on unmount and appends a fresh one before the
+    // next mount, so the node the shell's blocks have to stay ahead of is a new
+    // node in a new position. A base-resets node merely left where the first
+    // mount put it lands behind that stylesheet the first time and ahead of it
+    // the second - one component, two cascades - which is what the full-order
+    // equality below rules out.
+    appendHostStyle(HOST_PREFLIGHT_CSS);
+    const shadowRoot = shadowRootWithIsolationStyle();
+    appendMfeRuntimeStyle(shadowRoot, MFE_BUTTON_CSS);
+    const lifecycle = new ProbeLifecycle(createFrontX().build());
+
+    await act(async () => {
+      lifecycle.mount(shadowRoot, noopBridge);
+    });
+    const afterFirstMount = cascadeOrder(shadowRoot);
+
+    await act(async () => {
+      removeMfeRuntimeStyles(shadowRoot);
+      lifecycle.unmount(shadowRoot);
+      appendMfeRuntimeStyle(shadowRoot, MFE_BUTTON_CSS);
+      lifecycle.mount(shadowRoot, noopBridge);
+    });
+
+    // Spelled out on the first mount too, so the equality holds the pair against
+    // a stated order rather than against whatever the first mount happened to do.
+    expect(afterFirstMount).toEqual([
+      HOST_PREFLIGHT_CSS,
+      SHADOW_ISOLATION_CSS,
+      expect.stringContaining('box-sizing: border-box'),
+      MFE_BUTTON_CSS,
+    ]);
+    expect(cascadeOrder(shadowRoot)).toEqual(afterFirstMount);
+  });
+
+  it('inserts the fresh adopted block before removing the block the previous mount left', async () => {
+    // Between the two there is no paint, but there is synchronous work: anything
+    // reading computed styles off the shadow tree in that window - the render
+    // this method is called from, a subclass hook, a resize observer - would see
+    // it with no host CSS at all. Records are queued in mutation order, so the
+    // first addition arriving before the first removal is the claim.
+    appendHostStyle(HOST_PREFLIGHT_CSS);
+    const shadowRoot = shadowRootWithIsolationStyle();
+    adoptIntoFreshLifecycle(shadowRoot);
+
+    const mutationKinds: string[] = [];
+    const observer = new MutationObserver((records) => {
+      records.forEach((record) => {
+        if (record.addedNodes.length > 0) mutationKinds.push('added');
+        if (record.removedNodes.length > 0) mutationKinds.push('removed');
+      });
+    });
+    observer.observe(shadowRoot, { childList: true });
+
+    adoptIntoFreshLifecycle(shadowRoot);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    observer.disconnect();
+
+    expect(mutationKinds).toContain('added');
+    expect(mutationKinds).toContain('removed');
+    expect(mutationKinds.indexOf('added')).toBeLessThan(mutationKinds.indexOf('removed'));
+  });
+
   it('keeps the base resets behind a stylesheet that arrived between the two mounts', async () => {
-    // Re-appending the resets instead of overwriting them in place would move
-    // them past this one, and the resets are context like the adopted block is:
-    // moved to the back they start winning the specificity ties against the
-    // MFE's CSS that the front-insertion above exists to make the MFE win.
+    // Appending the resets on the second mount instead of positioning them at
+    // the shell-owned head would move them past this one, and the resets are
+    // context like the adopted block is: moved to the back they start winning
+    // the specificity ties against the MFE's CSS that the front-insertion above
+    // exists to make the MFE win.
     appendHostStyle(HOST_PREFLIGHT_CSS);
     const shadowRoot = shadowRootHoldingMfeStyle(MFE_BUTTON_CSS);
     const lifecycle = new ProbeLifecycle(createFrontX().build());

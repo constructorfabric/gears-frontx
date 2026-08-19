@@ -20,8 +20,22 @@ import { hasFrontXQueryClientActivator, resolveFrontXQueryClient } from '../quer
  */
 const ADOPTED_HOST_STYLE_ATTR = 'data-frontx-adopted-host-style';
 
-/** Identity of the base-resets node, so a remount overwrites it in place. */
+/** Identity of the base-resets node, so a remount reuses it instead of adding a second. */
 const BASE_RESETS_STYLE_ID = '__frontx-base-resets__';
+
+/**
+ * Ids of the style nodes `@gears-frontx/mfes` puts in a shadow root itself -
+ * the isolation block from `createShadowRoot` and the theme variables from
+ * `injectCssVariables`. Together with the adopted block they are the
+ * shell-owned head of the shadow root, and the base resets belong at its end:
+ * after them, ahead of the MFE's own CSS.
+ *
+ * Mirrored here rather than imported because those utilities keep the ids as
+ * local constants. The values are what the shell puts in the shadow root, so
+ * they change only when the shell changes them - and the remount test pins
+ * this list against the ids those utilities actually emit.
+ */
+const SHELL_OWNED_SHADOW_STYLE_IDS = ['__frontx-shadow-isolation__', '__frontx-css-variables__'];
 
 interface ProviderMountOptions {
   mfeBridge?: {
@@ -89,13 +103,18 @@ function MountRuntimeAwareProvider({
  *    MFE utilities, since the host's content paths cover src/mfe_packages/**).
  *    Front, not back, so the MFE's own stylesheets outrank them - see the method.
  * 2. injectBaseResets() adds box-model resets and :host defaults that aren't part
- *    of Tailwind's compiled output but are needed for consistent rendering.
- *
- * Both steps replace what a previous mount left rather than adding beside it,
- * because a remounted container arrives with its shadow root intact - see each
- * method for why that is the shape the fix takes.
+ *    of Tailwind's compiled output but are needed for consistent rendering, and
+ *    positions them at the end of the shell-owned head - after the adopted block
+ *    and the isolation style, ahead of the MFE's own CSS.
  * 3. Subclasses may override initializeStyles() to inject additional CSS that is
  *    not covered by the host stylesheet (e.g., MFE-specific @font-face rules).
+ *
+ * Every mount therefore leaves the same sequence - adopted host block, shadow
+ * isolation, base resets, then the MFE's stylesheets - so the shell's CSS is
+ * context and the MFE wins every specificity tie against all three shell blocks.
+ * Steps 1 and 2 both position what they own rather than appending beside it,
+ * because a remounted container arrives with its shadow root intact and the MFE's
+ * own stylesheet removed and re-appended around the remount - see each method.
  *
  * Theme CSS variables are delivered via CSS inheritance from :root (Shadow DOM)
  * or via MountManager injection (iframe). MFE lifecycles do NOT need to subscribe
@@ -168,14 +187,28 @@ export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<Chil
    * hands back an existing `element.shadowRoot` instead of attaching a new one,
    * so remounting the same container runs this method again on a shadow root
    * that already holds a full adopted block, and appending would grow it once
-   * per mount with no bound and re-resolve every cloned `<link>`.
+   * per mount with no bound. It does not save re-resolving the cloned `<link>`s -
+   * every mount clones them afresh and the browser resolves each clone; what
+   * replacement buys is that the count stays at one block instead of one per
+   * mount.
    *
    * The block is rebuilt from the host head rather than left in place, because
    * the head is not fixed: a lazily imported chunk adds stylesheets to it after
    * the first mount, and the second mount has to pick those up.
+   *
+   * The fresh block goes in before the previous one comes out. Removing first
+   * leaves the shadow root with no host CSS at all, and everything between that
+   * removal and the insertion is synchronous work in this same task - so the gap
+   * never reaches a paint, but any code that reads computed styles from the tree
+   * in between sees an unstyled one. Inserting first costs one moment with two
+   * blocks present, which changes nothing: the old block is a clone of the same
+   * host head and loses every tie to the new one on document order anyway.
    */
   protected adoptHostStylesIntoShadowRoot(shadowRoot: ShadowRoot): void {
-    shadowRoot.querySelectorAll(`[${ADOPTED_HOST_STYLE_ATTR}]`).forEach((el) => el.remove());
+    // Collected before the insertion, so the marked nodes this removes are only
+    // the ones already there: the fresh clones below carry the same marker and
+    // a selector query after the insertion would match them too.
+    const supersededStyles = Array.from(shadowRoot.querySelectorAll(`[${ADOPTED_HOST_STYLE_ATTR}]`));
 
     const adoptedStyles = document.createDocumentFragment();
 
@@ -203,6 +236,7 @@ export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<Chil
     // Staged in a fragment so the adopted pieces keep their host-document order
     // relative to each other while moving as one block to the front.
     shadowRoot.insertBefore(adoptedStyles, shadowRoot.firstChild);
+    supersededStyles.forEach((el) => el.remove());
   }
 
   /**
@@ -213,10 +247,25 @@ export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<Chil
    * Reuses the node a previous mount left behind, exactly as `injectStylesheet`
    * does in `@gears-frontx/mfes`' shadow utilities: a remount runs against a
    * shadow root that `createShadowRoot` handed back intact, and appending a
-   * second copy would add one node per mount forever. Overwriting in place also
-   * keeps the position this node earned on the first mount - behind the adopted
-   * host block and behind the MFE's own CSS - which a remove-and-append would
-   * not, since the container gains nodes between mounts.
+   * second copy would add one node per mount forever.
+   *
+   * Reuse alone is not enough, which is why the node is also positioned on every
+   * mount rather than left where the previous one sat. These resets are context
+   * like the adopted block is - `border-color: currentColor` on `*` is a 0-0-0
+   * declaration that beats an MFE preflight's own 0-0-0 reset purely on document
+   * order - so they have to stay ahead of the MFE's CSS, and where they land is
+   * not stable on its own. `MfeHandlerMF.wrapLifecycleWithStylesheets` removes the
+   * MFE's stylesheet on unmount and appends a fresh one before the next mount, so
+   * a node merely left in place ends up ahead of that stylesheet on a remount and
+   * behind it on the first mount: two different cascades for one component.
+   * Anchoring it to the end of the shell-owned head gives every mount the same
+   * order - adopted block, isolation, resets, MFE - which is also the order the
+   * adoption method's invariant is written against.
+   *
+   * With no shell-owned node to anchor to, the resets go to the front. That is the
+   * plain-`Element` container: no adopted block, no isolation style, and the MFE
+   * stylesheet already appended by the handler, so the front is again the only
+   * position that leaves the MFE winning ties.
    *
    * Looked up by attribute-selector form rather than `getElementById`, which
    * `ShadowRoot` has but `Element` does not, and this hook takes either.
@@ -244,9 +293,19 @@ export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<Chil
         background-color: hsl(var(--background));
       }
     `;
-    if (!existing) {
-      container.appendChild(style);
-    }
+    // Runs whether the node is new or reused: `insertBefore` moves a node that
+    // is already in the tree, and is a no-op when it already sits there.
+    const shellOwnedHead = container.querySelectorAll(
+      [
+        `[${ADOPTED_HOST_STYLE_ATTR}]`,
+        ...SHELL_OWNED_SHADOW_STYLE_IDS.map((id) => `[id="${id}"]`),
+      ].join(', ')
+    );
+    const lastShellOwnedNode = shellOwnedHead[shellOwnedHead.length - 1];
+    container.insertBefore(
+      style,
+      lastShellOwnedNode ? lastShellOwnedNode.nextSibling : container.firstChild
+    );
   }
 
   /**
