@@ -26,6 +26,13 @@ const screenExtension = (
   presentation: { label, route, order },
 });
 
+/**
+ * An extension the registry accepts and the menu cannot render: `presentation`
+ * is asserted by a cast rather than validated anywhere on the registration
+ * path, so this shape reaches the menu in a real boot.
+ */
+const withoutPresentation = (id: string) => ({ id, domain: 'screen-domain', entry: `${id}.entry` });
+
 // Shaped like a real registry id - dots, tildes and all - so the test id
 // assertion below stands as evidence that the id goes in verbatim rather than
 // through a slug step that would flatten exactly this punctuation.
@@ -150,22 +157,37 @@ describe('Menu', () => {
     expect(screen.getByText(tasks.presentation.label)).toBeTruthy();
   });
 
-  it('still reaches the empty-state hint when an extension without presentation metadata breaks the read', async () => {
+  it('still lists the well-formed screens when a sibling extension carries no presentation metadata', async () => {
     // `getExtensionsForDomain` is typed loosely and cast, so `presentation` is
-    // asserted rather than checked and the sort throws on this one. The throw
-    // must not cost the menu its fallback: with the read left unmarked,
-    // discovery never completes and the hint - the only thing still worth
-    // rendering once discovery is broken - becomes unreachable for good.
-    // Paired with a well-formed extension because a one-element sort never
-    // calls the comparator: it takes a second element for the dereference the
-    // cast permits to actually run.
-    const withoutPresentation = { id: 'broken', domain: 'screen-domain', entry: 'broken.entry' };
-    app.mfeRegistry.getExtensionsForDomain.mockReturnValue([tasks, withoutPresentation]);
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // asserted rather than checked and nothing on the path from the manifest to
+    // `registry.registerExtension` checks it either. One such sibling must cost
+    // only itself: dereferencing it mid-sort throws, and a throw that takes the
+    // read takes every valid screen with it and leaves the menu claiming there
+    // are none. Paired with a well-formed extension because a one-element sort
+    // never calls the comparator: it takes a second element for the dereference
+    // the cast permits to actually run.
+    app.mfeRegistry.getExtensionsForDomain.mockReturnValue([tasks, withoutPresentation('broken')]);
     vi.useFakeTimers();
 
-    // Rendering at all is the first half of the claim: an escaping throw here
-    // comes out of the effect body, not the interval, and takes the tree down.
+    render(<Menu />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(EMPTY_STATE_GRACE_MS);
+    });
+
+    expect(screen.getByText(tasks.presentation.label)).toBeTruthy();
+    expect(emptyState()).toBeNull();
+  });
+
+  it('falls back to the empty-state hint when every registered extension lacks presentation metadata', async () => {
+    // Nothing survives the presentation check here, so the menu has no screen it
+    // could name and the hint is again the only thing worth rendering.
+    app.mfeRegistry.getExtensionsForDomain.mockReturnValue([
+      withoutPresentation('broken-one'),
+      withoutPresentation('broken-two'),
+    ]);
+    vi.useFakeTimers();
+
     render(<Menu />);
 
     await act(async () => {
@@ -173,7 +195,35 @@ describe('Menu', () => {
     });
 
     expect(emptyState()).not.toBeNull();
-    expect(consoleError).toHaveBeenCalled();
+  });
+
+  it('reaches the empty-state hint and logs a throwing registry read once, not once per poll', async () => {
+    // A registry broken past one malformed extension - the case the catch is
+    // still there for. Two claims ride on it. The hint must stay reachable: with
+    // the read left unmarked, discovery never completes and the fallback becomes
+    // unreachable for good. And the failure must cost one log line, not the two
+    // per second a 500ms poll produces for a condition that does not clear.
+    const readFailure = new Error('registry unavailable');
+    app.mfeRegistry.getExtensionsForDomain.mockImplementation(() => {
+      throw readFailure;
+    });
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.useFakeTimers();
+
+    // Rendering at all is part of the claim: an escaping throw here comes out of
+    // the effect body, not the interval, and takes the tree down.
+    render(<Menu />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(EMPTY_STATE_GRACE_MS * 3);
+    });
+
+    expect(emptyState()).not.toBeNull();
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining('[Menu] Failed to read screen extensions'),
+      expect.any(Error)
+    );
+    expect(consoleError).toHaveBeenCalledTimes(1);
     consoleError.mockRestore();
   });
 

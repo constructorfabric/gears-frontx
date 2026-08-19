@@ -5,7 +5,7 @@
  * Uses local shadcn/ui Sidebar components for proper styling and collapsible behavior.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   useAppSelector,
   useFrontX,
@@ -115,6 +115,14 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   // "polled this registry and found nothing" from "this registry has not been
   // polled yet", which the list alone cannot: both leave it empty.
   const [readRegistry, setReadRegistry] = useState<typeof mfeRegistry>(undefined);
+  // Identity of the read failure already logged, so one persistent cause costs
+  // one line instead of two per second for as long as the app is open: the
+  // read runs from a 500ms interval, and every failure it can hit is a standing
+  // condition rather than a transient one. Deliberately not cleared when a read
+  // succeeds - a registry that fails and recovers on alternating polls would
+  // otherwise log at the full poll rate again, which is the flood this latch
+  // exists to bound.
+  const loggedReadFailure = useRef<string | null>(null);
 
   useEffect(() => {
     if (!mfeRegistry) return;
@@ -123,22 +131,35 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
       try {
         // The cast asserts `presentation` rather than checking it -
         // `getExtensionsForDomain` returns the domain's extensions without that
-        // guarantee - so an extension registered without one throws on the
-        // `a.presentation.order` below.
+        // guarantee, and nothing between the manifest and
+        // `registry.registerExtension` in `src-app/app/mfe/bootstrap.ts` checks
+        // it either - so the filter has to do it here. Dropping the extensions
+        // that carry no presentation is what keeps one malformed sibling from
+        // costing the menu every valid screen beside it: without it the
+        // `a.presentation.order` dereference below throws mid-sort, the catch
+        // takes the whole read, and `setExtensions` never runs.
         const screenExts = mfeRegistry.getExtensionsForDomain(FRONTX_SCREEN_DOMAIN) as ScreenExtension[];
         const sorted = screenExts
+          .filter((ext) => ext?.presentation)
           .sort((a, b) => (a.presentation.order ?? 999) - (b.presentation.order ?? 999));
         setExtensions(sorted);
       } catch (error) {
-        // Caught rather than left to escape, because `refresh` runs from two
-        // places with two different failures. From the effect body below an
-        // escaping throw takes the whole menu down. From the interval it is
-        // swallowed by the timer, but it also skips the `setReadRegistry` that
-        // used to sit at the end of this function, so `discoveryComplete` never
-        // resolves and the menu loses even its empty-state hint - the one thing
-        // still worth rendering when discovery is broken. The list keeps
-        // whatever the last successful poll read.
-        console.error('[Menu] Failed to read screen extensions from the MFE registry', error);
+        // The last line of defence, for a registry broken beyond one malformed
+        // extension - a `getExtensionsForDomain` that throws, or returns
+        // something the filter above cannot walk. Caught rather than left to
+        // escape, because `refresh` runs from two places with two different
+        // failures. From the effect body below an escaping throw takes the whole
+        // menu down. From the interval it is swallowed by the timer, but it also
+        // skips the `setReadRegistry` that used to sit at the end of this
+        // function, so `discoveryComplete` never resolves and the menu loses
+        // even its empty-state hint - the one thing still worth rendering when
+        // discovery is broken. The list keeps whatever the last successful poll
+        // read.
+        const cause = error instanceof Error ? error.message : String(error);
+        if (loggedReadFailure.current !== cause) {
+          loggedReadFailure.current = cause;
+          console.error('[Menu] Failed to read screen extensions from the MFE registry', error);
+        }
       } finally {
         // Marked here rather than beside the first `refresh()` call below so the
         // flag cannot outrun the read it stands for, and in the `finally` rather
