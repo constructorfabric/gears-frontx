@@ -9,7 +9,27 @@
  */
 
 /**
- * Rewrite every `:root` selector in a stylesheet to `:host`.
+ * Simple selectors that may follow `:root` inside one compound selector and
+ * have to move inside `:host(...)` with it: classes, ids, attribute selectors
+ * and pseudo-classes with an optional non-nested argument. Pseudo-elements are
+ * deliberately not among them - `:host::before` is valid where
+ * `:host(::before)` is not - so the double-colon form and the four legacy
+ * single-colon spellings end the tail and stay outside the parentheses.
+ */
+const ROOT_WITH_COMPOUND_TAIL =
+  /:root\b((?:\[[^\]]*\]|[.#][\w-]+|:(?!:|before\b|after\b|first-line\b|first-letter\b)[\w-]+(?:\([^()]*\))?)*)/g;
+
+/**
+ * Rewrite every `:root` selector in a stylesheet so it names the shadow host.
+ *
+ * A bare `:root` becomes `:host`. A `:root` carrying a compound tail becomes
+ * the functional form instead: `:root:not([data-theme='light'])` becomes
+ * `:host(:not([data-theme='light']))`. That distinction is load-bearing, not
+ * cosmetic - a shadow host is featureless, so only `:host`, `:host()` and
+ * `:host-context()` match it and a `:host:not(...)` compound matches nothing at
+ * all. The kit hangs its whole `prefers-color-scheme: dark` block off exactly
+ * that selector, so the naive rewrite drops dark mode in a shadow root without
+ * leaving a trace.
  *
  * Comments are stripped first, and only first: `:root` appears in the kit's
  * prose as well as its selectors, and once the prose is gone every remaining
@@ -31,12 +51,20 @@
  * `theme.css` sits either in plain selector position or in prose, and neither
  * a quoted value nor a feature query names it anywhere. Two things hold that:
  * the exact version pin in this package's `package.json`, and the tests beside
- * this file, which assert the real imported stylesheet comes back with no
- * `:root` left in it. A kit upgrade that introduces either context needs a real
- * CSS parser here, not a wider regex.
+ * this file, which count the `:root` occurrences in the real imported
+ * stylesheet and assert every one of them stands in selector position. That
+ * pair is what a "no `:root` left afterwards" check cannot give: a survivor
+ * inside a quoted value or an `@supports` condition would be rewritten too, and
+ * so would pass such a check while corrupting data or a feature test. A kit
+ * upgrade that introduces either context needs a real CSS parser here, not a
+ * wider regex.
  *
  * @param css - Stylesheet source, minified or not
  */
 export function anchorKitThemeOnShadowHost(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/:root\b/g, ':host');
+  return css
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(ROOT_WITH_COMPOUND_TAIL, (_match, tail: string) =>
+      tail === '' ? ':host' : `:host(${tail})`
+    );
 }

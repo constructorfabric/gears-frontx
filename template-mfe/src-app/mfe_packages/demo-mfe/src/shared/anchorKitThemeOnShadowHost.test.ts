@@ -27,6 +27,19 @@ const MINIFIED_THEME_CSS =
   ':root{--radius-md: 0.5rem}:root,[data-theme=light]{--background: #f8fafc}' +
   '@media (prefers-color-scheme: dark){:root:not([data-theme=light]){--background: #090b10}}';
 
+/**
+ * Offsets of every `:root` in a stylesheet, in source order.
+ */
+function rootOffsets(css: string): number[] {
+  const offsets: number[] = [];
+
+  for (let offset = css.indexOf(':root'); offset !== -1; offset = css.indexOf(':root', offset + 1)) {
+    offsets.push(offset);
+  }
+
+  return offsets;
+}
+
 describe('anchorKitThemeOnShadowHost', () => {
   it('rewrites every root selector of an expanded stylesheet, including the one behind a comment', () => {
     const anchored = anchorKitThemeOnShadowHost(EXPANDED_THEME_CSS);
@@ -46,7 +59,29 @@ describe('anchorKitThemeOnShadowHost', () => {
     const anchored = anchorKitThemeOnShadowHost(MINIFIED_THEME_CSS);
 
     expect(anchored).toContain(':host,[data-theme=light]');
-    expect(anchored).toContain(':host:not([data-theme=light])');
+    expect(anchored).toContain(':host(:not([data-theme=light]))');
+  });
+
+  // A shadow host is featureless: `:host` matches it, and a compound such as
+  // `:host:not(...)` matches nothing at all. The kit hangs its whole
+  // prefers-color-scheme dark block off `:root:not([data-theme='light'])`, so
+  // the tail has to move inside the functional form or dark mode disappears in
+  // a shadow root with nothing to see in the rewritten text.
+  it('moves a compound tail inside :host() rather than leaving it in the compound', () => {
+    expect(anchorKitThemeOnShadowHost(":root:not([data-theme='light']){--background:#090b10}")).toBe(
+      ":host(:not([data-theme='light'])){--background:#090b10}"
+    );
+    expect(anchorKitThemeOnShadowHost(':root[dir=rtl] .a{margin:0}')).toBe(
+      ':host([dir=rtl]) .a{margin:0}'
+    );
+  });
+
+  // A pseudo-element is the one tail that must stay outside the parentheses:
+  // `:host::before` is valid, `:host(::before)` is not.
+  it('keeps a pseudo-element outside :host()', () => {
+    expect(anchorKitThemeOnShadowHost(':root::before{content:""}')).toBe(
+      ':host::before{content:""}'
+    );
   });
 
   // A selector list may put :root anywhere, not only first; a rewrite that
@@ -80,6 +115,36 @@ describe('anchorKitThemeOnShadowHost', () => {
 
     expect(anchored).not.toContain(':root');
     expect(anchored).toContain(':host');
+    // Every `:host` the kit stylesheet comes back with has to be able to match
+    // the host: alone, or with its tail inside the parentheses. A simple
+    // selector welded straight onto `:host` is the featureless-host trap.
+    expect(anchored).not.toMatch(/:host[.#[:]/);
+    expect(anchored).toContain(":host(:not([data-theme='light']))");
+  });
+
+  // What the two limitations above are checked against, rather than assumed:
+  // the docstring's claim is that every `:root` in the pinned stylesheet stands
+  // in plain selector position, and this is that claim in machine-checkable
+  // form. Asserting "nothing named `:root` survives the rewrite" cannot get
+  // here - an occurrence inside a quoted value or an `@supports` condition is
+  // rewritten just as thoroughly as a selector, so such a check passes while
+  // the rewrite corrupts data or a feature test.
+  it('finds every root in the pinned kit stylesheet in selector position, and as many as it pins', () => {
+    const withoutComments = kitThemeCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    const offsets = rootOffsets(withoutComments);
+
+    // Pinned, so a kit upgrade that adds an occurrence arrives through this
+    // test rather than through a rendering bug.
+    expect(offsets).toHaveLength(3);
+
+    for (const offset of offsets) {
+      // What precedes a selector is the end of the previous rule, the opening
+      // of a block, or a selector-list comma. A quoted value or an `@supports
+      // selector(...)` condition would leave a quote or a `(` here instead.
+      const precedingCharacter = withoutComments.slice(0, offset).trimEnd().slice(-1);
+
+      expect(['', '{', '}', ',', ';']).toContain(precedingCharacter);
+    }
   });
 
   // A documented limitation, pinned rather than fixed: the rewrite is textual,
