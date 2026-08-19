@@ -92,6 +92,11 @@ describe('HomeScreen', () => {
     expect(screen.getByTestId('screen-status-payload').textContent).toContain(
       testStatusData.message
     );
+    // The card around it is published too, and it is what a browser run waits on
+    // to know the status section arrived at all: it is the one testid present on
+    // every branch of that section, whether the payload, the error or the
+    // skeleton is inside.
+    expect(screen.getByTestId('screen-status')).toBeTruthy();
   });
 
   it('renders the API error message when the status call fails', async () => {
