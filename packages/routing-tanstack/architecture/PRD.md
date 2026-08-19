@@ -175,7 +175,7 @@ The package's public surface is specified by this package's [DESIGN](./DESIGN.md
 
 ### 7.2 External Integration Contracts
 
-None owned here. The package is distributed under the root PRD's package-registry distribution contract (`cpt-frontx-contract-package-registry-distribution`). The engine-provider port this package implements is owned by the navigation substrate's own PRD and DESIGN, not by this package.
+None owned here. The package is distributed under the root PRD's package-registry distribution contract (`cpt-frontx-contract-package-registry-distribution`). The engine-provider port this package implements is owned by the navigation substrate's own PRD, DESIGN, and navigation-substrate FEATURE, not by this package.
 
 ## 8. Use Cases
 
