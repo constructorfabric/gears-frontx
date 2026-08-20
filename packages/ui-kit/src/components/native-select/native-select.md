@@ -18,6 +18,35 @@ styling translation over native markup, the same shape as `Table`.
 - Custom item content (icons, descriptions, groups with rich styling) —
   `<option>` cannot render arbitrary markup; use `Select` instead.
 
+## Sizing
+
+The wrapper declares no `width` of its own — standalone it shrinks to fit
+its content (a plain `inline-flex` box with `width: auto` sizes the same
+way `inline-block` does), and inside a vertical `Field` it stretches to
+fill the field (a flex column's default `align-items: stretch` only takes
+effect on a child whose own width is `auto`, which `field.module.css`'s
+`.orientationVertical` relies on for every field control). Both behaviors
+fall out of ordinary CSS layout, not a rule written to detect either case —
+so the wrapper also stretches inside any other stretch-inducing ancestor
+(e.g. a bare grid row), matching `Input`'s own always-`width: 100%` chrome
+rather than introducing a NativeSelect-specific exception.
+
+This replaced an explicit `width: fit-content` that fought
+`field.module.css`'s `.orientationVertical > * { width: 100% }` for the
+win at equal (0-1-0) specificity — a collision resolved only by which
+stylesheet a consumer's bundler happened to concatenate last. Mirrors
+upstream: shadcn's `SelectTrigger` ships its own `w-fit` while `Field`'s
+vertical orientation applies `[&>*]:w-full` to its children, the same two
+rules on the same node — Tailwind's utility-layer generation order
+resolves that deterministically in their build, a guarantee this kit's
+CSS Modules don't have. Not declaring a competing width here removes the
+collision instead of trying to out-cascade it.
+
+The field height itself is `--control-height-lg` (40px), not
+`--control-height-md` — fields sit one step up from the md button, the
+same rule `Input`/`Select` already follow (see input.module.css); only
+`size="sm"` drops to `--control-height-sm`.
+
 ## Props (kit level)
 
 | Prop | Type | Default |

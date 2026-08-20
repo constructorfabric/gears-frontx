@@ -54,7 +54,6 @@ export * from './components/drawer/public.js';
 export * from './components/dropdown-menu/public.js';
 export * from './components/empty/public.js';
 export * from './components/field/public.js';
-export * from './components/field-backup/public.js';
 export * from './components/hover-card/public.js';
 export * from './components/input/public.js';
 export * from './components/input-group/public.js';

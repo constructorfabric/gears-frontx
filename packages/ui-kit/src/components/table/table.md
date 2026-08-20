@@ -98,18 +98,58 @@ Taken from the Studio Data Table frame:
 | --- | --- | --- |
 | Header bar height | 36px | `--control-height-md` |
 | Header label | JetBrains Mono 10/14, uppercase | the Mono role whole (`--font-mono`, `--text-mono-*`) + `text-transform: uppercase`, in `--subtle-foreground` |
-| Row height (single line) | 56px | falls out of `--space-5` block padding on a `--text-meta` line — no `height`, so a two-line cell grows the row instead of overflowing it |
-| Cell side padding | 16px | `--space-4` |
+| Cell block padding | 12px | `--space-3` |
+| Cell inline padding | 16px | `--space-4` |
+| Row height (one line of text) | 40px | falls out of the padding (16 + 12 + 12); `--control-height-lg` is also pinned as a floor on `.tableCell` so an empty or sub-line cell cannot collapse the row — `height` on a table cell is a floor, not a cap |
+| Row height (row holding a 32px control) | 56px | falls out of the same padding (32 + 12 + 12) |
 | Row rule | 1px | `--border-width` `--border` |
 
 The header is the one place the table leaves Inter: its column labels are
 mono by design, and that carries through to a header rendered as a button
 (`DataTableSortButton` inherits it rather than imposing Button's own type).
 
-`density="compact"` drops the header to `--control-height-sm` and halves
-the cells' block padding to `--space-2`, taking a single-line row to 32px.
-The frame draws no compact specimen, so that step is proportional rather
-than measured.
+Re-measured 2026-08-20 against the frame's node geometry rather than against
+its rendered rows. Two earlier readings took the artifacts-root /
+artifacts-folder row (node 40001712:10911) at face value — 56px tall, one
+line of text, therefore 56px is the single-line row height — and pinned a
+56px floor on the cell to reproduce it. Walking that row's children shows
+56 is not a type measurement: the row holds a 32px Row-actions button at
+y=12 and a 28px readiness ring at y=14, so its height is
+`--control-height-sm` plus 12px of air a side. The 16px text line is the
+shortest thing in the box.
+
+The frame states its real block padding in the variants whose rows are
+type-driven, where no control sets the height, and every one lands on 8–12px:
+projects (40001450:5771) draws a 58px row with its text block at y=10..46;
+activity (40001454:5364) a 64px row at y=8..51; findings (40001453:6215) a
+72px row at y=10..56. `--space-3` is that padding on the token scale, and it
+reproduces the whole frame from one value instead of from a pinned number:
+one Meta line gives 16 + 24 = 40px, a 32px control gives 32 + 24 = 56px
+(artifacts-root exactly), two Meta lines give 32 + 24 = 56px against the
+projects/activity rows' 58/64.
+
+So the 56px row now falls out of the drawn control rather than being
+asserted. That is also what fixes the case the pinned floor hid: at
+`--space-4` the kit's own row-actions rows measured 65px against the frame's
+56 (32 + 16 + 16, plus the rule), and because a floor only ever grows a row
+it could not pull that overshoot back — the error stayed invisible while
+text-only rows sat at a coincidentally correct 56. 40px is kept as a floor
+because it is the type-driven height anyway, and it is `--control-height-lg`,
+which is also the height the frame draws every column resize handle at across
+all six variants (e.g. 40001452:6069, 40001450:5916) and the height of the
+projects header band.
+
+Cell type needs no reconciliation either: the frame sets every cell in
+Studio/Type/UI Secondary, which is Inter 12/16 — `--text-meta-*` exactly. An
+earlier note here recorded the drawn line as a hand-set 17 normalized up to
+the ramp's 16; the design context reports 16 outright.
+
+`density="compact"` drops the header to `--control-height-sm` and the cells'
+block padding to `--space-2`, taking a type-driven row to 32px. `height`
+resets to `auto` in the compact override — the default density's 40px floor
+would otherwise hold every compact row at the default height, since a floor
+only ever grows a row, never shrinks one. The frame draws no compact
+specimen, so that step is proportional rather than measured.
 
 ## Column widths
 

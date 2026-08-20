@@ -9,16 +9,14 @@ import styles from './input-group.module.css';
 /*
  * InputGroup composes Input/Textarea with addons into ONE visually unified
  * field: the outer group draws the field chrome (border/background/focus
- * ring), the inner control (InputGroupInput/InputGroupTextarea) draws none
- * of its own — see input-group.module.css's `.control` for how that
- * override reaches inside Input/Textarea's OWN class without editing either
- * directory (both are owned elsewhere in this port batch). Upstream's
- * equivalent styling lives in a base-vega stylesheet this port has no
- * access to (see input-group.module.css's header comment) — the group-owns-
- * the-border design below is this port's own reconstruction of the well-
- * known shadcn Input Group look (one bordered box, no seams between the
- * icon/button addons and the field), not a value copied from a source file
- * this repo doesn't have.
+ * ring/error border), the inner control (InputGroupInput/
+ * InputGroupTextarea) draws none of its own — see input-group.module.css's
+ * `.control` for how that override reaches inside Input/Textarea's OWN
+ * class without editing either directory (both are owned elsewhere in this
+ * port batch). Same division of labour as upstream's registry item; the
+ * markup differs only where this kit's conventions do — no `data-slot`
+ * attributes (the kit drops them, see kbd.tsx) and one fewer wrapper,
+ * since Input already renders the control directly.
  */
 export interface InputGroupProps extends Omit<ComponentProps<'div'>, 'className'> {
   className?: string;
@@ -60,13 +58,20 @@ export function InputGroupAddon({
       className={addonVariants({ align, className })}
       onClick={(event: MouseEvent<HTMLDivElement>) => {
         // Clicking the addon's own padding (around a leading icon, say)
-        // focuses the group's <input> — a bigger, friendlier hit target
-        // than the input's own edge. A click that actually lands on a
-        // button inside the addon (a clear/reveal action) must NOT be
-        // hijacked into a focus-steal that fires ahead of — or instead of —
-        // that button's own click handling. Matches upstream exactly.
+        // focuses the group's field — a bigger, friendlier hit target than
+        // the field's own edge. A click that actually lands on a button
+        // inside the addon (a clear/reveal action) must NOT be hijacked
+        // into a focus-steal that fires ahead of — or instead of — that
+        // button's own click handling.
+        //
+        // `textarea` is in the selector where upstream queries `input`
+        // alone: a block-start addon ("To:", a toolbar row) sits above a
+        // TEXTAREA in every one of its own examples, and upstream's
+        // narrower query silently does nothing there.
         if (!(event.target as HTMLElement).closest('button')) {
-          event.currentTarget.parentElement?.querySelector('input')?.focus();
+          event.currentTarget.parentElement
+            ?.querySelector<HTMLElement>('input, textarea')
+            ?.focus();
         }
         onClick?.(event);
       }}
@@ -78,21 +83,21 @@ export function InputGroupAddon({
 export interface InputGroupButtonProps extends Omit<ButtonProps, 'size' | 'type'> {
   type?: 'button' | 'submit' | 'reset';
   /**
-   * Restricted to the kit's own two smallest Button sizes — upstream offers
-   * `xs`/`sm`/`icon-xs`/`icon-sm`, but this kit's control-height scale has
-   * no step below `sm` (32px; see theme.css's `--control-height-*`), and
-   * "icon" is a derived state (Button's `icon` prop with no children), not
-   * a size of its own — see button.tsx. `sm` is the closest in-group
-   * default; pass `icon` with no children for a compact icon-only action.
-   * @default 'sm'
+   * Upstream's in-group button scale, minus its icon-only twins: `icon-xs`/
+   * `icon-sm` are not sizes in this kit — Button derives icon-only from its
+   * own `icon` prop with no children and squares up whatever size is
+   * active (see button.tsx), so `<InputGroupButton icon={<XIcon />} />` is
+   * the `icon-xs` of this port. `xs` is a compact step below the kit's
+   * smallest control height, composed from it in input-group.module.css.
+   * @default 'xs'
    */
-  size?: 'default' | 'sm';
+  size?: 'xs' | 'sm';
 }
 
 export function InputGroupButton({
   type = 'button',
   variant = 'ghost',
-  size = 'sm',
+  size = 'xs',
   className,
   ...props
 }: InputGroupButtonProps) {
@@ -100,8 +105,14 @@ export function InputGroupButton({
     <Button
       type={type}
       variant={variant}
-      size={size}
-      className={cx(styles.button, className)}
+      // Button's own smallest step is the geometry both in-group sizes
+      // start from; `xs` then compresses it (height/padding/radius) via
+      // the class below. Passing `sm` here rather than letting Button fall
+      // through to its `default` size keeps the label metrics and the
+      // icon-only aspect ratio right for both.
+      size="sm"
+      data-size={size}
+      className={cx(styles.button, size === 'xs' && styles.sizeXs, className)}
       {...props}
     />
   );

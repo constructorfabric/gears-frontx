@@ -120,8 +120,11 @@ Rules for generated code:
   through a consumer's own link component.
 - [Bubble](dist/docs/bubble.md): framed chat-message surface
   (Bubble/BubbleContent/BubbleReactions, BubbleGroup); variants
-  default|secondary|muted|tinted|outline|ghost|destructive; scoped to the
-  message surface only — pair with `Message` for the full row.
+  default|secondary|muted|tinted|outline|ghost|destructive; `align`
+  start|end both positions the bubble and squares its speaker-side top
+  corner (the shape cue that separates a message from a button; `ghost`
+  has no frame and no notch); scoped to the message surface only — pair
+  with `Message` for the full row.
 - [Button](dist/docs/button.md): action button; variants
   default|destructive|outline|secondary|ghost|link, sizes default|sm|lg; a
   consumer className can recolor a button in every state via
@@ -215,12 +218,6 @@ Rules for generated code:
   htmlFor/aria-describedby wiring — wire `FieldLabel`'s `htmlFor` to the
   control's `id` yourself, same as upstream shadcn; `data-invalid`/
   `data-disabled` are plain attributes you set, not derived state.
-- [FieldBackup](dist/docs/field-backup.md): labelled form field composition
-  (FieldBackup/FieldBackupLabel/FieldBackupDescription/FieldBackupError);
-  wires ids, htmlFor, aria-describedby, and validation display
-  automatically — built on the Base UI Field primitive. Superseded by
-  `Field` — reach for that in new code; kept for the automatic wiring
-  Field no longer provides.
 - [HoverCard](dist/docs/hover-card.md): portalled preview panel opened on
   hover/focus (HoverCard/HoverCardTrigger/HoverCardContent), wrapping Base
   UI's PreviewCard primitives under the shadcn `hover-card` name; `delay`
@@ -230,14 +227,19 @@ Rules for generated code:
   leading decorative icon, `end` for trailing interactive content (e.g. a
   clear button; rendered after the input, so tab order is field → slot) —
   neither renders automatically; `type="search"` gives the searchbox role
-  but no icon by itself — pass one via `icon`; wires into `FieldBackup`
-  automatically (Base UI Field context) — inside the canonical `Field`,
-  wire `id`/`aria-describedby` by hand like every other control.
+  but no icon by itself — pass one via `icon`; inside `Field`, wire
+  `id`/`aria-describedby` by hand like every other control.
 - [InputGroup](dist/docs/input-group.md): composes Input/Textarea with
   icon/text/button addons into one visually unified field (InputGroup/
   InputGroupAddon/InputGroupButton/InputGroupText/InputGroupInput/
-  InputGroupTextarea); the group draws the border/focus ring, the wrapped
-  control draws none of its own.
+  InputGroupTextarea); the group draws the border/focus/error ring, the
+  wrapped control draws none of its own — focus is keyed to the control's
+  `:focus-visible` (not any focus-within), error is `aria-invalid` on the
+  control, and disabled is scoped to the field: a disabled
+  `InputGroupButton` inside an addon dims only itself, not the group;
+  `InputGroupAddon`'s `align` is inline-start|inline-end|block-start|
+  block-end, composable on both axes at once; `InputGroupButton` size is
+  xs|sm (default xs).
 - [InputOtp](dist/docs/input-otp.md): one-time-passcode entry with paste/
   auto-advance/completion built in, on Base UI's OTPField primitive
   (InputOtp/InputOtpGroup/InputOtpSlot/InputOtpSeparator); `length`

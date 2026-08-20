@@ -1,4 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -170,4 +173,44 @@ describe('Drawer', () => {
   // pointer events (no real layout/geometry to derive a drag distance or
   // velocity from) — trigger/backdrop/Escape/close-button dismissal above
   // already cover the kit-level open/close contract this port owns.
+
+  /*
+   * Source-level, not behavioural: the enter/exit slide is a pure CSS
+   * transition between `[data-starting-style]`/`[data-ending-style]` and the
+   * resting transform, and jsdom neither resolves calc() nor runs
+   * transitions, so nothing rendered can observe this. What it guards is a
+   * failure mode that is invisible in every other check: inside calc(), a
+   * bare `0` is a <number>, and adding a number to a <length-percentage> is
+   * a type error, which makes `--closed-transform` invalid at computed-value
+   * time and silently collapses `transform: var(--closed-transform)` to
+   * `none`. The drawer then materialises at its resting place and vanishes
+   * from it while the backdrop still fades — read by reviewers as the
+   * animation running backwards. This shipped once (`--drawer-inset: 0`);
+   * the guard is here because the symptom points nowhere near the cause.
+   */
+  it('keeps --drawer-inset length-typed for the --closed-transform calc()s', () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'drawer.module.css'), 'utf8');
+
+    const closedTransforms = [...css.matchAll(/--closed-transform:([^;]+);/g)].map(([, v]) => v);
+    expect(closedTransforms.length, '--closed-transform is no longer declared per side').toBe(4);
+    for (const value of closedTransforms) {
+      expect(value, 'a --closed-transform stopped accounting for --drawer-inset').toContain(
+        'var(--drawer-inset',
+      );
+    }
+
+    // Every value --drawer-inset can take here: this file's own default plus
+    // any fallback the calc()s supply. A consumer override is out of reach of
+    // a source check — hence the unit requirement stated in drawer.md.
+    const insetValues = [
+      ...[...css.matchAll(/--drawer-inset:\s*([^;]+);/g)].map(([, v]) => v.trim()),
+      ...[...css.matchAll(/var\(--drawer-inset,\s*([^)]+)\)/g)].map(([, v]) => v.trim()),
+    ];
+    expect(insetValues.length, '--drawer-inset is no longer declared').toBeGreaterThan(0);
+    for (const value of insetValues) {
+      expect(value, `"${value}" is unitless — it makes --closed-transform's calc() a type error`).toMatch(
+        /^-?\d*\.?\d+(?:px|rem|em|vh|vw|dvh|dvw|%)$/,
+      );
+    }
+  });
 });

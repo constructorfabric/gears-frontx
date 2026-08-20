@@ -88,12 +88,20 @@ down at `control-height-md`. Composing a default `Button` next to a default
 `Input`/`Select` therefore joins two different heights — size the `Button`
 explicitly (`size="lg"`) to match, as the examples above do.
 
+`Input`'s `icon`/`end` slots (see input.md) wrap the real `<input>` in a
+presentational span when either is set — the direct child `ButtonGroup`
+sees is that span, not the input. The join still reaches the input's own
+border/radius through that wrapper, so a slotted `Input` (e.g. a leading
+icon) joins exactly like a bare one; no different composition is needed.
+
 ## Anti-patterns
 
 - Do not nest a `ButtonGroup` more than one level deep expecting the join
   styling to compose automatically — the corner/border rules target DIRECT
   children only, by design (so an arbitrarily deep tree of unrelated
-  wrappers never accidentally gets joined).
+  wrappers never accidentally gets joined). The one exception is `Input`'s
+  own slot wrapper, above — that reach-through is deliberate, not a hole in
+  the "direct children only" rule.
 - Do not rely on `ButtonGroup` for keyboard roving-tabindex behavior — it is
   a pure visual/structural join (`role="group"` only), not a Base UI
   toolbar/radio-group primitive; each child keeps its own native tab stop.

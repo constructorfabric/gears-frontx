@@ -169,6 +169,39 @@ bulk-selection bar). The trio's components all exist, so writing those is
 unblocked; the mockup-block recipes additionally wait on step-5 components
 (`pagination`, `breadcrumb`, `avatar`).
 
+## Upstream update procedure
+
+How to update a component when upstream shadcn changes (any maintainer or
+agent asked to "update <component> from shadcn" follows this):
+
+1. Upstream has no package versions; its git history IS the version. The
+   source of truth per component is
+   `apps/v4/registry/bases/base/ui/<component>.tsx` in
+   `github.com/shadcn-ui/ui`. The component's `<name>.md` records our
+   deliberate deviations and the last sync date.
+2. Diff the upstream file between our recorded sync date and current HEAD
+   (`gh api` over the file's commit history). No diff - nothing to do;
+   refresh the recorded date.
+3. Classify each upstream change into three buckets:
+   - API/structure (new parts, props, variant axes, data attributes) -
+     port into our tsx over the Base UI primitives;
+   - behavior (logic, a11y, handlers) - port by meaning;
+   - styling (their utility classes) - never copy classes; read them as a
+     spec ("radius grew", "inset appeared") and decide whether to express
+     it in our CSS via theme tokens. The kit and the Constructor Studio
+     mockups outrank pixel parity with shadcn.
+4. Check the diff against the deviations listed in `<name>.md`: if
+   upstream changed something we deliberately diverged from, re-decide the
+   deviation explicitly (keep it or drop it) - never silently overwrite it.
+5. Same-pass tail (mandatory): guard tests green (`npm run test` - the
+   tokens/docs guards scan raw CSS text including comments), `<name>.md`
+   and `llms.txt` synced with any contract change.
+
+Hard constraints that always apply: existing theme.css token values are
+frozen (additive only, all theme blocks); no raw values in module.css
+including comments; icons via direct `lucide-react` imports; CSS Modules +
+CVA; Base UI primitives only.
+
 ## Testing and acceptance
 
 - Unit tests are written along with components: render + interaction smoke per

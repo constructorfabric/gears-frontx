@@ -84,12 +84,38 @@ describe('InputGroup', () => {
     // must still register regardless, which the assertion above proves.
   });
 
-  it('renders InputGroupButton with the ghost variant and sm size by default', () => {
-    render(<InputGroupButton>Go</InputGroupButton>);
-    const button = screen.getByRole('button', { name: 'Go' });
-    expect(button.className).toContain(buttonStyles.variantGhost);
-    expect(button.className).toContain(buttonStyles.sizeSm);
-    expect(button).toHaveProperty('type', 'button');
+  it('focuses a textarea control when the addon padding is clicked', () => {
+    render(
+      <InputGroup>
+        <InputGroupAddon align="block-start" data-testid="addon">
+          <InputGroupText>To:</InputGroupText>
+        </InputGroupAddon>
+        <InputGroupTextarea aria-label="Message" />
+      </InputGroup>,
+    );
+    fireEvent.click(screen.getByTestId('addon'));
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Message' }));
+  });
+
+  it('renders InputGroupButton as a ghost xs button by default, sm on request', () => {
+    render(
+      <>
+        <InputGroupButton>Go</InputGroupButton>
+        <InputGroupButton size="sm">Stop</InputGroupButton>
+      </>,
+    );
+    const xs = screen.getByRole('button', { name: 'Go' });
+    expect(xs.className).toContain(buttonStyles.variantGhost);
+    expect(xs.className).toContain(styles.sizeXs);
+    expect(xs.getAttribute('data-size')).toBe('xs');
+    expect(xs).toHaveProperty('type', 'button');
+
+    // `sm` is Button's own smallest geometry with no compression on top —
+    // the class both sizes share stays, the xs-only one drops.
+    const sm = screen.getByRole('button', { name: 'Stop' });
+    expect(sm.className).toContain(buttonStyles.sizeSm);
+    expect(sm.className).not.toContain(styles.sizeXs);
+    expect(sm.getAttribute('data-size')).toBe('sm');
   });
 
   it('renders InputGroupTextarea with the resize-none control class', () => {

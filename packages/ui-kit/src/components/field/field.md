@@ -2,14 +2,12 @@
 
 A primitive-free, 10-part form-layout system — a faithful port of
 [shadcn/ui's base Field](https://ui.shadcn.com/docs/components/base/field).
-Unlike [`FieldBackup`](field-backup.md) (the kit's pre-port Field, a 4-part
-wrapper over the Base UI Field primitive), nothing here is a Base UI
-primitive and nothing wires ids, `htmlFor`, or `aria-describedby`
-automatically — you connect `FieldLabel`'s `htmlFor` to the control's `id`,
-and a description/error's `id` to the control's `aria-describedby`, by
-hand. That is the real trade-off of this port: it buys upstream's richer
-layout vocabulary (orientation, grouping, legends, separators) at the cost
-of the automatic wiring `FieldBackup` gave you for free.
+Nothing here is a Base UI primitive and nothing wires ids, `htmlFor`, or
+`aria-describedby` automatically — you connect `FieldLabel`'s `htmlFor` to
+the control's `id`, and a description/error's `id` to the control's
+`aria-describedby`, by hand. That is the trade-off of this port: it buys
+upstream's richer layout vocabulary (orientation, grouping, legends,
+separators) at the cost of any automatic wiring.
 
 ## Parts
 
@@ -47,11 +45,8 @@ validation your form actually runs.
 
 ## When to use
 
-- Every labelled control in a form, when you also want `Field`'s
-  richer layout vocabulary (orientation, grouped fieldsets, separators)
-  and are willing to wire ids by hand.
-- Reach for [`FieldBackup`](field-backup.md) instead when the automatic
-  id/`aria-describedby` wiring matters more than this layout vocabulary.
+- Every labelled control in a form — this is the kit's only form-layout
+  system; wire ids by hand as shown below.
 
 ## When not to use
 
@@ -133,9 +128,8 @@ import {
 
 ## Anti-patterns
 
-- Do not expect `id`/`htmlFor`/`aria-describedby` to wire themselves — that
-  is exactly what `FieldBackup` does and this port deliberately does not;
-  wire them by hand or reach for `FieldBackup`.
+- Do not expect `id`/`htmlFor`/`aria-describedby` to wire themselves — this
+  port deliberately does none of that; wire them by hand, every time.
 - Do not put two controls in one `Field` — one field, one control.
 - Do not render validation text outside `FieldError` — screen readers
   lose the association if you don't also wire `aria-describedby` yourself.

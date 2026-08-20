@@ -54,8 +54,10 @@
    */
   border-collapse: collapse;
   caption-side: bottom;
-  /* The drawn cell text is 12px — Meta; its hand-set 17px line normalizes
-   * to the ramp's 16 under the tokens-win ruling (see theme.css). Applied
+  /* The drawn cell text is Meta outright, with nothing to reconcile: the
+   * frame sets every cell in Studio/Type/UI Secondary (Inter 12/16), which
+   * is --text-meta-* exactly — no tokens-win rounding involved, contrary to
+   * an earlier note here that recorded the line as a hand-set 17. Applied
    * whole (size/line-height/weight/tracking), not just the two metrics the
    * rows need — see .tableHead below for the header bar's own full
    * application of its role. */
@@ -211,14 +213,46 @@
    * consumer-supplied width as its <th>. */
   box-sizing: border-box;
   /*
-   * The drawn row is 56px tall for single-line content. With the Meta
-   * line-height above that makes the block padding 20px (--space-5)
-   * exactly, so the row height falls out of the padding rather than being
-   * pinned with a `height` a two-line cell would then have to fight — the
-   * frame's own taller variants (the findings and team tables, whose rows
-   * carry a second line under the primary one) grow from the same padding.
+   * Block padding read off the frame's own rows rather than off its 56px
+   * pitch. The earlier reading took the artifacts-root/artifacts-folder row
+   * (node 40001712:10911) at face value — 56px tall, one line of text, so
+   * 56 must be the single-line row height — and pinned a 56px floor to
+   * reproduce it. Walking that row's children shows 56 is not a type
+   * measurement at all: it holds a 32px Row-actions button at y=12 and a
+   * 28px readiness ring at y=14, i.e. --control-height-sm plus 12px of air
+   * a side. The 16px text line is the SHORTEST thing in the box, floating
+   * in whatever slack the button leaves.
+   *
+   * The frame states its real block padding in the variants whose rows are
+   * type-driven, where no control sets the height. Every one lands on 8–12:
+   * projects (40001450:5771) draws a 58px row with its text block at
+   * y=10..46; activity (40001454:5364) a 64px row at y=8..51; findings
+   * (40001453:6215) a 72px row at y=10..56. --space-3 (12px) is that
+   * padding on the token scale, and it reproduces the whole frame from one
+   * value instead of from a pinned number:
+   *
+   *   one Meta line   16 + 12 + 12 = 40px  (the type-driven row)
+   *   32px control    32 + 12 + 12 = 56px  (artifacts-root, exactly)
+   *   two Meta lines  32 + 12 + 12 = 56px  (projects/activity's 58/64)
+   *
+   * The 56px row therefore falls OUT of the drawn control, and no longer
+   * has to be asserted. That is also what fixes the case the pinned floor
+   * silently broke: at --space-4 the kit's own actions row measured 65px
+   * against the frame's 56 (32 + 16 + 16, plus the border) — the floor
+   * only ever grows a row, so it could not pull that overshoot back, and
+   * the error stayed invisible while text-only rows sat at a coincidentally
+   * correct 56.
+   *
+   * 40px is kept as a floor (`height` on a table cell is a FLOOR, not a
+   * cap — CSS2.1 §17.5.3) so a cell with no content, or content shorter
+   * than a line, cannot collapse the row below the type-driven height. It
+   * is --control-height-lg, which is also the height the frame draws every
+   * column resize handle at across all six variants (e.g. 40001452:6069,
+   * 40001450:5916) and the height of the projects header band — the frame's
+   * own name for "one row of a data grid".
    */
-  padding: var(--space-5) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  height: var(--control-height-lg);
   vertical-align: middle;
   white-space: nowrap;
 }
@@ -234,8 +268,12 @@
  * styling above, untouched. The frame draws no compact specimen of its own,
  * so this stays a proportional step down from the default rather than a
  * measured one: the header takes the next control height below the
- * default's, and the cells the block padding that halves the 56px row to a
- * 32px one.
+ * default's, and the cells the next block padding step down (--space-2),
+ * taking a type-driven row from 40px to 32px. `height` is reset to `auto`
+ * here, not just lowered — the
+ * default density's 40px floor (see .tableCell above) would otherwise
+ * override the smaller padding and hold every compact row at the default's
+ * height, since a floor only ever grows a row, never shrinks one.
  */
 .densityCompact .tableHead {
   height: var(--control-height-sm);
@@ -243,6 +281,7 @@
 
 .densityCompact .tableCell {
   padding-block: var(--space-2);
+  height: auto;
 }
 
 .tableCaption {

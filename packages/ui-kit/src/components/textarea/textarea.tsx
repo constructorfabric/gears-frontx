@@ -13,8 +13,8 @@ export type TextareaProps = ComponentProps<'textarea'>;
  * that the canonical `Field` (field.tsx) is itself primitive-free and
  * wires nothing automatically — wire `id`/`aria-describedby` by hand, the
  * same way every other control inside the new `Field` does (see field.md).
- * `Input` keeps its own Base UI primitive and still auto-wires inside
- * `FieldBackup` — Textarea never did have a primitive to lean on for that.
+ * `Input` keeps its own Base UI primitive — Textarea never did have one to
+ * lean on for that.
  */
 export function Textarea({ className, ...props }: TextareaProps) {
   return <textarea className={cx(styles.textarea, className)} {...props} />;

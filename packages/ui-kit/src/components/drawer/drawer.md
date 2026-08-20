@@ -90,6 +90,27 @@ exemption list; see this port's own delivery report for the exact set and
 which ones the metric-scale guard would flag today versus which pass only
 by an incidental prefix/fallback match.
 
+The enter/exit slide itself is a plain CSS transition between the
+`[data-starting-style]`/`[data-ending-style]` transform (`--closed-transform`,
+the panel parked one full panel-length past its own edge) and the resting
+transform on `.popup`. Measured on the demo at a 900x513 viewport, a bottom
+drawer travels `y: 515 → 308` on open and `308 → 515` on close, a right one
+`x: 902 → 516` and back — monotonic, with the backdrop's opacity crossing
+`0 → 1` on the same curve. Nominal duration is upstream's own
+`450ms cubic-bezier(0.22, 1, 0.36, 1)` for the enter and
+`calc(--drawer-swipe-strength * 400ms)` for the exit; because that curve
+front-loads the motion, ~90% of the travel lands inside the first ~180ms.
+
+`--drawer-inset` is the consumer-facing hook for insetting the panel from
+its edge, and **any override must carry a unit** — `1rem`, or `0px` for
+none, never a bare `0`. It is substituted into `--closed-transform`'s
+`calc()`, where a unitless number added to a length is a type error: the
+custom property then becomes invalid at computed-value time, `transform`
+falls back to `none`, and both the enter and the exit slide disappear while
+the backdrop keeps fading — which reads as the animation running backwards
+rather than as a missing animation. `drawer.test.tsx` guards the values this
+file itself declares; an override is only reachable by this rule.
+
 Direction-specific geometry (`bottom: 0` / `transform-origin` /
 `--closed-transform` / the swipe-driven `--translate-x`/`-y` math) is keyed
 to Base UI's own `data-swipe-direction` attribute, not to the kit's `side`

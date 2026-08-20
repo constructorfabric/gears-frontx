@@ -110,9 +110,14 @@ export interface QuestionnaireChoicesProps
   className?: string;
 }
 
-/** The choice list's grid container. Carries `data-shortcuts` when the
+/**
+ * The choice list's grid container. Carries `data-shortcuts` when the
  * root's `shortcuts` mode is on, matching `QuestionnaireChoiceShortcut`'s
- * own visibility. */
+ * own visibility. A `QuestionnaireInput` belongs inside this container, as
+ * its last cell, whenever an item offers a freeform answer alongside fixed
+ * choices — that is upstream's own composition, and it is what puts the
+ * field on the choice grid's rhythm instead of a row of its own.
+ */
 export function QuestionnaireChoices({ className, ...props }: QuestionnaireChoicesProps) {
   return (
     <QuestionnairePrimitive.Choices className={cx(styles.choices, className)} {...props} />
@@ -220,6 +225,25 @@ export function QuestionnaireChoice({ className, children, ...props }: Questionn
   );
 }
 
+export type QuestionnaireChoiceDescriptionProps = ComponentProps<'span'>;
+
+/**
+ * A second line under a choice's label — the supporting sentence that says
+ * what picking it means. Belongs among `QuestionnaireChoice`'s children,
+ * where `QuestionnaireChoiceLabel` stacks it under the label text. A plain
+ * styled `<span>` with no `@shadcn/react` primitive underneath, matching
+ * upstream's own `QuestionnaireChoiceDescription`; it carries no `id` and
+ * is not wired into `aria-describedby` because the label element already
+ * wraps it, so it is part of the choice's accessible name rather than a
+ * description of it.
+ */
+export function QuestionnaireChoiceDescription({
+  className,
+  ...props
+}: QuestionnaireChoiceDescriptionProps) {
+  return <span className={cx(styles.choiceDescription, className)} {...props} />;
+}
+
 export interface QuestionnaireInputProps
   extends Omit<ComponentProps<typeof QuestionnairePrimitive.Input>, 'className'> {
   className?: string;
@@ -246,8 +270,14 @@ export interface QuestionnaireErrorProps
   className?: string;
 }
 
-/** The item's validation message — hidden unless the item is invalid; the
- * primitive supplies default copy, same as `QuestionnaireProgress`. */
+/**
+ * The item's validation message — hidden unless the item is invalid, and
+ * announced (`role="alert"`) when it appears. The primitive supplies
+ * default copy that already differs between a required and an optional
+ * item, same defaulting as `QuestionnaireProgress`; pass `children` to
+ * replace it. Belongs on every item, not just the required ones — see
+ * `QuestionnaireNext` for why a missing one reads as a dead button.
+ */
 export function QuestionnaireError({ className, ...props }: QuestionnaireErrorProps) {
   return <QuestionnairePrimitive.Error className={cx(styles.error, className)} {...props} />;
 }
@@ -295,8 +325,14 @@ export interface QuestionnaireSkipProps
   extends Omit<ComponentProps<typeof QuestionnairePrimitive.Skip>, 'className'>,
     QuestionnaireNavButtonOwnProps {}
 
-/** Advances without answering. Hidden whenever the current item is
- * `required` — a required item has no skip path. */
+/**
+ * Records that an optional item was deliberately left unanswered, then
+ * advances (or submits, on the last item). Hidden whenever the current item
+ * is `required` — a required item has no skip path. A skipped item is
+ * absent from the submitted `FormData`, which is what separates it from an
+ * item that merely has no answer yet; `QuestionnaireItem`'s
+ * `onStatusChange` is where that distinction is observable.
+ */
 export function QuestionnaireSkip({
   className,
   render,
@@ -317,8 +353,21 @@ export interface QuestionnaireNextProps
   extends Omit<ComponentProps<typeof QuestionnairePrimitive.Next>, 'className'>,
     QuestionnaireNavButtonOwnProps {}
 
-/** Advances to the next item. Hidden on the last item — `QuestionnaireSubmit`
- * takes over there. Carries the `Enter` keyboard shortcut. */
+/**
+ * Advances to the next item. Hidden on the last item —
+ * `QuestionnaireSubmit` takes over there. Carries the `Enter` shortcut.
+ *
+ * Deliberately never disables itself: activating it is what runs the
+ * current item's validation and surfaces the failure, so a disabled Next
+ * would leave the reader with no way to find out why they are stuck. An
+ * item passes only once it is answered — or, when it is optional, answered
+ * *or* explicitly skipped; an untouched optional item fails validation the
+ * same way a required one does, and `QuestionnaireSkip` is its way past.
+ * That makes `QuestionnaireError` effectively mandatory on every item:
+ * without it a failed Next is completely silent. Consumers that want the
+ * button dimmed instead can read `data-status` off it, or gate `disabled`
+ * themselves through `render`.
+ */
 export function QuestionnaireNext({
   className,
   render,

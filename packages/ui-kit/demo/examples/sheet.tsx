@@ -12,6 +12,13 @@ import {
 
 import { Row, Section } from '../shared';
 
+const longParagraphs = Array.from({ length: 12 }, (_, index) => (
+  <p key={index}>
+    Paragraph {index + 1}. Make changes to your profile here. Click save when you&apos;re done
+    reviewing every field.
+  </p>
+));
+
 export default function SheetExample() {
   return (
     <>
@@ -69,6 +76,24 @@ export default function SheetExample() {
             </SheetContent>
           </Sheet>
         </Row>
+      </Section>
+
+      <Section title="Scrollable content">
+        <Sheet>
+          <SheetTrigger render={<Button variant="outline" />}>Open</SheetTrigger>
+          <SheetContent side="right">
+            <SheetHeader>
+              <SheetTitle>Edit profile</SheetTitle>
+              <SheetDescription>Scroll to review every field before saving.</SheetDescription>
+            </SheetHeader>
+            {longParagraphs}
+            {/* Sticky + opaque by default now - no inline workaround needed. */}
+            <SheetFooter>
+              <SheetClose render={<Button variant="outline" />}>Cancel</SheetClose>
+              <Button>Save changes</Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
       </Section>
 
       <Section title="No close button">

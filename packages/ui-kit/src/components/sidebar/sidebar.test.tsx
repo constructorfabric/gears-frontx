@@ -1,5 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 
 import {
   Sidebar,
@@ -7,6 +13,7 @@ import {
   SidebarGroupLabel,
   SidebarMenuButton,
   SidebarMenuSkeleton,
+  SidebarMenuSubButton,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
@@ -98,14 +105,27 @@ describe('Sidebar', () => {
     expect(document.cookie).toContain('sidebar_state=false');
     unmount();
 
-    // A fresh provider, still asking for defaultOpen — the cookie from the
-    // unmounted instance above should win over that default.
+    // A fresh provider that states no preference of its own — the cookie
+    // written by the unmounted instance above is what it starts from.
+    render(
+      <SidebarProvider>
+        <Sidebar />
+      </SidebarProvider>,
+    );
+    expect(desktopRoot()?.getAttribute('data-state')).toBe('collapsed');
+  });
+
+  it('lets an explicit defaultOpen override the persisted cookie', () => {
+    // The cookie is one key for the whole document, so without this
+    // opt-out a second Provider on the page could not state its own
+    // starting state at all — see SidebarProvider's defaultOpen doc.
+    document.cookie = 'sidebar_state=false; path=/';
     render(
       <SidebarProvider defaultOpen>
         <Sidebar />
       </SidebarProvider>,
     );
-    expect(desktopRoot()?.getAttribute('data-state')).toBe('collapsed');
+    expect(desktopRoot()?.getAttribute('data-state')).toBe('expanded');
   });
 
   it('defers to a controlled open prop and only reports intent via onOpenChange', () => {
@@ -197,6 +217,35 @@ describe('Sidebar', () => {
     await waitFor(() => expect(screen.getByText('Homepage link')).toBeTruthy(), { timeout: 1000 });
   });
 
+  it('renders SidebarMenuButton as a link via render, keeping isActive reflected', () => {
+    // The overwhelmingly common real shape: a nav row IS the anchor, not a
+    // button wrapping one — so `render` has to survive alongside the
+    // state-attribute reflection rather than being swallowed by it.
+    render(
+      <SidebarProvider>
+        <SidebarMenuButton isActive render={<a href="/inbox" />}>
+          Inbox
+        </SidebarMenuButton>
+      </SidebarProvider>,
+    );
+    const link = screen.getByRole('link', { name: 'Inbox' });
+    expect(link.getAttribute('href')).toBe('/inbox');
+    expect(link.getAttribute('data-active')).toBe('');
+  });
+
+  it('reflects isActive on SidebarMenuSubButton, which defaults to an anchor', () => {
+    render(
+      <SidebarProvider>
+        <SidebarMenuSubButton isActive href="/overview">
+          Overview
+        </SidebarMenuSubButton>
+      </SidebarProvider>,
+    );
+    const link = screen.getByRole('link', { name: 'Overview' });
+    expect(link.tagName).toBe('A');
+    expect(link.getAttribute('data-active')).toBe('');
+  });
+
   it('renders SidebarGroupLabel as a custom element via render', () => {
     render(
       <SidebarProvider>
@@ -214,5 +263,61 @@ describe('Sidebar', () => {
     const width = Number.parseFloat(text.style.getPropertyValue('--skeleton-width'));
     expect(width).toBeGreaterThanOrEqual(50);
     expect(width).toBeLessThanOrEqual(90);
+  });
+});
+
+/*
+ * Two guards on the panel's horizontal geometry. Neither is observable
+ * through the DOM: jsdom applies no stylesheet, so the CSS text is the only
+ * place the answer exists — the same reason button.test.tsx reads its own
+ * module (see that file's note on the idiom).
+ */
+const cssDir = dirname(fileURLToPath(import.meta.url));
+const sidebarRules = extractRules(readFileSync(join(cssDir, 'sidebar.module.css'), 'utf8'));
+
+describe('sidebar.module.css horizontal geometry', () => {
+  /*
+   * Upstream's `w-full` means "including the padding" because Tailwind's
+   * preflight sets border-box globally; this kit ships no preflight, so the
+   * same pair of declarations silently renders 16px wider than the panel and
+   * puts a horizontal scrollbar inside it — which is exactly what
+   * SidebarGroup did until it was given the box-sizing below.
+   */
+  it('gives every full-width padded part a border-box, since the kit has no preflight', () => {
+    const offenders = sidebarRules
+      .map((rule) => ({ selector: rule.selector, decls: declarationMap(rule.body) }))
+      .filter(
+        ({ decls }) =>
+          decls.get('width') === '100%' &&
+          // A `padding: 0` (SidebarMenu's list reset) adds nothing to the
+          // box, so it is not a case border-box changes.
+          [...decls].some(([prop, value]) => prop.startsWith('padding') && value !== '0') &&
+          decls.get('box-sizing') !== 'border-box',
+      )
+      .map(({ selector }) => selector);
+    expect(offenders).toEqual([]);
+  });
+
+  /*
+   * SidebarSeparator's 8px inset (upstream's `mx-2 w-auto`) only survives the
+   * cascade if it is stated on the same orientation-qualified selector
+   * separator.module.css uses for its own `width` — an attribute selector
+   * outranks a bare class, so a plain `.separator { width: auto }` loses and
+   * the divider overhangs the panel's border into SidebarInset. Read from
+   * both files so a change to either side of that coupling fails here rather
+   * than in a screenshot.
+   */
+  it('states the separator inset on the same selector separator.module.css sizes it with', () => {
+    const separatorRules = extractRules(
+      readFileSync(join(cssDir, '..', 'separator', 'separator.module.css'), 'utf8'),
+    );
+    const qualifier = separatorRules.find((rule) => declarationMap(rule.body).has('width'))?.selector;
+    expect(qualifier).toBe(".separator[data-orientation='horizontal']");
+
+    const insetRule = sidebarRules.find(
+      (rule) => rule.selector.startsWith('.separator') && declarationMap(rule.body).has('margin-inline'),
+    );
+    expect(insetRule?.selector).toBe(qualifier);
+    expect(declarationMap(insetRule?.body ?? '').get('width')).toBe('auto');
   });
 });

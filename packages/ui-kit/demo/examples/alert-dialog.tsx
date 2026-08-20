@@ -14,6 +14,13 @@ import {
 
 import { DemoIcon, Section } from '../shared';
 
+const longParagraphs = Array.from({ length: 12 }, (_, index) => (
+  <p key={index}>
+    Paragraph {index + 1}. This action cannot be undone. This will permanently delete your account
+    and remove its data from our servers.
+  </p>
+));
+
 export default function AlertDialogExample() {
   return (
     <>
@@ -45,6 +52,24 @@ export default function AlertDialogExample() {
                 This action cannot be undone. This will permanently delete your account.
               </AlertDialogDescription>
             </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction variant="destructive">Continue</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </Section>
+
+      <Section title="Scrollable content">
+        <AlertDialog>
+          <AlertDialogTrigger render={<Button variant="destructive">Delete account</Button>} />
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>Scroll to read the full consequences.</AlertDialogDescription>
+            </AlertDialogHeader>
+            {longParagraphs}
+            {/* Sticky + opaque by default now - no inline workaround needed. */}
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction variant="destructive">Continue</AlertDialogAction>

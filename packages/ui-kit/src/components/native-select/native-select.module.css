@@ -12,7 +12,28 @@
 .wrapper {
   position: relative;
   display: inline-flex;
-  width: fit-content;
+  /* No explicit width — an inline-flex element with width:auto is
+   * shrink-to-fit (the same layout algorithm as inline-block), so
+   * standalone this already reads as fit-content with no declaration
+   * needed. Leaving it unset is also what lets a vertical Field stretch it:
+   * a flex item's cross-axis `align-items: stretch` (the flex-container
+   * default field.module.css's `.orientationVertical` never overrides)
+   * only takes effect when the item's own `width` computes to `auto`. An
+   * explicit `width: fit-content` here previously blocked that stretch, so
+   * this wrapper had to out-cascade `.orientationVertical > *`'s
+   * `width: 100%` at the same (0-1-0) specificity — a collision resolved
+   * by CSS source order (i.e. bundler luck), not by design. Not setting a
+   * competing width at all removes the collision instead of winning it,
+   * without field.module.css needing to know NativeSelect exists.
+   *
+   * Matches upstream's own contract: shadcn's SelectTrigger ships its own
+   * `w-fit` (github.com/shadcn-ui/ui select.tsx) while Field's vertical
+   * orientation applies `[&>*]:w-full` to its children — the same two
+   * rules on the same node, resolved deterministically only because
+   * Tailwind's utility layer has a fixed generation order to fall back on.
+   * This kit's CSS Modules have no equivalent guarantee (see
+   * native-select.md), so the honest port removes the rule that would
+   * fight rather than relies on winning a fight upstream never has to. */
   align-items: center;
 }
 
@@ -31,7 +52,11 @@
   display: flex;
   width: 100%;
   align-items: center;
-  height: var(--control-height-md);
+  /* Fields sit one step up from the md button (see input.module.css) — a
+   * NativeSelect is a field, not a button, so it uses --control-height-lg
+   * (40px) like every sibling field control, not the md height a button
+   * would use. */
+  height: var(--control-height-lg);
   padding: 0 var(--space-8) 0 var(--space-3);
   border: var(--border-width) solid var(--input);
   border-radius: var(--radius-md);

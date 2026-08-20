@@ -36,7 +36,15 @@
    * below instead of overflowing inside it. */
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
-  padding: var(--space-6);
+  /*
+   * Deliberately unpadded, same as dialog.module.css's `.popup`. See there
+   * for the measurement. A scroll container's padding does not clip its
+   * content (overflow clips at the padding box) and sticky offsets resolve
+   * against the scrollport already inset by it, so padding here leaves
+   * strips no sticky region can cover and scrolled text bleeds through
+   * them. The inset lives on the flow regions below instead.
+   */
+  padding: 0;
   border: 0 solid var(--popover-border);
   background-color: var(--popover);
   color: var(--popover-foreground);
@@ -141,16 +149,58 @@
   transform: translateX(2.5rem);
 }
 
+/*
+ * The panel's inset, re-expressed on the regions that scroll inside it:
+ * same structure and reasoning as dialog.module.css's `.popup > *` rules.
+ */
+.popup > :where(*:not(.closeButton)) {
+  /* Same missing-preflight guard as `.popup` itself. See
+   * dialog.module.css for why the inset needs border-box here. */
+  box-sizing: border-box;
+  padding-inline: var(--space-6);
+}
+
+.popup > :where(*:not(.closeButton):first-child) {
+  padding-block-start: var(--space-6);
+}
+
+.popup > :where(*:not(.closeButton):last-child) {
+  padding-block-end: var(--space-6);
+}
+
+/* `showCloseButton` renders the X last, which shifts the last flow region
+ * to the one right before it. See dialog.module.css for the full note. */
+.popup > :where(*:has(+ .closeButton)) {
+  padding-block-end: var(--space-6);
+}
+
 .closeButton {
   position: absolute;
   top: var(--space-4);
   right: var(--space-4);
+  /* Above `.header`'s stacking level, which now starts at the panel's top
+   * edge and would otherwise cover this button. See dialog.module.css. */
+  z-index: 2;
 }
 
+/*
+ * Sticky + opaque + full-bleed, not just flow siblings: .popup is itself the
+ * scroll container (see its own comment above) - same footgun as
+ * dialog.module.css's header/footer, see there for the full reasoning.
+ * Without position and an explicit background, a merely-sticky header/footer
+ * still wins hit-testing (elementFromPoint reports it) but scrolled content
+ * paints straight through it; and without the region spanning the panel's
+ * full width and edges, the strips around its box keep bleeding. Opaque
+ * var(--popover) matches .popup's own background exactly.
+ */
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  background-color: var(--popover);
 }
 
 /*
@@ -158,13 +208,22 @@
  * sm:flex-row swap) and is pinned to the panel's bottom edge via
  * margin-top: auto — mirrors the fetched upstream's actual footer classes
  * (`mt-auto flex-col`, no responsive row swap), a genuine divergence from
- * Dialog's centered-modal footer.
+ * Dialog's centered-modal footer. `position: sticky` + `margin-top: auto`
+ * coexist without conflict: the margin trick pins the footer to the bottom
+ * of the flow when content is short (no scrolling needed), while sticky
+ * keeps it pinned to the scrollport's bottom edge once content overflows —
+ * same header/footer-bleed fix as dialog.module.css, see there for the
+ * full reasoning.
  */
 .footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   margin-top: auto;
+  background-color: var(--popover);
 }
 
 /* Studio/Heading 2 — the sheet's one heading-role text, same as Dialog's title. */

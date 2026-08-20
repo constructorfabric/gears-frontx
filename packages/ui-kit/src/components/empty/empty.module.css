@@ -12,7 +12,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-4);
+  gap: var(--space-6); /* upstream gap-6 (24px) - exact scale step, unlike padding below */
   border-radius: var(--radius-lg);
   border: var(--border-width) dashed var(--border);
   /* Upstream p-12 (48px) has no single scale step; expressed as a sum so
@@ -58,8 +58,11 @@
 }
 
 .variantIcon svg {
-  width: var(--icon-size-md);
-  height: var(--icon-size-md);
+  /* upstream size-6 (24px) inside the size-10 box; same size-10/size-6 pairing
+     item.module.css's leading icon already uses - icon-size-md (20px) was
+     the wrong role here. */
+  width: var(--icon-size-lg);
+  height: var(--icon-size-lg);
 }
 
 .emptyTitle {
@@ -105,6 +108,10 @@
   max-width: 24rem; /* matches .emptyHeader's max-w-sm */
   min-width: 0;
   flex-direction: column;
+  /* Upstream items-center; without it a flex column's default cross-axis
+     stretch pulls a lone button to the full 24rem width and left-anchors a
+     narrower InputGroup instead of centering it under the title. */
+  align-items: center;
   gap: var(--space-4);
   text-wrap: balance;
   font-size: var(--text-body-size);

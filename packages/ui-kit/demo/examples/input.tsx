@@ -67,17 +67,54 @@ export default function InputExample() {
       </Section>
 
       <Section title="Inline">
+        {/*
+         * Upstream's own inline demo is a horizontal Field holding just
+         * Input + Button as siblings, no wrapper: Input's `width: 100%`
+         * makes its flex-basis the whole row, so it overflows and shrinks
+         * back to exactly the space Button leaves. That mechanism is
+         * already in input.module.css (`width: 100%` + `min-width: 0`) and
+         * needs nothing here — but it only works if nothing else in the
+         * row claims the free space, which is why the two overrides below
+         * exist and the previous wrapper Row does not.
+         */}
         <Field orientation="horizontal">
-          <FieldLabel htmlFor="in-search">Search</FieldLabel>
-          <Row>
-            <Input id="in-search" placeholder="Search projects…" />
-            <Button>Search</Button>
-          </Row>
+          {/*
+           * `.orientationHorizontal > .fieldLabel` (field.module.css) is
+           * `flex: 1 1 auto`, written for a label beside a FIXED-width
+           * control (Switch, Checkbox) that it should push to the far
+           * edge. Input wants that space itself, so label and control end
+           * up splitting the row's slack in half: at 480px the label grew
+           * to 256px and the field was left with 114px. `flex: none` puts
+           * the label back at its natural width so the whole remainder
+           * goes to the input.
+           */}
+          <FieldLabel htmlFor="in-search" style={{ flex: 'none' }}>
+            Search
+          </FieldLabel>
+          <Input id="in-search" placeholder="Search projects…" />
+          {/*
+           * Upstream's Button carries `shrink-0`; the kit's does not (see
+           * button.module.css), so it would otherwise absorb part of the
+           * overflow instead of leaving it all to the input — it survives
+           * today only because `white-space: nowrap` floors it at
+           * min-content. Stated rather than relied upon. `size="lg"` is
+           * the field-height step (40px), matching Input.
+           */}
+          <Button size="lg" style={{ flexShrink: 0 }}>
+            Search
+          </Button>
         </Field>
       </Section>
 
       <Section title="Grid">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+        {/*
+         * --space-4, not --space-3: at --space-3 the gutter BETWEEN two
+         * fields measured the same 12px as the gap WITHIN one (label to
+         * input), so proximity read the four boxes as one block instead of
+         * two fields. One step up separates the two relationships while
+         * staying under FieldGroup's own --space-6 row rhythm.
+         */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
           <Field>
             <FieldLabel htmlFor="in-city">City</FieldLabel>
             <Input id="in-city" placeholder="Cupertino" />
@@ -99,7 +136,16 @@ export default function InputExample() {
 
       <Section title="Badge">
         <Field>
-          <Row>
+          {/*
+           * --space-2 is the gap upstream's own FieldLabel carries for a
+           * badge sitting next to the label text; Row's default --space-3
+           * detached the two. The row stays taller than the label (the
+           * badge is 26px against 16px of text), so the label text sits
+           * 17px above the input where every other section reads 12 —
+           * that is the badge's own box, not a rhythm error, and matches
+           * how upstream stacks the same pair.
+           */}
+          <Row style={{ gap: 'var(--space-2)' }}>
             <FieldLabel htmlFor="in-nickname">Nickname</FieldLabel>
             <Badge variant="secondary">Recommended</Badge>
           </Row>
@@ -122,9 +168,23 @@ export default function InputExample() {
       </Section>
 
       <Section title="Button group">
+        {/*
+         * Input defaults to control-height-lg (40px); Button's own default
+         * is one step down at control-height-md (36px) — see
+         * button-group.md "Sizing". ButtonGroup doesn't normalize child
+         * height itself, so an unset Button joins 4px short of Input's
+         * height, its border misaligned top and bottom. `size="lg"` matches
+         * the two so the strip's outer border reads as one continuous edge.
+         */}
         <ButtonGroup>
           <Input placeholder="you@company.com" icon={<DemoIcon />} />
-          <Button variant="outline" icon={<CloseIcon />} aria-label="Clear" onClick={() => setQuery('')} />
+          <Button
+            variant="outline"
+            size="lg"
+            icon={<CloseIcon />}
+            aria-label="Clear"
+            onClick={() => setQuery('')}
+          />
         </ButtonGroup>
       </Section>
 
@@ -145,7 +205,19 @@ export default function InputExample() {
               <NativeSelectOption value="ca">Canada</NativeSelectOption>
             </NativeSelect>
           </Field>
-          <Button type="submit">Create account</Button>
+          {/*
+           * A full-width submit stacked directly under the fields shares
+           * their left and right edges, so it also has to share their
+           * height — Button's default md step is 36px against the fields'
+           * 40px and read as a short box. `size="lg"` is the same
+           * field-height step Input uses. (The Field-group section's
+           * Reset/Submit pair is left at the default: it is a separate
+           * action row aligned to nothing but its own left edge, which is
+           * the pairing button-group.md documents.)
+           */}
+          <Button type="submit" size="lg">
+            Create account
+          </Button>
         </FieldGroup>
       </Section>
     </div>

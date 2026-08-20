@@ -4,7 +4,7 @@ import {
   Questionnaire,
   QuestionnaireActions,
   QuestionnaireChoice,
-  QuestionnaireChoiceShortcut,
+  QuestionnaireChoiceDescription,
   QuestionnaireChoices,
   QuestionnaireDescription,
   QuestionnaireError,
@@ -20,89 +20,125 @@ import {
 
 import { Section } from '../shared';
 
+/*
+ * One array drives both the engine's `items` definitions and the rendered
+ * tree, so the two can't drift — the engine warns in development when a
+ * definition has no matching rendered part, or when `required`/`disabled`/
+ * choice order disagree between them.
+ */
 const ITEMS = [
   {
-    name: 'role',
-    choices: [{ value: 'engineer' }, { value: 'designer' }, { value: 'pm' }],
+    name: 'direction',
+    title: 'What should the agent build next?',
+    description: 'Choose a direction or describe another task.',
     required: true,
+    choices: [
+      {
+        value: 'tool-calls',
+        label: 'Tool call timeline',
+        description: 'Show what the agent ran and what came back.',
+      },
+      {
+        value: 'approvals',
+        label: 'Approval checkpoints',
+        description: 'Ask before sensitive or destructive actions.',
+      },
+      {
+        value: 'handoffs',
+        label: 'Sub-agent handoffs',
+        description: 'Make delegated work and results easier to follow.',
+      },
+    ],
+    input: { label: 'Another agent feature', placeholder: 'Describe another feature…' },
   },
   {
-    name: 'interests',
+    name: 'signals',
+    title: 'What should every progress update include?',
+    description: 'Select all that apply, or skip this question.',
+    required: false,
+    multiple: true,
     choices: [
-      { value: 'frontend' },
-      { value: 'backend' },
-      { value: 'design-systems' },
-      { value: 'devops' },
+      { value: 'progress', label: 'Progress' },
+      { value: 'decisions', label: 'Decisions' },
+      { value: 'risks', label: 'Risks' },
+      { value: 'next-step', label: 'Next step' },
     ],
   },
-  { name: 'team-size', choices: [{ value: 'solo' }, { value: 'small' }, { value: 'large' }] },
-  { name: 'feedback' },
-];
-
-const SHORTCUT_ITEMS = [
   {
-    name: 'plan',
-    choices: [{ value: 'free' }, { value: 'pro' }, { value: 'enterprise', disabled: true }],
+    name: 'timing',
+    title: 'When should work begin?',
+    description: 'Choose when the agent should begin the work.',
     required: true,
+    choices: [
+      { value: 'now', label: 'Start now' },
+      { value: 'next-cycle', label: 'Next development cycle' },
+      { value: 'backlog', label: 'Add it to the backlog' },
+    ],
   },
-];
+] as const;
 
 function DefaultDemo() {
   const [result, setResult] = useState<string | null>(null);
+
   return (
     <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
       <Questionnaire
         items={ITEMS}
-        defaultItem="role"
+        defaultItem="direction"
+        shortcuts="letters"
         style={{ maxWidth: '28rem' }}
         onSubmit={(event) => {
           event.preventDefault();
-          setResult(JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))));
+          const data = new FormData(event.currentTarget);
+          setResult(
+            JSON.stringify({
+              direction: data.get('direction'),
+              // A `multiple` item submits one entry per checked choice, so it
+              // is read with getAll — a skipped item yields an empty list.
+              signals: data.getAll('signals'),
+              timing: data.get('timing'),
+            }),
+          );
         }}
       >
         <QuestionnaireProgress />
 
-        <QuestionnaireItem name="role" required>
-          <QuestionnaireTitle>What's your primary role?</QuestionnaireTitle>
-          <QuestionnaireChoices>
-            <QuestionnaireChoice value="engineer">Engineer</QuestionnaireChoice>
-            <QuestionnaireChoice value="designer">Designer</QuestionnaireChoice>
-            <QuestionnaireChoice value="pm">Product manager</QuestionnaireChoice>
-          </QuestionnaireChoices>
-          <QuestionnaireError />
-        </QuestionnaireItem>
-
-        <QuestionnaireItem name="interests" multiple>
-          <QuestionnaireTitle>What are you interested in?</QuestionnaireTitle>
-          <QuestionnaireDescription>Pick as many as apply.</QuestionnaireDescription>
-          <QuestionnaireChoices>
-            <QuestionnaireChoice value="frontend">Frontend</QuestionnaireChoice>
-            <QuestionnaireChoice value="backend">Backend</QuestionnaireChoice>
-            <QuestionnaireChoice value="design-systems">Design systems</QuestionnaireChoice>
-            <QuestionnaireChoice value="devops">DevOps</QuestionnaireChoice>
-          </QuestionnaireChoices>
-        </QuestionnaireItem>
-
-        <QuestionnaireItem name="team-size">
-          <QuestionnaireTitle>How big is your team?</QuestionnaireTitle>
-          <QuestionnaireChoices>
-            <QuestionnaireChoice value="solo">Just me</QuestionnaireChoice>
-            <QuestionnaireChoice value="small">2-10 people</QuestionnaireChoice>
-            <QuestionnaireChoice value="large">10+ people</QuestionnaireChoice>
-          </QuestionnaireChoices>
-        </QuestionnaireItem>
-
-        <QuestionnaireItem name="feedback">
-          <QuestionnaireTitle>Anything you'd like us to know?</QuestionnaireTitle>
-          <QuestionnaireDescription>Optional — skip if nothing comes to mind.</QuestionnaireDescription>
-          <QuestionnaireInput placeholder="Type your answer" />
-        </QuestionnaireItem>
+        {ITEMS.map((question) => (
+          <QuestionnaireItem
+            key={question.name}
+            name={question.name}
+            required={question.required}
+            multiple={'multiple' in question && question.multiple}
+          >
+            <QuestionnaireTitle>{question.title}</QuestionnaireTitle>
+            <QuestionnaireDescription>{question.description}</QuestionnaireDescription>
+            <QuestionnaireChoices>
+              {question.choices.map((choice) => (
+                <QuestionnaireChoice key={choice.value} value={choice.value}>
+                  <span style={{ fontWeight: 'var(--text-label-weight)' }}>{choice.label}</span>
+                  {'description' in choice ? (
+                    <QuestionnaireChoiceDescription>
+                      {choice.description}
+                    </QuestionnaireChoiceDescription>
+                  ) : null}
+                </QuestionnaireChoice>
+              ))}
+              {'input' in question ? (
+                <QuestionnaireInput
+                  aria-label={question.input.label}
+                  placeholder={question.input.placeholder}
+                />
+              ) : null}
+            </QuestionnaireChoices>
+            <QuestionnaireError />
+          </QuestionnaireItem>
+        ))}
 
         <QuestionnaireActions>
           <QuestionnairePrevious />
           <QuestionnaireSkip />
           <QuestionnaireNext />
-          <QuestionnaireSubmit />
+          <QuestionnaireSubmit>Save plan</QuestionnaireSubmit>
         </QuestionnaireActions>
       </Questionnaire>
 
@@ -127,28 +163,77 @@ function DefaultDemo() {
   );
 }
 
-function ShortcutsDemo() {
+const CHECKPOINT_ITEMS = [
+  {
+    name: 'environment',
+    choices: [{ value: 'staging' }, { value: 'production' }],
+    required: true,
+  },
+  {
+    name: 'rollback',
+    choices: [{ value: 'automatic' }, { value: 'manual' }, { value: 'none', disabled: true }],
+    required: true,
+  },
+];
+
+/** Replaces Progress's default "Question X of Y" text with a segmented bar
+ * built from its render state, without giving up the progressbar role or
+ * its announced value. */
+function SegmentedProgressDemo() {
   return (
-    <Questionnaire items={SHORTCUT_ITEMS} defaultItem="plan" shortcuts="letters" style={{ maxWidth: '28rem' }}>
-      <QuestionnaireItem name="plan" required>
-        <QuestionnaireTitle>Pick a plan</QuestionnaireTitle>
+    <Questionnaire items={CHECKPOINT_ITEMS} defaultItem="environment" style={{ maxWidth: '28rem' }}>
+      <QuestionnaireProgress
+        render={(props, state) => (
+          <div {...props}>
+            <div
+              aria-hidden="true"
+              style={{ display: 'flex', gap: 'var(--space-1)', marginBottom: 'var(--space-2)' }}
+            >
+              {Array.from({ length: state.total }, (_, index) => (
+                <span
+                  key={index}
+                  style={{
+                    height: '0.375rem',
+                    flex: 1,
+                    borderRadius: '9999px',
+                    backgroundColor: index < state.current ? 'var(--primary)' : 'var(--muted)',
+                  }}
+                />
+              ))}
+            </div>
+            <span>
+              Checkpoint {state.current} of {state.total}
+            </span>
+          </div>
+        )}
+        style={{ width: '100%' }}
+      />
+
+      <QuestionnaireItem name="environment" required>
+        <QuestionnaireTitle>Where should this deploy?</QuestionnaireTitle>
         <QuestionnaireChoices>
-          <QuestionnaireChoice value="free">
-            Free
-            <QuestionnaireChoiceShortcut />
-          </QuestionnaireChoice>
-          <QuestionnaireChoice value="pro">
-            Pro
-            <QuestionnaireChoiceShortcut />
-          </QuestionnaireChoice>
-          <QuestionnaireChoice value="enterprise" disabled>
-            Enterprise (contact us)
-            <QuestionnaireChoiceShortcut />
+          <QuestionnaireChoice value="staging">Staging</QuestionnaireChoice>
+          <QuestionnaireChoice value="production">Production</QuestionnaireChoice>
+        </QuestionnaireChoices>
+        <QuestionnaireError />
+      </QuestionnaireItem>
+
+      <QuestionnaireItem name="rollback" required>
+        <QuestionnaireTitle>How should a failed deploy roll back?</QuestionnaireTitle>
+        <QuestionnaireChoices>
+          <QuestionnaireChoice value="automatic">Automatically</QuestionnaireChoice>
+          <QuestionnaireChoice value="manual">On my command</QuestionnaireChoice>
+          <QuestionnaireChoice value="none" disabled>
+            Don't roll back (unavailable on this plan)
           </QuestionnaireChoice>
         </QuestionnaireChoices>
         <QuestionnaireError />
       </QuestionnaireItem>
+
       <QuestionnaireActions>
+        <QuestionnairePrevious />
+        <QuestionnaireSkip />
+        <QuestionnaireNext />
         <QuestionnaireSubmit />
       </QuestionnaireActions>
     </Questionnaire>
@@ -162,8 +247,8 @@ export default function QuestionnaireExample() {
         <DefaultDemo />
       </Section>
 
-      <Section title="Shortcuts & disabled">
-        <ShortcutsDemo />
+      <Section title="Segmented progress & disabled choice">
+        <SegmentedProgressDemo />
       </Section>
     </>
   );

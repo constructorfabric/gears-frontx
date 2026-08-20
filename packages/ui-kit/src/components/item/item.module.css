@@ -13,7 +13,15 @@
  * numbers per size (see theme.css's "tokens win" ruling).
  */
 
+/* Local `box-sizing: border-box` - same per-module fix as tabs.module.css/
+ * carousel.module.css/calendar.module.css (the reset the kit lacks; see
+ * tabs.module.css's comment for the full rationale). Without it, `padding`
+ * and `border` below add on top of `width: 100%` under content-box instead
+ * of being absorbed within it, so every Item overshoots its container by
+ * exactly `2 * padding + 2 * border-width` (measured: 34px at the default
+ * size, 26px at sm, 18px at xs) regardless of variant or section. */
 .item {
+  box-sizing: border-box;
   display: flex;
   width: 100%;
   flex-wrap: wrap;
@@ -147,9 +155,17 @@
   height: 1.5rem;
 }
 
+/* `min-width: 0` matches upstream's `flex-1 min-w-0` (registry/bases/base/
+ * ui/item.tsx's ItemContent): a flex item's automatic min-width otherwise
+ * floors it at its content's min-content size, which for a nowrap
+ * ItemTitle is the full unwrapped text width - that stops ItemContent (and
+ * the row it sits in) from ever shrinking below a long title/description,
+ * overriding the ellipsis/line-clamp truncation set on ItemTitle/
+ * ItemDescription below instead of letting it take effect. */
 .itemContent {
   display: flex;
   flex: 1 1 0%;
+  min-width: 0;
   flex-direction: column;
   gap: var(--space-1);
 }

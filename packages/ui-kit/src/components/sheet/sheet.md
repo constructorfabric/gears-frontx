@@ -127,6 +127,33 @@ side's width. Same contract as `Dialog`'s: a wide child (a `Table`, a
 horizontal scroll container or should wrap; see `dialog.md`'s "Wide
 content" for the full reasoning.
 
+## Scrolling content
+
+`SheetHeader` and `SheetFooter` are `position: sticky` (top / bottom) with
+an opaque background matching the panel, by default. That covers two
+shapes:
+
+- A consumer-wrapped middle region (`overflow-y: auto` on a child div
+  between header and footer) - the panel itself never needs to scroll, so
+  the sticky positioning is inert and simply does nothing.
+- Long content dropped in unwrapped (as in the "Scrollable content"
+  example) - `SheetContent`'s own `overflow-y: auto` becomes the scroll
+  container (see "Wide content" above for the matching horizontal case),
+  and header/footer stay pinned at the top/bottom of it, masking whatever
+  scrolls underneath. No inline `background` or `position` prop needed on
+  `SheetFooter` for this - it is the built-in behavior, same contract as
+  `Dialog`'s (see `dialog.md`'s "Scrolling content").
+
+For the mask to be complete, `SheetContent` itself carries no padding: the
+inset lives on its direct children instead (side inset on every child, top
+inset on the first, bottom inset on the last), so header and footer span
+the panel's full width and reach its top and bottom edges. Padding on the
+scroll container would have left strips that no sticky region can cover -
+see `dialog.md`'s "Scrolling content" for the mechanism. Consequence when
+styling children: a `className` that sets `padding` on a region overrides
+the inset (same single-class weight) rather than adding to it, and a
+full-width child reaches the panel edges by zeroing its `padding-inline`.
+
 ## Anti-patterns
 
 - Do not nest interactive page content's focus expectations across the

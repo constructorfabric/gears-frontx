@@ -77,9 +77,38 @@ function AppShell() {
 
 `SidebarMenuButton`/`SidebarMenuSubButton` expect children shaped as
 `<Icon /><span>Label</span>` — the trailing `<span>` is what truncates
-with an ellipsis and what disappears when the sidebar collapses to its
-icon rail. An icon-only button (no label span) works too; a bare text
-node does not truncate.
+with an ellipsis. An icon-only button (no label span) works too; a bare
+text node does not truncate.
+
+Collapsed to the icon rail the row becomes a 32px square with room for
+exactly one 16px icon, so **every child after the first is hidden**. That
+covers the richer shape upstream uses for header/footer rows — leading
+mark, a text block, a trailing chevron — not just `<Icon /><span>`. Two
+consequences worth knowing:
+
+- Put the icon **first**. A row whose first child is the label keeps the
+  label in the rail and drops the icon.
+- Do not set `display` in an **inline style** on a direct child of
+  `SidebarMenuButton`. Inline styles outrank the rule that hides it, so
+  the child stays in the 32px square and pushes the icon out of the box.
+  Style a nested wrapper instead, or use a class.
+
+### Layout: the panel is `position: fixed`
+
+The desktop panel is fixed (upstream's own choice) so it stays pinned
+while `SidebarInset` scrolls the page. That resolves against the
+**viewport**, so a Sidebar placed inside a bounded box — a preview frame,
+a split pane, a dashboard card — escapes that box unless an ancestor
+establishes a containing block for fixed descendants:
+
+```tsx
+<div style={{ contain: 'layout paint', height: '30rem' }}>
+  <SidebarProvider style={{ minHeight: '100%' }}>…</SidebarProvider>
+</div>
+```
+
+`transform` or `filter` on the ancestor work equally well. Nothing is
+needed for the normal case, where the shell IS the page.
 
 ## Props
 
@@ -87,9 +116,22 @@ node does not truncate.
 
 | Prop | Type | Default |
 |------|------|---------|
-| `defaultOpen` | `boolean` | `true` |
+| `defaultOpen` | `boolean` — starting state AND an opt-out of the cookie | persisted cookie, else `true` |
 | `open` | `boolean` — controlled desktop open state | — |
 | `onOpenChange` | `(open: boolean) => void` | — |
+
+Omit `defaultOpen` and the provider restores whatever was last persisted
+(`sidebar_state`, 7 days). Pass it and it wins outright, cookie ignored.
+That opt-out matters because the cookie is a single key for the whole
+document: two providers on one page would otherwise read the same key and
+move together, and `defaultOpen={false}` would silently do nothing as soon
+as anything had ever been toggled.
+
+`SidebarProvider` also wraps its subtree in a `TooltipProvider` with
+`delay={0}` (upstream does the same). Collapsed to the icon rail the
+tooltip IS the row's only label, so a hover delay would leave the nav
+unreadable for its duration. Nesting inside your own `TooltipProvider` is
+fine — Base UI scopes them.
 
 ### Sidebar
 
@@ -180,6 +222,15 @@ inherited down to `Sidebar`/`SidebarInset` the same way `Card` shares
 
 ## Not reproduced from upstream
 
+Row geometry is upstream's, not invented: the metrics come from
+`apps/v4/registry/new-york-v4/ui/sidebar.tsx`, which carries the real
+Tailwind utility strings, re-expressed on the kit's token scales
+(`p-2` → `--space-2`, `h-8` → `--control-height-sm`, `w-5` → `--space-5`,
+`size-4` → `--icon-size-sm`). Rows are 28/32/48px for `sm`/`default`/`lg`,
+sub-rows 28px at both sizes, badges and actions 20px squares centred on
+their row. The type ramp is the kit's, so body text is 15px where
+upstream's `text-sm` is 14px.
+
 - **Cookie read happens client-side, not via SSR.** Upstream's own model
   reads the `sidebar_state` cookie in a Next.js Server Component and hands
   the result down as `defaultOpen`, so the very first HTML byte already
@@ -198,27 +249,23 @@ inherited down to `Sidebar`/`SidebarInset` the same way `Card` shares
   This port instead only renders the `<Tooltip>` wrapper at all when the
   sidebar is desktop-collapsed — same visible result, no reliance on a
   rule that doesn't exist.
-- **`SidebarMenuButton`/`SidebarMenuSubButton`'s variant/size visuals are
-  this port's own design.** In the fetched upstream file
-  (`apps/v4/registry/bases/base/ui/sidebar.tsx`), both axes resolve to
-  bare marker classes (e.g. `"cn-sidebar-menu-button-size-sm"`) with no
-  Tailwind utility string attached — unlike every other part in the same
-  file, whose layout/spacing/color IS spelled out inline as real utility
-  classes translated 1:1 into this module's CSS. The actual paddings,
-  heights and colors for those two axes live in a shared stylesheet
-  outside that one file's path, which was not fetched. `sidebar.module.css`
-  designs them instead from each part's documented role, sized off the
-  kit's own `--control-height-*`/`--space-*` scale and painted with the
-  `--sidebar-accent`/`--sidebar-accent-foreground` pair `theme.css`
-  already reserves for this purpose.
-- **`SidebarInset`'s `variant="inset"` margin does not retract once the
-  sidebar collapses.** Upstream also removes the inset card's left margin
-  specifically while a desktop `variant="inset"` sidebar is collapsed (a
-  `peer-data-[state=collapsed]` pairing), so the card edge meets the
-  now-narrower icon rail flush. This port keeps the simpler, constant
-  margin/radius/shadow treatment at every state — a decorative refinement
-  judged not worth the extra `:has()` combinatorics for a purely cosmetic
-  gap.
+- **`SidebarInput` is hidden in the icon rail.** Upstream leaves it
+  alone, and its own dashboard blocks sidestep the result by hiding the
+  whole search group at the composition level — something a kit part
+  cannot ask of every consumer. There is nothing useful a text field can
+  do at 48px minus padding, so it goes when the labels go.
+- **Every child after the first is hidden in the icon rail**, and the row
+  centers what remains. Upstream sets no `justify-content` and relies on
+  `overflow: hidden` clipping whatever does not fit, which is correct only
+  when the leading child happens to fill the 32px square exactly — with a
+  16px icon its `size="lg"` rows sit visibly left of centre, and with
+  centring added the un-hidden siblings push the icon out of the box
+  entirely. See the shape note under **Setup**.
+- **The trailing 32px of a row with a badge or action is reserved.**
+  Upstream reserves it for an action only
+  (`group-has-data-[sidebar=menu-action]:pr-8`); a badge gets the same
+  footprint here, since a long label sliding under a count reads exactly
+  as badly as one sliding under a menu button.
 - **No RTL icon flip on `SidebarTrigger`.** Upstream mirrors its trigger
   icon horizontally under a dir="rtl" ancestor. This kit has no bundled
   RTL-detection utility that a self-contained Sidebar could depend on
@@ -242,7 +289,11 @@ inherited down to `Sidebar`/`SidebarInset` the same way `Card` shares
   observe or drive it; the cookie write is an implementation detail of
   `setOpen`, not a public contract.
 - Do not put a bare text node in `SidebarMenuButton` — wrap it in `<span>`
-  so it gets truncation and disappears correctly when the sidebar
-  collapses to its icon rail.
+  so it gets truncation.
+- Do not put the label before the icon, and do not set `display` inline on
+  a direct child — both break the icon rail (see **Setup**).
+- Do not place a Sidebar inside a bounded box without giving that box
+  `contain: layout paint` (or a `transform`) — the fixed panel will escape
+  it and pin itself to the viewport.
 - Do not call `useSidebar()` outside a `SidebarProvider` — it throws by
   design; there is no sensible default state.

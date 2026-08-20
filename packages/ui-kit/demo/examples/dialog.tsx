@@ -97,7 +97,8 @@ export default function DialogExample() {
               <DialogDescription>Scroll to read the full agreement.</DialogDescription>
             </DialogHeader>
             {longParagraphs}
-            <DialogFooter style={{ position: 'sticky', bottom: 0, background: 'var(--popover)' }}>
+            {/* Sticky + opaque by default now - no inline workaround needed. */}
+            <DialogFooter>
               <DialogClose render={<Button variant="outline">Decline</Button>} />
               <DialogClose render={<Button>Accept</Button>} />
             </DialogFooter>

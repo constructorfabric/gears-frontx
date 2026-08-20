@@ -46,6 +46,14 @@
   justify-content: center;
   gap: var(--space-2);
   white-space: nowrap;
+  /* Upstream ships `shrink-0`; this kit's default `flex: 0 1 auto` let a
+   * Button shrink below its intrinsic width in a tight flex row, surviving
+   * only via `white-space: nowrap`'s content floor (the label stops
+   * wrapping, but padding/icon slots could still be squeezed). A button is
+   * a fixed-size control, not flexible content — it should hold its own
+   * width like every other kit control does, not lean on a text-wrap side
+   * effect for it. */
+  flex-shrink: 0;
   border: var(--border-width) solid var(--button-border, transparent);
   border-radius: var(--radius-md);
   font-family: inherit;

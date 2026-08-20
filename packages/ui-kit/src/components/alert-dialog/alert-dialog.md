@@ -88,6 +88,34 @@ import {
 </AlertDialog>;
 ```
 
+## Scrolling content
+
+`AlertDialogHeader` and `AlertDialogFooter` are `position: sticky` (top /
+bottom) with an opaque background matching the popup, by default. That
+covers two shapes:
+
+- A consumer-wrapped middle region (`overflow-y: auto` on a child div
+  between header and footer) - the popup itself never needs to scroll, so
+  the sticky positioning is inert and simply does nothing.
+- Long content dropped in unwrapped (as in the "Scrollable content"
+  example) - `AlertDialogContent`'s own `max-height` + `overflow-y: auto`
+  becomes the scroll container, and header/footer stay pinned at the
+  top/bottom of it, masking whatever scrolls underneath. No inline
+  `background` or `position` prop needed on `AlertDialogFooter` for this -
+  it is the built-in behavior, same contract as `Dialog`'s (see
+  `dialog.md`'s "Scrolling content").
+
+For the mask to be complete, `AlertDialogContent` itself carries no
+padding: the inset lives on its direct children instead (side inset on
+every child, top inset on the first, bottom inset on the last), so header
+and footer span the popup's full width and reach its top and bottom edges.
+Padding on the scroll container would have left strips that no sticky
+region can cover - see `dialog.md`'s "Scrolling content" for the
+mechanism. Consequence when styling children: a `className` that sets
+`padding` on a region overrides the inset (same single-class weight)
+rather than adding to it, and a full-width child reaches the popup edges
+by zeroing its `padding-inline`.
+
 ## Anti-patterns
 
 - Do not rely on outside click or a backdrop click to close an alert

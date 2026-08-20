@@ -8,9 +8,8 @@ import styles from './field.module.css';
 /*
  * A faithful port of shadcn/ui's base Field
  * (registry/bases/base/ui/field.tsx): a primitive-free 10-part form-layout
- * system, NOT a wrapper over Base UI's Field primitive. Unlike
- * `FieldBackup` (field-backup.tsx, the kit's pre-port Field), nothing here
- * wires ids/htmlFor/aria-describedby/validation state automatically — a
+ * system, NOT a wrapper over Base UI's Field primitive. Nothing here wires
+ * ids/htmlFor/aria-describedby/validation state automatically — a
  * consumer connects `FieldLabel`'s `htmlFor` to the control's `id` and
  * `FieldDescription`/`FieldError`'s `id` to the control's
  * `aria-describedby` by hand, exactly like upstream's own examples do

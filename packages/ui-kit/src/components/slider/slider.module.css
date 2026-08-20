@@ -60,19 +60,20 @@
   background-color: var(--primary);
 }
 
-/* Transitions the value change (drag/keyboard/click), not the initial
- * mount — see slider.test.tsx's absence of a mount-time assertion for
- * this; a width-only crossfade, no transform/geometry beyond the size
- * itself, so left unguarded under prefers-reduced-motion like the kit's
- * other colour/box-shadow-only transitions. */
+/* No transition here, matching upstream: the range fill's width/height
+ * is written by Base UI's SliderIndicator on every pointermove during a
+ * drag, in the same frame it writes the thumb's translate. Animating
+ * that geometry (even a short width/height transition) makes the fill
+ * chase the already-moved thumb instead of tracking it 1:1, visibly
+ * lagging behind the drag. Keyboard/click steps are instantaneous value
+ * jumps too (Base UI has no built-in tween for them), so there is no
+ * "snap" this would smooth over — only lag it would introduce. */
 .control[data-orientation='horizontal'] .range {
   height: 100%;
-  transition: width 100ms ease;
 }
 
 .control[data-orientation='vertical'] .range {
   width: 100%;
-  transition: height 100ms ease;
 }
 
 .thumb {

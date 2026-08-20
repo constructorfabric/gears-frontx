@@ -38,10 +38,9 @@ describe('Textarea', () => {
   });
 
   it('composes inside a Field via manual id/htmlFor/aria-describedby wiring', () => {
-    // Unlike Input (still a Base UI primitive, still auto-wires inside
-    // FieldBackup), Textarea has no primitive to lean on and the
-    // canonical Field wires nothing automatically — every id below is set
-    // by hand, same as field.md's own examples.
+    // Unlike Input (still a Base UI primitive), Textarea has no primitive
+    // to lean on, and the canonical Field wires nothing automatically —
+    // every id below is set by hand, same as field.md's own examples.
     render(
       <Field>
         <FieldLabel htmlFor="notes">Notes</FieldLabel>

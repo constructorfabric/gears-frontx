@@ -27,7 +27,13 @@ import { Input, type InputProps } from '../input/input.js';
 import { Separator, type SeparatorProps } from '../separator/separator.js';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../sheet/sheet.js';
 import { Skeleton } from '../skeleton/skeleton.js';
-import { Tooltip, TooltipContent, TooltipTrigger, type TooltipContentProps } from '../tooltip/tooltip.js';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+  type TooltipContentProps,
+} from '../tooltip/tooltip.js';
 import { useIsMobile } from './use-mobile.js';
 import styles from './sidebar.module.css';
 
@@ -103,7 +109,18 @@ export function useSidebar(): SidebarContextValue {
 
 export interface SidebarProviderProps extends Omit<ComponentProps<'div'>, 'className'> {
   className?: string;
-  /** Initial expanded/collapsed state for an uncontrolled Sidebar. @default true */
+  /**
+   * Initial expanded/collapsed state for an uncontrolled Sidebar, and an
+   * opt-OUT of the persisted cookie: pass it and it wins outright; omit it
+   * and the last persisted state is restored instead (falling back to
+   * expanded on a first visit).
+   *
+   * The distinction matters because the cookie is one global key for the
+   * whole document. Without the opt-out, two Providers on one page — a
+   * gallery, a split view, a docs page with several examples — would each
+   * read the same key and move together, and `defaultOpen={false}` would
+   * silently do nothing as soon as anything had ever toggled anything.
+   */
   defaultOpen?: boolean;
   /** Controlled desktop open state — pass with `onOpenChange` to own it entirely. */
   open?: boolean;
@@ -118,7 +135,7 @@ export interface SidebarProviderProps extends Omit<ComponentProps<'div'>, 'class
 }
 
 export function SidebarProvider({
-  defaultOpen = true,
+  defaultOpen,
   open: openProp,
   onOpenChange,
   className,
@@ -130,11 +147,14 @@ export function SidebarProvider({
   const [openMobile, setOpenMobile] = useState(false);
 
   // Lazy initializer: reads the persisted cookie exactly once, at mount —
-  // matching upstream's own model, where a server component reads the
-  // cookie and hands the result down as `defaultOpen`. This kit owns no
-  // server-side rendering step of its own, so the read happens here
-  // instead, client-side, at the same "before first paint" moment.
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(() => readOpenCookie(defaultOpen));
+  // standing in for upstream's own model, where a server component reads
+  // the cookie and hands the result down as `defaultOpen`. This kit owns
+  // no server-side rendering step of its own, so the read happens here
+  // instead, client-side, at the same "before first paint" moment. An
+  // explicit `defaultOpen` skips the read entirely (see its own doc).
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(() =>
+    defaultOpen === undefined ? readOpenCookie(true) : defaultOpen,
+  );
   const open = openProp ?? uncontrolledOpen;
 
   const setOpen = useCallback<Dispatch<SetStateAction<boolean>>>(
@@ -177,19 +197,29 @@ export function SidebarProvider({
 
   return (
     <SidebarContext.Provider value={contextValue}>
-      <div
-        style={
-          {
-            '--sidebar-width': SIDEBAR_WIDTH,
-            '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
-            ...style,
-          } as CSSProperties
-        }
-        className={cx(styles.wrapper, className)}
-        {...props}
-      >
-        {children}
-      </div>
+      {/*
+       * delayDuration={0} (upstream's own value) is what makes the icon
+       * rail usable: collapsed to 48px the label IS the tooltip, so the
+       * default hover delay would leave a nav with no readable names for
+       * as long as it lasts. Nesting inside a consumer's own
+       * TooltipProvider is fine — Base UI's Provider is scoped, so this
+       * only retimes tooltips belonging to this sidebar.
+       */}
+      <TooltipProvider delay={0}>
+        <div
+          style={
+            {
+              '--sidebar-width': SIDEBAR_WIDTH,
+              '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
+              ...style,
+            } as CSSProperties
+          }
+          className={cx(styles.wrapper, className)}
+          {...props}
+        >
+          {children}
+        </div>
+      </TooltipProvider>
     </SidebarContext.Provider>
   );
 }

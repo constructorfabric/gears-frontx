@@ -14,15 +14,18 @@
  * variants below is a plain `.root[data-x='y'] .part` descendant selector
  * instead, scoped to the SAME root the group-data variant read from.
  *
- * A second thing upstream leaves to a shared, unfetched stylesheet: its
- * per-instance "cn-sidebar-*" marker classes carry no Tailwind utilities
- * of their own in the fetched registry source for several parts —
- * SidebarMenuButton's variant/size axes in particular resolve to bare
- * marker classes with no accompanying utility string at all. Where that
- * happens, this file designs the visual treatment itself from the part's
- * documented role and the kit's own token system, rather than guessing at
- * unavailable upstream values — see sidebar.md's "Not reproduced from
- * upstream" section for the specific list.
+ * Geometry source: apps/v4/registry/new-york-v4/ui/sidebar.tsx, which
+ * carries the real Tailwind utility strings. (The bases/base variant of
+ * the same registry file routes several parts through bare "cn-sidebar-*"
+ * marker classes with NO utilities attached — reading geometry off that
+ * file means inventing it, which is how this port previously ended up with
+ * 20px badges in 32px rows and 48px-wide buttons in a 48px icon rail.)
+ * Every metric below is upstream's own, re-expressed on the kit's token
+ * scales: p-2 -> --space-2, h-8 -> --control-height-sm, w-5 -> --space-5,
+ * size-4 -> --icon-size-sm, text-xs -> --text-meta-size. Upstream's
+ * half-step utilities (top-1.5 = 6px, top-3.5 = 14px) have no token of
+ * their own and are DERIVED here — a 20px box centered in a 32px row is
+ * `(row - box) / 2`, which lands on 6px exactly — rather than hardcoded.
  */
 
 /* ------------------------------------------------------------------ */
@@ -52,8 +55,19 @@
 /* Upstream's `has-data-[variant=inset]:bg-sidebar` — an inset-variant
    Sidebar leaves gaps around SidebarInset's floating card, so the wrapper
    itself needs the sidebar fill showing through instead of the page
-   background. */
-.wrapper:has([data-variant='inset']) {
+   background.
+   `:has(> ...)`, not the unrestricted `:has([data-variant='inset'])` this
+   port carried until now: unrestricted `:has()` matches ANY descendant,
+   not just THIS wrapper's own Sidebar, so once a page nests more than one
+   SidebarProvider — a docs/demo shell around per-component example frames,
+   each with its own Provider — every ancestor wrapper up the tree that
+   happens to contain an inset-variant Sidebar ANYWHERE below it (even
+   inside an unrelated sibling example three levels down) matched too,
+   painting the sidebar fill onto wrappers whose own Sidebar was never
+   inset. `> ` restricts the match to Sidebar's actual position: a direct
+   child of this same wrapper, exactly the relationship the comment above
+   already describes. */
+.wrapper:has(> [data-variant='inset']) {
   background-color: var(--sidebar);
 }
 
@@ -140,13 +154,27 @@
   width: var(--sidebar-width-icon);
 }
 
+/*
+ * `position: fixed` is upstream's own choice and the right one for a
+ * page-level app shell: the panel stays pinned while SidebarInset scrolls
+ * the document. Note what that means for a CONTAINED sidebar (a preview
+ * frame, a split view): `fixed` resolves against the viewport, not against
+ * SidebarProvider, so the panel escapes its box unless an ancestor
+ * establishes a containing block for fixed descendants (`contain: layout`,
+ * a `transform`, a `filter`). demo/examples/sidebar.tsx does exactly that
+ * — see the ShellFrame comment there.
+ *
+ * Height comes from `inset-block: 0` alone, NOT upstream's additional
+ * `h-svh`. Both resolve identically when the containing block IS the
+ * viewport (the app-shell case), but `inset-block` also adapts when it
+ * isn't, where a hardcoded 100svh would overflow the frame.
+ */
 .container {
   box-sizing: border-box;
   position: fixed;
   inset-block: 0;
   z-index: 10;
   display: none;
-  height: 100svh;
   transition:
     left 200ms linear,
     right 200ms linear,
@@ -307,22 +335,41 @@
   }
 }
 
+/* Transparent until hover — upstream's `hover:after:bg-sidebar-border`.
+   Painting it unconditionally (as this port previously did) puts a 2px
+   line immediately beside the container's own 1px border, reading as a
+   doubled, mis-weighted edge. */
 .rail::after {
   content: '';
   position: absolute;
   inset-block: 0;
   left: 50%;
   width: 2px;
-  transform: translateX(-50%);
+  background-color: transparent;
+  transition: background-color 200ms linear;
+}
+
+.rail:hover::after {
   background-color: var(--sidebar-border);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .rail::after {
+    transition: none;
+  }
+}
+
+/* translateX(-50%) straddles the panel edge (upstream's own
+   `-translate-x-1/2`), so the grab target covers 8px of panel and 8px of
+   page instead of sitting entirely outside the panel. */
 .root[data-side='left'] .rail {
   right: calc(var(--space-4) * -1);
+  transform: translateX(-50%);
 }
 
 .root[data-side='right'] .rail {
   left: calc(var(--space-4) * -1);
+  transform: translateX(50%);
   cursor: e-resize;
 }
 
@@ -334,8 +381,20 @@
   cursor: w-resize;
 }
 
+/* Offcanvas has no panel edge left to straddle, so the rail stops
+   straddling (upstream's `group-data-[collapsible=offcanvas]:translate-x-0`)
+   and its line moves to the far edge (`after:left-full`) — the whole strip
+   becomes the "pull the sidebar back out" affordance instead. */
+.root[data-collapsible='offcanvas'] .rail {
+  transform: none;
+}
+
 .root[data-collapsible='offcanvas'] .rail:hover {
   background-color: var(--sidebar);
+}
+
+.root[data-collapsible='offcanvas'] .rail::after {
+  left: 100%;
 }
 
 .root[data-side='left'][data-collapsible='offcanvas'] .rail {
@@ -363,19 +422,35 @@
    margin-left off on mobile and back on again once the sidebar collapses
    at desktop widths — a purely decorative refinement this port doesn't
    chase; see sidebar.md. The card treatment itself (margin/radius/shadow
-   once ANY inset-variant Sidebar is present) is kept, read off the
-   wrapper via :has() the same way `.wrapper:has([data-variant='inset'])`
-   reads it above, since SidebarInset is Sidebar's flex SIBLING, not its
-   descendant — group-data's own reach in the fetched source. */
-.wrapper:has([data-variant='inset']) .inset {
-  margin: var(--space-2);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--popover-shadow);
-}
-
+   once THIS wrapper's own Sidebar is inset-variant) is kept, but read off
+   the general sibling combinator (`~`), not `:has([data-variant='inset'])`
+   as this port carried until now.
+   SidebarInset IS Sidebar's flex sibling, never its descendant, so `~` is
+   the exact, native selector for "a later sibling of an inset-variant
+   Sidebar" and — critically — sibling combinators only ever match within
+   ONE shared parent. `:has([data-variant='inset'])` instead matched any
+   descendant at any depth: on a page nesting more than one
+   SidebarProvider (an app shell wrapping per-example demo frames, each
+   with its own Provider), an inset-variant Sidebar three levels down in
+   one unrelated frame made EVERY `.inset` under the outer wrapper —
+   including flat `variant="sidebar"` frames elsewhere on the same page —
+   grow this card's margin-top, which is exactly what desynced those
+   frames' content-header border from their own panel's flush divider by
+   that same 8px margin. `~` can't leak past its own parent the way
+   `:has()` leaked past its own subtree, because it isn't reading the
+   subtree at all — only Sidebar's own tag, in Sidebar's own flex row. */
 @media (min-width: 768px) {
-  .wrapper:has([data-variant='inset']) .inset {
+  [data-variant='inset'] ~ .inset {
+    margin: var(--space-2);
     margin-left: 0;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--popover-shadow);
+  }
+
+  /* Once the sidebar is gone the card would otherwise sit flush against
+     the left edge — upstream's `peer-data-[state=collapsed]:ml-2`. */
+  [data-variant='inset'][data-state='collapsed'] ~ .inset {
+    margin-left: var(--space-2);
   }
 }
 
@@ -388,7 +463,44 @@
   background-color: var(--surface-elevated);
 }
 
+/*
+ * Deviation from upstream, which leaves SidebarInput alone in the icon
+ * rail. There is nothing sensible for a text field to do at 48px minus
+ * padding — upstream's own blocks sidestep it by hiding the whole search
+ * group at the composition level, which a kit part cannot ask of every
+ * consumer. Hiding it here makes the part behave the same way the rest of
+ * the panel already does when the labels go.
+ */
+.root[data-collapsible='icon'] .input {
+  display: none;
+}
+
+/* The sidebar's own border token, not Separator's default --border: the
+   panel is a distinct surface and a --border-weight line reads as a seam
+   from the page, not from the panel (upstream's `bg-sidebar-border`). */
 .separator {
+  background-color: var(--sidebar-border);
+}
+
+/*
+ * The inset (upstream's `mx-2 w-auto`) has to be stated on the SAME
+ * `[data-orientation='horizontal']` selector separator.module.css uses for
+ * its own `width: 100%`, not on a bare `.separator`: an attribute selector
+ * outranks a plain class, so a bare `.separator { width: auto }` — what this
+ * port carried until now — lost the cascade outright and the divider stayed
+ * 100% wide with 8px margins on top, overhanging the panel's border-right by
+ * 8px into SidebarInset. That overhang is the "step" the top edge showed
+ * where the panel's divider met the content header's border. Upstream cannot
+ * hit this: its two rules are in one Tailwind sheet where `w-auto` also loses
+ * to the attribute variant, but its blocks never place a SidebarSeparator, so
+ * the combination is never rendered.
+ *
+ * Equal specificity leaves the tie to source order, and that order is
+ * guaranteed rather than incidental: sidebar.tsx imports separator.js, so
+ * ESM evaluates separator.module.css — and inserts its stylesheet — before
+ * this file's, in the source tree and in the built package alike.
+ */
+.separator[data-orientation='horizontal'] {
   width: auto;
   margin-inline: var(--space-2);
 }
@@ -422,7 +534,18 @@
 /* SidebarGroup                                                        */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Upstream is `relative flex w-full min-w-0 flex-col p-2`, where Tailwind's
+ * preflight makes `w-full` mean "256px INCLUDING the 8px padding". This kit
+ * ships no preflight (see input.module.css's identical note), so under the
+ * ambient content-box the same two declarations meant 256px PLUS 16px of
+ * padding — every group was 272px wide inside a 256px panel, which is what
+ * pushed the search field and the menu rows past the panel's border and put
+ * a horizontal scrollbar on `.content`. Border-box restores upstream's
+ * arithmetic; the width and padding themselves are unchanged.
+ */
 .group {
+  box-sizing: border-box;
   position: relative;
   display: flex;
   width: 100%;
@@ -437,9 +560,13 @@
   flex-shrink: 0;
   align-items: center;
   padding-inline: var(--space-2);
-  border-radius: var(--radius-sm);
-  color: var(--sidebar-foreground);
-  opacity: 0.7;
+  border-radius: var(--radius-md);
+  /* Upstream's `text-sidebar-foreground/70` — 70% of the foreground COLOR,
+     not `opacity` on the element. The distinction matters here because the
+     element's own opacity is what the icon-collapse rule below animates to
+     0; folding a permanent 0.7 into that same channel would make the
+     collapse fade start from a different value than it ends. */
+  color: color-mix(in oklab, var(--sidebar-foreground) 70%, transparent);
   font-size: var(--text-meta-size);
   line-height: var(--text-meta-line-height);
   font-weight: var(--text-label-weight);
@@ -449,32 +576,59 @@
     opacity 200ms linear;
 }
 
+.groupLabel > svg {
+  flex-shrink: 0;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .groupLabel {
     transition: none;
   }
 }
 
+/*
+ * A 20px square (upstream w-5) centered on the 32px group-label row, not a
+ * 32px square filling it: at 32px it overhung the label and collided with
+ * the first menu row below. The `top` is that centering, offset by the
+ * group's own padding — `--space-2 + (32 - 20) / 2` = 14px, which is
+ * exactly upstream's `top-3.5`.
+ */
 .groupAction {
+  box-sizing: border-box;
   position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
+  top: calc(var(--space-2) + (var(--control-height-sm) - var(--space-5)) / 2);
+  right: var(--space-3);
   display: flex;
   aspect-ratio: 1;
   align-items: center;
   justify-content: center;
-  width: var(--control-height-sm);
+  width: var(--space-5);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+  padding: 0;
   background: none;
   color: var(--sidebar-foreground);
+  cursor: pointer;
   outline: none;
   transition: transform 150ms ease;
+}
+
+.groupAction > svg {
+  flex-shrink: 0;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
 }
 
 .groupAction:hover {
   background-color: var(--sidebar-accent);
   color: var(--sidebar-accent-foreground);
+}
+
+.groupAction:focus-visible {
+  outline: var(--border-width-focus) solid var(--ring);
+  outline-offset: 1px;
 }
 
 .groupContent {
@@ -483,11 +637,19 @@
   line-height: var(--text-body-line-height);
 }
 
-.root[data-collapsible='icon'] .groupLabel,
-.root[data-collapsible='icon'] .groupAction {
+/* The label collapses its own row away (upstream `-mt-8` + `opacity-0`)
+   rather than hiding, so the menu below slides up smoothly instead of
+   jumping. The action just goes — it is absolutely positioned, so it has
+   no row of its own to collapse, and fading it in place would leave it
+   floating over the first menu row (upstream: plain `hidden`). */
+.root[data-collapsible='icon'] .groupLabel {
   margin-top: calc(var(--control-height-sm) * -1);
   opacity: 0;
   pointer-events: none;
+}
+
+.root[data-collapsible='icon'] .groupAction {
+  display: none;
 }
 
 /* ------------------------------------------------------------------ */
@@ -510,36 +672,60 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* SidebarMenuButton                                                   */
-/*                                                                      */
-/* Not reproduced from the fetched upstream file: its variant ("default"/
- * "outline") and size ("default"/"sm"/"lg") axes resolve to bare marker
- * classes there with no Tailwind utility string attached to either — the
- * actual paddings/heights/borders live in a stylesheet outside the
- * fetched registry path. Designed here instead from the part's role (a
- * compact nav row, optionally with a leading icon and a trailing label
- * span truncated by upstream's own `[&>span:last-child]:truncate`) using
- * the kit's control-height/space/sidebar-accent tokens.                */
+/* SidebarMenuButton — the row every other menu part aligns to.          */
 /* ------------------------------------------------------------------ */
 
 .menuButton {
+  box-sizing: border-box;
   display: flex;
   width: 100%;
   align-items: center;
   gap: var(--space-2);
   overflow: hidden;
-  border: var(--border-width) solid transparent;
+  /*
+   * `border: none`, not the transparent 1px border button.module.css uses:
+   * both kill the UA's own `2px outset`, but a 1px border also eats a pixel
+   * on every edge, and this row's geometry has no pixel to spare. With a
+   * border the leading icon sat 9px in — one off every other 8px inset in
+   * the panel — and the collapsed 32px icon square had a 14px content box
+   * that clipped 2px off its own 16px icon. Without one, 8 + 16 + 8 = 32
+   * exactly, which is upstream's arithmetic unmodified. Focus is drawn with
+   * `outline` below, so nothing else wanted the border either — the same
+   * reasoning `.menuAction` and `.groupAction` in this file already follow.
+   *
+   * Padding lives here rather than on the size classes because all three
+   * share it (upstream carries `p-2` on the base too); sizes differ only in
+   * height and type ramp.
+   */
+  border: none;
   border-radius: var(--radius-md);
+  padding-inline: var(--space-2);
   background: none;
   color: inherit;
   text-align: left;
   text-decoration: none;
   cursor: pointer;
   outline: none;
+  /* width/height/padding are in the list because the icon collapse below
+     animates all three (upstream's `transition-[width,height,padding]`);
+     without them the row snaps to 32x32 a frame before the panel finishes
+     narrowing. */
   transition:
+    width 200ms linear,
+    height 200ms linear,
+    padding 200ms linear,
     color 150ms ease,
     background-color 150ms ease,
     border-color 150ms ease;
+}
+
+/* Reserve the trailing 32px an action or badge occupies, so a long label
+   truncates BEFORE it reaches them instead of sliding underneath
+   (upstream's `group-has-data-[sidebar=menu-action]/menu-item:pr-8`,
+   widened here to cover the badge, which has the same footprint). */
+.menuItem:has(.menuAction) .menuButton,
+.menuItem:has(.menuBadge) .menuButton {
+  padding-right: var(--space-8);
 }
 
 .menuButton > svg {
@@ -554,14 +740,19 @@
   white-space: nowrap;
 }
 
+/* `data-popup-open` is the kit's equivalent of upstream's
+   `data-[state=open]`: when this row is the trigger for a dropdown, it
+   stays lit for as long as that dropdown is open (see menubar.module.css's
+   note on the attribute). */
 .menuButton:hover,
-.menuButton:focus-visible {
+.menuButton:active,
+.menuButton:focus-visible,
+.menuButton[data-popup-open] {
   background-color: var(--sidebar-accent);
   color: var(--sidebar-accent-foreground);
 }
 
 .menuButton:focus-visible {
-  border-color: var(--ring);
   outline: var(--border-width-focus) solid var(--ring);
   outline-offset: -2px;
 }
@@ -589,8 +780,11 @@
 .variantDefault {
 }
 
+/* --background, not --sidebar: the outline variant's whole job is to read
+   as a raised control ON the panel, which it cannot do while filled with
+   the panel's own color (upstream's `bg-background`). */
 .variantOutline {
-  background-color: var(--sidebar);
+  background-color: var(--background);
   box-shadow: 0 0 0 1px var(--sidebar-border);
 }
 
@@ -601,42 +795,64 @@
 
 .sizeDefault {
   height: var(--control-height-sm);
-  padding-inline: var(--space-2);
   font-size: var(--text-body-size);
   line-height: var(--text-body-line-height);
 }
 
 .sizeSm {
   height: calc(var(--control-height-sm) - var(--space-1));
-  padding-inline: var(--space-2);
   font-size: var(--text-label-size);
   line-height: var(--text-label-line-height);
 }
 
-.sizeSm > svg {
-  width: var(--icon-size-xs);
-  height: var(--icon-size-xs);
-}
+/* No icon override for `sm`: upstream's `h-7 text-xs` moves the row height
+   and the type ramp only. Shrinking the icon to 12px as well (as this port
+   did) pulls the label 4px left of every default-size row, so a footer
+   mixing sm and default rows no longer shares a text edge. */
 
+/* Upstream's `h-12` — 48px, one step above the tallest kit control. This
+   is the two-line "user card" / "workspace switcher" row (avatar + name +
+   secondary line), not merely a bigger nav row, which is why it is a full
+   16px taller than `default` rather than the 4px --control-height-md step
+   this port previously used. */
 .sizeLg {
-  height: var(--control-height-md);
-  padding-inline: var(--space-2);
+  height: calc(var(--control-height-lg) + var(--space-2));
   font-size: var(--text-body-size);
   line-height: var(--text-body-line-height);
 }
 
-.sizeLg > svg {
-  width: var(--icon-size-md);
-  height: var(--icon-size-md);
-}
-
-.wrapper .root[data-collapsible='icon'] .menuButton {
-  width: var(--sidebar-width-icon);
+/*
+ * Collapsed to the icon rail the row becomes a 32px SQUARE (upstream's
+ * `size-8!`), centered in the 48px rail by the group's own 8px padding:
+ * 8 + 32 + 8 = 48 exactly. The previous `width: var(--sidebar-width-icon)`
+ * made the button the full 48px wide while still sitting 8px in from the
+ * group's padding edge, so every row overhung the rail by 8px on the
+ * right and clipped against the panel border.
+ */
+.root[data-collapsible='icon'] .menuButton {
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
   justify-content: center;
-  padding-inline: 0;
+  padding: var(--space-2);
 }
 
-.root[data-collapsible='icon'] .menuButton > span:last-child {
+/* lg is already 32px wide once collapsed, so its own 8px padding would
+   leave only 16px of content box for a 16px icon plus the border —
+   upstream drops the padding outright (`p-0!`) and lets justify-content
+   do the centering. */
+.root[data-collapsible='icon'] .sizeLg {
+  padding: 0;
+}
+
+/*
+ * In a 32px square there is room for exactly one 16px icon, so everything
+ * after the first child goes. Hiding only the trailing span (as this port
+ * did) is enough for the plain `<Icon/><span/>` row but not for the shape
+ * upstream's own header/footer rows use — leading mark, a text block, a
+ * trailing chevron — where the surviving siblings overflowed a centered
+ * flex row and pushed the leading icon to -8px, clipping half of it.
+ */
+.root[data-collapsible='icon'] .menuButton > *:not(:first-child) {
   display: none;
 }
 
@@ -644,26 +860,67 @@
 /* SidebarMenuAction / SidebarMenuBadge                                 */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Action and badge are both 20px boxes (upstream w-5 / h-5 min-w-5) pinned
+ * 4px from the row's right edge and vertically CENTERED on the row — not
+ * the 32px action and unsized 16px badge sitting at a flat 4px from the
+ * top this port previously had, which left the badge 7px above the row's
+ * own center line and the action taller than the row it annotates.
+ *
+ * `top` is derived, not hardcoded: `(row height - 20) / 2`. Both parts
+ * share the same three offsets because both annotate the same row, so the
+ * value is set once per size on the pair. The results land exactly on
+ * upstream's half-step utilities: 6px (`top-1.5`) for a 32px default row,
+ * 4px (`top-1`) for a 28px sm row, 14px (`top-2.5`) for a 48px lg row.
+ */
+.menuAction,
+.menuBadge {
+  top: calc((var(--control-height-sm) - var(--space-5)) / 2);
+}
+
+.menuItem:has(.sizeSm) .menuAction,
+.menuItem:has(.sizeSm) .menuBadge {
+  top: calc((var(--control-height-sm) - var(--space-1) - var(--space-5)) / 2);
+}
+
+.menuItem:has(.sizeLg) .menuAction,
+.menuItem:has(.sizeLg) .menuBadge {
+  top: calc((var(--control-height-lg) + var(--space-2) - var(--space-5)) / 2);
+}
+
 .menuAction {
+  box-sizing: border-box;
   position: absolute;
-  top: var(--space-1);
   right: var(--space-1);
   display: flex;
   aspect-ratio: 1;
   align-items: center;
   justify-content: center;
-  width: var(--control-height-sm);
+  width: var(--space-5);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+  padding: 0;
   background: none;
   color: var(--sidebar-foreground);
+  cursor: pointer;
   outline: none;
   transition: transform 150ms ease;
+}
+
+.menuAction > svg {
+  flex-shrink: 0;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
 }
 
 .menuAction:hover {
   background-color: var(--sidebar-accent);
   color: var(--sidebar-accent-foreground);
+}
+
+.menuAction:focus-visible {
+  outline: var(--border-width-focus) solid var(--ring);
+  outline-offset: 1px;
 }
 
 .menuActionShowOnHover {
@@ -672,25 +929,39 @@
 
 .menuItem:hover .menuActionShowOnHover,
 .menuItem:focus-within .menuActionShowOnHover,
-.menuActionShowOnHover[aria-expanded='true'] {
+.menuActionShowOnHover[aria-expanded='true'],
+.menuActionShowOnHover[data-popup-open] {
   opacity: 1;
 }
 
 .menuBadge {
+  box-sizing: border-box;
   position: absolute;
-  top: var(--space-1);
-  right: var(--space-2);
+  right: var(--space-1);
   display: flex;
+  height: var(--space-5);
   min-width: var(--space-5);
   align-items: center;
   justify-content: center;
+  border-radius: var(--radius-md);
   padding-inline: var(--space-1);
   color: var(--sidebar-foreground);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-meta-size);
   line-height: var(--text-meta-line-height);
+  font-weight: var(--text-label-weight);
   user-select: none;
   pointer-events: none;
+}
+
+/* The badge is not inside the button (it would break the label's
+   truncation), so it cannot inherit the row's hover/active color — it has
+   to be told, the same way upstream tells it via `peer-hover/menu-button:`
+   and `peer-data-[active=true]/menu-button:`. Without this the count stays
+   muted-grey on a filled active row. */
+.menuItem:has(.menuButton:hover) .menuBadge,
+.menuItem:has(.menuButton[data-active]) .menuBadge {
+  color: var(--sidebar-accent-foreground);
 }
 
 .root[data-collapsible='icon'] .menuAction,
@@ -702,11 +973,15 @@
 /* SidebarMenuSkeleton                                                  */
 /* ------------------------------------------------------------------ */
 
+/* Same 32px row and 8px inset as a real SidebarMenuButton, so a loading
+   list does not reflow when the real rows arrive. */
 .menuSkeleton {
+  box-sizing: border-box;
   display: flex;
   height: var(--control-height-sm);
   align-items: center;
   gap: var(--space-2);
+  border-radius: var(--radius-md);
   padding-inline: var(--space-2);
 }
 
@@ -714,7 +989,7 @@
   flex-shrink: 0;
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
 }
 
 .menuSkeletonText {
@@ -724,7 +999,9 @@
      this keeps the class self-contained under tokens.test.ts's same-part
      local exemption if it's ever inspected without that inline style. */
   --skeleton-width: 100%;
-  height: var(--text-body-line-height);
+  /* 16px (upstream `h-4`) — a small line's own box, not the 20px body line
+     box; a skeleton as tall as the body line reads as a filled row. */
+  height: var(--text-meta-line-height);
   max-width: var(--skeleton-width);
   flex: 1 1 0%;
   border-radius: var(--radius-sm);
@@ -734,15 +1011,27 @@
 /* SidebarMenuSub                                                       */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Upstream insets this list by `mx-3.5` and pads it `px-2.5` — 14px + 10px
+ * on the leading side, and 14px on the trailing side the previous port
+ * dropped entirely, which let the sub-rows run to the panel edge while the
+ * rows above them stopped 8px short.
+ *
+ * Neither 14px nor 10px is on the kit's --space grid. Splitting the same
+ * total as 12px + 12px (--space-3 twice) IS, and lands the sub-label at
+ * the identical x: group 8 + margin 12 + border 1 + padding 12 + button 8
+ * = 41px, exactly where upstream's 8 + 14 + 1 + 10 + 8 puts it. The
+ * trailing inset then costs 2px against upstream, which nothing aligns to.
+ */
 .menuSub {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: var(--space-1);
   margin: 0;
-  margin-left: var(--space-4);
-  padding: var(--space-1) 0;
-  padding-left: var(--space-2);
+  margin-inline: var(--space-3);
+  padding-block: var(--space-1);
+  padding-inline: var(--space-3) 0;
   list-style: none;
   border-left: var(--border-width) solid var(--sidebar-border);
 }
@@ -751,26 +1040,40 @@
   position: relative;
 }
 
+/*
+ * 28px for BOTH sizes (upstream's `h-7` sits on the base, not the size
+ * axis) — the size prop only moves the type ramp. The previous port put md
+ * at the full 32px, so a sub-row was the same height as the parent row it
+ * hangs off and the nesting read flat.
+ */
 .menuSubButton {
+  box-sizing: border-box;
   display: flex;
+  height: calc(var(--control-height-sm) - var(--space-1));
   min-width: 0;
   align-items: center;
   gap: var(--space-2);
   overflow: hidden;
-  border-radius: var(--radius-sm);
-  color: inherit;
+  border-radius: var(--radius-md);
+  padding-inline: var(--space-2);
+  color: var(--sidebar-foreground);
   text-decoration: none;
+  cursor: pointer;
   outline: none;
   transition:
     color 150ms ease,
     background-color 150ms ease;
 }
 
+/* Sub-row icons take the STRONG foreground even at rest (upstream's
+   `[&>svg]:text-sidebar-accent-foreground`): at this depth the label is
+   already muted, and a muted icon beside it collapses the two into one
+   grey smear. */
 .menuSubButton > svg {
   flex-shrink: 0;
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
-  color: var(--sidebar-foreground);
+  color: var(--sidebar-accent-foreground);
 }
 
 .menuSubButton > span:last-child {
@@ -780,9 +1083,15 @@
 }
 
 .menuSubButton:hover,
+.menuSubButton:active,
 .menuSubButton:focus-visible {
   background-color: var(--sidebar-accent);
   color: var(--sidebar-accent-foreground);
+}
+
+.menuSubButton:focus-visible {
+  outline: var(--border-width-focus) solid var(--ring);
+  outline-offset: -2px;
 }
 
 /* See .menuButton[data-active]'s comment above — same mechanism. */
@@ -797,20 +1106,30 @@
   opacity: 0.42;
 }
 
+/* Type ramp only — the 28px row height is on `.menuSubButton` above,
+   shared by both sizes (upstream's own split). */
 .subSizeSm {
-  height: calc(var(--control-height-sm) - var(--space-1));
-  padding-inline: var(--space-2);
   font-size: var(--text-label-size);
   line-height: var(--text-label-line-height);
 }
 
 .subSizeMd {
-  height: var(--control-height-sm);
-  padding-inline: var(--space-2);
   font-size: var(--text-body-size);
   line-height: var(--text-body-line-height);
 }
 
 .root[data-collapsible='icon'] .menuSub {
+  display: none;
+}
+
+/* A loading row collapses to the same 32px square its real counterpart
+   will, so the rail does not reflow when the data lands. */
+.root[data-collapsible='icon'] .menuSkeleton {
+  width: var(--control-height-sm);
+  justify-content: center;
+  padding: var(--space-2);
+}
+
+.root[data-collapsible='icon'] .menuSkeletonText {
   display: none;
 }

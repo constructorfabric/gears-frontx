@@ -5,6 +5,8 @@ export {
   type QuestionnaireActionsProps,
   QuestionnaireChoice,
   type QuestionnaireChoiceProps,
+  QuestionnaireChoiceDescription,
+  type QuestionnaireChoiceDescriptionProps,
   QuestionnaireChoiceInput,
   type QuestionnaireChoiceInputProps,
   QuestionnaireChoiceLabel,

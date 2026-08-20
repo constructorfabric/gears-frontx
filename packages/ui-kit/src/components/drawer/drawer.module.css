@@ -154,8 +154,20 @@
    * `--drawer-bleed-background` below has no such constraint since
    * `background-color` isn't a guarded property, so it keeps the ordinary
    * fallback form.
+   *
+   * The default MUST carry a unit. This property is substituted into the
+   * `--closed-transform` calc()s below (`calc(100% + var(--drawer-inset) +
+   * 2px)`), and inside calc() a bare `0` is a <number>, not a <length> —
+   * adding it to a <length-percentage> is a type error, which makes
+   * `--closed-transform` invalid at computed-value time and collapses
+   * `transform: var(--closed-transform)` to `none`. That silently disables
+   * BOTH the starting and the ending style: the panel materialises at its
+   * resting place and vanishes from it, while only the backdrop still
+   * fades — which is exactly how the drawer shipped before this `0px`.
+   * Outside calc() (`margin: var(--drawer-inset)`) `0` and `0px` are
+   * identical, so the unit costs nothing there.
    */
-  --drawer-inset: 0;
+  --drawer-inset: 0px;
   margin: var(--drawer-inset);
   height: var(--drawer-content-height);
   max-height: var(--drawer-content-max-height, none);

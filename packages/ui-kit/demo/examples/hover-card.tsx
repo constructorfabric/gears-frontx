@@ -6,19 +6,31 @@ export default function HoverCardExample() {
   return (
     <>
       <Section title="Basic">
-        <HoverCard>
-          <HoverCardTrigger href="https://github.com/shadcn" target="_blank" rel="noreferrer">
-            @shadcn
-          </HoverCardTrigger>
-          <HoverCardContent>
-            <Row>
-              <Avatar>
-                <AvatarFallback>CN</AvatarFallback>
-              </Avatar>
-              The React Framework – created and maintained by @shadcn.
-            </Row>
-          </HoverCardContent>
-        </HoverCard>
+        {/*
+          Row, not a bare trigger: Section is `display: grid`, whose default
+          `justify-items: normal` stretches a direct grid-item child to the
+          column's full width once it blockifies (the trigger's plain `<a>`
+          becomes `display: block`) — the popup then centers on that
+          stretched box, not on the visible text. Row's flex context sizes
+          the trigger to its content instead, same as every other trigger in
+          this file (see "Sides" below) and the kit's other demos (e.g.
+          tooltip.tsx's "Hover" section).
+        */}
+        <Row>
+          <HoverCard>
+            <HoverCardTrigger href="https://github.com/shadcn" target="_blank" rel="noreferrer">
+              @shadcn
+            </HoverCardTrigger>
+            <HoverCardContent>
+              <Row>
+                <Avatar>
+                  <AvatarFallback>CN</AvatarFallback>
+                </Avatar>
+                The React Framework – created and maintained by @shadcn.
+              </Row>
+            </HoverCardContent>
+          </HoverCard>
+        </Row>
       </Section>
 
       <Section title="Sides">
