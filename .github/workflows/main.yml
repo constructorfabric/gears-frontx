@@ -9,7 +9,10 @@ on:
 # Every job here only reads the repo: nothing pushes, comments, or releases —
 # upload-artifact needs no contents scope. Declared once at the workflow level
 # (with persist-credentials: false on each checkout) so the default read/write
-# token never reaches repository-controlled scripts.
+# token never reaches repository-controlled scripts. contents: read (not
+# none) is still needed for actions/checkout itself and to clear the
+# anonymous rate limit on the GitHub API calls studio-validate* makes (see
+# their own GITHUB_TOKEN comment).
 permissions:
   contents: read
 
@@ -440,6 +443,10 @@ jobs:
       # on demand) — materialize it before invoking studio.py directly.
       - name: Bootstrap Constructor Studio runtime
         run: cfs update -y --no-interactive --with-kits yes
+        env:
+          # cfs resolves the Studio release via the GitHub API; anonymous
+          # requests from shared runner IPs hit the rate limit (HTTP 403).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate artifacts and traceability
         run: python3 .cf-studio/.core/skills/studio/scripts/studio.py validate
@@ -463,6 +470,10 @@ jobs:
 
       - name: Bootstrap Constructor Studio runtime
         run: cfs update -y --no-interactive --with-kits yes
+        env:
+          # cfs resolves the Studio release via the GitHub API; anonymous
+          # requests from shared runner IPs hit the rate limit (HTTP 403).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate installed kits
         run: python3 .cf-studio/.core/skills/studio/scripts/studio.py validate-kits
@@ -486,6 +497,10 @@ jobs:
 
       - name: Bootstrap Constructor Studio runtime
         run: cfs update -y --no-interactive --with-kits yes
+        env:
+          # cfs resolves the Studio release via the GitHub API; anonymous
+          # requests from shared runner IPs hit the rate limit (HTTP 403).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check spec coverage thresholds
         # Threshold rebased for the post-split ecosystem repo. The framework/

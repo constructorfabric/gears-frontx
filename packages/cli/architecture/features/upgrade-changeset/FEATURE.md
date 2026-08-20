@@ -1,6 +1,5 @@
 # Feature: Upgrade Change-Set Engine
 
-
 <!-- toc -->
 
 - [1. Feature Context](#1-feature-context)
@@ -9,247 +8,272 @@
   - [1.3 Actors](#13-actors)
   - [1.4 References](#14-references)
 - [2. Actor Flows (CDSL)](#2-actor-flows-cdsl)
-  - [Developer Review and Approval of an Upgrade Change Set](#developer-review-and-approval-of-an-upgrade-change-set)
+  - [Developer Review and Approval of an Atomic All-Targets Upgrade](#developer-review-and-approval-of-an-atomic-all-targets-upgrade)
+  - [Developer Restores a Template's Pre-Upgrade State](#developer-restores-a-templates-pre-upgrade-state)
 - [3. Processes / Business Logic (CDSL)](#3-processes--business-logic-cdsl)
-  - [Compute Template-Version Diff Against Provenance Baseline](#compute-template-version-diff-against-provenance-baseline)
-  - [Apply Change Set Non-Destructively; Support Rollback; Update Provenance](#apply-change-set-non-destructively-support-rollback-update-provenance)
-  - [Rollback an Applied Change Set](#rollback-an-applied-change-set)
+  - [Validate a New Origin Against Every Target of a Name](#validate-a-new-origin-against-every-target-of-a-name)
+  - [Commit the Atomic All-Targets Transition](#commit-the-atomic-all-targets-transition)
 - [4. States (CDSL)](#4-states-cdsl)
-  - [Change-Set Lifecycle](#change-set-lifecycle)
+  - [Upgrade Lifecycle](#upgrade-lifecycle)
 - [5. Definitions of Done](#5-definitions-of-done)
-  - [Change-Set Computation and Presentation](#change-set-computation-and-presentation)
-  - [Non-Destructive Application and Provenance Update](#non-destructive-application-and-provenance-update)
-  - [Rollback to Pre-Upgrade State](#rollback-to-pre-upgrade-state)
+  - [Atomic All-Targets Validation and Review](#atomic-all-targets-validation-and-review)
+  - [Atomic All-Targets Commit](#atomic-all-targets-commit)
+  - [Restore to Pre-Upgrade State](#restore-to-pre-upgrade-state)
   - [Single Authoritative Engine](#single-authoritative-engine)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
 
 <!-- /toc -->
 
 - [ ] `p1` - **ID**: `cpt-frontx-featstatus-upgrade-changeset`
+
 ## 1. Feature Context
 
 - [ ] `p2` - `cpt-frontx-feature-upgrade-changeset`
 
 ### 1.1 Overview
 
-The Upgrade Change-Set Engine is the single `target` CLI-owned mechanism (`cpt-frontx-component-cli`) that upgrades each applied template independently: for a selected applied template it re-resolves the baseline version through the shared resolver using the source-spec its provenance record carries, computes a diff to a target version scoped to that template's occupied ownership boundary (whole files for exclusive subtrees, owned regions only for shared files), presents it as a reviewable and approvable change set, applies it non-destructively within that boundary on approval, and supports rollback to the pre-upgrade repository state. Each applied template adopts a newer version on its own cadence — there is no forced whole-repository upgrade, and one template's upgrade never touches another template's regions in a shared file.
+The Upgrade Change-Set Engine is the single `target` CLI-owned mechanism (`cpt-frontx-component-cli-change-set-engine`) that upgrades a registered template's **name** — every target that name has been applied to, atomically, as one unit. `upgrade <templateName> <new-origin>` reads the name's current `{origin, version}` entry from `cpt-frontx-feature-composed-provenance`'s single project state document as its only baseline, resolves the new origin through the shared resolver, validates it against every target listed under the name, presents the validated transition for developer review, and — only on approval — commits the new `origin`/`version` atomically to the project state store while applying the change within each target's effective ownership. A partial upgrade, where one target of a name moves to the new version while a sibling target of the same name stays on the old one, is not a representable state: the registry records exactly one `origin` and one `version` per name. All CDSL behavior is `target` (GREENFIELD — grounded in `cpt-frontx-adr-project-upgrade-mechanism`, `cpt-frontx-adr-project-provenance-record`, and DESIGN §3.2/§3.6).
 
-Recorded debt — upgrade-target selection: how a developer names WHICH applied template to upgrade is a not-yet-made design decision. The shipped command surface takes no template argument (`upgrade <projectRoot> <targetVersion>`), and the engine resolves its baseline from the first provenance record in the set, printing a which-record-was-picked notice when more records exist (`packages/cli/src/adapters/provenance-io.ts`). This feature's status stays unchecked until selection lands and the flow's first two instructions are true as written (tracked by issue #508).
+The unit of operation is the template **name**, not one applied instance, and the baseline is the single registry entry that name carries: the registry records one `origin`/`version` pair per name, covering every target that name has been applied to. There is no per-instance provenance record to diff against, and none is retained for the purpose. The feature's identifier, `cpt-frontx-feature-upgrade-changeset`, still names a file-level change-set (diff/merge/rollback) mechanism this feature does not own — that mechanism is deferred to a dedicated future decision (CLI DESIGN §4) — while this feature currently commits only the atomic name-level `origin`/`version` transition; renaming the identifier once that future decision lands, or independently of it, is tracked as a coordination work item in the root DECOMPOSITION (`cpt-frontx-feature-identifier-rename-wave`).
 
 ### 1.2 Purpose
 
-This feature exists to let a project developer safely adopt newer versions of any applied template without hand-editing files or risking unreviewed changes. It satisfies the requirement that upgrades are expressed as approvable change sets (`cpt-frontx-fr-cli-project-upgrade-changeset`) and that no modification reaches repository files until the developer grants explicit approval (`cpt-frontx-fr-cli-upgrade-review-approval`). Each applied template is diffed and applied independently against its own provenance record. The engine is reusable across invokers — direct CLI and AI orchestration (F17) both drive the same engine without a second implementation.
+This feature exists to let a project developer safely adopt a newer origin for any registered template, across every target it has been applied to, without hand-editing files or risking an unreviewed or partially-applied change. It satisfies `cpt-frontx-fr-cli-project-upgrade-changeset` (the upgrade is one atomic change set covering all of a name's targets), `cpt-frontx-fr-cli-upgrade-review-approval` (no file is written until the developer approves), and `cpt-frontx-fr-cli-upgrade-restore` (an approved upgrade remains reversible). The engine is reusable across invokers — direct CLI use and AI-driven orchestration (`cpt-frontx-feature-ai-upgrade-orchestration`) both drive the same engine, never a second implementation.
 
-**Requirements**: `cpt-frontx-fr-cli-project-upgrade-changeset`, `cpt-frontx-fr-cli-upgrade-review-approval`
+`cpt-frontx-adr-project-upgrade-mechanism` deliberately fixes only the unit of upgrade (a template name, atomically across all its targets) and the source of its baseline (the project state store's `origin`/`version` entry) — it does **not** fix a changeset representation, a file-level diff or three-way-merge algorithm, or per-file conflict detection within an upgrade, leaving that mechanism to a dedicated future decision (DESIGN §4). This feature does not invent that mechanism in its place: its validation and commit algorithms describe the operation only at the level of detail the ADR and DESIGN fix — validate the new origin against every target, and on success commit `origin`/`version` atomically; on any failure, refuse the whole upgrade with nothing changed. The concrete mechanism behind `cpt-frontx-fr-cli-upgrade-restore`'s reversibility requirement is likewise an **open question** this feature does not resolve (see §5, "Restore to Pre-Upgrade State"); it states the requirement's observable contract without asserting what state is retained or how a reversal is carried out at the file level.
 
-**Principles**: —
+**Requirements**: `cpt-frontx-fr-cli-project-upgrade-changeset`, `cpt-frontx-fr-cli-upgrade-review-approval`, `cpt-frontx-fr-cli-upgrade-restore`
+
+**Principles**: `cpt-frontx-cli-principle-reviewed-reversible-mutation`
+
+**Applicability** (Often-N/A domains for a CLI Command feature, per the FEATURE checklist's Applicability Context): SEC and COMPL are not applicable — this engine enforces no authentication or authorization boundary and carries no regulatory scope; the closest security-adjacent control is `REGISTRATION_CONFLICT` on an identity mismatch (`inst-val-if-identity-mismatch`), a supply-chain integrity check rather than an auth boundary. OPS (observability) is not applicable — no logging, metrics, or tracing surface is introduced beyond the reviewable transition this feature already presents. UX is addressed by the developer review-and-approval presentation (§2, "Developer Review and Approval of an Atomic All-Targets Upgrade"). PERF is addressed by `cpt-frontx-cli-nfr-template-scale` (§6, Acceptance Criteria).
 
 ### 1.3 Actors
 
 | Actor | Role in Feature |
 |-------|-----------------|
-| `cpt-frontx-actor-project-developer` | Triggers the upgrade, reviews the computed change set, and approves or declines it |
+| `cpt-frontx-actor-project-developer` | Triggers the upgrade, reviews the computed transition, approves or declines it, and may later request restore |
 
 ### 1.4 References
 
-- **PRD**: [PRD.md](../../../../../architecture/PRD.md)
+- **PRD**: [PRD.md](../../PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
-- **Dependencies**: `cpt-frontx-feature-composed-provenance` (F13) — owns `ProjectProvenance` and `cpt-frontx-contract-project-provenance`; this engine reads the per-applied-template provenance records written at apply time but does not redefine the entity or the contract.
+- **ADR**: `cpt-frontx-adr-project-upgrade-mechanism`, `cpt-frontx-adr-project-provenance-record`, `cpt-frontx-adr-source-spec-syntax`, `cpt-frontx-adr-cli-machine-readable-output`
+- **Dependencies**:
+  - `cpt-frontx-feature-composed-provenance` — owns the single project state document; this engine reads the name's `{origin, version, targets[]}` entry as its baseline and commits the post-upgrade `origin`/`version` back into it, but does not redefine the document or the contract.
+  - `cpt-frontx-feature-template-resolution` — resolves the new origin through the same shared resolver every other lifecycle command uses.
+  - `cpt-frontx-feature-cli-scaffolding` (F12 — the engine applies a transition within each target's effective ownership, reusing the Conflict Checker's canonicalized geometry rather than redefining it; also owns the CLI-owned AI-extension bundle step (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) this engine invokes to refresh a name's `.frontx/ai/<manifest-name>/` bundle on a committed upgrade, without redefining that step).
 
 ## 2. Actor Flows (CDSL)
 
-User-facing interactions that start with an actor (human or external system) and describe the end-to-end flow of a use case. Each flow has a triggering actor and shows how the system responds to actor actions.
+**Use cases**: `cpt-frontx-usecase-upgrade-applied-template`
 
-**Use cases**: `cpt-frontx-usecase-ai-driven-template-upgrade`
+### Developer Review and Approval of an Atomic All-Targets Upgrade
 
-### Developer Review and Approval of an Upgrade Change Set
-
-- [x] `p1` - **ID**: `cpt-frontx-flow-upgrade-changeset-review-approval`
+- [ ] `p1` - **ID**: `cpt-frontx-flow-upgrade-changeset-review-approval`
 
 **Actor**: `cpt-frontx-actor-project-developer`
 
+**Realizes**: `cpt-frontx-cli-seq-upgrade-review-apply`
+
 **Success Scenarios**:
-- Developer approves the change set; engine applies it non-destructively and updates provenance to the newer version.
+- Developer approves the validated transition; the engine commits the new `origin`/`version` atomically across every target of the name and applies the change within each target's effective ownership.
 
 **Error Scenarios**:
-- Developer declines the change set; no project files are written and the project remains at its current version.
-- Target template version cannot be resolved; the engine reports the failure and aborts before any file is written.
-- The recorded source-spec address serves a different template at the target version than at the baseline version; the engine reports both declared identities and aborts before computing a diff or writing any file.
-- The provenance record names an identity that neither resolved version declares and that is not the repository its own source-spec addresses; the engine reports the refusal and aborts before computing a diff or writing any file.
-- Change set contains conflicts with developer modifications; engine surfaces them in the presented change set for manual resolution before approval.
+- The name has no entry in the project state store: `TEMPLATE_NOT_REGISTERED`.
+- The name's `targets` array is empty: the engine refuses with `TARGET_NOT_APPLIED`, directing the developer to `register --replace` instead — there is no applied ground for `upgrade` to reconcile.
+- The name's recorded `version` no longer matches what its recorded `origin` reports: the engine refuses with `VERSION_MISMATCH` before resolving the candidate origin, because the baseline it would diff against is not the state the project actually holds.
+- The new origin cannot be resolved: `ORIGIN_UNAVAILABLE`; the engine reports the failure and aborts before writing anything.
+- The new origin's manifest declares a `name` different from the registered name being upgraded: the engine refuses with `REGISTRATION_CONFLICT`, naming both identities, and computes no transition — a registered name's identity comes from exactly one place, its own manifest, and `upgrade` must not silently re-key an entry to a different template.
+- Validation fails for any one target under the name: the engine refuses the entire upgrade — never moving some targets and not others — and `templates[name]` is left unchanged for every target.
+- Developer declines the presented transition: no project files are written and `templates[name]` is left unchanged.
 
 **Steps**:
-1. [x] - `p1` - Developer invokes the upgrade command, naming the applied template to upgrade and providing the target version or requesting the latest available version - `inst-invoke-upgrade`
-2. [x] - `p1` - Engine reads the selected applied template's provenance record via `cpt-frontx-contract-project-provenance` to determine that template's identity and current version - `inst-read-provenance`
-3. [x] - `p1` - **IF** the target version cannot be resolved: - `inst-if-no-target`
-   1. [x] - `p1` - Engine reports the resolution failure and **RETURN** without writing any files - `inst-abort-no-target`
-4. [x] - `p1` - Engine computes the template-version diff against the provenance baseline (see `cpt-frontx-algo-upgrade-changeset-compute`) - `inst-compute-diff`
-5. [x] - `p1` - Engine presents the change set to the developer for review, including any flagged conflicts - `inst-present-changeset`
-6. [x] - `p1` - **IF** developer approves the change set: - `inst-if-approved`
-   1. [x] - `p1` - Engine applies the change set non-destructively (see `cpt-frontx-algo-upgrade-changeset-apply`) - `inst-apply-changeset`
-   2. [x] - `p1` - Engine updates the selected applied template's provenance record to the newer version - `inst-update-provenance`
-   3. [x] - `p1` - **RETURN** success: change set applied and provenance updated - `inst-return-success`
-7. [x] - `p1` - **ELSE** (developer declines): - `inst-else-declined`
-   1. [x] - `p1` - Engine makes no changes to project files - `inst-no-write-on-decline`
-   2. [x] - `p1` - **RETURN** declined: project remains at current version, no files written - `inst-return-declined`
+1. [ ] - `p1` - Developer invokes `upgrade <templateName> <new-origin>` - `inst-invoke-upgrade`
+2. [ ] - `p1` - Engine reads `templates[templateName]` — its current `origin`, `version`, and `targets[]` — from the project state store (`cpt-frontx-feature-composed-provenance`) as its baseline - `inst-read-provenance`
+3. [ ] - `p1` - **IF** `templateName` has no entry - `inst-if-not-registered`
+   1. [ ] - `p1` - **RETURN** `TEMPLATE_NOT_REGISTERED`; no diff computed - `inst-abort-not-registered`
+4. [ ] - `p1` - **IF** `targets` is empty - `inst-if-empty-targets`
+   1. [ ] - `p1` - **RETURN** `TARGET_NOT_APPLIED` directing the developer to `register --replace`; no diff computed - `inst-abort-empty-targets`
+5. [ ] - `p1` - Engine invokes the validation algorithm (`cpt-frontx-algo-upgrade-changeset-validate`) against `new-origin` and every target in `targets[]` - `inst-compute-diff`
+6. [ ] - `p1` - **IF** the new origin cannot be resolved, declares a different identity, or fails validation for any one target - `inst-if-no-target`
+   1. [ ] - `p1` - **RETURN** the corresponding failure (`ORIGIN_UNAVAILABLE`, `REGISTRATION_CONFLICT` for an identity mismatch, or a validation failure naming the failing target(s)); `templates[templateName]` unchanged for every target - `inst-abort-no-target`
+7. [ ] - `p1` - Engine presents the validated transition — the current `{origin, version}` and the new `{origin, version}`, covering every target in `targets[]` — to the developer for review - `inst-present-changeset`
+8. [ ] - `p1` - **IF** developer approves - `inst-if-approved`
+   1. [ ] - `p1` - Engine invokes the commit algorithm (`cpt-frontx-algo-upgrade-changeset-commit`) - `inst-apply-changeset`
+   2. [ ] - `p1` - **IF** the commit reports an application failure - `inst-if-commit-fail`
+      1. [ ] - `p1` - **RETURN** the failure; every target and `templates[templateName]` unchanged - `inst-return-commit-fail`
+   3. [ ] - `p1` - **RETURN** success: `templates[templateName].origin`/`.version` updated atomically for every target - `inst-return-success`
+9. [ ] - `p1` - **ELSE** (developer declines) - `inst-else-declined`
+   1. [ ] - `p1` - Engine makes no changes to any project file or to `templates[templateName]` - `inst-no-write-on-decline`
+   2. [ ] - `p1` - **RETURN** declined - `inst-return-declined`
+
+### Developer Restores a Template's Pre-Upgrade State
+
+- [ ] `p1` - **ID**: `cpt-frontx-flow-upgrade-changeset-restore`
+
+**Actor**: `cpt-frontx-actor-project-developer`
+
+**Use cases**: `cpt-frontx-usecase-upgrade-applied-template` (postcondition)
+
+**Success Scenarios**:
+- Developer requests restore of a name's most recently applied upgrade; the engine reverses `templates[name].origin`/`.version` back to the pre-upgrade values, atomically across every target of the name, and reverses the applied content within each target's effective ownership back to its pre-upgrade state.
+
+**Error Scenarios**:
+- There is no applied upgrade available to restore for the name — none has been applied, or the retained pre-upgrade state a prior restore would consume is no longer available under whichever specific consumption rule the deferred restore-carrier mechanism settles (open question; §5 "Restore to Pre-Upgrade State", DESIGN §4): the engine refuses with `NOTHING_TO_RESTORE`.
+
+**Steps**:
+1. [ ] - `p1` - Developer requests restore for `templateName` - `inst-rst-invoke`
+2. [ ] - `p1` - **IF** no applied upgrade is available to restore for `templateName` - `inst-rst-if-unavailable`
+   1. [ ] - `p1` - **RETURN** `NOTHING_TO_RESTORE` - `inst-rst-return-unavailable`
+3. [ ] - `p1` - **ELSE** - `inst-rst-else`
+   1. [ ] - `p1` - Reverse `templates[templateName].origin` and `.version` to their pre-upgrade values, atomically across every target of the name — where those pre-upgrade values are retained, and for how long, is part of the same open question this feature does not resolve (§5 "Restore to Pre-Upgrade State", DESIGN §4): the project state document itself records only the name's *current* `origin`/`version`, not its history, and so is not, by itself, the state carrier this reversal needs (`cpt-frontx-adr-project-provenance-record`) - `inst-rst-reverse-state`
+   2. [ ] - `p1` - Reverse the applied content within each target's effective ownership back to its pre-upgrade state — the concrete mechanism by which this reversal is carried out is not fixed by this feature (open question; see §5 "Restore to Pre-Upgrade State" and DESIGN §4) - `inst-rst-reverse-content`
+   3. [ ] - `p1` - **RETURN** success: the name and every one of its targets are at the pre-upgrade state - `inst-rst-return-success`
 
 ## 3. Processes / Business Logic (CDSL)
 
-Internal system functions and procedures that do not interact with actors directly. Reusable building blocks called by Actor Flows or other processes.
+### Validate a New Origin Against Every Target of a Name
 
-### Compute Template-Version Diff Against Provenance Baseline
+- [ ] `p2` - **ID**: `cpt-frontx-algo-upgrade-changeset-validate`
 
-- [x] `p2` - **ID**: `cpt-frontx-algo-upgrade-changeset-compute`
+**Input**: The registered name's current baseline `{origin, version, targets[]}`; a candidate `new-origin`.
 
-**Input**: Project root path; target template version reference.
-
-**Output**: A change set describing the diff between the provenance-recorded baseline version and the target version (added, modified, and removed files; flagged conflicts), scoped to the selected template's occupied ownership boundary.
+**Output**: A validated transition `{ from: {origin, version}, to: {origin, version}, targets[] }` ready for review, or a failure naming why validation did not pass (`VERSION_MISMATCH` for a baseline the project state misreports, `ORIGIN_UNAVAILABLE` for an unresolvable origin, `REGISTRATION_CONFLICT` for a declared-identity mismatch, or a validation failure naming a target that fails validation).
 
 **Steps**:
-1. [x] - `p1` - Read `target` the selected applied template's provenance record from the repository via `cpt-frontx-contract-project-provenance`; extract that template's identity, current (baseline) version, re-resolvable source-spec, and occupied ownership boundary - `inst-cmp-read-provenance`
-2. [x] - `p1` - Resolve `target` the baseline-version template content by re-fetching it through the shared resolver (`cpt-frontx-feature-template-resolution`) using the provenance record's source-spec at the baseline version — never from the local inventory, which retains only one version per entry and cannot supply an older baseline - `inst-cmp-resolve-baseline`
-3. [x] - `p1` - Resolve `target` the target-version template content through the same shared resolver using the same source-spec at the target version - `inst-cmp-resolve-target`
-4. [x] - `p1` - Verify `target`, before computing any diff, that the baseline-resolved and target-resolved content are two versions of the one template the provenance record describes — the record's identity is what the diff scopes ownership and matches region markers by, so a mismatch would diff one template's boundaries and markers against another template's content - `inst-cmp-verify-identity`
-   1. [x] - `p1` - **IF** the identity the target version's manifest declares differs from the identity the baseline version's manifest declares: - `inst-cmp-if-identity-drift`
-      1. [x] - `p1` - Report that the recorded source-spec address serves a different template at the target version than at the baseline version, naming both declared identities, the address and both versions, and **RETURN** failure having computed no diff - `inst-cmp-abort-identity-drift`
-   2. [x] - `p1` - **IF** the provenance record's identity differs from the identity both resolved versions declare: - `inst-cmp-if-record-identity-differs`
-      1. [x] - `p1` - **IF** the record's identity is the repository name its own source-spec addresses and that source-spec addresses no subtree — the shape of a record written before identity came from the manifest, which no resolved version can declare any more: - `inst-cmp-if-legacy-record`
-         1. [x] - `p1` - Accept the record as naming this template, treating the difference as the identity-scheme change it is, and mark the acceptance as a pre-manifest-identity one so the diff step can tell such a record from one whose identity the resolved manifests declare, then continue - `inst-cmp-accept-legacy-record`
-      2. [x] - `p1` - **ELSE**: - `inst-cmp-else-record-unrecognized`
-         1. [x] - `p1` - Report that the record's identity is neither the identity the resolved versions declare nor the repository its own source-spec addresses, so the template being upgraded cannot be established, and **RETURN** failure having computed no diff - `inst-cmp-abort-record-unrecognized`
-5. [x] - `p1` - Compute the file-level diff between the baseline-version and target-version template files, scoped to the template's occupied ownership boundary: for an exclusive subtree, diff whole files; for a `region-union` shared file, diff only within that template's owned marker-delimited region(s), leaving co-owning templates' regions out of the diff - `inst-cmp-diff-files`
-   1. [x] - `p1` - **IF** the record was accepted as a pre-manifest-identity one: leave every `region-union` shared file out of the diff entirely, so no such file contributes an entry whichever identity its markers carry, because the record's identity matches no marker the resolved content carries and any entry a region comparison produced would report a region the template still owns as added or removed - `inst-cmp-skip-region-union-legacy`
-6. [x] - `p1` - **FOR EACH** changed file in the diff: - `inst-cmp-for-each-file`
-   1. [x] - `p1` - Check whether the developer has locally modified the file in the project - `inst-cmp-check-local-mod`
-   2. [x] - `p1` - **IF** both the template diff and a local developer modification affect the same file: - `inst-cmp-if-conflict`
-      1. [x] - `p1` - Mark the file as a conflict in the change set, recording both the template-level change and the local modification - `inst-cmp-flag-conflict`
-   3. [x] - `p1` - **ELSE**: - `inst-cmp-else-clean`
-      1. [x] - `p1` - Add the file as a clean change-set entry (add / modify / remove) - `inst-cmp-add-clean-entry`
-7. [x] - `p1` - Assemble and **RETURN** the computed change set (clean entries + flagged conflicts) - `inst-cmp-return-changeset`
+1. [ ] - `p1` - Confirm the recorded baseline is still honest before anything is computed from it: resolve the name's currently recorded `origin` and compare the version it reports against the `version` recorded beside it in the project state document - `inst-val-check-baseline`
+2. [ ] - `p1` - **IF** the recorded `version` differs from the version the recorded origin now reports - `inst-val-if-baseline-drift`
+   1. [ ] - `p1` - **RETURN** `VERSION_MISMATCH` naming the template name, its recorded version, and the version its recorded origin now reports; no transition is computed and no target is inspected, because a transition computed from a baseline the project state misreports would diff against a version this project never actually had. For a pinned remote origin this can only mean `.frontx/project.json` was hand-edited or corrupted, since an immutable pin re-fetches identically (`cpt-frontx-adr-source-spec-syntax`); for a `path:` origin it is genuine drift in the local folder, which has no publication to pin against — the same two cases `cpt-frontx-feature-composed-provenance`'s `validate --project` distinguishes for this code - `inst-val-return-baseline-drift`
+3. [ ] - `p1` - Resolve `new-origin` through the shared resolver (`cpt-frontx-feature-template-resolution`), installing and pinning it exactly as `register` would - `inst-val-resolve-new-origin`
+4. [ ] - `p1` - **IF** resolution fails - `inst-val-if-resolve-fail`
+   1. [ ] - `p1` - **RETURN** `ORIGIN_UNAVAILABLE` - `inst-val-return-unavailable`
+5. [ ] - `p1` - Read the resolved manifest's declared `name` - `inst-val-read-name`
+6. [ ] - `p1` - **IF** the resolved `name` differs from the registered name being upgraded - `inst-val-if-identity-mismatch`
+   1. [ ] - `p1` - **RETURN** `REGISTRATION_CONFLICT` naming both identities; no target is inspected - `inst-val-return-identity-mismatch`
+7. [ ] - `p1` - **FOR EACH** target in `targets[]` - `inst-val-foreach-target`
+   1. [ ] - `p1` - Validate the resolved new origin against that target — the concrete per-target check this step performs (structural conformance, ownership-boundary consistency, or any file-level comparison) is intentionally left to the future decision `cpt-frontx-adr-project-upgrade-mechanism` reserves for changeset representation and diff mechanics (DESIGN §4); this algorithm's contract is only that every target must be inspected and that any one target's failure fails the whole check - `inst-val-check-target`
+   2. [ ] - `p1` - **IF** the target fails validation - `inst-val-if-target-fails`
+      1. [ ] - `p1` - **RETURN** `CONTENT_CONFLICT` naming every failing target; do not continue checking remaining targets is optional, but no partial pass is ever returned - `inst-val-return-target-fail`
+8. [ ] - `p1` - **RETURN** the validated transition `{ from: {origin, version}, to: {origin: <resolved>, version: <resolved>}, targets[] }` - `inst-val-return-pass`
 
-### Apply Change Set Non-Destructively; Support Rollback; Update Provenance
+### Commit the Atomic All-Targets Transition
 
-- [x] `p2` - **ID**: `cpt-frontx-algo-upgrade-changeset-apply`
+- [ ] `p2` - **ID**: `cpt-frontx-algo-upgrade-changeset-commit`
 
-**Input**: Approved change set; project root path.
+**Input**: An approved, validated transition (name, `targets[]`, `from {origin, version}`, `to {origin, version}`).
 
-**Output**: Applied project state with provenance updated; rollback capability retained until explicitly released.
+**Output**: `templates[name].origin`/`.version` updated to `to` atomically across every target; or, on an application failure, every target and the project state store left exactly as they were before the attempt.
 
 **Steps**:
-1. [x] - `p1` - Capture `target` a pre-upgrade snapshot of all files affected by the change set so rollback can restore exact pre-upgrade state - `inst-app-snapshot`
-2. [x] - `p1` - **TRY**: - `inst-app-try`
-   1. [x] - `p1` - **FOR EACH** clean entry in the change set, in dependency order: - `inst-app-for-each-entry`
-      1. [x] - `p1` - Apply the entry to the project root within the template's ownership boundary: for an exclusive subtree, write or remove the whole file; for a `region-union` shared file, rewrite only the template's own marker-delimited region(s) in place, leaving every co-owning template's region byte-for-byte untouched - `inst-app-apply-entry`
-3. [x] - `p1` - **CATCH** application error: - `inst-app-catch`
-   1. [x] - `p1` - Restore `target` all affected files from the pre-upgrade snapshot, leaving the project byte-for-byte unchanged - `inst-app-restore-on-error`
-   2. [x] - `p1` - Report the error and **RETURN** failure without updating provenance - `inst-app-return-failure`
-4. [x] - `p1` - Update `target` the selected applied template's provenance record to the newer version - `inst-app-update-prov`
-5. [x] - `p1` - Retain `target` the pre-upgrade snapshot for rollback until the developer explicitly releases it or a new upgrade cycle begins - `inst-app-retain-snapshot`
-6. [x] - `p1` - **RETURN** success: applied entries, updated provenance, rollback available - `inst-app-return-success`
-
-### Rollback an Applied Change Set
-
-- [x] `p2` - **ID**: `cpt-frontx-algo-upgrade-changeset-rollback`
-
-**Input**: Project root path; retained pre-upgrade snapshot.
-
-**Output**: Project files and provenance restored to exact pre-upgrade state.
-
-**Steps**:
-1. [x] - `p1` - **IF** no retained pre-upgrade snapshot exists for the project: - `inst-rb-if-no-snapshot`
-   1. [x] - `p1` - Report that rollback is not available and **RETURN** failure - `inst-rb-no-snapshot`
-2. [x] - `p1` - **FOR EACH** file in the pre-upgrade snapshot: - `inst-rb-for-each`
-   1. [x] - `p1` - Restore the file from the snapshot, overwriting the post-apply state - `inst-rb-restore-file`
-3. [x] - `p1` - Restore `target` the provenance record to the pre-upgrade version from the snapshot - `inst-rb-restore-provenance`
-4. [x] - `p1` - Release the snapshot - `inst-rb-release-snapshot`
-5. [x] - `p1` - **RETURN** success: project and provenance at exact pre-upgrade state - `inst-rb-return-success`
+1. [ ] - `p1` - **TRY**: - `inst-com-try`
+   1. [ ] - `p1` - Apply the transition within each target's effective ownership, atomically across every target listed for the name — every target moves together, or none do; the concrete file-level operation performed at each target is intentionally not fixed by this feature (`cpt-frontx-adr-project-upgrade-mechanism`, DESIGN §4) - `inst-com-apply-within-boundary`
+2. [ ] - `p1` - **CATCH** an application error affecting any target - `inst-com-catch`
+   1. [ ] - `p1` - Leave every target and `templates[name]` exactly as they were before the attempt; no partial commit - `inst-com-restore-on-error`
+   2. [ ] - `p1` - **RETURN** `INTERNAL` naming the error; `templates[name]` unchanged - `inst-com-return-failure`
+3. [ ] - `p1` - Commit `templates[name].origin` and `.version` to `to`'s values, as one atomic write to the project state store - `inst-com-commit-state`
+4. [ ] - `p1` - The engine refreshes `name`'s CLI-owned AI-extension bundle at `.frontx/ai/<manifest-name>/` from the new payload's own `.frontx/ai/<manifest-name>/` convention folder, when present, through the same CLI-owned step `apply` and `delete` use (`cpt-frontx-algo-cli-scaffolding-ai-bundle`, `cpt-frontx-feature-cli-scaffolding`) - `inst-com-refresh-bundle`
+5. [ ] - `p1` - **RETURN** success: transition applied and `templates[name]` updated for every target - `inst-com-return-success`
 
 ## 4. States (CDSL)
 
-### Change-Set Lifecycle
+### Upgrade Lifecycle
 
-- [x] `p2` - **ID**: `cpt-frontx-state-upgrade-changeset-lifecycle`
+- [ ] `p2` - **ID**: `cpt-frontx-state-upgrade-changeset-lifecycle`
 
-**States**: COMPUTED, PRESENTED, APPROVED, APPLIED, ROLLED_BACK, REJECTED
+**States**: BASELINE_READ, VALIDATED, REFUSED, PRESENTED, APPROVED, COMMITTED, DECLINED, RESTORED
 
-**Initial State**: COMPUTED
+**Initial State**: BASELINE_READ
 
 **Transitions**:
-1. [x] - `p1` - **FROM** COMPUTED **TO** PRESENTED **WHEN** the change set has been built and shown to the developer for review - `inst-st-computed-to-presented`
-2. [x] - `p1` - **FROM** PRESENTED **TO** APPROVED **WHEN** the developer grants explicit approval - `inst-st-presented-to-approved`
-3. [x] - `p1` - **FROM** PRESENTED **TO** REJECTED **WHEN** the developer declines the change set - `inst-st-presented-to-rejected`
-4. [x] - `p1` - **FROM** APPROVED **TO** APPLIED **WHEN** the engine has applied all change-set entries non-destructively and updated provenance - `inst-st-approved-to-applied`
-5. [x] - `p1` - **FROM** APPLIED **TO** ROLLED_BACK **WHEN** the developer requests rollback and the engine restores the pre-upgrade snapshot - `inst-st-applied-to-rolledback`
+1. [ ] - `p1` - **FROM** BASELINE_READ **TO** VALIDATED **WHEN** the new origin resolves, declares the same identity as the registered name, and validates against every target in `targets[]` - `inst-st-read-to-validated`
+2. [ ] - `p1` - **FROM** BASELINE_READ **TO** REFUSED **WHEN** the name is not registered, its `targets[]` is empty, the new origin cannot be resolved, it declares a different identity, or validation fails for any one target; `templates[name]` is unchanged for every target - `inst-st-read-to-refused`
+3. [ ] - `p1` - **FROM** VALIDATED **TO** PRESENTED **WHEN** the transition has been built and shown to the developer for review - `inst-st-validated-to-presented`
+4. [ ] - `p1` - **FROM** PRESENTED **TO** APPROVED **WHEN** the developer grants explicit approval - `inst-st-presented-to-approved`
+5. [ ] - `p1` - **FROM** PRESENTED **TO** DECLINED **WHEN** the developer declines the transition; nothing is written - `inst-st-presented-to-declined`
+6. [ ] - `p1` - **FROM** APPROVED **TO** COMMITTED **WHEN** the engine applies the transition within every target's effective ownership and commits `origin`/`version` atomically for the name - `inst-st-approved-to-committed`
+7. [ ] - `p1` - **FROM** COMMITTED **TO** RESTORED **WHEN** a subsequent restore reverses the commit back to the name's pre-upgrade `origin`/`version` across every target - `inst-st-committed-to-restored`
 
 ## 5. Definitions of Done
 
-### Change-Set Computation and Presentation
+### Atomic All-Targets Validation and Review
 
-- [x] `p1` - **ID**: `cpt-frontx-dod-upgrade-changeset-computation`
+- [ ] `p1` - **ID**: `cpt-frontx-dod-upgrade-changeset-computation`
 
-The system **MUST** compute a reviewable change set by re-resolving the baseline version through the shared resolver from the source-spec recorded in the selected template's provenance record (not from the single-version local inventory), diffing the target template version against that baseline scoped to the template's occupied ownership boundary — whole files for exclusive subtrees and owned marker-delimited regions only for shared files — and presenting it to the developer before writing any project file; no project file may be created, modified, or deleted until the developer explicitly approves.
-
-Because a source-spec address may legitimately begin serving a different template, the system **MUST**, before computing any diff, confirm that the baseline-resolved and target-resolved content declare one and the same template identity, and that the provenance record's recorded identity is either that declared identity or the repository name its own subtree-less source-spec addresses — the identity a record written before identity came from the manifest carried. Any other combination **MUST** be refused with the identities that were compared named, and no diff computed; an identity that cannot be read is never treated as a match.
-
-The change set for a record admitted on the repository-name match covers that template's exclusive subtrees only. Owned regions are matched by the identity the record carries, which no resolved version declares in its markers any more, so every `region-union` shared file **MUST** be left out of that change set whichever identity its markers carry, rather than contributing an entry a region comparison across the two identity schemes produced.
+The system **MUST** read a registered name's `{origin, version, targets[]}` entry from the project state store (`cpt-frontx-feature-composed-provenance`) as the sole baseline, refusing with `TEMPLATE_NOT_REGISTERED` when the name has no entry, with `TARGET_NOT_APPLIED` when its `targets[]` is empty, and with `VERSION_MISMATCH` when the recorded `version` no longer matches what the recorded `origin` reports — a baseline the project state misreports is not a baseline to diff from; resolve a candidate new origin through the shared resolver, confirm it declares the same manifest identity as the registered name, validate it against every target listed for the name, and present the validated transition to the developer before writing any project file; the system **MUST** refuse the entire upgrade — writing nothing and leaving every target's recorded `origin`/`version` unchanged — with `ORIGIN_UNAVAILABLE` when the origin cannot be resolved, with `REGISTRATION_CONFLICT` when it declares a different identity, or with a validation failure naming the target(s) when it fails validation for any one target (`target`).
 
 **Implements**:
 - `cpt-frontx-flow-upgrade-changeset-review-approval`
-- `cpt-frontx-algo-upgrade-changeset-compute`
+- `cpt-frontx-algo-upgrade-changeset-validate`
+
+**Constraints**: `cpt-frontx-constraint-cli-authoritative-change-set`
 
 **Touches**:
-- Entities: `ProjectProvenance`
+- Component: `cpt-frontx-component-cli-change-set-engine`
+- Entities: `ProjectProvenance`, `Template`
 
-### Non-Destructive Application and Provenance Update
+### Atomic All-Targets Commit
 
-- [x] `p1` - **ID**: `cpt-frontx-dod-upgrade-changeset-apply`
+- [ ] `p1` - **ID**: `cpt-frontx-dod-upgrade-changeset-apply`
 
-The system **MUST** apply the approved change set non-destructively by writing only the approved entries to the repository within the selected template's ownership boundary — rewriting only that template's own marker-delimited region(s) in a shared file and leaving every co-owning template's region untouched — retain a pre-upgrade snapshot for rollback, and update the selected applied template's provenance record to the newer version upon successful application.
+The system **MUST** commit an approved transition's `origin` and `version` to the project state store atomically across every target listed for the name — every target moves together, or none do — applying the transition within each target's effective ownership, and **MUST** leave every target and the project state store exactly as they were before the attempt when application fails for any target, with no partial commit. A successful commit **MUST** refresh the name's CLI-owned AI-extension bundle at `.frontx/ai/<manifest-name>/` from the new payload, through the same CLI-owned step `apply` and `delete` use (`cpt-frontx-algo-cli-scaffolding-ai-bundle`), never through the template's own ownership (`target`).
 
 **Implements**:
 - `cpt-frontx-flow-upgrade-changeset-review-approval`
-- `cpt-frontx-algo-upgrade-changeset-apply`
+- `cpt-frontx-algo-upgrade-changeset-commit`
+
+**Constraints**: `cpt-frontx-constraint-cli-non-destructive-upgrade`
 
 **Touches**:
+- Component: `cpt-frontx-component-cli-change-set-engine`
 - Entities: `ProjectProvenance`
 
-### Rollback to Pre-Upgrade State
+### Restore to Pre-Upgrade State
 
-- [x] `p1` - **ID**: `cpt-frontx-dod-upgrade-changeset-rollback`
+- [ ] `p1` - **ID**: `cpt-frontx-dod-upgrade-changeset-rollback`
 
-The system **MUST** support rollback of an applied change set by restoring all affected project files and the provenance record to their exact pre-upgrade state from the retained snapshot.
+The system **MUST** allow a developer to restore a registered name to its pre-upgrade `origin`/`version` and pre-upgrade applied content, atomically across every target of the name, after an approved upgrade has been committed (`cpt-frontx-fr-cli-upgrade-restore`), and **MUST** refuse with `NOTHING_TO_RESTORE` when no applied upgrade is available to restore for the name. The concrete mechanism — what state is retained to make this possible, for how long, and how each target's content is reversed at the file level — is an **open question** this feature does not resolve: `cpt-frontx-adr-project-upgrade-mechanism` deliberately leaves file-level changeset, diff, and reconciliation mechanics to a dedicated future decision (DESIGN §4), and this DoD fixes only the observable contract — restore is available after a committed upgrade and reverses the name and every one of its targets together — not the mechanism that delivers it.
 
 **Implements**:
-- `cpt-frontx-flow-upgrade-changeset-review-approval`
-- `cpt-frontx-algo-upgrade-changeset-rollback`
+- `cpt-frontx-flow-upgrade-changeset-restore`
+
+**Constraints**: `cpt-frontx-constraint-cli-non-destructive-upgrade`
 
 **Touches**:
 - Entities: `ProjectProvenance`
 
 ### Single Authoritative Engine
 
-- [x] `p1` - **ID**: `cpt-frontx-dod-upgrade-changeset-single-engine`
+- [ ] `p1` - **ID**: `cpt-frontx-dod-upgrade-changeset-single-engine`
 
-The system **MUST** provide exactly one change-set engine in `cpt-frontx-component-cli`; both direct CLI invocation and AI-driven orchestration (`cpt-frontx-feature-ai-upgrade-orchestration`, F17) **MUST** drive this same engine — no second implementation is permitted.
+The system **MUST** provide exactly one change-set engine, `cpt-frontx-component-cli-change-set-engine`; both direct CLI invocation and AI-driven orchestration (`cpt-frontx-feature-ai-upgrade-orchestration`) **MUST** drive this same engine — no second implementation is permitted.
 
 **Implements**:
 - `cpt-frontx-flow-upgrade-changeset-review-approval`
-- `cpt-frontx-algo-upgrade-changeset-apply`
+- `cpt-frontx-algo-upgrade-changeset-commit`
+
+**Constraints**: `cpt-frontx-constraint-cli-authoritative-change-set`
 
 **Touches**:
+- Component: `cpt-frontx-component-cli-change-set-engine`
 - Entities: `ProjectProvenance`
 
 ## 6. Acceptance Criteria
 
-- [x] Invoking the upgrade command with an available newer template version produces a reviewable change set and writes no project files until the developer approves.
-- [x] The baseline version is re-resolved through the shared resolver from the source-spec recorded in the selected template's provenance record, so the diff baseline is obtainable even though the local inventory retains only one version per entry.
-- [x] The computed diff and the applied change set are scoped to the selected template's occupied ownership boundary: whole files for exclusive subtrees, and only the template's own marker-delimited region(s) for a shared file, leaving every co-owning template's region byte-for-byte unchanged.
-- [x] Approving the change set writes only the approved entries and updates the selected applied template's provenance record to the newer version.
-- [x] Declining the change set leaves the project byte-for-byte unchanged, with no file created, modified, or deleted.
-- [x] Applying a change set and then rolling it back restores the exact pre-upgrade project state, including the provenance record.
-- [x] Both direct CLI invocation and AI-driven orchestration (F17) drive the same change-set engine; no second diff-and-apply implementation exists.
-- [x] A target version that cannot be resolved causes the engine to report the failure and abort before writing any project file.
-- [x] An address whose target version declares a different template identity than its baseline version causes the engine to refuse the upgrade, naming both declared identities, and to compute no diff and write no project file.
-- [x] A provenance record written before identity came from the manifest, its recorded identity being the repository name its subtree-less source-spec addresses, still upgrades without a refusal, provided both resolved versions declare one identity.
-- [x] The change set computed for such a record covers that template's exclusive subtrees only: every `region-union` shared file is excluded from it, contributing neither a clean entry nor a conflict whichever identity its markers carry.
-- [x] A provenance record whose identity is neither the identity the resolved versions declare nor the repository its own source-spec addresses causes the engine to refuse rather than assume a match.
+- [ ] Invoking `upgrade <templateName> <new-origin>` for a registered name with at least one applied target produces a reviewable, validated transition covering every target under that name, and writes no project file until the developer approves.
+- [ ] The baseline read for the upgrade is exactly `templates[templateName].{origin, version}` from the single project state document — no per-instance provenance record or per-file hash set is read or required to exist.
+- [ ] Approving the transition commits `templates[templateName].origin`/`.version` atomically and applies the change within every target's effective ownership; declining leaves the repository and the project state store byte-for-byte unchanged.
+- [ ] A validation failure on any one target under the name refuses the entire upgrade, leaving `templates[templateName]` unchanged for every target of that name — never a partial commit.
+- [ ] `upgrade` against a name with no registered entry returns `TEMPLATE_NOT_REGISTERED`; against a name whose `targets` array is empty, the engine refuses with `TARGET_NOT_APPLIED` and directs the developer to `register --replace`.
+- [ ] A registered name whose recorded `version` no longer matches what its recorded `origin` reports is refused with `VERSION_MISMATCH` before the candidate origin is resolved and before any target is validated, naming the recorded and the reported version.
+- [ ] A new origin that fails to resolve returns `ORIGIN_UNAVAILABLE` before any target is validated.
+- [ ] A new origin whose manifest declares an identity different from the registered name being upgraded is refused with `REGISTRATION_CONFLICT`, naming both identities, with no target validated and no transition computed.
+- [ ] The reviewed transition equals the applied transition: the `origin`/`version` a developer approved is exactly what is committed to the project state store.
+- [ ] A successful, committed upgrade refreshes the name's CLI-owned `.frontx/ai/<manifest-name>/` bundle from the new payload, when the payload carries one, through the same CLI-owned step `apply`/`delete` use — never through the template's own ownership.
+- [ ] Both direct CLI invocation and AI-driven orchestration (`cpt-frontx-feature-ai-upgrade-orchestration`) drive the same change-set engine; no second upgrade implementation exists.
+- [ ] A developer can request restore of a name's most recently committed upgrade and observe the name and every one of its targets return to the pre-upgrade `origin`/`version` and applied content; requesting restore when no applied upgrade is available for that name returns `NOTHING_TO_RESTORE`.
+- [ ] This feature's DoD and CDSL make no claim about a file-level diff, three-way-merge, or per-file conflict-detection mechanism for either upgrade or restore — that mechanism is explicitly deferred to a future decision, consistent with `cpt-frontx-adr-project-upgrade-mechanism` and DESIGN §4.
+- [ ] Every `RETURN`-level refusal in this feature's flows and algorithms names a code from the shared error-code vocabulary (`cpt-frontx-adr-cli-machine-readable-output`).
+- [ ] `upgrade` satisfies `cpt-frontx-cli-nfr-template-scale`'s upgrade-preparation threshold: preparing a reviewable upgrade change set for one registered template in a project with at least 20 registered templates, without requiring any unrelated template to upgrade.
+- [ ] `cfs --json validate --artifact packages/cli/architecture/features/upgrade-changeset/FEATURE.md --skip-code` returns PASS.
+- [ ] `cfs --json validate-toc packages/cli/architecture/features/upgrade-changeset/FEATURE.md` returns PASS.

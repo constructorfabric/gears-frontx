@@ -1,9 +1,9 @@
 ---
 status: accepted
-date: 2026-06-04
+date: 2026-08-12
 ---
 
-# The Per-Applied-Template Upgrade Mechanism
+# How an Applied Template Adopts a Newer Version
 
 <!-- toc -->
 
@@ -14,9 +14,9 @@ date: 2026-06-04
   - [Consequences](#consequences)
   - [Confirmation](#confirmation)
 - [Pros and Cons of the Options](#pros-and-cons-of-the-options)
-  - [Single per-template change-set engine in the CLI; AI orchestrates and enriches it](#single-per-template-change-set-engine-in-the-cli-ai-orchestrates-and-enriches-it)
-  - [Split engines: a CLI engine and a separate AI engine](#split-engines-a-cli-engine-and-a-separate-ai-engine)
-  - [AI-only engine](#ai-only-engine)
+  - [Per-applied-template-instance upgrade with a provenance-derived baseline and file-level reconstruction](#per-applied-template-instance-upgrade-with-a-provenance-derived-baseline-and-file-level-reconstruction)
+  - [Per-target upgrade with independently versioned instances of the same template](#per-target-upgrade-with-independently-versioned-instances-of-the-same-template)
+  - [Atomic all-targets upgrade with the baseline read from `project.json`](#atomic-all-targets-upgrade-with-the-baseline-read-from-projectjson)
 - [More Information](#more-information)
 - [Traceability](#traceability)
 
@@ -26,81 +26,97 @@ date: 2026-06-04
 
 ## Context and Problem Statement
 
-A repository is assembled from one or more independently-applied templates, and each applied template must be able to adopt a newer version of that same template without the developer hand-editing files or risking unreviewed changes, independently of the other applied templates (`cpt-frontx-fr-cli-project-upgrade-changeset`); no modification may reach the repository's files without the developer's explicit approval (`cpt-frontx-fr-cli-upgrade-review-approval`). This requires a mechanism that, for a chosen applied template, computes the difference between the version it was applied from and a newer one, expresses it as something a human can examine and approve, and applies it without destroying work in progress or disturbing the other applied templates. Two design questions follow: what is the unit of this mechanism (a per-template diff-and-apply engine over template versions), and where does it live relative to the AI-driven upgrade workflow that a developer's agent uses to analyse and enrich the change (`cpt-frontx-usecase-ai-driven-template-upgrade`)?
+The project-state contract keeps everything the CLI tracks about an applied template in one document, `.frontx/project.json`, keyed by template name: `templates[name] = { origin, version, targets[] }` (`cpt-frontx-adr-project-provenance-record`). A template name carries exactly one `origin` and one `version`, and `targets` is the list of paths that name has been applied to; there is no per-target `origin`/`version` field and no per-instance provenance record an upgrade could read as a baseline. An upgrade mechanism operating on one applied template *instance* at a time, diffing against a per-instance record written at apply time, therefore has neither a unit nor a baseline source to work from. What is the unit an upgrade operates on, and where does its baseline come from, when a single registry entry names every target a template has been applied to?
 
 ## Decision Drivers
 
-* **Per-applied-template independence** — each applied template upgrades on its own cadence against its own provenance baseline (`cpt-frontx-adr-project-provenance-record`), so the engine operates on one applied template at a time and must leave the others untouched.
-* **Reviewable before applied** — the result of an upgrade computation must be an approvable artifact a developer examines and accepts or declines before anything is written, so a human stays in control of every change.
-* **Non-destructive application** — applying an approved change must not silently overwrite developer modifications; the engine must produce a change set whose application is bounded and recoverable rather than an in-place blind overwrite.
-* **Reversibility** — an applied change set must be reversible to the pre-upgrade state, so an upgrade that proves unwanted can be rolled back cleanly.
-* **One authoritative computation** — the difference between two template versions and its application must be computed in exactly one place, so the change a developer reviews is the same change that is applied, with no second, divergent implementation, for every applied template.
-* **Reuse across invokers** — the same engine must serve both a direct developer invocation and an AI-driven workflow, so upgrade behaviour does not fork by who triggers it.
-* **Engine independent of AI availability** — the core upgrade capability must function whether or not an AI agent is present; AI enriches the experience but is not a precondition for upgrading.
+* **One origin and one version per template name** — the registry structure itself (`templates[name] = { origin, version, targets[] }`) has no field for a per-target origin or version; any upgrade unit finer than "the template name" cannot be expressed without adding fields the project-state contract does not define (`cpt-frontx-adr-project-provenance-record`).
+* **A minimal, algorithmic baseline for v1** — the baseline an upgrade diffs against must be derivable from data the project already keeps for other reasons (the registered `origin` and `version`), not from a dedicated per-instance provenance record or per-file content hashes maintained solely to serve upgrade.
+* **Determinism over partial-success granularity** — a registry entry that names one `origin`/`version` for potentially several `targets` must never end up describing a template partially upgraded and partially not; the entry's truth (which version this name is at) must hold for every target it names at the end of the operation.
+* **Reviewable, non-destructive, reversible regardless of unit** — a developer must be able to review an upgrade before it lands, it must not destroy in-progress edits, and it must be reversible; these properties are requirements independent of which unit or baseline implements them, and this decision does not relax them.
+* **Ownership subtraction still applies** — regardless of unit, an upgrade must not touch ground the applied template does not effectively own, as `cpt-frontx-adr-template-ownership-boundary-declaration` computes it, nor any nested target belonging to another template.
+* **Deliberate re-application must stay distinct from accidental overwrite** — re-running `apply` against an unchanged, already-applied target must remain an idempotent no-op that protects an edited instance; intentionally moving a target onto a new template version is a separate, named operation (`upgrade`), never something `apply` does by itself.
 
 ## Considered Options
 
-* **Single per-template change-set engine in the CLI; AI orchestrates and enriches it** — one engine in the `@gears-frontx/cli` package computes, for a chosen applied template, a template-version-diff change set against that template's provenance record, presents it for approval, applies it non-destructively within that template's boundary, and supports rollback; the AI upgrade workflow invokes this engine per template and enriches the experience (change analysis, downstream-impact assessment) alongside it.
-* **Split engines: a CLI engine and a separate AI engine** — the CLI carries one diff-and-apply implementation and the AI workflow carries its own, each computing and applying upgrades independently.
-* **AI-only engine** — the diff-and-apply capability lives entirely in the AI workflow; the CLI exposes no standalone upgrade engine and an upgrade requires the AI agent.
+* **Per-applied-template-instance upgrade with a provenance-derived baseline and file-level reconstruction** — one engine invocation per target, diffing against a dedicated per-instance provenance record and reconstructing a three-way merge from that record's origin.
+* **Per-target upgrade with independently versioned instances of the same template** — keep the instance as the unit, but let each target of a given template name carry its own `origin`/`version`, so `login` can sit on v2 while `registration` stays on v1.
+* **Atomic all-targets upgrade with the baseline read from `project.json`** — the unit of upgrade is the template *name*; `frontx upgrade <templateName> <new-origin>` validates and updates every target listed under that name as one atomic operation, using the name's own `{ origin, version }` entry as the baseline.
 
 ## Decision Outcome
 
-Chosen option: **Single per-template change-set engine in the CLI; AI orchestrates and enriches it**, because it is the only option that gives one authoritative computation while still serving both a direct invocation and an AI-driven workflow, for each applied template independently. A generic template-version-diff engine in the CLI takes one applied template, reads its provenance record as the baseline (`cpt-frontx-adr-project-provenance-record`), computes the change between the version it was applied from and a target version, expresses it as an approvable change set, applies it non-destructively within that template's ownership boundary, and supports rollback to the pre-upgrade state — leaving the other applied templates and their provenance records unchanged.
+Chosen option: **Atomic all-targets upgrade with the baseline read from `project.json`**, because it is the only option that fits the registry structure the project-state contract fixes (`cpt-frontx-adr-project-provenance-record`), and it gives v1 a deterministic, dependency-free upgrade unit without introducing per-instance provenance records and file-level reconstruction machinery that the contract has no place for and v1 has no use for.
 
-The boundary with AI is explicit: the single change-set engine lives in the **CLI**, and the AI-driven upgrade orchestration decided in `cpt-frontx-adr-ai-driven-upgrade-orchestration` **invokes and enriches** that engine per applied template — running alongside it, not subordinating or replacing it. The AI workflow contributes change analysis and downstream-impact assessment around the engine's change set; it does not compute or apply the change set itself. This keeps the engine usable without AI and guarantees the change a developer reviews is exactly the change the engine applies. The split-engines option fails the one-authoritative-computation and no-fork drivers and risks the reviewed change diverging from the applied change; the AI-only option fails the engine-independent-of-AI driver by making every upgrade require an agent.
+`frontx upgrade <templateName> <new-origin>` treats every target listed under `templateName` in `.frontx/project.json` as one unit: it validates the new origin against all of that name's targets and, on success, updates `origin` and `version` for the name atomically — every target moves together, or none do. A partial upgrade of one target to a new version while a sibling target of the same name stays on the old version is not a supported state in v1; it is a direct consequence of the registry recording one `origin` and one `version` per name rather than per target. The baseline an upgrade diffs against is the name's own registry entry — `{ origin, version }` in `project.json` — not a per-instance provenance record or a per-file hash set; no such record exists to read.
 
-The scope of this decision is the upgrade engine's unit (one applied template at a time) and ownership and its reviewability, non-destructiveness, and reversibility. It does not decide the AI orchestration workflow's own shape (`cpt-frontx-adr-ai-driven-upgrade-orchestration`), how a template reference resolves to a version (`cpt-frontx-adr-template-acquisition-and-location`), the per-applied-template provenance the engine diffs against (`cpt-frontx-adr-project-provenance-record`), nor the local-update path that refreshes an installed template without touching a repository.
+`upgrade` is the only path permitted to change a template name's `origin` while its `targets` list is non-empty; when `targets` is empty, `register --replace` is sufficient because there is no applied ground to reconcile. Re-applying a since-changed template onto an existing target is, by definition, an `upgrade`, never a plain `apply`: `apply` against an already-applied, unchanged target remains an idempotent no-op, precisely so an edited instance is never silently clobbered by a template that moved on. An upgrade computes and applies its changes only within the effective ownership of the targets it touches — the whole six-term subtraction `cpt-frontx-adr-template-ownership-boundary-declaration` enumerates, applied whole and never as a subset — and, beyond that, never into a nested target belonging to another template. Protected and other-owned ground is therefore never disturbed, regardless of how many targets are being moved at once. Every outcome — success, `VERSION_MISMATCH`, or any other failure — is reported through the CLI's single JSON result envelope, consistent with every other command.
+
+This decision fixes the unit of upgrade (the template name, all its targets, atomically) and the source of its baseline (the `project.json` registry entry, not a provenance record). It deliberately does **not** define the changeset representation, a diff or three-way-merge algorithm, per-file conflict detection within an upgrade, or how a future version might reconcile targets that have diverged from one another under the same name — those are left to a dedicated future decision so this contract is not inflated to cover a reconstruction problem no consumer has yet required.
 
 ### Consequences
 
-* Good, because one engine computes and applies the change set for each applied template, so the reviewed change and the applied change are guaranteed identical.
-* Good, because each applied template upgrades independently against its own provenance baseline, leaving the other applied templates untouched.
-* Good, because the upgrade capability is available by direct CLI invocation and does not require an AI agent to be present.
-* Good, because non-destructive application plus rollback makes adopting a newer template version safe and recoverable.
-* Good, because the AI workflow can enrich the upgrade (analysis, impact assessment) without re-implementing the engine, keeping the two concerns layered cleanly.
-* Bad, because a single generic diff engine must handle template-shaped changes it cannot always merge automatically; some changes surface as conflicts the developer must resolve during review.
-* Bad, because rollback requires the engine to retain enough pre-upgrade state to reverse an applied change set, which is state the engine must manage and bound per applied template.
+* Good, because the upgrade unit matches the registry structure exactly — one name, one origin, one version, several targets — so there is no field or state the registry can represent that upgrade cannot act on consistently.
+* Good, because the baseline is data the project already carries for `list`, `validate`, and `apply` to auto-install a registered origin; upgrade introduces no dedicated baseline artifact, no file to go stale, and no record a developer could edit or delete out from under the upgrade.
+* Good, because atomicity across all targets of a name rules out a registry that claims one version while its targets sit at a mix of versions — a state a per-instance unit could produce and that a validator would otherwise need to detect and explain.
+* Bad, because a developer cannot move one target of a multi-target template forward while leaving a sibling target behind (login on v2, registration still on v1); adopting a new version for any one target requires accepting it for all targets of that name, or not upgrading that name yet.
+* Bad, because an upgrade that touches several targets at once must succeed or fail as a whole; a conflict or ownership violation confined to one target blocks the version change for every other target of the same name until that target's issue is resolved.
+* Bad, because this mechanism does not itself implement the reviewable, non-destructive, reversible discipline this record requires: those properties carry forward as standing requirements on the future changeset decision (see More Information), not as consequences this ADR's atomic unit-and-baseline choice already delivers. They remain **in force and discoverable as requirements** rather than lapsing for want of a mechanism that delivers them: `cpt-frontx-fr-cli-upgrade-review-approval` (approval before any file write) and `cpt-frontx-fr-cli-upgrade-restore` (restore to the previously applied state) are live requirements in the CLI PRD, both marked blocked on that future decision, and the PRD tracks it as an open item to be resolved before upgrade implementation begins. A reader who arrives at this record asking "must an upgrade still be reversible?" is answered yes by those requirements, not by this decision.
 
 ### Confirmation
 
-Compliance is confirmed by continuous-integration checks on the CLI package: a fixture repository assembled from two templates, one at an older version, is upgraded for that one template and the check asserts (a) the engine produces an approvable change set and writes nothing to repository files until approval, (b) declining the change set leaves the repository byte-for-byte unchanged, (c) applying the approved change set then rolling it back restores the pre-upgrade state, (d) the other applied template and its provenance record are unaffected, and (e) the AI orchestration path drives the same engine rather than a second implementation. Design and code review confirm the diff-and-apply computation exists in exactly one place in the `@gears-frontx/cli` package and that the AI workflow calls into it.
+Compliance is confirmed by design and code review plus a CLI test: register a template applied to two targets under one name, then run `upgrade <name> <new-origin>`; assert the operation reads `{ origin, version }` from `project.json` (not any provenance or per-instance file) as its baseline, that both targets are validated and updated together, and that `project.json`'s `origin`/`version` for that name change exactly once, atomically, only on success. A companion test asserts that when validation fails for any one of the name's targets, `project.json` is left unchanged for every target of that name — no partial commit — and the result is reported as a single JSON envelope entry (e.g. `VERSION_MISMATCH`) rather than a per-target list of independent outcomes. A further test asserts that `upgrade` against a name with an empty `targets` list is rejected or redirected to `register --replace`, and that a plain `apply` re-run against an unchanged, already-applied target remains a no-op that performs no origin/version change.
 
 ## Pros and Cons of the Options
 
-### Single per-template change-set engine in the CLI; AI orchestrates and enriches it
+### Per-applied-template-instance upgrade with a provenance-derived baseline and file-level reconstruction
 
-One CLI engine computes, presents, applies, and reverses the change set for one applied template at a time; the AI workflow invokes and enriches it alongside.
+One engine invocation per applied instance, reading a dedicated per-instance provenance record as the diff baseline and reconstructing a three-way merge from it.
 
-* Good, because there is exactly one authoritative diff-and-apply computation for every applied template.
-* Good, because each applied template upgrades independently, and the engine works with or without AI.
-* Good, because reviewability, non-destructive apply, and rollback are properties of one engine and apply uniformly to every invoker and every applied template.
-* Neutral, because it defines a clean invocation boundary the AI orchestration decision depends on.
-* Bad, because the engine carries the per-template rollback state it must manage, and some template-shaped changes still require manual conflict resolution.
+* Good, because each instance upgrades fully independently of every other instance of the same template.
+* Bad, because it requires a per-instance provenance record and file-level baseline reconstruction that the project-state contract does not carry, so choosing it here would mean adding contract surface for a capability v1 does not need.
+* Bad, because it has no baseline to read under the new `project.json`-only registry: there is no per-instance record left to diff against.
 
-### Split engines: a CLI engine and a separate AI engine
+### Per-target upgrade with independently versioned instances of the same template
 
-The CLI and the AI workflow each carry their own diff-and-apply implementation.
+Keep the instance as the unit, but let each target of a given template name carry its own `origin`/`version`, so different targets of the same name can sit at different versions.
 
-* Good, because each invoker can evolve its engine independently.
-* Bad, because two implementations can diverge, so the change a developer reviews under one path may differ from what another applies, failing the one-authoritative-computation driver.
-* Bad, because reviewability, non-destructiveness, and rollback must be re-proven separately for each engine, doubling the reliability surface.
+* Good, because it preserves the flexibility of upgrading targets one at a time.
+* Bad, because it breaks the registry's own invariant — one `origin` and one `version` per template name — forcing `templates[name]` to become a map of per-target versions and reopening a structural question the project-state contract settles elsewhere (`cpt-frontx-adr-project-provenance-record`).
+* Bad, because it complicates every other registry-reading operation (`list`, `validate`, auto-install on `apply`) with a per-target version dimension none of them currently need.
 
-### AI-only engine
+### Atomic all-targets upgrade with the baseline read from `project.json`
 
-The diff-and-apply capability lives entirely in the AI workflow; the CLI exposes no standalone engine.
+The template name is the unit; `upgrade` validates and moves every target under that name together, atomically, using the name's own registry entry as the baseline.
 
-* Good, because the upgrade experience and its enrichment live in one place.
-* Bad, because every upgrade then requires an AI agent, failing the engine-independent-of-AI driver.
-* Bad, because the CLI's own command surface cannot offer a reviewable, reversible upgrade without the agent, narrowing where upgrades are possible.
+* Good, because it requires no new persisted state — the baseline is the registry entry every other command already reads and writes.
+* Good, because a registry entry can never describe a template name at an internally inconsistent version across its own targets.
+* Neutral, because it provides useful, if coarse, determinism for v1 while leaving room for a future decision to introduce finer-grained reconciliation if a validated need for it appears.
+* Bad, because it cannot express "upgrade this one target, leave the others" — a real workflow a per-instance unit would support and that a future decision may need to introduce deliberately.
 
 ## More Information
 
-The AI-driven upgrade orchestration that invokes and enriches this engine is decided in `cpt-frontx-adr-ai-driven-upgrade-orchestration`; that decision sits alongside, not above, this one. The per-applied-template provenance baseline the engine diffs against is decided in `cpt-frontx-adr-project-provenance-record`. Resolution of a template reference to a target version is performed by the shared resolver decided in `cpt-frontx-adr-template-acquisition-and-location`. These are non-binding pointers to related decisions and are not part of this decision's durable identity.
+The reviewable, non-destructive, reversible discipline is not reopened here, but this decision does not deliver it either: those three properties are **standing requirements on a future changeset decision**, not properties this decision's mechanism itself provides. This decision fixes only the unit of operation (all targets of a template name, atomically) and the baseline source (the `project.json` registry entry); it defines no changeset representation, no diff or three-way-merge algorithm, and no per-file conflict detection, so it has no mechanism of its own to review, reverse, or check for destructiveness at the file level. Carrying those properties forward as live requirements — rather than as satisfied consequences — means the dedicated changeset decision this ADR defers to is not optional future work but the first item in the implementation-phase queue: until it lands, `upgrade` moves a template name's targets to a new version without an implemented review-and-approval step or a defined reversal path, and the PRD's requirements for that review, approval, and restoration (`cpt-frontx-fr-cli-project-upgrade-changeset`, `cpt-frontx-fr-cli-upgrade-review-approval`, `cpt-frontx-fr-cli-upgrade-restore`) are correctly tracked as blocked on it, not as already met. That these properties matter regardless of mechanism is the contract the next decision must satisfy; a per-instance unit and a per-instance provenance baseline are not available to carry them, because the project-state model has no per-instance record.
 
-Reliability treatment (REL): the change-set model is the engine's reliability design. **Failure modes** — a target version that cannot be resolved, or a change the engine cannot apply cleanly, surfaces during computation or review, before any repository file is written; the applied template stays at its current version and the other applied templates are untouched. **Non-destructive apply** — application is gated behind explicit approval and writes only the approved change set within the template's boundary. **Recovery / rollback** — an applied change set is reversible to the pre-upgrade state, so an unwanted upgrade is recoverable at the change-set level. **Single point of failure** — the single engine is deliberately the one authoritative computation; its reliability properties are proven once and apply to every invoker and every applied template (the Confirmation defines those checks). **Operational readiness (REL-ADR-002)**: rollback strategy is the change-set reversal above; service-oriented items — deployment complexity, monitoring, alerting, runbooks, SLA — are Not applicable, because this is a local developer command with no running service, no availability target, and no operational on-call surface.
+The baseline this decision reads has a constraint the future changeset decision must resolve, not one this ADR can close: for a template registered from a local `path:` origin, the baseline is not recoverable from the origin itself. A remote origin's baseline is its pinned commit SHA or exact package version, always re-fetchable; a `path:` origin names a folder inside the project that a developer edits in place, and the project's own inventory of that folder is local and does not travel — there is no separate, addressable "prior version" to re-fetch when an upgrade needs to diff against what was last applied. The future changeset decision must therefore define where a `path:` origin's baseline snapshot lives before a diff-based upgrade can work for local templates at all; a copy captured into the local inventory at `apply` or `register` time is one candidate, and the pattern has prior art in template tools that keep an answers/context snapshot beside the applied output for exactly this reason (Copier's `.copier-answers.yml`, `cruft`'s equivalent link file) — cited here as precedent for the shape of a solution, not as a decision this ADR makes.
 
-Applicability of the remaining checklist categories: **PERF** — Not applicable, because there is no latency or throughput budget bound to a local upgrade command. **SEC** — Not applicable, because the decision introduces no secret material and no authentication surface. **DATA** — Not applicable, because no persistent database or schema is defined here; the pre-upgrade state the engine retains for rollback is an implementation concern, not a schema decision. **OPS** — Not applicable, per the operational-readiness note above. **COMPL** — Not applicable, because no regulatory obligation bears on the engine. **UX** — addressed implicitly: review-then-approve keeps the developer in control. **MAINT** — addressed: one engine is one place to maintain the upgrade behaviour for every applied template. **Review cadence**: revisit if AI enrichment ever needs to alter the change set the engine computes (which would pressure the alongside-not-subordinate boundary), or if template-shaped changes routinely defeat automatic application.
+The exact field layout `project.json` uses to record `{ origin, version, targets }` is not fixed here; per `cpt-frontx-adr-contract-schema-ownership`, that layout belongs to the owning FEATURE, and this decision only relies on an `origin`/`version` baseline being readable per template name, however it is laid out. The behavior this decision constrains is delivered by the CLI's change-set-and-upgrade component, `cpt-frontx-component-cli-change-set-engine`, established as one of the CLI's internal components in `cpt-frontx-adr-cli-internal-decomposition`.
+
+The engine this decision fixes operates independently of any AI layer: `frontx upgrade <templateName> <new-origin>` is a direct CLI invocation that validates and moves a template name's targets whether a developer types it themselves or an AI orchestrator issues it on their behalf, reaffirming the orchestration boundary `cpt-frontx-adr-ai-driven-upgrade-orchestration` already fixed — the CLI executes and arbitrates the single engine this decision fixes, and an AI layer only sequences and interprets around it. A successful upgrade also refreshes the applying name's CLI-owned AI bundle — `.frontx/ai/<manifest-name>/`, materialized as described in `cpt-frontx-adr-template-ownership-boundary-declaration` — from the new version's payload, the same way `apply` refreshes it on first materialization.
+
+Integration analysis (**INT**): the upgrade operation is an internal CLI contract with no external party — its producer is the `upgrade` command and its consumer is the local project (`project.json` plus the files under each target). Version-compatibility intent is forward-looking only in the sense that the JSON result envelope's error vocabulary (including `VERSION_MISMATCH`) must remain stable for scripted and AI-driven callers; the internal baseline representation is free to evolve as `project.json`'s owning FEATURE evolves it.
+
+Applicability of the remaining checklist categories:
+
+* **PERF** — Not applicable, because validating and updating a bounded, developer-sized list of targets for one template name carries no throughput or latency budget at decision altitude.
+* **SEC** — Not applicable, because the operation handles template origins and version strings, not secret material.
+* **REL** — addressed narrowly: the all-or-nothing atomicity requirement is this decision's reliability property (no partial commit across a name's targets on failure); the recovery/rollback mechanics for a partially-attempted upgrade are implementation concerns for the future changeset decision, not fixed here.
+* **DATA** — Not applicable as a complete schema, because the `project.json` field layout is owned by its FEATURE per `cpt-frontx-adr-contract-schema-ownership`; this decision fixes only that an `origin`/`version` baseline is read per template name.
+* **OPS** — Not applicable, because no operational procedure attaches to a local developer command.
+* **MAINT** — addressed: one baseline source and one atomic unit per template name removes the bookkeeping a per-instance provenance store would otherwise require.
+* **UX** — addressed implicitly: a developer reasons about upgrading a template by name, not about reconciling divergent versions across its individual targets.
+* **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+
+**Review cadence**: revisit if a validated need emerges for upgrading one target of a multi-target template independently of its siblings, or once the deferred changeset/merge mechanics are designed and may need to reference this decision's unit and baseline.
 
 ## Traceability
 
@@ -109,7 +125,6 @@ Applicability of the remaining checklist categories: **PERF** — Not applicable
 
 This decision directly addresses the following requirements and design elements:
 
-* `cpt-frontx-fr-cli-project-upgrade-changeset` — The single CLI engine is the mechanism that applies a per-applied-template version upgrade as a reviewable, non-destructive change set, each applied template upgraded independently against its own provenance baseline.
-* `cpt-frontx-fr-cli-upgrade-review-approval` — The change set is approvable before application; the engine writes nothing to repository files until the developer approves, satisfying this requirement's human-in-control guarantee.
-* `cpt-frontx-usecase-ai-driven-template-upgrade` — This decision sets the boundary the use case relies on: the AI orchestration analyses and enriches, and the CLI engine computes and applies the per-template change set the developer approves.
-* `cpt-frontx-component-cli` — The CLI component owns the change-set engine; this decision constrains that ownership and its per-template, reviewable, non-destructive, reversible operation.
+* `cpt-frontx-fr-cli-project-upgrade-changeset` — Redefines the unit this requirement's changeset operates on: one atomic changeset per template name covering all of that name's targets, rather than one changeset per applied instance.
+* `cpt-frontx-fr-cli-upgrade-review-approval` — The atomic all-targets operation remains subject to review and approval before it writes to any target; this decision does not relax that requirement, only the mechanism that produces what is reviewed.
+* `cpt-frontx-component-cli-change-set-engine` — This decision constrains the component's unit of operation (a template name and all its targets, atomically) and its baseline source (the registry entry in `project.json`).
