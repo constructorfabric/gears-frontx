@@ -133,7 +133,7 @@ A complete repository URL accompanied by distinct version and subdirectory argum
 * Good, because each part is explicitly labelled and self-describing, and no delimiter constrains what a subtree path may contain.
 * Good, because a full URL is unambiguous about transport and host.
 * Bad, because independent inputs can disagree and must be cross-validated wherever a reference is stored or re-resolved.
-* Bad, because every surface that carries a reference must be widened to carry the extra values — provenance records, a preset's declared sibling references, and command arguments.
+* Bad, because every surface that carries a reference must be widened to carry the extra values — the project state document's `origin` field, a caller's batch, and command arguments.
 * Bad, because it diverges from the host-prefixed shape established in the substrate, introducing a second reference vocabulary.
 
 ### Bare name resolved against a default registry
@@ -153,7 +153,7 @@ The token names a repository only; a template that must be addressable gets its 
 * Good, because it requires no subtree rule in the shape or in any parser.
 * Good, because each template's version history is unambiguously its own.
 * Bad, because it forces repository proliferation for a packaging reason rather than an ownership reason.
-* Bad, because a composed preset's sibling templates end up in separate repositories that must be kept version-aligned by convention rather than by construction.
+* Bad, because a family of sibling templates ends up in separate repositories that must be kept version-aligned by convention rather than by construction.
 
 ## More Information
 
@@ -163,7 +163,7 @@ The determinism of the repository-path split rests on a property of the admitted
 
 Integration analysis (**INT**): the source-spec is a client-supplied contract (`cpt-frontx-contract-source-spec`, direction required-from-client). Its consumer is the CLI's reference parser and shared resolver; its producer is any developer or tool that names a template. Version-compatibility intent is additive: the subtree segment is optional, so additional hosts and selector kinds are introduced without invalidating references already written, and any change to the shape that is not backward-compatible follows the platform evolvability requirement. A reference is also stored and re-resolved rather than only consumed once: a provenance record retains it (`cpt-frontx-adr-project-provenance-record`), so a reference that carries a subtree must re-resolve to the same subtree at upgrade time. No external integration partner consumes this shape beyond the source registry it addresses.
 
-**SEC** — addressed: the subtree segment is the only developer- or third-party-supplied path fragment in a reference, and it reaches local filesystem selection and re-rooting. It arrives not only by hand but inside a third-party manifest, since a composed preset declares its sibling references (`cpt-frontx-adr-composed-template-resolution`). This decision therefore fixes as a property of the shape that a subtree segment MUST be usable as a repository-relative path and MUST resolve within the acquired content root; a segment that does not is rejected, and no path outside that root is ever written. The reference carries no secret material.
+**SEC** — addressed: the subtree segment is the only developer- or third-party-supplied path fragment in a reference, and it reaches local filesystem selection and re-rooting. It arrives only from the caller — typed by a developer, or composed into a batch by an agent acting for one — never from inside another template's manifest, because no manifest declares a reference to any other template (`cpt-frontx-adr-composed-template-resolution`). This decision therefore fixes as a property of the shape that a subtree segment MUST be usable as a repository-relative path and MUST resolve within the acquired content root; a segment that does not is rejected, and no path outside that root is ever written. The reference carries no secret material.
 
 Applicability of the remaining checklist categories:
 
