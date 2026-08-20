@@ -16,9 +16,20 @@
   /* Grows with content where supported (Chromium 123+); a fixed min-height
    * plus the native resize handle everywhere else. */
   field-sizing: content;
-  min-height: 4rem;
+  /*
+   * The drawn Textarea specimens are 56px — one field row plus a line, which
+   * is exactly what this calc says (--control-height-lg is the 40px Input
+   * shares). Written as that composition rather than a flat 3.5rem so the
+   * relationship survives a rebrand of either term: a consumer who retunes
+   * the control scale gets a textarea that still sits one line above their
+   * own field height.
+   */
+  min-height: calc(var(--control-height-lg) + var(--space-4));
   width: 100%;
-  padding: var(--space-2) var(--space-3);
+  /* --space-3 on BOTH axes, per the drawn specimens — Input's own 12px
+   * inset carried around the block edges too, since a multiline box has no
+   * fixed height to center a shallower padding against. */
+  padding: var(--space-3);
   border: var(--border-width) solid var(--input);
   border-radius: var(--radius-md);
   /* Fields sit raised, not transparent, per the Field spec (frame 193:433). */

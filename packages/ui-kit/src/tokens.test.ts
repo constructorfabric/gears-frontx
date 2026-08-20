@@ -29,6 +29,37 @@ const BASE_UI_RUNTIME_VARS = new Set([
   '--toast-swipe-movement-x',
   '--toast-swipe-movement-y',
   '--toast-frontmost-height',
+  // Written by Base UI's Collapsible primitive: the panel's measured
+  // content height/width, kept in sync while mounted so CSS can animate
+  // toward/from an intrinsic (not hand-authored) size — see
+  // collapsible.module.css.
+  '--collapsible-panel-height',
+  '--collapsible-panel-width',
+  // Written by Base UI's Accordion primitive: the same measured-height
+  // mechanism as Collapsible's panel, one per accordion item — see
+  // accordion.module.css.
+  '--accordion-panel-height',
+  // Written by Base UI's Popover/Menu-family positioner (shared by
+  // NavigationMenu's single popup): the positioner's own box size and the
+  // currently active item's popup size, kept in sync as NavigationMenu
+  // morphs the shared popup/Viewport to each newly active item's measured
+  // content — see navigation-menu.module.css.
+  '--positioner-width',
+  '--positioner-height',
+  '--popup-width',
+  '--popup-height',
+  // Written by Base UI's Drawer primitive during a swipe gesture: progress/
+  // strength/movement along the swipe axis, whether a nested drawer is
+  // present, and (for snap points) the panel's own height/frontmost-height/
+  // active-snap-point offset — see drawer.module.css.
+  '--drawer-swipe-progress',
+  '--drawer-swipe-strength',
+  '--drawer-swipe-movement-x',
+  '--drawer-swipe-movement-y',
+  '--nested-drawers',
+  '--drawer-height',
+  '--drawer-frontmost-height',
+  '--drawer-snap-point-offset',
 ]);
 
 // Strip comments before scanning for declarations: theme.css's prose quotes

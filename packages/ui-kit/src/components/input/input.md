@@ -1,15 +1,16 @@
 # Input
 
 A single-line text field. Wraps the Base UI Input primitive: a native
-`<input>` that automatically wires itself to `Field` (label, description,
+`<input>` that automatically wires itself to `FieldBackup` (label, description,
 error, validation state) when rendered inside one.
 
 ## When to use
 
 - Any single-line free-text value: names, emails, search queries, numbers,
   file uploads (`type="file"`).
-- Inside a `Field` to get label association and validation display for
-  free.
+- Inside a `FieldBackup` to get label association and validation display
+  for free (the canonical `Field` wires nothing automatically — wire
+  `id`/`aria-describedby` by hand there instead, see field.md).
 
 ## When not to use
 
@@ -39,17 +40,17 @@ role) plus a magnifier passed to `icon`; nothing renders automatically.
 A disabled input dims its `icon` and `end` slots too (0.42 opacity) — a
 clear button left in `end` doesn't stay visually live just because it isn't
 the native control. That dimming fires regardless of *why* the input is
-disabled (the direct `disabled` prop or a `<Field disabled>` ancestor both
+disabled (the direct `disabled` prop or a `<FieldBackup disabled>` ancestor both
 land on the real `<input>`). Removing `end`'s tab stop is a separate fix
 and only covers the direct prop: passing `disabled` straight to `Input`
 also sets `inert` on the `end` wrapper, which drops it from the tab order
 and blocks activation — the actual fix for a keyboard user, since dimming
 alone (`pointer-events: none`) only disarms the mouse. A field disabled
-through `<Field disabled>`'s context still dims `end`, but Input has no way
+through `<FieldBackup disabled>`'s context still dims `end`, but Input has no way
 to observe that context-driven disable from its own props, so it cannot set
-`inert` for that path — an interactive `end` slot under a `Field`-disabled
+`inert` for that path — an interactive `end` slot under a `FieldBackup`-disabled
 input stays dim yet still tabbable and clickable via keyboard activation.
-Consumers composing `end` from a `Field` should disable their own
+Consumers composing `end` from a `FieldBackup` should disable their own
 interactive `end` content directly rather than relying on this.
 
 ## Examples
@@ -72,7 +73,7 @@ import { Input } from '@gears-frontx/ui-kit';
 // Controlled
 <Input value={email} onValueChange={setEmail} type="email" />
 
-// Invalid state (set automatically when used inside a Field with an error)
+// Invalid state (set automatically when used inside a FieldBackup with an error)
 <Input aria-invalid={true} defaultValue="not-an-email" />
 
 // Disabled
@@ -85,7 +86,7 @@ import { Input } from '@gears-frontx/ui-kit';
   enough — it hands you the string directly.
 - Do not restyle via inline `style` — sizing/spacing tweaks belong to layout
   containers, colors to theme tokens.
-- Do not build a labelled input by hand — the `Field` composition handles
+- Do not build a labelled input by hand — the `FieldBackup` composition handles
   label/error/description wiring.
 - Do not put an interactive control in `icon` — that slot is aria-hidden
   and pointer-transparent; live content goes in `end`.

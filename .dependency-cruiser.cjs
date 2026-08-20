@@ -324,5 +324,18 @@ module.exports = {
     // boundary contract is about coupling, not about what survives to runtime.
     // `no-circular` compensates via `viaOnly` (see the top of this file).
     tsPreCompilationDeps: true,
+    // dependency-cruiser defaults `exportsFields` to `[]` (its enhanced-resolve
+    // 4 backwards-compatibility choice), which makes the `exports` map
+    // invisible and leaves resolution to the legacy `main`. Dependencies that
+    // ship an `exports` map and no `main` - `@tanstack/react-table`,
+    // `@shadcn/react/*` - therefore came back `couldNotResolve`, and an
+    // unresolved specifier keeps its bare form as `resolved`, which reads as
+    // "outside packages/" and tripped `frontx-ui-kit-1-no-template-content` on
+    // ordinary node_modules imports. Restoring enhanced-resolve's own defaults
+    // makes them resolve the way Node and the bundlers already do.
+    enhancedResolveOptions: {
+      exportsFields: ['exports'],
+      conditionNames: ['import', 'require', 'node', 'default'],
+    },
   },
 };

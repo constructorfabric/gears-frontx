@@ -1,0 +1,262 @@
+/*
+ * Questionnaire styles, translated from shadcn/ui (MIT) to CSS Modules.
+ * Behavior is @shadcn/react's, not Base UI's (see questionnaire.tsx); only
+ * the visual language is translated from upstream's Tailwind here.
+ * Consumes only theme.css variables — no raw colors.
+ */
+
+.root {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  /* Upstream ships no gap at all here, leaving spacing to the consuming
+   * app's own layout classes — this kit ships usable defaults instead
+   * (same "a usable component needs..." reasoning as collapsible.tsx), so
+   * Progress/Item/Actions read as one coherent stepper out of the box. */
+  gap: var(--space-6);
+}
+
+.progress {
+  width: fit-content;
+  min-width: 14ch;
+  min-height: 1lh;
+  color: var(--muted-foreground);
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-meta-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  border: 0;
+  padding: 0;
+  outline: none;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-heading-2-size);
+  line-height: var(--text-heading-2-line-height);
+  font-weight: var(--text-heading-2-weight);
+  letter-spacing: var(--text-heading-2-tracking);
+  text-wrap: pretty;
+}
+
+.description {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  font-weight: var(--text-body-weight);
+  letter-spacing: var(--text-body-tracking);
+  text-wrap: pretty;
+}
+
+.choices {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+/*
+ * One choice row. The real input (.choiceInput) is stretched over the
+ * whole row and made invisible so a click/tap anywhere in the row toggles
+ * it — the label wraps it natively, so no explicit `htmlFor`/`id` wiring
+ * is needed.
+ */
+.choice {
+  position: relative;
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-3);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-1);
+  cursor: pointer;
+  text-align: start;
+  -webkit-user-select: none;
+  user-select: none;
+  outline: none;
+  transition: background-color 150ms ease;
+}
+
+.choice:hover {
+  background-color: var(--muted);
+}
+
+.choice[data-disabled] {
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.42;
+}
+
+.choiceInput {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  opacity: 0;
+}
+
+/*
+ * The visible indicator. Same box geometry/border/background as
+ * checkbox.module.css/radio-group.module.css's own root — see
+ * questionnaire.tsx's QuestionnaireChoice doc comment for why this is a
+ * hand-rolled span rather than those components themselves.
+ */
+.indicator {
+  position: relative;
+  display: flex;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: var(--border-width) solid var(--input);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-elevated);
+  color: var(--primary-foreground);
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+.choice[data-type='radio'] .indicator {
+  border-radius: 9999px;
+}
+
+/* Focus ring on the row's own indicator when the hidden native input has
+ * it — the input has no visible box of its own to draw an outline on
+ * (same :has() idiom alert.module.css uses to detect structure, per
+ * shadcn-porting-map.md). */
+.choice:has(.choiceInput:focus-visible) .indicator {
+  outline: var(--border-width-focus) solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .choice:has(.choiceInput:focus-visible) .indicator {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+/* Checkbox-type: filled box + check mark, matching checkbox.module.css. */
+.choice[data-type='checkbox'][data-checked] .indicator {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+/* Radio-type: outlined ring + inner dot, matching radio-group.module.css. */
+.choice[data-type='radio'][data-checked] .indicator {
+  border-width: var(--border-width-focus);
+  border-color: var(--primary);
+}
+
+.dot {
+  display: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--primary);
+}
+
+.choice[data-type='radio'][data-checked] .dot {
+  display: block;
+}
+
+.check {
+  display: none;
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.choice[data-type='checkbox'][data-checked] .check {
+  display: block;
+}
+
+.choice[data-invalid] .indicator {
+  border-color: var(--destructive);
+}
+
+.choice[data-invalid][data-checked] .indicator {
+  border-color: var(--primary);
+}
+
+.choiceLabel {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  font-weight: var(--text-body-weight);
+  letter-spacing: var(--text-body-tracking);
+}
+
+.shortcut {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: auto;
+  border-radius: var(--radius-sm);
+  padding-inline: var(--space-1);
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-line-height);
+  pointer-events: none;
+}
+
+.shortcut[data-shortcut] {
+  display: inline-flex;
+}
+
+.error {
+  margin: 0;
+  color: var(--destructive);
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  font-weight: var(--text-meta-weight);
+  letter-spacing: var(--text-meta-tracking);
+}
+
+.actions {
+  display: grid;
+  min-height: 2.75rem;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.previous {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+}
+
+.skip {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.next,
+.submit {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+}

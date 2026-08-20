@@ -7,8 +7,9 @@ elsewhere it keeps the native resize handle.
 ## When to use
 
 - Multi-line free text: descriptions, comments, messages.
-- Inside a `Field` to get label association and validation display for
-  free — it registers with the surrounding Field like `Input` does.
+- Inside a `Field` — wire `id`/`aria-describedby` to the surrounding
+  `FieldLabel`/`FieldDescription`/`FieldError` by hand (see field.md);
+  Textarea has no primitive to auto-register with, unlike `Input`.
 
 ## When not to use
 
@@ -42,6 +43,13 @@ import { Textarea } from '@gears-frontx/ui-kit';
 
 // Invalid state
 <Textarea aria-invalid={true} defaultValue={tooLong} />
+
+// Inside a Field — id/aria-describedby wired by hand (see field.md)
+<Field>
+  <FieldLabel htmlFor="notes">Notes</FieldLabel>
+  <Textarea id="notes" aria-describedby="notes-desc" />
+  <FieldDescription id="notes-desc">Optional context.</FieldDescription>
+</Field>
 ```
 
 ## Anti-patterns

@@ -1,0 +1,105 @@
+/*
+ * NativeSelect styles, translated from shadcn/ui (MIT) to CSS Modules.
+ * Consumes only theme.css variables — no raw colors.
+ *
+ * Source (base-vega native-select.tsx) toggles the wrapper's disabled dim
+ * via `has-[select:disabled]:opacity-50`. This translation drives the same
+ * dim from an explicit `data-disabled` attribute set by native-select.tsx
+ * instead — the component already knows its own `disabled` prop, so a
+ * direct attribute is one fewer selector hop than re-deriving it in CSS.
+ */
+
+.wrapper {
+  position: relative;
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+}
+
+.wrapper[data-disabled] {
+  /* Same 0.42 disabled dim as every other kit control (button/input/select). */
+  opacity: 0.42;
+}
+
+.select {
+  /* A <select> is already border-box via the UA stylesheet in every
+   * browser — declared anyway for the same reason as button.module.css's
+   * `.button`: it is the one class every consumer's own border/padding
+   * override composes with, so this keeps that composition predictable
+   * rather than relying on an implicit UA default nobody wrote down here. */
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  height: var(--control-height-md);
+  padding: 0 var(--space-8) 0 var(--space-3);
+  border: var(--border-width) solid var(--input);
+  border-radius: var(--radius-md);
+  /* Fields sit raised, not transparent — same surface as Select's trigger
+   * and Input (see select.module.css). */
+  background-color: var(--surface-elevated);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+  font-weight: var(--text-body-weight);
+  letter-spacing: var(--text-label-tracking);
+  /* The kit's own chevron replaces the UA arrow; appearance: none removes
+   * the native one across engines (Firefox/Safari draw one even without
+   * -webkit-/-moz- prefixes at this property name in current versions). */
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.select:disabled {
+  cursor: not-allowed;
+}
+
+.select:focus-visible {
+  /* Field focus per the mockups: 2px --ring border, no halo (see
+   * select.module.css's .trigger:focus-visible). */
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 var(--ring-inset) var(--ring);
+}
+
+@media (forced-colors: active) {
+  .select:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+.sizeSm .select {
+  height: var(--control-height-sm);
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  letter-spacing: var(--text-meta-tracking);
+}
+
+/*
+ * Native <option>/<optgroup> chrome is OS-drawn in most engines regardless
+ * of author CSS — the same reason button.module.css/select.module.css pin
+ * their forced-colors focus ring to the system `Highlight` keyword rather
+ * than a theme token. `Canvas`/`CanvasText` are the equivalent system
+ * keywords for a native popup's own fill/text: portable across OS themes,
+ * unlike a hardcoded page color, and NOT a shadcn Tailwind arbitrary value
+ * (`bg-[Canvas]`) in spirit — they resolve to whatever surface the platform
+ * actually paints its own listbox with.
+ */
+.option {
+  background-color: Canvas;
+  color: CanvasText;
+}
+
+.icon {
+  position: absolute;
+  inset-inline-end: var(--space-3);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  pointer-events: none;
+}

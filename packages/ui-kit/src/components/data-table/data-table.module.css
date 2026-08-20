@@ -1,0 +1,72 @@
+/*
+ * DataTable styles. Unlike every other module in this port, there is no
+ * shadcn/ui component stylesheet to translate: upstream ships no
+ * `data-table.tsx` registry item at all, only a doc recipe
+ * (docs/components/base/data-table.mdx) built from `Table` + inline
+ * Tailwind utilities scattered across the guide's own code samples
+ * (`overflow-hidden rounded-md border`, `flex items-center justify-end
+ * space-x-2 py-4`, ...). This file collects those inline utilities into
+ * one reusable stylesheet, translated to CSS Modules against theme.css
+ * tokens — see data-table.md's "Deviation from upstream" for the full
+ * rationale. Consumes only theme.css variables — no raw colors.
+ */
+
+/*
+ * The recipe's `<div className="overflow-hidden rounded-md border">`
+ * wrapper around `<Table>`. Table itself stays "primitive markup, no
+ * chrome" (see table.tsx) — a composite widget like DataTable is where
+ * that chrome belongs, the same division of labor as Card owning a
+ * border around content that doesn't draw its own.
+ */
+.wrapper {
+  overflow: hidden;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+/*
+ * The recipe's sortable-header button (`<Button variant="ghost"
+ * onClick={...}>{children}<ArrowUpDown /></Button>`) — negative
+ * margin-inline-start cancels the header cell's own padding-inline so the
+ * button's own hit target still starts flush with neighboring header
+ * text, matching how a plain (non-sortable) header label sits.
+ */
+.sortButton {
+  margin-inline-start: calc(-1 * var(--space-3));
+}
+
+.sortIcon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex-shrink: 0;
+}
+
+/* The recipe's "No results." row: `className="h-24 text-center"` on the
+ * one TableCell spanning every column. */
+.emptyCell {
+  height: 6rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+/* The recipe's `<div className="flex items-center justify-end space-x-2
+ * py-4">` footer, holding the selected-row count and Previous/Next. */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-block: var(--space-4);
+}
+
+.selectedCount {
+  flex: 1;
+  color: var(--muted-foreground);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
+
+.paginationControls {
+  display: flex;
+  gap: var(--space-2);
+}

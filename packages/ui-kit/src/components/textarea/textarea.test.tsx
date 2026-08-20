@@ -37,18 +37,22 @@ describe('Textarea', () => {
     expect(screen.getByRole('textbox').getAttribute('aria-invalid')).toBe('true');
   });
 
-  it('wires into a surrounding Field like Input does', () => {
+  it('composes inside a Field via manual id/htmlFor/aria-describedby wiring', () => {
+    // Unlike Input (still a Base UI primitive, still auto-wires inside
+    // FieldBackup), Textarea has no primitive to lean on and the
+    // canonical Field wires nothing automatically — every id below is set
+    // by hand, same as field.md's own examples.
     render(
-      <Field name="notes" disabled>
-        <FieldLabel>Notes</FieldLabel>
-        <Textarea />
-        <FieldDescription>Optional context.</FieldDescription>
+      <Field>
+        <FieldLabel htmlFor="notes">Notes</FieldLabel>
+        <Textarea id="notes" disabled aria-describedby="notes-desc" />
+        <FieldDescription id="notes-desc">Optional context.</FieldDescription>
       </Field>,
     );
     const textarea = screen.getByLabelText('Notes');
     expect(textarea).toHaveProperty('tagName', 'TEXTAREA');
     expect(textarea).toHaveProperty('disabled', true);
     const description = screen.getByText('Optional context.');
-    expect(textarea.getAttribute('aria-describedby')).toContain(description.id);
+    expect(textarea.getAttribute('aria-describedby')).toBe(description.id);
   });
 });

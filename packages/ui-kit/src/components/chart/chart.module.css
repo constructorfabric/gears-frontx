@@ -1,0 +1,188 @@
+/*
+ * Chart styles, translated from shadcn/ui (MIT) to CSS Modules. No
+ * variant/size axis — upstream ships none either (one visual treatment per
+ * part, entirely driven by the consumer's ChartConfig), so nothing here
+ * uses cva.
+ *
+ * `:global(.recharts-*)` selectors below target Recharts' own rendered
+ * class names, not this module's local classes — see chart.tsx's file
+ * header for the five upstream `[&_.recharts-*]` rules omitted here (they
+ * need a hard-coded hex color literal in the selector, which
+ * tokens.test.ts's raw-color guard forbids — spelling either value out even
+ * in prose, anywhere in this file, trips that same guard, which is why this
+ * paragraph describes them instead of naming them). Per-series colors
+ * (`--color-<key>`, injected by
+ * ChartStyle from ChartConfig) and the tooltip indicator/legend swatch
+ * colors (set inline from Recharts' own per-datum payload — see chart.tsx)
+ * are deliberately absent from this file for the same reason: both are
+ * arbitrary, per-instance runtime values with no fixed color to declare
+ * here, and the raw-color guard would have nothing to check them against
+ * regardless.
+ */
+
+.container {
+  display: flex;
+  aspect-ratio: 16 / 9;
+  justify-content: center;
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+}
+
+.container :global(.recharts-cartesian-axis-tick text) {
+  fill: var(--muted-foreground);
+}
+
+.container :global(.recharts-curve.recharts-tooltip-cursor) {
+  stroke: var(--border);
+}
+
+.container :global(.recharts-radial-bar-background-sector),
+.container :global(.recharts-rectangle.recharts-tooltip-cursor) {
+  fill: var(--muted);
+}
+
+/* Upstream's `outline-hidden` utility: a transparent outline rather than a
+ * true `outline: none`, so Windows High Contrast (forced-colors) mode still
+ * draws a focus/selection ring where the browser would otherwise supply
+ * one — an accessibility reset, not a cosmetic no-op. */
+.container :global(.recharts-layer),
+.container :global(.recharts-sector),
+.container :global(.recharts-surface) {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+/* ---- ChartTooltipContent ---- */
+
+.tooltipContent {
+  display: grid;
+  min-width: 8rem;
+  align-items: start;
+}
+
+.tooltipLabel {
+  font-weight: var(--text-label-weight);
+}
+
+.tooltipItems {
+  display: grid;
+  /* Upstream: gap-1.5 (6px) — off-grid between --space-1 (4px) and
+   * --space-2 (8px); snapped up to --space-2, the same rounding direction
+   * design-notes.md records for the menu options' 6px (also → 8px). */
+  gap: var(--space-2);
+}
+
+.tooltipItem {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.tooltipItemCentered {
+  align-items: center;
+}
+
+.tooltipItem > svg {
+  height: 0.625rem;
+  width: 0.625rem;
+  color: var(--muted-foreground);
+}
+
+.indicator {
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.indicatorDot {
+  height: 0.625rem;
+  width: 0.625rem;
+}
+
+/* No explicit height: stretches to the row's height via .tooltipItem's own
+ * `align-items: stretch`, same as upstream's bare `w-1` (no `h-*` utility
+ * alongside it). */
+.indicatorLine {
+  width: var(--space-1);
+}
+
+.indicatorDashed {
+  width: 0;
+  border-width: 1.5px;
+  border-style: dashed;
+  background-color: transparent;
+}
+
+.indicatorNested {
+  /* Upstream: my-0.5 (2px) — off-grid, snapped up to --space-1 (4px). */
+  margin-block: var(--space-1);
+}
+
+.tooltipItemBody {
+  display: flex;
+  flex: 1 1 0%;
+  justify-content: space-between;
+}
+
+.tooltipItemBodyNested {
+  align-items: flex-end;
+}
+
+.tooltipItemBodyInline {
+  align-items: center;
+}
+
+.tooltipItemLabelGroup {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tooltipItemName {
+  color: var(--muted-foreground);
+}
+
+.tooltipItemValue {
+  font-family: var(--font-mono);
+  font-weight: var(--text-label-weight);
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- ChartLegendContent ---- */
+
+.legendContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.legendTop {
+  padding-bottom: var(--space-3);
+}
+
+.legendBottom {
+  padding-top: var(--space-3);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  /* Upstream: gap-1.5 (6px) — snapped up to --space-2, same rounding as
+   * .tooltipItems above. */
+  gap: var(--space-2);
+}
+
+.legendItem > svg {
+  height: var(--icon-size-xs);
+  width: var(--icon-size-xs);
+  color: var(--muted-foreground);
+}
+
+.legendSwatch {
+  height: var(--space-2);
+  width: var(--space-2);
+  flex-shrink: 0;
+  border-radius: 2px;
+}

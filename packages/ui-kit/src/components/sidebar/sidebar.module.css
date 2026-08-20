@@ -1,0 +1,816 @@
+/*
+ * Sidebar styles, translated from shadcn/ui base (MIT) to CSS Modules.
+ * Consumes theme.css's Sidebar Navigation token group (--sidebar,
+ * --sidebar-foreground, --sidebar-accent, --sidebar-accent-foreground,
+ * --sidebar-border — declared there for exactly this purpose, see that
+ * file's own comment) plus the kit's shared scale tokens. No raw colors.
+ *
+ * Upstream expresses almost all of this through Tailwind's
+ * `group-data-[x=y]:` variant, reading a state attribute set on an
+ * ancestor "group" element from an arbitrarily nested descendant. CSS
+ * Modules has no such variant syntax, but the same attribute IS on the
+ * DOM (Sidebar sets data-state/data-collapsible/data-variant/data-side on
+ * its own root — see sidebar.tsx) — so every one of those Tailwind
+ * variants below is a plain `.root[data-x='y'] .part` descendant selector
+ * instead, scoped to the SAME root the group-data variant read from.
+ *
+ * A second thing upstream leaves to a shared, unfetched stylesheet: its
+ * per-instance "cn-sidebar-*" marker classes carry no Tailwind utilities
+ * of their own in the fetched registry source for several parts —
+ * SidebarMenuButton's variant/size axes in particular resolve to bare
+ * marker classes with no accompanying utility string at all. Where that
+ * happens, this file designs the visual treatment itself from the part's
+ * documented role and the kit's own token system, rather than guessing at
+ * unavailable upstream values — see sidebar.md's "Not reproduced from
+ * upstream" section for the specific list.
+ */
+
+/* ------------------------------------------------------------------ */
+/* SidebarProvider                                                     */
+/* ------------------------------------------------------------------ */
+
+.wrapper {
+  /*
+   * Declared here, not just consumed: SidebarProvider always sets both via
+   * inline style (see sidebar.tsx), but redeclaring the kit defaults keeps
+   * this class self-contained per tokens.test.ts's same-part local
+   * exemption — same idiom as aspect-ratio.module.css's `--ratio`. Every
+   * part below that reads either one is a genuine descendant of `.wrapper`
+   * (Sidebar and SidebarInset are both children the consumer places inside
+   * SidebarProvider), so CSS custom-property inheritance carries the
+   * per-instance override down to them the same way Card's
+   * `--card-spacing` reaches `.card .cardHeader` — the ANCESTOR-declares/
+   * DESCENDANT-reads shape tokens.test.ts exempts.
+   */
+  --sidebar-width: 16rem;
+  --sidebar-width-icon: 3rem;
+  display: flex;
+  min-height: 100svh;
+  width: 100%;
+}
+
+/* Upstream's `has-data-[variant=inset]:bg-sidebar` — an inset-variant
+   Sidebar leaves gaps around SidebarInset's floating card, so the wrapper
+   itself needs the sidebar fill showing through instead of the page
+   background. */
+.wrapper:has([data-variant='inset']) {
+  background-color: var(--sidebar);
+}
+
+/* ------------------------------------------------------------------ */
+/* Sidebar — collapsible="none"                                        */
+/* ------------------------------------------------------------------ */
+
+/*
+ * `.wrapper .none` (and every other rule in this file reading
+ * --sidebar-width/--sidebar-width-icon), not a bare `.none`: this class's
+ * element is a genuine DOM descendant of SidebarProvider's `.wrapper` (it
+ * is not portaled), so the descendant-combinator selector is what tells
+ * tokens.test.ts's same-scope guard the custom property genuinely
+ * inherits here — the same ANCESTOR-declares/DESCENDANT-reads shape as
+ * `.card .cardHeader` reading `--card-spacing` (see card.module.css).
+ * `.mobileContent` below is the one exception: it portals outside
+ * `.wrapper` entirely, so it declares its own local default instead.
+ */
+.wrapper .none {
+  display: flex;
+  height: 100%;
+  width: var(--sidebar-width);
+  flex-direction: column;
+  background-color: var(--sidebar);
+  color: var(--sidebar-foreground);
+}
+
+/* ------------------------------------------------------------------ */
+/* Sidebar — desktop (collapsible="offcanvas" | "icon")                */
+/* ------------------------------------------------------------------ */
+
+/* The "group" div every group-data-[...] selector below reads its state
+   from — hidden below the mobile breakpoint as a defensive fallback for
+   the one-frame gap use-mobile.ts documents (JS branches to the Sheet
+   render path a tick later). */
+.root {
+  position: relative;
+  color: var(--sidebar-foreground);
+}
+
+@media (max-width: 767px) {
+  .root {
+    display: none;
+  }
+}
+
+/* The layout spacer: occupies the width the fixed .container visually
+   overlays, so surrounding flex/grid content reflows around the sidebar's
+   current width without the container itself needing to participate in
+   flow (it can't — it's fixed). */
+.gap {
+  position: relative;
+  background-color: transparent;
+  transition: width 200ms linear;
+}
+
+.wrapper .gap {
+  width: var(--sidebar-width);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gap {
+    transition: none;
+  }
+}
+
+.root[data-side='right'] .gap {
+  rotate: 180deg;
+}
+
+.wrapper .root[data-collapsible='offcanvas'] .gap {
+  width: 0;
+}
+
+/* Floating/inset variants reserve extra room around the icon rail for
+   their own margin (see .container below); the flush "sidebar" variant
+   doesn't. */
+.wrapper .root[data-collapsible='icon'][data-variant='floating'] .gap,
+.wrapper .root[data-collapsible='icon'][data-variant='inset'] .gap {
+  width: calc(var(--sidebar-width-icon) + var(--space-4));
+}
+
+.wrapper .root[data-collapsible='icon'][data-variant='sidebar'] .gap {
+  width: var(--sidebar-width-icon);
+}
+
+.container {
+  box-sizing: border-box;
+  position: fixed;
+  inset-block: 0;
+  z-index: 10;
+  display: none;
+  height: 100svh;
+  transition:
+    left 200ms linear,
+    right 200ms linear,
+    width 200ms linear;
+}
+
+.wrapper .container {
+  width: var(--sidebar-width);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .container {
+    transition: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    display: flex;
+  }
+}
+
+.container[data-side='left'] {
+  left: 0;
+}
+
+.container[data-side='right'] {
+  right: 0;
+}
+
+.wrapper .root[data-collapsible='offcanvas'] .container[data-side='left'] {
+  left: calc(var(--sidebar-width) * -1);
+}
+
+.wrapper .root[data-collapsible='offcanvas'] .container[data-side='right'] {
+  right: calc(var(--sidebar-width) * -1);
+}
+
+.root[data-variant='sidebar'][data-side='left'] .container {
+  border-right: var(--border-width) solid var(--sidebar-border);
+}
+
+.root[data-variant='sidebar'][data-side='right'] .container {
+  border-left: var(--border-width) solid var(--sidebar-border);
+}
+
+.wrapper .root[data-variant='sidebar'][data-collapsible='icon'] .container {
+  width: var(--sidebar-width-icon);
+}
+
+.root[data-variant='floating'] .container,
+.root[data-variant='inset'] .container {
+  padding: var(--space-2);
+}
+
+/* The +2px (not a token — a real geometry adjustment, not a spacing role;
+   see tokens.test.ts's metric guard, which only polices padding/margin/
+   gap/type metrics, not width) accounts for floating/inset's own 1px
+   border plus the icon gap's lack of it, keeping the icon rail's visible
+   content width identical across all three variants. */
+.wrapper .root[data-variant='floating'][data-collapsible='icon'] .container,
+.wrapper .root[data-variant='inset'][data-collapsible='icon'] .container {
+  width: calc(var(--sidebar-width-icon) + var(--space-4) + 2px);
+}
+
+.inner {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  flex-direction: column;
+  background-color: var(--sidebar);
+  color: var(--sidebar-foreground);
+}
+
+.root[data-variant='floating'] .inner {
+  border: var(--border-width) solid var(--sidebar-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--popover-shadow);
+}
+
+/* ------------------------------------------------------------------ */
+/* Sidebar — mobile (rendered as a Sheet)                               */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Unlike every other reader in this file, `.mobileContent` is NOT a DOM
+ * descendant of `.wrapper` — Sheet portals its popup out to `document.body`
+ * (or a caller-supplied container), so CSS inheritance from `.wrapper`
+ * never reaches it. sidebar.tsx already sets the real value directly via
+ * inline style on this same element (a fixed 18rem, not the desktop
+ * `--sidebar-width`); the declaration below is only the same-part local
+ * fallback tokens.test.ts's exemption expects — same idiom as
+ * aspect-ratio.module.css's `--ratio` default.
+ */
+.mobileContent {
+  --sidebar-width: 16rem;
+  box-sizing: border-box;
+  width: var(--sidebar-width);
+  padding: 0;
+  background-color: var(--sidebar);
+  color: var(--sidebar-foreground);
+}
+
+.mobileInner {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  flex-direction: column;
+}
+
+/* Local per tokens.test.ts's guidance for this exact utility — CSS Modules
+   share no class across files, so this is restated per module (see
+   command.module.css/pagination.module.css's identical copies). Backs the
+   mobile Sheet's required-but-redundant title/description (the mobile
+   panel already reads as "Sidebar" from context; see sidebar.tsx). */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* SidebarTrigger / SidebarRail                                        */
+/* ------------------------------------------------------------------ */
+
+.triggerIcon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.rail {
+  position: absolute;
+  inset-block: 0;
+  z-index: 20;
+  display: none;
+  width: var(--space-4);
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: w-resize;
+  transition: background-color 200ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail {
+    transition: none;
+  }
+}
+
+@media (min-width: 640px) {
+  .rail {
+    display: block;
+  }
+}
+
+.rail::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background-color: var(--sidebar-border);
+}
+
+.root[data-side='left'] .rail {
+  right: calc(var(--space-4) * -1);
+}
+
+.root[data-side='right'] .rail {
+  left: calc(var(--space-4) * -1);
+  cursor: e-resize;
+}
+
+.root[data-side='left'][data-state='collapsed'] .rail {
+  cursor: e-resize;
+}
+
+.root[data-side='right'][data-state='collapsed'] .rail {
+  cursor: w-resize;
+}
+
+.root[data-collapsible='offcanvas'] .rail:hover {
+  background-color: var(--sidebar);
+}
+
+.root[data-side='left'][data-collapsible='offcanvas'] .rail {
+  right: calc(var(--space-2) * -1);
+}
+
+.root[data-side='right'][data-collapsible='offcanvas'] .rail {
+  left: calc(var(--space-2) * -1);
+}
+
+/* ------------------------------------------------------------------ */
+/* SidebarInset                                                        */
+/* ------------------------------------------------------------------ */
+
+.inset {
+  position: relative;
+  display: flex;
+  width: 100%;
+  flex: 1 1 0%;
+  flex-direction: column;
+  background-color: var(--background);
+}
+
+/* Simplified from upstream's peer-data-[...] pairing, which also toggles
+   margin-left off on mobile and back on again once the sidebar collapses
+   at desktop widths — a purely decorative refinement this port doesn't
+   chase; see sidebar.md. The card treatment itself (margin/radius/shadow
+   once ANY inset-variant Sidebar is present) is kept, read off the
+   wrapper via :has() the same way `.wrapper:has([data-variant='inset'])`
+   reads it above, since SidebarInset is Sidebar's flex SIBLING, not its
+   descendant — group-data's own reach in the fetched source. */
+.wrapper:has([data-variant='inset']) .inset {
+  margin: var(--space-2);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--popover-shadow);
+}
+
+@media (min-width: 768px) {
+  .wrapper:has([data-variant='inset']) .inset {
+    margin-left: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* SidebarInput / SidebarSeparator                                     */
+/* ------------------------------------------------------------------ */
+
+.input {
+  width: 100%;
+  background-color: var(--surface-elevated);
+}
+
+.separator {
+  width: auto;
+  margin-inline: var(--space-2);
+}
+
+/* ------------------------------------------------------------------ */
+/* SidebarHeader / SidebarFooter / SidebarContent                      */
+/* ------------------------------------------------------------------ */
+
+.header,
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.content {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow: auto;
+}
+
+.root[data-collapsible='icon'] .content {
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ */
+/* SidebarGroup                                                        */
+/* ------------------------------------------------------------------ */
+
+.group {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  padding: var(--space-2);
+}
+
+.groupLabel {
+  display: flex;
+  height: var(--control-height-sm);
+  flex-shrink: 0;
+  align-items: center;
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--sidebar-foreground);
+  opacity: 0.7;
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  font-weight: var(--text-label-weight);
+  outline: none;
+  transition:
+    margin 200ms linear,
+    opacity 200ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .groupLabel {
+    transition: none;
+  }
+}
+
+.groupAction {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: flex;
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height-sm);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--sidebar-foreground);
+  outline: none;
+  transition: transform 150ms ease;
+}
+
+.groupAction:hover {
+  background-color: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
+.groupContent {
+  width: 100%;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
+
+.root[data-collapsible='icon'] .groupLabel,
+.root[data-collapsible='icon'] .groupAction {
+  margin-top: calc(var(--control-height-sm) * -1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* SidebarMenu / SidebarMenuItem                                       */
+/* ------------------------------------------------------------------ */
+
+.menu {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menuItem {
+  position: relative;
+}
+
+/* ------------------------------------------------------------------ */
+/* SidebarMenuButton                                                   */
+/*                                                                      */
+/* Not reproduced from the fetched upstream file: its variant ("default"/
+ * "outline") and size ("default"/"sm"/"lg") axes resolve to bare marker
+ * classes there with no Tailwind utility string attached to either — the
+ * actual paddings/heights/borders live in a stylesheet outside the
+ * fetched registry path. Designed here instead from the part's role (a
+ * compact nav row, optionally with a leading icon and a trailing label
+ * span truncated by upstream's own `[&>span:last-child]:truncate`) using
+ * the kit's control-height/space/sidebar-accent tokens.                */
+/* ------------------------------------------------------------------ */
+
+.menuButton {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-2);
+  overflow: hidden;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  outline: none;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.menuButton > svg {
+  flex-shrink: 0;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.menuButton > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuButton:hover,
+.menuButton:focus-visible {
+  background-color: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
+.menuButton:focus-visible {
+  border-color: var(--ring);
+  outline: var(--border-width-focus) solid var(--ring);
+  outline-offset: -2px;
+}
+
+/* Presence, not a value: `data-active` is written by Base UI's
+   `getStateAttributesProps` (`useRender`'s `state` option in sidebar.tsx),
+   which reflects `true` as an EMPTY attribute value (`data-active=""`), not
+   the string `"true"`. */
+.menuButton[data-active] {
+  background-color: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+  font-weight: var(--text-label-weight);
+}
+
+.menuButton:disabled,
+.menuButton[aria-disabled='true'] {
+  pointer-events: none;
+  opacity: 0.42;
+}
+
+/* Deliberately empty — not dead CSS (see card.module.css's identical
+   `.sizeDefault` for the same reasoning): kept so "variant=default" is a
+   real DOM-visible class and cva has a defaultVariants target; the values
+   it would set already live on `.menuButton` itself above. */
+.variantDefault {
+}
+
+.variantOutline {
+  background-color: var(--sidebar);
+  box-shadow: 0 0 0 1px var(--sidebar-border);
+}
+
+.variantOutline:hover,
+.variantOutline:focus-visible {
+  box-shadow: 0 0 0 1px var(--sidebar-accent);
+}
+
+.sizeDefault {
+  height: var(--control-height-sm);
+  padding-inline: var(--space-2);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
+
+.sizeSm {
+  height: calc(var(--control-height-sm) - var(--space-1));
+  padding-inline: var(--space-2);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+}
+
+.sizeSm > svg {
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
+}
+
+.sizeLg {
+  height: var(--control-height-md);
+  padding-inline: var(--space-2);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
+
+.sizeLg > svg {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+}
+
+.wrapper .root[data-collapsible='icon'] .menuButton {
+  width: var(--sidebar-width-icon);
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.root[data-collapsible='icon'] .menuButton > span:last-child {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* SidebarMenuAction / SidebarMenuBadge                                 */
+/* ------------------------------------------------------------------ */
+
+.menuAction {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  display: flex;
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height-sm);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--sidebar-foreground);
+  outline: none;
+  transition: transform 150ms ease;
+}
+
+.menuAction:hover {
+  background-color: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
+.menuActionShowOnHover {
+  opacity: 0;
+}
+
+.menuItem:hover .menuActionShowOnHover,
+.menuItem:focus-within .menuActionShowOnHover,
+.menuActionShowOnHover[aria-expanded='true'] {
+  opacity: 1;
+}
+
+.menuBadge {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-2);
+  display: flex;
+  min-width: var(--space-5);
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--space-1);
+  color: var(--sidebar-foreground);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  user-select: none;
+  pointer-events: none;
+}
+
+.root[data-collapsible='icon'] .menuAction,
+.root[data-collapsible='icon'] .menuBadge {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* SidebarMenuSkeleton                                                  */
+/* ------------------------------------------------------------------ */
+
+.menuSkeleton {
+  display: flex;
+  height: var(--control-height-sm);
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-2);
+}
+
+.menuSkeletonIcon {
+  flex-shrink: 0;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  border-radius: var(--radius-sm);
+}
+
+.menuSkeletonText {
+  /* Declared here as a fallback (see aspect-ratio.module.css's identical
+     reasoning): sidebar.tsx always sets the real width inline per instance
+     (SidebarMenuSkeleton's whole point is a randomized width per row), but
+     this keeps the class self-contained under tokens.test.ts's same-part
+     local exemption if it's ever inspected without that inline style. */
+  --skeleton-width: 100%;
+  height: var(--text-body-line-height);
+  max-width: var(--skeleton-width);
+  flex: 1 1 0%;
+  border-radius: var(--radius-sm);
+}
+
+/* ------------------------------------------------------------------ */
+/* SidebarMenuSub                                                       */
+/* ------------------------------------------------------------------ */
+
+.menuSub {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  margin-left: var(--space-4);
+  padding: var(--space-1) 0;
+  padding-left: var(--space-2);
+  list-style: none;
+  border-left: var(--border-width) solid var(--sidebar-border);
+}
+
+.menuSubItem {
+  position: relative;
+}
+
+.menuSubButton {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: none;
+  outline: none;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.menuSubButton > svg {
+  flex-shrink: 0;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  color: var(--sidebar-foreground);
+}
+
+.menuSubButton > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuSubButton:hover,
+.menuSubButton:focus-visible {
+  background-color: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
+/* See .menuButton[data-active]'s comment above — same mechanism. */
+.menuSubButton[data-active] {
+  background-color: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
+.menuSubButton:disabled,
+.menuSubButton[aria-disabled='true'] {
+  pointer-events: none;
+  opacity: 0.42;
+}
+
+.subSizeSm {
+  height: calc(var(--control-height-sm) - var(--space-1));
+  padding-inline: var(--space-2);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+}
+
+.subSizeMd {
+  height: var(--control-height-sm);
+  padding-inline: var(--space-2);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
+
+.root[data-collapsible='icon'] .menuSub {
+  display: none;
+}
