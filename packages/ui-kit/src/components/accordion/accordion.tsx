@@ -1,5 +1,6 @@
 import { Accordion as AccordionPrimitive } from '@base-ui/react/accordion';
 import { cx } from 'class-variance-authority';
+import { ChevronDownIcon } from 'lucide-react';
 
 import styles from './accordion.module.css';
 
@@ -26,27 +27,6 @@ export function AccordionItem({ className, ...props }: AccordionItemProps) {
   return <AccordionPrimitive.Item className={cx(styles.item, className)} {...props} />;
 }
 
-/* Inline lucide chevron-down path (ISC) — the kit carries no icon dependency.
- * Upstream swaps between a chevron-down and chevron-up icon by aria-expanded
- * visibility; the kit instead rotates one icon 180deg off `data-panel-open`
- * (see accordion.module.css) — one fewer DOM node for the same result. */
-function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cx(styles.triggerIcon, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
 export interface AccordionTriggerProps
   extends Omit<AccordionPrimitive.Trigger.Props, 'className'> {
   className?: string;
@@ -57,7 +37,11 @@ export function AccordionTrigger({ className, children, ...props }: AccordionTri
     <AccordionPrimitive.Header className={styles.header}>
       <AccordionPrimitive.Trigger className={cx(styles.trigger, className)} {...props}>
         {children}
-        <ChevronDownIcon />
+        {/* Upstream swaps between a chevron-down and chevron-up icon by
+         * aria-expanded visibility; the kit instead rotates this one 180deg
+         * off `data-panel-open` (see accordion.module.css) — one fewer DOM
+         * node for the same result. */}
+        <ChevronDownIcon className={styles.triggerIcon} />
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>
   );

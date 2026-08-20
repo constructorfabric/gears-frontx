@@ -22,6 +22,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { cx } from 'class-variance-authority';
+import { ArrowUpDownIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
 import { Button } from '../button/public.js';
@@ -95,24 +96,6 @@ export function dataTableSelectionColumn<TData extends RowData>(): ColumnDef<Dat
   });
 }
 
-/* Inline lucide path (ISC) — the kit carries no icon dependency. */
-function SortIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16" />
-    </svg>
-  );
-}
-
 export interface DataTableSortButtonProps<TData extends RowData, TValue = unknown> {
   /** The column instance a `ColumnDef`'s `header` render function receives. */
   column: Column<DataTableFeatures, TData, TValue>;
@@ -140,7 +123,7 @@ export function DataTableSortButton<TData extends RowData, TValue = unknown>({
       onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
     >
       {children}
-      <SortIcon className={styles.sortIcon} />
+      <ArrowUpDownIcon className={styles.sortIcon} />
     </Button>
   );
 }
@@ -204,49 +187,55 @@ export function DataTable<TData extends RowData>({
   const rows = table.getRowModel().rows;
 
   return (
-    <div className={className}>
-      <div className={styles.wrapper}>
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder ? null : <table.FlexRender header={header} />}
-                  </TableHead>
+    /*
+     * One card, not the recipe's card-plus-detached-footer: the Studio Data
+     * Table frame (40001455:6353) draws the pagination bar inside the same
+     * bordered container as the rows, separated from the last one by the
+     * same rule that separates any two rows. `className` lands on that card
+     * — it was the outer div's before, and the outer div only existed to
+     * hold the footer outside.
+     */
+    <div className={cx(styles.wrapper, className)}>
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <TableHead key={header.id}>
+                  {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {rows.length ? (
+            rows.map((row) => (
+              <TableRow key={row.id} data-state={row.getIsSelected() ? 'selected' : undefined}>
+                {/*
+                 * getAllCells(), not the recipe's getVisibleCells(): that
+                 * method only exists when columnVisibilityFeature is
+                 * registered (see FeatureSlotPrereqs), and this port
+                 * deliberately doesn't register it — visibility toggling
+                 * is out of scope (see data-table.md). Every column this
+                 * component's own consumer declares is shown, always.
+                 */}
+                {row.getAllCells().map((cell) => (
+                  <TableCell key={cell.id}>
+                    <table.FlexRender cell={cell} />
+                  </TableCell>
                 ))}
               </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {rows.length ? (
-              rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() ? 'selected' : undefined}>
-                  {/*
-                   * getAllCells(), not the recipe's getVisibleCells(): that
-                   * method only exists when columnVisibilityFeature is
-                   * registered (see FeatureSlotPrereqs), and this port
-                   * deliberately doesn't register it — visibility toggling
-                   * is out of scope (see data-table.md). Every column this
-                   * component's own consumer declares is shown, always.
-                   */}
-                  {row.getAllCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      <table.FlexRender cell={cell} />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className={styles.emptyCell}>
-                  {emptyMessage}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} className={styles.emptyCell}>
+                {emptyMessage}
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
       <div className={styles.footer}>
         {enableRowSelection && (
           <div className={styles.selectedCount}>

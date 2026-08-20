@@ -1,4 +1,7 @@
 import {
+  Avatar,
+  AvatarFallback,
+  Badge,
   Button,
   DataTable,
   dataTableColumnHelper,
@@ -82,6 +85,68 @@ const columnsWithActions = columnHelper.columns([
   }),
 ]);
 
+/*
+ * The people-table row the Studio Data Table frame draws: a toned avatar
+ * beside a two-line identity stack, with every column after the first set
+ * in --muted-foreground so the row has one focal point. Nothing here is a
+ * kit API — it is the composition a consumer writes into a cell, shown so
+ * the demo exercises a row taller than the single-line default.
+ */
+interface Member {
+  name: string;
+  email: string;
+  role: string;
+  scope: string;
+  active: string;
+  tone: 'accent' | 'info' | 'success' | 'warning';
+}
+
+const members: Member[] = [
+  { name: 'Aisha Rahman', email: 'aisha@constructor.dev', role: 'Project admin', scope: 'Direct', active: 'Now', tone: 'accent' },
+  { name: 'Morgan Lee', email: 'morgan@constructor.dev', role: 'Editor', scope: 'Architecture Guild', active: '12 min ago', tone: 'info' },
+  { name: 'Priya Nair', email: 'priya@constructor.dev', role: 'Reviewer', scope: 'Direct', active: '2 h ago', tone: 'success' },
+  { name: 'Jordan Blake', email: 'jordan@constructor.dev', role: 'Viewer', scope: 'Platform Program', active: '1 d ago', tone: 'warning' },
+];
+
+const initials = (name: string) =>
+  name
+    .split(' ')
+    .map((part) => part[0])
+    .join('');
+
+const memberHelper = dataTableColumnHelper<Member>();
+
+const memberColumns = memberHelper.columns([
+  memberHelper.accessor('name', {
+    header: 'Member',
+    cell: ({ row }) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+        <Avatar>
+          <AvatarFallback tone={row.original.tone} variant="solid">
+            {initials(row.original.name)}
+          </AvatarFallback>
+        </Avatar>
+        <div style={{ display: 'grid' }}>
+          <span style={{ fontWeight: 600 }}>{row.original.name}</span>
+          <span style={{ color: 'var(--muted-foreground)' }}>{row.original.email}</span>
+        </div>
+      </div>
+    ),
+  }),
+  memberHelper.accessor('role', {
+    header: 'Project role',
+    cell: ({ getValue }) => <span style={{ color: 'var(--muted-foreground)' }}>{getValue()}</span>,
+  }),
+  memberHelper.accessor('scope', {
+    header: 'Access via',
+    cell: ({ getValue }) => <Badge variant="outline">{getValue()}</Badge>,
+  }),
+  memberHelper.accessor('active', {
+    header: ({ column }) => <DataTableSortButton column={column}>Last active</DataTableSortButton>,
+    cell: ({ getValue }) => <span style={{ color: 'var(--muted-foreground)' }}>{getValue()}</span>,
+  }),
+]);
+
 export default function DataTableExample() {
   return (
     <>
@@ -107,6 +172,10 @@ export default function DataTableExample() {
 
       <Section title="Empty">
         <DataTable columns={basicColumns} data={[]} emptyMessage="No payments yet." />
+      </Section>
+
+      <Section title="Row composition">
+        <DataTable columns={memberColumns} data={members} enableRowSelection />
       </Section>
     </>
   );

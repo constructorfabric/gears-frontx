@@ -1,7 +1,9 @@
 # Bubble
 
-Framed conversational content — a faithful port of [shadcn/ui's base
-Bubble](https://ui.shadcn.com/docs/components/base/bubble). Use it for
+Framed conversational content — a port of [shadcn/ui's base
+Bubble](https://ui.shadcn.com/docs/components/base/bubble), faithful except
+for the speaker-side corner notch described under
+[Variants](#variants). Use it for
 chat text, short structured output, quoted replies, suggestions, and
 reactions. Bubble has no Base UI primitive, but `BubbleContent` gets
 `render`-prop polymorphism (via Base UI's `useRender`/`mergeProps`
@@ -67,6 +69,13 @@ conversation:
 | ------- | --------------------------------------------------- |
 | `start` | Align the bubble to the start of the conversation. |
 | `end`   | Align the bubble to the end of the conversation.   |
+
+`align` is not only a position: the bubble notches its speaker-side top
+corner flat, so a `start` bubble is squared off at the top start edge and
+an `end` bubble at the top end edge. That is the shape cue that separates a
+message from a button, and it carries the sender independently of the
+variant fill. It follows the writing direction, so an RTL conversation
+notches the mirrored corner. `ghost` has no frame and so no notch.
 
 **Note:** When building a chat interface, set alignment on
 [`Message`](message.md) instead — the individual `Bubble`'s own `align`

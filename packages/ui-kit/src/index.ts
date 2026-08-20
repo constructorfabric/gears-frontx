@@ -33,7 +33,6 @@ export * from './components/aspect-ratio/public.js';
 export * from './components/attachment/public.js';
 export * from './components/avatar/public.js';
 export * from './components/badge/public.js';
-export * from './components/badge-backup/public.js';
 export * from './components/breadcrumb/public.js';
 export * from './components/bubble/public.js';
 export * from './components/button/public.js';

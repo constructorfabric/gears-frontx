@@ -23,10 +23,8 @@ import styles from './badge.module.css';
  * markup here still renders what it renders upstream.
  *
  * Still deliberately absent: the dot/icon slots. The mockup's specimens
- * carry a 6px status dot, but that is anatomy, not paint — the richer
- * design lives on `BadgeBackup` (badge-backup.tsx), and this component
- * exists so the kit ships the plain shadcn label alongside it, not in
- * place of it.
+ * carry a 6px status dot, but that is anatomy, not paint, and this port
+ * only carries what shadcn's own Badge carries — no bespoke additions.
  *
  * Badge has no Base UI primitive, but still gets `render`-prop
  * polymorphism from `useRender`/`mergeProps` — the same utilities Base

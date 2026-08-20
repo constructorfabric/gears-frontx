@@ -101,6 +101,12 @@ const [range, setRange] = useState<DateRange>();
   patch a table/flex cell-boundary seam. The kit's day cells already sit
   flush against each other (no gap in `.week`'s flex row), so there is no
   seam to patch and the pseudo-element is dropped.
+- The nav overlay (`.nav`, absolutely positioned across the whole caption
+  row) adds `pointer-events: none`, with the two buttons taking their own
+  back. Upstream leaves this to paint order alone (the caption's `<select>`
+  comes later in the DOM, so it happens to sit above the nav), which
+  silently breaks the moment anything gives the nav a stacking order.
+  Declaring the pass-through states the intent instead.
 - `CalendarDayButton`'s `data-day` debug attribute drops upstream's
   `locale?.code`-aware `toLocaleDateString` call — it renders with the
   runtime's default locale instead of threading a `locale` prop through

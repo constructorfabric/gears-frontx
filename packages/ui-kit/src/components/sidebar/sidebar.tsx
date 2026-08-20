@@ -8,6 +8,7 @@
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
 import { cva, cx, type VariantProps } from 'class-variance-authority';
+import { PanelLeftIcon } from 'lucide-react';
 import {
   createContext,
   useCallback,
@@ -281,25 +282,6 @@ export function Sidebar({
   );
 }
 
-/* Inline lucide panel-left path (ISC) — the kit carries no icon dependency. */
-function PanelLeftIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cx(styles.triggerIcon, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect width="18" height="18" x="3" y="3" rx="2" />
-      <path d="M9 3v18" />
-    </svg>
-  );
-}
-
 export interface SidebarTriggerProps extends Omit<ButtonProps, 'icon' | 'children'> {
   /** Accessible name for the icon-only button. @default 'Toggle Sidebar' */
   label?: string;
@@ -312,7 +294,7 @@ export function SidebarTrigger({ className, onClick, label = 'Toggle Sidebar', .
       variant="ghost"
       size="sm"
       className={className}
-      icon={<PanelLeftIcon />}
+      icon={<PanelLeftIcon className={styles.triggerIcon} />}
       aria-label={label}
       onClick={(event) => {
         onClick?.(event);

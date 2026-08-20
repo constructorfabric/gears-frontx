@@ -30,6 +30,28 @@ shipped as reusable exports instead:
   `Button` + arrow icon toggling `column.toggleSorting` inline in a
   column's `header`. Generalized into one reusable piece.
 
+## Chrome
+
+`Table` stays primitive markup with no chrome of its own; `DataTable` is
+where the Studio Data Table frame's card lives. One element wraps the whole
+widget: a 1px `--border` on `--surface` at `--radius-lg`, with the table's
+rows above and the pagination bar **inside** it — the frame draws that bar
+within the same bordered container, separated from the last row by the same
+rule that separates any two rows, not floating below the card as the
+upstream recipe's utilities left it.
+
+The card deliberately does **not** clip (`overflow` stays visible). Nothing
+needs it — a row can never reach a rounded corner, since the header bar is
+always above the body and the footer bar always below it — and clipping cost
+the focus ring on the footer's own buttons.
+
+`DataTableSortButton` gives up Button's own type role and inherits the
+header cell's instead (mono, uppercase, `--subtle-foreground`), so a
+sortable column reads identically to an unsortable one plus its direction
+icon. Note that `text-transform` has to be inherited back explicitly there:
+the UA stylesheet sets `text-transform: none` on every `<button>`, which
+beats ordinary inheritance.
+
 Scope is deliberately narrower than the full guide: **column defs,
 sorting, row selection, and pagination** only — no column filtering, no
 column-visibility toggling, no row actions dropdown, no virtualization, no
@@ -72,7 +94,7 @@ code, not a migration.
 | `pageSize` | `number` | `10` |
 | `enableRowSelection` | `boolean` — see below | `false` |
 | `emptyMessage` | `ReactNode` — content of the one row spanning every column when `data` is empty | `'No results.'` |
-| `className` | `string` — on the outermost wrapper | — |
+| `className` | `string` — on the card (the outermost element) | — |
 
 `enableRowSelection` gates two independent things: the table option that
 lets rows actually be selected, and whether the footer's "N of M row(s)

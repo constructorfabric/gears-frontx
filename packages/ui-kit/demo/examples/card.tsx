@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 
 import {
-  BadgeBackup,
+  Badge,
   Button,
   Card,
   CardAction,
@@ -26,7 +26,12 @@ export default function CardExample() {
             <CardTitle>Project Amber</CardTitle>
           </CardHeader>
           <CardContent>Surfaces sit on --card with --border.</CardContent>
-          <CardFooter>
+          {/* CardFooter is a bare flex row with no gap of its own — the same
+              contract as upstream, where every card demo spaces its own
+              buttons on the footer (`justify-end gap-2`). Spelled out here
+              because the demo is what a consumer copies: two buttons dropped
+              into a bare CardFooter render flush against each other. */}
+          <CardFooter style={{ gap: 'var(--space-2)' }}>
             <Button variant="outline">Cancel</Button>
             <Button size="sm">Open</Button>
           </CardFooter>
@@ -38,7 +43,7 @@ export default function CardExample() {
             <CardTitle>Team plan</CardTitle>
             <CardDescription>Billed monthly, 5 seats in use.</CardDescription>
             <CardAction>
-              <BadgeBackup variant="success">active</BadgeBackup>
+              <Badge variant="success">active</Badge>
             </CardAction>
           </CardHeader>
           <CardContent>Next invoice on the 1st.</CardContent>

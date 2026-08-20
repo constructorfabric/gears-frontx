@@ -1,17 +1,8 @@
+import { PlusIcon } from 'lucide-react';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gears-frontx/ui-kit';
 
 import { Section } from '../shared';
-
-// TabsTrigger has no built-in icon-sizing convention (see tabs.md) — the
-// shared DemoIcon takes no size props, so this local icon carries its own
-// explicit width/height instead.
-function TabIcon() {
-  return (
-    <svg width={14} height={14} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M8 2v12M2 8h12" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 export default function TabsExample() {
   return (
@@ -66,10 +57,10 @@ export default function TabsExample() {
         <Tabs defaultValue="one">
           <TabsList>
             <TabsTrigger value="one" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <TabIcon /> One
+              <PlusIcon size={14} strokeWidth={1.5} /> One
             </TabsTrigger>
             <TabsTrigger value="two" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <TabIcon /> Two
+              <PlusIcon size={14} strokeWidth={1.5} /> Two
             </TabsTrigger>
           </TabsList>
           <TabsContent value="one">First panel.</TabsContent>

@@ -7,6 +7,7 @@
 
 import { cx } from 'class-variance-authority';
 import useEmblaCarousel, { type UseEmblaCarouselType } from 'embla-carousel-react';
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import {
   createContext,
   useCallback,
@@ -208,45 +209,8 @@ export function CarouselItem({ className, ...props }: CarouselItemProps) {
 
 export type CarouselPreviousProps = Omit<ButtonProps, 'icon'>;
 
-/* Inline lucide path (ISC) — the kit carries no icon dependency (same
- * precedent as spinner.tsx/pagination.tsx). Reuses pagination.tsx's exact
- * `m15 18-6-6 6-6` path: upstream's own base-registry source names this
- * icon directly (`IconPlaceholder lucide="ChevronLeftIcon"`), and it is
- * the same glyph the kit already carries for prev/next-style navigation. */
-function ChevronLeftIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m15 18-6-6 6-6" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m9 18 6-6-6-6" />
-    </svg>
-  );
-}
-
+/* Upstream's base-registry source names this icon directly
+ * (`IconPlaceholder lucide="ChevronLeftIcon"`). */
 export function CarouselPrevious({
   className,
   variant = 'outline',

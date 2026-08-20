@@ -22,9 +22,10 @@ red with a white label, and a soft red fill with a red label — two
 emphasis levels of the same red.
 
 A tone is still paint, not state: it colors a label, it does not track
-one. If you need a status label whose variant names ARE the states, reach
-for [`BadgeBackup`](badge-backup.md) instead — this component and that one
-solve different problems and are not interchangeable.
+one. Badge's five tones (`success`, `warning`, `danger`, `info`, `accent`)
+are the semantic-ish colors available — pick the one that best matches the
+status, but keep the label text itself explicit; color alone is not a
+substitute for a state machine.
 
 > **Accessibility caveat on tones.** At Badge's 12px/500 label, WCAG 1.4.3
 > asks 4.5:1. Four of the drawn tone pairs currently fall short — light
@@ -39,6 +40,10 @@ solve different problems and are not interchangeable.
 
 - A short, static inline label: a count, a category tag, a plan name, a
   version number.
+- A status label that benefits from color (running/failed/pending/beta) —
+  pick the tone variant (`success`/`warning`/`danger`/`info`/`accent`)
+  that matches the meaning, and still spell the status out in the label
+  text; a tone is paint, not a live indicator.
 - A clickable tag — pass `render={<a href="..." />}`. The kit's focus
   ring appears once the anchor receives keyboard focus, and hover
   feedback (background/underline) only applies once actually rendered as
@@ -47,9 +52,6 @@ solve different problems and are not interchangeable.
 
 ## When not to use
 
-- A status that speaks meaning (running/failed/pending/beta) rather than
-  paint — use [`BadgeBackup`](badge-backup.md), whose variant names ARE
-  states.
 - A clickable action with its own visual weight — use `button`.
 - Long or wrapping text — Badge is single-line (`white-space: nowrap`) and
   clips overflow.
@@ -99,8 +101,7 @@ import { Badge } from '@gears-frontx/ui-kit';
 ## Anti-patterns
 
 - Do not let a tone carry meaning on its own — a tone paints, it does not
-  announce. Write the meaning in the label, and use `BadgeBackup` when you
-  want a component whose variant names are the states themselves.
+  announce. Always spell out the meaning in the label text itself.
 - Do not nest interactive controls inside a Badge — it is a label, not a
   container.
 - Do not expect hover feedback from a plain (non-`render`) badge — it only

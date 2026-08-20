@@ -1,4 +1,5 @@
 import { cx } from 'class-variance-authority';
+import { ChevronDownIcon } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
 import styles from './native-select.module.css';
@@ -32,18 +33,7 @@ export function NativeSelect({ className, size = 'default', disabled, ...props }
         disabled={disabled}
         {...props}
       />
-      <svg
-        className={styles.icon}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="m6 9 6 6 6-6" />
-      </svg>
+      <ChevronDownIcon className={styles.icon} />
     </div>
   );
 }

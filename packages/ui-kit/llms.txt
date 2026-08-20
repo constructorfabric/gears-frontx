@@ -4,8 +4,8 @@
 > Base UI primitives, styling is compiled CSS on semantic design tokens,
 > variants via cva-driven props — `variant` for the paint/kind axis and
 > `size` for the scale one, plus the occasional extra axis where a component
-> genuinely has one (BadgeBackup's `shape`, Table's `density`,
-> AvatarFallback/AvatarGroupCount's `tone`). Consumers need no CSS framework
+> genuinely has one (Table's `density`, AvatarFallback/AvatarGroupCount's
+> `tone`). Consumers need no CSS framework
 > or build plugins.
 
 Rules for generated code:
@@ -20,6 +20,12 @@ Rules for generated code:
   tree-shakes unused components' JS from a root import already, but only
   drops their CSS from a subpath import — Vite and webpack drop both either
   way, so this only matters when esbuild is the actual bundler running.
+- Icons are `lucide-react` components, imported directly at the use site
+  (`import { ChevronDownIcon } from 'lucide-react';`). The kit depends on
+  `lucide-react` itself, so it resolves without a separate install, and it is
+  also what to pass into any `icon` slot prop. Kit CSS sizes icons through
+  each part's own `svg` rule, so a plain `<SomeIcon />` picks up the right
+  size; pass `className`/`size` only to override it.
 - In an RSC framework (Next.js App Router), every component EXCEPT Badge,
   DropdownMenu, and Toast is safe to import and render directly from a
   Server Component — no wrapping client-boundary module needed. Those three
@@ -107,18 +113,6 @@ Rules for generated code:
   UI primitive, but gets `render`-prop polymorphism via
   `useRender`/`mergeProps` (e.g. `<a>`) for a badge that is actually a
   link.
-- [BadgeBackup](dist/docs/badge-backup.md): status label, an intent-colored
-  caption with an opt-in status dot (`dot`) or a leading `icon` slot prop
-  (icon wins when both are given; default is neither); variants
-  success|warning|info|danger|muted (semantic states ONLY — pick by meaning,
-  never by color; neutral/count/category = muted), shapes pill|plain (pill
-  adds a soft fill; plain is the bare label for dense/inline spots); no
-  Base UI primitive; `render` (e.g. `<a>`) makes it a clickable tag — hover
-  feedback only appears once it is. `Badge` is the canonical shadcn port —
-  reach for it by default — but the two solve different problems and are
-  not interchangeable: BadgeBackup is kept for its semantic-intent variant
-  set (names ARE the states, not paint) and its dot/icon slots, neither of
-  which Badge's paint-only tones replace.
 - [Breadcrumb](dist/docs/breadcrumb.md): ancestor trail ending in the
   current page (Breadcrumb/BreadcrumbList/BreadcrumbItem/BreadcrumbLink/
   BreadcrumbPage/BreadcrumbSeparator/BreadcrumbEllipsis); no Base UI
@@ -345,7 +339,7 @@ Rules for generated code:
   from a bounded scale (pointer drag/click-on-track/arrow-keys); `value`/
   `defaultValue`'s length determines the number of rendered thumbs;
   orientation horizontal|vertical.
-- [Spinner](dist/docs/spinner.md): inline spinning-SVG loading indicator;
+- [Spinner](dist/docs/spinner.md): CSS-spun lucide `loader-circle`;
   no Base UI primitive, no variants; use `Button`'s own `loading` prop
   inside a button instead of nesting this.
 - [Switch](dist/docs/switch.md): immediate on/off toggle;

@@ -2,10 +2,16 @@
  * ContextMenu styles, translated from shadcn/ui (MIT) to CSS Modules.
  * Consumes only theme.css variables — no raw colors.
  *
- * Structurally identical to dropdown-menu.module.css (same underlying Menu
- * primitives) except .trigger (a right-click surface, not a clickable
- * button) and .popup's sizing (see that rule below) — kept in sync with
- * dropdown-menu.module.css for every other rule.
+ * Structurally near-identical to dropdown-menu.module.css (same underlying
+ * Menu primitives). It diverges on two rules, each marked at its own site:
+ * .trigger (a right-click surface, not a clickable button) and .popup's
+ * sizing (content-sized floor here vs. --anchor-width there — a context menu
+ * has no trigger box to match). The `<part> svg` sizing and the shortcut
+ * highlight covering checkbox/radio rows landed here first as upstream-parity
+ * fixes and have since been ported to dropdown-menu.module.css (menubar
+ * inherits them from there); .subPopup's numeric floor was re-synced to
+ * match this file's too. Treat this file and dropdown-menu.module.css as
+ * kept in sync on everything but .trigger and .popup's sizing.
  */
 
 /*
@@ -36,13 +42,20 @@
    * trigger element, so there is no trigger width to match — content-sizing
    * with a fixed min-width (the shadcn/ui registry's own choice for this
    * component) is the only option.
+   *
+   * 9rem is the Base UI registry's `min-w-36` for this part. A dimension, so
+   * it stays a literal rather than snapping to a --space-* step — the same
+   * carve-out command.module.css's `max-height` records. It matters more here
+   * than on a trigger-anchored menu: nothing else establishes a floor, so a
+   * short menu ("Back" / "Reload") collapsed to barely wider than its own
+   * labels and read as cramped next to the reference.
    */
   box-sizing: border-box;
   position: relative;
   isolation: isolate;
   z-index: 50;
   max-height: var(--available-height);
-  min-width: 8rem;
+  min-width: 9rem;
   overflow-x: hidden;
   overflow-y: auto;
   padding: var(--space-1);
@@ -102,11 +115,14 @@
 }
 
 /* A submenu's anchor is its own (usually narrow) SubTrigger item, not the
- * pointer the root menu opened at — content-sizing with a smaller min-width
- * mirrors dropdown-menu's .subPopup for the same reason. */
+ * pointer the root menu opened at, so it sizes to content with its own floor
+ * rather than inheriting the root popup's. 8rem is the registry's `min-w-32`
+ * for this part — one step under the root's 9rem, which is the proportion
+ * upstream draws. dropdown-menu's .subPopup matches this value (see that
+ * file's own header on why its main .popup still sizes differently). */
 .subPopup {
   width: auto;
-  min-width: 6rem;
+  min-width: 8rem;
 }
 
 /* A group caption over Meta-sized items, emphasized via --text-label-weight
@@ -260,8 +276,24 @@
   letter-spacing: var(--text-meta-tracking);
 }
 
+/*
+ * A shortcut is legal on a checkbox/radio row too — it lands clear of the
+ * indicator, which the 2rem end padding those rows reserve already keeps for
+ * itself. Upstream only recolours the shortcut on plain items, because it
+ * hangs the rule off a `group/context-menu-item` marker it puts on Item and
+ * nowhere else; that is an oversight in the registry, not a decision — the
+ * muted shortcut simply stays muted while the label beside it turns
+ * --accent-foreground, on a row that is visibly highlighted. Since this file
+ * already rules that a highlighted row recolours its shortcut, the three
+ * row kinds that can hold one follow the same rule rather than three
+ * different ones.
+ */
 .item:focus .shortcut,
-.item[data-highlighted] .shortcut {
+.item[data-highlighted] .shortcut,
+.checkboxItem:focus .shortcut,
+.checkboxItem[data-highlighted] .shortcut,
+.radioItem:focus .shortcut,
+.radioItem[data-highlighted] .shortcut {
   color: var(--accent-foreground);
 }
 
@@ -297,6 +329,35 @@
 .subTriggerIcon {
   margin-inline-start: auto;
   flex-shrink: 0;
+}
+
+/*
+ * Sizes the CONSUMER's leading icon, not this file's own Check/Chevron (those
+ * carry .svgIcon below). An `<svg>` with no width/height attribute is a
+ * replaced element with no intrinsic size, so it falls back to 300x150 and
+ * then gets squeezed to whatever the flex row has left — which is a different
+ * width per row, since it depends on how long that row's label is. Every
+ * icon row in the menu therefore rendered at its own arbitrary size, tens of
+ * pixels tall, and the effect scaled with the label. Upstream's registry
+ * spends three utilities on exactly this (`[&_svg]:pointer-events-none
+ * [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4`); this port shipped
+ * none of them and so had no defence. Same rule and same reasoning as
+ * command.module.css's `.item svg` — the kit's other menu-shaped item list,
+ * which does carry it.
+ *
+ * Upstream's `:not([class*='size-'])` escape hatch has no CSS-Modules
+ * equivalent (it reads Tailwind's own class names); a consumer overrides by
+ * out-specifying this selector or setting the size inline, the same contract
+ * as every other `<part> svg` rule in the kit.
+ */
+.item svg,
+.checkboxItem svg,
+.radioItem svg,
+.subTrigger svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .svgIcon {

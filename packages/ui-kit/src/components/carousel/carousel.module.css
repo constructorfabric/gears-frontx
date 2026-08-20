@@ -34,7 +34,18 @@
   margin-block-start: calc(-1 * var(--space-4));
 }
 
+/*
+ * `box-sizing: border-box` — same per-module fix as tabs.module.css/
+ * card.module.css and most of the kit (the reset the kit lacks; see
+ * tabs.module.css's comment for the full rationale). Without it,
+ * `padding-inline-start`/`padding-block-start` below add on top of
+ * `flex-basis: 100%` under content-box instead of being absorbed within
+ * it, so the item (and the card filling it) overshoots the viewport's
+ * clip edge by one `--space-4` and its trailing border gets cut off by
+ * `.viewport`'s `overflow: hidden`.
+ */
 .item {
+  box-sizing: border-box;
   min-width: 0;
   flex-shrink: 0;
   flex-grow: 0;

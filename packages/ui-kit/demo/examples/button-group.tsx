@@ -118,7 +118,17 @@ export default function ButtonGroupExample() {
                 <SelectItem value="eur">EUR</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">Convert</Button>
+            {/* Select's default size is control-height-lg (40px, the Field
+             * spec) — Button's own default is control-height-md (36px, the
+             * Button spec). A ButtonGroup joins them into one strip, so the
+             * Button must opt into the matching size explicitly: unlike
+             * upstream shadcn (where Button/Input/Select all share a single
+             * default height), this kit intentionally sizes fields one step
+             * above buttons, so alignment inside a group is the composer's
+             * job, not the group's — see button-group.md. */}
+            <Button variant="outline" size="lg">
+              Convert
+            </Button>
           </ButtonGroup>
         </Row>
       </Section>
@@ -126,7 +136,12 @@ export default function ButtonGroupExample() {
         <Row>
           <ButtonGroup>
             <Input placeholder="Amount" />
-            <Button variant="outline">Max</Button>
+            {/* Same size match as "With select" above: Input defaults to
+             * control-height-lg, so the attached Button opts into size="lg"
+             * to join at the same height. */}
+            <Button variant="outline" size="lg">
+              Max
+            </Button>
           </ButtonGroup>
         </Row>
       </Section>

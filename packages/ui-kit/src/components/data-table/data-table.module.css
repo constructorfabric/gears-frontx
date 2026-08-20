@@ -17,27 +17,70 @@
  * chrome" (see table.tsx) — a composite widget like DataTable is where
  * that chrome belongs, the same division of labor as Card owning a
  * border around content that doesn't draw its own.
+ *
+ * The Studio Data Table frame (40001455:6353) draws this card at 12px
+ * (--radius-lg, one step up from the recipe's `rounded-md`) on the
+ * --surface fill, and puts the pagination bar INSIDE it rather than
+ * floating below — so the card wraps the table and the footer together
+ * (see data-table.tsx), and the fill has to live here because the rows it
+ * shows through are transparent at rest.
+ *
+ * No `overflow: hidden`, unlike the recipe: nothing here needs clipping,
+ * and clipping actively hurt. The only paint that could reach a rounded
+ * corner is a row's hover/selected fill, and a row can never be the card's
+ * first or last child — the header bar is always above the body and the
+ * footer bar always below it. What clipping DID reach was the focus ring
+ * on the footer's own buttons, which sit a few px from the bottom edge.
  */
 .wrapper {
-  overflow: hidden;
   border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  background-color: var(--surface);
 }
 
 /*
  * The recipe's sortable-header button (`<Button variant="ghost"
  * onClick={...}>{children}<ArrowUpDown /></Button>`) — negative
- * margin-inline-start cancels the header cell's own padding-inline so the
- * button's own hit target still starts flush with neighboring header
- * text, matching how a plain (non-sortable) header label sits.
+ * margin-inline-start cancels the button's own padding-inline (a `sm`
+ * Button's --space-3) so its LABEL, not its hit target, starts flush with
+ * neighboring header text, matching how a plain (non-sortable) header
+ * label sits.
+ *
+ * The frame draws a sortable column label identically to an unsortable one
+ * — same mono, same size, same color, only a direction chevron added — so
+ * the button gives up Button's own Label type role and takes the header
+ * cell's instead. `font: inherit` carries family/size/weight/line-height
+ * down in one declaration; tracking is not part of that shorthand, so it
+ * is re-stated from the same Mono role .tableHead applies. Color inherits
+ * for the same reason: --subtle-foreground is the header's voice, and a
+ * column being sortable is not a reason to shout.
+ *
+ * `text-transform` has to be inherited BACK explicitly: it is an inherited
+ * property, but the UA stylesheet sets `text-transform: none` on every
+ * <button>, which beats inheritance and left sortable columns reading
+ * "Email" in a header row of "STATUS"/"AMOUNT".
  */
 .sortButton {
   margin-inline-start: calc(-1 * var(--space-3));
+  font: inherit;
+  letter-spacing: var(--text-mono-tracking);
+  text-transform: inherit;
+  color: inherit;
+  /* The frame sets the gap between a column label and its direction
+   * indicator at 4px, tighter than the --space-2 a Button gaps its own
+   * content at — that gap is sized for a Label-sized icon next to
+   * Label-sized text, and this button now carries neither. */
+  gap: var(--space-1);
 }
 
+/* --icon-size-xs, not the sm every other Button icon takes: the frame draws
+ * the sort indicator's glyph at 12px, and next to an 11px Mono label a 16px
+ * one both overshoots the drawing and reads as raised — its ink box is
+ * taller than the label's, so centering the two boxes leaves the glyph
+ * looking lifted off the baseline it should share. */
 .sortIcon {
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
   flex-shrink: 0;
 }
 
@@ -49,21 +92,33 @@
   text-align: center;
 }
 
-/* The recipe's `<div className="flex items-center justify-end space-x-2
- * py-4">` footer, holding the selected-row count and Previous/Next. */
+/*
+ * The recipe's `<div className="flex items-center justify-end space-x-2
+ * py-4">` footer, holding the selected-row count and Previous/Next —
+ * redrawn as the frame's pagination BAR: it sits inside the card (see
+ * .wrapper), draws the single rule that separates it from the last row,
+ * and keeps the count on the leading edge with the page controls on the
+ * trailing one. The frame's bar is 44px, which is off both space steps
+ * that bracket it; --space-1 takes it to 40 around the 32px controls,
+ * snapping down the way the density axis does rather than up.
+ */
 .footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
-  padding-block: var(--space-4);
+  border-top: var(--border-width) solid var(--border);
+  padding: var(--space-1) var(--space-4);
 }
 
+/* Meta, matching the cells above it — the frame sets the whole bar in the
+ * table's own 12px text, not the 15px page Body the recipe's utilities
+ * left it at. */
 .selectedCount {
   flex: 1;
   color: var(--muted-foreground);
-  font-size: var(--text-body-size);
-  line-height: var(--text-body-line-height);
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
 }
 
 .paginationControls {

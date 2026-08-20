@@ -90,6 +90,27 @@ scroll wrapper" above) — it does not stand between the table and its
 implicit roles, since a plain ancestor `div` has no effect on a
 descendant's own role.
 
+## Metrics and type
+
+Taken from the Studio Data Table frame:
+
+| Part | Drawn | Shipped |
+| --- | --- | --- |
+| Header bar height | 36px | `--control-height-md` |
+| Header label | JetBrains Mono 10/14, uppercase | the Mono role whole (`--font-mono`, `--text-mono-*`) + `text-transform: uppercase`, in `--subtle-foreground` |
+| Row height (single line) | 56px | falls out of `--space-5` block padding on a `--text-meta` line — no `height`, so a two-line cell grows the row instead of overflowing it |
+| Cell side padding | 16px | `--space-4` |
+| Row rule | 1px | `--border-width` `--border` |
+
+The header is the one place the table leaves Inter: its column labels are
+mono by design, and that carries through to a header rendered as a button
+(`DataTableSortButton` inherits it rather than imposing Button's own type).
+
+`density="compact"` drops the header to `--control-height-sm` and halves
+the cells' block padding to `--space-2`, taking a single-line row to 32px.
+The frame draws no compact specimen, so that step is proportional rather
+than measured.
+
 ## Column widths
 
 There's no `width` prop — size a column the same way the upstream source's
@@ -105,30 +126,34 @@ wider than 100.
 
 `TableRow` reads plain `data-*` attributes for its state, forwarded like any
 other prop rather than driven by a kit-specific prop. Your own logic sets
-the attribute; the kit only paints it. Every row renders as the Studio Data
-Table's carded, ringed row unconditionally — the card shape (rounded
-corners, 1px ring, raised fill) is the primitive itself, not a composition
-layered on top of these hooks; the hooks below only change the ring's
-color/width or lift the fill, they don't turn carding on:
+the attribute; the kit only paints it.
 
-- `data-state="selected"` — a 2px `--primary` ring on a `--card-hover`
-  fill, for a row the user has selected (e.g. via a leading checkbox
-  column).
-- `data-state="stale"` — a 1px `--warning` ring, for a row whose data
+A row is flat: transparent at rest, packed against its neighbours, with a
+single full-bleed 1px `--border` rule under it and no corner radius, ring,
+or fill of its own. Every state below is expressed as a full-bleed tint on
+that shape — the drawn state language of the Studio Data Table:
+
+- `data-state="selected"` — a `--selection-subtle` tint, for a row the
+  user has selected (e.g. via a leading checkbox column).
+- `data-state="stale"` — a `--warning-soft` tint, for a row whose data
   needs attention (out-of-date sync, pending action).
-- `data-state="restricted"` — a 1px `--danger` ring, for a row the
+- `data-state="restricted"` — a `--danger-soft` tint, for a row the
   viewer lacks access to.
 - Hover, and any row containing a descendant that is *currently*
   `aria-expanded="true"` (e.g. a row-level disclosure toggle, only while
-  open — a collapsed toggle does not match) — the fill lifts to
-  `--card-hover`, an opaque surface one step up from the row's resting
-  `--surface-elevated` (not a translucent tint). A `data-state` ring holds
-  under hover; only the fill lifts.
+  open — a collapsed toggle does not match) — a `--muted` tint, one step
+  off both backdrops a table meets (`--surface` inside a card,
+  `--background` bare on the page). A `data-state` tint outranks hover, so
+  a selected row stays selected-colored under the pointer.
 
-The rings follow the Studio Data Table's drawn state language (colored
-border, not a tinted surface); they are assembled from the row's cells,
-so they only close into a rectangle when the row's cells are direct
-children (`TableCell`/`TableHead` — the normal case).
+Because rows carry no fill at rest, the surface behind the table shows
+through them — put a `Table` on a `Card`, on `DataTable`'s own card, or on
+the page, and it takes that surface without any per-row override.
+
+The rule under the last row of the table is dropped: below it sits either
+the container's own bottom border or a footer bar's top border, and a
+second line there would double it. A `<tfoot>` after the body still gets
+its separator, since the body is then no longer the last section.
 
 ## Props (kit level)
 

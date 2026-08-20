@@ -20,13 +20,6 @@
   color: var(--muted-foreground);
 }
 
-.triggerIcon {
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
-  flex-shrink: 0;
-  color: inherit;
-}
-
 /*
  * The doubled class raises this selector's specificity to (0,2,0) so it
  * reliably outranks popover.module.css's `.popup` — same equal-specificity

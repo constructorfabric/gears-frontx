@@ -6,46 +6,10 @@
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
 import { cx } from 'class-variance-authority';
+import { ChevronRightIcon, MoreHorizontalIcon } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 
 import styles from './breadcrumb.module.css';
-
-/* Inline lucide paths (ISC) — the kit carries no icon dependency. */
-function ChevronRightIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cx(styles.svgIcon, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m9 18 6-6-6-6" />
-    </svg>
-  );
-}
-
-function MoreHorizontalIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cx(styles.svgIcon, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="1" />
-      <circle cx="19" cy="12" r="1" />
-      <circle cx="5" cy="12" r="1" />
-    </svg>
-  );
-}
 
 export type BreadcrumbProps = ComponentProps<'nav'>;
 

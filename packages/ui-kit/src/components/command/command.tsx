@@ -1,6 +1,7 @@
 // @cpt-FEATURE:command:p1
 import { Command as CommandPrimitive } from 'cmdk';
 import { cx } from 'class-variance-authority';
+import { SearchIcon } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 
 import {
@@ -12,25 +13,6 @@ import {
   type DialogProps,
 } from '../dialog/public.js';
 import styles from './command.module.css';
-
-/* Inline lucide path (ISC) — the kit carries no icon dependency. */
-function SearchIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cx(styles.svgIcon, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="8" />
-      <path d="m21 21-4.3-4.3" />
-    </svg>
-  );
-}
 
 export type CommandProps = ComponentProps<typeof CommandPrimitive>;
 
@@ -100,7 +82,7 @@ export interface CommandInputProps
 export function CommandInput({ className, wrapperClassName, ...props }: CommandInputProps) {
   return (
     <div className={cx(styles.inputWrapper, wrapperClassName)}>
-      <SearchIcon className={styles.inputIcon} />
+      <SearchIcon className={cx(styles.svgIcon, styles.inputIcon)} />
       <CommandPrimitive.Input className={cx(styles.input, className)} {...props} />
     </div>
   );

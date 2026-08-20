@@ -154,7 +154,7 @@ echo "==> Probes: Button=$BUTTON_CLASS Table=$TABLE_CLASS Dialog=$DIALOG_CLASS"
 # reason. input-group/native-select/pagination compose Button/Input/
 # Textarea/Separator as plain JSX (no hook of their own), same as card/
 # table/tabs above.
-CLIENT_COMPONENTS=(attachment badge badge-backup breadcrumb bubble button-group carousel chart combobox context-menu data-table drawer dropdown-menu marker sidebar toast)
+CLIENT_COMPONENTS=(attachment badge breadcrumb bubble button-group carousel chart combobox context-menu data-table drawer dropdown-menu marker sidebar toast)
 SERVER_COMPONENTS=(accordion alert alert-dialog aspect-ratio avatar button calendar card checkbox collapsible command date-picker dialog direction empty field field-backup hover-card input input-group input-otp item kbd label menubar message message-scroller native-select navigation-menu pagination popover progress questionnaire radio-group resizable scroll-area select separator sheet skeleton slider spinner switch table tabs textarea toggle toggle-group tooltip)
 
 in_list() {

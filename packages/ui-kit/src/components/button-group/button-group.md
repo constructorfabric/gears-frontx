@@ -70,12 +70,23 @@ import { Button, ButtonGroup, ButtonGroupSeparator, ButtonGroupText } from '@gea
   <Button variant="outline">Oldest first</Button>
 </ButtonGroup>
 
-// An input attached to an action button
+// An input attached to an action button — size="lg" matches Input's own
+// default height (control-height-lg); Button's own default is one step
+// down (control-height-md), so it needs the explicit size to join flush
 <ButtonGroup>
   <Input placeholder="Amount" />
-  <Button variant="outline">Max</Button>
+  <Button variant="outline" size="lg">Max</Button>
 </ButtonGroup>
 ```
+
+## Sizing
+
+`ButtonGroup` does not normalize child height itself — each child keeps
+whatever height its own size prop resolves to. `Input` and a `Select`
+trigger default to `control-height-lg`; `Button`'s own default is one step
+down at `control-height-md`. Composing a default `Button` next to a default
+`Input`/`Select` therefore joins two different heights — size the `Button`
+explicitly (`size="lg"`) to match, as the examples above do.
 
 ## Anti-patterns
 

@@ -52,6 +52,29 @@ takes individually — set it once on `Carousel` and `CarouselContent`,
 `CarouselItem`, `CarouselPrevious`, and `CarouselNext` all read it off
 `data-orientation`.
 
+### Spacing contract
+
+`CarouselContent`'s viewport clips overflow (`overflow: hidden`), and
+`CarouselItem` only pads its *leading* edge — the inter-item gap upstream's
+`pl-4`/`-ml-4` (horizontal) or `pt-4`/`-mt-4` (vertical) pair produces. It
+does not pad a slide's trailing or cross-axis edges. A bordered element
+(a `Card`, an image, anything with a visible edge) placed directly inside
+`CarouselItem` therefore fills the item flush to those un-padded sides,
+which can coincide with the viewport's clipped bounds and cut the border
+off there. Wrap such content in a padding div — `--space-1` matches
+upstream's own `p-1` — the same way every example below does:
+
+```tsx
+<CarouselItem>
+  <div style={{ padding: 'var(--space-1)' }}>
+    <Card>...</Card>
+  </div>
+</CarouselItem>
+```
+
+Content with no visible edge (plain text, an unbordered image) doesn't
+need the wrapper.
+
 `useCarousel()` is also exported: the same context hook every part above
 uses internally, for building custom controls (a slide counter, dot
 indicators) that need `canScrollPrev`/`canScrollNext`/`scrollPrev`/
@@ -123,3 +146,7 @@ function CountedCarousel() {
 - Keyboard navigation only wires `ArrowLeft`/`ArrowRight`, even in the
   `vertical` orientation — this replicates upstream's own behavior exactly
   (see carousel.tsx), it is not a kit-side bug to work around.
+- Do not place a bordered element directly inside `CarouselItem` without
+  the padding wrapper from "Spacing contract" above — its trailing and
+  cross-axis edges have no padding of their own, so the border sits flush
+  against the viewport's clipped bounds and gets cut off there.

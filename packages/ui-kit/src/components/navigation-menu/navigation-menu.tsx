@@ -1,25 +1,8 @@
 import { NavigationMenu as NavigationMenuPrimitive } from '@base-ui/react/navigation-menu';
 import { cva, cx } from 'class-variance-authority';
+import { ChevronDownIcon } from 'lucide-react';
 
 import styles from './navigation-menu.module.css';
-
-/* Inline lucide path (ISC) — the kit carries no icon dependency. */
-function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cx(styles.svgIcon, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
 
 export interface NavigationMenuProps<Value = unknown>
   extends Omit<NavigationMenuPrimitive.Root.Props<Value>, 'className'>,
@@ -122,7 +105,7 @@ export interface NavigationMenuIconProps extends Omit<NavigationMenuPrimitive.Ic
 export function NavigationMenuIcon({ className, ...props }: NavigationMenuIconProps) {
   return (
     <NavigationMenuPrimitive.Icon
-      render={<ChevronDownIcon className={cx(styles.triggerIcon, className)} />}
+      render={<ChevronDownIcon className={cx(styles.svgIcon, styles.triggerIcon, className)} />}
       {...props}
     />
   );

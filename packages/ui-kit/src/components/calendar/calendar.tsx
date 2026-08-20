@@ -1,4 +1,11 @@
 import { cx } from 'class-variance-authority';
+import {
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import {
   DayPicker,
@@ -9,18 +16,16 @@ import {
 import styles from './calendar.module.css';
 
 /*
- * Inline lucide chevron paths (ISC) — same idiom as select.tsx's Chevron:
- * the kit carries no icon dependency. Four orientations (nav prev/next use
- * left/right, the dropdown caption chip uses down) rather than one path
- * rotated by CSS: rotating a chevron glyph by an arbitrary multiple of 90deg
- * is easy to get backwards, so each orientation ships lucide's own verified
- * path instead of a guessed transform.
+ * react-day-picker hands its Chevron slot an `orientation` rather than a
+ * component, so the four directions are looked up here. Four distinct lucide
+ * glyphs rather than one rotated by CSS: rotating a chevron by an arbitrary
+ * multiple of 90deg is easy to get backwards.
  */
-const CHEVRON_PATHS: Record<'up' | 'down' | 'left' | 'right', string> = {
-  down: 'm6 9 6 6 6-6',
-  up: 'm18 15-6-6-6 6',
-  left: 'm15 18-6-6 6-6',
-  right: 'm9 18 6-6-6-6',
+const CHEVRONS: Record<'up' | 'down' | 'left' | 'right', LucideIcon> = {
+  down: ChevronDownIcon,
+  up: ChevronUpIcon,
+  left: ChevronLeftIcon,
+  right: ChevronRightIcon,
 };
 
 function CalendarChevron({
@@ -30,20 +35,8 @@ function CalendarChevron({
   orientation?: 'up' | 'down' | 'left' | 'right';
   className?: string;
 }) {
-  return (
-    <svg
-      className={cx(styles.chevron, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d={CHEVRON_PATHS[orientation]} />
-    </svg>
-  );
+  const Chevron = CHEVRONS[orientation];
+  return <Chevron className={cx(styles.chevron, className)} />;
 }
 
 // A type alias, not `interface extends`: DayPickerProps is itself a union

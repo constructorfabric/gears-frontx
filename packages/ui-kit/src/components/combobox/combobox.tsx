@@ -5,61 +5,10 @@
 
 import { Combobox as ComboboxPrimitive } from '@base-ui/react/combobox';
 import { cx } from 'class-variance-authority';
+import { CheckIcon, ChevronDownIcon, XIcon } from 'lucide-react';
 import { type ComponentPropsWithRef, type ReactNode, useRef } from 'react';
 
 import styles from './combobox.module.css';
-
-/* Inline lucide paths (ISC) — the kit carries no icon dependency. */
-function Chevron({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cx(styles.svgIcon, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
-function XMark({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cx(styles.svgIcon, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  );
-}
-
-function Check({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cx(styles.svgIcon, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
 
 export const Combobox = ComboboxPrimitive.Root;
 /**
@@ -106,7 +55,7 @@ export interface ComboboxTriggerProps
 export function ComboboxTrigger({ className, children, ...props }: ComboboxTriggerProps) {
   return (
     <ComboboxPrimitive.Trigger className={cx(styles.inputTrigger, className)} {...props}>
-      {children ?? <Chevron />}
+      {children ?? <ChevronDownIcon className={styles.svgIcon} />}
     </ComboboxPrimitive.Trigger>
   );
 }
@@ -126,7 +75,7 @@ interface ComboboxClearProps
 function ComboboxClear({ className, ...props }: ComboboxClearProps) {
   return (
     <ComboboxPrimitive.Clear className={cx(styles.inputClear, className)} {...props}>
-      <XMark />
+      <XIcon className={styles.svgIcon} />
     </ComboboxPrimitive.Clear>
   );
 }
@@ -308,7 +257,7 @@ export function ComboboxItem({ className, children, ...props }: ComboboxItemProp
     <ComboboxPrimitive.Item className={cx(styles.item, className)} {...props}>
       {children}
       <ComboboxPrimitive.ItemIndicator render={<span className={styles.itemIndicator} />}>
-        <Check />
+        <CheckIcon className={styles.svgIcon} />
       </ComboboxPrimitive.ItemIndicator>
     </ComboboxPrimitive.Item>
   );
@@ -359,7 +308,7 @@ export function ComboboxChip({
       {children}
       {showRemove && (
         <ComboboxPrimitive.ChipRemove className={styles.chipRemove} aria-label="Remove">
-          <XMark className={styles.chipRemoveIcon} />
+          <XIcon className={cx(styles.svgIcon, styles.chipRemoveIcon)} />
         </ComboboxPrimitive.ChipRemove>
       )}
     </ComboboxPrimitive.Chip>

@@ -23,14 +23,26 @@ const SLIDE_NUMBER_STYLE: CSSProperties = {
   fontWeight: 'var(--text-display-weight)' as CSSProperties['fontWeight'],
 };
 
+// CarouselItem only pads its leading edge (the inter-item gap upstream's
+// pl-4/-ml-4 pair produces) — it never padded a card's other three sides.
+// Upstream's own demos wrap the slide content in a `p-1` div for exactly
+// this reason: without it, a card fills the item flush to its trailing and
+// cross-axis edges, which coincide with the viewport's clipped bounds and
+// cut the card's border off there.
+const SLIDE_CARD_WRAP_STYLE: CSSProperties = {
+  padding: 'var(--space-1)',
+};
+
 function Slides() {
   return (
     <CarouselContent>
       {Array.from({ length: 5 }, (_, index) => (
         <CarouselItem key={index}>
-          <Card>
-            <CardContent style={SLIDE_NUMBER_STYLE}>{index + 1}</CardContent>
-          </Card>
+          <div style={SLIDE_CARD_WRAP_STYLE}>
+            <Card>
+              <CardContent style={SLIDE_NUMBER_STYLE}>{index + 1}</CardContent>
+            </Card>
+          </div>
         </CarouselItem>
       ))}
     </CarouselContent>
@@ -73,9 +85,11 @@ export default function CarouselExample() {
           <CarouselContent>
             {Array.from({ length: 5 }, (_, index) => (
               <CarouselItem key={index} style={{ flexBasis: '33%' }}>
-                <Card>
-                  <CardContent style={SLIDE_NUMBER_STYLE}>{index + 1}</CardContent>
-                </Card>
+                <div style={SLIDE_CARD_WRAP_STYLE}>
+                  <Card>
+                    <CardContent style={SLIDE_NUMBER_STYLE}>{index + 1}</CardContent>
+                  </Card>
+                </div>
               </CarouselItem>
             ))}
           </CarouselContent>

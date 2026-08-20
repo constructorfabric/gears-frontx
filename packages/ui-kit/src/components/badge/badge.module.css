@@ -69,11 +69,11 @@
 }
 
 /*
- * Focus ring: the same inset idiom as BadgeBackup/Input/Textarea (border
- * color swap + inset box-shadow, geometry-stable — see input.module.css),
- * not Button's outside outline — Badge shares BadgeBackup's bordered-pill
- * shape, not Button's. Only reachable at all once rendered as a link via
- * `render`; a plain span is never in the tab order.
+ * Focus ring: the same inset idiom as Input/Textarea (border color swap +
+ * inset box-shadow, geometry-stable — see input.module.css), not Button's
+ * outside outline — Badge is a bordered pill, not Button's shape. Only
+ * reachable at all once rendered as a link via `render`; a plain span is
+ * never in the tab order.
  */
 .badge:focus-visible {
   outline: none;

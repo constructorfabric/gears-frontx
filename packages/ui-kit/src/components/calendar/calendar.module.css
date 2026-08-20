@@ -40,8 +40,15 @@
   gap: var(--space-4);
 }
 
-/* Absolutely positioned over the caption row (see .monthCaption's matching
- * horizontal padding, which reserves the room these buttons float into). */
+/*
+ * Absolutely positioned over the caption row (see .monthCaption's matching
+ * horizontal padding, which reserves the room these buttons float into).
+ * The element itself spans the WHOLE row, so everything between the two
+ * buttons sits underneath it: the caption label, and in dropdown layout the
+ * transparent <select> that must keep receiving the clicks. No stacking
+ * order is claimed here, and the container passes pointer events through to
+ * what it covers while the buttons take their own back.
+ */
 .nav {
   position: absolute;
   inset-inline: 0;
@@ -51,11 +58,12 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-1);
-  z-index: 1;
+  pointer-events: none;
 }
 
 .buttonPrevious,
 .buttonNext {
+  pointer-events: auto;
   display: flex;
   width: var(--control-height-md);
   height: var(--control-height-md);
@@ -89,7 +97,14 @@
   outline-offset: -2px;
 }
 
+/* Local `box-sizing: border-box` (the kit's per-component idiom, see
+ * tabs.module.css): the inline padding is what keeps the centred label clear
+ * of the nav buttons floating above it, so it has to be carved OUT of the
+ * row's width. Under the inherited content-box it was added to the width
+ * instead, pushing the row wider than the calendar and sliding the label
+ * straight under the next-month button. */
 .monthCaption {
+  box-sizing: border-box;
   display: flex;
   height: var(--control-height-md);
   width: 100%;
@@ -293,6 +308,11 @@
   border-end-end-radius: var(--radius-sm);
 }
 
+/* `min-width` is upstream's `min-w-(--cell-size)` and is what gives the grid
+ * its intrinsic size: every other width here is a percentage, so under the
+ * root's `width: fit-content` the columns would otherwise collapse onto the
+ * day numbers and shrink the whole calendar below the width its own header
+ * needs. */
 .dayButton {
   position: relative;
   isolation: isolate;
@@ -300,6 +320,7 @@
   display: flex;
   aspect-ratio: 1;
   width: 100%;
+  min-width: var(--control-height-md);
   align-items: center;
   justify-content: center;
   border: none;

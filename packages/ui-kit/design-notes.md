@@ -72,9 +72,9 @@ the `sidebar` / `data-table` exclusions above intact.
   already-separate files, so a consumer's bundler can drop the ones it never
   imports rather than receiving one bundle with everything inlined.
   `rollup-plugin-node-externals` externalizes `dependencies`/
-  `peerDependencies` (`@base-ui/react`, CVA, react, react-dom and subpaths
-  like `react/jsx-runtime`) in place of tsup's hand-maintained `external`
-  array. CSS Modules support is native to Vite — the esbuild `local-css`
+  `peerDependencies` (`@base-ui/react`, CVA, `lucide-react`, react, react-dom
+  and subpaths like `react/jsx-runtime`) in place of tsup's hand-maintained
+  `external` array. CSS Modules support is native to Vite — the esbuild `local-css`
   loader override tsup needed (and the fragile convention its comment
   documented, that JS may only import `*.module.css`) is gone.
 - CSS pipeline: per-component `*.module.css`, each compiled to its own CSS

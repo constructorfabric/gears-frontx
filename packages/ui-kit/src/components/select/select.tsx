@@ -1,26 +1,9 @@
 import { Select as SelectPrimitive } from '@base-ui/react/select';
 import { cva, cx, type VariantProps } from 'class-variance-authority';
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 
 import styles from './select.module.css';
-
-/* Inline lucide paths (ISC) — the kit carries no icon dependency. */
-function Chevron({ direction, className }: { direction: 'up' | 'down'; className?: string }) {
-  return (
-    <svg
-      className={cx(styles.svgIcon, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d={direction === 'down' ? 'm6 9 6 6 6-6' : 'm18 15-6-6-6 6'} />
-    </svg>
-  );
-}
 
 export const Select = SelectPrimitive.Root;
 /**
@@ -75,7 +58,9 @@ export function SelectTrigger({ className, size, variant, children, ...props }: 
   return (
     <SelectPrimitive.Trigger className={triggerVariants({ size, variant, className })} {...props}>
       {children}
-      <SelectPrimitive.Icon render={<Chevron direction="down" className={styles.triggerIcon} />} />
+      <SelectPrimitive.Icon
+        render={<ChevronDownIcon className={cx(styles.svgIcon, styles.triggerIcon)} />}
+      />
     </SelectPrimitive.Trigger>
   );
 }
@@ -174,18 +159,7 @@ export function SelectItem({ className, children, ...props }: SelectItemProps) {
     <SelectPrimitive.Item className={cx(styles.item, className)} {...props}>
       <SelectPrimitive.ItemText className={styles.itemText}>{children}</SelectPrimitive.ItemText>
       <SelectPrimitive.ItemIndicator render={<span className={styles.itemIndicator} />}>
-        <svg
-          className={styles.svgIcon}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M20 6 9 17l-5-5" />
-        </svg>
+        <CheckIcon className={styles.svgIcon} />
       </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>
   );
@@ -210,7 +184,7 @@ export function SelectScrollUpButton({ className, ...props }: SelectScrollUpButt
       className={cx(styles.scrollArrow, styles.scrollArrowUp, className)}
       {...props}
     >
-      <Chevron direction="up" />
+      <ChevronUpIcon className={styles.svgIcon} />
     </SelectPrimitive.ScrollUpArrow>
   );
 }
@@ -226,7 +200,7 @@ export function SelectScrollDownButton({ className, ...props }: SelectScrollDown
       className={cx(styles.scrollArrow, styles.scrollArrowDown, className)}
       {...props}
     >
-      <Chevron direction="down" />
+      <ChevronDownIcon className={styles.svgIcon} />
     </SelectPrimitive.ScrollDownArrow>
   );
 }

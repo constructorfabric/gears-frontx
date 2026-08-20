@@ -1,5 +1,6 @@
 import { MessageScroller as MessageScrollerPrimitive } from '@shadcn/react/message-scroller';
 import { cx } from 'class-variance-authority';
+import { ArrowDownIcon } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
 import { Button, type ButtonProps } from '../button/button';
@@ -100,27 +101,6 @@ export function MessageScrollerItem({ className, ...props }: MessageScrollerItem
   return <MessageScrollerPrimitive.Item className={cx(styles.item, className)} {...props} />;
 }
 
-/* Inline lucide "arrow-down" path (ISC) — the kit carries no icon
- * dependency; same idiom as pagination.tsx's chevron icons and checkbox.tsx's
- * check mark. Rotated 180deg via CSS for the `start` direction. */
-function ArrowDownIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 5v14" />
-      <path d="m19 12-7 7-7-7" />
-    </svg>
-  );
-}
-
 export interface MessageScrollerButtonProps
   extends Omit<ComponentProps<typeof MessageScrollerPrimitive.Button>, 'className'>,
     Pick<ButtonProps, 'variant' | 'size'> {
@@ -163,7 +143,8 @@ export function MessageScrollerButton({
       direction={direction}
       aria-label={ariaLabel ?? (direction === 'end' ? 'Scroll to end' : 'Scroll to start')}
       className={cx(styles.button, className)}
-      render={render ?? <Button variant={variant} size={size} icon={<ArrowDownIcon />} />}
+      render={render ?? <Button variant={variant} size={size} /* Rotated 180deg via CSS for the `start` direction. */
+      icon={<ArrowDownIcon />} />}
       {...props}
     >
       {children ?? ''}

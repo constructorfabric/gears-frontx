@@ -1,8 +1,8 @@
 # Spinner
 
-A spinning loading indicator — an inline SVG icon (lucide's `loader-circle`
-shape) rotating continuously via CSS. No Base UI primitive and no variant
-axis: a single visual, sized like the kit's other small icons.
+A spinning loading indicator — lucide's `loader-circle` icon rotating
+continuously via CSS. No Base UI primitive and no variant axis: a single
+visual, sized like the kit's other small icons.
 
 ## When to use
 

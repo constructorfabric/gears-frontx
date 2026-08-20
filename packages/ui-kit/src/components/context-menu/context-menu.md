@@ -62,10 +62,14 @@ content.
 `ContextMenuContent`'s popup does not size to a trigger width the way
 `DropdownMenuContent` does (`--anchor-width`): the menu anchors to a
 virtual point (the pointer), not a real trigger element, so there is no
-trigger box to match — it uses a fixed `min-width: 8rem` instead.
+trigger box to match — it uses a fixed `min-width: 9rem` instead.
 `ContextMenuSubContent` sizes to its own content with a smaller
-`min-width`, since a submenu's anchor is its own (usually narrow)
-`ContextMenuSubTrigger` item.
+`min-width: 8rem`, since a submenu's anchor is its own (usually narrow)
+`ContextMenuSubTrigger` item. Both are floors, not widths: pass a `width`
+(via `className` or `style`) when a menu should hold one fixed size
+regardless of its longest label — the shortcut column is pushed to the end
+of the row, so a content-sized popup leaves no gap between a label and its
+shortcut.
 
 The popup portals to `<body>` by default, so if your theme lives on a
 subtree (`data-theme` on a section instead of `<html>`), pass that section
@@ -82,7 +86,24 @@ its leading icon column, for a menu that mixes icon and non-icon rows.
 `onCheckedChange`, `inset`; `ContextMenuRadioGroup` + `ContextMenuRadioItem`:
 `value` / `defaultValue`, `onValueChange` on the group, `value` and `inset`
 on each item — both leave `closeOnClick` at Base UI's default of `false` so
-the menu stays open after a toggle.
+the menu stays open after a toggle. A selected radio row is marked with the
+same check glyph as a checked checkbox row, not a dot; the group is what
+makes the selection exclusive.
+
+### Icons and shortcuts inside a row
+
+An `<svg>` placed inside `ContextMenuItem`, `ContextMenuCheckboxItem`,
+`ContextMenuRadioItem`, or `ContextMenuSubTrigger` is sized to
+`--icon-size-sm` and stopped from shrinking, so icons line up across rows
+whatever their labels are — you do not have to size the icon yourself, and
+an icon with no `width`/`height` of its own will not blow the row open.
+Override by out-specifying that rule or setting the size inline.
+
+`ContextMenuShortcut` pushes itself to the end of the row and renders in
+`--muted-foreground`, turning `--accent-foreground` while the row is
+highlighted. It is legal on a checkbox or radio row as well as a plain one:
+those rows already reserve end padding for their indicator, so the shortcut
+lands clear of it.
 
 ## Examples
 

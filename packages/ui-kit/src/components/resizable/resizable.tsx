@@ -1,4 +1,5 @@
 import { cx } from 'class-variance-authority';
+import { GripVerticalIcon } from 'lucide-react';
 import * as ResizablePrimitive from 'react-resizable-panels';
 
 import styles from './resizable.module.css';
@@ -46,38 +47,14 @@ export interface ResizableHandleProps extends ResizablePrimitive.SeparatorProps 
   withHandle?: boolean;
 }
 
-/* Inline lucide `grip-vertical` path (ISC) — the kit carries no icon
- * dependency (same precedent as spinner.tsx/pagination.tsx). Upstream's
- * `base` source renders an opaque `cn-resizable-handle-icon` class with no
- * concrete glyph or geometry in the fetched registry file (that utility
- * class's real definition lives in shadcn's own base theme stylesheet,
- * which this porting task has no access to) — the new-york-v4 sibling
- * variant is the one that names an actual icon (`GripVerticalIcon`) and
- * gives concrete box geometry, so this follows that sibling for both, same
- * "base ships structure only" precedent already recorded for Avatar in
+/* Upstream's `base` source renders an opaque `cn-resizable-handle-icon`
+ * class with no concrete glyph or geometry in the fetched registry file
+ * (that utility class's real definition lives in shadcn's own base theme
+ * stylesheet, which this porting task has no access to) — the new-york-v4
+ * sibling variant is the one that names an actual icon (`GripVerticalIcon`)
+ * and gives concrete box geometry, so this follows that sibling for both,
+ * same "base ships structure only" precedent already recorded for Avatar in
  * shadcn-porting-map.md. */
-function GripVerticalIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="9" cy="12" r="1" />
-      <circle cx="9" cy="5" r="1" />
-      <circle cx="9" cy="19" r="1" />
-      <circle cx="15" cy="12" r="1" />
-      <circle cx="15" cy="5" r="1" />
-      <circle cx="15" cy="19" r="1" />
-    </svg>
-  );
-}
-
 export function ResizableHandle({ withHandle, className, ...props }: ResizableHandleProps) {
   return (
     <ResizablePrimitive.Separator className={cx(styles.handle, className)} {...props}>

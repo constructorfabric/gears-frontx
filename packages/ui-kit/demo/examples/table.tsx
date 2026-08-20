@@ -1,5 +1,5 @@
 import {
-  BadgeBackup,
+  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -107,19 +107,19 @@ export default function TableExample() {
             <TableRow data-state="selected">
               <TableCell>gears-scheduler (selected)</TableCell>
               <TableCell>
-                <BadgeBackup variant="success">running</BadgeBackup>
+                <Badge variant="success">running</Badge>
               </TableCell>
             </TableRow>
             <TableRow data-state="stale">
               <TableCell>gears-connector (stale)</TableCell>
               <TableCell>
-                <BadgeBackup variant="warning">needs action</BadgeBackup>
+                <Badge variant="warning">needs action</Badge>
               </TableCell>
             </TableRow>
             <TableRow data-state="restricted">
               <TableCell>gears-vault (restricted)</TableCell>
               <TableCell>
-                <BadgeBackup variant="danger">no access</BadgeBackup>
+                <Badge variant="danger">no access</Badge>
               </TableCell>
             </TableRow>
           </TableBody>

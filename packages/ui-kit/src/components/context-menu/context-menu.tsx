@@ -5,6 +5,7 @@
 
 import { ContextMenu as ContextMenuPrimitive } from '@base-ui/react/context-menu';
 import { cva, cx, type VariantProps } from 'class-variance-authority';
+import { CheckIcon, ChevronRightIcon } from 'lucide-react';
 import { type ComponentProps, createContext, useContext } from 'react';
 
 import styles from './context-menu.module.css';
@@ -20,41 +21,6 @@ import styles from './context-menu.module.css';
 const MenuContainerContext = createContext<ContextMenuPrimitive.Portal.Props['container']>(
   undefined,
 );
-
-/* Inline lucide paths (ISC) — the kit carries no icon dependency. */
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cx(styles.svgIcon, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cx(styles.svgIcon, className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m9 18 6-6-6-6" />
-    </svg>
-  );
-}
 
 export const ContextMenu = ContextMenuPrimitive.Root;
 /**
@@ -216,10 +182,15 @@ export function ContextMenuCheckboxItem({
       className={cx(styles.checkboxItem, className)}
       {...props}
     >
-      {children}
+      {/* Indicator before the label, as upstream orders these parts. It is
+          absolutely positioned, and the static position of an out-of-flow
+          child of a flex container comes from the container's own alignment
+          rather than its siblings — so the order carries no layout meaning
+          and only has to match the registry it was ported from. */}
       <ContextMenuPrimitive.CheckboxItemIndicator className={styles.itemIndicator}>
-        <CheckIcon />
+        <CheckIcon className={styles.svgIcon} />
       </ContextMenuPrimitive.CheckboxItemIndicator>
+      {children}
     </ContextMenuPrimitive.CheckboxItem>
   );
 }
@@ -252,10 +223,14 @@ export function ContextMenuRadioItem({
       className={cx(styles.radioItem, className)}
       {...props}
     >
-      {children}
+      {/* Indicator first — see ContextMenuCheckboxItem above. The registry
+          marks a selected radio row with the same check glyph as a checkbox
+          row, not a dot; the group's roving selection is what distinguishes
+          them, so the glyph is deliberately shared. */}
       <ContextMenuPrimitive.RadioItemIndicator className={styles.itemIndicator}>
-        <CheckIcon />
+        <CheckIcon className={styles.svgIcon} />
       </ContextMenuPrimitive.RadioItemIndicator>
+      {children}
     </ContextMenuPrimitive.RadioItem>
   );
 }
@@ -299,7 +274,7 @@ export function ContextMenuSubTrigger({
       {...props}
     >
       {children}
-      <ChevronRightIcon className={styles.subTriggerIcon} />
+      <ChevronRightIcon className={cx(styles.svgIcon, styles.subTriggerIcon)} />
     </ContextMenuPrimitive.SubmenuTrigger>
   );
 }

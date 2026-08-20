@@ -1,5 +1,6 @@
 import { Questionnaire as QuestionnairePrimitive } from '@shadcn/react/questionnaire';
 import { cx } from 'class-variance-authority';
+import { CheckIcon } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
 import { Button, type ButtonProps } from '../button/button';
@@ -176,27 +177,6 @@ export function QuestionnaireChoiceShortcut({
       className={cx(styles.shortcut, className)}
       {...props}
     />
-  );
-}
-
-/* Inline lucide "check" path (ISC) — same glyph as checkbox.tsx's own
- * indicator, reused here for visual identity rather than importing the
- * Checkbox component (see QuestionnaireChoice's doc comment for why the
- * component itself isn't reusable as-is). */
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
   );
 }
 

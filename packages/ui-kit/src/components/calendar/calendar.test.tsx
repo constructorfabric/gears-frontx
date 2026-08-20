@@ -103,6 +103,18 @@ describe('Calendar', () => {
     expect(container.querySelectorAll('select').length).toBe(2);
   });
 
+  // The selects rendering is not the same thing as the selects working: they
+  // are wired through to month navigation only as long as the kit keeps
+  // passing react-day-picker's own dropdown props straight through.
+  it('navigates the displayed month when the month select changes', () => {
+    const { container } = render(
+      <Calendar mode="single" defaultMonth={JAN_1} selected={undefined} onSelect={vi.fn()} captionLayout="dropdown" />,
+    );
+    const monthSelect = container.querySelector('select') as HTMLSelectElement;
+    fireEvent.change(monthSelect, { target: { value: '3' } });
+    expect(screen.getByRole('grid').getAttribute('aria-label')).toContain('April');
+  });
+
   it('applies the kit root/months/month classes', () => {
     const { container } = render(
       <Calendar mode="single" defaultMonth={JAN_1} selected={undefined} onSelect={vi.fn()} />,

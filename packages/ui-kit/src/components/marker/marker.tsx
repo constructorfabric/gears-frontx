@@ -46,8 +46,9 @@ export function Marker({ className, variant = 'default', render, ...props }: Mar
     render,
     // `data-variant` is layered on AFTER mergeProps, not passed through it:
     // mergeProps types its own object literal as the closed DOM attribute
-    // set for the tag, which rejects a `data-*` key — same shadow-proofing
-    // idiom as BadgeBackup's `data-dot` (see badge-backup.tsx).
+    // set for the tag, which rejects a `data-*` key — the same
+    // shadow-proofing needed anywhere a `data-*` prop must survive
+    // mergeProps.
     props: {
       ...mergeProps<'div'>({ className: markerVariants({ variant, className }) }, props),
       'data-variant': variant,

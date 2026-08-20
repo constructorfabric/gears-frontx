@@ -1,5 +1,6 @@
 import { cx } from 'class-variance-authority';
 import { format } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 
@@ -9,28 +10,6 @@ import { Input } from '../input/input';
 import { Popover, PopoverContent, PopoverTrigger } from '../popover/popover';
 
 import styles from './date-picker.module.css';
-
-/* Inline lucide calendar path (ISC) — same idiom as calendar.tsx's chevrons:
- * the kit carries no icon dependency. */
-function CalendarGlyph({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M8 2v3" />
-      <path d="M16 2v3" />
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M3 9h18" />
-    </svg>
-  );
-}
 
 interface DatePickerBaseProps {
   /** Shown in the trigger/input when nothing is selected. */
@@ -181,10 +160,12 @@ export function DatePicker(props: DatePickerProps) {
               className={cx(styles.trigger, className)}
               data-empty={!selected?.from || undefined}
               aria-label={ariaLabel}
+              // Button's own `icon` slot, not a raw child — see the single-mode
+              // trigger below for why (same fix, same reason).
+              icon={<CalendarIcon />}
             />
           }
         >
-          <CalendarGlyph className={styles.triggerIcon} />
           {label ?? <span>{placeholder}</span>}
         </PopoverTrigger>
         <PopoverContent className={styles.content} align="start" container={container}>
@@ -251,7 +232,7 @@ export function DatePicker(props: DatePickerProps) {
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger
               render={
-                <Button variant="ghost" size="sm" icon={<CalendarGlyph />} aria-label={ariaLabel ?? 'Open calendar'} />
+                <Button variant="ghost" size="sm" icon={<CalendarIcon />} aria-label={ariaLabel ?? 'Open calendar'} />
               }
             />
             <PopoverContent className={styles.content} align="end" sideOffset={8} container={container}>
@@ -281,10 +262,15 @@ export function DatePicker(props: DatePickerProps) {
             className={cx(styles.trigger, className)}
             data-empty={!selected || undefined}
             aria-label={ariaLabel}
+            // Button's `icon` slot (never a raw child, per button.tsx's own
+            // doc comment): a child mixed in with the label text lands in
+            // Button's plain-block `.label` span instead of its flex
+            // `.icon`+`.label` row, which silently drops the gap and
+            // vertical centering Button would otherwise give it for free.
+            icon={<CalendarIcon />}
           />
         }
       >
-        <CalendarGlyph className={styles.triggerIcon} />
         {selected ? format(selected, 'PPP') : <span>{placeholder}</span>}
       </PopoverTrigger>
       <PopoverContent className={styles.content} align="start" container={container}>
