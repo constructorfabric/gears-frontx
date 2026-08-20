@@ -30,7 +30,7 @@ The project-state contract keeps everything the CLI tracks about an applied temp
 
 ## Decision Drivers
 
-* **One origin and one version per template name** — the registry structure itself (`templates[name] = { origin, version, targets[] }`) has no field for a per-target origin or version; any upgrade unit finer than "the template name" cannot be expressed without adding fields the redesign deliberately removed.
+* **One origin and one version per template name** — the registry structure itself (`templates[name] = { origin, version, targets[] }`) has no field for a per-target origin or version; any upgrade unit finer than "the template name" cannot be expressed without adding fields the project-state contract does not define (`cpt-frontx-adr-project-provenance-record`).
 * **A minimal, algorithmic baseline for v1** — the baseline an upgrade diffs against must be derivable from data the project already keeps for other reasons (the registered `origin` and `version`), not from a dedicated per-instance provenance record or per-file content hashes maintained solely to serve upgrade.
 * **Determinism over partial-success granularity** — a registry entry that names one `origin`/`version` for potentially several `targets` must never end up describing a template partially upgraded and partially not; the entry's truth (which version this name is at) must hold for every target it names at the end of the operation.
 * **Reviewable, non-destructive, reversible regardless of unit** — a developer must be able to review an upgrade before it lands, it must not destroy in-progress edits, and it must be reversible; these properties are requirements independent of which unit or baseline implements them, and this decision does not relax them.
@@ -45,7 +45,7 @@ The project-state contract keeps everything the CLI tracks about an applied temp
 
 ## Decision Outcome
 
-Chosen option: **Atomic all-targets upgrade with the baseline read from `project.json`**, because it is the only option that fits the registry structure the project-state redesign already settled on, and it gives v1 a deterministic, dependency-free upgrade unit without reintroducing the per-instance provenance records and file-level reconstruction machinery the redesign removed as contract bloat.
+Chosen option: **Atomic all-targets upgrade with the baseline read from `project.json`**, because it is the only option that fits the registry structure the project-state contract fixes (`cpt-frontx-adr-project-provenance-record`), and it gives v1 a deterministic, dependency-free upgrade unit without introducing per-instance provenance records and file-level reconstruction machinery that the contract has no place for and v1 has no use for.
 
 `frontx upgrade <templateName> <new-origin>` treats every target listed under `templateName` in `.frontx/project.json` as one unit: it validates the new origin against all of that name's targets and, on success, updates `origin` and `version` for the name atomically — every target moves together, or none do. A partial upgrade of one target to a new version while a sibling target of the same name stays on the old version is not a supported state in v1; it is a direct consequence of the registry recording one `origin` and one `version` per name rather than per target. The baseline an upgrade diffs against is the name's own registry entry — `{ origin, version }` in `project.json` — not a per-instance provenance record or a per-file hash set; no such record exists to read.
 
@@ -60,7 +60,7 @@ This decision fixes the unit of upgrade (the template name, all its targets, ato
 * Good, because atomicity across all targets of a name rules out a registry that claims one version while its targets sit at a mix of versions — a state a per-instance unit could produce and that a validator would otherwise need to detect and explain.
 * Bad, because a developer cannot move one target of a multi-target template forward while leaving a sibling target behind (login on v2, registration still on v1); adopting a new version for any one target requires accepting it for all targets of that name, or not upgrading that name yet.
 * Bad, because an upgrade that touches several targets at once must succeed or fail as a whole; a conflict or ownership violation confined to one target blocks the version change for every other target of the same name until that target's issue is resolved.
-* Bad, because this mechanism does not itself implement the reviewable, non-destructive, reversible discipline this record requires: those properties carry forward as standing requirements on the future changeset decision (see More Information), not as consequences this ADR's atomic unit-and-baseline choice already delivers. They remain **in force and discoverable as requirements** rather than lapsing with the mechanism that used to deliver them: `cpt-frontx-fr-cli-upgrade-review-approval` (approval before any file write) and `cpt-frontx-fr-cli-upgrade-restore` (restore to the previously applied state) are live requirements in the CLI PRD, both marked blocked on that future decision, and the PRD tracks it as an open item to be resolved before upgrade implementation begins. A reader who arrives at this record asking "must an upgrade still be reversible?" is answered yes by those requirements, not by this decision.
+* Bad, because this mechanism does not itself implement the reviewable, non-destructive, reversible discipline this record requires: those properties carry forward as standing requirements on the future changeset decision (see More Information), not as consequences this ADR's atomic unit-and-baseline choice already delivers. They remain **in force and discoverable as requirements** rather than lapsing for want of a mechanism that delivers them: `cpt-frontx-fr-cli-upgrade-review-approval` (approval before any file write) and `cpt-frontx-fr-cli-upgrade-restore` (restore to the previously applied state) are live requirements in the CLI PRD, both marked blocked on that future decision, and the PRD tracks it as an open item to be resolved before upgrade implementation begins. A reader who arrives at this record asking "must an upgrade still be reversible?" is answered yes by those requirements, not by this decision.
 
 ### Confirmation
 
@@ -73,7 +73,7 @@ Compliance is confirmed by design and code review plus a CLI test: register a te
 One engine invocation per applied instance, reading a dedicated per-instance provenance record as the diff baseline and reconstructing a three-way merge from it.
 
 * Good, because each instance upgrades fully independently of every other instance of the same template.
-* Bad, because it requires a per-instance provenance record and file-level baseline reconstruction that the project-state redesign removed as unnecessary for v1 — reinstating them here would resurrect the contract surface the redesign was chosen to shed.
+* Bad, because it requires a per-instance provenance record and file-level baseline reconstruction that the project-state contract does not carry, so choosing it here would mean adding contract surface for a capability v1 does not need.
 * Bad, because it has no baseline to read under the new `project.json`-only registry: there is no per-instance record left to diff against.
 
 ### Per-target upgrade with independently versioned instances of the same template
@@ -81,7 +81,7 @@ One engine invocation per applied instance, reading a dedicated per-instance pro
 Keep the instance as the unit, but let each target of a given template name carry its own `origin`/`version`, so different targets of the same name can sit at different versions.
 
 * Good, because it preserves the flexibility of upgrading targets one at a time.
-* Bad, because it breaks the registry's own invariant — one `origin` and one `version` per template name — forcing `templates[name]` to become a map of per-target versions and reopening exactly the structural question the project-state redesign closed.
+* Bad, because it breaks the registry's own invariant — one `origin` and one `version` per template name — forcing `templates[name]` to become a map of per-target versions and reopening a structural question the project-state contract settles elsewhere (`cpt-frontx-adr-project-provenance-record`).
 * Bad, because it complicates every other registry-reading operation (`list`, `validate`, auto-install on `apply`) with a per-target version dimension none of them currently need.
 
 ### Atomic all-targets upgrade with the baseline read from `project.json`

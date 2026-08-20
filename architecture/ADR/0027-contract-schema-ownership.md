@@ -87,11 +87,11 @@ Each contract's full schema is fixed inside its ADR.
 
 * Good, because decision and schema sit together.
 * Bad, because it violates DATA-ADR-NO-001.
-* Bad, because an accepted ADR is immutable, so a schema fixed there cannot evolve without superseding the decision, coupling schema churn to decision churn.
+* Bad, because it couples schema churn to decision-record churn: every field-level change to a contract's shape becomes an edit to the record that fixes the decision, so a record whose holding has not moved is rewritten for reasons that have nothing to do with that holding.
 
 ## More Information
 
-The three FEATUREs that own these schemas already exist under `architecture/features/` (`template-manifest`, `composed-provenance`, `template-ai-extensions`); this decision assigns ownership to them and does not itself author or edit them. The contract role descriptions remain in DESIGN §3.1 and §3.3, and the decision rationale for each contract remains in its own ADR (`cpt-frontx-adr-template-manifest-contract`, `cpt-frontx-adr-project-provenance-record`, `cpt-frontx-adr-template-ai-extension-contract`), which are updated only to remove the mis-delegation to DESIGN. These are non-binding pointers and do not form part of this decision's durable identity.
+The three FEATUREs that own these schemas already exist under `architecture/features/` (`template-manifest`, `composed-provenance`, `template-ai-extensions`); this decision assigns ownership to them and does not itself author or edit them. The contract role descriptions remain in DESIGN §3.1 and §3.3, and the decision rationale for each contract remains in its own ADR (`cpt-frontx-adr-template-manifest-contract`, `cpt-frontx-adr-project-provenance-record`, `cpt-frontx-adr-template-ai-extension-contract`), and none of those records delegates its contract's field-level schema to DESIGN. These are non-binding pointers and do not form part of this decision's durable identity.
 
 Applicability of the remaining checklist categories:
 

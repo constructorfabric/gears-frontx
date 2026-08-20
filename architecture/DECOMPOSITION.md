@@ -26,7 +26,7 @@
   - [2.20 Telemetry SDK Compatibility Anchor - MEDIUM](#220-telemetry-sdk-compatibility-anchor---medium)
   - [2.21 AI-Driven Project Scaffolding from Intent - HIGH](#221-ai-driven-project-scaffolding-from-intent---high)
   - [2.22 Template Territory Conversion to the Registration Contract - HIGH](#222-template-territory-conversion-to-the-registration-contract---high)
-  - [2.23 Identifier Rename Wave for Post-Redesign Scope Drift - LOW](#223-identifier-rename-wave-for-post-redesign-scope-drift---low)
+  - [2.23 Identifier Rename Wave for Names That Misstate Their Scope - LOW](#223-identifier-rename-wave-for-names-that-misstate-their-scope---low)
 - [3. Feature Dependencies](#3-feature-dependencies)
 - [4. Known Validator Debt](#4-known-validator-debt)
 
@@ -41,7 +41,7 @@ The root owns two behaviors:
 - Ecosystem distribution and versioning policy.
 - Ecosystem layer-partition governance.
 
-The installed SDLC kit currently defines feature-entry identifiers only in DECOMPOSITION and routes DESIGN coverage through DECOMPOSITION. Compatibility anchors below are therefore limited to feature IDs, member owner pointers and compact ID-only coverage references for member-owned components, constraints and principles; the previous central member-detail index remains removed.
+The installed SDLC kit currently defines feature-entry identifiers only in DECOMPOSITION and routes DESIGN coverage through DECOMPOSITION. Compatibility anchors below are therefore limited to feature IDs, member owner pointers and compact ID-only coverage references for member-owned components, constraints and principles; this document carries no central index of member-owned detail.
 
 ## 2. Entries
 
@@ -313,7 +313,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 **Scope** — five concrete changes, across both templates:
 
 1. Replace each legacy manifest (`schemaVersion` + `ownershipBoundaries`) with the current four-field shape: `name`, `version`, a required non-empty `description`, and `excludedSubtrees`.
-2. Widen `template-shell`'s ownership from its current file-subset claim to whole-target ownership (its target minus its declared `excludedSubtrees`) — extending what it owns, or moving previously unclaimed root files into `projectOwnedRoots`. This is a **behavioural change requiring its own review**, not a mechanical manifest edit, and is tracked here rather than folded into item 1.
+2. Widen `template-shell`'s ownership from its current file-subset claim to whole-target ownership (its target minus its declared `excludedSubtrees`) — extending what it owns, or moving root files it does not claim into `projectOwnedRoots`. This is a **behavioural change requiring its own review**, not a mechanical manifest edit, and is tracked here rather than folded into item 1.
 3. Remove both templates' own claim on `.frontx/ai/<manifest-name>/`; that bundle is a CLI-owned write (`cpt-frontx-adr-template-ownership-boundary-declaration`), never template-owned.
 4. Add `src-app/mfe_packages/` to `template-shell`'s `excludedSubtrees` (a well-formed target-relative directory path with the trailing `/` the manifest schema requires — `cpt-frontx-feature-template-manifest` owns that field-level rule, which `cpt-frontx-adr-template-manifest-contract` deliberately leaves to it) and stop carrying payload inside it.
 5. Extract each template's authoring/dev-harness machinery (a dev-only `package.json` with `file:` overrides, local build tooling) out of the template directory entirely, leaving pure payload plus the manifest and the conventional AI-extension bundle (`cpt-frontx-adr-template-manifest-contract`, "More Information").
@@ -324,7 +324,7 @@ A registered name using `/` as a path-segment separator (an npm-scoped name, as 
 
 **Note**: Template territory — the directories these manifests live in — sits outside this repository's `@cpt-` traceability chain (`cpt-frontx-adr-template-territory-traceability`); this entry is therefore a coordination work item tracking the conversion's completion, not a compatibility anchor into member architecture the way §2.10–§2.18 are.
 
-### 2.23 Identifier Rename Wave for Post-Redesign Scope Drift - LOW
+### 2.23 Identifier Rename Wave for Names That Misstate Their Scope - LOW
 
 - [ ] `p3` - **ID**: `cpt-frontx-feature-identifier-rename-wave`
 
@@ -336,7 +336,7 @@ A registered name using `/` as a path-segment separator (an npm-scoped name, as 
 
 1. `cpt-frontx-feature-composed-provenance` (and its folder, `packages/cli/architecture/features/composed-provenance/`) — the name and folder describe transitive preset ("composed") resolution and a per-applied-template provenance record, neither of which exists in this model; its scope is the single project-state document, registration, and ownership management (`cpt-frontx-feature-composed-provenance/FEATURE.md` §1.1).
 2. `cpt-frontx-component-cli-provenance-recorder` — [CLI DESIGN §4](../packages/cli/architecture/DESIGN.md) calls it the "CLI Project State Store" in prose; the identifier itself names a per-instance provenance-record role the component does not have.
-3. `cpt-frontx-constraint-cli-per-template-provenance` — its name asserts a per-template provenance record; the constraint it now fixes is the opposite, a single document shared across every template ([CLI DESIGN §3.1](../packages/cli/architecture/DESIGN.md)).
+3. `cpt-frontx-constraint-cli-per-template-provenance` — its name asserts a per-template provenance record; the constraint it actually fixes is the opposite, a single document shared across every template ([CLI DESIGN §3.1](../packages/cli/architecture/DESIGN.md)).
 4. `cpt-frontx-feature-upgrade-changeset` — its name asserts a file-level change-set (diff/merge/rollback) mechanism; that mechanism is explicitly deferred to a dedicated future decision ([CLI DESIGN §4](../packages/cli/architecture/DESIGN.md)), and this feature currently owns only the atomic name-level `origin`/`version` transition, not any change-set representation.
 
 **Out of scope**: Any change to behavior, contract, or schema — renames only. The dedicated future decision on file-level change-set mechanics may itself settle whether item 4 keeps "change-set" once that mechanism actually exists, rather than this entry pre-empting that decision.

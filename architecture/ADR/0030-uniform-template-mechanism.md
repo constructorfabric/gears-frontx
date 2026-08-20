@@ -26,7 +26,7 @@ date: 2026-07-16
 
 ## Context and Problem Statement
 
-The CLI (`cpt-frontx-component-cli`, the `@gears-frontx/cli` package) installs, applies, and assembles templates it does not own, and a repository is assembled from one or more independently-applied templates (the now-retired composed-template-resolution requirement, superseded by `cpt-frontx-adr-composed-template-resolution`; `cpt-frontx-fr-cli-seed-repository`; `cpt-frontx-fr-cli-add-template-to-repository`). The question this decision settles is whether the platform fixes a taxonomy of template types that the mechanism branches on, or whether the assembly, resolution, and upgrade mechanism treats every template the same regardless of what it produces.
+The CLI (`cpt-frontx-component-cli`, the `@gears-frontx/cli` package) installs, applies, and assembles templates it does not own, and a repository is assembled from one or more independently-applied templates, each named explicitly by the call that applies it (`cpt-frontx-adr-composed-template-resolution`, `cpt-frontx-fr-cli-seed-repository`, `cpt-frontx-fr-cli-add-template-to-repository`). The question this decision settles is whether the platform fixes a taxonomy of template types that the mechanism branches on, or whether the assembly, resolution, and upgrade mechanism treats every template the same regardless of what it produces.
 
 ## Decision Drivers
 
@@ -38,17 +38,17 @@ The CLI (`cpt-frontx-component-cli`, the `@gears-frontx/cli` package) installs, 
 
 ## Considered Options
 
-* **Uniform template mechanism** — the platform fixes no taxonomy of template types; every template declares what it produces and the boundaries of what it owns, and the install/apply/assemble/conflict-check/upgrade mechanism operates identically over any template. Composition is expressed by one template referencing others (a preset), not by a type label the tool branches on.
+* **Uniform template mechanism** — the platform fixes no taxonomy of template types; every template declares what it produces and the boundaries of what it owns, and the install/apply/assemble/conflict-check/upgrade mechanism operates identically over any template. Composition is expressed by the caller's explicit batch naming each template and the targets it is applied to (`cpt-frontx-adr-composed-template-resolution`), not by a type label the tool branches on.
 * **A fixed template classification** — the platform enumerates a closed set of template types, each template declares its type in a required field, and the tooling branches on that type.
 * **An open, extensible type registry** — the platform ships a set of types but lets templates register new types, so the taxonomy grows without a platform release while the mechanism still branches on a type value.
 
 ## Decision Outcome
 
-Chosen option: **Uniform template mechanism**, because it is the only option that admits open-ended composition through a single mechanism while letting templates describe themselves. Every template declares what it produces and the boundaries of what it owns; the CLI installs, applies, assembles, conflict-checks, and upgrades any template through one path that never branches on a type. A template that arranges others is a **preset**: it references the templates to apply together (`cpt-frontx-adr-template-manifest-contract`), and reference — not a type — is how composition is expressed and resolved (`cpt-frontx-adr-composed-template-resolution`). Conflicts between what independently-applied templates claim are arbitrated by their declared ownership boundaries (`cpt-frontx-adr-template-ownership-boundary-declaration`, `cpt-frontx-adr-assembly-conflict-prevention`), a mechanism that likewise operates uniformly over any template.
+Chosen option: **Uniform template mechanism**, because it is the only option that admits open-ended composition through a single mechanism while letting templates describe themselves. Every template declares what it produces and the boundaries of what it owns; the CLI installs, applies, assembles, conflict-checks, and upgrades any template through one path that never branches on a type. Several templates are arranged into one repository by the caller naming each of them and its targets in a single explicit batch (`cpt-frontx-adr-composed-template-resolution`), so the call itself — not a type, and not a reference a manifest declares — is what expresses and resolves composition; each template's manifest describes only that template (`cpt-frontx-adr-template-manifest-contract`). Conflicts between what independently-applied templates claim are arbitrated by their declared ownership boundaries (`cpt-frontx-adr-template-ownership-boundary-declaration`, `cpt-frontx-adr-assembly-conflict-prevention`), a mechanism that likewise operates uniformly over any template.
 
 The fixed template classification is rejected because a closed enumeration cannot anticipate the shells, libraries, configs, and combinations a developer assembles, so it forces every new sort of template through a widening of the vocabulary and a per-type branch in the tool; it also invites conflating a type with the output it produces. The extensible-type-registry option removes the closed-vocabulary limit but keeps the mechanism branching on a type value and adds a registry to steward, paying the cost of a taxonomy without the benefit of a closed one — when the self-describing manifest and ownership boundaries already carry everything the mechanism needs.
 
-The scope of this decision is that the platform fixes no template taxonomy and the mechanism operates uniformly over any template. It does not decide the manifest's shape (`cpt-frontx-adr-template-manifest-contract`), how boundaries are declared (`cpt-frontx-adr-template-ownership-boundary-declaration`), or how a preset's references resolve (`cpt-frontx-adr-composed-template-resolution`).
+The scope of this decision is that the platform fixes no template taxonomy and the mechanism operates uniformly over any template. It does not decide the manifest's shape (`cpt-frontx-adr-template-manifest-contract`), how boundaries are declared (`cpt-frontx-adr-template-ownership-boundary-declaration`), or how a batch of templates and targets is expressed and resolved (`cpt-frontx-adr-composed-template-resolution`).
 
 ### Consequences
 
@@ -61,7 +61,7 @@ The scope of this decision is that the platform fixes no template taxonomy and t
 
 ### Confirmation
 
-Compliance is confirmed by design and code review plus a continuous-integration check on the CLI package: the manifest contract carries no `type` field, the install/apply/assemble/upgrade code path contains no branch on a template-type value, and a fixture assembles a repository from templates of visibly different sorts (a shell template, a library template, a config template) through the identical mechanism. A second check asserts a preset resolves its referenced templates by reference and that no type value gates that resolution.
+Compliance is confirmed by design and code review plus a continuous-integration check on the CLI package: the manifest contract carries no `type` field, the install/apply/assemble/upgrade code path contains no branch on a template-type value, and a fixture assembles a repository from templates of visibly different sorts (a shell template, a library template, a config template) through the identical mechanism. A second check assembles several templates in one operation and asserts that the operation is driven entirely by one explicit batch naming each template and its targets, with no template-type value gating which templates the batch resolves to or how they are applied.
 
 ## Pros and Cons of the Options
 
@@ -94,7 +94,7 @@ The platform ships types but lets templates register new ones; the mechanism sti
 
 ## More Information
 
-The self-describing manifest this decision relies on is decided in `cpt-frontx-adr-template-manifest-contract`; the ownership-boundary declaration that lets independently-applied templates be arbitrated is decided in `cpt-frontx-adr-template-ownership-boundary-declaration`; preset reference resolution is decided in `cpt-frontx-adr-composed-template-resolution`. These are non-binding pointers to related decisions and do not form part of this decision's durable identity.
+The self-describing manifest this decision relies on is decided in `cpt-frontx-adr-template-manifest-contract`; the ownership-boundary declaration that lets independently-applied templates be arbitrated is decided in `cpt-frontx-adr-template-ownership-boundary-declaration`; how a batch of templates and targets is expressed and resolved is decided in `cpt-frontx-adr-composed-template-resolution`. These are non-binding pointers to related decisions and do not form part of this decision's durable identity.
 
 Applicability of the remaining checklist categories:
 

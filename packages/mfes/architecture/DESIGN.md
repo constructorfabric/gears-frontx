@@ -168,7 +168,7 @@ The MFE Runtime declares no dependency on any concrete type-system-format implem
 
 The runtime's schema surface is opaque, exposing only a stable identifier. Format-specific schema shape and validation live in the type-system plugin, so the runtime reasons about types solely by identity.
 
-**ADRs**: [The Runtime Coupling to the Type System](../../../architecture/ADR/0004-runtime-type-system-coupling.md)
+**ADRs**: [The Runtime's Coupling to the Type System](../../../architecture/ADR/0004-runtime-type-system-coupling.md)
 
 ## 3. Technical Architecture
 
@@ -326,7 +326,7 @@ sequenceDiagram
     end
 ```
 
-**Description**: A registered microfrontend is admitted only after type validation and extension-domain contract matching both succeed and the domain's cardinality permits the occupant; it is then loaded on demand and mounted in isolation under the domain's mount strategy ([The MFE Runtime Public Access Surface](../../../architecture/ADR/0003-mfe-runtime-public-surface.md), [MFE Handler Resolution](../../../architecture/ADR/0006-mfe-handler-resolution.md), [The Runtime Coupling to the Type System](../../../architecture/ADR/0004-runtime-type-system-coupling.md), [Domain-Extension Compatibility](../../../architecture/ADR/0010-domain-extension-compatibility.md), [Extension-Domain Occupancy](../../../architecture/ADR/0009-extension-domain-occupancy.md), [MFE Load Isolation](../../../architecture/ADR/0011-mfe-load-isolation.md)). On validation failure the runtime rejects the unit and it is not placed into its extension domain, realizing the default-deny admission posture.
+**Description**: A registered microfrontend is admitted only after type validation and extension-domain contract matching both succeed and the domain's cardinality permits the occupant; it is then loaded on demand and mounted in isolation under the domain's mount strategy ([The MFE Runtime's Public Access Surface](../../../architecture/ADR/0003-mfe-runtime-public-surface.md), [MFE Handler Resolution](../../../architecture/ADR/0006-mfe-handler-resolution.md), [The Runtime's Coupling to the Type System](../../../architecture/ADR/0004-runtime-type-system-coupling.md), [Domain–Extension Compatibility](../../../architecture/ADR/0010-domain-extension-compatibility.md), [Extension-Domain Occupancy](../../../architecture/ADR/0009-extension-domain-occupancy.md), [MFE Load Isolation](../../../architecture/ADR/0011-mfe-load-isolation.md)). On validation failure the runtime rejects the unit and it is not placed into its extension domain, realizing the default-deny admission posture.
 
 ### 3.7 Database schemas & tables
 
