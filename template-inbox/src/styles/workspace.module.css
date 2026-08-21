@@ -314,7 +314,19 @@
   gap: var(--space-1);
 }
 
+/*
+ * `box-sizing: border-box` is load-bearing, not tidiness. This class lands on
+ * the kit's `MessageScroller` root, which sizes itself `width: 100%` /
+ * `height: 100%`, and the kit deliberately ships no preflight reset - so the
+ * padding added here piles on top of that 100% instead of fitting inside it.
+ * Without the border-box the scroller renders `--space-4` * 2 wider than
+ * `.thread`, whose `overflow` is visible, and the end-aligned avatars - which
+ * sit flush against the message row's right edge - spill out over the details
+ * panel. Same per-part fix the kit makes on its own full-width padded classes
+ * (see sidebar.module.css / tabs.module.css).
+ */
 .transcript {
+  box-sizing: border-box;
   flex: 1;
   min-height: 0;
   padding: var(--space-4);
