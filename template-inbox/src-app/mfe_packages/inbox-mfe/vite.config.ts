@@ -26,7 +26,7 @@ export default defineConfig({
         './lifecycle-inbox': './src/lifecycle-inbox.tsx',
         './lifecycle-contacts': './src/lifecycle-contacts.tsx',
       },
-      // Empty shared config — MF 2.0's shared dep mechanism is bypassed.
+      // Empty shared config - MF 2.0's shared dep mechanism is bypassed.
       // Shared deps are externalized via rollupOptions.external and provided
       // at runtime by the handler's bare-specifier rewriting.
       shared: {},
