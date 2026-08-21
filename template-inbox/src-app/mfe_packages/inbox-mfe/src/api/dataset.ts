@@ -41,11 +41,11 @@ export const agent: AgentIdentity = {
 };
 
 /**
- * Folder counts are stored rather than derived because a real backend answers
- * `/folders` from its own aggregates - a folder can hold more conversations
- * than any one client has fetched. They agree with the seeded collection here,
- * and the list pane still recomputes its own visible counts while a search
- * narrows the list.
+ * The folder rows a backend would answer with, aggregate counts included - a
+ * folder can hold more conversations than any one client has fetched, so the
+ * count is the server's to state. The sidebar still recomputes from the
+ * collection it holds, because a conversation the agent moves to spam has to
+ * change both counts before any refetch.
  */
 export const folders: Folder[] = [
   {

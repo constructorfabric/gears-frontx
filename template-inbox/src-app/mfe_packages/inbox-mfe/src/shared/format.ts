@@ -1,0 +1,94 @@
+/**
+ * Display formatting shared by both screens.
+ *
+ * Everything here is computed at render from the instants the dataset resolved
+ * at load, never stored: a conversation that read "1h" when the tab opened
+ * reads "2h" an hour later without a refetch, which is the behaviour the
+ * reference product has.
+ */
+
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+const MONTH_MS = 30 * DAY_MS;
+const YEAR_MS = 365 * DAY_MS;
+
+const dateFormat = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
+
+const plural = (count: number, unit: string): string =>
+  `${count} ${unit}${count === 1 ? '' : 's'} ago`;
+
+/** The conversation list's compact form: "26m", "1h", "4d". */
+export const shortRelativeTime = (iso: string, now: number = Date.now()): string => {
+  const elapsed = Math.max(0, now - Date.parse(iso));
+  if (elapsed < HOUR_MS) return `${Math.max(1, Math.floor(elapsed / MINUTE_MS))}m`;
+  if (elapsed < DAY_MS) return `${Math.floor(elapsed / HOUR_MS)}h`;
+  return `${Math.floor(elapsed / DAY_MS)}d`;
+};
+
+/** The contacts table and the activity timeline: "3 hours ago", "2 months ago". */
+export const longRelativeTime = (iso: string, now: number = Date.now()): string => {
+  const elapsed = Math.max(0, now - Date.parse(iso));
+  if (elapsed < MINUTE_MS) return 'just now';
+  if (elapsed < HOUR_MS) return plural(Math.floor(elapsed / MINUTE_MS), 'minute');
+  if (elapsed < DAY_MS) return plural(Math.floor(elapsed / HOUR_MS), 'hour');
+  if (elapsed < MONTH_MS) return plural(Math.floor(elapsed / DAY_MS), 'day');
+  if (elapsed < YEAR_MS) return plural(Math.floor(elapsed / MONTH_MS), 'month');
+  return plural(Math.floor(elapsed / YEAR_MS), 'year');
+};
+
+/** Calendar text for the dates a contact detail shows: "Jun 27, 2025". */
+export const absoluteDate = (iso: string): string =>
+  iso === '' ? MISSING_VALUE : dateFormat.format(new Date(iso));
+
+/** What the reference renders wherever a contact field has no value. */
+export const MISSING_VALUE = '-';
+
+export const orDash = (value: string): string => (value === '' ? MISSING_VALUE : value);
+
+/**
+ * The avatar fallback's letters. Derived rather than stored: a name is the only
+ * input, so a second field would just be another thing to keep in step.
+ */
+export const initialsOf = (name: string): string => {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 1).toUpperCase();
+  return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
+};
+
+/** The contacts table's own column, read off the address rather than stored. */
+export const emailDomain = (email: string): string => {
+  const at = email.lastIndexOf('@');
+  return at === -1 ? MISSING_VALUE : email.slice(at + 1);
+};
+
+const TITLE_CASE: Record<string, string> = {
+  none: 'No priority',
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  urgent: 'Urgent',
+  open: 'Open',
+  snoozed: 'Snoozed',
+  closed: 'Closed',
+  pending: 'Pending',
+  chat: 'Chat',
+  email: 'Email',
+  user: 'User',
+  lead: 'Lead',
+  online: 'Online',
+  offline: 'Offline',
+  away: 'Away',
+};
+
+/**
+ * The label for a closed vocabulary value. A lookup rather than a capitalise
+ * helper because two of the values do not capitalise into their label at all
+ * ("none" reads "No priority"), and a missing key is a bug worth seeing.
+ */
+export const labelOf = (value: string): string => TITLE_CASE[value] ?? value;

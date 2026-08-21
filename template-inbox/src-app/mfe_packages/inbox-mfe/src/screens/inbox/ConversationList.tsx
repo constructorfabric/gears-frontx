@@ -1,0 +1,167 @@
+import { PanelLeftIcon, SearchIcon } from 'lucide-react';
+import {
+  Badge,
+  Button,
+  Input,
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@gears-frontx/ui-kit';
+import type { Contact, Conversation } from '../../api/types';
+import { cx } from '../../shared/cx';
+import { shortRelativeTime } from '../../shared/format';
+import { PresenceAvatar } from '../../shared/PresenceAvatar';
+import { useOverlayContainer } from '../../shared/workspaceRuntime';
+import { countOpen, isSortOrder, SORT_ORDERS, type SortOrder } from './conversationOrdering';
+import styles from '../../styles/workspace.module.css';
+
+const SORT_LABEL_KEY: Record<SortOrder, string> = {
+  'last-activity': 'sort_last_activity',
+  oldest: 'sort_oldest',
+  priority: 'sort_priority',
+  unread: 'sort_unread',
+};
+
+export type ConversationListProps = {
+  conversations: Conversation[];
+  contactsById: Map<string, Contact>;
+  folderLabel: string;
+  selectedConversationId: string | null;
+  onSelectConversation: (conversationId: string) => void;
+  search: string;
+  onSearchChange: (search: string) => void;
+  sort: SortOrder;
+  onSortChange: (sort: SortOrder) => void;
+  onToggleFolders: () => void;
+  hidden: boolean;
+  t: (key: string) => string;
+};
+
+export function ConversationList({
+  conversations,
+  contactsById,
+  folderLabel,
+  selectedConversationId,
+  onSelectConversation,
+  search,
+  onSearchChange,
+  sort,
+  onSortChange,
+  onToggleFolders,
+  hidden,
+  t,
+}: ConversationListProps) {
+  const container = useOverlayContainer();
+  const sortItems = SORT_ORDERS.map((order) => ({ value: order, label: t(SORT_LABEL_KEY[order]) }));
+
+  return (
+    <section
+      className={cx(styles.listPane, hidden && styles.singlePaneHidden)}
+      aria-label={t('conversations')}
+    >
+      <div className={styles.paneHeader}>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<PanelLeftIcon />}
+          aria-label={t('toggle_folders')}
+          onClick={onToggleFolders}
+        />
+        <h2 className={styles.paneTitle}>{folderLabel}</h2>
+        {/* The count follows the visible list, so a search moves it with the rows. */}
+        <span className={styles.paneCount}>{conversations.length}</span>
+      </div>
+
+      <div className={styles.paneRow}>
+        <Input
+          className={styles.grow}
+          type="search"
+          value={search}
+          onValueChange={onSearchChange}
+          placeholder={t('search_conversations')}
+          icon={<SearchIcon />}
+          aria-label={t('search_conversations')}
+        />
+      </div>
+
+      <div className={cx(styles.paneRow, styles.paneToolbar)}>
+        <span className={styles.toolbarCount}>
+          {t('open_count').replace('{count}', String(countOpen(conversations)))}
+        </span>
+        <Select
+          value={sort}
+          onValueChange={(value) => {
+            if (isSortOrder(value)) onSortChange(value);
+          }}
+          items={sortItems}
+        >
+          <SelectTrigger size="sm" variant="filter" aria-label={t('sort_conversations')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent container={container}>
+            {sortItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className={styles.listBody}>
+        <ItemGroup>
+          {conversations.map((conversation) => {
+            const contact = contactsById.get(conversation.contactId);
+            return (
+              <Item
+                key={conversation.id}
+                variant={conversation.id === selectedConversationId ? 'muted' : 'default'}
+                render={
+                  <button
+                    type="button"
+                    onClick={() => onSelectConversation(conversation.id)}
+                    aria-current={
+                      conversation.id === selectedConversationId ? 'true' : undefined
+                    }
+                  />
+                }
+              >
+                <ItemMedia>
+                  <PresenceAvatar
+                    name={contact?.name ?? conversation.subject}
+                    presence={contact?.presence ?? 'offline'}
+                    size="lg"
+                  />
+                </ItemMedia>
+                <ItemContent>
+                  <div className={styles.rowLine}>
+                    <ItemTitle className={styles.rowText}>{conversation.subject}</ItemTitle>
+                    <span className={styles.rowTime}>
+                      {shortRelativeTime(conversation.lastActivityAt)}
+                    </span>
+                  </div>
+                  <div className={styles.rowLine}>
+                    <ItemDescription className={styles.rowText}>
+                      {conversation.snippet}
+                    </ItemDescription>
+                    {conversation.unreadCount > 0 ? (
+                      <Badge aria-label={t('unread_messages')}>{conversation.unreadCount}</Badge>
+                    ) : null}
+                  </div>
+                </ItemContent>
+              </Item>
+            );
+          })}
+        </ItemGroup>
+      </div>
+    </section>
+  );
+}
