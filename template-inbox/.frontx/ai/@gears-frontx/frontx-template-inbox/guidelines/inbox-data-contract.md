@@ -52,6 +52,11 @@ add a collection endpoint and select from it; do not add a parameterised one.
   qualification checklist, the filter counts and the activity timeline are all
   computed from the record. A stored copy would be a second thing to keep in
   step, and the one that drifts is the one on screen.
+- **Suggested replies are content, not a model call.** A conversation's
+  `suggestedReplies` are authored in `dataset.ts` alongside its transcript, so
+  each chip reads as the next thing that thread's agent would say. An empty
+  array is the way to say a thread gets none - every spam and every snoozed
+  conversation carries one - and the chip row disappears rather than emptying.
 - **Writes.** Posting a reply or a note is the only change the service
   persists. Everything the details panel moves - assignee, team inbox,
   priority, status, tags, spam - is applied over the fetched conversation in

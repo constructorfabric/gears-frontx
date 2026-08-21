@@ -54,7 +54,9 @@
           "pane": "thread",
           "module": "src/screens/inbox/ConversationThread.tsx",
           "parts": [
-            { "part": "header actions", "kit": ["Button"] },
+            { "part": "header actions", "kit": ["Button", "lucide-react: StarIcon, AlarmClockIcon, TicketIcon, PanelRightIcon"] },
+            { "part": "header overflow menu", "kit": ["DropdownMenu", "DropdownMenuTrigger", "DropdownMenuContent", "DropdownMenuItem"], "note": "Popup gets container={useOverlayContainer()}. Its two items carry no handler." },
+            { "part": "suggested reply chips", "kit": ["Button"], "note": "Rendered only when the conversation's suggestedReplies is non-empty; a click drafts the text into the composer." },
             { "part": "transcript viewport", "kit": ["MessageScrollerProvider", "MessageScroller", "MessageScrollerViewport", "MessageScrollerContent", "MessageScrollerItem", "MessageScrollerButton"] },
             { "part": "message row", "kit": ["Message", "MessageAvatar", "MessageContent", "MessageHeader", "MessageFooter"] },
             { "part": "message surface", "kit": ["Bubble", "BubbleContent"] },
@@ -67,6 +69,7 @@
           "parts": [
             { "part": "reply and note tabs", "kit": ["Tabs", "TabsList", "TabsTrigger", "TabsContent"] },
             { "part": "draft field", "kit": ["Textarea"] },
+            { "part": "toolbar buttons", "kit": ["Button", "lucide-react: PaperclipIcon, SmileIcon, ZapIcon"], "note": "Attach, emoji and saved replies, left of the send hint. None carries a handler." },
             { "part": "submit", "kit": ["Button"] }
           ]
         },
@@ -99,6 +102,7 @@
         {
           "pane": "filter sidebar",
           "module": "src/screens/contacts/ContactFilterSidebar.tsx",
+          "note": "Belongs to the directory: the screen unmounts it while a contact's own page is open, so the record gets the whole pane.",
           "parts": [
             { "part": "filter rows", "kit": ["ItemGroup", "Item", "ItemContent", "ItemTitle", "ItemActions"] },
             { "part": "filter count", "kit": ["Badge"] }
