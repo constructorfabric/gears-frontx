@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SearchIcon } from 'lucide-react';
 import { Input, Skeleton } from '@gears-frontx/ui-kit';
 import { apiRegistry, useApiQuery, type ChildMfeBridge } from '@gears-frontx/react';
 import { InboxApiService } from '../../api/InboxApiService';
-import { takePendingContactId } from '../../shared/crossScreenNavigation';
+import { subscribePendingContact, takePendingContact } from '../../shared/contactSelection';
 import { COMPACT_QUERY, useMediaQuery } from '../../shared/useMediaQuery';
 import { useScreenTranslations } from '../../shared/useScreenTranslations';
 import { WorkspaceRoot } from '../../shared/WorkspaceRoot';
@@ -26,10 +26,17 @@ export function ContactsScreen({ bridge }: ContactsScreenProps) {
 
   const [filter, setFilter] = useState<ContactFilter>('all');
   const [search, setSearch] = useState('');
-  // Read once, on the first render of this mount: a jump from a thread leaves
-  // the target here, and the slot is cleared as it is taken so a later plain
-  // visit to the section opens on the table.
-  const [openContactId, setOpenContactId] = useState<string | null>(() => takePendingContactId());
+  // A jump from a thread names its target in a chained action, which may be
+  // answered before this first render or after it. The lazy initializer takes
+  // a target that was already waiting; the effect below takes one that arrived
+  // between render and commit, and then listens for a later one.
+  const [openContactId, setOpenContactId] = useState<string | null>(() => takePendingContact());
+
+  useEffect(() => {
+    const parked = takePendingContact();
+    if (parked !== null) setOpenContactId(parked);
+    return subscribePendingContact(setOpenContactId);
+  }, []);
 
   const isCompact = useMediaQuery(COMPACT_QUERY);
 
@@ -43,7 +50,7 @@ export function ContactsScreen({ bridge }: ContactsScreenProps) {
 
   if (translationsLoading || contactsQuery.isLoading) {
     return (
-      <WorkspaceRoot>
+      <WorkspaceRoot bridge={bridge}>
         <div className={styles.emptyPane} role="status" aria-busy="true">
           <Skeleton style={{ height: '2rem', width: '16rem' }} />
         </div>
@@ -54,7 +61,7 @@ export function ContactsScreen({ bridge }: ContactsScreenProps) {
   const openContact = contacts.find((contact) => contact.id === openContactId) ?? null;
 
   return (
-    <WorkspaceRoot>
+    <WorkspaceRoot bridge={bridge}>
       <ContactFilterSidebar
         bridge={bridge}
         agent={agentQuery.data?.agent}

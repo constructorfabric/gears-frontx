@@ -139,7 +139,7 @@ export function InboxScreen({ bridge }: InboxScreenProps) {
 
   if (translationsLoading || foldersQuery.isLoading) {
     return (
-      <WorkspaceRoot>
+      <WorkspaceRoot bridge={bridge}>
         <div className={styles.emptyPane} role="status" aria-busy="true">
           <Skeleton style={{ height: '2rem', width: '16rem' }} />
         </div>
@@ -159,7 +159,7 @@ export function InboxScreen({ bridge }: InboxScreenProps) {
   };
 
   return (
-    <WorkspaceRoot>
+    <WorkspaceRoot bridge={bridge}>
       <FolderSidebar
         bridge={bridge}
         agent={agentQuery.data?.agent}

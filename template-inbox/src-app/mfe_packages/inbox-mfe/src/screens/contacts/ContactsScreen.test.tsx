@@ -1,5 +1,7 @@
+import { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { endpointTags, mutationResult, queryResultFor } from '../../__test-utils__/apiMocks';
+import { setPendingContact } from '../../shared/contactSelection';
 import { createBridgeFixture } from '../../__test-utils__/bridgeFixture';
 import { renderScreen } from '../../__test-utils__/renderScreen';
 
@@ -34,6 +36,22 @@ describe('ContactsScreen', () => {
     // 25 rows per page, so the first row is on screen and the 26th is not.
     expect(screen.getByText('Grace Park')).toBeTruthy();
     expect(screen.queryByText('Amara Nwosu')).toBeNull();
+
+    screen.unmount();
+  });
+
+  it('opens the contact a chained open_contact action names, even off the first page', () => {
+    const { bridge } = createBridgeFixture();
+
+    const screen = renderScreen(<ContactsScreen bridge={bridge} />);
+    // What the contacts lifecycle's action handler does when the second step
+    // of a jump from a thread arrives after this screen has already rendered.
+    act(() => setPendingContact('r-26'));
+
+    // The detail pane, not the table: Amara is on page two of the list, and
+    // the qualification card only exists on a contact's own page.
+    expect(screen.getAllByText('Amara Nwosu').length).toBeGreaterThan(0);
+    expect(screen.getByText('qualification')).toBeTruthy();
 
     screen.unmount();
   });

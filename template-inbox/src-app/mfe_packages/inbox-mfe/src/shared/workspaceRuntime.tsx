@@ -8,7 +8,7 @@ import {
   FRONTX_SHARED_PROPERTY_THEME,
   type ChildMfeBridge,
 } from '@gears-frontx/react';
-import type { WorkspaceTheme } from './workspaceChrome';
+import { readHostTheme, type WorkspaceTheme } from './workspaceChrome';
 
 const OverlayContainerContext = createContext<HTMLElement | null>(null);
 
@@ -22,18 +22,13 @@ export const OverlayContainerProvider = OverlayContainerContext.Provider;
 export const useOverlayContainer = (): HTMLElement | undefined =>
   useContext(OverlayContainerContext) ?? undefined;
 
-const readTheme = (bridge: ChildMfeBridge): string => {
-  const property = bridge.getProperty(FRONTX_SHARED_PROPERTY_THEME);
-  return typeof property?.value === 'string' ? property.value : '';
-};
-
 /**
  * The applied theme, read from the host rather than mirrored locally: the
  * host rebroadcasts the theme shared property to every mounted microfrontend
  * whenever it changes, including changes this workspace did not make.
  */
 export function useHostTheme(bridge: ChildMfeBridge): WorkspaceTheme {
-  const [theme, setTheme] = useState<string>(() => readTheme(bridge));
+  const [theme, setTheme] = useState<WorkspaceTheme>(() => readHostTheme(bridge));
 
   // The lazy initializer runs on mount only. If the host swaps the bridge
   // instance, re-read during render: a subscription delivers future changes
@@ -41,19 +36,16 @@ export function useHostTheme(bridge: ChildMfeBridge): WorkspaceTheme {
   const [previousBridge, setPreviousBridge] = useState(bridge);
   if (previousBridge !== bridge) {
     setPreviousBridge(bridge);
-    setTheme(readTheme(bridge));
+    setTheme(readHostTheme(bridge));
   }
 
   useEffect(
     () =>
       bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_THEME, (property) => {
-        if (typeof property.value === 'string') setTheme(property.value);
+        setTheme(property.value === 'dark' ? 'dark' : 'light');
       }),
     [bridge]
   );
 
-  // The shell registers more themes than the two this workspace toggles
-  // between, and only these two declare an appearance. Anything else reads as
-  // light, which is what the shell's own default is.
-  return theme === 'dark' ? 'dark' : 'light';
+  return theme;
 }

@@ -116,7 +116,7 @@ export function WorkspaceSidebarFooter({ bridge, agent, t }: WorkspaceSidebarFoo
         size="sm"
         icon={isDark ? <SunIcon /> : <MoonIcon />}
         aria-label={isDark ? t('switch_to_light') : t('switch_to_dark')}
-        onClick={() => setWorkspaceTheme(isDark ? 'light' : 'dark')}
+        onClick={() => setWorkspaceTheme(bridge, isDark ? 'light' : 'dark')}
       />
     </div>
   );

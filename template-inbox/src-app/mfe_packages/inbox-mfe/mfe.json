@@ -1,4 +1,39 @@
 {
+  "schemas": [
+    {
+      "$id": "gts://gts.frontx.mfes.comm.action.v1~frontx.inbox.action.open_contact.v1~",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "type": {
+          "x-gts-ref": "/$id"
+        },
+        "target": {
+          "x-gts-ref": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.inbox.screens.contacts.v1"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "contactId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "contactId"
+          ]
+        },
+        "timeout": {
+          "type": "number",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "type",
+        "target",
+        "payload"
+      ]
+    }
+  ],
   "manifest": {
     "id": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.inbox.mfe.manifest.v1",
     "remoteEntry": "http://localhost:3010/assets/remoteEntry.js"
@@ -11,7 +46,10 @@
         "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~"
       ],
       "actions": [],
-      "domainActions": [],
+      "domainActions": [
+        "gts.frontx.mfes.comm.action.v1~frontx.screensets.chrome.set_theme.v1~",
+        "gts.frontx.mfes.comm.action.v1~frontx.screensets.chrome.set_menu_collapsed.v1~"
+      ],
       "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.inbox.mfe.manifest.v1",
       "exposedModule": "./lifecycle-inbox"
     },
@@ -21,8 +59,13 @@
         "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~",
         "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~"
       ],
-      "actions": [],
-      "domainActions": [],
+      "actions": [
+        "gts.frontx.mfes.comm.action.v1~frontx.inbox.action.open_contact.v1~"
+      ],
+      "domainActions": [
+        "gts.frontx.mfes.comm.action.v1~frontx.screensets.chrome.set_theme.v1~",
+        "gts.frontx.mfes.comm.action.v1~frontx.screensets.chrome.set_menu_collapsed.v1~"
+      ],
       "manifest": "gts.frontx.mfes.mfe.mf_manifest.v1~frontx.inbox.mfe.manifest.v1",
       "exposedModule": "./lifecycle-contacts"
     }

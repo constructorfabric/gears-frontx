@@ -1,10 +1,17 @@
 /**
  * Jumping from a thread into that customer's contact detail.
  *
- * The two screens are two extensions of one package, so they share a module
- * graph: handing the target over is a module-level slot plus a mount action,
- * and needs no host infrastructure. The screen domain mounts exclusively, so
- * mounting the contacts extension is what unmounts the inbox one.
+ * Two steps of one chain: mount the contacts extension, then - only once that
+ * mount has resolved - tell it which contact to open. The mediator walks to
+ * `next` after the primary step's promise settles, and mounting is what wires
+ * and awaits the child lifecycle, so the contacts handler is registered before
+ * the second step can dispatch. The ordering is a happens-before, not a timing
+ * window.
+ *
+ * The target travels in the action's payload rather than in module state
+ * because the two screens are separate loads with separate module graphs; the
+ * chain is the channel that crosses that boundary. The screen domain mounts
+ * exclusively, so mounting contacts is what unmounts the inbox.
  */
 
 import {
@@ -12,18 +19,10 @@ import {
   FRONTX_SCREEN_DOMAIN,
   type ChildMfeBridge,
 } from '@gears-frontx/react';
+import { INBOX_OPEN_CONTACT } from './hostChromeActions';
 
 export const CONTACTS_EXTENSION_ID =
   'gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.inbox.screens.contacts.v1';
-
-/** Consumed by whichever contacts screen mounts next, then cleared. */
-let pendingContactId: string | null = null;
-
-export const takePendingContactId = (): string | null => {
-  const contactId = pendingContactId;
-  pendingContactId = null;
-  return contactId;
-};
 
 /**
  * Mounting the contacts extension unmounts the React tree that is running this
@@ -32,13 +31,19 @@ export const takePendingContactId = (): string | null => {
  * synchronously tears down the tree mid-handler.
  */
 export const openContactDetail = (bridge: ChildMfeBridge, contactId: string): void => {
-  pendingContactId = contactId;
   queueMicrotask(() => {
     void bridge.executeActionsChain({
       action: {
         type: FRONTX_ACTION_MOUNT_EXT,
         target: FRONTX_SCREEN_DOMAIN,
         payload: { subject: CONTACTS_EXTENSION_ID },
+      },
+      next: {
+        action: {
+          type: INBOX_OPEN_CONTACT,
+          target: CONTACTS_EXTENSION_ID,
+          payload: { contactId },
+        },
       },
     });
   });
