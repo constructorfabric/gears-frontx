@@ -209,6 +209,20 @@ export function InboxScreen({ bridge }: InboxScreenProps) {
                 setSelectedId(null);
               }}
               onBack={isSinglePane ? () => setSelectedId(null) : null}
+              onUseSuggestedReply={(reply) => {
+                // A suggestion is a draft, not a send: it lands in the reply
+                // box for the agent to edit. Appended rather than assigned so
+                // a half-typed reply survives the click, and the tab is
+                // switched because a suggestion is never an internal note.
+                setComposerTab('reply');
+                setDrafts((previous) => {
+                  const current = previous[selected.id] ?? '';
+                  return {
+                    ...previous,
+                    [selected.id]: current === '' ? reply : `${current} ${reply}`,
+                  };
+                });
+              }}
               composer={{
                 tab: composerTab,
                 onTabChange: setComposerTab,

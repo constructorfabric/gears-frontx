@@ -1,9 +1,13 @@
 import {
   AlarmClockIcon,
   ArrowLeftIcon,
+  CircleAlertIcon,
+  MoreHorizontalIcon,
   PaperclipIcon,
   PanelRightIcon,
   StarIcon,
+  TicketIcon,
+  UserMinusIcon,
 } from 'lucide-react';
 import {
   Attachment,
@@ -14,6 +18,10 @@ import {
   Bubble,
   BubbleContent,
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Message,
   MessageAvatar,
   MessageContent,
@@ -35,6 +43,7 @@ import type {
 } from '../../api/types';
 import { labelOf } from '../../shared/format';
 import { PresenceAvatar } from '../../shared/PresenceAvatar';
+import { useOverlayContainer } from '../../shared/workspaceRuntime';
 import { Composer, type ComposerProps } from './Composer';
 import styles from '../../styles/workspace.module.css';
 
@@ -69,6 +78,8 @@ export type ConversationThreadProps = {
   onToggleSnooze: () => void;
   onCloseConversation: () => void;
   onBack: (() => void) | null;
+  /** Puts the chip's text in the composer; the chip row is what calls it. */
+  onUseSuggestedReply: (reply: string) => void;
   composer: ComposerProps;
   t: (key: string) => string;
 };
@@ -84,10 +95,13 @@ export function ConversationThread({
   onToggleSnooze,
   onCloseConversation,
   onBack,
+  onUseSuggestedReply,
   composer,
   t,
 }: ConversationThreadProps) {
   const contactName = contact?.name ?? conversation.subject;
+  const overlayContainer = useOverlayContainer();
+  const suggestions = conversation.suggestedReplies;
 
   return (
     <div className={styles.thread}>
@@ -130,6 +144,37 @@ export function ConversationThread({
             aria-pressed={conversation.snoozed}
             onClick={onToggleSnooze}
           />
+          {/*
+            Create-ticket and the two overflow entries below carry no handler:
+            Tickets is a section this template does not ship, and unassigning
+            is a routing change the details panel already owns through its
+            Assignee combobox. They are drawn at full contrast rather than
+            disabled because the header they belong to is being matched to the
+            reference, where both read as live chrome.
+          */}
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<TicketIcon />}
+            aria-label={t('create_ticket')}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="ghost" size="sm" icon={<MoreHorizontalIcon />} aria-label={t('more_actions')} />
+              }
+            />
+            <DropdownMenuContent container={overlayContainer} align="end">
+              <DropdownMenuItem>
+                <UserMinusIcon />
+                {t('unassign')}
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive">
+                <CircleAlertIcon />
+                {t('mark_as_spam')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             variant="ghost"
             size="sm"
@@ -217,6 +262,28 @@ export function ConversationThread({
           <ScrollToNewest label={t('scroll_to_newest')} />
         </MessageScroller>
       </MessageScrollerProvider>
+
+      {/*
+        The assistant's drafts sit between the transcript and the composer, as
+        the last thing read before the reply is written. An empty list renders
+        nothing at all rather than an empty row, so a spam or parked thread
+        keeps the transcript flush against the composer.
+      */}
+      {suggestions.length > 0 ? (
+        <div className={styles.suggestions} aria-label={t('suggested_replies')} role="group">
+          {suggestions.map((reply) => (
+            <Button
+              key={reply}
+              className={styles.suggestionChip}
+              variant="outline"
+              size="sm"
+              onClick={() => onUseSuggestedReply(reply)}
+            >
+              {reply}
+            </Button>
+          ))}
+        </div>
+      ) : null}
 
       <Composer {...composer} />
     </div>

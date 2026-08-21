@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from 'react';
-import { SendIcon } from 'lucide-react';
+import { PaperclipIcon, SendIcon, SmileIcon, ZapIcon } from 'lucide-react';
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@gears-frontx/ui-kit';
 import { cx } from '../../shared/cx';
 import styles from '../../styles/workspace.module.css';
@@ -54,6 +54,18 @@ export function Composer({
         aria-label={isNote ? t('note') : t('reply')}
       />
       <div className={styles.composerToolbar}>
+        {/*
+          Attach, emoji and saved replies carry no handler: each needs a store
+          this template does not ship - an upload target, a picker, a canned
+          reply library. They are drawn because the composer is being matched
+          to the reference, which places all three left of the send hint.
+        */}
+        <div className={styles.composerTools}>
+          <Button variant="ghost" size="sm" icon={<PaperclipIcon />} aria-label={t('attach_file')} />
+          <Button variant="ghost" size="sm" icon={<SmileIcon />} aria-label={t('insert_emoji')} />
+          <Button variant="ghost" size="sm" icon={<ZapIcon />} aria-label={t('saved_replies')} />
+        </div>
+        <span className={styles.spacer} />
         <span className={styles.composerHint}>{t('send_shortcut')}</span>
         <Button icon={<SendIcon />} disabled={!canSend} loading={sending} onClick={onSend}>
           {isNote ? t('add_note') : t('send')}

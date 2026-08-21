@@ -339,13 +339,39 @@
 .composerToolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
+}
+
+/*
+ * The three composer affordances the reference groups at the far left, tight
+ * against each other rather than spread across the row: the spacer beside them
+ * is what pushes the hint and the send button to the other end.
+ */
+.composerTools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .composerHint {
   font-size: var(--text-meta-size);
   color: var(--muted-foreground);
+}
+
+/* --- The assistant's suggested replies --- */
+
+.suggestions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+/* A pill, as the reference draws them; --radius-xl rounds a chip this short
+ * to its own height without reaching for a raw value. */
+.suggestionChip {
+  border-radius: var(--radius-xl);
 }
 
 /* --- The customer details panel --- */
