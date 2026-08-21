@@ -1,0 +1,679 @@
+/*
+ * Layout for the whole application: the icon rail, and the panes of both
+ * screens beside it.
+ *
+ * Every value is a kit token: this file places boxes and sets spacing, and
+ * never picks a colour or a size of its own, so the app follows whichever theme
+ * `data-theme` names. Component chrome belongs to the kit components rendered
+ * inside these boxes, not here.
+ */
+
+.app {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  font-family: var(--font-sans);
+  color: var(--foreground);
+  background: var(--background);
+}
+
+/* --- The icon rail: the app's own navigation edge --- */
+
+/*
+ * Fixed width, never collapsed. It is the edge the rest of the layout is
+ * measured from - the folder and filter columns beside it are the ones that
+ * collapse. 4rem matches the reference's 64px.
+ */
+.rail {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 4rem;
+  min-height: 0;
+  padding: var(--space-2) 0;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+}
+
+/* The product mark. Decorative, and deliberately not a link: the rail's own
+ * Inbox button is already the way home, and a second one would be two
+ * affordances for one destination. */
+.railMark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-lg);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.railMark svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.railNav {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.railIdentity {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-full);
+  color: inherit;
+  cursor: pointer;
+}
+
+.railIdentityCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* --- The folder / filter column, shared by both screens --- */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 16rem;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  transition: width 300ms ease;
+}
+
+.sidebarCollapsed {
+  width: 0;
+  border-right-width: 0;
+}
+
+.sidebarBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+
+.identityLines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.identityName {
+  font-size: var(--text-label-size);
+  font-weight: var(--text-label-weight);
+  line-height: var(--text-label-line-height);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identityMeta {
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  color: var(--muted-foreground);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/*
+ * The presence dot. `AvatarBadge` paints itself `--primary`; presence is a
+ * three-state signal, so each state names its own token here.
+ */
+.presenceOnline {
+  background-color: var(--success);
+}
+
+.presenceAway {
+  background-color: var(--warning);
+}
+
+.presenceOffline {
+  background-color: var(--muted-foreground);
+}
+
+/* --- Pane chrome shared by the list pane and the contacts header --- */
+
+.paneHeader {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  height: 3.5rem;
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.paneTitle {
+  font-size: var(--text-heading-2-size);
+  font-weight: var(--text-heading-2-weight);
+  line-height: var(--text-heading-2-line-height);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paneCount {
+  font-size: var(--text-meta-size);
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.paneRow {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.paneToolbar {
+  justify-content: space-between;
+  padding-top: 0;
+}
+
+.toolbarCount {
+  font-size: var(--text-meta-size);
+  font-weight: 500;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- The conversation list pane --- */
+
+.listPane {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 22rem;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+}
+
+.listBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--space-2) var(--space-2);
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+}
+
+.rowTime {
+  flex: none;
+  font-size: var(--text-meta-size);
+  font-weight: 400;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.rowText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * The kit's ItemTitle sizes itself with `width: fit-content`, which never
+ * resolves below its own min-content - and min-content for a nowrap title is
+ * the whole string. Left in a column it therefore grows wider than its card
+ * and lies across whatever sits beside it, and because ItemTitle is itself a
+ * flex container `text-overflow: ellipsis` cannot draw either. A `.rowLine`
+ * wrapper puts it back under flex shrinking, and this rule puts its text back
+ * in an inline formatting context so the truncation the kit already asks for
+ * takes effect. Two classes, so the rule wins against the kit's own
+ * single-class one whichever order the two stylesheets land in.
+ */
+.rowLine .lineTitle {
+  display: block;
+  width: auto;
+}
+
+/* --- The detail pane: thread plus the customer panel --- */
+
+.detailPane {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.threadHeader {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.threadTitles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.threadSubject {
+  font-size: var(--text-heading-2-size);
+  font-weight: var(--text-heading-2-weight);
+  line-height: var(--text-heading-2-line-height);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.threadSubtitle {
+  font-size: var(--text-meta-size);
+  color: var(--muted-foreground);
+}
+
+.threadActions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.transcript {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-4);
+}
+
+.messageMeta {
+  font-size: var(--text-meta-size);
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.attachmentSlot {
+  margin-bottom: var(--space-2);
+  max-width: 18rem;
+}
+
+/* --- The composer --- */
+
+.composer {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.composerBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+}
+
+/*
+ * The only colour-coded distinction between a reply and a note: a note is
+ * internal, and the frame is what says so before the agent types a word.
+ */
+.composerBoxNote {
+  border-color: var(--warning);
+}
+
+.composerToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
+ * The three composer affordances the reference groups at the far left, tight
+ * against each other rather than spread across the row: the spacer beside them
+ * is what pushes the hint and the send button to the other end.
+ */
+.composerTools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.composerHint {
+  font-size: var(--text-meta-size);
+  color: var(--muted-foreground);
+}
+
+/* --- The assistant's suggested replies --- */
+
+.suggestions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+/* A pill, as the reference draws them; --radius-xl rounds a chip this short
+ * to its own height without reaching for a raw value. */
+.suggestionChip {
+  border-radius: var(--radius-xl);
+}
+
+/* --- The customer details panel --- */
+
+.detailsPanel {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 19rem;
+  min-height: 0;
+  border-left: 1px solid var(--border);
+}
+
+.detailsBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.contactCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.contactCardName {
+  font-size: var(--text-heading-2-size);
+  font-weight: var(--text-heading-2-weight);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sectionTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--subtle-foreground);
+  font-family: inherit;
+  font-size: var(--text-meta-size);
+  font-weight: 600;
+  letter-spacing: var(--text-meta-tracking);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-meta-size);
+}
+
+.fieldLabel {
+  flex: none;
+  color: var(--muted-foreground);
+}
+
+.fieldValue {
+  min-width: 0;
+  overflow: hidden;
+  text-align: end;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/*
+ * Applied by the screen, not by a breakpoint: below the single-pane width one
+ * of the list and the thread is shown at a time, and which one depends on
+ * whether a conversation is open - state CSS cannot see.
+ */
+.singlePaneHidden {
+  display: none;
+}
+
+.emptyPane {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+/* --- The contacts screen --- */
+
+.contactsMain {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.contactsBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.contactsHeaderText {
+  display: flex;
+  flex-direction: column;
+}
+
+.searchField {
+  width: 18rem;
+  max-width: 100%;
+}
+
+.nameCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.nameCellLines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nameCellEmail {
+  font-size: var(--text-meta-size);
+  color: var(--muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+/* --- The contact detail view --- */
+
+.detailColumns {
+  display: grid;
+  grid-template-columns: 18rem minmax(0, 1fr) 16rem;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.detailColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.detailIdentity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.detailName {
+  font-size: var(--text-heading-1-size);
+  font-weight: var(--text-heading-1-weight);
+  line-height: var(--text-heading-1-line-height);
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-meta-size);
+}
+
+.checkOn {
+  color: var(--success);
+}
+
+.checkOff {
+  color: var(--muted-foreground);
+}
+
+.timelineItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-meta-size);
+}
+
+.timelineIcon {
+  flex: none;
+  margin-top: 0.125rem;
+  color: var(--muted-foreground);
+}
+
+.timelineLines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.timelineMeta {
+  color: var(--muted-foreground);
+}
+
+.ticketRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  /* Priority and status keep their intrinsic width, so the subject beside them
+   * is what gives way when the card is narrow: the label is two short words,
+   * the subject is arbitrarily long. */
+  flex: none;
+}
+
+
+.ticketMeta {
+  font-size: var(--text-meta-size);
+  color: var(--muted-foreground);
+}
+
+.dotUrgent,
+.dotHigh {
+  color: var(--danger);
+}
+
+.dotMedium {
+  color: var(--warning);
+}
+
+.dotLow {
+  color: var(--muted-foreground);
+}
+
+/*
+ * Responsive. The reference drops to the list plus the thread on a tablet and
+ * to a single pane on a phone; the host's own menu, header and footer keep
+ * their desktop shape at every width, which a template cannot change.
+ */
+
+@media (max-width: 75rem) {
+  .detailsPanel {
+    display: none;
+  }
+}
+
+@media (max-width: 64rem) {
+  .detailColumns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 48rem) {
+  .listPane {
+    width: 100%;
+  }
+}
