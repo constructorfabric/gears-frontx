@@ -28,7 +28,8 @@ vi.mock('@gears-frontx/react', async (importOriginal) => {
   const real = await importOriginal<Record<string, never>>();
   return {
     ...real,
-    screenDomain: { id: 'screen-domain' },
+    // `actions` is spread by the host bootstrap to append the chrome actions.
+    screenDomain: { id: 'screen-domain', actions: [] },
     sidebarDomain: { id: 'sidebar-domain' },
     popupDomain: { id: 'popup-domain' },
     overlayDomain: { id: 'overlay-domain' },
@@ -66,6 +67,22 @@ describe('bootstrapMFE (host-app)', () => {
     expect(registerDomain).toHaveBeenCalledTimes(4);
     expect(updateSharedProperty.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('opts the screen domain into the host chrome actions', async () => {
+    fetchSpy.mockResolvedValue(new Response('[]', { status: 200 }));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { bootstrapMFE } = await import('./bootstrap');
+    const { CHROME_SET_MENU_COLLAPSED, CHROME_SET_THEME } = await import('./chrome-actions');
+    await bootstrapMFE(mockApp as never);
+
+    const [screenDeclaration] = registerDomain.mock.calls[0];
+    expect(screenDeclaration.actions).toEqual([CHROME_SET_THEME, CHROME_SET_MENU_COLLAPSED]);
+    // Making them domain actions must not make them mandatory for the
+    // extensions that mount into the domain.
+    expect(screenDeclaration.extensionsActions).toBeUndefined();
+    expect(registerSchema).toHaveBeenCalledTimes(2);
   });
 
   it('throws when the manifest fetch fails', async () => {

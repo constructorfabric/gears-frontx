@@ -41,6 +41,11 @@ import type {
   ActionPayload,
   MountStrategy,
 } from '@gears-frontx/react';
+import {
+  CHROME_ACTION_SCHEMAS,
+  CHROME_SET_MENU_COLLAPSED,
+  CHROME_SET_THEME,
+} from './chrome-actions';
 
 const MFE_MANIFESTS_URL = '/generated-mfe-manifests.json';
 
@@ -93,12 +98,51 @@ class HostContainerHooks implements ContainerHooks {
 class ScreenDomainImpl extends ExtensionDomainImplementation {
   private readonly strategy: ExclusiveMountStrategy;
 
-  constructor(ctx: DomainContext, hooks: ContainerHooks, registry: MfeRegistry, domainId: string) {
+  constructor(
+    ctx: DomainContext,
+    hooks: ContainerHooks,
+    registry: MfeRegistry,
+    domainId: string,
+    app: FrontXApp,
+  ) {
     super();
     this.strategy = new ExclusiveMountStrategy(ctx.mounter, hooks, registry, domainId);
     ctx.registerHandler(
       FRONTX_ACTION_MOUNT_EXT,
       ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as ActionPayload)),
+    );
+    // The host chrome a mounted screen may drive. Both resolve rather than
+    // throw on a payload or a plugin that is not there: a chrome request the
+    // shell cannot honour should leave the screen running, not fail its chain.
+    ctx.registerHandler(
+      CHROME_SET_THEME,
+      ActionHandler.fromFunction((_t, p) => {
+        const themeId = p?.themeId;
+        if (typeof themeId !== 'string') {
+          console.warn('[MFE Bootstrap] set_theme ignored: payload.themeId is not a string');
+        } else if (typeof app.actions.changeTheme !== 'function') {
+          console.warn('[MFE Bootstrap] set_theme ignored: no themes plugin on this host');
+        } else {
+          app.actions.changeTheme({ themeId });
+        }
+        return Promise.resolve();
+      }),
+    );
+    ctx.registerHandler(
+      CHROME_SET_MENU_COLLAPSED,
+      ActionHandler.fromFunction((_t, p) => {
+        const collapsed = p?.collapsed;
+        if (typeof collapsed !== 'boolean') {
+          console.warn(
+            '[MFE Bootstrap] set_menu_collapsed ignored: payload.collapsed is not a boolean',
+          );
+        } else if (typeof app.actions.toggleMenuCollapsed !== 'function') {
+          console.warn('[MFE Bootstrap] set_menu_collapsed ignored: no layout plugin on this host');
+        } else {
+          app.actions.toggleMenuCollapsed({ collapsed });
+        }
+        return Promise.resolve();
+      }),
     );
   }
 
@@ -129,9 +173,18 @@ class OptionalDomainImpl extends ExtensionDomainImplementation {
 }
 
 class ScreenDomainFactory extends ExtensionDomainImplementationFactory {
-  constructor(private readonly registry: MfeRegistry) { super(); }
+  constructor(
+    private readonly registry: MfeRegistry,
+    private readonly app: FrontXApp,
+  ) { super(); }
   build(ctx: DomainContext): ScreenDomainImpl {
-    return new ScreenDomainImpl(ctx, new HostContainerHooks(), this.registry, screenDomain.id);
+    return new ScreenDomainImpl(
+      ctx,
+      new HostContainerHooks(),
+      this.registry,
+      screenDomain.id,
+      this.app,
+    );
   }
 }
 
@@ -319,7 +372,22 @@ export async function bootstrapMFE(app: FrontXApp): Promise<void> {
     throw new Error('[MFE Bootstrap] mfeRegistry is not available on app instance');
   }
 
-  registry.registerDomain(screenDomain, new ScreenDomainFactory(registry));
+  // The chrome action schemas must be on the type system before any action
+  // carrying one of these types can be dispatched, and `registerDomain` is the
+  // first thing a mounted screen can act against.
+  for (const schema of CHROME_ACTION_SCHEMAS) {
+    registry.typeSystem.registerSchema(schema);
+  }
+
+  // The shipped `screenDomain` is spread rather than edited: the framework
+  // declaration stays the default every template gets, and this shell opts
+  // itself into the two chrome actions its handlers above answer. The
+  // declaration's `extensionsActions` is deliberately untouched - listing them
+  // there would make them mandatory for every screen extension in the repo.
+  registry.registerDomain(
+    { ...screenDomain, actions: [...screenDomain.actions, CHROME_SET_THEME, CHROME_SET_MENU_COLLAPSED] },
+    new ScreenDomainFactory(registry, app),
+  );
   registry.registerDomain(sidebarDomain, new OptionalDomainFactory(registry, sidebarDomain.id));
   registry.registerDomain(popupDomain, new OptionalDomainFactory(registry, popupDomain.id));
   registry.registerDomain(overlayDomain, new OptionalDomainFactory(registry, overlayDomain.id));
