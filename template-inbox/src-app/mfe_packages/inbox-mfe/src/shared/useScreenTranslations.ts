@@ -12,7 +12,7 @@
  * own `i18n/` directory rather than a per-screen one.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FRONTX_SHARED_PROPERTY_LANGUAGE, type ChildMfeBridge } from '@gears-frontx/react';
 
 type TranslationCatalogue = Record<string, string>;
@@ -21,53 +21,74 @@ const languageModules = import.meta.glob<{ default: TranslationCatalogue }>('../
 
 const FALLBACK_LANGUAGE = 'en';
 
-const moduleKeyFor = (language: string): string => `../i18n/${language}.json`;
+const importerFor = (language: string) =>
+  languageModules[`../i18n/${language}.json`] ?? languageModules[`../i18n/${FALLBACK_LANGUAGE}.json`];
+
+const readLanguage = (bridge: ChildMfeBridge): string => {
+  const property = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
+  return typeof property?.value === 'string' ? property.value : FALLBACK_LANGUAGE;
+};
 
 export type ScreenTranslations = {
   t: (key: string) => string;
+  /** True until the first catalogue has loaded, and never again. */
   loading: boolean;
 };
 
 export function useScreenTranslations(bridge: ChildMfeBridge): ScreenTranslations {
+  const [language, setLanguage] = useState<string>(() => readLanguage(bridge));
   const [catalogue, setCatalogue] = useState<TranslationCatalogue>({});
   const [loading, setLoading] = useState(true);
-  // Tracked in a ref rather than state: the subscription callback compares
-  // against it to skip a reload the current catalogue already covers, and a
-  // state read there would close over the value at subscribe time.
-  const currentLanguageRef = useRef<string>(FALLBACK_LANGUAGE);
 
-  const loadCatalogue = useCallback(async (language: string) => {
-    currentLanguageRef.current = language;
-    setLoading(true);
-    const importer = languageModules[moduleKeyFor(language)];
+  // The lazy initializer runs on mount only. If the host swaps the bridge
+  // instance, re-read during render: a subscription delivers future changes
+  // and never fires for the value the new bridge already holds.
+  const [previousBridge, setPreviousBridge] = useState(bridge);
+  if (previousBridge !== bridge) {
+    setPreviousBridge(bridge);
+    setLanguage(readLanguage(bridge));
+  }
+
+  useEffect(
+    () =>
+      bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, (property) => {
+        if (typeof property.value === 'string') setLanguage(property.value);
+      }),
+    [bridge]
+  );
+
+  useEffect(() => {
+    const importer = importerFor(language);
     if (!importer) {
+      console.error(`[inbox-mfe] No translations at all, not even ${FALLBACK_LANGUAGE}.`);
+      return undefined;
+    }
+    if (!languageModules[`../i18n/${language}.json`]) {
       console.warn(
         `[inbox-mfe] No translations for "${language}"; falling back to ${FALLBACK_LANGUAGE}.`
       );
     }
-    const resolved = importer ?? languageModules[moduleKeyFor(FALLBACK_LANGUAGE)];
-    try {
-      const module = await resolved();
-      setCatalogue(module.default);
-    } catch (error) {
-      console.error(`[inbox-mfe] Failed to load translations for "${language}"`, error);
-      setCatalogue({});
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
-  useEffect(() => {
-    const initial = bridge.getProperty(FRONTX_SHARED_PROPERTY_LANGUAGE);
-    const language = typeof initial?.value === 'string' ? initial.value : FALLBACK_LANGUAGE;
-    void loadCatalogue(language);
+    // The catalogue is swapped from the import's own callback, never from this
+    // effect's body: a language change should replace the words in place, not
+    // blank the screen back to its loading state on the way.
+    let current = true;
+    importer()
+      .then((module) => {
+        if (!current) return;
+        setCatalogue(module.default);
+        setLoading(false);
+      })
+      .catch((error: unknown) => {
+        if (!current) return;
+        console.error(`[inbox-mfe] Failed to load translations for "${language}"`, error);
+        setLoading(false);
+      });
 
-    return bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_LANGUAGE, (property) => {
-      if (typeof property.value === 'string' && property.value !== currentLanguageRef.current) {
-        void loadCatalogue(property.value);
-      }
-    });
-  }, [bridge, loadCatalogue]);
+    return () => {
+      current = false;
+    };
+  }, [language]);
 
   const t = useCallback(
     (key: string): string => {

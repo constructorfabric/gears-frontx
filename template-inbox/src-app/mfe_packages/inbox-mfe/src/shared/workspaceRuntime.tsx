@@ -35,12 +35,22 @@ const readTheme = (bridge: ChildMfeBridge): string => {
 export function useHostTheme(bridge: ChildMfeBridge): WorkspaceTheme {
   const [theme, setTheme] = useState<string>(() => readTheme(bridge));
 
-  useEffect(() => {
+  // The lazy initializer runs on mount only. If the host swaps the bridge
+  // instance, re-read during render: a subscription delivers future changes
+  // and never fires for the value the new bridge already holds.
+  const [previousBridge, setPreviousBridge] = useState(bridge);
+  if (previousBridge !== bridge) {
+    setPreviousBridge(bridge);
     setTheme(readTheme(bridge));
-    return bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_THEME, (property) => {
-      if (typeof property.value === 'string') setTheme(property.value);
-    });
-  }, [bridge]);
+  }
+
+  useEffect(
+    () =>
+      bridge.subscribeToProperty(FRONTX_SHARED_PROPERTY_THEME, (property) => {
+        if (typeof property.value === 'string') setTheme(property.value);
+      }),
+    [bridge]
+  );
 
   // The shell registers more themes than the two this workspace toggles
   // between, and only these two declare an appearance. Anything else reads as

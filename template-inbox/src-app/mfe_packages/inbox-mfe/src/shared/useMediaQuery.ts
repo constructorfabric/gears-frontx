@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
 
+type MediaQueryState = { query: string; matches: boolean };
+
+const readQuery = (query: string): MediaQueryState => ({
+  query,
+  matches: window.matchMedia(query).matches,
+});
+
 /**
  * Viewport state the panes need in JavaScript rather than in CSS.
  *
@@ -10,17 +17,24 @@ import { useEffect, useState } from 'react';
  * stay in the stylesheet.
  */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState<boolean>(() => window.matchMedia(query).matches);
+  const [state, setState] = useState<MediaQueryState>(() => readQuery(query));
+
+  // Re-read during render rather than from the effect below: a new query has a
+  // different answer immediately, and setting it from an effect would render
+  // one frame against the previous query's layout.
+  if (state.query !== query) {
+    setState(readQuery(query));
+  }
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(query);
-    setMatches(mediaQuery.matches);
-    const onChange = (event: MediaQueryListEvent) => setMatches(event.matches);
+    const onChange = (event: MediaQueryListEvent) =>
+      setState({ query, matches: event.matches });
     mediaQuery.addEventListener('change', onChange);
     return () => mediaQuery.removeEventListener('change', onChange);
   }, [query]);
 
-  return matches;
+  return state.matches;
 }
 
 /** Below this the folder column has no room and stays collapsed. */
