@@ -16,7 +16,14 @@ export const Footer: React.FC<FooterProps> = ({ children }) => {
   const footerState = useAppSelector((state) => state['layout/footer'] as FooterState | undefined);
   const visible = footerState?.visible ?? true;
 
-  if (!visible) {
+  // The strip is a container and carries nothing of its own, so with no
+  // children it renders a 40px band of border and background across the whole
+  // viewport that no screen can fill: `Layout` passes it none, and the layout
+  // plugin exposes no footer event a microfrontend could hide it with. Absence
+  // of children is therefore the only signal available, and it is the right
+  // one - `visible` stays the explicit switch for a footer that does have
+  // content.
+  if (!visible || React.Children.count(children) === 0) {
     return null;
   }
 
