@@ -85,6 +85,7 @@ export const conversations: Conversation[] = [
     brand: BRAND,
     tags: ['bug', 'support'],
     sharedFiles: [],
+    suggestedReplies: ['Could you share your browser?', 'Can you try clearing local storage?'],
     starred: false,
     snoozed: false,
   },
@@ -107,6 +108,10 @@ export const conversations: Conversation[] = [
       { name: 'dashboard-mockup.png', size: '248 KB' },
       { name: 'design-spec.pdf', size: '92 KB' },
     ],
+    suggestedReplies: [
+      'I will send the scoped tweaks tomorrow.',
+      'Want a preview build before we ship?',
+    ],
     starred: false,
     snoozed: false,
   },
@@ -127,6 +132,10 @@ export const conversations: Conversation[] = [
     brand: BRAND,
     tags: ['support'],
     sharedFiles: [],
+    suggestedReplies: [
+      'Shall I send the Extended license link?',
+      'Do you need an invoice for it?',
+    ],
     starred: false,
     snoozed: false,
   },
@@ -147,6 +156,10 @@ export const conversations: Conversation[] = [
     brand: BRAND,
     tags: ['billing', 'refund'],
     sharedFiles: [],
+    suggestedReplies: [
+      'Want the refund confirmation by email?',
+      'Anything else about this order?',
+    ],
     starred: false,
     snoozed: false,
   },
@@ -166,6 +179,10 @@ export const conversations: Conversation[] = [
     brand: BRAND,
     tags: ['feedback'],
     sharedFiles: [],
+    suggestedReplies: [
+      'I will raise this in planning today.',
+      'Would a scheduled export help meanwhile?',
+    ],
     starred: false,
     snoozed: false,
   },
@@ -186,6 +203,8 @@ export const conversations: Conversation[] = [
     brand: BRAND,
     tags: ['support'],
     sharedFiles: [],
+    // Parked until the customer comes back: nothing here is waiting on a reply.
+    suggestedReplies: [],
     starred: false,
     snoozed: true,
   },
@@ -206,6 +225,8 @@ export const conversations: Conversation[] = [
     brand: BRAND,
     tags: ['support'],
     sharedFiles: [],
+    // Parked until the customer comes back: nothing here is waiting on a reply.
+    suggestedReplies: [],
     starred: false,
     snoozed: true,
   },
@@ -225,6 +246,8 @@ export const conversations: Conversation[] = [
     brand: BRAND,
     tags: ['spam'],
     sharedFiles: [],
+    // Spam is never answered, so the assistant offers nothing to answer it with.
+    suggestedReplies: [],
     starred: false,
     snoozed: false,
   },
@@ -244,6 +267,8 @@ export const conversations: Conversation[] = [
     brand: BRAND,
     tags: ['spam'],
     sharedFiles: [],
+    // Spam is never answered, so the assistant offers nothing to answer it with.
+    suggestedReplies: [],
     starred: false,
     snoozed: false,
   },

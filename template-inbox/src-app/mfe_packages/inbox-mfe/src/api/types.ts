@@ -73,6 +73,13 @@ export type Conversation = {
   brand: string;
   tags: string[];
   sharedFiles: SharedFile[];
+  /**
+   * Replies the assistant offers as chips above the composer. Empty is a
+   * meaningful value, not a gap: a spam thread is never worth answering, and a
+   * snoozed one is parked rather than waiting on the agent, so neither carries
+   * a suggestion and the chip row does not render at all.
+   */
+  suggestedReplies: string[];
   starred: boolean;
   snoozed: boolean;
 };
