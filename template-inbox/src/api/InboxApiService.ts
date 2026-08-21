@@ -22,19 +22,38 @@ import type {
 } from './types';
 
 export class InboxApiService extends BaseApiService {
+  private readonly rest: RestProtocol;
+  private readonly mockPlugin: RestMockPlugin;
+
   constructor() {
     const restProtocol = new RestProtocol({ timeout: 30000 });
     const restEndpoints = new RestEndpointProtocol(restProtocol);
 
     super({ baseURL: '/api/inbox' }, restProtocol, restEndpoints);
 
-    this.registerPlugin(
-      restProtocol,
-      new RestMockPlugin({
-        mockMap: inboxMockMap,
-        delay: 100,
-      })
-    );
+    this.rest = restProtocol;
+    this.mockPlugin = new RestMockPlugin({ mockMap: inboxMockMap, delay: 100 });
+
+    // `registerPlugin` declares the plugin; it deliberately does not switch it
+    // on, so that whether mocks answer stays a decision made outside the
+    // service. `useMocks` below is where this app makes it.
+    this.registerPlugin(restProtocol, this.mockPlugin);
+  }
+
+  /**
+   * Whether the mock map answers requests instead of the network.
+   *
+   * On is what a seeded project boots with, because the dataset is the product
+   * demo. Turning it off is the whole migration to a real backend: the
+   * endpoints, the response types and every screen stay exactly as they are,
+   * and the requests below start reaching `/api/inbox` for real.
+   */
+  useMocks(enabled: boolean): void {
+    if (enabled) {
+      this.rest.plugins.add(this.mockPlugin);
+    } else {
+      this.rest.plugins.remove(this.mockPlugin);
+    }
   }
 
   readonly getAgent = this.protocol(RestEndpointProtocol).query<GetAgentResponse>('/me');

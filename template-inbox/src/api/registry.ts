@@ -14,6 +14,10 @@ export function registerApiServices(): void {
   if (apiRegistry.has(InboxApiService)) return;
   apiRegistry.register(InboxApiService);
   apiRegistry.initialize();
+
+  // The one place this app decides that the seeded dataset answers rather than
+  // a server. Delete this line the day there is a server.
+  apiRegistry.getService(InboxApiService).useMocks(true);
 }
 
 export const getInboxApi = (): InboxApiService => apiRegistry.getService(InboxApiService);
