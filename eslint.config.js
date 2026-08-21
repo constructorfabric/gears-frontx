@@ -146,6 +146,7 @@ export default [
       // plugins are absent from the ecosystem root's node_modules, so a root
       // lint run died loading that config instead of reporting a rule.
       'template-design-guardrails/**',
+      'template-inbox/**', // Workspace content composed onto the shell; linted there, under the shell's own config, not from this ecosystem root
     ],
   },
 
