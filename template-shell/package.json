@@ -27,9 +27,11 @@
     "src-app/mfe_packages/*"
   ],
   "scripts": {
+    "prebuild:mfes": "npm run build:packages",
     "build:mfes": "npx tsx scripts/build-mfes.ts",
     "generate:mfe-manifests": "npx tsx scripts/generate-mfe-manifests.ts",
     "dev": "npm run build:packages && npm run build:mfes && npm run generate:mfe-manifests && vite",
+    "predev:all": "npm run build:packages",
     "dev:all": "npx tsx scripts/dev-all.ts",
     "preview": "vite preview",
     "build:package": "tsup",
