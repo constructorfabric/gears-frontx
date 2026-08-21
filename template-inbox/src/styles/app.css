@@ -1,0 +1,20 @@
+/*
+ * The document's own frame - everything else is a CSS module beside the
+ * component that uses it.
+ *
+ * The kit's theme.css already paints `body` from `--background`/`--foreground`
+ * and supplies every token used here; this file only makes the app fill the
+ * window and stops the page itself from scrolling, because each pane scrolls on
+ * its own.
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+}
