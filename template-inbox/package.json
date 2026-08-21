@@ -1,0 +1,20 @@
+{
+  "//": "MONOREPO DEV HARNESS \u2014 NOT PART OF THIS TEMPLATE. This file is deliberately absent from frontx-template.json's ownershipBoundaries, so `frontx add` never copies it into a seeded project and this template claims ownership of no root package.json anywhere. The MFE package below pins its @gears-frontx dependencies to exact published versions, which is what a seeded project installs. Inside this monorepo those pins would fetch registry tarballs instead of resolving to local source, so the overrides here redirect each pinned name to its local source instead. Because they redirect rather than re-declare, the installed versions still satisfy the pins and `npm ls` stays clean. Unlike template-mfe's harness this one also redirects @gears-frontx/ui-kit: every screen this template ships composes against the kit version this repository carries, which is ahead of anything on the registry, so without that entry the install resolves a kit whose components the screens do not compile against. Bootstrap order matters: `npm install` here is NOT sufficient by itself \u2014 the whole stack below this one must be built first: this repo's ecosystem packages including the kit (`npm ci && npm run build:packages` at the root), then template-shell as a whole (`npm run build`, which sequences its publishable package before its subpackages \u2014 they type-check against the declarations it emits, so the reverse order fails on @gears-frontx/framework). See this template's README for the exact sequence. Keep this file free of version numbers: every entry below is a path or a glob, so the pins remain the single place a version is written down.",
+  "name": "frontx-template-inbox-monorepo-harness",
+  "private": true,
+  "workspaces": [
+    "src-app/mfe_packages/*"
+  ],
+  "overrides": {
+    "@gears-frontx/frontx-template-shell": "file:../template-shell",
+    "@gears-frontx/auth": "file:../template-shell/packages/auth",
+    "@gears-frontx/framework": "file:../template-shell/packages/framework",
+    "@gears-frontx/i18n": "file:../template-shell/packages/i18n",
+    "@gears-frontx/react": "file:../template-shell/packages/react",
+    "@gears-frontx/state": "file:../template-shell/packages/state",
+    "@gears-frontx/api": "file:../packages/api",
+    "@gears-frontx/gts-plugin": "file:../packages/gts-plugin",
+    "@gears-frontx/mfes": "file:../packages/mfes",
+    "@gears-frontx/ui-kit": "file:../packages/ui-kit"
+  }
+}
