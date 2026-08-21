@@ -55,4 +55,16 @@ describe('ContactsScreen', () => {
 
     screen.unmount();
   });
+
+  it('gives the whole pane to a contact page by dropping the directory filters', () => {
+    const { bridge } = createBridgeFixture();
+
+    const screen = renderScreen(<ContactsScreen bridge={bridge} />);
+    expect(screen.getByLabelText('contact_filters')).toBeTruthy();
+
+    act(() => setPendingContact('r-1'));
+    expect(screen.queryByLabelText('contact_filters')).toBeNull();
+
+    screen.unmount();
+  });
 });

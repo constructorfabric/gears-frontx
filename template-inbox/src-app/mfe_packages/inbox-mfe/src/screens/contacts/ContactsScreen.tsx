@@ -62,18 +62,26 @@ export function ContactsScreen({ bridge }: ContactsScreenProps) {
 
   return (
     <WorkspaceRoot bridge={bridge}>
-      <ContactFilterSidebar
-        bridge={bridge}
-        agent={agentQuery.data?.agent}
-        contacts={contacts}
-        selectedFilter={filter}
-        onSelectFilter={(next) => {
-          setFilter(next);
-          setOpenContactId(null);
-        }}
-        collapsed={isCompact}
-        t={t}
-      />
+      {/*
+        The filter list belongs to the directory, not to one person: on a
+        contact's own page the reference drops it and gives the whole pane to
+        the record. Keeping it here costs the ticket-subject column most of its
+        width, so it leaves with the list rather than collapsing behind it.
+      */}
+      {openContact ? null : (
+        <ContactFilterSidebar
+          bridge={bridge}
+          agent={agentQuery.data?.agent}
+          contacts={contacts}
+          selectedFilter={filter}
+          onSelectFilter={(next) => {
+            setFilter(next);
+            setOpenContactId(null);
+          }}
+          collapsed={isCompact}
+          t={t}
+        />
+      )}
 
       {openContact ? (
         <ContactDetail contact={openContact} onBack={() => setOpenContactId(null)} t={t} />
