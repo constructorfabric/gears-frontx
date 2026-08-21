@@ -1,6 +1,6 @@
-# Guideline: What the Inbox Workspace Is, and What It Is Not
+# Guideline: What the Inbox App Is, and What It Is Not
 
-This template ships a working helpdesk workspace. Two screens are complete and
+This template ships a working helpdesk application. Two screens are complete and
 nothing about them is a placeholder. The list below exists so that a screen
 added later stays inside the same product, and so that no one rebuilds
 something that was deliberately left out.
@@ -12,7 +12,7 @@ something that was deliberately left out.
   and four sort orders; the message thread with its attachment chip, read
   receipts and internal notes; the reply-and-note composer; the
   customer-details panel with its Details and Copilot tabs; the "Select a
-  conversation" empty state; the theme toggle and the user menu.
+  conversation" empty state.
 - **The thread's inert chrome.** The create-ticket button and the overflow menu
   in the thread header, and the attach, emoji and saved-replies buttons on the
   composer, are drawn and reachable. They carry no handler, because each would
@@ -25,8 +25,11 @@ something that was deliberately left out.
 - **Contacts screen.** Five filters with their counts, a sortable table paged
   25 rows at a time, and the contact detail view with its qualification
   checklist, tickets, conversations and activity timeline.
+- **The chrome around both.** The icon rail: the product mark, a button per
+  section with its active state, and at the bottom the theme toggle and the
+  profile menu.
 - **The jump between them.** "View contact" in a thread opens that person's
-  detail page on the contacts screen.
+  page at `#/contacts/{id}` - a real address, not screen state.
 
 ## Not to build
 
@@ -44,16 +47,18 @@ unrelated request.
   of scope.
 - **The new-conversation flow.** The compose trigger and its modal.
 - **The command palette**, the messenger settings, the settings screen and the
-  theme customiser. The workspace ships a plain two-state theme toggle and
-  nothing else that changes appearance.
+  theme customiser - all four are rail controls in the reference and none is
+  here. The app ships a plain two-state theme toggle and nothing else that
+  changes appearance.
 - **Copilot's behaviour.** The tab renders its prompts and its input; wiring
   them to a model is a project's own decision and its own backend.
 - **The behaviour behind the composer's three buttons**: an upload target for
   the paperclip, a picker for the emoji button, a canned-reply library for
   saved replies. The buttons themselves ship (see above). The transcript
   renders an attachment that arrived with a message; nothing sends one.
-- **Authentication.** Profile, Settings and Log out in the user menu are inert,
-  as they are in the reference.
+- **Authentication.** Profile, Settings and Log out in the profile menu are
+  inert, as they are in the reference. There is no sign-in screen and no
+  session.
 
 ## When a request asks for one of these
 

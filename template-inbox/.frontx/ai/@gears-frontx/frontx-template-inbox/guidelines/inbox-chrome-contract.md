@@ -1,86 +1,83 @@
-# Guideline: Where Inbox Chrome May Live
+# Guideline: The App's Chrome, and What a New Screen Plugs Into
 
-A template contributes screens into the host's screen domain and edits no
-shell-owned file. Everything below follows from that, and every mechanism named
-here is already shipped in `src-app/mfe_packages/inbox-mfe/src/shared/`. Reuse
-those modules; do not write a second copy of any of them.
+This application owns its whole document. There is no host to ask for anything,
+so every mechanism below is a module in `src/app/` that a screen simply calls.
+Reuse them; do not write a second copy of any of them.
 
-## The menu is reached by declaration only
+## The icon rail is the navigation
 
-A screen appears in the host's left menu by adding one entry to `mfe.json`'s
-`extensions[]`, targeting the fixed screen domain with a `presentation` block.
-There is no menu file to edit. See the `navigation-contribution` and
-`gts-id-conventions` guidelines in the `frontx-template-mfe` bundle for the
-field-by-field contract and the ID taxonomy. This workspace's IDs live under
-`frontx.inbox.*`.
+`src/app/IconRail.tsx` is the app's fixed 64px left edge: the product mark at
+the top, one button per section, a flexible spacer, then the theme toggle and
+the profile-menu popover at the bottom. Adding a section means adding a button
+there and a branch in `src/app/App.tsx` - there is no manifest, no extension
+declaration and no id taxonomy.
 
-The screen domain mounts exclusively: exactly one section is live at a time.
+The rail never collapses. It is the edge the rest of the layout is measured
+from; the folder and filter columns beside it are the ones that collapse.
 
-## The three host effects, and the modules that own them
+## Routing is the URL fragment
 
-| Effect | Module | Mechanism |
-|---|---|---|
-| Narrow the menu to its icon rail | `shared/workspaceChrome.ts` | `eventBus.emit('layout/menu/collapsed', { collapsed: true })` |
-| Apply the workspace's own default theme, and toggle it | `shared/workspaceChrome.ts` | `eventBus.emit('theme/changed', { themeId })` |
-| Jump from one screen to the other | `shared/crossScreenNavigation.ts` | `bridge.executeActionsChain` with the mount action, deferred one microtask |
+`src/app/routing.ts` owns three routes and the parser for them:
 
-Three properties of these are not guessable from the file names, and each is
-load-bearing:
+| Route | Screen |
+|---|---|
+| `#/inbox` | the inbox (the default for any unrecognised address) |
+| `#/contacts` | the contacts directory |
+| `#/contacts/{id}` | one contact's page |
 
-- **The menu collapse and the theme assertion fire once per page load, not once
-  per mount.** Mounting the other screen unmounts this one; re-running either
-  on mount would undo a choice the visitor made in between.
-- **The cross-screen mount is deferred by `queueMicrotask`.** It unmounts the
-  React tree that is running the click handler. Calling it synchronously tears
-  the tree down mid-event.
-- **The theme toggle depends on concrete names the shell owns** (`theme/changed`,
-  and the theme ids `light` and `dark`). There is no abstraction to depend on
-  instead: the child bridge exposes no way to set a shared property, and the
-  shell registers no theme action. If the shell ever grows one, this is the
-  coupling to replace.
+Two properties are load-bearing:
 
-Read the current theme from the host rather than mirroring it: `useHostTheme`
-in `shared/workspaceRuntime.tsx` subscribes to the theme shared property, so a
-change made anywhere else is reflected too.
+- **A section's own sub-state that a visitor could want to return to belongs in
+  the route, not in screen state.** A contact's page is a route for exactly that
+  reason: "View contact" in a thread is `navigate(contactRoute(id))`, and the
+  address it produces reloads, bookmarks and shares.
+- **The fragment, not the path.** A fragment needs no server rewrite, so the
+  built `index.html` deep-links correctly from any static host. Adding a route
+  means extending `parseRoute` and its test, not adding a router.
 
-## Kit overlays portal into the shadow root
+## Theme is one attribute
 
-Select, Popover, Dialog, DropdownMenu, Tooltip and Sheet portal to `<body>` by
-default, which is the host document. This package's stylesheet lives in the
-shadow root, so a popup built from its classes would render there unstyled.
-Pass `container={useOverlayContainer()}` on every kit popup; `WorkspaceRoot`
-provides the node.
+`src/app/theme.ts` sets `data-theme` on the document root and mirrors it to
+`localStorage`; `@gears-frontx/ui-kit/theme.css` repaints every token from that
+attribute. The app is dark-first, and `index.html` already ships
+`data-theme="dark"` so the first paint is dark before any script runs -
+`applyStoredTheme()` in `src/main.tsx` then corrects it for a visitor who chose
+light, before the first render.
+
+A screen never reads or writes the theme. `useTheme` exists for the one toggle
+in the rail.
+
+## Copy
+
+`src/app/i18n.ts` exports `t`, reading `src/i18n/en.json`. Screens take `t` as a
+prop rather than importing it, which is what keeps them renderable in a test
+with `t = (key) => key`. Add a screen's strings to that one file.
+
+## Kit overlays need nothing
+
+Select, Popover, Dialog, DropdownMenu, Tooltip and Sheet portal to `<body>`,
+which is this app's own document. Pass no `container`.
 
 ## Styles
 
-Kit component CSS arrives by style adoption and needs no import. The package's
-own layout CSS is delivered by importing the stylesheet twice - once for its
-class map, once with `?inline` for the text - and appending it in an
-`initializeStyles` override; `shared/appendWorkspaceStyles.ts` is that override
-and explains why a plain `import './x.css'` is not a substitute. Never deliver
-Tailwind preflight into a shadow root.
+Kit component CSS travels with each component the bundler pulls in; there is
+nothing to import. The app's own layout lives in
+`src/styles/workspace.module.css`, written entirely in kit tokens - no raw
+colour, no raw metric, no CSS framework. `src/styles/app.css` is the document
+frame alone (full height, no page scroll) and should not grow.
 
 ## Differences from the reference product, all intentional
 
 A screen added later should match these, not try to correct them.
 
-1. The rail's brand mark is the host's own logo.
-2. Only the workspace's own sections appear in the rail; the out-of-scope ones
+1. The rail's mark is a neutral helpdesk glyph, not the reference's brand.
+2. Only the sections this app ships appear in the rail; the out-of-scope ones
    are absent (see the `inbox-scope-inventory` guideline).
-3. The theme toggle and the profile menu sit at the bottom of the workspace's
-   own left column rather than in the rail, because the host renders its menu,
-   header and footer with no children slot and registers no slot for the
-   sidebar, popup or overlay domains.
-4. The host's collapsed menu is 56px against the reference's 64px rail.
-5. A top header bar exists that the reference does not have.
-6. The host's own user chip and this workspace's agent identity are two
-   separate identities, shown in two places.
-7. The mount area is inset by the host's screen padding rather than flush to
-   the viewport edge.
-8. The palette is the kit's tokens, not the reference's own.
-9. Dark is applied after the remote mounts, so the first frame is light.
-10. There are no URL routes: `presentation.route` is schema-required but the
-    shell mounts by action, so the contact detail is in-screen state and
-    "View contact" is a mount action rather than a link.
-11. Inside the mount area the panes collapse for tablet and phone widths; the
-    host's menu, header and footer keep their desktop shape at every width.
+3. The palette is the kit's tokens, not the reference's own.
+4. The rail's out-of-scope bottom controls - command palette, messenger
+   settings, settings, theme customiser - are absent; the theme toggle and the
+   profile menu are the whole bottom cluster.
+5. Profile, Settings and Log out in the profile menu are inert, as they are in
+   the reference.
+6. The panes collapse for tablet and phone widths; the rail keeps its shape at
+   every width, which is also what the reference does.

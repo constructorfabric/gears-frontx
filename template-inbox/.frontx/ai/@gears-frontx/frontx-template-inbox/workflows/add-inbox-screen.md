@@ -1,4 +1,4 @@
-# Workflow: Add a Screen to the Inbox Workspace
+# Workflow: Add a Screen to the Inbox App
 
 Ordered execution procedure for the `add-inbox-screen` skill in this same
 bundle. Use it when carrying the addition out; the skill remains the authority
@@ -6,11 +6,12 @@ on each step and on the boundaries.
 
 ## Preconditions
 
-- `template-shell`, `template-mfe` and this template are all applied, so
-  `src-app/mfe_packages/inbox-mfe/` exists.
+- This template is applied, so the project is the app: `src/app/`, `src/api/`
+  and `src/screens/` exist and `npm run dev` runs it.
 - The screen has been checked against the `inbox-scope-inventory` guideline and
   is not on the not-to-build list.
-- `{screen}` below is the screen's kebab-case name.
+- `{screen}` below is the screen's kebab-case name, `{Screen}` its PascalCase
+  form.
 
 ## Steps
 
@@ -26,55 +27,42 @@ on each step and on the boundaries.
 2. **Write the screen.**
    - `src/screens/{screen}/{Screen}Screen.tsx`, plus any parts of its own in the
      same directory.
-   - Wrap it in `WorkspaceRoot`; put the left column's footer in
-     `WorkspaceSidebarFooter`.
-   - Read data with `useApiQuery` off `apiRegistry.getService(InboxApiService)`.
+   - Props: `t`, plus whatever the route carries. No wrapper element of its own -
+     the panes are siblings, and the app frame is already around them.
+   - Read data with `useApiQuery` off `getInboxApi()`.
    - Layout classes go in `src/styles/workspace.module.css`.
 
-3. **Write the lifecycle**, copying `src/lifecycle-inbox.tsx`:
-   ```
-   src/lifecycle-{screen}.tsx
-   ```
-
-4. **Expose the lifecycle** in `vite.config.ts`:
+3. **Add the route** in `src/app/routing.ts`:
    ```ts
-   exposes: {
-     './lifecycle-inbox': './src/lifecycle-inbox.tsx',
-     './lifecycle-contacts': './src/lifecycle-contacts.tsx',
-     './lifecycle-{screen}': './src/lifecycle-{screen}.tsx',
-   }
+   export type Route = … | { name: '{screen}' };
+   export const {SCREEN}_ROUTE = '#/{screen}';
    ```
+   plus the branch in `parseRoute`, and a case in `src/app/routing.test.ts`.
 
-5. **Declare the entry and the extension** in `mfe.json`, copying the shape of
-   the two already there:
-   - entry id `gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~frontx.inbox.mfe.{screen}.v1`
-   - extension id `gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.inbox.screens.{screen}.v1`
-   - `domain` is the fixed screen domain, verbatim from the existing entries.
-   - `presentation`: `label`, `icon` (an Iconify name), `route`, `order`.
+4. **Render it** in `src/app/App.tsx`, on `route.name === '{screen}'`.
 
-6. **Add the copy** to `src/i18n/en.json`.
+5. **Add the rail button** in `src/app/IconRail.tsx`, and extend `sectionOf` so
+   it stays active on the screen's sub-routes.
 
-7. **Check the package while iterating.**
-   ```bash
-   npm run type-check --workspace=@gears-frontx/inbox-mfe
-   npm run test:unit --workspace=@gears-frontx/inbox-mfe
-   npm run build --workspace=@gears-frontx/inbox-mfe
-   npm run generate:mfe-manifests
-   ```
+6. **Add the copy** to `src/i18n/en.json`, the rail label included.
 
-8. **Run the full gate once, at the end.**
+7. **Check.**
    ```bash
    npm run type-check
-   npm run test:unit
    npm run lint
-   npm run dev:all
+   npm run test:unit
+   npm run build
    ```
-   Open the app, mount the new screen from the menu, and confirm the console is
-   clean.
+
+8. **Run it.**
+   ```bash
+   npm run dev
+   ```
+   Open the screen from the rail; reload on its own address to confirm the route
+   resolves from a cold load; toggle the theme; confirm the console is clean.
 
 ## Rollback
 
-Delete `src/screens/{screen}/` and `src/lifecycle-{screen}.tsx`, remove the
-`exposes` key and the entry and extension from `mfe.json`, drop the keys added
-to `src/i18n/en.json`, then re-run `npm run generate:mfe-manifests` so the
-aggregate no longer offers the screen.
+Delete `src/screens/{screen}/`, revert the route variant, its `parseRoute`
+branch and its test case, the `App.tsx` branch, the rail button and `sectionOf`
+entry, and drop the keys added to `src/i18n/en.json`.

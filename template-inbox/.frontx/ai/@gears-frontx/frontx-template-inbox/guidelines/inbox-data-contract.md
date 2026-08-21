@@ -1,16 +1,40 @@
-# Guideline: The Inbox Workspace's Data
+# Guideline: The Inbox App's Data
 
-One service backs both screens: `src-app/mfe_packages/inbox-mfe/src/api/`.
-A new screen reads from it. Do not add a second service, and do not put content
-anywhere else.
+One service backs both screens: `src/api/`. A new screen reads from it. Do not
+add a second service, and do not put content anywhere else.
 
 ```
 src/api/
   InboxApiService.ts   BaseApiService + RestProtocol + RestEndpointProtocol + RestMockPlugin
+  RestMockPlugin.ts    the app's own mock plugin, built on @gears-frontx/api primitives
+  queries.ts           useApiQuery / useApiMutation over the endpoint descriptors
+  registry.ts          registerApiServices() at boot, getInboxApi() everywhere else
   types.ts             the response contracts
   mocks.ts             the mock map, keys prefixed with the /api/inbox baseURL
   dataset.ts           the seeded content, imported by mocks.ts alone
 ```
+
+## Reading from a component
+
+```ts
+const service = getInboxApi();
+const contactsQuery = useApiQuery(service.getContacts);
+```
+
+`@gears-frontx/api` hands out endpoint *descriptors* - a stable key plus a
+`fetch` - and leaves caching to the consumer. `queries.ts` is that consumer: two
+hooks that dedupe by descriptor key, so the same endpoint read from two screens
+and mounted twice by StrictMode makes one request. Swapping it for a server-
+state library is a change to that one file; the screens only ever see
+`useApiQuery` and `useApiMutation`.
+
+## The mock plugin belongs to the app
+
+`RestMockPlugin` is `src/api/RestMockPlugin.ts`, not an import from
+`@gears-frontx/api`: the ecosystem package publishes the plugin primitives and
+leaves the mock to whoever owns the project's data. Pointing the app at a real
+backend is deleting the `registerPlugin` call in `InboxApiService` - the
+endpoints, the types and every screen stay as they are.
 
 ## The endpoint surface
 
@@ -38,8 +62,8 @@ add a collection endpoint and select from it; do not add a parameterised one.
 ## Rules for content
 
 - **No fixture files.** Mock data is application code registered per service
-  through `RestMockPlugin`, which is what keeps mock mode a runtime toggle
-  rather than a build-time choice. Mock mode is already on by default in dev.
+  through `RestMockPlugin`, which is what keeps swapping it for a real backend a
+  one-line change rather than a build-time choice.
 - **No content baked into markup.** A subject, a name, a snippet or a count in
   JSX is content that cannot be changed without editing a screen. It belongs in
   `dataset.ts`.

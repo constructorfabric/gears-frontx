@@ -1,135 +1,419 @@
 {
   "id": "inbox-screen-inventory",
-  "version": "1.0.0",
-  "description": "Each pane of the two shipped screens, and the @gears-frontx/ui-kit component that renders each of its parts. A screen added to this workspace composes from the same vocabulary; anything not listed here is either a plain element carrying a class from the package's own stylesheet, or a component that has not been needed yet.",
-  "package": "src-app/mfe_packages/inbox-mfe",
-  "stylesheet": "src/styles/workspace.module.css",
+  "version": "2.0.0",
+  "description": "Each pane of the two shipped screens, and the @gears-frontx/ui-kit component that renders each of its parts. A screen added to this app composes from the same vocabulary; anything not listed here is either a plain element carrying a class from the app's own stylesheet, or a component that has not been needed yet.",
+  "app": {
+    "entry": "src/main.tsx",
+    "root": "src/app/App.tsx",
+    "stylesheet": "src/styles/workspace.module.css"
+  },
+  "chrome": [
+    {
+      "part": "icon rail",
+      "module": "src/app/IconRail.tsx",
+      "kit": [
+        "Button",
+        "Popover",
+        "PopoverTrigger",
+        "PopoverContent",
+        "Separator",
+        "ItemGroup",
+        "Item",
+        "ItemMedia",
+        "ItemContent",
+        "ItemTitle",
+        "lucide-react: HeadsetIcon, InboxIcon, UsersIcon, SunIcon, MoonIcon, UserIcon, SettingsIcon, LogOutIcon"
+      ],
+      "note": "Fixed 64px, never collapsed. Mark at the top, one Button per section with variant=\"secondary\" when active, flexible spacer, then the theme toggle and the profile-menu Popover. Popups need no container - they portal to the app's own body."
+    },
+    {
+      "part": "routing",
+      "module": "src/app/routing.ts",
+      "kit": [],
+      "note": "Hash routes: #/inbox, #/contacts, #/contacts/{id}. parseRoute defaults anything unrecognised to the inbox."
+    },
+    {
+      "part": "theme",
+      "module": "src/app/theme.ts",
+      "kit": [],
+      "note": "data-theme on the document root plus localStorage, dark by default; the kit's theme.css repaints from it."
+    }
+  ],
   "sharedParts": [
     {
       "part": "presence avatar",
       "module": "src/shared/PresenceAvatar.tsx",
-      "kit": ["Avatar", "AvatarFallback", "AvatarBadge"],
+      "kit": [
+        "Avatar",
+        "AvatarFallback",
+        "AvatarBadge"
+      ],
       "note": "Fallback tone is a hash of the name, so one person keeps one circle everywhere. The badge carries presence; the tone never does."
-    },
-    {
-      "part": "left column footer",
-      "module": "src/shared/WorkspaceSidebarFooter.tsx",
-      "kit": ["Popover", "PopoverTrigger", "PopoverContent", "Separator", "ItemGroup", "Item", "ItemMedia", "ItemContent", "ItemTitle", "Button"],
-      "note": "Theme toggle plus the profile menu. Popup gets container={useOverlayContainer()}."
-    },
-    {
-      "part": "screen root and overlay host",
-      "module": "src/shared/WorkspaceRoot.tsx",
-      "kit": [],
-      "note": "Plain elements; also where the once-per-page host effects are applied."
     }
   ],
   "screens": [
     {
       "id": "inbox",
-      "entry": "./lifecycle-inbox",
-      "extension": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.inbox.screens.inbox.v1",
       "panes": [
         {
           "pane": "folder sidebar",
           "module": "src/screens/inbox/FolderSidebar.tsx",
           "parts": [
-            { "part": "folder rows", "kit": ["ItemGroup", "Item", "ItemMedia", "ItemContent", "ItemTitle", "ItemActions"] },
-            { "part": "folder count", "kit": ["Badge"] },
-            { "part": "folder icons", "kit": ["lucide-react: InboxIcon, ShieldAlertIcon"] }
+            {
+              "part": "folder rows",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemMedia",
+                "ItemContent",
+                "ItemTitle",
+                "ItemActions"
+              ]
+            },
+            {
+              "part": "folder count",
+              "kit": [
+                "Badge"
+              ]
+            },
+            {
+              "part": "folder icons",
+              "kit": [
+                "lucide-react: InboxIcon, ShieldAlertIcon"
+              ]
+            }
           ]
         },
         {
           "pane": "conversation list",
           "module": "src/screens/inbox/ConversationList.tsx",
           "parts": [
-            { "part": "collapse-folders button", "kit": ["Button"] },
-            { "part": "search field", "kit": ["Input"] },
-            { "part": "sort control", "kit": ["Select", "SelectTrigger", "SelectValue", "SelectContent", "SelectItem"] },
-            { "part": "conversation rows", "kit": ["ItemGroup", "Item", "ItemMedia", "ItemContent", "ItemTitle", "ItemDescription"] },
-            { "part": "unread count", "kit": ["Badge"] }
+            {
+              "part": "collapse-folders button",
+              "kit": [
+                "Button"
+              ]
+            },
+            {
+              "part": "search field",
+              "kit": [
+                "Input"
+              ]
+            },
+            {
+              "part": "sort control",
+              "kit": [
+                "Select",
+                "SelectTrigger",
+                "SelectValue",
+                "SelectContent",
+                "SelectItem"
+              ]
+            },
+            {
+              "part": "conversation rows",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemMedia",
+                "ItemContent",
+                "ItemTitle",
+                "ItemDescription"
+              ]
+            },
+            {
+              "part": "unread count",
+              "kit": [
+                "Badge"
+              ]
+            }
           ]
         },
         {
           "pane": "thread",
           "module": "src/screens/inbox/ConversationThread.tsx",
           "parts": [
-            { "part": "header actions", "kit": ["Button", "lucide-react: StarIcon, AlarmClockIcon, TicketIcon, PanelRightIcon"] },
-            { "part": "header overflow menu", "kit": ["DropdownMenu", "DropdownMenuTrigger", "DropdownMenuContent", "DropdownMenuItem"], "note": "Popup gets container={useOverlayContainer()}. Its two items carry no handler." },
-            { "part": "suggested reply chips", "kit": ["Button"], "note": "Rendered only when the conversation's suggestedReplies is non-empty; a click drafts the text into the composer." },
-            { "part": "transcript viewport", "kit": ["MessageScrollerProvider", "MessageScroller", "MessageScrollerViewport", "MessageScrollerContent", "MessageScrollerItem", "MessageScrollerButton"] },
-            { "part": "message row", "kit": ["Message", "MessageAvatar", "MessageContent", "MessageHeader", "MessageFooter"] },
-            { "part": "message surface", "kit": ["Bubble", "BubbleContent"] },
-            { "part": "inline attachment", "kit": ["Attachment", "AttachmentMedia", "AttachmentContent", "AttachmentTitle", "AttachmentDescription"] }
+            {
+              "part": "header actions",
+              "kit": [
+                "Button",
+                "lucide-react: StarIcon, AlarmClockIcon, TicketIcon, PanelRightIcon"
+              ]
+            },
+            {
+              "part": "header overflow menu",
+              "kit": [
+                "DropdownMenu",
+                "DropdownMenuTrigger",
+                "DropdownMenuContent",
+                "DropdownMenuItem"
+              ],
+              "note": "Its two items carry no handler."
+            },
+            {
+              "part": "suggested reply chips",
+              "kit": [
+                "Button"
+              ],
+              "note": "Rendered only when the conversation's suggestedReplies is non-empty; a click drafts the text into the composer."
+            },
+            {
+              "part": "transcript viewport",
+              "kit": [
+                "MessageScrollerProvider",
+                "MessageScroller",
+                "MessageScrollerViewport",
+                "MessageScrollerContent",
+                "MessageScrollerItem",
+                "MessageScrollerButton"
+              ]
+            },
+            {
+              "part": "message row",
+              "kit": [
+                "Message",
+                "MessageAvatar",
+                "MessageContent",
+                "MessageHeader",
+                "MessageFooter"
+              ]
+            },
+            {
+              "part": "message surface",
+              "kit": [
+                "Bubble",
+                "BubbleContent"
+              ]
+            },
+            {
+              "part": "inline attachment",
+              "kit": [
+                "Attachment",
+                "AttachmentMedia",
+                "AttachmentContent",
+                "AttachmentTitle",
+                "AttachmentDescription"
+              ]
+            }
           ]
         },
         {
           "pane": "composer",
           "module": "src/screens/inbox/Composer.tsx",
           "parts": [
-            { "part": "reply and note tabs", "kit": ["Tabs", "TabsList", "TabsTrigger", "TabsContent"] },
-            { "part": "draft field", "kit": ["Textarea"] },
-            { "part": "toolbar buttons", "kit": ["Button", "lucide-react: PaperclipIcon, SmileIcon, ZapIcon"], "note": "Attach, emoji and saved replies, left of the send hint. None carries a handler." },
-            { "part": "submit", "kit": ["Button"] }
+            {
+              "part": "reply and note tabs",
+              "kit": [
+                "Tabs",
+                "TabsList",
+                "TabsTrigger",
+                "TabsContent"
+              ]
+            },
+            {
+              "part": "draft field",
+              "kit": [
+                "Textarea"
+              ]
+            },
+            {
+              "part": "toolbar buttons",
+              "kit": [
+                "Button",
+                "lucide-react: PaperclipIcon, SmileIcon, ZapIcon"
+              ],
+              "note": "Attach, emoji and saved replies, left of the send hint. None carries a handler."
+            },
+            {
+              "part": "submit",
+              "kit": [
+                "Button"
+              ]
+            }
           ]
         },
         {
           "pane": "customer details",
           "module": "src/screens/inbox/CustomerDetailsPanel.tsx",
           "parts": [
-            { "part": "details and copilot tabs", "kit": ["Tabs", "TabsList", "TabsTrigger", "TabsContent"] },
-            { "part": "routing comboboxes", "kit": ["Select", "SelectTrigger", "SelectValue", "SelectContent", "SelectItem"] },
-            { "part": "collapsible sections", "kit": ["Collapsible", "CollapsibleTrigger", "CollapsibleContent"], "module": "src/screens/inbox/DetailsSection.tsx" },
-            { "part": "tag chips", "kit": ["Badge", "Button", "Input"], "module": "src/screens/inbox/TagEditor.tsx" },
-            { "part": "shared files", "kit": ["ItemGroup", "Item", "ItemContent", "ItemTitle", "ItemDescription"] }
+            {
+              "part": "details and copilot tabs",
+              "kit": [
+                "Tabs",
+                "TabsList",
+                "TabsTrigger",
+                "TabsContent"
+              ]
+            },
+            {
+              "part": "routing comboboxes",
+              "kit": [
+                "Select",
+                "SelectTrigger",
+                "SelectValue",
+                "SelectContent",
+                "SelectItem"
+              ]
+            },
+            {
+              "part": "collapsible sections",
+              "kit": [
+                "Collapsible",
+                "CollapsibleTrigger",
+                "CollapsibleContent"
+              ],
+              "module": "src/screens/inbox/DetailsSection.tsx"
+            },
+            {
+              "part": "tag chips",
+              "kit": [
+                "Badge",
+                "Button",
+                "Input"
+              ],
+              "module": "src/screens/inbox/TagEditor.tsx"
+            },
+            {
+              "part": "shared files",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemContent",
+                "ItemTitle",
+                "ItemDescription"
+              ]
+            }
           ]
         },
         {
           "pane": "empty state",
           "module": "src/screens/inbox/InboxScreen.tsx",
           "parts": [
-            { "part": "select a conversation", "kit": ["Empty", "EmptyHeader", "EmptyMedia", "EmptyTitle", "EmptyDescription"] },
-            { "part": "loading placeholder", "kit": ["Skeleton"] }
+            {
+              "part": "select a conversation",
+              "kit": [
+                "Empty",
+                "EmptyHeader",
+                "EmptyMedia",
+                "EmptyTitle",
+                "EmptyDescription"
+              ]
+            },
+            {
+              "part": "loading placeholder",
+              "kit": [
+                "Skeleton"
+              ]
+            }
           ]
         }
-      ]
+      ],
+      "route": "#/inbox"
     },
     {
       "id": "contacts",
-      "entry": "./lifecycle-contacts",
-      "extension": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.inbox.screens.contacts.v1",
       "panes": [
         {
           "pane": "filter sidebar",
           "module": "src/screens/contacts/ContactFilterSidebar.tsx",
-          "note": "Belongs to the directory: the screen unmounts it while a contact's own page is open, so the record gets the whole pane.",
+          "note": "Belongs to the directory: the app renders it only on #/contacts, so a contact's own page gets the whole pane.",
           "parts": [
-            { "part": "filter rows", "kit": ["ItemGroup", "Item", "ItemContent", "ItemTitle", "ItemActions"] },
-            { "part": "filter count", "kit": ["Badge"] }
+            {
+              "part": "filter rows",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemContent",
+                "ItemTitle",
+                "ItemActions"
+              ]
+            },
+            {
+              "part": "filter count",
+              "kit": [
+                "Badge"
+              ]
+            }
           ]
         },
         {
           "pane": "directory table",
           "module": "src/screens/contacts/ContactsTable.tsx",
           "parts": [
-            { "part": "table", "kit": ["DataTable", "dataTableColumnHelper", "dataTableSelectionColumn", "DataTableSortButton"] },
-            { "part": "type badge", "kit": ["Badge"] },
-            { "part": "row action", "kit": ["Button"] },
-            { "part": "search field", "kit": ["Input"] }
+            {
+              "part": "table",
+              "kit": [
+                "DataTable",
+                "dataTableColumnHelper",
+                "dataTableSelectionColumn",
+                "DataTableSortButton"
+              ]
+            },
+            {
+              "part": "type badge",
+              "kit": [
+                "Badge"
+              ]
+            },
+            {
+              "part": "row action",
+              "kit": [
+                "Button"
+              ]
+            },
+            {
+              "part": "search field",
+              "kit": [
+                "Input"
+              ]
+            }
           ]
         },
         {
           "pane": "contact detail",
           "module": "src/screens/contacts/ContactDetail.tsx",
           "parts": [
-            { "part": "section panels", "kit": ["Card", "CardHeader", "CardTitle", "CardContent"] },
-            { "part": "tickets and conversations", "kit": ["ItemGroup", "Item", "ItemContent", "ItemTitle", "ItemDescription"] },
-            { "part": "tags", "kit": ["Badge"] },
-            { "part": "private note", "kit": ["Textarea"] },
-            { "part": "back and header actions", "kit": ["Button"] }
+            {
+              "part": "section panels",
+              "kit": [
+                "Card",
+                "CardHeader",
+                "CardTitle",
+                "CardContent"
+              ]
+            },
+            {
+              "part": "tickets and conversations",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemContent",
+                "ItemTitle",
+                "ItemDescription"
+              ]
+            },
+            {
+              "part": "tags",
+              "kit": [
+                "Badge"
+              ]
+            },
+            {
+              "part": "private note",
+              "kit": [
+                "Textarea"
+              ]
+            },
+            {
+              "part": "back and header actions",
+              "kit": [
+                "Button"
+              ]
+            }
           ]
         }
-      ]
+      ],
+      "route": "#/contacts and #/contacts/{id}"
     }
   ]
 }
