@@ -222,6 +222,22 @@
   white-space: nowrap;
 }
 
+/*
+ * The kit's ItemTitle sizes itself with `width: fit-content`, which never
+ * resolves below its own min-content - and min-content for a nowrap title is
+ * the whole string. Left in a column it therefore grows wider than its card
+ * and lies across whatever sits beside it, and because ItemTitle is itself a
+ * flex container `text-overflow: ellipsis` cannot draw either. A `.rowLine`
+ * wrapper puts it back under flex shrinking, and this rule puts its text back
+ * in an inline formatting context so the truncation the kit already asks for
+ * takes effect. Two classes, so the rule wins against the kit's own
+ * single-class one whichever order the two stylesheets land in.
+ */
+.rowLine .lineTitle {
+  display: block;
+  width: auto;
+}
+
 /* --- The detail pane: thread plus the customer panel --- */
 
 .detailPane {
@@ -563,16 +579,13 @@
 .ticketRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
-  min-width: 0;
+  /* Priority and status keep their intrinsic width, so the subject beside them
+   * is what gives way when the card is narrow: the label is two short words,
+   * the subject is arbitrarily long. */
+  flex: none;
 }
 
-.ticketLines {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
 
 .ticketMeta {
   font-size: var(--text-meta-size);

@@ -211,7 +211,9 @@ export function ContactDetail({ contact, onBack, t }: ContactDetailProps) {
                     {contact.tickets.map((ticket) => (
                       <Item key={ticket.id} size="sm">
                         <ItemContent>
-                          <ItemTitle>{ticket.subject}</ItemTitle>
+                          <div className={styles.rowLine}>
+                            <ItemTitle className={styles.lineTitle}>{ticket.subject}</ItemTitle>
+                          </div>
                           <ItemDescription>
                             {`${ticket.number} - ${absoluteDate(ticket.openedAt)}`}
                           </ItemDescription>
@@ -245,7 +247,7 @@ export function ContactDetail({ contact, onBack, t }: ContactDetailProps) {
                       <Item key={conversation.id} size="sm">
                         <ItemContent>
                           <div className={styles.rowLine}>
-                            <ItemTitle className={styles.rowText}>
+                            <ItemTitle className={styles.lineTitle}>
                               {conversation.subject}
                             </ItemTitle>
                             <span className={styles.rowTime}>
