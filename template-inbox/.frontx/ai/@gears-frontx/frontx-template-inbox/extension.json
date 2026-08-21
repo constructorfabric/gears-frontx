@@ -1,0 +1,36 @@
+{
+  "id": "frontx-template-inbox-ai-bundle",
+  "contractVersion": "1.0.0",
+  "entries": [
+    {
+      "id": "add-inbox-screen",
+      "category": "skills",
+      "path": "skills/add-inbox-screen"
+    },
+    {
+      "id": "add-inbox-screen-workflow",
+      "category": "workflows",
+      "path": "workflows/add-inbox-screen.md"
+    },
+    {
+      "id": "inbox-scope-inventory",
+      "category": "guidelines",
+      "path": "guidelines/inbox-scope-inventory.md"
+    },
+    {
+      "id": "inbox-chrome-contract",
+      "category": "guidelines",
+      "path": "guidelines/inbox-chrome-contract.md"
+    },
+    {
+      "id": "inbox-data-contract",
+      "category": "guidelines",
+      "path": "guidelines/inbox-data-contract.md"
+    },
+    {
+      "id": "inbox-screen-inventory",
+      "category": "reference_artifacts",
+      "path": "reference-artifacts/inbox-screen-inventory.json"
+    }
+  ]
+}

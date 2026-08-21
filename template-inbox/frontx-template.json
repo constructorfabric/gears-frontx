@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1.0",
+  "name": "@gears-frontx/frontx-template-inbox",
+  "version": "0.1.0-alpha.0",
+  "description": "Adds a working helpdesk inbox workspace to a repository that already has an application shell and the microfrontend ground: a conversation inbox with folders and unread counts, a searchable and sortable conversation list, a message thread with a reply-and-note composer and a customer-details panel, plus a contacts directory with filters, a sortable paginated table and a contact detail view. Every screen is composed from @gears-frontx/ui-kit components and semantic tokens, and every conversation, message, contact and user identity is served by the microfrontend's own mock API service rather than by fixture files. Apply this when the product is a support inbox, a helpdesk, a shared team mailbox, a customer-conversation console or a contacts directory; adding further screens inside the workspace it contributes is carried by the skill this template activates in the project, not by applying it again.",
+  "ownershipBoundaries": {
+    "exclusiveSubtrees": [
+      "src-app/mfe_packages/inbox-mfe/",
+      ".frontx/ai/@gears-frontx/frontx-template-inbox/"
+    ],
+    "sharedFiles": []
+  }
+}
