@@ -112,6 +112,97 @@ export const funnelStagePercent = (stage: FunnelStage, stages: FunnelStage[]): n
   return total === 0 ? 0 : Math.round((stage.count / total) * 100);
 };
 
+export type FunnelSegmentGeometry = {
+  id: string;
+  text: string;
+  points: string;
+  labelX: number;
+  labelY: number;
+  fontSize: number;
+  textLength: number | undefined;
+};
+
+export type FunnelGeometryOptions = {
+  width: number;
+  height: number;
+  gap: number;
+};
+
+const FUNNEL_LABEL_FONT_SIZE = 12;
+const FUNNEL_LABEL_MIN_FONT_SIZE = 8;
+/** Rough average glyph width for this kit's sans font at 600 weight, as a
+ * fraction of font size - just precise enough to decide whether a label
+ * needs shrinking before it ever paints, no DOM measurement required. */
+const FUNNEL_LABEL_CHAR_WIDTH_RATIO = 0.58;
+const FUNNEL_LABEL_PADDING = 10;
+
+/**
+ * Every "Stage funnel" segment's own trapezoid geometry: equal-height bands
+ * whose top/bottom edge widths are each stage's own share of the first
+ * (widest) stage's count - a true funnel silhouette, never recharts' own
+ * `Funnel` default of a pyramid converging to a point regardless of the
+ * last stage's real share. The last segment is a flat-bottomed plate (its
+ * bottom edge equals its own top edge, i.e. its own share), matching the
+ * owner-approved reference where "Customer · 38%" reads as a near-rectangle
+ * rather than a triangle tip.
+ *
+ * Each segment's label also gets its own fit here: a shrunk `fontSize` (down
+ * to `FUNNEL_LABEL_MIN_FONT_SIZE`) when the label's estimated natural width
+ * would overflow the narrower of its top/bottom edges, plus a belt-and-
+ * suspenders `textLength` clamp for when even the minimum size would still
+ * overflow - so a label never wraps or spills past its own segment.
+ */
+export const funnelSegmentGeometry = (
+  stages: FunnelStage[],
+  { width, height, gap }: FunnelGeometryOptions
+): FunnelSegmentGeometry[] => {
+  const total = funnelTotal(stages);
+  const count = stages.length;
+  if (count === 0 || total === 0) return [];
+
+  const fraction = (index: number): number => stages[index].count / total;
+  const segmentHeight = (height - gap * (count - 1)) / count;
+  const centerX = width / 2;
+
+  return stages.map((stage, index) => {
+    const topFraction = fraction(index);
+    const bottomFraction = index === count - 1 ? topFraction : fraction(index + 1);
+    const topWidth = topFraction * width;
+    const bottomWidth = bottomFraction * width;
+    const topY = index * (segmentHeight + gap);
+    const bottomY = topY + segmentHeight;
+
+    const points = [
+      [centerX - topWidth / 2, topY],
+      [centerX + topWidth / 2, topY],
+      [centerX + bottomWidth / 2, bottomY],
+      [centerX - bottomWidth / 2, bottomY],
+    ]
+      .map(([x, y]) => `${x},${y}`)
+      .join(' ');
+
+    const text = `${stage.label} · ${funnelStagePercent(stage, stages)}%`;
+    const availableWidth = Math.max(24, Math.min(topWidth, bottomWidth) - FUNNEL_LABEL_PADDING * 2);
+    const naturalWidth = text.length * FUNNEL_LABEL_FONT_SIZE * FUNNEL_LABEL_CHAR_WIDTH_RATIO;
+    const fontSize =
+      naturalWidth <= availableWidth
+        ? FUNNEL_LABEL_FONT_SIZE
+        : Math.max(FUNNEL_LABEL_MIN_FONT_SIZE, (availableWidth / naturalWidth) * FUNNEL_LABEL_FONT_SIZE);
+    const fittedWidth = text.length * fontSize * FUNNEL_LABEL_CHAR_WIDTH_RATIO;
+    const textLength = fittedWidth > availableWidth ? availableWidth : undefined;
+
+    return {
+      id: stage.id,
+      text,
+      points,
+      labelX: centerX,
+      labelY: (topY + bottomY) / 2,
+      fontSize,
+      textLength,
+    };
+  });
+};
+
 /** "Conversion by source"'s own headline: every source's won leads over
  * every source's won-plus-lost leads, as a rounded whole percent - computed
  * across the whole collection, never a separately stored field. */

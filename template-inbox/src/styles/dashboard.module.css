@@ -473,6 +473,17 @@
   margin-top: var(--space-2);
 }
 
+/*
+ * The stage-funnel segments' own "Stage · NN%" label - `--primary-foreground`
+ * is this kit's one token meant to sit on a solid, saturated fill (see
+ * `StageFunnelCard`'s own doc), so it reads on every one of the five
+ * palette-hue segment fills.
+ */
+.funnelSegmentLabel {
+  fill: var(--primary-foreground);
+  user-select: none;
+}
+
 .conversionCard .conversionChart {
   box-sizing: border-box;
   width: 100%;
