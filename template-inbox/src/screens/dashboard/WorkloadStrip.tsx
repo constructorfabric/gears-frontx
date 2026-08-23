@@ -27,7 +27,7 @@ const ICON_BY_METRIC_ID: Record<string, ComponentType> = {
  */
 export function WorkloadStrip({ workload, t }: WorkloadStripProps) {
   return (
-    <Card>
+    <Card className={styles.workloadCard}>
       <CardHeader>
         <CardTitle>{t('team_workload')}</CardTitle>
       </CardHeader>

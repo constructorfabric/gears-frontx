@@ -337,6 +337,20 @@
 
 /* --- Team workload: its own full-width row below row 3 --- */
 
+/*
+ * Unlike every other card on this screen, this one sits directly as a flex
+ * item of `.dashboardBody` (a scrolling flex column) rather than inside a
+ * grid row wrapper. The kit's `Card` root carries `overflow: hidden`, which
+ * per the flexbox spec zeroes a flex item's automatic minimum size instead
+ * of resolving it to the item's content size - so without `flex: none`
+ * here, the flex-shrink algorithm was free to compress this card down to a
+ * sliver instead of letting `.dashboardBody`'s own `overflow-y: auto`
+ * handle the overflow by scrolling, the way it does for every sibling row.
+ */
+.workloadCard {
+  flex: none;
+}
+
 .workloadStrip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
