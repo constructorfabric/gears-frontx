@@ -1,17 +1,27 @@
 # Guideline: The Inbox App's Data
 
-One service backs both screens: `src/api/`. A new screen reads from it. Do not
-add a second service, and do not put content anywhere else.
+`src/api/` holds the app's data, and nothing else does. One service per
+domain: `InboxApiService` backs the chat screen and the contacts directory,
+which share one dataset (a contact is a conversation's contact, a thread
+header and a table row at once); `MailApiService` backs the mail screen with
+its own, unrelated dataset. A new screen reads from whichever service already
+owns its domain - only add a new sibling service when the domain genuinely
+does not overlap with either, the way mail did not overlap with chat and
+contacts. Do not put content anywhere else.
 
 ```
 src/api/
   InboxApiService.ts   BaseApiService + RestProtocol + RestEndpointProtocol + RestMockPlugin
-  RestMockPlugin.ts    the app's own mock plugin, built on @gears-frontx/api primitives
-  queries.ts           useApiQuery / useApiMutation over the endpoint descriptors
-  registry.ts          registerApiServices() at boot, getInboxApi() everywhere else
-  types.ts             the response contracts
-  mocks.ts             the mock map, keys prefixed with the /api/inbox baseURL
-  dataset.ts           the seeded content, imported by mocks.ts alone
+  MailApiService.ts    the mail domain's sibling service, same primitives, its own baseURL
+  RestMockPlugin.ts    the app's own mock plugin, built on @gears-frontx/api primitives - shared by every service
+  queries.ts           useApiQuery / useApiMutation over the endpoint descriptors - shared by every service
+  registry.ts          registerApiServices() at boot, getInboxApi() and getMailApi() everywhere else
+  types.ts             the inbox/contacts response contracts
+  mailTypes.ts         the mail response contracts
+  mocks.ts             the inbox/contacts mock map, keys prefixed with the /api/inbox baseURL
+  mailMocks.ts         the mail mock map, keys prefixed with the /api/mail baseURL
+  dataset.ts           the inbox/contacts seeded content, imported by mocks.ts alone
+  mailDataset.ts       the mail seeded content, imported by mailMocks.ts alone
 ```
 
 ## Reading from a component
@@ -19,6 +29,13 @@ src/api/
 ```ts
 const service = getInboxApi();
 const contactsQuery = useApiQuery(service.getContacts);
+```
+
+The mail screen reads the same way, off its own service:
+
+```ts
+const service = getMailApi();
+const mailsQuery = useApiQuery(service.getMails);
 ```
 
 `@gears-frontx/api` hands out endpoint *descriptors* - a stable key plus a
@@ -32,9 +49,11 @@ state library is a change to that one file; the screens only ever see
 
 `RestMockPlugin` is `src/api/RestMockPlugin.ts`, not an import from
 `@gears-frontx/api`: the ecosystem package publishes the plugin primitives and
-leaves the mock to whoever owns the project's data. Pointing the app at a real
-backend is deleting the `registerPlugin` call in `InboxApiService` - the
-endpoints, the types and every screen stay as they are.
+leaves the mock to whoever owns the project's data. It is shared, not
+per-service: both `InboxApiService` and `MailApiService` construct their own
+instance of it over their own mock map. Pointing either service at a real
+backend is deleting its own `registerPlugin` call - the endpoints, the types
+and every screen stay as they are.
 
 ## The endpoint surface
 
@@ -46,6 +65,21 @@ endpoints, the types and every screen stay as they are.
 | `GET /api/inbox/messages` | every message across every conversation |
 | `GET /api/inbox/contacts` | all 29 contacts with their full detail payload |
 | `POST /api/inbox/messages` | echoes a posted reply or note back with an id and a timestamp |
+
+`MailApiService` answers the mail screen the same read-only-collections way,
+off its own baseURL:
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/mail/mailboxes` | the five mailboxes (Inbox, Drafts, Sent, Archive, Trash - no Spam) with id and label |
+| `GET /api/mail/mails` | every mail across every mailbox |
+| `GET /api/mail/messages` | every earlier message behind a mail's "N earlier messages" toggle |
+
+Sending a reply in the mail screen has no endpoint: it clears the composer's
+draft rather than posting anywhere, by design (see `inbox-scope-inventory`).
+Adding a real send is adding a `POST /api/mail/...` mutation to
+`MailApiService` and its mock map, the same way `postMessage` was added to
+`InboxApiService`.
 
 ## Every read returns a whole collection, on purpose
 
@@ -87,3 +121,9 @@ add a collection endpoint and select from it; do not add a parameterised one.
   screen state, because a real backend would own those. Keep that split: adding
   a write endpoint means adding it to the service and its mock map, not
   pretending in a component.
+- **A mail's history is a separate collection, like a conversation's
+  messages.** `Mail.body` is the newest message only, and `mailDataset.ts`'s
+  `mailMessages` holds only the earlier ones, oldest first, keyed by `mailId`.
+  Most mails have none, which is what keeps the reading pane's history toggle
+  off their pane entirely - the same "empty is meaningful" rule
+  `suggestedReplies` follows above.

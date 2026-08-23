@@ -61,6 +61,20 @@ export const initialsOf = (name: string): string => {
   return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
 };
 
+/** The kit's identity-fill tones, shared by every avatar this app renders
+ * (`PresenceAvatar`, `IdentityAvatar`). Picked from a hash of the name so the
+ * same person keeps the same circle everywhere they appear - a list row, a
+ * thread header, a details panel - without tracking any state of its own. */
+const IDENTITY_TONES = ['accent', 'info', 'success', 'warning', 'danger', 'neutral'] as const;
+
+export const identityToneOf = (name: string): (typeof IDENTITY_TONES)[number] => {
+  let hash = 0;
+  for (let index = 0; index < name.length; index += 1) {
+    hash = (hash * 31 + name.charCodeAt(index)) % 100_000;
+  }
+  return IDENTITY_TONES[hash % IDENTITY_TONES.length];
+};
+
 /** The contacts table's own column, read off the address rather than stored. */
 export const emailDomain = (email: string): string => {
   const at = email.lastIndexOf('@');

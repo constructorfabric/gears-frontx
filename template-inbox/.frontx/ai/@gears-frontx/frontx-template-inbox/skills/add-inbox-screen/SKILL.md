@@ -17,9 +17,11 @@ several plausible-sounding screens are deliberately not part of this product.
 
 ## What the app already gives you
 
-- **A service and a dataset**: one `InboxApiService` with six reads and one
-  write, and every conversation, message and contact behind it, read through
-  `useApiQuery`. See the `inbox-data-contract` guideline.
+- **A service and a dataset per domain**: `InboxApiService` (six reads, one
+  write) behind the chat and contacts screens, and `MailApiService` (three
+  reads) behind the mail screen, each read through `useApiQuery`. A screen
+  whose domain does not overlap with either gets its own sibling service the
+  same way mail did. See the `inbox-data-contract` guideline.
 - **Chrome**: the icon rail, hash routing, the theme, the copy catalogue, the
   presence avatar and the relative-time formatters, in `src/app/` and
   `src/shared/`. See the `inbox-chrome-contract` guideline.
@@ -84,7 +86,7 @@ several plausible-sounding screens are deliberately not part of this product.
 
 - No global store. Screen state is local React state; server state comes through
   `useApiQuery` against the app's own service.
-- No second API service, and no fixture files.
+- No new service for a screen whose domain already overlaps with `InboxApiService` or `MailApiService` - read from the one that already owns it. No fixture files, ever, for any service.
 - No router dependency. Three routes and a parser are the whole mechanism; if a
   screen genuinely needs nested layouts or loaders, say so and let the project
   decide to adopt a router, rather than adding one inside a screen.

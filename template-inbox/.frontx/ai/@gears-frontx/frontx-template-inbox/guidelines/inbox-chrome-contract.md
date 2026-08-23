@@ -17,11 +17,12 @@ from; the folder and filter columns beside it are the ones that collapse.
 
 ## Routing is the URL fragment
 
-`src/app/routing.ts` owns three routes and the parser for them:
+`src/app/routing.ts` owns four routes and the parser for them:
 
 | Route | Screen |
 |---|---|
 | `#/chat` | the chat screen (the default for any unrecognised address, including a stale `#/inbox` link) |
+| `#/mail` | the mail screen |
 | `#/contacts` | the contacts directory |
 | `#/contacts/{id}` | one contact's page |
 

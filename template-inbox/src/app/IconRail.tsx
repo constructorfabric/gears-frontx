@@ -1,6 +1,7 @@
 import {
   HeadsetIcon,
   LogOutIcon,
+  MailIcon,
   MessageCircleIcon,
   MoonIcon,
   SettingsIcon,
@@ -24,14 +25,17 @@ import type { AgentIdentity } from '../api/types';
 import { labelOf } from '../shared/format';
 import { PresenceAvatar } from '../shared/PresenceAvatar';
 import type { Translate } from './i18n';
-import { CONTACTS_ROUTE, INBOX_ROUTE, navigate, type Route } from './routing';
+import { CONTACTS_ROUTE, INBOX_ROUTE, MAIL_ROUTE, navigate, type Route } from './routing';
 import type { Theme } from './theme';
 import styles from '../styles/workspace.module.css';
 
 /** Which rail destination a route belongs to - a contact's own page keeps
  * Contacts lit, exactly as the reference does. */
-const sectionOf = (route: Route): 'inbox' | 'contacts' =>
-  route.name === 'inbox' ? 'inbox' : 'contacts';
+const sectionOf = (route: Route): 'inbox' | 'mail' | 'contacts' => {
+  if (route.name === 'inbox') return 'inbox';
+  if (route.name === 'mail') return 'mail';
+  return 'contacts';
+};
 
 export type IconRailProps = {
   route: Route;
@@ -68,6 +72,14 @@ export function IconRail({ route, agent, theme, onToggleTheme, t }: IconRailProp
           aria-label={t('chat')}
           aria-current={section === 'inbox' ? 'page' : undefined}
           onClick={() => navigate(INBOX_ROUTE)}
+        />
+        <Button
+          variant={section === 'mail' ? 'secondary' : 'ghost'}
+          size="sm"
+          icon={<MailIcon />}
+          aria-label={t('mail')}
+          aria-current={section === 'mail' ? 'page' : undefined}
+          onClick={() => navigate(MAIL_ROUTE)}
         />
         <Button
           variant={section === 'contacts' ? 'secondary' : 'ghost'}

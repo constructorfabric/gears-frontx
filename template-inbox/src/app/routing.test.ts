@@ -17,6 +17,10 @@ describe('parseRoute', () => {
     expect(parseRoute('#/contacts/r-26')).toEqual({ name: 'contact', contactId: 'r-26' });
   });
 
+  it('opens the mail section on its own route', () => {
+    expect(parseRoute('#/mail')).toEqual({ name: 'mail' });
+  });
+
   it('round-trips an id through the encoding the link is written with', () => {
     // Ids are opaque to this app - whatever the backend calls a contact has to
     // survive the trip into a URL and back out of it.

@@ -2,6 +2,7 @@ import { getInboxApi } from '../api/registry';
 import { useApiQuery } from '../api/queries';
 import { ContactsScreen } from '../screens/contacts/ContactsScreen';
 import { InboxScreen } from '../screens/inbox/InboxScreen';
+import { MailScreen } from '../screens/mail/MailScreen';
 import { IconRail } from './IconRail';
 import { t } from './i18n';
 import { useRoute } from './routing';
@@ -33,6 +34,8 @@ export function App() {
       />
       {route.name === 'inbox' ? (
         <InboxScreen t={t} />
+      ) : route.name === 'mail' ? (
+        <MailScreen t={t} />
       ) : (
         <ContactsScreen
           openContactId={route.name === 'contact' ? route.contactId : null}

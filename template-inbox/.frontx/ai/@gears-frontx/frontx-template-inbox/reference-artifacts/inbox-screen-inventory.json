@@ -1,7 +1,7 @@
 {
   "id": "inbox-screen-inventory",
-  "version": "2.0.0",
-  "description": "Each pane of the two shipped screens, and the @gears-frontx/ui-kit component that renders each of its parts. A screen added to this app composes from the same vocabulary; anything not listed here is either a plain element carrying a class from the app's own stylesheet, or a component that has not been needed yet.",
+  "version": "2.1.0",
+  "description": "Each pane of the three shipped screens, and the @gears-frontx/ui-kit component that renders each of its parts. A screen added to this app composes from the same vocabulary; anything not listed here is either a plain element carrying a class from the app's own stylesheet, or a component that has not been needed yet.",
   "app": {
     "entry": "src/main.tsx",
     "root": "src/app/App.tsx",
@@ -22,7 +22,7 @@
         "ItemMedia",
         "ItemContent",
         "ItemTitle",
-        "lucide-react: HeadsetIcon, MessageCircleIcon, UsersIcon, SunIcon, MoonIcon, UserIcon, SettingsIcon, LogOutIcon"
+        "lucide-react: HeadsetIcon, MessageCircleIcon, MailIcon, UsersIcon, SunIcon, MoonIcon, UserIcon, SettingsIcon, LogOutIcon"
       ],
       "note": "Fixed 64px, never collapsed. Mark at the top, one Button per section with variant=\"secondary\" when active, flexible spacer, then the theme toggle and the profile-menu Popover. Popups need no container - they portal to the app's own body."
     },
@@ -30,7 +30,7 @@
       "part": "routing",
       "module": "src/app/routing.ts",
       "kit": [],
-      "note": "Hash routes: #/chat, #/contacts, #/contacts/{id}. parseRoute defaults anything unrecognised - including a stale #/inbox link - to chat."
+      "note": "Hash routes: #/chat, #/mail, #/contacts, #/contacts/{id}. parseRoute defaults anything unrecognised - including a stale #/inbox link - to chat."
     },
     {
       "part": "theme",
@@ -49,6 +49,15 @@
         "AvatarBadge"
       ],
       "note": "Fallback tone is a hash of the name, so one person keeps one circle everywhere. The badge carries presence; the tone never does."
+    },
+    {
+      "part": "identity avatar",
+      "module": "src/shared/IdentityAvatar.tsx",
+      "kit": [
+        "Avatar",
+        "AvatarFallback"
+      ],
+      "note": "PresenceAvatar without the presence badge, reusing the same tone hash and initials from src/shared/format.ts, for an identity that carries no live state of its own - a mail correspondent, not a chat contact."
     }
   ],
   "screens": [
@@ -309,6 +318,169 @@
         }
       ],
       "route": "#/chat"
+    },
+    {
+      "id": "mail",
+      "panes": [
+        {
+          "pane": "mailbox sidebar",
+          "module": "src/screens/mail/MailboxSidebar.tsx",
+          "parts": [
+            {
+              "part": "compose button",
+              "kit": [
+                "Button",
+                "lucide-react: PenSquareIcon"
+              ],
+              "note": "Full width, primary style. Inert - no handler, the same as the chat thread's create-ticket button."
+            },
+            {
+              "part": "mailbox rows",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemMedia",
+                "ItemContent",
+                "ItemTitle",
+                "ItemActions"
+              ]
+            },
+            {
+              "part": "mailbox count",
+              "kit": [
+                "Badge"
+              ]
+            },
+            {
+              "part": "mailbox icons",
+              "kit": [
+                "lucide-react: InboxIcon, FileTextIcon, SendIcon, ArchiveIcon, Trash2Icon"
+              ]
+            }
+          ]
+        },
+        {
+          "pane": "mail list",
+          "module": "src/screens/mail/MailList.tsx",
+          "parts": [
+            {
+              "part": "search field",
+              "kit": [
+                "Input"
+              ]
+            },
+            {
+              "part": "all-mail / unread tabs",
+              "kit": [
+                "Tabs",
+                "TabsList",
+                "TabsTrigger",
+                "TabsContent"
+              ],
+              "note": "variant=\"line\", the kit's own underline style. Unread's count is the tab panel's own row count, not a stored field."
+            },
+            {
+              "part": "mail rows",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemMedia",
+                "ItemContent",
+                "ItemTitle",
+                "ItemDescription"
+              ],
+              "note": "Reuses the conversation row shape from src/screens/inbox/ConversationList.tsx. Read/unread is a class toggle on the row's own text (weight and opacity), never a dot."
+            },
+            {
+              "part": "starred indicator",
+              "kit": [
+                "lucide-react: StarIcon"
+              ],
+              "note": "Filled star between the sender and the time, independent of read state."
+            }
+          ]
+        },
+        {
+          "pane": "reading pane",
+          "module": "src/screens/mail/MailReadingPane.tsx",
+          "parts": [
+            {
+              "part": "toolbar actions",
+              "kit": [
+                "Button",
+                "lucide-react: ArchiveIcon, Trash2Icon, StarIcon, ReplyIcon"
+              ],
+              "note": "Two clusters of icon-only ghost buttons. All inert - no handler, the same dead-controls convention as the chat thread header."
+            },
+            {
+              "part": "earlier-messages toggle",
+              "kit": [
+                "Button"
+              ],
+              "note": "Renders only when the mail has history in mailDataset.ts's mailMessages; most mails have none."
+            },
+            {
+              "part": "history cards",
+              "kit": [
+                "IdentityAvatar"
+              ],
+              "note": "Plain elements styled by src/styles/mail.module.css, not a kit Card - muted bordered blocks behind the toggle. The newest message renders flat, full width, never card-wrapped."
+            },
+            {
+              "part": "transcript viewport",
+              "kit": [
+                "MessageScrollerProvider",
+                "MessageScroller",
+                "MessageScrollerViewport",
+                "MessageScrollerContent"
+              ],
+              "note": "Same scroll container the chat thread uses; no MessageScrollerItem, no Bubble/BubbleContent, no per-sender alignment - a mail renders flat, top to bottom, the largest divergence from the chat thread it reuses the chrome of."
+            }
+          ]
+        },
+        {
+          "pane": "reply composer",
+          "module": "src/screens/mail/MailComposer.tsx",
+          "parts": [
+            {
+              "part": "draft field",
+              "kit": [
+                "Textarea"
+              ]
+            },
+            {
+              "part": "submit",
+              "kit": [
+                "Button"
+              ],
+              "note": "Disabled until the draft is non-empty. Sending clears the draft rather than posting anywhere - no reply/note tabs and no attach/emoji/saved-reply row, unlike src/screens/inbox/Composer.tsx: a mail is a single kind of message."
+            }
+          ]
+        },
+        {
+          "pane": "empty state",
+          "module": "src/screens/mail/MailScreen.tsx",
+          "parts": [
+            {
+              "part": "select a mail",
+              "kit": [
+                "Empty",
+                "EmptyHeader",
+                "EmptyMedia",
+                "EmptyTitle",
+                "EmptyDescription"
+              ]
+            },
+            {
+              "part": "loading placeholder",
+              "kit": [
+                "Skeleton"
+              ]
+            }
+          ]
+        }
+      ],
+      "route": "#/mail"
     },
     {
       "id": "contacts",

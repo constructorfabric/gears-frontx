@@ -1,8 +1,8 @@
 # Guideline: What the Inbox App Is, and What It Is Not
 
-This template ships a working helpdesk application. Two screens are complete and
-nothing about them is a placeholder. The list below exists so that a screen
-added later stays inside the same product, and so that no one rebuilds
+This template ships a working helpdesk application. Three screens are complete
+and nothing about them is a placeholder. The list below exists so that a
+screen added later stays inside the same product, and so that no one rebuilds
 something that was deliberately left out.
 
 ## In scope, and already shipped
@@ -25,11 +25,24 @@ something that was deliberately left out.
 - **Contacts screen.** Five filters with their counts, a sortable table paged
   25 rows at a time, and the contact detail view with its qualification
   checklist, tickets, conversations and activity timeline.
-- **The chrome around both.** The icon rail: the product mark, a button per
-  section with its active state, and at the bottom the theme toggle and the
-  profile menu.
-- **The jump between them.** "View contact" in a thread opens that person's
-  page at `#/contacts/{id}` - a real address, not screen state.
+- **Mail screen.** A mailbox sidebar - Compose, then Inbox, Drafts, Sent,
+  Archive and Trash with their counts; a mail list with "All mail"/"Unread
+  (N)" tabs and live search over the sender and the subject; a reading pane
+  that renders a mail flat, with no chat bubbles - the newest message full
+  width, any earlier ones behind an "N earlier messages" toggle as muted
+  cards - and a reply composer with the same send-gating as the chat
+  composer's. Read/unread is typography only (weight and opacity), never a
+  dot, and a starred mail shows a small filled star on its row.
+- **The mail toolbar's inert chrome.** Archive, move-to-trash, star and reply
+  in the reading pane's toolbar, and the Compose button above the mailbox
+  list, are drawn and reachable but carry no handler - the same dead-controls
+  convention as the chat thread's create-ticket button and composer
+  attachments (see above). They are shipped, not missing.
+- **The chrome around all three.** The icon rail: the product mark, a button
+  per section with its active state, and at the bottom the theme toggle and
+  the profile menu.
+- **The jump between screens.** "View contact" in a thread opens that
+  person's page at `#/contacts/{id}` - a real address, not screen state.
 
 ## Not to build
 
@@ -46,6 +59,14 @@ unrelated request.
   routed to a team inbox from the details panel; adding, renaming or removing
   channels themselves is out of scope.
 - **The new-conversation flow.** The compose trigger and its modal.
+- **A Spam mailbox, and labels.** The mail screen ships five mailboxes, not
+  six - Spam is deliberately absent from this product. Labels (colour-dot
+  tags on a mail) are not shipped either; do not add either while carrying out
+  an unrelated request.
+- **Sending mail for real, and the new-mail flow.** The mail composer's Send
+  button clears the draft rather than posting anywhere, and the Compose
+  button in the mailbox sidebar is inert, exactly as the create-conversation
+  flow above is absent from chat.
 - **The command palette**, the messenger settings, the settings screen and the
   theme customiser - all four are rail controls in the reference and none is
   here. The app ships a plain two-state theme toggle and nothing else that

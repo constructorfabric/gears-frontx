@@ -1,0 +1,110 @@
+/*
+ * Mail-only styling. Everything the mail screen shares with chat/contacts -
+ * the sidebar, the pane header, the row shape, the thread scroller, the
+ * composer chrome - stays in `workspace.module.css` and is reused as-is; only
+ * what the reference reading pane needs that neither screen has (history
+ * cards, the flat focused message, the read/unread text states) lives here.
+ * Same discipline as the shared file: every value is a kit token.
+ */
+
+/* --- The tabs wrapper: it must grow to fill the list pane so the scrollable
+   row list beneath it (`.listBody`, reused from workspace.module.css) has a
+   real height to overflow within. --- */
+
+.tabsFill {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tabsPanel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* --- The Compose button above the mailbox nav --- */
+
+.composeButton {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: var(--space-3);
+}
+
+/* --- The mail list row: read/unread is typography only, no dot --- */
+
+.mailRowRead .correspondentText,
+.mailRowRead .subjectText {
+  font-weight: 400;
+  color: var(--foreground);
+  opacity: 0.78;
+}
+
+.correspondentText {
+  font-weight: 600;
+  opacity: 1;
+}
+
+.starIcon {
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--warning);
+  fill: var(--warning);
+}
+
+/* --- The reading pane header: avatar, subject, sender, reply-to --- */
+
+.replyToLine {
+  font-size: var(--text-meta-size);
+  color: var(--muted-foreground);
+}
+
+/* --- Thread history: the "N earlier messages" toggle and its cards --- */
+
+.historyToggle {
+  margin-bottom: var(--space-4);
+}
+
+.historyCard {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--muted) 40%, transparent);
+}
+
+.historyCardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.historyCardSender {
+  font-size: 0.875rem; /* 14px */
+  font-weight: 600;
+}
+
+.historyCardDate {
+  font-size: var(--text-meta-size);
+  color: var(--muted-foreground);
+}
+
+.historyCardBody {
+  font-size: 0.875rem; /* 14px */
+  font-weight: 400;
+  white-space: pre-wrap;
+}
+
+/* --- The focused message: flat, full width, never card-wrapped --- */
+
+.focusedMessage {
+  font-size: 0.875rem; /* 14px */
+  font-weight: 400;
+  white-space: pre-wrap;
+}
