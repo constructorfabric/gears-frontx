@@ -28,6 +28,11 @@
   align-items: center;
   border-radius: var(--radius-md);
   border: var(--border-width) solid transparent;
+  /* Same fix as toggle.module.css/tabs.module.css: Item can render as a
+   * native <button> (render={<button/>}), which paints an opaque UA
+   * buttonface background in dark theme unless overridden here. Idle
+   * rows must be transparent; .variantMuted sets its own fill below. */
+  background-color: transparent;
   font-size: var(--text-body-size);
   line-height: var(--text-body-line-height);
   font-weight: var(--text-body-weight);
