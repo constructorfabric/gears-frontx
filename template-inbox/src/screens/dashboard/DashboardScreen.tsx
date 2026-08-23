@@ -55,7 +55,7 @@ export function DashboardScreen({ t }: DashboardScreenProps) {
         <span className={layoutStyles.paneTitle}>{t('dashboard')}</span>
       </div>
       <div className={dashboardStyles.dashboardBody}>
-        <KpiRow kpis={data.kpis} />
+        <KpiRow kpis={data.kpis} contactsByStage={data.contactsByStage} t={t} />
 
         <div className={dashboardStyles.rowTwo}>
           <ResolvedPerDayCard data={data.resolvedPerDay} t={t} />

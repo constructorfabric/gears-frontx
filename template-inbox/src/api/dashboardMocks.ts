@@ -9,6 +9,7 @@
 import type { MockMap } from '@gears-frontx/api';
 import {
   activity,
+  contactsByStage,
   kpiCards,
   newContacts,
   recordsCreated,
@@ -26,6 +27,7 @@ export const dashboardMockMap: MockMap = {
     newContacts,
     summaryTrend,
     recordsCreated,
+    contactsByStage,
     workload,
     topAgents,
     activity,

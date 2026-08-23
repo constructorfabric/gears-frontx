@@ -21,7 +21,7 @@ export type DashboardKpiUnit = 'count' | 'minutes' | 'percent';
  * every point (a period total, e.g. "resolved this week"). */
 export type DashboardKpiValueMode = 'last' | 'sum';
 
-export type DashboardChartType = 'area' | 'bar' | 'line' | 'radial';
+export type DashboardChartType = 'area' | 'bar' | 'line';
 
 export type DashboardKpiCard = {
   id: string;
@@ -75,6 +75,16 @@ export type WorkloadMetric = {
   max: number;
 };
 
+/** One slice of row 1's "Contacts by stage" donut: a contact lifecycle
+ * stage and how many contacts currently sit in it. Each segment's share of
+ * the ring is computed from `count` at render (see
+ * `contactsByStagePercent`), never stored as its own field. */
+export type ContactStageSegment = {
+  id: string;
+  label: string;
+  count: number;
+};
+
 export type TopAgent = {
   id: string;
   name: string;
@@ -111,6 +121,8 @@ export type GetDashboardResponse = {
   summaryTrend: number[];
   /** Row 3's "Records created" line chart - 12 months, oldest first. */
   recordsCreated: RecordsCreatedPoint[];
+  /** Row 1's "Contacts by stage" donut - five contact lifecycle stages. */
+  contactsByStage: ContactStageSegment[];
   workload: WorkloadMetric[];
   topAgents: TopAgent[];
   activity: ActivityItem[];

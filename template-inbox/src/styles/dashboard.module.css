@@ -72,8 +72,8 @@
 /*
  * Sized to be a real, legible chart rather than a thin decorative strip -
  * each card's inline chart is the second-biggest element in it, after the
- * headline number, which is what lets the area/bar/line/radial variety
- * actually read from across the room.
+ * headline number, which is what lets the area/bar/line variety actually
+ * read from across the room.
  */
 .kpiChart {
   box-sizing: border-box;
@@ -81,32 +81,77 @@
   height: 7.5rem; /* 120px */
 }
 
-/* The radial gauge needs a roughly square box to read as a ring rather than
- * a flattened arc - squeezed into the same wide, short strip the bar/line
- * sparklines use, its circle distorts into an unreadable sliver. Centered
- * rather than left-aligned like the sparklines: a ring reads as an object,
- * not a trend line, and sits better in the middle of its card. */
-.kpiChartRadial {
-  box-sizing: border-box;
-  flex: none;
-  align-self: center;
-  width: 8.75rem; /* 140px */
-  height: 8.75rem;
-}
-
 /*
  * `ChartContainer`'s own root carries a fixed `aspect-ratio: 16 / 9` (see
  * the `chart` component's own CSS), which would otherwise force a sparkline
- * exactly this wide to grow far taller than the 44px row it sits in. Two
- * classes - the same load-order-independent override reasoning
- * `workspace.module.css` uses throughout - is what makes an explicit size
- * win regardless of which stylesheet the bundler places first.
+ * exactly this wide to grow far taller than the 44px row it sits in. This
+ * override - the same load-order-independent reasoning `workspace.module.css`
+ * uses throughout - is what makes an explicit size win regardless of which
+ * stylesheet the bundler places first.
  */
-.kpiChart .sparkline,
-.kpiChartRadial .radialGauge {
+.kpiChart .sparkline {
   width: 100%;
   height: 100%;
   aspect-ratio: auto;
+}
+
+/* --- Row 1's fourth card: "Contacts by stage" donut + legend --- */
+
+.stageCardContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.stageDonut {
+  box-sizing: border-box;
+  flex: none;
+  width: 8.75rem; /* 140px */
+  height: 8.75rem;
+  aspect-ratio: auto;
+}
+
+.stageLegend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stageLegendRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-meta-size);
+}
+
+.stageLegendDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+}
+
+.stageLegendLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stageLegendCount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.stageLegendPercent {
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .kpiCardFooter {

@@ -10,6 +10,7 @@
  */
 
 import type {
+  ContactStageSegment,
   DashboardKpiCard,
   NewContactsSeries,
   RecordsCreatedPoint,
@@ -95,3 +96,14 @@ export const workloadPercent = (metric: WorkloadMetric): number =>
  * its own stored field. */
 export const recordsCreatedTotal = (series: RecordsCreatedPoint[]): number =>
   sum(series.map((point) => point.companies + point.opportunities + point.people));
+
+/** A "Contacts by stage" segment's share of the whole donut, as a rounded
+ * whole percent - the donut's own legend shows this instead of a stored
+ * field, so five segments read consistently as roughly 100% together. */
+export const contactsByStagePercent = (
+  segment: ContactStageSegment,
+  segments: ContactStageSegment[]
+): number => {
+  const total = sum(segments.map((item) => item.count));
+  return total === 0 ? 0 : Math.round((segment.count / total) * 100);
+};

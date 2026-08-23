@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import { agent, channels, contacts, conversations, messages } from '../api/dataset';
 import {
   activity,
+  contactsByStage,
   kpiCards,
   newContacts,
   recordsCreated,
@@ -51,6 +52,7 @@ const RESPONSES: Record<string, unknown> = {
     newContacts,
     summaryTrend,
     recordsCreated,
+    contactsByStage,
     workload,
     topAgents,
     activity,

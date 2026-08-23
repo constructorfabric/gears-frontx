@@ -12,18 +12,26 @@ describe('DashboardApiService', () => {
   it('answers the whole dashboard snapshot from the seeded dataset instead of the network', async () => {
     registerApiServices();
 
-    const { kpis, resolvedPerDay, newContacts, recordsCreated, workload, topAgents, activity } =
-      await getDashboardApi().getDashboard.fetch();
+    const {
+      kpis,
+      resolvedPerDay,
+      newContacts,
+      recordsCreated,
+      contactsByStage,
+      workload,
+      topAgents,
+      activity,
+    } = await getDashboardApi().getDashboard.fetch();
 
     expect(kpis.map((kpi) => kpi.id)).toEqual([
       'open-conversations',
       'resolved-this-week',
       'avg-first-response',
-      'team-utilization',
     ]);
     expect(resolvedPerDay).toHaveLength(7);
     expect(newContacts.series).toHaveLength(7);
     expect(recordsCreated).toHaveLength(12);
+    expect(contactsByStage).toHaveLength(5);
     expect(workload).toHaveLength(4);
     expect(topAgents.length).toBeGreaterThan(0);
     expect(activity.length).toBeGreaterThan(10);

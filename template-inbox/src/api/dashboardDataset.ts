@@ -18,6 +18,7 @@ import type {
   ActivityItem,
   ActivityKind,
   ActivityStatus,
+  ContactStageSegment,
   DashboardKpiCard,
   NewContactsSeries,
   RecordsCreatedPoint,
@@ -95,19 +96,23 @@ export const kpiCards: DashboardKpiCard[] = [
     footerValue: 4,
     footerUnit: 'minutes',
   },
-  {
-    id: 'team-utilization',
-    label: 'Team utilization',
-    unit: 'percent',
-    chartType: 'radial',
-    valueMode: 'last',
-    series: [68, 71, 69, 74, 77, 73, 79],
-    previousValue: 82,
-    goodWhenPositive: true,
-    footerLabel: 'Agents online',
-    footerValue: 7,
-    footerUnit: 'count',
-  },
+];
+
+/**
+ * Row 1's fourth card, "Contacts by stage" - a five-segment donut replacing
+ * the old "Team utilization" radial gauge. Counts are seeded directly
+ * (`dataset.ts`'s `contacts` collection carries no lifecycle-stage field of
+ * its own, the same way `workload`/`topAgents` are their own seeded
+ * collections rather than derived from another one); every percentage the
+ * card shows is computed from these counts at render, never stored (see
+ * `contactsByStagePercent`).
+ */
+export const contactsByStage: ContactStageSegment[] = [
+  { id: 'prospect', label: 'Prospect', count: 15 },
+  { id: 'engaged', label: 'Engaged', count: 14 },
+  { id: 'customer', label: 'Customer', count: 20 },
+  { id: 'at-risk', label: 'At risk', count: 7 },
+  { id: 'churned', label: 'Churned', count: 4 },
 ];
 
 /** "Resolved per day", row 2's large bar chart. Shares its trend shape with

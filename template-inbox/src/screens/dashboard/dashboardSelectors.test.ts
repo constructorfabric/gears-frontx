@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DashboardKpiCard } from '../../api/dashboardTypes';
 import {
+  contactsByStagePercent,
   deltaTone,
   formatDeltaPercent,
   formatKpiValue,
@@ -112,6 +113,37 @@ describe('recordsCreatedTotal', () => {
 
   it('sums to zero for an empty series', () => {
     expect(recordsCreatedTotal([])).toBe(0);
+  });
+});
+
+describe('contactsByStagePercent', () => {
+  const segments = [
+    { id: 'prospect', label: 'Prospect', count: 15 },
+    { id: 'engaged', label: 'Engaged', count: 14 },
+    { id: 'customer', label: 'Customer', count: 20 },
+    { id: 'at-risk', label: 'At risk', count: 7 },
+    { id: 'churned', label: 'Churned', count: 4 },
+  ];
+
+  it('computes each segment share as a rounded whole percent', () => {
+    expect(contactsByStagePercent(segments[0], segments)).toBe(25);
+    expect(contactsByStagePercent(segments[1], segments)).toBe(23);
+    expect(contactsByStagePercent(segments[2], segments)).toBe(33);
+    expect(contactsByStagePercent(segments[3], segments)).toBe(12);
+    expect(contactsByStagePercent(segments[4], segments)).toBe(7);
+  });
+
+  it('sums to 100 within rounding across every segment', () => {
+    const total = segments.reduce(
+      (sum, segment) => sum + contactsByStagePercent(segment, segments),
+      0
+    );
+    expect(total).toBeGreaterThanOrEqual(99);
+    expect(total).toBeLessThanOrEqual(101);
+  });
+
+  it('never divides by zero', () => {
+    expect(contactsByStagePercent({ id: 'x', label: 'X', count: 0 }, [])).toBe(0);
   });
 });
 

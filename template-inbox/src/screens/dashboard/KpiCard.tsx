@@ -4,7 +4,6 @@ import {
   avgFirstResponseChartConfig,
   openConversationsChartConfig,
   resolvedThisWeekChartConfig,
-  teamUtilizationChartConfig,
 } from './dashboardChartConfig';
 import {
   deltaTone,
@@ -14,7 +13,6 @@ import {
   kpiDeltaPercent,
   kpiValue,
 } from './dashboardSelectors';
-import { RadialGauge } from './RadialGauge';
 import { AreaSparkline, BarSparkline, LineSparkline } from './Sparkline';
 import styles from '../../styles/dashboard.module.css';
 
@@ -22,7 +20,6 @@ const CHART_CONFIG_BY_ID: Record<string, ChartConfig> = {
   'open-conversations': openConversationsChartConfig,
   'resolved-this-week': resolvedThisWeekChartConfig,
   'avg-first-response': avgFirstResponseChartConfig,
-  'team-utilization': teamUtilizationChartConfig,
 };
 
 export type KpiCardProps = {
@@ -30,12 +27,14 @@ export type KpiCardProps = {
 };
 
 /**
- * Row 1's own card shape: a big number, a delta badge toned by whether the
- * move is good news for this particular metric, a label, a small inline
- * chart whose type varies card to card, and a footer stat. See the dashboard
- * spec's "varied and alive, not four identical widgets" note - the chart
- * type switch below is that variety, not an accident of four separate
- * components.
+ * Row 1's own card shape for its three generic KPIs: a big number, a delta
+ * badge toned by whether the move is good news for this particular metric,
+ * a label, a small inline chart whose type varies card to card, and a
+ * footer stat. See the dashboard spec's "varied and alive, not identical
+ * widgets" note - the chart type switch below is that variety. Row 1's
+ * fourth card, "Contacts by stage", is its own bespoke component
+ * (`ContactsByStageCard`) rather than a fourth branch here - a donut with a
+ * count+percent legend needs its own shape, not a `series`/`value` pair.
  */
 export function KpiCard({ kpi }: KpiCardProps) {
   const value = kpiValue(kpi);
@@ -53,7 +52,7 @@ export function KpiCard({ kpi }: KpiCardProps) {
           </div>
           <span className={styles.kpiLabel}>{kpi.label}</span>
         </div>
-        <div className={kpi.chartType === 'radial' ? styles.kpiChartRadial : styles.kpiChart}>
+        <div className={styles.kpiChart}>
           {kpi.chartType === 'area' && (
             <AreaSparkline data={kpi.series} config={config} className={styles.sparkline} />
           )}
@@ -62,9 +61,6 @@ export function KpiCard({ kpi }: KpiCardProps) {
           )}
           {kpi.chartType === 'line' && (
             <LineSparkline data={kpi.series} config={config} className={styles.sparkline} />
-          )}
-          {kpi.chartType === 'radial' && (
-            <RadialGauge value={value} config={config} className={styles.radialGauge} />
           )}
         </div>
       </CardContent>

@@ -22,7 +22,6 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('Open conversations')).toBeTruthy();
     expect(screen.getByText('Resolved this week')).toBeTruthy();
     expect(screen.getByText('Avg first response')).toBeTruthy();
-    expect(screen.getByText('Team utilization')).toBeTruthy();
 
     // Cross-checked against `kpiCards` in `dashboardDataset.ts`: the latest
     // point of the open-conversations series is 24, down from a
@@ -36,8 +35,20 @@ describe('DashboardScreen', () => {
     // "Avg first response" reads its latest point in minutes.
     expect(screen.getAllByText('9m').length).toBeGreaterThan(0);
 
-    // "Team utilization" reads its latest point as a percent.
-    expect(screen.getAllByText('79%').length).toBeGreaterThan(0);
+    screen.unmount();
+  });
+
+  it('renders the fourth row 1 card, "Contacts by stage", with counts and computed percents', () => {
+    const screen = renderScreen(<DashboardScreen t={t} />);
+
+    expect(screen.getByText('contacts_by_stage')).toBeTruthy();
+    expect(screen.getByText('Prospect')).toBeTruthy();
+    expect(screen.getByText('Churned')).toBeTruthy();
+    // `contactsByStage` in `dashboardDataset.ts`: Prospect is 15 of 60
+    // contacts total - a computed 25%, not a hardcoded one (see
+    // `dashboardSelectors.test.ts`).
+    expect(screen.getAllByText('15').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('25%').length).toBeGreaterThan(0);
 
     screen.unmount();
   });
