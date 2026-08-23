@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { agent, contacts, conversations, folders, messages } from '../api/dataset';
+import { agent, channels, contacts, conversations, messages } from '../api/dataset';
 
 /**
  * Stands in for the whole query layer of a screen.
@@ -11,7 +11,7 @@ import { agent, contacts, conversations, folders, messages } from '../api/datase
  */
 export const endpointTags = {
   getAgent: { tag: 'agent' },
-  getFolders: { tag: 'folders' },
+  getChannels: { tag: 'channels' },
   getConversations: { tag: 'conversations' },
   getMessages: { tag: 'messages' },
   getContacts: { tag: 'contacts' },
@@ -20,7 +20,7 @@ export const endpointTags = {
 
 const RESPONSES: Record<string, unknown> = {
   agent: { agent },
-  folders: { folders },
+  channels: { channels },
   conversations: { conversations },
   messages: { messages },
   contacts: { contacts },

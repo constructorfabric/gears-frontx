@@ -45,13 +45,13 @@ const COMPARATORS: Record<SortOrder, (left: Conversation, right: Conversation) =
 export function selectConversations(
   conversations: Conversation[],
   contactsById: Map<string, Contact>,
-  folderId: string,
+  channelId: string,
   search: string,
   sort: SortOrder
 ): Conversation[] {
   const needle = search.trim().toLowerCase();
   const matches = conversations.filter((conversation) => {
-    if (conversation.folderId !== folderId) return false;
+    if (conversation.channelId !== channelId) return false;
     if (needle === '') return true;
     const contactName = contactsById.get(conversation.contactId)?.name ?? '';
     return (

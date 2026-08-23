@@ -1,7 +1,7 @@
 /**
  * Where the app is, held in the URL fragment.
  *
- * Three routes: `#/inbox`, `#/contacts`, `#/contacts/{id}`. The fragment rather
+ * Three routes: `#/chat`, `#/contacts`, `#/contacts/{id}`. The fragment rather
  * than the path because a fragment needs no server rewrite - a seeded project
  * can serve the built `index.html` from any static host and every deep link
  * still resolves, including the one a "View contact" click writes.
@@ -20,13 +20,14 @@ export type Route =
   | { name: 'contacts' }
   | { name: 'contact'; contactId: string };
 
-export const INBOX_ROUTE = '#/inbox';
+export const INBOX_ROUTE = '#/chat';
 export const CONTACTS_ROUTE = '#/contacts';
 export const contactRoute = (contactId: string): string =>
   `#/contacts/${encodeURIComponent(contactId)}`;
 
-/** Anything unrecognised - including an empty fragment on first load - is the
- * inbox, which is the app's home. */
+/** Anything unrecognised - including an empty fragment on first load and a
+ * stale `#/inbox` link from before the section was renamed to Chat - falls
+ * back to the chat screen, which is the app's home. */
 export const parseRoute = (hash: string): Route => {
   const segments = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
 

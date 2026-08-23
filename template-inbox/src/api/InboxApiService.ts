@@ -13,9 +13,9 @@ import { inboxMockMap } from './mocks';
 import { RestMockPlugin } from './RestMockPlugin';
 import type {
   GetAgentResponse,
+  GetChannelsResponse,
   GetContactsResponse,
   GetConversationsResponse,
-  GetFoldersResponse,
   GetMessagesResponse,
   PostMessageRequest,
   PostMessageResponse,
@@ -58,7 +58,8 @@ export class InboxApiService extends BaseApiService {
 
   readonly getAgent = this.protocol(RestEndpointProtocol).query<GetAgentResponse>('/me');
 
-  readonly getFolders = this.protocol(RestEndpointProtocol).query<GetFoldersResponse>('/folders');
+  readonly getChannels =
+    this.protocol(RestEndpointProtocol).query<GetChannelsResponse>('/channels');
 
   readonly getConversations =
     this.protocol(RestEndpointProtocol).query<GetConversationsResponse>('/conversations');

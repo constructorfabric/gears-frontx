@@ -9,12 +9,12 @@
  */
 
 import type { JsonValue, MockMap } from '@gears-frontx/api';
-import { agent, contacts, conversations, folders, messages } from './dataset';
+import { agent, channels, contacts, conversations, messages } from './dataset';
 import type {
   GetAgentResponse,
+  GetChannelsResponse,
   GetContactsResponse,
   GetConversationsResponse,
-  GetFoldersResponse,
   GetMessagesResponse,
   Message,
   PostMessageResponse,
@@ -71,7 +71,7 @@ const acceptPostedMessage = (body: JsonValue | undefined): Message => {
 
 export const inboxMockMap: MockMap = {
   'GET /api/inbox/me': (): GetAgentResponse => ({ agent }),
-  'GET /api/inbox/folders': (): GetFoldersResponse => ({ folders }),
+  'GET /api/inbox/channels': (): GetChannelsResponse => ({ channels }),
   'GET /api/inbox/conversations': (): GetConversationsResponse => ({ conversations }),
   'GET /api/inbox/messages': (): GetMessagesResponse => ({ messages }),
   'GET /api/inbox/contacts': (): GetContactsResponse => ({ contacts }),

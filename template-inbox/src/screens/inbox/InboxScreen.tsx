@@ -10,7 +10,7 @@ import {
 } from '@gears-frontx/ui-kit';
 import { useApiMutation, useApiQuery } from '../../api/queries';
 import { getInboxApi } from '../../api/registry';
-import { FOLDER_SPAM, FOLDER_YOUR_INBOX } from '../../api/dataset';
+import { CHANNEL_GENERAL } from '../../api/dataset';
 import type {
   Contact,
   Conversation,
@@ -44,7 +44,7 @@ import styles from '../../styles/workspace.module.css';
 type ConversationPatch = Partial<
   Pick<
     Conversation,
-    'assignee' | 'folderId' | 'priority' | 'snoozed' | 'starred' | 'status' | 'tags' | 'teamInbox'
+    'assignee' | 'priority' | 'snoozed' | 'starred' | 'status' | 'tags' | 'teamInbox'
   >
 >;
 
@@ -56,16 +56,16 @@ export function InboxScreen({ t }: InboxScreenProps) {
   const service = getInboxApi();
 
   const agentQuery = useApiQuery(service.getAgent);
-  const foldersQuery = useApiQuery(service.getFolders);
+  const channelsQuery = useApiQuery(service.getChannels);
   const conversationsQuery = useApiQuery(service.getConversations);
   const messagesQuery = useApiQuery(service.getMessages);
   const contactsQuery = useApiQuery(service.getContacts);
 
-  const [folderId, setFolderId] = useState<string>(FOLDER_YOUR_INBOX);
+  const [channelId, setChannelId] = useState<string>(CHANNEL_GENERAL);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortOrder>('last-activity');
-  const [foldersCollapsed, setFoldersCollapsed] = useState(false);
+  const [channelsCollapsed, setChannelsCollapsed] = useState(false);
   const [detailsVisible, setDetailsVisible] = useState(true);
   const [patches, setPatches] = useState<Record<string, ConversationPatch>>({});
   const [sentMessages, setSentMessages] = useState<Message[]>([]);
@@ -97,8 +97,8 @@ export function InboxScreen({ t }: InboxScreenProps) {
   }, [contactsQuery.data]);
 
   const visibleConversations = useMemo(
-    () => selectConversations(conversations, contactsById, folderId, search, sort),
-    [conversations, contactsById, folderId, search, sort]
+    () => selectConversations(conversations, contactsById, channelId, search, sort),
+    [conversations, contactsById, channelId, search, sort]
   );
 
   // Selected from the whole collection rather than the visible slice: typing a
@@ -113,15 +113,15 @@ export function InboxScreen({ t }: InboxScreenProps) {
     );
   }, [messagesQuery.data, sentMessages, selected]);
 
-  const folders = useMemo(() => {
-    const rows = foldersQuery.data?.folders ?? [];
-    return rows.map((folder) => {
-      const inFolder = conversations.filter(
-        (conversation) => conversation.folderId === folder.id
+  const channels = useMemo(() => {
+    const rows = channelsQuery.data?.channels ?? [];
+    return rows.map((channel) => {
+      const inChannel = conversations.filter(
+        (conversation) => conversation.channelId === channel.id
       );
-      return { ...folder, itemCount: inFolder.length, openCount: countOpen(inFolder) };
+      return { ...channel, itemCount: inChannel.length, openCount: countOpen(inChannel) };
     });
-  }, [foldersQuery.data, conversations]);
+  }, [channelsQuery.data, conversations]);
 
   const patchConversation = (conversationId: string, patch: ConversationPatch) => {
     setPatches((previous) => ({
@@ -130,12 +130,12 @@ export function InboxScreen({ t }: InboxScreenProps) {
     }));
   };
 
-  const selectFolder = (nextFolderId: string) => {
-    setFolderId(nextFolderId);
+  const selectChannel = (nextChannelId: string) => {
+    setChannelId(nextChannelId);
     setSelectedId(null);
   };
 
-  if (foldersQuery.isLoading) {
+  if (channelsQuery.isLoading) {
     return (
       <div className={styles.emptyPane} role="status" aria-busy="true">
         <Skeleton style={{ height: '2rem', width: '16rem' }} />
@@ -143,8 +143,8 @@ export function InboxScreen({ t }: InboxScreenProps) {
     );
   }
 
-  const folderLabel = folders.find((folder) => folder.id === folderId)?.label ?? '';
-  const isSpam = selected?.folderId === FOLDER_SPAM;
+  const channelLabel = channels.find((channel) => channel.id === channelId)?.label ?? '';
+  const isSpam = selected?.tags.includes('spam') ?? false;
   const showThread = selected !== null;
 
   const sendCurrentDraft = () => {
@@ -157,26 +157,26 @@ export function InboxScreen({ t }: InboxScreenProps) {
   return (
     <>
       <FolderSidebar
-        folders={folders}
-        selectedFolderId={folderId}
-        onSelectFolder={selectFolder}
+        channels={channels}
+        selectedChannelId={channelId}
+        onSelectChannel={selectChannel}
         // Below the compact width the column has no room to open into, so the
         // toggle reflects the viewport rather than fighting it.
-        collapsed={foldersCollapsed || isCompact}
+        collapsed={channelsCollapsed || isCompact}
         t={t}
       />
 
       <ConversationList
         conversations={visibleConversations}
         contactsById={contactsById}
-        folderLabel={folderLabel}
+        channelLabel={channelLabel}
         selectedConversationId={selectedId}
         onSelectConversation={setSelectedId}
         search={search}
         onSearchChange={setSearch}
         sort={sort}
         onSortChange={setSort}
-        onToggleFolders={() => setFoldersCollapsed((collapsed) => !collapsed)}
+        onToggleChannels={() => setChannelsCollapsed((collapsed) => !collapsed)}
         hidden={isSinglePane && showThread}
         t={t}
       />
@@ -249,14 +249,15 @@ export function InboxScreen({ t }: InboxScreenProps) {
                   patchConversation(selected.id, { status, snoozed: status === 'snoozed' })
                 }
                 onToggleSpam={() => {
+                  // Spam is a tag, not a channel: the conversation stays put in
+                  // whichever channel it is already in, so marking or
+                  // unmarking it never moves the selection out from under the
+                  // agent.
                   patchConversation(selected.id, {
-                    folderId: isSpam ? FOLDER_YOUR_INBOX : FOLDER_SPAM,
                     tags: isSpam
                       ? selected.tags.filter((tag) => tag !== 'spam')
                       : [...selected.tags, 'spam'],
                   });
-                  // The conversation has left the folder the list is showing.
-                  setSelectedId(null);
                 }}
                 onAddTag={(tag: string) =>
                   patchConversation(selected.id, { tags: [...selected.tags, tag] })

@@ -22,7 +22,7 @@
         "ItemMedia",
         "ItemContent",
         "ItemTitle",
-        "lucide-react: HeadsetIcon, InboxIcon, UsersIcon, SunIcon, MoonIcon, UserIcon, SettingsIcon, LogOutIcon"
+        "lucide-react: HeadsetIcon, MessageCircleIcon, UsersIcon, SunIcon, MoonIcon, UserIcon, SettingsIcon, LogOutIcon"
       ],
       "note": "Fixed 64px, never collapsed. Mark at the top, one Button per section with variant=\"secondary\" when active, flexible spacer, then the theme toggle and the profile-menu Popover. Popups need no container - they portal to the app's own body."
     },
@@ -30,7 +30,7 @@
       "part": "routing",
       "module": "src/app/routing.ts",
       "kit": [],
-      "note": "Hash routes: #/inbox, #/contacts, #/contacts/{id}. parseRoute defaults anything unrecognised to the inbox."
+      "note": "Hash routes: #/chat, #/contacts, #/contacts/{id}. parseRoute defaults anything unrecognised - including a stale #/inbox link - to chat."
     },
     {
       "part": "theme",
@@ -56,11 +56,11 @@
       "id": "inbox",
       "panes": [
         {
-          "pane": "folder sidebar",
+          "pane": "channel sidebar",
           "module": "src/screens/inbox/FolderSidebar.tsx",
           "parts": [
             {
-              "part": "folder rows",
+              "part": "channel rows",
               "kit": [
                 "ItemGroup",
                 "Item",
@@ -71,15 +71,15 @@
               ]
             },
             {
-              "part": "folder count",
+              "part": "channel count",
               "kit": [
                 "Badge"
               ]
             },
             {
-              "part": "folder icons",
+              "part": "channel icons",
               "kit": [
-                "lucide-react: InboxIcon, ShieldAlertIcon"
+                "lucide-react: HashIcon"
               ]
             }
           ]
@@ -89,7 +89,7 @@
           "module": "src/screens/inbox/ConversationList.tsx",
           "parts": [
             {
-              "part": "collapse-folders button",
+              "part": "collapse-channels button",
               "kit": [
                 "Button"
               ]
@@ -308,7 +308,7 @@
           ]
         }
       ],
-      "route": "#/inbox"
+      "route": "#/chat"
     },
     {
       "id": "contacts",

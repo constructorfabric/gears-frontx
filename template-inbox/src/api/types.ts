@@ -39,11 +39,11 @@ export type AgentIdentity = {
   workspace: string;
 };
 
-export type Folder = {
+export type Channel = {
   id: string;
   label: string;
-  /** Iconify-free: a lucide component name the folder sidebar maps to an icon. */
-  icon: 'inbox' | 'shield-alert';
+  /** Iconify-free: a lucide component name the channel sidebar maps to an icon. */
+  icon: 'hash';
   itemCount: number;
   openCount: number;
 };
@@ -56,7 +56,7 @@ export type SharedFile = {
 
 export type Conversation = {
   id: string;
-  folderId: string;
+  channelId: string;
   subject: string;
   contactId: string;
   /** Last message body, truncated by the list row's own line clamp. */
@@ -157,7 +157,7 @@ export type Contact = {
 };
 
 export type GetAgentResponse = { agent: AgentIdentity };
-export type GetFoldersResponse = { folders: Folder[] };
+export type GetChannelsResponse = { channels: Channel[] };
 export type GetConversationsResponse = { conversations: Conversation[] };
 export type GetMessagesResponse = { messages: Message[] };
 export type GetContactsResponse = { contacts: Contact[] };

@@ -38,7 +38,7 @@
 }
 
 /* The product mark. Decorative, and deliberately not a link: the rail's own
- * Inbox button is already the way home, and a second one would be two
+ * Chat button is already the way home, and a second one would be two
  * affordances for one destination. */
 .railMark {
   display: flex;

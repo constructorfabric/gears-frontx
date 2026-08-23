@@ -21,7 +21,7 @@ from; the folder and filter columns beside it are the ones that collapse.
 
 | Route | Screen |
 |---|---|
-| `#/inbox` | the inbox (the default for any unrecognised address) |
+| `#/chat` | the chat screen (the default for any unrecognised address, including a stale `#/inbox` link) |
 | `#/contacts` | the contacts directory |
 | `#/contacts/{id}` | one contact's page |
 

@@ -16,9 +16,9 @@
 
 import type {
   AgentIdentity,
+  Channel,
   Contact,
   Conversation,
-  Folder,
   Message,
 } from './types';
 
@@ -30,8 +30,9 @@ const hoursAgo = (hours: number): string =>
 
 const daysAgo = (days: number): string => hoursAgo(days * 24);
 
-export const FOLDER_YOUR_INBOX = 'your-inbox';
-export const FOLDER_SPAM = 'spam';
+export const CHANNEL_GENERAL = 'general';
+export const CHANNEL_SUPPORT = 'support';
+export const CHANNEL_SALES = 'sales';
 
 export const agent: AgentIdentity = {
   id: 'agent-1',
@@ -41,24 +42,31 @@ export const agent: AgentIdentity = {
 };
 
 /**
- * The folder rows a backend would answer with, aggregate counts included - a
- * folder can hold more conversations than any one client has fetched, so the
+ * The channel rows a backend would answer with, aggregate counts included - a
+ * channel can hold more conversations than any one client has fetched, so the
  * count is the server's to state. The sidebar still recomputes from the
- * collection it holds, because a conversation the agent moves to spam has to
+ * collection it holds, because a conversation the agent re-tags has to
  * change both counts before any refetch.
  */
-export const folders: Folder[] = [
+export const channels: Channel[] = [
   {
-    id: FOLDER_YOUR_INBOX,
-    label: 'Your inbox',
-    icon: 'inbox',
-    itemCount: 7,
-    openCount: 5,
+    id: CHANNEL_GENERAL,
+    label: 'General',
+    icon: 'hash',
+    itemCount: 3,
+    openCount: 3,
   },
   {
-    id: FOLDER_SPAM,
-    label: 'Spam',
-    icon: 'shield-alert',
+    id: CHANNEL_SUPPORT,
+    label: 'Support',
+    icon: 'hash',
+    itemCount: 4,
+    openCount: 2,
+  },
+  {
+    id: CHANNEL_SALES,
+    label: 'Sales',
+    icon: 'hash',
     itemCount: 2,
     openCount: 2,
   },
@@ -70,7 +78,7 @@ const NO_TEAM_INBOX = 'No team inbox';
 export const conversations: Conversation[] = [
   {
     id: 'c-9',
-    folderId: FOLDER_YOUR_INBOX,
+    channelId: CHANNEL_SUPPORT,
     subject: 'Dark mode toggle not persisting',
     contactId: 'r-3',
     snippet:
@@ -91,7 +99,7 @@ export const conversations: Conversation[] = [
   },
   {
     id: 'c-11',
-    folderId: FOLDER_YOUR_INBOX,
+    channelId: CHANNEL_GENERAL,
     subject: 'Design feedback on dashboard',
     contactId: 'r-19',
     snippet: 'Agreed. I will get these tweaks scoped and back to you shortly.',
@@ -117,7 +125,7 @@ export const conversations: Conversation[] = [
   },
   {
     id: 'c-7',
-    folderId: FOLDER_YOUR_INBOX,
+    channelId: CHANNEL_SALES,
     subject: 'Purple Bow from United States',
     contactId: 'r-16',
     snippet:
@@ -141,7 +149,7 @@ export const conversations: Conversation[] = [
   },
   {
     id: 'c-2',
-    folderId: FOLDER_YOUR_INBOX,
+    channelId: CHANNEL_SALES,
     subject: 'Refund request for duplicate purchase',
     contactId: 'r-12',
     snippet:
@@ -165,7 +173,7 @@ export const conversations: Conversation[] = [
   },
   {
     id: 'c-5',
-    folderId: FOLDER_YOUR_INBOX,
+    channelId: CHANNEL_GENERAL,
     subject: 'Feature request: CSV export',
     contactId: 'r-17',
     snippet: '@Alex Rivera this is the third request this week - worth prioritising?',
@@ -188,7 +196,7 @@ export const conversations: Conversation[] = [
   },
   {
     id: 'c-4',
-    folderId: FOLDER_YOUR_INBOX,
+    channelId: CHANNEL_SUPPORT,
     subject: 'Migration from v3 to v4',
     contactId: 'r-22',
     snippet:
@@ -210,7 +218,7 @@ export const conversations: Conversation[] = [
   },
   {
     id: 'c-1',
-    folderId: FOLDER_YOUR_INBOX,
+    channelId: CHANNEL_SUPPORT,
     subject: 'Silver Sunshine from India',
     contactId: 'r-23',
     snippet:
@@ -232,7 +240,7 @@ export const conversations: Conversation[] = [
   },
   {
     id: 'c-3',
-    folderId: FOLDER_SPAM,
+    channelId: CHANNEL_SUPPORT,
     subject: 'Suspicious attachment',
     contactId: 'r-13',
     snippet: 'Open the attached invoice to claim your reward immediately.',
@@ -253,7 +261,7 @@ export const conversations: Conversation[] = [
   },
   {
     id: 'c-6',
-    folderId: FOLDER_SPAM,
+    channelId: CHANNEL_GENERAL,
     subject: 'You won a prize!!!',
     contactId: 'r-21',
     snippet: 'Click here within 24 hours to claim your $1,000,000 reward!',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FOLDER_SPAM, FOLDER_YOUR_INBOX } from './dataset';
+import { CHANNEL_GENERAL, CHANNEL_SALES, CHANNEL_SUPPORT } from './dataset';
 import { getInboxApi, registerApiServices } from './registry';
 
 /**
@@ -17,17 +17,22 @@ describe('InboxApiService', () => {
   it('answers from the seeded dataset instead of the network', async () => {
     registerApiServices();
 
-    const { folders } = await getInboxApi().getFolders.fetch();
+    const { channels } = await getInboxApi().getChannels.fetch();
 
-    expect(folders.map((folder) => folder.id)).toEqual([FOLDER_YOUR_INBOX, FOLDER_SPAM]);
+    expect(channels.map((channel) => channel.id)).toEqual([
+      CHANNEL_GENERAL,
+      CHANNEL_SUPPORT,
+      CHANNEL_SALES,
+    ]);
   });
 
-  it('serves every conversation the folders are counted from', async () => {
+  it('serves every conversation the channels are counted from', async () => {
     registerApiServices();
 
     const { conversations } = await getInboxApi().getConversations.fetch();
 
-    expect(conversations.filter((c) => c.folderId === FOLDER_YOUR_INBOX)).toHaveLength(7);
-    expect(conversations.filter((c) => c.folderId === FOLDER_SPAM)).toHaveLength(2);
+    expect(conversations.filter((c) => c.channelId === CHANNEL_GENERAL)).toHaveLength(3);
+    expect(conversations.filter((c) => c.channelId === CHANNEL_SUPPORT)).toHaveLength(4);
+    expect(conversations.filter((c) => c.channelId === CHANNEL_SALES)).toHaveLength(2);
   });
 });

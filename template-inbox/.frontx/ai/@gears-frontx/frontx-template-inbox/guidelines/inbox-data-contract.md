@@ -41,8 +41,8 @@ endpoints, the types and every screen stay as they are.
 | Endpoint | Returns |
 |---|---|
 | `GET /api/inbox/me` | the agent identity: name, presence, workspace |
-| `GET /api/inbox/folders` | both folders with id, label, icon name, item count, open count |
-| `GET /api/inbox/conversations` | every conversation in both folders |
+| `GET /api/inbox/channels` | all three channels with id, label, icon name, item count, open count |
+| `GET /api/inbox/conversations` | every conversation across all channels |
 | `GET /api/inbox/messages` | every message across every conversation |
 | `GET /api/inbox/contacts` | all 29 contacts with their full detail payload |
 | `POST /api/inbox/messages` | echoes a posted reply or note back with an id and a timestamp |

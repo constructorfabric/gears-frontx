@@ -14,15 +14,16 @@ const { InboxScreen } = await import('./InboxScreen');
 const t = (key: string) => key;
 
 describe('InboxScreen', () => {
-  it('lists the seeded folders and conversations, and waits for a choice before opening a thread', () => {
+  it('lists the seeded channels and conversations, and waits for a choice before opening a thread', () => {
     const screen = renderScreen(<InboxScreen t={t} />);
 
-    // "Your inbox" is both the folder row and the open pane's own heading.
-    expect(screen.getAllByText('Your inbox').length).toBe(2);
-    expect(screen.getByText('Spam')).toBeTruthy();
-    expect(screen.getByText('Dark mode toggle not persisting')).toBeTruthy();
-    // The list opens on "Your inbox", so a spam subject is not in the pane.
-    expect(screen.queryByText('You won a prize!!!')).toBeNull();
+    // "General" is both the channel row and the open pane's own heading.
+    expect(screen.getAllByText('General').length).toBe(2);
+    expect(screen.getByText('Support')).toBeTruthy();
+    expect(screen.getByText('Sales')).toBeTruthy();
+    expect(screen.getByText('Design feedback on dashboard')).toBeTruthy();
+    // The list opens on General, so a Support-channel subject is not in the pane.
+    expect(screen.queryByText('Dark mode toggle not persisting')).toBeNull();
     // Nothing is selected on mount: the detail pane is the empty state, and
     // there is no composer to type into yet.
     expect(screen.getByText('empty_title')).toBeTruthy();
@@ -33,6 +34,9 @@ describe('InboxScreen', () => {
 
   it('offers the thread its suggested replies and drafts the one that is clicked', () => {
     const screen = renderScreen(<InboxScreen t={t} />);
+    act(() => {
+      screen.getByText('Support').click();
+    });
     act(() => {
       screen.getByText('Dark mode toggle not persisting').click();
     });
@@ -55,17 +59,18 @@ describe('InboxScreen', () => {
     screen.unmount();
   });
 
-  it('offers no suggested reply on a spam thread', () => {
+  it('offers no suggested reply on a spam-tagged thread', () => {
     const screen = renderScreen(<InboxScreen t={t} />);
     act(() => {
-      screen.getByText('Spam').click();
+      screen.getByText('Support').click();
     });
     act(() => {
       screen.getByText('Suspicious attachment').click();
     });
 
     // The composer is there to reply with; the assistant just has nothing
-    // worth suggesting, so the row itself is absent.
+    // worth suggesting, so the row itself is absent. The thread sits in a
+    // normal channel - spam is a tag here, not a destination.
     expect(screen.getByPlaceholderText('reply_placeholder')).toBeTruthy();
     expect(screen.queryByLabelText('suggested_replies')).toBeNull();
 
@@ -74,6 +79,9 @@ describe('InboxScreen', () => {
 
   it('sends a thread reader to the customer page as a link the URL can carry', () => {
     const screen = renderScreen(<InboxScreen t={t} />);
+    act(() => {
+      screen.getByText('Support').click();
+    });
     act(() => {
       screen.getByText('Dark mode toggle not persisting').click();
     });

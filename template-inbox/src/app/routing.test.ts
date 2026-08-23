@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { contactRoute, parseRoute } from './routing';
 
 describe('parseRoute', () => {
-  it('opens on the inbox for the addresses a first visit can arrive with', () => {
+  it('opens on chat for the addresses a first visit can arrive with', () => {
     // An empty fragment is what a bare origin gives; the trailing-slash and
-    // unknown forms are what a hand-edited or stale link gives.
-    for (const hash of ['', '#', '#/', '#/inbox', '#/nowhere']) {
+    // unknown forms are what a hand-edited or stale link gives, `#/inbox`
+    // is what a link written before the section was renamed to Chat gives,
+    // and `#/chat` is the route itself.
+    for (const hash of ['', '#', '#/', '#/chat', '#/inbox', '#/nowhere']) {
       expect(parseRoute(hash)).toEqual({ name: 'inbox' });
     }
   });

@@ -1,7 +1,7 @@
 import {
   HeadsetIcon,
-  InboxIcon,
   LogOutIcon,
+  MessageCircleIcon,
   MoonIcon,
   SettingsIcon,
   SunIcon,
@@ -64,8 +64,8 @@ export function IconRail({ route, agent, theme, onToggleTheme, t }: IconRailProp
         <Button
           variant={section === 'inbox' ? 'secondary' : 'ghost'}
           size="sm"
-          icon={<InboxIcon />}
-          aria-label={t('inbox')}
+          icon={<MessageCircleIcon />}
+          aria-label={t('chat')}
           aria-current={section === 'inbox' ? 'page' : undefined}
           onClick={() => navigate(INBOX_ROUTE)}
         />

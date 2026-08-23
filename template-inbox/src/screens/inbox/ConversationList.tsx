@@ -32,14 +32,14 @@ const SORT_LABEL_KEY: Record<SortOrder, string> = {
 export type ConversationListProps = {
   conversations: Conversation[];
   contactsById: Map<string, Contact>;
-  folderLabel: string;
+  channelLabel: string;
   selectedConversationId: string | null;
   onSelectConversation: (conversationId: string) => void;
   search: string;
   onSearchChange: (search: string) => void;
   sort: SortOrder;
   onSortChange: (sort: SortOrder) => void;
-  onToggleFolders: () => void;
+  onToggleChannels: () => void;
   hidden: boolean;
   t: (key: string) => string;
 };
@@ -47,14 +47,14 @@ export type ConversationListProps = {
 export function ConversationList({
   conversations,
   contactsById,
-  folderLabel,
+  channelLabel,
   selectedConversationId,
   onSelectConversation,
   search,
   onSearchChange,
   sort,
   onSortChange,
-  onToggleFolders,
+  onToggleChannels,
   hidden,
   t,
 }: ConversationListProps) {
@@ -70,10 +70,10 @@ export function ConversationList({
           variant="ghost"
           size="sm"
           icon={<PanelLeftIcon />}
-          aria-label={t('toggle_folders')}
-          onClick={onToggleFolders}
+          aria-label={t('toggle_channels')}
+          onClick={onToggleChannels}
         />
-        <h2 className={styles.paneTitle}>{folderLabel}</h2>
+        <h2 className={styles.paneTitle}>{channelLabel}</h2>
         {/* The count follows the visible list, so a search moves it with the rows. */}
         <span className={styles.paneCount}>{conversations.length}</span>
       </div>

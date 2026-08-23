@@ -7,10 +7,10 @@ something that was deliberately left out.
 
 ## In scope, and already shipped
 
-- **Inbox screen.** Folder sidebar with "Your inbox" and "Spam" and their
-  counts; a conversation list with live search, an open-conversation counter
-  and four sort orders; the message thread with its attachment chip, read
-  receipts and internal notes; the reply-and-note composer; the
+- **Chat screen.** Channel sidebar with "General", "Support" and "Sales" and
+  their counts; a conversation list with live search, an open-conversation
+  counter and four sort orders; the message thread with its attachment chip,
+  read receipts and internal notes; the reply-and-note composer; the
   customer-details panel with its Details and Copilot tabs; the "Select a
   conversation" empty state.
 - **The thread's inert chrome.** The create-ticket button and the overflow menu
@@ -41,10 +41,10 @@ unrelated request.
   rows on a contact's detail page are labels, not links into a Tickets section,
   and the thread header's create-ticket button opens nothing for the same
   reason.
-- **Other inbox folders and views.** Mentions, Created by you, All, Unassigned,
+- **Other channels and views.** Mentions, Created by you, All, Unassigned,
   Starred, High priority, Snoozed, and the team inboxes. A conversation can be
-  routed to a team inbox from the details panel; the folders themselves are out
-  of scope.
+  routed to a team inbox from the details panel; adding, renaming or removing
+  channels themselves is out of scope.
 - **The new-conversation flow.** The compose trigger and its modal.
 - **The command palette**, the messenger settings, the settings screen and the
   theme customiser - all four are rail controls in the reference and none is
