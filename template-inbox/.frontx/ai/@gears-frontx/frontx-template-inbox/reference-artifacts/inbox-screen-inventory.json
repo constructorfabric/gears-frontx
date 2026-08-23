@@ -1,7 +1,7 @@
 {
   "id": "inbox-screen-inventory",
-  "version": "2.1.0",
-  "description": "Each pane of the three shipped screens, and the @gears-frontx/ui-kit component that renders each of its parts. A screen added to this app composes from the same vocabulary; anything not listed here is either a plain element carrying a class from the app's own stylesheet, or a component that has not been needed yet.",
+  "version": "2.2.0",
+  "description": "Each pane of the four shipped screens, and the @gears-frontx/ui-kit component that renders each of its parts. A screen added to this app composes from the same vocabulary; anything not listed here is either a plain element carrying a class from the app's own stylesheet, or a component that has not been needed yet.",
   "app": {
     "entry": "src/main.tsx",
     "root": "src/app/App.tsx",
@@ -22,15 +22,15 @@
         "ItemMedia",
         "ItemContent",
         "ItemTitle",
-        "lucide-react: HeadsetIcon, MessageCircleIcon, MailIcon, UsersIcon, SunIcon, MoonIcon, UserIcon, SettingsIcon, LogOutIcon"
+        "lucide-react: LayoutDashboardIcon, HeadsetIcon, MessageCircleIcon, MailIcon, UsersIcon, SunIcon, MoonIcon, UserIcon, SettingsIcon, LogOutIcon"
       ],
-      "note": "Fixed 64px, never collapsed. Mark at the top, one Button per section with variant=\"secondary\" when active, flexible spacer, then the theme toggle and the profile-menu Popover. Popups need no container - they portal to the app's own body."
+      "note": "Fixed 64px, never collapsed. Mark at the top, one Button per section with variant=\"secondary\" when active - Dashboard first, then Chat, Mail, Contacts - flexible spacer, then the theme toggle and the profile-menu Popover. Popups need no container - they portal to the app's own body."
     },
     {
       "part": "routing",
       "module": "src/app/routing.ts",
       "kit": [],
-      "note": "Hash routes: #/chat, #/mail, #/contacts, #/contacts/{id}. parseRoute defaults anything unrecognised - including a stale #/inbox link - to chat."
+      "note": "Hash routes: #/dashboard, #/chat, #/mail, #/contacts, #/contacts/{id}. parseRoute defaults anything unrecognised - including a stale #/inbox link - to the dashboard, the app's home."
     },
     {
       "part": "theme",
@@ -61,6 +61,167 @@
     }
   ],
   "screens": [
+    {
+      "id": "dashboard",
+      "panes": [
+        {
+          "pane": "KPI row",
+          "module": "src/screens/dashboard/KpiRow.tsx",
+          "note": "Four cards, one KpiCard.tsx per card, one chart type and one accent hue each (area, bar, line, radial) so the row reads as varied instruments rather than one chart type repeated - see src/screens/dashboard/dashboardChartConfig.ts for the palette.",
+          "parts": [
+            {
+              "part": "value, delta badge, footer stat",
+              "kit": [
+                "Card",
+                "CardContent",
+                "CardFooter",
+                "Badge"
+              ]
+            },
+            {
+              "part": "inline chart",
+              "kit": [
+                "ChartContainer",
+                "ChartConfig"
+              ],
+              "module": "src/screens/dashboard/Sparkline.tsx, src/screens/dashboard/RadialGauge.tsx",
+              "note": "Recharts primitives composed inside ChartContainer, per the kit chart doc: AreaChart+Area (gradient-filled), BarChart+Bar (rounded corners), LineChart+Line (smooth), and a RadialBarChart+RadialBar gauge with a centered percentage Label - the gauge is sized to be the row's largest single chart, not a shrunken decoration."
+            }
+          ]
+        },
+        {
+          "pane": "resolved per day",
+          "module": "src/screens/dashboard/ResolvedPerDayCard.tsx",
+          "parts": [
+            {
+              "part": "large bar chart",
+              "kit": [
+                "Card",
+                "CardHeader",
+                "CardTitle",
+                "CardContent",
+                "ChartContainer"
+              ],
+              "note": "Recharts BarChart with a LabelList (value above each bar) and a Cell per bar so the current day paints in the brand accent against otherwise-neutral bars."
+            }
+          ]
+        },
+        {
+          "pane": "new contacts",
+          "module": "src/screens/dashboard/NewContactsCard.tsx",
+          "parts": [
+            {
+              "part": "hero number and breakdown",
+              "kit": [
+                "Card",
+                "CardHeader",
+                "CardTitle",
+                "CardContent",
+                "Badge"
+              ]
+            },
+            {
+              "part": "combo chart",
+              "kit": [
+                "ChartContainer",
+                "ChartTooltip",
+                "ChartTooltipContent"
+              ],
+              "note": "Recharts ComposedChart: a low-opacity Bar for the daily inbound volume with a bold Line for the combined total riding over it - the line is the hero, the bars are its context."
+            }
+          ]
+        },
+        {
+          "pane": "summary",
+          "module": "src/screens/dashboard/SummaryCard.tsx",
+          "parts": [
+            {
+              "part": "icon-stat cells",
+              "kit": [
+                "Card",
+                "CardHeader",
+                "CardTitle",
+                "CardContent",
+                "lucide-react: MessageSquareIcon, ClockIcon, CircleAlertIcon"
+              ],
+              "note": "Open/Pending/Escalated counts are computed from the same activity collection the recent-activity table renders, never a separately-stored total."
+            },
+            {
+              "part": "trend area",
+              "kit": [
+                "ChartContainer"
+              ],
+              "note": "A small gradient-filled Recharts AreaChart, distinct in shape from row 2's other two charts."
+            },
+            {
+              "part": "inert CTA",
+              "kit": [
+                "Card",
+                "CardFooter",
+                "Button"
+              ],
+              "note": "Disabled - this template ships no report screen behind it, the same dead-controls convention as the chat thread's create-ticket button."
+            }
+          ]
+        },
+        {
+          "pane": "team workload",
+          "module": "src/screens/dashboard/WorkloadStrip.tsx",
+          "parts": [
+            {
+              "part": "icon + value + progress strip",
+              "kit": [
+                "Card",
+                "CardHeader",
+                "CardTitle",
+                "CardContent",
+                "Progress",
+                "lucide-react: HeadsetIcon, CodeIcon, FolderKanbanIcon"
+              ],
+              "note": "Three workload metrics (Support load, Dev backlog, CRM tasks) side by side, each an icon chip plus a value/max readout plus a Progress bar."
+            }
+          ]
+        },
+        {
+          "pane": "top agents",
+          "module": "src/screens/dashboard/TopAgentsCard.tsx",
+          "parts": [
+            {
+              "part": "ranked list",
+              "kit": [
+                "Card",
+                "CardHeader",
+                "CardTitle",
+                "CardContent",
+                "Avatar",
+                "AvatarFallback",
+                "Badge"
+              ],
+              "note": "Ranked by resolved-count, an Avatar plus a Badge trailing each row."
+            }
+          ]
+        },
+        {
+          "pane": "recent activity",
+          "module": "src/screens/dashboard/ActivityTable.tsx",
+          "parts": [
+            {
+              "part": "table",
+              "kit": [
+                "DataTable",
+                "dataTableColumnHelper",
+                "DataTableSortButton",
+                "Avatar",
+                "AvatarFallback",
+                "Badge"
+              ],
+              "note": "Full width, no secondary sidebar above it. The contact cell reuses PresenceAvatar and the inbox dataset's contacts by id, the same continuity dataset.ts already relies on for Conversation.contactId - it does not invent a second set of people."
+            }
+          ]
+        }
+      ],
+      "route": "#/dashboard"
+    },
     {
       "id": "inbox",
       "panes": [

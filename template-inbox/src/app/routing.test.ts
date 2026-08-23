@@ -2,14 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { contactRoute, parseRoute } from './routing';
 
 describe('parseRoute', () => {
-  it('opens on chat for the addresses a first visit can arrive with', () => {
+  it('opens on the dashboard for the addresses a first visit can arrive with', () => {
     // An empty fragment is what a bare origin gives; the trailing-slash and
-    // unknown forms are what a hand-edited or stale link gives, `#/inbox`
-    // is what a link written before the section was renamed to Chat gives,
-    // and `#/chat` is the route itself.
-    for (const hash of ['', '#', '#/', '#/chat', '#/inbox', '#/nowhere']) {
-      expect(parseRoute(hash)).toEqual({ name: 'inbox' });
+    // unknown forms are what a hand-edited or stale link gives, `#/inbox` is
+    // what a link written before Chat had its own route gives, and
+    // `#/dashboard` is the route itself.
+    for (const hash of ['', '#', '#/', '#/dashboard', '#/inbox', '#/nowhere']) {
+      expect(parseRoute(hash)).toEqual({ name: 'dashboard' });
     }
+  });
+
+  it('opens the chat section on its own route', () => {
+    expect(parseRoute('#/chat')).toEqual({ name: 'inbox' });
   });
 
   it('separates the directory from one person', () => {

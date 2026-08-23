@@ -1,5 +1,14 @@
 import { vi } from 'vitest';
 import { agent, channels, contacts, conversations, messages } from '../api/dataset';
+import {
+  activity,
+  kpiCards,
+  newContacts,
+  resolvedPerDay,
+  summaryTrend,
+  topAgents,
+  workload,
+} from '../api/dashboardDataset';
 import { mailboxes, mailMessages, mails } from '../api/mailDataset';
 
 /**
@@ -23,6 +32,7 @@ export const endpointTags = {
   getMailboxes: { tag: 'mailboxes' },
   getMails: { tag: 'mails' },
   getMailMessages: { tag: 'mailMessages' },
+  getDashboard: { tag: 'dashboard' },
 } as const;
 
 const RESPONSES: Record<string, unknown> = {
@@ -34,6 +44,7 @@ const RESPONSES: Record<string, unknown> = {
   mailboxes: { mailboxes },
   mails: { mails },
   mailMessages: { mailMessages },
+  dashboard: { kpis: kpiCards, resolvedPerDay, newContacts, summaryTrend, workload, topAgents, activity },
 };
 
 const tagOf = (endpoint: unknown): string => {

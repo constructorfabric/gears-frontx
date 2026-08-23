@@ -1,6 +1,7 @@
 import { getInboxApi } from '../api/registry';
 import { useApiQuery } from '../api/queries';
 import { ContactsScreen } from '../screens/contacts/ContactsScreen';
+import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { InboxScreen } from '../screens/inbox/InboxScreen';
 import { MailScreen } from '../screens/mail/MailScreen';
 import { IconRail } from './IconRail';
@@ -32,7 +33,9 @@ export function App() {
         onToggleTheme={toggleTheme}
         t={t}
       />
-      {route.name === 'inbox' ? (
+      {route.name === 'dashboard' ? (
+        <DashboardScreen t={t} />
+      ) : route.name === 'inbox' ? (
         <InboxScreen t={t} />
       ) : route.name === 'mail' ? (
         <MailScreen t={t} />

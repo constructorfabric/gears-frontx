@@ -1,12 +1,25 @@
 # Guideline: What the Inbox App Is, and What It Is Not
 
-This template ships a working helpdesk application. Three screens are complete
+This template ships a working helpdesk application. Four screens are complete
 and nothing about them is a placeholder. The list below exists so that a
 screen added later stays inside the same product, and so that no one rebuilds
 something that was deliberately left out.
 
 ## In scope, and already shipped
 
+- **Dashboard screen.** The app's first rail entry and its default landing
+  route (`#/dashboard`; an unrecognised address, including a stale `#/inbox`
+  link, lands here too). A single full-width, scrollable pane - no folder or
+  filter sidebar - with four rows: four KPI cards with a distinct chart type
+  each (area, bar, line, radial); a large "Resolved per day" bar chart, a
+  "New contacts" hero card with a combo line-over-bar chart, and a "Summary"
+  card with icon-stat cells, a trend area and an inert "View report" button;
+  a team-workload icon+progress strip and a ranked "Top agents" list; and a
+  full-width, sortable, paginated "Recent activity" table. Every number is
+  computed from `DashboardApiService`'s seeded dataset - a delta badge, a sum,
+  an average - never hardcoded in a component (see `inbox-data-contract`).
+  The activity table's contact cell reuses the inbox dataset's `contacts` by
+  id rather than inventing a second set of people.
 - **Chat screen.** Channel sidebar with "General", "Support" and "Sales" and
   their counts; a conversation list with live search, an open-conversation
   counter and four sort orders; the message thread with its attachment chip,

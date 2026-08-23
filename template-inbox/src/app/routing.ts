@@ -1,14 +1,14 @@
 /**
  * Where the app is, held in the URL fragment.
  *
- * Four routes: `#/chat`, `#/mail`, `#/contacts`, `#/contacts/{id}`. The
- * fragment rather than the path because a fragment needs no server rewrite -
- * a seeded project can serve the built `index.html` from any static host and
- * every deep link still resolves, including the one a "View contact" click
- * writes.
+ * Five routes: `#/dashboard`, `#/chat`, `#/mail`, `#/contacts`,
+ * `#/contacts/{id}`. The fragment rather than the path because a fragment
+ * needs no server rewrite - a seeded project can serve the built
+ * `index.html` from any static host and every deep link still resolves,
+ * including the one a "View contact" click writes.
  *
  * A router library would earn its weight at the point this app has nested
- * layouts or loaders to express. With four routes and no nesting it would be a
+ * layouts or loaders to express. With five routes and no nesting it would be a
  * dependency to explain rather than a problem solved, so the parse below is the
  * whole thing and stays replaceable: swap this module and the `navigate`
  * call sites, and nothing in the screens changes.
@@ -17,22 +17,28 @@
 import { useEffect, useState } from 'react';
 
 export type Route =
+  | { name: 'dashboard' }
   | { name: 'inbox' }
   | { name: 'mail' }
   | { name: 'contacts' }
   | { name: 'contact'; contactId: string };
 
+export const DASHBOARD_ROUTE = '#/dashboard';
 export const INBOX_ROUTE = '#/chat';
 export const MAIL_ROUTE = '#/mail';
 export const CONTACTS_ROUTE = '#/contacts';
 export const contactRoute = (contactId: string): string =>
   `#/contacts/${encodeURIComponent(contactId)}`;
 
-/** Anything unrecognised - including an empty fragment on first load and a
- * stale `#/inbox` link from before the section was renamed to Chat - falls
- * back to the chat screen, which is the app's home. */
+/** Anything unrecognised - including an empty fragment on first load, the
+ * fragment-less origin, and a stale `#/inbox` link from before Chat had its
+ * own route - falls back to the dashboard, which is the app's home. */
 export const parseRoute = (hash: string): Route => {
   const segments = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+
+  if (segments[0] === 'chat') {
+    return { name: 'inbox' };
+  }
 
   if (segments[0] === 'mail') {
     return { name: 'mail' };
@@ -45,7 +51,7 @@ export const parseRoute = (hash: string): Route => {
       : { name: 'contact', contactId: decodeURIComponent(contactId) };
   }
 
-  return { name: 'inbox' };
+  return { name: 'dashboard' };
 };
 
 export const navigate = (route: string): void => {

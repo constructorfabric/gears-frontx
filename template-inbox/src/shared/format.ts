@@ -98,6 +98,10 @@ const TITLE_CASE: Record<string, string> = {
   online: 'Online',
   offline: 'Offline',
   away: 'Away',
+  mail: 'Mail',
+  task: 'Task',
+  resolved: 'Resolved',
+  escalated: 'Escalated',
 };
 
 /**

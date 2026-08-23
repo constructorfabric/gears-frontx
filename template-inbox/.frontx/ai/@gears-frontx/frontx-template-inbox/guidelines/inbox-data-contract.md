@@ -4,24 +4,31 @@
 domain: `InboxApiService` backs the chat screen and the contacts directory,
 which share one dataset (a contact is a conversation's contact, a thread
 header and a table row at once); `MailApiService` backs the mail screen with
-its own, unrelated dataset. A new screen reads from whichever service already
-owns its domain - only add a new sibling service when the domain genuinely
-does not overlap with either, the way mail did not overlap with chat and
+its own, unrelated dataset; `DashboardApiService` backs the dashboard with a
+third, unrelated dataset of its own (it still reads `InboxApiService.getContacts`
+directly for row 4's activity table, rather than duplicating contact identities
+- see below). A new screen reads from whichever service already owns its
+domain - only add a new sibling service when the domain genuinely does not
+overlap with any of the three, the way mail did not overlap with chat and
 contacts. Do not put content anywhere else.
 
 ```
 src/api/
-  InboxApiService.ts   BaseApiService + RestProtocol + RestEndpointProtocol + RestMockPlugin
-  MailApiService.ts    the mail domain's sibling service, same primitives, its own baseURL
-  RestMockPlugin.ts    the app's own mock plugin, built on @gears-frontx/api primitives - shared by every service
-  queries.ts           useApiQuery / useApiMutation over the endpoint descriptors - shared by every service
-  registry.ts          registerApiServices() at boot, getInboxApi() and getMailApi() everywhere else
-  types.ts             the inbox/contacts response contracts
-  mailTypes.ts         the mail response contracts
-  mocks.ts             the inbox/contacts mock map, keys prefixed with the /api/inbox baseURL
-  mailMocks.ts         the mail mock map, keys prefixed with the /api/mail baseURL
-  dataset.ts           the inbox/contacts seeded content, imported by mocks.ts alone
-  mailDataset.ts       the mail seeded content, imported by mailMocks.ts alone
+  InboxApiService.ts      BaseApiService + RestProtocol + RestEndpointProtocol + RestMockPlugin
+  MailApiService.ts       the mail domain's sibling service, same primitives, its own baseURL
+  DashboardApiService.ts  the dashboard domain's sibling service, same primitives, one endpoint
+  RestMockPlugin.ts       the app's own mock plugin, built on @gears-frontx/api primitives - shared by every service
+  queries.ts               useApiQuery / useApiMutation over the endpoint descriptors - shared by every service
+  registry.ts               registerApiServices() at boot, getInboxApi() / getMailApi() / getDashboardApi() everywhere else
+  types.ts                  the inbox/contacts response contracts
+  mailTypes.ts               the mail response contracts
+  dashboardTypes.ts          the dashboard response contract
+  mocks.ts                   the inbox/contacts mock map, keys prefixed with the /api/inbox baseURL
+  mailMocks.ts                the mail mock map, keys prefixed with the /api/mail baseURL
+  dashboardMocks.ts           the dashboard mock map, keys prefixed with the /api/dashboard baseURL
+  dataset.ts                   the inbox/contacts seeded content, imported by mocks.ts alone
+  mailDataset.ts                the mail seeded content, imported by mailMocks.ts alone
+  dashboardDataset.ts           the dashboard seeded content, imported by dashboardMocks.ts alone
 ```
 
 ## Reading from a component
@@ -80,6 +87,18 @@ draft rather than posting anywhere, by design (see `inbox-scope-inventory`).
 Adding a real send is adding a `POST /api/mail/...` mutation to
 `MailApiService` and its mock map, the same way `postMessage` was added to
 `InboxApiService`.
+
+`DashboardApiService` answers the dashboard with a single collection rather
+than one endpoint per section, because the dashboard is one coherent view, not
+a set of independently-browsable lists the way mailboxes/mails/messages are:
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/dashboard/overview` | KPI cards, the resolved-per-day series, the new-contacts series, the summary trend, workload metrics, the top-agents ranking and the recent-activity rows, all together |
+
+Splitting this into several endpoints is the right move only once some part of
+the dashboard genuinely needs to load or refresh independently of the rest -
+see `InboxApiService`'s own doc comment for the same call made the other way.
 
 ## Every read returns a whole collection, on purpose
 

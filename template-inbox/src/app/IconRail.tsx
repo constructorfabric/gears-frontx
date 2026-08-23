@@ -1,5 +1,6 @@
 import {
   HeadsetIcon,
+  LayoutDashboardIcon,
   LogOutIcon,
   MailIcon,
   MessageCircleIcon,
@@ -25,13 +26,21 @@ import type { AgentIdentity } from '../api/types';
 import { labelOf } from '../shared/format';
 import { PresenceAvatar } from '../shared/PresenceAvatar';
 import type { Translate } from './i18n';
-import { CONTACTS_ROUTE, INBOX_ROUTE, MAIL_ROUTE, navigate, type Route } from './routing';
+import {
+  CONTACTS_ROUTE,
+  DASHBOARD_ROUTE,
+  INBOX_ROUTE,
+  MAIL_ROUTE,
+  navigate,
+  type Route,
+} from './routing';
 import type { Theme } from './theme';
 import styles from '../styles/workspace.module.css';
 
 /** Which rail destination a route belongs to - a contact's own page keeps
  * Contacts lit, exactly as the reference does. */
-const sectionOf = (route: Route): 'inbox' | 'mail' | 'contacts' => {
+const sectionOf = (route: Route): 'dashboard' | 'inbox' | 'mail' | 'contacts' => {
+  if (route.name === 'dashboard') return 'dashboard';
   if (route.name === 'inbox') return 'inbox';
   if (route.name === 'mail') return 'mail';
   return 'contacts';
@@ -46,7 +55,7 @@ export type IconRailProps = {
 };
 
 /**
- * The app's own navigation column: the mark, the two sections it ships, and -
+ * The app's own navigation column: the mark, the sections it ships, and -
  * pushed to the bottom by a flexible spacer - the theme toggle and the profile
  * menu.
  *
@@ -65,6 +74,14 @@ export function IconRail({ route, agent, theme, onToggleTheme, t }: IconRailProp
       </span>
 
       <nav className={styles.railNav} aria-label={t('sections')}>
+        <Button
+          variant={section === 'dashboard' ? 'secondary' : 'ghost'}
+          size="sm"
+          icon={<LayoutDashboardIcon />}
+          aria-label={t('dashboard')}
+          aria-current={section === 'dashboard' ? 'page' : undefined}
+          onClick={() => navigate(DASHBOARD_ROUTE)}
+        />
         <Button
           variant={section === 'inbox' ? 'secondary' : 'ghost'}
           size="sm"

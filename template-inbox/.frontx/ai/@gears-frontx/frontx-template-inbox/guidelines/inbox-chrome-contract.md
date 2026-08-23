@@ -15,13 +15,19 @@ declaration and no id taxonomy.
 The rail never collapses. It is the edge the rest of the layout is measured
 from; the folder and filter columns beside it are the ones that collapse.
 
+The dashboard is the one screen with no folder/filter column at all - it is a
+single full-width, scrollable pane straight after the rail. Not every screen
+needs a secondary sidebar; add one only when the screen actually has a
+folder/filter concept to hold, the way chat and mail do.
+
 ## Routing is the URL fragment
 
-`src/app/routing.ts` owns four routes and the parser for them:
+`src/app/routing.ts` owns five routes and the parser for them:
 
 | Route | Screen |
 |---|---|
-| `#/chat` | the chat screen (the default for any unrecognised address, including a stale `#/inbox` link) |
+| `#/dashboard` | the dashboard - the default for any unrecognised address, including a stale `#/inbox` link |
+| `#/chat` | the chat screen |
 | `#/mail` | the mail screen |
 | `#/contacts` | the contacts directory |
 | `#/contacts/{id}` | one contact's page |
@@ -65,7 +71,14 @@ Kit component CSS travels with each component the bundler pulls in; there is
 nothing to import. The app's own layout lives in
 `src/styles/workspace.module.css`, written entirely in kit tokens - no raw
 colour, no raw metric, no CSS framework. `src/styles/app.css` is the document
-frame alone (full height, no page scroll) and should not grow.
+frame alone (full height, no page scroll) and should not grow. The dashboard
+is the one screen with a CSS module of its own, `src/styles/dashboard.module.css`
+- its grid composition and its KPI/hero/chip type scale are specific enough to
+that one screen that folding them into the shared file would only add classes
+nothing else reads. A future screen with a similarly self-contained layout can
+follow the same split; a screen that reuses the existing pane/header/sidebar
+shapes should keep reading `workspace.module.css` instead of starting a new
+file.
 
 ## Differences from the reference product, all intentional
 
