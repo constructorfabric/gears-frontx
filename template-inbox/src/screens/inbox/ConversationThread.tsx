@@ -182,8 +182,9 @@ export function ConversationThread({
             onClick={onToggleDetails}
           />
           <Button
-            variant="destructive"
+            variant="ghost"
             size="sm"
+            className={styles.closeButton}
             disabled={conversation.status === 'closed'}
             onClick={onCloseConversation}
           >
@@ -236,7 +237,9 @@ export function ConversationThread({
                           align={outbound ? 'end' : 'start'}
                           variant={bubbleVariantFor(message)}
                         >
-                          <BubbleContent>{message.body}</BubbleContent>
+                          <BubbleContent className={styles.bubbleText}>
+                            {message.body}
+                          </BubbleContent>
                         </Bubble>
                         <MessageFooter>
                           <span className={styles.messageMeta}>

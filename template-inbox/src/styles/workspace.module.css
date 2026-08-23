@@ -111,6 +111,19 @@
   padding: var(--space-2);
 }
 
+/*
+ * The folder/filter row target (36px tall, 0 10px padding) sits between the
+ * kit's own sm and xs Item steps rather than on either one, so the box is
+ * set directly; the Item root already centers its content on the cross
+ * axis, so a fixed height plus horizontal-only padding is enough. Two
+ * classes for the same load-order-independent override reasoning as
+ * `.rowLine .lineTitle`.
+ */
+.sidebarBody .folderItem {
+  height: 2.25rem; /* 36px */
+  padding: 0 0.625rem; /* 0 10px */
+}
+
 .identityLines {
   display: flex;
   flex-direction: column;
@@ -261,6 +274,46 @@
   width: auto;
 }
 
+/*
+ * Conversation row density and type scale. The reference sits a step tighter
+ * than the kit's own Item/ItemGroup defaults on every axis (padding, row
+ * gap, title/preview sizes) - none of the kit's discrete size steps (xs/sm/
+ * default) land on these exact numbers, so the values are set directly
+ * rather than picked from the space/text scale. Both selectors use two
+ * classes so they outrank the kit's own single-class rules regardless of
+ * which stylesheet the bundler places first (same reasoning as the
+ * `.rowLine .lineTitle` fix above).
+ */
+.listBody .conversationRow {
+  padding: 0.625rem; /* 10px */
+}
+
+.listBody .conversationGroup {
+  gap: var(--space-1); /* 4px row-to-row gap */
+}
+
+.rowLine .rowTitleText {
+  font-size: 0.875rem; /* 14px */
+  font-weight: 600;
+}
+
+.rowLine .rowPreviewText {
+  font-size: var(--text-meta-size); /* 12px, matches the kit's meta step */
+  line-height: var(--text-meta-line-height);
+}
+
+/*
+ * The unread-count Badge's own vertical padding (--space-1 top/bottom) is
+ * what pushes an unread row past the ~60px net target - the badge, not the
+ * preview text, ends up the taller sibling on that line. Dropping it to
+ * horizontal-only padding lines the badge's box up with the preview text's
+ * own line-height instead.
+ */
+.rowLine .unreadBadge {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 /* --- The detail pane: thread plus the customer panel --- */
 
 .detailPane {
@@ -315,6 +368,21 @@
 }
 
 /*
+ * Soft-destructive tint for the thread's Close action. The kit ships no
+ * soft/tinted destructive Button variant, so the closest built-in shape
+ * (ghost - transparent by default) is used as the base, recolored through
+ * the kit's own `--button-bg`/`--button-fg`/`--button-bg-hover` custom
+ * properties (see button.module.css: every variant reads its color through
+ * a `var(--button-bg, ...)` fallback expressly so a consumer can override it
+ * this way) rather than reaching into the kit's class names.
+ */
+.closeButton {
+  --button-bg: rgba(255, 100, 105, 0.2);
+  --button-bg-hover: rgba(255, 100, 105, 0.3);
+  --button-fg: rgb(255, 100, 103);
+}
+
+/*
  * `box-sizing: border-box` is load-bearing, not tidiness. This class lands on
  * the kit's `MessageScroller` root, which sizes itself `width: 100%` /
  * `height: 100%`, and the kit deliberately ships no preflight reset - so the
@@ -336,6 +404,15 @@
   font-size: var(--text-meta-size);
   color: var(--muted-foreground);
   font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The bubble text sits one step below the kit's own --text-body-size (15px);
+ * no token names 14px, so the value is set directly. Two classes for the
+ * same load-order-independent override reasoning as `.rowLine .lineTitle`.
+ */
+.transcript .bubbleText {
+  font-size: 0.875rem; /* 14px */
 }
 
 .attachmentSlot {

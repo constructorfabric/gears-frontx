@@ -52,6 +52,7 @@ export function FolderSidebar({
             <Item
               key={folder.id}
               size="sm"
+              className={styles.folderItem}
               variant={folder.id === selectedFolderId ? 'muted' : 'default'}
               render={
                 <button

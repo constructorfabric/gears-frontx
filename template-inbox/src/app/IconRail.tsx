@@ -91,11 +91,7 @@ export function IconRail({ route, agent, theme, onToggleTheme, t }: IconRailProp
 
       <Popover>
         <PopoverTrigger className={styles.railIdentity} aria-label={t('open_profile_menu')}>
-          <PresenceAvatar
-            name={agent?.name ?? ''}
-            presence={agent?.presence ?? 'offline'}
-            size="sm"
-          />
+          <PresenceAvatar name={agent?.name ?? ''} presence={agent?.presence ?? 'offline'} />
         </PopoverTrigger>
         <PopoverContent side="right" align="end">
           <div className={styles.stack}>

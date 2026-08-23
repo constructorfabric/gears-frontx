@@ -47,6 +47,7 @@ export function ContactFilterSidebar({
             <Item
               key={filter}
               size="sm"
+              className={styles.folderItem}
               variant={filter === selectedFilter ? 'muted' : 'default'}
               render={
                 <button

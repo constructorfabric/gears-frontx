@@ -115,12 +115,13 @@ export function ConversationList({
       </div>
 
       <div className={styles.listBody}>
-        <ItemGroup>
+        <ItemGroup className={styles.conversationGroup}>
           {conversations.map((conversation) => {
             const contact = contactsById.get(conversation.contactId);
             return (
               <Item
                 key={conversation.id}
+                className={styles.conversationRow}
                 variant={conversation.id === selectedConversationId ? 'muted' : 'default'}
                 render={
                   <button
@@ -141,17 +142,21 @@ export function ConversationList({
                 </ItemMedia>
                 <ItemContent>
                   <div className={styles.rowLine}>
-                    <ItemTitle className={styles.rowText}>{conversation.subject}</ItemTitle>
+                    <ItemTitle className={cx(styles.rowText, styles.rowTitleText)}>
+                      {conversation.subject}
+                    </ItemTitle>
                     <span className={styles.rowTime}>
                       {shortRelativeTime(conversation.lastActivityAt)}
                     </span>
                   </div>
                   <div className={styles.rowLine}>
-                    <ItemDescription className={styles.rowText}>
+                    <ItemDescription className={cx(styles.rowText, styles.rowPreviewText)}>
                       {conversation.snippet}
                     </ItemDescription>
                     {conversation.unreadCount > 0 ? (
-                      <Badge aria-label={t('unread_messages')}>{conversation.unreadCount}</Badge>
+                      <Badge className={styles.unreadBadge} aria-label={t('unread_messages')}>
+                        {conversation.unreadCount}
+                      </Badge>
                     ) : null}
                   </div>
                 </ItemContent>
