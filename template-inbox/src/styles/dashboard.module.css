@@ -252,22 +252,49 @@
   width: 100%;
 }
 
-/* --- Row 3: workload strip + top agents --- */
+/* --- Row 3: records-created line chart + top agents --- */
 
 .rowThree {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
   gap: var(--space-6);
   /* Unlike row 2, these two cards' natural content heights differ enough
-   * (a 3-item strip versus a 5-row ranked list) that stretching them equal
-   * would leave the shorter card with a large dead gap below its content -
-   * each card keeps its own height instead. */
+   * (a chart-plus-legend versus a 5-row ranked list) that stretching them
+   * equal would leave the shorter card with a large dead gap below its
+   * content - each card keeps its own height instead. */
   align-items: start;
 }
 
+.recordsCreatedContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.recordsCreatedHeadline {
+  display: flex;
+  align-items: baseline;
+}
+
+.recordsCreatedSubtitle {
+  margin: 0;
+  font-size: var(--text-label-size);
+  color: var(--muted-foreground);
+}
+
+.recordsCreatedCard .recordsChart {
+  box-sizing: border-box;
+  width: 100%;
+  height: 17rem; /* 272px */
+  aspect-ratio: auto;
+  margin-top: var(--space-2);
+}
+
+/* --- Team workload: its own full-width row below row 3 --- */
+
 .workloadStrip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
@@ -429,6 +456,10 @@
 
   .rowThree {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workloadStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

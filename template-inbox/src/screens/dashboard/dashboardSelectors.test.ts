@@ -10,6 +10,7 @@ import {
   newContactsInboundTotal,
   newContactsOutboundTotal,
   newContactsTotal,
+  recordsCreatedTotal,
   workloadPercent,
 } from './dashboardSelectors';
 
@@ -96,6 +97,21 @@ describe('new contacts totals', () => {
 
   it('computes the delta against the previous period total', () => {
     expect(newContactsDeltaPercent({ series, previousTotal: 20 })).toBe(20);
+  });
+});
+
+describe('recordsCreatedTotal', () => {
+  it('sums companies, opportunities and people across every month', () => {
+    const series = [
+      { month: 'Sep', companies: 5, opportunities: 7, people: 10 },
+      { month: 'Oct', companies: 3, opportunities: 10, people: 6 },
+    ];
+
+    expect(recordsCreatedTotal(series)).toBe(41);
+  });
+
+  it('sums to zero for an empty series', () => {
+    expect(recordsCreatedTotal([])).toBe(0);
   });
 });
 

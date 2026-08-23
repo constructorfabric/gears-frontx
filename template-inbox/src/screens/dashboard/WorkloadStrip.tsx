@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { CodeIcon, FolderKanbanIcon, HeadsetIcon } from 'lucide-react';
+import { ClipboardCheckIcon, CodeIcon, FolderKanbanIcon, HeadsetIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Progress } from '@gears-frontx/ui-kit';
 import type { WorkloadMetric } from '../../api/dashboardTypes';
 import type { Translate } from '../../app/i18n';
@@ -15,12 +15,15 @@ const ICON_BY_METRIC_ID: Record<string, ComponentType> = {
   'support-load': HeadsetIcon,
   'dev-backlog': CodeIcon,
   'crm-tasks': FolderKanbanIcon,
+  'qa-reviews': ClipboardCheckIcon,
 };
 
 /**
- * Row 3's icon+value+Progress strip - three related workload metrics side
- * by side, borrowed from the reference's own "icon+value+progress 3-strip"
- * block (see the dashboard spec).
+ * Its own full-width row below row 3: four related workload metrics side by
+ * side, icon+value+Progress each - borrowed from the reference's own
+ * "icon+value+progress strip" block (see the dashboard spec), widened from
+ * three to four blocks so a fourth team dimension (QA) sits alongside
+ * Support/Dev/CRM at the same visual weight.
  */
 export function WorkloadStrip({ workload, t }: WorkloadStripProps) {
   return (

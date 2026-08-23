@@ -48,6 +48,17 @@ export type DashboardKpiCard = {
 
 export type ResolvedPerDayPoint = { day: string; value: number };
 
+/** One month of "Records created": how many of each record type this
+ * screen's world creates that month. The card's headline total is never
+ * stored - it is the sum of all three fields across every point, computed
+ * at render (see `recordsCreatedTotal`). */
+export type RecordsCreatedPoint = {
+  month: string;
+  companies: number;
+  opportunities: number;
+  people: number;
+};
+
 export type NewContactsPoint = { day: string; inbound: number; outbound: number };
 
 export type NewContactsSeries = {
@@ -98,6 +109,8 @@ export type GetDashboardResponse = {
    * from `resolvedPerDay` (this one tracks total activity, not just
    * resolutions). */
   summaryTrend: number[];
+  /** Row 3's "Records created" line chart - 12 months, oldest first. */
+  recordsCreated: RecordsCreatedPoint[];
   workload: WorkloadMetric[];
   topAgents: TopAgent[];
   activity: ActivityItem[];

@@ -4,6 +4,7 @@ import {
   activity,
   kpiCards,
   newContacts,
+  recordsCreated,
   resolvedPerDay,
   summaryTrend,
   topAgents,
@@ -44,7 +45,16 @@ const RESPONSES: Record<string, unknown> = {
   mailboxes: { mailboxes },
   mails: { mails },
   mailMessages: { mailMessages },
-  dashboard: { kpis: kpiCards, resolvedPerDay, newContacts, summaryTrend, workload, topAgents, activity },
+  dashboard: {
+    kpis: kpiCards,
+    resolvedPerDay,
+    newContacts,
+    summaryTrend,
+    recordsCreated,
+    workload,
+    topAgents,
+    activity,
+  },
 };
 
 const tagOf = (endpoint: unknown): string => {

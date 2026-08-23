@@ -20,6 +20,7 @@ import type {
   ActivityStatus,
   DashboardKpiCard,
   NewContactsSeries,
+  RecordsCreatedPoint,
   ResolvedPerDayPoint,
   TopAgent,
   WorkloadMetric,
@@ -130,10 +131,35 @@ export const newContacts: NewContactsSeries = {
  * resolutions, so it reads differently from `resolvedPerDay` beside it. */
 export const summaryTrend: number[] = [30, 34, 31, 38, 36, 41, 44];
 
+/** The last 12 calendar months, oldest first - "Records created"'s own x-axis,
+ * independent of `LAST_7_DAYS` since this card plots a full year rather than
+ * a week. */
+const MONTHS_12: string[] = Array.from({ length: 12 }, (_, index) =>
+  new Intl.DateTimeFormat('en-US', { month: 'short' }).format(
+    new Date(ANCHOR_MS - (11 - index) * 30 * 24 * 3_600_000)
+  )
+);
+
+/**
+ * "Records created" - row 3's line chart. Three record types with distinct
+ * shapes, on purpose: Companies stays low and steady, Opportunities is the
+ * wavy one with a late spike, People climbs toward the most recent month -
+ * three lines that read as different instruments rather than the same trend
+ * repeated three times. The card's headline total is computed from these
+ * (see `recordsCreatedTotal`), never stored separately.
+ */
+export const recordsCreated: RecordsCreatedPoint[] = MONTHS_12.map((month, index) => ({
+  month,
+  companies: [5, 3, 4, 5, 5, 4, 3, 6, 5, 4, 5, 3][index],
+  opportunities: [7, 10, 6, 9, 11, 7, 9, 8, 8, 8, 7, 18][index],
+  people: [10, 6, 7, 9, 9, 7, 10, 8, 8, 10, 8, 14][index],
+}));
+
 export const workload: WorkloadMetric[] = [
   { id: 'support-load', label: 'Support load', value: 34, max: 50 },
   { id: 'dev-backlog', label: 'Dev backlog', value: 18, max: 40 },
   { id: 'crm-tasks', label: 'CRM tasks', value: 26, max: 35 },
+  { id: 'qa-reviews', label: 'QA reviews', value: 12, max: 20 },
 ];
 
 export const topAgents: TopAgent[] = [

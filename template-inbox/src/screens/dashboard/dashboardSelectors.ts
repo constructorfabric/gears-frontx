@@ -9,7 +9,12 @@
  * doc comment on that constraint.
  */
 
-import type { DashboardKpiCard, NewContactsSeries, WorkloadMetric } from '../../api/dashboardTypes';
+import type {
+  DashboardKpiCard,
+  NewContactsSeries,
+  RecordsCreatedPoint,
+  WorkloadMetric,
+} from '../../api/dashboardTypes';
 
 export const sum = (values: number[]): number => values.reduce((total, value) => total + value, 0);
 
@@ -84,3 +89,9 @@ export const newContactsOutboundTotal = (newContacts: NewContactsSeries): number
 /** A workload metric's fill percentage for its Progress bar. */
 export const workloadPercent = (metric: WorkloadMetric): number =>
   metric.max === 0 ? 0 : Math.round((metric.value / metric.max) * 100);
+
+/** "Records created"'s headline: every company, opportunity and person
+ * across the whole 12-month series, summed - the card's big number is never
+ * its own stored field. */
+export const recordsCreatedTotal = (series: RecordsCreatedPoint[]): number =>
+  sum(series.map((point) => point.companies + point.opportunities + point.people));

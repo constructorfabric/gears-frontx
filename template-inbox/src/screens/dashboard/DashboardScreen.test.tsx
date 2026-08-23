@@ -56,15 +56,31 @@ describe('DashboardScreen', () => {
     screen.unmount();
   });
 
-  it('renders row 3: the workload strip and the ranked top-agents list, Alex Rivera included', () => {
+  it('renders row 3: the records-created chart and the ranked top-agents list, Alex Rivera included', () => {
     const screen = renderScreen(<DashboardScreen t={t} />);
 
-    expect(screen.getByText('team_workload')).toBeTruthy();
-    expect(screen.getByText('Support load')).toBeTruthy();
+    expect(screen.getByText('records_created')).toBeTruthy();
+    expect(screen.getByText('records_created_subtitle')).toBeTruthy();
+    // `recordsCreated` sums companies+opportunities+people across all 12
+    // months to 266 - computed by `recordsCreatedTotal`, not hardcoded (see
+    // `dashboardDataset.ts` and `dashboardSelectors.test.ts`).
+    expect(screen.getAllByText('266').length).toBeGreaterThan(0);
     expect(screen.getByText('top_agents')).toBeTruthy();
     // Alex Rivera appears both in the ranked list and as the owner of at
     // least one activity row, so more than one match is expected here.
     expect(screen.getAllByText('Alex Rivera').length).toBeGreaterThan(0);
+
+    screen.unmount();
+  });
+
+  it('renders the team workload strip as its own full-width row with four blocks', () => {
+    const screen = renderScreen(<DashboardScreen t={t} />);
+
+    expect(screen.getByText('team_workload')).toBeTruthy();
+    expect(screen.getByText('Support load')).toBeTruthy();
+    expect(screen.getByText('Dev backlog')).toBeTruthy();
+    expect(screen.getByText('CRM tasks')).toBeTruthy();
+    expect(screen.getByText('QA reviews')).toBeTruthy();
 
     screen.unmount();
   });

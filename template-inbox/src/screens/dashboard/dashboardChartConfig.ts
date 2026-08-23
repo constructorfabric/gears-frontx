@@ -57,3 +57,11 @@ export const newContactsChartConfig: ChartConfig = {
 export const summaryTrendChartConfig: ChartConfig = {
   value: { label: 'Activity', color: DASHBOARD_PALETTE.amber },
 };
+
+/** Row 3's "Records created" line chart - one hue per record type, drawn
+ * from the same palette every other chart on this screen uses. */
+export const recordsCreatedChartConfig: ChartConfig = {
+  companies: { label: 'Companies', color: DASHBOARD_PALETTE.blue },
+  opportunities: { label: 'Opportunities', color: DASHBOARD_PALETTE.amber },
+  people: { label: 'People', color: DASHBOARD_PALETTE.green },
+};
