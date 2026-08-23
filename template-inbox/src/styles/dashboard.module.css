@@ -435,6 +435,38 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* --- New row: stage funnel + conversion by source, 1/3 + 2/3 --- */
+
+.rowFunnel {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.funnelContent,
+.conversionContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.funnelCard .funnelChart {
+  box-sizing: border-box;
+  width: 100%;
+  height: 15rem; /* 240px */
+  aspect-ratio: auto;
+  margin-top: var(--space-2);
+}
+
+.conversionCard .conversionChart {
+  box-sizing: border-box;
+  width: 100%;
+  height: 15rem; /* 240px */
+  aspect-ratio: auto;
+  margin-top: var(--space-2);
+}
+
 /* --- Row 4: recent activity table --- */
 
 .activitySection {
@@ -505,6 +537,10 @@
 
   .workloadStrip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rowFunnel {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -3,10 +3,12 @@ import { useApiQuery } from '../../api/queries';
 import { getDashboardApi, getInboxApi } from '../../api/registry';
 import type { Translate } from '../../app/i18n';
 import { ActivityTable } from './ActivityTable';
+import { ConversionBySourceCard } from './ConversionBySourceCard';
 import { KpiRow } from './KpiRow';
 import { NewContactsCard } from './NewContactsCard';
 import { RecordsCreatedCard } from './RecordsCreatedCard';
 import { ResolvedPerDayCard } from './ResolvedPerDayCard';
+import { StageFunnelCard } from './StageFunnelCard';
 import { SummaryCard } from './SummaryCard';
 import { TopAgentsCard } from './TopAgentsCard';
 import { WorkloadStrip } from './WorkloadStrip';
@@ -20,12 +22,13 @@ export type DashboardScreenProps = {
 /**
  * The dashboard's top-level orchestration - the app's first rail entry and
  * its default landing route. Unlike Chat/Mail/Contacts it has no secondary
- * sidebar: a single full-width, scrollable pane holding the five rows the
- * dashboard spec lays out (row 3's "Team workload" strip widened into its
- * own full-width row below row 3, so it reads as five rows rather than
- * four), fed by one `getDashboard` fetch plus the inbox service's own
- * `getContacts` (row 4's activity table reuses those contact identities
- * rather than inventing new people - see `dashboardDataset.ts`).
+ * sidebar: a single full-width, scrollable pane holding six rows - KPIs,
+ * the resolved/new-contacts/summary trio, records-created plus top agents,
+ * the full-width team-workload strip, the new stage-funnel plus
+ * conversion-by-source pair, and finally the activity table - fed by one
+ * `getDashboard` fetch plus the inbox service's own `getContacts` (the
+ * activity table reuses those contact identities rather than inventing new
+ * people - see `dashboardDataset.ts`).
  */
 export function DashboardScreen({ t }: DashboardScreenProps) {
   const dashboardService = getDashboardApi();
@@ -69,6 +72,11 @@ export function DashboardScreen({ t }: DashboardScreenProps) {
         </div>
 
         <WorkloadStrip workload={data.workload} t={t} />
+
+        <div className={dashboardStyles.rowFunnel}>
+          <StageFunnelCard stages={data.stageFunnel} t={t} />
+          <ConversionBySourceCard sources={data.conversionBySource} t={t} />
+        </div>
 
         <ActivityTable activity={data.activity} contacts={contacts} t={t} />
       </div>

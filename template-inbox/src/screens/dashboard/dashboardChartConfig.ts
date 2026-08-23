@@ -76,3 +76,21 @@ export const recordsCreatedChartConfig: ChartConfig = {
   opportunities: { label: 'Opportunities', color: DASHBOARD_PALETTE.amber },
   people: { label: 'People', color: DASHBOARD_PALETTE.green },
 };
+
+/** The new row's "Stage funnel" card - one hue per stage, all five palette
+ * hues used once each so the funnel reads as five distinct steps. */
+export const stageFunnelChartConfig: ChartConfig = {
+  new: { label: 'New', color: DASHBOARD_PALETTE.blue },
+  screening: { label: 'Screening', color: DASHBOARD_PALETTE.green },
+  meeting: { label: 'Meeting', color: DASHBOARD_PALETTE.amber },
+  proposal: { label: 'Proposal', color: DASHBOARD_PALETTE.violet },
+  customer: { label: 'Customer', color: DASHBOARD_PALETTE.rose },
+};
+
+/** The new row's "Conversion by source" horizontal stacked bar - Won/Lost,
+ * the same info/destructive pairing the kit already reaches for to mean
+ * "positive outcome" versus "negative outcome" elsewhere in this app. */
+export const conversionChartConfig: ChartConfig = {
+  won: { label: 'Won', color: DASHBOARD_PALETTE.blue },
+  lost: { label: 'Lost', color: DASHBOARD_PALETTE.rose },
+};

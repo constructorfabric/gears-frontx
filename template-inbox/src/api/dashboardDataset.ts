@@ -19,7 +19,9 @@ import type {
   ActivityKind,
   ActivityStatus,
   ContactStageSegment,
+  ConversionSource,
   DashboardKpiCard,
+  FunnelStage,
   NewContactsSeries,
   RecordsCreatedPoint,
   ResolvedPerDayPoint,
@@ -180,6 +182,34 @@ export const recordsCreated: RecordsCreatedPoint[] = MONTHS_12.map((month, index
   opportunities: [7, 10, 6, 9, 11, 7, 9, 8, 8, 8, 7, 18][index],
   people: [10, 6, 7, 9, 9, 7, 10, 8, 8, 10, 8, 14][index],
 }));
+
+/**
+ * The new row's "Stage funnel" card - a widening-to-narrowing pipeline of
+ * CRM-neutral stages, oldest (widest) first. Every later stage's percentage
+ * is computed relative to `New`'s own count at render (see
+ * `funnelStagePercent`), never stored as its own field.
+ */
+export const stageFunnel: FunnelStage[] = [
+  { id: 'new', label: 'New', count: 120 },
+  { id: 'screening', label: 'Screening', count: 104 },
+  { id: 'meeting', label: 'Meeting', count: 86 },
+  { id: 'proposal', label: 'Proposal', count: 65 },
+  { id: 'customer', label: 'Customer', count: 46 },
+];
+
+/**
+ * The new row's "Conversion by source" card - five lead sources, each with
+ * a won/lost split. The card's headline percent is `won / (won + lost)`
+ * across every source, computed at render (see `conversionWonPercent`),
+ * never stored as its own field.
+ */
+export const conversionBySource: ConversionSource[] = [
+  { id: 'inbound', label: 'Inbound', won: 45, lost: 15 },
+  { id: 'outbound', label: 'Outbound', won: 28, lost: 32 },
+  { id: 'referral', label: 'Referral', won: 32, lost: 8 },
+  { id: 'event', label: 'Event', won: 20, lost: 20 },
+  { id: 'partner', label: 'Partner', won: 15, lost: 5 },
+];
 
 export const workload: WorkloadMetric[] = [
   { id: 'support-load', label: 'Support load', value: 34, max: 50 },

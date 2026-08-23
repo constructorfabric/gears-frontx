@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { DashboardKpiCard } from '../../api/dashboardTypes';
 import {
   contactsByStagePercent,
+  conversionWonPercent,
   deltaTone,
   formatDeltaPercent,
   formatKpiValue,
+  funnelStagePercent,
+  funnelTotal,
   kpiDeltaPercent,
   kpiValue,
   newContactsDeltaPercent,
@@ -162,6 +165,49 @@ describe('contactsByStagePercent', () => {
 
   it('never divides by zero', () => {
     expect(contactsByStagePercent({ id: 'x', label: 'X', count: 0 }, [])).toBe(0);
+  });
+});
+
+describe('funnelTotal / funnelStagePercent', () => {
+  const stages = [
+    { id: 'new', label: 'New', count: 120 },
+    { id: 'screening', label: 'Screening', count: 104 },
+    { id: 'meeting', label: 'Meeting', count: 86 },
+    { id: 'proposal', label: 'Proposal', count: 65 },
+    { id: 'customer', label: 'Customer', count: 46 },
+  ];
+
+  it('reads the first (widest) stage as the funnel total', () => {
+    expect(funnelTotal(stages)).toBe(120);
+  });
+
+  it('computes every later stage as a percent of the first stage', () => {
+    expect(funnelStagePercent(stages[0], stages)).toBe(100);
+    expect(funnelStagePercent(stages[1], stages)).toBe(87);
+    expect(funnelStagePercent(stages[2], stages)).toBe(72);
+    expect(funnelStagePercent(stages[3], stages)).toBe(54);
+    expect(funnelStagePercent(stages[4], stages)).toBe(38);
+  });
+
+  it('never divides by zero', () => {
+    expect(funnelTotal([])).toBe(0);
+    expect(funnelStagePercent({ id: 'x', label: 'X', count: 0 }, [])).toBe(0);
+  });
+});
+
+describe('conversionWonPercent', () => {
+  it('computes won leads over won-plus-lost across every source', () => {
+    const sources = [
+      { id: 'inbound', label: 'Inbound', won: 45, lost: 15 },
+      { id: 'outbound', label: 'Outbound', won: 28, lost: 32 },
+    ];
+
+    // (45 + 28) / (45 + 15 + 28 + 32) = 73 / 120 = 60.8% -> 61%.
+    expect(conversionWonPercent(sources)).toBe(61);
+  });
+
+  it('never divides by zero', () => {
+    expect(conversionWonPercent([])).toBe(0);
   });
 });
 

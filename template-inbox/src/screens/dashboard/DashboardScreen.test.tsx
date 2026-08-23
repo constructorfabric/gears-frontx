@@ -96,6 +96,22 @@ describe('DashboardScreen', () => {
     screen.unmount();
   });
 
+  it('renders the new stage-funnel and conversion-by-source row', () => {
+    const screen = renderScreen(<DashboardScreen t={t} />);
+
+    expect(screen.getByText('stage_funnel')).toBeTruthy();
+    // `stageFunnel` in `dashboardDataset.ts`: the first stage, New, is the
+    // funnel's own total (120) - computed by `funnelTotal`, not hardcoded.
+    expect(screen.getAllByText('120').length).toBeGreaterThan(0);
+
+    expect(screen.getByText('conversion_by_source')).toBeTruthy();
+    // `conversionBySource`: won (140) over won+lost (220) is a computed 64%
+    // (see `dashboardSelectors.test.ts`), not hardcoded.
+    expect(screen.getAllByText('64%').length).toBeGreaterThan(0);
+
+    screen.unmount();
+  });
+
   it('renders row 4: the recent activity table, contacts resolved from the inbox dataset', () => {
     const screen = renderScreen(<DashboardScreen t={t} />);
 

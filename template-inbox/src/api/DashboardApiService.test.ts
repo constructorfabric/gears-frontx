@@ -19,6 +19,8 @@ describe('DashboardApiService', () => {
       recordsCreated,
       contactsByStage,
       workload,
+      stageFunnel,
+      conversionBySource,
       topAgents,
       activity,
     } = await getDashboardApi().getDashboard.fetch();
@@ -33,6 +35,8 @@ describe('DashboardApiService', () => {
     expect(recordsCreated).toHaveLength(12);
     expect(contactsByStage).toHaveLength(5);
     expect(workload).toHaveLength(4);
+    expect(stageFunnel).toHaveLength(5);
+    expect(conversionBySource).toHaveLength(5);
     expect(topAgents.length).toBeGreaterThan(0);
     expect(activity.length).toBeGreaterThan(10);
   });

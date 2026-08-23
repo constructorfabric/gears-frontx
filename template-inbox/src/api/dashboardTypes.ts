@@ -89,6 +89,26 @@ export type ContactStageSegment = {
   count: number;
 };
 
+/** One stage of the new row's "Stage funnel" card, oldest (widest) first.
+ * Each stage's share of the funnel is computed relative to the first
+ * stage's own count at render (see `funnelStagePercent`), never stored. */
+export type FunnelStage = {
+  id: string;
+  label: string;
+  count: number;
+};
+
+/** One row of the new row's "Conversion by source" horizontal stacked bar:
+ * a lead source and how many of its leads were won versus lost. The card's
+ * headline percent is `won / (won + lost)` across every source, computed at
+ * render (see `conversionWonPercent`), never stored. */
+export type ConversionSource = {
+  id: string;
+  label: string;
+  won: number;
+  lost: number;
+};
+
 export type TopAgent = {
   id: string;
   name: string;
@@ -128,6 +148,10 @@ export type GetDashboardResponse = {
   /** Row 1's "Contacts by stage" donut - five contact lifecycle stages. */
   contactsByStage: ContactStageSegment[];
   workload: WorkloadMetric[];
+  /** The new row's "Stage funnel" card, oldest (widest) stage first. */
+  stageFunnel: FunnelStage[];
+  /** The new row's "Conversion by source" card. */
+  conversionBySource: ConversionSource[];
   topAgents: TopAgent[];
   activity: ActivityItem[];
 };

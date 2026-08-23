@@ -11,7 +11,9 @@
 
 import type {
   ContactStageSegment,
+  ConversionSource,
   DashboardKpiCard,
+  FunnelStage,
   NewContactsSeries,
   RecordsCreatedPoint,
   ResolvedPerDayPoint,
@@ -98,6 +100,26 @@ export const resolvedPerDayTotal = (point: ResolvedPerDayPoint): number =>
  * consistent because both read from the same seeded per-source series. */
 export const resolvedPerDayWeekTotal = (data: ResolvedPerDayPoint[]): number =>
   sum(data.map(resolvedPerDayTotal));
+
+/** "Stage funnel"'s own headline: the first (widest) stage's count - never
+ * a separately stored field. */
+export const funnelTotal = (stages: FunnelStage[]): number => stages[0]?.count ?? 0;
+
+/** A funnel stage's share of the first (widest) stage's count, as a rounded
+ * whole percent - the reference's own "Stage · NN%" label. */
+export const funnelStagePercent = (stage: FunnelStage, stages: FunnelStage[]): number => {
+  const total = funnelTotal(stages);
+  return total === 0 ? 0 : Math.round((stage.count / total) * 100);
+};
+
+/** "Conversion by source"'s own headline: every source's won leads over
+ * every source's won-plus-lost leads, as a rounded whole percent - computed
+ * across the whole collection, never a separately stored field. */
+export const conversionWonPercent = (sources: ConversionSource[]): number => {
+  const won = sum(sources.map((source) => source.won));
+  const total = sum(sources.map((source) => source.won + source.lost));
+  return total === 0 ? 0 : Math.round((won / total) * 100);
+};
 
 /** A workload metric's fill percentage for its Progress bar. */
 export const workloadPercent = (metric: WorkloadMetric): number =>
