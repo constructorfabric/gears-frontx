@@ -91,7 +91,7 @@
   display: flex;
   flex-direction: column;
   flex: none;
-  width: 10rem;
+  width: 12rem;
   min-height: 0;
   overflow: hidden;
   background: var(--sidebar);
@@ -413,6 +413,30 @@
  */
 .transcript .bubbleText {
   font-size: 0.875rem; /* 14px */
+}
+
+/*
+ * The kit's own bubble radius puts its small "tail" corner at the TOP, on the
+ * side that flips with `align` (`border-start-end-radius` for align=end,
+ * `border-start-start-radius` for align=start - see the kit's bubble CSS).
+ * The reference puts the tail at the BOTTOM instead, on the same side as the
+ * avatar (measured on shadcn-nextjs-aidesk-app-template.vercel.app/inbox:
+ * outbound bubble `18px 18px 18px 6px`, small corner bottom-right; inbound
+ * bubble `18px 18px 6px 18px`, small corner bottom-left). `[data-align]`
+ * lives on the kit's `Bubble` root, not on `.bubbleText` itself, so the
+ * override reaches it through the ancestor attribute; four selectors
+ * (`.thread`, `.transcript`, `[data-align]`, `.bubbleText`) are needed to
+ * outrank the kit's own three-selector rule regardless of stylesheet load
+ * order (same reasoning as `.rowLine .lineTitle` above).
+ */
+.thread .transcript [data-align='end'] .bubbleText {
+  border-start-end-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-xs);
+}
+
+.thread .transcript [data-align='start'] .bubbleText {
+  border-start-start-radius: var(--radius-lg);
+  border-end-start-radius: var(--radius-xs);
 }
 
 .attachmentSlot {
