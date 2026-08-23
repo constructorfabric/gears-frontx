@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { CalendarDaysIcon, CircleDotIcon, ContactIcon, SearchIcon, TagIcon, UserRoundIcon } from 'lucide-react';
 import {
   Avatar,
   AvatarFallback,
@@ -6,6 +7,7 @@ import {
   DataTable,
   DataTableSortButton,
   dataTableColumnHelper,
+  Input,
 } from '@gears-frontx/ui-kit';
 import type { ActivityItem, ActivityKind, ActivityStatus } from '../../api/dashboardTypes';
 import type { Contact } from '../../api/types';
@@ -41,6 +43,15 @@ const STATUS_TONE: Record<ActivityStatus, 'info' | 'warning' | 'success' | 'dang
  * here reads as the same person there, plus the kind/status/owner/date
  * columns the spec asks for. Sorting and pagination come for free from the
  * kit's `DataTable`.
+ *
+ * Header dressing (per-column lucide icon, a live row count, an inert
+ * search field) follows a public shadcn/ui CRM table reference the owner
+ * pointed at - ported at template level only, through `DataTable`'s own
+ * composition points (`header` render functions) and this file's own CSS,
+ * no kit changes. The search field carries no handler: this template does
+ * no activity filtering, so it stays disabled rather than silently doing
+ * nothing (the same convention the rail's profile menu and
+ * `ConversationThread`'s create-ticket button already follow).
  */
 export function ActivityTable({ activity, contacts, t }: ActivityTableProps) {
   const contactById = useMemo(() => new Map(contacts.map((contact) => [contact.id, contact])), [contacts]);
@@ -62,7 +73,12 @@ export function ActivityTable({ activity, contacts, t }: ActivityTableProps) {
       column.accessor((row) => row.contact.name, {
         id: 'contact',
         header: ({ column: instance }) => (
-          <DataTableSortButton column={instance}>{t('contact')}</DataTableSortButton>
+          <DataTableSortButton column={instance}>
+            <span className={styles.tableHeaderLabel}>
+              <ContactIcon aria-hidden="true" />
+              {t('contact')}
+            </span>
+          </DataTableSortButton>
         ),
         cell: ({ row }) => (
           <div className={styles.activityContactCell}>
@@ -76,19 +92,34 @@ export function ActivityTable({ activity, contacts, t }: ActivityTableProps) {
       }),
       column.accessor('kind', {
         header: ({ column: instance }) => (
-          <DataTableSortButton column={instance}>{t('kind')}</DataTableSortButton>
+          <DataTableSortButton column={instance}>
+            <span className={styles.tableHeaderLabel}>
+              <TagIcon aria-hidden="true" />
+              {t('kind')}
+            </span>
+          </DataTableSortButton>
         ),
         cell: ({ getValue }) => <Badge variant={KIND_TONE[getValue()]}>{labelOf(getValue())}</Badge>,
       }),
       column.accessor('status', {
         header: ({ column: instance }) => (
-          <DataTableSortButton column={instance}>{t('status')}</DataTableSortButton>
+          <DataTableSortButton column={instance}>
+            <span className={styles.tableHeaderLabel}>
+              <CircleDotIcon aria-hidden="true" />
+              {t('status')}
+            </span>
+          </DataTableSortButton>
         ),
         cell: ({ getValue }) => <Badge variant={STATUS_TONE[getValue()]}>{labelOf(getValue())}</Badge>,
       }),
       column.accessor('ownerAgentName', {
         header: ({ column: instance }) => (
-          <DataTableSortButton column={instance}>{t('owner')}</DataTableSortButton>
+          <DataTableSortButton column={instance}>
+            <span className={styles.tableHeaderLabel}>
+              <UserRoundIcon aria-hidden="true" />
+              {t('owner')}
+            </span>
+          </DataTableSortButton>
         ),
         cell: ({ getValue }) => {
           const name = getValue();
@@ -106,7 +137,12 @@ export function ActivityTable({ activity, contacts, t }: ActivityTableProps) {
       }),
       column.accessor('occurredAt', {
         header: ({ column: instance }) => (
-          <DataTableSortButton column={instance}>{t('date')}</DataTableSortButton>
+          <DataTableSortButton column={instance}>
+            <span className={styles.tableHeaderLabel}>
+              <CalendarDaysIcon aria-hidden="true" />
+              {t('date')}
+            </span>
+          </DataTableSortButton>
         ),
         cell: ({ getValue }) => longRelativeTime(getValue()),
       }),
@@ -115,7 +151,28 @@ export function ActivityTable({ activity, contacts, t }: ActivityTableProps) {
 
   return (
     <div className={styles.activitySection}>
-      <h2 className={styles.sectionHeading}>{t('recent_activity')}</h2>
+      <div className={styles.activityToolbar}>
+        <h2 className={styles.sectionHeading}>{t('recent_activity')}</h2>
+        <span className={styles.activityCount}>{rows.length}</span>
+        {/*
+          The kit Input's own icon is absolutely positioned relative to its
+          internal wrap, which is itself `width: 100%` of Input's immediate
+          parent - so `margin-left: auto`/a fixed width need to sit on a
+          wrapper div around Input, not on Input's own `className` (which
+          targets the inner `<input>` only). Without this wrapper the wrap
+          fills the whole flex row's remaining space and the icon stays
+          pinned to that row's left edge instead of tracking the input box.
+        */}
+        <div className={styles.activitySearch}>
+          <Input
+            type="search"
+            icon={<SearchIcon />}
+            placeholder={t('search_activity')}
+            disabled
+            aria-label={t('search_activity')}
+          />
+        </div>
+      </div>
       <DataTable columns={columns} data={rows} emptyMessage={t('no_conversations')} />
     </div>
   );

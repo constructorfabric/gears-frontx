@@ -496,6 +496,45 @@
   line-height: var(--text-heading-2-line-height);
 }
 
+/*
+ * The table's own toolbar: heading, a live row count (never a fixed
+ * decoration - it reads `rows.length`), and an inert search field pushed
+ * to the far right - the reference's own "title · count" plus filter chrome
+ * pattern, ported at template level (see `ActivityTable`'s own doc).
+ */
+.activityToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.activityCount {
+  color: var(--muted-foreground);
+  font-size: var(--text-label-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.activitySearch {
+  margin-left: auto;
+  width: 14rem; /* 224px */
+}
+
+/* A column header's icon+label pair - the reference's own per-column icon
+ * (see `ActivityTable`'s own doc). One child of `DataTableSortButton`'s own
+ * flex row, so its trailing sort-direction icon still gets the button's own
+ * gap; this class only spaces the icon from the label within that child. */
+.tableHeaderLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.tableHeaderLabel svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--subtle-foreground);
+}
+
 .activityContactCell {
   display: flex;
   align-items: center;
@@ -569,5 +608,14 @@
 
   .workloadStrip {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .activityToolbar {
+    flex-wrap: wrap;
+  }
+
+  .activitySearch {
+    margin-left: 0;
+    width: 100%;
   }
 }
