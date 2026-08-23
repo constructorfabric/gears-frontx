@@ -12,6 +12,8 @@ import {
   newContactsOutboundTotal,
   newContactsTotal,
   recordsCreatedTotal,
+  resolvedPerDayTotal,
+  resolvedPerDayWeekTotal,
   workloadPercent,
 } from './dashboardSelectors';
 
@@ -113,6 +115,22 @@ describe('recordsCreatedTotal', () => {
 
   it('sums to zero for an empty series', () => {
     expect(recordsCreatedTotal([])).toBe(0);
+  });
+});
+
+describe('resolvedPerDayTotal / resolvedPerDayWeekTotal', () => {
+  const week = [
+    { day: 'Mon', chat: 7, mail: 5, tasks: 4 },
+    { day: 'Tue', chat: 9, mail: 6, tasks: 5 },
+  ];
+
+  it('sums a single day across its three stacked sources', () => {
+    expect(resolvedPerDayTotal(week[0])).toBe(16);
+    expect(resolvedPerDayTotal(week[1])).toBe(20);
+  });
+
+  it('sums the whole week across every day and source', () => {
+    expect(resolvedPerDayWeekTotal(week)).toBe(36);
   });
 });
 

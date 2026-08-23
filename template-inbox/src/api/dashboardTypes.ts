@@ -46,7 +46,11 @@ export type DashboardKpiCard = {
   footerUnit: 'count' | 'minutes';
 };
 
-export type ResolvedPerDayPoint = { day: string; value: number };
+/** One day of row 2's stacked bar chart: resolutions split by source. The
+ * day's total is never stored - it is `chat + mail + tasks`, computed at
+ * render (see `resolvedPerDayTotal`), the same number the "Resolved this
+ * week" KPI card sums across the whole week. */
+export type ResolvedPerDayPoint = { day: string; chat: number; mail: number; tasks: number };
 
 /** One month of "Records created": how many of each record type this
  * screen's world creates that month. The card's headline total is never

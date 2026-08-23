@@ -14,6 +14,7 @@ import type {
   DashboardKpiCard,
   NewContactsSeries,
   RecordsCreatedPoint,
+  ResolvedPerDayPoint,
   WorkloadMetric,
 } from '../../api/dashboardTypes';
 
@@ -86,6 +87,17 @@ export const newContactsInboundTotal = (newContacts: NewContactsSeries): number 
 
 export const newContactsOutboundTotal = (newContacts: NewContactsSeries): number =>
   sum(newContacts.series.map((point) => point.outbound));
+
+/** A "Resolved per day" point's own daily total across its three stacked
+ * sources - never stored, always the sum of `chat`/`mail`/`tasks`. */
+export const resolvedPerDayTotal = (point: ResolvedPerDayPoint): number =>
+  point.chat + point.mail + point.tasks;
+
+/** The whole week's resolutions across every day and every source - the
+ * same number the "Resolved this week" KPI card sums independently, kept
+ * consistent because both read from the same seeded per-source series. */
+export const resolvedPerDayWeekTotal = (data: ResolvedPerDayPoint[]): number =>
+  sum(data.map(resolvedPerDayTotal));
 
 /** A workload metric's fill percentage for its Progress bar. */
 export const workloadPercent = (metric: WorkloadMetric): number =>

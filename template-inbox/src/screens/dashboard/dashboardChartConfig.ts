@@ -48,11 +48,13 @@ export const contactsByStageChartConfig: ChartConfig = {
   churned: { label: 'Churned', color: DASHBOARD_PALETTE.rose },
 };
 
-/** Row 2's large "Resolved per day" chart: every bar neutral except today's,
- * which carries the brand accent - the reference's own highlight pattern. */
+/** Row 2's large "Resolved per day" stacked bar chart: one hue per
+ * resolution source, so a viewer reads Chat/Mail/Tasks the same colors this
+ * screen already uses for those domains elsewhere. */
 export const resolvedPerDayChartConfig: ChartConfig = {
-  value: { label: 'Resolved', color: 'var(--muted-foreground)' },
-  today: { label: 'Today', color: 'var(--primary)' },
+  chat: { label: 'Chat', color: DASHBOARD_PALETTE.blue },
+  mail: { label: 'Mail', color: DASHBOARD_PALETTE.green },
+  tasks: { label: 'Tasks', color: DASHBOARD_PALETTE.amber },
 };
 
 /** Row 2's "New contacts" hero: bars for the inbound volume, a line for the

@@ -67,4 +67,18 @@ describe('DashboardApiService', () => {
     expect(topAgents.some((agent) => agent.name === 'Alex Rivera')).toBe(true);
     expect(activity.some((item) => item.ownerAgentName === 'Alex Rivera')).toBe(true);
   });
+
+  it('keeps "Resolved per day"\'s per-source stack consistent with the "Resolved this week" KPI', async () => {
+    registerApiServices();
+
+    const { kpis, resolvedPerDay } = await getDashboardApi().getDashboard.fetch();
+    const resolvedThisWeek = kpis.find((kpi) => kpi.id === 'resolved-this-week');
+
+    // Every day's chat+mail+tasks stack matches that same day's entry in the
+    // KPI card's own series - the two never carry independently-drifting
+    // numbers (see `RESOLVED_PER_DAY_TOTAL` in `dashboardDataset.ts`).
+    resolvedPerDay.forEach((point, index) => {
+      expect(point.chat + point.mail + point.tasks).toBe(resolvedThisWeek?.series[index]);
+    });
+  });
 });

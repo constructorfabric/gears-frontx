@@ -49,6 +49,21 @@ export const LAST_7_DAYS: string[] = Array.from({ length: 7 }, (_, index) =>
  */
 export const dashboardAgents = ['Alex Rivera', 'Nina Petrov', 'Sam Okafor', 'Jordan Blake', 'Yusuf Demir'];
 
+/**
+ * The daily breakdown behind both row 2's "Resolved per day" stacked bar
+ * chart and row 1's "Resolved this week" KPI - three sources per day (Chat/
+ * Mail/Tasks) so the bar chart can stack them, while the KPI's own series
+ * (`RESOLVED_PER_DAY_TOTAL`, below) is derived by summing the three every
+ * day rather than carrying its own, independently-driftable number. Defined
+ * ahead of `kpiCards` so that card can read the derived total directly.
+ */
+const RESOLVED_PER_DAY_CHAT = [7, 9, 10, 13, 10, 8, 9];
+const RESOLVED_PER_DAY_MAIL = [5, 6, 8, 9, 7, 6, 7];
+const RESOLVED_PER_DAY_TASKS = [4, 5, 6, 7, 5, 4, 5];
+const RESOLVED_PER_DAY_TOTAL = RESOLVED_PER_DAY_CHAT.map(
+  (chat, index) => chat + RESOLVED_PER_DAY_MAIL[index] + RESOLVED_PER_DAY_TASKS[index]
+);
+
 export const kpiCards: DashboardKpiCard[] = [
   {
     id: 'open-conversations',
@@ -71,7 +86,7 @@ export const kpiCards: DashboardKpiCard[] = [
     unit: 'count',
     chartType: 'bar',
     valueMode: 'sum',
-    series: [16, 20, 24, 29, 22, 18, 21],
+    series: RESOLVED_PER_DAY_TOTAL,
     // A slightly softer week than the one before it - deliberately, so this
     // row's badges are not four identical greens (see the dashboard spec's
     // "varied and alive" note).
@@ -115,12 +130,18 @@ export const contactsByStage: ContactStageSegment[] = [
   { id: 'churned', label: 'Churned', count: 4 },
 ];
 
-/** "Resolved per day", row 2's large bar chart. Shares its trend shape with
- * the "Resolved this week" KPI card above on purpose - both describe the
- * same underlying resolutions, one as a sparkline and one at full size. */
+/**
+ * "Resolved per day", row 2's stacked bar chart: each day's resolutions
+ * split by source (Chat/Mail/Tasks). Every day's three segments sum to the
+ * same total the "Resolved this week" KPI card sums across the whole week
+ * (`RESOLVED_PER_DAY_TOTAL` above) - both describe the same underlying
+ * resolutions, one stacked by source and one as a period sum.
+ */
 export const resolvedPerDay: ResolvedPerDayPoint[] = LAST_7_DAYS.map((day, index) => ({
   day,
-  value: kpiCards[1].series[index],
+  chat: RESOLVED_PER_DAY_CHAT[index],
+  mail: RESOLVED_PER_DAY_MAIL[index],
+  tasks: RESOLVED_PER_DAY_TASKS[index],
 }));
 
 export const newContacts: NewContactsSeries = {
