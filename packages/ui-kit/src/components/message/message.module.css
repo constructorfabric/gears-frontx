@@ -29,6 +29,12 @@
   flex-direction: row-reverse;
 }
 
+/*
+ * No overflow: hidden here. Avatar already clips its own image per part
+ * (see avatar.module.css), and its root is deliberately left unclipped so
+ * an AvatarBadge may overhang the circle. Clipping this wrapper one level
+ * up would reintroduce exactly the badge-clip Avatar's own root avoids.
+ */
 .messageAvatar {
   display: flex;
   width: fit-content;
@@ -37,7 +43,6 @@
   align-items: center;
   justify-content: center;
   align-self: flex-end;
-  overflow: hidden;
   border-radius: 9999px;
   background-color: var(--muted);
 }
