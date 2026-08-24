@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="Abstract preview of a flow diagram">
+  <rect width="480" height="300" fill="#eef2f6"/>
+  <g fill="#dbe3ea" stroke="#c7d2dc" stroke-width="2">
+    <rect x="32" y="40" width="120" height="64" rx="10"/>
+    <rect x="200" y="118" width="120" height="64" rx="10"/>
+    <rect x="32" y="196" width="120" height="64" rx="10"/>
+    <rect x="328" y="40" width="120" height="64" rx="10"/>
+  </g>
+  <g stroke="#94a7b8" stroke-width="2" fill="none">
+    <path d="M152 72 H200 V150 H200"/>
+    <path d="M152 228 H180 V150 H200"/>
+    <path d="M320 150 H388 V104 H388"/>
+  </g>
+  <g fill="#94a7b8">
+    <circle cx="92" cy="72" r="6"/>
+    <circle cx="260" cy="150" r="6"/>
+    <circle cx="92" cy="228" r="6"/>
+    <circle cx="388" cy="72" r="6"/>
+  </g>
+</svg>

@@ -51,7 +51,7 @@ export function FolderSidebar({
             <Item
               key={channel.id}
               size="sm"
-              className={styles.folderItem}
+              className={cx(styles.folderItem, channel.id === selectedChannelId && styles.rowSelected)}
               variant={channel.id === selectedChannelId ? 'muted' : 'default'}
               render={
                 <button

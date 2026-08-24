@@ -91,8 +91,8 @@ describe('InboxScreen', () => {
       screen.getAllByText('Dark mode toggle not persisting')[0].click();
     });
 
-    const chip = screen.getByText('Could you share your browser?');
-    expect(screen.getByText('Can you try clearing local storage?')).toBeTruthy();
+    const chip = screen.getByText('Share your browser?');
+    expect(screen.getByText('Clear local storage?')).toBeTruthy();
 
     // The chip drafts, it does not send: the text lands in the reply box.
     // Found by its placeholder, because the tab and its panel answer to the
@@ -104,7 +104,7 @@ describe('InboxScreen', () => {
     act(() => {
       chip.click();
     });
-    expect(draft.value).toBe('Could you share your browser?');
+    expect(draft.value).toBe('Share your browser?');
 
     screen.unmount();
   });
@@ -123,6 +123,76 @@ describe('InboxScreen', () => {
     // normal channel - spam is a tag here, not a destination.
     expect(screen.getByPlaceholderText('reply_placeholder')).toBeTruthy();
     expect(screen.queryByLabelText('suggested_replies')).toBeNull();
+
+    screen.unmount();
+  });
+
+  it('renders every rich message type in a transcript: image, file, and an inline link', () => {
+    const screen = renderScreen(<InboxScreen t={t} />);
+
+    // "Design feedback on dashboard" (c-11, General's most active thread, open
+    // by default) is the showcase thread: its m-11-3 is a file-only message
+    // carrying TWO attachments at once - a bare card per file, no bubble.
+    // Both names also appear in the customer panel's own "Shared files" list
+    // (`conversation.sharedFiles`, a separate field), hence two matches each.
+    expect(screen.getAllByText('dashboard-mockup.png').length).toBe(2);
+    expect(screen.getAllByText('248 KB').length).toBe(2);
+    expect(screen.getAllByText('design-spec.pdf').length).toBe(2);
+    expect(screen.getAllByText('92 KB').length).toBe(2);
+    // Its own m-11-4 embeds an inline link too, right in the default thread.
+    const showcaseLink = screen.getByText('our roadmap');
+    expect(showcaseLink.tagName).toBe('A');
+
+    act(() => {
+      screen.getByText('Sales').click();
+    });
+    act(() => {
+      screen.getAllByText('Purple Bow from United States')[0].click();
+    });
+    // c-7's last message (m-7-3) is an image with a caption - the <img> and
+    // caption text both render, and the caption doubles as its alt text.
+    const image = screen.getByAltText(
+      'Here is how the license page renders on our side, for reference.'
+    );
+    expect(image instanceof HTMLImageElement).toBe(true);
+    if (image instanceof HTMLImageElement) {
+      expect(image.src).toContain('/message-assets/preview-chart.svg');
+    }
+
+    act(() => {
+      screen.getByText('Support').click();
+    });
+    act(() => {
+      screen.getAllByText('Dark mode toggle not persisting')[0].click();
+    });
+    // c-9's last message (m-9-9) embeds one inline link - rendered as a real
+    // anchor, not markdown text, and opened in a new tab so a dead demo href
+    // never hijacks the app's own hash router.
+    const link = screen.getByText('our help page');
+    expect(link.tagName).toBe('A');
+    expect(link.getAttribute('href')).toBe('#');
+    expect(link.getAttribute('target')).toBe('_blank');
+
+    screen.unmount();
+  });
+
+  it('groups a transcript into day dividers and drops the old under-bubble meta line', () => {
+    const screen = renderScreen(<InboxScreen t={t} />);
+    act(() => {
+      screen.getByText('Support').click();
+    });
+    act(() => {
+      screen.getAllByText('Dark mode toggle not persisting')[0].click();
+    });
+
+    // Every seeded message in this thread falls on "Aug 21, 2026", so exactly
+    // one divider opens the transcript - not one per message.
+    expect(screen.getAllByText('Aug 21').length).toBe(1);
+
+    // The in-bubble timestamp replaces the old footer text entirely: no more
+    // "8:31 AM - Seen" / "8:31 AM - Not seen" line under the bubble.
+    expect(screen.queryByText(/ - (Seen|Not seen)$/)).toBeNull();
+    expect(screen.getByText('8:31 AM')).toBeTruthy();
 
     screen.unmount();
   });

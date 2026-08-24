@@ -1,8 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 import {
   AlarmClockIcon,
   ArrowLeftIcon,
+  CheckCheckIcon,
+  CheckIcon,
   CircleAlertIcon,
+  FileIcon,
   MoreHorizontalIcon,
   PaperclipIcon,
   PanelRightIcon,
@@ -23,10 +27,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Marker,
+  MarkerContent,
   Message,
   MessageAvatar,
   MessageContent,
-  MessageFooter,
   MessageHeader,
   MessageScroller,
   MessageScrollerButton,
@@ -42,8 +47,10 @@ import type {
   Contact,
   Conversation,
   Message as ThreadMessage,
+  MessageLink,
 } from '../../api/types';
-import { labelOf } from '../../shared/format';
+import { cx } from '../../shared/cx';
+import { labelOf, messageDayKey, messageDayLabel, messageTimeOfDay } from '../../shared/format';
 import { PresenceAvatar } from '../../shared/PresenceAvatar';
 import { Composer, type ComposerProps } from './Composer';
 import styles from '../../styles/workspace.module.css';
@@ -57,6 +64,69 @@ const bubbleVariantFor = (message: ThreadMessage): 'muted' | 'default' | 'second
   if (message.internal) return 'muted';
   return message.direction === 'outbound' ? 'default' : 'secondary';
 };
+
+/**
+ * Splits `body` on each `link.text` occurrence (in the order the links are
+ * listed) and renders that substring as an anchor - never markdown, never
+ * `dangerouslySetInnerHTML`, so a message can never inject markup it did
+ * not already own as plain text. A link whose `text` is not actually found
+ * in `body` (a dataset mistake) is silently skipped rather than thrown -
+ * the rest of the message still renders.
+ */
+function renderMessageBody(body: string, links: MessageLink[]): ReactNode {
+  if (links.length === 0) return body;
+  let remaining = body;
+  const nodes: ReactNode[] = [];
+  links.forEach((link, index) => {
+    const at = remaining.indexOf(link.text);
+    if (at === -1) return;
+    if (at > 0) nodes.push(remaining.slice(0, at));
+    nodes.push(
+      <a
+        key={`link-${index}`}
+        className={styles.bubbleLink}
+        href={link.href}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {link.text}
+      </a>
+    );
+    remaining = remaining.slice(at + link.text.length);
+  });
+  nodes.push(remaining);
+  return nodes;
+}
+
+/**
+ * The in-bubble timestamp, moved off the transcript's old under-bubble
+ * footer and into the surface it belongs to. Outbound-only read receipts:
+ * a single check for delivered-not-read, a filled double check for read -
+ * the same two-state signal `MessageFooter`'s old "Seen"/"Not seen" text
+ * carried, now iconic and inline instead of a separate meta row.
+ */
+function MessageMeta({
+  message,
+  t,
+  className,
+}: {
+  message: ThreadMessage;
+  t: (key: string) => string;
+  className?: string;
+}) {
+  return (
+    <span className={cx(styles.bubbleMeta, className)}>
+      <span className={styles.bubbleMetaTime}>{messageTimeOfDay(message.timestamp)}</span>
+      {message.direction === 'outbound' && message.seen !== null ? (
+        message.seen ? (
+          <CheckCheckIcon className={styles.readTick} aria-label={t('message_read')} />
+        ) : (
+          <CheckIcon className={styles.deliveredTick} aria-label={t('message_delivered')} />
+        )
+      ) : null}
+    </span>
+  );
+}
 
 /**
  * The jump-to-newest affordance only makes sense while there is content below
@@ -270,66 +340,133 @@ export function ConversationThread({
         <FollowNewestMessage lastMessageId={messages[messages.length - 1]?.id} />
         <MessageScroller className={styles.transcript}>
           <MessageScrollerViewport>
-            <MessageScrollerContent>
+            <MessageScrollerContent className={styles.transcriptContent}>
               {messages.map((message, index) => {
                 const outbound = message.direction === 'outbound';
                 const senderName = outbound ? (agent?.name ?? '') : contactName;
+                const previous = index > 0 ? messages[index - 1] : null;
+                const showDivider =
+                  previous === null || messageDayKey(previous.timestamp) !== messageDayKey(message.timestamp);
                 return (
-                  <MessageScrollerItem
-                    key={message.id}
-                    messageId={message.id}
-                    scrollAnchor={index === messages.length - 1}
-                  >
-                    <Message align={outbound ? 'end' : 'start'}>
-                      <MessageAvatar>
-                        <PresenceAvatar
-                          name={senderName}
-                          presence={
-                            outbound ? (agent?.presence ?? 'online') : (contact?.presence ?? 'offline')
-                          }
-                          size="sm"
-                        />
-                      </MessageAvatar>
-                      <MessageContent className={styles.messageBody}>
-                        {message.internal ? (
-                          <MessageHeader>{t('internal_note')}</MessageHeader>
-                        ) : null}
-                        {message.attachment ? (
-                          <Attachment className={styles.attachmentSlot}>
-                            <AttachmentMedia>
-                              <PaperclipIcon />
-                            </AttachmentMedia>
-                            <AttachmentContent>
-                              <AttachmentTitle>{message.attachment.name}</AttachmentTitle>
-                              <AttachmentDescription>
-                                {message.attachment.size}
-                              </AttachmentDescription>
-                            </AttachmentContent>
-                          </Attachment>
-                        ) : null}
-                        <Bubble
-                          align={outbound ? 'end' : 'start'}
-                          variant={bubbleVariantFor(message)}
-                        >
-                          <BubbleContent className={styles.bubbleText}>
-                            {message.body}
-                          </BubbleContent>
-                        </Bubble>
-                        <MessageFooter>
-                          <span className={styles.messageMeta}>
-                            {/*
-                              A read receipt is an outbound-only fact: an
-                              inbound message never carries one, which is why
-                              `seen` is null rather than false there.
-                            */}
-                            {message.seen === null
-                              ? message.timestamp
-                              : `${message.timestamp} - ${message.seen ? t('seen') : t('not_seen')}`}
-                          </span>
-                        </MessageFooter>
-                      </MessageContent>
-                    </Message>
-                  </MessageScrollerItem>
+                  <Fragment key={message.id}>
+                    {showDivider ? (
+                      <Marker variant="separator">
+                        <MarkerContent>{messageDayLabel(message.timestamp)}</MarkerContent>
+                      </Marker>
+                    ) : null}
+                    <MessageScrollerItem
+                      messageId={message.id}
+                      scrollAnchor={index === messages.length - 1}
+                    >
+                      <Message align={outbound ? 'end' : 'start'}>
+                        <MessageAvatar>
+                          <PresenceAvatar
+                            name={senderName}
+                            presence={
+                              outbound ? (agent?.presence ?? 'online') : (contact?.presence ?? 'offline')
+                            }
+                            size="sm"
+                          />
+                        </MessageAvatar>
+                        <MessageContent>
+                          {message.internal ? (
+                            <MessageHeader>{t('internal_note')}</MessageHeader>
+                          ) : null}
+                          {/*
+                            Every kind shares ONE Bubble, framed the same way as a
+                            plain-text message of that direction (same background
+                            token, same corner radius including the avatar-side
+                            tail, same padding) - `.bubbleText` carries that parity
+                            on every BubbleContent below, not just the plain-text
+                            one. Only what goes INSIDE differs: text, an inset
+                            image, or attachment card(s) - none of them float
+                            outside the bubble the way an unframed `ghost` variant
+                            or a pre-Bubble Attachment previously did.
+                          */}
+                          {message.kind === 'file' ? (
+                            <Bubble align={outbound ? 'end' : 'start'} variant={bubbleVariantFor(message)}>
+                              <BubbleContent className={cx(styles.bubbleText, styles.fileBubbleContent)}>
+                                {message.attachments.map((file) => (
+                                  <Attachment key={file.name} className={styles.attachmentSlot}>
+                                    <AttachmentMedia>
+                                      <FileIcon />
+                                    </AttachmentMedia>
+                                    <AttachmentContent>
+                                      <AttachmentTitle>{file.name}</AttachmentTitle>
+                                      <AttachmentDescription>{file.size}</AttachmentDescription>
+                                    </AttachmentContent>
+                                  </Attachment>
+                                ))}
+                                <MessageMeta message={message} t={t} />
+                              </BubbleContent>
+                            </Bubble>
+                          ) : message.kind === 'image' ? (
+                            <Bubble align={outbound ? 'end' : 'start'} variant={bubbleVariantFor(message)}>
+                              <BubbleContent className={cx(styles.bubbleText, styles.imageBubbleContent)}>
+                                {message.body ? (
+                                  <>
+                                    <img
+                                      src={message.imageUrl ?? ''}
+                                      alt={message.body}
+                                      className={cx(styles.messageImageInset, styles.messageImageHasCaption)}
+                                    />
+                                    {/* Meta trails the caption inline (same technique as the
+                                        plain-text bubble below) - only reached for a captioned
+                                        image, since it needs the caption's own text flow to
+                                        trail into. */}
+                                    <span className={styles.imageCaptionRow}>
+                                      {message.body}
+                                      <MessageMeta message={message} t={t} />
+                                    </span>
+                                  </>
+                                ) : (
+                                  // No caption: nothing for the meta to trail into, so it
+                                  // overlays the image's own bottom-right corner instead.
+                                  <span className={styles.imageFrame}>
+                                    <img
+                                      src={message.imageUrl ?? ''}
+                                      alt={t('shared_image')}
+                                      className={styles.messageImageInset}
+                                    />
+                                    <MessageMeta
+                                      message={message}
+                                      t={t}
+                                      className={styles.imageMetaOverlay}
+                                    />
+                                  </span>
+                                )}
+                              </BubbleContent>
+                            </Bubble>
+                          ) : (
+                            <Bubble
+                              align={outbound ? 'end' : 'start'}
+                              variant={bubbleVariantFor(message)}
+                            >
+                              <BubbleContent className={styles.bubbleText}>
+                                {/* A `text`-kind message can still mention files alongside its
+                                    own body (unchanged from before `kind` existed) - distinct
+                                    from `kind: 'file'` above, which IS the attachment(s). Lives
+                                    inside this same bubble too, not floating ahead of it. */}
+                                {message.attachments.map((file) => (
+                                  <Attachment key={file.name} className={styles.attachmentSlot}>
+                                    <AttachmentMedia>
+                                      <PaperclipIcon />
+                                    </AttachmentMedia>
+                                    <AttachmentContent>
+                                      <AttachmentTitle>{file.name}</AttachmentTitle>
+                                      <AttachmentDescription>{file.size}</AttachmentDescription>
+                                    </AttachmentContent>
+                                  </Attachment>
+                                ))}
+                                {renderMessageBody(message.body, message.links)}
+                                <MessageMeta message={message} t={t} />
+                              </BubbleContent>
+                            </Bubble>
+                          )}
+                        </MessageContent>
+                      </Message>
+                    </MessageScrollerItem>
+                  </Fragment>
                 );
               })}
             </MessageScrollerContent>

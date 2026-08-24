@@ -19,6 +19,13 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 });
 
+/** No year - the transcript's date dividers separate days within a visible
+ * window, not years, matching the reference's "Jun 7" divider text. */
+const dividerDateFormat = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+});
+
 const plural = (count: number, unit: string): string =>
   `${count} ${unit}${count === 1 ? '' : 's'} ago`;
 
@@ -44,6 +51,33 @@ export const longRelativeTime = (iso: string, now: number = Date.now()): string 
 /** Calendar text for the dates a contact detail shows: "Jun 27, 2025". */
 export const absoluteDate = (iso: string): string =>
   iso === '' ? MISSING_VALUE : dateFormat.format(new Date(iso));
+
+/**
+ * A transcript message's day-boundary key, read off the calendar-date
+ * prefix of `Message.timestamp` ("Aug 21, 2026 - 8:21 AM" -> "Aug 21,
+ * 2026"). `timestamp` is calendar text by design (see dataset.ts's header
+ * comment on why it is not an ISO instant), so grouping consecutive
+ * same-day messages reads that prefix directly rather than re-deriving a
+ * separate instant from `ANCHOR_MS` that would have to be kept in step
+ * with it by hand.
+ */
+export const messageDayKey = (timestamp: string): string => timestamp.split(' - ')[0];
+
+/** A date divider's own label: "Aug 21" - the reference's "Jun 7" format,
+ * dropping the year and time `messageDayKey` still carries. */
+export const messageDayLabel = (timestamp: string): string => {
+  const dayKey = messageDayKey(timestamp);
+  const parsed = new Date(dayKey);
+  return Number.isNaN(parsed.getTime()) ? dayKey : dividerDateFormat.format(parsed);
+};
+
+/** The in-bubble timestamp: just the time-of-day half of `Message.timestamp`
+ * ("Aug 21, 2026 - 8:21 AM" -> "8:21 AM") - the divider above the message
+ * group already carries the date half. */
+export const messageTimeOfDay = (timestamp: string): string => {
+  const parts = timestamp.split(' - ');
+  return parts.length > 1 ? parts[1] : timestamp;
+};
 
 /** What the reference renders wherever a contact field has no value. */
 export const MISSING_VALUE = '-';

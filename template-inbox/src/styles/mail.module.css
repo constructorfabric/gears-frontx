@@ -55,6 +55,22 @@
   fill: var(--warning);
 }
 
+/*
+ * Groups the star and the time so `.rowLine`'s `justify-content:
+ * space-between` (workspace.module.css) sees exactly two children - the
+ * title and this group - rather than three, which was spreading an equal
+ * gap on BOTH sides of the star and pushing it toward the row's middle
+ * instead of flush against the time. An unstarred row renders this same
+ * group with only the time inside, so its position is unaffected either
+ * way - no placeholder gap left behind.
+ */
+.rowTimeGroup {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 /* --- The reading pane header: avatar, subject, sender, reply-to --- */
 
 .replyToLine {

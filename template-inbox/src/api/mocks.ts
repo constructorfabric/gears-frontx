@@ -59,13 +59,16 @@ const acceptPostedMessage = (body: JsonValue | undefined): Message => {
     id: `m-sent-${postedMessageCount}`,
     conversationId: readString(body, 'conversationId'),
     direction: 'outbound',
+    kind: 'text',
     body: readString(body, 'body'),
+    links: [],
+    imageUrl: null,
     timestamp: formatTranscriptTimestamp(new Date()),
     // Nothing has been delivered yet, so a fresh reply carries no receipt; a
     // note never gets one at all.
     seen: false,
     internal: readString(body, 'kind') === 'note',
-    attachment: null,
+    attachments: [],
   };
 };
 

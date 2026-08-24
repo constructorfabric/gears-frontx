@@ -66,7 +66,7 @@ export function MailboxSidebar({
             <Item
               key={mailbox.id}
               size="sm"
-              className={styles.folderItem}
+              className={cx(styles.folderItem, mailbox.id === selectedMailboxId && styles.rowSelected)}
               variant={mailbox.id === selectedMailboxId ? 'muted' : 'default'}
               render={
                 <button

@@ -293,12 +293,16 @@
  * reads as barely-there once a dozen rows share the same list, so the
  * selected row also gets a real border - the same `--border-strong` idiom
  * Toggle's own pressed state already uses (toggle.module.css). Two classes
- * on the element plus the `.listBody` ancestor outrank the kit's single-
- * class `.variantMuted` rule (which sets `border-color: transparent`)
- * regardless of stylesheet load order, same reasoning as `.rowLine
- * .lineTitle` above.
+ * on the element plus an ancestor (`.listBody` for the conversation/mail
+ * rows, `.sidebarBody` for the channel/mailbox rows below) outrank the
+ * kit's single-class `.variantMuted` rule (which sets `border-color:
+ * transparent`) regardless of stylesheet load order, same reasoning as
+ * `.rowLine .lineTitle` above. One selector for all four row kinds - the
+ * same token, not just a similar-looking value, wherever "selected" shows
+ * up in this app.
  */
-.listBody .conversationRow.rowSelected {
+.listBody .conversationRow.rowSelected,
+.sidebarBody .folderItem.rowSelected {
   border-color: var(--border-strong);
 }
 
@@ -414,6 +418,21 @@
   padding: var(--space-4);
 }
 
+/*
+ * The gap between whole messages (and the date dividers between them) in
+ * the transcript. The kit's own `MessageScrollerContent` is a flex column
+ * with no gap of its own - previously patched via a
+ * `[data-message-id] + [data-message-id]` margin hack that existed only to
+ * out-space `MessageContent`'s internal --space-3 gap for the old
+ * under-bubble footer meta line; now that the timestamp lives inside the
+ * bubble itself (see `MessageMeta` in ConversationThread.tsx) that
+ * push-pull is gone, and a plain `gap` on the scroller's own content is
+ * the direct way to space message rows.
+ */
+.transcriptContent {
+  gap: var(--space-4);
+}
+
 .messageMeta {
   font-size: var(--text-meta-size);
   color: var(--muted-foreground);
@@ -421,23 +440,164 @@
 }
 
 /*
- * The kit's own `MessageContent` applies one uniform flex `gap` (`--space-3`,
- * 12px) between every part of a message (header/attachment/bubble/footer),
- * and `MessageScrollerContent` applies none at all between messages - so the
- * meta line ends up sitting closer to the NEXT message than to its own
- * bubble. `.messageBody` (passed as `MessageContent`'s className, merging
- * onto the kit's own class) tightens that internal gap so header/attachment/
- * bubble/footer read as one group; `[data-message-id] + [data-message-id]`
- * then adds the larger gap between one message's `MessageScrollerItem` and
- * the next, so a message's meta line hugs its own bubble instead of the
- * following one.
+ * The in-bubble timestamp (+ read ticks): pinned to the bubble's own right
+ * edge, not just trailing the text with a gap after it - `float:
+ * inline-end`, placed as the LAST child right after the bubble's own text
+ * nodes, is what gets both halves of that requirement from plain CSS with
+ * no JS measurement:
+ *   - A float resolves against its containing block's edge, so on a line
+ *     with room left over it docks flush against the padding edge rather
+ *     than merely following the last word with a gap after it.
+ *   - Introduced at the END of the flow (not the start - a float placed
+ *     BEFORE the text pins to the TOP of the paragraph instead, pushing
+ *     line 1 around it, which is the wrong edge entirely), it only ever
+ *     affects the line(s) laid out after it: a short last line still has
+ *     room and the float docks onto that same line; a full-width last
+ *     line has none left, so the float is pushed down to become its own
+ *     trailing line - still flush against the same right edge on that
+ *     line. This is the classic messenger trailing-timestamp technique.
+ *
+ * No `color` override here, deliberately: a `default`-variant bubble paints
+ * `--primary-foreground` (white) text on a `--primary` fill, where a fixed
+ * token like `--muted-foreground` (built for a light surface) would be
+ * unreadably low-contrast. Dimming instead through `opacity` on the two
+ * de-emphasized children below rides whatever `color` the surrounding
+ * `.bubbleContent` variant already set, so it stays legible on every
+ * variant without needing one override per background.
  */
-.thread .transcript .messageBody {
+.bubbleMeta {
+  display: flex;
+  float: inline-end;
+  align-items: center;
   gap: var(--space-1);
+  margin-inline-start: var(--space-2);
+  font-size: var(--text-meta-size);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.thread .transcript [data-message-id] + [data-message-id] {
-  margin-top: var(--space-4);
+.bubbleMeta svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.bubbleMetaTime,
+.deliveredTick {
+  opacity: 0.65;
+}
+
+/* Read (seen) ticks stay at full strength - "acknowledged" is the
+ * affirmative signal, so it reads at the bubble's own full text contrast
+ * while the timestamp and the plain "delivered" tick stay dimmed. */
+.readTick {
+  opacity: 1;
+}
+
+/* Always-underlined, unlike Badge's hover-only link variant - an inline
+ * link inside running message text reads as a link on sight, the same
+ * idiom Marker's own `.marker a` rule already uses for its content slot. */
+.bubbleLink {
+  color: inherit;
+  text-decoration-line: underline;
+  text-underline-offset: 3px;
+}
+
+.bubbleLink:hover {
+  opacity: 0.8;
+}
+
+/*
+ * An image message is the SAME framed Bubble as a plain-text one - same
+ * background token, same padding, same avatar-side tail corner (inherited
+ * from `.bubbleText`'s own radius override, composed alongside this class
+ * on the same BubbleContent) - the image and caption are content INSIDE
+ * it, not a separate unframed card floating next to it.
+ */
+.imageBubbleContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /*
+   * An explicit base width, not the kit's own shrink-to-fit `width:
+   * fit-content` (bubble.module.css): the full-bleed image below sizes
+   * itself as a PERCENTAGE of this box, which is circular against a
+   * fit-content parent (a percentage against an indefinite width
+   * resolves as `auto`, so the image would fall back to its intrinsic
+   * pixel size instead of filling the bubble). `max-width: 100%`
+   * (inherited from the kit's own `.bubbleContent` rule) still caps this
+   * down on a narrower column, same as any other bubble.
+   */
+  width: 20rem;
+}
+
+/*
+ * Full-bleed inset media: negative margins cancel BubbleContent's own
+ * padding (`--space-2`/`--space-3`, bubble.module.css) so the image reads
+ * as part of the bubble's surface rather than a card floating inside a
+ * card. `border-radius: inherit` picks up whatever `.bubbleText`'s radius
+ * override already resolved to on the parent (radius-lg on three corners,
+ * radius-xs on the avatar-side tail) with no separate align-based logic
+ * of its own.
+ */
+.messageImageInset {
+  display: block;
+  width: calc(100% + var(--space-3) * 2);
+  margin: calc(var(--space-2) * -1) calc(var(--space-3) * -1) 0;
+  border-radius: inherit;
+}
+
+/* A caption follows, so the image's own bottom corners must stay square -
+ * only the top of the bubble is exposed image, the bottom is the caption
+ * row's own straight-edged background. */
+.messageImageHasCaption {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/*
+ * A captioned image's meta trails the caption text inline (same technique
+ * as `.bubbleMeta` above - this row is a plain block box, so its own text
+ * node + trailing `.bubbleMeta` child share one inline formatting context
+ * and wrap together). Matches the reference: the caption's own timestamp
+ * sits right after its text, not pinned to the image.
+ */
+.imageCaptionRow {
+  font-size: 0.875rem; /* 14px, matches .bubbleText's own step */
+}
+
+/*
+ * A caption-LESS image has no text line for the meta to trail, so it
+ * overlays the image's own bottom-right corner instead - the one place in
+ * this wave an absolute-positioned meta is correct, since there is no
+ * text flow to disrupt. The scrim (a translucent dark chip) keeps the
+ * white time/tick readable over whatever the image itself contains.
+ */
+.imageMetaOverlay {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  margin-inline-start: 0;
+  padding: var(--space-1) var(--space-2);
+  border-radius: 9999px;
+  /* `--overlay` (theme.css) is the kit's own scrim token - already a fixed
+   * black at 50% regardless of theme, which is exactly the point of a
+   * scrim: legible against arbitrary image content underneath, not tied
+   * to the surrounding light/dark surface. `--primary-foreground` is the
+   * kit's other theme-invariant color (white in both themes; see
+   * theme.css) - the same "always-light text" role a default-variant
+   * bubble already relies on, reused here instead of a literal white. */
+  background-color: var(--overlay);
+  color: var(--primary-foreground);
+}
+
+.imageMetaOverlay .deliveredTick,
+.imageMetaOverlay .bubbleMetaTime {
+  opacity: 0.85;
+}
+
+.imageFrame {
+  position: relative;
+  width: fit-content;
 }
 
 /*

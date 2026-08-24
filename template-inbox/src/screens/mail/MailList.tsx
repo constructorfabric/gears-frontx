@@ -73,10 +73,12 @@ export function MailList({
                 <ItemTitle className={cx(styles.rowText, styles.rowTitleText, mailStyles.correspondentText)}>
                   {mail.correspondentName}
                 </ItemTitle>
-                {mail.starred ? (
-                  <StarIcon className={mailStyles.starIcon} aria-label={t('starred_mail')} />
-                ) : null}
-                <span className={styles.rowTime}>{shortRelativeTime(mail.receivedAt)}</span>
+                <span className={mailStyles.rowTimeGroup}>
+                  {mail.starred ? (
+                    <StarIcon className={mailStyles.starIcon} aria-label={t('starred_mail')} />
+                  ) : null}
+                  <span className={styles.rowTime}>{shortRelativeTime(mail.receivedAt)}</span>
+                </span>
               </div>
               <div className={styles.rowLine}>
                 <ItemDescription className={cx(styles.rowText, styles.rowPreviewText, mailStyles.subjectText)}>

@@ -86,11 +86,44 @@ export type Conversation = {
 
 export type MessageAttachment = SharedFile;
 
+/**
+ * What a message's own surface renders: `text` inside a framed Bubble
+ * (optionally with `links`), `image` unframed with an optional caption, and
+ * `file` as a bare attachment card with no bubble at all. Orthogonal to
+ * `attachment`, which a `text` message can still carry alongside its body
+ * (a reply with a file mentioned in the same breath) - `kind` picks the
+ * message's own shape, `attachment` is content any shape but `image` can
+ * carry.
+ */
+export type MessageKind = 'text' | 'image' | 'file';
+
+/**
+ * An inline link inside a `text` message's `body`. `text` must be an exact
+ * substring of `body`; the renderer splits on it rather than parsing
+ * markdown or HTML, so a message can never inject markup it did not
+ * already own as plain text.
+ */
+export type MessageLink = {
+  text: string;
+  href: string;
+};
+
 export type Message = {
   id: string;
   conversationId: string;
   direction: MessageDirection;
+  kind: MessageKind;
+  /**
+   * `text`: the message itself. `image`: an optional caption, rendered
+   * below the image. `file`: unused (the attachment card carries its own
+   * name/size) - kept as `''` rather than optional, so every message has a
+   * `body` and call sites never need an extra branch to read it.
+   */
   body: string;
+  /** Inline links inside `body`; always `[]` outside `kind: 'text'`. */
+  links: MessageLink[];
+  /** The image to render; only meaningful for `kind: 'image'`. */
+  imageUrl: string | null;
   /**
    * Rendered exactly as captured from the reference. Unlike the list's
    * relative times these are calendar text in the transcript, so they are
@@ -106,7 +139,15 @@ export type Message = {
    * what lets the thread render the two differently in one pass.
    */
   internal: boolean;
-  attachment: MessageAttachment | null;
+  /**
+   * Files carried by this message - `[]` for most messages, one entry for
+   * the common "here's a file" case, and more than one for a message that
+   * shares several files at once (each renders its own card). One shape
+   * for both rather than a singular `attachment` field plus a plural one
+   * for "several": a reader of `kind: 'file'` or a `text` message that
+   * happens to mention a file never has to check which field is set.
+   */
+  attachments: MessageAttachment[];
 };
 
 export type ContactTicket = {

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="Abstract preview of a bar chart panel">
+  <rect width="480" height="300" fill="#eef2f6"/>
+  <rect x="24" y="24" width="432" height="40" rx="8" fill="#dbe3ea"/>
+  <rect x="24" y="24" width="140" height="40" rx="8" fill="#c7d2dc"/>
+  <g fill="#94a7b8">
+    <rect x="40" y="120" width="36" height="140"/>
+    <rect x="96" y="90" width="36" height="170"/>
+    <rect x="152" y="150" width="36" height="110"/>
+    <rect x="208" y="70" width="36" height="190"/>
+    <rect x="264" y="110" width="36" height="150"/>
+    <rect x="320" y="60" width="36" height="200"/>
+    <rect x="376" y="95" width="36" height="165"/>
+  </g>
+  <line x1="24" y1="260" x2="456" y2="260" stroke="#c7d2dc" stroke-width="2"/>
+</svg>
