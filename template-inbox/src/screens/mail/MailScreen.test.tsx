@@ -250,7 +250,7 @@ describe('MailScreen', () => {
     const screen = renderScreen(<MailScreen t={t} />);
 
     act(() => {
-      screen.getByText('compose').click();
+      screen.getByLabelText('compose').click();
     });
     const toField = domScreen.getByLabelText('compose_to_label');
     const subjectField = domScreen.getByLabelText('compose_subject_label');
@@ -305,7 +305,7 @@ describe('MailScreen', () => {
     const screen = renderScreen(<MailScreen t={t} />);
 
     act(() => {
-      screen.getByText('compose').click();
+      screen.getByLabelText('compose').click();
     });
     const toField = domScreen.getByLabelText('compose_to_label');
     if (!(toField instanceof HTMLInputElement)) throw new Error('to field is not an input');

@@ -25,14 +25,6 @@
   min-height: 0;
 }
 
-/* --- The Compose button above the mailbox nav --- */
-
-.composeButton {
-  box-sizing: border-box;
-  width: 100%;
-  margin-bottom: var(--space-3);
-}
-
 /* --- The mail list row: read/unread is typography only, no dot --- */
 
 .mailRowRead .correspondentText,

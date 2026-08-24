@@ -174,18 +174,7 @@ export function ConversationList({
         <h2 className={styles.paneTitle}>{channelLabel}</h2>
         {/* The count follows the visible list, so a search moves it with the rows. */}
         <span className={styles.paneCount}>{conversations.length}</span>
-      </div>
-
-      <div className={styles.paneRow}>
-        <Input
-          className={styles.grow}
-          type="search"
-          value={search}
-          onValueChange={onSearchChange}
-          placeholder={t('search_conversations')}
-          icon={<SearchIcon />}
-          aria-label={t('search_conversations')}
-        />
+        <span className={styles.spacer} />
         <Dialog
           open={newChatOpen}
           onOpenChange={(open) => {
@@ -241,6 +230,18 @@ export function ConversationList({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      </div>
+
+      <div className={styles.paneRow}>
+        <Input
+          className={styles.grow}
+          type="search"
+          value={search}
+          onValueChange={onSearchChange}
+          placeholder={t('search_conversations')}
+          icon={<SearchIcon />}
+          aria-label={t('search_conversations')}
+        />
       </div>
 
       <div className={cx(styles.paneRow, styles.paneToolbar)}>

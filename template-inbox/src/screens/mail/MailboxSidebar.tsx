@@ -27,7 +27,6 @@ import type { Translate } from '../../app/i18n';
 import { cx } from '../../shared/cx';
 import { countInMailbox } from './mailSelectors';
 import styles from '../../styles/workspace.module.css';
-import mailStyles from '../../styles/mail.module.css';
 
 const MAILBOX_ICON: Record<MailboxId, ReactElement> = {
   inbox: <InboxIcon />,
@@ -99,8 +98,7 @@ export function MailboxSidebar({
     >
       <div className={styles.paneHeader}>
         <span className={styles.paneTitle}>{t('mail')}</span>
-      </div>
-      <nav className={styles.sidebarBody}>
+        <span className={styles.spacer} />
         <Dialog
           open={composeOpen}
           onOpenChange={(open) => {
@@ -109,13 +107,9 @@ export function MailboxSidebar({
           }}
         >
           <DialogTrigger
-            render={
-              <Button variant="default" className={mailStyles.composeButton} icon={<PenSquareIcon />}>
-                {t('compose')}
-              </Button>
-            }
+            render={<Button variant="ghost" size="sm" icon={<PenSquareIcon />} aria-label={t('compose')} />}
           />
-          <DialogContent>
+          <DialogContent size="lg">
             <form onSubmit={submit}>
               <DialogHeader>
                 <DialogTitle>{t('compose_mail_title')}</DialogTitle>
@@ -145,7 +139,7 @@ export function MailboxSidebar({
                   <FieldLabel htmlFor={bodyFieldId}>{t('compose_body_label')}</FieldLabel>
                   <Textarea
                     id={bodyFieldId}
-                    rows={6}
+                    rows={8}
                     value={draft.body}
                     onChange={(event) =>
                       setDraft((previous) => ({ ...previous, body: event.target.value }))
@@ -165,7 +159,8 @@ export function MailboxSidebar({
             </form>
           </DialogContent>
         </Dialog>
-
+      </div>
+      <nav className={styles.sidebarBody}>
         <ItemGroup>
           {mailboxes.map((mailbox) => (
             <Item
