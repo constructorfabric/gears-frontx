@@ -1,5 +1,5 @@
 import {
-  HeadsetIcon,
+  BlocksIcon,
   LayoutDashboardIcon,
   LogOutIcon,
   MailIcon,
@@ -70,7 +70,7 @@ export function IconRail({ route, agent, theme, onToggleTheme, t }: IconRailProp
   return (
     <aside className={styles.rail} aria-label={t('main_navigation')}>
       <span className={styles.railMark} aria-hidden="true">
-        <HeadsetIcon />
+        <BlocksIcon />
       </span>
 
       <nav className={styles.railNav} aria-label={t('sections')}>

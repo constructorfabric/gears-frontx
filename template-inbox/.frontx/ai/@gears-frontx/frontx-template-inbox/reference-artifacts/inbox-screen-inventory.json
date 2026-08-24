@@ -22,7 +22,7 @@
         "ItemMedia",
         "ItemContent",
         "ItemTitle",
-        "lucide-react: LayoutDashboardIcon, HeadsetIcon, MessageCircleIcon, MailIcon, UsersIcon, SunIcon, MoonIcon, UserIcon, SettingsIcon, LogOutIcon"
+        "lucide-react: LayoutDashboardIcon, BlocksIcon, MessageCircleIcon, MailIcon, UsersIcon, SunIcon, MoonIcon, UserIcon, SettingsIcon, LogOutIcon"
       ],
       "note": "Fixed 64px, never collapsed. Mark at the top, one Button per section with variant=\"secondary\" when active - Dashboard first, then Chat, Mail, Contacts - flexible spacer, then the theme toggle and the profile-menu Popover. Popups need no container - they portal to the app's own body."
     },
