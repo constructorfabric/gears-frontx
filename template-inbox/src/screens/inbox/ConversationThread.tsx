@@ -290,7 +290,7 @@ export function ConversationThread({
                           size="sm"
                         />
                       </MessageAvatar>
-                      <MessageContent>
+                      <MessageContent className={styles.messageBody}>
                         {message.internal ? (
                           <MessageHeader>{t('internal_note')}</MessageHeader>
                         ) : null}

@@ -407,6 +407,26 @@
 }
 
 /*
+ * The kit's own `MessageContent` applies one uniform flex `gap` (`--space-3`,
+ * 12px) between every part of a message (header/attachment/bubble/footer),
+ * and `MessageScrollerContent` applies none at all between messages - so the
+ * meta line ends up sitting closer to the NEXT message than to its own
+ * bubble. `.messageBody` (passed as `MessageContent`'s className, merging
+ * onto the kit's own class) tightens that internal gap so header/attachment/
+ * bubble/footer read as one group; `[data-message-id] + [data-message-id]`
+ * then adds the larger gap between one message's `MessageScrollerItem` and
+ * the next, so a message's meta line hugs its own bubble instead of the
+ * following one.
+ */
+.thread .transcript .messageBody {
+  gap: var(--space-1);
+}
+
+.thread .transcript [data-message-id] + [data-message-id] {
+  margin-top: var(--space-4);
+}
+
+/*
  * The bubble text sits one step below the kit's own --text-body-size (15px);
  * no token names 14px, so the value is set directly. Two classes for the
  * same load-order-independent override reasoning as `.rowLine .lineTitle`.
