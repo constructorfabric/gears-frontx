@@ -122,8 +122,31 @@ export function DataTableSortButton<TData extends RowData, TValue = unknown>({
       className={cx(styles.sortButton, className)}
       onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
     >
-      {children}
-      <ArrowUpDownIcon className={styles.sortIcon} />
+      {/*
+       * One wrapping span, not two bare children: `Button` has no trailing-
+       * icon slot (`icon` is leading-only, see button.tsx), so passing
+       * `children` and `ArrowUpDownIcon` as siblings here means `Button`
+       * folds BOTH of them into its own single `.label` span
+       * (`hasLabel && <span className={styles.label}>{children}</span>`,
+       * where `children` is everything this component was given, arrow
+       * included). That span is a plain inline box - it carries no
+       * `display`/`align-items` of its own - so the label content and the
+       * arrow icon end up as bare inline siblings glued together with no
+       * gap, and the icon's vertical position falls out of ordinary
+       * inline `vertical-align: baseline` against whatever font metrics
+       * the label content happens to establish. Different header content
+       * (a plain string here, an icon+text span in the dashboard's
+       * activity table) sets a different baseline, which is why the same
+       * markup misaligned differently in the two tables. Wrapping both in
+       * one `sortButtonInner` flex box makes `Button` see (and fold) only
+       * ONE child - an atomic inline-flex box that centers and gaps its
+       * own two children itself, independent of whatever inline context
+       * it lands in.
+       */}
+      <span className={styles.sortButtonInner}>
+        {children}
+        <ArrowUpDownIcon className={styles.sortIcon} />
+      </span>
     </Button>
   );
 }

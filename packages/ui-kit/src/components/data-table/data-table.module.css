@@ -66,6 +66,26 @@
   letter-spacing: var(--text-mono-tracking);
   text-transform: inherit;
   color: inherit;
+}
+
+/*
+ * `Button` folds every non-icon child into one plain `.label` span (see
+ * button.tsx) - a bare inline box with no `display`/`align-items` of its
+ * own. `DataTableSortButton` hands that span two children (the column
+ * label, the arrow icon), so without this wrapper they lay out as ordinary
+ * inline siblings: no gap (JSX leaves no whitespace between adjacent
+ * elements), and the icon's vertical position falls out of inline
+ * `vertical-align: baseline` against whatever font metrics the label
+ * content happens to set - which is why the same arrow sat differently in
+ * two different tables (see data-table.tsx's comment on
+ * `DataTableSortButton`). This box is the actual flex row: one inline-flex
+ * container, sized to its own content, that centers and gaps the label and
+ * the arrow itself, regardless of what the label content is or what
+ * inline context the button lands in.
+ */
+.sortButtonInner {
+  display: inline-flex;
+  align-items: center;
   /* The frame sets the gap between a column label and its direction
    * indicator at 4px, tighter than the --space-2 a Button gaps its own
    * content at — that gap is sized for a Label-sized icon next to

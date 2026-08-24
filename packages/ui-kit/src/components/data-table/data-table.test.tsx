@@ -66,6 +66,27 @@ describe('DataTable', () => {
     expect(screen.getByText('No results.')).toBeTruthy();
   });
 
+  it('wraps the label and the sort arrow in one inline-flex box, not as bare Button children', () => {
+    // Regression test for the misaligned-arrow bug: `Button` folds every
+    // non-icon child into ONE `.label` span (see button.tsx), so passing
+    // the label and the arrow icon as two separate children of `Button`
+    // (rather than one already-wrapped child) put them back at the mercy
+    // of ordinary inline layout - no gap, baseline-dependent vertical
+    // position. This asserts the button's accessible content lives inside
+    // a single `sortButtonInner` element that itself contains both the
+    // text and the icon, so `Button` only ever sees one child to fold.
+    render(<DataTable columns={columns} data={payments} pageSize={20} />);
+    const button = screen.getByRole('button', { name: /Amount/ });
+    const inner = button.querySelector(`.${styles.sortButtonInner}`);
+    expect(inner).toBeTruthy();
+    expect(inner?.textContent).toBe('Amount');
+    expect(inner?.querySelector('svg')).toBeTruthy();
+    // The wrapper is Button's ONLY child (aside from the loading spinner,
+    // never rendered here) - i.e. it is not itself nested inside another
+    // sibling, confirming Button folds exactly one child.
+    expect(button.querySelectorAll(`.${styles.sortButtonInner}`)).toHaveLength(1);
+  });
+
   it('sorts ascending then descending via DataTableSortButton', () => {
     render(<DataTable columns={columns} data={payments} pageSize={20} />);
     expect(bodyRowAmounts()).toEqual(['50', '10', '30']);
