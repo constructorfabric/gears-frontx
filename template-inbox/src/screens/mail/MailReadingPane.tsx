@@ -75,7 +75,16 @@ export function MailReadingPane({
         </div>
       </div>
 
-      <MessageScrollerProvider>
+      {/*
+        Keyed by mail id - same reasoning as ConversationThread's
+        MessageScrollerProvider: without a key, switching the open mail
+        keeps the same provider instance mounted, and @shadcn/react reads
+        the swapped content as an in-place edit to the CURRENT transcript
+        rather than a fresh one, which can leave a stray
+        [data-message-scroller-spacer] gap. The key forces a genuine
+        remount per mail.
+      */}
+      <MessageScrollerProvider key={mail.id}>
         <MessageScroller className={styles.transcript}>
           <MessageScrollerViewport>
             <MessageScrollerContent>

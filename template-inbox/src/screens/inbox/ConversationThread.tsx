@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import {
   AlarmClockIcon,
   ArrowLeftIcon,
@@ -33,6 +34,7 @@ import {
   MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
+  useMessageScroller,
   useMessageScrollerScrollable,
 } from '@gears-frontx/ui-kit';
 import type {
@@ -64,6 +66,44 @@ const bubbleVariantFor = (message: ThreadMessage): 'muted' | 'default' | 'second
 function ScrollToNewest({ label }: { label: string }) {
   const { end } = useMessageScrollerScrollable();
   return end ? <MessageScrollerButton direction="end" aria-label={label} /> : null;
+}
+
+/**
+ * Renders no DOM of its own - it exists purely to call the primitive's
+ * imperative `scrollToEnd` at the right moment. `@shadcn/react`'s own
+ * content-diff heuristic (`handleContentChange`) aligns a single newly
+ * appended `scrollAnchor` item to the viewport's START, not its end -
+ * that alignment is what it uses whenever exactly one new message shows
+ * up, `autoScroll` or not (its own multi-anchor fast path never applies
+ * to a single append), and it pads a real, non-zero
+ * `[data-message-scroller-spacer]` under that message so the alignment
+ * is reachable. Explicitly following to the end on every new message
+ * bypasses that heuristic and gives the thread the follow-the-newest
+ * behavior every chat app has.
+ */
+function FollowNewestMessage({ lastMessageId }: { lastMessageId: string | undefined }) {
+  const { scrollToEnd } = useMessageScroller();
+  const previousLastMessageId = useRef(lastMessageId);
+  useEffect(() => {
+    if (lastMessageId === undefined || lastMessageId === previousLastMessageId.current) {
+      previousLastMessageId.current = lastMessageId;
+      return;
+    }
+    previousLastMessageId.current = lastMessageId;
+    // Runs after the primitive's own MutationObserver-driven
+    // handleContentChange (which fires as soon as the new item lands in
+    // the DOM and jumps/pads for its own align:'start' heuristic - see
+    // the comment above): two rAFs land after that adjustment's own
+    // paint, so this call is the LAST word on scroll position rather than
+    // one the primitive's reaction can still clobber.
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        scrollToEnd({ behavior: 'smooth' });
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [lastMessageId, scrollToEnd]);
+  return null;
 }
 
 export type ConversationThreadProps = {
@@ -193,7 +233,41 @@ export function ConversationThread({
         </div>
       </div>
 
-      <MessageScrollerProvider>
+      {/*
+        Keyed by conversation id: MessageScrollerProvider/MessageScroller
+        hold @shadcn/react's own scroll-anchor/spacer state in refs that
+        never reset on their own (see message-scroller.md's anti-patterns).
+        Without this key, switching conversations keeps the SAME provider
+        instance mounted and swaps its messages prop for a different
+        conversation's list; the primitive reads that as an in-place
+        edit to the CURRENT transcript (messages appended/removed) rather
+        than "this is a different transcript, start over", so it tries to
+        anchor the read position to whatever used to be the previous
+        item count - which can leave a large, real, non-zero
+        [data-message-scroller-spacer] between the last message and the
+        composer. The `key` forces React to fully unmount and remount the
+        subtree per conversation, giving the primitive a genuine fresh
+        mount (and its own scrollToEnd-on-load) every time.
+
+        `autoScroll`: makes `scrollToEnd` (called by `FollowNewestMessage`
+        below) put the primitive into its own "following-bottom" mode -
+        without it, jumping to the end still works once, but the jump-to-
+        newest button and the scrollable-edge state it reads don't know
+        the reader is now caught up.
+
+        `FollowNewestMessage`: `@shadcn/react`'s own content-diff heuristic
+        aligns a single newly appended `scrollAnchor` item to the
+        viewport's START, not its end - a single append never takes its
+        multi-anchor "follow to end" fast path, `autoScroll` or not - and
+        pads a real, non-zero [data-message-scroller-spacer] under that
+        message so the alignment is reachable. That reproduces the same
+        "hole before the composer" symptom on every send. Explicitly
+        following to the end whenever the newest message id changes
+        bypasses that heuristic and gives the thread the follow-the-newest
+        behavior every chat app has.
+      */}
+      <MessageScrollerProvider key={conversation.id} autoScroll>
+        <FollowNewestMessage lastMessageId={messages.at(-1)?.id} />
         <MessageScroller className={styles.transcript}>
           <MessageScrollerViewport>
             <MessageScrollerContent>
