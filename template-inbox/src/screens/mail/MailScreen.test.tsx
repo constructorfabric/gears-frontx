@@ -1,5 +1,6 @@
 import { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { screen as domScreen, within } from '@testing-library/dom';
 import { endpointTags, mutationResult, queryResultFor } from '../../__test-utils__/apiMocks';
 import { renderScreen } from '../../__test-utils__/renderScreen';
 
@@ -26,6 +27,13 @@ function typeInto(field: HTMLInputElement | HTMLTextAreaElement, value: string):
   setter?.call(field, value);
   field.dispatchEvent(new Event('input', { bubbles: true }));
 }
+
+// `screen` (from `renderScreen`) only ever queries inside its own mounted
+// container - but the kit's Dialog portals its popup straight to
+// `document.body` by default (dialog.md), a sibling of that container, not
+// a descendant. `domScreen`, `@testing-library/dom`'s own document-wide
+// singleton, is what reaches the compose dialog's own fields and buttons
+// once it is open.
 
 describe('MailScreen', () => {
   it('lists the seeded mailboxes and opens on Inbox, with its first mail selected automatically', () => {
@@ -234,6 +242,90 @@ describe('MailScreen', () => {
     // Sending clears the draft rather than posting anywhere or appending to
     // the thread - the owner's "keep it simple" directive for this control.
     expect(draft.value).toBe('');
+
+    screen.unmount();
+  });
+
+  it('composes a mail and sends it into the Sent mailbox, gated on To plus (Subject or Body)', () => {
+    const screen = renderScreen(<MailScreen t={t} />);
+
+    act(() => {
+      screen.getByText('compose').click();
+    });
+    const toField = domScreen.getByLabelText('compose_to_label');
+    const subjectField = domScreen.getByLabelText('compose_subject_label');
+    if (!(toField instanceof HTMLInputElement)) throw new Error('to field is not an input');
+    if (!(subjectField instanceof HTMLInputElement)) throw new Error('subject field is not an input');
+    expect(document.activeElement).toBe(toField);
+
+    // The reading pane's own reply composer has a "send" button of its own,
+    // still in the document (Base UI leaves the underlying page mounted,
+    // just `aria-hidden`, while a dialog is open) - `within` the dialog is
+    // what keeps this query pointed at the compose dialog's Send instead of
+    // colliding with that one.
+    const dialog = within(domScreen.getByRole('dialog'));
+
+    // To alone is not enough - the exact rule is To plus at least one of
+    // Subject/Body.
+    act(() => {
+      typeInto(toField, 'devon@brightlabs.io');
+    });
+    expect(dialog.getByText('send').closest('button')?.disabled).toBe(true);
+
+    act(() => {
+      typeInto(subjectField, 'Follow-up on staging access');
+    });
+    expect(dialog.getByText('send').closest('button')?.disabled).toBe(false);
+
+    act(() => {
+      dialog.getByText('send').click();
+    });
+
+    // The dialog closed, and the new mail is a real Sent row - switching
+    // there shows it, count included.
+    expect(domScreen.queryByLabelText('compose_to_label')).toBeNull();
+    act(() => {
+      screen.getByText('Sent').click();
+    });
+    // The nav row's own badge, scoped to the mailbox sidebar itself - once
+    // switched, the list pane's own heading also reads "Sent", and its
+    // badge count can coincidentally match another mailbox's digit too.
+    const sentNavButton = within(screen.getByLabelText('mail')).getByText('Sent').closest('button');
+    expect(sentNavButton?.textContent).toContain('3');
+    expect(screen.getByText('devon@brightlabs.io')).toBeTruthy();
+    // The list row renders "{subject} - {snippet}" as one combined text
+    // node - an exact-match `getByText` on the bare subject would never hit,
+    // so this checks the substring instead.
+    expect(screen.getAllByText(/Follow-up on staging access/).length).toBeGreaterThan(0);
+
+    screen.unmount();
+  });
+
+  it('discards the compose draft on Cancel', () => {
+    const screen = renderScreen(<MailScreen t={t} />);
+
+    act(() => {
+      screen.getByText('compose').click();
+    });
+    const toField = domScreen.getByLabelText('compose_to_label');
+    if (!(toField instanceof HTMLInputElement)) throw new Error('to field is not an input');
+    act(() => {
+      typeInto(toField, 'devon@brightlabs.io');
+    });
+
+    act(() => {
+      domScreen.getByText('cancel').click();
+    });
+    expect(domScreen.queryByLabelText('compose_to_label')).toBeNull();
+
+    act(() => {
+      screen.getByText('Sent').click();
+    });
+    // Sent still reads 2 - nothing was appended. Scoped the same way as the
+    // note above.
+    const sentNavButton = within(screen.getByLabelText('mail')).getByText('Sent').closest('button');
+    expect(sentNavButton?.textContent).toContain('2');
+    expect(screen.queryByText('devon@brightlabs.io')).toBeNull();
 
     screen.unmount();
   });

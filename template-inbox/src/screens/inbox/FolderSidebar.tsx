@@ -1,7 +1,18 @@
-import type { ReactElement } from 'react';
-import { HashIcon } from 'lucide-react';
+import { useId, useState, type FormEvent, type ReactElement } from 'react';
+import { HashIcon, PlusIcon } from 'lucide-react';
 import {
   Badge,
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  Field,
+  FieldLabel,
+  Input,
   Item,
   ItemActions,
   ItemContent,
@@ -22,6 +33,7 @@ export type FolderSidebarProps = {
   channels: Channel[];
   selectedChannelId: string;
   onSelectChannel: (channelId: string) => void;
+  onCreateChannel: (name: string) => void;
   collapsed: boolean;
   t: Translate;
 };
@@ -30,9 +42,23 @@ export function FolderSidebar({
   channels,
   selectedChannelId,
   onSelectChannel,
+  onCreateChannel,
   collapsed,
   t,
 }: FolderSidebarProps) {
+  const nameFieldId = useId();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [name, setName] = useState('');
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = name.trim();
+    if (trimmed === '') return;
+    onCreateChannel(trimmed);
+    setName('');
+    setCreateOpen(false);
+  };
+
   return (
     <aside
       className={cx(styles.sidebar, collapsed && styles.sidebarCollapsed)}
@@ -44,6 +70,45 @@ export function FolderSidebar({
     >
       <div className={styles.paneHeader}>
         <span className={styles.paneTitle}>{t('chat')}</span>
+        <span className={styles.spacer} />
+        <Dialog
+          open={createOpen}
+          onOpenChange={(open) => {
+            setCreateOpen(open);
+            if (!open) setName('');
+          }}
+        >
+          <DialogTrigger
+            render={
+              <Button variant="ghost" size="sm" icon={<PlusIcon />} aria-label={t('new_channel')} />
+            }
+          />
+          <DialogContent>
+            <form onSubmit={submit}>
+              <DialogHeader>
+                <DialogTitle>{t('new_channel')}</DialogTitle>
+              </DialogHeader>
+              <Field>
+                <FieldLabel htmlFor={nameFieldId}>{t('channel_name')}</FieldLabel>
+                <Input
+                  id={nameFieldId}
+                  value={name}
+                  onValueChange={setName}
+                  placeholder={t('channel_name_placeholder')}
+                  autoFocus
+                />
+              </Field>
+              <DialogFooter>
+                <DialogClose render={<Button type="button" variant="outline" />}>
+                  {t('cancel')}
+                </DialogClose>
+                <Button type="submit" disabled={name.trim() === ''}>
+                  {t('create_channel')}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
       <nav className={styles.sidebarBody}>
         <ItemGroup>

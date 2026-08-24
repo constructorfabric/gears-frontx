@@ -72,8 +72,8 @@ export const channels: Channel[] = [
   },
 ];
 
-const BRAND = 'Acme';
-const NO_TEAM_INBOX = 'No team inbox';
+export const BRAND = 'Acme';
+export const NO_TEAM_INBOX = 'No team inbox';
 
 export const conversations: Conversation[] = [
   {

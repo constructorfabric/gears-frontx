@@ -1,5 +1,6 @@
 import { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { screen as domScreen } from '@testing-library/dom';
 import { endpointTags, mutationResult, queryResultFor } from '../../__test-utils__/apiMocks';
 import { renderScreen } from '../../__test-utils__/renderScreen';
 
@@ -12,6 +13,27 @@ vi.mock('../../api/queries', () => ({
 const { InboxScreen } = await import('./InboxScreen');
 
 const t = (key: string) => key;
+
+/**
+ * React tracks a controlled input's previous value on the DOM node itself, so
+ * assigning `.value` directly and dispatching a plain `input` event is a
+ * no-op - React sees no change to fire `onChange` for. Going through the
+ * native value setter first is what makes the dispatch register, the same
+ * workaround `MailScreen.test.tsx` uses for its own controlled fields.
+ */
+function typeInto(field: HTMLInputElement | HTMLTextAreaElement, value: string): void {
+  const prototype = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+  setter?.call(field, value);
+  field.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// `screen` (from `renderScreen`) only ever queries inside its own mounted
+// container - but the kit's Dialog portals its popup straight to
+// `document.body` by default (dialog.md), a sibling of that container, not
+// a descendant. `domScreen`, `@testing-library/dom`'s own document-wide
+// singleton, is what reaches the dialog's own fields and buttons once one
+// is open.
 
 describe('InboxScreen', () => {
   it('lists the seeded channels and conversations, and opens the first conversation of the default channel automatically', () => {
@@ -242,6 +264,67 @@ describe('InboxScreen', () => {
     // The jump is a route change, not screen-local state: that is what lets the
     // same address be reloaded, bookmarked and shared.
     expect(window.location.hash).toBe('#/contacts/r-3');
+
+    screen.unmount();
+  });
+
+  it('creates a channel from the dialog and switches into it, on the existing empty state', () => {
+    const screen = renderScreen(<InboxScreen t={t} />);
+
+    act(() => {
+      screen.getByLabelText('new_channel').click();
+    });
+    const nameField = domScreen.getByLabelText('channel_name');
+    if (!(nameField instanceof HTMLInputElement)) throw new Error('channel name is not an input');
+
+    // Empty name: the create action stays disabled rather than creating a
+    // blank channel.
+    expect(domScreen.getByText('create_channel').closest('button')?.disabled).toBe(true);
+
+    act(() => {
+      typeInto(nameField, 'Design Reviews');
+    });
+    expect(domScreen.getByText('create_channel').closest('button')?.disabled).toBe(false);
+
+    act(() => {
+      domScreen.getByText('create_channel').click();
+    });
+
+    // The dialog closed (its portalled content is gone from the whole
+    // document, not just this screen's own container), the new channel is
+    // a real row in the sidebar (not a stub - it carries its own item
+    // count), and it is the one now open, landing on the same empty state
+    // any zero-conversation channel shows.
+    expect(domScreen.queryByText('channel_name')).toBeNull();
+    expect(screen.getAllByText('Design Reviews').length).toBeGreaterThan(0);
+    expect(screen.queryByText('empty_title')).toBeTruthy();
+
+    screen.unmount();
+  });
+
+  it('opens the new-chat dialog focused on the contact field, gated on a pick', () => {
+    const screen = renderScreen(<InboxScreen t={t} />);
+
+    act(() => {
+      screen.getByLabelText('new_chat').click();
+    });
+    // Base UI's Combobox popup needs real layout (ResizeObserver-driven
+    // positioning) to open, which jsdom does not provide - the filtered
+    // contact list itself is exercised in the live app instead (see the
+    // final report), not in this suite. What IS reliably testable here:
+    // the dialog opens with focus already on the contact field, and Start
+    // stays gated with nothing picked yet.
+    const contactField = domScreen.getByLabelText('new_chat_contact_label');
+    expect(document.activeElement).toBe(contactField);
+    expect(domScreen.getByText('start_chat').closest('button')?.disabled).toBe(true);
+
+    act(() => {
+      domScreen.getByText('cancel').click();
+    });
+    // Cancel discards: no conversation was created - General's channel-nav
+    // badge and its own pane count are both still "3".
+    expect(domScreen.queryByLabelText('new_chat_contact_label')).toBeNull();
+    expect(screen.getAllByText('3').length).toBe(2);
 
     screen.unmount();
   });

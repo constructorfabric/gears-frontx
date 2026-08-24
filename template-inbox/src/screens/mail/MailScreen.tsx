@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { MailIcon } from 'lucide-react';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, Skeleton } from '@gears-frontx/ui-kit';
-import type { MailboxId } from '../../api/mailTypes';
+import { MAILBOX_SENT } from '../../api/mailDataset';
+import type { Mail, MailboxId } from '../../api/mailTypes';
 import { useApiQuery } from '../../api/queries';
 import { getMailApi } from '../../api/registry';
 import type { Translate } from '../../app/i18n';
-import { MailboxSidebar } from './MailboxSidebar';
+import { MailboxSidebar, type ComposedMail } from './MailboxSidebar';
 import { MailList } from './MailList';
 import { MailReadingPane } from './MailReadingPane';
 import { selectMails, type MailTab } from './mailSelectors';
@@ -44,9 +45,16 @@ export function MailScreen({ t }: MailScreenProps) {
   // mails with history does not collapse the one already left open.
   const [historyOpenById, setHistoryOpenById] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  // Client-side only, never round-tripped through RestMockPlugin - a mail
+  // the agent sends from the Compose dialog, appended alongside whatever
+  // the mock API answered with.
+  const [composedMails, setComposedMails] = useState<Mail[]>([]);
 
   const mailboxes = mailboxesQuery.data?.mailboxes ?? [];
-  const mails = useMemo(() => mailsQuery.data?.mails ?? [], [mailsQuery.data]);
+  const mails = useMemo(
+    () => [...(mailsQuery.data?.mails ?? []), ...composedMails],
+    [mailsQuery.data, composedMails]
+  );
   const mailMessages = useMemo(
     () => mailMessagesQuery.data?.mailMessages ?? [],
     [mailMessagesQuery.data]
@@ -107,6 +115,30 @@ export function MailScreen({ t }: MailScreenProps) {
     setDrafts((previous) => ({ ...previous, [selected.id]: '' }));
   };
 
+  /**
+   * A demo-grade sent mail: appended to `composedMails` with
+   * `mailboxId: MAILBOX_SENT`, so switching to Sent shows it exactly like
+   * any other row - no separate "just sent" list to keep in step. Mailbox
+   * selection is left alone; the compose dialog itself already closed on
+   * submit (`MailboxSidebar`'s own `onOpenChange`).
+   */
+  const composeMail = ({ to, subject, body }: ComposedMail) => {
+    const newMail: Mail = {
+      id: `ml-sent-${Date.now()}`,
+      mailboxId: MAILBOX_SENT,
+      correspondentName: to,
+      correspondentEmail: to,
+      subject,
+      snippet: body || subject,
+      body,
+      receivedAt: new Date().toISOString(),
+      read: true,
+      starred: false,
+      pinned: false,
+    };
+    setComposedMails((previous) => [...previous, newMail]);
+  };
+
   return (
     <>
       <MailboxSidebar
@@ -114,6 +146,7 @@ export function MailScreen({ t }: MailScreenProps) {
         mails={mails}
         selectedMailboxId={mailboxId}
         onSelectMailbox={selectMailbox}
+        onComposeMail={composeMail}
         collapsed={false}
         t={t}
       />

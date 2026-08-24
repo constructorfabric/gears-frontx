@@ -10,8 +10,9 @@ import {
 } from '@gears-frontx/ui-kit';
 import { useApiMutation, useApiQuery } from '../../api/queries';
 import { getInboxApi } from '../../api/registry';
-import { CHANNEL_GENERAL } from '../../api/dataset';
+import { BRAND, CHANNEL_GENERAL, NO_TEAM_INBOX } from '../../api/dataset';
 import type {
+  Channel,
   Contact,
   Conversation,
   ConversationPriority,
@@ -76,6 +77,14 @@ export function InboxScreen({ t }: InboxScreenProps) {
   const [sentMessages, setSentMessages] = useState<Message[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [composerTab, setComposerTab] = useState<ComposerTab>('reply');
+  // Client-side only, never round-tripped through RestMockPlugin - a
+  // channel or a chat the agent creates from the "+" dialogs, appended
+  // alongside whatever the mock API answered with.
+  const [extraChannels, setExtraChannels] = useState<Channel[]>([]);
+  const [extraConversations, setExtraConversations] = useState<Conversation[]>([]);
+  // Bumped (any distinct value) right after opening a just-created
+  // conversation, so Composer's own effect knows to focus the reply box.
+  const [composerFocusSignal, setComposerFocusSignal] = useState(0);
 
   const isCompact = useMediaQuery(COMPACT_QUERY);
   const isSinglePane = useMediaQuery(SINGLE_PANE_QUERY);
@@ -92,8 +101,9 @@ export function InboxScreen({ t }: InboxScreenProps) {
 
   const conversations: Conversation[] = useMemo(() => {
     const fetched = conversationsQuery.data?.conversations ?? [];
-    return fetched.map((conversation) => ({ ...conversation, ...patches[conversation.id] }));
-  }, [conversationsQuery.data, patches]);
+    const patched = fetched.map((conversation) => ({ ...conversation, ...patches[conversation.id] }));
+    return [...patched, ...extraConversations];
+  }, [conversationsQuery.data, patches, extraConversations]);
 
   const contactsById = useMemo(() => {
     const index = new Map<string, Contact>();
@@ -139,14 +149,14 @@ export function InboxScreen({ t }: InboxScreenProps) {
   }, [messagesQuery.data, sentMessages, selected]);
 
   const channels = useMemo(() => {
-    const rows = channelsQuery.data?.channels ?? [];
+    const rows = [...(channelsQuery.data?.channels ?? []), ...extraChannels];
     return rows.map((channel) => {
       const inChannel = conversations.filter(
         (conversation) => conversation.channelId === channel.id
       );
       return { ...channel, itemCount: inChannel.length, openCount: countOpen(inChannel) };
     });
-  }, [channelsQuery.data, conversations]);
+  }, [channelsQuery.data, extraChannels, conversations]);
 
   const patchConversation = (conversationId: string, patch: ConversationPatch) => {
     setPatches((previous) => ({
@@ -159,6 +169,62 @@ export function InboxScreen({ t }: InboxScreenProps) {
     setChannelId(nextChannelId);
     setSelectedId(null);
     setAutoSelectChannelId(nextChannelId);
+  };
+
+  /**
+   * A demo-grade channel: appended to `extraChannels` and switched into
+   * immediately - opening it lands on the empty state (the same one any
+   * channel with zero conversations already renders) exactly like a real
+   * one would, since it is a real `Channel` row from here on, not a stub.
+   */
+  const createChannel = (name: string) => {
+    const newChannelId = `channel-${Date.now()}`;
+    setExtraChannels((previous) => [
+      ...previous,
+      { id: newChannelId, label: name, icon: 'hash', itemCount: 0, openCount: 0 },
+    ]);
+    selectChannel(newChannelId);
+  };
+
+  /**
+   * A demo-grade conversation with an existing contact, in the CURRENT
+   * channel, opened immediately with an empty transcript - sending into it
+   * goes through the same `sendMessage` mutation as any other thread,
+   * since that endpoint only ever echoes back whatever `conversationId`
+   * the request carried (see mocks.ts's `acceptPostedMessage`).
+   */
+  const startChat = (contactId: string) => {
+    const newConversationId = `dm-${Date.now()}`;
+    const contact = contactsById.get(contactId);
+    const newConversation: Conversation = {
+      id: newConversationId,
+      channelId,
+      subject: contact?.name ?? '',
+      contactId,
+      snippet: '',
+      lastActivityAt: new Date().toISOString(),
+      unreadCount: 0,
+      priority: 'none',
+      status: 'open',
+      assignee: agentQuery.data?.agent.name ?? '',
+      teamInbox: NO_TEAM_INBOX,
+      channel: 'chat',
+      brand: BRAND,
+      tags: [],
+      sharedFiles: [],
+      suggestedReplies: [],
+      starred: false,
+      snoozed: false,
+      pinned: false,
+    };
+    setExtraConversations((previous) => [...previous, newConversation]);
+    // Cleared defensively: without this, a channel with no conversations
+    // yet (just created) would still have its auto-select armed, and the
+    // derived-state block below would immediately overwrite this explicit
+    // selection back to "nothing" once `visibleConversations` updates.
+    setAutoSelectChannelId(null);
+    setSelectedId(newConversationId);
+    setComposerFocusSignal((signal) => signal + 1);
   };
 
   if (channelsQuery.isLoading) {
@@ -186,6 +252,7 @@ export function InboxScreen({ t }: InboxScreenProps) {
         channels={channels}
         selectedChannelId={channelId}
         onSelectChannel={selectChannel}
+        onCreateChannel={createChannel}
         // Below the compact width the column has no room to open into, so the
         // toggle reflects the viewport rather than fighting it.
         collapsed={channelsCollapsed || isCompact}
@@ -198,6 +265,7 @@ export function InboxScreen({ t }: InboxScreenProps) {
         channelLabel={channelLabel}
         selectedConversationId={selectedId}
         onSelectConversation={setSelectedId}
+        onStartChat={startChat}
         search={search}
         onSearchChange={setSearch}
         sort={sort}
@@ -251,6 +319,7 @@ export function InboxScreen({ t }: InboxScreenProps) {
                   setDrafts((previous) => ({ ...previous, [selected.id]: draft })),
                 onSend: sendCurrentDraft,
                 sending: sendMessage.isPending,
+                focusSignal: composerFocusSignal,
                 t,
               }}
               t={t}

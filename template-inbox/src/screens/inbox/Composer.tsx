@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react';
+import { useEffect, useRef, type KeyboardEvent } from 'react';
 import { PaperclipIcon, SendIcon, SmileIcon, ZapIcon } from 'lucide-react';
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@gears-frontx/ui-kit';
 import { cx } from '../../shared/cx';
@@ -18,6 +18,14 @@ export type ComposerProps = {
   onDraftChange: (draft: string) => void;
   onSend: () => void;
   sending: boolean;
+  /**
+   * Bumped by the parent (any changing value) right after opening a
+   * freshly created conversation, so the reply box is ready to type into
+   * without an extra click - "composer focused" for the new-chat flow.
+   * Not tied to `tab`/`draft`, both of which change on every keystroke;
+   * the effect below only reacts to THIS value changing.
+   */
+  focusSignal?: number;
   t: (key: string) => string;
 };
 
@@ -28,10 +36,16 @@ export function Composer({
   onDraftChange,
   onSend,
   sending,
+  focusSignal,
   t,
 }: ComposerProps) {
   const isNote = tab === 'note';
   const canSend = draft.trim() !== '' && !sending;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (focusSignal) textareaRef.current?.focus();
+  }, [focusSignal]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && canSend) {
@@ -46,6 +60,7 @@ export function Composer({
   const body = (
     <div className={cx(styles.composerBox, isNote && styles.composerBoxNote)}>
       <Textarea
+        ref={textareaRef}
         rows={3}
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
