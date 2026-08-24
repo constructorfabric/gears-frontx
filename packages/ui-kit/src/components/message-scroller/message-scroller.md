@@ -154,6 +154,20 @@ that doesn't depend on layout.
 
 - Do not nest more than one `MessageScrollerProvider`/`MessageScroller` per
   scroller — the auto-follow state is per-provider.
+- Do not reuse one `MessageScrollerProvider` across two DIFFERENT
+  transcripts (switching the open conversation/mail to a different one)
+  without giving it a `key` that changes with the transcript's identity
+  (e.g. `key={conversation.id}`). The provider's scroll-anchor/spacer state
+  lives in `@shadcn/react`'s own refs, which never reset on their own; if
+  the same provider instance stays mounted while its messages are swapped
+  for a different transcript's list, the primitive reads that as an
+  in-place edit to the CURRENT transcript (an append/removal) rather than
+  "this is a different transcript, start over" - it can then try to anchor
+  the read position to the previous transcript's item count, leaving a
+  real, non-zero `[data-message-scroller-spacer]` gap between the last
+  message and whatever follows the scroller. Keying the provider by the
+  transcript's id forces a genuine remount (and a fresh
+  `scrollToEnd`-on-load) every time the open transcript changes.
 - Do not rely on `MessageScrollerButton`'s default icon-only rendering AND
   omit `aria-label` while also passing empty/whitespace `children` — the
   button would carry no accessible name at all.
