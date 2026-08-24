@@ -125,6 +125,14 @@
   .popup {
     max-width: 28rem;
   }
+
+  /* `lg`: a wider cap for content the default 28rem crowds (a multi-field
+   * form, a taller textarea) - see DialogContentProps.size. The attribute
+   * selector's specificity wins over the bare class rule above regardless
+   * of declaration order. */
+  .popup[data-size='lg'] {
+    max-width: 36rem;
+  }
 }
 
 .popup[data-starting-style],

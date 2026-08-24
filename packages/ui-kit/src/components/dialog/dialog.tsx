@@ -56,6 +56,15 @@ export interface DialogContentProps extends Omit<DialogPrimitive.Popup.Props, 'c
    * @default true
    */
   showBackdrop?: boolean;
+  /**
+   * `lg` widens the popup's sm+ breakpoint cap from 28rem to 36rem, for
+   * content that needs more room (a multi-field form, a taller textarea)
+   * than the default width comfortably fits. Read by CSS off this popup's
+   * `data-size` attribute — same `data-size` idiom as AlertDialogContent's
+   * `size`.
+   * @default 'default'
+   */
+  size?: 'default' | 'lg';
 }
 
 export function DialogContent({
@@ -65,12 +74,13 @@ export function DialogContent({
   showCloseButton = true,
   showBackdrop = true,
   closeLabel = 'Close',
+  size = 'default',
   ...props
 }: DialogContentProps) {
   return (
     <DialogPrimitive.Portal container={container}>
       {showBackdrop && <DialogPrimitive.Backdrop className={styles.backdrop} />}
-      <DialogPrimitive.Popup className={cx(styles.popup, className)} {...props}>
+      <DialogPrimitive.Popup data-size={size} className={cx(styles.popup, className)} {...props}>
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close

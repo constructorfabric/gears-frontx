@@ -32,6 +32,27 @@ describe('Textarea', () => {
     expect(textarea).toHaveProperty('disabled', true);
   });
 
+  // `field-sizing: content` (textarea.module.css) ignores the native
+  // `rows`/`cols` attribute outright per spec - passing `rows` alone has
+  // zero effect on rendered geometry in a browser that supports it. jsdom
+  // does not implement `field-sizing`, so this only pins the mechanism
+  // Textarea uses to recover a `rows`-driven floor: the `--rows` custom
+  // property, set on the element only when a caller passes `rows`.
+  it('sets --rows on style only when rows is passed, for the CSS floor to key off', () => {
+    const { rerender } = render(<Textarea />);
+    expect(screen.getByRole('textbox').style.getPropertyValue('--rows')).toBe('');
+
+    rerender(<Textarea rows={8} />);
+    expect(screen.getByRole('textbox').style.getPropertyValue('--rows')).toBe('8');
+  });
+
+  it('keeps a consumer style object alongside --rows', () => {
+    render(<Textarea rows={8} style={{ color: 'red' }} />);
+    const textarea = screen.getByRole('textbox');
+    expect(textarea.style.color).toBe('red');
+    expect(textarea.style.getPropertyValue('--rows')).toBe('8');
+  });
+
   it('forwards the invalid state', () => {
     render(<Textarea aria-invalid={true} />);
     expect(screen.getByRole('textbox').getAttribute('aria-invalid')).toBe('true');

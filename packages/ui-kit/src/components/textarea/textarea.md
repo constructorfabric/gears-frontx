@@ -27,6 +27,15 @@ All other props are native `<textarea>` props (`value`, `onChange`,
 `placeholder`, `disabled`, `rows`, `aria-invalid`, ...) and are forwarded
 as-is. `aria-invalid` switches the border and ring to the destructive color.
 
+`rows` also sets a starting-height floor via CSS (a `--rows` custom
+property, the same private-per-instance idiom as AspectRatio's `--ratio`):
+`field-sizing: content` below makes the box grow with its own content, but
+per the CSS Sizing spec that mode drops the native `rows`/`cols` attribute's
+sizing contribution outright rather than using it as a starting point, so
+`rows` alone renders identically to the unset default in any browser that
+supports `field-sizing` - measured, not assumed. The floor reconstructs
+what the attribute would have done.
+
 ## Examples
 
 ```tsx
