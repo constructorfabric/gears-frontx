@@ -54,10 +54,28 @@
 
 /* ---- ChartTooltipContent ---- */
 
+/*
+ * A card-like surface, not the plain-text Tooltip's inverted chip
+ * (tooltip.module.css's own header note explains why that one skips the
+ * --popover idiom): this content is structured (a label plus one row per
+ * series, each with its own swatch and value), closer to Popover's shape
+ * than a single line of hint text, so it borrows Popover's own
+ * border/radius/shadow recipe instead. The one deliberate departure is the
+ * fill: `color-mix` at 92% keeps it a genuinely TRANSLUCENT surface (per
+ * the design brief) rather than fully opaque, while staying legible over
+ * every chart color underneath - unlike Popover's own popup, this one
+ * floats directly over arbitrary chart fills, not a plain page background.
+ */
 .tooltipContent {
   display: grid;
   min-width: 8rem;
   align-items: start;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--popover-border);
+  border-radius: var(--radius-md);
+  background-color: color-mix(in oklab, var(--popover) 92%, transparent);
+  box-shadow: var(--popover-shadow);
+  color: var(--popover-foreground);
 }
 
 .tooltipLabel {
