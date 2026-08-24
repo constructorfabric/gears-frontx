@@ -41,10 +41,12 @@ describe('MailScreen', () => {
     expect(screen.queryByText('Spam')).toBeNull();
 
     // Inbox correspondents render; a Drafts-only correspondent does not,
-    // because the list opens on Inbox. "Priya Natarajan" appears twice now -
-    // the list row and the reading pane's own subtitle - because her mail is
-    // the one auto-selected below.
-    expect(screen.getAllByText('Priya Natarajan').length).toBe(2);
+    // because the list opens on Inbox. "Ava Laurent" appears twice now - the
+    // list row and the reading pane's own subtitle - because her mail
+    // (ml-3, seeded pinned) is the one auto-selected below, ahead of
+    // Priya's own more recent row.
+    expect(screen.getAllByText('Ava Laurent').length).toBe(2);
+    expect(screen.getAllByText('Priya Natarajan').length).toBe(1);
     expect(screen.queryByText('Tariq Haddad')).toBeNull();
 
     // Inbox's most recently received mail opens on its own: no click needed,
@@ -58,16 +60,16 @@ describe('MailScreen', () => {
   it('auto-selects the first mail again on a mailbox switch, without disturbing a hand-picked selection', () => {
     const screen = renderScreen(<MailScreen t={t} />);
 
-    // Inbox's own first mail, picked automatically.
+    // Inbox's own pinned mail (ml-3, Ava Laurent), picked automatically
+    // ahead of Priya's more recent one.
     expect(screen.queryByText('no_mail_selected_title')).toBeNull();
+    expect(screen.getAllByText('Ava Laurent').length).toBe(2);
 
     // A mail the agent picks by hand must stick while the mailbox does not
     // change: toggling the history disclosure forces a re-render. "Priya
-    // Natarajan" already appears twice (list row plus reading pane
-    // subtitle) because her mail is the one auto-selected; the list row is
-    // the first match.
+    // Natarajan" is findable once (the list row) before this click.
     act(() => {
-      screen.getAllByText('Priya Natarajan')[0].click();
+      screen.getByText('Priya Natarajan').click();
     });
     expect(screen.getByText(/The headcount section is still rough/)).toBeTruthy();
     act(() => {
@@ -123,11 +125,10 @@ describe('MailScreen', () => {
 
   it('renders no history toggle for a mail with none', () => {
     const screen = renderScreen(<MailScreen t={t} />);
-    // Priya's mail is already open (Inbox's auto-selected first mail), so
-    // "Priya Natarajan" is already on the page twice - the list row is the
-    // first match.
+    // Ava's mail (Inbox's own pinned, auto-selected first mail) is open by
+    // default; hand-pick Priya's instead - it has no history of its own.
     act(() => {
-      screen.getAllByText('Priya Natarajan')[0].click();
+      screen.getByText('Priya Natarajan').click();
     });
 
     // Unique to the body, not the row's own subject-plus-snippet preview.
@@ -144,12 +145,12 @@ describe('MailScreen', () => {
       screen.getByText('unread_mail_count').click();
     });
 
-    // Unread within Inbox, and still the mail auto-selected on mount, so
-    // "Priya Natarajan" is on the page twice - the unread-tab row and the
-    // still-open reading pane.
-    expect(screen.getAllByText('Priya Natarajan').length).toBe(2);
-    // Read within Inbox, so it drops out of the Unread tab.
-    expect(screen.queryByText('Ava Laurent')).toBeNull();
+    // Unread within Inbox, so Priya's own row shows in the Unread tab's list.
+    expect(screen.getByText('Priya Natarajan')).toBeTruthy();
+    // Ava's mail is read, so it drops out of the Unread tab's own list -
+    // but it is still the one open in the reading pane (auto-selected,
+    // pinned), which a tab switch never closes.
+    expect(screen.getAllByText('Ava Laurent').length).toBe(1);
 
     screen.unmount();
   });
@@ -165,20 +166,50 @@ describe('MailScreen', () => {
     });
 
     expect(screen.getByText('Devon Ashworth')).toBeTruthy();
-    // The search narrows the list away from Priya's row, but her mail is
+    // The search narrows the list away from Ava's row, but her mail is
     // still the one auto-selected and open in the reading pane - the same
     // "search narrows the list without closing what is open" rule Chat
     // follows - so one mention of her name remains (the reading pane's).
-    expect(screen.getAllByText('Priya Natarajan').length).toBe(1);
+    expect(screen.getAllByText('Ava Laurent').length).toBe(1);
+
+    screen.unmount();
+  });
+
+  it('groups pinned mail under its own label, ahead of the rest, within the current tab', () => {
+    const screen = renderScreen(<MailScreen t={t} />);
+
+    // Inbox opens by default; its two pinned mails (ml-3 Ava Laurent, ml-6
+    // Carlos Mendez) render under a "Pinned" label, each with its own pin
+    // icon.
+    expect(screen.getByText('pinned')).toBeTruthy();
+    expect(screen.getAllByLabelText('pinned_mail').length).toBe(2);
+
+    // Carlos Mendez's mail (ml-6) is Inbox's OTHER pinned row and its own
+    // least recently received - it still leads Priya's and Devon's more
+    // recent, unpinned ones, read off the list pane's own DOM order.
+    const listText = screen.getByLabelText('Inbox').textContent ?? '';
+    const carlosIndex = listText.indexOf('Carlos Mendez');
+    const priyaIndex = listText.indexOf('Priya Natarajan');
+    expect(carlosIndex).toBeGreaterThanOrEqual(0);
+    expect(priyaIndex).toBeGreaterThan(carlosIndex);
+
+    // Switching to the Unread tab keeps the pinned group's own filtering
+    // rule: a pinned-but-read mail (Ava, Carlos) drops out of Unread same
+    // as any other read mail would.
+    act(() => {
+      screen.getByText('unread_mail_count').click();
+    });
+    expect(screen.queryByText('Carlos Mendez')).toBeNull();
 
     screen.unmount();
   });
 
   it('gates Send on empty input', () => {
     const screen = renderScreen(<MailScreen t={t} />);
-    // Priya's mail is already open (Inbox's auto-selected first mail).
+    // Ava's mail (Inbox's own pinned, auto-selected first mail) is open by
+    // default; hand-pick Priya's instead.
     act(() => {
-      screen.getAllByText('Priya Natarajan')[0].click();
+      screen.getByText('Priya Natarajan').click();
     });
 
     const send = screen.getByText('send').closest('button');

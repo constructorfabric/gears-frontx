@@ -96,6 +96,7 @@ export const conversations: Conversation[] = [
     suggestedReplies: ['Share your browser?', 'Clear local storage?'],
     starred: false,
     snoozed: false,
+    pinned: false,
   },
   {
     id: 'c-11',
@@ -119,6 +120,9 @@ export const conversations: Conversation[] = [
     suggestedReplies: ['Scoped tweaks tomorrow.', 'Preview build first?'],
     starred: false,
     snoozed: false,
+    // The showcase thread every rich message type exercises - pinned so it
+    // stays General's own first row regardless of activity/sort changes.
+    pinned: true,
   },
   {
     id: 'c-7',
@@ -139,6 +143,7 @@ export const conversations: Conversation[] = [
     suggestedReplies: ['Send license link?', 'Need an invoice?'],
     starred: false,
     snoozed: false,
+    pinned: false,
   },
   {
     id: 'c-2',
@@ -162,6 +167,10 @@ export const conversations: Conversation[] = [
     ],
     starred: false,
     snoozed: false,
+    // Pinned ahead of c-7 (Sales' own naturally-first row) - demonstrates
+    // that a pin genuinely reorders the list, not just where it already
+    // happened to sort first.
+    pinned: true,
   },
   {
     id: 'c-5',
@@ -185,6 +194,7 @@ export const conversations: Conversation[] = [
     ],
     starred: false,
     snoozed: false,
+    pinned: false,
   },
   {
     id: 'c-4',
@@ -206,6 +216,7 @@ export const conversations: Conversation[] = [
     suggestedReplies: [],
     starred: false,
     snoozed: true,
+    pinned: false,
   },
   {
     id: 'c-1',
@@ -228,6 +239,10 @@ export const conversations: Conversation[] = [
     suggestedReplies: [],
     starred: false,
     snoozed: true,
+    // Pinned ahead of Support's own most-recently-active row (c-9) - the
+    // other reordering example: a snoozed thread can still be pinned for
+    // visibility even though it is not the channel's most active one.
+    pinned: true,
   },
   {
     id: 'c-3',
@@ -249,6 +264,7 @@ export const conversations: Conversation[] = [
     suggestedReplies: [],
     starred: false,
     snoozed: false,
+    pinned: false,
   },
   {
     id: 'c-6',
@@ -270,6 +286,7 @@ export const conversations: Conversation[] = [
     suggestedReplies: [],
     starred: false,
     snoozed: false,
+    pinned: false,
   },
 ];
 

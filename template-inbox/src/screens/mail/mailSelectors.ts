@@ -40,7 +40,15 @@ export function selectMails(
         mail.subject.toLowerCase().includes(needle)
       );
     })
-    .sort((left, right) => Date.parse(right.receivedAt) - Date.parse(left.receivedAt));
+    .sort(
+      (left, right) =>
+        // Pinned before unpinned, ahead of the date sort - a pin overrides
+        // recency the same way `conversationOrdering.ts`'s own comparators
+        // do, so the list pane's pinned group and its auto-select-first
+        // both land on the same ordering this returns.
+        Number(right.pinned) - Number(left.pinned) ||
+        Date.parse(right.receivedAt) - Date.parse(left.receivedAt)
+    );
 }
 
 export const countInMailbox = (mails: Mail[], mailboxId: MailboxId): number =>

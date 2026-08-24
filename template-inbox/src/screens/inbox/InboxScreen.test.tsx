@@ -41,10 +41,13 @@ describe('InboxScreen', () => {
     act(() => {
       screen.getByText('Support').click();
     });
-    // Support's most recently active conversation, picked automatically -
-    // it offers suggested replies, unlike the spam thread selected next.
+    // Support's pinned conversation (c-1, "Silver Sunshine from India") is
+    // auto-selected ahead of c-9 - its own most-recently-active row - the
+    // pin overriding recency even though c-1 is itself snoozed and offers
+    // no suggested replies.
     expect(screen.queryByText('empty_title')).toBeNull();
-    expect(screen.getByLabelText('suggested_replies')).toBeTruthy();
+    expect(screen.queryByLabelText('suggested_replies')).toBeNull();
+    expect(screen.getAllByText('Silver Sunshine from India').length).toBeGreaterThan(0);
 
     // A conversation the agent picks by hand must stick while the channel
     // does not change.
@@ -82,11 +85,9 @@ describe('InboxScreen', () => {
     act(() => {
       screen.getByText('Support').click();
     });
-    // Support's most recently active conversation is "Dark mode toggle not
-    // persisting", so it is already auto-selected and its subject is
-    // already on the page twice (list row plus thread header) - the list
-    // row is the first match. The click is a no-op re-selection, kept so
-    // the test still exercises the click path.
+    // Support's auto-selected row is its pinned conversation (c-1), not
+    // this one, so this click actually switches the thread rather than
+    // being a no-op re-selection.
     act(() => {
       screen.getAllByText('Dark mode toggle not persisting')[0].click();
     });
@@ -197,16 +198,40 @@ describe('InboxScreen', () => {
     screen.unmount();
   });
 
+  it('groups pinned conversations under their own label, ahead of the rest', () => {
+    const screen = renderScreen(<InboxScreen t={t} />);
+
+    // General opens by default; its own pinned conversation (c-11, the
+    // showcase thread) renders under a "Pinned" label, ahead of its two
+    // unpinned siblings.
+    expect(screen.getByText('pinned')).toBeTruthy();
+    expect(screen.getByLabelText('pinned_conversation')).toBeTruthy();
+
+    act(() => {
+      screen.getByText('Sales').click();
+    });
+    // Sales' own pinned conversation (c-2, "Refund request...") leads its
+    // list even though c-7 ("Purple Bow...") is more recently active -
+    // both a rendering and an ordering check, read off the list pane's own
+    // DOM order (row order is not otherwise observable through RTL's
+    // query API).
+    const listText = screen.getByLabelText('conversations').textContent ?? '';
+    const refundIndex = listText.indexOf('Refund request');
+    const purpleBowIndex = listText.indexOf('Purple Bow');
+    expect(refundIndex).toBeGreaterThanOrEqual(0);
+    expect(purpleBowIndex).toBeGreaterThan(refundIndex);
+
+    screen.unmount();
+  });
+
   it('sends a thread reader to the customer page as a link the URL can carry', () => {
     const screen = renderScreen(<InboxScreen t={t} />);
     act(() => {
       screen.getByText('Support').click();
     });
-    // Support's most recently active conversation is "Dark mode toggle not
-    // persisting", so it is already auto-selected and its subject is
-    // already on the page twice (list row plus thread header) - the list
-    // row is the first match. The click is a no-op re-selection, kept so
-    // the test still exercises the click path.
+    // Support's auto-selected row is its pinned conversation (c-1), not
+    // this one, so this click actually switches the thread rather than
+    // being a no-op re-selection.
     act(() => {
       screen.getAllByText('Dark mode toggle not persisting')[0].click();
     });

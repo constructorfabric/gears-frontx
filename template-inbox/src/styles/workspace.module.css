@@ -332,6 +332,30 @@
   padding-bottom: 0;
 }
 
+/*
+ * Groups the pin icon and the unread badge so `.rowLine`'s own
+ * `justify-content: space-between` sees exactly two children on this
+ * line - the snippet and this group - instead of three, which would
+ * spread an even gap between all of them and strand the pin icon in the
+ * row's middle. Same fix, same reason, as mail.module.css's own
+ * `.rowTimeGroup` for the star+time pair on a mail row - two independent
+ * rows hitting the identical "space-between sees too many trailing
+ * elements" shape.
+ */
+.rowActionsGroup {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.pinIcon {
+  flex: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  color: var(--muted-foreground);
+}
+
 /* --- The detail pane: thread plus the customer panel --- */
 
 .detailPane {

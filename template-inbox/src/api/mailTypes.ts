@@ -40,6 +40,9 @@ export type Mail = {
   receivedAt: string;
   read: boolean;
   starred: boolean;
+  /** Pins the mail to its own group at the top of the mailbox's list, ahead
+   * of every unpinned row regardless of tab or sort. */
+  pinned: boolean;
 };
 
 /**

@@ -69,6 +69,7 @@ export const mails: Mail[] = [
     receivedAt: hoursAgo(1),
     read: false,
     starred: true,
+    pinned: false,
   },
   {
     id: 'ml-2',
@@ -81,6 +82,7 @@ export const mails: Mail[] = [
     receivedAt: hoursAgo(2),
     read: false,
     starred: false,
+    pinned: false,
   },
   {
     id: 'ml-3',
@@ -93,6 +95,9 @@ export const mails: Mail[] = [
     receivedAt: hoursAgo(5),
     read: true,
     starred: false,
+    // Pinned ahead of Inbox's own most-recent rows (ml-1, ml-2) -
+    // demonstrates a pin genuinely reordering the list.
+    pinned: true,
   },
   {
     id: 'ml-4',
@@ -105,6 +110,7 @@ export const mails: Mail[] = [
     receivedAt: hoursAgo(7),
     read: false,
     starred: false,
+    pinned: false,
   },
   {
     id: 'ml-5',
@@ -117,6 +123,7 @@ export const mails: Mail[] = [
     receivedAt: daysAgo(1),
     read: true,
     starred: true,
+    pinned: false,
   },
   {
     id: 'ml-6',
@@ -129,6 +136,9 @@ export const mails: Mail[] = [
     receivedAt: daysAgo(2),
     read: true,
     starred: false,
+    // Pinned even though it is Inbox's own oldest row - a second reorder
+    // example (jumps from last to the top of the pinned group).
+    pinned: true,
   },
 
   // --- Drafts: 2, addressed to a correspondent, never unread ---
@@ -143,6 +153,7 @@ export const mails: Mail[] = [
     receivedAt: hoursAgo(3),
     read: true,
     starred: false,
+    pinned: false,
   },
   {
     id: 'ml-8',
@@ -155,6 +166,7 @@ export const mails: Mail[] = [
     receivedAt: daysAgo(1),
     read: true,
     starred: false,
+    pinned: false,
   },
 
   // --- Sent: 2 ---
@@ -169,6 +181,7 @@ export const mails: Mail[] = [
     receivedAt: hoursAgo(6),
     read: true,
     starred: false,
+    pinned: false,
   },
   {
     id: 'ml-10',
@@ -181,6 +194,9 @@ export const mails: Mail[] = [
     receivedAt: daysAgo(3),
     read: true,
     starred: false,
+    // Pinned ahead of Sent's own most-recent row (ml-9) - a reorder
+    // example for a non-Inbox mailbox too.
+    pinned: true,
   },
 
   // --- Archive: 2, ml-11 carries history ---
@@ -195,6 +211,7 @@ export const mails: Mail[] = [
     receivedAt: daysAgo(20),
     read: true,
     starred: false,
+    pinned: false,
   },
   {
     id: 'ml-12',
@@ -207,6 +224,7 @@ export const mails: Mail[] = [
     receivedAt: daysAgo(30),
     read: true,
     starred: false,
+    pinned: false,
   },
 
   // --- Trash: 1 ---
@@ -221,6 +239,7 @@ export const mails: Mail[] = [
     receivedAt: daysAgo(9),
     read: true,
     starred: false,
+    pinned: false,
   },
 ];
 

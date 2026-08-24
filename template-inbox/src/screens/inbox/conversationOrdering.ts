@@ -27,14 +27,29 @@ const PRIORITY_RANK: Record<ConversationPriority, number> = {
 const activityDescending = (left: Conversation, right: Conversation): number =>
   Date.parse(right.lastActivityAt) - Date.parse(left.lastActivityAt);
 
+/** Pinned before unpinned, ahead of every other tiebreak - a pin overrides
+ * whatever the chosen sort order would otherwise have done, the same way
+ * `selectConversations`'s caller (the list pane) shows a pinned run as its
+ * own group before the rest regardless of `sort`. */
+const pinnedFirst = (left: Conversation, right: Conversation): number =>
+  Number(right.pinned) - Number(left.pinned);
+
+const withPinnedFirst =
+  (comparator: (left: Conversation, right: Conversation) => number) =>
+  (left: Conversation, right: Conversation): number =>
+    pinnedFirst(left, right) || comparator(left, right);
+
 const COMPARATORS: Record<SortOrder, (left: Conversation, right: Conversation) => number> = {
-  'last-activity': activityDescending,
-  oldest: (left, right) => -activityDescending(left, right),
-  priority: (left, right) =>
-    PRIORITY_RANK[right.priority] - PRIORITY_RANK[left.priority] ||
-    activityDescending(left, right),
-  unread: (left, right) =>
-    right.unreadCount - left.unreadCount || activityDescending(left, right),
+  'last-activity': withPinnedFirst(activityDescending),
+  oldest: withPinnedFirst((left, right) => -activityDescending(left, right)),
+  priority: withPinnedFirst(
+    (left, right) =>
+      PRIORITY_RANK[right.priority] - PRIORITY_RANK[left.priority] ||
+      activityDescending(left, right)
+  ),
+  unread: withPinnedFirst(
+    (left, right) => right.unreadCount - left.unreadCount || activityDescending(left, right)
+  ),
 };
 
 /**

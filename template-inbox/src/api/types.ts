@@ -82,6 +82,9 @@ export type Conversation = {
   suggestedReplies: string[];
   starred: boolean;
   snoozed: boolean;
+  /** Pins the conversation to its own group at the top of the channel's
+   * list, ahead of every unpinned row regardless of sort order. */
+  pinned: boolean;
 };
 
 export type MessageAttachment = SharedFile;

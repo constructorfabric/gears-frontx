@@ -13,6 +13,7 @@ const mail = (overrides: Partial<Mail>): Mail => ({
   receivedAt: new Date().toISOString(),
   read: true,
   starred: false,
+  pinned: false,
   ...overrides,
 });
 
@@ -55,6 +56,16 @@ describe('selectMails', () => {
     expect(selectMails(mails, 'inbox', 'all', 'devon').map((m) => m.id)).toEqual(['ml-2']);
     expect(selectMails(mails, 'inbox', 'all', 'PLANNING').map((m) => m.id)).toEqual(['ml-1']);
     expect(selectMails(mails, 'inbox', 'all', 'nothing matches')).toEqual([]);
+  });
+
+  it('sorts a pinned mail ahead of a more recent unpinned one', () => {
+    const withPin: Mail[] = [
+      mail({ id: 'ml-old', mailboxId: 'inbox', receivedAt: new Date(NOW - 120_000).toISOString(), pinned: true }),
+      mail({ id: 'ml-new', mailboxId: 'inbox', receivedAt: new Date(NOW).toISOString(), pinned: false }),
+    ];
+    // ml-old is the LEAST recent of the two, yet leads because it is pinned -
+    // the pin overrides the date sort entirely, not just tie-breaks it.
+    expect(selectMails(withPin, 'inbox', 'all', '').map((m) => m.id)).toEqual(['ml-old', 'ml-new']);
   });
 });
 

@@ -1,4 +1,4 @@
-import { PanelLeftIcon, SearchIcon } from 'lucide-react';
+import { PanelLeftIcon, PinIcon, SearchIcon } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -14,6 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SidebarGroupLabel,
 } from '@gears-frontx/ui-kit';
 import type { Contact, Conversation } from '../../api/types';
 import { cx } from '../../shared/cx';
@@ -59,6 +60,64 @@ export function ConversationList({
   t,
 }: ConversationListProps) {
   const sortItems = SORT_ORDERS.map((order) => ({ value: order, label: t(SORT_LABEL_KEY[order]) }));
+
+  // `conversations` already sorts pinned rows first (conversationOrdering.ts's
+  // comparators do this regardless of `sort`), so splitting it in two here is
+  // a plain filter, not a re-sort - each half keeps the order it arrived in.
+  const pinnedConversations = conversations.filter((conversation) => conversation.pinned);
+  const otherConversations = conversations.filter((conversation) => !conversation.pinned);
+
+  const renderRow = (conversation: Conversation) => {
+    const contact = contactsById.get(conversation.contactId);
+    return (
+      <Item
+        key={conversation.id}
+        className={cx(
+          styles.conversationRow,
+          conversation.id === selectedConversationId && styles.rowSelected
+        )}
+        variant={conversation.id === selectedConversationId ? 'muted' : 'default'}
+        render={
+          <button
+            type="button"
+            onClick={() => onSelectConversation(conversation.id)}
+            aria-current={conversation.id === selectedConversationId ? 'true' : undefined}
+          />
+        }
+      >
+        <ItemMedia>
+          <PresenceAvatar
+            name={contact?.name ?? conversation.subject}
+            presence={contact?.presence ?? 'offline'}
+            size="lg"
+          />
+        </ItemMedia>
+        <ItemContent>
+          <div className={styles.rowLine}>
+            <ItemTitle className={cx(styles.rowText, styles.rowTitleText)}>
+              {conversation.subject}
+            </ItemTitle>
+            <span className={styles.rowTime}>{shortRelativeTime(conversation.lastActivityAt)}</span>
+          </div>
+          <div className={styles.rowLine}>
+            <ItemDescription className={cx(styles.rowText, styles.rowPreviewText)}>
+              {conversation.snippet}
+            </ItemDescription>
+            <span className={styles.rowActionsGroup}>
+              {conversation.pinned ? (
+                <PinIcon className={styles.pinIcon} aria-label={t('pinned_conversation')} />
+              ) : null}
+              {conversation.unreadCount > 0 ? (
+                <Badge className={styles.unreadBadge} aria-label={t('unread_messages')}>
+                  {conversation.unreadCount}
+                </Badge>
+              ) : null}
+            </span>
+          </div>
+        </ItemContent>
+      </Item>
+    );
+  };
 
   return (
     <section
@@ -115,57 +174,16 @@ export function ConversationList({
       </div>
 
       <div className={styles.listBody}>
+        {pinnedConversations.length > 0 ? (
+          <>
+            <SidebarGroupLabel>{t('pinned')}</SidebarGroupLabel>
+            <ItemGroup className={styles.conversationGroup}>
+              {pinnedConversations.map(renderRow)}
+            </ItemGroup>
+          </>
+        ) : null}
         <ItemGroup className={styles.conversationGroup}>
-          {conversations.map((conversation) => {
-            const contact = contactsById.get(conversation.contactId);
-            return (
-              <Item
-                key={conversation.id}
-                className={cx(
-                  styles.conversationRow,
-                  conversation.id === selectedConversationId && styles.rowSelected
-                )}
-                variant={conversation.id === selectedConversationId ? 'muted' : 'default'}
-                render={
-                  <button
-                    type="button"
-                    onClick={() => onSelectConversation(conversation.id)}
-                    aria-current={
-                      conversation.id === selectedConversationId ? 'true' : undefined
-                    }
-                  />
-                }
-              >
-                <ItemMedia>
-                  <PresenceAvatar
-                    name={contact?.name ?? conversation.subject}
-                    presence={contact?.presence ?? 'offline'}
-                    size="lg"
-                  />
-                </ItemMedia>
-                <ItemContent>
-                  <div className={styles.rowLine}>
-                    <ItemTitle className={cx(styles.rowText, styles.rowTitleText)}>
-                      {conversation.subject}
-                    </ItemTitle>
-                    <span className={styles.rowTime}>
-                      {shortRelativeTime(conversation.lastActivityAt)}
-                    </span>
-                  </div>
-                  <div className={styles.rowLine}>
-                    <ItemDescription className={cx(styles.rowText, styles.rowPreviewText)}>
-                      {conversation.snippet}
-                    </ItemDescription>
-                    {conversation.unreadCount > 0 ? (
-                      <Badge className={styles.unreadBadge} aria-label={t('unread_messages')}>
-                        {conversation.unreadCount}
-                      </Badge>
-                    ) : null}
-                  </div>
-                </ItemContent>
-              </Item>
-            );
-          })}
+          {otherConversations.map(renderRow)}
         </ItemGroup>
       </div>
     </section>
