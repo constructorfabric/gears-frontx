@@ -28,7 +28,7 @@ function typeInto(field: HTMLInputElement | HTMLTextAreaElement, value: string):
 }
 
 describe('MailScreen', () => {
-  it('lists the seeded mailboxes and opens on Inbox, without a mail selected', () => {
+  it('lists the seeded mailboxes and opens on Inbox, with its first mail selected automatically', () => {
     const screen = renderScreen(<MailScreen t={t} />);
 
     // "Inbox" is both the mailbox nav row and the list pane's own heading.
@@ -41,13 +41,58 @@ describe('MailScreen', () => {
     expect(screen.queryByText('Spam')).toBeNull();
 
     // Inbox correspondents render; a Drafts-only correspondent does not,
-    // because the list opens on Inbox.
-    expect(screen.getByText('Priya Natarajan')).toBeTruthy();
+    // because the list opens on Inbox. "Priya Natarajan" appears twice now -
+    // the list row and the reading pane's own subtitle - because her mail is
+    // the one auto-selected below.
+    expect(screen.getAllByText('Priya Natarajan').length).toBe(2);
     expect(screen.queryByText('Tariq Haddad')).toBeNull();
 
-    expect(screen.getByText('no_mail_selected_title')).toBeTruthy();
-    // Nothing is selected on mount, so there is no reply box to type into yet.
-    expect(screen.queryByPlaceholderText('reply_to_placeholder')).toBeNull();
+    // Inbox's most recently received mail opens on its own: no click needed,
+    // the empty state is gone, and the reply box is ready.
+    expect(screen.queryByText('no_mail_selected_title')).toBeNull();
+    expect(screen.getByPlaceholderText('reply_to_placeholder')).toBeTruthy();
+
+    screen.unmount();
+  });
+
+  it('auto-selects the first mail again on a mailbox switch, without disturbing a hand-picked selection', () => {
+    const screen = renderScreen(<MailScreen t={t} />);
+
+    // Inbox's own first mail, picked automatically.
+    expect(screen.queryByText('no_mail_selected_title')).toBeNull();
+
+    // A mail the agent picks by hand must stick while the mailbox does not
+    // change: toggling the history disclosure forces a re-render. "Priya
+    // Natarajan" already appears twice (list row plus reading pane
+    // subtitle) because her mail is the one auto-selected; the list row is
+    // the first match.
+    act(() => {
+      screen.getAllByText('Priya Natarajan')[0].click();
+    });
+    expect(screen.getByText(/The headcount section is still rough/)).toBeTruthy();
+    act(() => {
+      screen.getByText('Devon Ashworth').click();
+    });
+    expect(screen.getByText(/Let me know if the reset link does not arrive/)).toBeTruthy();
+    act(() => {
+      screen.getByText('earlier_messages').click();
+    });
+    expect(screen.getByText(/Let me know if the reset link does not arrive/)).toBeTruthy();
+
+    // Switching to Sent and back to Inbox re-arms the auto-pick: re-entering
+    // the mailbox opens its first mail again rather than restoring the
+    // hand-picked one - the documented, acceptable shape of "auto-select on
+    // entering a mailbox".
+    act(() => {
+      screen.getByText('Sent').click();
+    });
+    act(() => {
+      // "Inbox" is both the mailbox nav row and the list pane's own heading
+      // once it is the active one again; the nav row is the first match.
+      screen.getAllByText('Inbox')[0].click();
+    });
+    expect(screen.queryByText('no_mail_selected_title')).toBeNull();
+    expect(screen.getByPlaceholderText('reply_to_placeholder')).toBeTruthy();
 
     screen.unmount();
   });
@@ -78,8 +123,11 @@ describe('MailScreen', () => {
 
   it('renders no history toggle for a mail with none', () => {
     const screen = renderScreen(<MailScreen t={t} />);
+    // Priya's mail is already open (Inbox's auto-selected first mail), so
+    // "Priya Natarajan" is already on the page twice - the list row is the
+    // first match.
     act(() => {
-      screen.getByText('Priya Natarajan').click();
+      screen.getAllByText('Priya Natarajan')[0].click();
     });
 
     // Unique to the body, not the row's own subject-plus-snippet preview.
@@ -96,8 +144,10 @@ describe('MailScreen', () => {
       screen.getByText('unread_mail_count').click();
     });
 
-    // Unread within Inbox.
-    expect(screen.getByText('Priya Natarajan')).toBeTruthy();
+    // Unread within Inbox, and still the mail auto-selected on mount, so
+    // "Priya Natarajan" is on the page twice - the unread-tab row and the
+    // still-open reading pane.
+    expect(screen.getAllByText('Priya Natarajan').length).toBe(2);
     // Read within Inbox, so it drops out of the Unread tab.
     expect(screen.queryByText('Ava Laurent')).toBeNull();
 
@@ -115,15 +165,20 @@ describe('MailScreen', () => {
     });
 
     expect(screen.getByText('Devon Ashworth')).toBeTruthy();
-    expect(screen.queryByText('Priya Natarajan')).toBeNull();
+    // The search narrows the list away from Priya's row, but her mail is
+    // still the one auto-selected and open in the reading pane - the same
+    // "search narrows the list without closing what is open" rule Chat
+    // follows - so one mention of her name remains (the reading pane's).
+    expect(screen.getAllByText('Priya Natarajan').length).toBe(1);
 
     screen.unmount();
   });
 
   it('gates Send on empty input', () => {
     const screen = renderScreen(<MailScreen t={t} />);
+    // Priya's mail is already open (Inbox's auto-selected first mail).
     act(() => {
-      screen.getByText('Priya Natarajan').click();
+      screen.getAllByText('Priya Natarajan')[0].click();
     });
 
     const send = screen.getByText('send').closest('button');

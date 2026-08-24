@@ -533,11 +533,16 @@
 /* A column header's icon+label pair - the reference's own per-column icon
  * (see `ActivityTable`'s own doc). One child of `DataTableSortButton`'s own
  * flex row, so its trailing sort-direction icon still gets the button's own
- * gap; this class only spaces the icon from the label within that child. */
+ * gap; this class only spaces the icon from the label within that child.
+ * `align-items: center` puts icon and text on a common cross-axis center -
+ * exact, since both are flex items rather than inline boxes riding their own
+ * baselines - and the gap is `--space-2` (8px) rather than the tighter
+ * `--space-1` (4px) used elsewhere, so the pair reads as two glyphs instead
+ * of sitting slipped together. */
 .tableHeaderLabel {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .tableHeaderLabel svg {

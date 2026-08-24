@@ -8,7 +8,7 @@ import type { Translate } from '../../app/i18n';
 import { MailboxSidebar } from './MailboxSidebar';
 import { MailList } from './MailList';
 import { MailReadingPane } from './MailReadingPane';
-import { type MailTab } from './mailSelectors';
+import { selectMails, type MailTab } from './mailSelectors';
 import styles from '../../styles/workspace.module.css';
 
 export type MailScreenProps = {
@@ -32,6 +32,12 @@ export function MailScreen({ t }: MailScreenProps) {
 
   const [mailboxId, setMailboxId] = useState<MailboxId>('inbox');
   const [selectedMailId, setSelectedMailId] = useState<string | null>(null);
+  // The mailbox still owed an automatic first-mail pick: set on mount and on
+  // every mailbox switch, cleared once that pick has happened. The same
+  // shape as `InboxScreen`'s `autoSelectChannelId` guard, for the same
+  // reason - a plain "selection is null" check would also fire after the
+  // reading pane is intentionally cleared, which this must not do.
+  const [autoSelectMailboxId, setAutoSelectMailboxId] = useState<MailboxId | null>('inbox');
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<MailTab>('all');
   // Keyed by mail id rather than a single flag, so switching between two
@@ -46,6 +52,29 @@ export function MailScreen({ t }: MailScreenProps) {
     [mailMessagesQuery.data]
   );
 
+  // Auto-opens the mailbox's first mail - on the initial mount and again on
+  // every mailbox switch (`selectMailbox` re-arms this by setting
+  // `autoSelectMailboxId` to the mailbox just entered). Reuses `selectMails`
+  // so the pick honours whichever tab and search are already in effect,
+  // matching the order `MailList` renders. Resolved here, synchronously
+  // during render, rather than in a `useEffect`: this is derived state
+  // (React's own "adjust state when something changes" pattern - see "You
+  // Might Not Need an Effect"), not a synchronization with anything outside
+  // React, so settling it a render early avoids both the lint rule against
+  // setting state from an effect and the one-frame flash of the empty state
+  // an effect-based version would show first. Guarded by the id match so a
+  // click that picks a different mail, once consumed, never gets
+  // second-guessed while the agent stays in that mailbox.
+  if (autoSelectMailboxId === mailboxId) {
+    const candidates = selectMails(mails, mailboxId, tab, search);
+    if (candidates.length > 0) {
+      setAutoSelectMailboxId(null);
+      if (selectedMailId !== candidates[0].id) {
+        setSelectedMailId(candidates[0].id);
+      }
+    }
+  }
+
   const selected = mails.find((mail) => mail.id === selectedMailId) ?? null;
 
   const history = useMemo(() => {
@@ -56,6 +85,7 @@ export function MailScreen({ t }: MailScreenProps) {
   const selectMailbox = (nextMailboxId: MailboxId) => {
     setMailboxId(nextMailboxId);
     setSelectedMailId(null);
+    setAutoSelectMailboxId(nextMailboxId);
   };
 
   if (mailboxesQuery.isLoading) {

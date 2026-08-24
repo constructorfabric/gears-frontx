@@ -63,6 +63,11 @@ export function InboxScreen({ t }: InboxScreenProps) {
 
   const [channelId, setChannelId] = useState<string>(CHANNEL_GENERAL);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // The channel still owed an automatic first-conversation pick: set on mount
+  // and on every channel switch, cleared once that pick has happened. Nulled
+  // by closing or backing out of a thread does not touch this, so those stay
+  // on the empty state rather than jumping to another conversation.
+  const [autoSelectChannelId, setAutoSelectChannelId] = useState<string | null>(CHANNEL_GENERAL);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortOrder>('last-activity');
   const [channelsCollapsed, setChannelsCollapsed] = useState(false);
@@ -101,6 +106,26 @@ export function InboxScreen({ t }: InboxScreenProps) {
     [conversations, contactsById, channelId, search, sort]
   );
 
+  // Auto-opens the channel's first conversation - on the initial mount and
+  // again on every channel switch (`selectChannel` re-arms this by setting
+  // `autoSelectChannelId` to the channel just entered). Resolved here,
+  // synchronously during render, rather than in a `useEffect`: this is
+  // derived state (React's own "adjust state when something changes"
+  // pattern - see "You Might Not Need an Effect"), not a synchronization
+  // with anything outside React, so settling it a render early avoids both
+  // the lint rule against setting state from an effect and the one-frame
+  // flash of the empty state an effect-based version would show first.
+  // Guarded by the id match so a click that picks a different conversation,
+  // once consumed, never gets second-guessed while the agent stays in that
+  // channel; an empty channel is simply left on the empty state, still
+  // armed, in case a later fetch surfaces conversations for it.
+  if (autoSelectChannelId === channelId && visibleConversations.length > 0) {
+    setAutoSelectChannelId(null);
+    if (selectedId !== visibleConversations[0].id) {
+      setSelectedId(visibleConversations[0].id);
+    }
+  }
+
   // Selected from the whole collection rather than the visible slice: typing a
   // search narrows the list without closing the thread the agent is reading.
   const selected = conversations.find((conversation) => conversation.id === selectedId) ?? null;
@@ -133,6 +158,7 @@ export function InboxScreen({ t }: InboxScreenProps) {
   const selectChannel = (nextChannelId: string) => {
     setChannelId(nextChannelId);
     setSelectedId(null);
+    setAutoSelectChannelId(nextChannelId);
   };
 
   if (channelsQuery.isLoading) {
