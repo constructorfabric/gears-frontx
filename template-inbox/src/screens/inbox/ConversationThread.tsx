@@ -267,7 +267,7 @@ export function ConversationThread({
         behavior every chat app has.
       */}
       <MessageScrollerProvider key={conversation.id} autoScroll>
-        <FollowNewestMessage lastMessageId={messages.at(-1)?.id} />
+        <FollowNewestMessage lastMessageId={messages[messages.length - 1]?.id} />
         <MessageScroller className={styles.transcript}>
           <MessageScrollerViewport>
             <MessageScrollerContent>
