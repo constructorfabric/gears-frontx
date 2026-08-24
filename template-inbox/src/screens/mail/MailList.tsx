@@ -51,7 +51,11 @@ export function MailList({
         {rows.map((mail) => (
           <Item
             key={mail.id}
-            className={cx(styles.conversationRow, mail.read && mailStyles.mailRowRead)}
+            className={cx(
+              styles.conversationRow,
+              mail.read && mailStyles.mailRowRead,
+              mail.id === selectedMailId && styles.rowSelected
+            )}
             variant={mail.id === selectedMailId ? 'muted' : 'default'}
             render={
               <button

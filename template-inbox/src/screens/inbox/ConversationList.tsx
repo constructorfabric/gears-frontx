@@ -121,7 +121,10 @@ export function ConversationList({
             return (
               <Item
                 key={conversation.id}
-                className={styles.conversationRow}
+                className={cx(
+                  styles.conversationRow,
+                  conversation.id === selectedConversationId && styles.rowSelected
+                )}
                 variant={conversation.id === selectedConversationId ? 'muted' : 'default'}
                 render={
                   <button

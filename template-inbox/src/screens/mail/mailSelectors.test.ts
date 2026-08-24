@@ -16,9 +16,28 @@ const mail = (overrides: Partial<Mail>): Mail => ({
   ...overrides,
 });
 
+// Explicit, distinct `receivedAt` values (rather than the `mail()` default of
+// `new Date()` at call time) - two calls a fraction of a millisecond apart
+// otherwise raced the "narrows to the selected mailbox" assertion below,
+// which needs ml-1 strictly more recent than ml-2 to sort first.
+const NOW = Date.now();
 const mails: Mail[] = [
-  mail({ id: 'ml-1', mailboxId: 'inbox', read: false, correspondentName: 'Priya Natarajan', subject: 'Q3 planning' }),
-  mail({ id: 'ml-2', mailboxId: 'inbox', read: true, correspondentName: 'Devon Ashworth', subject: 'Staging access' }),
+  mail({
+    id: 'ml-1',
+    mailboxId: 'inbox',
+    read: false,
+    correspondentName: 'Priya Natarajan',
+    subject: 'Q3 planning',
+    receivedAt: new Date(NOW).toISOString(),
+  }),
+  mail({
+    id: 'ml-2',
+    mailboxId: 'inbox',
+    read: true,
+    correspondentName: 'Devon Ashworth',
+    subject: 'Staging access',
+    receivedAt: new Date(NOW - 60_000).toISOString(),
+  }),
   mail({ id: 'ml-3', mailboxId: 'drafts', read: true, correspondentName: 'Ava Laurent', subject: 'Invoice' }),
 ];
 

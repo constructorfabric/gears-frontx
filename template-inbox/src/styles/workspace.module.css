@@ -288,6 +288,20 @@
   padding: 0.625rem; /* 10px */
 }
 
+/*
+ * Active-row treatment: background alone (the kit's own `variant="muted"`)
+ * reads as barely-there once a dozen rows share the same list, so the
+ * selected row also gets a real border - the same `--border-strong` idiom
+ * Toggle's own pressed state already uses (toggle.module.css). Two classes
+ * on the element plus the `.listBody` ancestor outrank the kit's single-
+ * class `.variantMuted` rule (which sets `border-color: transparent`)
+ * regardless of stylesheet load order, same reasoning as `.rowLine
+ * .lineTitle` above.
+ */
+.listBody .conversationRow.rowSelected {
+  border-color: var(--border-strong);
+}
+
 .listBody .conversationGroup {
   gap: var(--space-1); /* 4px row-to-row gap */
 }
