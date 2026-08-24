@@ -105,6 +105,35 @@ describe('MessageScroller', () => {
     expect(custom.textContent).toBe('Jump');
   });
 
+  it('scopes the bottom-anchor rule to transcripts built from MessageScrollerItem', () => {
+    // jsdom has no layout engine (see the file header), so this cannot
+    // measure the resulting spacer/gap pixels - it instead pins down the
+    // CSS selector's scoping contract: `.content:has(> [data-scroll-anchor])`
+    // must match a real chat transcript (every MessageScrollerItem renders
+    // `data-scroll-anchor`, regardless of whether `messageId`/`scrollAnchor`
+    // are passed) and must NOT match a plain reading surface like the mail
+    // pane's, which puts un-wrapped content straight into
+    // MessageScrollerContent with no MessageScrollerItem at all.
+    renderScroller();
+    const content = screen.getByRole('log');
+    expect(content.querySelector('[data-scroll-anchor]')).toBeTruthy();
+
+    cleanup();
+    render(
+      <MessageScrollerProvider>
+        <MessageScroller>
+          <MessageScrollerViewport>
+            <MessageScrollerContent>
+              <div>Plain reading content, no MessageScrollerItem</div>
+            </MessageScrollerContent>
+          </MessageScrollerViewport>
+        </MessageScroller>
+      </MessageScrollerProvider>,
+    );
+    const plainContent = screen.getByRole('log');
+    expect(plainContent.querySelector('[data-scroll-anchor]')).toBeNull();
+  });
+
   it('merges a consumer className alongside the kit class on every part', () => {
     render(
       <MessageScrollerProvider>

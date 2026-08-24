@@ -65,6 +65,20 @@ Hooks (re-exported, call anywhere under `MessageScrollerProvider`):
 exists past each edge; `useMessageScrollerVisibility()` —
 `{ currentAnchorId, visibleMessageIds }`.
 
+## Behavior notes
+
+- **Short transcripts bottom-anchor.** `MessageScrollerContent` renders
+  `justify-content: flex-end` whenever it directly contains at least one
+  `MessageScrollerItem` (detected via the `data-scroll-anchor` attribute
+  every item carries), so a transcript shorter than its viewport pushes its
+  messages down to sit flush against whatever follows the scroller (a
+  composer, typically) instead of leaving a permanent gap there. A plain
+  reading surface built from `MessageScrollerContent` without any
+  `MessageScrollerItem` (see the mail reading pane's history-toggle +
+  message body markup) never matches and keeps ordinary top-anchored flow.
+  This is pure CSS, scoped by markup shape - no prop to pass, no per-
+  consumer compensation.
+
 ## Deviations from upstream
 
 - **Icon-only by default, via `aria-label`.** Upstream always renders a

@@ -38,6 +38,39 @@
   height: max-content;
 }
 
+/*
+ * Bottom-anchors a chat transcript that is shorter than its viewport - the
+ * newest message sits flush against the composer, blank space collects
+ * above the oldest one instead of below the newest (the "hole before the
+ * composer" bug). `@shadcn/react`'s own spacer
+ * (`[data-message-scroller-spacer]`, appended after every item - see
+ * message-scroller.tsx's file header) cannot do this job: `scrollToEnd()`
+ * zeroes that spacer's height before it scrolls (it exists to pad the
+ * scrollable range for `scrollToMessage`'s align-into-view math, not to
+ * hold a permanent bottom gap), so a short transcript always lands at
+ * `scrollTop: 0` with items stacked from the top of `.content`'s
+ * `min-height: 100%` box, leaving the leftover space below the last one.
+ *
+ * `justify-content: flex-end` redistributes that same leftover space to
+ * the TOP instead once the real children (the spacer among them, since it
+ * is always either 0-height or hidden here) are shorter than the box - no
+ * height math of our own to keep in sync with the primitive's. Once real
+ * content is taller than the viewport there is no leftover space left to
+ * redistribute, so a long transcript scrolls exactly as before.
+ *
+ * `:has(> [data-scroll-anchor])` scopes this to an actual chat transcript -
+ * every `MessageScrollerItem` renders that attribute (see
+ * message-scroller.tsx) regardless of whether `messageId`/`scrollAnchor`
+ * are passed - without a prop a consumer has to remember to opt into. A
+ * plain reading surface that puts un-wrapped content straight into
+ * `MessageScrollerContent` (the mail reading pane's history toggle +
+ * message body, no `MessageScrollerItem` in sight) never matches, and
+ * keeps its existing top-anchored flow.
+ */
+.content:has(> [data-scroll-anchor]) {
+  justify-content: flex-end;
+}
+
 .item {
   min-width: 0;
   flex-shrink: 0;
