@@ -247,6 +247,27 @@
   }
 }
 
+/*
+ * `.popup`'s `gap` (see above) only reaches its own direct children. A
+ * consumer wrapping the whole body in `<form>` - the standard pattern for
+ * Enter-to-submit, used by every form dialog in the demo app - puts
+ * `.header`, the fields and `.footer` one level deeper, as siblings inside
+ * that form instead of grid items of `.popup`: the grid gap no longer
+ * applies between them at all, so header-to-field and field-to-footer both
+ * collapsed to 0px (measured on the "New channel" and "New message"
+ * dialogs). These margins reinstate the same `--space-6` rhythm the grid
+ * gap already gives non-form dialogs, scoped to exactly that wrapped case
+ * (`form >`) so an unwrapped dialog's existing gap is untouched instead of
+ * doubling up.
+ */
+.popup form > .header {
+  margin-bottom: var(--space-6);
+}
+
+.popup form > .footer {
+  margin-top: var(--space-6);
+}
+
 /* Studio/Heading 2 — the dialog's one heading-role text. */
 .title {
   margin: 0;
