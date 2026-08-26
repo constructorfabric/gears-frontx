@@ -521,13 +521,40 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
     // Without this, the driver could ship, validate and still be reached by
     // nobody: the document is the only thing that sends a run to it.
-    it('is named by the scaffolding document as what the variant walk runs, with hand-driving as the fallback', () => {
+    it('is named by the scaffolding document as what the walk runs, with hand-driving as the fallback', () => {
       const body = shippedBody(SCAFFOLDING_ID);
 
       expect(body).toContain(DRIVER_ID);
       expect(body).toContain(DRIVER_SOURCE);
       expect(body).toContain('Hand-authored browser calls are the fallback');
     });
+
+    // The dimension the walk repeats over is the caller's to name, and the
+    // driver's own vocabulary is the kit's: screens, controls, labels, captures.
+    // "theme" is the one concrete dimension that was baked in here - it named
+    // flags, result fields, capture files and coverage columns - and the
+    // ecosystem PRD states that no theme schema is an ecosystem-level concept, so
+    // the kit has no abstraction to reference it through and no honest use for
+    // the word. Guarding the word itself is what catches the reintroduction,
+    // because it comes back in a comment or a help line long before it reaches a
+    // flag. Other dimensions are not guarded this way: they appear legitimately,
+    // as the illustrations of what this driver deliberately does not know.
+    const BAKED_IN_DIMENSION = 'theme';
+
+    it('carries no trace of the template-specific dimension it used to be written around', () => {
+      const source = fs.readFileSync(driverPath(), 'utf8');
+
+      expect(source.toLowerCase()).not.toContain(BAKED_IN_DIMENSION);
+    });
+
+    // The same rule one level up. The kit's documents state this contract in
+    // prose, and the word there teaches an invocation the driver does not offer -
+    // which is where the driver's own vocabulary came from to begin with.
+    it.each([['the scaffolding document', SCAFFOLDING_ID], ['the verification checklist', 'frontx_verification_checklist']])(
+      'is documented in %s without that dimension either',
+      (_what, id) => {
+        expect(shippedBody(id).toLowerCase()).not.toContain(BAKED_IN_DIMENSION);
+      });
 
     it('prints its flag surface and exits 0 on --help', () => {
       const help = spawnSync(process.execPath, [driverPath(), '--help'], {

@@ -64,7 +64,7 @@ type = "file"
 user_modifiable = false
 
 # The executable copy of Step 7's browser-walk mechanics: a node program that
-# drives one theme-walk pass and emits a machine-readable result plus the
+# drives one walk over the declared screens and emits a machine-readable result plus the
 # coverage rows. The skill states the rules and this resource performs them, so a
 # run reaches them by running a program rather than by reading paragraphs it may
 # read late or read partly.

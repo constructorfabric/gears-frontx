@@ -310,7 +310,7 @@ cannot be passed. Read it before the walk, so the walk is driven toward what wil
 be accounted for, and walk it again before the report is composed. Step 8 carries
 its per-category status, and a category the report leaves out fails there.
 
-**The theme walk runs the shipped driver.** The kit installs it as the
+**The walk runs the shipped driver.** The kit installs it as the
 `frontx_verify_walk` resource, beside this document at
 `skills/project-scaffolding/scripts/verify-walk.mjs` under the installed kit
 root. Resolve that path from the same installed kit root this document was read
@@ -320,17 +320,31 @@ from, and run it:
 node <installed kit root>/skills/project-scaffolding/scripts/verify-walk.mjs \
   --host <dev server origin> \
   --browser-cmd 'npx --yes agent-browser@<the version this run pinned>' \
-  --themes registry --theme-registry <file the registered set was read into> \
   --screens <name>:<declared route>:<that screen's ready testid>,... \
   --capdir "$CAPDIR" \
-  --switcher <the theme switcher's testid> \
-  --theme-option '<the per-theme option testid, with {theme} in it>' \
+  --variants registry --variant-registry <file the declared set was read into> \
+  --variant-switcher <testid of the control that opens the values> \
+  --variant-option '<one value option testid, with {variant} in it>' \
   --menu '<a screen menu item testid, with {screen} or {extensionId} in it>' \
   --panel-expand <the dev panel's expand testid> \
   --panel-collapse <the dev panel's collapse testid> \
   --states <file of declared per-screen interactions> \
   --coverage <targetDir>/.frontx/verification-coverage.md
 ```
+
+The four `--variant-*` flags declare **one UI dimension this project varies
+along, and this document holds no opinion on what it is.** A project may vary
+along none, and many do. What those flags describe is entirely mechanical: a set
+of values, a control to click, an option handle per value, and the switcher label
+each value is confirmed from. Which dimension a project puts through them - a
+display mode, a density, a locale, a layout mode - is that project's own
+knowledge and belongs with the template that carries it, not here. The axis is
+declared whole or not at all: naming any one of those flags without the rest is
+refused before a browser is reached, and naming none of them walks every screen
+once. **A run that declares no axis is not a narrowed run and is not reported as
+one.** Its coverage row records the axis as not exercised, which is a statement
+about this run; it does not say the project has no such dimension, which nothing
+in this walk establishes and no report may claim.
 
 **A menu item keyed by something other than the screen's short name is named
 with `{extensionId}`.** A host may mark each item with the whole identity of the
@@ -360,29 +374,30 @@ the path and the flag, each whole.
 run-unique capture directory made under the capture rule below, and the driver
 refuses a directory that already holds files rather than write into another
 run's captures. The driver exits 0 only when every control it was given dispatched,
-every theme opened against its own switcher label, every read-back agreed, and
-every declared capture landed; on any failure - a refused invocation, an input file
+every declared variant became active against its own switcher label, every
+read-back agreed, and every declared capture landed; on any failure - a refused invocation, an input file
 it cannot read, a browser command that stopped answering, an output path it cannot
 write - it exits non-zero with the reason in its JSON result, and it never retries
 on its own.
 
 The JSON result is what the coverage table and the report are filled from: it
-carries, per theme, whether the switcher label confirmed the theme opened, every
-capture file with the state it was taken at, every byte-compare verdict with the
-`cmp` exit code that produced it, every fill and click read-back with the value
-read off the page afterwards, and the failure list. It also records where the
-theme set came from - the registry file, or a set typed in by hand - so a claim
-that the set came from the host's theme registration is a claim the result file
-either backs or contradicts.
+carries, per pass, whether the switcher label confirmed the value became active,
+every capture file with the state it was taken at, every byte-compare verdict
+with the `cmp` exit code that produced it, every fill and click read-back with
+the value read off the page afterwards, and the failure list. It also records
+whether a variant axis was declared at all, and where its set came from - the
+registry file, or a set typed in by hand - so a claim that the set came from the
+project's own registration of that dimension is a claim the result file either
+backs or contradicts.
 
 Everything from here to the end of this step is **the specification of the
 mechanics** - which one exists, and what each cost the run that learned it. Read
 it to know what the driver is doing on your behalf, to compose its arguments, and
 to drive by hand when you have to.
 
-**The driver performs the theme walk and nothing else in this step.** It carries
+**The driver performs the walk and nothing else in this step.** It carries
 sub-step 1's probe, sub-step 3's native pointer sequence, sub-step 5's whole
-theme walk including the byte-compare, the read-backs sub-step 6 requires after
+variant walk including the byte-compare, the read-backs sub-step 6 requires after
 its own clicks and navigations, a readiness poll of the shape sub-step 7
 prescribes, and sub-step 8's coverage file. **These it does not perform, and a run
 owes every one of them itself:**
@@ -393,10 +408,10 @@ owes every one of them itself:**
   is the run's own work, and the CRITICAL routing items are satisfied by nothing
   else. A run that read the driver as covering routing would skip the one
   sub-step whose findings no capture can show.
-- **sub-step 2's default-theme settling and the one-time handle read.** The driver
-  is given its handles as arguments; learning them off the interface, and
-  starting the walk from the host's default theme rather than whatever an attached
-  profile persisted, happens before it runs.
+- **sub-step 2's settling of the starting variant and the one-time handle read.**
+  The driver is given its handles as arguments; learning them off the interface,
+  and starting the walk from the project's declared default rather than whatever
+  an attached profile persisted, happens before it runs.
 - **sub-step 6's snapshot reading.** The driver reads back the elements it was
   told about; judging what is on screen at all, and what a compact snapshot's
   silence does not mean, stays with the run.
@@ -447,9 +462,9 @@ them authoring throwaway scripts to do it, while the helper sat in a sub-step
 none of them was re-reading at the time.
 
 **Narrow no declared scope without stating the reason in the visible output
-text.** The scope this verification declares - every registered theme, every
-screen under verification, every state the declared checks call for - is covered
-in full. When something forces a narrowing anyway, write into the text the
+text.** The scope this verification declares - every value of a declared variant
+axis, every screen under verification, every state the declared checks call for -
+is covered in full. When something forces a narrowing anyway, write into the text the
 developer reads, not only into the coverage file, which part of the scope is
 being narrowed, what is left out of it, and why. The coverage file records what
 was covered and cannot carry the reason, so a narrowing recorded only there
@@ -459,7 +474,7 @@ this flow was free to make.
 
 **A scope change is declared in both directions, and widening is declared exactly
 as narrowing is.** Where the set actually walked is wider than what the
-developer's own phrasing asked for - more themes than the intent named, screens
+developer's own phrasing asked for - more variant values than the intent named, screens
 the intent did not mention, states nobody asked to see - the report says so in
 one sentence of the same form: asked X, declared set Y, walked Y. Nothing about
 walking more is wrong, and everything about walking more in silence is: the
@@ -470,14 +485,14 @@ and the asked-for set distinguishable in the report.
 
 **The reason has to answer the axis the narrowed check verifies.** A check is
 narrowed along the axis it covers, and only a reason on that axis closes it.
-The theme walk and the captures under it ask a visual question - what each
-state looks like once that theme's tokens are applied - so no argument about
-behavior closes them, however true the argument is. One run drove the
-interactive states in the default theme alone and justified it by the state
-logic never reading theme state. That was correct and beside the point: what
-the walk was there to establish is whether success, error and added states are
-styled differently per theme, and only those states rendered in each theme can
-show it. A reason that argues the wrong axis is an unexplained narrowing.
+The variant walk and the captures under it ask a visual question - what each
+state looks like once that value is applied - so no argument about behavior
+closes them, however true the argument is. One run drove the interactive states
+under the starting value alone and justified it by the state logic never reading
+that dimension. That was correct and beside the point: what the walk was there to
+establish is whether success, error and added states render differently across
+the axis, and only those states rendered under each value can show it. A reason
+that argues the wrong axis is an unexplained narrowing.
 
 **Start every dev server with its process id recorded, and stop it by that id.**
 Keep the pid the start reports, or use the runner's own stop mechanism where it
@@ -531,7 +546,7 @@ address capture files by name, and neither can tell which run wrote them.
 **Address every control by the stable handle the interface puts on it, and
 drive a whole pass in one invocation.** A run that clicks by accessibility
 reference pays for it twice: those references are re-issued on every
-navigation and every theme switch, so each interaction costs a fresh snapshot
+navigation and every variant switch, so each interaction costs a fresh snapshot
 taken for no reason but to learn the handle again. One measured run spent 24 of
 its 87 browser calls that way. Six things make the difference, and all six were
 established against this runner rather than assumed:
@@ -545,13 +560,13 @@ established against this runner rather than assumed:
   offer the semantic locators as their own subcommands (`find role ... click
   --name ...`), which work; what does not work is folding them into a selector
   string. An `@eN` reference stays valid inside one navigation lifetime and is
-  void after a reload, which is what the theme walk performs at every boundary.
+  void after a reload, which is what the variant walk performs at every boundary.
 - **Learn the handles once, from the interface itself.** Which controls a host
   marks, and what it calls them, is the host's business - this document names
   no handle and must not. Take one accessibility snapshot at the start of the
   run, locate the controls the declared checks and the sub-steps below reach
   for - each screen's menu item, the dev panel's expand and collapse controls,
-  the theme switcher and its per-theme options - and read each one's
+  the variant switcher and its per-variant options - and read each one's
   `data-testid` off the page. Every command afterwards is written against those
   values, and no further snapshot is taken to re-find a control.
   **The controls inside a screen are learned the same way, but not off that
@@ -582,7 +597,7 @@ established against this runner rather than assumed:
   snapshot-per-interaction cost this rule exists to remove.
 - **Chain the commands with `batch --bail`, fed as JSON on stdin.** One
   `batch` invocation carries a whole sequence in a single process, which is
-  what turns a theme's pass from a dozen round trips into one. Feed it JSON
+  what turns a variant's pass from a dozen round trips into one. Feed it JSON
   rather than quoted argument strings: argument mode re-parses each string and
   strips the quotes inside it, so a handle carrying dots or tildes arrives at
   the runner as an unquoted attribute value and stops resolving, while a handle
@@ -635,21 +650,21 @@ Carry the run out in this order:
    `npx --yes agent-browser`. The probe is a single request, and it is worth
    making every time: a self-launched browser has hung mid-run where an attached
    one returned every capture asked of it.
-2. **Read the interface's active theme before verifying anything, and switch to
-   the host's default theme before the first capture.** An attached browser
+2. **Read the interface's active variant before verifying anything, and switch to
+   the host's default variant before the first capture.** An attached browser
    brings its profile's persisted selection with it, so the interface can open in
-   a theme nobody in this run chose, and every capture after that silently
-   belongs to that theme. Read the active theme off the theme switcher's own
-   label, by the rule the theme walk states below: a screenshot's file name
+   a variant nobody in this run chose, and every capture after that silently
+   belongs to that variant. Read the active variant off the variant switcher's own
+   label, by the rule the variant walk states below: a screenshot's file name
    records what the run assumed, not what was on screen.
 
    **This is also where the run learns its handles.** The snapshot taken to find
    the switcher is the one snapshot the selector rule above allows for locating
    controls, so locate the rest of them from it in the same pass - the menu
-   items, the dev panel's two controls, the switcher's per-theme options - and
+   items, the dev panel's two controls, the switcher's per-variant options - and
    read each one's `data-testid`. Everything after this sub-step is written
    against those values, and settling the dev panel's collapsed state here is
-   what lets each theme's block run without a branch.
+   what lets each variant's block run without a branch.
 3. **Dispatch native pointer events when a click changes nothing.** A synthetic
    `.click()` arrives at the element carrying none of the pointer sequence around
    it, so a control listening for `pointerdown` sees nothing at all and the screen
@@ -682,11 +697,11 @@ Carry the run out in this order:
    `document`, which does not see in. Then confirm the outcome the way every
    other click is confirmed here, under sub-step 6: by reading the resulting
    state back off the page, never off the command's own `✓`.
-4. **Exercise each screen's declared route, before the themes are walked.** The
+4. **Exercise each screen's declared route, before the variants are walked.** The
    address is part of the surface under verification: the host mounts the screen
    whose route matches the URL at load, and a menu click puts the clicked
    screen's route into the address bar. Neither fact shows up in a capture, so
-   both are established here, in the theme the run is currently in. **Routes come
+   both are established here, in the variant the run is currently in. **Routes come
    from the manifests**: read each realized screen's own declared `route` value
    out of the manifest that declares it, and navigate to no path this document,
    the plan or the report named. Take each realized screen in turn, one batch
@@ -727,42 +742,51 @@ Carry the run out in this order:
    after the menu click. One run inherited screen routing, opened no deep link,
    read no pathname, and handed back a report that never mentioned routing at
    all: routing left unexercised is reported as unexercised, never as absent.
-5. **Enumerate every theme the host registers, and walk them.** The host's theme
-   registry is the source of truth for the set - not the theme the browser opened
-   in, and not the entries a switcher happens to show. **Read the set from the
-   host's theme registration itself** - the source file where the themes are
-   registered, or the list it exports - and only then open the switcher, which
-   from that point serves to apply each theme and nothing else. A dropdown
-   enumerates what the switcher chose to offer, which is not necessarily
-   everything registered: one run took its set from the menu items and happened
-   to match, a match it had no way to confirm and did not. This is the one thing
-   read from source in this walk, and it is read for the set alone - which theme
-   is active at any moment stays the switcher label's to answer, under sub-step
-   5.2 below. **The walk covers every theme the registry reports, and that set
-   is not negotiable**: no sample, no representative subset, and no theme set
-   aside as out of scope for this run.
-   The count of registered themes and the count of walked themes are the same
+5. **Establish whether this project declares a variant axis, and if it does,
+   enumerate every value of it and walk them.** A variant axis is one UI
+   dimension a project varies along; which dimension that is, and whether the
+   project has one at all, is stated by the template the project was applied
+   from and never assumed here. **A project that declares none walks its screens
+   once**, records the axis as not exercised, and is complete at that: sub-steps
+   5.2 and 5.5 below have nothing to act on, and the rest of the block runs
+   unchanged. Nothing in that outcome is a narrowing, and it is never written up
+   as one.
+
+   Where an axis is declared, **the project's own registration of that dimension
+   is the source of truth for the set** - not the value the browser opened in,
+   and not the entries a switcher happens to show. Read the set from that
+   registration - the source file where the values are declared, or the list it
+   exports - and only then open the switcher, which from that point serves to
+   apply each value and nothing else. A dropdown enumerates what the switcher
+   chose to offer, which is not necessarily everything declared: one run took its
+   set from the menu items and happened to match, a match it had no way to
+   confirm and did not. This is the one thing read from source in this walk, and
+   it is read for the set alone - which value is active at any moment stays the
+   switcher label's to answer, under sub-step 5.2 below. **The walk covers every
+   value that registration reports, and that set is not negotiable**: no sample,
+   no representative subset, and no value set aside as out of scope for this run.
+   The count of declared values and the count of walked values are the same
    number. A run that walks fewer has narrowed a declared scope, so it states the
    reason in its output text under the rule above and reports itself as not
-   verified for every theme it left out.
+   verified for every value it left out.
 
-   **Take each registered theme in turn, and drive its whole pass as one
+   **Take each declared value in turn, and drive its whole pass as one
    invocation** rather than as a click-by-click conversation. The handles come
-   from the one-time read in the selector rule above; the theme's own option
-   handle and the screens' menu handles are the per-theme and per-screen parts:
+   from the one-time read in the selector rule above; the value's own option
+   handle and the screens' menu handles are the per-value and per-screen parts:
 
    ```bash
    npx --yes agent-browser batch --bail <<'JSON'
    [
      ["reload"],
      ["click", "[data-testid=\"<the dev panel's expand handle>\"]"],
-     ["click", "[data-testid=\"<the theme switcher's handle>\"]"],
-     ["click", "[data-testid=\"<this theme's option handle>\"]"],
-     ["get", "text", "[data-testid=\"<the theme switcher's handle>\"]"],
+     ["click", "[data-testid=\"<the variant switcher's handle>\"]"],
+     ["click", "[data-testid=\"<this variant's option handle>\"]"],
+     ["get", "text", "[data-testid=\"<the variant switcher's handle>\"]"],
      ["click", "[data-testid=\"<the dev panel's collapse handle>\"]"],
      ["is", "visible", "[data-testid=\"<the dev panel's expand handle>\"]"],
      ["click", "[data-testid=\"<a screen's menu handle>\"]"],
-     ["screenshot", "<$CAPDIR resolved>/<theme>-<screen>-fresh.png"]
+     ["screenshot", "<$CAPDIR resolved>/<variant>-<screen>-fresh.png"]
    ]
    JSON
    ```
@@ -773,11 +797,11 @@ Carry the run out in this order:
    line after them, and a `get value` after every fill under the rule above.
 
    **The block ends with the dev panel collapsed, and that is what lets the next
-   theme's block start with a bare expand click.** Settle the starting state
-   once, before the first theme, and the walk needs no branch anywhere. If the
+   pass's block start with a bare expand click.** Settle the starting state
+   once, before the first pass, and the walk needs no branch anywhere. If the
    block stops on its expand line, this host brought the panel back expanded
    across the reload instead: drop that line, re-run the block, and use the
-   shorter form for every remaining theme, because which of the two a host does
+   shorter form for every remaining pass, because which of the two a host does
    is fixed for that host and is now known. Either way `--bail` turned an
    unknown into a stated fact at the cost of one failed invocation, and no
    capture was taken while the answer was still open.
@@ -786,58 +810,63 @@ Carry the run out in this order:
    line still answers to one of the sub-steps below, and every one of them
    holds:
    1. **Reload the page and wait for it to come back** - the block's first
-      line. This is the theme boundary reset. It discards every field filled,
-      item added and dialog opened while checking the previous theme, so the
-      captures below start from a state this run knows rather than from wherever
-      the last theme's interactions left the app. Reload for the first theme
-      too: the browser arrived carrying a profile, not a fresh application.
-   2. **Switch into the theme, then confirm the switch landed** - the two clicks
-      that open the switcher and pick this theme, and the `get text` line after
+      line. This is the pass boundary reset. It discards every field filled,
+      item added and dialog opened during the previous pass, so the captures
+      below start from a state this run knows rather than from wherever the last
+      pass's interactions left the app. Reload for the first pass too: the
+      browser arrived carrying a profile, not a fresh application.
+   2. **Switch into the value, then confirm the switch landed** - the two clicks
+      that open the switcher and pick this value, and the `get text` line after
       them. That line prints the switcher's label, and the label has to name the
-      theme just selected. **It is the only source of truth for which theme is
-      active.** Do not probe `data-*` attributes, CSS classes or computed styles
+      value just selected. **This whole sub-step belongs to the variant axis: a
+      run that declares none has no switcher to operate and no label to read, and
+      skips it.** Where an axis is declared, **the switcher's label is the only
+      source of truth for which value is active.** Do not probe `data-*` attributes, CSS classes or computed styles
       to detect it, and do not go reading shell or package sources for where a
-      theme is applied. Host implementations vary, which is precisely why the
+      variant is applied. Host implementations vary, which is precisely why the
       check is a label check: one run lost its budget to a DOM probe that
       answered `unknown` and a source hunt after it, then fell back to the label
       this sub-step already prescribed. **This is the one confirmation the batch
       will not make for the run**: `get text` prints and moves on, so a block
-      whose label line came back naming the previous theme has still run every
+      whose label line came back naming the previous value has still run every
       line after it, captures included. Read that line. A label still naming the
-      previous theme means the theme did not open, so record it as not-opened
-      with that as the reason, discard what the block captured under it, capture
-      nothing in it as verified, and take the next theme.
-      **Names it, rather than carries its name somewhere.** The theme's name has
-      to occupy whole words of the label: a label reading "Darker" does not
-      confirm `dark`, and "Highlight" does not confirm `light`. A registry holding
-      such a pair - two names one label could name at once - is refused before the
-      walk rather than resolved by guess, and `--theme-labels` is where each is
-      given a label of its own.
-   3. **Collapse the host's dev panel before the first capture in this theme** -
+      previous value means this one never became active, so record it as
+      not-active with that as the reason, discard what the block captured under
+      it, capture nothing in it as verified, and take the next value.
+      **Names it, rather than carries its name somewhere.** The value's name has
+      to occupy whole words of the label: a label reading "Denser" does not
+      confirm `dense`, and "Length" does not confirm `en`. A set holding such a
+      pair - two names one label could name at once - is refused before the walk
+      rather than resolved by guess, and `--variant-labels` is where each is given
+      a label of its own.
+   3. **Collapse the host's dev panel before the first capture in this variant** -
       the collapse click and the `is visible` line after it. An expanded dev or
       tools panel is host chrome drawn over the screens under verification, not
       part of them. **A capture taken while it overlays screen content is not a
       valid baseline** and neither is a click aimed through it: one run lost its
-      first theme's baseline that way, and another lost a pass aborted
+      first pass's baseline that way, and another lost a pass aborted
       by `Element is covered` before collapsing the panel and starting over.
       Here the confirmation enforces itself - the expand control is only in the
       document while the panel is collapsed, so `is visible` on it exits
       non-zero and `--bail` stops the block before a single capture is taken.
-      The line sits inside every theme's block, not once at the start of the
-      walk, because the reload at each theme boundary can put the panel back.
+      The line sits inside every pass's block, not once at the start of the
+      walk, because the reload at each pass boundary can put the panel back.
    4. **Capture each screen under verification in its fresh state first** - the
       menu-click and `screenshot` pairs that close the block. This is the state
       the reload left the screen in, before anything is filled, submitted or
-      added in this theme. The interactions the declared checks call for follow
+      added in this pass. The interactions the declared checks call for follow
       in the second batch, each with its own capture.
-   5. **Byte-compare this theme's captures against the previous theme's.** For
-      each screen and state, run the comparison as a command over the two capture
-      files and read the verdict off what it returned:
+   5. **Byte-compare this pass's captures against the previous pass's.** This
+      sub-step belongs to the variant axis too: a run that declares none takes
+      one pass, has no pair to compare, and records the comparison as not made
+      for that reason. Where an axis is declared, for each screen and state, run
+      the comparison as a command over the two capture files and read the verdict
+      off what it returned:
 
       ```bash
-      cmp -s <previous-theme-capture> <this-theme-capture>; echo "cmp exit $?"
+      cmp -s <previous-pass-capture> <this-pass-capture>; echo "cmp exit $?"
       # or, when hashes are preferred:
-      shasum -a 256 <previous-theme-capture> <this-theme-capture>
+      shasum -a 256 <previous-pass-capture> <this-pass-capture>
       ```
 
       `cmp -s` exits 0 for identical files and 1 for differing ones; two hashes
@@ -847,10 +876,10 @@ Carry the run out in this order:
       a cell filled that way reports a fact the run never established, however
       honestly the eye judged it. A capture pair the command was never run over
       gets no verdict: record it as not-compared and say so in the report.
-      Identical captures are a recorded fact, not a failure: two registered themes
+      Identical captures are a recorded fact, not a failure: two declared values
       can differ only in tokens the screens under verification never consume, and
       a report that passed them as visibly distinct claimed something the run did
-      not see. The first theme has no predecessor to compare against.
+      not see. The first value has no predecessor to compare against.
 6. **Read state back after every click and every navigation, from something
    that looked at the page.** `✓ Done` is the runner reporting that it issued a
    command, and it is never the reading. Two readings qualify. When the run
@@ -914,40 +943,47 @@ Carry the run out in this order:
 8. **Write the coverage table to a file.** The verification's deliverable is
    `<targetDir>/.frontx/verification-coverage.md`, beside the project's provenance
    record, written **before the final report is composed** and holding one row per
-   registered theme, the byte-compare verdict from sub-step 5.5, and one column
+   pass the walk took, the byte-compare verdict from sub-step 5.5, and one column
    per screen under verification:
 
    ```markdown
-   | Theme | Opened | Visually distinct from previous | <screen> states captured | <screen> states captured |
+   | Variant | Active | Visually distinct from previous | <screen> states captured | <screen> states captured |
    |---|---|---|---|---|
-   | <registered theme> | verified / not-opened (reason) | yes (cmp exit 1) / no (cmp exit 0, captures identical) / not-compared (reason) / first theme | <state> (<capture file>), <state> driven, not captured | <state> (<capture file>) |
+   | <declared value> | verified / not-active (reason) | yes (cmp exit 1) / no (cmp exit 0, captures identical) / not-compared (reason) / first variant | <state> (<capture file>), <state> driven, not captured | <state> (<capture file>) |
    ```
 
    The distinctness cell carries the comparison command's own result, in the
    parentheses shown - the `cmp` exit code, or the differing hashes. A cell
    without one is a cell no command backed.
 
-   Every registered theme gets a row, including each one recorded as not-opened.
+   **A run that declared no variant axis writes the one row its one pass earned**,
+   with `(none declared)` where a value would stand and `not-exercised (no variant
+   axis was declared for this run)` in the two cells the axis owns. That wording
+   is the point of the row: it says what this run did not do, and it does not say
+   the project has no such dimension. `no` and `none` both read as the second
+   claim, and neither this walk nor the report built on it establishes it.
+
+   Every declared value gets a row, including each one recorded as not-active.
    A state is the point a capture was taken at, named for what the screen held
    then: a form in its fresh state after the boundary reload and after it is
    submitted, a list fresh and after it changes. Name a state `fresh` only for a
-   capture taken after that reload and before any interaction in this theme -
+   capture taken after that reload and before any interaction in this pass -
    calling a later capture fresh reports a screen this run never saw.
 
    **A states-captured cell names a state only when a capture artifact of that
-   state, in that theme, exists.** The test is whether there is a file or a
+   state, in that pass, exists.** The test is whether there is a file or a
    snapshot to point at, not whether the interaction looked like it worked.
    Name, per state, the capture it is claimed from - the screenshot's file name,
    or the accessibility snapshot taken at that point - in the cell itself or in a
-   notes line under the table. A state this theme only drove - a control clicked,
+   notes line under the table. A state this pass only drove - a control clicked,
    a form submitted, and the run moved on taking neither screenshot nor snapshot
    - is listed apart from the captured ones, as `<state> driven, not captured`.
    **Listing it among the captured states is a false report**: one run wrote
-   `fresh, submitted` on the row of every registered theme when a post-submit
-   capture existed for the first theme alone, and reported screenshots and
-   snapshots as confirming all of them. A state captured in one theme is
-   captured in that theme only, and every other theme's row is filled from that
-   theme's own artifacts.
+   `fresh, submitted` on the row of every declared value when a post-submit
+   capture existed for the first value alone, and reported screenshots and
+   snapshots as confirming all of them. A state captured under one value is
+   captured under that value only, and every other row is filled from that value's
+   own artifacts.
 
    Step 8 carries this file's content verbatim. The file is the deliverable, not a
    suggestion - a run that composed a report without writing it did not complete

@@ -72,8 +72,12 @@ names what about this run put the category out of reach.
 
 - **VER-ROUTE** is N/A only where the surface under verification mounts no
   addressable screens.
-- **VER-CMP** is N/A only where the host registers a single theme, so no capture
+- **VER-CMP** is N/A only where the run took a single pass - because the project
+  declares no variant axis, or because the axis holds one value - so no capture
   pair exists to compare.
+- **VER-STATE-001's last item and VER-STATE-002** are N/A only where the project
+  declares no variant axis, so there is no switcher to operate and no label to
+  confirm a value from.
 - **VER-NUM** is N/A only where the run published no figure at all.
 
 Everything else applies whenever the browser walk ran. `N/A` is not available for a
@@ -91,13 +95,18 @@ under VER-SCOPE-002 as such.
 ### VER-SCOPE-001: The Declared Set Is Covered in Full
 **Severity**: CRITICAL
 
-- [ ] The theme set was read from the host's own theme registration - the source
-      file where themes are registered, or the list it exports
+- [ ] Whether this project declares a variant axis was established from the template
+      it was applied from, not assumed either way
+- [ ] Where one is declared, its value set was read from the project's own registration
+      of that dimension - the source file where the values are declared, or the list
+      it exports
 - [ ] The set was not taken from the entries a switcher happens to offer
-- [ ] The count of registered themes and the count of walked themes are the same number
+- [ ] The count of declared values and the count of walked values are the same number
 - [ ] Every screen under verification, and every state the declared checks call
       for, is covered
-- [ ] No theme, screen or state was set aside as a sample or a representative subset
+- [ ] No value, screen or state was set aside as a sample or a representative subset
+- [ ] A project declaring no variant axis is reported as having walked its screens
+      once, and is not written up as a narrowed run
 
 ### VER-SCOPE-002: A Narrowing Is Stated in the Visible Output
 **Severity**: CRITICAL
@@ -114,7 +123,7 @@ under VER-SCOPE-002 as such.
 **Severity**: CRITICAL
 
 - [ ] Each narrowing's reason argues the axis the narrowed check covers
-- [ ] A visual check - what a state looks like once a theme's tokens are applied -
+- [ ] A visual check - what a state looks like once a variant value is applied -
       is not closed by an argument about behavior, however true that argument is
 - [ ] A reason arguing another axis is recorded as an unexplained narrowing and
       handled under VER-SCOPE-002
@@ -133,36 +142,36 @@ under VER-SCOPE-002 as such.
 
 ## VER-STATE - State and Capture Evidence
 
-### VER-STATE-001: Each Theme Starts From a State This Run Knows
+### VER-STATE-001: Each Pass Starts From a State This Run Knows
 **Severity**: HIGH
 
-- [ ] Every theme's block begins with a reload, the first theme included
+- [ ] Every pass's block begins with a reload, the first pass included
 - [ ] A state is named `fresh` only for a capture taken after that reload and before
-      any interaction in that theme
-- [ ] The active theme was read before anything was verified, and the host's default
-      theme was selected before the first capture
+      any interaction in that pass
+- [ ] Where a variant axis is declared, the active value was read before anything was
+      verified, and the project's declared default was selected before the first capture
 
-### VER-STATE-002: The Theme Switch Is Confirmed Off the Switcher's Own Label
+### VER-STATE-002: The Variant Switch Is Confirmed Off the Switcher's Own Label
 **Severity**: CRITICAL
 
-- [ ] The switcher's label was read after each switch, and it names the theme just
+- [ ] The switcher's label was read after each switch, and it names the value just
       selected
 - [ ] No attribute, class, computed style or source file was used to detect which
-      theme is active
+      value is active
 - [ ] The label line's output was actually read: it prints and the batch carries on,
       so every line after it ran whatever the label said
-- [ ] A label still naming the previous theme was recorded as not-opened with that as
+- [ ] A label still naming the previous value was recorded as not-active with that as
       the reason, its block's captures discarded, and nothing under it passed as verified
 
 ### VER-STATE-003: Every Claimed State Cites Its Own Capture
 **Severity**: CRITICAL
 
-- [ ] Every state named as captured has a capture artifact of that state, in that theme
+- [ ] Every state named as captured has a capture artifact of that state, in that pass
 - [ ] Each state names the capture it is claimed from - the screenshot's file name, or
       the accessibility snapshot taken at that point - in the cell or in a notes line
       under the table
-- [ ] A state this theme only drove is listed apart, as `<state> driven, not captured`
-- [ ] No state captured in one theme is claimed on another theme's row
+- [ ] A state this pass only drove is listed apart, as `<state> driven, not captured`
+- [ ] No state captured in one pass is claimed on another pass's row
 
 ### VER-STATE-004: State Is Read Back From Something That Looked at the Page
 **Severity**: HIGH
@@ -182,7 +191,7 @@ under VER-SCOPE-002 as such.
 ### VER-CMP-001: Distinctness Is Read Off a Command's Result
 **Severity**: CRITICAL
 
-- [ ] Each theme's captures were compared against the previous theme's by running the
+- [ ] Each pass's captures were compared against the previous pass's by running the
       comparison as a command over the two files
 - [ ] Every distinctness cell carries that command's own result - the printed exit
       code, or the two hashes
@@ -191,7 +200,7 @@ under VER-SCOPE-002 as such.
       the reason, and carries no verdict
 - [ ] Identical captures are recorded as the fact they are, neither reported as a
       failure nor passed off as visibly distinct
-- [ ] The first theme's cell says it has no predecessor to compare against
+- [ ] The first pass's cell says it has no predecessor to compare against
 
 ---
 
@@ -286,7 +295,7 @@ under VER-SCOPE-002 as such.
 ### VER-ENV-003: Host Chrome Is Off the Captures
 **Severity**: HIGH
 
-- [ ] The host's dev panel was collapsed before the first capture in every theme, and
+- [ ] The host's dev panel was collapsed before the first capture in every pass, and
       the collapse confirmed rather than assumed
 - [ ] No capture was taken, and no click aimed, while that panel overlaid screen content
 
@@ -306,7 +315,11 @@ under VER-SCOPE-002 as such.
 - [ ] The coverage file exists **on disk** beside the project's provenance record, at
       the path the skill names, and that path was read to establish it
 - [ ] It was written before the final report was composed
-- [ ] It holds one row per registered theme, including every theme recorded as not-opened
+- [ ] It holds one row per pass the walk took, including every declared value
+      recorded as not-active
+- [ ] A run that declared no variant axis holds the one row its one pass earned,
+      with the axis cells reading `not-exercised` and naming the axis as not
+      declared - never `no` or `none`, which read as a claim about the project
 - [ ] It holds the distinctness verdict and one states-captured column per screen under
       verification
 - [ ] Nothing stood in for it: a table inside the report, a table shown in the
@@ -391,21 +404,21 @@ under VER-SCOPE-002 as such.
 
 **Where the evidence belongs**: the captured output line carrying the figure verbatim
 
-### VER-NO-003: No Capture Standing In for Another Theme or Another Run
+### VER-NO-003: No Capture Standing In for Another Pass or Another Run
 **Severity**: CRITICAL
 
 **What to check**:
-- [ ] No state claimed on a theme's row whose own artifacts do not carry it
+- [ ] No state claimed on a pass's row whose own artifacts do not carry it
 - [ ] No file written by an earlier run cited as this run's evidence
 - [ ] No capture taken after an interaction named `fresh`
 
-**Where the evidence belongs**: this run's own capture directory, per theme
+**Where the evidence belongs**: this run's own capture directory, per pass
 
 ### VER-NO-004: No Scope Narrowed in Silence
 **Severity**: CRITICAL
 
 **What to check**:
-- [ ] No theme, screen or state dropped without its reason in the visible output text
+- [ ] No variant value, screen or state dropped without its reason in the visible output text
 - [ ] No reason arguing an axis other than the one the narrowed check covers
 - [ ] No sample or subset presented as the registered set
 - [ ] No set walked wider than what was asked for without the declaring sentence
