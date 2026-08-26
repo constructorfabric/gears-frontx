@@ -1,6 +1,14 @@
 #!/usr/bin/env node
-// One theme-walk pass over a scaffolded application, executed as a program
-// rather than as a conversation of browser calls.
+// One walk over a scaffolded application's screens, executed as a program rather
+// than as a conversation of browser calls.
+//
+// The walk covers every declared screen, and optionally repeats that coverage
+// once per value of a single caller-declared variant axis: a set of values, a
+// control that opens them, an option handle per value, and the label the walk
+// confirms each one from. What such an axis stands for is the caller's business
+// and never this driver's - a display mode, a density, a locale, a layout - and
+// nothing below is written in terms of any one of them. An application with no
+// such axis declares none, and its screens are walked once.
 //
 // The skill document beside this file states these same rules as prose. This
 // program is the executable copy of them. Prose did not survive a change of
@@ -26,18 +34,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
-const HELP = `verify-walk - drive one theme-walk pass over a scaffolded application
+const HELP = `verify-walk - drive one walk over a scaffolded application's screens
 
 Usage:
-  node verify-walk.mjs --host <url> --themes <list|registry> --screens <list>
-                       --capdir <path> --switcher <testid>
-                       --theme-option <pattern> [options]
+  node verify-walk.mjs --host <url> --screens <list> --capdir <path> [options]
 
 Required:
   --host <url>              origin of the running dev server, e.g. http://localhost:3000
-  --themes <list|registry>  comma list of registered theme names, or the word
-                            "registry" with --theme-registry naming the file the
-                            set was read out of the host's theme registration into
   --screens <list>          comma list of name:route[:ready-testid[:extension-id]]
                             entries, e.g.
                             orders:/orders:screen-orders,stock:/stock:screen-stock
@@ -45,15 +48,27 @@ Required:
                             a host that keys its menu items by id; see --menu.
   --capdir <path>           capture directory for this run; created when absent and
                             refused when it already holds files
-  --switcher <testid>       data-testid of the theme switcher trigger
-  --theme-option <pattern>  data-testid of a theme's option, with {theme} in it
+
+Variant axis - one UI dimension the screens are re-walked across, declared whole
+or not at all. Declaring any flag in this group requires --variants,
+--variant-switcher and --variant-option together; declaring none walks every
+screen once and says so in the coverage:
+  --variants <list|registry>  comma list of the values to walk, or the word
+                            "registry" with --variant-registry naming the file
+                            the set was read into
+  --variant-switcher <testid>
+                            data-testid of the control clicked to open the values
+  --variant-option <pattern>
+                            data-testid of one value's option, with {variant} in it
+  --variant-registry <path> file the value set was read from; recorded as the
+                            set's provenance
+  --variant-labels <map>    variant=label pairs, comma separated, for a switcher
+                            label that does not carry the value's own name as
+                            whole words, and where two declared values cannot be
+                            told apart from one label (the run is refused until
+                            each carries a label of its own)
 
 Optional:
-  --theme-registry <path>   file the theme set was read from; recorded as the set's provenance
-  --theme-labels <map>      theme=label pairs, comma separated, when a switcher label
-                            does not carry the theme name as whole words, and where
-                            two registered names cannot be told apart from one label
-                            (the run is refused until each carries a label of its own)
   --menu <pattern>          data-testid of a screen's menu item, with {screen} or
                             {extensionId} in it; required when --nav is menu.
                             {screen} takes the short name from --screens.
@@ -75,7 +90,7 @@ Optional:
   --command-timeout <ms>    budget for one browser command; past it the child is
                             killed and the run records a timeout (default: 60000)
   --json-out <path>         machine-readable result (default: <capdir>/verify-walk.json)
-  --coverage <path>         coverage markdown the theme rows are appended to
+  --coverage <path>         coverage markdown the walk's rows are appended to
                             (default: <capdir>/verification-coverage.md)
   --help                    print this text and exit 0
 
@@ -85,16 +100,17 @@ Optional:
                                       { "kind": "click", "testid": "submit" },
                                       { "kind": "read", "testid": "status" } ] } ] }
 
-Exit code is 0 only when every theme opened, every read-back agreed, and every
-declared capture landed. Any failure exits non-zero with the reason in the JSON.
+Exit code is 0 only when every declared variant became active, every read-back
+agreed, and every declared capture landed. Any failure exits non-zero with the
+reason in the JSON.
 `;
 
 // ---------------------------------------------------------------------------
 // Argument surface
 
 const FLAGS_WITH_VALUE = new Set([
-  '--host', '--themes', '--theme-registry', '--theme-labels', '--screens', '--capdir',
-  '--switcher', '--theme-option', '--menu', '--nav', '--panel-expand', '--panel-collapse',
+  '--host', '--variants', '--variant-registry', '--variant-labels', '--screens', '--capdir',
+  '--variant-switcher', '--variant-option', '--menu', '--nav', '--panel-expand', '--panel-collapse',
   '--states', '--cdp-port', '--ready-timeout', '--browser-cmd', '--command-timeout',
   '--json-out', '--coverage',
 ]);
@@ -104,7 +120,7 @@ const FLAGS_WITH_VALUE = new Set([
 // runs first and reads them.
 const MENU_SCREEN = '{screen}';
 const MENU_EXTENSION_ID = '{extensionId}';
-const THEME_TOKEN = '{theme}';
+const VARIANT_TOKEN = '{variant}';
 
 const NAVIGATIONS = new Set(['menu', 'route']);
 const ACTION_KINDS = new Set(['fill', 'click', 'read']);
@@ -187,7 +203,7 @@ function tokenizeCommand(flag, raw) {
   return tokens;
 }
 
-// Every part of a capture's file name is caller data - a theme name out of a
+// Every part of a capture's file name is caller data - a variant name out of a
 // registry, a screen name off the command line, a state name out of the states
 // file - and a part carrying a path separator leaves the run's own capture
 // directory: `../escape` resolves a level above it, and the file lands where
@@ -201,7 +217,12 @@ const slug = (text) => String(text ?? '').toLowerCase()
   .replace(/[^a-z0-9-]+/g, '-')
   .replace(/^-+|-+$/g, '') || CAPTURE_FALLBACK_SLUG;
 
-const captureName = (theme, screen, state) => `${slug(theme)}-${slug(screen)}-${slug(state)}.png`;
+// A run with no variant axis has no variant part to name its captures by, and
+// the null is dropped rather than slugged: the fallback slug would spell a value
+// the invocation never declared, and a real value named "unnamed" would then
+// share the file name with it.
+const captureName = (variant, screen, state) => `${[variant, screen, state]
+  .filter((part) => part !== null).map(slug).join('-')}.png`;
 
 // The state every screen is captured at before anything is driven on it, named
 // here because the collision check below enumerates it alongside the declared
@@ -225,29 +246,30 @@ function parseScreens(spec) {
 function parseLabelMap(spec) {
   const map = {};
   for (const pair of (spec ?? '').split(',').filter(Boolean)) {
-    const [theme, label] = pair.split('=');
-    if (!theme || !label) throw new Error(`--theme-labels entry "${pair}" is not theme=label`);
-    map[theme] = label;
+    const [variant, label] = pair.split('=');
+    if (!variant || !label) throw new Error(`--variant-labels entry "${pair}" is not variant=label`);
+    map[variant] = label;
   }
   return map;
 }
 
 // A label cut into its alphanumeric words. Case and punctuation come off, so
-// "Theme: High Contrast" and "theme_high-contrast" both read as the same three
+// "Mode: High Contrast" and "mode_high-contrast" both read as the same three
 // words, and the words stay separate rather than being run together.
 const segments = (text) => (text ?? '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 
-// Whether a switcher label NAMES a theme, which is not the same claim as
+// Whether a switcher label NAMES a variant, which is not the same claim as
 // carrying its name somewhere inside. The name has to occupy a whole
-// uninterrupted run of the label's words: a registry holding `dark` and
-// `darker` used to confirm `dark` off a label reading "Darker", and every
-// capture taken in that block was then filed against a theme that never opened.
-// `light` against "Highlight" is the same mistake one word along.
+// uninterrupted run of the label's words: a set holding `dense` and `denser`
+// used to confirm `dense` off a label reading "Denser", and every capture taken
+// in that block was then filed against a variant that never became active. A
+// value `en` confirmed off a label reading "Length" is the same mistake one word
+// along.
 //
-// A label that does not carry the theme's name as words - "HighContrast" for
-// `high-contrast` - reads as not-opened rather than as opened, which is the
-// safe direction, and --theme-labels is where such a label is declared.
-function namesTheme(labelText, wantedText) {
+// A label that does not carry the value's name as words - "HighContrast" for
+// `high-contrast` - reads as not-active rather than as active, which is the
+// safe direction, and --variant-labels is where such a label is declared.
+function namesVariant(labelText, wantedText) {
   const label = segments(labelText);
   const wanted = segments(wantedText);
   if (wanted.length === 0) return false;
@@ -278,21 +300,21 @@ function readJsonFile(flag, file) {
   }
 }
 
-// Accepts an array of names or `{ themes: [...] }`, and nothing else: a file
-// holding `{ themes: null }` used to leave the theme set undefined and the walk
+// Accepts an array of names or `{ variants: [...] }`, and nothing else: a file
+// holding `{ variants: null }` used to leave the variant set undefined and the walk
 // iterating over nothing while the run still read as performed.
-function readThemeRegistry(file) {
-  const { resolved, parsed } = readJsonFile('--theme-registry', file);
-  const themes = Array.isArray(parsed) ? parsed : parsed?.themes;
-  if (!Array.isArray(themes) || themes.length === 0) {
-    throw new Error(`--theme-registry "${resolved}" holds neither a non-empty array of theme names nor { "themes": [...] }`);
+function readVariantRegistry(file) {
+  const { resolved, parsed } = readJsonFile('--variant-registry', file);
+  const variants = Array.isArray(parsed) ? parsed : parsed?.variants;
+  if (!Array.isArray(variants) || variants.length === 0) {
+    throw new Error(`--variant-registry "${resolved}" holds neither a non-empty array of variant names nor { "variants": [...] }`);
   }
-  for (const theme of themes) {
-    if (typeof theme !== 'string' || theme.trim() === '') {
-      throw new Error(`--theme-registry "${resolved}" lists ${JSON.stringify(theme)} where a theme name belongs`);
+  for (const variant of variants) {
+    if (typeof variant !== 'string' || variant.trim() === '') {
+      throw new Error(`--variant-registry "${resolved}" lists ${JSON.stringify(variant)} where a variant name belongs`);
     }
   }
-  return { themes, source: `registry:${resolved}` };
+  return { variants, source: `registry:${resolved}` };
 }
 
 // Validated whole before the first browser call, because a malformed entry
@@ -622,11 +644,15 @@ const result = {
   host: null,
   capdir: null,
   browser: { probe: null, mode: null, cdpPort: null, command: null },
-  themeSet: { source: null, themes: [] },
+  // `declared: false` is the run's own statement that no variant axis was
+  // asked of it, which is not the same claim as an axis that was asked for and
+  // came back empty - the second is refused before the walk starts. A reader of
+  // this record can tell an unexercised dimension from a failed one.
+  variantAxis: { declared: false, source: null, variants: [] },
   screens: [],
   navigation: null,
   menuResolution: [],
-  themes: [],
+  variants: [],
   failures: [],
   coverageFile: null,
 };
@@ -691,32 +717,43 @@ function finish(options) {
 // said is a table the page can corrupt. Newlines fold for the same reason.
 const cell = (text) => String(text ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
 
+// What a row says about a dimension the invocation never declared. Not "absent"
+// and not "none": the axis was not exercised by this run, which is a statement
+// about the run and not a claim about the application. A row reading "no" would
+// let a report conclude the application has no such dimension, which no part of
+// this walk established.
+const AXIS_NOT_DECLARED = 'no variant axis was declared for this run';
+
 function appendCoverage(coveragePath, screens) {
-  const header = `| Theme | Opened | Visually distinct from previous | ${screens.map((s) => `${cell(s.name)} states captured`).join(' | ')} |\n`
+  const header = `| Variant | Active | Visually distinct from previous | ${screens.map((s) => `${cell(s.name)} states captured`).join(' | ')} |\n`
     + `|${'---|'.repeat(3 + screens.length)}\n`;
-  const firstOpened = result.themes.findIndex((t) => t.labelConfirmed);
-  const rows = result.themes.map((theme) => {
-    let opened;
-    if (theme.labelConfirmed) {
-      opened = 'verified';
-    } else if (theme.controlFailure !== null) {
-      opened = `not-opened (${cell(theme.controlFailure)})`;
+  const firstActive = result.variants.findIndex((pass) => pass.labelConfirmed === true);
+  const rows = result.variants.map((pass) => {
+    let active;
+    if (pass.variant === null) {
+      active = `not-exercised (${AXIS_NOT_DECLARED})`;
+    } else if (pass.labelConfirmed) {
+      active = 'verified';
+    } else if (pass.controlFailure !== null) {
+      active = `not-active (${cell(pass.controlFailure)})`;
     } else {
-      opened = `not-opened (label read "${cell(theme.labelRead)}")`;
+      active = `not-active (label read "${cell(pass.labelRead)}")`;
     }
     let distinct;
-    if (theme.comparisons.length > 0) {
-      distinct = theme.comparisons.map((c) => `${cell(c.screen)}/${cell(c.state)}: ${c.verdict} (cmp exit ${c.exit})`).join('; ');
-    } else if (!theme.labelConfirmed) {
-      distinct = 'not-compared (theme did not open)';
-    } else if (result.themes.findIndex((t) => t.theme === theme.theme) === firstOpened) {
-      distinct = 'first theme';
+    if (pass.comparisons.length > 0) {
+      distinct = pass.comparisons.map((c) => `${cell(c.screen)}/${cell(c.state)}: ${c.verdict} (cmp exit ${c.exit})`).join('; ');
+    } else if (pass.variant === null) {
+      distinct = `not-compared (${AXIS_NOT_DECLARED})`;
+    } else if (!pass.labelConfirmed) {
+      distinct = 'not-compared (the variant did not become active)';
+    } else if (result.variants.findIndex((other) => other.variant === pass.variant) === firstActive) {
+      distinct = 'first variant';
     } else {
       distinct = 'not-compared (no capture pair)';
     }
     const cells = screens.map((screen) => {
-      const captured = theme.captures.filter((c) => c.screen === screen.name);
-      const driven = theme.drivenOnly.filter((c) => c.screen === screen.name);
+      const captured = pass.captures.filter((c) => c.screen === screen.name);
+      const driven = pass.drivenOnly.filter((c) => c.screen === screen.name);
       // readyConfirmed rides into the cell because a report filled from this
       // file has no other way to tell a capture taken after its screen's ready
       // handle appeared from one taken after a bare settle.
@@ -724,7 +761,8 @@ function appendCoverage(coveragePath, screens) {
         .concat(driven.map((c) => `${cell(c.state)} driven, not captured`));
       return parts.length > 0 ? parts.join(', ') : 'none';
     });
-    return `| ${cell(theme.theme)} | ${opened} | ${distinct} | ${cells.join(' | ')} |\n`;
+    const name = pass.variant === null ? '(none declared)' : cell(pass.variant);
+    return `| ${name} | ${active} | ${distinct} | ${cells.join(' | ')} |\n`;
   }).join('');
 
   // The coverage file is this step's stated deliverable, so a filesystem refusal
@@ -768,9 +806,34 @@ if (opts.help) {
   process.exit(0);
 }
 
-for (const required of ['host', 'themes', 'screens', 'capdir', 'switcher', 'theme-option']) {
+for (const required of ['host', 'screens', 'capdir']) {
   if (!opts[required]) refuseArguments(`missing required argument --${required}`);
 }
+
+// The three flags a variant axis cannot be walked without: the values, the
+// control that opens them, and the handle that picks one.
+const VARIANT_AXIS_REQUIRED = ['variants', 'variant-switcher', 'variant-option'];
+
+// Declared alongside them, and meaningless without them. They join the group so
+// that a caller who pins a registry or a label map and forgets the rest is told
+// so, rather than having the axis silently drop out of the walk.
+const VARIANT_AXIS_OPTIONAL = ['variant-registry', 'variant-labels'];
+
+// The axis is declared as a whole or not at all. A partial declaration is the
+// one shape that cannot be answered honestly: walking the screens once would
+// discard a dimension the caller asked for, and walking the axis would need
+// handles the invocation never named. Refused here, before a directory is made
+// or a browser is reached, for the same reason every other invalid invocation is.
+const declaredAxisFlags = [...VARIANT_AXIS_REQUIRED, ...VARIANT_AXIS_OPTIONAL].filter((flag) => opts[flag]);
+const variantAxisDeclared = declaredAxisFlags.length > 0;
+if (variantAxisDeclared) {
+  const missing = VARIANT_AXIS_REQUIRED.filter((flag) => !opts[flag]);
+  if (missing.length > 0) {
+    refuseArguments(`--${declaredAxisFlags[0]} declares a variant axis, which also needs `
+      + `${missing.map((flag) => `--${flag}`).join(' and ')}; declare the whole axis or none of it`);
+  }
+}
+result.variantAxis.declared = variantAxisDeclared;
 
 // Everything the invocation itself has to get right is settled here, in one
 // place, before a directory is created or a browser is reached: an invocation
@@ -791,6 +854,7 @@ let navigation;
 let labels;
 let screens;
 let states;
+let walkedVariants;
 try {
   capdir = path.resolve(opts.capdir);
   jsonOut = path.resolve(opts['json-out'] ?? path.join(capdir, 'verify-walk.json'));
@@ -810,7 +874,7 @@ try {
     throw new Error(`--nav "${navigation}" is not one of ${[...NAVIGATIONS].join(', ')}`);
   }
 
-  labels = parseLabelMap(opts['theme-labels']);
+  labels = parseLabelMap(opts['variant-labels']);
   screens = parseScreens(opts.screens);
   if (screens.length === 0) throw new Error('--screens names no screen to walk');
 
@@ -822,32 +886,41 @@ try {
     throw new Error(`--menu "${opts.menu}" carries neither ${MENU_SCREEN} nor ${MENU_EXTENSION_ID}, so every screen after the first would click one same menu item`);
   }
 
-  // The theme set is recorded with its provenance, so a report cannot claim it
-  // came from the host's theme registration when it was typed in by hand.
-  if (opts.themes === 'registry') {
-    if (!opts['theme-registry']) throw new Error('--themes registry needs --theme-registry <file the set was read into>');
-    result.themeSet = readThemeRegistry(opts['theme-registry']);
-  } else {
-    result.themeSet = { source: 'literal', themes: opts.themes.split(',').filter(Boolean) };
-  }
-  if (result.themeSet.themes.length === 0) throw new Error('the theme set is empty');
-  if (result.themeSet.themes.length > 1 && !opts['theme-option'].includes(THEME_TOKEN)) {
-    throw new Error(`--theme-option "${opts['theme-option']}" carries no ${THEME_TOKEN}, so every theme would click one same option`);
-  }
+  if (variantAxisDeclared) {
+    // The value set is recorded with its provenance, so a report cannot claim it
+    // came from the host's own registration of that dimension when it was typed
+    // in by hand.
+    if (opts.variants === 'registry') {
+      if (!opts['variant-registry']) throw new Error('--variants registry needs --variant-registry <file the set was read into>');
+      result.variantAxis = { declared: true, ...readVariantRegistry(opts['variant-registry']) };
+    } else {
+      result.variantAxis = { declared: true, source: 'literal', variants: opts.variants.split(',').filter(Boolean) };
+    }
+    if (result.variantAxis.variants.length === 0) throw new Error('the variant set is empty');
+    if (result.variantAxis.variants.length > 1 && !opts['variant-option'].includes(VARIANT_TOKEN)) {
+      throw new Error(`--variant-option "${opts['variant-option']}" carries no ${VARIANT_TOKEN}, so every variant would click one same option`);
+    }
 
-  // Two themes one switcher label can name at once are refused rather than
-  // guessed at: where one theme's words are a whole run of another's, every
-  // label naming the longer names the shorter too, and the confirmation cannot
-  // say which theme actually opened. Declaring a label per theme with
-  // --theme-labels is how such a pair is separated, so the check reads the
-  // labels rather than the bare names.
-  const wantedNames = result.themeSet.themes.map((theme) => ({ theme, wanted: labels[theme] ?? theme }));
-  for (const shorter of wantedNames) {
-    for (const longer of wantedNames) {
-      if (shorter === longer || !namesTheme(longer.wanted, shorter.wanted)) continue;
-      throw new Error(`themes "${shorter.theme}" and "${longer.theme}" cannot be told apart from a switcher label: a label reading "${longer.wanted}" names "${shorter.wanted}" as well, so give each one a label of its own with --theme-labels`);
+    // Two values one switcher label can name at once are refused rather than
+    // guessed at: where one value's words are a whole run of another's, every
+    // label naming the longer names the shorter too, and the confirmation cannot
+    // say which one actually became active. Declaring a label per value with
+    // --variant-labels is how such a pair is separated, so the check reads the
+    // labels rather than the bare names.
+    const wantedNames = result.variantAxis.variants.map((variant) => ({ variant, wanted: labels[variant] ?? variant }));
+    for (const shorter of wantedNames) {
+      for (const longer of wantedNames) {
+        if (shorter === longer || !namesVariant(longer.wanted, shorter.wanted)) continue;
+        throw new Error(`variants "${shorter.variant}" and "${longer.variant}" cannot be told apart from a switcher label: a label reading "${longer.wanted}" names "${shorter.wanted}" as well, so give each one a label of its own with --variant-labels`);
+      }
     }
   }
+
+  // What the walk iterates over. A run with no variant axis takes one pass, and
+  // the null in it is what every downstream branch reads as "this run declared no
+  // such dimension" - a value chosen because no declared value can equal it, so a
+  // pass over a real value can never be mistaken for the axis-less one.
+  walkedVariants = variantAxisDeclared ? result.variantAxis.variants : [null];
 
   states = opts.states ? readStates(opts.states, screens) : {};
 
@@ -856,15 +929,17 @@ try {
   // first while both coverage cells claim a capture of their own. Enumerated over
   // the walk's whole capture set rather than checked per name, because the
   // collision can also come from where the boundaries between the parts fall:
-  // theme "a-b" screen "c" and theme "a" screen "b-c" name one same file.
-  const declaredAs = (theme, screen, state) => `theme "${theme}" / screen "${screen}" / state "${state}"`;
+  // variant "a-b" screen "c" and variant "a" screen "b-c" name one same file.
+  const declaredAs = (variant, screen, state) => (variant === null
+    ? `screen "${screen}" / state "${state}"`
+    : `variant "${variant}" / screen "${screen}" / state "${state}"`);
   const captureNames = new Map();
-  for (const theme of result.themeSet.themes) {
+  for (const variant of walkedVariants) {
     for (const screen of screens) {
       const declaredStates = (states[screen.name] ?? []).map((declared) => declared.state);
       for (const state of [FRESH_STATE, ...declaredStates]) {
-        const file = captureName(theme, screen.name, state);
-        const claim = declaredAs(theme, screen.name, state);
+        const file = captureName(variant, screen.name, state);
+        const claim = declaredAs(variant, screen.name, state);
         const taken = captureNames.get(file);
         if (taken !== undefined) {
           throw new Error(taken === claim
@@ -937,20 +1012,24 @@ if (result.failures.length > 0) finish({ jsonOut });
 // path inside it.
 const CAPDIR_PREFIX = capdir.endsWith(path.sep) ? capdir : `${capdir}${path.sep}`;
 
-function capture(theme, screen, state) {
-  const file = path.resolve(capdir, captureName(theme, screen, state));
+function capture(variant, screen, state) {
+  const file = path.resolve(capdir, captureName(variant, screen, state));
+  // What a capture failure calls the capture it was taking, in the same shape as
+  // the file name: a run with no variant axis has no value to name it by, and a
+  // literal `null` in the message names nothing the invocation declared.
+  const of = [variant, screen, state].filter((part) => part !== null).join('/');
   // The second lock on the escape the slug already closes: whatever the names
   // reduce to, the path handed to the browser has to resolve inside this run's
   // own capture directory. Unreachable while the slug holds, and kept because a
   // file written outside it is not a failure this run can take back.
   if (!file.startsWith(CAPDIR_PREFIX)) {
-    fail('capture', `the capture path for ${theme}/${screen}/${state} resolved to "${file}", which is outside this run's capture directory "${capdir}"`, { file });
+    fail('capture', `the capture path for ${of} resolved to "${file}", which is outside this run's capture directory "${capdir}"`, { file });
     return null;
   }
   const shot = browser(['screenshot', file]);
   const outcome = invocationOutcome(shot);
   if (outcome.failed || !fs.existsSync(file)) {
-    fail(outcome.stage ?? 'capture', `screenshot for ${theme}/${screen}/${state} did not land: ${outcome.detail || 'the runner reported success and wrote no file'}`, { file, exit: shot.status });
+    fail(outcome.stage ?? 'capture', `screenshot for ${of} did not land: ${outcome.detail || 'the runner reported success and wrote no file'}`, { file, exit: shot.status });
     return null;
   }
   return file;
@@ -993,7 +1072,7 @@ function discoverExtensionId(pattern, screen) {
 }
 
 // Resolved once per screen and remembered: the menu is re-rendered at every
-// theme boundary but its ids are not re-issued, so a second discovery would
+// variant boundary but its ids are not re-issued, so a second discovery would
 // spend an eval to learn what the first one already knows.
 function menuTestid(screen) {
   if (menuTestids.has(screen.name)) return menuTestids.get(screen.name);
@@ -1064,58 +1143,76 @@ function reachScreen(screen, hard) {
 }
 
 // Every declared control operation has to report as dispatched. Discarded, the
-// outcome let a run pass with no switcher on the page at all: a single-theme run
-// already showing the requested theme reads a label that matches, so the label
-// check agrees and the walk captures a theme nothing switched. The failure names
-// the test id that was not found, because the symptom the run saw otherwise -
-// a switcher label reading back the missing-element sentinel - reads as a theme
-// that did not open rather than as a handle that does not exist.
+// outcome let a run pass with no switcher on the page at all: a single-value run
+// already showing the requested value reads a label that matches, so the label
+// check agrees and the walk captures a state nothing switched into. The failure
+// names the test id that was not found, because the symptom the run saw otherwise
+// - a switcher label reading back the missing-element sentinel - reads as a value
+// that never became active rather than as a handle that does not exist.
 function operate(record, testid, what) {
   const outcome = click(testid);
   if (outcome === 'dispatched') return true;
   record.controlFailure = `${what} "${testid}" was not clicked: ${outcomeReason(outcome)}`;
-  fail('control', `${what} "${testid}" was not clicked under theme "${record.theme}": ${outcomeReason(outcome)}`);
+  fail('control', `${what} "${testid}" was not clicked${underVariant(record.variant)}: ${outcomeReason(outcome)}`);
   return false;
 }
 
-for (const theme of result.themeSet.themes) {
+// How a failure names the pass it happened in. A run with no variant axis has one
+// pass and nothing to qualify it by, so the qualifier disappears rather than
+// being filled with a placeholder value the invocation never declared.
+const underVariant = (variant) => (variant === null ? '' : ` under variant "${variant}"`);
+
+for (const variant of walkedVariants) {
   const record = {
-    theme, labelConfirmed: false, labelRead: null, labelReadBack: null,
+    // null on both counts where no axis was declared: there is no value this pass
+    // walked, and no switcher label to have confirmed one from. `false` would
+    // read as a confirmation that was attempted and failed.
+    variant,
+    labelConfirmed: variant === null ? null : false,
+    labelRead: null,
+    labelReadBack: null,
     controlFailure: null,
     panelCollapsed: null, captures: [], drivenOnly: [], readBacks: [], comparisons: [],
   };
-  result.themes.push(record);
+  result.variants.push(record);
 
-  // The reload is the theme boundary reset: it discards every field filled and
-  // dialog opened under the previous theme, so a capture named fresh is fresh.
+  // The reload is the pass boundary reset: it discards every field filled and
+  // dialog opened under the previous pass, so a capture named fresh is fresh.
   const first = screens[0];
   const firstNav = reachScreen(first, true);
 
-  // A control operation that did not dispatch stops this theme where it stands:
-  // captures taken past a missing switcher belong to whatever theme was already
-  // on screen, and the label check cannot tell the difference.
+  // A control operation that did not dispatch stops this pass where it stands:
+  // captures taken past a missing switcher belong to whatever the page was
+  // already showing, and the label check cannot tell the difference.
   if (opts['panel-expand'] && !operate(record, opts['panel-expand'], 'dev panel expand control')) continue;
-  if (!operate(record, opts.switcher, 'theme switcher')) continue;
-  if (!operate(record, opts['theme-option'].split(THEME_TOKEN).join(theme), `theme option for "${theme}"`)) continue;
 
-  // The switcher's own label is the only source of truth for which theme is
-  // active. It is read twice: the second reading is a confirmation, not a
-  // retry, and both readings are recorded so a disagreement is visible. Both
-  // readings have to name this theme, in the whole-word sense above; the theme
-  // set was refused before the walk if two of its names cannot be told apart
-  // that way.
-  const wanted = labels[theme] ?? theme;
-  record.labelRead = readText(opts.switcher);
-  record.labelReadBack = readText(opts.switcher);
-  record.labelConfirmed = namesTheme(record.labelRead, wanted)
-    && namesTheme(record.labelReadBack, wanted);
+  // The whole switch-and-confirm sub-step belongs to the variant axis, so a run
+  // that declared none never operates a control it was not given a handle for
+  // and never reads a label back. What it does instead is exactly the rest of
+  // this loop body, once.
+  if (variant !== null) {
+    if (!operate(record, opts['variant-switcher'], 'variant switcher')) continue;
+    if (!operate(record, opts['variant-option'].split(VARIANT_TOKEN).join(variant), `variant option for "${variant}"`)) continue;
 
-  if (!record.labelConfirmed) {
-    // Not-opened: capture nothing under it rather than file this theme's row
-    // from a page still showing the previous one. The walk carries on so every
-    // registered theme gets a row, and the run still exits non-zero.
-    fail('theme-switch', `theme "${theme}" did not open; switcher label read "${record.labelRead}" then "${record.labelReadBack}"`);
-    continue;
+    // The switcher's own label is the only source of truth for which value is
+    // active. It is read twice: the second reading is a confirmation, not a
+    // retry, and both readings are recorded so a disagreement is visible. Both
+    // readings have to name this value, in the whole-word sense above; the value
+    // set was refused before the walk if two of its names cannot be told apart
+    // that way.
+    const wanted = labels[variant] ?? variant;
+    record.labelRead = readText(opts['variant-switcher']);
+    record.labelReadBack = readText(opts['variant-switcher']);
+    record.labelConfirmed = namesVariant(record.labelRead, wanted)
+      && namesVariant(record.labelReadBack, wanted);
+
+    if (!record.labelConfirmed) {
+      // Not active: capture nothing under it rather than file this value's row
+      // from a page still showing the previous one. The walk carries on so every
+      // declared value gets a row, and the run still exits non-zero.
+      fail('variant-switch', `variant "${variant}" did not become active; switcher label read "${record.labelRead}" then "${record.labelReadBack}"`);
+      continue;
+    }
   }
 
   // An expanded dev panel is host chrome drawn over the screens under
@@ -1126,8 +1223,8 @@ for (const theme of result.themeSet.themes) {
     record.panelCollapsed = opts['panel-expand'] ? confirmExists(opts['panel-expand']) : null;
     if (opts['panel-expand'] && record.panelCollapsed !== true) {
       fail('panel', record.panelCollapsed === null
-        ? `the dev panel's collapse under theme "${theme}" could not be confirmed: the eval did not run`
-        : `dev panel did not collapse under theme "${theme}"; captures would carry host chrome`);
+        ? `the dev panel's collapse${underVariant(variant)} could not be confirmed: the eval did not run`
+        : `dev panel did not collapse${underVariant(variant)}; captures would carry host chrome`);
       continue;
     }
   }
@@ -1140,7 +1237,7 @@ for (const theme of result.themeSet.themes) {
     if (nav === NAV_FAILED) continue;
 
     const ready = nav === NAV_READY;
-    const freshFile = capture(theme, screen.name, FRESH_STATE);
+    const freshFile = capture(variant, screen.name, FRESH_STATE);
     if (freshFile) record.captures.push({ screen: screen.name, state: FRESH_STATE, file: freshFile, readyConfirmed: ready });
 
     for (const declared of states[screen.name] ?? []) {
@@ -1149,12 +1246,12 @@ for (const theme of result.themeSet.themes) {
           const readBack = fill(action.testid, action.value);
           const ok = readBack === action.value;
           record.readBacks.push({ screen: screen.name, state: declared.state, action: 'fill', testid: action.testid, expected: action.value, actual: readBack, ok });
-          if (!ok) fail('read-back', `fill of "${action.testid}" under theme "${theme}" read back "${readBack}"`);
+          if (!ok) fail('read-back', `fill of "${action.testid}"${underVariant(variant)} read back "${readBack}"`);
         } else if (action.kind === 'click') {
           const outcome = click(action.testid);
           const ok = outcome === 'dispatched';
           record.readBacks.push({ screen: screen.name, state: declared.state, action: 'click', testid: action.testid, actual: outcome, ok });
-          if (!ok) fail('click', `control "${action.testid}" was not clicked under theme "${theme}": ${outcomeReason(outcome)}`);
+          if (!ok) fail('click', `control "${action.testid}" was not clicked${underVariant(variant)}: ${outcomeReason(outcome)}`);
         } else if (action.kind === 'read') {
           const text = readText(action.testid);
           // The sentinel is ruled out before `contains` is consulted rather than
@@ -1164,7 +1261,7 @@ for (const theme of result.themeSet.themes) {
           const ok = text !== EVAL_ERROR && text !== MISSING
             && (action.contains === undefined || text.includes(action.contains));
           record.readBacks.push({ screen: screen.name, state: declared.state, action: 'read', testid: action.testid, expected: action.contains ?? null, actual: text, ok });
-          if (!ok) fail('read', `reading "${action.testid}" under theme "${theme}" gave "${text}"`);
+          if (!ok) fail('read', `reading "${action.testid}"${underVariant(variant)} gave "${text}"`);
         } else {
           // Unreachable while the parse-time states validation holds. Kept so
           // that loosening the validator cannot turn an unknown kind into a
@@ -1172,16 +1269,18 @@ for (const theme of result.themeSet.themes) {
           fail('states', `action kind "${action.kind}" is not one of fill, click, read`);
         }
       }
-      const stateFile = capture(theme, screen.name, declared.state);
+      const stateFile = capture(variant, screen.name, declared.state);
       if (stateFile) record.captures.push({ screen: screen.name, state: declared.state, file: stateFile, readyConfirmed: ready });
       else record.drivenOnly.push({ screen: screen.name, state: declared.state });
     }
   }
 
-  // Byte-compare against the previous theme that actually opened. The verdict is
-  // the command's own exit code and nothing else: identical files are a recorded
-  // fact, not a failure, and a pair no command ran over gets no verdict at all.
-  const previous = [...result.themes].reverse().find((t) => t.theme !== theme && t.labelConfirmed);
+  // Byte-compare against the previous pass whose value actually became active.
+  // The verdict is the command's own exit code and nothing else: identical files
+  // are a recorded fact, not a failure, and a pair no command ran over gets no
+  // verdict at all. A run with no variant axis has one pass and therefore no pair
+  // to compare, which `labelConfirmed === null` on that single record already says.
+  const previous = [...result.variants].reverse().find((other) => other.variant !== variant && other.labelConfirmed === true);
   if (previous) {
     for (const shot of record.captures) {
       const before = previous.captures.find((c) => c.screen === shot.screen && c.state === shot.state);
@@ -1192,7 +1291,7 @@ for (const theme of result.themeSet.themes) {
         killSignal: 'SIGKILL',
       });
       record.comparisons.push({
-        against: previous.theme, screen: shot.screen, state: shot.state,
+        against: previous.variant, screen: shot.screen, state: shot.state,
         command: `cmp -s ${path.basename(before.file)} ${path.basename(shot.file)}`,
         exit: cmp.status, verdict: cmp.status === 0 ? 'identical' : cmp.status === 1 ? 'differs' : 'not-compared',
       });

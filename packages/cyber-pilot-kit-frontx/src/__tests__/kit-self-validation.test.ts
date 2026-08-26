@@ -497,7 +497,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
     });
   });
 
-  // The theme walk's mechanics ship twice over: as prose in the scaffolding
+  // The variant walk's mechanics ship twice over: as prose in the scaffolding
   // document, and as a program that performs them. The prose copy did not
   // survive a change of agent host, which is the whole reason the program
   // exists, so the wiring that makes it reachable and runnable is asserted here.
@@ -521,7 +521,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
     // Without this, the driver could ship, validate and still be reached by
     // nobody: the document is the only thing that sends a run to it.
-    it('is named by the scaffolding document as what the theme walk runs, with hand-driving as the fallback', () => {
+    it('is named by the scaffolding document as what the variant walk runs, with hand-driving as the fallback', () => {
       const body = shippedBody(SCAFFOLDING_ID);
 
       expect(body).toContain(DRIVER_ID);
@@ -537,13 +537,20 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
       expect(help.status).toBe(0);
       expect(help.stdout).toContain('--capdir');
-      expect(help.stdout).toContain('--themes');
+      expect(help.stdout).toContain('--variants');
       // The Usage line carries every required flag. One that lists a flag as
       // required and leaves it out of the invocation form teaches the shorter
       // form, and the shorter form is refused.
       const usage = help.stdout.slice(help.stdout.indexOf('Usage:'), help.stdout.indexOf('Required:'));
-      for (const flag of ['--host', '--themes', '--screens', '--capdir', '--switcher', '--theme-option']) {
+      for (const flag of ['--host', '--screens', '--capdir']) {
         expect(usage, `Usage: omits the required ${flag}`).toContain(flag);
+      }
+      // And the variant-axis flags stay out of the required set, in the text a
+      // caller reads before writing an invocation: a Usage line carrying them
+      // teaches an axis every project has to declare, which is the coupling the
+      // driver's contract does not have.
+      for (const flag of ['--variants', '--variant-switcher', '--variant-option']) {
+        expect(usage, `Usage: presents the optional ${flag} as required`).not.toContain(flag);
       }
     });
 
@@ -558,11 +565,11 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       const run = spawnSync(process.execPath, [
         driverPath(),
         '--host', 'http://127.0.0.1:1',
-        '--themes', 'light,dark',
+        '--variants', 'alpha,beta',
         '--screens', 'orders:/orders:screen-orders',
         '--capdir', capdir,
-        '--switcher', 'theme-switcher',
-        '--theme-option', 'theme-option-{theme}',
+        '--variant-switcher', 'axis-switcher',
+        '--variant-option', 'axis-option-{variant}',
         '--menu', 'nav-{screen}',
       ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
 
@@ -570,14 +577,14 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
       const parsed = JSON.parse(run.stdout) as {
         ok: boolean;
-        themeSet: { source: string; themes: string[] };
+        variantAxis: { source: string; variants: string[] };
         failures: { stage: string; detail: string }[];
       };
       expect(parsed.ok).toBe(false);
       expect(parsed.failures[0].stage).toBe('host-probe');
       // The set's provenance is recorded, so a report cannot claim a hand-typed
-      // set was read out of the host's theme registration.
-      expect(parsed.themeSet).toEqual({ source: 'literal', themes: ['light', 'dark'] });
+      // set was read out of the host's own registration of that dimension.
+      expect(parsed.variantAxis).toEqual({ declared: true, source: 'literal', variants: ['alpha', 'beta'] });
       // Written to disk as well as printed: the run's own record survives the
       // conversation that produced it.
       expect(JSON.parse(fs.readFileSync(path.join(capdir, 'verify-walk.json'), 'utf8')).ok).toBe(false);
@@ -589,8 +596,8 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
     // prelude is re-entered on each call rather than once per run. Declared
     // lexically, its helpers throw "already been declared" from the second eval
     // onward, and the callers read that throw as an element holding nothing:
-    // three agent hosts driven from identical sources each reported empty theme
-    // labels on every theme rather than the redeclaration underneath.
+    // three agent hosts driven from identical sources each reported empty variant
+    // labels on every variant rather than the redeclaration underneath.
     it('installs its page helpers as globals, so evaluating the prelude twice in one scope does not throw', () => {
       const source = fs.readFileSync(driverPath(), 'utf8');
       const preludeMatch = /const PRELUDE = `([\s\S]*?)`;/.exec(source);
@@ -654,11 +661,11 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
         // probe, which is all the probe asks of it, and it keeps this test off
         // the network and off any port a parallel run might also want.
         '--host', 'data:text/plain,ok',
-        '--themes', 'light',
+        '--variants', 'alpha',
         '--screens', 'orders:/orders:screen-orders',
         '--capdir', path.join(workdir, 'shots'),
-        '--switcher', 'theme-switcher',
-        '--theme-option', 'theme-option-{theme}',
+        '--variant-switcher', 'axis-switcher',
+        '--variant-option', 'axis-option-{variant}',
         '--menu', 'nav-{screen}',
         // Port 1 answers nothing, so the driver takes its no-debugger path and
         // never asks the stub to attach to a browser.
@@ -687,7 +694,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       // be dispatched, and its failure names the refused eval as the reason
       // instead of "no control carries that data-testid".
       const control = parsed.failures.find((failure) => failure.stage === 'control');
-      expect(control?.detail).toContain('theme switcher');
+      expect(control?.detail).toContain('variant switcher');
       expect(control?.detail).toContain('the eval did not run');
 
       fs.rmSync(workdir, { recursive: true, force: true });
@@ -699,7 +706,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
     // and a loaded one loses: the testid is carried into the eval script
     // verbatim, and 100KB of it is past the 64KB a pipe holds while staying
     // under the 128KB a single argument may carry.
-    const MIDWRITE_EXIT_TESTID = `theme-switcher-${'x'.repeat(100_000)}`;
+    const MIDWRITE_EXIT_TESTID = `axis-switcher-${'x'.repeat(100_000)}`;
 
     // A runner that rejects the script on sight exits while that write is still
     // in flight, and the write then fails with EPIPE - so `proc.error` is set
@@ -719,11 +726,11 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
         const run = spawnSync(process.execPath, [
           driverPath(),
           '--host', 'data:text/plain,ok',
-          '--themes', 'light',
+          '--variants', 'alpha',
           '--screens', 'orders:/orders:screen-orders',
           '--capdir', path.join(workdir, 'shots'),
-          '--switcher', MIDWRITE_EXIT_TESTID,
-          '--theme-option', 'theme-option-{theme}',
+          '--variant-switcher', MIDWRITE_EXIT_TESTID,
+          '--variant-option', 'axis-option-{variant}',
           '--menu', 'nav-{screen}',
           '--cdp-port', '1',
           '--ready-timeout', readyTimeout,
@@ -754,7 +761,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       // A zero exit over the same broken write cannot clear the invocation
       // either: the runner answered some prefix of the script, so its stdout is
       // an answer to a text the driver never sent. Trusted, it reads as a
-      // dispatched click - the walk then captures under a theme it never asked
+      // dispatched click - the walk then captures under a variant it never asked
       // the page for. This stub answers every readiness probe with the same
       // line, so the poll ahead of the switcher is given 1ms and gives up on the
       // first turn rather than spending a budget on an answer that never changes.
@@ -786,11 +793,11 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       const run = spawnSync(process.execPath, [
         driverPath(),
         '--host', 'http://127.0.0.1:1',
-        '--themes', 'light',
+        '--variants', 'alpha',
         '--screens', 'orders:/orders:screen-orders',
         '--capdir', 'shots',
-        '--switcher', 'theme-switcher',
-        '--theme-option', 'theme-option-{theme}',
+        '--variant-switcher', 'axis-switcher',
+        '--variant-option', 'axis-option-{variant}',
         '--menu', 'nav-{screen}',
       ], { encoding: 'utf8', cwd: workdir, timeout: DRIVER_TIMEOUT_MS });
 
@@ -831,7 +838,7 @@ if (command === 'open' && process.env.STUB_FAIL_OPEN === '1') {
   process.exit(3);
 }
 if (command === 'screenshot') {
-  // Identical bytes across themes on request: two registered themes can differ
+  // Identical bytes across variants on request: two registered variants can differ
   // only in tokens the captured screens never consume, and the identical
   // verdict that produces is a recorded fact the driver has to be able to reach.
   const body = process.env.STUB_IDENTICAL_SHOTS === '1' ? 'png:identical' : 'png:' + path.basename(argv[1]);
@@ -848,15 +855,15 @@ const script = fs.readFileSync(0, 'utf8');
 const found = /__find\\("([^"]*)"\\)/.exec(script);
 const id = found === null ? null : found[1];
 const present = id !== null && ids.includes(id);
-// A switcher whose option click dispatches and whose theme does not change:
-// the page goes on showing the theme named here whatever is clicked. It is the
+// A switcher whose option click dispatches and whose variant does not change:
+// the page goes on showing the variant named here whatever is clicked. It is the
 // application failure the label check exists to catch, and without it every
 // label read back agrees with what was just asked for.
-const theme = () => (process.env.STUB_STICKY_THEME
-  ? process.env.STUB_STICKY_THEME
-  : (fs.existsSync(process.env.STUB_THEME)
-    ? fs.readFileSync(process.env.STUB_THEME, 'utf8')
-    : 'light'));
+const variant = () => (process.env.STUB_STICKY_VARIANT
+  ? process.env.STUB_STICKY_VARIANT
+  : (fs.existsSync(process.env.STUB_VARIANT)
+    ? fs.readFileSync(process.env.STUB_VARIANT, 'utf8')
+    : 'alpha'));
 
 // One refused existence probe, for the difference between "the page holds no
 // such element" and "the script never ran". Scoped to the probe so the control
@@ -884,17 +891,17 @@ if (script.includes('__testids()')) {
   // native sequence arrived. Greping for dispatchEvent alone cannot: a driver
   // reduced to one bare event still reads as a click here.
   log('events ' + [...script.matchAll(/new (?:Pointer|Mouse)Event\\('([a-z]+)'/g)].map((m) => m[1]).join(','));
-  if (present && id.startsWith('theme-option-')) {
-    fs.writeFileSync(process.env.STUB_THEME, id.slice('theme-option-'.length));
+  if (present && id.startsWith('axis-option-')) {
+    fs.writeFileSync(process.env.STUB_VARIANT, id.slice('axis-option-'.length));
   }
   process.stdout.write((present ? 'dispatched' : '__verify_walk_missing__') + '\\n');
 } else if (script.includes("'yes' : 'no'")) {
   process.stdout.write((present ? 'yes' : 'no') + '\\n');
 } else {
-  // The switcher's label answers with the theme this page was last switched
-  // into, so a walk over several themes is confirmed against a moving reading
+  // The switcher's label answers with the variant this page was last switched
+  // into, so a walk over several variants is confirmed against a moving reading
   // rather than against a constant that agrees with everything.
-  if (id === 'theme-switcher' && present) process.stdout.write('Theme: ' + theme() + '\\n');
+  if (id === 'axis-switcher' && present) process.stdout.write('Active: ' + variant() + '\\n');
   else process.stdout.write((present ? 'text of ' + id : '__verify_walk_missing__') + '\\n');
 }
 process.exit(0);
@@ -906,11 +913,13 @@ process.exit(0);
         ok: boolean;
         coverageFile: string | null;
         browser: { command: string | null };
-        themeSet: { source: string; themes: string[] };
+        variantAxis: { declared: boolean; source: string | null; variants: string[] };
         menuResolution: { screen: string; testid: string | null; extensionId: string | null; source: string }[];
-        themes: {
-          theme: string;
-          labelConfirmed: boolean;
+        variants: {
+          // Both null on a pass the walk took with no variant axis declared: no
+          // value was walked, and no switcher label was read to confirm one.
+          variant: string | null;
+          labelConfirmed: boolean | null;
           labelRead: string | null;
           panelCollapsed: boolean | null;
           captures: { screen: string; state: string; readyConfirmed: boolean }[];
@@ -946,11 +955,16 @@ process.exit(0);
     // `files` writes the driver's JSON inputs into the run's own directory and
     // declares them, so a test states the states/registry content it needs
     // rather than managing a second temporary tree for it.
+    // The variant axis is optional in the driver's contract, so the invocation
+    // this helper builds declares one by default and a run that needs the
+    // axis-less shape asks for it here - omitting the flags in `args` cannot
+    // express it, because this helper would put them back.
     function runAgainstStub(
       args: string[],
       ids: string[],
       env: NodeJS.ProcessEnv = {},
       files: { states?: unknown; registry?: unknown } = {},
+      variantAxis: 'declared' | 'none' = 'declared',
     ): StubRun {
       const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-walk-'));
       const stubDir = path.join(workdir, 'bin');
@@ -975,20 +989,22 @@ process.exit(0);
         declared.push('--states', statesFile);
       }
       if (files.registry !== undefined) {
-        const registryFile = path.join(workdir, 'themes.json');
+        const registryFile = path.join(workdir, 'variants.json');
         fs.writeFileSync(registryFile, JSON.stringify(files.registry));
-        declared.push('--themes', 'registry', '--theme-registry', registryFile);
+        declared.push('--variants', 'registry', '--variant-registry', registryFile);
       }
+
+      const axis = variantAxis === 'declared'
+        ? ['--variants', 'alpha', '--variant-switcher', 'axis-switcher', '--variant-option', 'axis-option-{variant}']
+        : [];
 
       const capdir = path.join(workdir, 'shots');
       const run = spawnSync(process.execPath, [
         driverPath(),
         // Answers the host probe without a port, exactly as in the eval test.
         '--host', 'data:text/plain,ok',
-        '--themes', 'light',
         '--capdir', capdir,
-        '--switcher', 'theme-switcher',
-        '--theme-option', 'theme-option-{theme}',
+        ...axis,
         '--cdp-port', '1',
         '--ready-timeout', '5000',
         '--command-timeout', STUB_COMMAND_TIMEOUT_MS,
@@ -1002,7 +1018,7 @@ process.exit(0);
           PATH: `${stubDir}${path.delimiter}${process.env.PATH ?? ''}`,
           STUB_LOG: logFile,
           STUB_IDS: JSON.stringify(ids),
-          STUB_THEME: path.join(workdir, 'active-theme'),
+          STUB_VARIANT: path.join(workdir, 'active-variant'),
         },
       });
 
@@ -1026,7 +1042,7 @@ process.exit(0);
     // Every input-validation refusal has to happen on the arguments alone, so
     // these runs need no stub, no server and no browser: what they assert is
     // that the driver never got as far as one.
-    function runRefusal(extra: string[]): {
+    function runRefusal(extra: string[], variantAxis: 'declared' | 'none' = 'declared'): {
       status: number | null;
       failures: { stage: string; detail: string }[];
       capdirExists: boolean;
@@ -1035,14 +1051,19 @@ process.exit(0);
       const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-args-'));
       const capdir = path.join(workdir, 'shots');
 
+      // As in runAgainstStub: a refusal that turns on the axis being declared in
+      // part cannot be expressed by leaving flags out of `extra`, because this
+      // helper supplies the whole axis by construction.
+      const axis = variantAxis === 'declared'
+        ? ['--variants', 'alpha', '--variant-switcher', 'axis-switcher', '--variant-option', 'axis-option-{variant}']
+        : [];
+
       const run = spawnSync(process.execPath, [
         driverPath(),
         '--host', 'http://127.0.0.1:1',
-        '--themes', 'light',
         '--screens', 'orders:/orders:screen-orders',
         '--capdir', capdir,
-        '--switcher', 'theme-switcher',
-        '--theme-option', 'theme-option-{theme}',
+        ...axis,
         '--menu', 'nav-{screen}',
         ...extra,
       ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
@@ -1071,7 +1092,7 @@ process.exit(0);
     const LOGIN_EXT = `${EXT_PREFIX}.login.screens.login.v1`;
     const TASKS_EXT = `${EXT_PREFIX}.tasks.screens.tasks.v1`;
     const REPORTS_EXT = `${EXT_PREFIX}.reports.screens.reports.v1`;
-    const HOST_IDS = ['theme-switcher', 'theme-option-light', 'screen-login', 'screen-tasks', 'screen-reports'];
+    const HOST_IDS = ['axis-switcher', 'axis-option-alpha', 'screen-login', 'screen-tasks', 'screen-reports'];
 
     // The host keys each menu item by the screen's whole extension id, so a
     // pattern holding only the short screen name can never name one. Run 30 hit
@@ -1143,7 +1164,7 @@ process.exit(0);
       // Nothing is filed under the screen the page never reached; the screen
       // that was reached is still walked, so one bad navigation does not cost
       // the run its other coverage.
-      const captured = run.result.themes[0].captures.map((capture) => capture.screen);
+      const captured = run.result.variants[0].captures.map((capture) => capture.screen);
       expect(captured).not.toContain('login');
       expect(captured).toContain('tasks');
 
@@ -1173,7 +1194,7 @@ process.exit(0);
         { screen: 'tasks', testid: null, extensionId: null, source: 'unresolved' },
       ]);
       expect(run.commands.some((line) => line.startsWith('click menu-item-'))).toBe(false);
-      expect(run.result.themes[0].captures.map((capture) => capture.screen)).not.toContain('tasks');
+      expect(run.result.variants[0].captures.map((capture) => capture.screen)).not.toContain('tasks');
 
       run.cleanup();
     });
@@ -1191,60 +1212,123 @@ process.exit(0);
       expect(run.status).toBe(0);
       expect(run.result.coverageFile).not.toBeNull();
 
-      expect(run.coverage).toContain('| Theme | Opened | Visually distinct from previous |');
-      expect(run.coverage).toContain('| light | verified | first theme |');
+      expect(run.coverage).toContain('| Variant | Active | Visually distinct from previous |');
+      expect(run.coverage).toContain('| alpha | verified | first variant |');
       // A screen declaring a ready handle is captured after that handle appears;
       // one declaring none is captured after a bare settle. A cell that cannot
       // tell them apart reports the weaker capture as the stronger one.
-      expect(run.coverage).toContain('fresh (light-login-fresh.png, ready confirmed)');
-      expect(run.coverage).toContain('fresh (light-tasks-fresh.png, ready unconfirmed)');
+      expect(run.coverage).toContain('fresh (alpha-login-fresh.png, ready confirmed)');
+      expect(run.coverage).toContain('fresh (alpha-tasks-fresh.png, ready unconfirmed)');
+
+      run.cleanup();
+    });
+
+    // The variant axis is a dimension a caller may declare, and the driver owns
+    // no opinion on whether an application has one: what a screen is and what a
+    // control is are the kit's own terms, and what dimensions an interface
+    // varies along are the caller's. A run that declares no axis walks its
+    // screens once and reports the axis as not exercised - a statement about
+    // this run, not a claim that the application has no such dimension, which
+    // nothing here established and a report must not repeat.
+    it('walks every screen once and records the variant axis as unexercised when none is declared', () => {
+      // No switcher and no option handle among the page's ids: an axis-less run
+      // that reached for either would fail here rather than pass quietly.
+      const run = runAgainstStub([
+        '--screens', 'login:/login:screen-login,tasks:/tasks:screen-tasks',
+        '--nav', 'route',
+      ], ['screen-login', 'screen-tasks'], {}, {}, 'none');
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+      expect(run.result.variantAxis).toEqual({ declared: false, source: null, variants: [] });
+
+      // One pass, carrying no value and no label confirmation. Null rather than
+      // false on both: false reads as a confirmation that was attempted and
+      // disagreed, which is a different outcome from one never asked for.
+      expect(run.result.variants).toHaveLength(1);
+      expect(run.result.variants[0].variant).toBeNull();
+      expect(run.result.variants[0].labelConfirmed).toBeNull();
+      expect(run.result.variants[0].captures.map((capture) => capture.screen)).toEqual(['login', 'tasks']);
+
+      // The capture names carry no variant part, because there is no value to
+      // name them by and a placeholder would spell one the caller never declared.
+      expect(fs.readdirSync(run.capdir).sort()).toEqual([
+        'login-fresh.png', 'tasks-fresh.png', 'verification-coverage.md', 'verify-walk.json',
+      ]);
+
+      expect(run.coverage).toContain('| (none declared) | not-exercised (no variant axis was declared for this run) |');
+      expect(run.coverage).toContain('not-compared (no variant axis was declared for this run)');
+      expectWholeRow(run.coverage);
+
+      run.cleanup();
+    });
+
+    // The axis flags are one declaration. A partial one has no honest reading:
+    // walking the screens once discards a dimension the caller asked for, and
+    // walking the axis needs handles the invocation never named. Refused on the
+    // arguments, like every other invocation the driver cannot perform.
+    it.each<[string, string[]]>([
+      ['the values alone', ['--variants', 'alpha']],
+      ['the switcher alone', ['--variant-switcher', 'axis-switcher']],
+      ['the option pattern alone', ['--variant-option', 'axis-option-{variant}']],
+      ['a registry and nothing else', ['--variant-registry', '/nonexistent/variants.json']],
+      ['a label map and nothing else', ['--variant-labels', 'alpha=Alpha']],
+      ['the values and the switcher, without the option pattern',
+        ['--variants', 'alpha', '--variant-switcher', 'axis-switcher']],
+    ])('refuses a variant axis declared as %s, before a browser is reached', (_what, declared) => {
+      const run = runRefusal(declared, 'none');
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain('declare the whole axis or none of it');
+      expect(run.capdirExists).toBe(false);
 
       run.cleanup();
     });
 
     // A cell filled from a name the invocation supplied is a cell that name can
     // corrupt: one `|` in it closes the cell and shifts every column after it.
-    it('escapes a pipe in a theme name instead of letting it close the cell', () => {
+    it('escapes a pipe in a variant name instead of letting it close the cell', () => {
       const run = runAgainstStub([
         '--screens', 'login:/login:screen-login',
         '--nav', 'route',
-        // ONE theme whose name carries a pipe, not two themes. Its option testid
-        // becomes `theme-option-light|dark`, which the stub's ids do not carry,
-        // so the option click cannot be dispatched and the theme is recorded as
-        // not-opened. The pipe reaches the table through the theme-name cell and
+        // ONE variant whose name carries a pipe, not two variants. Its option testid
+        // becomes `axis-option-alpha|beta`, which the stub's ids do not carry,
+        // so the option click cannot be dispatched and the variant is recorded as
+        // not-active. The pipe reaches the table through the variant-name cell and
         // through the control failure written beside it.
-        '--themes', 'light|dark',
+        '--variants', 'alpha|beta',
       ], HOST_IDS);
 
-      expect(run.result.themes[0].labelConfirmed).toBe(false);
-      expect(run.coverage).toContain('| light\\|dark |');
-      expect(run.coverage).toContain('theme option for "light\\|dark" "theme-option-light\\|dark" was not clicked');
+      expect(run.result.variants[0].labelConfirmed).toBe(false);
+      expect(run.coverage).toContain('| alpha\\|beta |');
+      expect(run.coverage).toContain('variant option for "alpha\\|beta" "axis-option-alpha\\|beta" was not clicked');
       expectWholeRow(run.coverage);
 
       run.cleanup();
     });
 
     // The other side of the same cell: a pipe the page itself put into a reading
-    // the table quotes back. The label of a theme that did not open is written
+    // the table quotes back. The label of a value that never became active is written
     // into the row verbatim, so the page decides that text and not the caller.
     it('escapes a pipe read off the page instead of letting it close the cell', () => {
       const run = runAgainstStub([
         '--screens', 'login:/login:screen-login',
         '--nav', 'route',
-      ], HOST_IDS, { STUB_STICKY_THEME: 'da|rk' });
+      ], HOST_IDS, { STUB_STICKY_VARIANT: 'al|pha' });
 
       expect(run.status).not.toBe(0);
-      expect(run.result.themes[0].labelRead).toBe('Theme: da|rk');
-      expect(run.result.themes[0].labelConfirmed).toBe(false);
+      expect(run.result.variants[0].labelRead).toBe('Active: al|pha');
+      expect(run.result.variants[0].labelConfirmed).toBe(false);
       // Escaped in the cell, unescaped in the JSON record: the table is what a
       // pipe corrupts, and the record is what a report reads the truth from.
-      expect(run.coverage).toContain('not-opened (label read "Theme: da\\|rk")');
+      expect(run.coverage).toContain('not-active (label read "Active: al\\|pha")');
       expectWholeRow(run.coverage);
 
       run.cleanup();
     });
 
-    // A theme name out of a registry and a screen name off the command line both
+    // A variant name out of a registry and a screen name off the command line both
     // reach the capture path, and a name carrying path separators used to resolve
     // out of the run's own directory: `../escape` writes a level above the capture
     // directory, where nothing in this run is entitled to write and where neither
@@ -1252,18 +1336,18 @@ process.exit(0);
     // the file-name alphabet rather than refused, so the walk still runs and the
     // traversal is gone from the file it writes.
     it.each<[string, string[], string]>([
-      ['a theme name', ['--themes', '../escape', '--screens', 'login:/login:screen-login'], 'escape-login-fresh.png'],
-      ['a screen name', ['--themes', 'light', '--screens', '../login:/login:screen-login'], 'light-login-fresh.png'],
+      ['a variant name', ['--variants', '../escape', '--screens', 'login:/login:screen-login'], 'escape-login-fresh.png'],
+      ['a screen name', ['--variants', 'alpha', '--screens', '../login:/login:screen-login'], 'alpha-login-fresh.png'],
     ])('confines a capture to the capture directory when %s carries a path traversal', (_what, declared, file) => {
       const run = runAgainstStub([...declared, '--nav', 'route'],
-        ['theme-switcher', 'theme-option-light', 'theme-option-../escape', 'screen-login']);
+        ['axis-switcher', 'axis-option-alpha', 'axis-option-../escape', 'screen-login']);
 
-      // The odd name costs the run nothing: the theme opens, and the capture is
+      // The odd name costs the run nothing: the variant opens, and the capture is
       // taken and recorded like any other.
       expect(run.result.failures).toEqual([]);
       expect(run.status).toBe(0);
-      expect(run.result.themes[0].labelConfirmed).toBe(true);
-      expect(run.result.themes[0].captures.map((capture) => capture.state)).toEqual(['fresh']);
+      expect(run.result.variants[0].labelConfirmed).toBe(true);
+      expect(run.result.variants[0].captures.map((capture) => capture.state)).toEqual(['fresh']);
 
       // Written inside the capture directory, under a name the traversal is
       // reduced out of rather than resolved through.
@@ -1295,18 +1379,18 @@ process.exit(0);
     });
 
     // Every declared control operation has to report as dispatched. Discarded,
-    // the outcome let a single-theme run already showing the requested theme
-    // pass with no theme option on the page at all: the label agreed, and
+    // the outcome let a single-variant run already showing the requested variant
+    // pass with no variant option on the page at all: the label agreed, and
     // nothing had switched.
-    it('fails the theme when a declared control is not on the page, naming the test id', () => {
+    it('fails the variant when a declared control is not on the page, naming the test id', () => {
       const run = runAgainstStub([
         '--screens', 'login:/login:screen-login',
         '--nav', 'route',
         '--panel-expand', 'panel-expand',
         '--panel-collapse', 'panel-collapse',
-        // The switcher is there and the label reads "light" either way, which is
+        // The switcher is there and the label reads the same either way, which is
         // exactly how a missing option used to pass unnoticed.
-      ], ['theme-switcher', 'screen-login']);
+      ], ['axis-switcher', 'screen-login']);
 
       expect(run.status).not.toBe(0);
 
@@ -1314,74 +1398,74 @@ process.exit(0);
       expect(control).toHaveLength(1);
       expect(control[0].detail).toContain('panel-expand');
       expect(control[0].detail).toContain('no control carries that data-testid');
-      // Nothing is captured under a theme whose controls could not be operated.
-      expect(run.result.themes[0].captures).toEqual([]);
-      expect(run.coverage).toContain('not-opened (dev panel expand control "panel-expand" was not clicked');
+      // Nothing is captured under a variant whose controls could not be operated.
+      expect(run.result.variants[0].captures).toEqual([]);
+      expect(run.coverage).toContain('not-active (dev panel expand control "panel-expand" was not clicked');
 
       run.cleanup();
     });
 
     // Confirmation used to be a substring test over the label with its
-    // punctuation stripped, so a registry holding `dark` and `darker` confirmed
-    // `dark` off a label reading "Darker" - and every capture in that block was
-    // filed against a theme that never opened. The requested name has to occupy
-    // whole words of the label.
-    it('does not confirm a theme off a label that merely carries its name inside another word', () => {
+    // punctuation stripped, so a set holding `dense` and `denser` confirmed
+    // `dense` off a label reading "Denser" - and every capture in that block was
+    // filed against a value that never became active. The requested name has to
+    // occupy whole words of the label.
+    it('does not confirm a variant off a label that merely carries its name inside another word', () => {
       const wrong = runAgainstStub([
-        '--themes', 'dark',
+        '--variants', 'dense',
         '--screens', 'login:/login:screen-login',
         '--nav', 'route',
-        // The option click dispatches, and the page goes on showing "darker".
-      ], [...HOST_IDS, 'theme-option-dark'], { STUB_STICKY_THEME: 'darker' });
+        // The option click dispatches, and the page goes on showing "denser".
+      ], [...HOST_IDS, 'axis-option-dense'], { STUB_STICKY_VARIANT: 'denser' });
 
       expect(wrong.status).not.toBe(0);
-      expect(wrong.result.themes[0].labelConfirmed).toBe(false);
+      expect(wrong.result.variants[0].labelConfirmed).toBe(false);
       // The click landed, so this is not a control failure being reported: the
-      // label is what refused the theme.
-      expect(wrong.commands).toContain('click theme-option-dark');
+      // label is what refused the variant.
+      expect(wrong.commands).toContain('click axis-option-dense');
       expect(wrong.result.failures.some((failure) => failure.stage === 'control')).toBe(false);
 
-      const refused = wrong.result.failures.filter((failure) => failure.stage === 'theme-switch');
+      const refused = wrong.result.failures.filter((failure) => failure.stage === 'variant-switch');
       expect(refused).toHaveLength(1);
-      expect(refused[0].detail).toContain('Theme: darker');
-      // Nothing is captured or compared under a theme that did not open.
-      expect(wrong.result.themes[0].captures).toEqual([]);
+      expect(refused[0].detail).toContain('Active: denser');
+      // Nothing is captured or compared under a value that never became active.
+      expect(wrong.result.variants[0].captures).toEqual([]);
       wrong.cleanup();
 
-      // The same rule still confirms the theme whose name the label does carry
+      // The same rule still confirms the variant whose name the label does carry
       // as a word, so this is not a check that refuses everything.
       const right = runAgainstStub([
-        '--themes', 'darker',
+        '--variants', 'denser',
         '--screens', 'login:/login:screen-login',
         '--nav', 'route',
-      ], [...HOST_IDS, 'theme-option-darker'], { STUB_STICKY_THEME: 'darker' });
+      ], [...HOST_IDS, 'axis-option-denser'], { STUB_STICKY_VARIANT: 'denser' });
 
       expect(right.result.failures).toEqual([]);
       expect(right.status).toBe(0);
-      expect(right.result.themes[0].labelConfirmed).toBe(true);
+      expect(right.result.variants[0].labelConfirmed).toBe(true);
       right.cleanup();
     });
 
-    // Where one theme's words are a whole run of another's, every label naming
+    // Where one variant's words are a whole run of another's, every label naming
     // the longer one names the shorter one too. A confirmation cannot say which
-    // theme opened, so the run is refused on the theme set alone rather than
+    // variant opened, so the run is refused on the variant set alone rather than
     // filing captures under a guess.
-    it('refuses a theme set holding two names one switcher label could name at once', () => {
-      const run = runRefusal(['--themes', 'dark,dark mode']);
+    it('refuses a variant set holding two names one switcher label could name at once', () => {
+      const run = runRefusal(['--variants', 'dense,dense grid']);
 
       expect(run.status).not.toBe(0);
       expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
       expect(run.failures[0].detail).toContain('cannot be told apart');
-      expect(run.failures[0].detail).toContain('--theme-labels');
+      expect(run.failures[0].detail).toContain('--variant-labels');
       // Refused on the arguments: no capture directory, no browser, no host.
       expect(run.capdirExists).toBe(false);
       run.cleanup();
 
-      // And a label declared per theme is the way out of it, so the refusal is a
+      // And a label declared per variant is the way out of it, so the refusal is a
       // gate rather than a dead end.
       const separated = runRefusal([
-        '--themes', 'dark,dark mode',
-        '--theme-labels', 'dark=Dark Classic,dark mode=Dark Mode',
+        '--variants', 'dense,dense grid',
+        '--variant-labels', 'dense=Dense Classic,dense grid=Dense Grid',
       ]);
 
       expect(separated.failures.map((failure) => failure.stage)).toEqual(['host-probe']);
@@ -1390,8 +1474,8 @@ process.exit(0);
 
     // The collapse is the same class one control along, and it fails later: the
     // label has already confirmed by then, so a discarded collapse outcome
-    // leaves the theme reading as opened and its captures carrying host chrome.
-    it('fails the theme when the panel collapse control is not on the page', () => {
+    // leaves the variant reading as opened and its captures carrying host chrome.
+    it('fails the variant when the panel collapse control is not on the page', () => {
       const run = runAgainstStub([
         '--screens', 'login:/login:screen-login',
         '--nav', 'route',
@@ -1400,12 +1484,12 @@ process.exit(0);
       ], [...HOST_IDS, 'panel-expand']);
 
       expect(run.status).not.toBe(0);
-      expect(run.result.themes[0].labelConfirmed).toBe(true);
+      expect(run.result.variants[0].labelConfirmed).toBe(true);
 
       const control = run.result.failures.filter((failure) => failure.stage === 'control');
       expect(control).toHaveLength(1);
       expect(control[0].detail).toContain('panel-collapse');
-      expect(run.result.themes[0].captures).toEqual([]);
+      expect(run.result.variants[0].captures).toEqual([]);
 
       run.cleanup();
     });
@@ -1429,7 +1513,7 @@ process.exit(0);
       expect(panel[0].detail).toContain('the eval did not run');
       // Not false: the page was never asked, and a report cannot say the panel
       // stayed open on the strength of a probe that did not run.
-      expect(run.result.themes[0].panelCollapsed).toBeNull();
+      expect(run.result.variants[0].panelCollapsed).toBeNull();
 
       run.cleanup();
     });
@@ -1456,11 +1540,11 @@ process.exit(0);
 
       expect(run.result.failures).toEqual([]);
       expect(run.status).toBe(0);
-      expect(run.result.themes[0].readBacks.map((back) => [back.action, back.ok])).toEqual([
+      expect(run.result.variants[0].readBacks.map((back) => [back.action, back.ok])).toEqual([
         ['fill', true], ['click', true], ['read', true],
       ]);
       expect(run.commands).toContain('fill screen-name-input Grace');
-      expect(run.coverage).toContain('submitted (light-login-submitted.png, ready confirmed)');
+      expect(run.coverage).toContain('submitted (alpha-login-submitted.png, ready confirmed)');
 
       run.cleanup();
     });
@@ -1484,7 +1568,7 @@ process.exit(0);
       const reads = run.result.failures.filter((failure) => failure.stage === 'read');
       expect(reads).toHaveLength(1);
       expect(reads[0].detail).toContain('screen-status');
-      expect(run.result.themes[0].readBacks[0]).toMatchObject({
+      expect(run.result.variants[0].readBacks[0]).toMatchObject({
         action: 'read', testid: 'screen-status', actual: '__verify_walk_missing__', ok: false,
       });
 
@@ -1513,7 +1597,7 @@ process.exit(0);
       const reads = run.result.failures.filter((failure) => failure.stage === 'read');
       expect(reads).toHaveLength(1);
       expect(reads[0].detail).toContain('screen-status');
-      expect(run.result.themes[0].readBacks[0]).toMatchObject({
+      expect(run.result.variants[0].readBacks[0]).toMatchObject({
         action: 'read',
         testid: 'screen-status',
         expected: 'missing',
@@ -1568,32 +1652,32 @@ process.exit(0);
       expect(readBack).toHaveLength(1);
       expect(readBack[0].detail).toContain('screen-name-input');
       expect(readBack[0].detail).toContain('drift:Grace');
-      expect(run.result.themes[0].readBacks[0].ok).toBe(false);
+      expect(run.result.variants[0].readBacks[0].ok).toBe(false);
 
       run.cleanup();
     });
 
     // The verdict is the comparison command's own exit code and nothing else.
-    // Identical captures are a recorded fact: two registered themes can differ
+    // Identical captures are a recorded fact: two registered variants can differ
     // only in tokens the captured screens never consume, and a run that reported
     // them as visibly distinct claimed something it never saw.
     it('records identical captures as identical, from the comparison command exit code', () => {
       const run = runAgainstStub([
-        '--themes', 'light,dark',
+        '--variants', 'alpha,beta',
         '--screens', 'login:/login:screen-login',
         '--nav', 'route',
-      ], [...HOST_IDS, 'theme-option-dark'], { STUB_IDENTICAL_SHOTS: '1' });
+      ], [...HOST_IDS, 'axis-option-beta'], { STUB_IDENTICAL_SHOTS: '1' });
 
       expect(run.result.failures).toEqual([]);
       expect(run.status).toBe(0);
-      expect(run.result.themes.map((theme) => [theme.theme, theme.labelConfirmed])).toEqual([
-        ['light', true], ['dark', true],
+      expect(run.result.variants.map((variant) => [variant.variant, variant.labelConfirmed])).toEqual([
+        ['alpha', true], ['beta', true],
       ]);
-      expect(run.result.themes[1].comparisons).toEqual([{
-        against: 'light',
+      expect(run.result.variants[1].comparisons).toEqual([{
+        against: 'alpha',
         screen: 'login',
         state: 'fresh',
-        command: 'cmp -s light-login-fresh.png dark-login-fresh.png',
+        command: 'cmp -s alpha-login-fresh.png beta-login-fresh.png',
         exit: 0,
         verdict: 'identical',
       }]);
@@ -1604,30 +1688,30 @@ process.exit(0);
 
     it('records a differing pair as differs, from that same exit code', () => {
       const run = runAgainstStub([
-        '--themes', 'light,dark',
+        '--variants', 'alpha,beta',
         '--screens', 'login:/login:screen-login',
         '--nav', 'route',
-      ], [...HOST_IDS, 'theme-option-dark']);
+      ], [...HOST_IDS, 'axis-option-beta']);
 
       expect(run.result.failures).toEqual([]);
-      expect(run.result.themes[1].comparisons.map((cmp) => [cmp.verdict, cmp.exit])).toEqual([['differs', 1]]);
+      expect(run.result.variants[1].comparisons.map((cmp) => [cmp.verdict, cmp.exit])).toEqual([['differs', 1]]);
       expect(run.coverage).toContain('login/fresh: differs (cmp exit 1)');
 
       run.cleanup();
     });
 
-    // Provenance: a report claiming the set came from the host's theme
+    // Provenance: a report claiming the set came from the host's variant
     // registration is a claim this field either backs or contradicts.
-    it('records a theme set read from a registry file as coming from that file', () => {
+    it('records a variant set read from a registry file as coming from that file', () => {
       const run = runAgainstStub([
         '--screens', 'login:/login:screen-login',
         '--nav', 'route',
-      ], [...HOST_IDS, 'theme-option-dark'], {}, { registry: { themes: ['light', 'dark'] } });
+      ], [...HOST_IDS, 'axis-option-beta'], {}, { registry: { variants: ['alpha', 'beta'] } });
 
       expect(run.result.failures).toEqual([]);
-      expect(run.result.themeSet.themes).toEqual(['light', 'dark']);
-      expect(run.result.themeSet.source.startsWith('registry:')).toBe(true);
-      expect(run.result.themeSet.source.endsWith('themes.json')).toBe(true);
+      expect(run.result.variantAxis.variants).toEqual(['alpha', 'beta']);
+      expect(run.result.variantAxis.source.startsWith('registry:')).toBe(true);
+      expect(run.result.variantAxis.source.endsWith('variants.json')).toBe(true);
 
       run.cleanup();
     });
@@ -1647,7 +1731,7 @@ process.exit(0);
       const timeouts = run.result.failures.filter((failure) => failure.stage === 'timeout');
       expect(timeouts.length).toBeGreaterThan(0);
       expect(timeouts[0].detail).toContain('killed after 800ms');
-      expect(run.result.themes[0].captures).toEqual([]);
+      expect(run.result.variants[0].captures).toEqual([]);
 
       run.cleanup();
     });
@@ -1682,12 +1766,12 @@ process.exit(0);
       const run = spawnSync(process.execPath, [
         driverPath(),
         '--host', 'data:text/plain,ok',
-        '--themes', 'light',
+        '--variants', 'alpha',
         '--screens', 'login:/login:screen-login',
         '--nav', 'route',
         '--capdir', capdir,
-        '--switcher', 'theme-switcher',
-        '--theme-option', 'theme-option-{theme}',
+        '--variant-switcher', 'axis-switcher',
+        '--variant-option', 'axis-option-{variant}',
         '--cdp-port', '1',
         '--ready-timeout', '5000',
         '--command-timeout', STUB_COMMAND_TIMEOUT_MS,
@@ -1701,7 +1785,7 @@ process.exit(0);
           ...process.env,
           STUB_LOG: logFile,
           STUB_IDS: JSON.stringify(HOST_IDS),
-          STUB_THEME: path.join(workdir, 'active-theme'),
+          STUB_VARIANT: path.join(workdir, 'active-variant'),
         },
       });
 
@@ -1715,7 +1799,7 @@ process.exit(0);
 
       const commands = fs.readFileSync(logFile, 'utf8').split('\n').filter(Boolean);
       expect(commands).toContain('launched with --forwarded');
-      expect(commands).toContain('screenshot light-login-fresh.png');
+      expect(commands).toContain('screenshot alpha-login-fresh.png');
 
       fs.rmSync(workdir, { recursive: true, force: true });
     });
@@ -1782,16 +1866,16 @@ process.exit(0);
     // coverage cells can tell which run wrote a file they address by name.
     it('refuses a capture directory that already holds files, before reaching the host', () => {
       const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-capdir-'));
-      fs.writeFileSync(path.join(workdir, 'light-orders-fresh.png'), 'an earlier run left this');
+      fs.writeFileSync(path.join(workdir, 'alpha-orders-fresh.png'), 'an earlier run left this');
 
       const run = spawnSync(process.execPath, [
         driverPath(),
         '--host', 'http://127.0.0.1:1',
-        '--themes', 'light',
+        '--variants', 'alpha',
         '--screens', 'orders:/orders:screen-orders',
         '--capdir', workdir,
-        '--switcher', 'theme-switcher',
-        '--theme-option', 'theme-option-{theme}',
+        '--variant-switcher', 'axis-switcher',
+        '--variant-option', 'axis-option-{variant}',
         '--menu', 'nav-{screen}',
       ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
 
@@ -1801,7 +1885,7 @@ process.exit(0);
       expect(parsed.failures.map((failure) => failure.stage)).toEqual(['capdir']);
       expect(parsed.failures[0].detail).toContain('already holds files');
       // The earlier run's file is still there: the refusal writes nothing over it.
-      expect(fs.readdirSync(workdir)).toEqual(['light-orders-fresh.png']);
+      expect(fs.readdirSync(workdir)).toEqual(['alpha-orders-fresh.png']);
 
       fs.rmSync(workdir, { recursive: true, force: true });
     });
@@ -1840,10 +1924,10 @@ process.exit(0);
       run.cleanup();
     });
 
-    // A pattern that substitutes nothing clicks one same control for every theme
+    // A pattern that substitutes nothing clicks one same control for every variant
     // or every screen, which reads as a walk that covered all of them.
     it.each<[string, string[]]>([
-      ['{theme}', ['--themes', 'light,dark', '--theme-option', 'theme-option-light']],
+      ['{variant}', ['--variants', 'alpha,beta', '--variant-option', 'axis-option-alpha']],
       ['{screen}', ['--screens', 'login:/login,tasks:/tasks', '--menu', 'nav-login']],
     ])('refuses a pattern carrying no %s placeholder when it has to vary', (token, extra) => {
       const run = runRefusal(extra);
@@ -1858,10 +1942,10 @@ process.exit(0);
     // used to throw out of the top level: no result record, no coverage row, and
     // a stack trace where the run's own account of itself belongs.
     it.each<[string, string, string | null]>([
-      ['--theme-registry', 'is absent', null],
-      ['--theme-registry', 'is not JSON', '{ themes: [light] '],
-      ['--theme-registry', 'holds a null theme list', '{ "themes": null }'],
-      ['--theme-registry', 'lists something that is not a theme name', '{ "themes": [7] }'],
+      ['--variant-registry', 'is absent', null],
+      ['--variant-registry', 'is not JSON', '{ variants: [alpha] '],
+      ['--variant-registry', 'holds a null variant list', '{ "variants": null }'],
+      ['--variant-registry', 'lists something that is not a variant name', '{ "variants": [7] }'],
       ['--states', 'is absent', null],
       ['--states', 'is not JSON', '{'],
       ['--states', 'holds a non-array under a screen', '{ "orders": { "state": "submitted" } }'],
@@ -1873,8 +1957,8 @@ process.exit(0);
       const file = path.join(inputDir, 'input.json');
       if (content !== null) fs.writeFileSync(file, content);
 
-      const run = runRefusal(flag === '--theme-registry'
-        ? ['--themes', 'registry', '--theme-registry', file]
+      const run = runRefusal(flag === '--variant-registry'
+        ? ['--variants', 'registry', '--variant-registry', file]
         : ['--states', file]);
 
       expect(run.status).not.toBe(0);
@@ -1896,7 +1980,7 @@ process.exit(0);
 
       expect(run.status).not.toBe(0);
       expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
-      expect(run.failures[0].detail).toContain('light-my-screen-fresh.png');
+      expect(run.failures[0].detail).toContain('alpha-my-screen-fresh.png');
       expect(run.failures[0].detail).toContain('my screen');
       expect(run.capdirExists).toBe(false);
 
@@ -1928,11 +2012,11 @@ process.exit(0);
       const capdir = path.join(os.tmpdir(), `verify-walk-missing-${process.pid}`);
       const run = spawnSync(process.execPath, [
         driverPath(),
-        '--themes', 'light',
+        '--variants', 'alpha',
         '--screens', 'orders:/orders:screen-orders',
         '--capdir', capdir,
-        '--switcher', 'theme-switcher',
-        '--theme-option', 'theme-option-{theme}',
+        '--variant-switcher', 'axis-switcher',
+        '--variant-option', 'axis-option-{variant}',
       ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
 
       if (run.error) throw new Error(`the driver did not return: ${run.error.message}`);
