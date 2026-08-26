@@ -11,6 +11,11 @@
       "id": "navigation-composition",
       "category": "guidelines",
       "path": "guidelines/navigation-composition.md"
+    },
+    {
+      "id": "verification-walk-variant-axis",
+      "category": "guidelines",
+      "path": "guidelines/verification-walk-variant-axis.md"
     }
   ]
 }
