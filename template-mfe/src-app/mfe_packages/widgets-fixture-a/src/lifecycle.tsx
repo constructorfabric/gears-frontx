@@ -73,7 +73,7 @@ const randomHex = generateRandomHex();
 // actually SURVIVES an unmount/remount cycle of this widget, unless the
 // widget's own `unmount()` clears its map entry.
 const lastPingValues = new Map<string, string>();
-const lastPingSubscribers = new Map<string, (value: string) => void>();
+const lastPingSubscribers = new Map<string, () => void>();
 
 class PingHandler extends ActionHandler {
   constructor(private readonly instanceId: string) {
@@ -88,7 +88,7 @@ class PingHandler extends ActionHandler {
       `[widget-a ${this.instanceId}] ping ${actionTypeId} randomHex=${randomHex}`,
     );
     lastPingValues.set(this.instanceId, randomHex);
-    lastPingSubscribers.get(this.instanceId)?.(randomHex);
+    lastPingSubscribers.get(this.instanceId)?.();
     return Promise.resolve();
   }
 }
@@ -99,37 +99,37 @@ interface WidgetAProps {
 
 function WidgetA({ bridge }: Readonly<WidgetAProps>): React.ReactElement {
   const instanceId = bridge.extensionId;
-  // Seed from this instance's own value (not `null`) so a ping that already
-  // landed -- e.g. one dispatched by a chain step immediately after `mount()`
-  // resolved, before this component's own first render -- is reflected on
-  // that very first render rather than silently missed.
-  const [lastPing, setLastPing] = React.useState<string | null>(
-    () => lastPingValues.get(instanceId) ?? null,
+
+  const subscribeToLastPing = React.useCallback(
+    (onStoreChange: () => void) => {
+      lastPingSubscribers.set(instanceId, onStoreChange);
+      return () => {
+        // Only remove this instance's own subscriber and snapshot -- guard
+        // against a stale closure clearing a different, still-live mount's
+        // subscriber (and its already-current snapshot) for the same
+        // instanceId (e.g. React re-invoking effects in development, or a
+        // new subscriber having already replaced this one before this
+        // cleanup runs).
+        if (lastPingSubscribers.get(instanceId) === onStoreChange) {
+          lastPingSubscribers.delete(instanceId);
+          lastPingValues.delete(instanceId);
+        }
+      };
+    },
+    [instanceId],
   );
 
-  React.useEffect(() => {
-    // Re-sync against this instance's own value the moment this effect
-    // commits, THEN subscribe for pings that arrive after that. A ping
-    // dispatched between the initial render (which seeded `lastPing` above)
-    // and this effect running writes `lastPingValues` while no subscriber is
-    // installed yet -- without this re-sync, that write would update the
-    // stored value but never reach this component's own state, leaving the
-    // indicator stuck even though the handler fired correctly. The handler
-    // itself is registered synchronously in `mount()` (below), independent
-    // of this effect, so it is never what races here -- only the view's
-    // observation of a value that was already delivered correctly.
-    setLastPing(lastPingValues.get(instanceId) ?? null);
-    lastPingSubscribers.set(instanceId, setLastPing);
-    return () => {
-      // Only remove this instance's own subscriber -- guard against a stale
-      // closure clearing a different, still-live mount's subscriber for the
-      // same instanceId (e.g. React re-invoking effects in development).
-      if (lastPingSubscribers.get(instanceId) === setLastPing) {
-        lastPingSubscribers.delete(instanceId);
-      }
-      lastPingValues.delete(instanceId);
-    };
-  }, [bridge, instanceId]);
+  // `useSyncExternalStore` reads the snapshot both at first render and again
+  // when it subscribes, so a ping that already landed -- e.g. one dispatched
+  // by a chain step immediately after `mount()` resolved, before this
+  // component subscribed -- is reflected instead of silently missed. The
+  // handler itself is registered synchronously in `mount()` (below),
+  // independent of this subscription, so it is never what races here -- only
+  // the view's observation of a value that was already delivered correctly.
+  const lastPing = React.useSyncExternalStore(
+    subscribeToLastPing,
+    () => lastPingValues.get(instanceId) ?? null,
+  );
 
   const handleMountHelloWorld = React.useCallback(async () => {
     await bridge.executeActionsChain({
