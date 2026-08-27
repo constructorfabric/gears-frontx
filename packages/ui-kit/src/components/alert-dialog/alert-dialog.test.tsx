@@ -1,5 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import buttonStyles from '../button/button.module.css';
 
 import {
   AlertDialog,
@@ -101,6 +104,77 @@ describe('AlertDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(screen.getByRole('alertdialog')).toBeTruthy();
+  });
+
+  // The whole async-confirm flow, end to end: prevent the close, go
+  // loading, and the same button cannot be pressed again while the request
+  // is in flight — then the consumer closes the dialog itself.
+  it('keeps a loading action pressed-once and closable by the consumer', async () => {
+    function AsyncConfirm() {
+      const [open, setOpen] = useState(true);
+      const [loading, setLoading] = useState(false);
+      const [clicks, setClicks] = useState(0);
+      return (
+        <AlertDialog open={open} onOpenChange={setOpen}>
+          <AlertDialogContent>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <span data-testid="clicks">{clicks}</span>
+            <AlertDialogFooter>
+              <AlertDialogAction
+                loading={loading}
+                onClick={(event) => {
+                  event.preventBaseUIHandler();
+                  setClicks((count) => count + 1);
+                  setLoading(true);
+                }}
+              >
+                Continue
+              </AlertDialogAction>
+              {/* Stands in for the async work resolving — the consumer
+                * owns `open`, so it is the consumer that closes. Inside the
+                * footer because a modal alert dialog inerts the page behind
+                * it, so a control out there would be unreachable. */}
+              <button type="button" onClick={() => setOpen(false)}>
+                finish
+              </button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      );
+    }
+
+    render(<AsyncConfirm />);
+    const action = screen.getByRole('button', { name: 'Continue' });
+    fireEvent.click(action);
+
+    expect(screen.getByTestId('clicks').textContent).toBe('1');
+    expect(action.getAttribute('aria-busy')).toBe('true');
+    expect(screen.getByRole('alertdialog')).toBeTruthy();
+
+    // Second press while the work is in flight does nothing.
+    fireEvent.click(action);
+    expect(screen.getByTestId('clicks').textContent).toBe('1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'finish' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+  });
+
+  it('renders an icon through Button\'s own slot, not as a child', () => {
+    render(
+      <AlertDialog defaultOpen>
+        <AlertDialogContent>
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogFooter>
+            <AlertDialogAction icon={<svg data-testid="glyph" />}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>,
+    );
+    const action = screen.getByRole('button', { name: 'Continue' });
+    // Button's icon slot wraps it; a child would land in the label span
+    // instead, losing the gap and centering (see button.tsx).
+    expect(screen.getByTestId('glyph').parentElement?.className).toContain(buttonStyles.icon);
+    expect(action.hasAttribute('data-icon-only')).toBe(false);
   });
 
   it('renders the backdrop by default', () => {

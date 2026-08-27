@@ -51,9 +51,31 @@ as `container` or the popup renders with the root theme — same contract as
 `AlertDialog.Close` rendered as a kit `Button` (any `variant`/`size`;
 `default` for the action, `outline` for the cancel) — clicking either one
 closes the dialog. Your own `onClick` still runs, and runs first, so the
-usual "do the thing, then dismiss" flow needs no extra wiring. An async
-confirm that must keep the dialog open while it works calls
-`event.preventBaseUIHandler()` in that handler and drives `open` itself.
+usual "do the thing, then dismiss" flow needs no extra wiring.
+
+`AlertDialogAction` additionally takes `Button`'s `loading` and `icon`,
+which `AlertDialogCancel` does not: the confirming action is the one that
+does work. An async confirm calls `event.preventBaseUIHandler()` in its
+`onClick` to keep the dialog open, sets `loading`, and drives `open`
+itself when the work resolves — a `loading` Button is disabled, so the
+same action cannot be pressed twice while the request is in flight.
+
+```tsx
+<AlertDialogAction
+  variant="destructive"
+  loading={deleting}
+  onClick={(event) => {
+    event.preventBaseUIHandler();
+    setDeleting(true);
+    void deleteAccount().finally(() => {
+      setDeleting(false);
+      setOpen(false);
+    });
+  }}
+>
+  Delete
+</AlertDialogAction>
+```
 
 ## Examples
 

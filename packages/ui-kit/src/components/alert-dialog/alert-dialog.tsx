@@ -116,7 +116,7 @@ export function AlertDialogDescription({ className, ...props }: AlertDialogDescr
 
 export interface AlertDialogActionProps
   extends Omit<AlertDialogPrimitive.Close.Props, 'className'>,
-    Pick<ButtonProps, 'variant' | 'size'> {
+    Pick<ButtonProps, 'variant' | 'size' | 'loading' | 'icon'> {
   className?: string;
 }
 
@@ -132,17 +132,28 @@ export interface AlertDialogActionProps
  * right-to-left order). An async confirm that must keep the dialog open
  * while it works calls `event.preventBaseUIHandler()` in that handler and
  * drives `open` itself.
+ *
+ * `loading` is the other half of that flow, and the reason this part takes
+ * more of `Button`'s surface than `AlertDialogCancel` does: the confirming
+ * action is the one that does work. A `loading` Button is disabled (see
+ * button.tsx), so the pattern completes itself — prevent the close, set
+ * `loading`, and the same button cannot be pressed a second time while the
+ * request is in flight. `icon` comes along for the ordinary reason any
+ * confirm button might carry a glyph; NEVER as a child (button.tsx's own
+ * doc says why).
  */
 export function AlertDialogAction({
   className,
   variant,
   size,
+  loading,
+  icon,
   ...props
 }: AlertDialogActionProps) {
   return (
     <AlertDialogPrimitive.Close
       className={className}
-      render={<Button variant={variant} size={size} />}
+      render={<Button variant={variant} size={size} loading={loading} icon={icon} />}
       {...props}
     />
   );
