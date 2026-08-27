@@ -49,17 +49,13 @@ export const CategoryMenu: React.FC<CategoryMenuProps> = ({ t, activeElement, co
   };
 
   const scrollToElement = (elementId: string) => {
-    // Query element from the correct root (shadow DOM or light DOM)
+    // Query the element from the root this MFE actually rendered into: its own
+    // shadow root when it has one, the document otherwise.
     const root = containerRef.current?.getRootNode();
-    let element: HTMLElement | null = null;
-
-    if (root && root instanceof ShadowRoot) {
-      // Inside Shadow DOM: query from shadow root
-      element = root.getElementById(elementId);
-    } else {
-      // Fallback to light DOM for compatibility
-      element = document.getElementById(elementId);
-    }
+    const element =
+      root instanceof ShadowRoot
+        ? root.getElementById(elementId)
+        : document.getElementById(elementId);
 
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
