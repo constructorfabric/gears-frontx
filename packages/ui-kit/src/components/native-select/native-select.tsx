@@ -47,5 +47,5 @@ export function NativeSelectOption({ className, ...props }: NativeSelectOptionPr
 export type NativeSelectOptGroupProps = ComponentProps<'optgroup'>;
 
 export function NativeSelectOptGroup({ className, ...props }: NativeSelectOptGroupProps) {
-  return <optgroup className={cx(styles.option, className)} {...props} />;
+  return <optgroup className={cx(styles.optgroup, className)} {...props} />;
 }

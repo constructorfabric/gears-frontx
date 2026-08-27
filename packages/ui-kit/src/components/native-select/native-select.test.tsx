@@ -71,6 +71,10 @@ describe('NativeSelect', () => {
     const group = screen.getByRole('group', { name: 'Europe' });
     expect(group).toHaveProperty('tagName', 'OPTGROUP');
     expect(screen.getByRole('option', { name: 'France' })).toHaveProperty('tagName', 'OPTION');
+    // The group label styles on its own class, not the option's, so the two
+    // can diverge without one dragging the other along.
+    expect(group.className).toContain(styles.optgroup);
+    expect(group.className).not.toContain(styles.option);
   });
 
   it('merges a consumer className onto the wrapper', () => {
