@@ -43,6 +43,8 @@ own `DayPicker` underneath:
 | `numberOfMonths` | `number` — **range mode only** | `2` |
 | `closeOnSelect` | `boolean` — close the popover once a day is picked | `true` (single) / `false` (range) |
 | `disabled` | `Calendar`'s own `disabled` matcher | — |
+| `locale` | date-fns `Locale` — the month grid, the trigger label, AND the `input` variant's formatting and parsing | date-fns' default (en-US) |
+| `openCalendarLabel` | `string` — accessible name for the `input` variant's calendar button | `'Open calendar'` |
 | `open` / `defaultOpen` / `onOpenChange` | `Popover`'s own open-state props | — |
 | `container` | Portal container, forwarded to `PopoverContent` | — |
 | `className` / `id` / `aria-label` | Forwarded to the trigger (`button` variant) or the field (`input` variant) | — |
@@ -55,8 +57,11 @@ own `DayPicker` underneath:
   empty.
 - `input` — upstream's date-picker-input recipe: a free-typed `Input` with
   a calendar-icon `Button` in its `end` slot (see input.md's slot docs).
-  Typing a parseable date commits it immediately; `ArrowDown` opens the
-  calendar without reaching for the trailing button.
+  The field accepts one format, the one it displays — a full
+  `"June 01, 2025"` (long month, day, four-digit year, in `locale`) — and
+  commits only when what is typed is a complete, real date in it. Nothing
+  reaches `onSelect` on the way there. `ArrowDown` opens the calendar
+  without reaching for the trailing button.
 
 ## Definition of done
 
@@ -70,10 +75,13 @@ own `DayPicker` underneath:
   date-of-birth recipe — pass it through untouched, `Calendar` does the
   rest (see calendar.md).
 - **Typed input**: the `input` variant's text buffer is independent of the
-  committed `selected` value while a keystroke mid-date ("June 0") is not
-  yet parseable, so typing never gets silently reverted — but resyncs
-  automatically once `selected` changes, from either a completed keystroke
-  or an external reset.
+  committed `selected` value, so typing is never reverted or reformatted
+  under the caret — but it resyncs automatically when `selected` changes
+  from OUTSIDE the field (an external reset, a value arriving late).
+- **Visible month follows the selection.** Opening the popover lands on
+  the month of the current `selected` (the range's start, in range mode),
+  including a selection that arrived after mount; the user's own month
+  navigation then takes over until `selected` changes again.
 - **Popover chrome**: the calendar sits in a padding-free popup (upstream's
   `className="w-auto p-0"`) — `Calendar` supplies its own spacing, so
   `Popover`'s own default padding would double up with it.
@@ -113,12 +121,14 @@ const [range, setRange] = useState<DateRange>();
 - **`variant="input"` is single-mode only** — no ranged free-typed field
   is productized, since upstream's own recipe set has no such example to
   port from (its input recipe is single-date).
-- **The typed-input parse uses `new Date(string)`**, matching upstream's
-  date-picker-input recipe exactly (including its accepted format,
-  `"June 01, 2025"`) rather than a stricter `date-fns` parser — upstream
-  accepts this same ambiguity (native `Date` parsing varies by string
-  shape across engines), kept as-is rather than tightening behavior
-  upstream never specified.
+- **The typed-input parse is strict where upstream's is not.** Upstream's
+  recipe reads the field with `new Date(string)`, which accepts far more
+  than the format it displays and invents the rest: a half-typed
+  `"June 7"` is a valid Date to V8 — June 7th of 2001 — so every prefix
+  on the way to a real date commits a different wrong year. This port
+  parses the display format with `date-fns` instead and commits nothing
+  until the whole of it is there, four-digit year included. Same accepted
+  format (`"June 01, 2025"`, now localized by `locale`), no guessing.
 - **No `Field`/`FieldLabel` wrapper.** Upstream's basic/range/dob recipes
   wrap the whole picker in a `Field` with a fixed width and a label; this
   component is the picker alone; a consumer wires its own `Field`

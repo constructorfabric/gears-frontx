@@ -1,4 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { de } from 'date-fns/locale';
+import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -86,12 +88,55 @@ describe('DatePicker (input variant)', () => {
     expect(committed.getDate()).toBe(1);
   });
 
-  it('does not commit while the typed value is not yet a valid date', () => {
+  // Every prefix of "June 7, 2025" that a person types on the way there.
+  // `new Date(value)` reads several of these as real dates — "June 7" is
+  // June 7th 2001 to V8, "6" is June 1st 2001 — and committing them puts a
+  // succession of wrong years through onSelect while the user is still
+  // typing. Nothing commits until the date is complete.
+  it.each(['J', 'Ju', 'June', 'June ', 'June 7', 'June 7,', 'June 7, 2', 'June 7, 202', '6'])(
+    'does not commit the incomplete input %o',
+    (typed) => {
+      const onSelect = vi.fn();
+      render(<DatePicker variant="input" selected={undefined} onSelect={onSelect} />);
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: typed } });
+      expect(onSelect).not.toHaveBeenCalled();
+    },
+  );
+
+  it('commits once, on the last keystroke that completes the date', () => {
     const onSelect = vi.fn();
     render(<DatePicker variant="input" selected={undefined} onSelect={onSelect} />);
     const input = screen.getByRole('textbox');
-    fireEvent.change(input, { target: { value: 'June' } });
+    for (const typed of ['June 7', 'June 7,', 'June 7, 2', 'June 7, 20', 'June 7, 202']) {
+      fireEvent.change(input, { target: { value: typed } });
+    }
     expect(onSelect).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: 'June 7, 2025' } });
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    const committed = onSelect.mock.calls[0]?.[0] as Date;
+    expect(committed.getFullYear()).toBe(2025);
+    expect(committed.getMonth()).toBe(5);
+    expect(committed.getDate()).toBe(7);
+  });
+
+  it('rejects a complete-looking but impossible date', () => {
+    const onSelect = vi.fn();
+    render(<DatePicker variant="input" selected={undefined} onSelect={onSelect} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'June 31, 2025' } });
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('does not reformat the field under the caret when the committed date echoes back', () => {
+    function Controlled() {
+      const [selected, setSelected] = useState<Date | undefined>(undefined);
+      return <DatePicker variant="input" selected={selected} onSelect={setSelected} />;
+    }
+    render(<Controlled />);
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'June 7, 2025' } });
+    // Not "June 07, 2025": the value the user typed stays as typed.
+    expect(input.value).toBe('June 7, 2025');
   });
 
   it('clears the selection when the field is emptied', () => {
@@ -106,6 +151,56 @@ describe('DatePicker (input variant)', () => {
     render(<DatePicker variant="input" selected={undefined} onSelect={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
     expect(screen.getByRole('grid')).toBeTruthy();
+  });
+});
+
+describe('DatePicker visible month', () => {
+  // The month was seeded once, at mount. A picker mounted empty (the usual
+  // case — the stored value arrives a render later) then opened on
+  // "today" forever, however far away the selected date was.
+  it('opens on the month of a selection that arrived after mount', () => {
+    const { rerender } = render(<DatePicker selected={undefined} onSelect={vi.fn()} />);
+    rerender(<DatePicker selected={new Date(2021, 6, 4)} onSelect={vi.fn()} />);
+    openTrigger(/July 4th, 2021/);
+    expect(screen.getByRole('grid').getAttribute('aria-label')).toContain('July 2021');
+  });
+
+  it('follows the range start the same way', () => {
+    const { rerender } = render(<DatePicker mode="range" selected={undefined} onSelect={vi.fn()} />);
+    const range: DateRange = { from: new Date(2021, 6, 4), to: new Date(2021, 6, 8) };
+    rerender(<DatePicker mode="range" selected={range} onSelect={vi.fn()} />);
+    openTrigger(/Jul 04, 2021/);
+    expect(screen.getAllByRole('grid')[0]?.getAttribute('aria-label')).toContain('July 2021');
+  });
+});
+
+describe('DatePicker locale', () => {
+  // The month grid was already locale-aware through Calendar; the trigger
+  // label and the typed field were not, so a localized picker read half in
+  // the consumer's language and half in English.
+  it('formats the trigger label in the given locale', () => {
+    render(<DatePicker selected={new Date(2024, 0, 15)} onSelect={vi.fn()} locale={de} />);
+    expect(screen.getByRole('button', { name: /15\. Januar 2024/ })).toBeTruthy();
+  });
+
+  it('parses the typed field in the given locale', () => {
+    const onSelect = vi.fn();
+    render(<DatePicker variant="input" selected={undefined} onSelect={onSelect} locale={de} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Januar 15, 2024' } });
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect((onSelect.mock.calls[0]?.[0] as Date).getMonth()).toBe(0);
+  });
+
+  it('takes an override for the calendar button label', () => {
+    render(
+      <DatePicker
+        variant="input"
+        selected={undefined}
+        onSelect={vi.fn()}
+        openCalendarLabel="Kalender öffnen"
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Kalender öffnen' })).toBeTruthy();
   });
 });
 
