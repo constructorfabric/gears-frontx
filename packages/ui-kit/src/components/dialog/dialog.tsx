@@ -10,8 +10,8 @@ export const Dialog = DialogPrimitive.Root;
 /**
  * The root is a Base UI pass-through, but its props type is still exported:
  * a consumer writing a typed wrapper imports it from this kit — Base UI is
- * this package's dependency, not necessarily theirs. Same idiom as
- * TooltipProviderProps.
+ * this package's dependency, not necessarily theirs. Every root-level
+ * pass-through in the kit re-exports its props type for the same reason.
  */
 export type DialogProps = DialogPrimitive.Root.Props;
 

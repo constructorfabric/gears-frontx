@@ -8,9 +8,7 @@ import styles from './sheet.module.css';
 
 export const Sheet = DialogPrimitive.Root;
 /**
- * The root is a Base UI pass-through, but its props type is still exported:
- * a consumer writing a typed wrapper imports it from this kit — same idiom
- * as DialogProps.
+ * Base UI pass-through; props type re-exported (see dialog.tsx).
  */
 export type SheetProps = DialogPrimitive.Root.Props;
 

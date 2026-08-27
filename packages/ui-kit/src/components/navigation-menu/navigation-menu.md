@@ -159,11 +159,9 @@ Base UI writes four runtime CSS custom properties this port consumes —
 of `--anchor-width`/`--anchor-height` used elsewhere in the kit, and the
 mechanism behind the shared-Viewport morph described above (see
 `node_modules/@base-ui/react/navigation-menu/utils/setSharedFixedSize.mjs`).
-They are not yet in `tokens.test.ts`'s `BASE_UI_RUNTIME_VARS` exempt list,
-so `navigation-menu.module.css` currently fails that file's "consumes only
-theme-defined or same-part local variables" guard. `tokens.test.ts` is
-owned by another workstream in this porting effort; this file was not
-edited to add the exemption.
+They are listed in `tokens.test.ts`'s `BASE_UI_RUNTIME_VARS` exempt list,
+which is what keeps `navigation-menu.module.css` passing that file's
+"consumes only theme-defined or same-part local variables" guard.
 
 ## Anti-patterns
 

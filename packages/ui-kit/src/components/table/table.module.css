@@ -105,13 +105,13 @@
  * the highlight while a row-level disclosure is open — value-tested, so a
  * collapsed toggle does not match.
  *
- * --muted, not the --card-hover a card-shaped row used to take: rows are
- * transparent now, so this tint has to read against whatever is behind the
- * table, and the two backdrops it actually meets are --surface (DataTable's
- * card, a Card) and --background (a bare Table on the page). --card-hover
- * IS --background's own value in light mode — it was only ever a step up
- * from --surface-elevated, which no row paints any more — so on a card-less
- * table it would have made hover invisible. --muted is a step off both.
+ * --muted, never --card-hover: rows are transparent, so this tint has to
+ * read against whatever is behind the table, and the two backdrops it
+ * actually meets are --surface (DataTable's card, a Card) and --background
+ * (a bare Table on the page). --card-hover IS --background's own value in
+ * light mode — it is a step up from --surface-elevated, which no row paints
+ * — so on a card-less table it would make hover invisible. --muted is a
+ * step off both.
  */
 .tableBody .tableRow:hover,
 .tableBody .tableRow:has([aria-expanded='true']) {

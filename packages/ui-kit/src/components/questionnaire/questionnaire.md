@@ -4,8 +4,7 @@ A single-item-at-a-time multi-step form: one question visible at a time,
 with progress, required/skip/invalid state, and keyboard shortcuts handled
 for you. Behavior comes from **`@shadcn/react/questionnaire`**, a headless,
 zero-runtime-dep engine — a dependency deviation from the kit's usual Base
-UI foundation, approved 2026-08-20 (see `shadcn-porting-map.md`), taken
-because Base UI ships no multi-step-form primitive. This file supplies CSS
+UI foundation, taken because Base UI ships no multi-step-form primitive. This file supplies CSS
 Modules styling, composes the kit `Button` for navigation and the kit
 `Input` for freeform answers (matching upstream's own composition), and
 hand-rolls the choice indicator (see `QuestionnaireChoice`'s doc comment

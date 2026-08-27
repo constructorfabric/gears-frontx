@@ -11,8 +11,7 @@ import styles from './questionnaire.module.css';
 /*
  * Behavior (single-item stepper flow, per-item required/skip/invalid state,
  * keyboard shortcuts, radio-vs-checkbox choice semantics) comes entirely
- * from `@shadcn/react/questionnaire` (dependency deviation approved
- * 2026-08-20, see shadcn-porting-map.md) — a headless, zero-runtime-dep
+ * from `@shadcn/react/questionnaire` — a headless, zero-runtime-dep
  * engine, not Base UI, since Base UI ships no multi-step-form primitive.
  * This file supplies CSS Modules styling, composes the kit `Button` for
  * navigation (matching upstream's own composition,
@@ -24,8 +23,7 @@ import styles from './questionnaire.module.css';
  * Every part is a bare styling pass-through with no hook called in its own
  * render body, so — per this kit's SERVER_COMPONENTS/CLIENT_COMPONENTS
  * split (scripts/verify-consumer.sh) — this file needs no 'use client'
- * directive; it is not yet classified in either list there (integrator
- * follow-up, same shape as message-scroller.tsx's own note).
+ * directive.
  */
 
 export interface QuestionnaireProps

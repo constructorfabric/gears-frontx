@@ -156,7 +156,7 @@ export type AttachmentActionProps = ButtonProps;
  *
  * DRIFT from upstream: shadcn's `AttachmentAction` defaults to
  * `size="icon-xs"` — a dedicated micro icon-only step this kit's `Button`
- * does not (yet) have (tracked in shadcn-porting-map.md's Button row).
+ * does not have.
  * `size="sm"` is the smallest step available; icon-only squaring already
  * works at any size via Button's own `[data-icon-only]` rule
  * (button.module.css), so the visual result is a slightly larger action

@@ -7,11 +7,9 @@ import styles from './select.module.css';
 
 export const Select = SelectPrimitive.Root;
 /**
- * The root is a Base UI pass-through, but its props type is still exported:
- * a consumer writing a typed wrapper imports it from this kit — Base UI is
- * this package's dependency, not necessarily theirs. Generic like the root
- * itself: `Value` is the selected value's type, `Multiple` widens `value`/
- * `onValueChange` to arrays when true.
+ * Base UI pass-through; props type re-exported (see dialog.tsx). Generic
+ * like the root itself: `Value` is the selected value's type, `Multiple`
+ * widens `value`/`onValueChange` to arrays when true.
  */
 export type SelectProps<
   Value,

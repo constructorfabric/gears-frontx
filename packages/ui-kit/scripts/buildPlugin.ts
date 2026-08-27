@@ -151,28 +151,22 @@ export function buildPlugin(): PluginOption[] {
     const clientModuleIds = new Set<string>();
 
     /**
-     * Diagnosed 2026-08-20 (see shadcn-porting-map.md's Batch 1 integrator
-     * notes): the previous single-regex form —
+     * Do NOT collapse this loop back into a single regex. The obvious form —
      * `/^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*['"]use client['"];?/` — is a
      * textbook catastrophic-backtracking (ReDoS) shape: a `*`-repeated
      * alternation where one branch (`\/\*[\s\S]*?\*\/`) itself contains an
      * unbounded lazy quantifier. On input with FEW leading comment blocks
      * (most component .tsx files: one header comment, then code) the engine
      * fails fast. On input with MANY of them — this kit's own CSS Modules
-     * files, heavily commented block-by-block throughout (measured:
-     * sidebar.module.css's 59 separate block comments alone hung a single
-     * `.test()` call past 5 seconds; NOT a synthetic worst case, a real
-     * file in this repo) — the number of ways to partition that leading run
-     * before
-     * concluding "no directive here" grows combinatorially with the number
-     * of comment blocks, and `transform` runs this check on every one of
-     * this package's ~65 components' CSS modules, several as commented as
-     * sidebar's. That is what turned "vite build" from roughly a minute
-     * into unbounded (observed past an hour with no completion) even with
-     * `vite-plugin-dts` excluded entirely — this plugin's own `transform`
-     * hook, not declaration generation, was the actual cost center.
+     * files, commented block-by-block throughout; sidebar.module.css alone
+     * carries 59 separate block comments and hangs a single `.test()` call
+     * past 5 seconds — the number of ways to partition that leading run
+     * before concluding "no directive here" grows combinatorially with the
+     * comment-block count. `transform` runs this check on every one of the
+     * package's ~65 components' CSS modules, which is enough to turn
+     * `vite build` from roughly a minute into effectively unbounded.
      *
-     * The fix is the fast path bash's own `verify-consumer.sh` already
+     * This is instead the fast path bash's own `verify-consumer.sh` already
      * uses for the same "what is the file's first real statement" question
      * (`has_client_directive`'s awk skip-loop), generalized here to also
      * skip a genuine MULTI-line block comment (bash's version only skips a

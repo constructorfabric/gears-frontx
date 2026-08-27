@@ -12,12 +12,10 @@ import styles from './combobox.module.css';
 
 export const Combobox = ComboboxPrimitive.Root;
 /**
- * The root is a Base UI pass-through, but its props type is still exported:
- * a consumer writing a typed wrapper imports it from this kit — Base UI is
- * this package's dependency, not necessarily theirs. Generic like the root
- * itself: `Value` is the item value's type, `Multiple` widens `value`/
- * `onValueChange` (and the input's typed selection) to arrays when true —
- * same idiom as select.tsx's `SelectProps<Value, Multiple>`.
+ * Base UI pass-through; props type re-exported (see dialog.tsx). Generic
+ * like the root itself: `Value` is the item value's type, `Multiple` widens
+ * `value`/`onValueChange` (and the input's typed selection) to arrays when
+ * true — same idiom as select.tsx's `SelectProps<Value, Multiple>`.
  */
 export type ComboboxProps<
   Value,

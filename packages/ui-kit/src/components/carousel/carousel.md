@@ -2,8 +2,8 @@
 
 An embla-carousel-react wrapper — a scroll-snapping track of slides with
 optional Previous/Next controls and keyboard navigation. No Base UI
-primitive exists for this (confirmed against Base UI v1.7.0; see
-shadcn-porting-map.md), so `Carousel` owns the embla instance directly and
+primitive exists for this (confirmed against Base UI v1.7.0), so
+`Carousel` owns the embla instance directly and
 shares it with its parts through context.
 
 ## When to use

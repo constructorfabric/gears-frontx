@@ -19,12 +19,12 @@
    * a flex item's cross-axis `align-items: stretch` (the flex-container
    * default field.module.css's `.orientationVertical` never overrides)
    * only takes effect when the item's own `width` computes to `auto`. An
-   * explicit `width: fit-content` here previously blocked that stretch, so
-   * this wrapper had to out-cascade `.orientationVertical > *`'s
-   * `width: 100%` at the same (0-1-0) specificity — a collision resolved
-   * by CSS source order (i.e. bundler luck), not by design. Not setting a
-   * competing width at all removes the collision instead of winning it,
-   * without field.module.css needing to know NativeSelect exists.
+   * An explicit `width: fit-content` here would block that stretch and force
+   * this wrapper to out-cascade `.orientationVertical > *`'s `width: 100%`
+   * at the same (0-1-0) specificity — a collision decided by CSS source
+   * order, i.e. bundler luck. Setting no competing width removes the
+   * collision instead of winning it, without field.module.css needing to
+   * know NativeSelect exists.
    *
    * Matches upstream's own contract: shadcn's SelectTrigger ships its own
    * `w-fit` (github.com/shadcn-ui/ui select.tsx) while Field's vertical

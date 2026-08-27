@@ -98,8 +98,7 @@
 
 .input:disabled {
   cursor: not-allowed;
-  /* 0.42, unified with every other disabled control in the kit — see
-   * input.module.css. */
+  /* disabled opacity: see input.module.css */
   opacity: 0.42;
 }
 

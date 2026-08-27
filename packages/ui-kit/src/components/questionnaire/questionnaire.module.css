@@ -200,7 +200,7 @@
   box-shadow: inset 0 0 0 var(--ring-inset) var(--destructive);
 }
 
-/* 0.42 per the mockups' disabled specimens, matching Checkbox/Input. */
+/* disabled opacity: see input.module.css */
 .choice[data-disabled] {
   cursor: not-allowed;
   pointer-events: none;

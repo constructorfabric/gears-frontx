@@ -19,8 +19,7 @@ closed unless `keepMounted` is set).
 ## When not to use
 
 - A list of many mutually-exclusive or independently-expandable sections
-  — use `Accordion` once ported (tracked in shadcn-porting-map.md); this
-  component is a single panel, not a group.
+  — use `Accordion`; this component is a single panel, not a group.
 - A popup anchored to a trigger (menu, tooltip, popover) — `Collapsible`
   reflows the document in place; it does not portal or position content
   relative to the trigger.

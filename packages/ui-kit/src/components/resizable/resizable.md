@@ -2,8 +2,8 @@
 
 A react-resizable-panels wrapper — a group of panels a user can drag to
 resize, split by one or more draggable handles. No Base UI primitive
-exists for this (confirmed against Base UI v1.7.0; see
-shadcn-porting-map.md), so the kit forwards straight to the vendor
+exists for this (confirmed against Base UI v1.7.0), so the kit forwards
+straight to the vendor
 primitive with only class-name/icon translation on top.
 
 ## When to use

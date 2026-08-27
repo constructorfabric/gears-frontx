@@ -86,7 +86,7 @@
   }
 }
 
-/* 0.42 per the mockups' disabled specimens (see design-notes.md). */
+/* disabled opacity: see input.module.css */
 .trigger[data-disabled] {
   pointer-events: none;
   opacity: 0.42;

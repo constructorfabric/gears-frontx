@@ -15,13 +15,11 @@
  * instead, scoped to the SAME root the group-data variant read from.
  *
  * Geometry source: apps/v4/registry/new-york-v4/ui/sidebar.tsx, which
- * carries the real Tailwind utility strings. (The bases/base variant of
- * the same registry file routes several parts through bare "cn-sidebar-*"
- * marker classes with NO utilities attached — reading geometry off that
- * file means inventing it, which is how this port previously ended up with
- * 20px badges in 32px rows and 48px-wide buttons in a 48px icon rail.)
- * Every metric below is upstream's own, re-expressed on the kit's token
- * scales: p-2 -> --space-2, h-8 -> --control-height-sm, w-5 -> --space-5,
+ * carries the real Tailwind utility strings. The bases/base variant of the
+ * same registry file routes several parts through bare "cn-sidebar-*"
+ * marker classes with NO utilities attached, so it holds no geometry to
+ * read. Every metric below is upstream's own, re-expressed on the kit's
+ * token scales: p-2 -> --space-2, h-8 -> --control-height-sm, w-5 -> --space-5,
  * size-4 -> --icon-size-sm, text-xs -> --text-meta-size. Upstream's
  * half-step utilities (top-1.5 = 6px, top-3.5 = 14px) have no token of
  * their own and are DERIVED here — a 20px box centered in a 32px row is
@@ -56,17 +54,14 @@
    Sidebar leaves gaps around SidebarInset's floating card, so the wrapper
    itself needs the sidebar fill showing through instead of the page
    background.
-   `:has(> ...)`, not the unrestricted `:has([data-variant='inset'])` this
-   port carried until now: unrestricted `:has()` matches ANY descendant,
-   not just THIS wrapper's own Sidebar, so once a page nests more than one
-   SidebarProvider — a docs/demo shell around per-component example frames,
-   each with its own Provider — every ancestor wrapper up the tree that
-   happens to contain an inset-variant Sidebar ANYWHERE below it (even
-   inside an unrelated sibling example three levels down) matched too,
-   painting the sidebar fill onto wrappers whose own Sidebar was never
-   inset. `> ` restricts the match to Sidebar's actual position: a direct
-   child of this same wrapper, exactly the relationship the comment above
-   already describes. */
+   `:has(> ...)`, never the unrestricted `:has([data-variant='inset'])`:
+   unrestricted `:has()` matches ANY descendant, not just THIS wrapper's
+   own Sidebar, so on a page nesting more than one SidebarProvider — a
+   docs/demo shell around per-component example frames, each with its own
+   Provider — every ancestor wrapper containing an inset-variant Sidebar
+   anywhere below it would paint the sidebar fill even though its own
+   Sidebar is not inset. `> ` restricts the match to Sidebar's actual
+   position: a direct child of this same wrapper. */
 .wrapper:has(> [data-variant='inset']) {
   background-color: var(--sidebar);
 }
@@ -336,9 +331,8 @@
 }
 
 /* Transparent until hover — upstream's `hover:after:bg-sidebar-border`.
-   Painting it unconditionally (as this port previously did) puts a 2px
-   line immediately beside the container's own 1px border, reading as a
-   doubled, mis-weighted edge. */
+   Painting it unconditionally would put a 2px line immediately beside the
+   container's own 1px border, reading as a doubled, mis-weighted edge. */
 .rail::after {
   content: '';
   position: absolute;
@@ -423,22 +417,16 @@
    at desktop widths — a purely decorative refinement this port doesn't
    chase; see sidebar.md. The card treatment itself (margin/radius/shadow
    once THIS wrapper's own Sidebar is inset-variant) is kept, but read off
-   the general sibling combinator (`~`), not `:has([data-variant='inset'])`
-   as this port carried until now.
+   the general sibling combinator (`~`), never `:has([data-variant='inset'])`.
    SidebarInset IS Sidebar's flex sibling, never its descendant, so `~` is
    the exact, native selector for "a later sibling of an inset-variant
    Sidebar" and — critically — sibling combinators only ever match within
-   ONE shared parent. `:has([data-variant='inset'])` instead matched any
-   descendant at any depth: on a page nesting more than one
-   SidebarProvider (an app shell wrapping per-example demo frames, each
-   with its own Provider), an inset-variant Sidebar three levels down in
-   one unrelated frame made EVERY `.inset` under the outer wrapper —
-   including flat `variant="sidebar"` frames elsewhere on the same page —
-   grow this card's margin-top, which is exactly what desynced those
-   frames' content-header border from their own panel's flush divider by
-   that same 8px margin. `~` can't leak past its own parent the way
-   `:has()` leaked past its own subtree, because it isn't reading the
-   subtree at all — only Sidebar's own tag, in Sidebar's own flex row. */
+   ONE shared parent. `:has()` instead reads the whole subtree at any
+   depth: on a page nesting more than one SidebarProvider (an app shell
+   wrapping per-example demo frames, each with its own Provider), an
+   inset-variant Sidebar three levels down in one unrelated frame would
+   grow this card's margin on EVERY `.inset` under the outer wrapper,
+   including flat `variant="sidebar"` frames elsewhere on the page. */
 @media (min-width: 768px) {
   [data-variant='inset'] ~ .inset {
     margin: var(--space-2);
@@ -483,22 +471,15 @@
 }
 
 /*
- * The inset (upstream's `mx-2 w-auto`) has to be stated on the SAME
+ * The inset (upstream's `mx-2 w-auto`) must be stated on the SAME
  * `[data-orientation='horizontal']` selector separator.module.css uses for
- * its own `width: 100%`, not on a bare `.separator`: an attribute selector
- * outranks a plain class, so a bare `.separator { width: auto }` — what this
- * port carried until now — lost the cascade outright and the divider stayed
- * 100% wide with 8px margins on top, overhanging the panel's border-right by
- * 8px into SidebarInset. That overhang is the "step" the top edge showed
- * where the panel's divider met the content header's border. Upstream cannot
- * hit this: its two rules are in one Tailwind sheet where `w-auto` also loses
- * to the attribute variant, but its blocks never place a SidebarSeparator, so
- * the combination is never rendered.
+ * its own `width: 100%`: an attribute selector outranks a plain class, so a
+ * bare `.separator` override loses the cascade outright.
  *
  * Equal specificity leaves the tie to source order, and that order is
  * guaranteed rather than incidental: sidebar.tsx imports separator.js, so
- * ESM evaluates separator.module.css — and inserts its stylesheet — before
- * this file's, in the source tree and in the built package alike.
+ * ESM inserts separator.module.css's stylesheet before this file's, in the
+ * source tree and in the built package alike.
  */
 .separator[data-orientation='horizontal'] {
   width: auto;
@@ -806,15 +787,14 @@
 }
 
 /* No icon override for `sm`: upstream's `h-7 text-xs` moves the row height
-   and the type ramp only. Shrinking the icon to 12px as well (as this port
-   did) pulls the label 4px left of every default-size row, so a footer
-   mixing sm and default rows no longer shares a text edge. */
+   and the type ramp only. Shrinking the icon to 12px as well would pull the
+   label 4px left of every default-size row, so a footer mixing sm and
+   default rows would lose its shared text edge. */
 
 /* Upstream's `h-12` — 48px, one step above the tallest kit control. This
    is the two-line "user card" / "workspace switcher" row (avatar + name +
    secondary line), not merely a bigger nav row, which is why it is a full
-   16px taller than `default` rather than the 4px --control-height-md step
-   this port previously used. */
+   16px taller than `default` rather than one --control-height-md step. */
 .sizeLg {
   height: calc(var(--control-height-lg) + var(--space-2));
   font-size: var(--text-body-size);
@@ -862,10 +842,7 @@
 
 /*
  * Action and badge are both 20px boxes (upstream w-5 / h-5 min-w-5) pinned
- * 4px from the row's right edge and vertically CENTERED on the row — not
- * the 32px action and unsized 16px badge sitting at a flat 4px from the
- * top this port previously had, which left the badge 7px above the row's
- * own center line and the action taller than the row it annotates.
+ * 4px from the row's right edge and vertically CENTERED on the row.
  *
  * `top` is derived, not hardcoded: `(row height - 20) / 2`. Both parts
  * share the same three offsets because both annotate the same row, so the

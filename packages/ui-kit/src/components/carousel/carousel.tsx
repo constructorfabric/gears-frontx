@@ -24,7 +24,7 @@ import styles from './carousel.module.css';
 /*
  * Translated from shadcn/ui base (registry/bases/base/ui/carousel.tsx) —
  * an embla-carousel-react wrapper with no Base UI primitive underneath (no
- * Base UI Carousel exists; see shadcn-porting-map.md). The context/keyboard
+ * Base UI Carousel exists). The context/keyboard
  * plumbing below is copied structurally as upstream wrote it; only the
  * button composition and icons differ (see CarouselPrevious/Next).
  */

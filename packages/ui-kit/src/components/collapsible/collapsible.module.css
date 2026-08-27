@@ -55,8 +55,7 @@
  * intrinsic size instead of an approximate cap. `data-starting-style`/
  * `data-ending-style` pin the two open/close transition endpoints to 0,
  * mirroring the height-animation idiom shadcn's own tw-animate-css-based
- * translation would otherwise supply (see shadcn-porting-map.md's
- * Accordion/Collapsible note).
+ * translation would otherwise supply.
  */
 .content {
   height: var(--collapsible-panel-height);

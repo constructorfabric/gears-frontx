@@ -52,7 +52,7 @@ export type CalendarProps = DayPickerProps & {
 
 /**
  * Wraps react-day-picker's `DayPicker` (the kit ships no calendar primitive
- * of its own — see shadcn-porting-map.md). Upstream re-authors the ENTIRE
+ * of its own). Upstream re-authors the ENTIRE
  * visual surface through DayPicker's `classNames` prop, one Tailwind
  * utility string per UI slot; this port keeps that same seam but feeds it
  * CSS Modules classes instead, so the mapping below is the direct

@@ -74,8 +74,7 @@
   margin-inline: 0 var(--space-1);
   /* Upstream draws the button one control step below the field box (h-6
    * inside h-8, i.e. 8px shorter); against this kit's --control-height-lg
-   * field that step is --control-height-sm, which also retires the
-   * hand-set 1.75rem this rule used to carry. */
+   * field that step is --control-height-sm. */
   height: var(--control-height-sm);
   border: 0;
   background-color: transparent;

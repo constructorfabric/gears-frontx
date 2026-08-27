@@ -61,9 +61,8 @@
 
   /*
    * Popover chrome shared by every card-like popup (Dialog/DropdownMenu/
-   * Select/Toast): a 1px ring plus a two-layer drop shadow, previously
-   * hand-duplicated verbatim in all four modules (plus the ring half in
-   * Card, which has no real `border` to spend — see card.module.css). All
+   * Select/Toast): a 1px ring plus a two-layer drop shadow, declared once
+   * here rather than hand-duplicated in each module. All
    * four consumers already paint their surface from the --popover/
    * --popover-foreground pair, so this chrome takes the same family name
    * rather than "--overlay-*", which would read as a variant of --overlay

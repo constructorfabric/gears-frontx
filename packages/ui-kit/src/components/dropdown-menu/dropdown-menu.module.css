@@ -157,8 +157,7 @@
   color: var(--accent-foreground);
 }
 
-/* 0.42, unified with every other disabled control in the kit — see
- * input.module.css. */
+/* disabled opacity: see input.module.css */
 .item[data-disabled] {
   pointer-events: none;
   opacity: 0.42;
@@ -213,8 +212,7 @@
   color: var(--accent-foreground);
 }
 
-/* 0.42, unified with every other disabled control in the kit — see
- * input.module.css. */
+/* disabled opacity: see input.module.css */
 .checkboxItem[data-disabled],
 .radioItem[data-disabled] {
   pointer-events: none;
@@ -291,8 +289,7 @@
   color: var(--accent-foreground);
 }
 
-/* 0.42, unified with every other disabled control in the kit — see
- * input.module.css. */
+/* disabled opacity: see input.module.css */
 .subTrigger[data-disabled] {
   pointer-events: none;
   opacity: 0.42;

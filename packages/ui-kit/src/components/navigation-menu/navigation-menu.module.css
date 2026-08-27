@@ -103,8 +103,7 @@
   }
 }
 
-/* 0.42, unified with every other disabled control in the kit — see
- * input.module.css. */
+/* disabled opacity: see input.module.css */
 .trigger:disabled,
 .trigger[data-disabled] {
   pointer-events: none;
@@ -242,9 +241,8 @@
 
 /*
  * The per-item content panel that gets portaled into .viewport when its
- * item is active (see NavigationMenuContent.mjs's ReactDOM.createPortal —
- * this is the mechanic shadcn-porting-map.md's "Viewport/popup transitions
- * to hand-write" note refers to). Sized to its own content
+ * item is active (see NavigationMenuContent.mjs's ReactDOM.createPortal).
+ * Sized to its own content
  * (`width: max-content`), not stretched to the popup: the popup itself is
  * what's sized to the content via --popup-width/-height above.
  */

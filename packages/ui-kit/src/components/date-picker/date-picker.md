@@ -108,9 +108,8 @@ const [range, setRange] = useState<DateRange>();
 - **One component, not five copy-pasted recipes.** `mode` and `variant`
   cover four of upstream's five flavors (demo/basic, range, dob, input);
   the fifth (a natural-language `chrono-node` parser) is out of scope —
-  it is a third-party NLP dependency the ADR at
-  shadcn-porting-map.md's Calendar/Date Picker rows never confirmed, and
-  no other kit component pulls in a parsing library for one input mode.
+  it is a third-party NLP dependency, and no other kit component pulls in
+  a parsing library for one input mode.
 - **`variant="input"` is single-mode only** — no ranged free-typed field
   is productized, since upstream's own recipe set has no such example to
   port from (its input recipe is single-date).

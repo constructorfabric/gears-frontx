@@ -2,9 +2,8 @@
  * Drawer styles, translated from shadcn/ui's base-variant registry (MIT,
  * https://ui.shadcn.com/registry/bases/base/ui/drawer.tsx) to CSS Modules.
  * Consumes only theme.css variables, Base UI's own Drawer runtime custom
- * properties (documented inline at each use — see also this port's report
- * for the full list against tokens.test.ts's BASE_UI_RUNTIME_VARS), and
- * this file's own locally-declared geometry math (Toast's `--peek` is the
+ * properties (documented inline at each use, and listed in tokens.test.ts's
+ * BASE_UI_RUNTIME_VARS), and this file's own locally-declared geometry math (Toast's `--peek` is the
  * kit's established precedent for that last category).
  *
  * The fetched source's `cn-drawer-*` class names (cn-drawer-overlay,
@@ -22,8 +21,8 @@
  * Backdrop (`cn-drawer-overlay`). `--drawer-swipe-progress` and
  * `--drawer-swipe-strength` are written directly onto THIS element by Base
  * UI's own DrawerViewport during a live swipe of the drawer this backdrop
- * belongs to (see this port's report — neither is in tokens.test.ts's
- * BASE_UI_RUNTIME_VARS yet). Background color is this port's own inference:
+ * belongs to (both are in tokens.test.ts's BASE_UI_RUNTIME_VARS).
+ * Background color is this port's own inference:
  * not in the fetched Tailwind class list (the `cn-drawer-overlay` base
  * recipe most likely supplies it), taken from the SAME --overlay scrim
  * token Dialog's and Sheet's own backdrops already use for the identical

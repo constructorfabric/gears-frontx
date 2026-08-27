@@ -53,8 +53,8 @@
   /*
    * No box-shadow: the mockup's card is a flat surface — stroke and fill
    * only, no drop shadow drawn. Card is deliberately NOT part of the
-   * --popover-shadow/--popover-border family it used to borrow the ring
-   * half from: those name the chrome of a floating popup (Dialog/
+   * --popover-shadow/--popover-border family: those name the chrome of a
+   * floating popup (Dialog/
    * DropdownMenu/Select/Toast), and a card floats over nothing.
    */
 }

@@ -83,9 +83,8 @@
  * is what lets each variant use its own hue (see --button-focus-ring on
  * .button and the per-variant overrides below) without needing a second,
  * fill-side tone. `outline` is also layout-neutral — unlike a real
- * border-width switch, it never changes the button's box, so the old
- * reason for not simply thickening the border (the label shifting sideways
- * on every focus/blur) no longer applies. The per-variant color arrives via
+ * border-width switch, it never changes the button's box, so the label
+ * never shifts sideways on focus/blur. The per-variant color arrives via
  * --button-focus-ring (set on .button above, overridden by the variants
  * below).
  */
@@ -109,9 +108,7 @@
   }
 }
 
-/* 0.42 per the mockups' disabled specimens (see checkbox/radio-group/
- * switch/label, which already drew it that way — this and Input/Textarea/
- * Select were the outliers at 0.5). */
+/* disabled opacity: see input.module.css */
 .button:disabled {
   pointer-events: none;
   opacity: 0.42;
@@ -124,8 +121,8 @@
  * button the user just clicked and leave `aria-busy` announced to no one.
  * `focusableWhenDisabled` keeps it focusable instead (Base UI reports the
  * state via `aria-disabled`, not the native attribute), so `:disabled`
- * above no longer matches during `loading` and needs this rule of its own
- * to keep the same dimmed look the button always had while spinning.
+ * above never matches during `loading` and this rule is what keeps a
+ * spinning button dimmed the same way a disabled one is.
  */
 .button[data-loading] {
   pointer-events: none;
@@ -182,12 +179,12 @@
 
 /*
  * A NEUTRAL hover fill, not the accent tint. The Button / Icon masters draw
- * both borderless treatments across all five states, and they separate the
- * two jobs the accent pairing used to do here: `hover` fills with --muted
- * over --foreground text, while --accent/--accent-foreground is what the
- * `selected` specimen uses. Reusing accent for hover made a merely
- * hovered button read as a selected one — and left Toggle, whose pressed
- * state genuinely IS selected, with no louder step to promote to.
+ * both borderless treatments across all five states, and they keep the two
+ * jobs apart: `hover` fills with --muted over --foreground text, while
+ * --accent/--accent-foreground is what the `selected` specimen uses.
+ * Reusing accent for hover would make a merely hovered button read as a
+ * selected one, and leave Toggle — whose pressed state genuinely IS
+ * selected — with no louder step to promote to.
  */
 .variantOutline:hover {
   background-color: var(--button-bg-hover, var(--button-bg, var(--muted)));

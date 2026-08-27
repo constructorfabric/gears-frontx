@@ -85,10 +85,9 @@ The slide/dismiss animation is driven by custom properties Base UI's own
 gesture (`--drawer-swipe-movement-x`/`-y`, `--drawer-swipe-progress`,
 `--drawer-swipe-strength`, `--nested-drawers`, plus the measured
 `--drawer-height`/`--drawer-frontmost-height`/`--drawer-snap-point-offset`)
-— none of these are yet in `tokens.test.ts`'s `BASE_UI_RUNTIME_VARS`
-exemption list; see this port's own delivery report for the exact set and
-which ones the metric-scale guard would flag today versus which pass only
-by an incidental prefix/fallback match.
+— all of these are listed in `tokens.test.ts`'s `BASE_UI_RUNTIME_VARS`
+exemption list, which is what keeps them out of that file's
+"theme-defined or same-part local variables only" guard.
 
 The enter/exit slide itself is a plain CSS transition between the
 `[data-starting-style]`/`[data-ending-style]` transform (`--closed-transform`,

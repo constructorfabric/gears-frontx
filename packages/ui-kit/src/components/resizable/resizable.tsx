@@ -7,7 +7,7 @@ import styles from './resizable.module.css';
 /*
  * Translated from shadcn/ui base (registry/bases/base/ui/resizable.tsx) — a
  * react-resizable-panels wrapper with no Base UI primitive underneath (no
- * Base UI Resizable exists; see shadcn-porting-map.md).
+ * Base UI Resizable exists).
  *
  * No 'use client' here despite react-resizable-panels itself needing the
  * client runtime (measuring panels, dragging handles): none of the three
@@ -53,8 +53,7 @@ export interface ResizableHandleProps extends ResizablePrimitive.SeparatorProps 
  * stylesheet, which this porting task has no access to) — the new-york-v4
  * sibling variant is the one that names an actual icon (`GripVerticalIcon`)
  * and gives concrete box geometry, so this follows that sibling for both,
- * same "base ships structure only" precedent already recorded for Avatar in
- * shadcn-porting-map.md. */
+ * the same "base ships structure only" pattern Avatar hits. */
 export function ResizableHandle({ withHandle, className, ...props }: ResizableHandleProps) {
   return (
     <ResizablePrimitive.Separator className={cx(styles.handle, className)} {...props}>

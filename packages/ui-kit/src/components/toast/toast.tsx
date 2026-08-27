@@ -71,7 +71,6 @@ function ToastCard({
   );
 }
 
-/* Reads the live toast list from context and renders one ToastCard each. */
 function ToastList({ closeLabel }: { closeLabel: string }) {
   const { toasts } = ToastPrimitive.useToastManager();
   return toasts.map((item) => <ToastCard key={item.id} toast={item} closeLabel={closeLabel} />);

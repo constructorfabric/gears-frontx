@@ -124,7 +124,7 @@ import { Row } from './shared';
  * in the Figma mockup (background/surface/... swatches, type specimens,
  * layout+elevation). No Primitive Palette page: theme.css defines no
  * primitive color ramps (semantic tokens only), so there is nothing to
- * port for that board — see the demo README / task report for the gap.
+ * port for that board — see the demo README.
  * No separate Light/Dark pages either: the header's theme toggle already
  * covers both for every page below.
  */
@@ -136,19 +136,16 @@ const PAGES: { slug: string; label: string; Component: ComponentType }[] = [
 
 /**
  * One example module per component, discovered by filename rather than
- * hand-listed here — the whole point (see task brief): other agents add
- * `examples/<slug>.tsx` files for components as they land, and the menu
- * picks them up on the next save with no shell edit.
+ * hand-listed here: dropping in `examples/<slug>.tsx` puts the component
+ * in the menu on the next save with no shell edit.
  *
- * Deliberately NOT `eager: true`: this glob previously imported every
- * example module up front, so one file that imports a component missing
- * from the barrel (a real incident — a component ported into src/ but not
- * yet re-exported from index.ts) threw during module evaluation and took
- * the entire app down to a white screen before React ever got to render
- * anything, menu included. A lazy loader per slug defers that import to
- * the moment its screen is actually opened, and ExampleErrorBoundary below
- * catches it there — broken or not-yet-wired components stay contained to
- * their own screen.
+ * Deliberately NOT `eager: true`. Eager glob imports evaluate every example
+ * module up front, so a single file importing a component missing from the
+ * barrel throws before React renders anything and takes the whole app down
+ * to a white screen, menu included. A lazy loader per slug defers that
+ * import to the moment its screen is opened, and ExampleErrorBoundary below
+ * catches it there — a broken or not-yet-exported component stays contained
+ * to its own screen.
  */
 type ExampleModule = { default: ComponentType };
 const exampleLoaders = import.meta.glob<ExampleModule>('./examples/*.tsx');
@@ -262,13 +259,12 @@ function canonicalHash(route: Route): string {
  * link all take the same path through here.
  *
  * Normalization (an empty hash on first load, or an unrecognized one from
- * a hand-edited URL, or a stale link to a component another agent hasn't
- * added an example for yet) uses history.replaceState, not a hash
- * assignment: assigning to `location.hash` always pushes a new history
- * entry, even when the "navigation" is really this hook correcting the URL
- * to match state it already decided on. Doing that on load pushed an entry
- * nobody asked for, so Back needed two presses to actually leave the page
- * instead of one.
+ * a hand-edited URL, or a stale link to a component with no example file)
+ * uses history.replaceState, not a hash assignment: assigning to
+ * `location.hash` always pushes a new history entry, even when the
+ * "navigation" is really this hook correcting the URL to match state it
+ * already decided on. On load that would push an entry nobody asked for,
+ * leaving Back to need two presses to leave the page instead of one.
  */
 function useHashRoute(): Route {
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
@@ -294,8 +290,8 @@ function useHashRoute(): Route {
  *
  * `?? ComponentIcon` covers the one case this table can't: COMPONENTS is
  * discovered from `examples/*.tsx` at build time (see the glob comment
- * above), so another agent's new example ships before anyone updates this
- * map. The fallback keeps that row an icon instead of `undefined` reaching
+ * above), so a new example file can ship before this map is updated. The
+ * fallback keeps that row an icon instead of `undefined` reaching
  * `<Icon />` and crashing the rail.
  */
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -431,10 +427,10 @@ function NavGroup({
   // through as a ref callback without a cast.
   const [activeRow, setActiveRow] = useState<HTMLElement | null>(null);
   // The panel scrolls its own 60+ rows, so a deep link (or a reload) deep
-  // in the alphabet used to land with the current screen's row parked
-  // somewhere out of sight. `block: 'nearest'` is what keeps this from
-  // becoming a jump on every click: a row already in view is left exactly
-  // where it is, and only an off-screen one is brought to the edge.
+  // in the alphabet would otherwise leave the current screen's row parked
+  // out of sight. `block: 'nearest'` keeps this from becoming a jump on
+  // every click: a row already in view is left exactly where it is, and
+  // only an off-screen one is brought to the edge.
   useEffect(() => {
     activeRow?.scrollIntoView({ block: 'nearest' });
   }, [activeRow]);
@@ -543,10 +539,9 @@ function App() {
         {/* "FrontX UiKit" as the panel's own workspace row — the same
             SidebarHeader > SidebarMenu > SidebarMenuItem > SidebarMenuButton
             size="lg" shape demo/examples/sidebar.tsx's AppSidebar uses for
-            its "Acme Inc" row, minus that pattern's secondary line (owner:
-            no subtitle under the name) AND minus its trailing chevron: that
-            chevron is upstream's cue for a dropdown/workspace-switcher,
-            which this row is not (owner: "лого не должен быть селектором")
+            its "Acme Inc" row, minus that pattern's secondary line and
+            minus its trailing chevron: the chevron is upstream's cue for a
+            dropdown/workspace-switcher, which this row is not
             — it is a plain static home link, same anchor-row idiom
             NavGroup's rows already use below it. `render` swaps the
             button's tag for an <a>, so this is a real link
@@ -699,9 +694,8 @@ function App() {
                   </Suspense>
                 </ExampleErrorBoundary>
               ) : (
-                // No examples/<slug>.tsx yet for this route — graceful
-                // placeholder rather than a crash, since other agents add
-                // these files concurrently and a stale link can outrun them.
+                // No examples/<slug>.tsx for this route — a stale or
+                // hand-typed hash gets a placeholder, not a crash.
                 <p style={{ margin: 0, color: 'var(--muted-foreground)' }}>
                   No example found for “{route.slug}” yet.
                 </p>

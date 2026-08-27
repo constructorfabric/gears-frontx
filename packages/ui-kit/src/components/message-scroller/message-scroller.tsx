@@ -10,9 +10,8 @@ import styles from './message-scroller.module.css';
 /*
  * Behavior (auto-follow tracking, scroll-anchor bookkeeping, imperative
  * scrollToEnd/scrollToStart/scrollToMessage) comes entirely from
- * `@shadcn/react/message-scroller` (dependency deviation approved
- * 2026-08-20, see shadcn-porting-map.md) — a headless, zero-runtime-dep
- * engine, not Base UI, since Base UI ships no chat-scroller primitive. This
+ * `@shadcn/react/message-scroller` — a headless, zero-runtime-dep engine,
+ * not Base UI, since Base UI ships no chat-scroller primitive. This
  * file only supplies CSS Modules styling and composes the kit `Button` for
  * the jump-to-end/start affordance, matching upstream's own composition
  * (apps/v4/registry/bases/base/ui/message-scroller.tsx).
@@ -21,9 +20,7 @@ import styles from './message-scroller.module.css';
  * hook in their own render body (the stateful work lives inside the
  * imported primitives) — so, per this kit's SERVER_COMPONENTS/
  * CLIENT_COMPONENTS split (scripts/verify-consumer.sh), this file needs no
- * 'use client' directive; unlike breadcrumb.tsx it is not yet classified
- * in either list there (integrator follow-up, same shape as the
- * accordion/pagination integrator notes in shadcn-porting-map.md).
+ * 'use client' directive.
  */
 
 export type MessageScrollerProviderProps = ComponentProps<

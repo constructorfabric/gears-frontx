@@ -64,8 +64,7 @@
   }
 }
 
-/* 0.42 per the mockups' disabled specimens (see button/checkbox/radio-group/
- * switch — the kit-wide disabled treatment). */
+/* disabled opacity: see input.module.css */
 .toggle:disabled {
   pointer-events: none;
   opacity: 0.42;

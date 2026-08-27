@@ -11,9 +11,8 @@ import styles from './collapsible.module.css';
  * only `data-slot`, per the kit's standing decision, see card.tsx), since a
  * usable component needs a default focus ring on the trigger and a real
  * open/close height transition on the content — both hand-written in CSS
- * Modules (upstream leaves them entirely to the consumer; see
- * shadcn-porting-map.md's "Open/close height animation must be
- * hand-written" note, shared with Accordion).
+ * Modules (upstream leaves both entirely to the consumer, the same way it
+ * does for Accordion).
  */
 export interface CollapsibleProps extends Omit<CollapsiblePrimitive.Root.Props, 'className'> {
   className?: string;

@@ -16,8 +16,8 @@
  * `.input`/`.input:focus-visible` rules (input.module.css) are each
  * (0,1,0)/(0,2,0) — a same-specificity override would depend on which
  * stylesheet a consumer's bundler happens to load first. Nesting under
- * `.group` adds a class without needing to touch input.module.css (owned
- * elsewhere in this port batch), giving (0,2,0)/(0,3,0), which reliably
+ * `.group` adds a class without needing to touch input.module.css at all,
+ * giving (0,2,0)/(0,3,0), which reliably
  * outranks Input's own rules regardless of load order. Every rule below
  * that reaches into Button/Input/Textarea territory is specificity-checked
  * the same way, and each says so where it isn't obvious.

@@ -113,7 +113,7 @@
   }
 }
 
-/* 0.42 per the mockups' disabled specimens — see input.module.css. */
+/* disabled opacity: see input.module.css */
 .textarea:disabled {
   cursor: not-allowed;
   opacity: 0.42;

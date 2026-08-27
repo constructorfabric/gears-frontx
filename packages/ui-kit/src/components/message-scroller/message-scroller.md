@@ -6,8 +6,7 @@ to read history, and exposes a floating button to jump back. Behavior
 (scroll tracking, anchor bookkeeping, the imperative `scrollTo*` API) comes
 from **`@shadcn/react/message-scroller`**, a headless, zero-runtime-dep
 engine — a dependency deviation from the kit's usual Base UI foundation,
-approved 2026-08-20 (see `shadcn-porting-map.md`), taken because Base UI
-ships no chat-scroller primitive. This file supplies only CSS Modules
+taken because Base UI ships no chat-scroller primitive. This file supplies only CSS Modules
 styling and composes the kit `Button` for the jump affordance.
 
 Composition: `MessageScrollerProvider` (holds auto-follow state, wrap once
@@ -92,9 +91,8 @@ exists past each edge; `useMessageScrollerVisibility()` —
   the kit's standing convention for bare icon buttons (see `button.md`).
 - **No scroll-fade edge mask.** Upstream's viewport also carries a
   `scroll-fade-b` Tailwind utility (a gradient mask hinting more content
-  below) and a `scrollbar-thin` utility. Both are separate, not-yet-ported
-  utility items in `shadcn-porting-map.md` ("Non-component items");
-  the viewport here uses the platform default scrollbar and no fade mask.
+  below) and a `scrollbar-thin` utility. Neither is ported; the viewport
+  here uses the platform default scrollbar and no fade mask.
 - **No manual recolor on the button.** Upstream repaints the composed
   `Button` to `border-border bg-background text-foreground` regardless of
   the `variant` it passes. This wrapper leaves color entirely to the kit
