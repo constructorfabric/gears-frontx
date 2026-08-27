@@ -94,6 +94,19 @@ export interface ComboboxInputProps extends Omit<ComboboxPrimitive.Input.Props, 
    * @default false
    */
   showClear?: boolean;
+  /**
+   * Accessible name for the chevron button `showTrigger` renders. It is an
+   * icon-only control, so this string IS its name — override it to ship a
+   * combobox in any language but English, the same way `Dialog`'s
+   * `closeLabel` and `SidebarTrigger`'s `label` work.
+   * @default 'Toggle options'
+   */
+  toggleLabel?: string;
+  /**
+   * Accessible name for the clear button `showClear` renders.
+   * @default 'Clear value'
+   */
+  clearLabel?: string;
   children?: ReactNode;
 }
 
@@ -111,6 +124,8 @@ export function ComboboxInput({
   disabled = false,
   showTrigger = true,
   showClear = false,
+  toggleLabel = 'Toggle options',
+  clearLabel = 'Clear value',
   ...props
 }: ComboboxInputProps) {
   return (
@@ -124,8 +139,8 @@ export function ComboboxInput({
         disabled={disabled}
         {...props}
       />
-      {showTrigger && <ComboboxTrigger disabled={disabled} aria-label="Toggle options" />}
-      {showClear && <ComboboxClear disabled={disabled} aria-label="Clear value" />}
+      {showTrigger && <ComboboxTrigger disabled={disabled} aria-label={toggleLabel} />}
+      {showClear && <ComboboxClear disabled={disabled} aria-label={clearLabel} />}
       {children}
     </span>
   );
@@ -293,19 +308,27 @@ export interface ComboboxChipProps extends Omit<ComboboxPrimitive.Chip.Props, 'c
    * @default true
    */
   showRemove?: boolean;
+  /**
+   * Accessible name for that remove button. Reads better naming the chip
+   * it removes (`removeLabel={`Remove ${label}`}`) once a form has several
+   * of them.
+   * @default 'Remove'
+   */
+  removeLabel?: string;
 }
 
 export function ComboboxChip({
   className,
   children,
   showRemove = true,
+  removeLabel = 'Remove',
   ...props
 }: ComboboxChipProps) {
   return (
     <ComboboxPrimitive.Chip className={cx(styles.chip, className)} {...props}>
       {children}
       {showRemove && (
-        <ComboboxPrimitive.ChipRemove className={styles.chipRemove} aria-label="Remove">
+        <ComboboxPrimitive.ChipRemove className={styles.chipRemove} aria-label={removeLabel}>
           <XIcon className={cx(styles.svgIcon, styles.chipRemoveIcon)} />
         </ComboboxPrimitive.ChipRemove>
       )}

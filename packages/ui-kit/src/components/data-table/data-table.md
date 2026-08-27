@@ -25,7 +25,10 @@ shipped as reusable exports instead:
 - `dataTableSelectionColumn()` — the guide's "Row Selection" step
   hand-writes a `select` display column with shadcn's `Checkbox` in its
   `header`/`cell`. Same column def, built with the kit's `Checkbox`,
-  available as one call.
+  available as one call. Its checkboxes are icon-only, so their accessible
+  names are the whole label: override them with
+  `dataTableSelectionColumn({ selectAllLabel, selectRowLabel })` (default
+  `'Select all'` / `'Select row'`).
 - `DataTableSortButton` — the guide's "Sorting" step hand-writes a ghost
   `Button` + arrow icon toggling `column.toggleSorting` inline in a
   column's `header`. Generalized into one reusable piece.
@@ -94,7 +97,17 @@ code, not a migration.
 | `pageSize` | `number` — live, not just a starting value: change it and the table repaginates, keeping the current rows in view | `10` |
 | `enableRowSelection` | `boolean` — see below | `false` |
 | `emptyMessage` | `ReactNode` — content of the one row spanning every column when `data` is empty | `'No results.'` |
+| `previousLabel` / `nextLabel` | `ReactNode` — the pagination buttons' labels | `'Previous'` / `'Next'` |
+| `selectionSummary` | `(selected: number, total: number) => ReactNode` — the footer's selection sentence | `` `${selected} of ${total} row(s) selected.` `` |
 | `className` | `string` — on the card (the outermost element) | — |
+
+Every string this component renders on its own is one of the props above,
+so a non-English table needs no fork: `previousLabel`/`nextLabel` and
+`emptyMessage` are plain nodes, and `selectionSummary` is a function
+because it counts things — a language with more than one plural form
+cannot be served by substituting numbers into a fixed template. The
+checkbox column's own two labels are `dataTableSelectionColumn`'s
+arguments: `dataTableSelectionColumn({ selectAllLabel, selectRowLabel })`.
 
 `enableRowSelection` gates two independent things: the table option that
 lets rows actually be selected, and whether the footer's "N of M row(s)

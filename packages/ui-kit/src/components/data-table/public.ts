@@ -5,6 +5,7 @@ export {
   dataTableFeatures,
   type DataTableFeatures,
   dataTableSelectionColumn,
+  type DataTableSelectionColumnLabels,
   DataTableSortButton,
   type DataTableSortButtonProps,
 } from './data-table.js';

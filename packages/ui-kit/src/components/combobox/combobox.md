@@ -47,7 +47,13 @@ items) don't run.
 |------|------|---------|
 | `showTrigger` | `boolean` — renders the trailing chevron button that opens the popup | `true` |
 | `showClear` | `boolean` — renders a trailing clear button once a value is chosen. Base UI only mounts it while there's something to clear, and it visually replaces the trigger in the same corner rather than the two ever stacking | `false` |
+| `toggleLabel` | `string` — accessible name for the chevron button | `'Toggle options'` |
+| `clearLabel` | `string` — accessible name for the clear button | `'Clear value'` |
 | `className` | `string` — merged after the kit class | — |
+
+Both trailing buttons are icon-only, so those two labels ARE their
+accessible names — override them for any language but English, the same
+way `Dialog`'s `closeLabel` and `SidebarTrigger`'s `label` work.
 
 `ComboboxContent` accepts positioning props (`side`, `sideOffset`,
 `align`, `alignOffset`, `anchor`, plus the escape hatch for fields inside a
@@ -61,7 +67,10 @@ portals to `<body>` by default, so if your theme lives on a subtree
 destructive color.
 
 `ComboboxChip` takes `showRemove` (`boolean`, default `true`) to omit the
-remove button on a fixed/read-only chip.
+remove button on a fixed/read-only chip, and `removeLabel` (`string`,
+default `'Remove'`) for that button's accessible name — worth naming the
+chip itself (`removeLabel={`Remove ${label}`}`) once a form carries
+several.
 
 ## Examples
 

@@ -201,6 +201,29 @@ describe('Combobox', () => {
     expect(screen.getByRole('button', { name: 'Clear value' })).toBeTruthy();
   });
 
+  // The three buttons this component renders are icon-only, so these
+  // strings ARE their accessible names — hardcoding them made an English
+  // combobox the only one the kit could ship.
+  it('takes an override for every label it renders itself', () => {
+    render(
+      <Combobox multiple items={REGIONS} defaultValue={['Europe']}>
+        <ComboboxChips>
+          <ComboboxChip removeLabel="Entfernen">Europe</ComboboxChip>
+          <ComboboxChipsInput aria-label="Region" />
+        </ComboboxChips>
+        <ComboboxInput
+          aria-label="Region"
+          showClear
+          toggleLabel="Optionen umschalten"
+          clearLabel="Auswahl löschen"
+        />
+      </Combobox>,
+    );
+    expect(screen.getByRole('button', { name: 'Optionen umschalten' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Auswahl löschen' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Entfernen' })).toBeTruthy();
+  });
+
   it('adds and removes a chip in multi-select mode', () => {
     const onValueChange = vi.fn();
 

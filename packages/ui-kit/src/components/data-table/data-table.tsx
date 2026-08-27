@@ -73,7 +73,17 @@ export function dataTableColumnHelper<TData extends RowData>() {
  * no visibility feature there is nothing for a selection column to opt
  * out of hiding from.
  */
-export function dataTableSelectionColumn<TData extends RowData>(): ColumnDef<DataTableFeatures, TData> {
+export interface DataTableSelectionColumnLabels {
+  /** Accessible name for the header checkbox. @default 'Select all' */
+  selectAllLabel?: string;
+  /** Accessible name for each row checkbox. @default 'Select row' */
+  selectRowLabel?: string;
+}
+
+export function dataTableSelectionColumn<TData extends RowData>({
+  selectAllLabel = 'Select all',
+  selectRowLabel = 'Select row',
+}: DataTableSelectionColumnLabels = {}): ColumnDef<DataTableFeatures, TData> {
   return dataTableColumnHelper<TData>().display({
     id: 'select',
     header: ({ table }) => (
@@ -81,14 +91,14 @@ export function dataTableSelectionColumn<TData extends RowData>(): ColumnDef<Dat
         checked={table.getIsAllPageRowsSelected()}
         indeterminate={table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected()}
         onCheckedChange={(checked) => table.toggleAllPageRowsSelected(checked)}
-        aria-label="Select all"
+        aria-label={selectAllLabel}
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(checked) => row.toggleSelected(checked)}
-        aria-label="Select row"
+        aria-label={selectRowLabel}
       />
     ),
     enableSorting: false,
@@ -167,7 +177,23 @@ export interface DataTableProps<TData extends RowData> {
   enableRowSelection?: boolean;
   /** Content for the one row spanning every column when `data` is empty. @default 'No results.' */
   emptyMessage?: ReactNode;
+  /** Label on the previous-page button. @default 'Previous' */
+  previousLabel?: ReactNode;
+  /** Label on the next-page button. @default 'Next' */
+  nextLabel?: ReactNode;
+  /**
+   * The selection summary shown while `enableRowSelection` is set. A
+   * function, not a string, because the sentence it replaces counts things
+   * — and a language with more than one plural form cannot be expressed by
+   * substituting numbers into a fixed template.
+   * @default `${selected} of ${total} row(s) selected.`
+   */
+  selectionSummary?: (selected: number, total: number) => ReactNode;
   className?: string;
+}
+
+function defaultSelectionSummary(selected: number, total: number) {
+  return `${selected} of ${total} row(s) selected.`;
 }
 
 /**
@@ -185,6 +211,9 @@ export function DataTable<TData extends RowData>({
   pageSize = 10,
   enableRowSelection = false,
   emptyMessage = 'No results.',
+  previousLabel = 'Previous',
+  nextLabel = 'Next',
+  selectionSummary = defaultSelectionSummary,
   className,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -278,8 +307,10 @@ export function DataTable<TData extends RowData>({
       <div className={styles.footer}>
         {enableRowSelection && (
           <div className={styles.selectedCount}>
-            {table.getFilteredSelectedRowModel().rows.length} of{' '}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
+            {selectionSummary(
+              table.getFilteredSelectedRowModel().rows.length,
+              table.getFilteredRowModel().rows.length,
+            )}
           </div>
         )}
         <div className={styles.paginationControls}>
@@ -290,7 +321,7 @@ export function DataTable<TData extends RowData>({
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            Previous
+            {previousLabel}
           </Button>
           <Button
             type="button"
@@ -299,7 +330,7 @@ export function DataTable<TData extends RowData>({
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            Next
+            {nextLabel}
           </Button>
         </div>
       </div>

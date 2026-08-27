@@ -136,6 +136,34 @@ describe('DataTable', () => {
     expect(bodyRowAmounts()).toEqual(['50', '10', '30']);
   });
 
+  // Every string DataTable renders on its own used to be a hardcoded
+  // English literal, which made a localized table a fork.
+  it('takes an override for every string it renders itself', () => {
+    const localizedColumns = columnHelper.columns([
+      dataTableSelectionColumn<Payment>({
+        selectAllLabel: 'Alle auswählen',
+        selectRowLabel: 'Zeile auswählen',
+      }),
+      columnHelper.accessor('status', { header: 'Status' }),
+    ]);
+    render(
+      <DataTable
+        columns={localizedColumns}
+        data={payments}
+        pageSize={2}
+        enableRowSelection
+        previousLabel="Zurück"
+        nextLabel="Weiter"
+        selectionSummary={(selected, total) => `${selected} von ${total} ausgewählt`}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Zurück' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Weiter' })).toBeTruthy();
+    expect(screen.getByText('0 von 3 ausgewählt')).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'Alle auswählen' })).toBeTruthy();
+    expect(screen.getAllByRole('checkbox', { name: 'Zeile auswählen' })).toHaveLength(2);
+  });
+
   it('hides the selected-row count unless enableRowSelection is set', () => {
     render(<DataTable columns={columns} data={payments} pageSize={20} />);
     expect(screen.queryByText(/row\(s\) selected/)).toBeNull();
