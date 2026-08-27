@@ -14,8 +14,8 @@ surface.
 ## Shimmer dependency
 
 Marker pairs with the `shimmer` utility class shipped in this package's
-global stylesheet, `src/styles/utilities.css` (imported alongside
-`theme.css` — see that file's own header comment). Marker does **not**
+global stylesheet: `import '@gears-frontx/ui-kit/utilities.css';` once at
+the app entry, alongside `theme.css`. Marker does **not**
 apply it automatically: add the `shimmer` class to `MarkerContent`
 directly for an animated streaming-text effect —
 

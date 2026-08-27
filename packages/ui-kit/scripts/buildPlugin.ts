@@ -108,7 +108,14 @@ export function buildPlugin(): PluginOption[] {
         fs.copyFileSync('src/styles/utilities.css', 'dist/utilities.css');
         fs.copyFileSync('src/styles/typeset.css', 'dist/typeset.css');
         fs.mkdirSync('dist/docs', { recursive: true });
-        for (const file of fs.globSync('src/components/*/*.md')) {
+        // src/styles/*.md alongside the per-component ones: typeset.md
+        // documents a shipped stylesheet the same way a component doc
+        // documents a component, and llms.txt links it from the same
+        // dist/docs/ path.
+        for (const file of [
+          ...fs.globSync('src/components/*/*.md'),
+          ...fs.globSync('src/styles/*.md'),
+        ]) {
           fs.copyFileSync(file, path.join('dist/docs', path.basename(file)));
         }
       },
@@ -131,16 +138,16 @@ export function buildPlugin(): PluginOption[] {
    * actual chunk granularity: remember which source module declared the
    * directive, then re-add it to whichever chunk that module's code lands in.
    *
-   * A chunk earns the banner if ANY of its modules declared it (badge.tsx,
-   * breadcrumb.tsx, button-group.tsx, dropdown-menu.tsx, and toast.tsx do,
-   * each calling a hook — useRender/useContext/useToastManager — directly
-   * in its own render body). A component that merely renders a Base UI
-   * primitive as JSX
-   * (Button, Dialog, Select, …) does not need the directive on its own
-   * chunk: Base UI's own dist already carries 'use client' on the modules
-   * that call hooks, so composing them is safe as a Server Component and
-   * stays server-renderable — marking it here anyway would take that away
-   * for no reason.
+   * A chunk earns the banner if ANY of its modules declared it — the
+   * source directive is the only input, so this plugin never needs a list
+   * of component names to keep current (src/client-boundaries.test.ts is
+   * what keeps the lists that DO exist, in verify-consumer.sh and the
+   * docs, honest against those same directives). A component that merely
+   * renders a Base UI primitive as JSX (Button, Dialog, Select, …) does not
+   * need the directive on its own chunk: Base UI's own dist already
+   * carries 'use client' on the modules that call hooks, so composing them
+   * is safe as a Server Component and stays server-renderable — marking it
+   * here anyway would take that away for no reason.
    */
   function preserveUseClientPlugin(): Plugin {
     const USE_CLIENT = "'use client';";

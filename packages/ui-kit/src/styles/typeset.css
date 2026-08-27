@@ -502,7 +502,10 @@
   --typeset-flow: 1.5em;
 }
 
-/* Serif reading mode: larger type, generous leading and flow. */
+/* Reading mode: larger type, generous leading and flow. Upstream pairs this
+ * preset with a serif body face; the kit ships one family for every role
+ * (see this file's header on --font-heading), so the difference here is
+ * rhythm and scale, not a change of typeface. */
 .typeset-reading {
   --typeset-font-body: var(--font-sans);
   --typeset-font-heading: var(--font-sans);

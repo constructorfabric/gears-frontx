@@ -12,6 +12,18 @@ Rules for generated code:
 
 - Import the design tokens exactly once at the app entry:
   `import '@gears-frontx/ui-kit/theme.css';`
+- Two more global stylesheets ship alongside it, each imported at the app
+  entry only when needed — neither is pulled in by any component's own CSS
+  chunk, so a missing import fails silently:
+  `import '@gears-frontx/ui-kit/utilities.css';` supplies the `shimmer`,
+  `scroll-fade-x` and `no-scrollbar` classes. Attachment DEPENDS on it
+  (`AttachmentTitle` shimmers while uploading, `AttachmentGroup` scrolls
+  its row with the other two) and Marker pairs with `shimmer` for
+  streaming text — without it those components render, minus the effect.
+  `import '@gears-frontx/ui-kit/typeset.css';` styles rendered markdown/
+  HTML the app does not author (chat messages, docs, CMS content): wrap it
+  in `<div class="typeset">`, optionally with a rhythm preset — see
+  [Typeset](dist/docs/typeset.md).
 - Import components from the package root: `import { Button } from '@gears-frontx/ui-kit';`
   Each component ships its own CSS, pulled in automatically by importing the
   component — there is no separate stylesheet import for component styles.
@@ -26,12 +38,14 @@ Rules for generated code:
   also what to pass into any `icon` slot prop. Kit CSS sizes icons through
   each part's own `svg` rule, so a plain `<SomeIcon />` picks up the right
   size; pass `className`/`size` only to override it.
-- In an RSC framework (Next.js App Router), every component EXCEPT Badge,
-  DropdownMenu, and Toast is safe to import and render directly from a
-  Server Component — no wrapping client-boundary module needed. Those three
-  ship their own `'use client'` banner (each calls a hook — `useRender`,
-  `useContext`, `useToastManager` — directly in its own render body) and so
-  always render on the client, wherever they're imported from.
+- In an RSC framework (Next.js App Router), a component is safe to import
+  and render directly from a Server Component — no wrapping
+  client-boundary module needed — unless it appears in the next line. The
+  kit components that carry a `'use client'` banner of their own:
+  Attachment, Badge, Breadcrumb, Bubble, ButtonGroup, Carousel, Chart,
+  Combobox, ContextMenu, DataTable, Drawer, DropdownMenu, Marker, Sidebar,
+  Toast. Each calls a hook directly in its own render body, so it always
+  renders on the client, wherever it is imported from.
 - The kit paints the page itself from its tokens and sets `color-scheme`: with
   no `data-theme` attribute anywhere, `prefers-color-scheme: dark` alone
   yields a correct, legible dark page (background, text, and UA-owned
@@ -380,6 +394,13 @@ Rules for generated code:
   `TooltipProvider` shares delay/grouping across many tooltips;
   `TooltipContent` takes `container`; disabled on touch devices — never
   the only carrier of essential information.
+
+## Stylesheets
+
+- [Typeset](dist/docs/typeset.md): prose styling for rendered markdown/HTML
+  (`typeset.css`); wrapper class `typeset` plus rhythm presets
+  `typeset-chat|docs|reading|compact|large`, `not-typeset` to opt a subtree
+  out, `typeset-scroll` for one wide block; no component, no JS.
 
 ## Optional
 

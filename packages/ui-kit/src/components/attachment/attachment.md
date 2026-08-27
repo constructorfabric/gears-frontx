@@ -9,8 +9,8 @@ message threads, and upload lists.
 ## Utility dependencies
 
 Attachment uses two utility classes shipped in this package's global
-stylesheet, `src/styles/utilities.css` (imported alongside `theme.css` —
-see that file's own header comment):
+stylesheet: `import '@gears-frontx/ui-kit/utilities.css';` once at the app
+entry, alongside `theme.css`.
 
 - **`shimmer`** — `AttachmentTitle` adds it automatically while the
   ancestor `Attachment`'s `state` is `'uploading'` or `'processing'`. This
