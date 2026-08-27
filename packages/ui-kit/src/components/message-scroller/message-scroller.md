@@ -78,6 +78,56 @@ exists past each edge; `useMessageScrollerVisibility()` —
   This is pure CSS, scoped by markup shape - no prop to pass, no per-
   consumer compensation.
 
+- **A single appended message aligns to the viewport's START, not its
+  end.** When exactly one new `MessageScrollerItem` is appended to a
+  transcript already on screen, `@shadcn/react`'s content-diff heuristic
+  (`handleContentChange`) anchors that item to the TOP of the viewport and
+  pads a real, non-zero `[data-message-scroller-spacer]` underneath it so
+  the alignment is reachable. Its follow-to-end fast path only applies to
+  multi-item changes, so it never fires for an append of one - `autoScroll`
+  or not. This is separate from the transcript-switching hazard in
+  Anti-patterns below: that one is about reusing a provider across two
+  different transcripts, this one happens within a single transcript that
+  never changed identity.
+
+  To get the follow-the-newest behavior a chat surface wants, call
+  `scrollToEnd()` yourself after each append, inside a double
+  `requestAnimationFrame` so it lands after the primitive's own adjustment
+  has painted:
+
+  ```tsx
+  /** Renders no DOM - it exists only to call `scrollToEnd` at the right moment. */
+  function FollowNewestMessage({ lastMessageId }: { lastMessageId: string | undefined }) {
+    const { scrollToEnd } = useMessageScroller();
+    const previousLastMessageId = useRef(lastMessageId);
+
+    useEffect(() => {
+      if (lastMessageId === undefined || lastMessageId === previousLastMessageId.current) {
+        previousLastMessageId.current = lastMessageId;
+        return;
+      }
+      previousLastMessageId.current = lastMessageId;
+      // The primitive's MutationObserver fires as soon as the new item lands
+      // in the DOM and applies its own align-to-start adjustment. Two frames
+      // land after that adjustment's paint, so this call is the last word on
+      // scroll position rather than one the primitive can still clobber.
+      let frame = requestAnimationFrame(() => {
+        frame = requestAnimationFrame(() => {
+          scrollToEnd({ behavior: 'smooth' });
+        });
+      });
+      return () => cancelAnimationFrame(frame);
+    }, [lastMessageId, scrollToEnd]);
+
+    return null;
+  }
+  ```
+
+  `useMessageScroller` reads the provider's context, so the component
+  calling it has to sit inside `MessageScrollerProvider` - which is why
+  this is a child component rather than an effect in the parent that
+  renders the provider.
+
 ## Deviations from upstream
 
 - **Icon-only by default, via `aria-label`.** Upstream always renders a
