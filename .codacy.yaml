@@ -24,8 +24,9 @@ exclude_paths:
 
   # Dev-only scripts — spawn() and fs operations take paths from the
   # monorepo's own config, not user input. Not exposed to runtime.
+  # (#597 cleanup removed the duplicate exclusion from .semgrepignore;
+  # this entry is now the sole remaining exclusion mechanism for this path.)
   - "scripts/**"
-  - "packages/cli/scripts/**"
 
   # Root Vitest plumbing — `vitest.shared.ts` is a build-time test-config
   # module loaded by `tsx`. It calls `readFileSync` on paths derived from
@@ -35,6 +36,8 @@ exclude_paths:
 
   # CLI scaffold templates — code meant to be copied into new projects,
   # not to be linted in the kit itself.
+  # (#597 cleanup removed the duplicate exclusion from .semgrepignore;
+  # this entry is now the sole remaining exclusion mechanism for this path.)
   - "packages/cli/template-sources/**"
 
   # Generated MFE manifest (build artifact).
