@@ -349,28 +349,41 @@ jobs:
           overlay_count=0
           while read -r subtree; do
             [ -n "$subtree" ] || continue
-            # A declared subtree that isn't there means the manifest and the
-            # tree disagree.
-            if [ ! -d "$overlay/$subtree" ]; then
+            # A declared subtree is usually a directory, but 0d22fe81 started
+            # declaring template-mfe's own README.md as its own
+            # exclusiveSubtree entry, alongside the four MFE package
+            # directories, once "the whole mfe_packages directory" stopped
+            # being one claim — so this branches on which the tree actually
+            # has, rather than assuming a directory the way `-d` alone did.
+            if [ -d "$overlay/$subtree" ]; then
+              echo "==> Overlaying $overlay/$subtree"
+              # Copy the *contents* into the destination: `cp -R src dest`
+              # nests under dest when dest already exists, which would bury
+              # the packages a level deeper than the count below looks.
+              mkdir -p "$shell/${subtree%/}"
+              cp -R "$overlay/$subtree/." "$shell/${subtree%/}/"
+            elif [ -f "$overlay/$subtree" ]; then
+              echo "==> Overlaying $overlay/$subtree (file)"
+              mkdir -p "$shell/$(dirname "$subtree")"
+              cp "$overlay/$subtree" "$shell/$subtree"
+            else
+              # A declared subtree that isn't there means the manifest and
+              # the tree disagree.
               echo "::error::$overlay declares exclusiveSubtree '$subtree', which does not exist"
               exit 1
             fi
-            echo "==> Overlaying $overlay/$subtree"
-            # Copy the *contents* into the destination: `cp -R src dest` nests
-            # under dest when dest already exists, which would bury the
-            # packages a level deeper than the count below looks.
-            mkdir -p "$shell/${subtree%/}"
-            cp -R "$overlay/$subtree/." "$shell/${subtree%/}/"
             # Each MFE ships a standalone package-lock.json whose file:
             # targets point into template-mfe/packages/*, which does not
             # exist. npm ignores nested locks inside a workspace, but drop
             # them so nothing reads them — from the subtree just copied, not
-            # a hardcoded mfe_packages path.
+            # a hardcoded mfe_packages path. A no-op for a file subtree that
+            # isn't itself named package-lock.json.
             find "$shell/${subtree%/}" -not -path '*/node_modules/*' \
               -name package-lock.json -delete
             # Counted from the subtree just copied, not a hardcoded
             # `src-app/mfe_packages` path — the manifest already told us
-            # where this overlay's content landed.
+            # where this overlay's content landed. A no-op (0) for a file
+            # subtree that isn't itself package.json.
             subtree_count="$(find "$shell/${subtree%/}" -not -path '*/node_modules/*' \
               -name package.json 2>/dev/null | wc -l)"
             overlay_count=$((overlay_count + subtree_count))
