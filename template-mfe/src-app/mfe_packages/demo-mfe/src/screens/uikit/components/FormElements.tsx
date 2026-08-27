@@ -54,6 +54,25 @@ export const FormElements: React.FC<FormElementsProps> = ({ t, portalContainer }
   const [region, setRegion] = useState('eu-central');
   const [plan, setPlan] = useState('free');
   const [notifications, setNotifications] = useState(true);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  /**
+   * Field derives no validation of its own, so the demo runs the check the
+   * browser already did: `<input type="email" required>` fills in `validity`
+   * either way, and this only picks which message the field shows. Read on
+   * blur rather than on every keystroke so a half-typed address is not
+   * flagged as malformed while it is still being typed.
+   */
+  const validateEmail = (event: React.FocusEvent<HTMLInputElement>) => {
+    const { validity } = event.currentTarget;
+    if (validity.valueMissing) {
+      setEmailError('Email is required.');
+    } else if (validity.typeMismatch) {
+      setEmailError('That does not look like an email.');
+    } else {
+      setEmailError(null);
+    }
+  };
 
   return (
     <section id="category-forms" className={styles.category}>
@@ -66,16 +85,31 @@ export const FormElements: React.FC<FormElementsProps> = ({ t, portalContainer }
       >
         <div className={styles.stack}>
           {/*
-            Field is the kit's composition for a labelled control: it wires the
-            label's `htmlFor`, the control's id and `aria-describedby` itself, so
-            nothing below sets them by hand.
+            Field is the kit's layout for a labelled control and nothing more:
+            it wires no ids and derives no validity, so `htmlFor`,
+            `aria-describedby` and the invalid state are all set by hand here.
+            The description stays in `aria-describedby` when the error joins it
+            — replacing it would drop the hint the moment it is most useful.
           */}
-          <Field name="email">
-            <FieldLabel>Email</FieldLabel>
-            <Input type="email" required placeholder="you@company.com" />
-            <FieldDescription>We only use it for the invoice.</FieldDescription>
-            <FieldError match="valueMissing">Email is required.</FieldError>
-            <FieldError match="typeMismatch">That does not look like an email.</FieldError>
+          <Field data-invalid={emailError ? true : undefined}>
+            <FieldLabel htmlFor="form-demo-email">Email</FieldLabel>
+            <Input
+              id="form-demo-email"
+              type="email"
+              required
+              placeholder="you@company.com"
+              aria-invalid={emailError ? true : undefined}
+              aria-describedby={
+                emailError
+                  ? 'form-demo-email-description form-demo-email-error'
+                  : 'form-demo-email-description'
+              }
+              onBlur={validateEmail}
+            />
+            <FieldDescription id="form-demo-email-description">
+              We only use it for the invoice.
+            </FieldDescription>
+            <FieldError id="form-demo-email-error">{emailError}</FieldError>
           </Field>
         </div>
       </ElementDemo>
@@ -133,8 +167,12 @@ export const FormElements: React.FC<FormElementsProps> = ({ t, portalContainer }
         description={t('element.select.description')}
       >
         <div className={styles.stack}>
-          <Field name="region">
-            <FieldLabel>Region</FieldLabel>
+          <Field>
+            {/*
+              SelectTrigger renders the button that carries the field's
+              accessible name, so the label points at the trigger's own id.
+            */}
+            <FieldLabel htmlFor="form-demo-region">Region</FieldLabel>
             {/*
               Select reports `null` when a selection is cleared, which this demo
               has no control for; the fallback keeps the trigger showing a region
@@ -145,7 +183,7 @@ export const FormElements: React.FC<FormElementsProps> = ({ t, portalContainer }
               value={region}
               onValueChange={(value) => setRegion(value ?? REGION_ITEMS[0].value)}
             >
-              <SelectTrigger>
+              <SelectTrigger id="form-demo-region">
                 <SelectValue placeholder="Pick a region" />
               </SelectTrigger>
               <SelectContent container={portalContainer}>

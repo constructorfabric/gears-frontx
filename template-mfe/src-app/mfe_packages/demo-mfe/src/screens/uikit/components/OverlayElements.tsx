@@ -57,9 +57,10 @@ export const OverlayElements: React.FC<OverlayElementsProps> = ({ t, portalConta
                 <DialogTitle>New project</DialogTitle>
                 <DialogDescription>Projects group deployments and their settings.</DialogDescription>
               </DialogHeader>
-              <Field name="project">
-                <FieldLabel>Project name</FieldLabel>
-                <Input placeholder="acme-web" />
+              {/* Field wires no ids of its own, so the pair is joined by hand. */}
+              <Field>
+                <FieldLabel htmlFor="overlay-demo-project">Project name</FieldLabel>
+                <Input id="overlay-demo-project" placeholder="acme-web" />
               </Field>
               <DialogFooter>
                 <DialogClose render={<Button variant="outline" />}>

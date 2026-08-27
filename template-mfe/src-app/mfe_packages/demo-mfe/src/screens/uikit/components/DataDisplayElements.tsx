@@ -120,27 +120,33 @@ export const DataDisplayElements: React.FC<DataDisplayElementsProps> = ({
         description={t('element.badge.description')}
       >
         {/*
-          The kit's badge variants are semantic states, not the visual weights
-          shadcn names — there is no `default`, `outline` or `secondary` here.
+          Badge's variants sit on one paint axis in two groups: the tones
+          below, and the upstream weights (`default`, `secondary`,
+          `destructive`, `outline`, `ghost`, `link`). `secondary` is the
+          tone row's neutral — the kit ships no separate `muted` name for it.
+          A tone paints, it does not announce, so every label spells its
+          state out in words.
         */}
         <div className={styles.row}>
           <Badge variant="success">Running</Badge>
           <Badge variant="warning">Degraded</Badge>
           <Badge variant="info">Queued</Badge>
           <Badge variant="danger">Failed</Badge>
-          <Badge variant="muted">Draft</Badge>
+          <Badge variant="accent">Beta</Badge>
+          <Badge variant="secondary">Draft</Badge>
         </div>
 
         {/*
-          The status dot is its own boolean prop, not a shape: `shape` picks
-          pill vs. plain, and either can carry the dot.
+          Upstream weights, and the one case that needs `render`: a badge that
+          is really a link. Hover feedback and the focus ring only apply once
+          an interactive element is actually underneath.
         */}
         <div className={styles.row}>
-          <Badge variant="success" dot>
-            Online
-          </Badge>
-          <Badge variant="muted" dot>
-            Offline
+          <Badge>default</Badge>
+          <Badge variant="outline">outline</Badge>
+          <Badge variant="destructive">destructive</Badge>
+          <Badge variant="outline" render={<a href="#badge" />}>
+            Pro plan
           </Badge>
         </div>
       </ElementDemo>

@@ -128,23 +128,39 @@ export const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
        */
       <form onSubmit={handleSubmit} className={styles.form}>
         {/*
-          Field wires the label's `htmlFor`, the control's id and
-          `aria-describedby` itself — the ids these three fields used to carry
-          by hand would now compete with the ones it generates.
+          Field is layout only: it wires no ids and disables no control, so
+          each label points at its input's own id and each input carries its
+          own `disabled`. `data-disabled` on the Field is what dims the label
+          alongside the control the kit's CSS already dims.
         */}
-        <Field name="firstName" disabled={isSaving}>
-          <FieldLabel>{t('first_name_label')}</FieldLabel>
-          <Input value={formValues.firstName} onChange={handleFieldChange('firstName')} />
+        <Field data-disabled={isSaving || undefined}>
+          <FieldLabel htmlFor="profile-first-name">{t('first_name_label')}</FieldLabel>
+          <Input
+            id="profile-first-name"
+            disabled={isSaving}
+            value={formValues.firstName}
+            onChange={handleFieldChange('firstName')}
+          />
         </Field>
 
-        <Field name="lastName" disabled={isSaving}>
-          <FieldLabel>{t('last_name_label')}</FieldLabel>
-          <Input value={formValues.lastName} onChange={handleFieldChange('lastName')} />
+        <Field data-disabled={isSaving || undefined}>
+          <FieldLabel htmlFor="profile-last-name">{t('last_name_label')}</FieldLabel>
+          <Input
+            id="profile-last-name"
+            disabled={isSaving}
+            value={formValues.lastName}
+            onChange={handleFieldChange('lastName')}
+          />
         </Field>
 
-        <Field name="department" disabled={isSaving}>
-          <FieldLabel>{t('department_label')}</FieldLabel>
-          <Input value={formValues.department} onChange={handleFieldChange('department')} />
+        <Field data-disabled={isSaving || undefined}>
+          <FieldLabel htmlFor="profile-department">{t('department_label')}</FieldLabel>
+          <Input
+            id="profile-department"
+            disabled={isSaving}
+            value={formValues.department}
+            onChange={handleFieldChange('department')}
+          />
         </Field>
 
         {/*
