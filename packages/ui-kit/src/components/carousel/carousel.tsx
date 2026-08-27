@@ -141,6 +141,7 @@ export function Carousel({
     api.on('select', onSelect);
 
     return () => {
+      api.off('reInit', onSelect);
       api.off('select', onSelect);
     };
   }, [api, onSelect]);
@@ -216,21 +217,32 @@ export function CarouselPrevious({
   variant = 'outline',
   size = 'sm',
   'aria-label': ariaLabel = 'Previous slide',
+  disabled,
+  onClick,
   ...props
 }: CarouselPreviousProps) {
   const { orientation, scrollPrev, canScrollPrev } = useCarousel();
 
   return (
     <Button
+      {...props}
       variant={variant}
       size={size}
       icon={<ChevronLeftIcon />}
       aria-label={ariaLabel}
       data-orientation={orientation}
       className={cx(styles.previous, className)}
-      disabled={!canScrollPrev}
-      onClick={scrollPrev}
-      {...props}
+      // Navigation is what this button IS, so it stays behind a consumer's
+      // own props rather than in front of them: `{...props}` first, the
+      // two navigation-owned props composed on top. A consumer `onClick`
+      // still runs (before the scroll), and a consumer `disabled` can only
+      // ADD a reason to be disabled, never take away the one that says
+      // there is nothing to scroll back to.
+      disabled={!canScrollPrev || disabled}
+      onClick={(event) => {
+        onClick?.(event);
+        scrollPrev();
+      }}
     />
   );
 }
@@ -242,21 +254,27 @@ export function CarouselNext({
   variant = 'outline',
   size = 'sm',
   'aria-label': ariaLabel = 'Next slide',
+  disabled,
+  onClick,
   ...props
 }: CarouselNextProps) {
   const { orientation, scrollNext, canScrollNext } = useCarousel();
 
   return (
     <Button
+      {...props}
       variant={variant}
       size={size}
       icon={<ChevronRightIcon />}
       aria-label={ariaLabel}
       data-orientation={orientation}
       className={cx(styles.next, className)}
-      disabled={!canScrollNext}
-      onClick={scrollNext}
-      {...props}
+      // See CarouselPrevious for why the spread leads here.
+      disabled={!canScrollNext || disabled}
+      onClick={(event) => {
+        onClick?.(event);
+        scrollNext();
+      }}
     />
   );
 }

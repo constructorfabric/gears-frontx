@@ -191,6 +191,23 @@ export function DataTable<TData extends RowData>({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize });
 
+  // `pageSize` is a live prop, not just a seed: a consumer wiring it to a
+  // "rows per page" select expects the table to follow. Resynced during
+  // render (react.dev's "adjusting state when a prop changes" pattern),
+  // not from a `useEffect`, so the new page size lands in the same commit
+  // as the prop change instead of one render — and one visibly wrong
+  // table — later. The page index is rescaled rather than reset so the
+  // rows the reader was looking at stay on screen: the first row of the
+  // current page keeps its place under the new size.
+  const [syncedPageSize, setSyncedPageSize] = useState(pageSize);
+  if (pageSize !== syncedPageSize) {
+    setSyncedPageSize(pageSize);
+    setPagination((current) => ({
+      pageSize,
+      pageIndex: Math.max(0, Math.floor((current.pageIndex * current.pageSize) / pageSize)),
+    }));
+  }
+
   const table = useTable({
     features: dataTableFeatures,
     data,

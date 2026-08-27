@@ -109,6 +109,83 @@ describe('Carousel', () => {
     expect(screen.getByTestId('next')).toHaveProperty('disabled', true);
   });
 
+  // Both subscriptions are taken in one effect, so both have to be
+  // released in its cleanup — a `reInit` listener left behind outlives the
+  // component and calls setState on it after unmount.
+  it('releases every embla subscription it took, on unmount', () => {
+    let capturedApi: CarouselApi;
+    const { unmount } = render(
+      <Carousel
+        setApi={(api) => {
+          capturedApi = api;
+        }}
+      >
+        <CarouselContent>
+          <CarouselItem>1</CarouselItem>
+        </CarouselContent>
+      </Carousel>,
+    );
+
+    const offSpy = vi.spyOn(capturedApi!, 'off');
+    unmount();
+    expect(offSpy.mock.calls.map(([event]) => event).sort()).toEqual(['reInit', 'select']);
+  });
+
+  // Navigation is what these buttons are: a consumer onClick has to be
+  // additive, and a consumer `disabled` can only add a reason, never
+  // re-enable a button embla says has nowhere to go.
+  it('keeps navigation when a consumer passes their own onClick and disabled', () => {
+    const onClick = vi.fn();
+    let capturedApi: CarouselApi;
+    render(
+      // `loop` is what makes embla report somewhere to scroll to without a
+      // measurable viewport, which is the only way to get an ENABLED nav
+      // button under jsdom — and an enabled one is the only kind React
+      // will dispatch a click to (it suppresses mouse events on a control
+      // its own props mark disabled, whatever the DOM attribute says).
+      <Carousel
+        opts={{ loop: true }}
+        setApi={(api) => {
+          capturedApi = api;
+        }}
+      >
+        <CarouselContent>
+          <CarouselItem>1</CarouselItem>
+          <CarouselItem>2</CarouselItem>
+        </CarouselContent>
+        <CarouselNext data-testid="next" onClick={onClick} />
+      </Carousel>,
+    );
+
+    const next = screen.getByTestId('next');
+    expect(next).toHaveProperty('disabled', false);
+
+    const scrollNextSpy = vi.spyOn(capturedApi!, 'scrollNext');
+    fireEvent.click(next);
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(scrollNextSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a consumer disable a nav button, but never re-enable one embla has parked', () => {
+    render(<ThreeSlideCarousel />);
+    // jsdom reports nothing to scroll to, so this one is already disabled.
+    expect(screen.getByTestId('next')).toHaveProperty('disabled', true);
+
+    cleanup();
+    render(
+      <Carousel opts={{ loop: true }}>
+        <CarouselContent>
+          <CarouselItem>1</CarouselItem>
+          <CarouselItem>2</CarouselItem>
+        </CarouselContent>
+        <CarouselNext data-testid="next" disabled />
+        <CarouselPrevious data-testid="prev" />
+      </Carousel>,
+    );
+    expect(screen.getByTestId('next')).toHaveProperty('disabled', true);
+    expect(screen.getByTestId('prev')).toHaveProperty('disabled', false);
+  });
+
   it('captures the embla CarouselApi via setApi and wires arrow keys to it', () => {
     let capturedApi: CarouselApi;
     render(

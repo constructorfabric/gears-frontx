@@ -73,11 +73,33 @@ describe('AlertDialog', () => {
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
   });
 
-  it('invokes the action handler without closing on its own', () => {
+  it('runs the action handler and closes via AlertDialogAction', async () => {
     const onAction = renderAlertDialog();
     fireEvent.click(screen.getByRole('button', { name: 'Delete account' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(onAction).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+  });
+
+  // The escape hatch an async confirm needs: keep the dialog up while the
+  // work runs, without giving up the Close semantics for every other case.
+  it('keeps the dialog open when the action handler prevents the Base UI handler', async () => {
+    render(
+      <AlertDialog>
+        <AlertDialogTrigger>Delete account</AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={(event) => event.preventBaseUIHandler()}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Delete account' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await new Promise((resolve) => setTimeout(resolve, 20));
     expect(screen.getByRole('alertdialog')).toBeTruthy();
   });
 

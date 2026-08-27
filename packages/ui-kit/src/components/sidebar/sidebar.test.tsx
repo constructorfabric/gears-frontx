@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { hydrateRoot } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
@@ -36,8 +38,7 @@ function ReadsSidebarOutsideProvider() {
 afterEach(() => {
   cleanup();
   // Expire the cookie so persistence assertions in one test never leak
-  // into the next — SidebarProvider's lazy initializer reads it fresh on
-  // every mount.
+  // into the next — SidebarProvider reads it fresh on every mount.
   document.cookie = 'sidebar_state=; path=/; max-age=0';
   setViewportWidth(1024);
 });
@@ -113,6 +114,40 @@ describe('Sidebar', () => {
       </SidebarProvider>,
     );
     expect(desktopRoot()?.getAttribute('data-state')).toBe('collapsed');
+  });
+
+  // The cookie is the one piece of state that exists on the client and not
+  // on the server, so reading it during render is exactly what puts
+  // `data-state` — the attribute the whole layout keys off — into the
+  // hydration diff. Rendering the same tree twice, once through
+  // renderToString and once by hydrating that output, is the only way to
+  // observe that; React reports a mismatch through console.error.
+  it('hydrates server markup without a mismatch, then applies the cookie', async () => {
+    document.cookie = 'sidebar_state=false; path=/';
+    const tree = (
+      <SidebarProvider>
+        <Sidebar />
+      </SidebarProvider>
+    );
+
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(tree);
+    document.body.appendChild(container);
+    expect(container.querySelector(`.${styles.root}`)?.getAttribute('data-state')).toBe('expanded');
+
+    const errors: string[] = [];
+    const consoleError = vi.spyOn(console, 'error').mockImplementation((...args) => {
+      errors.push(String(args[0]));
+    });
+    const root = hydrateRoot(container, tree);
+    await act(async () => {});
+    consoleError.mockRestore();
+
+    expect(errors).toEqual([]);
+    expect(container.querySelector(`.${styles.root}`)?.getAttribute('data-state')).toBe('collapsed');
+
+    act(() => root.unmount());
+    container.remove();
   });
 
   it('lets an explicit defaultOpen override the persisted cookie', () => {
@@ -257,12 +292,41 @@ describe('Sidebar', () => {
     expect(label.getAttribute('for')).toBe('search');
   });
 
-  it('gives each SidebarMenuSkeleton a randomized text width within the documented range', () => {
-    render(<SidebarMenuSkeleton />);
-    const text = document.querySelector(`.${styles.menuSkeletonText}`) as HTMLElement;
-    const width = Number.parseFloat(text.style.getPropertyValue('--skeleton-width'));
-    expect(width).toBeGreaterThanOrEqual(50);
-    expect(width).toBeLessThanOrEqual(90);
+  // Varied between rows (a column of identical bars reads as one tile, not
+  // as loading content) but not RANDOM: a random width is a different
+  // number on each side of hydration, which is what the server/hydrate
+  // round-trip below is there to catch.
+  it('varies SidebarMenuSkeleton text widths between rows, identically across hydration', async () => {
+    const rows = (
+      <>
+        <SidebarMenuSkeleton />
+        <SidebarMenuSkeleton />
+        <SidebarMenuSkeleton />
+      </>
+    );
+    const widthsIn = (element: ParentNode) =>
+      Array.from(element.querySelectorAll<HTMLElement>(`.${styles.menuSkeletonText}`), (text) =>
+        Number.parseFloat(text.style.getPropertyValue('--skeleton-width')),
+      );
+
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(rows);
+    document.body.appendChild(container);
+
+    const served = widthsIn(container);
+    expect(served).toHaveLength(3);
+    for (const width of served) {
+      expect(width).toBeGreaterThanOrEqual(50);
+      expect(width).toBeLessThanOrEqual(89);
+    }
+    expect(new Set(served).size).toBeGreaterThan(1);
+
+    const root = hydrateRoot(container, rows);
+    await act(async () => {});
+    expect(widthsIn(container)).toEqual(served);
+
+    act(() => root.unmount());
+    container.remove();
   });
 });
 

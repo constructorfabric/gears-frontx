@@ -14,6 +14,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useState,
   type ComponentProps,
@@ -145,16 +146,31 @@ export function SidebarProvider({
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = useState(false);
 
-  // Lazy initializer: reads the persisted cookie exactly once, at mount —
-  // standing in for upstream's own model, where a server component reads
-  // the cookie and hands the result down as `defaultOpen`. This kit owns
-  // no server-side rendering step of its own, so the read happens here
-  // instead, client-side, at the same "before first paint" moment. An
-  // explicit `defaultOpen` skips the read entirely (see its own doc).
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(() =>
-    defaultOpen === undefined ? readOpenCookie(true) : defaultOpen,
-  );
+  // Deterministic first render, cookie restored after mount. Reading
+  // `document.cookie` in the state initializer instead would make the
+  // first client render disagree with the server's (which has no cookie
+  // to read and always produced the expanded default) — a hydration
+  // mismatch on the one attribute the whole layout keys off,
+  // `data-state`. Restoring in an effect keeps render pure and pays for
+  // it with one frame of expanded sidebar before a persisted collapsed
+  // state applies. An app that owns a server render and wants that frame
+  // back reads the cookie there and hands the answer down as
+  // `defaultOpen` — upstream's own model, and the opt-out this prop
+  // already documents.
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen ?? true);
   const open = openProp ?? uncontrolledOpen;
+
+  useEffect(() => {
+    if (defaultOpen !== undefined) {
+      return;
+    }
+    // Reading a browser-owned store that has no render-time equivalent is
+    // the "subscribe to an external system" case effects exist for; the
+    // lint rule's static heuristic can't tell it apart from derived state
+    // (same call, same reasoning, as carousel.tsx's embla snapshot).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUncontrolledOpen(readOpenCookie(true));
+  }, [defaultOpen]);
 
   const setOpen = useCallback<Dispatch<SetStateAction<boolean>>>(
     (value) => {
@@ -561,11 +577,29 @@ export interface SidebarMenuSkeletonProps extends ComponentProps<'div'> {
   showIcon?: boolean;
 }
 
+// Spreads a string over the 50-89% width band the skeleton rows vary
+// across. FNV-1a: a few lines, no dependency, and well-enough distributed
+// that neighbouring `useId` values (which differ by one character) land on
+// visibly different widths instead of a near-repeat.
+function widthFromKey(key: string): number {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < key.length; index += 1) {
+    hash ^= key.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return 50 + (Math.abs(hash) % 40);
+}
+
 export function SidebarMenuSkeleton({ className, showIcon = false, style, ...props }: SidebarMenuSkeletonProps) {
-  // A fresh random width per mounted row (never re-rolled on re-render) is
-  // what keeps a list of skeleton rows from reading as one repeated tile —
-  // matches upstream's own `useState(() => ...)` lazy initializer exactly.
-  const [width] = useState(() => `${Math.floor(Math.random() * 40) + 50}%`);
+  // Upstream rolls this width with `Math.random()` in a lazy state
+  // initializer. That varies the rows (the point — a column of identical
+  // bars reads as one repeated tile, not as loading content) but renders
+  // a different number on the server than on the client, so the width
+  // lands in the hydration diff. `useId` is the deterministic source of
+  // the same per-row variety: React guarantees the same value for the
+  // same position in the tree on both sides of hydration, and it differs
+  // between sibling rows, which is all the width needs from it.
+  const width = `${widthFromKey(useId())}%`;
   return (
     <div className={cx(styles.menuSkeleton, className)} style={style} {...props}>
       {showIcon && <Skeleton className={styles.menuSkeletonIcon} />}

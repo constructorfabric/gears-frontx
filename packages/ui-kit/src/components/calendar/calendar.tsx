@@ -139,7 +139,10 @@ export function Calendar({
  * consumer overriding `components.DayButton` further can still compose
  * this one rather than starting from scratch.
  */
-export function CalendarDayButton({ className, day, modifiers, ...props }: DayButtonProps) {
+// `day` is destructured only to keep react-day-picker's own CalendarDay
+// object out of `...props`, where it would land on the DOM button as an
+// unknown attribute.
+export function CalendarDayButton({ className, day: _day, modifiers, ...props }: DayButtonProps) {
   const ref = useRef<HTMLButtonElement>(null);
   // react-day-picker moves keyboard focus by re-rendering with a new
   // `modifiers.focused` day rather than calling `.focus()` itself (it has
@@ -155,7 +158,11 @@ export function CalendarDayButton({ className, day, modifiers, ...props }: DayBu
     <button
       ref={ref}
       type="button"
-      data-day={day.date.toLocaleDateString()}
+      // No `data-day` of its own: react-day-picker already puts
+      // `data-day={day.isoDate}` on the gridcell wrapping this button, so a
+      // second copy here only added a locale-formatted (and therefore
+      // runtime-dependent) duplicate of an attribute that already exists in
+      // a stable form one level up.
       data-selected-single={
         (modifiers.selected &&
           !modifiers.range_start &&

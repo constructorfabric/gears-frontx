@@ -47,11 +47,13 @@ subtree (`data-theme` on a section instead of `<html>`), pass that section
 as `container` or the popup renders with the root theme — same contract as
 `Dialog`.
 
-`AlertDialogAction` is a plain kit `Button` (any `variant`/`size`) — it
-does **not** close the dialog on its own; wire `onClick` to perform the
-action and close it yourself (`onOpenChange`, or an `actionsRef`).
-`AlertDialogCancel` is a Base UI `AlertDialog.Close` rendered as a `Button`
-(`outline` variant by default) — clicking it always closes the dialog.
+`AlertDialogAction` and `AlertDialogCancel` are both a Base UI
+`AlertDialog.Close` rendered as a kit `Button` (any `variant`/`size`;
+`default` for the action, `outline` for the cancel) — clicking either one
+closes the dialog. Your own `onClick` still runs, and runs first, so the
+usual "do the thing, then dismiss" flow needs no extra wiring. An async
+confirm that must keep the dialog open while it works calls
+`event.preventBaseUIHandler()` in that handler and drives `open` itself.
 
 ## Examples
 

@@ -33,7 +33,9 @@ Thumb): pointer drag, click-on-track, and arrow-key/Page-key input, one
 Other props follow Base UI Slider.Root (`name`, `form`, `largeStep`,
 `minStepsBetweenValues`, `thumbCollisionBehavior`, ...). The number of
 rendered thumbs is derived from `value`/`defaultValue`'s length — a
-`[10, 20]` default renders two thumbs automatically.
+`[10, 20]` default renders two thumbs automatically. Anything else is one
+thumb, including a slider given neither prop: Base UI initializes that one
+to the scalar `min`, so a second thumb would have no value behind it.
 
 ## Examples
 

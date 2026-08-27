@@ -68,6 +68,16 @@ describe('Slider', () => {
     expect(thumbs.map((thumb) => thumb.getAttribute('value'))).toEqual(['20', '80']);
   });
 
+  // Base UI initializes an unspecified slider to the scalar `min`, so the
+  // thumb count has to follow that, not the [min, max] pair a "range by
+  // default" reading would suggest.
+  it('renders a single thumb when neither value nor defaultValue is given', async () => {
+    render(<Slider aria-label="Volume" />);
+    const thumbs = await screen.findAllByRole('slider');
+    expect(thumbs).toHaveLength(1);
+    expect(thumbs[0]).toHaveProperty('value', '0');
+  });
+
   it('reports value changes and commits via keyboard input', async () => {
     const onValueChange = vi.fn();
     const onValueCommitted = vi.fn();

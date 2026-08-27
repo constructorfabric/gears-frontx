@@ -231,14 +231,24 @@ sub-rows 28px at both sizes, badges and actions 20px squares centred on
 their row. The type ramp is the kit's, so body text is 15px where
 upstream's `text-sm` is 14px.
 
-- **Cookie read happens client-side, not via SSR.** Upstream's own model
-  reads the `sidebar_state` cookie in a Next.js Server Component and hands
-  the result down as `defaultOpen`, so the very first HTML byte already
-  reflects the persisted state. This kit owns no server-rendering step of
-  its own, so `SidebarProvider` reads `document.cookie` itself, in a lazy
-  `useState` initializer, guarded for a framework that renders it once
-  server-side first (`typeof document === 'undefined'`). The write path
-  (toggling persists a 7-day cookie) is unchanged.
+- **Cookie read happens after mount, not during render.** Upstream's own
+  model reads the `sidebar_state` cookie in a Next.js Server Component and
+  hands the result down as `defaultOpen`, so the very first HTML byte
+  already reflects the persisted state. This kit owns no server-rendering
+  step of its own, so `SidebarProvider` reads `document.cookie` itself —
+  in an effect, not in the state initializer, so the first render is
+  identical on both sides of hydration (a server render has no cookie to
+  read and would always emit the expanded default). The cost is one frame
+  of expanded sidebar before a persisted collapsed state applies; an app
+  that owns a server render buys that frame back by reading the cookie
+  there and passing `defaultOpen`, which is upstream's model exactly. The
+  write path (toggling persists a 7-day cookie) is unchanged.
+- **Skeleton row widths come from `useId`, not `Math.random()`.**
+  Upstream rolls each `SidebarMenuSkeleton` row's width randomly in a lazy
+  state initializer, which renders a different number on the server than
+  on the client. The rows still vary — the width is hashed from the row's
+  own `useId`, which React keeps stable across hydration and distinct
+  between siblings.
 - **`SidebarMenuButton`'s tooltip mounts conditionally instead of using a
   `hidden` attribute.** Upstream always mounts `TooltipContent` and flips
   a `hidden` attribute on it depending on collapse state — correct only if

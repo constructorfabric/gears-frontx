@@ -114,17 +114,38 @@ export function AlertDialogDescription({ className, ...props }: AlertDialogDescr
   );
 }
 
-/**
- * The dialog's confirming action — a plain kit `Button` (`default` variant
- * unless overridden), matching upstream's own re-export of its Button with
- * no extra styling hook. Does not close the dialog on its own: wire
- * `onClick` to perform the action and close (e.g. via `actionsRef`/
- * `onOpenChange`), same as any other async confirm flow.
- */
-export type AlertDialogActionProps = ButtonProps;
+export interface AlertDialogActionProps
+  extends Omit<AlertDialogPrimitive.Close.Props, 'className'>,
+    Pick<ButtonProps, 'variant' | 'size'> {
+  className?: string;
+}
 
-export function AlertDialogAction(props: AlertDialogActionProps) {
-  return <Button {...props} />;
+/**
+ * The dialog's confirming action — a Base UI `AlertDialog.Close` rendered as
+ * a kit `Button` (`default` variant unless overridden), the same
+ * `render`-prop idiom as `AlertDialogCancel`. Confirming dismisses the
+ * dialog, matching upstream, where this part is the primitive's own Action
+ * (a Close in everything but name).
+ *
+ * An `onClick` of your own still runs, and runs FIRST: Base UI merges the
+ * consumer handler ahead of its own close handler (see mergeProps'
+ * right-to-left order). An async confirm that must keep the dialog open
+ * while it works calls `event.preventBaseUIHandler()` in that handler and
+ * drives `open` itself.
+ */
+export function AlertDialogAction({
+  className,
+  variant,
+  size,
+  ...props
+}: AlertDialogActionProps) {
+  return (
+    <AlertDialogPrimitive.Close
+      className={className}
+      render={<Button variant={variant} size={size} />}
+      {...props}
+    />
+  );
 }
 
 export interface AlertDialogCancelProps

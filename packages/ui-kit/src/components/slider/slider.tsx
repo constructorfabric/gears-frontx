@@ -28,10 +28,16 @@ export interface SliderProps<Value extends number | readonly number[] = number |
  * supported `Value = number` shape) straight to the `[min, max]`
  * fallback — silently rendering two thumbs for a slider that should have
  * one. Resolving `value ?? defaultValue` first and wrapping a defined
- * scalar in a one-element array fixes that; the `[min, max]` fallback is
- * kept for the genuinely empty case (neither prop given at all), where
- * upstream's choice to show a full range is a reasonable default rather
- * than a bug.
+ * scalar in a one-element array fixes that.
+ *
+ * The empty case (neither prop given) resolves to ONE thumb rather than
+ * upstream's `[min, max]` pair, because Base UI's own Root initializes an
+ * unspecified slider to the scalar `defaultValue ?? min` (see
+ * SliderRoot's `default: defaultValue ?? min`). Rendering two thumbs
+ * against that one scalar value gives a second thumb with nothing behind
+ * it — the count has to follow the primitive's state, not a guess about
+ * what an unspecified slider ought to look like. A range slider says so
+ * with an array `defaultValue`.
  */
 export function Slider<Value extends number | readonly number[] = number | readonly number[]>({
   className,
@@ -42,7 +48,7 @@ export function Slider<Value extends number | readonly number[] = number | reado
   ...props
 }: SliderProps<Value>) {
   const resolved = value ?? defaultValue;
-  const values = Array.isArray(resolved) ? resolved : resolved !== undefined ? [resolved] : [min, max];
+  const thumbCount = Array.isArray(resolved) ? resolved.length : 1;
   return (
     <SliderPrimitive.Root
       className={cx(styles.root, className)}
@@ -57,7 +63,7 @@ export function Slider<Value extends number | readonly number[] = number | reado
         <SliderPrimitive.Track className={styles.track}>
           <SliderPrimitive.Indicator className={styles.range} />
         </SliderPrimitive.Track>
-        {Array.from({ length: values.length }, (_, index) => (
+        {Array.from({ length: thumbCount }, (_, index) => (
           <SliderPrimitive.Thumb key={index} index={index} className={styles.thumb} />
         ))}
       </SliderPrimitive.Control>

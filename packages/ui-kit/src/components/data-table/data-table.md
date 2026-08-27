@@ -91,7 +91,7 @@ code, not a migration.
 |------|------|---------|
 | `columns` | `ColumnDef<DataTableFeatures, TData>[]` | required |
 | `data` | `TData[]` | required |
-| `pageSize` | `number` | `10` |
+| `pageSize` | `number` — live, not just a starting value: change it and the table repaginates, keeping the current rows in view | `10` |
 | `enableRowSelection` | `boolean` — see below | `false` |
 | `emptyMessage` | `ReactNode` — content of the one row spanning every column when `data` is empty | `'No results.'` |
 | `className` | `string` — on the card (the outermost element) | — |

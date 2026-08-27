@@ -107,7 +107,8 @@ const [range, setRange] = useState<DateRange>();
   comes later in the DOM, so it happens to sit above the nav), which
   silently breaks the moment anything gives the nav a stacking order.
   Declaring the pass-through states the intent instead.
-- `CalendarDayButton`'s `data-day` debug attribute drops upstream's
-  `locale?.code`-aware `toLocaleDateString` call — it renders with the
-  runtime's default locale instead of threading a `locale` prop through
-  for what is a non-visual test/debug hook only.
+- `CalendarDayButton` carries no `data-day` attribute of its own, where
+  upstream repeats one on the button. react-day-picker already sets
+  `data-day="YYYY-MM-DD"` on the gridcell that wraps it, so the button
+  copy added nothing but a second, locale-formatted spelling of the same
+  day — query the cell's ISO value instead.

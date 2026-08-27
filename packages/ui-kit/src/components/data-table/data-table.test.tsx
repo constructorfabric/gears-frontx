@@ -116,6 +116,26 @@ describe('DataTable', () => {
     expect(document.querySelectorAll('tbody tr')).toHaveLength(2);
   });
 
+  // `pageSize` used to be read once, into initial state, so a "rows per
+  // page" control wired to it changed nothing after first render.
+  it('follows a changed pageSize, keeping the current rows in view', () => {
+    const { rerender } = render(<DataTable columns={columns} data={payments} pageSize={1} />);
+    expect(bodyRowAmounts()).toEqual(['50']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(bodyRowAmounts()).toEqual(['30']);
+
+    // Page 3 of 1-per-page starts at row index 2, which is page 2 at
+    // 2-per-page — the row the reader was on is still on screen.
+    rerender(<DataTable columns={columns} data={payments} pageSize={2} />);
+    expect(bodyRowAmounts()).toEqual(['30']);
+    expect(screen.getByRole('button', { name: 'Next' }).hasAttribute('disabled')).toBe(true);
+
+    rerender(<DataTable columns={columns} data={payments} pageSize={20} />);
+    expect(bodyRowAmounts()).toEqual(['50', '10', '30']);
+  });
+
   it('hides the selected-row count unless enableRowSelection is set', () => {
     render(<DataTable columns={columns} data={payments} pageSize={20} />);
     expect(screen.queryByText(/row\(s\) selected/)).toBeNull();
