@@ -228,7 +228,7 @@ function AreaSparkline() {
   return (
     <ChartContainer
       config={trendConfig}
-      style={{ maxWidth: 220 }}
+      style={{ width: 220 }}
       initialDimension={SPARKLINE_DIMENSION}
     >
       <AreaChart data={trend} margin={SPARKLINE_MARGIN}>
@@ -408,7 +408,7 @@ export default function ChartExample() {
           <AreaSparkline />
           <ChartContainer
             config={trendConfig}
-            style={{ maxWidth: 220 }}
+            style={{ width: 220 }}
             initialDimension={SPARKLINE_DIMENSION}
           >
             <BarChart data={trend} margin={SPARKLINE_MARGIN} barCategoryGap="28%">
@@ -417,7 +417,7 @@ export default function ChartExample() {
           </ChartContainer>
           <ChartContainer
             config={trendConfig}
-            style={{ maxWidth: 220 }}
+            style={{ width: 220 }}
             initialDimension={SPARKLINE_DIMENSION}
           >
             <LineChart data={trend} margin={SPARKLINE_MARGIN}>
@@ -465,7 +465,7 @@ export default function ChartExample() {
       <Section title="Tooltip indicators">
         <Row>
           {(['dot', 'line', 'dashed'] as const).map((indicator) => (
-            <ChartContainer key={indicator} config={chartConfig} style={{ maxWidth: 260 }}>
+            <ChartContainer key={indicator} config={chartConfig} style={{ width: 260 }}>
               <BarChart data={data}>
                 <CartesianGrid vertical={false} stroke="var(--border)" />
                 <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
