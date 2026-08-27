@@ -23,7 +23,12 @@ export const Footer: React.FC<FooterProps> = ({ children }) => {
   // of children is therefore the only signal available, and it is the right
   // one - `visible` stays the explicit switch for a footer that does have
   // content.
-  if (!visible || React.Children.count(children) === 0) {
+  // `Children.count` treats a falsy conditional child (`{enabled &&
+  // <FooterContent />}` with `enabled` false) as one slot, not zero, so it
+  // would let the empty band this check exists to suppress back in the
+  // moment a caller writes the pattern. `Children.toArray` drops those slots
+  // before counting.
+  if (!visible || React.Children.toArray(children).length === 0) {
     return null;
   }
 
