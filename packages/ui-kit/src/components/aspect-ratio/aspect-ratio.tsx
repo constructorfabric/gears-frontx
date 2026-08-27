@@ -3,7 +3,6 @@ import { cx } from 'class-variance-authority';
 
 import styles from './aspect-ratio.module.css';
 
-// @cpt-FEATURE:aspect-ratio:p1
 /*
  * Upstream (apps/v4/registry/bases/base/ui/aspect-ratio.tsx) is plain CSS
  * `aspect-ratio` markup: no primitive, no variant axis, just a `<div>` whose

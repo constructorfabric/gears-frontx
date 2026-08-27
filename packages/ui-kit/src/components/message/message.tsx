@@ -3,7 +3,6 @@ import type { ComponentProps } from 'react';
 
 import styles from './message.module.css';
 
-// @cpt-FEATURE:message:p1
 /*
  * A faithful port of shadcn/ui's base Message
  * (registry/bases/base/ui/message.tsx): a six-part, primitive-free layout —

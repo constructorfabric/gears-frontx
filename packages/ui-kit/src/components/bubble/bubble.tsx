@@ -7,7 +7,6 @@ import type { ComponentProps } from 'react';
 
 import styles from './bubble.module.css';
 
-// @cpt-FEATURE:bubble:p1
 /*
  * A faithful port of shadcn/ui's base Bubble
  * (registry/bases/base/ui/bubble.tsx): framed conversational content —

@@ -4,7 +4,6 @@ import { cva, cx, type VariantProps } from 'class-variance-authority';
 
 import styles from './avatar.module.css';
 
-// @cpt-FEATURE:avatar:p1
 /*
  * Upstream (apps/v4/registry/bases/base/ui/avatar.tsx) is a six-part
  * composition: Avatar/AvatarImage/AvatarFallback wrap Base UI's Avatar
@@ -59,7 +58,6 @@ export function AvatarImage({ className, ...props }: AvatarImageProps) {
   return <AvatarPrimitive.Image className={cx(styles.image, className)} {...props} />;
 }
 
-// @cpt-FEATURE:avatar:p3
 /*
  * The fallback's fill, from the Figma spec sheet "Phase 3 / Avatar"
  * (node 40001346:4724): six identity tones crossed with a solid/soft

@@ -7,7 +7,6 @@ import type { ComponentProps } from 'react';
 
 import styles from './marker.module.css';
 
-// @cpt-FEATURE:marker:p1
 /*
  * A faithful port of shadcn/ui's base Marker
  * (registry/bases/base/ui/marker.tsx): an inline conversation marker for

@@ -1,6 +1,5 @@
 'use client';
 
-// @cpt-FEATURE:chart:p1
 /*
  * Upstream (apps/v4/registry/bases/base/ui/chart.tsx) wraps Recharts:
  * ChartContainer supplies the ResponsiveContainer plus a per-instance

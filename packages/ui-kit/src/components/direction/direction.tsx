@@ -1,4 +1,3 @@
-// @cpt-FEATURE:direction:p1
 /*
  * Thin re-export, matching the upstream base registry item exactly (see
  * direction.md's "Upstream source" note): Base UI's DirectionProvider is a

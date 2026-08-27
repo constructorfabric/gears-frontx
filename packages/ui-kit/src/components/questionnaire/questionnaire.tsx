@@ -7,7 +7,6 @@ import { Button, type ButtonProps } from '../button/button';
 import { Input } from '../input/input';
 import styles from './questionnaire.module.css';
 
-// @cpt-FEATURE:questionnaire:p1
 /*
  * Behavior (single-item stepper flow, per-item required/skip/invalid state,
  * keyboard shortcuts, radio-vs-checkbox choice semantics) comes entirely

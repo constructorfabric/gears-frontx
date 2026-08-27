@@ -1,4 +1,3 @@
-// @cpt-FEATURE:data-table:p1
 //
 // Load-bearing: DataTable calls useState/useTable directly in its own
 // render body, so this can't be dropped. Coupled to CLIENT_COMPONENTS in

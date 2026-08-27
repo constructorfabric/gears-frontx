@@ -3,7 +3,6 @@ import { cx } from 'class-variance-authority';
 
 import styles from './scroll-area.module.css';
 
-// @cpt-FEATURE:scroll-area:p1
 /*
  * Upstream (apps/v4/registry/bases/base/ui/scroll-area.tsx) exports exactly
  * two names, `ScrollArea` and `ScrollBar` — not one export per Base UI part.

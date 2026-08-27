@@ -6,7 +6,6 @@ import type { ComponentProps } from 'react';
 import { Button, type ButtonProps } from '../button/button';
 import styles from './message-scroller.module.css';
 
-// @cpt-FEATURE:message-scroller:p1
 /*
  * Behavior (auto-follow tracking, scroll-anchor bookkeeping, imperative
  * scrollToEnd/scrollToStart/scrollToMessage) comes entirely from

@@ -1,4 +1,3 @@
-// @cpt-FEATURE:command:p1
 import { Command as CommandPrimitive } from 'cmdk';
 import { cx } from 'class-variance-authority';
 import { SearchIcon } from 'lucide-react';

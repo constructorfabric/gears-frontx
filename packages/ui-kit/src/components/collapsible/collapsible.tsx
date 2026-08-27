@@ -3,7 +3,6 @@ import { cx } from 'class-variance-authority';
 
 import styles from './collapsible.module.css';
 
-// @cpt-FEATURE:collapsible:p1
 /*
  * Upstream (apps/v4/registry/bases/base/ui/collapsible.tsx) is a bare
  * pass-through with no className handling at all on any of the three parts

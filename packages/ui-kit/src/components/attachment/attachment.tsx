@@ -8,7 +8,6 @@ import { createContext, useContext, type ComponentProps } from 'react';
 import { Button, type ButtonProps } from '../button/button.js';
 import styles from './attachment.module.css';
 
-// @cpt-FEATURE:attachment:p1
 /*
  * A faithful port of shadcn/ui's base Attachment
  * (registry/bases/base/ui/attachment.tsx): a file/image attachment card

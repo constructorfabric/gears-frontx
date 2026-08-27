@@ -37,7 +37,6 @@ import {
 import { useIsMobile } from './use-mobile.js';
 import styles from './sidebar.module.css';
 
-// @cpt-FEATURE:sidebar:p1
 /*
  * Upstream (apps/v4/registry/bases/base/ui/sidebar.tsx) has no Base UI
  * primitive of its own — it is the kit's own application-shell state
