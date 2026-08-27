@@ -5,19 +5,20 @@
  * uses cva.
  *
  * `:global(.recharts-*)` selectors below target Recharts' own rendered
- * class names, not this module's local classes — see chart.tsx's file
- * header for the five upstream `[&_.recharts-*]` rules omitted here (they
- * need a hard-coded hex color literal in the selector, which
- * tokens.test.ts's raw-color guard forbids — spelling either value out even
- * in prose, anywhere in this file, trips that same guard, which is why this
- * paragraph describes them instead of naming them). Per-series colors
- * (`--color-<key>`, injected by
- * ChartStyle from ChartConfig) and the tooltip indicator/legend swatch
- * colors (set inline from Recharts' own per-datum payload — see chart.tsx)
- * are deliberately absent from this file for the same reason: both are
- * arbitrary, per-instance runtime values with no fixed color to declare
- * here, and the raw-color guard would have nothing to check them against
- * regardless.
+ * class names, not this module's local classes. Five of them also match on
+ * a hex `stroke` ATTRIBUTE — that is not a colour this file chooses, it is
+ * the literal value Recharts writes onto its own default-drawn grid,
+ * reference lines, dots and sectors, and matching it is the only way to
+ * find those elements and retint them onto the kit's tokens. The
+ * raw-colour guard in tokens.test.ts ignores hex inside an attribute
+ * selector for exactly this reason, and stays strict everywhere a
+ * declaration could actually paint one.
+ *
+ * Per-series colors (`--color-<key>`, injected by ChartStyle from
+ * ChartConfig) and the tooltip indicator/legend swatch colors (set inline
+ * from Recharts' own per-datum payload — see chart.tsx) are deliberately
+ * absent from this file: both are arbitrary, per-instance runtime values
+ * with no fixed color to declare here.
  */
 
 .container {
@@ -39,6 +40,28 @@
 .container :global(.recharts-radial-bar-background-sector),
 .container :global(.recharts-rectangle.recharts-tooltip-cursor) {
   fill: var(--muted);
+}
+
+/* Recharts draws its cartesian grid, polar grid and reference lines in one
+ * hard-coded stock grey, and outlines its default dots and pie/radial
+ * sectors in the paper tone of a light page. The attribute value in each
+ * selector below is how those stock-styled elements are told apart from
+ * ones the consumer coloured deliberately, which must be left alone.
+ * Upstream retints exactly these five; the grid is the half-strength one
+ * (its own `stroke-border/50`) so it stays behind the data rather than
+ * competing with it. */
+.container :global(.recharts-cartesian-grid line[stroke='#ccc']) {
+  stroke: color-mix(in oklab, var(--border) 50%, transparent);
+}
+
+.container :global(.recharts-polar-grid [stroke='#ccc']),
+.container :global(.recharts-reference-line [stroke='#ccc']) {
+  stroke: var(--border);
+}
+
+.container :global(.recharts-dot[stroke='#fff']),
+.container :global(.recharts-sector[stroke='#fff']) {
+  stroke: transparent;
 }
 
 /* Upstream's `outline-hidden` utility: a transparent outline rather than a

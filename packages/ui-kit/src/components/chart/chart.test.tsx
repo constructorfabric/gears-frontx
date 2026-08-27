@@ -101,7 +101,7 @@ describe('ChartStyle', () => {
   it('scopes a flat color to the chart id, unconditionally (no theme block needed)', () => {
     const { container } = render(<ChartStyle id="flat" config={{ desktop: { color: '#2563eb' } }} />);
     const css = container.querySelector('style')?.innerHTML ?? '';
-    expect(css).toContain('[data-chart=flat] {');
+    expect(css).toContain("[data-chart='flat'] {");
     expect(css).toContain('--color-desktop: #2563eb;');
   });
 
@@ -110,11 +110,41 @@ describe('ChartStyle', () => {
       <ChartStyle id="themed" config={{ mobile: { theme: { light: '#dc2626', dark: '#f87171' } } }} />,
     );
     const css = container.querySelector('style')?.innerHTML ?? '';
-    expect(css).toContain('[data-chart=themed] {\n  --color-mobile: #dc2626;');
-    expect(css).toContain("[data-theme='dark'] [data-chart=themed] {\n  --color-mobile: #f87171;");
+    expect(css).toContain("[data-chart='themed'] {\n  --color-mobile: #dc2626;");
+    expect(css).toContain("[data-theme='dark'] [data-chart='themed'] {\n  --color-mobile: #f87171;");
     expect(css).toContain("@media (prefers-color-scheme: dark)");
-    expect(css).toContain(":root:not([data-theme='light']) [data-chart=themed]");
+    expect(css).toContain(":root:not([data-theme='light']) [data-chart='themed']");
     expect(css).not.toContain('.dark ');
+  });
+
+  // The whole block is interpolated into a raw <style> tag, so an id, a
+  // config key and a color are three separate ways for a consumer string
+  // to become CSS of its own. One test per escape route, all at the point
+  // where they'd land in the stylesheet.
+  it('neutralizes an id, a key, or a color that would break out of the stylesheet', () => {
+    const { container } = render(
+      <ChartStyle
+        id="evil'] { display: none } [x"
+        config={{
+          'desktop; } body { display: none': { color: 'red' },
+          mobile: { color: 'red; } body { display: none }' },
+          tablet: { color: '</style><script>alert(1)</script>' },
+          laptop: { color: 'var(--primary)' },
+        }}
+      />,
+    );
+    const css = container.querySelector('style')?.innerHTML ?? '';
+    expect(css).not.toContain('display: none');
+    expect(css).not.toContain('<script>');
+    // The key is kept, reduced to characters that can only ever be part of
+    // a custom-property name...
+    expect(css).toMatch(/--color-desktop[\w-]*: red;/);
+    // ...while an unsafe VALUE has no such reduced form and is dropped
+    // whole, taking its declaration with it.
+    expect(css).not.toContain('--color-mobile');
+    expect(css).not.toContain('--color-tablet');
+    // A legitimate neighbour in the same config is unaffected.
+    expect(css).toContain('--color-laptop: var(--primary);');
   });
 });
 

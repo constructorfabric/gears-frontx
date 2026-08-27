@@ -105,29 +105,27 @@ here — see Recharts' docs).
 `verticalAlign` (`'top'` places the legend's padding above the chart
 instead of below), plus Recharts' own `Legend` content props.
 
-## Porting notes (what's not reproducible here)
+## Porting notes
 
-Upstream styles twelve Recharts-rendered elements via
-`[&_.recharts-*]` descendant selectors on `ChartContainer`'s root; **five
-are omitted** in this port because they target an attribute *value*
-Recharts hardcodes on its own default-rendered elements —
-`[stroke='#ccc']` (default cartesian/polar grid lines, reference lines)
-and `[stroke='#fff']` (default dot/sector strokes). Writing that selector
-needs the literal hex `#ccc`/`#fff` in `chart.module.css`, and this kit's
-`tokens.test.ts` raw-color guard rejects any hex literal anywhere in a
-component's module CSS — including inside a selector, not just a
-declared value — and that test is frozen for this port. The other seven
-rules (axis-tick text color, tooltip-cursor stroke, `outline-hidden` on
-layer/sector/surface, radial-bar/tooltip-cursor fill) carry no hex
-literal and are ported as-is.
+All twelve of the `[&_.recharts-*]` descendant rules upstream applies to
+`ChartContainer`'s root are ported, including the five that retint
+Recharts' own stock-coloured elements: `[stroke='#ccc']` (default
+cartesian/polar grid lines and reference lines) picks up `--border`, and
+`[stroke='#fff']` (default dot and sector outlines, drawn for a white
+page) goes transparent. So a chart that leaves `CartesianGrid`/
+`ReferenceLine` unstyled reads correctly in dark mode instead of showing
+Recharts' light-page grey.
 
-Practical effect: a chart that never sets an explicit `stroke` on its
-`CartesianGrid`/`ReferenceLine` (Recharts' own default is `#ccc`) or lets
-Recharts draw its default white dot/sector outline (`#fff`) keeps that
-literal gray/white instead of picking up `--border`/transparent. Every
-example below sets its own `stroke`/styling, so this gap doesn't surface
-there — it would only show on a chart that leans on Recharts' undocumented
-stock colors.
+`id` is normalized to `[A-Za-z0-9_-]` before it reaches either the
+`data-chart` attribute or the per-instance `<style>` block, and a
+`ChartConfig` colour containing anything that could end a declaration or
+the style element (`;`, `{}`, `<>`, `\`, a comment marker) is dropped
+rather than injected. Both are consumer strings landing verbatim in a
+stylesheet; keep ids and config keys to plain identifiers and colours to
+plain colour syntax and neither rule is noticeable. If you render
+`ChartStyle` yourself instead of using `ChartContainer`, put the same
+normalized id on your own `data-chart` attribute or the selector will not
+match it.
 
 ## Examples
 

@@ -11,7 +11,7 @@
  * is that scoping id, not this kit's usual `data-slot` marker — there is no
  * `data-slot` here by design, same as every other ported part.
  *
- * Three deliberate deviations from upstream, all forced by this kit's own
+ * Two deliberate deviations from upstream, both forced by this kit's own
  * constraints rather than a style preference — see chart.md's "Porting
  * notes" for the consumer-facing summary:
  *
@@ -30,20 +30,6 @@
  *    (`color` or `theme`) — upstream's real, load-bearing API regardless;
  *    shadcn's own docs setting `--chart-1` etc. is just ONE value for that
  *    same `color` field, not a requirement of the mechanism.
- * 3. Five of upstream's twelve `[&_.recharts-*]` descendant rules target an
- *    attribute VALUE Recharts hardcodes on its own default-rendered
- *    elements (`[stroke='#ccc']`, `[stroke='#fff']`) to retint or
- *    neutralize them. Expressing that selector needs the literal hex in
- *    chart.module.css, which tokens.test.ts's raw-color guard forbids
- *    outright — it scans the whole stylesheet text, not just declarations
- *    — and that test is frozen for this port. Those five rules are
- *    omitted; the other seven (axis-tick text, tooltip-cursor stroke,
- *    layer/sector/surface outline reset, radial-bar/tooltip-cursor fill)
- *    carry no hex literal and are ported as-is. Net effect: Recharts' own
- *    default gray grid/reference lines and white dot/sector strokes keep
- *    the library's stock color instead of picking up `--border`/
- *    transparent — cosmetic only, and only visible on a chart that leaves
- *    Recharts to draw its own default stroke.
  */
 
 import {
@@ -103,6 +89,36 @@ export type ChartContainerProps = Omit<ComponentProps<'div'>, 'className' | 'chi
   initialDimension?: { width: number; height: number };
 };
 
+/*
+ * Everything ChartStyle interpolates into its <style> tag is
+ * consumer-supplied — the chart's `id`, every `ChartConfig` key, every
+ * colour string — and none of it is escaped by React, which treats
+ * `dangerouslySetInnerHTML` as opaque text. An id of `x] { } body {
+ * display: none` would end the selector and start a rule of its own; a
+ * colour of `red; } body { … }` does the same one line down; either could
+ * carry a literal `</style>` and leave CSS altogether. So the two shapes
+ * that reach the stylesheet are constrained rather than trusted:
+ * identifiers are reduced to a character set that cannot express any of
+ * those, and colour VALUES (which have no such small alphabet — they run
+ * from `red` to `color-mix(in oklab, …)`) are checked for the characters
+ * that would let one escape its own declaration, and dropped whole if
+ * they carry any.
+ */
+const CSS_IDENT_UNSAFE = /[^a-zA-Z0-9_-]/g;
+
+// Anything that could close a declaration, a rule, a comment, or the
+// <style> element itself. Backslash is in the list because a CSS escape
+// sequence is another way to spell any of them.
+const CSS_VALUE_UNSAFE = /[;{}<>\\]|\/\*|\*\//;
+
+function cssIdentifier(value: string): string {
+  return value.replace(CSS_IDENT_UNSAFE, '_');
+}
+
+function isSafeCssValue(value: string): boolean {
+  return !CSS_VALUE_UNSAFE.test(value);
+}
+
 export function ChartContainer({
   id,
   className,
@@ -112,7 +128,10 @@ export function ChartContainer({
   ...props
 }: ChartContainerProps) {
   const uniqueId = useId();
-  const chartId = `chart-${id ?? uniqueId.replace(/:/g, '')}`;
+  // Normalized here, not just inside ChartStyle: the same string has to
+  // land in the `data-chart` attribute and in the selector that targets
+  // it, so they must be normalized by the same rule or they stop matching.
+  const chartId = cssIdentifier(`chart-${id ?? uniqueId}`);
 
   return (
     <ChartContext.Provider value={{ config }}>
@@ -141,11 +160,19 @@ export function ChartStyle({ id, config }: ChartStyleProps) {
     return null;
   }
 
+  const safeId = cssIdentifier(id);
+
   const declarationsFor = (theme: 'light' | 'dark') =>
     colorConfig
       .map(([key, itemConfig]) => {
         const color = itemConfig.theme?.[theme] ?? itemConfig.color;
-        return color ? `  --color-${key}: ${color};` : null;
+        // A rejected colour drops its whole declaration rather than
+        // emitting a broken one: the series then paints in Recharts' own
+        // default instead of taking the rest of the stylesheet with it.
+        if (!color || !isSafeCssValue(color)) {
+          return null;
+        }
+        return `  --color-${cssIdentifier(key)}: ${color};`;
       })
       .filter((declaration): declaration is string => declaration !== null)
       .join('\n');
@@ -160,16 +187,16 @@ export function ChartStyle({ id, config }: ChartStyleProps) {
   // === ""` — it is the unconditional default every chart instance starts
   // from, which the dark blocks below layer on top of.
   const css = `
-[data-chart=${id}] {
+[data-chart='${safeId}'] {
 ${lightDeclarations}
 }
 
-[data-theme='dark'] [data-chart=${id}] {
+[data-theme='dark'] [data-chart='${safeId}'] {
 ${darkDeclarations}
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) [data-chart=${id}] {
+  :root:not([data-theme='light']) [data-chart='${safeId}'] {
 ${darkDeclarations}
   }
 }
