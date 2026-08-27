@@ -31,6 +31,17 @@ describe('Marker', () => {
     expect(marker.getAttribute('data-variant')).toBe(variant);
   });
 
+  it('treats an explicit null variant as the default, in class and attribute alike', () => {
+    render(
+      <Marker data-testid="marker" variant={null}>
+        Label
+      </Marker>,
+    );
+    const marker = screen.getByTestId('marker');
+    expect(marker.className).toContain(styles.variantDefault);
+    expect(marker.getAttribute('data-variant')).toBe('default');
+  });
+
   it('merges a consumer className without dropping the kit class', () => {
     render(
       <Marker data-testid="marker" className="consumer">

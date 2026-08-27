@@ -39,7 +39,15 @@ const markerVariants = cva(styles.marker, {
 
 export interface MarkerProps extends useRender.ComponentProps<'div'>, VariantProps<typeof markerVariants> {}
 
-export function Marker({ className, variant = 'default', render, ...props }: MarkerProps) {
+export function Marker({ className, variant, render, ...props }: MarkerProps) {
+  // cva's own VariantProps types this `| null` (a consumer can pass
+  // `variant={null}` to explicitly reset to the default), which a default
+  // parameter value alone doesn't absorb — only `undefined` does. cva reads
+  // that null as "emit no variant class at all" while `data-variant` would
+  // still be dropped by React, so the marker would come out with neither the
+  // default class nor the attribute. Resolved once here, same as item.tsx,
+  // so class and attribute always agree.
+  const resolvedVariant = variant ?? 'default';
   return useRender({
     defaultTagName: 'div',
     render,
@@ -49,8 +57,8 @@ export function Marker({ className, variant = 'default', render, ...props }: Mar
     // shadow-proofing needed anywhere a `data-*` prop must survive
     // mergeProps.
     props: {
-      ...mergeProps<'div'>({ className: markerVariants({ variant, className }) }, props),
-      'data-variant': variant,
+      ...mergeProps<'div'>({ className: markerVariants({ variant: resolvedVariant, className }) }, props),
+      'data-variant': resolvedVariant,
     },
   });
 }
