@@ -286,9 +286,23 @@ describe("Fixture 4 — conflict-check on REAL templates: a synthetic 'mfe-dup' 
     if (dupAddResult.ok) return;
     expect(dupAddResult.reason).toBe('conflict');
     if (dupAddResult.reason === 'conflict') {
-      expect(dupAddResult.conflicts).toEqual([
-        { ground: 'src-app/mfe_packages/', contestants: ['frontx-template-mfe-dup', TEMPLATE_MFE_IDENTITY] },
-      ]);
+      // Derived from the real, on-disk template-mfe manifest — same pattern as
+      // Fixture 5's shell case below — rather than pinned to a snapshot: mfe
+      // claims five separate exclusive subtrees nested under
+      // 'src-app/mfe_packages/' (refactor(template-mfe): claim the packages it
+      // ships, not the whole mfe_packages directory), so the dup's one broad
+      // claim collides with each of them separately, and a report naming only
+      // one would leave the rest for the developer to rediscover.
+      const mfeSubtrees = readManifest(TEMPLATE_MFE_DIR).ownershipBoundaries.exclusiveSubtrees;
+      expect(dupAddResult.conflicts).toEqual(
+        mfeSubtrees
+          .filter((subtree) => pathWithinSubtree(subtree, 'src-app/mfe_packages/'))
+          .map((subtree) => ({
+            ground:
+              subtree === 'src-app/mfe_packages/' ? subtree : `src-app/mfe_packages/ overlaps ${subtree}`,
+            contestants: ['frontx-template-mfe-dup', TEMPLATE_MFE_IDENTITY],
+          })),
+      );
     }
 
     expect(listRealFiles(targetDir).sort()).toEqual(filesBefore);
