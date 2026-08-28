@@ -1,5 +1,3 @@
-// @cpt-flow:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2
-
 /**
  * MFE Bootstrap
  *
@@ -198,7 +196,6 @@ class OptionalDomainFactory extends ExtensionDomainImplementationFactory {
   }
 }
 
-// @cpt-begin:cpt-frontx-dod-mfe-registry-mfe-schema-registration:p1:inst-1
 /**
  * Scoped schema registration: only register schemas whose $id matches an action ID
  * declared by at least one entry in this package. Action schemas are validated
@@ -263,7 +260,6 @@ function registerNonActionSchemas(
     }
   }
 }
-// @cpt-end:cpt-frontx-dod-mfe-registry-mfe-schema-registration:p1:inst-1
 
 /**
  * First pass over every package: register all non-action schemas on the gts
@@ -365,7 +361,6 @@ async function registerMfePackage(
  *
  * @param app - FrontX application instance
  */
-// @cpt-begin:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-bootstrap-mfe
 export async function bootstrapMFE(app: FrontXApp): Promise<void> {
   const registry = app.mfeRegistry;
   if (!registry) {
@@ -420,4 +415,3 @@ export async function bootstrapMFE(app: FrontXApp): Promise<void> {
     await registerMfePackage(registry, config);
   }
 }
-// @cpt-end:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-bootstrap-mfe

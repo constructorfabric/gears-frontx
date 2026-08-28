@@ -1,6 +1,3 @@
-// @cpt-dod:cpt-frontx-dod-api-communication-base-service:p1
-
-// @cpt-begin:cpt-frontx-dod-api-communication-base-service:p1:inst-mock-user-fixture
 type MockUserFixture<TRole extends string> = {
   id: string;
   email: string;
@@ -32,4 +29,3 @@ export const createMockUserFixture = <TRole extends string>(
     department: 'Engineering',
   },
 });
-// @cpt-end:cpt-frontx-dod-api-communication-base-service:p1:inst-mock-user-fixture
