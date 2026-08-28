@@ -22,16 +22,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 // `os.tmpdir()` vs. its realpath differing, macOS `/var` vs `/private/var`).
 // A symlink-escape test is therefore intentionally out of scope here.
 //
-// The negative assertions below assert on a specific message pattern, not a
-// bare `Error` constructor. `joinWithinRoot` MUST throw messages matching
-// `/unsafe segment|escapes root/i` for these tests to pass for the right
-// reason.
+// The negative assertions below assert on the thrown error's `code`
+// (`PathGuardError`), not on the human-readable `message` — the message text
+// is free to be reworded without breaking every consumer of this helper.
 //
 // package.json's `exports["./path-guard"]` points at `./path-guard.ts`,
 // which implements `joinWithinRoot` below.
-import { joinWithinRoot } from '../path-guard';
-
-const UNSAFE_SEGMENT_ERROR = /unsafe segment|escapes root/i;
+import { joinWithinRoot, PathGuardError } from '../path-guard';
 
 const created: string[] = [];
 
@@ -79,7 +76,9 @@ describe('joinWithinRoot', () => {
   it('rejects a ".." segment', () => {
     const root = makeRoot();
 
-    expect(() => joinWithinRoot(root, '..')).toThrow(UNSAFE_SEGMENT_ERROR);
+    expect(() => joinWithinRoot(root, '..')).toThrow(
+      expect.objectContaining({ code: 'UNSAFE_SEGMENT' } satisfies Partial<PathGuardError>),
+    );
   });
 
   // A dangerous segment appearing after a valid one must still be caught —
@@ -88,45 +87,57 @@ describe('joinWithinRoot', () => {
   it('rejects a ".." segment in a non-first position, after a valid segment', () => {
     const root = makeRoot();
 
-    expect(() => joinWithinRoot(root, 'nested', '..')).toThrow(UNSAFE_SEGMENT_ERROR);
+    expect(() => joinWithinRoot(root, 'nested', '..')).toThrow(
+      expect.objectContaining({ code: 'UNSAFE_SEGMENT' } satisfies Partial<PathGuardError>),
+    );
   });
 
   it('rejects an absolute path string as a segment', () => {
     const root = makeRoot();
 
     expect(() => joinWithinRoot(root, path.resolve(os.tmpdir(), 'elsewhere'))).toThrow(
-      UNSAFE_SEGMENT_ERROR,
+      expect.objectContaining({ code: 'UNSAFE_SEGMENT' } satisfies Partial<PathGuardError>),
     );
   });
 
   it('rejects a segment containing a posix path separator', () => {
     const root = makeRoot();
 
-    expect(() => joinWithinRoot(root, 'nested/fixture.txt')).toThrow(UNSAFE_SEGMENT_ERROR);
+    expect(() => joinWithinRoot(root, 'nested/fixture.txt')).toThrow(
+      expect.objectContaining({ code: 'UNSAFE_SEGMENT' } satisfies Partial<PathGuardError>),
+    );
   });
 
   it('rejects a segment containing a win32 path separator', () => {
     const root = makeRoot();
 
-    expect(() => joinWithinRoot(root, 'nested\\fixture.txt')).toThrow(UNSAFE_SEGMENT_ERROR);
+    expect(() => joinWithinRoot(root, 'nested\\fixture.txt')).toThrow(
+      expect.objectContaining({ code: 'UNSAFE_SEGMENT' } satisfies Partial<PathGuardError>),
+    );
   });
 
   it('rejects a segment containing a null byte', () => {
     const root = makeRoot();
 
-    expect(() => joinWithinRoot(root, 'fixture\0.txt')).toThrow(UNSAFE_SEGMENT_ERROR);
+    expect(() => joinWithinRoot(root, 'fixture\0.txt')).toThrow(
+      expect.objectContaining({ code: 'UNSAFE_SEGMENT' } satisfies Partial<PathGuardError>),
+    );
   });
 
   it('rejects an empty-string segment', () => {
     const root = makeRoot();
 
-    expect(() => joinWithinRoot(root, '')).toThrow(UNSAFE_SEGMENT_ERROR);
+    expect(() => joinWithinRoot(root, '')).toThrow(
+      expect.objectContaining({ code: 'UNSAFE_SEGMENT' } satisfies Partial<PathGuardError>),
+    );
   });
 
   it('rejects a "." segment', () => {
     const root = makeRoot();
 
-    expect(() => joinWithinRoot(root, '.')).toThrow(UNSAFE_SEGMENT_ERROR);
+    expect(() => joinWithinRoot(root, '.')).toThrow(
+      expect.objectContaining({ code: 'UNSAFE_SEGMENT' } satisfies Partial<PathGuardError>),
+    );
   });
 
   // A Windows drive-relative segment contains no path separator and
@@ -147,7 +158,9 @@ describe('joinWithinRoot', () => {
     // character rejection in `isSafePathSegment` still catches it.
     const driveRelativeSegment = path.win32.normalize('C:temp.txt');
 
-    expect(() => joinWithinRoot(root, driveRelativeSegment)).toThrow(UNSAFE_SEGMENT_ERROR);
+    expect(() => joinWithinRoot(root, driveRelativeSegment)).toThrow(
+      expect.objectContaining({ code: 'UNSAFE_SEGMENT' } satisfies Partial<PathGuardError>),
+    );
   });
 
   // Calling with zero segments is a documented no-op, not a silent gap —

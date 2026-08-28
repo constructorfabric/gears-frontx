@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    ".": "./path-guard.ts",
     "./path-guard": "./path-guard.ts",
     "./path-guard.ts": "./path-guard.ts"
   },

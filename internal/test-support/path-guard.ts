@@ -1,6 +1,22 @@
 import path from 'node:path';
 
 /**
+ * Discriminated error thrown by `joinWithinRoot()`, so callers (and tests)
+ * can assert on a stable `code` instead of matching the human-readable
+ * `message` with a regex — the message text is free to be reworded without
+ * breaking every consumer.
+ */
+export class PathGuardError extends Error {
+  constructor(
+    public readonly code: 'UNSAFE_SEGMENT' | 'ESCAPES_ROOT',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'PathGuardError';
+  }
+}
+
+/**
  * Character-level safety check for a single path segment.
  *
  * Modeled on `isSafePathSegment()` in
@@ -45,13 +61,16 @@ function isSafePathSegment(segment: string): boolean {
  * Calling with zero segments is an intentional no-op: it returns
  * `path.resolve(root)` unchanged.
  *
- * @throws {Error} with a message matching `/unsafe segment|escapes root/i`
- *   if any segment is unsafe or the joined result escapes `root`.
+ * @throws {PathGuardError} with code `'UNSAFE_SEGMENT'` if any segment is
+ *   unsafe, or code `'ESCAPES_ROOT'` if the joined result escapes `root`.
  */
 export function joinWithinRoot(root: string, ...segments: string[]): string {
   for (const segment of segments) {
     if (!isSafePathSegment(segment)) {
-      throw new Error(`joinWithinRoot: unsafe segment: ${JSON.stringify(segment)}`);
+      throw new PathGuardError(
+        'UNSAFE_SEGMENT',
+        `joinWithinRoot: unsafe segment: ${JSON.stringify(segment)}`,
+      );
     }
   }
 
@@ -68,11 +87,16 @@ export function joinWithinRoot(root: string, ...segments: string[]): string {
   //
   // The separator-qualified `..`-prefix check below (`!== '..'` and
   // `!startsWith('..' + path.sep)`) is also a deliberate correction of the
-  // reference implementation this helper is modeled on
-  // (`resolvePackageJsonPathWithinRoot` in
-  // `scripts/check-test-dependency-versions.mjs`), which uses a naive
-  // substring-only `startsWith('..')` that would false-positive-reject a
-  // legitimate segment like `'..hidden'`.
+  // same naive substring-only `startsWith('..')` pattern, which would
+  // false-positive-reject a legitimate segment like `'..hidden'`. That naive
+  // pattern appears in two places this helper does NOT replace:
+  // `resolvePackageJsonPathWithinRoot` in
+  // `scripts/check-test-dependency-versions.mjs`, and `assertWithinRoot` in
+  // `packages/cli/src/adapters/fs-installed-content-path.ts` (production
+  // code, `cpt-frontx-algo-template-resolution-bounded-update` boundary
+  // invariant). Fixing either of those copies is out of scope for issue
+  // #597 — this comment exists so the known bug is not left documented only
+  // in this file's own copy.
   const isInsideRoot =
     relativeToRoot === '' ||
     (relativeToRoot !== '..' &&
@@ -80,7 +104,8 @@ export function joinWithinRoot(root: string, ...segments: string[]): string {
       !path.isAbsolute(relativeToRoot));
 
   if (!isInsideRoot) {
-    throw new Error(
+    throw new PathGuardError(
+      'ESCAPES_ROOT',
       `joinWithinRoot: joined path escapes root (${JSON.stringify(resolvedRoot)}): ${JSON.stringify(joined)}`,
     );
   }

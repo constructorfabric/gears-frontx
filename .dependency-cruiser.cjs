@@ -295,6 +295,37 @@ module.exports = {
       comment:
         'ecosystem-boundaries: @gears-frontx/telemetry holds no intra-ecosystem package dependency.',
     },
+
+    // ============ TEST-SUPPORT BOUNDARY ENFORCEMENT ============
+
+    // `@gears-frontx/test-support` (internal/test-support) is a test-only
+    // path-containment helper: `layer-constants.cjs`'s `ALLOWED_ECOSYSTEM_EDGES`
+    // lists it only under `cli.dev`/`cyber-pilot-kit-frontx.dev`, and
+    // `scripts/package-edge-tests.ts` (`npm run arch:edges`) checks that at the
+    // package.json-manifest level only. This rule is the import-graph side of
+    // the same boundary: it forbids any *production* source file from
+    // importing it, regardless of what a package's manifest declares. Test
+    // files are excluded by shape (`.test.ts`/`.test.tsx`, or anything under a
+    // `__tests__/`/`__test-utils__/` directory), matching the same convention
+    // `frontx-ui-kit-1-no-template-content` above uses for its own test
+    // carve-out.
+    {
+      name: 'frontx-test-support-test-only',
+      severity: 'error',
+      from: {
+        path: '^packages/[^/]+/src/',
+        pathNot: '\\.test\\.(ts|tsx)$|__tests__|__test-utils__',
+      },
+      to: {
+        path: [
+          '^internal/test-support/',
+          '(^|/)node_modules/@gears-frontx/test-support(/|$)',
+          '^@gears-frontx/test-support(/|$)',
+        ],
+      },
+      comment:
+        '@gears-frontx/test-support is a test-only path-containment helper; no production source file may import it.',
+    },
   ],
   options: {
     // `node_modules` and `packages/*/dist` are bounded here, not in `exclude`.
