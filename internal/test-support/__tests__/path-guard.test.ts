@@ -60,10 +60,10 @@ describe('joinWithinRoot', () => {
     );
   });
 
-  // F-008: segments that merely *contain* '.' or '..' as a substring (not an
+  // Segments that merely *contain* '.' or '..' as a substring (not an
   // exact-match path token) are legitimate filenames and must be accepted.
-  // An overly strict Phase 2 implementation that greps for the substring
-  // instead of comparing the whole segment would wrongly reject these.
+  // An overly strict implementation that greps for the substring instead of
+  // comparing the whole segment would wrongly reject these.
   it('accepts a segment containing ".." as a substring, not an exact segment', () => {
     const root = makeRoot();
 
@@ -82,9 +82,9 @@ describe('joinWithinRoot', () => {
     expect(() => joinWithinRoot(root, '..')).toThrow(UNSAFE_SEGMENT_ERROR);
   });
 
-  // F-002(a): a dangerous segment appearing after a valid one must still be
-  // caught — a stub that only validates segments[0] would pass every other
-  // case in this file but let this one through.
+  // A dangerous segment appearing after a valid one must still be caught —
+  // a stub that only validates segments[0] would pass every other case in
+  // this file but let this one through.
   it('rejects a ".." segment in a non-first position, after a valid segment', () => {
     const root = makeRoot();
 
@@ -129,7 +129,7 @@ describe('joinWithinRoot', () => {
     expect(() => joinWithinRoot(root, '.')).toThrow(UNSAFE_SEGMENT_ERROR);
   });
 
-  // F-002(b): a Windows drive-relative segment contains no path separator and
+  // A Windows drive-relative segment contains no path separator and
   // is not '.', '..', or empty, so a *separator-only* screen would let it
   // through. It is actually caught by the explicit `:` rejection in
   // `isSafePathSegment` (character screening), not by the containment check
@@ -150,8 +150,8 @@ describe('joinWithinRoot', () => {
     expect(() => joinWithinRoot(root, driveRelativeSegment)).toThrow(UNSAFE_SEGMENT_ERROR);
   });
 
-  // G-004: calling with zero segments is a documented no-op, not a silent
-  // gap — pin the contract explicitly.
+  // Calling with zero segments is a documented no-op, not a silent gap —
+  // pin the contract explicitly.
   it('returns root unchanged when called with zero segments', () => {
     const root = makeRoot();
 
