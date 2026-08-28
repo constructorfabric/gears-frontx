@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "การแจ้งเตือน",
   "toast_close_label": "ปิดการแจ้งเตือน",
+  "form_email_required": "ต้องระบุอีเมล",
+  "form_email_invalid": "ข้อมูลนี้ดูไม่เหมือนอีเมล",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

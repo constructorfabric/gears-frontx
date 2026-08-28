@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Notifikationer",
   "toast_close_label": "Luk notifikation",
+  "form_email_required": "E-mail er påkrævet.",
+  "form_email_invalid": "Det ligner ikke en e-mail.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

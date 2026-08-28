@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "اطلاعات",
   "toast_close_label": "اطلاع بند کریں",
+  "form_email_required": "ای میل درکار ہے۔",
+  "form_email_invalid": "یہ ای میل نہیں لگتا۔",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

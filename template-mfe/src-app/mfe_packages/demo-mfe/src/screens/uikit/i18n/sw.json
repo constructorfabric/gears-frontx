@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Arifa",
   "toast_close_label": "Funga arifa",
+  "form_email_required": "Barua pepe inahitajika.",
+  "form_email_invalid": "Hii haionekani kama barua pepe.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

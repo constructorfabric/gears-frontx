@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "通知",
   "toast_close_label": "關閉通知",
+  "form_email_required": "電子郵件為必填。",
+  "form_email_invalid": "這看起來不像電子郵件。",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

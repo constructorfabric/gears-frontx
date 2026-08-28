@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Уведомления",
   "toast_close_label": "Закрыть уведомление",
+  "form_email_required": "Email обязателен.",
+  "form_email_invalid": "Это не похоже на email.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

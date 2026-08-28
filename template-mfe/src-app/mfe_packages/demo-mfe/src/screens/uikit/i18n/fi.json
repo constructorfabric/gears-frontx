@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Ilmoitukset",
   "toast_close_label": "Sulje ilmoitus",
+  "form_email_required": "Sähköposti on pakollinen.",
+  "form_email_invalid": "Tämä ei näytä sähköpostiosoitteelta.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

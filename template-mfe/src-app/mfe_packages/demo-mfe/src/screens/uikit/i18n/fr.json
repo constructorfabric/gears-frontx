@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Zone de notifications",
   "toast_close_label": "Fermer la notification",
+  "form_email_required": "L'e-mail est obligatoire.",
+  "form_email_invalid": "Cela ne ressemble pas à un e-mail.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

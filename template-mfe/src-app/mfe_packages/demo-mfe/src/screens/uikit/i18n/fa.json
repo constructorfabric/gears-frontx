@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "اعلان‌ها",
   "toast_close_label": "بستن اعلان",
+  "form_email_required": "ایمیل الزامی است.",
+  "form_email_invalid": "این شبیه یک ایمیل نیست.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

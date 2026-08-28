@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "الإشعارات",
   "toast_close_label": "إغلاق الإشعار",
+  "form_email_required": "البريد الإلكتروني مطلوب.",
+  "form_email_invalid": "لا يبدو هذا بريدًا إلكترونيًا.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

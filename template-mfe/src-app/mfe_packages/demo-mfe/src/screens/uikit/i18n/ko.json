@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "알림",
   "toast_close_label": "알림 닫기",
+  "form_email_required": "이메일은 필수입니다.",
+  "form_email_invalid": "이메일 형식이 아닌 것 같습니다.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

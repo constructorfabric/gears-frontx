@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Bildirimler",
   "toast_close_label": "Bildirimi kapat",
+  "form_email_required": "E-posta zorunludur.",
+  "form_email_invalid": "Bu bir e-posta adresine benzemiyor.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

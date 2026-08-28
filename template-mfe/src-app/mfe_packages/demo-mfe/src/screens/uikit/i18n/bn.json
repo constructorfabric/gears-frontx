@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "বিজ্ঞপ্তি",
   "toast_close_label": "বিজ্ঞপ্তি বন্ধ করুন",
+  "form_email_required": "ইমেল আবশ্যক।",
+  "form_email_invalid": "এটি ইমেল বলে মনে হচ্ছে না।",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

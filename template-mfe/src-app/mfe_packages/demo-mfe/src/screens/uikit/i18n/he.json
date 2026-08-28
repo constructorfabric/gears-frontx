@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "התראות",
   "toast_close_label": "סגירת ההתראה",
+  "form_email_required": "נדרשת כתובת אימייל.",
+  "form_email_invalid": "זה לא נראה כמו כתובת אימייל.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

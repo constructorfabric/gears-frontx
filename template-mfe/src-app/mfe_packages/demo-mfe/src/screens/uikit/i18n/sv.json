@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Aviseringar",
   "toast_close_label": "Stäng aviseringen",
+  "form_email_required": "E-post är obligatoriskt.",
+  "form_email_invalid": "Det ser inte ut som en e-postadress.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

@@ -50,11 +50,24 @@ const REGION_ITEMS = [
   { value: 'us-east', label: 'Virginia' },
 ];
 
+/**
+ * Which of the two `ValidityState` flags the demo reacts to, kept as a reason
+ * rather than as the message it resolves to: the host can switch language while
+ * an error is on screen, and a stored message would keep the language it was
+ * produced in until the field is blurred again.
+ */
+type EmailErrorReason = 'required' | 'malformed';
+
+const EMAIL_ERROR_KEYS: Record<EmailErrorReason, string> = {
+  required: 'form_email_required',
+  malformed: 'form_email_invalid',
+};
+
 export const FormElements: React.FC<FormElementsProps> = ({ t, portalContainer }) => {
   const [region, setRegion] = useState('eu-central');
   const [plan, setPlan] = useState('free');
   const [notifications, setNotifications] = useState(true);
-  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<EmailErrorReason | null>(null);
 
   /**
    * Field derives no validation of its own, so the demo runs the check the
@@ -66,9 +79,9 @@ export const FormElements: React.FC<FormElementsProps> = ({ t, portalContainer }
   const validateEmail = (event: React.FocusEvent<HTMLInputElement>) => {
     const { validity } = event.currentTarget;
     if (validity.valueMissing) {
-      setEmailError('Email is required.');
+      setEmailError('required');
     } else if (validity.typeMismatch) {
-      setEmailError('That does not look like an email.');
+      setEmailError('malformed');
     } else {
       setEmailError(null);
     }
@@ -109,7 +122,9 @@ export const FormElements: React.FC<FormElementsProps> = ({ t, portalContainer }
             <FieldDescription id="form-demo-email-description">
               We only use it for the invoice.
             </FieldDescription>
-            <FieldError id="form-demo-email-error">{emailError}</FieldError>
+            <FieldError id="form-demo-email-error">
+              {emailError ? t(EMAIL_ERROR_KEYS[emailError]) : null}
+            </FieldError>
           </Field>
         </div>
       </ElementDemo>

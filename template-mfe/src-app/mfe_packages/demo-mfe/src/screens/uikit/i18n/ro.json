@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Notificări",
   "toast_close_label": "Închide notificarea",
+  "form_email_required": "E-mailul este obligatoriu.",
+  "form_email_invalid": "Asta nu arată ca un e-mail.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

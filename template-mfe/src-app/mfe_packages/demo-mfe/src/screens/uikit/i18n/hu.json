@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Értesítések",
   "toast_close_label": "Értesítés bezárása",
+  "form_email_required": "Az e-mail megadása kötelező.",
+  "form_email_invalid": "Ez nem úgy néz ki, mint egy e-mail.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

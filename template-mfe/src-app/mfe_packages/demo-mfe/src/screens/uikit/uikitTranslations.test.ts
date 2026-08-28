@@ -23,7 +23,15 @@ const english = locales.en;
 
 describe('uikit screen translations', () => {
   it('carries the keys the screen and its menu call, in English', () => {
-    for (const key of ['title', 'description', 'menu_title', 'toast_region_label', 'toast_close_label']) {
+    for (const key of [
+      'title',
+      'description',
+      'menu_title',
+      'toast_region_label',
+      'toast_close_label',
+      'form_email_required',
+      'form_email_invalid',
+    ]) {
       expect(english[key]).toBeTruthy();
     }
 

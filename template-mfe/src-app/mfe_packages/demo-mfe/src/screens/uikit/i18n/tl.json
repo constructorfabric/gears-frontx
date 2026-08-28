@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Mga notipikasyon",
   "toast_close_label": "Isara ang notipikasyon",
+  "form_email_required": "Kailangan ang email.",
+  "form_email_invalid": "Mukhang hindi ito email.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

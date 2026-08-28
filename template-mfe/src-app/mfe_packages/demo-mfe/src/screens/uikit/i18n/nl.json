@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Meldingen",
   "toast_close_label": "Melding sluiten",
+  "form_email_required": "E-mail is verplicht.",
+  "form_email_invalid": "Dit lijkt niet op een e-mail.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

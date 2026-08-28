@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Повідомлення",
   "toast_close_label": "Закрити повідомлення",
+  "form_email_required": "Email обов'язковий.",
+  "form_email_invalid": "Це не схоже на email.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Notifikasi",
   "toast_close_label": "Tutup notifikasi",
+  "form_email_required": "Email wajib diisi.",
+  "form_email_invalid": "Ini sepertinya bukan email.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

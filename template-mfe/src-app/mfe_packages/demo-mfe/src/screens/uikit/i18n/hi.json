@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "सूचनाएँ",
   "toast_close_label": "सूचना बंद करें",
+  "form_email_required": "ईमेल आवश्यक है।",
+  "form_email_invalid": "यह ईमेल जैसा नहीं लगता।",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

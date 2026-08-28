@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "通知",
   "toast_close_label": "通知を閉じる",
+  "form_email_required": "メールアドレスは必須です。",
+  "form_email_invalid": "メールアドレスの形式ではないようです。",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

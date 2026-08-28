@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Ειδοποιήσεις",
   "toast_close_label": "Κλείσιμο ειδοποίησης",
+  "form_email_required": "Το email είναι υποχρεωτικό.",
+  "form_email_invalid": "Αυτό δεν μοιάζει με email.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

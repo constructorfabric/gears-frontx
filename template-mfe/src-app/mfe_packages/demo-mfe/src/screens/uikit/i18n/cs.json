@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Oznámení",
   "toast_close_label": "Zavřít oznámení",
+  "form_email_required": "E-mail je povinný.",
+  "form_email_invalid": "Tohle nevypadá jako e-mail.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

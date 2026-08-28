@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Varsler",
   "toast_close_label": "Lukk varselet",
+  "form_email_required": "E-post er påkrevd.",
+  "form_email_invalid": "Dette ser ikke ut som en e-post.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

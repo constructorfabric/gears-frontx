@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Thông báo",
   "toast_close_label": "Đóng thông báo",
+  "form_email_required": "Email là bắt buộc.",
+  "form_email_invalid": "Đây có vẻ không phải là email.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

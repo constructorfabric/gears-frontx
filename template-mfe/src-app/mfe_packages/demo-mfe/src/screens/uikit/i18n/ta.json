@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "அறிவிப்புகள்",
   "toast_close_label": "அறிவிப்பை மூடு",
+  "form_email_required": "மின்னஞ்சல் தேவை.",
+  "form_email_invalid": "இது மின்னஞ்சல் போல் தெரியவில்லை.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",

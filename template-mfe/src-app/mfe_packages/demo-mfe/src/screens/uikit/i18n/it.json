@@ -9,6 +9,8 @@
   "current_language": "Current Language:",
   "toast_region_label": "Notifiche",
   "toast_close_label": "Chiudi la notifica",
+  "form_email_required": "L'email è obbligatoria.",
+  "form_email_invalid": "Questo non sembra un'email.",
   "category.layout": "Layout",
   "category.navigation": "Navigation",
   "category.forms": "Forms",
