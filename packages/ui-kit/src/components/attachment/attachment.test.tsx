@@ -121,6 +121,17 @@ describe('Attachment parts', () => {
     expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
   });
 
+  it('treats an explicit null variant on AttachmentMedia as the icon default, in class and attribute alike', () => {
+    render(
+      <Attachment>
+        <AttachmentMedia data-testid="media" variant={null} />
+      </Attachment>,
+    );
+    const media = screen.getByTestId('media');
+    expect(media.className).toContain(styles.variantIcon);
+    expect(media.getAttribute('data-variant')).toBe('icon');
+  });
+
   it('renders AttachmentTrigger as a button by default and supports the render prop', () => {
     render(
       <Attachment>

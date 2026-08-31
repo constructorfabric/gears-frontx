@@ -61,12 +61,20 @@ export interface BubbleProps extends ComponentProps<'div'>, VariantProps<typeof 
 }
 
 /** The root bubble wrapper. */
-export function Bubble({ className, variant = 'default', align = 'start', ...props }: BubbleProps) {
+export function Bubble({ className, variant, align = 'start', ...props }: BubbleProps) {
+  // cva's own VariantProps types this `| null` (a consumer can pass
+  // `variant={null}` to explicitly reset to the default), which a default
+  // parameter value alone doesn't absorb — only `undefined` does. cva reads
+  // that null as "emit no variant class at all" while `data-variant` would
+  // still be dropped by React, so the bubble would come out with neither the
+  // default class nor the attribute. Resolved once here, same as marker.tsx,
+  // so class and attribute always agree.
+  const resolvedVariant = variant ?? 'default';
   return (
     <div
-      data-variant={variant}
+      data-variant={resolvedVariant}
       data-align={align}
-      className={bubbleVariants({ variant, className })}
+      className={bubbleVariants({ variant: resolvedVariant, className })}
       {...props}
     />
   );

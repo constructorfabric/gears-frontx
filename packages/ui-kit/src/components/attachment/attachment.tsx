@@ -105,8 +105,22 @@ export interface AttachmentMediaProps
 /** The media slot for an icon or image preview. Sizes and tints itself off
  * the ancestor `Attachment`'s `size`/`orientation`/`state` via CSS — no
  * extra props needed. */
-export function AttachmentMedia({ className, variant = 'icon', ...props }: AttachmentMediaProps) {
-  return <div data-variant={variant} className={attachmentMediaVariants({ variant, className })} {...props} />;
+export function AttachmentMedia({ className, variant, ...props }: AttachmentMediaProps) {
+  // cva's own VariantProps types this `| null` (a consumer can pass
+  // `variant={null}` to explicitly reset to the default), which a default
+  // parameter value alone doesn't absorb — only `undefined` does. cva reads
+  // that null as "emit no variant class at all" while `data-variant` would
+  // still be dropped by React, so the media slot would come out with neither
+  // the default class nor the attribute. Resolved once here, same as
+  // marker.tsx, so class and attribute always agree.
+  const resolvedVariant = variant ?? 'icon';
+  return (
+    <div
+      data-variant={resolvedVariant}
+      className={attachmentMediaVariants({ variant: resolvedVariant, className })}
+      {...props}
+    />
+  );
 }
 
 export type AttachmentContentProps = ComponentProps<'div'>;

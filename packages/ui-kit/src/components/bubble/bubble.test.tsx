@@ -36,6 +36,17 @@ describe('Bubble', () => {
     expect(bubble.getAttribute('data-variant')).toBe(variant);
   });
 
+  it('treats an explicit null variant as the default, in class and attribute alike', () => {
+    render(
+      <Bubble data-testid="bubble" variant={null}>
+        Hi
+      </Bubble>,
+    );
+    const bubble = screen.getByTestId('bubble');
+    expect(bubble.className).toContain(styles.variantDefault);
+    expect(bubble.getAttribute('data-variant')).toBe('default');
+  });
+
   it('reflects align="end" as a data attribute', () => {
     render(
       <Bubble data-testid="bubble" align="end">
