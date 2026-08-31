@@ -38,9 +38,6 @@ import {
   ExtensionDomainSlot,
   ThemeAwareReactLifecycle,
   screenDomain,
-  themeSchema,
-  languageSchema,
-  extensionScreenSchema,
   type ContainerHooks,
   type DomainContext,
   type ActionPayload,
@@ -53,6 +50,7 @@ import {
   type MfeEntryMF,
   type JSONSchema,
 } from '@gears-frontx/react';
+import { themeSchema, languageSchema, extensionScreenSchema } from '@gears-frontx/frontx-template-shell';
 
 const WIDGETS_DOMAIN_ID =
   'gts.frontx.mfes.ext.domain.v1~frontx.widgets.area.main.v1';

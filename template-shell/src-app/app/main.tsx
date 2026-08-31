@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { FrontXProvider, apiRegistry, createFrontXApp, MfeHandlerMF, gtsPlugin, FRONTX_MFE_ENTRY_MF, themeSchema, languageSchema, extensionScreenSchema } from '@gears-frontx/react';
+import { FrontXProvider, apiRegistry, createFrontXApp, MfeHandlerMF, gtsPlugin, FRONTX_MFE_ENTRY_MF } from '@gears-frontx/react';
+import { themeSchema, languageSchema, extensionScreenSchema } from '@gears-frontx/frontx-template-shell';
 import { Toaster } from '@/app/components/ui/sonner';
 import { AccountsApiService } from '@/app/api';
 import './globals.css'; // Global styles with CSS variables

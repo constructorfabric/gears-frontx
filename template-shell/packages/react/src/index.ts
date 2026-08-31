@@ -141,7 +141,6 @@ export {
   createSlice,
 
   // Layout domain exports
-  LayoutDomain,
   layoutReducer,
   layoutDomainReducers,
   LAYOUT_SLICE_NAME,
@@ -220,10 +219,6 @@ export {
   RestEndpointProtocol,
   SseProtocol,
   SseStreamProtocol,
-  // Protocol-specific mock plugins (replaces generic MockPlugin)
-  RestMockPlugin,
-  SseMockPlugin,
-  MockEventSource,
   // Plugin base classes
   ApiPluginBase,
   ApiPlugin,
@@ -364,9 +359,6 @@ export type {
   EventSourceLike,
   RestShortCircuitResponse,
   SseShortCircuitResponse,
-  RestMockConfig,
-  SseMockConfig,
-  SseMockEvent,
 
   // I18n
   I18nConfig,
@@ -494,8 +486,10 @@ export type {
 // MFE Concrete implementations
 export { MfeHandlerMF, gtsPlugin } from '@gears-frontx/framework';
 
-// GTS Derived Schemas (application-layer registration)
-export { themeSchema, languageSchema, extensionScreenSchema } from '@gears-frontx/framework';
+// GTS derived schemas (themeSchema, languageSchema, extensionScreenSchema) and the
+// protocol-specific mock plugins (RestMockPlugin, SseMockPlugin, MockEventSource)
+// are application-layer symbols owned by @gears-frontx/frontx-template-shell and
+// are no longer re-exported here — import them from the template package (#601).
 
 // MFE Utilities
 export {
