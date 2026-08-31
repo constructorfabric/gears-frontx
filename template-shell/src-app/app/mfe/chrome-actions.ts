@@ -15,7 +15,7 @@
  * its own screen-domain declaration.
  */
 
-import type { JSONSchema } from '@gears-frontx/react';
+import { FRONTX_SCREEN_DOMAIN, type JSONSchema } from '@gears-frontx/react';
 
 /** Applies a registered theme by id - the payload carries `themeId`. */
 export const CHROME_SET_THEME =
@@ -27,8 +27,17 @@ export const CHROME_SET_MENU_COLLAPSED =
 
 /**
  * Modelled on the shipped `mount_ext.v1.json`: a domain-targeted action, so
- * `target` refs the domain type rather than an extension, and the payload is
- * closed around the single field each action needs.
+ * `target` refs a domain rather than an extension, and the payload is closed
+ * around the single field each action needs.
+ *
+ * The ref names `FRONTX_SCREEN_DOMAIN` itself rather than the
+ * `gts.frontx.mfes.ext.domain.v1~*` wildcard `mount_ext.v1.json` uses: the
+ * screen domain is the one that opts into these handlers (see `bootstrap.ts`),
+ * and sidebar, popup and overlay register none. Under the wildcard a chain
+ * aimed at one of those passes admission and is refused two layers later by
+ * `NoHandlerForActionTargetError`, which names a missing handler rather than
+ * the domain the caller should have targeted; named here, the mismatch is
+ * reported against the pattern at the moment the action is validated.
  *
  * These must reach the type system before `registerDomain`, because the
  * mediator resolves an action's schema from its `type` at dispatch time and
@@ -41,7 +50,7 @@ export const CHROME_ACTION_SCHEMAS: JSONSchema[] = [
     type: 'object',
     properties: {
       type: { 'x-gts-ref': '/$id' },
-      target: { 'x-gts-ref': 'gts.frontx.mfes.ext.domain.v1~*' },
+      target: { 'x-gts-ref': FRONTX_SCREEN_DOMAIN },
       payload: {
         type: 'object',
         properties: { themeId: { type: 'string' } },
@@ -57,7 +66,7 @@ export const CHROME_ACTION_SCHEMAS: JSONSchema[] = [
     type: 'object',
     properties: {
       type: { 'x-gts-ref': '/$id' },
-      target: { 'x-gts-ref': 'gts.frontx.mfes.ext.domain.v1~*' },
+      target: { 'x-gts-ref': FRONTX_SCREEN_DOMAIN },
       payload: {
         type: 'object',
         properties: { collapsed: { type: 'boolean' } },

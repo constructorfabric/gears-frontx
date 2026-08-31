@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ActionHandler } from '@gears-frontx/react';
 
 const registerDomain = vi.fn();
 const updateSharedProperty = vi.fn();
@@ -149,5 +150,93 @@ describe('bootstrapMFE (host-app)', () => {
     await bootstrapMFE(mockApp as never);
 
     expect(registerExtension).not.toHaveBeenCalled();
+  });
+
+  describe('screen-domain chrome handlers', () => {
+    /**
+     * Bootstraps with the given `app.actions` surface and returns the handlers
+     * the screen domain's implementation registered. The factory is taken from
+     * the `registerDomain` call rather than reconstructed, so the handlers
+     * under test are the ones the real bootstrap would have installed.
+     */
+    async function chromeHandlersFor(
+      actions: Record<string, unknown>,
+    ): Promise<Map<string, ActionHandler>> {
+      fetchSpy.mockResolvedValue(new Response('[]', { status: 200 }));
+
+      const { bootstrapMFE } = await import('./bootstrap');
+      await bootstrapMFE({ ...mockApp, actions } as never);
+
+      const handlers = new Map<string, ActionHandler>();
+      const [, screenFactory] = registerDomain.mock.calls[0];
+      screenFactory.build({
+        mounter: {},
+        registerHandler: (actionTypeId: string, handler: ActionHandler) => {
+          handlers.set(actionTypeId, handler);
+        },
+      });
+      return handlers;
+    }
+
+    beforeEach(() => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    it('applies the theme a set_theme action names through the host themes plugin', async () => {
+      const changeTheme = vi.fn();
+      const { CHROME_SET_THEME } = await import('./chrome-actions');
+
+      const handlers = await chromeHandlersFor({ changeTheme });
+      await handlers.get(CHROME_SET_THEME)?.handleAction(CHROME_SET_THEME, { themeId: 'dark' });
+
+      expect(changeTheme).toHaveBeenCalledWith({ themeId: 'dark' });
+    });
+
+    it('collapses the menu a set_menu_collapsed action names through the host layout plugin', async () => {
+      const toggleMenuCollapsed = vi.fn();
+      const { CHROME_SET_MENU_COLLAPSED } = await import('./chrome-actions');
+
+      const handlers = await chromeHandlersFor({ toggleMenuCollapsed });
+      await handlers
+        .get(CHROME_SET_MENU_COLLAPSED)
+        ?.handleAction(CHROME_SET_MENU_COLLAPSED, { collapsed: true });
+
+      expect(toggleMenuCollapsed).toHaveBeenCalledWith({ collapsed: true });
+    });
+
+    it.each([
+      ['set_theme', 'CHROME_SET_THEME', { themeId: 'dark' }],
+      ['set_menu_collapsed', 'CHROME_SET_MENU_COLLAPSED', { collapsed: true }],
+    ] as const)(
+      'resolves %s on a host that runs no plugin for it, leaving the chain to continue',
+      async (_name, constantName, payload) => {
+        const chromeActions = await import('./chrome-actions');
+        const actionTypeId = chromeActions[constantName];
+
+        // An empty `actions` surface is the shell that opted into neither the
+        // themes nor the layout plugin — the only case these handlers still
+        // guard against.
+        const handlers = await chromeHandlersFor({});
+
+        await expect(
+          handlers.get(actionTypeId)?.handleAction(actionTypeId, payload),
+        ).resolves.toBeUndefined();
+      },
+    );
+
+    it('refuses a set_theme payload carrying no theme id rather than driving the plugin with it', async () => {
+      const changeTheme = vi.fn();
+      const { CHROME_SET_THEME } = await import('./chrome-actions');
+
+      const handlers = await chromeHandlersFor({ changeTheme });
+
+      // The action schema marks `themeId` required, so the mediator refuses
+      // this action before any handler sees it; reaching the throw means schema
+      // and handler have drifted apart.
+      expect(() => handlers.get(CHROME_SET_THEME)?.handleAction(CHROME_SET_THEME, {})).toThrow(
+        /no string themeId/,
+      );
+      expect(changeTheme).not.toHaveBeenCalled();
+    });
   });
 });

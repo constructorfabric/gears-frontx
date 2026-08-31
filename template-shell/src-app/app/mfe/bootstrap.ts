@@ -93,6 +93,34 @@ class HostContainerHooks implements ContainerHooks {
   }
 }
 
+// The two readers below state, to TypeScript, an invariant the type system
+// already enforces at runtime: `chrome-actions.ts` closes each chrome payload
+// around a single required field of a declared type, and the mediator validates
+// an action against that schema before it resolves any handler for it. So a
+// handler never sees a payload missing its field, and neither reader is a
+// refusal path a caller can trigger — reaching a throw means the schema and the
+// handler disagree about the payload, which is a defect in one of the two.
+
+function readThemeId(payload: Record<string, unknown> | undefined): string {
+  const themeId = payload?.themeId;
+  if (typeof themeId !== 'string') {
+    throw new Error(
+      '[MFE Bootstrap] set_theme payload has no string themeId; the action schema should have refused this action before it reached the handler',
+    );
+  }
+  return themeId;
+}
+
+function readCollapsed(payload: Record<string, unknown> | undefined): boolean {
+  const collapsed = payload?.collapsed;
+  if (typeof collapsed !== 'boolean') {
+    throw new Error(
+      '[MFE Bootstrap] set_menu_collapsed payload has no boolean collapsed; the action schema should have refused this action before it reached the handler',
+    );
+  }
+  return collapsed;
+}
+
 class ScreenDomainImpl extends ExtensionDomainImplementation {
   private readonly strategy: ExclusiveMountStrategy;
 
@@ -109,19 +137,19 @@ class ScreenDomainImpl extends ExtensionDomainImplementation {
       FRONTX_ACTION_MOUNT_EXT,
       ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as ActionPayload)),
     );
-    // The host chrome a mounted screen may drive. Both resolve rather than
-    // throw on a payload or a plugin that is not there: a chrome request the
-    // shell cannot honour should leave the screen running, not fail its chain.
+    // The host chrome a mounted screen may drive. The one thing neither the
+    // action schema nor the domain declaration can decide is whether THIS host
+    // runs the plugin the action needs — `themes` and `layout` are both opt-in
+    // — so each handler resolves rather than throws when it does not: chrome is
+    // decoration around a screen, and a request the shell cannot honour should
+    // leave the screen running instead of failing its chain.
     ctx.registerHandler(
       CHROME_SET_THEME,
       ActionHandler.fromFunction((_t, p) => {
-        const themeId = p?.themeId;
-        if (typeof themeId !== 'string') {
-          console.warn('[MFE Bootstrap] set_theme ignored: payload.themeId is not a string');
-        } else if (typeof app.actions.changeTheme !== 'function') {
+        if (typeof app.actions.changeTheme !== 'function') {
           console.warn('[MFE Bootstrap] set_theme ignored: no themes plugin on this host');
         } else {
-          app.actions.changeTheme({ themeId });
+          app.actions.changeTheme({ themeId: readThemeId(p) });
         }
         return Promise.resolve();
       }),
@@ -129,15 +157,10 @@ class ScreenDomainImpl extends ExtensionDomainImplementation {
     ctx.registerHandler(
       CHROME_SET_MENU_COLLAPSED,
       ActionHandler.fromFunction((_t, p) => {
-        const collapsed = p?.collapsed;
-        if (typeof collapsed !== 'boolean') {
-          console.warn(
-            '[MFE Bootstrap] set_menu_collapsed ignored: payload.collapsed is not a boolean',
-          );
-        } else if (typeof app.actions.toggleMenuCollapsed !== 'function') {
+        if (typeof app.actions.toggleMenuCollapsed !== 'function') {
           console.warn('[MFE Bootstrap] set_menu_collapsed ignored: no layout plugin on this host');
         } else {
-          app.actions.toggleMenuCollapsed({ collapsed });
+          app.actions.toggleMenuCollapsed({ collapsed: readCollapsed(p) });
         }
         return Promise.resolve();
       }),
