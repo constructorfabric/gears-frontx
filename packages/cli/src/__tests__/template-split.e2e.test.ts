@@ -294,14 +294,20 @@ describe("Fixture 4 — conflict-check on REAL templates: a synthetic 'mfe-dup' 
       // claim collides with each of them separately, and a report naming only
       // one would leave the rest for the developer to rediscover.
       const mfeSubtrees = readManifest(TEMPLATE_MFE_DIR).ownershipBoundaries.exclusiveSubtrees;
+      const swallowed = mfeSubtrees.filter((subtree) =>
+        pathWithinSubtree(subtree, 'src-app/mfe_packages/'),
+      );
+      // A derived oracle with no floor under it would pass against a manifest
+      // that had stopped declaring anything under `src-app/mfe_packages/`: an
+      // empty expectation matches an empty report, and the multi-conflict
+      // property the comment above describes would go untested. More than one
+      // is the standing fact this case exists for.
+      expect(swallowed.length).toBeGreaterThan(1);
       expect(dupAddResult.conflicts).toEqual(
-        mfeSubtrees
-          .filter((subtree) => pathWithinSubtree(subtree, 'src-app/mfe_packages/'))
-          .map((subtree) => ({
-            ground:
-              subtree === 'src-app/mfe_packages/' ? subtree : `src-app/mfe_packages/ overlaps ${subtree}`,
-            contestants: ['frontx-template-mfe-dup', TEMPLATE_MFE_IDENTITY],
-          })),
+        swallowed.map((subtree) => ({
+          ground: `src-app/mfe_packages/ overlaps ${subtree}`,
+          contestants: ['frontx-template-mfe-dup', TEMPLATE_MFE_IDENTITY],
+        })),
       );
     }
 
