@@ -178,6 +178,22 @@ describe('bootstrapMFE (host-app)', () => {
       return handlers;
     }
 
+    /**
+     * The handler registered for `actionTypeId`, or a failure naming what was
+     * not registered. `Map.get` returns `ActionHandler | undefined`, and calling
+     * it optionally would hand every case below an `undefined` in place of the
+     * call it meant to make: a screen domain that registered no handler at all
+     * then fails as whatever shape each assertion happens to reject, or does not
+     * fail, instead of as the missing registration it is.
+     */
+    function handlerFor(handlers: Map<string, ActionHandler>, actionTypeId: string): ActionHandler {
+      const handler = handlers.get(actionTypeId);
+      if (!handler) {
+        throw new Error(`the screen domain registered no handler for '${actionTypeId}'`);
+      }
+      return handler;
+    }
+
     beforeEach(() => {
       vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
@@ -187,7 +203,9 @@ describe('bootstrapMFE (host-app)', () => {
       const { CHROME_SET_THEME } = await import('./chrome-actions');
 
       const handlers = await chromeHandlersFor({ changeTheme });
-      await handlers.get(CHROME_SET_THEME)?.handleAction(CHROME_SET_THEME, { themeId: 'dark' });
+      await handlerFor(handlers, CHROME_SET_THEME).handleAction(CHROME_SET_THEME, {
+        themeId: 'dark',
+      });
 
       expect(changeTheme).toHaveBeenCalledWith({ themeId: 'dark' });
     });
@@ -197,9 +215,10 @@ describe('bootstrapMFE (host-app)', () => {
       const { CHROME_SET_MENU_COLLAPSED } = await import('./chrome-actions');
 
       const handlers = await chromeHandlersFor({ toggleMenuCollapsed });
-      await handlers
-        .get(CHROME_SET_MENU_COLLAPSED)
-        ?.handleAction(CHROME_SET_MENU_COLLAPSED, { collapsed: true });
+      await handlerFor(handlers, CHROME_SET_MENU_COLLAPSED).handleAction(
+        CHROME_SET_MENU_COLLAPSED,
+        { collapsed: true },
+      );
 
       expect(toggleMenuCollapsed).toHaveBeenCalledWith({ collapsed: true });
     });
@@ -219,7 +238,7 @@ describe('bootstrapMFE (host-app)', () => {
         const handlers = await chromeHandlersFor({});
 
         await expect(
-          handlers.get(actionTypeId)?.handleAction(actionTypeId, payload),
+          handlerFor(handlers, actionTypeId).handleAction(actionTypeId, payload),
         ).resolves.toBeUndefined();
       },
     );
@@ -233,9 +252,9 @@ describe('bootstrapMFE (host-app)', () => {
       // The action schema marks `themeId` required, so the mediator refuses
       // this action before any handler sees it; reaching the throw means schema
       // and handler have drifted apart.
-      expect(() => handlers.get(CHROME_SET_THEME)?.handleAction(CHROME_SET_THEME, {})).toThrow(
-        /no string themeId/,
-      );
+      expect(() =>
+        handlerFor(handlers, CHROME_SET_THEME).handleAction(CHROME_SET_THEME, {}),
+      ).toThrow(/no string themeId/);
       expect(changeTheme).not.toHaveBeenCalled();
     });
   });
