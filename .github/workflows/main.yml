@@ -356,6 +356,17 @@ jobs:
             # being one claim — so this branches on which the tree actually
             # has, rather than assuming a directory the way `-d` alone did.
             if [ -d "$overlay/$subtree" ]; then
+              # The ground has to be free before anything is written, the way
+              # `refuseUnlessGroundFree` requires it of a real `frontx add`:
+              # every copy below is an overwrite, so a destination that already
+              # holds content means the shell and this overlay both claim it and
+              # the composition under test is not the one a developer would get.
+              # Asked before `mkdir -p`, which would otherwise create the very
+              # path being asked about.
+              if [ -e "$shell/${subtree%/}" ]; then
+                echo "::error::$overlay's exclusiveSubtree '$subtree' is already occupied in $shell"
+                exit 1
+              fi
               echo "==> Overlaying $overlay/$subtree"
               # Copy the *contents* into the destination: `cp -R src dest`
               # nests under dest when dest already exists, which would bury
@@ -363,6 +374,10 @@ jobs:
               mkdir -p "$shell/${subtree%/}"
               cp -R "$overlay/$subtree/." "$shell/${subtree%/}/"
             elif [ -f "$overlay/$subtree" ]; then
+              if [ -e "$shell/$subtree" ]; then
+                echo "::error::$overlay's exclusiveSubtree '$subtree' is already occupied in $shell"
+                exit 1
+              fi
               echo "==> Overlaying $overlay/$subtree (file)"
               mkdir -p "$shell/$(dirname "$subtree")"
               cp "$overlay/$subtree" "$shell/$subtree"
