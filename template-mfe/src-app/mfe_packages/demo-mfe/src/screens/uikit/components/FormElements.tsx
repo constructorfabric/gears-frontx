@@ -76,7 +76,7 @@ export const FormElements: React.FC<FormElementsProps> = ({ t, portalContainer }
    * blur rather than on every keystroke so a half-typed address is not
    * flagged as malformed while it is still being typed.
    */
-  const validateEmail = (event: React.FocusEvent<HTMLInputElement>) => {
+  const validateEmail = (event: React.SyntheticEvent<HTMLInputElement>) => {
     const { validity } = event.currentTarget;
     if (validity.valueMissing) {
       setEmailError('required');
@@ -84,6 +84,19 @@ export const FormElements: React.FC<FormElementsProps> = ({ t, portalContainer }
       setEmailError('malformed');
     } else {
       setEmailError(null);
+    }
+  };
+
+  /**
+   * A message already on screen has to come off the moment the field is
+   * corrected, so once there is one, every keystroke re-runs the same check.
+   * The gate is what keeps the blur-only rule intact for a field that has not
+   * been flagged yet: with no error showing there is nothing to clear, and
+   * validating from the first character is exactly what reading on blur avoids.
+   */
+  const revalidateEmail = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (emailError) {
+      validateEmail(event);
     }
   };
 
@@ -118,6 +131,7 @@ export const FormElements: React.FC<FormElementsProps> = ({ t, portalContainer }
                   : 'form-demo-email-description'
               }
               onBlur={validateEmail}
+              onChange={revalidateEmail}
             />
             <FieldDescription id="form-demo-email-description">
               We only use it for the invoice.
