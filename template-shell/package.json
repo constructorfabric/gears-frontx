@@ -43,7 +43,7 @@
     "build:packages:studio": "npm run build --workspace=@gears-frontx/studio",
     "prebuild:packages": "npm run build:package",
     "build:packages": "npm run build:packages:auth && npm run build:packages:state && npm run build:packages:i18n && npm run build:packages:framework && npm run build:packages:react && npm run build:packages:studio",
-    "build": "npm run build:packages && npm run build:mfes && npm run generate:mfe-manifests && vite build",
+    "build": "npm run build:mfes && npm run generate:mfe-manifests && vite build",
     "type-check:package": "tsc --noEmit",
     "type-check:package:test": "tsc -p tsconfig.test.json",
     "type-check:app": "tsc --noEmit -p tsconfig.app.json",
