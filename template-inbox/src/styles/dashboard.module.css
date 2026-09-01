@@ -1,0 +1,637 @@
+/*
+ * The dashboard screen's own layout: the four-row composition the dashboard
+ * spec lays out, on top of the kit's Card/Badge/Progress/DataTable/chart
+ * chrome as-is - no kit internals are restyled here. Every value is a kit
+ * token, same discipline as `workspace.module.css`; this file adds only
+ * what the kit has no token for - the big-number type scale, icon-chip
+ * boxes, and the grid composition itself.
+ *
+ * 24px (`--space-6`) is the grid gap throughout, matching the reference
+ * measurement in the dashboard spec.
+ */
+
+.dashboardMain {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dashboardBody {
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-6);
+}
+
+/* --- Row 1: the four KPI-sparkline cards --- */
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+
+.kpiCardContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.kpiCardTop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.kpiHeadline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The big-number type scale the kit has no token for - one step above its
+ * own --text-heading-1 (20px), short of the hero card's own 40px step. */
+.kpiValue {
+  font-size: 1.75rem; /* 28px */
+  line-height: 2rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpiLabel {
+  font-size: var(--text-label-size);
+  color: var(--muted-foreground);
+}
+
+/*
+ * Sized to be a real, legible chart rather than a thin decorative strip -
+ * each card's inline chart is the second-biggest element in it, after the
+ * headline number, which is what lets the area/bar/line variety actually
+ * read from across the room.
+ */
+.kpiChart {
+  box-sizing: border-box;
+  width: 100%;
+  height: 7.5rem; /* 120px */
+}
+
+/*
+ * `ChartContainer`'s own root carries a fixed `aspect-ratio: 16 / 9` (see
+ * the `chart` component's own CSS), which would otherwise force a sparkline
+ * exactly this wide to grow far taller than the 44px row it sits in. This
+ * override - the same load-order-independent reasoning `workspace.module.css`
+ * uses throughout - is what makes an explicit size win regardless of which
+ * stylesheet the bundler places first.
+ */
+.kpiChart .sparkline {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+/* --- Row 1's fourth card: "Contacts by stage" donut + legend --- */
+
+.stageCardContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.stageDonut {
+  box-sizing: border-box;
+  flex: none;
+  width: 8.75rem; /* 140px */
+  height: 8.75rem;
+  aspect-ratio: auto;
+}
+
+.stageLegend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stageLegendRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-meta-size);
+}
+
+.stageLegendDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+}
+
+.stageLegendLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stageLegendCount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.stageLegendPercent {
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.kpiCardFooter {
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding-top: var(--card-spacing);
+  font-size: var(--text-meta-size);
+}
+
+.kpiFooterLabel {
+  color: var(--muted-foreground);
+}
+
+.kpiFooterValue {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Row 2: Resolved per day / New contacts / Summary --- */
+
+.rowTwo {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: var(--space-6);
+  align-items: stretch;
+}
+
+.resolvedCard .resolvedChart {
+  box-sizing: border-box;
+  width: 100%;
+  height: 16rem; /* 256px */
+  aspect-ratio: auto;
+}
+
+.newContactsContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.heroHeadline {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* The hero step of the big-number scale - the reference's own 40-60px
+ * "Pipeline created" style number (see the dashboard spec's reference
+ * facts), sized down to this card's own width. */
+.heroValue {
+  font-size: 2.5rem; /* 40px */
+  line-height: 2.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.heroStats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.heroStatRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--text-label-size);
+}
+
+.heroStatLabel {
+  color: var(--muted-foreground);
+}
+
+.heroStatValue {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.newContactsCard .heroChart {
+  box-sizing: border-box;
+  width: 100%;
+  height: 8rem; /* 128px */
+  aspect-ratio: auto;
+}
+
+.summaryContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.summaryStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.summaryStat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* The icon-chip box the kit has no token for - a small tinted square behind
+ * a lucide icon, borrowed from the B reference's own KPI tiles. */
+.summaryIconChip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.summaryIconChip svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.summaryStatValue {
+  font-size: 1.25rem; /* 20px */
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryStatLabel {
+  font-size: var(--text-meta-size);
+  color: var(--muted-foreground);
+}
+
+.summaryCard .summaryChart {
+  box-sizing: border-box;
+  width: 100%;
+  height: 3rem; /* 48px */
+  aspect-ratio: auto;
+}
+
+.summaryCta {
+  width: 100%;
+}
+
+/* --- Row 3: records-created line chart + top agents --- */
+
+.rowThree {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: var(--space-6);
+  /* Unlike row 2, these two cards' natural content heights differ enough
+   * (a chart-plus-legend versus a 5-row ranked list) that stretching them
+   * equal would leave the shorter card with a large dead gap below its
+   * content - each card keeps its own height instead. */
+  align-items: start;
+}
+
+.recordsCreatedContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.recordsCreatedHeadline {
+  display: flex;
+  align-items: baseline;
+}
+
+.recordsCreatedSubtitle {
+  margin: 0;
+  font-size: var(--text-label-size);
+  color: var(--muted-foreground);
+}
+
+.recordsCreatedCard .recordsChart {
+  box-sizing: border-box;
+  width: 100%;
+  height: 17rem; /* 272px */
+  aspect-ratio: auto;
+  margin-top: var(--space-2);
+}
+
+/* --- Team workload: its own full-width row below row 3 --- */
+
+/*
+ * Unlike every other card on this screen, this one sits directly as a flex
+ * item of `.dashboardBody` (a scrolling flex column) rather than inside a
+ * grid row wrapper. The kit's `Card` root carries `overflow: hidden`, which
+ * per the flexbox spec zeroes a flex item's automatic minimum size instead
+ * of resolving it to the item's content size - so without `flex: none`
+ * here, the flex-shrink algorithm was free to compress this card down to a
+ * sliver instead of letting `.dashboardBody`'s own `overflow-y: auto`
+ * handle the overflow by scrolling, the way it does for every sibling row.
+ */
+.workloadCard {
+  flex: none;
+}
+
+.workloadStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.workloadItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.workloadIconChip {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  background: var(--secondary);
+  color: var(--foreground);
+}
+
+.workloadIconChip svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.workloadItemBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+
+.workloadItemHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-label-size);
+}
+
+.workloadLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workloadValue {
+  flex: none;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.workloadProgress {
+  width: 100%;
+}
+
+.topAgentsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.topAgentRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.topAgentRank {
+  flex: none;
+  width: 1.25rem;
+  color: var(--muted-foreground);
+  font-size: var(--text-meta-size);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.topAgentName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-label-size);
+  font-weight: 500;
+}
+
+.topAgentBadge {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- New row: stage funnel + conversion by source, 1/3 + 2/3 --- */
+
+.rowFunnel {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.funnelContent,
+.conversionContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.funnelCard .funnelChart {
+  box-sizing: border-box;
+  width: 100%;
+  height: 15rem; /* 240px */
+  aspect-ratio: auto;
+  margin-top: var(--space-2);
+}
+
+/*
+ * The stage-funnel segments' own "Stage · NN%" label - `--primary-foreground`
+ * is this kit's one token meant to sit on a solid, saturated fill (see
+ * `StageFunnelCard`'s own doc), so it reads on every one of the five
+ * palette-hue segment fills.
+ */
+.funnelSegmentLabel {
+  fill: var(--primary-foreground);
+  user-select: none;
+}
+
+.conversionCard .conversionChart {
+  box-sizing: border-box;
+  width: 100%;
+  height: 15rem; /* 240px */
+  aspect-ratio: auto;
+  margin-top: var(--space-2);
+}
+
+/* --- Row 4: recent activity table --- */
+
+.activitySection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionHeading {
+  margin: 0;
+  font-size: var(--text-heading-2-size);
+  font-weight: var(--text-heading-2-weight);
+  line-height: var(--text-heading-2-line-height);
+}
+
+/*
+ * The table's own toolbar: heading, a live row count (never a fixed
+ * decoration - it reads `rows.length`), and an inert search field pushed
+ * to the far right - the reference's own "title · count" plus filter chrome
+ * pattern, ported at template level (see `ActivityTable`'s own doc).
+ */
+.activityToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.activityCount {
+  color: var(--muted-foreground);
+  font-size: var(--text-label-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.activitySearch {
+  margin-left: auto;
+  width: 14rem; /* 224px */
+}
+
+/* A column header's icon+label pair - the reference's own per-column icon
+ * (see `ActivityTable`'s own doc). One child of `DataTableSortButton`'s own
+ * flex row, so its trailing sort-direction icon still gets the button's own
+ * gap; this class only spaces the icon from the label within that child.
+ * `align-items: center` puts icon and text on a common cross-axis center -
+ * exact, since both are flex items rather than inline boxes riding their own
+ * baselines - and the gap is `--space-2` (8px) rather than the tighter
+ * `--space-1` (4px) used elsewhere, so the pair reads as two glyphs instead
+ * of sitting slipped together. */
+.tableHeaderLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tableHeaderLabel svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--subtle-foreground);
+}
+
+.activityContactCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.activityContactLines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.activityContactCompany {
+  font-size: var(--text-meta-size);
+  color: var(--muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activityOwnerCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.cellText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * Responsive, matching `workspace.module.css`'s own thresholds. Above
+ * 80rem (1280px, the checked lower bound) every row keeps its full column
+ * count; below it the two densest rows step down before anything is forced
+ * to overflow.
+ */
+@media (max-width: 80rem) {
+  .kpiRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rowTwo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rowThree {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workloadStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rowFunnel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 48rem) {
+  .kpiRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .summaryStats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workloadStrip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .activityToolbar {
+    flex-wrap: wrap;
+  }
+
+  .activitySearch {
+    margin-left: 0;
+    width: 100%;
+  }
+}

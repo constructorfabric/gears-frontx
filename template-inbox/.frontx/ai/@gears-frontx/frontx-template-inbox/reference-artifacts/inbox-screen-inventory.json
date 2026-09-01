@@ -1,0 +1,752 @@
+{
+  "id": "inbox-screen-inventory",
+  "version": "2.2.0",
+  "description": "Each pane of the four shipped screens, and the @gears-frontx/ui-kit component that renders each of its parts. A screen added to this app composes from the same vocabulary; anything not listed here is either a plain element carrying a class from the app's own stylesheet, or a component that has not been needed yet.",
+  "app": {
+    "entry": "src/main.tsx",
+    "root": "src/app/App.tsx",
+    "stylesheet": "src/styles/workspace.module.css"
+  },
+  "chrome": [
+    {
+      "part": "icon rail",
+      "module": "src/app/IconRail.tsx",
+      "kit": [
+        "Button",
+        "Popover",
+        "PopoverTrigger",
+        "PopoverContent",
+        "Separator",
+        "ItemGroup",
+        "Item",
+        "ItemMedia",
+        "ItemContent",
+        "ItemTitle",
+        "lucide-react: LayoutDashboardIcon, BlocksIcon, MessageCircleIcon, MailIcon, UsersIcon, SunIcon, MoonIcon, UserIcon, SettingsIcon, LogOutIcon"
+      ],
+      "note": "Fixed 64px, never collapsed. Mark at the top, one Button per section with variant=\"secondary\" when active - Dashboard first, then Chat, Mail, Contacts - flexible spacer, then the theme toggle and the profile-menu Popover. Popups need no container - they portal to the app's own body."
+    },
+    {
+      "part": "routing",
+      "module": "src/app/routing.ts",
+      "kit": [],
+      "note": "Hash routes: #/dashboard, #/chat, #/mail, #/contacts, #/contacts/{id}. parseRoute defaults anything unrecognised - including a stale #/inbox link - to the dashboard, the app's home."
+    },
+    {
+      "part": "theme",
+      "module": "src/app/theme.ts",
+      "kit": [],
+      "note": "data-theme on the document root plus localStorage, dark by default; the kit's theme.css repaints from it."
+    }
+  ],
+  "sharedParts": [
+    {
+      "part": "presence avatar",
+      "module": "src/shared/PresenceAvatar.tsx",
+      "kit": [
+        "Avatar",
+        "AvatarFallback",
+        "AvatarBadge"
+      ],
+      "note": "Fallback tone is a hash of the name, so one person keeps one circle everywhere. The badge carries presence; the tone never does."
+    },
+    {
+      "part": "identity avatar",
+      "module": "src/shared/IdentityAvatar.tsx",
+      "kit": [
+        "Avatar",
+        "AvatarFallback"
+      ],
+      "note": "PresenceAvatar without the presence badge, reusing the same tone hash and initials from src/shared/format.ts, for an identity that carries no live state of its own - a mail correspondent, not a chat contact."
+    }
+  ],
+  "screens": [
+    {
+      "id": "dashboard",
+      "panes": [
+        {
+          "pane": "KPI row",
+          "module": "src/screens/dashboard/KpiRow.tsx",
+          "note": "Four cards, one KpiCard.tsx per card, one chart type and one accent hue each (area, bar, line, radial) so the row reads as varied instruments rather than one chart type repeated - see src/screens/dashboard/dashboardChartConfig.ts for the palette.",
+          "parts": [
+            {
+              "part": "value, delta badge, footer stat",
+              "kit": [
+                "Card",
+                "CardContent",
+                "CardFooter",
+                "Badge"
+              ]
+            },
+            {
+              "part": "inline chart",
+              "kit": [
+                "ChartContainer",
+                "ChartConfig"
+              ],
+              "module": "src/screens/dashboard/Sparkline.tsx, src/screens/dashboard/RadialGauge.tsx",
+              "note": "Recharts primitives composed inside ChartContainer, per the kit chart doc: AreaChart+Area (gradient-filled), BarChart+Bar (rounded corners), LineChart+Line (smooth), and a RadialBarChart+RadialBar gauge with a centered percentage Label - the gauge is sized to be the row's largest single chart, not a shrunken decoration."
+            }
+          ]
+        },
+        {
+          "pane": "resolved per day",
+          "module": "src/screens/dashboard/ResolvedPerDayCard.tsx",
+          "parts": [
+            {
+              "part": "large bar chart",
+              "kit": [
+                "Card",
+                "CardHeader",
+                "CardTitle",
+                "CardContent",
+                "ChartContainer"
+              ],
+              "note": "Recharts BarChart with a LabelList (value above each bar) and a Cell per bar so the current day paints in the brand accent against otherwise-neutral bars."
+            }
+          ]
+        },
+        {
+          "pane": "new contacts",
+          "module": "src/screens/dashboard/NewContactsCard.tsx",
+          "parts": [
+            {
+              "part": "hero number and breakdown",
+              "kit": [
+                "Card",
+                "CardHeader",
+                "CardTitle",
+                "CardContent",
+                "Badge"
+              ]
+            },
+            {
+              "part": "combo chart",
+              "kit": [
+                "ChartContainer",
+                "ChartTooltip",
+                "ChartTooltipContent"
+              ],
+              "note": "Recharts ComposedChart: a low-opacity Bar for the daily inbound volume with a bold Line for the combined total riding over it - the line is the hero, the bars are its context."
+            }
+          ]
+        },
+        {
+          "pane": "summary",
+          "module": "src/screens/dashboard/SummaryCard.tsx",
+          "parts": [
+            {
+              "part": "icon-stat cells",
+              "kit": [
+                "Card",
+                "CardHeader",
+                "CardTitle",
+                "CardContent",
+                "lucide-react: MessageSquareIcon, ClockIcon, CircleAlertIcon"
+              ],
+              "note": "Open/Pending/Escalated counts are computed from the same activity collection the recent-activity table renders, never a separately-stored total."
+            },
+            {
+              "part": "trend area",
+              "kit": [
+                "ChartContainer"
+              ],
+              "note": "A small gradient-filled Recharts AreaChart, distinct in shape from row 2's other two charts."
+            },
+            {
+              "part": "inert CTA",
+              "kit": [
+                "Card",
+                "CardFooter",
+                "Button"
+              ],
+              "note": "Disabled - this template ships no report screen behind it, the same dead-controls convention as the chat thread's create-ticket button."
+            }
+          ]
+        },
+        {
+          "pane": "team workload",
+          "module": "src/screens/dashboard/WorkloadStrip.tsx",
+          "parts": [
+            {
+              "part": "icon + value + progress strip",
+              "kit": [
+                "Card",
+                "CardHeader",
+                "CardTitle",
+                "CardContent",
+                "Progress",
+                "lucide-react: HeadsetIcon, CodeIcon, FolderKanbanIcon"
+              ],
+              "note": "Three workload metrics (Support load, Dev backlog, CRM tasks) side by side, each an icon chip plus a value/max readout plus a Progress bar."
+            }
+          ]
+        },
+        {
+          "pane": "top agents",
+          "module": "src/screens/dashboard/TopAgentsCard.tsx",
+          "parts": [
+            {
+              "part": "ranked list",
+              "kit": [
+                "Card",
+                "CardHeader",
+                "CardTitle",
+                "CardContent",
+                "Avatar",
+                "AvatarFallback",
+                "Badge"
+              ],
+              "note": "Ranked by resolved-count, an Avatar plus a Badge trailing each row."
+            }
+          ]
+        },
+        {
+          "pane": "recent activity",
+          "module": "src/screens/dashboard/ActivityTable.tsx",
+          "parts": [
+            {
+              "part": "table",
+              "kit": [
+                "DataTable",
+                "dataTableColumnHelper",
+                "DataTableSortButton",
+                "Avatar",
+                "AvatarFallback",
+                "Badge"
+              ],
+              "note": "Full width, no secondary sidebar above it. The contact cell reuses PresenceAvatar and the inbox dataset's contacts by id, the same continuity dataset.ts already relies on for Conversation.contactId - it does not invent a second set of people."
+            }
+          ]
+        }
+      ],
+      "route": "#/dashboard"
+    },
+    {
+      "id": "inbox",
+      "panes": [
+        {
+          "pane": "channel sidebar",
+          "module": "src/screens/inbox/FolderSidebar.tsx",
+          "parts": [
+            {
+              "part": "channel rows",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemMedia",
+                "ItemContent",
+                "ItemTitle",
+                "ItemActions"
+              ]
+            },
+            {
+              "part": "channel count",
+              "kit": [
+                "Badge"
+              ]
+            },
+            {
+              "part": "channel icons",
+              "kit": [
+                "lucide-react: HashIcon"
+              ]
+            }
+          ]
+        },
+        {
+          "pane": "conversation list",
+          "module": "src/screens/inbox/ConversationList.tsx",
+          "parts": [
+            {
+              "part": "collapse-channels button",
+              "kit": [
+                "Button"
+              ]
+            },
+            {
+              "part": "search field",
+              "kit": [
+                "Input"
+              ]
+            },
+            {
+              "part": "sort control",
+              "kit": [
+                "Select",
+                "SelectTrigger",
+                "SelectValue",
+                "SelectContent",
+                "SelectItem"
+              ]
+            },
+            {
+              "part": "conversation rows",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemMedia",
+                "ItemContent",
+                "ItemTitle",
+                "ItemDescription"
+              ]
+            },
+            {
+              "part": "unread count",
+              "kit": [
+                "Badge"
+              ]
+            }
+          ]
+        },
+        {
+          "pane": "thread",
+          "module": "src/screens/inbox/ConversationThread.tsx",
+          "parts": [
+            {
+              "part": "header actions",
+              "kit": [
+                "Button",
+                "lucide-react: StarIcon, AlarmClockIcon, TicketIcon, PanelRightIcon"
+              ]
+            },
+            {
+              "part": "header overflow menu",
+              "kit": [
+                "DropdownMenu",
+                "DropdownMenuTrigger",
+                "DropdownMenuContent",
+                "DropdownMenuItem"
+              ],
+              "note": "Its two items carry no handler."
+            },
+            {
+              "part": "suggested reply chips",
+              "kit": [
+                "Button"
+              ],
+              "note": "Rendered only when the conversation's suggestedReplies is non-empty; a click drafts the text into the composer."
+            },
+            {
+              "part": "transcript viewport",
+              "kit": [
+                "MessageScrollerProvider",
+                "MessageScroller",
+                "MessageScrollerViewport",
+                "MessageScrollerContent",
+                "MessageScrollerItem",
+                "MessageScrollerButton"
+              ]
+            },
+            {
+              "part": "message row",
+              "kit": [
+                "Message",
+                "MessageAvatar",
+                "MessageContent",
+                "MessageHeader",
+                "MessageFooter"
+              ]
+            },
+            {
+              "part": "message surface",
+              "kit": [
+                "Bubble",
+                "BubbleContent"
+              ]
+            },
+            {
+              "part": "inline attachment",
+              "kit": [
+                "Attachment",
+                "AttachmentMedia",
+                "AttachmentContent",
+                "AttachmentTitle",
+                "AttachmentDescription"
+              ]
+            }
+          ]
+        },
+        {
+          "pane": "composer",
+          "module": "src/screens/inbox/Composer.tsx",
+          "parts": [
+            {
+              "part": "reply and note tabs",
+              "kit": [
+                "Tabs",
+                "TabsList",
+                "TabsTrigger",
+                "TabsContent"
+              ]
+            },
+            {
+              "part": "draft field",
+              "kit": [
+                "Textarea"
+              ]
+            },
+            {
+              "part": "toolbar buttons",
+              "kit": [
+                "Button",
+                "lucide-react: PaperclipIcon, SmileIcon, ZapIcon"
+              ],
+              "note": "Attach, emoji and saved replies, left of the send hint. None carries a handler."
+            },
+            {
+              "part": "submit",
+              "kit": [
+                "Button"
+              ]
+            }
+          ]
+        },
+        {
+          "pane": "customer details",
+          "module": "src/screens/inbox/CustomerDetailsPanel.tsx",
+          "parts": [
+            {
+              "part": "details and copilot tabs",
+              "kit": [
+                "Tabs",
+                "TabsList",
+                "TabsTrigger",
+                "TabsContent"
+              ]
+            },
+            {
+              "part": "routing comboboxes",
+              "kit": [
+                "Select",
+                "SelectTrigger",
+                "SelectValue",
+                "SelectContent",
+                "SelectItem"
+              ]
+            },
+            {
+              "part": "collapsible sections",
+              "kit": [
+                "Collapsible",
+                "CollapsibleTrigger",
+                "CollapsibleContent"
+              ],
+              "module": "src/screens/inbox/DetailsSection.tsx"
+            },
+            {
+              "part": "tag chips",
+              "kit": [
+                "Badge",
+                "Button",
+                "Input"
+              ],
+              "module": "src/screens/inbox/TagEditor.tsx"
+            },
+            {
+              "part": "shared files",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemContent",
+                "ItemTitle",
+                "ItemDescription"
+              ]
+            }
+          ]
+        },
+        {
+          "pane": "empty state",
+          "module": "src/screens/inbox/InboxScreen.tsx",
+          "parts": [
+            {
+              "part": "select a conversation",
+              "kit": [
+                "Empty",
+                "EmptyHeader",
+                "EmptyMedia",
+                "EmptyTitle",
+                "EmptyDescription"
+              ]
+            },
+            {
+              "part": "loading placeholder",
+              "kit": [
+                "Skeleton"
+              ]
+            }
+          ]
+        }
+      ],
+      "route": "#/chat"
+    },
+    {
+      "id": "mail",
+      "panes": [
+        {
+          "pane": "mailbox sidebar",
+          "module": "src/screens/mail/MailboxSidebar.tsx",
+          "parts": [
+            {
+              "part": "compose button",
+              "kit": [
+                "Button",
+                "lucide-react: PenSquareIcon"
+              ],
+              "note": "Full width, primary style. Inert - no handler, the same as the chat thread's create-ticket button."
+            },
+            {
+              "part": "mailbox rows",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemMedia",
+                "ItemContent",
+                "ItemTitle",
+                "ItemActions"
+              ]
+            },
+            {
+              "part": "mailbox count",
+              "kit": [
+                "Badge"
+              ]
+            },
+            {
+              "part": "mailbox icons",
+              "kit": [
+                "lucide-react: InboxIcon, FileTextIcon, SendIcon, ArchiveIcon, Trash2Icon"
+              ]
+            }
+          ]
+        },
+        {
+          "pane": "mail list",
+          "module": "src/screens/mail/MailList.tsx",
+          "parts": [
+            {
+              "part": "search field",
+              "kit": [
+                "Input"
+              ]
+            },
+            {
+              "part": "all-mail / unread tabs",
+              "kit": [
+                "Tabs",
+                "TabsList",
+                "TabsTrigger",
+                "TabsContent"
+              ],
+              "note": "variant=\"line\", the kit's own underline style. Unread's count is the tab panel's own row count, not a stored field."
+            },
+            {
+              "part": "mail rows",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemMedia",
+                "ItemContent",
+                "ItemTitle",
+                "ItemDescription"
+              ],
+              "note": "Reuses the conversation row shape from src/screens/inbox/ConversationList.tsx. Read/unread is a class toggle on the row's own text (weight and opacity), never a dot."
+            },
+            {
+              "part": "starred indicator",
+              "kit": [
+                "lucide-react: StarIcon"
+              ],
+              "note": "Filled star between the sender and the time, independent of read state."
+            }
+          ]
+        },
+        {
+          "pane": "reading pane",
+          "module": "src/screens/mail/MailReadingPane.tsx",
+          "parts": [
+            {
+              "part": "toolbar actions",
+              "kit": [
+                "Button",
+                "lucide-react: ArchiveIcon, Trash2Icon, StarIcon, ReplyIcon"
+              ],
+              "note": "Two clusters of icon-only ghost buttons. All inert - no handler, the same dead-controls convention as the chat thread header."
+            },
+            {
+              "part": "earlier-messages toggle",
+              "kit": [
+                "Button"
+              ],
+              "note": "Renders only when the mail has history in mailDataset.ts's mailMessages; most mails have none."
+            },
+            {
+              "part": "history cards",
+              "kit": [
+                "IdentityAvatar"
+              ],
+              "note": "Plain elements styled by src/styles/mail.module.css, not a kit Card - muted bordered blocks behind the toggle. The newest message renders flat, full width, never card-wrapped."
+            },
+            {
+              "part": "transcript viewport",
+              "kit": [
+                "MessageScrollerProvider",
+                "MessageScroller",
+                "MessageScrollerViewport",
+                "MessageScrollerContent"
+              ],
+              "note": "Same scroll container the chat thread uses; no MessageScrollerItem, no Bubble/BubbleContent, no per-sender alignment - a mail renders flat, top to bottom, the largest divergence from the chat thread it reuses the chrome of."
+            }
+          ]
+        },
+        {
+          "pane": "reply composer",
+          "module": "src/screens/mail/MailComposer.tsx",
+          "parts": [
+            {
+              "part": "draft field",
+              "kit": [
+                "Textarea"
+              ]
+            },
+            {
+              "part": "submit",
+              "kit": [
+                "Button"
+              ],
+              "note": "Disabled until the draft is non-empty. Sending clears the draft rather than posting anywhere - no reply/note tabs and no attach/emoji/saved-reply row, unlike src/screens/inbox/Composer.tsx: a mail is a single kind of message."
+            }
+          ]
+        },
+        {
+          "pane": "empty state",
+          "module": "src/screens/mail/MailScreen.tsx",
+          "parts": [
+            {
+              "part": "select a mail",
+              "kit": [
+                "Empty",
+                "EmptyHeader",
+                "EmptyMedia",
+                "EmptyTitle",
+                "EmptyDescription"
+              ]
+            },
+            {
+              "part": "loading placeholder",
+              "kit": [
+                "Skeleton"
+              ]
+            }
+          ]
+        }
+      ],
+      "route": "#/mail"
+    },
+    {
+      "id": "contacts",
+      "panes": [
+        {
+          "pane": "filter sidebar",
+          "module": "src/screens/contacts/ContactFilterSidebar.tsx",
+          "note": "Belongs to the directory: the app renders it only on #/contacts, so a contact's own page gets the whole pane.",
+          "parts": [
+            {
+              "part": "filter rows",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemContent",
+                "ItemTitle",
+                "ItemActions"
+              ]
+            },
+            {
+              "part": "filter count",
+              "kit": [
+                "Badge"
+              ]
+            }
+          ]
+        },
+        {
+          "pane": "directory table",
+          "module": "src/screens/contacts/ContactsTable.tsx",
+          "parts": [
+            {
+              "part": "table",
+              "kit": [
+                "DataTable",
+                "dataTableColumnHelper",
+                "dataTableSelectionColumn",
+                "DataTableSortButton"
+              ]
+            },
+            {
+              "part": "type badge",
+              "kit": [
+                "Badge"
+              ]
+            },
+            {
+              "part": "row action",
+              "kit": [
+                "Button"
+              ]
+            },
+            {
+              "part": "search field",
+              "kit": [
+                "Input"
+              ]
+            }
+          ]
+        },
+        {
+          "pane": "contact detail",
+          "module": "src/screens/contacts/ContactDetail.tsx",
+          "parts": [
+            {
+              "part": "section panels",
+              "kit": [
+                "Card",
+                "CardHeader",
+                "CardTitle",
+                "CardContent"
+              ]
+            },
+            {
+              "part": "tickets and conversations",
+              "kit": [
+                "ItemGroup",
+                "Item",
+                "ItemContent",
+                "ItemTitle",
+                "ItemDescription"
+              ]
+            },
+            {
+              "part": "tags",
+              "kit": [
+                "Badge"
+              ]
+            },
+            {
+              "part": "private note",
+              "kit": [
+                "Textarea"
+              ]
+            },
+            {
+              "part": "back and header actions",
+              "kit": [
+                "Button"
+              ]
+            }
+          ]
+        }
+      ],
+      "route": "#/contacts and #/contacts/{id}"
+    }
+  ]
+}

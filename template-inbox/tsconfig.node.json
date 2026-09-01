@@ -1,0 +1,17 @@
+{
+  "//": "The build-tooling half of the program: files that run in Node rather than in the browser, so they get the Node types and none of the DOM ones. Kept apart from tsconfig.json because `src` must not be able to reach a Node global by accident.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["node"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["vite.config.ts", "vitest.config.ts"]
+}

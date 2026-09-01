@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "name": "@gears-frontx/frontx-template-inbox",
+  "version": "0.3.0-alpha.0",
+  "description": "Establishes a new repository as a complete, runnable helpdesk application: a Vite + React single-page app with its own navigation rail, a dashboard - the default landing screen - with KPI cards (area, bar, line and radial charts), a labeled bar chart, a combo hero chart, workload progress strips, a ranked agents list and a sortable, paginated recent-activity table, a chat screen with message channels and unread counts, a searchable and sortable conversation list, a message thread with a reply-and-note composer and a customer-details panel, a mail screen with mailboxes (Inbox, Drafts, Sent, Archive, Trash), an all-mail/unread mail list with instant search, and a flat reading pane with collapsible message history and a reply composer, plus a contacts directory with filters, a sortable paginated table and a deep-linkable contact detail page. Every screen is composed from @gears-frontx/ui-kit components and semantic tokens, and every conversation, message, mail, mailbox, contact, dashboard metric and user identity is served by the app's own @gears-frontx/api services through a mock plugin rather than by fixture files. Apply this to start a project whose product is a support inbox, a helpdesk, a team chat with channels, a shared team mailbox, a mail client, an email inbox, a webmail app, a customer-conversation console, a contacts directory, an analytics dashboard, a metrics/KPI overview or an admin console with charts: it seeds the whole application - build, lint, test and dependency set included - and needs no other template applied alongside it. Adding further screens to the app it establishes is carried by the skill this template activates in the project, not by applying it again.",
+  "ownershipBoundaries": {
+    "exclusiveSubtrees": [
+      "src/",
+      ".frontx/ai/@gears-frontx/frontx-template-inbox/",
+      "index.html",
+      "package.json",
+      "tsconfig.json",
+      "tsconfig.node.json",
+      "vite.config.ts",
+      "vitest.config.ts",
+      "vitest.setup.ts",
+      "eslint.config.js",
+      ".gitignore",
+      "README.md"
+    ],
+    "sharedFiles": []
+  }
+}

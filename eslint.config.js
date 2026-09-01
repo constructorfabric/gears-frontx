@@ -141,6 +141,12 @@ export default [
       '.agents/**', // Agent infrastructure (gitignored)
       'template-shell/**', // Self-contained template; ships its own eslint.config.js
       'template-mfe/**', // MFE content extracted from template-shell (issue #470); linted as part of the assembled shell+mfe tree, not from this ecosystem root
+      // Same reasoning as the two above, and the omission was not benign: this
+      // template ships a verify package with an eslint config of its own, whose
+      // plugins are absent from the ecosystem root's node_modules, so a root
+      // lint run died loading that config instead of reporting a rule.
+      'template-design-guardrails/**',
+      'template-inbox/**', // Self-contained application template; ships its own eslint.config.js
     ],
   },
 
