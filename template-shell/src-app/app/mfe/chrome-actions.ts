@@ -15,7 +15,10 @@
  * its own screen-domain declaration.
  */
 
-import { FRONTX_SCREEN_DOMAIN, type JSONSchema } from '@gears-frontx/react';
+import type { JSONSchema } from '@gears-frontx/react';
+
+import setMenuCollapsedActionSchema from './gts/frontx.screensets/schemas/chrome/set_menu_collapsed.v1.json';
+import setThemeActionSchema from './gts/frontx.screensets/schemas/chrome/set_theme.v1.json';
 
 /** Applies a registered theme by id - the payload carries `themeId`. */
 export const CHROME_SET_THEME =
@@ -26,54 +29,22 @@ export const CHROME_SET_MENU_COLLAPSED =
   'gts.frontx.mfes.comm.action.v1~frontx.screensets.chrome.set_menu_collapsed.v1~';
 
 /**
- * Modelled on the shipped `mount_ext.v1.json`: a domain-targeted action, so
- * `target` refs a domain rather than an extension, and the payload is closed
- * around the single field each action needs.
+ * The two schemas themselves are JSON, under
+ * `gts/frontx.screensets/schemas/chrome/`, where the directory path spells the
+ * GTS id the way `packages/gts-plugin/src/frontx.mfes/schemas/ext/` and the
+ * framework's own `gts/frontx.screensets/instances/domains/` do. Each file
+ * carries its own `$comment`s, including why its `target` names the screen
+ * domain rather than any domain; this module only collects them.
  *
- * The ref names `FRONTX_SCREEN_DOMAIN` itself rather than the
- * `gts.frontx.mfes.ext.domain.v1~*` wildcard `mount_ext.v1.json` uses: the
- * screen domain is the one that opts into these handlers (see `bootstrap.ts`),
- * and sidebar, popup and overlay register none. Under the wildcard a chain
- * aimed at one of those passes admission and is refused two layers later by
- * `NoHandlerForActionTargetError`, which names a missing handler rather than
- * the domain the caller should have targeted; named here, the mismatch is
- * reported against the pattern at the moment the action is validated.
+ * The cast is the same one both of those loaders make: a JSON module's inferred
+ * type is the literal shape of the file, which no `JSONSchema` signature can be
+ * written to accept.
  *
- * These must reach the type system before `registerDomain`, because the
- * mediator resolves an action's schema from its `type` at dispatch time and
- * rejects an action it cannot validate.
+ * They must reach the type system before `registerDomain`, because the mediator
+ * resolves an action's schema from its `type` at dispatch time and rejects an
+ * action it cannot validate.
  */
 export const CHROME_ACTION_SCHEMAS: JSONSchema[] = [
-  {
-    $id: `gts://${CHROME_SET_THEME}`,
-    $schema: 'https://json-schema.org/draft/2020-12/schema',
-    type: 'object',
-    properties: {
-      type: { 'x-gts-ref': '/$id' },
-      target: { 'x-gts-ref': FRONTX_SCREEN_DOMAIN },
-      payload: {
-        type: 'object',
-        properties: { themeId: { type: 'string' } },
-        required: ['themeId'],
-      },
-      timeout: { type: 'number', minimum: 1 },
-    },
-    required: ['type', 'target', 'payload'],
-  },
-  {
-    $id: `gts://${CHROME_SET_MENU_COLLAPSED}`,
-    $schema: 'https://json-schema.org/draft/2020-12/schema',
-    type: 'object',
-    properties: {
-      type: { 'x-gts-ref': '/$id' },
-      target: { 'x-gts-ref': FRONTX_SCREEN_DOMAIN },
-      payload: {
-        type: 'object',
-        properties: { collapsed: { type: 'boolean' } },
-        required: ['collapsed'],
-      },
-      timeout: { type: 'number', minimum: 1 },
-    },
-    required: ['type', 'target', 'payload'],
-  },
+  setThemeActionSchema as JSONSchema,
+  setMenuCollapsedActionSchema as JSONSchema,
 ];
