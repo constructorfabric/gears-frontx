@@ -7,14 +7,16 @@
  */
 
 import { beforeAll, describe, expect, it } from 'vitest';
+import { gtsPlugin, screenDomain, sidebarDomain } from '@gears-frontx/react';
+// The GTS solution schemas are application-layer and owned by the template
+// package; `@gears-frontx/react` stopped re-exporting them so that framework and
+// react resolve for a consumer outside this workspace (#601). `main.tsx` reaches
+// for them the same way.
 import {
   extensionScreenSchema,
-  gtsPlugin,
   languageSchema,
-  screenDomain,
-  sidebarDomain,
   themeSchema,
-} from '@gears-frontx/react';
+} from '@gears-frontx/frontx-template-shell';
 
 import {
   CHROME_ACTION_SCHEMAS,
