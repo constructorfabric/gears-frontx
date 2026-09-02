@@ -1,7 +1,7 @@
 # Scaffolding Verification Checklist
 
 **Artifact**: the verification a scaffolding run performs in Step 7 and reports in Step 8
-**Version**: 1.1
+**Version**: 1.2
 **Purpose**: the accounting layer over Step 7's browser walk and Step 8's report - what must be true for a claim to stand
 
 This checklist states **what must hold**. The skill document beside it states **how**
@@ -30,7 +30,7 @@ leaves every item under it to be established some other way and disclosed as suc
    - [VER-SCOPE - Declared Scope](#ver-scope---declared-scope)
    - [VER-STATE - State and Capture Evidence](#ver-state---state-and-capture-evidence)
    - [VER-CMP - Capture Comparison](#ver-cmp---capture-comparison)
-   - [VER-ROUTE - Address and Routing](#ver-route---address-and-routing)
+   - [VER-ROUTE - Address and Reachability](#ver-route---address-and-reachability)
    - [VER-NUM - Published Figures](#ver-num---published-figures)
    - [VER-ENV - Run Environment](#ver-env---run-environment)
    - [VER-REPORT - Coverage File and Report](#ver-report---coverage-file-and-report)
@@ -70,14 +70,29 @@ Every category applies to a run that performed a browser verification. A categor
 that genuinely does not apply is reported `N/A` **with the reason**, and the reason
 names what about this run put the category out of reach.
 
-- **VER-ROUTE** is N/A only where the surface under verification mounts no
-  addressable screens.
+An applicability rule below turns on **what the project declared**, never on what
+this run found convenient. Each of them is written against a declaration the run
+can point at - an axis the template states the project has or does not have, a
+control it names or does not name - so an `N/A` is checkable and a skipped
+category still cannot hide behind one.
+
+- **VER-ROUTE** is N/A where the run declared no checkpoint axis, so there is no
+  declared point whose address could be exercised, and where the declared points
+  carry no destination to load.
+- **VER-ROUTE-002 alone** is additionally N/A where the project reaches its
+  checkpoints by loading each destination rather than by clicking a control -
+  there is then no click for an address to follow. A project whose points are
+  reached from inside the content, from a command surface, or not at all because
+  there is only one, is this case.
 - **VER-CMP** is N/A only where the run took a single pass - because the project
   declares no variant axis, or because the axis holds one value - so no capture
   pair exists to compare.
 - **VER-STATE-001's last item and VER-STATE-002** are N/A only where the project
   declares no variant axis, so there is no switcher to operate and no label to
   confirm a value from.
+- **VER-ENV-003** is N/A only where the project declares no overlay the walk has
+  to operate through - no control that opens one and none that closes it again -
+  so nothing is drawn over the surface for a capture to carry.
 - **VER-NUM** is N/A only where the run published no figure at all.
 
 Everything else applies whenever the browser walk ran. `N/A` is not available for a
@@ -97,16 +112,18 @@ under VER-SCOPE-002 as such.
 
 - [ ] Whether this project declares a variant axis was established from the template
       it was applied from, not assumed either way
-- [ ] Where one is declared, its value set was read from the project's own registration
-      of that dimension - the source file where the values are declared, or the list
-      it exports
-- [ ] The set was not taken from the entries a switcher happens to offer
-- [ ] The count of declared values and the count of walked values are the same number
-- [ ] Every screen under verification, and every state the declared checks call
-      for, is covered
-- [ ] No value, screen or state was set aside as a sample or a representative subset
-- [ ] A project declaring no variant axis is reported as having walked its screens
-      once, and is not written up as a narrowed run
+- [ ] Whether it declares a checkpoint axis - the points the walk visits, and how
+      each one is reached - was established the same way and from the same source
+- [ ] Where either is declared, its set was read from the project's own declaration
+      of it - the source file where the values or the points are declared, or the
+      list it exports
+- [ ] Neither set was taken from the entries a control happens to offer
+- [ ] The count of declared values and the count of walked values are the same
+      number, and the same holds for the declared points
+- [ ] Every state the declared checks call for is covered, at every point walked
+- [ ] No value, point or state was set aside as a sample or a representative subset
+- [ ] A project declaring neither axis is reported as having been walked once, at
+      whatever its host opens, and is not written up as a narrowed run
 
 ### VER-SCOPE-002: A Narrowing Is Stated in the Visible Output
 **Severity**: CRITICAL
@@ -176,11 +193,11 @@ under VER-SCOPE-002 as such.
 ### VER-STATE-004: State Is Read Back From Something That Looked at the Page
 **Severity**: HIGH
 
-- [ ] Every click and every navigation is followed by a reading of the page, never by
-      the runner's own confirmation that it issued the command
+- [ ] Every click and every load is followed by a reading of the page, never by the
+      runner's own confirmation that it issued the command
 - [ ] Each fill is confirmed by reading the value back off the same handle
-- [ ] Screen controls were driven by the handles read out of the shadow roots, not by
-      an outside selector that cannot see in
+- [ ] Controls inside the surface under verification were driven by the handles read
+      out of the shadow roots, not by an outside selector that cannot see in
 - [ ] What a compact snapshot leaves out was not read as evidence of absence
 - [ ] No product source was edited on a snapshot-only signal
 
@@ -204,32 +221,43 @@ under VER-SCOPE-002 as such.
 
 ---
 
-## VER-ROUTE - Address and Routing
+## VER-ROUTE - Address and Reachability
 
-### VER-ROUTE-001: Each Screen Answers Its Own Declared Route
+### VER-ROUTE-001: Each Checkpoint Answers Its Own Declared Destination
 **Severity**: CRITICAL
 
-- [ ] Each screen's route was read out of the manifest that declares it, and no path
-      named by the skill, the plan or the report was navigated to
-- [ ] Each screen was reached by a full load of that route, not by a menu click
-- [ ] The reading after that load confirms it is that screen which mounted
+- [ ] Each checkpoint's destination was read out of the template's own declaration
+      of that point, and no path named by the skill, the plan or the report was
+      opened
+- [ ] Each checkpoint was reached by a full load of that destination, not by
+      clicking a control
+- [ ] The reading after that load confirms it is that checkpoint which mounted
 
-### VER-ROUTE-002: The Address Follows the Menu Click
+`N/A` where the run declared no checkpoint axis, or where the declared points
+carry no destination to load - a project whose points are not separately
+addressable has nothing here to establish.
+
+### VER-ROUTE-002: The Address Follows the Control That Reaches a Checkpoint
 **Severity**: CRITICAL
 
-- [ ] After clicking another screen's menu item, the URL was read back with the
-      runner's own url reading
-- [ ] The pathname read back equals the clicked screen's declared route
-- [ ] The reading after that click confirms the clicked screen is the one mounted
+- [ ] After clicking the control that reaches another checkpoint, the URL was read
+      back with the runner's own url reading
+- [ ] The pathname read back equals that checkpoint's declared destination
+- [ ] The reading after that click confirms the clicked checkpoint is the one mounted
 
-### VER-ROUTE-003: Routing Is Reported Per Screen
+`N/A` where the project reaches its points by loading each destination rather
+than by clicking a control, and where its points carry no destination for an
+address to be compared against. The `N/A` names which of the two it is, and names
+the project's own declaration it read that from.
+
+### VER-ROUTE-003: Reachability Is Reported Per Checkpoint
 **Severity**: HIGH
 
-- [ ] The report carries one line per realized screen: the declared route it was
-      deep-linked at, the screen that mounted, and the pathname read back
+- [ ] The report carries one line per realized checkpoint: the destination it was
+      deep-linked at, what mounted there, and the pathname read back
 - [ ] A failure here is reported as a defect carrying those three readings, and the
-      project reported as not verified for routing
-- [ ] Routing left unexercised is reported as unexercised, never left unmentioned
+      project reported as not verified for addressing
+- [ ] An address left unexercised is reported as unexercised, never left unmentioned
 
 ---
 
@@ -295,9 +323,16 @@ under VER-SCOPE-002 as such.
 ### VER-ENV-003: Host Chrome Is Off the Captures
 **Severity**: HIGH
 
-- [ ] The host's dev panel was collapsed before the first capture in every pass, and
-      the collapse confirmed rather than assumed
-- [ ] No capture was taken, and no click aimed, while that panel overlaid screen content
+- [ ] Where the project declares an overlay the walk operates through, it was closed
+      before the first capture in every pass, and the close confirmed rather than
+      assumed
+- [ ] No capture was taken, and no click aimed, while that overlay covered the
+      surface under verification
+
+`N/A` where the project declares no such overlay - no control that opens one and
+none that closes it again - so nothing was drawn over the surface for a capture
+to carry. That a host has a collapsible tools panel is one project's declaration,
+not a property of every project this checklist accounts for.
 
 ### VER-ENV-004: An Already-Listening Browser Is Attached To
 **Severity**: MEDIUM
@@ -315,13 +350,16 @@ under VER-SCOPE-002 as such.
 - [ ] The coverage file exists **on disk** beside the project's provenance record, at
       the path the skill names, and that path was read to establish it
 - [ ] It was written before the final report was composed
-- [ ] It holds one row per pass the walk took, including every declared value
+- [ ] It holds one row per pair the walk covered - every pass of the variant axis
+      against every point of the checkpoint axis - including every declared value
       recorded as not-active
-- [ ] A run that declared no variant axis holds the one row its one pass earned,
-      with the axis cells reading `not-exercised` and naming the axis as not
-      declared - never `no` or `none`, which read as a claim about the project
-- [ ] It holds the distinctness verdict and one states-captured column per screen under
-      verification
+- [ ] A run that declared no variant axis holds the rows its one pass earned, with
+      that axis's cells reading `not-exercised` and naming the axis as not declared -
+      never `no` or `none`, which read as a claim about the project
+- [ ] A run that declared no checkpoint axis says exactly the same about that axis,
+      in the cell that would otherwise name the point
+- [ ] Each row carries its own states-captured cell and its own distinctness verdict,
+      so a verdict belongs to the point it was taken at
 - [ ] Nothing stood in for it: a table inside the report, a table shown in the
       conversation, and a table a driver printed and nobody kept are not this file.
       The report step is not complete while the file is absent, and a report composed
@@ -418,7 +456,7 @@ under VER-SCOPE-002 as such.
 **Severity**: CRITICAL
 
 **What to check**:
-- [ ] No variant value, screen or state dropped without its reason in the visible output text
+- [ ] No variant value, checkpoint or state dropped without its reason in the visible output text
 - [ ] No reason arguing an axis other than the one the narrowed check covers
 - [ ] No sample or subset presented as the registered set
 - [ ] No set walked wider than what was asked for without the declaring sentence
