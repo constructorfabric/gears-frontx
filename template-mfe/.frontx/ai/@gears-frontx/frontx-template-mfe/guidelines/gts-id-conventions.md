@@ -68,15 +68,24 @@ marker, not a segment.
 Its position varies by family: a manifest, a custom action, a widget domain and
 a widget-area extension carry one fixed segment before it, while an MF entry
 and a screen extension carry two - so a screen extension's instance segment,
-the one the five-token rule governs, is its **third**:
+the one the five-token rule governs, is its **third**. The middle segment there
+is the host's domain id rather than the ecosystem's, which is why it is fixed for
+this template and not fixed for the ecosystem:
 
 ```text
 gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~frontx.blank.screens.home.v1
 ```
 
-- `gts.frontx.mfes.ext.extension.v1` - fixed type-definition segment.
-- `frontx.screensets.layout.screen.v1` - the fixed screen domain, copied
-  verbatim; its five tokens are the ecosystem's, not the MFE's to author.
+- `gts.frontx.mfes.ext.extension.v1` - fixed type-definition segment, owned by
+  `@gears-frontx/mfes`.
+- `frontx.screensets.layout.screen.v1` - the screen domain, copied verbatim. **It
+  is the host template's, not the ecosystem's**: `@gears-frontx/mfes` defines no
+  specific extension-domain values (MFES-2, MFES-3) and registers no such domain,
+  and this id is declared by template-shell, in
+  `packages/framework/src/plugins/microfrontends/gts/frontx.screensets/instances/domains/screen.v1.json`.
+  An MFE built for a host that declares a different screen domain copies that
+  host's id here instead. Either way the five tokens are the host's to author and
+  never this MFE's.
 - `frontx.blank.screens.home.v1` - the instance segment this MFE authors:
   `frontx` + `blank` + `screens` + `home` + `v1`.
 
@@ -115,11 +124,15 @@ token.
 
 ## Fixed (do-not-invent) IDs
 
-These come from `@gears-frontx/mfes` and are referenced verbatim, never redefined,
-by every MFE package in template-mfe:
+These are referenced verbatim, never redefined, by every MFE package in
+template-mfe. **They do not all come from the same owner**, and the difference
+matters when this template is applied to a different host:
 
 - `gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1` - the shared
-  screen domain every screen-contributing MFE extension targets.
+  screen domain every screen-contributing MFE extension targets. **Declared by
+  the host template (template-shell), not by `@gears-frontx/mfes`**, which owns
+  no extension-domain values at all. An MFE built against another host copies
+  that host's screen domain id instead of this one.
 - `gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~`,
   `...mount_ext.v1~`, `...unmount_ext.v1~` - the ecosystem's built-in extension
   lifecycle actions.
@@ -140,6 +153,9 @@ by every MFE package in template-mfe:
    snake_case, matching every existing example above.
 4. An entry's `manifest` field must reference that same package's own manifest ID
    - never another package's.
-5. A screen-domain extension always targets
-   `gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1`; only a
-   non-screen (e.g. widget-area) extension targets a template-defined domain ID.
+5. Every extension targets a **template-defined** domain ID, screen and non-screen
+   alike - the ecosystem defines none. Against template-shell a screen-domain
+   extension targets
+   `gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.screen.v1`, and a
+   widget-area extension targets one this template declares itself; against
+   another host, both come from that host.
