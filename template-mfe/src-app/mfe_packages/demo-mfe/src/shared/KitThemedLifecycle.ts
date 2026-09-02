@@ -5,9 +5,8 @@
  * need the kit's design tokens inside their own shadow root; they extend this
  * class instead of `ThemeAwareReactLifecycle` directly. The other two —
  * `lifecycle-theme` and `lifecycle-widgets-host` — deliberately do not: they
- * paint from the shell's Tailwind colour utilities, which read the same token
- * names as HSL triplets and stop resolving wherever the kit's tokens land. The
- * two grammars coexist only by never sharing a shadow root.
+ * paint from the shell's Tailwind colour utilities alone, render no kit
+ * components, and so need no kit CSS inside their shadow root.
  */
 
 import { ThemeAwareReactLifecycle } from '@gears-frontx/react';
@@ -21,11 +20,10 @@ import { anchorKitThemeOnShadowHost } from './anchorKitThemeOnShadowHost';
  * changes, and every mounted instance appends the same text.
  *
  * The alternative — loading `theme.css` into the host document instead — is
- * rejected on purpose: the shell declares the same token names as HSL triplets
- * for Tailwind (`hsl(var(--background))`), so kit values at document level
- * would invalidate every colour utility in the shell and in every other MFE.
- * Keeping the kit's tokens inside a shadow root is what lets the two grammars
- * coexist.
+ * rejected on purpose: the host document's token declarations belong to the
+ * shell (which imports the kit's CSS at its own entry), and this MFE cannot
+ * assume which shell build hosts it. Anchoring the kit's tokens on the
+ * shadow host keeps the screens correct in any host.
  */
 const kitThemeCssForShadowRoot = anchorKitThemeOnShadowHost(kitThemeCss);
 
@@ -38,14 +36,14 @@ export abstract class KitThemedLifecycle extends ThemeAwareReactLifecycle {
    * the kit's tokens are not among them, and this is the hook the base class
    * documents for exactly that gap.
    *
-   * These tokens do collide with the base resets the same base class injects:
-   * `injectBaseResets` paints `:host` with `hsl(var(--foreground))` and
-   * `hsl(var(--background))`, written for the shell's HSL triplets, and the kit
-   * declares those same names as complete colours on the same `:host`, so both
-   * declarations resolve to `hsl(#f6f7f9)` and drop. Nothing shows through as
-   * long as the screen root paints itself, which every kit-themed screen here
-   * does through its own `.screen` rule; a screen that leaves part of the host
-   * uncovered has to paint the host itself.
+   * These tokens compose with the base resets the same base class injects:
+   * `injectBaseResets` paints `:host` with `var(--foreground)` and
+   * `var(--background)` (full CSS colours since the shell's token migration),
+   * and the kit declares those same names as complete colours on the same
+   * `:host`, so the host paints in the kit's palette for the active theme.
+   * Every kit-themed screen here still paints its own root through its
+   * `.screen` rule; a screen that leaves part of the host uncovered has to
+   * paint the host itself.
    */
   protected override initializeStyles(container: Element | ShadowRoot): void {
     const style = document.createElement('style');

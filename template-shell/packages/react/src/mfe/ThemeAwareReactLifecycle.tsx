@@ -100,8 +100,17 @@ function MountRuntimeAwareProvider({
  * Styling strategy:
  * 1. adoptHostStylesIntoShadowRoot() clones all host <style> and <link> into the
  *    front of the shadow root, bringing the full compiled Tailwind CSS (including
- *    MFE utilities, since the host's content paths cover src/mfe_packages/**).
- *    Front, not back, so the MFE's own stylesheets outrank them - see the method.
+ *    MFE utilities, since the host's content paths cover src-app/mfe_packages/**) and
+ *    the ui-kit component CSS (the host entry side-effect-imports
+ *    @gears-frontx/ui-kit so that CSS exists in the host document; the kit's
+ *    CSS-module class names are stable per kit version, so they match the
+ *    classes MFE bundles reference only while host and MFE install the same
+ *    kit version - the template-pin-drift policy check is what guarantees
+ *    that; a drifted MFE renders its kit components unstyled with no error).
+ *    Front, not back, so the MFE's own stylesheets
+ *    outrank them - see the method. Design tokens must therefore be full CSS
+ *    colors - both Tailwind utilities (var(--x)) and ui-kit component CSS
+ *    consume them directly.
  * 2. injectBaseResets() adds box-model resets and :host defaults that aren't part
  *    of Tailwind's compiled output but are needed for consistent rendering, and
  *    positions them at the end of the shell-owned head - after the adopted block
@@ -289,8 +298,8 @@ export abstract class ThemeAwareReactLifecycle implements MfeEntryLifecycle<Chil
         line-height: 1.5;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        color: hsl(var(--foreground));
-        background-color: hsl(var(--background));
+        color: var(--foreground);
+        background-color: var(--background);
       }
     `;
     // Runs whether the node is new or reused: `insertBefore` moves a node that

@@ -577,6 +577,107 @@ class StandaloneEsmBuilder {
 }
 
 
+// ── Expose CSS-delivery guard ────────────────────────────────────────────────
+
+/**
+ * Chunk facts captured during `generateBundle`, the only hook that still sees
+ * Rollup's chunk graph. `ownCssModules` holds the module ids of stylesheets
+ * this chunk owns that came from the package's own source: `.css` module ids
+ * excluding `?inline` imports (those travel inside the JS as strings, nothing
+ * to deliver separately) and excluding `node_modules` (the UI kit's
+ * CSS-module styles are delivered by `adoptHostStylesIntoShadowRoot()` from
+ * the host document, by design — see the `mfe-package-contract` guideline).
+ */
+export interface CapturedChunk {
+  fileName: string;
+  imports: string[];
+  dynamicImports: string[];
+  ownCssModules: string[];
+}
+
+/** The `ownCssModules` filter, applied to a raw Rollup module id. */
+export function isOwnCssModule(moduleId: string): boolean {
+  const [pathPart, query] = moduleId.split('?', 2);
+  if (!pathPart.endsWith('.css')) return false;
+  if (query !== undefined && /(^|&)inline(=|&|$)/.test(query)) return false;
+  return !pathPart.includes('/node_modules/');
+}
+
+/**
+ * Detects package-own CSS an expose needs at runtime but that
+ * mf-manifest.json does not attribute to it — CSS that can never reach the
+ * MFE's shadow root.
+ *
+ * Failure mode this guards: an exposed lifecycle (or a module in its graph)
+ * imports a package-own stylesheet normally (`import './styles.css'`).
+ * Rollup may hoist the extracted CSS into a chunk shared with other exposes
+ * or the standalone entry; the federation manifest then reports
+ * `css: { async: [], sync: [] }` for the expose, the host's stylesheet
+ * injection has nothing to inject, and the screen renders unstyled with no
+ * error anywhere. This turns that silence into a build failure.
+ *
+ * For each expose whose manifest attributes no CSS at all: walk the chunk
+ * graph reachable from its declared JS assets (static and dynamic imports)
+ * and collect the package-own CSS modules found there. An expose that does
+ * declare CSS is trusted — the guard targets the empty-attribution hoist,
+ * not attribution completeness. Pure; exported for unit tests.
+ */
+export function findUndeclaredExposeCss(
+  exposes: readonly MfManifestExpose[],
+  chunks: ReadonlyMap<string, CapturedChunk>
+): Array<{ exposePath: string; missingCss: string[] }> {
+  const results: Array<{ exposePath: string; missingCss: string[] }> = [];
+  for (const expose of exposes) {
+    if (expose.assets.css.sync.length > 0 || expose.assets.css.async.length > 0) {
+      continue;
+    }
+    const needed = new Set<string>();
+    const queue = [...expose.assets.js.sync, ...expose.assets.js.async];
+    const seen = new Set<string>(queue);
+    while (queue.length > 0) {
+      const chunk = chunks.get(queue.pop() as string);
+      if (!chunk) continue;
+      for (const css of chunk.ownCssModules) needed.add(css);
+      for (const next of [...chunk.imports, ...chunk.dynamicImports]) {
+        if (!seen.has(next)) {
+          seen.add(next);
+          queue.push(next);
+        }
+      }
+    }
+    if (needed.size > 0) {
+      results.push({ exposePath: expose.path, missingCss: Array.from(needed) });
+    }
+  }
+  return results;
+}
+
+/**
+ * Formats the guard failure. The reliable fix is inlining: `?inline` turns
+ * the stylesheet into a string bundled with the lifecycle chunk itself, and
+ * `initializeStyles()` (the `ThemeAwareReactLifecycle` hook) appends it to
+ * the mount container, so delivery no longer depends on manifest CSS
+ * attribution at all. See the `mfe-package-contract` guideline, "CSS
+ * delivery" section.
+ */
+export function formatUndeclaredExposeCssError(
+  findings: ReadonlyArray<{ exposePath: string; missingCss: string[] }>
+): string {
+  const lines = findings.map(
+    (f) => `  - expose '${f.exposePath}' needs: ${f.missingCss.join(', ')}`
+  );
+  return (
+    `[frontx-mf-gts] CSS imported by an exposed module was not attributed ` +
+    `to that expose in mf-manifest.json — the host injects only ` +
+    `manifest-attributed CSS into the MFE's shadow root, so these styles ` +
+    `would silently never render:\n${lines.join('\n')}\n` +
+    `Fix: import the stylesheet with '?inline' in the lifecycle module and ` +
+    `append it in an initializeStyles() override ` +
+    `(see the mfe-package-contract guideline, "CSS delivery"), or keep the ` +
+    `CSS in the expose's own chunk so the manifest attributes it.`
+  );
+}
+
 // ── Lazy-import AST transform ───────────────────────────────────────────────
 
 /**
@@ -818,6 +919,7 @@ export function frontxMfGts(): Plugin {
   let packageRoot = '';
   let distDirPath = '';
   let resolvedExternals: string[] = [];
+  const capturedChunks = new Map<string, CapturedChunk>();
 
   return {
     name: 'frontx-mf-gts',
@@ -892,6 +994,23 @@ export function frontxMfGts(): Plugin {
       }
     },
 
+    // Capture the chunk graph while it is still visible — closeBundle (where
+    // the manifests are read) runs after Rollup discards it. `moduleIds`
+    // still lists the extracted CSS modules a chunk owned; the CSS-delivery
+    // guard below checks them against the federation manifest's per-expose
+    // CSS attribution.
+    generateBundle(_options, bundle) {
+      for (const [fileName, output] of Object.entries(bundle)) {
+        if (output.type !== 'chunk') continue;
+        capturedChunks.set(fileName, {
+          fileName,
+          imports: [...output.imports],
+          dynamicImports: [...output.dynamicImports],
+          ownCssModules: output.moduleIds.filter(isOwnCssModule),
+        });
+      }
+    },
+
     async closeBundle() {
       const distDir = path.isAbsolute(distDirPath)
         ? distDirPath
@@ -917,6 +1036,15 @@ export function frontxMfGts(): Plugin {
         const mfManifest = JSON.parse(
           fs.readFileSync(mfManifestPath, 'utf-8')
         ) as MfManifest;
+
+        // ── Guard: every stylesheet an expose needs must be deliverable ─────
+        const undeclaredCss = findUndeclaredExposeCss(
+          mfManifest.exposes,
+          capturedChunks
+        );
+        if (undeclaredCss.length > 0) {
+          throw new Error(formatUndeclaredExposeCssError(undeclaredCss));
+        }
 
         // With shared:{}, the MF 2.0 build no longer produces:
         //   - localSharedImportMap (no shared dep chunks)

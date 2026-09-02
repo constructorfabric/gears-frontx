@@ -21,8 +21,8 @@ reason = "In-package demos exercise a package's public surface rather than imple
 patterns = ["*/demo/*"]
 
 [[ignore]]
-reason = "These globs cover template territory — top-level directories carrying a frontx-template.json manifest — outside the ecosystem artifact universe (cpt-frontx-adr-template-territory-traceability); residue markers bind nothing and are removed as files are touched — no active FEATURE artifact backs these packages"
-patterns = ["template-shell/**", "template-mfe/**"]
+reason = "These globs cover template territory — top-level directories carrying a frontx-template.json manifest — outside the ecosystem artifact universe (cpt-frontx-adr-template-territory-traceability); residue markers bind nothing and are removed as files are touched — no active FEATURE artifact backs this template territory"
+patterns = ["template-shell/**", "template-mfe/**", "template-design-guardrails/**"]
 
 [[ignore]]
 reason = "UI Kit package has no backing CDSL artifact yet. Removal criterion per the member artifact chain (cpt-frontx-constraint-member-artifact-chain, root DESIGN section 2.2): ui-kit is registered as its own child system owning a PRD, a DESIGN, and at least one FEATURE (never a DECOMPOSITION), per the member artifact chain's 3-layer rule. NOT satisfied by adding a requirement to the root PRD or a component to the root DESIGN - that is the centralized shape the layer partition replaced."

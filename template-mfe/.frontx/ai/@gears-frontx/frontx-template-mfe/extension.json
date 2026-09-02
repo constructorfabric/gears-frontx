@@ -13,6 +13,11 @@
       "path": "workflows/add-mfe-package-workflow.md"
     },
     {
+      "id": "add-mfe-packages-parallel-workflow",
+      "category": "workflows",
+      "path": "workflows/add-mfe-packages-parallel.md"
+    },
+    {
       "id": "gts-id-conventions",
       "category": "guidelines",
       "path": "guidelines/gts-id-conventions.md"

@@ -314,6 +314,15 @@ export interface ThemeConfig {
   variables: Record<string, string>;
   /** Whether this is the default theme */
   default?: boolean;
+  /**
+   * Base appearance of the theme. apply() stamps it as `data-theme` on the
+   * document root so design-system stylesheets that switch token sets on
+   * [data-theme='light'|'dark'] (e.g. the installed UI kit's theme.css)
+   * follow this theme's light/dark nature. Defaults to 'light' when omitted,
+   * so a theme that defines only some token names never mixes with the
+   * kit's OS-driven dark defaults for the rest.
+   */
+  appearance?: 'light' | 'dark';
 }
 
 /**

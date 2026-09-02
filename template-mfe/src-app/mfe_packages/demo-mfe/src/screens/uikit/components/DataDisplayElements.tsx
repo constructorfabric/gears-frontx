@@ -145,7 +145,20 @@ export const DataDisplayElements: React.FC<DataDisplayElementsProps> = ({
           <Badge>default</Badge>
           <Badge variant="outline">outline</Badge>
           <Badge variant="destructive">destructive</Badge>
-          <Badge variant="outline" render={<a href="#badge" />}>
+          {/*
+            The function form of `render` receives the badge's props, children
+            included; passing them through explicitly is what lets
+            jsx-a11y/anchor-has-content see that this anchor has a name (the
+            element form `render={<a />}` reads as an empty link to the lint).
+          */}
+          <Badge
+            variant="outline"
+            render={({ children, ...props }) => (
+              <a href="#badge" {...props}>
+                {children}
+              </a>
+            )}
+          >
             Pro plan
           </Badge>
         </div>

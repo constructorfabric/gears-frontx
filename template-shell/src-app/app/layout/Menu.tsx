@@ -239,7 +239,9 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
             // tells them apart: a shell-only seed has no `src-app/mfe_packages/`
             // at all until the MFE template is added, and pointing such a
             // project at a scaffold it does not carry is a dead end.
-            <div className="px-3 py-4 text-sm text-muted-foreground">
+            // list-none <li>: SidebarMenu renders a <ul>, whose only valid
+            // direct children are <li> (axe: list, impact serious).
+            <li className="list-none px-3 py-4 text-sm text-muted-foreground">
               No screens yet. If this project has no{' '}
               <code className={hintCodeClass}>src-app/mfe_packages/</code> directory, run{' '}
               <code className={hintCodeClass}>frontx add frontx-template-mfe</code> and{' '}
@@ -247,7 +249,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
               copying the <code className={hintCodeClass}>_blank-mfe</code> scaffold, and delete{' '}
               <code className={hintCodeClass}>templateExample</code> from the copy&rsquo;s{' '}
               <code className={hintCodeClass}>mfe.json</code> so it reaches this menu.
-            </div>
+            </li>
           ) : (
             extensions.map((ext) => {
               const isActive = ext.id === mountedId;

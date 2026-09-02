@@ -168,6 +168,27 @@ jobs:
     - name: Check mfes import boundary (ADR-0003)
       run: npm run policy:mfes-import-boundary
 
+    # #586: template and ui-kit design tokens are full CSS colors consumed as
+    # `var(--x)`, never shadcn-style HSL fragments consumed as
+    # `hsl(var(--x))` — a stale wrapper reads a full color where a fragment is
+    # expected and the style silently disappears (invalid at computed-value
+    # time), which lint, type-check, and jsdom tests all miss. Scope is
+    # template territory (manifest-presence discovery, same as the guards
+    # above); `packages/cli/templates/` keeps its self-consistent legacy
+    # vocabulary and is deliberately out of scope. No build-order dependency:
+    # reads source files directly.
+    - name: Check template token format (full-color vocabulary)
+      run: npm run policy:token-format
+
+    # The design-guardrails bundle routes guideline loading through the
+    # generated `reference-artifacts/guideline-index.json`, derived from each
+    # guideline's front matter (`scripts/generate-guideline-index.mjs`). The
+    # front matter is the source of truth; this asserts the checked-in index
+    # matches it, so a guideline edit cannot land without regenerating the
+    # index and a hand edit to the index cannot land at all.
+    - name: Check guideline index is generated from front matter
+      run: npm run policy:guideline-index
+
   # The template-*/ trees carry their own arch:deps / lint / test:unit scripts,
   # and nothing else in this workflow enters them — so without this job their
   # checks are enforced only when someone runs them by hand, and they rot
@@ -274,13 +295,26 @@ jobs:
             `OVERLAY_TEMPLATES=${overlays.join(" ")}\n`);
         '
 
+    # Both template steps below run their installs from a copy placed OUTSIDE
+    # the checkout. Inside it, the repository root's node_modules (this job's
+    # own `npm ci` above) is an ancestor directory of the template, and Node's
+    # resolution walks up to it: a dependency the template's lockfile fails to
+    # install is still found there, and the template passes on a graph a
+    # standalone `frontx seed` never gets. That is how a shell lockfile whose
+    # ui-kit entry lacked @shadcn/react - a real runtime dependency of the
+    # pinned version - stayed green here while the composed a11y suite failed
+    # outside the monorepo (PR #586 review). node_modules is left behind on
+    # purpose: the copy installs from its own lockfile and nothing else.
     - name: Validate self-contained templates
       run: |
         set -euo pipefail
         for template in $SELF_CONTAINED_TEMPLATES; do
           echo "==> Validating $template"
+          isolated="$RUNNER_TEMP/standalone-$(basename "$template")"
+          rm -rf "$isolated" && mkdir -p "$isolated"
+          tar -C "$template" --exclude=node_modules -cf - . | tar -C "$isolated" -xf -
           (
-            cd "$template"
+            cd "$isolated"
             npm ci
             # Full `build`, not just build:package/build:packages — it also
             # chains build:mfes, generate:mfe-manifests and vite build, which
@@ -347,6 +381,7 @@ jobs:
           ' "$overlay/frontx-template.json")"
 
           overlay_count=0
+          overlay_has_pkg=0
           while read -r subtree; do
             [ -n "$subtree" ] || continue
             # A declared subtree is usually a directory, but 0d22fe81 started
@@ -355,6 +390,17 @@ jobs:
             # directories, once "the whole mfe_packages directory" stopped
             # being one claim — so this branches on which the tree actually
             # has, rather than assuming a directory the way `-d` alone did.
+            # Probed against the source subtree, not the copy landing in
+            # $shell below: a template like template-design-guardrails ships
+            # no root package.json (it's a docs/AI bundle) yet still owns an
+            # installable package subtree (src-app/verify_packages/*). Root
+            # package.json alone would misclassify it as manifest-only and
+            # skip the zero-count guard, so any subtree — file or directory —
+            # that contains a package.json counts as code-bearing.
+            if [ -n "$(find "$overlay/$subtree" -not -path '*/node_modules/*' \
+              -name package.json -print -quit 2>/dev/null)" ]; then
+              overlay_has_pkg=1
+            fi
             if [ -d "$overlay/$subtree" ]; then
               # The ground has to be free before anything is written, the way
               # `refuseUnlessGroundFree` requires it of a real `frontx add`:
@@ -404,6 +450,18 @@ jobs:
             overlay_count=$((overlay_count + subtree_count))
           done <<< "$subtrees"
 
+          # A manifest-only overlay — none of its declared exclusiveSubtrees
+          # contains a package.json anywhere, root or nested — ships docs and
+          # an AI bundle, never an MFE package; zero packages is its correct
+          # contribution, not the vacuous pass the guard below catches for
+          # code overlays. An overlay whose subtrees do contain a
+          # package.json falls through to that guard even without one at its
+          # own template root.
+          if [ "$overlay_has_pkg" -eq 0 ]; then
+            echo "==> $overlay is manifest-only; composed without MFE packages (by design)"
+            continue
+          fi
+
           if [ "$overlay_count" -eq 0 ]; then
             echo "::error::$overlay's exclusiveSubtrees exist but contain no MFE package (no package.json found)"
             exit 1
@@ -413,7 +471,13 @@ jobs:
         done
         echo "==> Composed $composed_total MFE package(s) into $shell"
 
-        cd "$shell"
+        # Out of the checkout before installing, for the reason given above
+        # the standalone step: an ancestor node_modules must not be able to
+        # supply what the composed lockfile does not.
+        composed="$RUNNER_TEMP/composed-$(basename "$shell")"
+        rm -rf "$composed" && mkdir -p "$composed"
+        tar -C "$shell" --exclude=node_modules -cf - . | tar -C "$composed" -xf -
+        cd "$composed"
         # npm install, not npm ci: the shell's committed lockfile is generated
         # without the overlay, so it has no mfe_packages entries and `ci` would
         # fail as out of sync. Re-installing after an `add` is the documented
