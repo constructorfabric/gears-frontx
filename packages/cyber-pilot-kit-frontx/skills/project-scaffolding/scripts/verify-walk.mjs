@@ -1,14 +1,19 @@
 #!/usr/bin/env node
-// One walk over a scaffolded application's screens, executed as a program rather
-// than as a conversation of browser calls.
+// One walk over a scaffolded application, executed as a program rather than as
+// a conversation of browser calls.
 //
-// The walk covers every declared screen, and optionally repeats that coverage
-// once per value of a single caller-declared variant axis: a set of values, a
-// control that opens them, an option handle per value, and the label the walk
-// confirms each one from. What such an axis stands for is the caller's business
-// and never this driver's - a display mode, a density, a locale, a layout - and
-// nothing below is written in terms of any one of them. An application with no
-// such axis declares none, and its screens are walked once.
+// Two axes shape the walk, each declared by the caller and neither assumed
+// here. The checkpoint axis names the points the walk visits and how each one
+// is reached: a destination it is loaded at, a control it is clicked to, or
+// both. The variant axis names one UI dimension the whole coverage is repeated
+// across: a set of values, a control that opens them, an option handle per
+// value, and the label the walk confirms each one from. What either axis stands
+// for is the caller's business and never this driver's - addressable pages,
+// tabs, steps of a wizard, a display mode, a density, a locale, a layout - and
+// nothing below is written in terms of any one of them. An application that
+// declares neither axis is walked once, at whatever --host opens, and the
+// coverage says exactly that rather than reporting a dimension the application
+// does not have.
 //
 // The skill document beside this file states these same rules as prose. This
 // program is the executable copy of them. Prose did not survive a change of
@@ -34,25 +39,40 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
-const HELP = `verify-walk - drive one walk over a scaffolded application's screens
+const HELP = `verify-walk - drive one walk over a scaffolded application
 
 Usage:
-  node verify-walk.mjs --host <url> --screens <list> --capdir <path> [options]
+  node verify-walk.mjs --host <url> --capdir <path> [options]
 
 Required:
   --host <url>              origin of the running dev server, e.g. http://localhost:3000
-  --screens <list>          comma list of name:route[:ready-testid[:extension-id]]
-                            entries, e.g.
-                            orders:/orders:screen-orders,stock:/stock:screen-stock
-                            The fourth field is the screen's full extension id, for
-                            a host that keys its menu items by id; see --menu.
   --capdir <path>           capture directory for this run; created when absent and
                             refused when it already holds files
 
-Variant axis - one UI dimension the screens are re-walked across, declared whole
+Checkpoint axis - the points the walk visits, declared whole or not at all.
+Declaring --checkpoint-selector requires --checkpoints; declaring neither of them
+walks whatever --host opens, once, and says so in the coverage:
+  --checkpoints <list>      comma list of name[:destination[:ready-testid[:handle]]]
+                            entries, e.g.
+                            orders:/orders:list-orders,stock:/stock:list-stock
+                            destination is a path appended to --host and reached by
+                            a full load; ready-testid is the handle the walk waits
+                            for before capturing; handle is what {handle} takes in
+                            --checkpoint-selector
+  --checkpoint-selector <pattern>
+                            data-testid of the control clicked to reach a
+                            checkpoint, with {checkpoint} or {handle} in it.
+                            Declared, the walk clicks its way between checkpoints;
+                            left out, each checkpoint is loaded at its destination.
+                            {checkpoint} takes the short name from --checkpoints.
+                            {handle} takes that checkpoint's fourth --checkpoints
+                            field, or, when none is declared, the id read off the
+                            page carrying the checkpoint's name as a whole segment
+
+Variant axis - one UI dimension the coverage is repeated across, declared whole
 or not at all. Declaring any flag in this group requires --variants,
---variant-switcher and --variant-option together; declaring none walks every
-screen once and says so in the coverage:
+--variant-switcher and --variant-option together; declaring none walks the
+checkpoints once and says so in the coverage:
   --variants <list|registry>  comma list of the values to walk, or the word
                             "registry" with --variant-registry naming the file
                             the set was read into
@@ -69,19 +89,17 @@ screen once and says so in the coverage:
                             each carries a label of its own)
 
 Optional:
-  --menu <pattern>          data-testid of a screen's menu item, with {screen} or
-                            {extensionId} in it; required when --nav is menu.
-                            {screen} takes the short name from --screens.
-                            {extensionId} takes that screen's fourth --screens field,
-                            or, when none is declared, the id read off the page from
-                            the menu item whose id carries the screen name as a
-                            whole segment.
-  --nav <menu|route>        how screens after the first are reached (default: menu)
-  --panel-expand <testid>   data-testid of the host dev panel's expand control
-  --panel-collapse <testid> data-testid of the host dev panel's collapse control
-  --states <path>           JSON file of declared per-screen interactions (see below)
+  --overlay-open <testid>   data-testid of the control that opens an overlay the
+                            walk has to operate through - a value switcher drawn
+                            inside host chrome, say. Clicked at the start of every
+                            pass when declared
+  --overlay-close <testid>  data-testid of the control that closes that overlay
+                            again. Captures are taken with it closed, and the
+                            close is confirmed by --overlay-open being back on
+                            the page
+  --states <path>           JSON file of declared per-checkpoint interactions (see below)
   --cdp-port <n>            debugging port probed before any browser is launched (default: 9222)
-  --ready-timeout <ms>      budget for a screen readiness poll (default: 15000)
+  --ready-timeout <ms>      budget for a checkpoint readiness poll (default: 15000)
   --browser-cmd <cmd>       command line the browser CLI is driven through
                             (default: npx --yes agent-browser); a caller pins a
                             version or names an installed binary here. Quote a
@@ -95,22 +113,23 @@ Optional:
   --help                    print this text and exit 0
 
 --states file shape:
-  { "<screen name>": [ { "state": "submitted",
-                         "actions": [ { "kind": "fill", "testid": "email", "value": "a@b.c" },
-                                      { "kind": "click", "testid": "submit" },
-                                      { "kind": "read", "testid": "status" } ] } ] }
+  { "<checkpoint name>": [ { "state": "submitted",
+                             "actions": [ { "kind": "fill", "testid": "email", "value": "a@b.c" },
+                                          { "kind": "click", "testid": "submit" },
+                                          { "kind": "read", "testid": "status" } ] } ] }
 
-Exit code is 0 only when every declared variant became active, every read-back
-agreed, and every declared capture landed. Any failure exits non-zero with the
-reason in the JSON.
+Exit code is 0 only when every declared checkpoint was reached, every declared
+variant became active, every read-back agreed, and every declared capture
+landed. Any failure exits non-zero with the reason in the JSON.
 `;
 
 // ---------------------------------------------------------------------------
 // Argument surface
 
 const FLAGS_WITH_VALUE = new Set([
-  '--host', '--variants', '--variant-registry', '--variant-labels', '--screens', '--capdir',
-  '--variant-switcher', '--variant-option', '--menu', '--nav', '--panel-expand', '--panel-collapse',
+  '--host', '--variants', '--variant-registry', '--variant-labels', '--capdir',
+  '--variant-switcher', '--variant-option', '--checkpoints', '--checkpoint-selector',
+  '--overlay-open', '--overlay-close',
   '--states', '--cdp-port', '--ready-timeout', '--browser-cmd', '--command-timeout',
   '--json-out', '--coverage',
 ]);
@@ -118,11 +137,10 @@ const FLAGS_WITH_VALUE = new Set([
 // Substituted into the patterns their flags carry. Declared here rather than
 // beside the code that substitutes them because the argument validation below
 // runs first and reads them.
-const MENU_SCREEN = '{screen}';
-const MENU_EXTENSION_ID = '{extensionId}';
+const CHECKPOINT_TOKEN = '{checkpoint}';
+const CHECKPOINT_HANDLE = '{handle}';
 const VARIANT_TOKEN = '{variant}';
 
-const NAVIGATIONS = new Set(['menu', 'route']);
 const ACTION_KINDS = new Set(['fill', 'click', 'read']);
 const MAX_TCP_PORT = 65535;
 const DEFAULT_BROWSER_COMMAND = 'npx --yes agent-browser';
@@ -204,8 +222,8 @@ function tokenizeCommand(flag, raw) {
 }
 
 // Every part of a capture's file name is caller data - a variant name out of a
-// registry, a screen name off the command line, a state name out of the states
-// file - and a part carrying a path separator leaves the run's own capture
+// registry, a checkpoint name off the command line, a state name out of the
+// states file - and a part carrying a path separator leaves the run's own capture
 // directory: `../escape` resolves a level above it, and the file lands where
 // nothing in this run is entitled to write. Each part is therefore reduced to the
 // file-name alphabet, so no separator, no `..` segment and nothing a shell reads
@@ -217,30 +235,41 @@ const slug = (text) => String(text ?? '').toLowerCase()
   .replace(/[^a-z0-9-]+/g, '-')
   .replace(/^-+|-+$/g, '') || CAPTURE_FALLBACK_SLUG;
 
-// A run with no variant axis has no variant part to name its captures by, and
-// the null is dropped rather than slugged: the fallback slug would spell a value
-// the invocation never declared, and a real value named "unnamed" would then
-// share the file name with it.
-const captureName = (variant, screen, state) => `${[variant, screen, state]
+// An axis this run did not declare has no part to name its captures by, and the
+// null is dropped rather than slugged: the fallback slug would spell a value the
+// invocation never declared, and a real value named "unnamed" would then share
+// the file name with it.
+const captureName = (variant, checkpoint, state) => `${[variant, checkpoint, state]
   .filter((part) => part !== null).map(slug).join('-')}.png`;
 
-// The state every screen is captured at before anything is driven on it, named
-// here because the collision check below enumerates it alongside the declared
-// states and the walk takes its capture under the same name.
+// The state every checkpoint is captured at before anything is driven on it,
+// named here because the collision check below enumerates it alongside the
+// declared states and the walk takes its capture under the same name.
 const FRESH_STATE = 'fresh';
 
-// A screen is name:route[:ready-testid[:extension-id]]. The ready testid is what
-// the driver waits for before capturing; a screen declared without one is
-// captured after a bare settle and marked readyConfirmed:false, so the weakness
-// is disclosed in the result rather than hidden behind a screenshot that looks
-// fine. The extension id is the menu resolver's certain path; a colon separates
-// the fields because an extension id is built from `.` and `~` and carries none.
-function parseScreens(spec) {
-  return spec.split(',').filter(Boolean).map((entry) => {
-    const [name, route, ready, extensionId] = entry.split(':');
-    if (!name || !route) throw new Error(`--screens entry "${entry}" is not name:route[:ready-testid[:extension-id]]`);
-    return { name, route, readyTestid: ready || null, extensionId: extensionId || null };
+// A checkpoint is name[:destination[:ready-testid[:handle]]]. Only the name is
+// required: what a checkpoint is reached by is the caller's declaration, and a
+// run whose one checkpoint is whatever --host opens declares no destination at
+// all. The ready testid is what the driver waits for before capturing; a
+// checkpoint declared without one is captured after a bare settle and marked
+// readyConfirmed:false, so the weakness is disclosed in the result rather than
+// hidden behind a screenshot that looks fine. The handle is the resolver's
+// certain path for a host that keys its controls by an identifier the short name
+// cannot spell; a colon separates the fields because such identifiers are built
+// from `.` and `~` and carry none.
+function parseCheckpoints(spec) {
+  const parsed = spec.split(',').filter(Boolean).map((entry) => {
+    const [name, destination, ready, handle] = entry.split(':');
+    if (!name) throw new Error(`--checkpoints entry "${entry}" is not name[:destination[:ready-testid[:handle]]]`);
+    return {
+      name,
+      destination: destination || null,
+      readyTestid: ready || null,
+      handle: handle || null,
+    };
   });
+  if (parsed.length === 0) throw new Error('--checkpoints names no checkpoint to walk');
+  return parsed;
 }
 
 function parseLabelMap(spec) {
@@ -320,40 +349,47 @@ function readVariantRegistry(file) {
 // Validated whole before the first browser call, because a malformed entry
 // reached mid-walk costs the captures already taken: the throw came out of the
 // state loop, past `finish()`, and the run lost the record of everything that had
-// worked. Screen names are checked against the walked set for the same reason a
-// bad action kind is - a states file keyed by a screen nobody walks drives
+// worked. Checkpoint names are checked against the walked set for the same reason
+// a bad action kind is - a states file keyed by a checkpoint nobody walks drives
 // nothing, reports nothing, and reads as a state that passed.
-function readStates(file, screens) {
+function readStates(file, checkpoints) {
   const { resolved, parsed } = readJsonFile('--states', file);
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error(`--states "${resolved}" is not an object keyed by screen name`);
+    throw new Error(`--states "${resolved}" is not an object keyed by checkpoint name`);
   }
-  const walked = new Set(screens.map((screen) => screen.name));
-  for (const [screen, declared] of Object.entries(parsed)) {
-    if (!walked.has(screen)) throw new Error(`--states "${resolved}" declares screen "${screen}", which --screens does not name`);
-    if (!Array.isArray(declared)) throw new Error(`--states "${resolved}" holds ${JSON.stringify(declared)} under "${screen}" where an array of states belongs`);
+  // A run that declared no checkpoint axis has no name to key interactions by,
+  // so the file cannot address anything this walk visits. Said outright rather
+  // than through the per-key message below, which would read as a typo in a
+  // --checkpoints list the invocation never carried.
+  if (checkpoints.length === 0 && Object.keys(parsed).length > 0) {
+    throw new Error(`--states "${resolved}" is keyed by checkpoint name, and this run declares no checkpoint axis to key against`);
+  }
+  const walked = new Set(checkpoints.map((checkpoint) => checkpoint.name));
+  for (const [checkpoint, declared] of Object.entries(parsed)) {
+    if (!walked.has(checkpoint)) throw new Error(`--states "${resolved}" declares checkpoint "${checkpoint}", which --checkpoints does not name`);
+    if (!Array.isArray(declared)) throw new Error(`--states "${resolved}" holds ${JSON.stringify(declared)} under "${checkpoint}" where an array of states belongs`);
     for (const entry of declared) {
       if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
-        throw new Error(`--states "${resolved}": every entry under "${screen}" is an object with "state" and "actions"`);
+        throw new Error(`--states "${resolved}": every entry under "${checkpoint}" is an object with "state" and "actions"`);
       }
       if (typeof entry.state !== 'string' || entry.state.trim() === '') {
-        throw new Error(`--states "${resolved}": an entry under "${screen}" carries no non-empty "state"`);
+        throw new Error(`--states "${resolved}": an entry under "${checkpoint}" carries no non-empty "state"`);
       }
       if (!Array.isArray(entry.actions)) {
-        throw new Error(`--states "${resolved}": "${screen}"/"${entry.state}" carries no "actions" array`);
+        throw new Error(`--states "${resolved}": "${checkpoint}"/"${entry.state}" carries no "actions" array`);
       }
       for (const action of entry.actions) {
         if (action === null || typeof action !== 'object' || Array.isArray(action)) {
-          throw new Error(`--states "${resolved}": every action under "${screen}"/"${entry.state}" is an object`);
+          throw new Error(`--states "${resolved}": every action under "${checkpoint}"/"${entry.state}" is an object`);
         }
         if (!ACTION_KINDS.has(action.kind)) {
-          throw new Error(`--states "${resolved}": action kind ${JSON.stringify(action.kind)} under "${screen}"/"${entry.state}" is not one of fill, click, read`);
+          throw new Error(`--states "${resolved}": action kind ${JSON.stringify(action.kind)} under "${checkpoint}"/"${entry.state}" is not one of fill, click, read`);
         }
         if (typeof action.testid !== 'string' || action.testid === '') {
-          throw new Error(`--states "${resolved}": an action under "${screen}"/"${entry.state}" carries no "testid"`);
+          throw new Error(`--states "${resolved}": an action under "${checkpoint}"/"${entry.state}" carries no "testid"`);
         }
         if (action.kind === 'fill' && typeof action.value !== 'string') {
-          throw new Error(`--states "${resolved}": the fill of "${action.testid}" under "${screen}"/"${entry.state}" needs a string "value"`);
+          throw new Error(`--states "${resolved}": the fill of "${action.testid}" under "${checkpoint}"/"${entry.state}" needs a string "value"`);
         }
         // A fill is confirmed by comparing the field's own value afterwards
         // against this string, and that reading comes back through `lastLine`:
@@ -363,10 +399,10 @@ function readStates(file, screens) {
         // equal, so the run would exit non-zero over a value the field took.
         // Refused here rather than discovered against a browser.
         if (action.kind === 'fill' && typeof action.value === 'string' && lastLine(action.value) !== action.value) {
-          throw new Error(`--states "${resolved}": the fill of "${action.testid}" under "${screen}"/"${entry.state}" declares a value the read-back cannot confirm, because the field's value is read back as the last non-empty line with surrounding whitespace and quotes removed: ${JSON.stringify(action.value)}`);
+          throw new Error(`--states "${resolved}": the fill of "${action.testid}" under "${checkpoint}"/"${entry.state}" declares a value the read-back cannot confirm, because the field's value is read back as the last non-empty line with surrounding whitespace and quotes removed: ${JSON.stringify(action.value)}`);
         }
         if (action.kind === 'read' && action.contains !== undefined && typeof action.contains !== 'string') {
-          throw new Error(`--states "${resolved}": the read of "${action.testid}" under "${screen}"/"${entry.state}" declares a non-string "contains"`);
+          throw new Error(`--states "${resolved}": the read of "${action.testid}" under "${checkpoint}"/"${entry.state}" declares a non-string "contains"`);
         }
       }
     }
@@ -424,10 +460,10 @@ function lastLine(stdout) {
 // ---------------------------------------------------------------------------
 // Page access, shadow-piercing throughout
 
-// Screen content renders inside shadow roots and an outside selector does not
-// see in: a plain CSS fill matches nothing, types into whatever held focus, and
-// still reports success. Every read and every drive in this driver descends
-// through shadowRoot instead.
+// Content renders inside shadow roots and an outside selector does not see in:
+// a plain CSS fill matches nothing, types into whatever held focus, and still
+// reports success. Every read and every drive in this driver descends through
+// shadowRoot instead.
 //
 // What every page-side helper answers in place of an element the page does not
 // carry. Spelled once, and both sides derive from this one name: the prelude
@@ -508,7 +544,7 @@ function invocationOutcome(proc) {
   // Neither hang nor missing runner ever carries EPIPE, so both remain keyed on
   // `proc.error` alone here - status is never consulted for this branch, since a
   // status that arrives late or not at all is exactly the ambiguity EPIPE above
-  // exists to route around before this check is reached.
+  // exists to settle before this check is reached.
   if (proc.error) {
     const timedOut = proc.error.code === 'ETIMEDOUT';
     return {
@@ -554,9 +590,9 @@ const readText = (testid) =>
 
 // Every data-testid the page carries, shadow roots included. Read as JSON
 // rather than as a delimited line because the ids this exists to find are
-// extension ids, built from exactly the punctuation any delimiter would have to
-// avoid. Null means the list could not be read at all, which is a different
-// answer from a page carrying none.
+// built from exactly the punctuation any delimiter would have to avoid. Null
+// means the list could not be read at all, which is a different answer from a
+// page carrying none.
 function readTestids() {
   const raw = evaluate('__testids()');
   if (raw === EVAL_ERROR) return null;
@@ -567,19 +603,19 @@ function readTestids() {
     // falls through to the one failure below, so both shapes of unreadable
     // answer are reported the same way
   }
-  fail('menu-resolve', `the page's data-testid list did not read back as JSON: "${raw}"`);
+  fail('handle-resolve', `the page's data-testid list did not read back as JSON: "${raw}"`);
   return null;
 }
 
 // Why a driven step did not take. A missing control and a refused eval are
 // different repairs, and one shared "not found" message is what made a broken
-// eval look like a screen that had not rendered yet.
+// eval look like a surface that had not rendered yet.
 const outcomeReason = (outcome) =>
   (outcome === EVAL_ERROR ? 'the eval did not run' : 'no control carries that data-testid');
 
 // A synthetic .click() carries none of the pointer sequence around it, so a
-// control listening for pointerdown sees nothing and the screen stays as it
-// was. Every click here is the full native sequence.
+// control listening for pointerdown sees nothing and the page stays as it was.
+// Every click here is the full native sequence.
 const click = (testid) => evaluate(`(() => {
   const el = __find(${JSON.stringify(testid)});
   if (!el) return __MISSING;
@@ -644,14 +680,13 @@ const result = {
   host: null,
   capdir: null,
   browser: { probe: null, mode: null, cdpPort: null, command: null },
-  // `declared: false` is the run's own statement that no variant axis was
-  // asked of it, which is not the same claim as an axis that was asked for and
-  // came back empty - the second is refused before the walk starts. A reader of
-  // this record can tell an unexercised dimension from a failed one.
+  // `declared: false` on either axis is the run's own statement that no such
+  // axis was asked of it, which is not the same claim as an axis that was asked
+  // for and came back empty - the second is refused before the walk starts. A
+  // reader of this record can tell an unexercised dimension from a failed one.
   variantAxis: { declared: false, source: null, variants: [] },
-  screens: [],
-  navigation: null,
-  menuResolution: [],
+  checkpointAxis: { declared: false, reach: null, checkpoints: [] },
+  checkpointResolution: [],
   variants: [],
   failures: [],
   coverageFile: null,
@@ -717,21 +752,29 @@ function finish(options) {
 // said is a table the page can corrupt. Newlines fold for the same reason.
 const cell = (text) => String(text ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
 
-// What a row says about a dimension the invocation never declared. Not "absent"
-// and not "none": the axis was not exercised by this run, which is a statement
-// about the run and not a claim about the application. A row reading "no" would
-// let a report conclude the application has no such dimension, which no part of
-// this walk established.
-const AXIS_NOT_DECLARED = 'no variant axis was declared for this run';
+// What a row says about an axis the invocation never declared. Not "absent" and
+// not "none": the axis was not exercised by this run, which is a statement about
+// the run and not a claim about the application. A row reading "no" would let a
+// report conclude the application has no such dimension, which no part of this
+// walk established.
+const VARIANT_AXIS_NOT_DECLARED = 'no variant axis was declared for this run';
+const CHECKPOINT_AXIS_NOT_DECLARED = 'no checkpoint axis was declared for this run';
 
-function appendCoverage(coveragePath, screens) {
-  const header = `| Variant | Active | Visually distinct from previous | ${screens.map((s) => `${cell(s.name)} states captured`).join(' | ')} |\n`
-    + `|${'---|'.repeat(3 + screens.length)}\n`;
+// One row per cell of the walk's own grid - every pass of the variant axis
+// against every point of the checkpoint axis - rather than one column per point.
+// A column per point could only be written once the points were known and fixed,
+// which is exactly the assumption this driver does not make: an axis that was
+// never declared contributes its single null coordinate and the row says so in
+// its own cell, so the table has the same shape whether one axis was declared,
+// both were, or neither.
+function appendCoverage(coveragePath, checkpoints) {
+  const header = '| Variant | Active | Checkpoint | States captured | Visually distinct from previous |\n'
+    + `|${'---|'.repeat(5)}\n`;
   const firstActive = result.variants.findIndex((pass) => pass.labelConfirmed === true);
-  const rows = result.variants.map((pass) => {
+  const rows = result.variants.flatMap((pass, passIndex) => {
     let active;
     if (pass.variant === null) {
-      active = `not-exercised (${AXIS_NOT_DECLARED})`;
+      active = `not-exercised (${VARIANT_AXIS_NOT_DECLARED})`;
     } else if (pass.labelConfirmed) {
       active = 'verified';
     } else if (pass.controlFailure !== null) {
@@ -739,30 +782,38 @@ function appendCoverage(coveragePath, screens) {
     } else {
       active = `not-active (label read "${cell(pass.labelRead)}")`;
     }
-    let distinct;
-    if (pass.comparisons.length > 0) {
-      distinct = pass.comparisons.map((c) => `${cell(c.screen)}/${cell(c.state)}: ${c.verdict} (cmp exit ${c.exit})`).join('; ');
-    } else if (pass.variant === null) {
-      distinct = `not-compared (${AXIS_NOT_DECLARED})`;
-    } else if (!pass.labelConfirmed) {
-      distinct = 'not-compared (the variant did not become active)';
-    } else if (result.variants.findIndex((other) => other.variant === pass.variant) === firstActive) {
-      distinct = 'first variant';
-    } else {
-      distinct = 'not-compared (no capture pair)';
-    }
-    const cells = screens.map((screen) => {
-      const captured = pass.captures.filter((c) => c.screen === screen.name);
-      const driven = pass.drivenOnly.filter((c) => c.screen === screen.name);
+    const variantName = pass.variant === null ? '(none declared)' : cell(pass.variant);
+
+    return checkpoints.map((checkpoint) => {
+      const name = checkpoint === null ? null : checkpoint.name;
+      const captured = pass.captures.filter((capture) => capture.checkpoint === name);
+      const driven = pass.drivenOnly.filter((capture) => capture.checkpoint === name);
       // readyConfirmed rides into the cell because a report filled from this
-      // file has no other way to tell a capture taken after its screen's ready
-      // handle appeared from one taken after a bare settle.
-      const parts = captured.map((c) => `${cell(c.state)} (${cell(path.basename(c.file))}, ready ${c.readyConfirmed ? 'confirmed' : 'unconfirmed'})`)
-        .concat(driven.map((c) => `${cell(c.state)} driven, not captured`));
-      return parts.length > 0 ? parts.join(', ') : 'none';
+      // file has no other way to tell a capture taken after its checkpoint's
+      // ready handle appeared from one taken after a bare settle.
+      const parts = captured.map((capture) => `${cell(capture.state)} (${cell(path.basename(capture.file))}, ready ${capture.readyConfirmed ? 'confirmed' : 'unconfirmed'})`)
+        .concat(driven.map((capture) => `${cell(capture.state)} driven, not captured`));
+      const states = parts.length > 0 ? parts.join(', ') : 'none';
+
+      const comparisons = pass.comparisons.filter((comparison) => comparison.checkpoint === name);
+      let distinct;
+      if (comparisons.length > 0) {
+        distinct = comparisons.map((comparison) => `${cell(comparison.state)}: ${comparison.verdict} (cmp exit ${comparison.exit})`).join('; ');
+      } else if (pass.variant === null) {
+        distinct = `not-compared (${VARIANT_AXIS_NOT_DECLARED})`;
+      } else if (!pass.labelConfirmed) {
+        distinct = 'not-compared (the variant did not become active)';
+      } else if (passIndex === firstActive) {
+        distinct = 'first variant';
+      } else {
+        distinct = 'not-compared (no capture pair)';
+      }
+
+      const checkpointCell = name === null
+        ? `not-exercised (${CHECKPOINT_AXIS_NOT_DECLARED})`
+        : cell(name);
+      return `| ${variantName} | ${active} | ${checkpointCell} | ${states} | ${distinct} |\n`;
     });
-    const name = pass.variant === null ? '(none declared)' : cell(pass.variant);
-    return `| ${name} | ${active} | ${distinct} | ${cells.join(' | ')} |\n`;
   }).join('');
 
   // The coverage file is this step's stated deliverable, so a filesystem refusal
@@ -806,9 +857,17 @@ if (opts.help) {
   process.exit(0);
 }
 
-for (const required of ['host', 'screens', 'capdir']) {
+for (const required of ['host', 'capdir']) {
   if (!opts[required]) refuseArguments(`missing required argument --${required}`);
 }
+
+// The flag a checkpoint axis cannot be walked without: the points themselves.
+const CHECKPOINT_AXIS_REQUIRED = ['checkpoints'];
+
+// Declared alongside them, and meaningless without them: a pattern with nothing
+// to substitute into it names one control the walk would click for every point
+// it does not have.
+const CHECKPOINT_AXIS_OPTIONAL = ['checkpoint-selector'];
 
 // The three flags a variant axis cannot be walked without: the values, the
 // control that opens them, and the handle that picks one.
@@ -819,21 +878,34 @@ const VARIANT_AXIS_REQUIRED = ['variants', 'variant-switcher', 'variant-option']
 // so, rather than having the axis silently drop out of the walk.
 const VARIANT_AXIS_OPTIONAL = ['variant-registry', 'variant-labels'];
 
-// The axis is declared as a whole or not at all. A partial declaration is the
-// one shape that cannot be answered honestly: walking the screens once would
-// discard a dimension the caller asked for, and walking the axis would need
-// handles the invocation never named. Refused here, before a directory is made
-// or a browser is reached, for the same reason every other invalid invocation is.
-const declaredAxisFlags = [...VARIANT_AXIS_REQUIRED, ...VARIANT_AXIS_OPTIONAL].filter((flag) => opts[flag]);
-const variantAxisDeclared = declaredAxisFlags.length > 0;
-if (variantAxisDeclared) {
-  const missing = VARIANT_AXIS_REQUIRED.filter((flag) => !opts[flag]);
+// Each axis is declared as a whole or not at all. A partial declaration is the
+// one shape that cannot be answered honestly: dropping the axis would discard a
+// dimension the caller asked for, and walking it would need handles the
+// invocation never named. Refused here, before a directory is made or a browser
+// is reached, for the same reason every other invalid invocation is.
+function declaredAxis(axis, required, optional) {
+  const declaredFlags = [...required, ...optional].filter((flag) => opts[flag]);
+  if (declaredFlags.length === 0) return false;
+  const missing = required.filter((flag) => !opts[flag]);
   if (missing.length > 0) {
-    refuseArguments(`--${declaredAxisFlags[0]} declares a variant axis, which also needs `
+    refuseArguments(`--${declaredFlags[0]} declares a ${axis} axis, which also needs `
       + `${missing.map((flag) => `--${flag}`).join(' and ')}; declare the whole axis or none of it`);
   }
+  return true;
 }
+
+const checkpointAxisDeclared = declaredAxis('checkpoint', CHECKPOINT_AXIS_REQUIRED, CHECKPOINT_AXIS_OPTIONAL);
+const variantAxisDeclared = declaredAxis('variant', VARIANT_AXIS_REQUIRED, VARIANT_AXIS_OPTIONAL);
+result.checkpointAxis.declared = checkpointAxisDeclared;
 result.variantAxis.declared = variantAxisDeclared;
+
+// How the walk moves from one checkpoint to the next, derived from what the
+// caller declared rather than picked out of a closed set of names. A selector
+// pattern means the walk clicks its way between the points; its absence means
+// each one is loaded at its own destination. There is no third reading and no
+// default, so no invocation asserts that the application carries a particular
+// kind of chrome.
+const reach = opts['checkpoint-selector'] ? 'selector' : 'destination';
 
 // Everything the invocation itself has to get right is settled here, in one
 // place, before a directory is created or a browser is reached: an invocation
@@ -850,11 +922,11 @@ let jsonOut;
 let coveragePath;
 let readyTimeout;
 let cdpPort;
-let navigation;
 let labels;
-let screens;
+let checkpoints;
 let states;
 let walkedVariants;
+let walkedCheckpoints;
 try {
   capdir = path.resolve(opts.capdir);
   jsonOut = path.resolve(opts['json-out'] ?? path.join(capdir, 'verify-walk.json'));
@@ -866,24 +938,28 @@ try {
 
   browserCommand = tokenizeCommand('--browser-cmd', opts['browser-cmd'] ?? DEFAULT_BROWSER_COMMAND);
 
-  navigation = opts.nav ?? 'menu';
-  if (!NAVIGATIONS.has(navigation)) {
-    // Unvalidated, any string reached the walk and everything that was not
-    // "route" took the menu branch, so `--nav manu` ran `opts.menu.split` on
-    // undefined and ended the process on an uncaught TypeError.
-    throw new Error(`--nav "${navigation}" is not one of ${[...NAVIGATIONS].join(', ')}`);
-  }
-
   labels = parseLabelMap(opts['variant-labels']);
-  screens = parseScreens(opts.screens);
-  if (screens.length === 0) throw new Error('--screens names no screen to walk');
+  checkpoints = checkpointAxisDeclared ? parseCheckpoints(opts.checkpoints) : [];
 
-  if (navigation === 'menu' && !opts.menu) {
-    throw new Error(`--nav menu needs --menu <pattern with ${MENU_SCREEN} or ${MENU_EXTENSION_ID}>`);
-  }
-  if (navigation === 'menu' && screens.length > 1
-    && !opts.menu.includes(MENU_SCREEN) && !opts.menu.includes(MENU_EXTENSION_ID)) {
-    throw new Error(`--menu "${opts.menu}" carries neither ${MENU_SCREEN} nor ${MENU_EXTENSION_ID}, so every screen after the first would click one same menu item`);
+  if (checkpointAxisDeclared) {
+    result.checkpointAxis = { declared: true, reach, checkpoints };
+
+    if (checkpoints.length > 1 && reach === 'selector'
+      && !opts['checkpoint-selector'].includes(CHECKPOINT_TOKEN)
+      && !opts['checkpoint-selector'].includes(CHECKPOINT_HANDLE)) {
+      throw new Error(`--checkpoint-selector "${opts['checkpoint-selector']}" carries neither ${CHECKPOINT_TOKEN} nor ${CHECKPOINT_HANDLE}, so every checkpoint would be reached by clicking one same control`);
+    }
+
+    // A point with no destination is reached by clicking, and the first point of
+    // a pass is additionally reached by the pass-boundary load of --host itself.
+    // A later point with neither is a point this walk has no way to arrive at,
+    // and walking on would capture whatever the previous point left on the page
+    // under this one's name.
+    for (const [index, checkpoint] of checkpoints.entries()) {
+      if (index > 0 && checkpoint.destination === null && reach !== 'selector') {
+        throw new Error(`checkpoint "${checkpoint.name}" declares no destination and this run declares no --checkpoint-selector, so nothing in it can reach that checkpoint`);
+      }
+    }
   }
 
   if (variantAxisDeclared) {
@@ -916,30 +992,36 @@ try {
     }
   }
 
-  // What the walk iterates over. A run with no variant axis takes one pass, and
-  // the null in it is what every downstream branch reads as "this run declared no
-  // such dimension" - a value chosen because no declared value can equal it, so a
-  // pass over a real value can never be mistaken for the axis-less one.
+  // What the walk iterates over, one list per axis. An axis nobody declared
+  // contributes a single null coordinate, and that null is what every downstream
+  // branch reads as "this run declared no such dimension" - a value chosen
+  // because no declared value can equal it, so a pass over a real value can never
+  // be mistaken for the axis-less one.
   walkedVariants = variantAxisDeclared ? result.variantAxis.variants : [null];
+  walkedCheckpoints = checkpointAxisDeclared ? checkpoints : [null];
 
-  states = opts.states ? readStates(opts.states, screens) : {};
+  states = opts.states ? readStates(opts.states, checkpoints) : {};
 
   // Reducing a name to the file-name alphabet can map two names the invocation
   // tells apart onto one file, and the second capture would then overwrite the
   // first while both coverage cells claim a capture of their own. Enumerated over
   // the walk's whole capture set rather than checked per name, because the
   // collision can also come from where the boundaries between the parts fall:
-  // variant "a-b" screen "c" and variant "a" screen "b-c" name one same file.
-  const declaredAs = (variant, screen, state) => (variant === null
-    ? `screen "${screen}" / state "${state}"`
-    : `variant "${variant}" / screen "${screen}" / state "${state}"`);
+  // variant "a-b" checkpoint "c" and variant "a" checkpoint "b-c" name one same
+  // file.
+  const declaredAs = (variant, checkpoint, state) => [
+    variant === null ? null : `variant "${variant}"`,
+    checkpoint === null ? null : `checkpoint "${checkpoint}"`,
+    `state "${state}"`,
+  ].filter((part) => part !== null).join(' / ');
   const captureNames = new Map();
   for (const variant of walkedVariants) {
-    for (const screen of screens) {
-      const declaredStates = (states[screen.name] ?? []).map((declared) => declared.state);
+    for (const checkpoint of walkedCheckpoints) {
+      const name = checkpoint === null ? null : checkpoint.name;
+      const declaredStates = (name === null ? [] : states[name] ?? []).map((declared) => declared.state);
       for (const state of [FRESH_STATE, ...declaredStates]) {
-        const file = captureName(variant, screen.name, state);
-        const claim = declaredAs(variant, screen.name, state);
+        const file = captureName(variant, name, state);
+        const claim = declaredAs(variant, name, state);
         const taken = captureNames.get(file);
         if (taken !== undefined) {
           throw new Error(taken === claim
@@ -957,8 +1039,6 @@ try {
 
 result.host = opts.host;
 result.capdir = capdir;
-result.navigation = navigation;
-result.screens = screens;
 result.browser.cdpPort = cdpPort;
 result.browser.command = browserCommand.join(' ');
 
@@ -1012,12 +1092,12 @@ if (result.failures.length > 0) finish({ jsonOut });
 // path inside it.
 const CAPDIR_PREFIX = capdir.endsWith(path.sep) ? capdir : `${capdir}${path.sep}`;
 
-function capture(variant, screen, state) {
-  const file = path.resolve(capdir, captureName(variant, screen, state));
+function capture(variant, checkpoint, state) {
+  const file = path.resolve(capdir, captureName(variant, checkpoint, state));
   // What a capture failure calls the capture it was taking, in the same shape as
-  // the file name: a run with no variant axis has no value to name it by, and a
-  // literal `null` in the message names nothing the invocation declared.
-  const of = [variant, screen, state].filter((part) => part !== null).join('/');
+  // the file name: an axis this run did not declare has no value to name it by,
+  // and a literal `null` in the message names nothing the invocation declared.
+  const of = [variant, checkpoint, state].filter((part) => part !== null).join('/');
   // The second lock on the escape the slug already closes: whatever the names
   // reduce to, the path handed to the browser has to resolve inside this run's
   // own capture directory. Unreachable while the slug holds, and kept because a
@@ -1036,110 +1116,124 @@ function capture(variant, screen, state) {
 }
 
 // ---------------------------------------------------------------------------
-// Menu resolution
+// Checkpoint handle resolution
 
-// An extension id is identifier segments joined by punctuation - a menu item
-// reads `menu-item-gts.frontx.mfes.ext.extension.v1~...~best.login.screens.login.v1`
-// - and the screen is named by one of those segments. Matching on a bare
-// substring would let a screen called "task" claim "tasks", so the name has to
-// stand as a whole segment or not at all.
+// A host may key its controls by an identifier the short name cannot spell - a
+// whole composed identity rather than a label - and such identifiers are
+// alphanumeric segments joined by punctuation. The checkpoint is named by one of
+// those segments. Matching on a bare substring would let a checkpoint called
+// "task" claim "tasks", so the name has to stand as a whole segment or not at
+// all.
 const idSegments = (id) => id.split(/[^A-Za-z0-9]+/).filter(Boolean);
 
-const menuTestids = new Map();
+const resolvedSelectors = new Map();
 
-// The host keys each menu item by the screen's full extension id, which the
-// short name in --screens cannot spell. Reading the ids back off the page is
-// what run 30 had to do by hand: the pattern was inexpressible, the run fell
-// back to route navigation, and the menu clicks it still owed were driven one
-// at a time outside the driver. One candidate is the answer; anything else is a
-// refusal, never a pick, because a wrong menu item navigates somewhere real and
-// every reading after it is a reading of the wrong screen.
-function discoverExtensionId(pattern, screen) {
-  const [prefix, suffix] = pattern.split(MENU_EXTENSION_ID);
+// Reading the ids back off the page is what one run had to do by hand: the
+// pattern was inexpressible, the run fell back to loading each destination, and
+// the clicks it still owed were driven one at a time outside the driver. One
+// candidate is the answer; anything else is a refusal, never a pick, because a
+// wrong control moves the page somewhere real and every reading after it is a
+// reading of the wrong place.
+function discoverHandle(pattern, checkpoint) {
+  const [prefix, suffix] = pattern.split(CHECKPOINT_HANDLE);
   const onPage = readTestids();
   if (onPage === null) return null;
 
   const candidates = [...new Set(onPage
     .filter((id) => id.length > prefix.length + suffix.length && id.startsWith(prefix) && id.endsWith(suffix))
     .map((id) => id.slice(prefix.length, id.length - suffix.length))
-    .filter((id) => idSegments(id).includes(screen.name)))];
+    .filter((id) => idSegments(id).includes(checkpoint.name)))];
 
   if (candidates.length === 1) return candidates[0];
-  fail('menu-resolve', candidates.length === 0
-    ? `no data-testid on the page matches "${pattern}" with "${screen.name}" as a segment of its id; the page carries ${JSON.stringify(onPage)}`
-    : `${JSON.stringify(candidates)} all carry "${screen.name}" as a segment; declare the screen's extension id as the fourth field of its --screens entry`);
+  fail('handle-resolve', candidates.length === 0
+    ? `no data-testid on the page matches "${pattern}" with "${checkpoint.name}" as a segment of its id; the page carries ${JSON.stringify(onPage)}`
+    : `${JSON.stringify(candidates)} all carry "${checkpoint.name}" as a segment; declare the checkpoint's handle as the fourth field of its --checkpoints entry`);
   return null;
 }
 
-// Resolved once per screen and remembered: the menu is re-rendered at every
-// variant boundary but its ids are not re-issued, so a second discovery would
-// spend an eval to learn what the first one already knows.
-function menuTestid(screen) {
-  if (menuTestids.has(screen.name)) return menuTestids.get(screen.name);
+// Resolved once per checkpoint and remembered: the controls are re-rendered at
+// every variant boundary but their ids are not re-issued, so a second discovery
+// would spend an eval to learn what the first one already knows.
+function checkpointSelector(checkpoint) {
+  if (resolvedSelectors.has(checkpoint.name)) return resolvedSelectors.get(checkpoint.name);
 
-  // {screen} is substituted first and unconditionally, so a host whose menu
-  // items are keyed by the short name resolves exactly as it always did - and
-  // without an eval, since a pattern that spells the whole id needs nothing
-  // read off the page.
-  const pattern = opts.menu.split(MENU_SCREEN).join(screen.name);
+  // {checkpoint} is substituted first and unconditionally, so a host whose
+  // controls are keyed by the short name resolves exactly as it always did - and
+  // without an eval, since a pattern that spells the whole id needs nothing read
+  // off the page.
+  const pattern = opts['checkpoint-selector'].split(CHECKPOINT_TOKEN).join(checkpoint.name);
   let testid = pattern;
-  let extensionId = null;
+  let handle = null;
   let source = 'pattern';
 
-  if (pattern.includes(MENU_EXTENSION_ID)) {
-    extensionId = screen.extensionId ?? discoverExtensionId(pattern, screen);
-    source = extensionId === null ? 'unresolved' : screen.extensionId === null ? 'discovered' : 'declared';
-    testid = extensionId === null ? null : pattern.split(MENU_EXTENSION_ID).join(extensionId);
+  if (pattern.includes(CHECKPOINT_HANDLE)) {
+    handle = checkpoint.handle ?? discoverHandle(pattern, checkpoint);
+    source = handle === null ? 'unresolved' : checkpoint.handle === null ? 'discovered' : 'declared';
+    testid = handle === null ? null : pattern.split(CHECKPOINT_HANDLE).join(handle);
   }
 
-  // Recorded for every screen, resolved or not: which handle the walk clicked
-  // is part of what the run has to be able to show, and "the pattern as given"
-  // is an answer a report may need as much as a discovered id.
-  result.menuResolution.push({ screen: screen.name, testid, extensionId, source });
-  menuTestids.set(screen.name, testid);
+  // Recorded for every checkpoint, resolved or not: which handle the walk
+  // clicked is part of what the run has to be able to show, and "the pattern as
+  // given" is an answer a report may need as much as a discovered id.
+  result.checkpointResolution.push({ checkpoint: checkpoint.name, testid, handle, source });
+  resolvedSelectors.set(checkpoint.name, testid);
   return testid;
 }
 
 // ---------------------------------------------------------------------------
-// Navigation
+// Reaching a checkpoint
 
-// What reaching a screen established, which is not the same question as whether
-// a command succeeded: a screen may be arrived at and still carry no handle to
-// confirm the arrival with.
-const NAV_FAILED = 'failed';
-const NAV_UNCONFIRMED = 'unconfirmed';
-const NAV_READY = 'ready';
+// What reaching a checkpoint established, which is not the same question as
+// whether a command succeeded: a point may be arrived at and still carry no
+// handle to confirm the arrival with.
+const REACH_FAILED = 'failed';
+const REACH_UNCONFIRMED = 'unconfirmed';
+const REACH_READY = 'ready';
 
-// open and reload used to be fired and forgotten. A navigation that never
-// happened then surfaced only as a readiness timeout a full budget later, and
-// on a screen declared without a ready testid it never surfaced at all - the
-// walk carried on capturing the previous screen under this one's name. Same
-// class as the discarded eval status: the runner said so, and nobody read it.
-function navigate(args, screen) {
+// open and reload used to be fired and forgotten. A load that never happened
+// then surfaced only as a readiness timeout a full budget later, and on a
+// checkpoint declared without a ready testid it never surfaced at all - the walk
+// carried on capturing the previous point under this one's name. Same class as
+// the discarded eval status: the runner said so, and nobody read it.
+function load(args, checkpoint) {
   const proc = browser(args);
   const outcome = invocationOutcome(proc);
   if (!outcome.failed) return true;
-  fail(outcome.stage ?? 'navigation-error', `"${args.join(' ')}" for screen "${screen.name}" ${outcome.detail}`);
+  const of = checkpoint === null ? 'the host' : `checkpoint "${checkpoint.name}"`;
+  fail(outcome.stage ?? 'reach-error', `"${args.join(' ')}" for ${of} ${outcome.detail}`);
   return false;
 }
 
-function reachScreen(screen, hard) {
-  if (hard) {
-    if (!navigate(['open', `${opts.host}${screen.route}`], screen)) return NAV_FAILED;
-    if (!navigate(['reload'], screen)) return NAV_FAILED;
+function clickTo(checkpoint) {
+  const testid = checkpointSelector(checkpoint);
+  if (testid === null) return false;
+  const outcome = click(testid);
+  if (outcome === 'dispatched') return true;
+  fail('reach-error', `the control "${testid}" for checkpoint "${checkpoint.name}" was not clicked: ${outcomeReason(outcome)}`);
+  return false;
+}
+
+// `passBoundary` is the first checkpoint of a pass, and it is always reached by
+// a load: the reload discards every field filled and dialog opened under the
+// previous pass, so a capture named fresh is fresh. A point with no destination
+// of its own is not reached by that load - --host opens wherever the application
+// opens - so the declared selector is clicked after it.
+function reachCheckpoint(checkpoint, passBoundary) {
+  const destination = checkpoint?.destination ?? null;
+  if (passBoundary) {
+    if (!load(['open', `${opts.host}${destination ?? ''}`], checkpoint)) return REACH_FAILED;
+    if (!load(['reload'], checkpoint)) return REACH_FAILED;
+    if (checkpoint !== null && destination === null && reach === 'selector' && !clickTo(checkpoint)) return REACH_FAILED;
+  } else if (reach === 'selector') {
+    if (!clickTo(checkpoint)) return REACH_FAILED;
   } else {
-    const testid = menuTestid(screen);
-    if (testid === null) return NAV_FAILED;
-    const outcome = click(testid);
-    if (outcome !== 'dispatched') {
-      fail('navigation-error', `menu item "${testid}" for screen "${screen.name}" was not clicked: ${outcomeReason(outcome)}`);
-      return NAV_FAILED;
-    }
+    if (!load(['open', `${opts.host}${destination}`], checkpoint)) return REACH_FAILED;
+    if (!load(['reload'], checkpoint)) return REACH_FAILED;
   }
-  if (!screen.readyTestid) return NAV_UNCONFIRMED;
-  if (waitFor(screen.readyTestid, readyTimeout)) return NAV_READY;
-  fail('ready', `screen "${screen.name}" never showed ${screen.readyTestid} within ${readyTimeout}ms`);
-  return NAV_UNCONFIRMED;
+  if (checkpoint === null || !checkpoint.readyTestid) return REACH_UNCONFIRMED;
+  if (waitFor(checkpoint.readyTestid, readyTimeout)) return REACH_READY;
+  fail('ready', `checkpoint "${checkpoint.name}" never showed ${checkpoint.readyTestid} within ${readyTimeout}ms`);
+  return REACH_UNCONFIRMED;
 }
 
 // Every declared control operation has to report as dispatched. Discarded, the
@@ -1162,6 +1256,11 @@ function operate(record, testid, what) {
 // being filled with a placeholder value the invocation never declared.
 const underVariant = (variant) => (variant === null ? '' : ` under variant "${variant}"`);
 
+// The states declared for a point, and none at all for the null coordinate an
+// undeclared axis contributes: there is no name for such a file to be keyed by,
+// which the states reader already refused the whole file over.
+const statesFor = (checkpoint) => (checkpoint === null ? [] : states[checkpoint.name] ?? []);
+
 for (const variant of walkedVariants) {
   const record = {
     // null on both counts where no axis was declared: there is no value this pass
@@ -1172,19 +1271,17 @@ for (const variant of walkedVariants) {
     labelRead: null,
     labelReadBack: null,
     controlFailure: null,
-    panelCollapsed: null, captures: [], drivenOnly: [], readBacks: [], comparisons: [],
+    overlayClosed: null, captures: [], drivenOnly: [], readBacks: [], comparisons: [],
   };
   result.variants.push(record);
 
-  // The reload is the pass boundary reset: it discards every field filled and
-  // dialog opened under the previous pass, so a capture named fresh is fresh.
-  const first = screens[0];
-  const firstNav = reachScreen(first, true);
+  const first = walkedCheckpoints[0];
+  const firstReach = reachCheckpoint(first, true);
 
   // A control operation that did not dispatch stops this pass where it stands:
   // captures taken past a missing switcher belong to whatever the page was
   // already showing, and the label check cannot tell the difference.
-  if (opts['panel-expand'] && !operate(record, opts['panel-expand'], 'dev panel expand control')) continue;
+  if (opts['overlay-open'] && !operate(record, opts['overlay-open'], 'overlay open control')) continue;
 
   // The whole switch-and-confirm sub-step belongs to the variant axis, so a run
   // that declared none never operates a control it was not given a handle for
@@ -1215,42 +1312,43 @@ for (const variant of walkedVariants) {
     }
   }
 
-  // An expanded dev panel is host chrome drawn over the screens under
-  // verification. The collapse is confirmed by the expand control being present
-  // afterwards, which it is only while the panel is collapsed.
-  if (opts['panel-collapse']) {
-    if (!operate(record, opts['panel-collapse'], 'dev panel collapse control')) continue;
-    record.panelCollapsed = opts['panel-expand'] ? confirmExists(opts['panel-expand']) : null;
-    if (opts['panel-expand'] && record.panelCollapsed !== true) {
-      fail('panel', record.panelCollapsed === null
-        ? `the dev panel's collapse${underVariant(variant)} could not be confirmed: the eval did not run`
-        : `dev panel did not collapse${underVariant(variant)}; captures would carry host chrome`);
+  // An open overlay is host chrome drawn over the surface under verification.
+  // Closing it is confirmed by the open control being present afterwards, which
+  // it is only while the overlay is closed.
+  if (opts['overlay-close']) {
+    if (!operate(record, opts['overlay-close'], 'overlay close control')) continue;
+    record.overlayClosed = opts['overlay-open'] ? confirmExists(opts['overlay-open']) : null;
+    if (opts['overlay-open'] && record.overlayClosed !== true) {
+      fail('overlay', record.overlayClosed === null
+        ? `the overlay's close${underVariant(variant)} could not be confirmed: the eval did not run`
+        : `the overlay did not close${underVariant(variant)}; captures would carry host chrome`);
       continue;
     }
   }
 
-  for (const [index, screen] of screens.entries()) {
-    const nav = index === 0 ? firstNav : reachScreen(screen, navigation === 'route');
-    // A screen the page never reached files nothing under its name. A capture
-    // taken here would show whichever screen the failed navigation left on
-    // screen, and its coverage cell would claim a state no run ever saw.
-    if (nav === NAV_FAILED) continue;
+  for (const [index, checkpoint] of walkedCheckpoints.entries()) {
+    const reached = index === 0 ? firstReach : reachCheckpoint(checkpoint, false);
+    // A checkpoint the page never reached files nothing under its name. A capture
+    // taken here would show whichever place the failed reach left on the page, and
+    // its coverage cell would claim a state no run ever saw.
+    if (reached === REACH_FAILED) continue;
 
-    const ready = nav === NAV_READY;
-    const freshFile = capture(variant, screen.name, FRESH_STATE);
-    if (freshFile) record.captures.push({ screen: screen.name, state: FRESH_STATE, file: freshFile, readyConfirmed: ready });
+    const name = checkpoint === null ? null : checkpoint.name;
+    const ready = reached === REACH_READY;
+    const freshFile = capture(variant, name, FRESH_STATE);
+    if (freshFile) record.captures.push({ checkpoint: name, state: FRESH_STATE, file: freshFile, readyConfirmed: ready });
 
-    for (const declared of states[screen.name] ?? []) {
+    for (const declared of statesFor(checkpoint)) {
       for (const action of declared.actions ?? []) {
         if (action.kind === 'fill') {
           const readBack = fill(action.testid, action.value);
           const ok = readBack === action.value;
-          record.readBacks.push({ screen: screen.name, state: declared.state, action: 'fill', testid: action.testid, expected: action.value, actual: readBack, ok });
+          record.readBacks.push({ checkpoint: name, state: declared.state, action: 'fill', testid: action.testid, expected: action.value, actual: readBack, ok });
           if (!ok) fail('read-back', `fill of "${action.testid}"${underVariant(variant)} read back "${readBack}"`);
         } else if (action.kind === 'click') {
           const outcome = click(action.testid);
           const ok = outcome === 'dispatched';
-          record.readBacks.push({ screen: screen.name, state: declared.state, action: 'click', testid: action.testid, actual: outcome, ok });
+          record.readBacks.push({ checkpoint: name, state: declared.state, action: 'click', testid: action.testid, actual: outcome, ok });
           if (!ok) fail('click', `control "${action.testid}" was not clicked${underVariant(variant)}: ${outcomeReason(outcome)}`);
         } else if (action.kind === 'read') {
           const text = readText(action.testid);
@@ -1260,7 +1358,7 @@ for (const variant of walkedVariants) {
           // the page never held, filing the state as read back.
           const ok = text !== EVAL_ERROR && text !== MISSING
             && (action.contains === undefined || text.includes(action.contains));
-          record.readBacks.push({ screen: screen.name, state: declared.state, action: 'read', testid: action.testid, expected: action.contains ?? null, actual: text, ok });
+          record.readBacks.push({ checkpoint: name, state: declared.state, action: 'read', testid: action.testid, expected: action.contains ?? null, actual: text, ok });
           if (!ok) fail('read', `reading "${action.testid}"${underVariant(variant)} gave "${text}"`);
         } else {
           // Unreachable while the parse-time states validation holds. Kept so
@@ -1269,9 +1367,9 @@ for (const variant of walkedVariants) {
           fail('states', `action kind "${action.kind}" is not one of fill, click, read`);
         }
       }
-      const stateFile = capture(variant, screen.name, declared.state);
-      if (stateFile) record.captures.push({ screen: screen.name, state: declared.state, file: stateFile, readyConfirmed: ready });
-      else record.drivenOnly.push({ screen: screen.name, state: declared.state });
+      const stateFile = capture(variant, name, declared.state);
+      if (stateFile) record.captures.push({ checkpoint: name, state: declared.state, file: stateFile, readyConfirmed: ready });
+      else record.drivenOnly.push({ checkpoint: name, state: declared.state });
     }
   }
 
@@ -1283,7 +1381,7 @@ for (const variant of walkedVariants) {
   const previous = [...result.variants].reverse().find((other) => other.variant !== variant && other.labelConfirmed === true);
   if (previous) {
     for (const shot of record.captures) {
-      const before = previous.captures.find((c) => c.screen === shot.screen && c.state === shot.state);
+      const before = previous.captures.find((c) => c.checkpoint === shot.checkpoint && c.state === shot.state);
       if (!before) continue;
       const cmp = spawnSync('cmp', ['-s', before.file, shot.file], {
         encoding: 'utf8',
@@ -1291,7 +1389,7 @@ for (const variant of walkedVariants) {
         killSignal: 'SIGKILL',
       });
       record.comparisons.push({
-        against: previous.variant, screen: shot.screen, state: shot.state,
+        against: previous.variant, checkpoint: shot.checkpoint, state: shot.state,
         command: `cmp -s ${path.basename(before.file)} ${path.basename(shot.file)}`,
         exit: cmp.status, verdict: cmp.status === 0 ? 'identical' : cmp.status === 1 ? 'differs' : 'not-compared',
       });
@@ -1300,5 +1398,5 @@ for (const variant of walkedVariants) {
   }
 }
 
-appendCoverage(coveragePath, screens);
+appendCoverage(coveragePath, walkedCheckpoints);
 finish({ jsonOut });

@@ -529,32 +529,59 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       expect(body).toContain('Hand-authored browser calls are the fallback');
     });
 
-    // The dimension the walk repeats over is the caller's to name, and the
-    // driver's own vocabulary is the kit's: screens, controls, labels, captures.
-    // "theme" is the one concrete dimension that was baked in here - it named
-    // flags, result fields, capture files and coverage columns - and the
-    // ecosystem PRD states that no theme schema is an ecosystem-level concept, so
-    // the kit has no abstraction to reference it through and no honest use for
-    // the word. Guarding the word itself is what catches the reintroduction,
-    // because it comes back in a comment or a help line long before it reaches a
-    // flag. Other dimensions are not guarded this way: they appear legitimately,
-    // as the illustrations of what this driver deliberately does not know.
-    const BAKED_IN_DIMENSION = 'theme';
+    // Everything a project contributes reaches this driver as a caller-declared
+    // axis, and the driver's own vocabulary is the kit's: checkpoints, controls,
+    // labels, captures. Two template concepts were baked in here instead, each
+    // naming flags, result fields, capture files and coverage columns. "theme"
+    // was one dimension the walk repeated over. The other was a whole navigation
+    // model - screens carrying a route, reached by a menu click, with a dev panel
+    // of host chrome drawn over them - which asserted of every project that it
+    // has URL-addressable pages and a menu to click between them. Guarding the
+    // words themselves is what catches a reintroduction, because one comes back
+    // in a comment or a help line long before it reaches a flag.
+    const TEMPLATE_NOUNS = ['theme', 'screen', 'route', 'menu', 'nav', 'panel'];
 
-    it('carries no trace of the template-specific dimension it used to be written around', () => {
-      const source = fs.readFileSync(driverPath(), 'utf8');
+    // The one word on that list the driver still has to spell, and it is not the
+    // kit's: `screenshot` is the browser CLI's own command name, issued verbatim.
+    // Removed from the text before the scan rather than dropped from the list, so
+    // "screen" and "screens" stay guarded on their own.
+    const BROWSER_COMMAND_WORD = 'screenshot';
 
-      expect(source.toLowerCase()).not.toContain(BAKED_IN_DIMENSION);
+    it.each(TEMPLATE_NOUNS)('carries no trace of the template concept "%s" anywhere in its contract', (noun) => {
+      const source = fs.readFileSync(driverPath(), 'utf8').toLowerCase().replaceAll(BROWSER_COMMAND_WORD, '');
+
+      expect(source).not.toContain(noun);
     });
 
-    // The same rule one level up. The kit's documents state this contract in
-    // prose, and the word there teaches an invocation the driver does not offer -
-    // which is where the driver's own vocabulary came from to begin with.
+    // The same rule one level up, for the one dimension the kit's own documents
+    // have no honest use for: the ecosystem PRD states that no theme schema is an
+    // ecosystem-level concept, so the kit has no abstraction to reference it
+    // through. The rest of the list is not guarded in prose, because these
+    // documents legitimately name a template's own vocabulary where they say it
+    // belongs to the template - which is the correction the word needs, not
+    // deletion.
     it.each([['the scaffolding document', SCAFFOLDING_ID], ['the verification checklist', 'frontx_verification_checklist']])(
       'is documented in %s without that dimension either',
       (_what, id) => {
-        expect(shippedBody(id).toLowerCase()).not.toContain(BAKED_IN_DIMENSION);
+        expect(shippedBody(id).toLowerCase()).not.toContain('theme');
       });
+
+    // The navigation model leaked one level further out than the driver and the
+    // scaffolding document: `frontx_agents` is a rule-kind resource loaded at the
+    // start of every session in every FrontX project, scaffolding or not, so a
+    // template concept written into it reaches projects that never run this walk
+    // at all. Its verification block states the standing rules the walk realises,
+    // and every one of them has to be phrased over what the run declared.
+    it('states the standing verification rules without naming a template concept', () => {
+      const body = shippedBody('frontx_agents');
+      const section = /\n## When verifying a user interface\n([\s\S]*?)\n## /.exec(body);
+      if (section === null) throw new Error('frontx_agents no longer carries a "When verifying a user interface" section');
+
+      const prose = section[1].toLowerCase().replaceAll(BROWSER_COMMAND_WORD, '');
+      for (const noun of TEMPLATE_NOUNS) {
+        expect(prose, `the verification rules name the template concept "${noun}"`).not.toContain(noun);
+      }
+    });
 
     it('prints its flag surface and exits 0 on --help', () => {
       const help = spawnSync(process.execPath, [driverPath(), '--help'], {
@@ -564,19 +591,21 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
       expect(help.status).toBe(0);
       expect(help.stdout).toContain('--capdir');
+      expect(help.stdout).toContain('--checkpoints');
       expect(help.stdout).toContain('--variants');
       // The Usage line carries every required flag. One that lists a flag as
       // required and leaves it out of the invocation form teaches the shorter
       // form, and the shorter form is refused.
       const usage = help.stdout.slice(help.stdout.indexOf('Usage:'), help.stdout.indexOf('Required:'));
-      for (const flag of ['--host', '--screens', '--capdir']) {
+      for (const flag of ['--host', '--capdir']) {
         expect(usage, `Usage: omits the required ${flag}`).toContain(flag);
       }
-      // And the variant-axis flags stay out of the required set, in the text a
-      // caller reads before writing an invocation: a Usage line carrying them
-      // teaches an axis every project has to declare, which is the coupling the
-      // driver's contract does not have.
-      for (const flag of ['--variants', '--variant-switcher', '--variant-option']) {
+      // And both axes stay out of the required set, in the text a caller reads
+      // before writing an invocation: a Usage line carrying either teaches an
+      // axis every project has to declare, which is the coupling the driver's
+      // contract does not have. `--checkpoints` sits here rather than above it
+      // for exactly that reason - the walk has a place to go without one.
+      for (const flag of ['--checkpoints', '--checkpoint-selector', '--variants', '--variant-switcher', '--variant-option']) {
         expect(usage, `Usage: presents the optional ${flag} as required`).not.toContain(flag);
       }
     });
@@ -593,11 +622,10 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
         driverPath(),
         '--host', 'http://127.0.0.1:1',
         '--variants', 'alpha,beta',
-        '--screens', 'orders:/orders:screen-orders',
+        '--checkpoints', 'orders:/orders:at-orders',
         '--capdir', capdir,
         '--variant-switcher', 'axis-switcher',
         '--variant-option', 'axis-option-{variant}',
-        '--menu', 'nav-{screen}',
       ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
 
       expect(run.status).not.toBe(0);
@@ -689,11 +717,10 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
         // the network and off any port a parallel run might also want.
         '--host', 'data:text/plain,ok',
         '--variants', 'alpha',
-        '--screens', 'orders:/orders:screen-orders',
+        '--checkpoints', 'orders:/orders:at-orders',
         '--capdir', path.join(workdir, 'shots'),
         '--variant-switcher', 'axis-switcher',
         '--variant-option', 'axis-option-{variant}',
-        '--menu', 'nav-{screen}',
         // Port 1 answers nothing, so the driver takes its no-debugger path and
         // never asks the stub to attach to a browser.
         '--cdp-port', '1',
@@ -754,11 +781,10 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
           driverPath(),
           '--host', 'data:text/plain,ok',
           '--variants', 'alpha',
-          '--screens', 'orders:/orders:screen-orders',
+          '--checkpoints', 'orders:/orders:at-orders',
           '--capdir', path.join(workdir, 'shots'),
           '--variant-switcher', MIDWRITE_EXIT_TESTID,
           '--variant-option', 'axis-option-{variant}',
-          '--menu', 'nav-{screen}',
           '--cdp-port', '1',
           '--ready-timeout', readyTimeout,
         ], {
@@ -821,11 +847,10 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
         driverPath(),
         '--host', 'http://127.0.0.1:1',
         '--variants', 'alpha',
-        '--screens', 'orders:/orders:screen-orders',
+        '--checkpoints', 'orders:/orders:at-orders',
         '--capdir', 'shots',
         '--variant-switcher', 'axis-switcher',
         '--variant-option', 'axis-option-{variant}',
-        '--menu', 'nav-{screen}',
       ], { encoding: 'utf8', cwd: workdir, timeout: DRIVER_TIMEOUT_MS });
 
       const parsed = JSON.parse(run.stdout) as { capdir: string };
@@ -861,12 +886,12 @@ if (process.env.STUB_HANG === '1') {
 
 if (command === 'open' && process.env.STUB_FAIL_OPEN === '1') {
   log('open-refused ' + argv[1]);
-  process.stderr.write('NavigationError: net::ERR_CONNECTION_REFUSED\\n');
+  process.stderr.write('LoadError: net::ERR_CONNECTION_REFUSED\\n');
   process.exit(3);
 }
 if (command === 'screenshot') {
   // Identical bytes across variants on request: two registered variants can differ
-  // only in tokens the captured screens never consume, and the identical
+  // only in tokens the captured surface never consumes, and the identical
   // verdict that produces is a recorded fact the driver has to be able to reach.
   const body = process.env.STUB_IDENTICAL_SHOTS === '1' ? 'png:identical' : 'png:' + path.basename(argv[1]);
   fs.writeFileSync(argv[1], body);
@@ -941,18 +966,25 @@ process.exit(0);
         coverageFile: string | null;
         browser: { command: string | null };
         variantAxis: { declared: boolean; source: string | null; variants: string[] };
-        menuResolution: { screen: string; testid: string | null; extensionId: string | null; source: string }[];
+        checkpointAxis: {
+          declared: boolean;
+          reach: string | null;
+          checkpoints: { name: string; destination: string | null; readyTestid: string | null; handle: string | null }[];
+        };
+        checkpointResolution: { checkpoint: string; testid: string | null; handle: string | null; source: string }[];
         variants: {
           // Both null on a pass the walk took with no variant axis declared: no
           // value was walked, and no switcher label was read to confirm one.
           variant: string | null;
           labelConfirmed: boolean | null;
           labelRead: string | null;
-          panelCollapsed: boolean | null;
-          captures: { screen: string; state: string; readyConfirmed: boolean }[];
+          overlayClosed: boolean | null;
+          // `checkpoint` is null on every row of a run that declared no
+          // checkpoint axis, for the same reason `variant` is.
+          captures: { checkpoint: string | null; state: string; readyConfirmed: boolean }[];
           // `expected` is absent on a click, which declares nothing to compare against.
           readBacks: { action: string; testid: string; expected?: string | null; actual: string; ok: boolean }[];
-          comparisons: { against: string; screen: string; state: string; command: string; exit: number | null; verdict: string }[];
+          comparisons: { against: string; checkpoint: string | null; state: string; command: string; exit: number | null; verdict: string }[];
         }[];
         failures: { stage: string; detail: string }[];
       };
@@ -982,10 +1014,11 @@ process.exit(0);
     // `files` writes the driver's JSON inputs into the run's own directory and
     // declares them, so a test states the states/registry content it needs
     // rather than managing a second temporary tree for it.
-    // The variant axis is optional in the driver's contract, so the invocation
-    // this helper builds declares one by default and a run that needs the
+    // Both axes are optional in the driver's contract, so the invocation this
+    // helper builds declares the variant axis by default and a run that needs the
     // axis-less shape asks for it here - omitting the flags in `args` cannot
-    // express it, because this helper would put them back.
+    // express it, because this helper would put them back. The checkpoint axis is
+    // never supplied here: every case that wants one names its own points.
     function runAgainstStub(
       args: string[],
       ids: string[],
@@ -1069,7 +1102,11 @@ process.exit(0);
     // Every input-validation refusal has to happen on the arguments alone, so
     // these runs need no stub, no server and no browser: what they assert is
     // that the driver never got as far as one.
-    function runRefusal(extra: string[], variantAxis: 'declared' | 'none' = 'declared'): {
+    function runRefusal(
+      extra: string[],
+      variantAxis: 'declared' | 'none' = 'declared',
+      checkpointAxis: 'declared' | 'none' = 'declared',
+    ): {
       status: number | null;
       failures: { stage: string; detail: string }[];
       capdirExists: boolean;
@@ -1078,20 +1115,22 @@ process.exit(0);
       const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-args-'));
       const capdir = path.join(workdir, 'shots');
 
-      // As in runAgainstStub: a refusal that turns on the axis being declared in
+      // As in runAgainstStub: a refusal that turns on an axis being declared in
       // part cannot be expressed by leaving flags out of `extra`, because this
-      // helper supplies the whole axis by construction.
-      const axis = variantAxis === 'declared'
+      // helper supplies both axes whole by construction.
+      const variants = variantAxis === 'declared'
         ? ['--variants', 'alpha', '--variant-switcher', 'axis-switcher', '--variant-option', 'axis-option-{variant}']
+        : [];
+      const points = checkpointAxis === 'declared'
+        ? ['--checkpoints', 'orders:/orders:at-orders']
         : [];
 
       const run = spawnSync(process.execPath, [
         driverPath(),
         '--host', 'http://127.0.0.1:1',
-        '--screens', 'orders:/orders:screen-orders',
         '--capdir', capdir,
-        ...axis,
-        '--menu', 'nav-{screen}',
+        ...points,
+        ...variants,
         ...extra,
       ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
 
@@ -1107,167 +1146,79 @@ process.exit(0);
     }
 
     // Counted on unescaped pipes only, which is what a markdown reader treats as
-    // a cell boundary: the row has to hold exactly the columns the header
+    // a cell boundary: every row has to hold exactly the columns the header
     // declares, whatever text was written into it.
-    function expectWholeRow(coverage: string): void {
+    function expectWholeRows(coverage: string): void {
       const cellBoundary = /(?<!\\)\|/;
-      const lines = coverage.split('\n');
-      expect(lines[2].split(cellBoundary)).toHaveLength(lines[0].split(cellBoundary).length);
+      const lines = coverage.split('\n').filter(Boolean);
+      const columns = lines[0].split(cellBoundary).length;
+      // Past the header and its separator: every remaining line is a walk row.
+      for (const row of lines.slice(2)) {
+        expect(row.split(cellBoundary), `row "${row}" does not hold ${columns} cells`).toHaveLength(columns);
+      }
     }
 
-    const EXT_PREFIX = 'gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~best';
-    const LOGIN_EXT = `${EXT_PREFIX}.login.screens.login.v1`;
-    const TASKS_EXT = `${EXT_PREFIX}.tasks.screens.tasks.v1`;
-    const REPORTS_EXT = `${EXT_PREFIX}.reports.screens.reports.v1`;
-    const HOST_IDS = ['axis-switcher', 'axis-option-alpha', 'screen-login', 'screen-tasks', 'screen-reports'];
+    // A host may key its controls by a whole composed identity rather than by a
+    // short label, and such an identity is exactly what a `{checkpoint}` pattern
+    // cannot spell.
+    const ID_PREFIX = 'gts.frontx.mfes.ext.extension.v1~frontx.demo.area.main.v1~best';
+    const LOGIN_ID = `${ID_PREFIX}.login.units.login.v1`;
+    const TASKS_ID = `${ID_PREFIX}.tasks.units.tasks.v1`;
+    const REPORTS_ID = `${ID_PREFIX}.reports.units.reports.v1`;
+    const HOST_IDS = ['axis-switcher', 'axis-option-alpha', 'at-login', 'at-tasks', 'at-reports'];
 
-    // The host keys each menu item by the screen's whole extension id, so a
-    // pattern holding only the short screen name can never name one. Run 30 hit
-    // exactly that, fell back to route navigation, and drove the menu clicks it
-    // still owed by hand.
-    it('reaches a menu item keyed by the screen full extension id, discovered or declared', () => {
-      const run = runAgainstStub([
-        '--screens', `login:/login:screen-login,tasks:/tasks:screen-tasks,reports:/reports:screen-reports:${REPORTS_EXT}`,
-        '--menu', 'menu-item-{extensionId}',
-      ], [...HOST_IDS, `menu-item-${LOGIN_EXT}`, `menu-item-${TASKS_EXT}`, `menu-item-${REPORTS_EXT}`]);
-
-      // The whole walk completes through the menu: this is the run that
-      // previously had no expressible pattern at all.
-      expect(run.result.failures).toEqual([]);
-      expect(run.status).toBe(0);
-
-      // `tasks` names no id, so the driver reads the page's ids back and keeps
-      // the one carrying "tasks" as a segment; `reports` declares its own and
-      // costs no eval. Both are disclosed with the source they came from.
-      expect(run.result.menuResolution).toEqual([
-        { screen: 'tasks', testid: `menu-item-${TASKS_EXT}`, extensionId: TASKS_EXT, source: 'discovered' },
-        { screen: 'reports', testid: `menu-item-${REPORTS_EXT}`, extensionId: REPORTS_EXT, source: 'declared' },
-      ]);
-      // The clicks landed on the full ids, not on anything derived from the
-      // short name - which is the part a JSON record alone could not prove.
-      expect(run.commands).toContain(`click menu-item-${TASKS_EXT}`);
-      expect(run.commands).toContain(`click menu-item-${REPORTS_EXT}`);
-
-      run.cleanup();
-    });
-
-    // The id machinery is additive. A host that does key its menu by the short
-    // name must keep resolving on the pattern alone, and without spending an
-    // eval to read a page it has no question for.
-    it('leaves the {screen} pattern resolving on its own, with no id read off the page', () => {
-      const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login,tasks:/tasks:screen-tasks',
-        '--menu', 'nav-{screen}',
-      ], [...HOST_IDS, 'nav-login', 'nav-tasks']);
-
-      expect(run.result.failures).toEqual([]);
-      expect(run.result.menuResolution).toEqual([
-        { screen: 'tasks', testid: 'nav-tasks', extensionId: null, source: 'pattern' },
-      ]);
-      expect(run.commands).toContain('click nav-tasks');
-
-      run.cleanup();
-    });
-
-    // `open` and `reload` were fired and forgotten. A navigation that never
-    // happened surfaced only as a readiness timeout a full budget later, and on
-    // a screen declared without a ready testid never at all - the walk carried
-    // on capturing whatever was still on screen under the next screen's name.
-    it('fails a navigation loudly on the runner exit status, and files nothing under the screen it never reached', () => {
-      const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login,tasks:/tasks:screen-tasks',
-        '--menu', 'nav-{screen}',
-      ], [...HOST_IDS, 'nav-login', 'nav-tasks'], { STUB_FAIL_OPEN: '1' });
-
-      expect(run.status).not.toBe(0);
-
-      const navErrors = run.result.failures.filter((failure) => failure.stage === 'navigation-error');
-      expect(navErrors).toHaveLength(1);
-      expect(navErrors[0].detail).toContain('open data:text/plain,ok/login');
-      expect(navErrors[0].detail).toContain('net::ERR_CONNECTION_REFUSED');
-      // The failure is caught where it happened, not one readiness budget later.
-      expect(run.result.failures.some((failure) => failure.stage === 'ready')).toBe(false);
-
-      // Nothing is filed under the screen the page never reached; the screen
-      // that was reached is still walked, so one bad navigation does not cost
-      // the run its other coverage.
-      const captured = run.result.variants[0].captures.map((capture) => capture.screen);
-      expect(captured).not.toContain('login');
-      expect(captured).toContain('tasks');
-
-      run.cleanup();
-    });
-
-    // One candidate is the answer and anything else is a refusal: a wrong menu
-    // item navigates somewhere real, and every reading after it is a reading of
-    // the wrong screen under this screen's name.
-    it('refuses an ambiguous menu candidate set rather than picking the first of them', () => {
-      const NEIGHBOUR_EXT = `${EXT_PREFIX}.tasks.screens.tasks_archive.v1`;
-      const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login,tasks:/tasks:screen-tasks',
-        '--menu', 'menu-item-{extensionId}',
-      ], [...HOST_IDS, `menu-item-${LOGIN_EXT}`, `menu-item-${TASKS_EXT}`, `menu-item-${NEIGHBOUR_EXT}`]);
-
-      expect(run.status).not.toBe(0);
-
-      const ambiguous = run.result.failures.filter((failure) => failure.stage === 'menu-resolve');
-      expect(ambiguous).toHaveLength(1);
-      expect(ambiguous[0].detail).toContain(TASKS_EXT);
-      expect(ambiguous[0].detail).toContain(NEIGHBOUR_EXT);
-
-      // Unresolved is disclosed as unresolved, and no menu item is clicked at
-      // all - the failure mode a pick would produce is a click that landed.
-      expect(run.result.menuResolution).toEqual([
-        { screen: 'tasks', testid: null, extensionId: null, source: 'unresolved' },
-      ]);
-      expect(run.commands.some((line) => line.startsWith('click menu-item-'))).toBe(false);
-      expect(run.result.variants[0].captures.map((capture) => capture.screen)).not.toContain('tasks');
-
-      run.cleanup();
-    });
-
-    // The coverage file is this step's stated deliverable: a report is filled
-    // from it, and a run that composed one without writing the file left the
-    // developer with the project and none of the record.
-    it('writes the coverage rows to a file, with each capture and its readiness in the cell', () => {
-      const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login,tasks:/tasks',
-        '--nav', 'route',
-      ], HOST_IDS);
-
-      expect(run.result.failures).toEqual([]);
-      expect(run.status).toBe(0);
-      expect(run.result.coverageFile).not.toBeNull();
-
-      expect(run.coverage).toContain('| Variant | Active | Visually distinct from previous |');
-      expect(run.coverage).toContain('| alpha | verified | first variant |');
-      // A screen declaring a ready handle is captured after that handle appears;
-      // one declaring none is captured after a bare settle. A cell that cannot
-      // tell them apart reports the weaker capture as the stronger one.
-      expect(run.coverage).toContain('fresh (alpha-login-fresh.png, ready confirmed)');
-      expect(run.coverage).toContain('fresh (alpha-tasks-fresh.png, ready unconfirmed)');
-
-      run.cleanup();
-    });
-
-    // The variant axis is a dimension a caller may declare, and the driver owns
-    // no opinion on whether an application has one: what a screen is and what a
-    // control is are the kit's own terms, and what dimensions an interface
-    // varies along are the caller's. A run that declares no axis walks its
-    // screens once and reports the axis as not exercised - a statement about
-    // this run, not a claim that the application has no such dimension, which
-    // nothing here established and a report must not repeat.
-    it('walks every screen once and records the variant axis as unexercised when none is declared', () => {
-      // No switcher and no option handle among the page's ids: an axis-less run
-      // that reached for either would fail here rather than pass quietly.
-      const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login,tasks:/tasks:screen-tasks',
-        '--nav', 'route',
-      ], ['screen-login', 'screen-tasks'], {}, {}, 'none');
+    // Neither axis is a flag the driver requires, and a run that declares
+    // neither is not a narrowed run: it walks whatever --host opens, once, and
+    // both coverage cells say the axis was not exercised - a statement about
+    // this run rather than a claim that the application has no such dimension.
+    it('walks whatever the host opens, once, when neither axis is declared', () => {
+      // Nothing on the page but the one handle this run waits for nowhere: a run
+      // reaching for a switcher, an option or a point-selecting control would
+      // fail here rather than pass quietly.
+      const run = runAgainstStub([], ['nothing-the-walk-asks-for'], {}, {}, 'none');
 
       expect(run.result.failures).toEqual([]);
       expect(run.status).toBe(0);
       expect(run.result.variantAxis).toEqual({ declared: false, source: null, variants: [] });
+      expect(run.result.checkpointAxis).toEqual({ declared: false, reach: null, checkpoints: [] });
+
+      // One pass over one point, and the point is the host's own origin: no path
+      // was appended to it, because none was declared.
+      expect(run.commands).toContain('open data:text/plain,ok');
+      expect(run.result.variants).toHaveLength(1);
+      expect(run.result.variants[0].captures).toEqual([
+        { checkpoint: null, state: 'fresh', file: path.join(run.capdir, 'fresh.png'), readyConfirmed: false },
+      ]);
+
+      // The capture name carries neither axis's part, because there is no value
+      // and no point to name it by and a placeholder would spell one the caller
+      // never declared.
+      expect(fs.readdirSync(run.capdir).sort()).toEqual([
+        'fresh.png', 'verification-coverage.md', 'verify-walk.json',
+      ]);
+
+      expect(run.coverage).toContain('| Variant | Active | Checkpoint | States captured | Visually distinct from previous |');
+      expect(run.coverage).toContain('| (none declared) | not-exercised (no variant axis was declared for this run)'
+        + ' | not-exercised (no checkpoint axis was declared for this run)'
+        + ' | fresh (fresh.png, ready unconfirmed)'
+        + ' | not-compared (no variant axis was declared for this run) |');
+      expectWholeRows(run.coverage);
+
+      run.cleanup();
+    });
+
+    // The checkpoint axis alone: the points are declared and no dimension is
+    // repeated over them, which is the shape of a project that varies along
+    // nothing the walk was asked to cover.
+    it('walks every declared checkpoint once and records the variant axis as unexercised', () => {
+      const run = runAgainstStub([
+        '--checkpoints', 'login:/login:at-login,tasks:/tasks:at-tasks',
+      ], ['at-login', 'at-tasks'], {}, {}, 'none');
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+      expect(run.result.checkpointAxis.declared).toBe(true);
+      expect(run.result.checkpointAxis.reach).toBe('destination');
 
       // One pass, carrying no value and no label confirmation. Null rather than
       // false on both: false reads as a confirmation that was attempted and
@@ -1275,35 +1226,94 @@ process.exit(0);
       expect(run.result.variants).toHaveLength(1);
       expect(run.result.variants[0].variant).toBeNull();
       expect(run.result.variants[0].labelConfirmed).toBeNull();
-      expect(run.result.variants[0].captures.map((capture) => capture.screen)).toEqual(['login', 'tasks']);
+      expect(run.result.variants[0].captures.map((capture) => capture.checkpoint)).toEqual(['login', 'tasks']);
 
-      // The capture names carry no variant part, because there is no value to
-      // name them by and a placeholder would spell one the caller never declared.
       expect(fs.readdirSync(run.capdir).sort()).toEqual([
         'login-fresh.png', 'tasks-fresh.png', 'verification-coverage.md', 'verify-walk.json',
       ]);
 
-      expect(run.coverage).toContain('| (none declared) | not-exercised (no variant axis was declared for this run) |');
-      expect(run.coverage).toContain('not-compared (no variant axis was declared for this run)');
-      expectWholeRow(run.coverage);
+      // One row per point, each naming the axis that was not exercised.
+      expect(run.coverage).toContain('| (none declared) | not-exercised (no variant axis was declared for this run) | login |');
+      expect(run.coverage).toContain('| (none declared) | not-exercised (no variant axis was declared for this run) | tasks |');
+      expectWholeRows(run.coverage);
 
       run.cleanup();
     });
 
-    // The axis flags are one declaration. A partial one has no honest reading:
-    // walking the screens once discards a dimension the caller asked for, and
-    // walking the axis needs handles the invocation never named. Refused on the
-    // arguments, like every other invocation the driver cannot perform.
-    it.each<[string, string[]]>([
-      ['the values alone', ['--variants', 'alpha']],
-      ['the switcher alone', ['--variant-switcher', 'axis-switcher']],
-      ['the option pattern alone', ['--variant-option', 'axis-option-{variant}']],
-      ['a registry and nothing else', ['--variant-registry', '/nonexistent/variants.json']],
-      ['a label map and nothing else', ['--variant-labels', 'alpha=Alpha']],
-      ['the values and the switcher, without the option pattern',
-        ['--variants', 'alpha', '--variant-switcher', 'axis-switcher']],
-    ])('refuses a variant axis declared as %s, before a browser is reached', (_what, declared) => {
-      const run = runRefusal(declared, 'none');
+    // The variant axis alone: a dimension repeated over a walk that has one
+    // place to stand. The comparison still has a pair, because the pair is per
+    // point and the point is the same one in both passes.
+    it('repeats an undeclared checkpoint axis once per variant, and compares the pair', () => {
+      const run = runAgainstStub([
+        '--variants', 'alpha,beta',
+      ], [...HOST_IDS, 'axis-option-beta']);
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+      expect(run.result.checkpointAxis.declared).toBe(false);
+      expect(run.result.variants.map((variant) => variant.variant)).toEqual(['alpha', 'beta']);
+
+      expect(fs.readdirSync(run.capdir).sort()).toEqual([
+        'alpha-fresh.png', 'beta-fresh.png', 'verification-coverage.md', 'verify-walk.json',
+      ]);
+      expect(run.result.variants[1].comparisons).toEqual([{
+        against: 'alpha',
+        checkpoint: null,
+        state: 'fresh',
+        command: 'cmp -s alpha-fresh.png beta-fresh.png',
+        exit: 1,
+        verdict: 'differs',
+      }]);
+      expectWholeRows(run.coverage);
+
+      run.cleanup();
+    });
+
+    // Both axes declared: the rows are the cartesian product of the two, and a
+    // column per point could never have expressed it - the points are the
+    // caller's and their number is not known when the table is written.
+    it('walks the cartesian product of both axes, one coverage row per pair', () => {
+      const run = runAgainstStub([
+        '--variants', 'alpha,beta',
+        '--checkpoints', 'login:/login:at-login,tasks:/tasks:at-tasks',
+      ], [...HOST_IDS, 'axis-option-beta']);
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+
+      expect(fs.readdirSync(run.capdir).sort()).toEqual([
+        'alpha-login-fresh.png', 'alpha-tasks-fresh.png',
+        'beta-login-fresh.png', 'beta-tasks-fresh.png',
+        'verification-coverage.md', 'verify-walk.json',
+      ]);
+
+      // Four rows under one header, and the distinctness verdict rides on the
+      // row of the point it was taken at rather than being crammed into one cell
+      // beside every other point's.
+      const rows = run.coverage.split('\n').filter(Boolean).slice(2);
+      expect(rows).toHaveLength(4);
+      expect(run.coverage).toContain('| alpha | verified | login | fresh (alpha-login-fresh.png, ready confirmed) | first variant |');
+      expect(run.coverage).toContain('| beta | verified | tasks | fresh (beta-tasks-fresh.png, ready confirmed) | fresh: differs (cmp exit 1) |');
+      expectWholeRows(run.coverage);
+
+      run.cleanup();
+    });
+
+    // Each axis is one declaration. A partial one has no honest reading: dropping
+    // it discards a dimension the caller asked for, and walking it needs handles
+    // the invocation never named. Refused on the arguments, like every other
+    // invocation the driver cannot perform.
+    it.each<[string, string[], 'declared' | 'none', 'declared' | 'none']>([
+      ['a variant axis of the values alone', ['--variants', 'alpha'], 'none', 'declared'],
+      ['a variant axis of the switcher alone', ['--variant-switcher', 'axis-switcher'], 'none', 'declared'],
+      ['a variant axis of the option pattern alone', ['--variant-option', 'axis-option-{variant}'], 'none', 'declared'],
+      ['a variant axis of a registry and nothing else', ['--variant-registry', '/nonexistent/variants.json'], 'none', 'declared'],
+      ['a variant axis of a label map and nothing else', ['--variant-labels', 'alpha=Alpha'], 'none', 'declared'],
+      ['a variant axis of the values and the switcher, without the option pattern',
+        ['--variants', 'alpha', '--variant-switcher', 'axis-switcher'], 'none', 'declared'],
+      ['a checkpoint axis of the selector alone', ['--checkpoint-selector', 'reach-{checkpoint}'], 'declared', 'none'],
+    ])('refuses %s, before a browser is reached', (_what, declared, variantAxis, checkpointAxis) => {
+      const run = runRefusal(declared, variantAxis, checkpointAxis);
 
       expect(run.status).not.toBe(0);
       expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
@@ -1313,12 +1323,168 @@ process.exit(0);
       run.cleanup();
     });
 
+    // A point with no destination is reached by clicking, and the first point of
+    // a pass is additionally reached by the pass-boundary load of --host. A later
+    // point with neither is a point nothing in the invocation can arrive at, and
+    // walking on would capture whatever the previous point left on the page under
+    // this one's name.
+    it('refuses a later checkpoint that declares no destination when no selector was declared', () => {
+      const run = runRefusal(['--checkpoints', 'login:/login:at-login,tasks'], 'none', 'none');
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain('checkpoint "tasks" declares no destination');
+      expect(run.failures[0].detail).toContain('--checkpoint-selector');
+      expect(run.capdirExists).toBe(false);
+
+      run.cleanup();
+    });
+
+    // How the walk moves between points is derived from what the caller
+    // declared, not chosen from a closed set of names: declaring a selector is
+    // what makes the walk click, and its absence is what makes each point load
+    // at its own destination. Both readings are exercised here, because a driver
+    // that clicked either way would pass a test of the click alone.
+    it('loads each checkpoint at its destination when no selector is declared', () => {
+      const run = runAgainstStub([
+        '--checkpoints', 'login:/login:at-login,tasks:/tasks:at-tasks',
+      ], HOST_IDS);
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.result.checkpointAxis.reach).toBe('destination');
+      expect(run.commands).toContain('open data:text/plain,ok/login');
+      expect(run.commands).toContain('open data:text/plain,ok/tasks');
+      // Nothing was resolved, because nothing was clicked to get anywhere.
+      expect(run.result.checkpointResolution).toEqual([]);
+
+      run.cleanup();
+    });
+
+    it('clicks its way to every checkpoint after the first when a selector is declared', () => {
+      const run = runAgainstStub([
+        '--checkpoints', 'login:/login:at-login,tasks:/tasks:at-tasks',
+        '--checkpoint-selector', 'reach-{checkpoint}',
+      ], [...HOST_IDS, 'reach-login', 'reach-tasks']);
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.result.checkpointAxis.reach).toBe('selector');
+      // The first point still comes from a load: the reload is the pass boundary
+      // reset, and a click cannot discard what the previous pass left behind.
+      expect(run.commands).toContain('open data:text/plain,ok/login');
+      expect(run.commands).not.toContain('click reach-login');
+      expect(run.commands).toContain('click reach-tasks');
+      expect(run.commands).not.toContain('open data:text/plain,ok/tasks');
+      expect(run.result.checkpointResolution).toEqual([
+        { checkpoint: 'tasks', testid: 'reach-tasks', handle: null, source: 'pattern' },
+      ]);
+
+      run.cleanup();
+    });
+
+    // A point declared with no destination at all is reached by its selector,
+    // including where it is the first point of the pass - the load of --host
+    // lands wherever the application opens, which is that point only by
+    // coincidence.
+    it('clicks to the first checkpoint too when it declares no destination', () => {
+      const run = runAgainstStub([
+        '--checkpoints', 'login::at-login',
+        '--checkpoint-selector', 'reach-{checkpoint}',
+      ], [...HOST_IDS, 'reach-login']);
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.commands).toContain('open data:text/plain,ok');
+      expect(run.commands).toContain('click reach-login');
+
+      run.cleanup();
+    });
+
+    // A host may key each control by a whole composed identity rather than by a
+    // short label, and `{checkpoint}` cannot spell one: one run found the pattern
+    // inexpressible, loaded each destination instead, and then owed every click
+    // by hand.
+    it('reaches a control keyed by a composed identity, discovered or declared', () => {
+      const run = runAgainstStub([
+        '--checkpoints', `login:/login:at-login,tasks:/tasks:at-tasks,reports:/reports:at-reports:${REPORTS_ID}`,
+        '--checkpoint-selector', 'reach-{handle}',
+      ], [...HOST_IDS, `reach-${LOGIN_ID}`, `reach-${TASKS_ID}`, `reach-${REPORTS_ID}`]);
+
+      // The whole walk completes through those controls: this is the run that
+      // previously had no expressible pattern at all.
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+
+      // `tasks` names no handle, so the driver reads the page's ids back and
+      // keeps the one carrying "tasks" as a segment; `reports` declares its own
+      // and costs no eval. Both are disclosed with the source they came from.
+      expect(run.result.checkpointResolution).toEqual([
+        { checkpoint: 'tasks', testid: `reach-${TASKS_ID}`, handle: TASKS_ID, source: 'discovered' },
+        { checkpoint: 'reports', testid: `reach-${REPORTS_ID}`, handle: REPORTS_ID, source: 'declared' },
+      ]);
+      // The clicks landed on the full ids, not on anything derived from the
+      // short name - which is the part a JSON record alone could not prove.
+      expect(run.commands).toContain(`click reach-${TASKS_ID}`);
+      expect(run.commands).toContain(`click reach-${REPORTS_ID}`);
+
+      run.cleanup();
+    });
+
+    // One candidate is the answer and anything else is a refusal: a wrong control
+    // moves the page somewhere real, and every reading after it is a reading of
+    // the wrong place under this checkpoint's name.
+    it('refuses an ambiguous handle candidate set rather than picking the first of them', () => {
+      const NEIGHBOUR_ID = `${ID_PREFIX}.tasks.units.tasks_archive.v1`;
+      const run = runAgainstStub([
+        '--checkpoints', 'login:/login:at-login,tasks:/tasks:at-tasks',
+        '--checkpoint-selector', 'reach-{handle}',
+      ], [...HOST_IDS, `reach-${LOGIN_ID}`, `reach-${TASKS_ID}`, `reach-${NEIGHBOUR_ID}`]);
+
+      expect(run.status).not.toBe(0);
+
+      const ambiguous = run.result.failures.filter((failure) => failure.stage === 'handle-resolve');
+      expect(ambiguous).toHaveLength(1);
+      expect(ambiguous[0].detail).toContain(TASKS_ID);
+      expect(ambiguous[0].detail).toContain(NEIGHBOUR_ID);
+
+      // Unresolved is disclosed as unresolved, and no control is clicked at all -
+      // the failure mode a pick would produce is a click that landed.
+      expect(run.result.checkpointResolution).toEqual([
+        { checkpoint: 'tasks', testid: null, handle: null, source: 'unresolved' },
+      ]);
+      expect(run.commands.some((line) => line.startsWith('click reach-'))).toBe(false);
+      expect(run.result.variants[0].captures.map((capture) => capture.checkpoint)).not.toContain('tasks');
+
+      run.cleanup();
+    });
+
+    // The coverage file is this step's stated deliverable: a report is filled
+    // from it, and a run that composed one without writing the file left the
+    // developer with the project and none of the record.
+    it('writes the coverage rows to a file, with each capture and its readiness in the cell', () => {
+      const run = runAgainstStub([
+        '--checkpoints', 'login:/login:at-login,tasks:/tasks',
+      ], HOST_IDS);
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+      expect(run.result.coverageFile).not.toBeNull();
+
+      expect(run.coverage).toContain('| Variant | Active | Checkpoint | States captured | Visually distinct from previous |');
+      expect(run.coverage).toContain('| alpha | verified | login |');
+      // A checkpoint declaring a ready handle is captured after that handle
+      // appears; one declaring none is captured after a bare settle. A cell that
+      // cannot tell them apart reports the weaker capture as the stronger one.
+      expect(run.coverage).toContain('fresh (alpha-login-fresh.png, ready confirmed)');
+      expect(run.coverage).toContain('fresh (alpha-tasks-fresh.png, ready unconfirmed)');
+      expectWholeRows(run.coverage);
+
+      run.cleanup();
+    });
+
     // A cell filled from a name the invocation supplied is a cell that name can
     // corrupt: one `|` in it closes the cell and shifts every column after it.
     it('escapes a pipe in a variant name instead of letting it close the cell', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
         // ONE variant whose name carries a pipe, not two variants. Its option testid
         // becomes `axis-option-alpha|beta`, which the stub's ids do not carry,
         // so the option click cannot be dispatched and the variant is recorded as
@@ -1330,7 +1496,7 @@ process.exit(0);
       expect(run.result.variants[0].labelConfirmed).toBe(false);
       expect(run.coverage).toContain('| alpha\\|beta |');
       expect(run.coverage).toContain('variant option for "alpha\\|beta" "axis-option-alpha\\|beta" was not clicked');
-      expectWholeRow(run.coverage);
+      expectWholeRows(run.coverage);
 
       run.cleanup();
     });
@@ -1340,8 +1506,7 @@ process.exit(0);
     // into the row verbatim, so the page decides that text and not the caller.
     it('escapes a pipe read off the page instead of letting it close the cell', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
       ], HOST_IDS, { STUB_STICKY_VARIANT: 'al|pha' });
 
       expect(run.status).not.toBe(0);
@@ -1350,24 +1515,24 @@ process.exit(0);
       // Escaped in the cell, unescaped in the JSON record: the table is what a
       // pipe corrupts, and the record is what a report reads the truth from.
       expect(run.coverage).toContain('not-active (label read "Active: al\\|pha")');
-      expectWholeRow(run.coverage);
+      expectWholeRows(run.coverage);
 
       run.cleanup();
     });
 
-    // A variant name out of a registry and a screen name off the command line both
-    // reach the capture path, and a name carrying path separators used to resolve
-    // out of the run's own directory: `../escape` writes a level above the capture
-    // directory, where nothing in this run is entitled to write and where neither
-    // the byte-compare nor the coverage cells ever look. The name is reduced to
-    // the file-name alphabet rather than refused, so the walk still runs and the
-    // traversal is gone from the file it writes.
+    // A variant name out of a registry and a checkpoint name off the command line
+    // both reach the capture path, and a name carrying path separators used to
+    // resolve out of the run's own directory: `../escape` writes a level above the
+    // capture directory, where nothing in this run is entitled to write and where
+    // neither the byte-compare nor the coverage cells ever look. The name is
+    // reduced to the file-name alphabet rather than refused, so the walk still
+    // runs and the traversal is gone from the file it writes.
     it.each<[string, string[], string]>([
-      ['a variant name', ['--variants', '../escape', '--screens', 'login:/login:screen-login'], 'escape-login-fresh.png'],
-      ['a screen name', ['--variants', 'alpha', '--screens', '../login:/login:screen-login'], 'alpha-login-fresh.png'],
+      ['a variant name', ['--variants', '../escape', '--checkpoints', 'login:/login:at-login'], 'escape-login-fresh.png'],
+      ['a checkpoint name', ['--variants', 'alpha', '--checkpoints', '../login:/login:at-login'], 'alpha-login-fresh.png'],
     ])('confines a capture to the capture directory when %s carries a path traversal', (_what, declared, file) => {
-      const run = runAgainstStub([...declared, '--nav', 'route'],
-        ['axis-switcher', 'axis-option-alpha', 'axis-option-../escape', 'screen-login']);
+      const run = runAgainstStub(declared,
+        ['axis-switcher', 'axis-option-alpha', 'axis-option-../escape', 'at-login']);
 
       // The odd name costs the run nothing: the variant opens, and the capture is
       // taken and recorded like any other.
@@ -1388,12 +1553,11 @@ process.exit(0);
     });
 
     // The whole native sequence, not a synthetic click: a control listening for
-    // pointerdown sees nothing of a bare click() and the screen stays as it was,
+    // pointerdown sees nothing of a bare click() and the page stays as it was,
     // while the command still reports success.
     it('drives every click as the full native pointer sequence', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
       ], HOST_IDS);
 
       const sequences = run.commands.filter((line) => line.startsWith('events '));
@@ -1411,23 +1575,22 @@ process.exit(0);
     // nothing had switched.
     it('fails the variant when a declared control is not on the page, naming the test id', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
-        '--panel-expand', 'panel-expand',
-        '--panel-collapse', 'panel-collapse',
+        '--checkpoints', 'login:/login:at-login',
+        '--overlay-open', 'overlay-open',
+        '--overlay-close', 'overlay-close',
         // The switcher is there and the label reads the same either way, which is
         // exactly how a missing option used to pass unnoticed.
-      ], ['axis-switcher', 'screen-login']);
+      ], ['axis-switcher', 'at-login']);
 
       expect(run.status).not.toBe(0);
 
       const control = run.result.failures.filter((failure) => failure.stage === 'control');
       expect(control).toHaveLength(1);
-      expect(control[0].detail).toContain('panel-expand');
+      expect(control[0].detail).toContain('overlay-open');
       expect(control[0].detail).toContain('no control carries that data-testid');
       // Nothing is captured under a variant whose controls could not be operated.
       expect(run.result.variants[0].captures).toEqual([]);
-      expect(run.coverage).toContain('not-active (dev panel expand control "panel-expand" was not clicked');
+      expect(run.coverage).toContain('not-active (overlay open control "overlay-open" was not clicked');
 
       run.cleanup();
     });
@@ -1440,8 +1603,7 @@ process.exit(0);
     it('does not confirm a variant off a label that merely carries its name inside another word', () => {
       const wrong = runAgainstStub([
         '--variants', 'dense',
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
         // The option click dispatches, and the page goes on showing "denser".
       ], [...HOST_IDS, 'axis-option-dense'], { STUB_STICKY_VARIANT: 'denser' });
 
@@ -1463,8 +1625,7 @@ process.exit(0);
       // as a word, so this is not a check that refuses everything.
       const right = runAgainstStub([
         '--variants', 'denser',
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
       ], [...HOST_IDS, 'axis-option-denser'], { STUB_STICKY_VARIANT: 'denser' });
 
       expect(right.result.failures).toEqual([]);
@@ -1499,24 +1660,42 @@ process.exit(0);
       separated.cleanup();
     });
 
-    // The collapse is the same class one control along, and it fails later: the
-    // label has already confirmed by then, so a discarded collapse outcome
-    // leaves the variant reading as opened and its captures carrying host chrome.
-    it('fails the variant when the panel collapse control is not on the page', () => {
+    // The overlay controls are optional, and the one that closes it fails later
+    // than the one that opens it: the label has already confirmed by then, so a
+    // discarded close outcome leaves the variant reading as opened and its
+    // captures carrying host chrome.
+    it('fails the variant when the overlay close control is not on the page', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
-        '--panel-expand', 'panel-expand',
-        '--panel-collapse', 'panel-collapse',
-      ], [...HOST_IDS, 'panel-expand']);
+        '--checkpoints', 'login:/login:at-login',
+        '--overlay-open', 'overlay-open',
+        '--overlay-close', 'overlay-close',
+      ], [...HOST_IDS, 'overlay-open']);
 
       expect(run.status).not.toBe(0);
       expect(run.result.variants[0].labelConfirmed).toBe(true);
 
       const control = run.result.failures.filter((failure) => failure.stage === 'control');
       expect(control).toHaveLength(1);
-      expect(control[0].detail).toContain('panel-collapse');
+      expect(control[0].detail).toContain('overlay-close');
       expect(run.result.variants[0].captures).toEqual([]);
+
+      run.cleanup();
+    });
+
+    // Neither overlay flag is required, and a run that declares neither must
+    // reach for no such control at all: a project with no chrome over its
+    // surface is not a project this driver refuses.
+    it('operates no overlay control when a run declares none', () => {
+      const run = runAgainstStub([
+        '--checkpoints', 'login:/login:at-login',
+      ], HOST_IDS);
+
+      expect(run.result.failures).toEqual([]);
+      expect(run.status).toBe(0);
+      expect(run.result.variants[0].overlayClosed).toBeNull();
+      expect(run.commands.filter((line) => line.startsWith('click '))).toEqual([
+        'click axis-switcher', 'click axis-option-alpha',
+      ]);
 
       run.cleanup();
     });
@@ -1526,21 +1705,49 @@ process.exit(0);
     // hunting a rendering race that did not exist.
     it('keeps a refused existence probe apart from an absent control', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
-        '--panel-expand', 'panel-expand',
-        '--panel-collapse', 'panel-collapse',
-      ], [...HOST_IDS, 'panel-expand', 'panel-collapse'], { STUB_EVAL_ERROR_PROBE: 'panel-expand' });
+        '--checkpoints', 'login:/login:at-login',
+        '--overlay-open', 'overlay-open',
+        '--overlay-close', 'overlay-close',
+      ], [...HOST_IDS, 'overlay-open', 'overlay-close'], { STUB_EVAL_ERROR_PROBE: 'overlay-open' });
 
       expect(run.status).not.toBe(0);
 
-      const panel = run.result.failures.filter((failure) => failure.stage === 'panel');
-      expect(panel).toHaveLength(1);
-      expect(panel[0].detail).toContain('could not be confirmed');
-      expect(panel[0].detail).toContain('the eval did not run');
-      // Not false: the page was never asked, and a report cannot say the panel
+      const overlay = run.result.failures.filter((failure) => failure.stage === 'overlay');
+      expect(overlay).toHaveLength(1);
+      expect(overlay[0].detail).toContain('could not be confirmed');
+      expect(overlay[0].detail).toContain('the eval did not run');
+      // Not false: the page was never asked, and a report cannot say the overlay
       // stayed open on the strength of a probe that did not run.
-      expect(run.result.variants[0].panelCollapsed).toBeNull();
+      expect(run.result.variants[0].overlayClosed).toBeNull();
+
+      run.cleanup();
+    });
+
+    // open and reload were fired and forgotten. A load that never happened
+    // surfaced only as a readiness timeout a full budget later, and on a
+    // checkpoint declared without a ready testid never at all - the walk carried
+    // on capturing whatever was still on the page under the next point's name.
+    it('fails a load loudly on the runner exit status, and files nothing under the checkpoint it never reached', () => {
+      const run = runAgainstStub([
+        '--checkpoints', 'login:/login:at-login,tasks:/tasks:at-tasks',
+        '--checkpoint-selector', 'reach-{checkpoint}',
+      ], [...HOST_IDS, 'reach-login', 'reach-tasks'], { STUB_FAIL_OPEN: '1' });
+
+      expect(run.status).not.toBe(0);
+
+      const reachErrors = run.result.failures.filter((failure) => failure.stage === 'reach-error');
+      expect(reachErrors).toHaveLength(1);
+      expect(reachErrors[0].detail).toContain('open data:text/plain,ok/login');
+      expect(reachErrors[0].detail).toContain('net::ERR_CONNECTION_REFUSED');
+      // The failure is caught where it happened, not one readiness budget later.
+      expect(run.result.failures.some((failure) => failure.stage === 'ready')).toBe(false);
+
+      // Nothing is filed under the point the page never reached; the point that
+      // was reached is still walked, so one bad load does not cost the run its
+      // other coverage.
+      const captured = run.result.variants[0].captures.map((capture) => capture.checkpoint);
+      expect(captured).not.toContain('login');
+      expect(captured).toContain('tasks');
 
       run.cleanup();
     });
@@ -1550,16 +1757,15 @@ process.exit(0);
     // agreed, so a fill whose field took something else has to break it.
     it('records every declared read-back and passes the run when they all agree', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
-      ], [...HOST_IDS, 'screen-name-input', 'screen-submit', 'screen-status'], {}, {
+        '--checkpoints', 'login:/login:at-login',
+      ], [...HOST_IDS, 'field-name', 'control-submit', 'readout-status'], {}, {
         states: {
           login: [{
             state: 'submitted',
             actions: [
-              { kind: 'fill', testid: 'screen-name-input', value: 'Grace' },
-              { kind: 'click', testid: 'screen-submit' },
-              { kind: 'read', testid: 'screen-status', contains: 'text of screen-status' },
+              { kind: 'fill', testid: 'field-name', value: 'Grace' },
+              { kind: 'click', testid: 'control-submit' },
+              { kind: 'read', testid: 'readout-status', contains: 'text of readout-status' },
             ],
           }],
         },
@@ -1570,10 +1776,32 @@ process.exit(0);
       expect(run.result.variants[0].readBacks.map((back) => [back.action, back.ok])).toEqual([
         ['fill', true], ['click', true], ['read', true],
       ]);
-      expect(run.commands).toContain('fill screen-name-input Grace');
+      expect(run.commands).toContain('fill field-name Grace');
       expect(run.coverage).toContain('submitted (alpha-login-submitted.png, ready confirmed)');
 
       run.cleanup();
+    });
+
+    // A states file addresses the points by name, and a run that declared no
+    // checkpoint axis has no name for it to address. Said outright rather than
+    // as a checkpoint the list does not name, which reads as a typo in a list
+    // this invocation never carried.
+    it('refuses a states file when the run declares no checkpoint axis to key it against', () => {
+      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-states-'));
+      const statesFile = path.join(workdir, 'states.json');
+      fs.writeFileSync(statesFile, JSON.stringify({
+        login: [{ state: 'submitted', actions: [{ kind: 'click', testid: 'control-submit' }] }],
+      }));
+
+      const run = runRefusal(['--states', statesFile], 'none', 'none');
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain('declares no checkpoint axis to key against');
+      expect(run.capdirExists).toBe(false);
+
+      run.cleanup();
+      fs.rmSync(workdir, { recursive: true, force: true });
     });
 
     // The other half of the sentinel: a `read` of a control the page does not
@@ -1582,11 +1810,10 @@ process.exit(0);
     // accept that reading and report the state as read.
     it('fails a read of a control the page does not carry', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
       ], HOST_IDS, {}, {
         states: {
-          login: [{ state: 'submitted', actions: [{ kind: 'read', testid: 'screen-status' }] }],
+          login: [{ state: 'submitted', actions: [{ kind: 'read', testid: 'readout-status' }] }],
         },
       });
 
@@ -1594,9 +1821,9 @@ process.exit(0);
 
       const reads = run.result.failures.filter((failure) => failure.stage === 'read');
       expect(reads).toHaveLength(1);
-      expect(reads[0].detail).toContain('screen-status');
+      expect(reads[0].detail).toContain('readout-status');
       expect(run.result.variants[0].readBacks[0]).toMatchObject({
-        action: 'read', testid: 'screen-status', actual: '__verify_walk_missing__', ok: false,
+        action: 'read', testid: 'readout-status', actual: '__verify_walk_missing__', ok: false,
       });
 
       run.cleanup();
@@ -1608,13 +1835,12 @@ process.exit(0);
     // and the coverage row claimed a reading of a control the page never held.
     it('fails a read of an absent control whose declared contains is a substring of the missing sentinel', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
       ], HOST_IDS, {}, {
         states: {
           login: [{
             state: 'submitted',
-            actions: [{ kind: 'read', testid: 'screen-status', contains: 'missing' }],
+            actions: [{ kind: 'read', testid: 'readout-status', contains: 'missing' }],
           }],
         },
       });
@@ -1623,10 +1849,10 @@ process.exit(0);
 
       const reads = run.result.failures.filter((failure) => failure.stage === 'read');
       expect(reads).toHaveLength(1);
-      expect(reads[0].detail).toContain('screen-status');
+      expect(reads[0].detail).toContain('readout-status');
       expect(run.result.variants[0].readBacks[0]).toMatchObject({
         action: 'read',
-        testid: 'screen-status',
+        testid: 'readout-status',
         expected: 'missing',
         actual: '__verify_walk_missing__',
         ok: false,
@@ -1665,11 +1891,10 @@ process.exit(0);
 
     it('fails the run when a fill reads back something other than what was typed', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
-      ], [...HOST_IDS, 'screen-name-input'], { STUB_FILL_DRIFT: '1' }, {
+        '--checkpoints', 'login:/login:at-login',
+      ], [...HOST_IDS, 'field-name'], { STUB_FILL_DRIFT: '1' }, {
         states: {
-          login: [{ state: 'submitted', actions: [{ kind: 'fill', testid: 'screen-name-input', value: 'Grace' }] }],
+          login: [{ state: 'submitted', actions: [{ kind: 'fill', testid: 'field-name', value: 'Grace' }] }],
         },
       });
 
@@ -1677,7 +1902,7 @@ process.exit(0);
 
       const readBack = run.result.failures.filter((failure) => failure.stage === 'read-back');
       expect(readBack).toHaveLength(1);
-      expect(readBack[0].detail).toContain('screen-name-input');
+      expect(readBack[0].detail).toContain('field-name');
       expect(readBack[0].detail).toContain('drift:Grace');
       expect(run.result.variants[0].readBacks[0].ok).toBe(false);
 
@@ -1686,13 +1911,12 @@ process.exit(0);
 
     // The verdict is the comparison command's own exit code and nothing else.
     // Identical captures are a recorded fact: two registered variants can differ
-    // only in tokens the captured screens never consume, and a run that reported
+    // only in tokens the captured surface never consumes, and a run that reported
     // them as visibly distinct claimed something it never saw.
     it('records identical captures as identical, from the comparison command exit code', () => {
       const run = runAgainstStub([
         '--variants', 'alpha,beta',
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
       ], [...HOST_IDS, 'axis-option-beta'], { STUB_IDENTICAL_SHOTS: '1' });
 
       expect(run.result.failures).toEqual([]);
@@ -1702,13 +1926,13 @@ process.exit(0);
       ]);
       expect(run.result.variants[1].comparisons).toEqual([{
         against: 'alpha',
-        screen: 'login',
+        checkpoint: 'login',
         state: 'fresh',
         command: 'cmp -s alpha-login-fresh.png beta-login-fresh.png',
         exit: 0,
         verdict: 'identical',
       }]);
-      expect(run.coverage).toContain('login/fresh: identical (cmp exit 0)');
+      expect(run.coverage).toContain('fresh: identical (cmp exit 0)');
 
       run.cleanup();
     });
@@ -1716,29 +1940,28 @@ process.exit(0);
     it('records a differing pair as differs, from that same exit code', () => {
       const run = runAgainstStub([
         '--variants', 'alpha,beta',
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
       ], [...HOST_IDS, 'axis-option-beta']);
 
       expect(run.result.failures).toEqual([]);
       expect(run.result.variants[1].comparisons.map((cmp) => [cmp.verdict, cmp.exit])).toEqual([['differs', 1]]);
-      expect(run.coverage).toContain('login/fresh: differs (cmp exit 1)');
+      expect(run.coverage).toContain('fresh: differs (cmp exit 1)');
 
       run.cleanup();
     });
 
-    // Provenance: a report claiming the set came from the host's variant
-    // registration is a claim this field either backs or contradicts.
+    // Provenance: a report claiming the set came from the host's own
+    // registration of that dimension is a claim this field either backs or
+    // contradicts.
     it('records a variant set read from a registry file as coming from that file', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
       ], [...HOST_IDS, 'axis-option-beta'], {}, { registry: { variants: ['alpha', 'beta'] } });
 
       expect(run.result.failures).toEqual([]);
       expect(run.result.variantAxis.variants).toEqual(['alpha', 'beta']);
-      expect(run.result.variantAxis.source.startsWith('registry:')).toBe(true);
-      expect(run.result.variantAxis.source.endsWith('variants.json')).toBe(true);
+      expect(run.result.variantAxis.source?.startsWith('registry:')).toBe(true);
+      expect(run.result.variantAxis.source?.endsWith('variants.json')).toBe(true);
 
       run.cleanup();
     });
@@ -1748,8 +1971,7 @@ process.exit(0);
     // that stopped answering.
     it('kills a browser command that never returns, and records it as a timeout', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
         '--command-timeout', '800',
       ], HOST_IDS, { STUB_HANG: '1' });
 
@@ -1794,8 +2016,7 @@ process.exit(0);
         driverPath(),
         '--host', 'data:text/plain,ok',
         '--variants', 'alpha',
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
         '--capdir', capdir,
         '--variant-switcher', 'axis-switcher',
         '--variant-option', 'axis-option-{variant}',
@@ -1873,8 +2094,7 @@ process.exit(0);
     // run that never happened.
     it('still prints its result, and says so, when the output path cannot be written', () => {
       const run = runAgainstStub([
-        '--screens', 'login:/login:screen-login',
-        '--nav', 'route',
+        '--checkpoints', 'login:/login:at-login',
         // A path under a file rather than a directory: the mkdir fails ENOTDIR.
         '--json-out', '/dev/null/nope/verify-walk.json',
       ], HOST_IDS);
@@ -1899,11 +2119,10 @@ process.exit(0);
         driverPath(),
         '--host', 'http://127.0.0.1:1',
         '--variants', 'alpha',
-        '--screens', 'orders:/orders:screen-orders',
+        '--checkpoints', 'orders:/orders:at-orders',
         '--capdir', workdir,
         '--variant-switcher', 'axis-switcher',
         '--variant-option', 'axis-option-{variant}',
-        '--menu', 'nav-{screen}',
       ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
 
       expect(run.status).not.toBe(0);
@@ -1938,24 +2157,11 @@ process.exit(0);
       run.cleanup();
     });
 
-    // Any string used to reach the walk, and everything that was not "route"
-    // took the menu branch, so `--nav manu` ran a split on undefined and ended
-    // the process on an uncaught TypeError with no result record at all.
-    it('refuses a --nav outside the closed set', () => {
-      const run = runRefusal(['--nav', 'manu']);
-
-      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
-      expect(run.failures[0].detail).toContain('manu');
-      expect(run.capdirExists).toBe(false);
-
-      run.cleanup();
-    });
-
     // A pattern that substitutes nothing clicks one same control for every variant
-    // or every screen, which reads as a walk that covered all of them.
+    // or every checkpoint, which reads as a walk that covered all of them.
     it.each<[string, string[]]>([
       ['{variant}', ['--variants', 'alpha,beta', '--variant-option', 'axis-option-alpha']],
-      ['{screen}', ['--screens', 'login:/login,tasks:/tasks', '--menu', 'nav-login']],
+      ['{checkpoint}', ['--checkpoints', 'login:/login,tasks:/tasks', '--checkpoint-selector', 'reach-login']],
     ])('refuses a pattern carrying no %s placeholder when it has to vary', (token, extra) => {
       const run = runRefusal(extra);
 
@@ -1975,10 +2181,10 @@ process.exit(0);
       ['--variant-registry', 'lists something that is not a variant name', '{ "variants": [7] }'],
       ['--states', 'is absent', null],
       ['--states', 'is not JSON', '{'],
-      ['--states', 'holds a non-array under a screen', '{ "orders": { "state": "submitted" } }'],
+      ['--states', 'holds a non-array under a checkpoint', '{ "orders": { "state": "submitted" } }'],
       ['--states', 'holds an action of an unknown kind', '{ "orders": [{ "state": "submitted", "actions": [{ "kind": "tap", "testid": "x" }] }] }'],
       ['--states', 'holds a fill with no value to type', '{ "orders": [{ "state": "submitted", "actions": [{ "kind": "fill", "testid": "x" }] }] }'],
-      ['--states', 'names a screen the walk never visits', '{ "checkout": [] }'],
+      ['--states', 'names a checkpoint the walk never visits', '{ "checkout": [] }'],
     ])('refuses a %s file that %s', (flag, _situation, content) => {
       const inputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-input-'));
       const file = path.join(inputDir, 'input.json');
@@ -2003,12 +2209,12 @@ process.exit(0);
     // go on claiming a capture of their own. Refused on the arguments, so no
     // capture is taken under a name that cannot be told from another.
     it('refuses two declared names that reduce to one capture file name', () => {
-      const run = runRefusal(['--screens', 'my screen:/a:screen-login,my-screen:/b:screen-login']);
+      const run = runRefusal(['--checkpoints', 'my point:/a:at-login,my-point:/b:at-login'], 'declared', 'none');
 
       expect(run.status).not.toBe(0);
       expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
-      expect(run.failures[0].detail).toContain('alpha-my-screen-fresh.png');
-      expect(run.failures[0].detail).toContain('my screen');
+      expect(run.failures[0].detail).toContain('alpha-my-point-fresh.png');
+      expect(run.failures[0].detail).toContain('my point');
       expect(run.capdirExists).toBe(false);
 
       run.cleanup();
@@ -2020,7 +2226,7 @@ process.exit(0);
     // the argument list is a refusal like every other, so it carries a record.
     it.each<[string, string[], string]>([
       ['an unknown flag', ['--nope', 'x'], 'unknown argument "--nope"'],
-      ['a flag left without a value', ['--menu'], '--menu needs a value'],
+      ['a flag left without a value', ['--checkpoint-selector'], '--checkpoint-selector needs a value'],
     ])('records %s as an arguments failure in its result record', (_what, argv, detail) => {
       const run = runRefusal(argv);
 
@@ -2040,7 +2246,7 @@ process.exit(0);
       const run = spawnSync(process.execPath, [
         driverPath(),
         '--variants', 'alpha',
-        '--screens', 'orders:/orders:screen-orders',
+        '--checkpoints', 'orders:/orders:at-orders',
         '--capdir', capdir,
         '--variant-switcher', 'axis-switcher',
         '--variant-option', 'axis-option-{variant}',
