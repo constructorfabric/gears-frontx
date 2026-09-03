@@ -512,8 +512,25 @@ jobs:
         # the registry does not carry; see this step's env block for why it is
         # pull-request-only. Run before the `cd` because the script resolves
         # this repo's packages/* from its own location.
+        #
+        # The trap is what makes the undo unconditional. `npm install` below
+        # runs under `set -e`, so on failure the shell leaves this step without
+        # reaching the restore line and the tree stays rewritten for whatever
+        # reads it next — a log dump, an artifact upload, a future step. It is
+        # registered once the call above has succeeded, whether or not that call
+        # found anything to substitute, and it runs the same `--restore`, which
+        # is a no-op both when nothing was rewritten and after the explicit
+        # restore below has removed the journal.
         if [ -n "${FRONTX_SUBSTITUTE_UNPUBLISHED_PINS:-}" ]; then
           node scripts/pin-unpublished-ecosystem-to-local-pack.mjs --tree "$composed"
+          # `|| true` is load-bearing, not defensive noise: bash carries the
+          # pre-trap exit status through an EXIT handler that ends successfully,
+          # but a handler whose LAST command fails overwrites it — measured both
+          # ways — so an unguarded restore could turn a green step red. Guarded,
+          # 0 stays 0 and a failing install stays failing, with no `$?` dance.
+          # It also means a restore failure on the red path cannot mask the
+          # install failure that is the actual finding.
+          trap 'node "$repo/scripts/pin-unpublished-ecosystem-to-local-pack.mjs" --tree "$composed" --restore || true' EXIT
         fi
 
         cd "$composed"
