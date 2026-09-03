@@ -244,7 +244,7 @@ const ROOT_MANIFEST_FILE = 'package.json';
  * @typedef {'tree-missing' | 'no-governed-pin-sites' | 'registry-unanswerable' | 'pin-resolves-nowhere'} PlanRefusalReason
  * @typedef {{ ok: true; substitutions: PinSubstitution[] } | { ok: false; reason: PlanRefusalReason; message: string }} SubstitutionPlan
  *
- * @typedef {'build-failed' | 'unbuilt-package' | 'pack-failed'} PackRefusalReason
+ * @typedef {'build-failed' | 'unbuilt-package' | 'pack-failed' | 'entry-point-not-packed'} PackRefusalReason
  * @typedef {{ ok: true; tarballByPackage: Record<string, string>; logLines: string[] } | { ok: false; reason: PackRefusalReason; message: string }} PackOutcome
  *
  * @typedef {'override-conflict' | 'override-not-comparable'} ApplyRefusalReason
@@ -464,15 +464,16 @@ export function packSubstitutedPackages({ repoRoot, treeDir, substitutions, runC
       };
     }
 
-    const filename = readPackedFilename(pack.stdout);
-    if (filename === null) {
+    const packedEntry = readPackedEntry(pack.stdout);
+    if (packedEntry === null) {
       return {
         ok: false,
         reason: 'pack-failed',
         message:
-          `Cannot pack ${packageName}: \`npm pack --json\` did not report a filename. Read instead:\n${pack.stdout}`,
+          `Cannot pack ${packageName}: \`npm pack --json\` did not report a filename and file list. Read instead:\n${pack.stdout}`,
       };
     }
+    const { filename, files } = packedEntry;
 
     // The filename comes from npm rather than being composed from name and
     // version: npm owns that mangling (`@gears-frontx/ui-kit` ->
@@ -487,6 +488,22 @@ export function packSubstitutedPackages({ repoRoot, treeDir, substitutions, runC
       };
     }
 
+    // A built package can still ship WITHOUT its entry point: `files`/
+    // `.npmignore` decide what `npm pack` includes independently of what's on
+    // disk, so the disk check above misses it. Checked against `--json`'s own
+    // `files` list rather than re-deriving the files/.npmignore answer again.
+    if (!files.includes(posixEntryPointOf(entryPoint))) {
+      return {
+        ok: false,
+        reason: 'entry-point-not-packed',
+        message:
+          `Cannot pack ${packageName}: \`npm pack\` produced ${filename} without ${entryPoint}, the entry ` +
+          `point packages/${localDir}/package.json declares. Its "files" allowlist or .npmignore is ` +
+          'excluding a file the built package needs - the tarball would install green and fail at the ' +
+          'first import.',
+      };
+    }
+
     tarballByPackage[packageName] = tarballPath;
     logLines.push(`packed ${packageName} -> ${path.relative(treeDir, tarballPath)}`);
   }
@@ -495,14 +512,14 @@ export function packSubstitutedPackages({ repoRoot, treeDir, substitutions, runC
 }
 
 /**
- * The tarball name out of `npm pack --json`, whose body is an array with one
- * entry per packed workspace - one here, since this packs a single workspace
- * per call.
+ * The tarball name and file list from `npm pack --json`'s one-element array
+ * (one packed workspace per call). Read together: a filename with no verified
+ * `files` would leave the entry-point check below nothing to check against.
  *
  * @param {string} stdout
- * @returns {string | null}
+ * @returns {{ filename: string; files: string[] } | null}
  */
-function readPackedFilename(stdout) {
+function readPackedEntry(stdout) {
   /** @type {unknown} */
   let parsed;
   try {
@@ -515,7 +532,33 @@ function readPackedFilename(stdout) {
   const [entry] = parsed;
   if (typeof entry !== 'object' || entry === null) return null;
   const filename = Reflect.get(entry, 'filename');
-  return typeof filename === 'string' && filename !== '' ? filename : null;
+  if (typeof filename !== 'string' || filename === '') return null;
+
+  const rawFiles = Reflect.get(entry, 'files');
+  if (!Array.isArray(rawFiles)) return null;
+  /** @type {string[]} */
+  const files = [];
+  for (const file of rawFiles) {
+    if (typeof file !== 'object' || file === null) return null;
+    const filePath = Reflect.get(file, 'path');
+    if (typeof filePath !== 'string' || filePath === '') return null;
+    files.push(filePath);
+  }
+
+  return { filename, files };
+}
+
+/**
+ * Normalizes `builtEntryPointOf`'s `./dist/index.js` to the form `npm pack
+ * --json`'s `files[].path` reports (`dist/index.js`) - npm always packs and
+ * reports posix paths regardless of platform, so stripping the leading `./`
+ * is the only normalization the comparison needs.
+ *
+ * @param {string} entryPoint
+ * @returns {string}
+ */
+function posixEntryPointOf(entryPoint) {
+  return entryPoint.startsWith('./') ? entryPoint.slice(2) : entryPoint;
 }
 
 /**

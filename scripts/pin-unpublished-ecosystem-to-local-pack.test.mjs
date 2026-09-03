@@ -282,10 +282,19 @@ describe('planLocalPackSubstitution', () => {
 });
 
 /**
+ * The `npm pack --json` body a harness case gets when it does not supply its
+ * own: a `files` list that DOES carry the fixture's entry point
+ * (`dist/index.js`), so a case testing something else does not also trip the
+ * entry-point-in-tarball check by omission.
+ */
+const PACK_JSON_WITH_ENTRY_POINT =
+  '[{"filename":"gears-frontx-ui-kit-0.4.0-alpha.2.tgz","files":[{"path":"package.json"},{"path":"dist/index.js"}]}]';
+
+/**
  * @param {string} root
  * @param {{ entryPointBuilt: boolean; packJson?: string; buildOk?: boolean }} options
  */
-function packHarness(root, { entryPointBuilt, packJson = '[{"filename":"gears-frontx-ui-kit-0.4.0-alpha.2.tgz"}]', buildOk = true }) {
+function packHarness(root, { entryPointBuilt, packJson = PACK_JSON_WITH_ENTRY_POINT, buildOk = true }) {
   /** @type {string[]} */
   const ran = [];
   /** @type {import('./pin-unpublished-ecosystem-to-local-pack.mjs').RunCommandFn} */
@@ -392,6 +401,33 @@ describe('packSubstitutedPackages', () => {
     expect(packed.ok).toBe(false);
     if (packed.ok) return;
     expect(packed.reason).toBe('pack-failed');
+  });
+
+  it('refuses when npm pack ships a tarball missing the entry point the working tree has on disk', async () => {
+    const root = await makeRoot();
+    await writeJson(path.join(root, 'packages', 'ui-kit', 'package.json'), {
+      name: '@gears-frontx/ui-kit',
+      version: '0.4.0-alpha.2',
+      exports: { '.': { import: './dist/index.js' } },
+    });
+    // The working-tree check above the `npm pack` call passes: the file is
+    // really there. Only `npm pack`'s OWN `files` allowlist excludes it -
+    // exactly the gap a pre-pack check alone cannot see.
+    await mkdir(path.join(root, 'packages', 'ui-kit', 'dist'), { recursive: true });
+    writeFileSync(path.join(root, 'packages', 'ui-kit', 'dist', 'index.js'), '');
+    const { runCommand } = packHarness(root, {
+      entryPointBuilt: false,
+      packJson: '[{"filename":"gears-frontx-ui-kit-0.4.0-alpha.2.tgz","files":[{"path":"package.json"}]}]',
+    });
+    await mkdir(inPackDir(root), { recursive: true });
+    await writeFile(inPackDir(root, 'gears-frontx-ui-kit-0.4.0-alpha.2.tgz'), '');
+
+    const packed = packSubstitutedPackages({ repoRoot: root, treeDir: inTree(root), substitutions: [UI_KIT_SUBSTITUTION], runCommand });
+
+    expect(packed.ok).toBe(false);
+    if (packed.ok) return;
+    expect(packed.reason).toBe('entry-point-not-packed');
+    expect(packed.message).toContain('dist/index.js');
   });
 });
 
