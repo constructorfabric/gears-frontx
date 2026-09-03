@@ -172,8 +172,9 @@
     },
     "props_schema": {
       "type": "string",
-      "pattern": "^gts://gts\\.frontx\\.uikit\\.component\\.[a-z_][a-z0-9_]*\\.v\\d+~$",
-      "description": "URI of the machine-owned half: the compiled JSON Schema carrying axes, defaults and normative props. Split so the semantic half stays readable and the props half stays a plain provider-safe schema."
+      "pattern": "^gts://gts\\.frontx\\.uikit\\.base\\.component\\.v1~frontx\\.uikit\\.component\\.[a-z_][a-z0-9_]*\\.v\\d+~$",
+      "description": "URI of the machine-owned half: the compiled JSON Schema carrying axes, defaults and normative props. Split so the semantic half stays readable and the props half stays a plain provider-safe schema. A derived-type id: the abstract base component type, then the component's own segment, so the pattern also asserts that the props schema really is a child of the base and not a lookalike.",
+      "$comment": "Two segments of 5 dot-tokens each after the fixed `gts.` scheme prefix - the shape gts-ts's Gts.parseSegment accepts (vendor.package.namespace.type.vMAJOR)."
     }
   },
   "required": [

@@ -74,5 +74,5 @@
       }
     ]
   },
-  "props_schema": "gts://gts.frontx.uikit.component.button.v1~"
+  "props_schema": "gts://gts.frontx.uikit.base.component.v1~frontx.uikit.component.button.v1~"
 }

@@ -1,7 +1,9 @@
 // Contract compiler: merges code-extracted facts with the hand-written
 // overlay into two GTS-typed artifacts.
 //
-//   <out>.json          - props schema, $id gts://gts.frontx.uikit.component.<c>.v1~
+//   <out>.json          - props schema, a DERIVED type whose $id chains the
+//                         abstract base component type:
+//                         gts://gts.frontx.uikit.base.component.v1~frontx.uikit.component.<c>.v1~
 //   <out>.instance.json - contract instance, typed by the metamodel
 //                         gts://gts.frontx.uikit.meta.component.v1~
 //
@@ -9,6 +11,19 @@
 // the metamodel is a GTS type, so a malformed contract fails the same
 // validator that checks component props, not a review comment. The two stay
 // linked through the instance's props_schema field.
+//
+// A component's props schema is not a standalone schema that happens to look
+// like its neighbours: it derives from base.component.json and composes one
+// shared passthrough type per element kind (passthrough.dom-button.json for
+// anything backed by a <button>). Those two are hand-written source, not
+// compiled output - they describe no component's code, so there is nothing to
+// extract for them; they live next to this file and are read here and by the
+// conformance test. What the derivation buys is closure: because the
+// forwarded DOM props are declared by a schema this one $refs, the derived
+// type can set `unevaluatedProperties: false` and reject a typo'd kit prop
+// without also rejecting className, aria-* or data-*. `additionalProperties`
+// could not do that job - it cannot see through $ref or allOf, so it would
+// reject every inherited prop.
 //
 // The compiled JSON is the canonical contract every consumer reads (Ajv,
 // gtsPlugin.registerSchema, projections, the lint). In the real build it is
@@ -59,9 +74,19 @@ export interface ContractInstance extends Omit<Overlay, 'component'> {
 }
 
 export interface ContractProperty {
-  type: string;
+  // Absent for a slot: a ReactNode or render prop has no JSON Schema type.
+  // The property is still declared (with annotations only, no assertions) so
+  // that `unevaluatedProperties: false` counts it as evaluated and lets it
+  // through - a contract that rejected `icon` would be wrong, not strict.
+  // Its real type stays in x-uikit.slots, where the lint and tsc read it.
+  type?: string;
   enum?: string[];
   default?: string;
+  description?: string;
+}
+
+export interface SchemaRef {
+  $ref: string;
 }
 
 export interface CompiledContract {
@@ -69,7 +94,15 @@ export interface CompiledContract {
   $schema: string;
   title: string;
   type: 'object';
+  // Base first: gts-ts treats the FIRST $ref in allOf as the parent of the
+  // derived type (store.findParentRef), which is what makes the chained $id
+  // above and the schema body agree about who the parent is.
+  allOf: SchemaRef[];
   properties: Record<string, ContractProperty>;
+  // Closes the kit's own surface. Must be `unevaluatedProperties`, not
+  // `additionalProperties`: the latter only sees sibling `properties` and
+  // would reject everything reached through the allOf refs above.
+  unevaluatedProperties: false;
   'x-uikit': {
     metamodel: string;
     slots: Record<string, { typeText: string; optional: boolean }>;
@@ -85,6 +118,50 @@ const METAMODEL_VERSION = '0.1.0-demo';
 
 // Type id of ui-component.meta.json; prefixes every instance id.
 const METAMODEL_TYPE_ID = 'gts.frontx.uikit.meta.component.v1';
+
+// Type id of base.component.json - the parent of every component props
+// schema, and the first segment of their chained ids.
+//
+// Namespace `base`, type `component`, NOT the shorter
+// `gts.frontx.uikit.component.v1~` the review sketched: gts-ts strips the
+// fixed `gts.` scheme prefix and then requires each segment to carry 5 or 6
+// dot-tokens (vendor.package.namespace.type.vMAJOR[.minor], see
+// Gts.parseSegment). `frontx.uikit.component.v1` is four, so that id parses
+// as "Too few tokens"; `frontx.uikit.base.component.v1` is five and parses
+// as vendor=frontx, package=uikit, namespace=base, type=component, v1.
+export const BASE_TYPE_ID = 'gts://gts.frontx.uikit.base.component.v1~';
+
+// Shared passthrough type per element kind. Everything the kit backs with a
+// <button> composes this one; a link-like component would chain a
+// dom_anchor type instead of restating the same attributes.
+export const PASSTHROUGH_TYPE_ID = 'gts://gts.frontx.uikit.passthrough.dom_button.v1~';
+
+// The hand-written normative types this compiler composes. Read from disk
+// rather than inlined so the artifacts, the conformance test and Ajv all see
+// one copy of each.
+const SCHEMA_DIR = dirname(fileURLToPath(import.meta.url));
+
+export function loadBaseSchema(): Record<string, unknown> {
+  return JSON.parse(readFileSync(join(SCHEMA_DIR, 'base.component.json'), 'utf8')) as Record<string, unknown>;
+}
+
+export function loadPassthroughSchema(): Record<string, unknown> {
+  return JSON.parse(readFileSync(join(SCHEMA_DIR, 'passthrough.dom-button.json'), 'utf8')) as Record<
+    string,
+    unknown
+  >;
+}
+
+// Props the passthrough type already owns. A component that re-declares one
+// of them in its own Props interface (Button re-declares `className`,
+// because Base UI's Props omits it) must not get a second, competing
+// declaration in its own schema: one prop, one owner. They stay allowed -
+// the passthrough $ref evaluates them.
+function passthroughOwnedProps(): Set<string> {
+  const passthrough = loadPassthroughSchema();
+  const properties = (passthrough.properties ?? {}) as Record<string, unknown>;
+  return new Set(Object.keys(properties));
+}
 
 // Machine-owned fields the overlay must not restate - one fact, one owner.
 const MACHINE_OWNED = ['axes', 'props', 'defaults', 'variants'];
@@ -106,8 +183,12 @@ function gtsToken(component: string): string {
 
 // The props schema's own type id - the value the instance's props_schema
 // points at, so the two artifacts can never drift apart by hand.
-function propsSchemaId(component: string): string {
-  return `gts://gts.frontx.uikit.component.${gtsToken(component)}.v1~`;
+//
+// A GTS derived-type id is the parent id followed by the derived segment,
+// each segment closed by `~`: the component is not a namesake of the base
+// type, it is a child of it, and the id says so without a lookup.
+export function propsSchemaId(component: string): string {
+  return `${BASE_TYPE_ID}frontx.uikit.component.${gtsToken(component)}.v1~`;
 }
 
 function loadOverlay(component: string): Overlay {
@@ -153,18 +234,26 @@ export function compileContract(component: string): CompiledContract {
 
   const properties: Record<string, ContractProperty> = {};
   const slots: CompiledContract['x-uikit']['slots'] = {};
+  const inherited = passthroughOwnedProps();
   for (const [axis, values] of Object.entries(extraction.axes)) {
     properties[axis] = { type: 'string', enum: values };
     if (extraction.defaults[axis] !== undefined) properties[axis].default = extraction.defaults[axis];
   }
   for (const prop of extraction.ownProps) {
+    // Declared by the passthrough type already - leave it there.
+    if (inherited.has(prop.name)) continue;
     const normative = NORMATIVE_TYPES[prop.typeText];
     if (normative) {
       properties[prop.name] = { ...normative };
     } else {
       // Not expressible in the provider-safe subset - recorded as a slot
-      // with its source type, checked by the lint, not by Ajv.
+      // with its source type, checked by the lint, not by Ajv. It still gets
+      // an annotation-only property entry, or `unevaluatedProperties: false`
+      // below would reject a correct `<Button icon={...} />`.
       slots[prop.name] = { typeText: prop.typeText, optional: prop.optional };
+      properties[prop.name] = {
+        description: `Slot: ${prop.typeText}. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.slots.`,
+      };
     }
   }
 
@@ -173,7 +262,9 @@ export function compileContract(component: string): CompiledContract {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     title: `UiKit ${component} contract`,
     type: 'object',
+    allOf: [{ $ref: BASE_TYPE_ID }, { $ref: PASSTHROUGH_TYPE_ID }],
     properties,
+    unevaluatedProperties: false,
     'x-uikit': {
       metamodel: METAMODEL_VERSION,
       intent: overlay.intent,
