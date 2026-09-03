@@ -450,6 +450,27 @@ owes every one of them itself:**
   report, the per-category checklist walk, and every disclosure this step
   requires are composed by the run from the driver's JSON result.
 
+**Where the applied template brings a verification flow of its own, that flow
+leads the design review and this walk keeps the functional side.** A template may
+contribute a skill that reviews the rendered interface against a design contract
+it also ships. Discover it as a capability rather than by name - a skill of that
+kind among the ones the template activated under `.frontx/ai/<template-identity>/`
+- exactly as a unit-adding procedure is discovered, because naming a particular
+template here would put solution knowledge in the solution-agnostic base. Where
+one is present it is authoritative for the question it answers: whether what
+rendered is right. This step does not run those checks again, does not restate
+their findings as its own, and does not read their presence either as a reason to
+skip the walk or as a driver failure to fall back from.
+
+**What stays with this walk in every case is what no design contract answers**:
+that every checkpoint the project declared was actually reached, that every
+declared value of every declared axis became active against its own control, that
+each read-back agreed with the page, and that the coverage file and the report
+state honestly what was exercised and what was not. **Neither side covers for the
+other.** A design review that passed says nothing about a checkpoint the walk
+never arrived at, and a walk that arrived everywhere says nothing about what the
+pixels look like. The report carries both and names which produced which.
+
 **Hand-authored browser calls are the fallback, and only when the driver itself
 fails.** Not when it is inconvenient, not when its flags need working out, and
 not when a hand-written batch looks quicker. Three separate agent hosts driven

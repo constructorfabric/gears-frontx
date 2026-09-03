@@ -11,7 +11,10 @@ rule is the wording that governs and this file is what is out of date.
 
 Nothing here adds a check to what a covering skill declares. Which checks exist is
 the covering skill's to say; this file governs only how honestly the run reports
-whatever it ran.
+whatever it ran. That holds for a verification flow an applied template brought
+with it too: where one led the design review, this file accounts for the walk's
+own coverage and the report carries that flow's findings beside it, rather than
+re-accounting them here as categories this walk was ever supposed to establish.
 
 Many of the mechanics these items account for are performed by the driver the skill
 ships and runs, so several items below are satisfied by that program's own result
