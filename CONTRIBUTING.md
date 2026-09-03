@@ -63,7 +63,7 @@ git commit -s -m "feat: describe the change"
 
 To add a missing sign-off to the latest commit, run `git commit --amend -s --no-edit`. To sign off a range of commits, run `git rebase --signoff <base>` (e.g. `git rebase --signoff HEAD~3` to cover the last three), then push with `--force-with-lease`. Note that `git rebase --signoff` appends the trailer even when a `Signed-off-by` already exists earlier in the message (it only skips when an identical sign-off is last), so rebasing over already-signed commits that end in `Co-Authored-By` adds a duplicate line - pick a `<base>` that spans only the commits missing the trailer.
 
-This is enforced locally by a `commit-msg` hook (`require-signoff` in [`.pre-commit-config.yaml`](.pre-commit-config.yaml)); commits without the trailer are rejected before they're made. The hook is installed automatically by `npm install` (via the `prepare` script) — if commits aren't being checked, run `npx prek install`.
+This is enforced locally by a `commit-msg` hook (`require-signoff` in [`.pre-commit-config.yaml`](.pre-commit-config.yaml), backed by `scripts/check-dco-signoff.mjs`); commits without the trailer, or whose trailer matches neither the author nor the committer, are rejected before they're made; merge commits are exempt, as they are in CI. The hook only runs for `git commit` — `git cherry-pick`, `git rebase` and `git rebase --signoff` bypass `commit-msg` hooks entirely, so check those results yourself. CI's DCO check enforces the same rules after push, where fixing it means rewriting history. The hook is installed automatically by `npm install` (via the `prepare` script) — if commits aren't being checked, run `npx prek install`.
 
 ## Versioning
 
