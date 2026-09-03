@@ -6,6 +6,7 @@
 // @cpt-dod:cpt-frontx-dod-cli-invocation-executable-entrypoint:p1
 // @cpt-dod:cpt-frontx-dod-cli-invocation-usage-help:p1
 // @cpt-dod:cpt-frontx-dod-cli-invocation-exit-codes:p1
+// @cpt-dod:cpt-frontx-dod-cli-invocation-json-envelope-dispatch:p1
 //
 // The `frontx` executable entrypoint (F18, `cpt-frontx-feature-cli-invocation`).
 // Parses the process invocation, dispatches `frontx <command> [args]` to the
@@ -24,51 +25,76 @@ import { fileURLToPath } from 'node:url';
 
 import { installCommand } from './commands/install';
 import type { InstallCommandResult } from './commands/install';
-import { listCommand, listJsonEnvelope } from './commands/list';
+import { buildListCatalog, listCatalogEnvelope, formatListHuman } from './commands/list';
 import { updateLocalCommand } from './commands/update-local';
 import { validateCommand } from './commands/validate';
+import { validateProject } from './commands/validate-project';
+import type { ValidateProjectOutcome } from './commands/validate-project';
+import { assembleBatch } from './commands/assemble';
+import type { AssembleOutcome } from './commands/assemble';
+import { runApplyPipeline } from './commands/apply';
+import type { ApplyBatchOutcome, ApplyPipelineDeps } from './commands/apply';
 import { seedRepository } from './commands/seed-repository';
-import { addTemplate } from './commands/add-template';
+import type { SeedRepositoryOutcome } from './commands/seed-repository';
 import { upgradeCommand } from './commands/upgrade';
+import type { UpgradeCommandOutcome, UpgradeDirection } from './commands/upgrade';
+import type { UpgradeEngineDeps } from './upgrade/flow';
+import { renderReviewablePlan } from './upgrade/plan';
+import { createResolvePayloadFn } from './upgrade/payload';
+import { readProjectState } from './project-state/io';
+import { resolveRegisteredExcludedSubtrees } from './scaffold/registered-manifest';
+import {
+  createFsReadDiskEntryFn,
+  createFsListDiskFilesFn,
+  createFsWriteDiskFileFn,
+  createFsRenameDiskFileFn,
+  createFsUnlinkDiskFileFn,
+} from './adapters/fs-upgrade-io';
+import { registerTemplate } from './commands/register';
+import type { RegisterOutcome } from './commands/register';
+import { unregisterTemplate } from './commands/unregister';
+import type { UnregisterOutcome } from './commands/unregister';
+import { ownershipAdd, ownershipRemove, ownershipList } from './commands/ownership';
+import type { OwnershipAddOutcome, OwnershipRemoveOutcome, OwnershipListOutcome } from './commands/ownership';
+import { deleteTarget } from './commands/delete';
+import { materializeOrRemoveAiBundle } from './scaffold/ai-bundle';
+import type { RemoveAiBundleFn } from './commands/delete';
+import { createFsBundleExistsFn, createFsCopyBundleFn, createFsRemoveBundleFn } from './adapters/fs-ai-bundle';
+import type { DeleteOutcome, ConfirmDeletionFn } from './commands/delete';
 
 import { TemplateInventory } from './inventory/TemplateInventory';
-import type { InventoryEntry } from './inventory/types';
 import type { FetchFn } from './resolver/types';
 import type { ReadContentItemsFn, WriteFileFn } from './scaffold/types';
-import type { BoundaryConflictEntry } from './scaffold/state';
-import type { ListContentOwnedFilesFn, ReadFileFn } from './manifest/types';
-import type { ProvenanceWriteFn } from './provenance/types';
-import type { ReadProvenanceRecordsFn } from './scaffold/materialize';
-import type { ReadTargetDirFn } from './commands/seed-repository';
+import type { CanonicalizeTargetFn } from './scaffold/conflict-check';
+import type { ResolveInstalledContentPathFn, UniformApplyBatch } from './scaffold/assembler';
+import type { ReadExistingContentFn, ReadInstalledContentFn } from './scaffold/existing-content';
+import { createFsReadExistingContentFn, createFsReadInstalledContentFn } from './adapters/fs-existing-content';
+import { resolveInstalledContentPath } from './adapters/fs-installed-content-path';
+import type { ListPayloadFilesFn, ResolveDeclaredExclusionFn, ReadFileFn } from './manifest/types';
+import type { ListFolderFilesFn, PathExistsFn } from './resolver/types';
 import type { ReadTargetPathStateFn } from './commands/add-template';
-import type {
-  ReadProjectFileFn,
-  WriteProjectFileFn,
-  RemoveProjectFileFn,
-  PresentAndGetApprovalFn,
-  ChangeSet,
-  ReadProvenanceFn,
-} from './upgrade/types';
+import type { ReadProjectStateFn, WriteProjectStateFn } from './project-state/types';
+import type { ListTargetFilesFn } from './scaffold/delete-plan';
+import type { RemoveProjectFileFn, PresentUpgradePlanFn } from './upgrade/types';
+import { ok, err } from './envelope';
 
 import { FsInventoryIndex } from './adapters/fs-inventory-index';
 import { FsContentStore } from './adapters/fs-content-store';
 import { createFsReadContentItemsFn } from './adapters/fs-read-content-items';
 import { createGithubFetchFn, resolveInventoryRoot } from './adapters/github-fetch';
 import { createLocalFetchFn } from './adapters/local-fetch';
-import { createFsReadTargetDirFn } from './adapters/fs-target-dir';
 import { createFsReadTargetPathStateFn } from './adapters/fs-target-path';
-import {
-  createFsProvenanceWriteFn,
-  readProvenanceRecords,
-  createFsReadSingleProvenanceFn,
-} from './adapters/provenance-io';
 import {
   createFsWriteFileFn,
   createFsReadFileFn,
-  createFsListContentOwnedFilesFn,
-  createFsReadProjectFileFn,
-  createFsWriteProjectFileFn,
+  createFsListPayloadFilesFn,
+  createFsResolveDeclaredExclusionFn,
   createFsRemoveProjectFileFn,
+  createFsReadProjectStateFn,
+  createFsWriteProjectStateFn,
+  createFsCanonicalizeTargetFn,
+  createFsListTargetFilesFn,
+  createFsPathExistsFn,
 } from './adapters/fs-project-io';
 
 // --- exit-code state machine (cpt-frontx-state-cli-invocation-run) ---
@@ -87,7 +113,20 @@ export interface CommandOutcome {
 
 // --- argv parse (cpt-frontx-algo-cli-invocation-parse-dispatch) ---
 
-const KNOWN_COMMANDS = ['install', 'list', 'update-local', 'validate', 'seed', 'add', 'upgrade'] as const;
+const KNOWN_COMMANDS = [
+  'install',
+  'list',
+  'update-local',
+  'validate',
+  'assemble',
+  'seed',
+  'apply',
+  'upgrade',
+  'register',
+  'unregister',
+  'ownership',
+  'delete',
+] as const;
 export type KnownCommand = (typeof KNOWN_COMMANDS)[number];
 
 const HELP_TOKENS = new Set(['help', '-h', '--help']);
@@ -134,15 +173,30 @@ export function usageText(): string {
     '  list [--json]                           List installed templates (--json: one record per entry)',
     '  update-local <identity> <spec>          Update a locally installed template',
     '  validate <templateDir>                  Validate a template manifest for publication',
-    '  seed <templateRef> <targetDir>          Seed a new repository from a template',
-    '  add <templateRef> <targetDir>           Add a template into an existing repository',
-    '  upgrade <projectRoot> <targetVersion> [--yes] [--json]  Upgrade an applied template',
+    '  validate --project [--json]             Validate .frontx/project.json against reality',
+    '  assemble --input <batch-json> [--json]  Preview an explicit batch; writes nothing',
+    '  seed <dir> --input <batch-json> [--adopt-existing] [--json]',
+    '                                           Seed a new or empty repository from a batch',
+    '  apply --input <batch-json> [--adopt-existing] [--json]',
+    '                                           Apply a batch into an already-assembled repository',
+    '  upgrade <templateName> <new-origin> [--yes] [--json]   Upgrade a registered template to a new origin',
+    '  upgrade <templateName> --restore [--yes] [--json]      Restore a template to its immediately preceding origin',
+    '  register <origin> [--replace] [--json]  Register a template origin under the current project',
+    '  unregister <name> [--json]              Unregister a template with no applied targets',
+    '  ownership add <path> [--json]           Mark an existing path as project-owned',
+    '  ownership remove <path> [--json]        Un-mark a project-owned path',
+    '  ownership list [--json]                 List the project-owned root paths',
+    '  delete <target> [--json] [--yes] [--dry-run]  Delete an applied template target',
     '  help                                    Show this usage summary',
     '',
     'A source-spec is host:owner/repo[//subtree]@ref — the optional //subtree',
     'addresses a template that occupies a subdirectory of a repository.',
     'A template is identified by the name its own manifest declares, which is what',
-    'list reports and what seed, add and update-local expect.',
+    'list reports and what update-local expects.',
+    '',
+    'A batch is JSON shaped {"templates": {"<name>": ["<target>", ...]}} — for each',
+    'template name already registered under the current project, the target or',
+    'targets to apply it to. assemble/apply/seed all accept the identical shape.',
     '',
   ].join('\n');
 }
@@ -155,16 +209,63 @@ export interface CliDeps {
   readContentFn: ReadContentItemsFn;
   writeFileFn: WriteFileFn;
   readFileFn: ReadFileFn;
-  listContentOwnedFilesFn: ListContentOwnedFilesFn;
-  provenanceWriteFn: ProvenanceWriteFn;
-  readProvenanceRecordsFn: ReadProvenanceRecordsFn;
-  readTargetDirFn: ReadTargetDirFn;
+  listPayloadFilesFn: ListPayloadFilesFn;
+  resolveDeclaredExclusionFn: ResolveDeclaredExclusionFn;
   readTargetPathStateFn: ReadTargetPathStateFn;
-  readSingleProvenanceFn: ReadProvenanceFn;
-  readProjectFile: ReadProjectFileFn;
-  writeProjectFile: WriteProjectFileFn;
+  // `register`/`assemble`/`apply`/`seed`/`upgrade` — the shared resolver's
+  // own local-`path:`-origin seams (`resolver/types.ts`'s `LocalOriginDeps`):
+  // confirms a folder actually exists (containment alone cannot) and
+  // enumerates its regular files. Reused, not duplicated, across every
+  // command that can resolve a local origin.
+  existsFn: PathExistsFn;
+  listFolderFilesFn: ListFolderFilesFn;
+  // `assemble`/`apply`/`seed` (`cpt-frontx-algo-cli-scaffolding-uniform-
+  // apply`'s own seam) — resolves a name already installed in the local
+  // inventory to its real on-disk installed content directory. Stored here
+  // (rather than built ad hoc at each dispatch site) because it closes over
+  // `inventoryRoot`, known only inside this factory.
+  resolveInstalledContentPathFn: ResolveInstalledContentPathFn;
+  // `assemble`/`apply`/`seed` — FACTORIES, not built values, because each
+  // closes over a project root only known at dispatch time (`apply`
+  // operates on the current working directory; `seed` operates on its own
+  // `<dir>` argument), the same reason `createCanonicalizeTargetFn` below is
+  // a factory rather than a built value.
+  createReadInstalledContentFn: (repoRoot: string) => ReadInstalledContentFn;
+  createReadExistingContentFn: (repoRoot: string) => ReadExistingContentFn;
+  // `delete` — reused directly by `upgrade`'s own commit for removing a
+  // landed destination it needs to reverse; NOT reused for `upgrade`'s own
+  // commit-phase disk writes, which go through `adapters/fs-upgrade-io.ts`'s
+  // dedicated seams instead (see the `upgrade` dispatch case below for why:
+  // that engine's `WriteDiskFileFn`/`RenameDiskFileFn`/`UnlinkDiskFileFn`
+  // shapes are deliberately distinct from this generic one, per `upgrade/
+  // types.ts`'s own header).
   removeProjectFile: RemoveProjectFileFn;
-  presentAndGetApproval: PresentAndGetApprovalFn;
+  // `register`/`unregister`/`ownership add|remove|list` — the single
+  // project state document's own read/write seams (`.frontx/project.json`).
+  // `createCanonicalizeTargetFn` is a FACTORY rather than a built
+  // `CanonicalizeTargetFn` value because it closes over a project root that
+  // is only known at dispatch time (these three commands take no explicit
+  // project-root argument — they operate on the current working directory,
+  // per their FEATURE flows' own signatures), unlike every other entry here.
+  readProjectStateFn: ReadProjectStateFn;
+  writeProjectStateFn: WriteProjectStateFn;
+  createCanonicalizeTargetFn: (repoRoot: string) => CanonicalizeTargetFn;
+  // `delete` — enumerates real on-disk paths under an arbitrary applied
+  // target (`cpt-frontx-algo-cli-scaffolding-delete-plan`), DISTINCT from
+  // `listPayloadFilesFn` above, which is scoped to a template's own
+  // directory and skips `node_modules` (see `scaffold/delete-plan.ts`'s own
+  // `ListTargetFilesFn` doc comment for why reusing that seam here would be
+  // wrong). `removeProjectFile` above is reused directly for removing one
+  // `toDelete` entry — no second "remove a file" seam is added for it.
+  listTargetFilesFn: ListTargetFilesFn;
+  confirmDeletion: ConfirmDeletionFn;
+  // `upgrade` — the interactive (non-`--json`) plan-approval prompt,
+  // symmetric to `confirmDeletion` above: printed to stdout, read from
+  // stdin, defaulting to No on anything but an explicit affirmative
+  // (`createInteractiveUpgradeApproval`'s own doc comment). Never called at
+  // all in `--json` mode — see the `upgrade` dispatch case for that
+  // protocol.
+  presentUpgradePlan: PresentUpgradePlanFn;
 }
 
 /** Assembles the real, fs/network-backed dependency set for the `frontx` executable. */
@@ -183,26 +284,69 @@ export function createRealDeps(): CliDeps {
     readContentFn: createFsReadContentItemsFn(inventoryRoot),
     writeFileFn: createFsWriteFileFn(),
     readFileFn: createFsReadFileFn(),
-    listContentOwnedFilesFn: createFsListContentOwnedFilesFn(),
-    provenanceWriteFn: createFsProvenanceWriteFn(),
-    readProvenanceRecordsFn: readProvenanceRecords,
-    readTargetDirFn: createFsReadTargetDirFn(),
+    listPayloadFilesFn: createFsListPayloadFilesFn(),
+    resolveDeclaredExclusionFn: createFsResolveDeclaredExclusionFn(),
     readTargetPathStateFn: createFsReadTargetPathStateFn(),
-    readSingleProvenanceFn: createFsReadSingleProvenanceFn(),
-    readProjectFile: createFsReadProjectFileFn(),
-    writeProjectFile: createFsWriteProjectFileFn(),
+    existsFn: createFsPathExistsFn(),
+    listFolderFilesFn: createFsListDiskFilesFn(),
+    resolveInstalledContentPathFn: (name: string) => resolveInstalledContentPath(inventoryRoot, name),
+    createReadInstalledContentFn: createFsReadInstalledContentFn,
+    createReadExistingContentFn: createFsReadExistingContentFn,
     removeProjectFile: createFsRemoveProjectFileFn(),
-    presentAndGetApproval: createInteractiveApproval(),
+    readProjectStateFn: createFsReadProjectStateFn(),
+    writeProjectStateFn: createFsWriteProjectStateFn(),
+    createCanonicalizeTargetFn: createFsCanonicalizeTargetFn,
+    listTargetFilesFn: createFsListTargetFilesFn(),
+    confirmDeletion: createInteractiveDeletionConfirm(),
+    presentUpgradePlan: createInteractiveUpgradeApproval(),
   };
 }
 
-/** Prints the reviewable change set and prompts on stdin for approval. */
-function createInteractiveApproval(): PresentAndGetApprovalFn {
-  return async function presentAndGetApproval(changeSet: ChangeSet): Promise<'approved' | 'declined'> {
-    process.stdout.write(`${JSON.stringify(changeSet, null, 2)}\n`);
+/** Prints the computed plan and prompts on stdin for confirmation, defaulting to No. */
+function createInteractiveDeletionConfirm(): ConfirmDeletionFn {
+  return async function confirmDeletion(plan): Promise<'confirmed' | 'declined'> {
+    process.stdout.write(`Would delete:\n${plan.toDelete.map((p) => `  ${p}`).join('\n') || '  (nothing)'}\n`);
+    process.stdout.write(`Would preserve:\n${plan.toPreserve.map((p) => `  ${p}`).join('\n') || '  (nothing)'}\n`);
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     try {
-      const answer = await rl.question('Apply this change set? [y/N] ');
+      const answer = await rl.question(`Delete "${plan.target}"? [y/N] `);
+      return answer.trim().toLowerCase() === 'y' ? 'confirmed' : 'declined';
+    } finally {
+      rl.close();
+    }
+  };
+}
+
+/**
+ * Prints the computed upgrade plan and prompts on stdin for approval,
+ * defaulting to No on anything but an explicit affirmative — the identical
+ * discipline `createInteractiveDeletionConfirm` above applies for `delete`.
+ * Never constructed or called at all in `--json` mode: `commands/upgrade.ts`
+ * wires its own `presentPlan` there instead (see the `upgrade` dispatch case
+ * below), which never reads stdin.
+ */
+function createInteractiveUpgradeApproval(): PresentUpgradePlanFn {
+  return async function presentUpgradePlan(plan): Promise<'approved' | 'declined'> {
+    // Rendered from the PROJECTED plan, and as a file/action list rather than
+    // a JSON dump. `JSON.stringify(plan)` on the internal plan printed
+    // `expectedDisk`, `newContent` and `baselineContent` for every operation —
+    // up to three full copies of every changed file's bytes — as the thing a
+    // developer was supposed to "review". `cpt-frontx-adr-project-upgrade-
+    // mechanism` fixes whole-file granularity precisely so the review is "a
+    // list of files and actions, not ... textual deltas inside them".
+    const reviewable = renderReviewablePlan(plan);
+    const lines = [
+      `Upgrade "${reviewable.name}"`,
+      `  from ${reviewable.from.origin} (version ${reviewable.from.version})`,
+      `  to   ${reviewable.to.origin} (version ${reviewable.to.version})`,
+      `  targets: ${reviewable.targets.join(', ')}`,
+      ...reviewable.operations.map((operation) => `  ${operation.op.padEnd(10)} ${operation.path}`),
+      ...reviewable.skipped.map((entry) => `  ${'SKIPPED'.padEnd(10)} ${entry.path} (${entry.reason})`),
+    ];
+    process.stdout.write(`${lines.join('\n')}\n`);
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      const answer = await rl.question(`Apply this upgrade for "${plan.name}"? [y/N] `);
       return answer.trim().toLowerCase() === 'y' ? 'approved' : 'declined';
     } finally {
       rl.close();
@@ -210,82 +354,386 @@ function createInteractiveApproval(): PresentAndGetApprovalFn {
   };
 }
 
-// --- `--json` command-surface handshake (cpt-frontx-dod-ai-upgrade-orchestration-single-engine) ---
-//
-// The AI Tooling Framework's kit (`@gears-frontx/cyber-pilot-kit-frontx`)
-// coordinates with this CLI over its COMMAND SURFACE only (DESIGN §3.4) — it
-// never imports this package. `frontx list --json` (dispatched above) answers
-// what is installed; the handshake below is the upgrade path's protocol, which
-// needs more than one line because the engine pauses mid-run for a decision:
-// one JSON line carrying the raw change set BEFORE approval, one decision
-// line read back from stdin, and one final JSON line carrying the
-// `{ ok, status, message? }` result.
-
-/** Writes the raw change set as ONE JSON line to stdout and reads ONE decision line from stdin. */
-function createJsonApproval(): PresentAndGetApprovalFn {
-  return async function presentAndGetApprovalJson(changeSet: ChangeSet): Promise<'approved' | 'declined'> {
-    process.stdout.write(`${JSON.stringify({ changeSet })}\n`);
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });
-    try {
-      const answer = await rl.question('');
-      return answer.trim().toLowerCase() === 'approved' ? 'approved' : 'declined';
-    } finally {
-      rl.close();
-    }
-  };
-}
 
 // --- dispatch (cpt-frontx-flow-cli-invocation-run-command) ---
 
-/**
- * ADR-0032 requires the pre-flight conflict report to name "each contested
- * ground and its contesting templates" (`scaffold/conflict.ts` — the SOLE
- * authority that produces `BoundaryConflictEntry[]`). `seed`/`add` already
- * carry that detail on their `conflict` outcome, but until now this CLI
- * layer dropped it on the floor and printed only the generic abort message
- * — the refusal never actually named ground or contestants. One line per
- * conflict, appended to stderr below the generic message.
- */
-function formatConflictDetails(conflicts: BoundaryConflictEntry[]): string {
-  return conflicts
-    .map((c) => `  ground "${c.ground}" contested by: ${c.contestants.join(', ')}`)
-    .join('\n');
+// `assemble`/`apply`/`seed` all accept the identical batch shape
+// (`cpt-frontx-algo-cli-scaffolding-uniform-apply`'s own Input line) via one
+// `--input <json>` flag — parsed and validated here, at the dispatch layer,
+// exactly as `delete`'s `--json`/`--dry-run`/`--yes` flags are (`commands/
+// delete.ts`'s own header: flags are wired at the dispatch layer, never
+// inside the command module).
+function parseBatchInput(raw: string): { ok: true; batch: UniformApplyBatch } | { ok: false; message: string } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { ok: false, message: 'Batch input is not valid JSON.' };
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, message: 'Batch input must be a JSON object shaped {"templates": {"<name>": ["<target>", ...]}}.' };
+  }
+  const templatesRaw = (parsed as Record<string, unknown>).templates;
+  if (typeof templatesRaw !== 'object' || templatesRaw === null || Array.isArray(templatesRaw)) {
+    return { ok: false, message: 'Batch input must declare a "templates" object.' };
+  }
+  const templates: Record<string, string[]> = {};
+  for (const [name, targets] of Object.entries(templatesRaw as Record<string, unknown>)) {
+    if (!Array.isArray(targets) || !targets.every((t): t is string => typeof t === 'string')) {
+      return { ok: false, message: `Batch entry "${name}" must be an array of target strings.` };
+    }
+    templates[name] = targets;
+  }
+  return { ok: true, batch: { templates } };
 }
 
-// review #500 (fix 3/3): reads the SAME provenance SET
-// `createFsReadSingleProvenanceFn` bridges down to one record, so this
-// diagnostic can be produced HERE — where every other `upgrade` message is
-// decided — without the single-record bridge itself deciding to print
-// anything. `undefined` when there is nothing to report (zero or one
-// record): callers append this into an existing message only when present.
-async function formatMultiRecordUpgradeNotice(
-  projectRoot: string,
-  readProvenanceRecordsFn: ReadProvenanceRecordsFn,
-): Promise<string | undefined> {
-  const records = await readProvenanceRecordsFn(projectRoot);
-  if (records.length <= 1) return undefined;
-  const [selected, ...rest] = records;
-  const others = rest.map((record) => record.templateIdentity).join(', ');
-  return (
-    `[frontx] Multiple provenance records found; this repository has more than one applied ` +
-    `template. Upgrade targets the first-applied one ("${selected.templateIdentity}") — ` +
-    `per-template target selection is not yet supported, so the other applied template(s) ` +
-    `(${others}) cannot be selected for this upgrade.`
-  );
+// Extracts a `--flag <value>` pair from `args`, returning the value (or
+// `undefined` when the flag is absent or carries no following token) and
+// the remaining args with both the flag and its value removed — so a
+// caller can then filter the rest for its own boolean flags/positionals
+// without re-parsing the same two tokens a second time.
+function extractFlagValue(args: string[], flag: string): { value: string | undefined; rest: string[] } {
+  const index = args.indexOf(flag);
+  if (index === -1) return { value: undefined, rest: args };
+  const value = args[index + 1];
+  const rest = args.filter((_, i) => i !== index && i !== index + 1);
+  return { value, rest };
 }
 
-function joinNoticeAndMessage(notice: string | undefined, message: string | undefined): string | undefined {
-  return notice && message ? `${notice}\n${message}` : (notice ?? message);
+// The flow's own step 5 ("**IF** `--json` was requested, the entrypoint
+// suppresses every interactive prompt reachable from the dispatched
+// behavior") and the algorithm's `inst-pd-json-mode` are ONE formulation
+// seen from two altitudes, so they are carried on one piece of code rather
+// than given a second implementation each — the same co-location
+// `scaffold/effective-ownership.ts` uses for the apply and delete flows'
+// shared ownership subtraction.
+// @cpt-begin:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-json-suppress-prompt
+// @cpt-begin:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-json-mode
+// The ONE place `--json` is recognized, replacing the nine independent
+// `parseJsonMode(args)` reads this dispatcher used to carry.
+//
+// This is `inst-pd-json-mode`'s dispatcher-side half: recognizing the flag and
+// handing it to the dispatched behavior, which is what "instruct the dispatched
+// behavior to suppress every interactive prompt and to report any decision it
+// would otherwise ask about as structured data" asks of THIS algorithm. The
+// behavior's own half is the substitution each command makes on the strength of
+// it — `delete`'s `CONFIRMATION_REQUIRED` in place of a stdin prompt
+// (`inst-del-if-json-no-yes`), and `upgrade`'s identical substitution — each
+// owned by that command's own feature, not redefined here.
+//
+// Nine copies of one flag test is exactly the duplication that has already
+// produced defects elsewhere in this package (see `scaffold/registered-
+// manifest.ts`'s header): a tenth dispatch case added later would have had to
+// remember the spelling, and a case that misspelled it would silently run in
+// human mode while a caller parsed for an envelope.
+function parseJsonMode(args: string[]): boolean {
+  return args.includes('--json');
+}
+// @cpt-end:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-json-mode
+// @cpt-end:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-json-suppress-prompt
+
+// Step 7 of the flow — rendering the outcome as the single envelope value
+// under `--json`, or the human-readable form otherwise — is the same
+// obligation `inst-pd-render` states at the algorithm's altitude, so it is
+// discharged by the same collective of `render*Outcome` functions below.
+// @cpt-begin:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-render-output
+// @cpt-begin:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-render
+// `inst-pd-render` — rendering the dispatched behavior's outcome as the single
+// envelope value on stdout under `--json`, or the human-readable form
+// otherwise — is discharged COLLECTIVELY by the `render*Outcome` functions
+// below, one per dispatched behavior. There is deliberately no single generic
+// renderer: `cpt-frontx-adr-cli-machine-readable-output` fixes the envelope's
+// outer shape and its code vocabulary, but each command's `data` payload is its
+// OWN feature's to define, so a shared renderer would either have to know every
+// payload (coupling this dispatcher to every feature) or erase them into an
+// untyped blob. What every one of them does share is the envelope constructors
+// (`ok`/`err`) and the exit-code mapping, so the shape a caller parses is
+// uniform even though the payload is not.
+function renderAssembleOutcome(result: AssembleOutcome, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    return jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+  }
+  const data = { entries: result.entries };
+  const text =
+    result.entries.length === 0
+      ? 'Preview: nothing to apply.'
+      : result.entries.map((e) => `${e.templateName} -> ${e.target}`).join('\n');
+  return jsonMode
+    ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
+    : { exitCode: EXIT_SUCCESS, stdout: text };
 }
 
-function formatInstallResult(result: InstallCommandResult): CommandOutcome {
-  if (!result.ok) return { exitCode: EXIT_USER_ERROR, stderr: result.message };
+function renderApplyOutcome(result: ApplyBatchOutcome, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    return jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+  }
+  const data = { applied: result.applied, noop: result.noop };
+  const text = `Applied ${result.applied.length} target(s); ${result.noop.length} already recorded (no-op).`;
+  return jsonMode
+    ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
+    : { exitCode: EXIT_SUCCESS, stdout: text };
+}
+
+function renderSeedOutcome(result: SeedRepositoryOutcome, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    return jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+  }
+  const data = { registeredDefaults: result.registeredDefaults, applied: result.applied, noop: result.noop };
+  const text =
+    `Seeded — registered ${result.registeredDefaults.length} default template(s); ` +
+    `applied ${result.applied.length} target(s).`;
+  return jsonMode
+    ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
+    : { exitCode: EXIT_SUCCESS, stdout: text };
+}
+
+function formatInstallResult(result: InstallCommandResult, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    // `install` used to ignore `--json` outright: it wrote a human sentence to
+    // stderr and nothing at all to stdout, so a caller that asked for the
+    // machine-readable form got a successful-looking empty stream and a
+    // refusal it could not read. That is the exact failure the `list` dispatch
+    // above refuses a near-miss flag to avoid. The code now travels the whole
+    // way from the resolver, so a refused manifest reports
+    // `INVALID_MANIFEST` here rather than nothing.
+    return jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code ?? 'ORIGIN_UNAVAILABLE', result.message)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+  }
   const discoveryLine =
     result.discovery && result.discovery.triggered
       ? ` (AI-extension discovery: ${result.discovery.errorCount ?? 0} error(s))`
       : '';
-  return { exitCode: EXIT_SUCCESS, stdout: `${result.message}${discoveryLine}` };
+  return jsonMode
+    ? {
+        exitCode: EXIT_SUCCESS,
+        stdout: JSON.stringify(
+          ok({
+            message: result.message,
+            ...(result.discovery === undefined ? {} : { discovery: result.discovery }),
+          }),
+        ),
+      }
+    : { exitCode: EXIT_SUCCESS, stdout: `${result.message}${discoveryLine}` };
 }
+
+// --- register/unregister/ownership rendering (cpt-frontx-dod-cli-invocation-
+// json-envelope-dispatch) — the FIRST commands in this codebase to route
+// their outcome through the shared `envelope.ts` shape in `--json` mode,
+// rather than a bespoke shape of their own (contrast `upgrade`'s ad hoc
+// `{ok,status}` line above, kept exactly as-is per this checkpoint's ADDITIVE
+// scope). Human-readable mode renders the SAME data as text — one data
+// model, two renderings (ADR-0042) — never a second, independently-decided
+// shape.
+
+function renderRegisterOutcome(result: RegisterOutcome, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    return jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+  }
+  const data = { outcome: result.outcome, name: result.name, entry: result.entry };
+  const text =
+    result.outcome === 'noop'
+      ? `Template "${result.name}" is already registered from "${result.entry.origin}"; nothing to do.`
+      : result.outcome === 'created'
+        ? `Registered template "${result.name}" from "${result.entry.origin}" (version ${result.entry.version}).`
+        : `Replaced template "${result.name}"'s origin with "${result.entry.origin}" (version ${result.entry.version}).`;
+  return jsonMode
+    ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
+    : { exitCode: EXIT_SUCCESS, stdout: text };
+}
+
+function renderUnregisterOutcome(result: UnregisterOutcome, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    return jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+  }
+  return jsonMode
+    ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok({ name: result.name })) }
+    : { exitCode: EXIT_SUCCESS, stdout: `Unregistered template "${result.name}".` };
+}
+
+function renderOwnershipAddOutcome(result: OwnershipAddOutcome, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    return jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+  }
+  const data = { outcome: result.outcome, path: result.path, projectOwnedRoots: result.projectOwnedRoots };
+  const text =
+    result.outcome === 'noop'
+      ? `Path "${result.path}" is already project-owned; nothing to do.`
+      : `Marked "${result.path}" as project-owned.`;
+  return jsonMode
+    ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
+    : { exitCode: EXIT_SUCCESS, stdout: text };
+}
+
+function renderOwnershipRemoveOutcome(result: OwnershipRemoveOutcome, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    return jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+  }
+  const data = { path: result.path, projectOwnedRoots: result.projectOwnedRoots };
+  return jsonMode
+    ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
+    : { exitCode: EXIT_SUCCESS, stdout: `Removed "${result.path}" from project-owned roots (no-op if it was not present).` };
+}
+
+function renderOwnershipListOutcome(result: OwnershipListOutcome, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    return jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+  }
+  return jsonMode
+    ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok({ projectOwnedRoots: result.projectOwnedRoots })) }
+    : {
+        exitCode: EXIT_SUCCESS,
+        stdout:
+          result.projectOwnedRoots.length === 0
+            ? 'No project-owned roots recorded.'
+            : result.projectOwnedRoots.join('\n'),
+      };
+}
+
+// `validate --project` — cpt-frontx-flow-composed-provenance-validate-
+// project. Each error code maps to exactly the ONE `inst-valp-if-*`/
+// `inst-valp-return-*` pair the flow names for it, never a generic "if
+// failure" catch-all shared with a code that flow does not itself
+// distinguish: `VERSION_MISMATCH`, `ORIGIN_UNAVAILABLE`, `TARGET_CONFLICT`,
+// and `INVALID_PATH` are each reported through their OWN step, unlike every
+// register/unregister/ownership renderer above (which has only one failure
+// shape to report). `ValidateProjectErrorCode` is a CLOSED five-code union
+// (narrower than `ErrorCode`), so this switch carries no `default` branch: a
+// sixth code added to the algorithm's own output type without a matching
+// case here fails at COMPILE time rather than silently falling through to
+// the PASS branch below.
+function renderValidateProjectOutcome(result: ValidateProjectOutcome, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    switch (result.code) {
+      case 'PROJECT_INVALID':
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-if-invalid
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-invalid
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+        // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-invalid
+        // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-if-invalid
+      case 'VERSION_MISMATCH':
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-if-version-mismatch
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-version-mismatch
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+        // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-version-mismatch
+        // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-if-version-mismatch
+      case 'ORIGIN_UNAVAILABLE':
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-if-origin-unavailable
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-origin-unavailable
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+        // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-origin-unavailable
+        // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-if-origin-unavailable
+      case 'TARGET_CONFLICT':
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-if-target-conflict
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-target-conflict
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+        // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-target-conflict
+        // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-if-target-conflict
+      case 'INVALID_PATH':
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-if-invalid-path
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-invalid-path
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+        // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-invalid-path
+        // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-if-invalid-path
+    }
+  }
+  // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-pass
+  return jsonMode
+    ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok({ status: 'PASS' })) }
+    : { exitCode: EXIT_SUCCESS, stdout: 'PASS' };
+  // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-pass
+}
+
+function renderDeleteOutcome(result: DeleteOutcome, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    return jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+  }
+  const listText = (label: string, paths: string[]): string => `${label}:\n${paths.map((p) => `  ${p}`).join('\n') || '  (nothing)'}`;
+  if (result.outcome === 'dry-run') {
+    const data = { target: result.target, toDelete: result.toDelete, toPreserve: result.toPreserve };
+    const text = `Dry run for "${result.target}"\n${listText('Would delete', result.toDelete)}\n${listText('Would preserve', result.toPreserve)}`;
+    return jsonMode ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) } : { exitCode: EXIT_SUCCESS, stdout: text };
+  }
+  if (result.outcome === 'declined') {
+    const data = { target: result.target, toDelete: result.toDelete, toPreserve: result.toPreserve };
+    return jsonMode
+      ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
+      : { exitCode: EXIT_SUCCESS, stdout: `Deletion of "${result.target}" declined; nothing was deleted.` };
+  }
+  const data = {
+    target: result.target,
+    toDelete: result.toDelete,
+    toPreserve: result.toPreserve,
+    templateName: result.templateName,
+    wasLastTarget: result.wasLastTarget,
+  };
+  return jsonMode
+    ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
+    : { exitCode: EXIT_SUCCESS, stdout: `Deleted "${result.target}" (${result.toDelete.length} path(s) removed).` };
+}
+
+// `upgrade` — routes through the shared envelope exactly like `apply`/
+// `delete`/`register` (ADR-0042), never the retired bespoke `{ok, status}`
+// shape the old dispatch used. Every refusal, including the `--json`-
+// without-`--yes` `CONFIRMATION_REQUIRED` substitution `commands/upgrade.ts`
+// already applies, reports its code through this same envelope — this
+// function adds no second mapping for it.
+function renderUpgradeOutcome(result: UpgradeCommandOutcome, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    return jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+  }
+  if (result.outcome === 'noop') {
+    const data = { outcome: result.outcome, at: result.at };
+    return jsonMode
+      ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
+      : { exitCode: EXIT_SUCCESS, stdout: `Already at "${result.at.origin}" (version ${result.at.version}); nothing to do.` };
+  }
+  if (result.outcome === 'declined') {
+    const data = { outcome: result.outcome, plan: renderReviewablePlan(result.plan) };
+    return jsonMode
+      ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
+      : { exitCode: EXIT_SUCCESS, stdout: `Upgrade of "${result.plan.name}" declined; nothing was written.` };
+  }
+  const data = { outcome: result.outcome, plan: renderReviewablePlan(result.plan) };
+  return jsonMode
+    ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
+    : {
+        exitCode: EXIT_SUCCESS,
+        stdout: `Upgraded "${result.plan.name}" to "${result.plan.to.origin}" (version ${result.plan.to.version}).`,
+      };
+}
+// @cpt-end:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-render
+// @cpt-end:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-render-output
 
 /**
  * cpt-frontx-flow-cli-invocation-run-command / cpt-frontx-algo-cli-invocation-parse-dispatch
@@ -305,13 +753,26 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
   switch (command) {
     // dispatch -> cpt-frontx-flow-template-resolution-install (installCommand)
     case 'install': {
-      const [spec] = args;
-      if (!spec) return { exitCode: EXIT_USER_ERROR, stderr: 'install requires a <spec> argument.' };
+      const jsonMode = parseJsonMode(args);
+      const positional = args.filter((arg) => arg !== '--json');
+      const [spec, ...extra] = positional;
+      if (!spec) {
+        const message = 'install requires a <spec> argument.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
+      if (extra.length > 0) {
+        const message = `Unrecognized argument(s) for install: ${extra.join(', ')}. Usage: frontx install <spec> [--json]`;
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
       const result = await installCommand(spec, deps.inventory, deps.fetchFn);
-      return formatInstallResult(result);
+      return formatInstallResult(result, jsonMode);
     }
 
-    // dispatch -> cpt-frontx-flow-template-resolution-list (listCommand)
+    // dispatch -> cpt-frontx-flow-template-resolution-list (buildListCatalog)
     case 'list': {
       // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-check-args
       // `list` takes no positional argument and one recognized flag, so anything
@@ -336,43 +797,145 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-check-args
 
       // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-invoke
-      const jsonMode = args.includes('--json');
+      const jsonMode = parseJsonMode(args);
+      const repoRoot = process.cwd();
       // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-invoke
-      const entries = await listCommand(deps.inventory, { withDescriptions: jsonMode });
+
+      // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-project-invalid-check
+      // A PRESENT `.frontx/project.json` that does not satisfy the project-
+      // state contract refuses the listing rather than being ignored. It was
+      // ignored before: `list` never read the document at all, so a project
+      // whose state file had been hand-edited into invalid JSON still got
+      // `ok: true` and a full listing — a caller reading that stream is told
+      // the command succeeded while the state it lists against is
+      // unreadable, which is the same "one absence read as two facts"
+      // failure `ListEntry.manifestUnreadable` exists to prevent one level
+      // down.
+      //
+      // ABSENCE is deliberately not a failure: `readProjectState` answers a
+      // missing document with the initial empty shape (`inst-psio-absent-
+      // default`), so `list` outside any project still enumerates the
+      // inventory, and only a document that exists and does not parse
+      // reaches the refusal below. That is exactly the distinction the step
+      // draws by saying "a PRESENT `.frontx/project.json`".
+      const projectState = await readProjectState(repoRoot, deps.readProjectStateFn);
+      if (!projectState.ok) {
+        // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-project-invalid-return
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('PROJECT_INVALID', projectState.message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: projectState.message };
+        // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-project-invalid-return
+      }
+      // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-project-invalid-check
+
+      // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
+      // Three sets: the CLI's own built-in defaults (never from this project's
+      // state document), this project's `templates` map, and the local
+      // inventory entries not yet registered to it (`1.5 Machine-Readable
+      // Catalog Envelope`).
+      const catalog = await buildListCatalog(projectState.document.templates, deps.inventory, {
+        fetchFn: deps.fetchFn,
+        canonicalizeFn: deps.createCanonicalizeTargetFn(repoRoot),
+        existsFn: deps.existsFn,
+        listFolderFilesFn: deps.listFolderFilesFn,
+        readFileFn: deps.readFileFn,
+        repoRoot,
+      });
+      // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
+
       // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
       // ONE JSON line in the envelope F10 §1.5 fixes, matching the `frontx
       // upgrade --json` handshake's final result line, so the AI Tooling
       // Framework's kit obtains the selectable set over the same command
       // surface it already speaks (DESIGN §3.4) and never by reading this CLI's
-      // inventory storage. An empty inventory is an empty `templates`
-      // collection, not the human-facing message.
+      // inventory storage. An empty inventory is three empty collections, not
+      // the human-facing message.
       if (jsonMode) {
-        return { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(listJsonEnvelope(entries)) };
+        // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-return
+        return { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(listCatalogEnvelope(catalog)) };
+        // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-return
       }
       // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
-      const stdout =
-        entries.length === 0
-          ? 'No templates installed.'
-          : entries.map((e) => `${e.name}@${e.ref} (${e.source})`).join('\n');
-      return { exitCode: EXIT_SUCCESS, stdout };
+
+      // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-format
+      // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-empty-check
+      // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-empty-return
+      // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-return
+      return { exitCode: EXIT_SUCCESS, stdout: formatListHuman(catalog) };
+      // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-return
+      // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-empty-return
+      // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-empty-check
+      // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-format
     }
 
     // dispatch -> cpt-frontx-flow-template-resolution-update-local (updateLocalCommand)
     case 'update-local': {
-      const [name, spec] = args;
+      const jsonMode = parseJsonMode(args);
+      const positional = args.filter((arg) => arg !== '--json');
+      const [name, spec, ...extra] = positional;
       if (!name || !spec) {
-        return { exitCode: EXIT_USER_ERROR, stderr: 'update-local requires <identity> and <spec> arguments.' };
+        const message = 'update-local requires <identity> and <spec> arguments.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
+      if (extra.length > 0) {
+        const message = `Unrecognized argument(s) for update-local: ${extra.join(', ')}. Usage: frontx update-local <identity> <spec> [--json]`;
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
       const result = await updateLocalCommand(name, spec, deps.inventory, deps.fetchFn);
-      if (!result.ok) return { exitCode: EXIT_USER_ERROR, stderr: result.message };
-      return { exitCode: EXIT_SUCCESS, stdout: result.message };
+      if (!result.ok) {
+        // The last command in the surface to gain the envelope. Its refusals
+        // already carried a code from the inventory; there was simply no
+        // machine-readable form for them to travel in.
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code ?? 'ORIGIN_UNAVAILABLE', result.message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+      }
+      return jsonMode
+        ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok({ message: result.message })) }
+        : { exitCode: EXIT_SUCCESS, stdout: result.message };
     }
 
     // dispatch -> cpt-frontx-flow-template-manifest-validate-for-publication (validateCommand)
+    // dispatch -> cpt-frontx-flow-composed-provenance-validate-project (validateProject)
     case 'validate': {
+      const jsonMode = parseJsonMode(args);
+
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-invoke
+      if (args.includes('--project')) {
+        // No explicit project-root argument on this flow's own signature
+        // (`validate --project`) — mirrors `register`/`unregister`/
+        // `ownership`: it operates on the project the developer is standing
+        // in, exactly as `.frontx/project.json` is always resolved relative
+        // to.
+        const repoRoot = process.cwd();
+        // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-invoke
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-run-algorithm
+        const result = await validateProject(repoRoot, {
+          readProjectStateFn: deps.readProjectStateFn,
+          canonicalizeFn: deps.createCanonicalizeTargetFn(repoRoot),
+          existsFn: deps.existsFn,
+          listFolderFilesFn: deps.listFolderFilesFn,
+          readFileFn: deps.readFileFn,
+          fetchFn: deps.fetchFn,
+        });
+        // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-run-algorithm
+        // The granular `inst-valp-if-*`/`inst-valp-return-*` discrimination
+        // (one pair per error code, plus the PASS return) lives INSIDE
+        // `renderValidateProjectOutcome` itself, not here: that function is
+        // where the actual branch on `result.code` happens, so marking it
+        // there is where the marker is honest about which line runs for
+        // which finding, rather than wrapping this one generic call site
+        // with all five possible outcomes at once.
+        return renderValidateProjectOutcome(result, jsonMode);
+      }
+
       const [templateDir] = args;
       if (!templateDir) return { exitCode: EXIT_USER_ERROR, stderr: 'validate requires a <templateDir> argument.' };
-      const result = await validateCommand(templateDir, deps.readFileFn, deps.listContentOwnedFilesFn);
+      const result = await validateCommand(templateDir, deps.readFileFn, deps.listPayloadFilesFn, deps.resolveDeclaredExclusionFn);
       return {
         exitCode: result.exitCode === 0 ? EXIT_SUCCESS : EXIT_USER_ERROR,
         stdout: result.ok ? result.message : undefined,
@@ -380,138 +943,587 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       };
     }
 
+    // dispatch -> cpt-frontx-flow-cli-scaffolding-assemble-preview (assembleBatch)
+    case 'assemble': {
+      const jsonMode = parseJsonMode(args);
+      const { value: inputRaw } = extractFlagValue(args, '--input');
+      if (inputRaw === undefined) {
+        const message = 'assemble requires --input <batch-json>.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
+      const parsedBatch = parseBatchInput(inputRaw);
+      if (!parsedBatch.ok) {
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', parsedBatch.message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: parsedBatch.message };
+      }
+      const repoRoot = process.cwd();
+      const canonicalizeFn = deps.createCanonicalizeTargetFn(repoRoot);
+      const result = await assembleBatch(
+        parsedBatch.batch,
+        repoRoot,
+        {
+          inventory: deps.inventory,
+          fetchFn: deps.fetchFn,
+          readFileFn: deps.readFileFn,
+          canonicalizeFn,
+          existsFn: deps.existsFn,
+          listFolderFilesFn: deps.listFolderFilesFn,
+          resolveInstalledContentPathFn: deps.resolveInstalledContentPathFn,
+        },
+        deps.readProjectStateFn,
+      );
+      return renderAssembleOutcome(result, jsonMode);
+    }
+
     // dispatch -> cpt-frontx-flow-cli-scaffolding-seed-repository (seedRepository)
     case 'seed': {
-      const [templateRef, targetDir] = args;
-      if (!templateRef || !targetDir) {
-        return { exitCode: EXIT_USER_ERROR, stderr: 'seed requires <templateRef> and <targetDir> arguments.' };
+      const jsonMode = parseJsonMode(args);
+      const adoptExisting = args.includes('--adopt-existing');
+      const { value: inputRaw, rest: afterInput } = extractFlagValue(args, '--input');
+      const [dir] = afterInput.filter((a) => a !== '--json' && a !== '--adopt-existing');
+      if (!dir) {
+        const message = 'seed requires a <dir> argument.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
-      const lookupFn = (name: string): InventoryEntry | undefined => deps.inventory.lookup(name);
-      // Resolved at this boundary, as `add` below also does, so both apply
-      // commands report and record one form of the path. Every seed refusal
-      // quotes it back verbatim, and a developer who typed `.` is told which
-      // directory was refused rather than shown their own shorthand reflected
-      // at them.
-      const result = await seedRepository(
-        templateRef,
-        path.resolve(targetDir),
-        lookupFn,
-        deps.readContentFn,
-        deps.writeFileFn,
-        deps.provenanceWriteFn,
-        deps.readTargetDirFn,
-        deps.readProjectFile,
-      );
-      if (!result.ok) {
-        const exitCode = result.reason === 'manifest-unreadable' || result.reason === 'provenance-failed'
-          ? EXIT_INTERNAL_ERROR
-          : EXIT_USER_ERROR;
-        const stderr =
-          result.reason === 'conflict'
-            ? `${result.message}\n${formatConflictDetails(result.conflicts)}`
-            : result.message;
-        return { exitCode, stderr };
+      if (inputRaw === undefined) {
+        const message = 'seed requires --input <batch-json>.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
-      return { exitCode: EXIT_SUCCESS, stdout: result.message };
-    }
-
-    // dispatch -> cpt-frontx-flow-cli-scaffolding-add-template (addTemplate)
-    case 'add': {
-      const [templateRef, targetDir] = args;
-      if (!templateRef || !targetDir) {
-        return { exitCode: EXIT_USER_ERROR, stderr: 'add requires <templateRef> and <targetDir> arguments.' };
+      const parsedBatch = parseBatchInput(inputRaw);
+      if (!parsedBatch.ok) {
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', parsedBatch.message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: parsedBatch.message };
       }
-      const lookupFn = (name: string): InventoryEntry | undefined => deps.inventory.lookup(name);
-      // Resolved exactly as `seed` above resolves it: the two commands take the
-      // same argument and write into the same project, so a path that renders
-      // and records one way through one of them must do the same through the
-      // other. `add` reads provenance from this path, joins writes onto it and
-      // quotes it in its result, all of which seed already drives with a
-      // resolved path.
-      const result = await addTemplate(
-        templateRef,
-        path.resolve(targetDir),
-        lookupFn,
-        () => deps.inventory.list(),
-        deps.readContentFn,
-        deps.writeFileFn,
-        deps.readProvenanceRecordsFn,
-        deps.provenanceWriteFn,
-        deps.readTargetPathStateFn,
-        deps.readProjectFile,
-      );
-      if (!result.ok) {
-        const exitCode = result.reason === 'manifest-unreadable' || result.reason === 'provenance-failed'
-          ? EXIT_INTERNAL_ERROR
-          : EXIT_USER_ERROR;
-        const stderr =
-          result.reason === 'conflict'
-            ? `${result.message}\n${formatConflictDetails(result.conflicts)}`
-            : result.message;
-        return { exitCode, stderr };
-      }
-      return { exitCode: EXIT_SUCCESS, stdout: result.message };
-    }
-
-    // dispatch -> cpt-frontx-flow-upgrade-changeset-review-approval (upgradeCommand)
-    case 'upgrade': {
-      const [projectRoot, targetVersion, ...rest] = args;
-      if (!projectRoot || !targetVersion) {
-        return { exitCode: EXIT_USER_ERROR, stderr: 'upgrade requires <projectRoot> and <targetVersion> arguments.' };
-      }
-      const autoApprove = rest.includes('--yes');
-      // `--json` switches the change-set-review handshake to the
-      // machine-readable protocol the AI Tooling Framework's
-      // `invokeUpgradeCommand` adapter parses over the command surface
-      // (DESIGN §3.4; cpt-frontx-dod-ai-upgrade-orchestration-single-engine)
-      // instead of the human-facing interactive prompt.
-      const jsonMode = rest.includes('--json');
-      // review #500 (fix 3/3): computed HERE, from the same SET-shaped read
-      // the upgrade engine's single-record bridge (`createFsReadSingleProvenanceFn`)
-      // uses internally, rather than left to that adapter to print — this is
-      // the one place, like every other message on this command surface,
-      // that decides what reaches the terminal. Suppressed entirely in
-      // `--json` mode: the AI Tooling Framework's handshake (DESIGN §3.4) is
-      // a minimal, fixed machine-readable protocol, and an unstructured
-      // human-facing line has no well-formed place in it.
-      const multiRecordNotice = await formatMultiRecordUpgradeNotice(projectRoot, deps.readProvenanceRecordsFn);
-      const result = await upgradeCommand(projectRoot, targetVersion, {
-        readProvenance: deps.readSingleProvenanceFn,
+      // Resolved at this boundary, as `apply` below also does, so every
+      // refusal quotes back the same form of the path a developer typed —
+      // a developer who typed `.` is told which directory was refused
+      // rather than shown their own shorthand reflected at them.
+      const targetDir = path.resolve(dir);
+      const canonicalizeFn = deps.createCanonicalizeTargetFn(targetDir);
+      const result = await seedRepository(targetDir, parsedBatch.batch, adoptExisting, {
+        inventory: deps.inventory,
         fetchFn: deps.fetchFn,
-        readProjectFile: deps.readProjectFile,
-        readContentItems: deps.readContentFn,
-        writeProjectFile: deps.writeProjectFile,
-        removeProjectFile: deps.removeProjectFile,
-        writeProvenance: deps.provenanceWriteFn,
-        presentAndGetApproval: autoApprove
-          ? async () => 'approved'
-          : jsonMode
-            ? createJsonApproval()
-            : deps.presentAndGetApproval,
+        readFileFn: deps.readFileFn,
+        canonicalizeFn,
+        existsFn: deps.existsFn,
+        listFolderFilesFn: deps.listFolderFilesFn,
+        resolveInstalledContentPathFn: deps.resolveInstalledContentPathFn,
+        readInstalledContentFn: deps.createReadInstalledContentFn(targetDir),
+        readExistingContentFn: deps.createReadExistingContentFn(targetDir),
+        writeFileFn: deps.writeFileFn,
+        readProjectStateFn: deps.readProjectStateFn,
+        writeProjectStateFn: deps.writeProjectStateFn,
+        bundleExistsFn: createFsBundleExistsFn(),
+        copyBundleFn: createFsCopyBundleFn(),
+        removeBundleFn: createFsRemoveBundleFn(),
       });
-      switch (result.status) {
-        case 'applied':
-        case 'declined':
-          return {
-            exitCode: EXIT_SUCCESS,
-            stdout: jsonMode ? JSON.stringify({ ok: true, status: result.status }) : result.changeSetJson,
-            stderr: jsonMode ? undefined : multiRecordNotice,
-          };
-        case 'resolution-failed':
-          return {
-            exitCode: EXIT_USER_ERROR,
-            stderr: jsonMode
-              ? JSON.stringify({ ok: false, status: result.status, message: result.message })
-              : joinNoticeAndMessage(multiRecordNotice, result.message),
-          };
-        case 'apply-failed':
-          return {
-            exitCode: EXIT_INTERNAL_ERROR,
-            stderr: jsonMode
-              ? JSON.stringify({ ok: false, status: result.status, message: result.message })
-              : joinNoticeAndMessage(multiRecordNotice, result.message),
-          };
+      return renderSeedOutcome(result, jsonMode);
+    }
+
+    // dispatch -> cpt-frontx-flow-cli-scaffolding-add-template (runApplyPipeline)
+    case 'apply': {
+      const jsonMode = parseJsonMode(args);
+      const adoptExisting = args.includes('--adopt-existing');
+      const { value: inputRaw } = extractFlagValue(args, '--input');
+      if (inputRaw === undefined) {
+        const message = 'apply requires --input <batch-json>.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
+      const parsedBatch = parseBatchInput(inputRaw);
+      if (!parsedBatch.ok) {
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', parsedBatch.message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: parsedBatch.message };
+      }
+      // No explicit project-root argument on this command's own FEATURE
+      // flow signature — it operates on the project the developer is
+      // standing in, exactly as `register`/`unregister`/`ownership`/
+      // `delete` already do.
+      const repoRoot = process.cwd();
+      const canonicalizeFn = deps.createCanonicalizeTargetFn(repoRoot);
+      const pipelineDeps: ApplyPipelineDeps = {
+        inventory: deps.inventory,
+        fetchFn: deps.fetchFn,
+        readFileFn: deps.readFileFn,
+        canonicalizeFn,
+        existsFn: deps.existsFn,
+        listFolderFilesFn: deps.listFolderFilesFn,
+        resolveInstalledContentPathFn: deps.resolveInstalledContentPathFn,
+        readInstalledContentFn: deps.createReadInstalledContentFn(repoRoot),
+        readExistingContentFn: deps.createReadExistingContentFn(repoRoot),
+        writeFileFn: deps.writeFileFn,
+        readProjectStateFn: deps.readProjectStateFn,
+        writeProjectStateFn: deps.writeProjectStateFn,
+        bundleExistsFn: createFsBundleExistsFn(),
+        copyBundleFn: createFsCopyBundleFn(),
+        removeBundleFn: createFsRemoveBundleFn(),
+      };
+      const result = await runApplyPipeline(parsedBatch.batch, repoRoot, adoptExisting, pipelineDeps);
+      return renderApplyOutcome(result, jsonMode);
+    }
+
+    // dispatch -> cpt-frontx-feature-composed-provenance (registerTemplate)
+    // @cpt-begin:cpt-frontx-flow-composed-provenance-register-template:p1:inst-reg-invoke
+    case 'register': {
+      // Flags are filtered out BEFORE taking the positional argument —
+      // `register --json` (origin omitted) must still be recognized as
+      // missing its `<origin>`, not silently treat the flag token itself
+      // as the origin.
+      const jsonMode = parseJsonMode(args);
+      const replace = args.includes('--replace');
+      const [origin] = args.filter((a) => a !== '--json' && a !== '--replace');
+      if (!origin) {
+        const message = 'register requires an <origin> argument.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
+      // No explicit project-root argument on this command's own FEATURE
+      // flow signature (`register <origin>`) — it operates on the project
+      // the developer is standing in, exactly as `.frontx/project.json`
+      // is always resolved relative to.
+      const repoRoot = process.cwd();
+      // @cpt-end:cpt-frontx-flow-composed-provenance-register-template:p1:inst-reg-invoke
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-register-template:p1:inst-reg-run-algorithm
+      const result = await registerTemplate(
+        origin,
+        replace,
+        repoRoot,
+        deps.inventory,
+        deps.fetchFn,
+        deps.readFileFn,
+        deps.createCanonicalizeTargetFn(repoRoot),
+        deps.readProjectStateFn,
+        deps.writeProjectStateFn,
+        deps.existsFn,
+        deps.listFolderFilesFn,
+      );
+      // @cpt-end:cpt-frontx-flow-composed-provenance-register-template:p1:inst-reg-run-algorithm
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-register-template:p1:inst-reg-if-failure
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-register-template:p1:inst-reg-return-failure
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-register-template:p1:inst-reg-if-outcome
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-register-template:p1:inst-reg-return-outcome
+      return renderRegisterOutcome(result, jsonMode);
+      // @cpt-end:cpt-frontx-flow-composed-provenance-register-template:p1:inst-reg-return-outcome
+      // @cpt-end:cpt-frontx-flow-composed-provenance-register-template:p1:inst-reg-if-outcome
+      // @cpt-end:cpt-frontx-flow-composed-provenance-register-template:p1:inst-reg-return-failure
+      // @cpt-end:cpt-frontx-flow-composed-provenance-register-template:p1:inst-reg-if-failure
+    }
+
+    // dispatch -> cpt-frontx-feature-composed-provenance (unregisterTemplate)
+    // @cpt-begin:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-invoke
+    case 'unregister': {
+      const jsonMode = parseJsonMode(args);
+      const [name] = args.filter((a) => a !== '--json');
+      if (!name) {
+        const message = 'unregister requires a <name> argument.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
+      const repoRoot = process.cwd();
+      // @cpt-end:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-invoke
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-run-algorithm
+      const result = await unregisterTemplate(name, repoRoot, deps.readProjectStateFn, deps.writeProjectStateFn);
+      // @cpt-end:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-run-algorithm
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-if-not-registered
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-return-not-registered
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-if-targets
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-return-targets
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-else
+      // @cpt-begin:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-return-success
+      return renderUnregisterOutcome(result, jsonMode);
+      // @cpt-end:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-return-success
+      // @cpt-end:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-else
+      // @cpt-end:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-return-targets
+      // @cpt-end:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-if-targets
+      // @cpt-end:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-return-not-registered
+      // @cpt-end:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-if-not-registered
+    }
+
+    // dispatch -> cpt-frontx-feature-composed-provenance (ownershipAdd / ownershipRemove / ownershipList)
+    case 'ownership': {
+      // `--json` is recognized wherever it falls in `args` — including
+      // BEFORE the sub-command (`ownership --json add docs`) — rather than
+      // only among the tokens after the first one: taking it from `rest`
+      // alone made `--json` itself get destructured into `sub`, so it never
+      // matched `add`/`remove`/`list` and this command fell through to the
+      // human-readable "unrecognized sub-command" branch even though the
+      // caller asked for the machine envelope — the ADR's "exactly one JSON
+      // value on stdout" guarantee failing silently for that spelling,
+      // confirmed live before this fix.
+      const jsonMode = parseJsonMode(args);
+      const [sub, ...positional] = args.filter((a) => a !== '--json');
+      const repoRoot = process.cwd();
+
+      switch (sub) {
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-invoke
+        case 'add': {
+          const [rawPath] = positional;
+          if (!rawPath) {
+            const message = 'ownership add requires a <path> argument.';
+            return jsonMode
+              ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+              : { exitCode: EXIT_USER_ERROR, stderr: message };
+          }
+          const canonicalizeFn = deps.createCanonicalizeTargetFn(repoRoot);
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-invoke
+          // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-run-algorithm
+          const result = await ownershipAdd(
+            rawPath,
+            repoRoot,
+            deps.inventory,
+            deps.readTargetPathStateFn,
+            canonicalizeFn,
+            deps.readProjectStateFn,
+            deps.writeProjectStateFn,
+            deps.readFileFn,
+          );
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-run-algorithm
+          // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-if-missing
+          // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-return-missing
+          // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-if-conflict
+          // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-return-conflict
+          // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-else
+          // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-return-success
+          return renderOwnershipAddOutcome(result, jsonMode);
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-return-success
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-else
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-return-conflict
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-if-conflict
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-return-missing
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-if-missing
+        }
+
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-remove:p1:inst-orem-invoke
+        case 'remove': {
+          const [rawPath] = positional;
+          if (!rawPath) {
+            const message = 'ownership remove requires a <path> argument.';
+            return jsonMode
+              ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+              : { exitCode: EXIT_USER_ERROR, stderr: message };
+          }
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-remove:p1:inst-orem-invoke
+          // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-remove:p1:inst-orem-run-algorithm
+          const result = await ownershipRemove(
+            rawPath,
+            repoRoot,
+            deps.createCanonicalizeTargetFn(repoRoot),
+            deps.readProjectStateFn,
+            deps.writeProjectStateFn,
+          );
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-remove:p1:inst-orem-run-algorithm
+          // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-remove:p1:inst-orem-return-success
+          return renderOwnershipRemoveOutcome(result, jsonMode);
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-remove:p1:inst-orem-return-success
+        }
+
+        // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-invoke
+        case 'list': {
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-invoke
+          const result = await ownershipList(repoRoot, deps.readProjectStateFn);
+          // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-if-invalid
+          // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-return-invalid
+          // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-return-roots
+          return renderOwnershipListOutcome(result, jsonMode);
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-return-roots
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-return-invalid
+          // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-if-invalid
+        }
+
+        default: {
+          const message = `Unrecognized ownership subcommand: "${sub ?? ''}". Usage: frontx ownership add|remove|list <path>`;
+          return jsonMode
+            ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+            : { exitCode: EXIT_USER_ERROR, stderr: message };
+        }
+      }
+    }
+
+    // dispatch -> cpt-frontx-feature-cli-scaffolding (deleteTarget)
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-invoke
+    case 'delete': {
+      const jsonMode = parseJsonMode(args);
+      const dryRun = args.includes('--dry-run');
+      const yes = args.includes('--yes');
+      const [target] = args.filter((a) => a !== '--json' && a !== '--dry-run' && a !== '--yes');
+      if (!target) {
+        const message = 'delete requires a <target> argument.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
+      // No explicit project-root argument on this command's own FEATURE
+      // flow signature (`delete <target>`) — operates on the project the
+      // developer is standing in, exactly as `register`/`unregister`/
+      // `ownership` already do.
+      const repoRoot = process.cwd();
+      const canonicalizeFn = deps.createCanonicalizeTargetFn(repoRoot);
+      // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-invoke
+      // `scaffold/ai-bundle.ts` landed after `commands/delete.ts` was
+      // written, so this closure is the one wire that module's own header
+      // comment said was still missing: adapting its three-seam
+      // `materializeOrRemoveAiBundle` algorithm down to `delete.ts`'s own
+      // simple `RemoveAiBundleFn` shape, fixed to the `LAST_TARGET_LOST`
+      // transition — the only one `delete` ever triggers.
+      const removeAiBundleFn: RemoveAiBundleFn = async (manifestName) => {
+        await materializeOrRemoveAiBundle({
+          manifestName,
+          transition: { kind: 'LAST_TARGET_LOST' },
+          projectRoot: repoRoot,
+          bundleExists: createFsBundleExistsFn(),
+          copyBundle: createFsCopyBundleFn(),
+          removeBundle: createFsRemoveBundleFn(),
+        });
+      };
+      const result = await deleteTarget(
+        target,
+        repoRoot,
+        { jsonMode, dryRun, yes },
+        deps.inventory,
+        canonicalizeFn,
+        deps.listTargetFilesFn,
+        deps.readFileFn,
+        deps.removeProjectFile,
+        deps.readProjectStateFn,
+        deps.writeProjectStateFn,
+        deps.confirmDeletion,
+        removeAiBundleFn,
+      );
+      return renderDeleteOutcome(result, jsonMode);
+    }
+    // dispatch -> cpt-frontx-flow-upgrade-changeset-review-approval /
+    // cpt-frontx-flow-upgrade-changeset-restore (upgradeCommand)
+    case 'upgrade': {
+      // @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-invoke-upgrade
+      // @cpt-begin:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-invoke
+      const jsonMode = parseJsonMode(args);
+      const yes = args.includes('--yes');
+      const restore = args.includes('--restore');
+      const [templateName, newOrigin] = args.filter((a) => a !== '--json' && a !== '--yes' && a !== '--restore');
+      if (!templateName) {
+        const message = 'upgrade requires a <templateName> argument.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
+      // Argument shape CHANGED from the retired engine's own `<projectRoot>
+      // <targetVersion>`: this is `<templateName> <new-origin>` XOR
+      // `<templateName> --restore`, with NO origin argument for restore
+      // (`cpt-frontx-dod-upgrade-changeset-rollback`'s own text).
+      let direction: UpgradeDirection;
+      if (restore) {
+        if (newOrigin !== undefined) {
+          const message = 'upgrade --restore takes no <new-origin> argument.';
+          return jsonMode
+            ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+            : { exitCode: EXIT_USER_ERROR, stderr: message };
+        }
+        direction = { kind: 'restore' };
+      } else {
+        if (newOrigin === undefined) {
+          const message = 'upgrade requires either a <new-origin> argument or --restore.';
+          return jsonMode
+            ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+            : { exitCode: EXIT_USER_ERROR, stderr: message };
+        }
+        direction = { kind: 'forward', newOrigin };
+      }
+
+      // No explicit project-root argument on this command's own FEATURE flow
+      // signature (`upgrade <templateName> ...`) — it operates on the
+      // project the developer is standing in, exactly as `apply`/`register`/
+      // `unregister`/`ownership`/`delete` already do.
+      const repoRoot = process.cwd();
+      const canonicalizeFn = deps.createCanonicalizeTargetFn(repoRoot);
+      // @cpt-end:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-invoke
+      // @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-invoke-upgrade
+
+      const resolvePayload = createResolvePayloadFn({
+        repoRoot,
+        fetchFn: deps.fetchFn,
+        readFileFn: deps.readFileFn,
+        listDiskFiles: createFsListDiskFilesFn(),
+        existsFn: deps.existsFn,
+        canonicalizeFn,
+      });
+
+      // Manifest-only resolution of ANOTHER registered template's declared
+      // exclusions (`upgrade/validate.ts`'s own `ValidateInput.
+      // resolveRegisteredExclusions` doc comment) — deliberately NOT
+      // `resolvePayload`, which would resolve that other template's ENTIRE
+      // payload for every target of THIS upgrade, defeating
+      // `cpt-frontx-cli-nfr-template-scale`'s per-template independence.
+      const resolveRegisteredExclusions = (name: string, origin: string): Promise<string[]> =>
+        resolveRegisteredExcludedSubtrees(name, origin, {
+          repoRoot,
+          inventory: deps.inventory,
+          readFileFn: deps.readFileFn,
+          canonicalizeFn,
+        });
+
+      // `inst-com-replace-inventory` — promotes the committed transition's
+      // candidate content into `name`'s own local-inventory slot, through
+      // the SAME bounded-update mechanism `update-local` already drives
+      // (`TemplateInventory.updateLocal`), never a second "write into the
+      // inventory" formulation. A LOCAL `path:` origin has no inventory slot
+      // at all — its payload is read live from its own folder on every
+      // resolution (`upgrade/payload.ts`'s own header) — and a name never
+      // installed into the inventory in the first place (every real
+      // template in this ecosystem today is `path:`-registered, per that
+      // same header) has nothing cached there either; both are correct
+      // no-ops, never a promotion failure.
+      const promoteInventory = async (name: string): Promise<void> => {
+        const stateResult = await readProjectState(repoRoot, deps.readProjectStateFn);
+        if (!stateResult.ok) {
+          throw new Error(`"${name}"'s committed entry could not be re-read for inventory promotion: ${stateResult.message}`);
+        }
+        const entry = stateResult.document.templates[name];
+        if (entry === undefined) {
+          throw new Error(`"${name}" has no entry in the project state store immediately after its own commit.`);
+        }
+        if (entry.origin.startsWith('path:')) return; // local origin: no inventory slot to promote into
+        if (deps.inventory.lookup(name) === undefined) return; // never installed into the inventory either
+        const updated = await deps.inventory.updateLocal(name, entry.origin, deps.fetchFn);
+        if (!updated.ok) {
+          throw new Error(`"${name}"'s local inventory slot could not be replaced: ${updated.error.message}`);
+        }
+      };
+
+      // `inst-com-refresh-bundle` — refreshes `name`'s CLI-owned
+      // `.frontx/ai/<manifestName>/` bundle through the SAME step
+      // `apply`/`delete` already use (`cpt-frontx-algo-cli-scaffolding-ai-
+      // bundle`), never a second bundle mechanism.
+      // `materializeOrRemoveAiBundle`'s transition union has no dedicated
+      // "refresh" kind, so this reuses `FIRST_TARGET_GAINED`, which
+      // `createFsCopyBundleFn`'s `fs.cpSync(recursive)` satisfies because it
+      // OVERWRITES an existing destination file for every file it copies.
+      //
+      // ONE KNOWN LIMITATION remains, and it is spec-permitted: if the new
+      // payload carries NO bundle at all, the remove-then-materialize below
+      // clears the project bundle and then no-ops, so the name ends up with no
+      // AI surface rather than the previous version's. That is the honest
+      // reading of a version that declares none — and the FEATURE scopes the
+      // refresh requirement to an upgrade "whose payload carries a new
+      // bundle", saying nothing about preserving an older one a new version
+      // dropped. Recorded so the next reader inherits the analysis rather than
+      // the surprise.
+      const refreshAiBundle = async (name: string): Promise<void> => {
+        const stateResult = await readProjectState(repoRoot, deps.readProjectStateFn);
+        if (!stateResult.ok) {
+          throw new Error(`"${name}"'s committed entry could not be re-read for the AI-bundle refresh: ${stateResult.message}`);
+        }
+        const entry = stateResult.document.templates[name];
+        if (entry === undefined) {
+          throw new Error(`"${name}" has no entry in the project state store immediately after its own commit.`);
+        }
+        // A `canonicalizeFn` failure THROWS rather than degrading: `?? ''`
+        // silently collapsed `installedContentPath` to `repoRoot`, which turns
+        // the bundle refresh into a self-copy of the project root onto itself
+        // — a nonsensical operation reported as success. A throw here is
+        // caught by `commitUpgrade`'s own post-commit bundle handler and
+        // reported as `INTERNAL` naming the bundle, with the transition
+        // standing, which is exactly the outcome the FEATURE defines for a
+        // refresh that could not land (`inst-com-if-bundle-refresh-fails`).
+        let installedContentPath: string;
+        if (entry.origin.startsWith('path:')) {
+          const canonical = canonicalizeFn(entry.origin.slice('path:'.length));
+          if (canonical === null) {
+            throw new Error(
+              `"${name}"'s local origin "${entry.origin}" could not be proven to stay inside the project root, ` +
+                'so its AI-extension bundle could not be refreshed.',
+            );
+          }
+          installedContentPath = path.join(repoRoot, canonical);
+        } else {
+          installedContentPath = deps.resolveInstalledContentPathFn(name);
+        }
+        const bundleExists = createFsBundleExistsFn();
+        const copyBundle = createFsCopyBundleFn();
+        const removeBundle = createFsRemoveBundleFn();
+
+        // A refresh is REMOVE-then-materialize, composed from the two
+        // transitions `cpt-frontx-algo-cli-scaffolding-ai-bundle` already
+        // owns, rather than a copy alone.
+        //
+        // `createFsCopyBundleFn` uses `fs.cpSync(recursive)`, which overwrites
+        // and adds but never REMOVES — so a copy alone left behind every file
+        // the previous bundle carried and the new one dropped, which is a
+        // PARTIAL refresh, not the refresh this name's DoD requires
+        // (`cpt-frontx-dod-cli-scaffolding-ai-bundle`: the system "MUST
+        // refresh it when `upgrade` commits a new version of the name whose
+        // payload carries a new bundle"). Clearing first makes the result
+        // exactly the new payload's bundle, which is what "refresh" means.
+        //
+        // Deliberately composed HERE, at the wiring layer, rather than by
+        // adding a transition kind to that algorithm: the FEATURE requires an
+        // upgrade refresh go "through the same CLI-owned step `apply` and
+        // `delete` use", and both halves of this are that step. The ordering
+        // cost is stated rather than hidden — if the materialize half fails
+        // after the remove half landed, the bundle is absent rather than
+        // stale, which `commitUpgrade`'s post-commit handler reports as
+        // `INTERNAL` naming the bundle while the transition itself stands.
+        // That is the right trade: the FEATURE states the bundle is
+        // re-derivable from the installed content path whenever something next
+        // refreshes it, so an absent bundle is recoverable, while a silently
+        // stale one misreports the version's AI surface indefinitely.
+        //
+        // The remove half is a no-op when no project bundle exists yet (the
+        // ordinary first-refresh case), so this costs nothing in the common
+        // path.
+        await materializeOrRemoveAiBundle({
+          manifestName: name,
+          transition: { kind: 'LAST_TARGET_LOST' },
+          projectRoot: repoRoot,
+          bundleExists,
+          copyBundle,
+          removeBundle,
+        });
+        await materializeOrRemoveAiBundle({
+          manifestName: name,
+          transition: { kind: 'FIRST_TARGET_GAINED', installedContentPath },
+          projectRoot: repoRoot,
+          bundleExists,
+          copyBundle,
+          removeBundle,
+        });
+      };
+
+      const engineDeps: Omit<UpgradeEngineDeps, 'presentPlan'> = {
+        repoRoot,
+        readProjectStateFn: deps.readProjectStateFn,
+        writeProjectStateFn: deps.writeProjectStateFn,
+        resolvePayload,
+        resolveRegisteredExclusions,
+        readDiskEntry: createFsReadDiskEntryFn(),
+        writeDiskFile: createFsWriteDiskFileFn(),
+        renameDiskFile: createFsRenameDiskFileFn(),
+        unlinkDiskFile: createFsUnlinkDiskFileFn(),
+        listDiskFiles: createFsListDiskFilesFn(),
+        canonicalizeFn,
+        promoteInventory,
+        refreshAiBundle,
+      };
+
+      const result = await upgradeCommand(
+        templateName,
+        direction,
+        { jsonMode, yes },
+        engineDeps,
+        deps.presentUpgradePlan,
+      );
+      return renderUpgradeOutcome(result, jsonMode);
     }
   }
   // @cpt-end:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-return-exit

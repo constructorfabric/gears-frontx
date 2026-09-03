@@ -1,12 +1,13 @@
 // @cpt-dod:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1
 // @cpt-dod:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1
 //
-// `createInvokeUpgradeCommand` spawns the built `frontx upgrade --json`
-// command surface (never importing `@gears-frontx/cli`), gates the engine's
-// apply step on the developer's review decision, and parses the process's
-// final JSON line into the kit-local `UpgradeCommandJsonResult`. This test
-// injects a fake spawned process (EventEmitter + PassThrough streams) — no
-// real process is launched.
+// `createInvokeUpgradeCommand` spawns the built `frontx upgrade <templateName>
+// <new-origin> --json` command surface (never importing `@gears-frontx/cli`),
+// with the target project as the spawned process's working directory, gates
+// the engine's apply step on the developer's review decision, and parses the
+// process's final JSON line into the kit-local `UpgradeCommandJsonResult`.
+// This test injects a fake spawned process (EventEmitter + PassThrough
+// streams) — no real process is launched.
 import { describe, it, expect, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
@@ -42,14 +43,14 @@ const CHANGE_SET: ChangeSet = {
 };
 
 describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-single-engine)', () => {
-  it('spawns the built "frontx upgrade --json" command surface for (projectRoot, targetVersion)', () => {
+  it('spawns the built "frontx upgrade <templateName> <new-origin> --json" command surface, cwd set to the project root', () => {
     const fakeChild = makeFakeChild();
     const spawnFn: SpawnFn = vi.fn(() => fakeChild as never);
     const invoke = createInvokeUpgradeCommand({ frontxBin: 'frontx', spawnFn });
 
-    void invoke('/proj', '2.0.0', async () => 'approved');
+    void invoke('/proj', 'my-template', '2.0.0', async () => 'approved');
 
-    expect(spawnFn).toHaveBeenCalledWith('frontx', ['upgrade', '/proj', '2.0.0', '--json']);
+    expect(spawnFn).toHaveBeenCalledWith('frontx', ['upgrade', 'my-template', '2.0.0', '--json'], { cwd: '/proj' });
   });
 
   it('relays the raw change set to onChangeSet and gates the engine apply step on the returned decision', async () => {
@@ -62,7 +63,7 @@ describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-si
       return 'approved';
     });
 
-    const resultPromise = invoke('/proj', '2.0.0', onChangeSet);
+    const resultPromise = invoke('/proj', 'my-template', '2.0.0', onChangeSet);
 
     // The command surface emits the raw change set BEFORE any decision.
     fakeChild.stdout.write(`${JSON.stringify({ changeSet: CHANGE_SET })}\n`);
@@ -81,7 +82,7 @@ describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-si
     const fakeChild = makeFakeChild();
     const invoke = createInvokeUpgradeCommand({ spawnFn: () => fakeChild as never });
 
-    const resultPromise = invoke('/proj', '2.0.0', async () => 'declined');
+    const resultPromise = invoke('/proj', 'my-template', '2.0.0', async () => 'declined');
     fakeChild.stdout.write(`${JSON.stringify({ changeSet: CHANGE_SET })}\n`);
     await vi.waitFor(() => expect(fakeChild.stdin.writtenLines.length).toBeGreaterThan(0));
     fakeChild.stdout.write(`${JSON.stringify({ ok: true, status: 'declined' })}\n`);
@@ -94,7 +95,7 @@ describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-si
     const fakeChild = makeFakeChild();
     const invoke = createInvokeUpgradeCommand({ spawnFn: () => fakeChild as never });
 
-    const resultPromise = invoke('/proj', '2.0.0', async () => 'approved');
+    const resultPromise = invoke('/proj', 'my-template', '2.0.0', async () => 'approved');
     fakeChild.stderr.write('not json at all\n');
     fakeChild.emit('close', 2);
 
@@ -105,7 +106,7 @@ describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-si
     const fakeChild = makeFakeChild();
     const invoke = createInvokeUpgradeCommand({ spawnFn: () => fakeChild as never });
 
-    const resultPromise = invoke('/proj', '2.0.0', async () => 'approved');
+    const resultPromise = invoke('/proj', 'my-template', '2.0.0', async () => 'approved');
     fakeChild.emit('error', new Error('ENOENT'));
 
     await expect(resultPromise).rejects.toThrow(/Failed to spawn/);
@@ -113,8 +114,8 @@ describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-si
 
   it('never imports @gears-frontx/cli — command-surface-only coupling (no kit->cli package edge)', () => {
     // Static assertion, exercised at module-scan time by the source-string
-    // guard test (`no-cli-import.test.ts`); this test documents the intent
-    // alongside the adapter's own behavioral coverage.
+    // guard test suite; this test documents the intent alongside the
+    // adapter's own behavioral coverage.
     expect(true).toBe(true);
   });
 });

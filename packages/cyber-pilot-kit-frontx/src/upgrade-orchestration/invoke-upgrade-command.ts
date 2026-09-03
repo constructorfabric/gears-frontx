@@ -3,10 +3,17 @@
 //
 // Concrete `InvokeUpgradeCommandFn` — drives the SINGLE F14 change-set engine
 // STRICTLY through the built `frontx upgrade` command/invocation surface
-// (`frontx upgrade <projectRoot> <targetVersion> --json`), never by importing
+// (`frontx upgrade <templateName> <new-origin> --json`, run with the target
+// project as its working directory), never by importing
 // `@gears-frontx/cli` (DESIGN §3.4; cpt-frontx-dod-ai-upgrade-orchestration-single-engine).
 // The coupling is process/command boundary only: this module contains no
 // `import` from the CLI package anywhere.
+//
+// `templateName` travels as the command's required first positional
+// argument (issue #508, FEATURE §1.1 `inst-invoke-engine`): the shipped
+// command surface reads its own baseline from that same name, so this
+// adapter and the engine can never disagree about which template is being
+// upgraded.
 //
 // Protocol (mirrors `packages/cli/src/cli.ts`'s `--json` handshake):
 //   1. The spawned process writes ONE JSON line `{ "changeSet": ChangeSet }`
@@ -22,8 +29,17 @@ import { spawn as nodeSpawn } from 'node:child_process';
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import type { ChangeSet, InvokeUpgradeCommandFn, ReviewDecision, UpgradeCommandJsonResult } from './types.js';
 
+/** Options this adapter passes to a spawned child process. */
+export interface SpawnOptions {
+  /** The command runs with this directory as its working directory — the
+   * shipped `frontx upgrade` surface takes no `<projectRoot>` argument of
+   * its own (it operates on its process's cwd), so this is how the target
+   * project is selected. */
+  cwd?: string;
+}
+
 /** Minimal shape this adapter needs from a spawned child process (DI seam for tests). */
-export type SpawnFn = (command: string, args: string[]) => ChildProcessWithoutNullStreams;
+export type SpawnFn = (command: string, args: string[], options?: SpawnOptions) => ChildProcessWithoutNullStreams;
 
 export interface InvokeUpgradeCommandOptions {
   /**
@@ -59,16 +75,22 @@ function parseResultLine(parsed: unknown): UpgradeCommandJsonResult | undefined 
  */
 export function createInvokeUpgradeCommand(options: InvokeUpgradeCommandOptions = {}): InvokeUpgradeCommandFn {
   const frontxBin = options.frontxBin ?? 'frontx';
-  const spawnFn: SpawnFn = options.spawnFn ?? ((command, args) => nodeSpawn(command, args));
+  const spawnFn: SpawnFn = options.spawnFn ?? ((command, args, spawnOptions) => nodeSpawn(command, args, spawnOptions));
 
   return function invokeUpgradeCommand(
     projectRoot: string,
-    targetVersion: string,
+    templateName: string,
+    targetOrigin: string,
     onChangeSet: (changeSet: ChangeSet) => Promise<ReviewDecision>,
   ): Promise<UpgradeCommandJsonResult> {
     return new Promise<UpgradeCommandJsonResult>((resolve, reject) => {
       // @cpt-begin:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1:inst-spawn-command-surface
-      const child = spawnFn(frontxBin, ['upgrade', projectRoot, targetVersion, '--json']);
+      // `upgrade <templateName> <new-origin>` — the selected template's name
+      // and the target version's resolved origin, passed directly (§1.1);
+      // `projectRoot` selects the target project through the child
+      // process's working directory, since the command surface itself takes
+      // no project-root argument.
+      const child = spawnFn(frontxBin, ['upgrade', templateName, targetOrigin, '--json'], { cwd: projectRoot });
       // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1:inst-spawn-command-surface
 
       let stdoutBuffer = '';

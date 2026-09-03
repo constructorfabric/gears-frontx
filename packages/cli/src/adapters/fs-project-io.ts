@@ -1,3 +1,4 @@
+// @cpt-dod:cpt-frontx-dod-composed-provenance-atomic-project-state:p1
 // Generic filesystem IO glue, plugged into the command surface at the F18
 // executable entrypoint (`cli.ts`). These are thin fs wrappers behind seams
 // the scaffolding (F12 `WriteFileFn`), manifest (F11 `ReadFileFn`), and
@@ -5,14 +6,32 @@
 // FEATUREs already define — no template-resolution/inventory/provenance
 // logic lives here (that is Phase 9/10's `adapters/fs-*` and
 // `adapters/provenance-io.ts` scope). Not pure IO plumbing throughout,
-// though: `createFsListContentOwnedFilesFn` below enumerates the content it
-// finds but refuses a declared boundary it cannot honestly enumerate,
-// rather than reporting one as an empty list — see its doc comment.
+// though: `createFsListPayloadFilesFn` and `createFsResolveDeclaredExclusionFn`
+// below refuse what they cannot honestly inspect, rather than reporting it
+// as an empty list or a silent pass — see their doc comments.
+//
+// `createFsReadProjectStateFn`/`createFsWriteProjectStateFn` below are a
+// THIRD, unrelated concern living in this same file: the real adapter for
+// `cpt-frontx-feature-composed-provenance`'s single-document project state
+// store (`.frontx/project.json`, `project-state/types.ts`). They are NEW
+// functions rather than reuses of `createFsReadProjectFileFn`/
+// `createFsWriteProjectFileFn` just above — those exist for the upgrade
+// engine's own single scratch file and neither one performs the
+// temp-file-then-rename discipline this store's write requires (both write
+// directly with `fs.writeFileSync`, no interruption safety); this store's
+// shape and the upgrade engine's are different concerns that happen to share
+// only the general idea of "a project-relative file read/write", not the
+// atomicity requirement.
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import type { WriteFileFn } from '../scaffold/types';
-import type { ListContentOwnedFilesFn, ReadFileFn } from '../manifest/types';
+import type { ListPayloadFilesFn, ResolveDeclaredExclusionFn, ReadFileFn } from '../manifest/types';
 import type { ReadProjectFileFn, WriteProjectFileFn, RemoveProjectFileFn } from '../upgrade/types';
+import type { ReadProjectStateFn, WriteProjectStateFn } from '../project-state/types';
+import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
+import type { ListTargetFilesFn } from '../scaffold/delete-plan';
+import type { PathExistsFn } from '../resolver/types';
 
 /** Real `WriteFileFn` — writes a destination file, creating parent dirs. */
 export function createFsWriteFileFn(): WriteFileFn {
@@ -26,6 +45,25 @@ export function createFsWriteFileFn(): WriteFileFn {
 export function createFsReadFileFn(): ReadFileFn {
   return async function readFile(filePath: string): Promise<string> {
     return fs.readFileSync(filePath, 'utf-8');
+  };
+}
+
+// @cpt-algo:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1
+/**
+ * Real `PathExistsFn` (`../resolver/types.ts`) — the resolver's own
+ * existence half of `inst-resolve-local-path-check`, distinct from
+ * `CanonicalizeTargetFn`: canonicalization alone proves containment, not
+ * existence, since `createFsCanonicalizeTargetFn` below deliberately
+ * resolves a path that does not yet exist (walking up to the nearest
+ * existing ancestor) for its own pre-flight-target callers. `fs.existsSync`
+ * follows a symlink, which is correct here — a local origin folder reached
+ * through a symlink whose target exists is a real, readable folder, and
+ * `canonicalizeFn` has already proven the whole chain resolves inside the
+ * project root before this is ever called.
+ */
+export function createFsPathExistsFn(): PathExistsFn {
+  return async function pathExists(absolutePath: string): Promise<boolean> {
+    return fs.existsSync(absolutePath);
   };
 }
 
@@ -54,10 +92,54 @@ export function createFsRemoveProjectFileFn(): RemoveProjectFileFn {
   };
 }
 
+// @cpt-algo:cpt-frontx-algo-composed-provenance-project-state-io:p1
+/** Real `ReadProjectStateFn` — returns `null` (never throws) when the
+ * project state document is absent, matching `createFsReadProjectFileFn`'s
+ * own absence convention above so `project-state/io.ts`'s pure logic can
+ * treat "no document yet" identically to "no scratch file yet". */
+export function createFsReadProjectStateFn(): ReadProjectStateFn {
+  return async function readProjectState(absolutePath: string): Promise<string | null> {
+    if (!fs.existsSync(absolutePath)) return null;
+    return fs.readFileSync(absolutePath, 'utf-8');
+  };
+}
+
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-write-atomic
 /**
- * Real `ListContentOwnedFilesFn` - enumerates every regular file reachable
- * under one exclusive-subtree or shared-file entry, POSIX-relative to
- * `templateDir`. Never descends into `node_modules` (install-time output,
+ * Real `WriteProjectStateFn` — the one place this store's
+ * write-through-temp-file-then-rename discipline is actually implemented
+ * (`inst-psio-write-atomic`). The pure logic in `project-state/io.ts` only
+ * knows it calls this function and trusts the atomicity contract; this is
+ * where that trust is earned.
+ *
+ * The temporary file is written BESIDE the destination (same directory, so
+ * the final `renameSync` stays on one filesystem/device and is therefore
+ * atomic on POSIX and NTFS alike — a rename across devices is not), with a
+ * random suffix so two concurrent writers never collide on the same
+ * scratch path. The destination is never truncated or edited in place: an
+ * interruption before the rename leaves the prior valid document exactly as
+ * it was (the temp file is simply an orphan); an interruption after the
+ * rename leaves the fully written new document in place. There is no
+ * window in which the destination is partially written, because the
+ * destination itself is never opened for writing at all — only the
+ * temporary file is, and the rename that publishes it is a single atomic
+ * filesystem operation.
+ */
+export function createFsWriteProjectStateFn(): WriteProjectStateFn {
+  return async function writeProjectState(absolutePath: string, content: string): Promise<void> {
+    const dir = path.dirname(absolutePath);
+    fs.mkdirSync(dir, { recursive: true });
+    const tempPath = path.join(dir, `.${path.basename(absolutePath)}.${crypto.randomUUID()}.tmp`);
+    fs.writeFileSync(tempPath, content, 'utf-8');
+    fs.renameSync(tempPath, absolutePath);
+  };
+}
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-write-atomic
+
+/**
+ * Real `ListPayloadFilesFn` - enumerates every regular file reachable under
+ * `templateDir` itself, POSIX-relative to `templateDir` (never with a
+ * leading slash). Never descends into `node_modules` (install-time output,
  * never committed template content). DOES descend into a dot-prefixed
  * directory and DOES include a dot-file: a template legitimately ships
  * dotfiles (`.gitignore`, its own `.frontx/ai/<identity>` bundle) as real
@@ -82,54 +164,126 @@ export function createFsRemoveProjectFileFn(): RemoveProjectFileFn {
  * than judges. A template shipping an internal dangling or escaping link
  * alongside real content still enumerates that content.
  *
- * Two failures are refused outright rather than reported as an empty list.
- * First, a `readdir`/`stat` the operating system REFUSES (a permission-denied
- * directory, most of all): the seam's return type is `Promise<string[]>`, so
- * the only value this function could invent for "I could not enumerate" is an
- * empty list - which the content check cannot tell apart from a subtree that is
- * genuinely clean, and a validation gate that passes because it could not look
- * is worse than one that crashes. Second, the DECLARED boundary itself failing
- * to hold: the manifest names a content-owning path that is absent, is a broken
- * symlink, cannot be resolved, or resolves outside the template root.
- * Enumerating nothing there would certify content that was never inspected, so
- * each is thrown with a message naming the refused path. This is the declared
- * entry ONLY; the mid-walk skip above is unchanged. Every throw is converted
- * into a named failure result exactly once, at the command boundary that owns
- * the exit code (`commands/validate.ts`), which is where the manifest read's
- * own failure is already turned into one.
+ * A `readdir`/`stat` the operating system REFUSES (a permission-denied
+ * directory, most of all), or `templateDir` itself failing to resolve, is
+ * refused outright rather than reported as an empty list: the seam's return
+ * type is `Promise<string[]>`, so the only value this function could invent
+ * for "I could not enumerate" is an empty list - which the content check
+ * cannot tell apart from a template that is genuinely clean, and a
+ * validation gate that passes because it could not look is worse than one
+ * that crashes. Every throw is converted into a named failure result exactly
+ * once, at the command boundary that owns the exit code
+ * (`commands/validate.ts`), which is where the manifest read's own failure
+ * is already turned into one.
  */
-export function createFsListContentOwnedFilesFn(): ListContentOwnedFilesFn {
-  return async function listContentOwnedFiles(templateDir: string, contentOwnedPath: string): Promise<string[]> {
-    const absoluteEntry = path.join(templateDir, contentOwnedPath);
-    // `existsSync` follows the link, so a broken symlink reads as absent too;
-    // either way the declared boundary cannot be enumerated and is refused.
-    if (!fs.existsSync(absoluteEntry)) {
-      throw new Error(`declared content-owning path does not exist: ${contentOwnedPath}`);
+export function createFsListPayloadFilesFn(): ListPayloadFilesFn {
+  return async function listPayloadFiles(templateDir: string): Promise<string[]> {
+    const root = realPathOrNull(templateDir);
+    if (root === null) {
+      throw new Error(`template directory could not be resolved: ${templateDir}`);
+    }
+    try {
+      return walkFiles(templateDir, '', root, new Set([root]));
+    } catch (error) {
+      // The caught error is attached through `Object.assign` rather than the
+      // `Error` constructor's options argument: this file is compiled under
+      // the repository root's tsconfig as well as the package's own, and the
+      // root targets ES2020, whose `Error` constructor takes no options
+      // argument (the same form `adapters/github-fetch.ts` already uses).
+      throw Object.assign(
+        new Error(`could not enumerate template directory ${templateDir}: ${describeError(error)}`),
+        { cause: error },
+      );
+    }
+  };
+}
+
+/**
+ * Real `ResolveDeclaredExclusionFn` - confirms a single declared
+ * `excludedSubtrees` entry resolves honestly, without enumerating its
+ * content (that ground is reserved for a nested template, not this one, so
+ * there is nothing here to walk).
+ *
+ * Distinguishes "genuinely absent" (the ORDINARY case: the manifest is
+ * authored before any target is known, so the entry normally does not
+ * exist in the candidate directory yet) from "a broken symlink" using
+ * `lstatSync`, not `existsSync`. `existsSync` FOLLOWS a symlink, so a
+ * broken one would read as absent and the AC that demands a FAIL for it
+ * would silently pass - `lstatSync` reports the entry's own link, whether
+ * or not its target exists, so a broken link is distinguishable from
+ * nothing being there at all.
+ *
+ * An entry that exists must additionally resolve INSIDE `templateDir` - a
+ * declared exclusion escaping the template root is exactly the same class
+ * of bug an escaping carrier reference is, and is refused the same way,
+ * never silently treated as if nothing were there.
+ */
+export function createFsResolveDeclaredExclusionFn(): ResolveDeclaredExclusionFn {
+  return async function resolveDeclaredExclusion(
+    templateDir: string,
+    excludedSubtree: string,
+  ): Promise<'ABSENT' | 'RESOLVED'> {
+    // A trailing "/" (every excludedSubtrees entry has one - contract-
+    // validated) forces `lstatSync` to dereference a symlink's final
+    // component on POSIX, which would silently turn this into `statSync`
+    // and defeat the whole point of using `lstat` over `existsSync` below -
+    // a broken symlink would then read as ENOENT, indistinguishable from
+    // genuine absence. Stripped once, here, before any fs call.
+    const trimmedSubtree = excludedSubtree.endsWith('/') ? excludedSubtree.slice(0, -1) : excludedSubtree;
+    const absoluteEntry = path.join(templateDir, trimmedSubtree);
+
+    try {
+      fs.lstatSync(absoluteEntry);
+    } catch (error) {
+      if (isEnoent(error)) return 'ABSENT';
+      throw Object.assign(
+        new Error(`declared excludedSubtrees entry could not be inspected: ${excludedSubtree} (${describeError(error)})`),
+        { cause: error },
+      );
     }
 
-    // The declared entry itself may be a symlink; `templateDir` may sit under
-    // one too (a macOS `/tmp` -> `/private/tmp` prefix is the everyday case).
-    // Both sides are resolved so containment compares like with like.
+    // Something exists at this path (a file, a directory, or a symlink -
+    // broken or not). `templateDir` may itself sit under a symlink (a
+    // macOS `/tmp` -> `/private/tmp` prefix is the everyday case), so both
+    // sides are resolved to real paths before containment is compared.
     const root = realPathOrNull(templateDir);
     if (root === null) {
       throw new Error(`template directory could not be resolved: ${templateDir}`);
     }
     const resolvedEntry = realPathOrNull(absoluteEntry);
     if (resolvedEntry === null) {
-      throw new Error(`declared content-owning path could not be resolved: ${contentOwnedPath}`);
+      // `lstatSync` succeeded a moment ago (something was there), but
+      // `realpathSync` just failed. That has two possible causes, and this
+      // message does not assert which: the entry IS a symlink whose target
+      // does not exist (the ordinary "broken symlink" case), OR whatever
+      // was there - symlink or not - vanished in the gap between the two
+      // calls (a TOCTOU race), or `realpath` failed on the path for another
+      // reason entirely - a symlink loop, or a permission refusal on a path
+      // component. `realPathOrNull` collapses every one of those into the
+      // same `null`, so the label names the common ones and stays open
+      // rather than asserting a cause this branch cannot distinguish. Either
+      // way the outcome is the same refusal, fail-closed, naming the path.
+      throw new Error(
+        `declared excludedSubtrees entry could not be resolved - a broken symlink, a symlink loop, a permission ` +
+          `refusal on a path component, or removal between inspection and resolution: ${excludedSubtree}`,
+      );
     }
-    // A declared boundary resolving outside the template root would enumerate
-    // files that are not the template's content; the escape is refused here.
-    // (A mid-walk escape is skipped instead - see walkFiles.)
     if (!isInside(root, resolvedEntry)) {
-      throw new Error(`declared content-owning path resolves outside the template root: ${contentOwnedPath} -> ${resolvedEntry}`);
+      throw new Error(
+        `declared excludedSubtrees entry resolves outside the template root: ${excludedSubtree} -> ${resolvedEntry}`,
+      );
     }
 
-    const stat = fs.statSync(absoluteEntry);
-    if (stat.isFile()) return [toPosixPath(contentOwnedPath)];
-    if (!stat.isDirectory()) return [];
-    return walkFiles(templateDir, contentOwnedPath, root, new Set([resolvedEntry]));
+    return 'RESOLVED';
   };
+}
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function isEnoent(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'ENOENT';
 }
 
 function toPosixPath(relativePath: string): string {
@@ -150,29 +304,136 @@ function isInside(root: string, candidate: string): boolean {
   return candidate.startsWith(root + path.sep);
 }
 
+// @cpt-algo:cpt-frontx-algo-cli-scaffolding-conflict-check:p1
+/**
+ * Real `CanonicalizeTargetFn` for the nesting-aware conflict checker
+ * (`../scaffold/conflict-check.ts`, `inst-cc-canonicalize`). Resolves a
+ * caller-supplied target path against the PROJECT root — in contrast to
+ * `createFsResolveDeclaredExclusionFn` above, which resolves an
+ * `excludedSubtrees` entry against a TEMPLATE directory root for a
+ * different algorithm. The root differs, so that adapter's own
+ * `realPathOrNull`/`isInside` pair is reused here directly rather than
+ * copied, but the walk that gets a candidate down to a real path is new:
+ * that adapter's caller (`ResolveDeclaredExclusionFn`) is only ever asked
+ * about a path that has already been confirmed to exist via `lstatSync`,
+ * while a target under check here ordinarily does NOT exist on disk yet —
+ * this is the PRE-FLIGHT check for a batch that has not been materialized.
+ *
+ * `fs.realpathSync` throws on a path that does not exist, so it cannot be
+ * called on the full candidate the way it is called on a template
+ * directory already known to exist. Instead this walks UP from the
+ * candidate toward the project root until it finds the nearest EXISTING
+ * ancestor, resolves THAT ancestor's real path (following every symlink on
+ * the way there, exactly as an already-existing full path would be), and
+ * re-attaches the still-nonexistent remainder literally — a segment that
+ * does not exist yet cannot itself be a symlink, so nothing is lost by not
+ * resolving it. `path.resolve` (building the lexical candidate below)
+ * already collapses a `..` segment before any filesystem call is made, so a
+ * plain `../escape` is caught even when every component along the way is on
+ * the same filesystem and fully readable.
+ */
+export function createFsCanonicalizeTargetFn(projectRoot: string): CanonicalizeTargetFn {
+  const realRoot = realPathOrNull(projectRoot);
+  if (realRoot === null) {
+    throw new Error(`project root could not be resolved: ${projectRoot}`);
+  }
+  return function canonicalizeTarget(rawTarget: string): string | null {
+    const lexicalCandidate = path.resolve(realRoot, rawTarget);
+    const resolved = resolveNearestExistingAncestor(lexicalCandidate);
+    if (resolved === null) return null;
+    if (!isInside(realRoot, resolved)) return null;
+    // `path.relative` returns `""` when `resolved` IS the project root —
+    // spelled `.` here, the one canonical form every containment predicate
+    // that accepts a concrete TARGET (as opposed to a declaration such as
+    // `excludedSubtrees`) is written to recognize as "the whole project"
+    // (`paths/relative-path.ts`'s `pathWithinTarget`/`targetsNest`). `""` is
+    // reserved for what those same predicates already treat as a
+    // declaration addressing no location at all — the two must never share
+    // one spelling, or a real root target becomes indistinguishable from
+    // "nothing" the moment it reaches them.
+    const relative = path.relative(realRoot, resolved);
+    return relative === '' ? '.' : toPosixPath(relative);
+  };
+}
+
+// Walks up from `lexicalCandidate` toward the filesystem root, one segment
+// at a time, until an ancestor that actually exists is found; resolves that
+// ancestor through every symlink on its own path (`realPathOrNull`), then
+// reattaches the never-existing remainder literally, deepest segment last.
+// `null` only when even the filesystem root itself could not be resolved —
+// kept as a fail-closed guard rather than an assumed-unreachable branch,
+// since `realRoot` resolving successfully in the enclosing factory does not
+// itself prove every ancestor above it in this SAME walk still will a
+// moment later (a permission change between the two calls, however
+// unlikely, is not assumed away here).
+function resolveNearestExistingAncestor(lexicalCandidate: string): string | null {
+  const remainder: string[] = [];
+  let probe = lexicalCandidate;
+  let real = realPathOrNull(probe);
+  while (real === null) {
+    const parent = path.dirname(probe);
+    if (parent === probe) return null; // filesystem root itself could not be resolved
+    remainder.unshift(path.basename(probe));
+    probe = parent;
+    real = realPathOrNull(probe);
+  }
+  return remainder.length > 0 ? path.join(real, ...remainder) : real;
+}
+
+// `relativeDir === ''` addresses `templateDir` itself (the payload-root
+// enumeration's starting point) - joining a child name onto an empty
+// relative dir must yield a bare `entry.name`, never a leading-slash
+// `/entry.name`. Every other depth behaves exactly as a plain `/`-join did.
+function joinRelative(relativeDir: string, name: string): string {
+  return relativeDir === '' ? name : `${relativeDir}/${name}`;
+}
+
 /**
  * @param visitedRealDirs real paths of directories already entered. Only a
  *   symlink can make this walk cycle (a plain directory tree cannot contain
  *   itself), and a link back to an ancestor would otherwise recurse forever.
  */
+// The one name `walkFiles` skips by default — install-time output, never
+// committed template content (`createFsListPayloadFilesFn`'s own doc
+// comment). `createFsListTargetFilesFn` below passes an EMPTY skip set
+// instead: an arbitrary project target's six-term effective-ownership
+// subtraction (`scaffold/delete-plan.ts`) names no `node_modules` exclusion,
+// and defaulting this walk to skip it unconditionally would silently add a
+// term that formula does not declare.
+const DEFAULT_SKIP_NAMES: ReadonlySet<string> = new Set(['node_modules']);
+
 function walkFiles(
   templateDir: string,
   relativeDir: string,
   root: string,
   visitedRealDirs: Set<string>,
+  skipNames: ReadonlySet<string> = DEFAULT_SKIP_NAMES,
 ): string[] {
   const absoluteDir = path.join(templateDir, relativeDir);
   const entries = fs.readdirSync(absoluteDir, { withFileTypes: true });
   const files: string[] = [];
   for (const entry of entries) {
-    // node_modules is the ONE exclusion: install-time output, never
-    // committed template content. A dot-prefixed entry is ordinary content
-    // (see the doc comment above) and is walked/included like any other.
-    if (entry.name === 'node_modules') continue;
-    const relativePath = `${relativeDir}/${entry.name}`;
+    // A dot-prefixed entry is ordinary content (see the doc comment above)
+    // and is walked/included like any other; only a name in `skipNames` is
+    // excluded.
+    if (skipNames.has(entry.name)) continue;
+    const relativePath = joinRelative(relativeDir, entry.name);
 
     if (entry.isDirectory()) {
-      files.push(...walkFiles(templateDir, relativePath, root, visitedRealDirs));
+      // `visitedRealDirs` tracks the CURRENT ancestor chain, not "every
+      // directory ever visited": a real path is added right before
+      // recursing into it and removed right after returning
+      // (`descendDirectory` below). Registering an ORDINARY directory's
+      // real path too (not only a symlinked one, below) is what lets a
+      // symlink further down the walk that cycles back to THIS exact
+      // directory - reached the plain way, never through a link - be
+      // recognized as an open ancestor. Removing it again on the way back
+      // out is what keeps two SIBLING branches that both alias the same
+      // real directory (one directly, one through a symlink elsewhere in
+      // the tree) from having the second one wrongly skipped as "already
+      // visited" - only a cycle back to a directory still open on the
+      // current path is a cycle at all.
+      files.push(...descendDirectory(templateDir, relativePath, root, visitedRealDirs, undefined, skipNames));
       continue;
     }
     if (entry.isFile()) {
@@ -184,15 +445,71 @@ function walkFiles(
     const resolved = realPathOrNull(path.join(absoluteDir, entry.name));
     if (resolved === null) continue; // broken link
     if (!isInside(root, resolved)) continue; // points outside the template
-    if (visitedRealDirs.has(resolved)) continue; // already walked through another path
 
     const targetStat = fs.statSync(resolved);
     if (targetStat.isDirectory()) {
-      visitedRealDirs.add(resolved);
-      files.push(...walkFiles(templateDir, relativePath, root, visitedRealDirs));
+      files.push(...descendDirectory(templateDir, relativePath, root, visitedRealDirs, resolved, skipNames));
     } else if (targetStat.isFile()) {
       files.push(toPosixPath(relativePath));
     }
   }
   return files;
+}
+
+// Enters one directory for the duration of its own subtree walk only:
+// resolves its real path (or reuses `knownRealPath` when the caller - the
+// symlink branch above - already resolved it), skips it as a CYCLE when
+// that real path is already open on the current ancestor chain, otherwise
+// marks it open, walks it, and unmarks it again before returning - so the
+// mark reflects "currently being descended into", never "ever visited".
+function descendDirectory(
+  templateDir: string,
+  relativeDir: string,
+  root: string,
+  visitedRealDirs: Set<string>,
+  knownRealPath?: string,
+  skipNames: ReadonlySet<string> = DEFAULT_SKIP_NAMES,
+): string[] {
+  const absoluteDir = path.join(templateDir, relativeDir);
+  const resolvedDir = knownRealPath ?? realPathOrNull(absoluteDir);
+  if (resolvedDir !== null && visitedRealDirs.has(resolvedDir)) return []; // cycle back to an open ancestor
+  if (resolvedDir !== null) visitedRealDirs.add(resolvedDir);
+  try {
+    return walkFiles(templateDir, relativeDir, root, visitedRealDirs, skipNames);
+  } finally {
+    if (resolvedDir !== null) visitedRealDirs.delete(resolvedDir);
+  }
+}
+
+// @cpt-algo:cpt-frontx-algo-cli-scaffolding-delete-plan:p1
+/**
+ * Real `ListTargetFilesFn` (`../scaffold/delete-plan.ts`) — enumerates every
+ * real file reachable under an arbitrary project-relative TARGET's absolute
+ * directory, POSIX-relative to it. Unlike `createFsListPayloadFilesFn`
+ * above (scoped to a template's own directory, and which unconditionally
+ * skips `node_modules`), this walks with an EMPTY skip set: the delete-plan
+ * algorithm's six-term effective-ownership subtraction names no
+ * `node_modules` exclusion, and skipping it here would silently add a
+ * seventh, undeclared term to the ONE formula this algorithm shares
+ * verbatim with `apply`.
+ *
+ * Resolves to `[]`, never a throw, when `absoluteDir` cannot be resolved at
+ * all (absent, a broken symlink, or any other `realpath` failure) — an
+ * applied target ordinarily exists on disk, but ground already partially or
+ * fully removed by hand is not this seam's error to raise; it simply
+ * enumerates fewer real candidates.
+ */
+export function createFsListTargetFilesFn(): ListTargetFilesFn {
+  return async function listTargetFiles(absoluteDir: string): Promise<string[]> {
+    const root = realPathOrNull(absoluteDir);
+    if (root === null) return [];
+    try {
+      return walkFiles(absoluteDir, '', root, new Set([root]), new Set());
+    } catch (error) {
+      throw Object.assign(
+        new Error(`could not enumerate target directory ${absoluteDir}: ${describeError(error)}`),
+        { cause: error },
+      );
+    }
+  };
 }

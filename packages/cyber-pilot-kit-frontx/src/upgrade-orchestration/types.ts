@@ -46,18 +46,13 @@ export interface ChangeSet {
 // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-flow-complete:p1:inst-changeset-types
 
 // @cpt-begin:cpt-frontx-dod-ai-upgrade-orchestration-flow-complete:p1:inst-provenance-type
-// Structural mirror of the F14 engine's `ProvenanceRecord` — read by this
-// orchestration layer itself (flow `inst-read-provenance`) before the engine
-// is ever invoked. A repository holds ONE record per applied template — a
-// SET of records, never a single whole-repository origin
-// (`cpt-frontx-contract-project-provenance`); `ReadProvenanceFn` below reads
-// that full set, and orchestration selects the NAMED applied template's
-// record from it.
-export interface ProvenanceRecord {
-  templateIdentity: string;
-  scaffoldedFromVersion: string;
-  sourceSpec: string;
-}
+// The project's SINGLE state document (`cpt-frontx-contract-project-provenance`)
+// used to be mirrored here as `PreviousOrigin`/`TemplateEntry`/`ProjectStateDocument`
+// plus a `selectTemplateEntry` lookup. F16's template AI-extension trust gate
+// reads the SAME document, so that shape is now promoted to the neutral
+// `src/project-state.ts` — this module imports it from there rather than
+// re-declaring it, keeping exactly ONE mirror of it in this kit.
+import type { ProjectStateDocument } from '../project-state.js';
 // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-flow-complete:p1:inst-provenance-type
 
 export type ReviewDecision = 'approved' | 'declined';
@@ -81,12 +76,18 @@ export interface DownstreamEffectAssessment {
 // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-flow-complete:p1:inst-downstream-types
 
 // @cpt-begin:cpt-frontx-dod-ai-upgrade-orchestration-flow-complete:p1:inst-enriched-package-type
-// The named applied template this review package's enrichment reflects —
-// its identity and current (pre-upgrade) version, extracted from the
-// SELECTED provenance record (inst-extract-provenance).
+// The named template this review package's enrichment reflects — its
+// name, its current (pre-upgrade) `origin`/`version`, and every target
+// listed under it, extracted from the SELECTED `templates[name]` entry
+// (`inst-extract-provenance`). `targets` travels alongside identity/version
+// so the enrichment step sees the full unit the upgrade will validate and
+// move atomically, per `cpt-frontx-adr-project-upgrade-mechanism` — it is
+// never dropped on the way from selection to enrichment.
 export interface SelectedTemplate {
-  templateIdentity: string;
-  currentVersion: string;
+  name: string;
+  origin: string;
+  version: string;
+  targets: string[];
 }
 
 export interface EnrichedReviewPackage {
@@ -106,21 +107,76 @@ export type EnrichmentResult = { status: 'enriched'; package: EnrichedReviewPack
 export type PresentEnrichedReviewFn = (reviewPackage: EnrichedReviewPackage) => Promise<ReviewDecision>;
 // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-present-review-fn-type
 
-// Reads the project's FULL provenance record SET (one record per applied
-// template — `cpt-frontx-contract-project-provenance`); `null` when
-// provenance is absent or unreadable. Orchestration selects the NAMED
-// applied template's record from the returned set (inst-read-provenance /
-// inst-check-provenance).
-export type ReadProvenanceFn = (projectRoot: string) => Promise<ProvenanceRecord[] | null>;
+// Reads the project's single state document (`.frontx/project.json`,
+// `cpt-frontx-contract-project-provenance`); `null` when the document is
+// absent or unreadable — signaled by `null`, never a throw, matching
+// `ReadProjectStateFn`'s own convention. Orchestration selects the NAMED
+// template's `TemplateEntry` from the returned document's `templates` map
+// (inst-read-provenance / inst-check-provenance-unreadable).
+export type ReadProvenanceFn = (projectRoot: string) => Promise<ProjectStateDocument | null>;
 
-// Selects the record for the NAMED applied template from the project's
-// provenance record SET — `undefined` when the set holds no matching record
-// (inst-check-provenance / inst-provenance-missing).
-export function selectProvenanceRecord(
-  provenanceSet: ProvenanceRecord[],
-  appliedTemplateName: string,
-): ProvenanceRecord | undefined {
-  return provenanceSet.find((record) => record.templateIdentity === appliedTemplateName);
+// `selectTemplateEntry` (the NAMED-template lookup on `templates`,
+// inst-check-not-registered / inst-provenance-not-registered) now lives on
+// `../project-state.js` alongside the document shape it looks up — imported
+// directly by callers (e.g. `orchestrate.ts`) rather than re-exported here.
+
+/**
+ * The engine's second positional argument is an ORIGIN, not a version —
+ * `cpt-frontx-adr-project-upgrade-mechanism` fixes the surface as
+ * `upgrade <templateName> <new-origin>` — while this orchestration's own
+ * input is the target template VERSION (FEATURE §3 **Input**).
+ * `inst-invoke-engine` is precisely what bridges the two: it requires "the
+ * target version's RESOLVED origin", so the version is rebased onto the
+ * origin the name is currently recorded at rather than handed to the engine
+ * verbatim. Passing it verbatim is not a cosmetic mismatch — the engine
+ * parses that argument as a source-spec, so a bare `0.2.0` is refused for
+ * having no `host:` prefix, and the AI path would fail where the direct CLI
+ * path succeeds.
+ *
+ * The ref is bounded by the FIRST `@` after the `host:` prefix, mirroring
+ * the resolver's own grammar rather than re-deriving a second rule for the
+ * same syntax (`spec-parser/parse.ts`'s `inst-parse-at-check`: "Only the
+ * FIRST `@` bounds the selector, so a ref that itself contains one is
+ * unaffected").
+ *
+ * A local `path:` origin is refused rather than guessed at: it carries no
+ * ref to rebase, and a version names nothing inside a directory. Refusing
+ * keeps the failure legible at the boundary that can explain it, instead of
+ * handing the engine an origin string that means something else.
+ */
+export function resolveTargetOrigin(
+  recordedOrigin: string,
+  targetVersion: string,
+): { ok: true; origin: string } | { ok: false; message: string } {
+  const colonIdx = recordedOrigin.indexOf(':');
+  if (colonIdx === -1) {
+    return {
+      ok: false,
+      message: `Recorded origin "${recordedOrigin}" carries no "host:" prefix, so the target version "${targetVersion}" cannot be resolved to an origin.`,
+    };
+  }
+
+  const host = recordedOrigin.slice(0, colonIdx);
+  const remainder = recordedOrigin.slice(colonIdx + 1);
+
+  // The one local-origin scheme the engine recognizes (`upgrade/validate.ts`'s
+  // `LOCAL_ORIGIN_PREFIX`); there is no second spelling for it.
+  if (host === 'path') {
+    return {
+      ok: false,
+      message: `"${recordedOrigin}" is a local origin with no version ref to rebase, so the target version "${targetVersion}" cannot be resolved to an origin. Upgrade a locally-originated template by naming the new origin directly.`,
+    };
+  }
+
+  const atIdx = remainder.indexOf('@');
+  if (atIdx === -1 || atIdx === remainder.length - 1) {
+    return {
+      ok: false,
+      message: `Recorded origin "${recordedOrigin}" carries no "@ref" version selector to rebase onto the target version "${targetVersion}".`,
+    };
+  }
+
+  return { ok: true, origin: `${host}:${remainder.slice(0, atIdx)}@${targetVersion}` };
 }
 
 // @cpt-begin:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1:inst-command-surface-types
@@ -133,18 +189,25 @@ export interface UpgradeCommandJsonResult {
   message?: string;
 }
 
-// Drives the SINGLE F14 engine strictly through its `frontx upgrade`
-// command/invocation surface — e.g. an adapter that spawns the `frontx` CLI
-// process (or an equivalent process-boundary bridge) and parses its JSON
-// output — never by importing engine internals or types from
-// the CLI package (cpt-frontx-dod-ai-upgrade-orchestration-single-engine).
-// `onChangeSet` is invoked by the command surface with the raw, un-enriched
-// change set it computed; this orchestration layer enriches it and returns
-// the developer's review decision, which the command surface then uses to
-// decide whether to trigger the engine's apply step.
+// Drives the SINGLE F14 engine strictly through its `frontx upgrade
+// <templateName> <new-origin>` command/invocation surface (§1.1) — e.g. an
+// adapter that spawns the `frontx` CLI process (or an equivalent
+// process-boundary bridge) and parses its JSON output — never by importing
+// engine internals or types from the CLI package
+// (cpt-frontx-dod-ai-upgrade-orchestration-single-engine). `templateName` is
+// the orchestration's own selected name (§1.1, `inst-invoke-engine`): the
+// engine reads its baseline from that SAME name, so neither layer can name a
+// template the other did not. `onChangeSet` is invoked by the command
+// surface with the raw, un-enriched change set it computed; this
+// orchestration layer enriches it and returns the developer's review
+// decision, which the command surface then uses to decide whether to
+// trigger the engine's apply step.
 export type InvokeUpgradeCommandFn = (
   projectRoot: string,
-  targetVersion: string,
+  templateName: string,
+  // The RESOLVED origin, never the bare version — see `resolveTargetOrigin`
+  // above for why the engine cannot be handed a version here.
+  targetOrigin: string,
   onChangeSet: (changeSet: ChangeSet) => Promise<ReviewDecision>,
 ) => Promise<UpgradeCommandJsonResult>;
 // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1:inst-command-surface-types
