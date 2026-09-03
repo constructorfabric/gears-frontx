@@ -104,6 +104,10 @@ Applicability of the remaining checklist categories:
 * **DATA** — Not applicable, because no persistent database or schema is defined here.
 * **OPS** — Not applicable, because there are no runbooks for a local discovery step.
 * **COMPL** — Not applicable, because no regulatory obligation bears on extension discovery.
+* **INT** — addressed: discovery reads a bundle convention on disk that templates produce and the agent host consumes; that is the only boundary this decision crosses, and it lies inside the assembled project.
+* **MAINT** — addressed: one discovery rule keyed to a template's own identity means adding a template adds no discovery code, and a bundle failing its contract is reported rather than silently skipped.
+* **UX** — addressed: activation is what makes a template's own skills available in an agent session without the developer wiring anything by hand.
+* **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 * **ARCH-ADR-008 (supersession)** — Not applicable, because this ADR supersedes no live ADR.
 * **Review cadence**: revisit if the project-filesystem scan's cost becomes a measured bottleneck, or if a required contributor cannot be expressed through contract conformance and would need a privileged path.
 

@@ -116,6 +116,7 @@ Applicability of the remaining checklist categories:
 * **MAINT** — addressed: fewer declared categories and a single semantic carrier concentrate what an author and a reviewer must maintain, and refusing a non-conforming manifest outright keeps any other shape from leaking into ongoing maintenance of this type, with no translation path of its own to maintain.
 * **UX** — addressed implicitly: an author populates four fields instead of five categories, and an AI agent or human reads one field, `description`, for both selection and usage guidance instead of cross-referencing two.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+* **COMPL** — Not applicable, because the four declared fields are identity, version, description and boundary declaration; none carries personal or regulated data, and the contract prescribes no retention.
 
 **Review cadence**: revisit if the deferred field-layout decision (`cpt-frontx-adr-contract-schema-ownership`) surfaces a validated need for a fifth declared category beyond `name`, `version`, `description`, and `excludedSubtrees`, or once a third-party legacy template surfaces as an actual consumer this repository does not control, at which point a generic migration path may be worth reconsidering against the YAGNI cost this decision weighs against it now.
 

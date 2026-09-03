@@ -107,6 +107,10 @@ Applicability of the remaining checklist categories:
 * **MAINT** — addressed: separating the command surface from template content reduces coupling and lets each evolve independently.
 * **UX** — addressed implicitly: a single predictable command surface with a listable inventory.
 * **BIZ** — Not applicable, because product requirements are stated in the PRD and only cited here by ID.
+* **INT** — addressed: acquisition crosses exactly one external boundary, the source registry (`cpt-frontx-actor-github`), and this decision fixes what the CLI may assume about it — content is fetched at a caller-named reference, nothing is bundled, and no other party participates.
+* **COMPL** — Not applicable, because fetching a published template into a developer's own checkout processes no personal or regulated data and creates no retention or disclosure duty.
+
+**Review cadence**: revisit if a second acquisition transport becomes a stated requirement — the location rule here is written against a git host, and a package registry would answer "where a template lives" differently.
 
 ## Traceability
 

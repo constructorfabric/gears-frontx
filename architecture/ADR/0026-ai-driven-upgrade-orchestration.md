@@ -112,6 +112,11 @@ Applicability of the remaining checklist categories:
 * **DATA** — Not applicable, because the change-set format is owned by `cpt-frontx-adr-project-upgrade-mechanism`, not redefined here (DATA-ADR-NO-001).
 * **OPS** — Not applicable, because there are no standalone operational procedures for the orchestration beyond the engine's existing apply and recovery behaviour.
 * **COMPL** — Not applicable, because no regulatory obligation bears on the orchestration relationship.
+* **REL** — addressed: the framework orchestrates the change-set engine and never re-implements it, so an upgrade's atomicity and its recovery stay properties of that one engine rather than of whichever caller drove it.
+* **INT** — addressed: the framework reaches the CLI only over its command surface, never by linking it or reading its storage — that boundary is this decision's whole point.
+* **MAINT** — addressed: one engine with one calling relationship means upgrade behaviour changes in one place, and the framework's enrichment cannot drift from what the engine actually does.
+* **UX** — addressed: the developer sees one enriched plan and one review gate, not two tools' separate views of the same upgrade.
+* **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 * **ARCH-ADR-008 (supersession)** — Not applicable, because this ADR supersedes no live ADR.
 * **Review cadence**: revisit if a credible need arises for an AI-path engine distinct from the CLI's, or if the engine's invocation surface proves too narrow to support the analysis and downstream-impact assessment the orchestration must provide.
 

@@ -122,6 +122,7 @@ Applicability of the remaining checklist categories:
 * **COMPL** — addressed: the absence of a `--force` path for an ownership conflict is a compliance property of the mechanism, not an oversight.
 * **UX** — addressed: a refusal names the contesting templates and the contested ground in a stable, scriptable JSON envelope.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+* **REL** — addressed: the check runs pre-flight, before any file is written, so a refused batch leaves the repository exactly as it was and there is no partially-applied state to recover from.
 
 **Review cadence**: revisit if a validated need emerges for a supervised override of a refused ownership conflict (a `--force` escape hatch this decision deliberately omits), or once nesting scenarios beyond coincidence/ancestor/descendant surface an edge case the canonicalization algorithm does not yet cover.
 

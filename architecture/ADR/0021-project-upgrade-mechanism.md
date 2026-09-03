@@ -209,6 +209,7 @@ Applicability of the remaining checklist categories:
 * **MAINT** — addressed: one baseline source, one classification mechanism, and one engine run in either direction for upgrade and restore remove the bookkeeping a per-instance provenance store, a snapshot artifact, or a hash index would otherwise require.
 * **UX** — addressed implicitly: a developer reasons about upgrading or restoring a template by name and reviews one plan of whole-file operations, not about reconciling divergent versions across its individual targets or resolving a merge conflict inside a file.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+* **COMPL** — Not applicable, because an upgrade moves a developer's own files inside their own checkout under explicit approval; no regulated data is processed, and nothing must be retained beyond the one generation the project state document already keeps.
 
 **Review cadence**: revisit if a validated need emerges for upgrading one target of a multi-target template independently of its siblings, or for reversing an upgrade more than one generation back.
 

@@ -406,13 +406,16 @@ Root capacity is expressed as an absence of structural caps. Concrete runtime or
 
 ### Applicability of the remaining checklist categories
 
-- Database and data architecture are not applicable at root altitude.
-- Hosted infrastructure operations are not applicable at root altitude.
-- Security and privacy behavior are owned by members and consuming applications unless a root contract explicitly states otherwise.
+- **DATA** — Not applicable at root altitude: the root defines no database or data architecture of its own; each member owns the data it holds.
+- **OPS** — Not applicable at root altitude: the root operates no hosted infrastructure; distribution and operation belong to each member.
+- **SEC** — Owned by members and consuming applications unless a root contract explicitly states otherwise; the root declares no authentication, authorization or secret-handling surface of its own.
 - **PERF** — Not applicable at root altitude: the root defines no runtime behavior of its own to profile; per-artifact performance thresholds are owned by each member's PRD and DESIGN.
 - **REL** — Addressed narrowly: the root's own reliability property is that the governance guard (§3.6) fails loudly on missing classification or artifact-chain accounting rather than passing silently; runtime reliability belongs to each member.
 - **MAINT** — Addressed: federated artifact ownership (§1.3) and per-concern independent versioning keep each artifact's maintenance concerns local to its own semver line, so a root-level change never forces a lockstep update across members.
 - **UX** — Not applicable at root altitude: the root ships no end-user or developer-facing surface of its own; CLI and AI-tooling developer experience is owned by their member PRDs and DESIGNs.
+- **INT** — Addressed: the root's integration surface is the layer model itself (§1.3) and the member-facing contracts §3.5 records; the root integrates with nothing outside the ecosystem on its own account.
+- **TEST** — Addressed: the root's only testable property is its governance guard (§3.6), which fails continuous integration on an unclassified package or an unaccounted artifact chain; every other behaviour under test belongs to a member.
+- **COMPL** — Not applicable at root altitude: no regulated data category and no regulatory obligation attaches to a layer model and its governance rules.
 - **BIZ** — Not applicable at root altitude: product requirements live in the PRD and are cited here by ID; this DESIGN adds no independent business rationale of its own.
 
 ### Member Pointers

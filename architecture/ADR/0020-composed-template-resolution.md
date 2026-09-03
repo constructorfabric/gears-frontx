@@ -118,6 +118,7 @@ Applicability of the remaining checklist categories:
 * **MAINT** — addressed directly: removing manifest-declared references and saved, fingerprinted plans collapses two persisted-state concepts into a single call-time-validated one, reducing the surface a maintainer must reason about.
 * **UX** — addressed implicitly: a developer or AI previews a batch with `assemble` and applies the identical batch with `apply`, with no separate plan artifact to track between the two.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+* **COMPL** — Not applicable, because resolving which templates a batch names governs ordering and refusal, not data handling, and imposes no regulatory obligation.
 
 **Review cadence**: revisit if a validated need emerges for a persisted, re-usable plan artifact beyond a call-time batch (for example very large multi-template compositions repeated across sessions), or if a future multi-instance-per-target model requires reintroducing a generated instance identifier this decision retires.
 

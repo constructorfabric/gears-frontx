@@ -174,6 +174,9 @@ Applicability of the remaining checklist categories:
 * **MAINT** — addressed: one addressing vocabulary shared with the substrate, and one repository able to hold a family of templates, reduce both cognitive load and repository sprawl.
 * **UX** — addressed: the reference remains a single compact, copy-pasteable token.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+* **COMPL** — Not applicable, because a reference names a repository, an optional subtree and a version selector; none of the three is regulated content.
+
+**Review cadence**: revisit when a host beyond the one source registry this shape was written against has to be addressed — such a change touches the `host:` prefix's admissible values rather than the shape itself, and this decision should say so explicitly when it happens.
 
 ## Traceability
 

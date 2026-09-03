@@ -129,6 +129,7 @@ Applicability of the remaining checklist categories:
 * **MAINT** — addressed: replacing a per-region declaration with a flat target-minus-exclusions model means the tool carries no merge-compatibility logic at all — an entire class of behaviour this model never introduces.
 * **UX** — addressed: a developer can see exactly what a template owns by reading one target path and two short exclusion lists, and can protect their own files with a single reversible `ownership add`.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
+* **COMPL** — Not applicable, because ownership arbitration decides which files a template may write inside a developer's own repository; no regulated data and no disclosure duty attaches to that.
 
 **Review cadence**: revisit if a validated need emerges for ownership finer-grained than whole-target-minus-exclusions (for example a recurring shared-file-region use case a two-tier model would serve), or once real template authoring shows `excludedSubtrees` lists growing large enough to erode the "read one target path and two short lists" usability property this decision relies on.
 

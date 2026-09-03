@@ -264,6 +264,10 @@ The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationaliz
 - **Data Lifecycle** (DATA-PRD-003) — Not applicable: the framework owns no persistent data store; the project state file and template AI-extension bundles it reads are owned and lifecycle-managed by the CLI ([CLI PRD](../../cli/architecture/PRD.md)).
 - **Deployment** (OPS-PRD-001) — Not applicable: the framework ships as a versioned npm package and Constructor Studio kit installed into a project, not a deployed or hosted service; publishing a version is the only "deployment" this product has.
 - **Monitoring** (OPS-PRD-002) — Not applicable: there is no running service to monitor; observability is local to the developer's own invoking session.
+- **Recovery** (REL-PRD-002) — Not applicable: the framework holds no durable state of its own to recover. Every mutation it drives runs through the CLI, whose own all-or-nothing guarantees and Git-tracked project state file are where recovery is answered.
+- **Error Handling Expectations** (REL-PRD-003) — Addressed: the framework relays what the CLI reports without reinterpreting it, and surfaces a discovery or activation failure rather than skipping the resource silently, so a developer sees the failure instead of an unexplained absence.
+- **Data Ownership** (DATA-PRD-001) — Addressed: the framework owns none of the data it reads. The project state file belongs to the CLI's contract and the AI-extension bundles to the templates that ship them; the framework is a consumer of both.
+- **Data Quality** (DATA-PRD-002) — Not applicable: the framework states no accuracy or completeness expectation of its own, because every value it reports is read from a manifest, a bundle, or the CLI's own output and is relayed as declared.
 - **Support** (MAINT-PRD-002) — Not applicable beyond the ecosystem's own channels: the framework is supported through the same repository issue tracker and developer documentation as the rest of the ecosystem, with no dedicated SLA-bound support tier.
 
 ## 7. Public Library Interfaces

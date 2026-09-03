@@ -247,6 +247,10 @@ The ecosystem **MUST** avoid a fixed architectural ceiling and express concrete 
 - **Inclusivity** (UX-PRD-005): Not applicable — for the same reason as Accessibility, the product ships no end-user-facing interface.
 - **Regulatory Compliance** (COMPL-PRD-001 / COMPL-PRD-002 / COMPL-PRD-003): Not applicable — the product is developer tooling that does not process regulated data; applications and templates built on the product own their own compliance posture.
 - Privacy of end-user telemetry belongs to the telemetry member and to consuming applications, not to this root PRD.
+- **Recovery Requirements** (REL-PRD-002): Not applicable at root altitude — the root runs nothing and holds no data, so it has no RPO, RTO, backup or disaster-recovery position; each member states its own, and for the CLI the durable state is a Git-tracked file whose recovery story is Git's own history.
+- **Error Handling Expectations** (REL-PRD-003): Owned by members — the root fixes no failure surface of its own. The one root-level behaviour that can fail, the governance guard, is required to fail continuous integration loudly rather than pass silently (§1.3).
+- **Data Ownership** (DATA-PRD-001): Addressed by the layer model rather than by a separate requirement — each member owns the data its own behaviour holds (§1.3, federated artifacts), and the root holds none.
+- **Data Quality** (DATA-PRD-002): Not applicable at root altitude — the root defines no data whose accuracy, completeness or timeliness could be stated; each member states quality expectations for the data it holds.
 
 ## 7. Public Library Interfaces
 

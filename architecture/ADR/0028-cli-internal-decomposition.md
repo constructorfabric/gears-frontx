@@ -106,6 +106,8 @@ Applicability of the remaining checklist categories:
 * **UX** — Not applicable, because the command surface is unchanged by an internal decomposition.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited by ID.
 
+**Review cadence**: revisit if a lifecycle concern arrives that fits none of the seven components, or if two of them stop having separate reasons to change.
+
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)

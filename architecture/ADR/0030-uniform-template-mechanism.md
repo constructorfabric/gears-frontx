@@ -109,6 +109,8 @@ Applicability of the remaining checklist categories:
 * **UX** — addressed implicitly: a developer assembles any template through one predictable set of commands.
 * **BIZ** — Not applicable, because product requirements live in the PRD and are cited here by ID.
 
+**Review cadence**: revisit if a validated need for template typing emerges that one uniform mechanism cannot serve without reintroducing a taxonomy.
+
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)
