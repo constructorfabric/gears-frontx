@@ -47,6 +47,29 @@ async function readManifest(filePath) {
 const TREE = 'template-shell';
 
 /**
+ * The tree is addressed by PATH, not by a name under the repo, because the real
+ * one is a copy in `$RUNNER_TEMP` (#586). The fixtures keep it inside the
+ * fixture root anyway, since `packages/*` has to be resolvable from `repoRoot`.
+ *
+ * @param {string} root
+ * @param {...string} segments
+ */
+function inTree(root, ...segments) {
+  return path.join(root, TREE, ...segments);
+}
+
+/**
+ * Where the tarballs and the journal live: inside the tree, so every `file:`
+ * specifier stays a relative path within it.
+ *
+ * @param {string} root
+ * @param {...string} segments
+ */
+function inPackDir(root, ...segments) {
+  return path.join(root, TREE, PACK_DIR_NAME, ...segments);
+}
+
+/**
  * The bumped-in-this-PR package the fixtures pin - `@gears-frontx/ui-kit` at
  * `0.4.0-alpha.2` is the real instance from PR #598.
  *
@@ -71,7 +94,7 @@ async function writeLocalUiKit(root, version) {
  * @param {Record<string, string>} [overrides]
  */
 async function writeComposedTree(root, dependencies, overrides) {
-  await writeJson(path.join(root, TREE, 'package.json'), {
+  await writeJson(inTree(root, 'package.json'), {
     name: '@gears-frontx/frontx-template-shell',
     version: '0.1.0-alpha.3',
     dependencies,
@@ -99,7 +122,7 @@ describe('planLocalPackSubstitution', () => {
 
     const plan = planLocalPackSubstitution({
       repoRoot: root,
-      treeDirName: TREE,
+      treeDir: inTree(root),
       probeRegistry: registryWith(['@gears-frontx/ui-kit@0.4.0-alpha.2']),
     });
 
@@ -113,7 +136,7 @@ describe('planLocalPackSubstitution', () => {
 
     const plan = planLocalPackSubstitution({
       repoRoot: root,
-      treeDirName: TREE,
+      treeDir: inTree(root),
       probeRegistry: registryWith(['@gears-frontx/ui-kit@0.4.0-alpha.1']),
     });
 
@@ -138,7 +161,7 @@ describe('planLocalPackSubstitution', () => {
 
     const plan = planLocalPackSubstitution({
       repoRoot: root,
-      treeDirName: TREE,
+      treeDir: inTree(root),
       probeRegistry: registryWith([]),
     });
 
@@ -156,7 +179,7 @@ describe('planLocalPackSubstitution', () => {
 
     const plan = planLocalPackSubstitution({
       repoRoot: root,
-      treeDirName: TREE,
+      treeDir: inTree(root),
       probeRegistry: () => ({ ok: false, reason: 'registry-unanswerable', message: 'getaddrinfo EAI_AGAIN registry.npmjs.org' }),
     });
 
@@ -170,7 +193,7 @@ describe('planLocalPackSubstitution', () => {
     const root = await makeRoot();
     await writeLocalUiKit(root, '0.4.0-alpha.2');
     await writeComposedTree(root, { '@gears-frontx/ui-kit': '0.4.0-alpha.2' });
-    await writeJson(path.join(root, TREE, 'src-app', 'mfe_packages', 'demo-mfe', 'package.json'), {
+    await writeJson(inTree(root, 'src-app', 'mfe_packages', 'demo-mfe', 'package.json'), {
       name: '@gears-frontx/demo-mfe',
       dependencies: { '@gears-frontx/ui-kit': '0.4.0-alpha.2' },
     });
@@ -183,7 +206,7 @@ describe('planLocalPackSubstitution', () => {
       return { ok: true, published: false };
     };
 
-    const plan = planLocalPackSubstitution({ repoRoot: root, treeDirName: TREE, probeRegistry });
+    const plan = planLocalPackSubstitution({ repoRoot: root, treeDir: inTree(root), probeRegistry });
 
     expect(asked).toEqual(['@gears-frontx/ui-kit@0.4.0-alpha.2']);
     expect(plan.ok).toBe(true);
@@ -197,12 +220,12 @@ describe('planLocalPackSubstitution', () => {
   it('leaves a peer-dependency pin alone, since npm installs no edge for it', async () => {
     const root = await makeRoot();
     await writeLocalUiKit(root, '0.4.0-alpha.2');
-    await writeJson(path.join(root, TREE, 'package.json'), {
+    await writeJson(inTree(root, 'package.json'), {
       name: '@gears-frontx/frontx-template-shell',
       peerDependencies: { '@gears-frontx/ui-kit': '0.4.0-alpha.2' },
     });
 
-    const plan = planLocalPackSubstitution({ repoRoot: root, treeDirName: TREE, probeRegistry: registryWith([]) });
+    const plan = planLocalPackSubstitution({ repoRoot: root, treeDir: inTree(root), probeRegistry: registryWith([]) });
 
     expect(plan.ok).toBe(false);
     if (plan.ok) return;
@@ -214,7 +237,7 @@ describe('planLocalPackSubstitution', () => {
     await writeLocalUiKit(root, '0.4.0-alpha.2');
     await writeComposedTree(root, { react: '19.2.4' });
 
-    const plan = planLocalPackSubstitution({ repoRoot: root, treeDirName: TREE, probeRegistry: registryWith([]) });
+    const plan = planLocalPackSubstitution({ repoRoot: root, treeDir: inTree(root), probeRegistry: registryWith([]) });
 
     expect(plan.ok).toBe(false);
     if (plan.ok) return;
@@ -225,7 +248,7 @@ describe('planLocalPackSubstitution', () => {
     const root = await makeRoot();
     await writeLocalUiKit(root, '0.4.0-alpha.2');
 
-    const plan = planLocalPackSubstitution({ repoRoot: root, treeDirName: TREE, probeRegistry: registryWith([]) });
+    const plan = planLocalPackSubstitution({ repoRoot: root, treeDir: inTree(root), probeRegistry: registryWith([]) });
 
     expect(plan.ok).toBe(false);
     if (plan.ok) return;
@@ -279,19 +302,19 @@ describe('packSubstitutedPackages', () => {
     const { ran, runCommand } = packHarness(root, { entryPointBuilt: true });
     // npm writes the tarball; the fake only reports its name, so the test puts
     // the file where npm would.
-    await mkdir(path.join(root, PACK_DIR_NAME), { recursive: true });
-    await writeFile(path.join(root, PACK_DIR_NAME, 'gears-frontx-ui-kit-0.4.0-alpha.2.tgz'), '');
+    await mkdir(inPackDir(root), { recursive: true });
+    await writeFile(inPackDir(root, 'gears-frontx-ui-kit-0.4.0-alpha.2.tgz'), '');
 
-    const packed = packSubstitutedPackages({ repoRoot: root, substitutions: [UI_KIT_SUBSTITUTION], runCommand });
+    const packed = packSubstitutedPackages({ repoRoot: root, treeDir: inTree(root), substitutions: [UI_KIT_SUBSTITUTION], runCommand });
 
     expect(packed.ok).toBe(true);
     if (!packed.ok) return;
     expect(packed.tarballByPackage).toEqual({
-      '@gears-frontx/ui-kit': path.join(root, PACK_DIR_NAME, 'gears-frontx-ui-kit-0.4.0-alpha.2.tgz'),
+      '@gears-frontx/ui-kit': inPackDir(root, 'gears-frontx-ui-kit-0.4.0-alpha.2.tgz'),
     });
     expect(ran).toEqual([
       'npm run build:packages',
-      `npm pack --workspace=@gears-frontx/ui-kit --pack-destination=${path.join(root, PACK_DIR_NAME)} --json`,
+      `npm pack --workspace=@gears-frontx/ui-kit --pack-destination=${inPackDir(root)} --json`,
     ]);
   });
 
@@ -304,7 +327,7 @@ describe('packSubstitutedPackages', () => {
     });
     const { runCommand } = packHarness(root, { entryPointBuilt: false });
 
-    const packed = packSubstitutedPackages({ repoRoot: root, substitutions: [UI_KIT_SUBSTITUTION], runCommand });
+    const packed = packSubstitutedPackages({ repoRoot: root, treeDir: inTree(root), substitutions: [UI_KIT_SUBSTITUTION], runCommand });
 
     expect(packed.ok).toBe(false);
     if (packed.ok) return;
@@ -321,12 +344,12 @@ describe('packSubstitutedPackages', () => {
     });
     const { runCommand } = packHarness(root, { entryPointBuilt: false, buildOk: false });
 
-    const packed = packSubstitutedPackages({ repoRoot: root, substitutions: [UI_KIT_SUBSTITUTION], runCommand });
+    const packed = packSubstitutedPackages({ repoRoot: root, treeDir: inTree(root), substitutions: [UI_KIT_SUBSTITUTION], runCommand });
 
     expect(packed.ok).toBe(false);
     if (packed.ok) return;
     expect(packed.reason).toBe('build-failed');
-    expect(existsSync(path.join(root, PACK_DIR_NAME))).toBe(false);
+    expect(existsSync(inPackDir(root))).toBe(false);
   });
 
   it('refuses when npm pack reports a filename that is not on disk', async () => {
@@ -339,7 +362,7 @@ describe('packSubstitutedPackages', () => {
     await mkdir(path.join(root, 'packages', 'ui-kit', 'dist'), { recursive: true });
     const { runCommand } = packHarness(root, { entryPointBuilt: true });
 
-    const packed = packSubstitutedPackages({ repoRoot: root, substitutions: [UI_KIT_SUBSTITUTION], runCommand });
+    const packed = packSubstitutedPackages({ repoRoot: root, treeDir: inTree(root), substitutions: [UI_KIT_SUBSTITUTION], runCommand });
 
     expect(packed.ok).toBe(false);
     if (packed.ok) return;
@@ -351,18 +374,17 @@ describe('applyLocalPackSubstitution', () => {
   it('rewrites the pin to the tarball and mirrors it into the root overrides', async () => {
     const root = await makeRoot();
     await writeComposedTree(root, { '@gears-frontx/ui-kit': '0.4.0-alpha.2' });
-    const tarballPath = path.join(root, PACK_DIR_NAME, 'gears-frontx-ui-kit-0.4.0-alpha.2.tgz');
+    const tarballPath = inPackDir(root, 'gears-frontx-ui-kit-0.4.0-alpha.2.tgz');
 
     const applied = applyLocalPackSubstitution({
-      repoRoot: root,
-      treeDirName: TREE,
+      treeDir: inTree(root),
       substitutions: [UI_KIT_SUBSTITUTION],
       tarballByPackage: { '@gears-frontx/ui-kit': tarballPath },
     });
 
     expect(applied.ok).toBe(true);
-    const manifest = await readManifest(path.join(root, TREE, 'package.json'));
-    const expectedSpec = `file:../${PACK_DIR_NAME}/gears-frontx-ui-kit-0.4.0-alpha.2.tgz`;
+    const manifest = await readManifest(inTree(root, 'package.json'));
+    const expectedSpec = `file:./${PACK_DIR_NAME}/gears-frontx-ui-kit-0.4.0-alpha.2.tgz`;
     expect(manifest.dependencies['@gears-frontx/ui-kit']).toBe(expectedSpec);
     expect(manifest.overrides).toEqual({ '@gears-frontx/ui-kit': expectedSpec });
   });
@@ -370,47 +392,45 @@ describe('applyLocalPackSubstitution', () => {
   it('writes a nested manifest a specifier relative to its own directory', async () => {
     const root = await makeRoot();
     await writeComposedTree(root, { react: '19.2.4' });
-    await writeJson(path.join(root, TREE, 'src-app', 'mfe_packages', 'demo-mfe', 'package.json'), {
+    await writeJson(inTree(root, 'src-app', 'mfe_packages', 'demo-mfe', 'package.json'), {
       name: '@gears-frontx/demo-mfe',
       dependencies: { '@gears-frontx/ui-kit': '0.4.0-alpha.2' },
     });
-    const tarballPath = path.join(root, PACK_DIR_NAME, 'gears-frontx-ui-kit-0.4.0-alpha.2.tgz');
+    const tarballPath = inPackDir(root, 'gears-frontx-ui-kit-0.4.0-alpha.2.tgz');
 
     const applied = applyLocalPackSubstitution({
-      repoRoot: root,
-      treeDirName: TREE,
+      treeDir: inTree(root),
       substitutions: [{ ...UI_KIT_SUBSTITUTION, file: path.join('src-app', 'mfe_packages', 'demo-mfe', 'package.json') }],
       tarballByPackage: { '@gears-frontx/ui-kit': tarballPath },
     });
 
     expect(applied.ok).toBe(true);
-    const manifest = await readManifest(path.join(root, TREE, 'src-app', 'mfe_packages', 'demo-mfe', 'package.json'));
+    const manifest = await readManifest(inTree(root, 'src-app', 'mfe_packages', 'demo-mfe', 'package.json'));
     expect(manifest.dependencies['@gears-frontx/ui-kit']).toBe(
-      `file:../../../../${PACK_DIR_NAME}/gears-frontx-ui-kit-0.4.0-alpha.2.tgz`,
+      `file:../../../${PACK_DIR_NAME}/gears-frontx-ui-kit-0.4.0-alpha.2.tgz`,
     );
   });
 
   it('overrides a substituted package in the root manifest even when only a workspace member pins it', async () => {
     const root = await makeRoot();
     await writeComposedTree(root, { react: '19.2.4' });
-    await writeJson(path.join(root, TREE, 'src-app', 'mfe_packages', 'demo-mfe', 'package.json'), {
+    await writeJson(inTree(root, 'src-app', 'mfe_packages', 'demo-mfe', 'package.json'), {
       name: '@gears-frontx/demo-mfe',
       dependencies: { '@gears-frontx/ui-kit': '0.4.0-alpha.2' },
     });
 
     applyLocalPackSubstitution({
-      repoRoot: root,
-      treeDirName: TREE,
+      treeDir: inTree(root),
       substitutions: [{ ...UI_KIT_SUBSTITUTION, file: path.join('src-app', 'mfe_packages', 'demo-mfe', 'package.json') }],
-      tarballByPackage: { '@gears-frontx/ui-kit': path.join(root, PACK_DIR_NAME, 'x.tgz') },
+      tarballByPackage: { '@gears-frontx/ui-kit': inPackDir(root, 'x.tgz') },
     });
 
     // The root is where npm honours `overrides`, and a transitive edge of the
     // packed tarball onto another unpublished ecosystem version is reachable
     // from nowhere else - so the entry has to land here whether or not the root
     // declares the dependency itself.
-    const manifest = await readManifest(path.join(root, TREE, 'package.json'));
-    expect(manifest.overrides).toEqual({ '@gears-frontx/ui-kit': `file:../${PACK_DIR_NAME}/x.tgz` });
+    const manifest = await readManifest(inTree(root, 'package.json'));
+    expect(manifest.overrides).toEqual({ '@gears-frontx/ui-kit': `file:./${PACK_DIR_NAME}/x.tgz` });
     expect(manifest.dependencies).toEqual({ react: '19.2.4' });
   });
 
@@ -423,17 +443,16 @@ describe('applyLocalPackSubstitution', () => {
     );
 
     const applied = applyLocalPackSubstitution({
-      repoRoot: root,
-      treeDirName: TREE,
+      treeDir: inTree(root),
       substitutions: [UI_KIT_SUBSTITUTION],
-      tarballByPackage: { '@gears-frontx/ui-kit': path.join(root, PACK_DIR_NAME, 'x.tgz') },
+      tarballByPackage: { '@gears-frontx/ui-kit': inPackDir(root, 'x.tgz') },
     });
 
     expect(applied.ok).toBe(true);
-    const manifest = await readManifest(path.join(root, TREE, 'package.json'));
+    const manifest = await readManifest(inTree(root, 'package.json'));
     expect(manifest.overrides).toEqual({
       '@gears-frontx/frontx-template-shell': 'file:.',
-      '@gears-frontx/ui-kit': `file:../${PACK_DIR_NAME}/x.tgz`,
+      '@gears-frontx/ui-kit': `file:./${PACK_DIR_NAME}/x.tgz`,
     });
   });
 
@@ -444,13 +463,12 @@ describe('applyLocalPackSubstitution', () => {
       { '@gears-frontx/ui-kit': '0.4.0-alpha.2' },
       { '@gears-frontx/ui-kit': 'file:../vendor/ui-kit' },
     );
-    const before = await readFile(path.join(root, TREE, 'package.json'), 'utf8');
+    const before = await readFile(inTree(root, 'package.json'), 'utf8');
 
     const applied = applyLocalPackSubstitution({
-      repoRoot: root,
-      treeDirName: TREE,
+      treeDir: inTree(root),
       substitutions: [UI_KIT_SUBSTITUTION],
-      tarballByPackage: { '@gears-frontx/ui-kit': path.join(root, PACK_DIR_NAME, 'x.tgz') },
+      tarballByPackage: { '@gears-frontx/ui-kit': inPackDir(root, 'x.tgz') },
     });
 
     expect(applied.ok).toBe(false);
@@ -458,8 +476,8 @@ describe('applyLocalPackSubstitution', () => {
     expect(applied.reason).toBe('override-conflict');
     // The refusal has to leave the tree installable-as-committed, so the point
     // of this case is what did NOT happen: no manifest write, no journal.
-    expect(await readFile(path.join(root, TREE, 'package.json'), 'utf8')).toBe(before);
-    expect(existsSync(path.join(root, PACK_DIR_NAME, RESTORE_JOURNAL_NAME))).toBe(false);
+    expect(await readFile(inTree(root, 'package.json'), 'utf8')).toBe(before);
+    expect(existsSync(inPackDir(root, RESTORE_JOURNAL_NAME))).toBe(false);
   });
 });
 
@@ -467,37 +485,36 @@ describe('restoreSubstitutedManifests', () => {
   it('puts every rewritten manifest back byte for byte and drops the journal', async () => {
     const root = await makeRoot();
     await writeComposedTree(root, { '@gears-frontx/ui-kit': '0.4.0-alpha.2' });
-    const manifestPath = path.join(root, TREE, 'package.json');
+    const manifestPath = inTree(root, 'package.json');
     const committed = await readFile(manifestPath, 'utf8');
 
     applyLocalPackSubstitution({
-      repoRoot: root,
-      treeDirName: TREE,
+      treeDir: inTree(root),
       substitutions: [UI_KIT_SUBSTITUTION],
-      tarballByPackage: { '@gears-frontx/ui-kit': path.join(root, PACK_DIR_NAME, 'x.tgz') },
+      tarballByPackage: { '@gears-frontx/ui-kit': inPackDir(root, 'x.tgz') },
     });
-    const outcome = restoreSubstitutedManifests({ repoRoot: root, treeDirName: TREE });
+    const outcome = restoreSubstitutedManifests({ treeDir: inTree(root) });
 
-    expect(outcome).toEqual({ ok: true, restored: [path.join(TREE, 'package.json')] });
+    expect(outcome).toEqual({ ok: true, restored: ['package.json'] });
     expect(await readFile(manifestPath, 'utf8')).toBe(committed);
-    expect(existsSync(path.join(root, PACK_DIR_NAME, RESTORE_JOURNAL_NAME))).toBe(false);
+    expect(existsSync(inPackDir(root, RESTORE_JOURNAL_NAME))).toBe(false);
   });
 
   it('restores nothing when no substitution ran, since the workflow calls it unconditionally', async () => {
     const root = await makeRoot();
 
-    expect(restoreSubstitutedManifests({ repoRoot: root, treeDirName: TREE })).toEqual({ ok: true, restored: [] });
+    expect(restoreSubstitutedManifests({ treeDir: inTree(root) })).toEqual({ ok: true, restored: [] });
   });
 
   it('refuses a journal written for a different tree instead of replaying it', async () => {
     const root = await makeRoot();
-    await mkdir(path.join(root, PACK_DIR_NAME), { recursive: true });
-    await writeJson(path.join(root, PACK_DIR_NAME, RESTORE_JOURNAL_NAME), {
-      treeDirName: 'template-mfe',
-      manifests: [{ file: 'template-mfe/package.json', original: '{}' }],
+    await mkdir(inPackDir(root), { recursive: true });
+    await writeJson(inPackDir(root, RESTORE_JOURNAL_NAME), {
+      tree: path.join(root, 'template-mfe'),
+      manifests: [{ file: 'package.json', original: '{}' }],
     });
 
-    const outcome = restoreSubstitutedManifests({ repoRoot: root, treeDirName: TREE });
+    const outcome = restoreSubstitutedManifests({ treeDir: inTree(root) });
 
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
@@ -507,13 +524,13 @@ describe('restoreSubstitutedManifests', () => {
   it('refuses a journal naming a path outside the tree, writing nothing', async () => {
     const root = await makeRoot();
     await writeJson(path.join(root, 'packages', 'ui-kit', 'package.json'), { name: '@gears-frontx/ui-kit', version: '1.0.0' });
-    await mkdir(path.join(root, PACK_DIR_NAME), { recursive: true });
-    await writeJson(path.join(root, PACK_DIR_NAME, RESTORE_JOURNAL_NAME), {
-      treeDirName: TREE,
-      manifests: [{ file: `${TREE}/../packages/ui-kit/package.json`, original: 'clobbered' }],
+    await mkdir(inPackDir(root), { recursive: true });
+    await writeJson(inPackDir(root, RESTORE_JOURNAL_NAME), {
+      tree: inTree(root),
+      manifests: [{ file: '../packages/ui-kit/package.json', original: 'clobbered' }],
     });
 
-    const outcome = restoreSubstitutedManifests({ repoRoot: root, treeDirName: TREE });
+    const outcome = restoreSubstitutedManifests({ treeDir: inTree(root) });
 
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
@@ -523,10 +540,10 @@ describe('restoreSubstitutedManifests', () => {
 
   it('refuses a journal that is not readable JSON', async () => {
     const root = await makeRoot();
-    await mkdir(path.join(root, PACK_DIR_NAME), { recursive: true });
-    await writeFile(path.join(root, PACK_DIR_NAME, RESTORE_JOURNAL_NAME), '{ not json');
+    await mkdir(inPackDir(root), { recursive: true });
+    await writeFile(inPackDir(root, RESTORE_JOURNAL_NAME), '{ not json');
 
-    const outcome = restoreSubstitutedManifests({ repoRoot: root, treeDirName: TREE });
+    const outcome = restoreSubstitutedManifests({ treeDir: inTree(root) });
 
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
@@ -538,7 +555,7 @@ describe('parseArgs', () => {
   it('reads the tree name and the restore flag', () => {
     expect(parseArgs(['--tree', 'template-shell', '--restore'])).toEqual({
       ok: true,
-      treeDirName: 'template-shell',
+      tree: 'template-shell',
       restore: true,
     });
   });

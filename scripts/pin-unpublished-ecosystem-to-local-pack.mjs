@@ -87,12 +87,22 @@
  * reaches the registry, so it is not this script's business. A pin on a name
  * that is neither is `policy:template-pin-drift`'s to refuse as unverifiable.
  *
+ * ## Where the tree is
+ *
+ * `--tree` is a PATH, not a directory name under the repo, and the tarballs are
+ * packed INTO that tree. Both template steps install from a copy placed outside
+ * the checkout (#586), so the tree this rewrites lives in `$RUNNER_TEMP` and
+ * only `packages/*` and the `npm pack` invocation still refer to the repo.
+ * Keeping the tarballs inside the tree is what makes every `file:` specifier a
+ * short relative path within it, instead of one climbing out of `$RUNNER_TEMP`
+ * and back into the workspace.
+ *
  * Core logic is exported for unit tests: every process and registry effect
  * arrives through an injected seam, and only `runCli` supplies the real ones.
  *
  * CLI entry (CI runtime only - it shells out to `npm` by bare name):
- *   node scripts/pin-unpublished-ecosystem-to-local-pack.mjs --tree <dir>
- *   node scripts/pin-unpublished-ecosystem-to-local-pack.mjs --tree <dir> --restore
+ *   node scripts/pin-unpublished-ecosystem-to-local-pack.mjs --tree <path>
+ *   node scripts/pin-unpublished-ecosystem-to-local-pack.mjs --tree <path> --restore
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -109,21 +119,22 @@ import {
 } from './template-ecosystem-packages.mjs';
 
 /**
- * Where the tarballs and the restore journal live: one repo-root directory,
- * outside every template, so no template's eslint, vitest or dependency-cruiser
- * glob can see a `.tgz` and no `file:` specifier has to reach outside the
- * checkout to name one.
+ * Where the tarballs and the restore journal live, relative to the tree being
+ * substituted. A dot-directory at the tree's root is invisible to everything
+ * the tree then runs: it matches no `workspaces` pattern, eslint skips dot
+ * directories and lints no `.tgz` anyway, and `arch:deps` is pointed at
+ * `src-app/` and `packages/`.
  */
 export const PACK_DIR_NAME = '.frontx-local-packs';
 
 /**
- * The substitution has to be undone before the composed tree is built, linted
- * and tested, so those checks read the manifests a seeded project actually
- * ships (the invariant `template-drift.yml` states for the same rewrite). It
- * cannot be undone with `git checkout`: the overlaid MFE manifests this also
- * rewrites are untracked copies in the shell's tree, which `git checkout`
- * leaves exactly as it found them. So the substituting run records the original
- * bytes of every manifest it touches here, and `--restore` writes them back.
+ * The substitution has to be undone before the tree is built, linted and
+ * tested, so those checks read the manifests a seeded project actually ships
+ * (the invariant `template-drift.yml` states for the same rewrite). `git
+ * checkout` cannot do it: the tree is a copy outside the checkout, and the
+ * overlaid MFE manifests it holds are untracked even in the original. So the
+ * substituting run records the original bytes of every manifest it touches
+ * here, and `--restore` writes them back.
  */
 export const RESTORE_JOURNAL_NAME = 'restore-journal.json';
 
@@ -138,6 +149,26 @@ export const RESTORE_JOURNAL_NAME = 'restore-journal.json';
  * managed to reach.
  */
 const REGISTRY_ABSENT_ERROR_CODE = 'E404';
+
+/**
+ * The `file:` specifier installing `tarballPath` from a manifest in `fromDir`.
+ *
+ * `toPosixRelative` alone is not enough here, and the reason is the pack
+ * directory's own name: it prefixes `./` only when the relative path does not
+ * already begin with a dot, and `.frontx-local-packs/x.tgz` does. The result
+ * would be `file:.frontx-local-packs/x.tgz` - a specifier whose leading dot is
+ * a directory name rather than the "here" it looks like. Anchoring every
+ * specifier explicitly keeps it readable and keeps it a path npm cannot read
+ * two ways.
+ *
+ * @param {string} fromDir directory of the manifest the specifier is written into
+ * @param {string} tarballPath
+ * @returns {string}
+ */
+function localPackFileSpec(fromDir, tarballPath) {
+  const relative = toPosixRelative(path.relative(fromDir, tarballPath));
+  return `file:${relative.startsWith('.') && !relative.startsWith('./') && !relative.startsWith('../') ? `./${relative}` : relative}`;
+}
 
 /**
  * The tree-relative path `scanTreePins` reports for the tree's own root
@@ -158,7 +189,7 @@ const ROOT_MANIFEST_FILE = 'package.json';
  * @typedef {{ file: string; field: string; packageName: string; pinnedVersion: string }} PinSite
  * @typedef {{ file: string; field: string; packageName: string; pinnedVersion: string; localDir: string }} PinSubstitution
  * @typedef {{ file: string; original: string }} JournalledManifest
- * @typedef {{ treeDirName: string; manifests: JournalledManifest[] }} RestoreJournal
+ * @typedef {{ tree: string; manifests: JournalledManifest[] }} RestoreJournal
  * @typedef {{ command: string; args: string[]; cwd: string; captureStdout: boolean }} CommandSpec
  *
  * @typedef {{ ok: true; published: boolean } | { ok: false; reason: 'registry-unanswerable'; message: string }} RegistryAnswer
@@ -178,11 +209,11 @@ const ROOT_MANIFEST_FILE = 'package.json';
  * @typedef {'journal-unusable' | 'journal-escapes-tree'} RestoreRefusalReason
  * @typedef {{ ok: true; restored: string[] } | { ok: false; reason: RestoreRefusalReason; message: string }} RestoreOutcome
  *
- * @typedef {{ ok: true; treeDirName: string; restore: boolean } | { ok: false; message: string }} ParsedArgs
+ * @typedef {{ ok: true; tree: string; restore: boolean } | { ok: false; message: string }} ParsedArgs
  */
 
 /**
- * Every pin site in `<repoRoot>/<treeDirName>` that must be substituted for the
+ * Every pin site in `treeDir` that must be substituted for the
  * composed install to resolve, or the reason nothing may be installed at all.
  * The three branches of the criterion live here and nowhere else; see the module
  * docblock for why each is what it is.
@@ -191,19 +222,18 @@ const ROOT_MANIFEST_FILE = 'package.json';
  * the composed tree pins `@gears-frontx/ui-kit` from two MFE manifests at the
  * same version, and one answer governs both.
  *
- * @param {{ repoRoot: string; treeDirName: string; probeRegistry: ProbeRegistryFn }} options
+ * @param {{ repoRoot: string; treeDir: string; probeRegistry: ProbeRegistryFn }} options
  * @returns {SubstitutionPlan}
  */
-export function planLocalPackSubstitution({ repoRoot, treeDirName, probeRegistry }) {
-  const treeDir = path.join(repoRoot, treeDirName);
+export function planLocalPackSubstitution({ repoRoot, treeDir, probeRegistry }) {
   if (!fs.existsSync(treeDir)) {
     return {
       ok: false,
       reason: 'tree-missing',
       message:
-        `Cannot substitute: ${treeDir} does not exist. The tree named by --tree is the composed ` +
-        'directory whose install is about to run, so a missing one means this step is pointed at ' +
-        'nothing and would report success having checked no pin at all.',
+        `Cannot substitute: ${treeDir} does not exist. The path given to --tree is the tree whose ` +
+        'install is about to run, so a missing one means this step is pointed at nothing and would ' +
+        'report success having checked no pin at all.',
     };
   }
 
@@ -231,7 +261,7 @@ export function planLocalPackSubstitution({ repoRoot, treeDirName, probeRegistry
       ok: false,
       reason: 'no-governed-pin-sites',
       message:
-        `Cannot substitute: no manifest under ${treeDirName} pins a packages/* package of this repo ` +
+        `Cannot substitute: no manifest under ${treeDir} pins a packages/* package of this repo ` +
         'at an exact registry version. Either the templates stopped pinning the ecosystem (in which ' +
         'case this step is obsolete and should be deleted rather than left passing), or the pin ' +
         'derivation broke - and a silent success here would hand the failure to `npm install`, with ' +
@@ -269,7 +299,7 @@ export function planLocalPackSubstitution({ repoRoot, treeDirName, probeRegistry
         ok: false,
         reason: 'pin-resolves-nowhere',
         message:
-          `Cannot substitute: ${treeDirName}/${site.file} (${site.field}) pins ` +
+          `Cannot substitute: ${path.join(treeDir, site.file)} (${site.field}) pins ` +
           `${site.packageName}@${site.pinnedVersion}, which the registry does not carry and which is ` +
           `not the version packages/${local.dir} declares (${local.version}). That pin resolves ` +
           'nowhere - a typo or a stale bump, which `policy:template-pin-drift` reports as drift. ' +
@@ -301,12 +331,13 @@ export function planLocalPackSubstitution({ repoRoot, treeDirName, probeRegistry
  *
  * @param {{
  *   repoRoot: string;
+ *   treeDir: string;
  *   substitutions: PinSubstitution[];
  *   runCommand: RunCommandFn;
  * }} options
  * @returns {PackOutcome}
  */
-export function packSubstitutedPackages({ repoRoot, substitutions, runCommand }) {
+export function packSubstitutedPackages({ repoRoot, treeDir, substitutions, runCommand }) {
   /** @type {Map<string, string>} */
   const localDirByPackage = new Map(substitutions.map((sub) => [sub.packageName, sub.localDir]));
 
@@ -324,7 +355,7 @@ export function packSubstitutedPackages({ repoRoot, substitutions, runCommand })
     };
   }
 
-  const packDir = path.join(repoRoot, PACK_DIR_NAME);
+  const packDir = path.join(treeDir, PACK_DIR_NAME);
   fs.mkdirSync(packDir, { recursive: true });
 
   /** @type {Record<string, string>} */
@@ -395,7 +426,7 @@ export function packSubstitutedPackages({ repoRoot, substitutions, runCommand })
     }
 
     tarballByPackage[packageName] = tarballPath;
-    logLines.push(`packed ${packageName} -> ${path.relative(repoRoot, tarballPath)}`);
+    logLines.push(`packed ${packageName} -> ${path.relative(treeDir, tarballPath)}`);
   }
 
   return { ok: true, tarballByPackage, logLines };
@@ -434,15 +465,13 @@ function readPackedFilename(stdout) {
  * a refusal never leaves half a substitution and half a journal behind.
  *
  * @param {{
- *   repoRoot: string;
- *   treeDirName: string;
+ *   treeDir: string;
  *   substitutions: PinSubstitution[];
  *   tarballByPackage: Record<string, string>;
  * }} options
  * @returns {ApplyOutcome}
  */
-export function applyLocalPackSubstitution({ repoRoot, treeDirName, substitutions, tarballByPackage }) {
-  const treeDir = path.join(repoRoot, treeDirName);
+export function applyLocalPackSubstitution({ treeDir, substitutions, tarballByPackage }) {
 
   /** @type {Map<string, PinSubstitution[]>} */
   const byFile = new Map();
@@ -477,10 +506,10 @@ export function applyLocalPackSubstitution({ repoRoot, treeDirName, substitution
   for (const [relFile, subs] of byFile) {
     const entry = openManifest(relFile);
     const manifestDir = path.dirname(entry.manifestPath);
-    const reportedFile = path.relative(repoRoot, entry.manifestPath);
+    const reportedFile = path.relative(treeDir, entry.manifestPath);
 
     for (const sub of subs) {
-      const fileSpec = `file:${toPosixRelative(path.relative(manifestDir, tarballByPackage[sub.packageName]))}`;
+      const fileSpec = localPackFileSpec(manifestDir, tarballByPackage[sub.packageName]);
       const depMap = entry.manifest[sub.field];
       if (typeof depMap !== 'object' || depMap === null) continue;
       Reflect.set(depMap, sub.packageName, fileSpec);
@@ -501,13 +530,13 @@ export function applyLocalPackSubstitution({ repoRoot, treeDirName, substitution
   // any direct dependency rewritten above got, so npm's rule that an override
   // must agree with a direct dependency's spec holds by construction.
   const rootEntry = openManifest(ROOT_MANIFEST_FILE);
-  const rootReportedFile = path.relative(repoRoot, rootEntry.manifestPath);
+  const rootReportedFile = path.relative(treeDir, rootEntry.manifestPath);
   const existingOverrides = readOverrides(rootEntry.manifest);
   /** @type {Record<string, string>} */
   const merged = { ...existingOverrides };
 
   for (const packageName of new Set(substitutions.map((sub) => sub.packageName))) {
-    const fileSpec = `file:${toPosixRelative(path.relative(treeDir, tarballByPackage[packageName]))}`;
+    const fileSpec = localPackFileSpec(treeDir, tarballByPackage[packageName]);
     const existingValue = existingOverrides[packageName];
     if (existingValue !== undefined && existingValue !== fileSpec) {
       return {
@@ -530,12 +559,12 @@ export function applyLocalPackSubstitution({ repoRoot, treeDirName, substitution
   /** @type {string[]} */
   const allLogLines = [];
   for (const { manifestPath, original, manifest, logLines } of pending.values()) {
-    journalled.push({ file: toPosixRelative(path.relative(repoRoot, manifestPath)), original });
+    journalled.push({ file: toPosixRelative(path.relative(treeDir, manifestPath)), original });
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
     allLogLines.push(...logLines);
   }
 
-  writeRestoreJournal(repoRoot, { treeDirName, manifests: journalled });
+  writeRestoreJournal(treeDir, { tree: treeDir, manifests: journalled });
   return { ok: true, logLines: allLogLines };
 }
 
@@ -560,11 +589,11 @@ function readOverrides(manifest) {
 }
 
 /**
- * @param {string} repoRoot
+ * @param {string} treeDir
  * @param {RestoreJournal} journal
  */
-function writeRestoreJournal(repoRoot, journal) {
-  const packDir = path.join(repoRoot, PACK_DIR_NAME);
+function writeRestoreJournal(treeDir, journal) {
+  const packDir = path.join(treeDir, PACK_DIR_NAME);
   fs.mkdirSync(packDir, { recursive: true });
   fs.writeFileSync(path.join(packDir, RESTORE_JOURNAL_NAME), JSON.stringify(journal, null, 2) + '\n');
 }
@@ -582,11 +611,11 @@ function writeRestoreJournal(repoRoot, journal) {
  * a file on disk that decides where bytes get written, and a stale one from a
  * differently-argued run must not write over anything.
  *
- * @param {{ repoRoot: string; treeDirName: string }} options
+ * @param {{ treeDir: string }} options
  * @returns {RestoreOutcome}
  */
-export function restoreSubstitutedManifests({ repoRoot, treeDirName }) {
-  const journalPath = path.join(repoRoot, PACK_DIR_NAME, RESTORE_JOURNAL_NAME);
+export function restoreSubstitutedManifests({ treeDir }) {
+  const journalPath = path.join(treeDir, PACK_DIR_NAME, RESTORE_JOURNAL_NAME);
   if (!fs.existsSync(journalPath)) return { ok: true, restored: [] };
 
   /** @type {unknown} */
@@ -601,28 +630,27 @@ export function restoreSubstitutedManifests({ repoRoot, treeDirName }) {
     };
   }
 
-  const manifests = readJournalManifests(parsed, treeDirName);
+  const manifests = readJournalManifests(parsed, treeDir);
   if (manifests === null) {
     return {
       ok: false,
       reason: 'journal-unusable',
       message:
-        `Cannot restore: ${journalPath} does not describe manifests of ${treeDirName}. A journal this ` +
-        'step cannot read is a substitution it cannot undo, which would leave the composed tree ' +
-        'building against rewritten manifests.',
+        `Cannot restore: ${journalPath} does not describe manifests of ${treeDir}. A journal this ` +
+        'step cannot read is a substitution it cannot undo, which would leave the tree building ' +
+        'against rewritten manifests.',
     };
   }
 
-  const treeDir = path.resolve(repoRoot, treeDirName);
   /** @type {{ manifestPath: string; original: string }[]} */
   const writes = [];
   for (const { file, original } of manifests) {
-    const manifestPath = path.resolve(repoRoot, file);
+    const manifestPath = path.resolve(treeDir, file);
     if (manifestPath !== treeDir && !manifestPath.startsWith(treeDir + path.sep)) {
       return {
         ok: false,
         reason: 'journal-escapes-tree',
-        message: `Cannot restore: ${journalPath} names ${file}, which is outside ${treeDirName}. Refusing to write it.`,
+        message: `Cannot restore: ${journalPath} names ${file}, which is outside ${treeDir}. Refusing to write it.`,
       };
     }
     writes.push({ manifestPath, original });
@@ -632,7 +660,7 @@ export function restoreSubstitutedManifests({ repoRoot, treeDirName }) {
   const restored = [];
   for (const { manifestPath, original } of writes) {
     fs.writeFileSync(manifestPath, original);
-    restored.push(path.relative(repoRoot, manifestPath));
+    restored.push(path.relative(treeDir, manifestPath));
   }
   fs.rmSync(journalPath);
 
@@ -641,12 +669,12 @@ export function restoreSubstitutedManifests({ repoRoot, treeDirName }) {
 
 /**
  * @param {unknown} parsed
- * @param {string} treeDirName
+ * @param {string} treeDir
  * @returns {JournalledManifest[] | null}
  */
-function readJournalManifests(parsed, treeDirName) {
+function readJournalManifests(parsed, treeDir) {
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
-  if (Reflect.get(parsed, 'treeDirName') !== treeDirName) return null;
+  if (Reflect.get(parsed, 'tree') !== treeDir) return null;
 
   const manifests = Reflect.get(parsed, 'manifests');
   if (!Array.isArray(manifests)) return null;
@@ -761,7 +789,7 @@ export function runCommandWithSpawn({ command, args, cwd, captureStdout }) {
  */
 export function parseArgs(argv) {
   /** @type {string | undefined} */
-  let treeDirName;
+  let tree;
   let restore = false;
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -772,21 +800,22 @@ export function parseArgs(argv) {
     }
     if (arg === '--tree') {
       const value = argv[index + 1];
-      if (value === undefined || value.startsWith('--')) return { ok: false, message: '--tree needs a directory name.' };
-      treeDirName = value;
+      if (value === undefined || value.startsWith('--')) return { ok: false, message: '--tree needs a path.' };
+      tree = value;
       index += 1;
       continue;
     }
     return { ok: false, message: `Unknown argument ${JSON.stringify(arg)}.` };
   }
 
-  if (treeDirName === undefined) return { ok: false, message: '--tree <dir> is required.' };
-  return { ok: true, treeDirName, restore };
+  if (tree === undefined) return { ok: false, message: '--tree <path> is required.' };
+  return { ok: true, tree, restore };
 }
 
 /**
  * @param {{
  *   argv?: string[];
+ *   cwd?: string;
  *   repoRoot?: string;
  *   probeRegistry?: ProbeRegistryFn;
  *   runCommand?: RunCommandFn;
@@ -797,6 +826,7 @@ export function parseArgs(argv) {
  */
 export function runCli({
   argv = process.argv.slice(2),
+  cwd = process.cwd(),
   repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
   probeRegistry = probeRegistryWithNpm,
   runCommand = runCommandWithSpawn,
@@ -805,39 +835,40 @@ export function runCli({
 } = {}) {
   const args = parseArgs(argv);
   if (!args.ok) {
-    error(`${args.message}\nUsage: node scripts/pin-unpublished-ecosystem-to-local-pack.mjs --tree <dir> [--restore]`);
+    error(`${args.message}\nUsage: node scripts/pin-unpublished-ecosystem-to-local-pack.mjs --tree <path> [--restore]`);
     return 1;
   }
-  const { treeDirName, restore } = args;
+  const { restore } = args;
+  const treeDir = path.resolve(cwd, args.tree);
 
   if (restore) {
-    const outcome = restoreSubstitutedManifests({ repoRoot, treeDirName });
+    const outcome = restoreSubstitutedManifests({ treeDir });
     if (!outcome.ok) {
       error(outcome.message);
       return 1;
     }
-    if (outcome.restored.length === 0) log(`No local-pack substitution to undo in ${treeDirName}.`);
+    if (outcome.restored.length === 0) log(`No local-pack substitution to undo in ${treeDir}.`);
     for (const file of outcome.restored) log(`restored ${file}`);
     return 0;
   }
 
   // The pack directory is entirely this script's, and a journal left by a run
-  // that was killed mid-way would be replayed by the `--restore` call at the
-  // end of this step over manifests it never rewrote. Clearing it first makes
-  // every run start from the same state.
-  fs.rmSync(path.join(repoRoot, PACK_DIR_NAME), { recursive: true, force: true });
+  // that was killed mid-way would be replayed by a later `--restore` over
+  // manifests it never rewrote. Clearing it first makes every run start from
+  // the same state.
+  fs.rmSync(path.join(treeDir, PACK_DIR_NAME), { recursive: true, force: true });
 
-  const plan = planLocalPackSubstitution({ repoRoot, treeDirName, probeRegistry });
+  const plan = planLocalPackSubstitution({ repoRoot, treeDir, probeRegistry });
   if (!plan.ok) {
     error(plan.message);
     return 1;
   }
   if (plan.substitutions.length === 0) {
-    log(`Every ecosystem pin under ${treeDirName} resolves in the registry - installing them unchanged.`);
+    log(`Every ecosystem pin under ${treeDir} resolves in the registry - installing them unchanged.`);
     return 0;
   }
 
-  const packed = packSubstitutedPackages({ repoRoot, substitutions: plan.substitutions, runCommand });
+  const packed = packSubstitutedPackages({ repoRoot, treeDir, substitutions: plan.substitutions, runCommand });
   if (!packed.ok) {
     error(packed.message);
     return 1;
@@ -845,8 +876,7 @@ export function runCli({
   for (const line of packed.logLines) log(line);
 
   const applied = applyLocalPackSubstitution({
-    repoRoot,
-    treeDirName,
+    treeDir,
     substitutions: plan.substitutions,
     tarballByPackage: packed.tarballByPackage,
   });
