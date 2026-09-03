@@ -147,6 +147,7 @@ DRIVER=<installed kit root>/skills/project-scaffolding/scripts/verify-walk.mjs
 
 node "$DRIVER" \
   --host <dev server origin> \
+  --browser-cmd 'npx --yes agent-browser@<the version this run pinned>' \
   --capdir "$CAPDIR/pass-1" \
   --checkpoints '<name>:<presentation.route>:<that screen's ready testid>:<its extension id>,...' \
   --checkpoint-selector 'menu-item-{handle}' \
@@ -159,6 +160,7 @@ node "$DRIVER" \
 
 node "$DRIVER" \
   --host <dev server origin> \
+  --browser-cmd 'npx --yes agent-browser@<the version this run pinned>' \
   --capdir "$CAPDIR/pass-2" \
   --checkpoints '<name>:<presentation.route>:<that screen's ready testid>:<its extension id>,...' \
   --checkpoint-selector 'menu-item-{handle}' \
@@ -169,6 +171,11 @@ node "$DRIVER" \
   --overlay-close studio-collapse \
   --coverage <targetDir>/.frontx/verification-coverage.md
 ```
+
+Both invocations pin the browser CLI with the same `--browser-cmd`. Left out, the
+driver falls back to `npx --yes agent-browser`, which resolves whatever version
+is newest at the moment each run asks - so the two passes above, which exist to
+be compared against each other, could be driven by two different browsers.
 
 The two runs land their rows in one coverage file under one header - one row per
 theme per screen. **The second run's rows read `first variant` in the

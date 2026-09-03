@@ -1,5 +1,5 @@
 // @cpt-algo:cpt-frontx-algo-ai-kit-packaging-manifest-validation:p1
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -502,6 +502,26 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
   // survive a change of agent host, which is the whole reason the program
   // exists, so the wiring that makes it reachable and runnable is asserted here.
   describe('verification driver resource', () => {
+    // Every run below drives the real driver against a temporary tree, and the
+    // removal of that tree used to sit as the last statement of each test body -
+    // which a failing assertion skips, leaving the tree in os.tmpdir() for the
+    // rest of the machine's life. Registered here instead, so the removal happens
+    // on the failing path too, and so a case added later cannot forget it: there
+    // is no per-test cleanup call left to omit.
+    const pendingCleanups: (() => void)[] = [];
+
+    afterEach(() => {
+      while (pendingCleanups.length > 0) pendingCleanups.pop()?.();
+    });
+
+    // The one way a case in here makes a temporary directory. Returns the path
+    // and registers its removal in the same breath, so the two cannot drift.
+    function tempDir(prefix: string): string {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+      pendingCleanups.push(() => fs.rmSync(dir, { recursive: true, force: true }));
+      return dir;
+    }
+
     const DRIVER_ID = 'frontx_verify_walk';
     const DRIVER_SOURCE = 'skills/project-scaffolding/scripts/verify-walk.mjs';
     const driverPath = () => path.join(kitRoot, DRIVER_SOURCE);
@@ -615,7 +635,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
     // origin nothing serves, it must refuse before a browser is involved, and
     // the refusal must be readable by machine.
     it('exits non-zero with a well-formed JSON failure record when nothing serves the host', () => {
-      const capdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-'));
+      const capdir = tempDir('verify-walk-');
       fs.rmdirSync(capdir); // the driver creates it, and refuses one that already holds files
 
       const run = spawnSync(process.execPath, [
@@ -629,6 +649,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
 
       expect(run.status).not.toBe(0);
+      expectResultRecord(run);
 
       const parsed = JSON.parse(run.stdout) as {
         ok: boolean;
@@ -644,7 +665,6 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       // conversation that produced it.
       expect(JSON.parse(fs.readFileSync(path.join(capdir, 'verify-walk.json'), 'utf8')).ok).toBe(false);
 
-      fs.rmSync(capdir, { recursive: true, force: true });
     });
 
     // The runner evaluates every script in one persistent page scope, so the
@@ -699,7 +719,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
     // the second, and a run spent its budget diagnosing a rendering race that
     // was a redeclaration throw. The refusal now has a stage of its own.
     it('records a refused browser eval as an eval-error failure carrying the runner stderr', () => {
-      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-eval-'));
+      const workdir = tempDir('verify-walk-eval-');
 
       // The driver reaches the browser only through `npx agent-browser`, so a
       // stub earlier on PATH is the whole of the failure injection: no real
@@ -732,6 +752,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       });
 
       expect(run.status).not.toBe(0);
+      expectResultRecord(run);
 
       const parsed = JSON.parse(run.stdout) as { ok: boolean; failures: { stage: string; detail: string }[] };
       const evalErrors = parsed.failures.filter((failure) => failure.stage === 'eval-error');
@@ -751,7 +772,6 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       expect(control?.detail).toContain('variant switcher');
       expect(control?.detail).toContain('the eval did not run');
 
-      fs.rmSync(workdir, { recursive: true, force: true });
     });
 
     // The script is handed to the runner on its stdin, so a script larger than
@@ -772,7 +792,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
     // left for a child that reported nothing at all.
     it('reads an eval the runner exited from mid-write off its own report, not off the broken write', () => {
       const runWithStub = (stub: string, readyTimeout: string) => {
-        const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-midwrite-'));
+        const workdir = tempDir('verify-walk-midwrite-');
         const stubDir = path.join(workdir, 'bin');
         fs.mkdirSync(stubDir, { recursive: true });
         fs.writeFileSync(path.join(stubDir, 'npx'), stub, { mode: 0o755 });
@@ -795,8 +815,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
         expectResultRecord(run);
         const parsed = JSON.parse(run.stdout) as { ok: boolean; failures: { stage: string; detail: string }[] };
-        fs.rmSync(workdir, { recursive: true, force: true });
-        return { ...parsed, exitStatus: run.status };
+          return { ...parsed, exitStatus: run.status };
       };
 
       const refused = runWithStub(
@@ -841,7 +860,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
     // taken under a relative capdir land where neither the byte-compare nor the
     // coverage cells look. Every path the driver hands out is absolute.
     it('resolves a relative capture directory against the caller, not the runner', () => {
-      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-cwd-'));
+      const workdir = tempDir('verify-walk-cwd-');
 
       const run = spawnSync(process.execPath, [
         driverPath(),
@@ -853,13 +872,13 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
         '--variant-option', 'axis-option-{variant}',
       ], { encoding: 'utf8', cwd: workdir, timeout: DRIVER_TIMEOUT_MS });
 
+      expectResultRecord(run);
       const parsed = JSON.parse(run.stdout) as { capdir: string };
 
       expect(path.isAbsolute(parsed.capdir)).toBe(true);
       expect(path.basename(parsed.capdir)).toBe('shots');
       expect(fs.existsSync(path.join(workdir, 'shots', 'verify-walk.json'))).toBe(true);
 
-      fs.rmSync(workdir, { recursive: true, force: true });
     });
 
     // A page the driver can complete a walk against, standing in for the
@@ -995,7 +1014,6 @@ process.exit(0);
       // escaped it would land.
       capdir: string;
       workdir: string;
-      cleanup: () => void;
     }
 
     // The driver answers every run it cannot perform with a JSON result record,
@@ -1008,6 +1026,16 @@ process.exit(0);
       if (!run.stdout.trimStart().startsWith('{')) {
         throw new Error(`the driver printed no result record and exited ${run.status}`
           + `\nstdout: ${run.stdout}\nstderr: ${run.stderr}`);
+      }
+      // A record that opened with `{` and did not parse is a third outcome, and a
+      // bare JSON.parse failure names neither the driver nor its output. The
+      // partial-write path in `writeStdout` is exactly how it would arrive.
+      try {
+        JSON.parse(run.stdout);
+      } catch (error) {
+        throw new Error(`the driver's result record did not parse (${(error as Error).message})`
+          + ` and it exited ${run.status}\nstdout: ${run.stdout}\nstderr: ${run.stderr}`,
+        { cause: error });
       }
     }
 
@@ -1026,7 +1054,7 @@ process.exit(0);
       files: { states?: unknown; registry?: unknown } = {},
       variantAxis: 'declared' | 'none' = 'declared',
     ): StubRun {
-      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-walk-'));
+      const workdir = tempDir('verify-walk-walk-');
       const stubDir = path.join(workdir, 'bin');
       fs.mkdirSync(stubDir, { recursive: true });
 
@@ -1095,7 +1123,6 @@ process.exit(0);
         coverage: fs.existsSync(coverageFile) ? fs.readFileSync(coverageFile, 'utf8') : '',
         capdir,
         workdir,
-        cleanup: () => fs.rmSync(workdir, { recursive: true, force: true }),
       };
     }
 
@@ -1110,9 +1137,8 @@ process.exit(0);
       status: number | null;
       failures: { stage: string; detail: string }[];
       capdirExists: boolean;
-      cleanup: () => void;
     } {
-      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-args-'));
+      const workdir = tempDir('verify-walk-args-');
       const capdir = path.join(workdir, 'shots');
 
       // As in runAgainstStub: a refusal that turns on an axis being declared in
@@ -1141,7 +1167,6 @@ process.exit(0);
         status: run.status,
         failures: (JSON.parse(run.stdout) as { failures: { stage: string; detail: string }[] }).failures,
         capdirExists: fs.existsSync(capdir),
-        cleanup: () => fs.rmSync(workdir, { recursive: true, force: true }),
       };
     }
 
@@ -1204,7 +1229,6 @@ process.exit(0);
         + ' | not-compared (no variant axis was declared for this run) |');
       expectWholeRows(run.coverage);
 
-      run.cleanup();
     });
 
     // The checkpoint axis alone: the points are declared and no dimension is
@@ -1237,7 +1261,6 @@ process.exit(0);
       expect(run.coverage).toContain('| (none declared) | not-exercised (no variant axis was declared for this run) | tasks |');
       expectWholeRows(run.coverage);
 
-      run.cleanup();
     });
 
     // The variant axis alone: a dimension repeated over a walk that has one
@@ -1266,7 +1289,6 @@ process.exit(0);
       }]);
       expectWholeRows(run.coverage);
 
-      run.cleanup();
     });
 
     // Both axes declared: the rows are the cartesian product of the two, and a
@@ -1296,7 +1318,6 @@ process.exit(0);
       expect(run.coverage).toContain('| beta | verified | tasks | fresh (beta-tasks-fresh.png, ready confirmed) | fresh: differs (cmp exit 1) |');
       expectWholeRows(run.coverage);
 
-      run.cleanup();
     });
 
     // Each axis is one declaration. A partial one has no honest reading: dropping
@@ -1320,7 +1341,6 @@ process.exit(0);
       expect(run.failures[0].detail).toContain('declare the whole axis or none of it');
       expect(run.capdirExists).toBe(false);
 
-      run.cleanup();
     });
 
     // A point with no destination is reached by clicking, and the first point of
@@ -1337,7 +1357,6 @@ process.exit(0);
       expect(run.failures[0].detail).toContain('--checkpoint-selector');
       expect(run.capdirExists).toBe(false);
 
-      run.cleanup();
     });
 
     // How the walk moves between points is derived from what the caller
@@ -1357,7 +1376,6 @@ process.exit(0);
       // Nothing was resolved, because nothing was clicked to get anywhere.
       expect(run.result.checkpointResolution).toEqual([]);
 
-      run.cleanup();
     });
 
     it('clicks its way to every checkpoint after the first when a selector is declared', () => {
@@ -1378,7 +1396,6 @@ process.exit(0);
         { checkpoint: 'tasks', testid: 'reach-tasks', handle: null, source: 'pattern' },
       ]);
 
-      run.cleanup();
     });
 
     // A point declared with no destination at all is reached by its selector,
@@ -1395,7 +1412,6 @@ process.exit(0);
       expect(run.commands).toContain('open data:text/plain,ok');
       expect(run.commands).toContain('click reach-login');
 
-      run.cleanup();
     });
 
     // A host may key each control by a whole composed identity rather than by a
@@ -1425,7 +1441,6 @@ process.exit(0);
       expect(run.commands).toContain(`click reach-${TASKS_ID}`);
       expect(run.commands).toContain(`click reach-${REPORTS_ID}`);
 
-      run.cleanup();
     });
 
     // One candidate is the answer and anything else is a refusal: a wrong control
@@ -1453,7 +1468,6 @@ process.exit(0);
       expect(run.commands.some((line) => line.startsWith('click reach-'))).toBe(false);
       expect(run.result.variants[0].captures.map((capture) => capture.checkpoint)).not.toContain('tasks');
 
-      run.cleanup();
     });
 
     // The coverage file is this step's stated deliverable: a report is filled
@@ -1477,7 +1491,6 @@ process.exit(0);
       expect(run.coverage).toContain('fresh (alpha-tasks-fresh.png, ready unconfirmed)');
       expectWholeRows(run.coverage);
 
-      run.cleanup();
     });
 
     // A cell filled from a name the invocation supplied is a cell that name can
@@ -1498,7 +1511,6 @@ process.exit(0);
       expect(run.coverage).toContain('variant option for "alpha\\|beta" "axis-option-alpha\\|beta" was not clicked');
       expectWholeRows(run.coverage);
 
-      run.cleanup();
     });
 
     // The other side of the same cell: a pipe the page itself put into a reading
@@ -1517,7 +1529,6 @@ process.exit(0);
       expect(run.coverage).toContain('not-active (label read "Active: al\\|pha")');
       expectWholeRows(run.coverage);
 
-      run.cleanup();
     });
 
     // A variant name out of a registry and a checkpoint name off the command line
@@ -1549,7 +1560,6 @@ process.exit(0);
       // unreduced name pointed.
       expect(fs.readdirSync(run.workdir).filter((entry) => entry.endsWith('.png'))).toEqual([]);
 
-      run.cleanup();
     });
 
     // The whole native sequence, not a synthetic click: a control listening for
@@ -1566,7 +1576,6 @@ process.exit(0);
         expect(sequence).toBe('events pointerdown,mousedown,pointerup,mouseup,click');
       }
 
-      run.cleanup();
     });
 
     // Every declared control operation has to report as dispatched. Discarded,
@@ -1592,7 +1601,6 @@ process.exit(0);
       expect(run.result.variants[0].captures).toEqual([]);
       expect(run.coverage).toContain('not-active (overlay open control "overlay-open" was not clicked');
 
-      run.cleanup();
     });
 
     // Confirmation used to be a substring test over the label with its
@@ -1619,7 +1627,6 @@ process.exit(0);
       expect(refused[0].detail).toContain('Active: denser');
       // Nothing is captured or compared under a value that never became active.
       expect(wrong.result.variants[0].captures).toEqual([]);
-      wrong.cleanup();
 
       // The same rule still confirms the variant whose name the label does carry
       // as a word, so this is not a check that refuses everything.
@@ -1631,7 +1638,6 @@ process.exit(0);
       expect(right.result.failures).toEqual([]);
       expect(right.status).toBe(0);
       expect(right.result.variants[0].labelConfirmed).toBe(true);
-      right.cleanup();
     });
 
     // Where one variant's words are a whole run of another's, every label naming
@@ -1647,7 +1653,6 @@ process.exit(0);
       expect(run.failures[0].detail).toContain('--variant-labels');
       // Refused on the arguments: no capture directory, no browser, no host.
       expect(run.capdirExists).toBe(false);
-      run.cleanup();
 
       // And a label declared per variant is the way out of it, so the refusal is a
       // gate rather than a dead end.
@@ -1657,7 +1662,6 @@ process.exit(0);
       ]);
 
       expect(separated.failures.map((failure) => failure.stage)).toEqual(['host-probe']);
-      separated.cleanup();
     });
 
     // The overlay controls are optional, and the one that closes it fails later
@@ -1679,7 +1683,6 @@ process.exit(0);
       expect(control[0].detail).toContain('overlay-close');
       expect(run.result.variants[0].captures).toEqual([]);
 
-      run.cleanup();
     });
 
     // Neither overlay flag is required, and a run that declares neither must
@@ -1697,7 +1700,6 @@ process.exit(0);
         'click axis-switcher', 'click axis-option-alpha',
       ]);
 
-      run.cleanup();
     });
 
     // "The page holds no such element" and "the script never ran" call for
@@ -1720,7 +1722,6 @@ process.exit(0);
       // stayed open on the strength of a probe that did not run.
       expect(run.result.variants[0].overlayClosed).toBeNull();
 
-      run.cleanup();
     });
 
     // open and reload were fired and forgotten. A load that never happened
@@ -1749,7 +1750,6 @@ process.exit(0);
       expect(captured).not.toContain('login');
       expect(captured).toContain('tasks');
 
-      run.cleanup();
     });
 
     // The states file is where every read-back comes from, and a read-back that
@@ -1779,7 +1779,6 @@ process.exit(0);
       expect(run.commands).toContain('fill field-name Grace');
       expect(run.coverage).toContain('submitted (alpha-login-submitted.png, ready confirmed)');
 
-      run.cleanup();
     });
 
     // A states file addresses the points by name, and a run that declared no
@@ -1787,7 +1786,7 @@ process.exit(0);
     // as a checkpoint the list does not name, which reads as a typo in a list
     // this invocation never carried.
     it('refuses a states file when the run declares no checkpoint axis to key it against', () => {
-      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-states-'));
+      const workdir = tempDir('verify-walk-states-');
       const statesFile = path.join(workdir, 'states.json');
       fs.writeFileSync(statesFile, JSON.stringify({
         login: [{ state: 'submitted', actions: [{ kind: 'click', testid: 'control-submit' }] }],
@@ -1800,8 +1799,6 @@ process.exit(0);
       expect(run.failures[0].detail).toContain('declares no checkpoint axis to key against');
       expect(run.capdirExists).toBe(false);
 
-      run.cleanup();
-      fs.rmSync(workdir, { recursive: true, force: true });
     });
 
     // The other half of the sentinel: a `read` of a control the page does not
@@ -1826,7 +1823,6 @@ process.exit(0);
         action: 'read', testid: 'readout-status', actual: '__verify_walk_missing__', ok: false,
       });
 
-      run.cleanup();
     });
 
     // The sentinel is text, so a declared `contains` it happens to carry read an
@@ -1858,7 +1854,6 @@ process.exit(0);
         ok: false,
       });
 
-      run.cleanup();
     });
 
     // A value the read-back cannot return verbatim can never agree with itself,
@@ -1872,7 +1867,7 @@ process.exit(0);
       ['trailing whitespace', 'Grace  '],
       ['wrapping quotes', '"Grace"'],
     ])('refuses a fill value carrying %s, on the arguments alone', (_what, value) => {
-      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-fill-'));
+      const workdir = tempDir('verify-walk-fill-');
       const statesFile = path.join(workdir, 'states.json');
       fs.writeFileSync(statesFile, JSON.stringify({
         orders: [{ state: 'typed', actions: [{ kind: 'fill', testid: 'name', value }] }],
@@ -1885,8 +1880,6 @@ process.exit(0);
       expect(run.failures[0].detail).toContain('the read-back cannot confirm');
       expect(run.capdirExists).toBe(false);
 
-      run.cleanup();
-      fs.rmSync(workdir, { recursive: true, force: true });
     });
 
     it('fails the run when a fill reads back something other than what was typed', () => {
@@ -1906,7 +1899,6 @@ process.exit(0);
       expect(readBack[0].detail).toContain('drift:Grace');
       expect(run.result.variants[0].readBacks[0].ok).toBe(false);
 
-      run.cleanup();
     });
 
     // The verdict is the comparison command's own exit code and nothing else.
@@ -1934,7 +1926,6 @@ process.exit(0);
       }]);
       expect(run.coverage).toContain('fresh: identical (cmp exit 0)');
 
-      run.cleanup();
     });
 
     it('records a differing pair as differs, from that same exit code', () => {
@@ -1947,7 +1938,6 @@ process.exit(0);
       expect(run.result.variants[1].comparisons.map((cmp) => [cmp.verdict, cmp.exit])).toEqual([['differs', 1]]);
       expect(run.coverage).toContain('fresh: differs (cmp exit 1)');
 
-      run.cleanup();
     });
 
     // Provenance: a report claiming the set came from the host's own
@@ -1963,7 +1953,6 @@ process.exit(0);
       expect(run.result.variantAxis.source?.startsWith('registry:')).toBe(true);
       expect(run.result.variantAxis.source?.endsWith('variants.json')).toBe(true);
 
-      run.cleanup();
     });
 
     // The one hang the driver could not survive: every browser interaction is a
@@ -1982,7 +1971,6 @@ process.exit(0);
       expect(timeouts[0].detail).toContain('killed after 800ms');
       expect(run.result.variants[0].captures).toEqual([]);
 
-      run.cleanup();
     });
 
     // --browser-cmd may name an installed binary, and an installed binary's path
@@ -1992,7 +1980,7 @@ process.exit(0);
     // The quoted path stays one argument, and what follows it stays an argument of
     // its own rather than being glued onto the path.
     it('drives a --browser-cmd whose quoted path carries spaces, keeping the rest as separate arguments', () => {
-      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-browser-cmd-'));
+      const workdir = tempDir('verify-walk-browser-cmd-');
       const spaced = path.join(workdir, 'dir with space');
       fs.mkdirSync(spaced, { recursive: true });
       const stubFile = path.join(spaced, 'agent-browser.cjs');
@@ -2049,7 +2037,6 @@ process.exit(0);
       expect(commands).toContain('launched with --forwarded');
       expect(commands).toContain('screenshot alpha-login-fresh.png');
 
-      fs.rmSync(workdir, { recursive: true, force: true });
     });
 
     // Either way of closing an unbalanced quote - dropping it, or ending the
@@ -2063,7 +2050,6 @@ process.exit(0);
       expect(run.failures[0].detail).toContain('unbalanced double quote');
       expect(run.capdirExists).toBe(false);
 
-      run.cleanup();
     });
 
     // A --browser-cmd naming nothing is the one reading of this flag that cannot
@@ -2086,7 +2072,6 @@ process.exit(0);
       expect(run.failures[0].detail).toContain('names no command to run');
       expect(run.capdirExists).toBe(false);
 
-      run.cleanup();
     });
 
     // The result has to reach the caller even when the path it was asked for
@@ -2105,14 +2090,13 @@ process.exit(0);
       expect(output).toHaveLength(1);
       expect(output[0].detail).toContain('/dev/null/nope/verify-walk.json');
 
-      run.cleanup();
     });
 
     // A capture directory shared with an earlier run leaves that run's files
     // exactly where this one goes looking, and neither the byte-compare nor the
     // coverage cells can tell which run wrote a file they address by name.
     it('refuses a capture directory that already holds files, before reaching the host', () => {
-      const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-capdir-'));
+      const workdir = tempDir('verify-walk-capdir-');
       fs.writeFileSync(path.join(workdir, 'alpha-orders-fresh.png'), 'an earlier run left this');
 
       const run = spawnSync(process.execPath, [
@@ -2126,6 +2110,7 @@ process.exit(0);
       ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
 
       expect(run.status).not.toBe(0);
+      expectResultRecord(run);
 
       const parsed = JSON.parse(run.stdout) as { failures: { stage: string; detail: string }[] };
       expect(parsed.failures.map((failure) => failure.stage)).toEqual(['capdir']);
@@ -2133,7 +2118,6 @@ process.exit(0);
       // The earlier run's file is still there: the refusal writes nothing over it.
       expect(fs.readdirSync(workdir)).toEqual(['alpha-orders-fresh.png']);
 
-      fs.rmSync(workdir, { recursive: true, force: true });
     });
 
     // Unvalidated, `--ready-timeout nope` made the readiness deadline NaN and
@@ -2154,7 +2138,6 @@ process.exit(0);
       expect(run.failures[0].detail).toContain(flag);
       expect(run.capdirExists).toBe(false);
 
-      run.cleanup();
     });
 
     // A pattern that substitutes nothing clicks one same control for every variant
@@ -2168,7 +2151,6 @@ process.exit(0);
       expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
       expect(run.failures[0].detail).toContain(token);
 
-      run.cleanup();
     });
 
     // A declared input file that is missing, malformed, or holds the wrong shape
@@ -2186,7 +2168,7 @@ process.exit(0);
       ['--states', 'holds a fill with no value to type', '{ "orders": [{ "state": "submitted", "actions": [{ "kind": "fill", "testid": "x" }] }] }'],
       ['--states', 'names a checkpoint the walk never visits', '{ "checkout": [] }'],
     ])('refuses a %s file that %s', (flag, _situation, content) => {
-      const inputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-walk-input-'));
+      const inputDir = tempDir('verify-walk-input-');
       const file = path.join(inputDir, 'input.json');
       if (content !== null) fs.writeFileSync(file, content);
 
@@ -2199,8 +2181,6 @@ process.exit(0);
       expect(run.failures[0].detail).toContain(file);
       expect(run.capdirExists).toBe(false);
 
-      fs.rmSync(inputDir, { recursive: true, force: true });
-      run.cleanup();
     });
 
     // Reducing a name to the file-name alphabet is what keeps a traversal out of
@@ -2217,7 +2197,6 @@ process.exit(0);
       expect(run.failures[0].detail).toContain('my point');
       expect(run.capdirExists).toBe(false);
 
-      run.cleanup();
     });
 
     // A malformed argument list used to print help text on stderr, exit 2 and
@@ -2235,14 +2214,16 @@ process.exit(0);
       expect(run.failures[0].detail).toBe(detail);
       expect(run.capdirExists).toBe(false);
 
-      run.cleanup();
     });
 
     // The same for a required flag that is not there at all, which needs an
     // invocation the refusal helper above cannot make: it supplies every required
     // flag by construction.
     it('records a missing required flag as an arguments failure in its result record', () => {
-      const capdir = path.join(os.tmpdir(), `verify-walk-missing-${process.pid}`);
+      // Inside a directory this test just made, so the closing assertion that the
+      // driver created nothing is about the driver and not about whatever else on
+      // the machine may hold a fixed path.
+      const capdir = path.join(tempDir('verify-walk-missing-'), 'shots');
       const run = spawnSync(process.execPath, [
         driverPath(),
         '--variants', 'alpha',
