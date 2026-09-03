@@ -217,12 +217,37 @@ describe('planLocalPackSubstitution', () => {
     ]);
   });
 
-  it('leaves a peer-dependency pin alone, since npm installs no edge for it', async () => {
+  it('substitutes a non-optional peer-dependency pin, since npm 7+ auto-installs an unsatisfied one', async () => {
     const root = await makeRoot();
     await writeLocalUiKit(root, '0.4.0-alpha.2');
     await writeJson(inTree(root, 'package.json'), {
       name: '@gears-frontx/frontx-template-shell',
       peerDependencies: { '@gears-frontx/ui-kit': '0.4.0-alpha.2' },
+    });
+
+    const plan = planLocalPackSubstitution({ repoRoot: root, treeDir: inTree(root), probeRegistry: registryWith([]) });
+
+    expect(plan).toEqual({
+      ok: true,
+      substitutions: [
+        {
+          file: 'package.json',
+          field: 'peerDependencies',
+          packageName: '@gears-frontx/ui-kit',
+          pinnedVersion: '0.4.0-alpha.2',
+          localDir: 'ui-kit',
+        },
+      ],
+    });
+  });
+
+  it('leaves an optional peer-dependency pin alone, since npm never installs one it can skip', async () => {
+    const root = await makeRoot();
+    await writeLocalUiKit(root, '0.4.0-alpha.2');
+    await writeJson(inTree(root, 'package.json'), {
+      name: '@gears-frontx/frontx-template-shell',
+      peerDependencies: { '@gears-frontx/ui-kit': '0.4.0-alpha.2' },
+      peerDependenciesMeta: { '@gears-frontx/ui-kit': { optional: true } },
     });
 
     const plan = planLocalPackSubstitution({ repoRoot: root, treeDir: inTree(root), probeRegistry: registryWith([]) });

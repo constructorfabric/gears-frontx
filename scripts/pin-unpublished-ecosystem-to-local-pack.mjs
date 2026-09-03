@@ -80,12 +80,29 @@
  *
  * ## Scope
  *
- * Only pin sites in fields npm materialises (`INSTALLED_DEPENDENCY_FIELDS`) and
- * only names this repo builds under `packages/*`. A pin on a name the composed
- * tree DEFINES - `@gears-frontx/react` and the rest of `template-shell/packages/*`,
- * or the shell's own identity - resolves through the workspace and never
- * reaches the registry, so it is not this script's business. A pin on a name
- * that is neither is `policy:template-pin-drift`'s to refuse as unverifiable.
+ * Only pin sites in fields npm materialises and only names this repo builds
+ * under `packages/*`. A pin on a name the composed tree DEFINES -
+ * `@gears-frontx/react` and the rest of `template-shell/packages/*`, or the
+ * shell's own identity - resolves through the workspace and never reaches the
+ * registry, so it is not this script's business. A pin on a name that is
+ * neither is `policy:template-pin-drift`'s to refuse as unverifiable.
+ *
+ * "Materialises" is this script's own question, not `INSTALLED_DEPENDENCY_
+ * FIELDS`'s: that constant (shared with `pin-template-ecosystem-to-local.mjs`)
+ * answers a WRITER's question - is a `file:` spec here a meaningful pin - and
+ * excludes `peerDependencies` because a peer range is a compatibility claim on
+ * the consumer, not an edge that sibling script installs from. This script
+ * asks a different question: will `npm install`, left to install the composed
+ * tree as committed, go to the registry for this name at this version. Since
+ * npm 7, the answer is yes for a NON-OPTIONAL peer - an unsatisfied one is
+ * auto-installed unless `peerDependenciesMeta` marks it `optional` (verified
+ * locally against npm 11.6.2, PR #613: a workspace member with an exact,
+ * unpublished, non-optional peer pin fails `npm install` with `ETARGET`; the
+ * same pin marked `optional` installs clean with no attempt to resolve it).
+ * `governed` below therefore includes `peerDependencies` sites too, MINUS the
+ * ones `peerDependenciesMeta` marks optional - those really are never
+ * installed, and substituting a tarball for one would be a rewrite with no
+ * install to fix.
  *
  * ## Where the tree is
  *
@@ -149,6 +166,32 @@ export const RESTORE_JOURNAL_NAME = 'restore-journal.json';
  * managed to reach.
  */
 const REGISTRY_ABSENT_ERROR_CODE = 'E404';
+
+/**
+ * The one dependency field `INSTALLED_DEPENDENCY_FIELDS` leaves out that this
+ * script governs anyway - see the module docblock's "Scope" section for why
+ * this script's materialisation question differs from that constant's.
+ */
+const PEER_DEPENDENCY_FIELD = 'peerDependencies';
+
+/**
+ * Whether `packageName`'s peer range in `manifest` is declared optional via
+ * `peerDependenciesMeta`, npm's own opt-out from peer auto-install. A missing
+ * or malformed `peerDependenciesMeta` - or no entry for this name - answers
+ * `false`: the absence of an explicit opt-out is exactly what makes a peer
+ * non-optional and therefore installed.
+ *
+ * @param {Record<string, unknown>} manifest
+ * @param {string} packageName
+ * @returns {boolean}
+ */
+function isOptionalPeerDependency(manifest, packageName) {
+  const meta = manifest['peerDependenciesMeta'];
+  if (typeof meta !== 'object' || meta === null) return false;
+  const entry = Reflect.get(meta, packageName);
+  if (typeof entry !== 'object' || entry === null) return false;
+  return Reflect.get(entry, 'optional') === true;
+}
 
 /**
  * The `file:` specifier installing `tarballPath` from a manifest in `fromDir`.
@@ -245,13 +288,31 @@ export function planLocalPackSubstitution({ repoRoot, treeDir, probeRegistry }) 
 
   const { sites } = scanTreePins(treeDir, isEcosystemScopeName);
 
+  // One parse per manifest file, however many pin sites it declares - a
+  // manifest with two peer pins must not be re-read from disk once per site.
+  /** @type {Map<string, Record<string, unknown>>} */
+  const manifestCache = new Map();
+  /**
+   * @param {string} relFile
+   * @returns {Record<string, unknown>}
+   */
+  const manifestAt = (relFile) => {
+    const cached = manifestCache.get(relFile);
+    if (cached !== undefined) return cached;
+    const manifest = readPackageManifest(path.join(treeDir, relFile));
+    manifestCache.set(relFile, manifest);
+    return manifest;
+  };
+
   // Resolved to its local package here rather than looked up again below, so
   // "this repo builds it" is decided once and every later step already holds
   // the `packages/*` directory it needs.
   /** @type {{ site: PinSite; local: EcosystemPackage }[]} */
   const governed = [];
   for (const site of sites) {
-    if (!INSTALLED_DEPENDENCY_FIELDS.has(site.field)) continue;
+    const isPeer = site.field === PEER_DEPENDENCY_FIELD;
+    if (!INSTALLED_DEPENDENCY_FIELDS.has(site.field) && !isPeer) continue;
+    if (isPeer && isOptionalPeerDependency(manifestAt(site.file), site.packageName)) continue;
     const local = localByName.get(site.packageName);
     if (local === undefined) continue;
     governed.push({ site, local });
