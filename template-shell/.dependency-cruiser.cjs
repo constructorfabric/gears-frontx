@@ -45,7 +45,7 @@ const pkgTargets = (...dirs) => {
  * package" rather than a named layer. Kept as a list so adding a package to
  * `packages/` does not silently narrow those rules.
  */
-const TEMPLATE_PACKAGES = ['auth', 'state', 'i18n', 'framework', 'react', 'studio'];
+const TEMPLATE_PACKAGES = ['auth', 'state', 'i18n', 'framework', 'react', 'studio', 'mfe-test-support'];
 
 /**
  * Own-package exemption for a `to` built from `pkgTargets`, in both shapes.

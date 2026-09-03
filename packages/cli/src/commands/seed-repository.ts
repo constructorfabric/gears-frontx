@@ -17,7 +17,7 @@
 // batch through the IDENTICAL mechanism `apply` uses
 // (`./apply.ts`'s `runApplyPipeline`) — never a second, independently
 // duplicated materialize/reconcile/record sequence.
-import { registerTemplate } from './register';
+import { registerTemplate, probeRegistration } from './register';
 import { officialDefaultOrigin } from './official-defaults';
 import { runApplyPipeline } from './apply';
 import type { ApplyBatchTargetRef, ApplyPipelineDeps } from './apply';
@@ -76,6 +76,53 @@ export async function seedRepository(
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-already-seeded
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-already-seeded
+
+  // DEFECT FIX: resolve and validate every batch entry named against the
+  // CLI's official defaults BEFORE the first write to the project below
+  // (`inst-seed-create-project-state`), so a batch naming a default that
+  // cannot actually be resolved is refused with the directory left EXACTLY
+  // as it was found — never a `.frontx/project.json` this same directory's
+  // next `seed` call would then be permanently refused for
+  // (`inst-seed-if-already-seeded` above refuses any directory that already
+  // carries one). Nothing here writes anything; a failure here leaves no
+  // state to undo, which is why this runs first rather than as a rollback
+  // after `inst-seed-create-project-state`/`inst-seed-register-default`
+  // below have already run.
+  for (const name of Object.keys(batch.templates)) {
+    const origin = officialDefaultOrigin(name);
+    if (origin === undefined) {
+      return {
+        ok: false,
+        code: 'TEMPLATE_NOT_REGISTERED',
+        message:
+          `Seed aborted — "${name}" is not one of the CLI's official default templates. Register it yourself ` +
+          '(this creates ".frontx/project.json" on its own first mutation if it does not exist yet, exactly as ' +
+          'seed itself would have) and then "apply" it; nothing written.',
+        details: { name },
+      };
+    }
+
+    const probe = await probeRegistration(
+      origin,
+      dir,
+      deps.inventory,
+      deps.fetchFn,
+      deps.readFileFn,
+      deps.canonicalizeFn,
+      deps.existsFn,
+      deps.listFolderFilesFn,
+    );
+    if (!probe.ok) {
+      return {
+        ok: false,
+        code: probe.code,
+        message:
+          `Seed aborted — official default "${name}" (origin "${origin}") could not be registered: ` +
+          `${probe.message}; nothing written.`,
+        details: { name, origin },
+      };
+    }
+  }
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-create-project-state
   await deps.writeProjectStateFn(projectStatePath(dir), JSON.stringify(initialProjectStateDocument(), null, 2));

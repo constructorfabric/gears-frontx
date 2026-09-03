@@ -9,8 +9,16 @@ import type { InventoryEntry } from '../inventory/types';
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { ProjectStateDocument, ReadProjectStateFn, WriteProjectStateFn, TemplateEntry } from '../project-state/types';
 import type { ReadFileFn } from '../manifest/types';
+import type { AssertPathWithinRootFn } from '../scaffold/types';
 
 const identityCanonicalize: CanonicalizeTargetFn = (rawTarget) => rawTarget;
+
+// Every fixture below uses `'/repo'`, a notional root with no real
+// filesystem backing — real symlink-escape resolution is not this suite's
+// concern, that seam has its own real-fs coverage in `__tests__/fs-
+// containment.test.ts` (mirrors this file's own `identityCanonicalize`
+// convention for the identical reason).
+const noopAssertPathWithinRoot: AssertPathWithinRootFn = () => undefined;
 
 function fakeProjectState(initial: ProjectStateDocument): {
   read: ReadProjectStateFn;
@@ -101,6 +109,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       fakeListTargetFiles({}),
       neverCalledReadFileFn,
       remove,
+      noopAssertPathWithinRoot,
       read,
       write,
       neverConfirm(),
@@ -129,6 +138,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       fakeListTargetFiles({ '/repo/packages/app': ['src/index.ts'] }),
       neverCalledReadFileFn,
       remove,
+      noopAssertPathWithinRoot,
       read,
       write,
       neverConfirm(),
@@ -157,6 +167,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       fakeListTargetFiles({ '/repo/packages/app': ['src/index.ts'] }),
       neverCalledReadFileFn,
       remove,
+      noopAssertPathWithinRoot,
       read,
       write,
       neverConfirm(),
@@ -189,6 +200,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       fakeListTargetFiles({ '/repo/packages/app': ['src/index.ts'] }),
       neverCalledReadFileFn,
       remove,
+      noopAssertPathWithinRoot,
       read,
       write,
       neverConfirm(),
@@ -224,6 +236,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       fakeListTargetFiles({ '/repo/packages/app': [] }),
       neverCalledReadFileFn,
       remove,
+      noopAssertPathWithinRoot,
       read,
       write,
       neverConfirm(),
@@ -254,6 +267,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       fakeListTargetFiles({ '/repo/packages/app': [] }),
       neverCalledReadFileFn,
       remove,
+      noopAssertPathWithinRoot,
       read,
       write,
       neverConfirm(),
@@ -281,6 +295,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       fakeListTargetFiles({ '/repo/packages/app': ['src/index.ts'] }),
       neverCalledReadFileFn,
       remove,
+      noopAssertPathWithinRoot,
       read,
       write,
       fixedConfirm('confirmed'),
@@ -309,6 +324,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       fakeListTargetFiles({ '/repo/packages/app': ['src/index.ts'] }),
       neverCalledReadFileFn,
       remove,
+      noopAssertPathWithinRoot,
       read,
       write,
       fixedConfirm('declined'),
@@ -343,6 +359,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       }),
       neverCalledReadFileFn,
       remove,
+      noopAssertPathWithinRoot,
       read,
       write,
       neverConfirm(),

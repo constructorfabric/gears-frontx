@@ -39,27 +39,16 @@ import type { ReadExistingContentFn, ReadInstalledContentFn } from '../scaffold/
 import { materializeOrRemoveAiBundle } from '../scaffold/ai-bundle';
 import type { BundleExistsFn, CopyBundleFn, RemoveBundleFn } from '../scaffold/ai-bundle';
 import { isWithinEffectiveOwnership } from '../scaffold/effective-ownership';
-import type { ContributionEntry, StagedAssembly, WriteFileFn } from '../scaffold/types';
+import type { AssertPathWithinRootFn, ContributionEntry, StagedAssembly, WriteFileFn } from '../scaffold/types';
 import { readProjectState, mutateProjectState } from '../project-state/io';
 import type { ProjectStateDocument, ReadProjectStateFn, TemplateEntry, WriteProjectStateFn } from '../project-state/types';
 import { resolveRegisteredExcludedSubtrees } from '../scaffold/registered-manifest';
 import { isTemplatePayloadPath } from '../manifest/types';
 import type { ReadFileFn } from '../manifest/types';
-import { LOCAL_ORIGIN_PREFIX } from '../resolver/types';
+import { parseLocalOrigin } from '../resolver/types';
 import type { FetchFn, ListFolderFilesFn, PathExistsFn } from '../resolver/types';
+import { joinUnderTarget } from '../paths/relative-path';
 import type { ErrorCode } from '../envelope';
-
-// The identical one-line join `effective-ownership.ts`'s own (unexported)
-// `joinUnderTarget` performs, duplicated here rather than imported for the
-// same reason `existing-content.ts`'s `toProjectRelativePath` and
-// `delete-plan.ts`'s own `joinUnderTarget` already duplicate it: neither
-// module exports this join as a shared name today, and `target` may
-// legitimately be `.`, the project root, for which a plain
-// `${target}/${declared}` join would wrongly spell `./docs/` instead of the
-// plain `docs/` a real on-disk path resolves to.
-function joinUnderTarget(target: string, declared: string): string {
-  return target === '.' ? declared : `${target}/${declared}`;
-}
 
 /**
  * Canonicalizes every target in a raw batch to a project-relative path,
@@ -114,8 +103,9 @@ function canonicalizeBatch(
 function collectLocalOriginFolders(document: ProjectStateDocument, canonicalizeFn: CanonicalizeTargetFn): string[] {
   const folders: string[] = [];
   for (const entry of Object.values(document.templates)) {
-    if (!entry.origin.startsWith(LOCAL_ORIGIN_PREFIX)) continue;
-    const canonical = canonicalizeFn(entry.origin.slice(LOCAL_ORIGIN_PREFIX.length));
+    const relativePath = parseLocalOrigin(entry.origin);
+    if (relativePath === undefined) continue;
+    const canonical = canonicalizeFn(relativePath);
     if (canonical !== null) folders.push(canonical);
   }
   return folders;
@@ -369,6 +359,14 @@ export interface ApplyPipelineDeps extends ResolveAndCheckDeps {
   bundleExistsFn: BundleExistsFn;
   copyBundleFn: CopyBundleFn;
   removeBundleFn: RemoveBundleFn;
+  // CONTAINMENT ESCAPE FIX: proves an individual payload path stays inside
+  // `repoRoot`, symlinks resolved, immediately before `writeFileFn` is
+  // called for it — see this file's own containment-fix comment below for
+  // why canonicalizing the batch's own TARGET is not enough. Curried over
+  // the caller's own applicable root (`createFsAssertPathWithinRootFn`,
+  // `../adapters/fs-project-io.ts`) at the `cli.ts` dispatch site, exactly
+  // as `canonicalizeFn` already is.
+  assertPathWithinRootFn: AssertPathWithinRootFn;
 }
 
 export interface ApplyBatchTargetRef {
@@ -480,6 +478,40 @@ export async function runApplyPipeline(
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-existing-conflict
 
+  // CONTAINMENT ESCAPE FIX: canonicalizing the batch's own TARGET
+  // (`canonicalizeBatch` above) proves the target resolves inside the
+  // project root, symlinks resolved — it says nothing about a path segment
+  // BELOW the target (an `app/src` a developer or attacker replaced with a
+  // symlink to somewhere outside the project between registration and this
+  // apply). Every individual payload path this batch is about to write is
+  // proven to stay inside `repoRoot`, symlinks resolved, in its own pass
+  // BEFORE anything is written — an escape anywhere in the batch aborts the
+  // whole batch, nothing written, exactly as `contentConflictPaths`/
+  // `undecidedAdditionalPaths` above already abort before writing anything.
+  const invalidPaths: string[] = [];
+  for (const entry of unrecorded) {
+    const payload = payloads.get(entry) ?? new Map<string, string>();
+    const identical = identicalByEntry.get(entry) ?? new Set<string>();
+    for (const [projectPath] of payload) {
+      if (identical.has(projectPath)) continue;
+      try {
+        deps.assertPathWithinRootFn(path.join(repoRoot, projectPath));
+      } catch {
+        invalidPaths.push(projectPath);
+      }
+    }
+  }
+  if (invalidPaths.length > 0) {
+    return {
+      ok: false,
+      code: 'INVALID_PATH',
+      message:
+        `Aborted — path(s) could not be proven to stay inside the project root: ${invalidPaths.join(', ')}; ` +
+        'nothing written.',
+      details: { paths: invalidPaths },
+    };
+  }
+
   // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p1:inst-as-reconciled-assembled
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
   for (const entry of unrecorded) {
@@ -506,14 +538,29 @@ export async function runApplyPipeline(
     handledNames.add(entry.templateName);
     const targetsBefore = document.templates[entry.templateName]?.targets.length ?? 0;
     if (targetsBefore > 0) continue; // this name already had a target before this batch
-    await materializeOrRemoveAiBundle({
-      manifestName: entry.templateName,
-      transition: { kind: 'FIRST_TARGET_GAINED', installedContentPath: entry.installedContentPath },
-      projectRoot: repoRoot,
-      bundleExists: deps.bundleExistsFn,
-      copyBundle: deps.copyBundleFn,
-      removeBundle: deps.removeBundleFn,
-    });
+    try {
+      await materializeOrRemoveAiBundle({
+        manifestName: entry.templateName,
+        transition: { kind: 'FIRST_TARGET_GAINED', installedContentPath: entry.installedContentPath },
+        projectRoot: repoRoot,
+        bundleExists: deps.bundleExistsFn,
+        copyBundle: deps.copyBundleFn,
+        removeBundle: deps.removeBundleFn,
+      });
+    } catch (error) {
+      // The CLI-owned bundle copy (`adapters/fs-ai-bundle.ts`'s
+      // `createFsCopyBundleFn`) refuses fail-closed, the same way, when its
+      // own destination cannot be proven to stay inside the project root —
+      // surfaced here as a real refusal rather than an unhandled crash.
+      return {
+        ok: false,
+        code: 'INVALID_PATH',
+        message:
+          `Aborted — the AI-extension bundle for "${entry.templateName}" could not be proven to stay inside the ` +
+          `project root: ${error instanceof Error ? error.message : String(error)}`,
+        details: { name: entry.templateName },
+      };
+    }
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize-bundle
 

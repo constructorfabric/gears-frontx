@@ -25,7 +25,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import type { WriteFileFn } from '../scaffold/types';
+import type { AssertPathWithinRootFn, WriteFileFn } from '../scaffold/types';
 import type { ListPayloadFilesFn, ResolveDeclaredExclusionFn, ReadFileFn } from '../manifest/types';
 import type { ReadProjectFileFn, WriteProjectFileFn, RemoveProjectFileFn } from '../upgrade/types';
 import type { ReadProjectStateFn, WriteProjectStateFn } from '../project-state/types';
@@ -353,6 +353,73 @@ export function createFsCanonicalizeTargetFn(projectRoot: string): CanonicalizeT
     // "nothing" the moment it reaches them.
     const relative = path.relative(realRoot, resolved);
     return relative === '' ? '.' : toPosixPath(relative);
+  };
+}
+
+// CONTAINMENT ESCAPE FIX (found in PR review, reproduced against the built
+// binary): `createFsCanonicalizeTargetFn` above proves a batch's own TARGET
+// resolves inside the project root, symlinks resolved — but it says nothing
+// about an individual PAYLOAD PATH under that target. `commands/apply.ts`
+// used to join `repoRoot` with an already-canonicalized project-relative
+// payload path and hand the result straight to the injected `WriteFileFn`,
+// trusting the target's own canonicalization was enough. It is not: a
+// developer (or an attacker) can replace a path SEGMENT BELOW the target
+// with a symlink to somewhere outside the project between registration and
+// `apply` (`mkdir -p app && ln -s /somewhere/outside app/src`), and neither
+// the target canonicalization nor the plain `fs.writeFileSync`/`fs.rmSync`
+// the real writer/remover perform re-checks that segment — the OS simply
+// follows the link, and the write lands outside the project entirely.
+//
+// This is the ONE "is this absolute path inside the root, symlinks
+// resolved" formulation every adapter that writes into, or removes from, a
+// project uses — reusing the identical walk-up-to-nearest-existing-ancestor
+// algorithm `resolveNearestExistingAncestor` above already implements for a
+// target string, rather than a second, independently-formulated check.
+// `adapters/fs-upgrade-io.ts` and `adapters/fs-ai-bundle.ts` call it from
+// INSIDE their own real adapters, whose seams already receive their root as
+// an ordinary per-call argument. `WriteFileFn`/`RemoveProjectFileFn` below
+// cannot do the same: both are shared, `CliDeps`-injected values whose
+// caller varies the applicable root per command (`apply`'s `process.cwd()`
+// vs. `seed <dir>`'s own directory argument) and whose exact call arity is
+// asserted by this package's existing dispatch test suite — so
+// `commands/apply.ts` and `commands/delete.ts` call this function directly,
+// immediately before delegating to their own injected writer/remover, at
+// the exact point repoRoot and the absolute path come together.
+//
+// A path that does not exist yet (the ordinary case for a write about to
+// create one) is handled exactly as `resolveNearestExistingAncestor`
+// already handles a not-yet-existing target: walk up to the nearest
+// EXISTING ancestor, resolve THAT through every symlink on its own path,
+// and reattach the never-existing remainder literally. An internal symlink
+// — one whose real target still resolves inside `root` — is deliberately
+// ALLOWED, never refused outright: a project may legitimately contain its
+// own symlinks, and only an escape past `root` is the defect this guard
+// exists to catch.
+export function assertPathWithinProjectRoot(root: string, absolutePath: string): void {
+  const realRoot = realPathOrNull(root);
+  if (realRoot === null) {
+    throw new Error(`Refusing write: project root could not be resolved: ${root}`);
+  }
+  const resolved = resolveNearestExistingAncestor(path.resolve(absolutePath));
+  if (resolved === null || !isInside(realRoot, resolved)) {
+    throw new Error(`Refusing to write outside the project root: "${absolutePath}" is not within "${root}".`);
+  }
+}
+
+/**
+ * Real `AssertPathWithinRootFn` (`../scaffold/types.ts`) — curries
+ * `assertPathWithinProjectRoot` above over one project root, exactly as
+ * `createFsCanonicalizeTargetFn` below curries its own containment check
+ * over one project root for the SAME reason: `commands/apply.ts` (via
+ * `seed-repository.ts` too) and `commands/delete.ts` each learn their
+ * applicable root only at dispatch time, and `apply`'s root (`process.
+ * cwd()`) is not always `seed <dir>`'s (`dir` itself) — so this is built
+ * fresh per command, at the `cli.ts` dispatch site, never once at process
+ * start.
+ */
+export function createFsAssertPathWithinRootFn(projectRoot: string): AssertPathWithinRootFn {
+  return function assertPathWithinRoot(absolutePath: string): void {
+    assertPathWithinProjectRoot(projectRoot, absolutePath);
   };
 }
 

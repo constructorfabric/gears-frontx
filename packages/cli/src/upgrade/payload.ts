@@ -50,7 +50,7 @@ import { resolveToInventory } from '../resolver/resolve';
 import { readManifestFromContent } from '../manifest/validate-contract';
 import { MANIFEST_FILENAME, isTemplatePayloadPath } from '../manifest/types';
 import type { ReadFileFn } from '../manifest/types';
-import { LOCAL_ORIGIN_PREFIX } from '../resolver/types';
+import { parseLocalOrigin } from '../resolver/types';
 import type { FetchFn, InventoryReadyRecord, PathExistsFn } from '../resolver/types';
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { ListDiskFilesFn, ResolvedPayload, ResolvePayloadFn, ResolvePayloadResult } from './types';
@@ -97,7 +97,7 @@ export interface ResolvePayloadDeps {
  */
 export function createResolvePayloadFn(deps: ResolvePayloadDeps): ResolvePayloadFn {
   return async function resolvePayload(origin: string): Promise<ResolvePayloadResult> {
-    return origin.startsWith(LOCAL_ORIGIN_PREFIX)
+    return parseLocalOrigin(origin) !== undefined
       ? resolveLocalPayload(origin, deps)
       : resolveRemotePayload(origin, deps);
   };

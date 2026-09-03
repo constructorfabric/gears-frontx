@@ -16,7 +16,7 @@ import { readProjectState, mutateProjectState } from '../project-state/io';
 import type { ReadProjectStateFn, WriteProjectStateFn, TemplateEntry } from '../project-state/types';
 import { checkTargetConflicts } from '../scaffold/conflict-check';
 import type { CanonicalizeTargetFn, TargetClaim, TargetConflictEntry } from '../scaffold/conflict-check';
-import { pathWithinTarget } from '../paths/relative-path';
+import { pathWithinTarget, joinUnderTarget } from '../paths/relative-path';
 import type { ReadTargetPathStateFn } from './add-template';
 import type { InventoryEntry } from '../inventory/types';
 import type { ReadFileFn } from '../manifest/types';
@@ -41,16 +41,6 @@ export type OwnershipRemoveOutcome =
 export type OwnershipListOutcome =
   | { ok: true; projectOwnedRoots: string[] }
   | { ok: false; code: ErrorCode; message: string };
-
-// The identical one-line join `effective-ownership.ts`'s own (unexported)
-// `joinUnderTarget` performs, duplicated here for the same reason
-// `commands/apply.ts`'s/`scaffold/delete-plan.ts`'s own copies already are:
-// `target` may legitimately be `.`, the project root, for which a plain
-// `${target}/${declared}` join would wrongly spell `./docs` instead of the
-// plain `docs` a real on-disk path resolves to.
-function joinUnderTarget(target: string, declared: string): string {
-  return target === '.' ? declared : `${target}/${declared}`;
-}
 
 /**
  * The recorded-target claim set every registered template's `targets[]`

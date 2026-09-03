@@ -34,7 +34,7 @@ import { readManifestFromContent } from '../manifest/validate-contract';
 import { readProjectState, mutateProjectState } from '../project-state/io';
 import type { ReadProjectStateFn, WriteProjectStateFn, TemplateEntry } from '../project-state/types';
 import { resolveToInventory } from '../resolver/resolve';
-import { LOCAL_ORIGIN_PREFIX } from '../resolver/types';
+import { parseLocalOrigin } from '../resolver/types';
 import type { FetchFn, ListFolderFilesFn, PathExistsFn } from '../resolver/types';
 import type { ReadFileFn } from '../manifest/types';
 import type { InventoryEntry, InventoryResult } from '../inventory/types';
@@ -76,7 +76,7 @@ async function resolveOrigin(
   existsFn: PathExistsFn,
   listFolderFilesFn: ListFolderFilesFn,
 ): Promise<{ ok: true; value: ResolvedOrigin } | { ok: false; message: string; code?: ErrorCode }> {
-  if (origin.startsWith(LOCAL_ORIGIN_PREFIX)) {
+  if (parseLocalOrigin(origin) !== undefined) {
     // The shared resolver now owns containment, existence, and manifest-
     // identity/legacy-manifest checking for a local origin, exactly as it
     // already does for a remote one — a local origin is resolved directly
@@ -398,4 +398,74 @@ function readManifestFields(
   const description = obj.description;
   if (typeof description !== 'string' || description.trim() === '') return { ok: false, reason: 'missing-field', field: 'description' };
   return { ok: true, name, version };
+}
+
+export interface ResolvedRegistrationCandidate {
+  storedOrigin: string;
+  name: string;
+  version: string;
+}
+
+/**
+ * DEFECT FIX (seed's own pre-flight, `commands/seed-repository.ts`): resolves
+ * and validates `origin` through the IDENTICAL `resolveOrigin` /
+ * `readManifestFields` steps `registerTemplate` above uses, but reads and
+ * writes no project state at all — a pure availability probe. `seed` calls
+ * this for every batch entry BEFORE its own first write to
+ * `.frontx/project.json`, so a batch naming an official default that cannot
+ * actually be resolved is refused with the directory left exactly as it was
+ * found, rather than discovered only after `seed` has already created the
+ * document that a later step then fails to finish populating.
+ */
+export async function probeRegistration(
+  origin: string,
+  repoRoot: string,
+  inventory: RegisterInventoryPort,
+  fetchFn: FetchFn,
+  readFileFn: ReadFileFn,
+  canonicalizeFn: CanonicalizeTargetFn,
+  existsFn: PathExistsFn,
+  listFolderFilesFn: ListFolderFilesFn,
+): Promise<
+  | { ok: true; value: ResolvedRegistrationCandidate }
+  | { ok: false; code: ErrorCode; message: string; details?: Record<string, unknown> }
+> {
+  const resolved = await resolveOrigin(
+    origin,
+    repoRoot,
+    inventory,
+    fetchFn,
+    readFileFn,
+    canonicalizeFn,
+    existsFn,
+    listFolderFilesFn,
+  );
+  if (!resolved.ok) {
+    return { ok: false, code: resolved.code ?? 'ORIGIN_UNAVAILABLE', message: resolved.message };
+  }
+
+  const fields = readManifestFields(readManifestFromContent(resolved.value.manifestContent), resolved.value.manifestContent);
+  if (!fields.ok) {
+    if (fields.reason === 'legacy-manifest') {
+      return {
+        ok: false,
+        code: 'INVALID_MANIFEST',
+        message:
+          'The resolved manifest declares field(s) not part of the four-field contract: ' +
+          `${fields.undeclaredFields.join(', ')}.`,
+        details: { undeclaredFields: fields.undeclaredFields },
+      };
+    }
+    return {
+      ok: false,
+      code: 'INVALID_MANIFEST',
+      message: `The resolved manifest is missing or has an empty "${fields.field}" field.`,
+      details: { field: fields.field },
+    };
+  }
+
+  return {
+    ok: true,
+    value: { storedOrigin: resolved.value.storedOrigin, name: fields.name, version: fields.version },
+  };
 }

@@ -129,3 +129,20 @@ export function targetsNest(a: string, b: string): boolean {
   if (a === '.' || b === '.') return true;
   return pathsNest(a, b);
 }
+
+// Re-roots a target-relative declaration (a manifest's declared
+// `excludedSubtrees` entry, a payload's template-relative content path, or
+// an upgrade operation's relative path — every one of them authored the
+// same way, target-relative) under a concrete applied `target`, producing a
+// project-relative path. `target` may legitimately be `.`, the project root
+// (`cpt-frontx-algo-cli-scaffolding-delete-plan`'s own text uses exactly
+// this example: "a target `.` at the project root") — a plain
+// `${target}/${relativePath}` join would then wrongly spell
+// `./docs/readme.md` instead of the plain `docs/readme.md` a real
+// project-relative path resolves to, so `.` is the one case joined as a
+// bare pass-through instead. This was independently restated by every
+// caller that re-roots a declaration under a target — the one join
+// operation the whole package now shares.
+export function joinUnderTarget(target: string, relativePath: string): string {
+  return target === '.' ? relativePath : `${target}/${relativePath}`;
+}

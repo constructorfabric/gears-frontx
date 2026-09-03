@@ -180,13 +180,44 @@ export function resolveTargetOrigin(
 }
 
 // @cpt-begin:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1:inst-command-surface-types
-// The `frontx upgrade` command/invocation surface's JSON result, mirrored
-// locally (from `packages/cli/src/commands/upgrade.ts`'s `UpgradeCommandResult`)
-// so this kit never imports the CLI package.
+// The `frontx upgrade` command/invocation surface's outcome, mirrored
+// LOCALLY (never imported from the CLI package) as this adapter's own
+// `InvokeUpgradeCommandFn` return shape.
+//
+// This is NOT a mirror of one CLI-native envelope shape — the real surface
+// (`packages/cli/src/commands/upgrade.ts` via `cli.ts`'s
+// `renderUpgradeOutcome`) emits the shared `{ok:true, data}` /
+// `{ok:false, error:{code, message, details}}` envelope
+// (`cpt-frontx-adr-cli-machine-readable-output`), not the flat `{ok,
+// status, message}` this interface used to describe as that mirror. That
+// flat shape is retired on the CLI side too (`renderUpgradeOutcome`'s own
+// header: "never the retired bespoke `{ok, status}` shape"). Kept here
+// anyway, EXTENDED rather than replaced, because it is this adapter's own
+// return contract (`InvokeUpgradeCommandFn`) that the orchestration layer
+// above it (`orchestrate.ts`) already consumes by `status` literal —
+// replacing it with the real envelope shape would ripple into that
+// unrelated layer for no requirement this fix carries.
 export interface UpgradeCommandJsonResult {
   ok: boolean;
-  status: 'applied' | 'declined' | 'resolution-failed' | 'apply-failed';
+  // `'noop'` added: the real surface's first, unconfirmed `--json` call can
+  // report `{outcome:'noop'}` directly — the project is already at the
+  // target version, nothing to confirm, nothing written. Distinguished from
+  // `'applied'` (a write actually happened) rather than folded into it, so a
+  // caller can tell "already there" from "just landed".
+  status: 'applied' | 'declined' | 'resolution-failed' | 'apply-failed' | 'noop';
   message?: string;
+  /**
+   * The real surface's own `error.code` (the sixteen-code
+   * `cpt-frontx-adr-cli-machine-readable-output` vocabulary) for a
+   * `resolution-failed` or `apply-failed` result — carried verbatim rather
+   * than collapsed into `message`, so a caller can distinguish e.g.
+   * `TARGET_CONFLICT` from `CONTENT_CONFLICT` instead of losing which
+   * refusal this was. Always absent for `applied`/`noop`, and for
+   * `declined` — that result is synthesized locally by the adapter when
+   * `onChangeSet` returns `'declined'`, never parsed from a CLI failure
+   * envelope.
+   */
+  code?: string;
 }
 
 // Drives the SINGLE F14 engine strictly through its `frontx upgrade

@@ -48,8 +48,9 @@ import path from 'node:path';
 import { readProjectState, projectStatePath } from '../project-state/io';
 import type { ProjectStateDocument, ReadProjectStateFn } from '../project-state/types';
 import { resolveToInventory } from '../resolver/resolve';
-import { LOCAL_ORIGIN_PREFIX } from '../resolver/types';
+import { parseLocalOrigin } from '../resolver/types';
 import type { FetchFn, ListFolderFilesFn, PathExistsFn, ResolveOrigin, ResolveResult } from '../resolver/types';
+import { joinUnderTarget } from '../paths/relative-path';
 import { readManifestFromContent } from '../manifest/validate-contract';
 import type { ReadFileFn } from '../manifest/types';
 import { parseSourceSpec } from '../spec-parser/parse';
@@ -84,16 +85,6 @@ export type ValidateProjectOutcome =
   | { ok: true }
   | { ok: false; code: ValidateProjectErrorCode; message: string; details?: Record<string, unknown> };
 
-// The identical one-line join `commands/apply.ts`'s and `commands/
-// ownership.ts`'s own (unexported) `joinUnderTarget` each already perform,
-// duplicated here for the same reason both of theirs already are: `target`
-// may legitimately be `.`, the project root, for which a plain
-// `${target}/${declared}` join would wrongly spell `./docs/` instead of the
-// plain `docs/` a real on-disk path resolves to.
-function joinUnderTarget(target: string, declared: string): string {
-  return target === '.' ? declared : `${target}/${declared}`;
-}
-
 // Builds the shared resolver's own `ResolveOrigin` discriminant from a
 // recorded `templates[name].origin` string. `null` when the string is
 // neither `path:`-prefixed nor a parseable source-spec — a case reported
@@ -103,7 +94,7 @@ function joinUnderTarget(target: string, declared: string): string {
 // string, never that it is a WELL-FORMED one, and a malformed source-spec is
 // exactly as unresolvable as one whose registry is unreachable.
 function buildResolveOrigin(origin: string): ResolveOrigin | null {
-  if (origin.startsWith(LOCAL_ORIGIN_PREFIX)) {
+  if (parseLocalOrigin(origin) !== undefined) {
     return { kind: 'local', origin };
   }
   const parsed = parseSourceSpec(origin);

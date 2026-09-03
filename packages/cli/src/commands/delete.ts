@@ -31,6 +31,7 @@ import type { ProjectStateDocument, ReadProjectStateFn, WriteProjectStateFn, Tem
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { ReadFileFn } from '../manifest/types';
 import type { ErrorCode } from '../envelope';
+import type { AssertPathWithinRootFn } from '../scaffold/types';
 
 // Symmetric to `upgrade/types.ts`'s `RemoveProjectFileFn` — removes one
 // absolute file path, no-op when already absent. Reused directly rather
@@ -106,6 +107,16 @@ export async function deleteTarget(
   listTargetFilesFn: ListTargetFilesFn,
   readFileFn: ReadFileFn,
   removeFileFn: RemoveTargetFileFn,
+  // CONTAINMENT ESCAPE FIX: proves an individual `toDelete` path stays
+  // inside `repoRoot`, symlinks resolved, immediately before `removeFileFn`
+  // is called for it — `listTargetFilesFn` above deliberately FOLLOWS a
+  // symlink while enumerating a target's real reachable content, which is
+  // correct for the deletion plan itself but means a plan path can resolve
+  // outside the project once re-joined with `repoRoot`. Curried over
+  // `repoRoot` (`createFsAssertPathWithinRootFn`, `../adapters/fs-project-
+  // io.ts`) at the `cli.ts` dispatch site, exactly as `canonicalizeFn`
+  // already is.
+  assertPathWithinRootFn: AssertPathWithinRootFn,
   readProjectStateFn: ReadProjectStateFn,
   writeProjectStateFn: WriteProjectStateFn,
   confirmDeletionFn: ConfirmDeletionFn,
@@ -240,6 +251,37 @@ export async function deleteTarget(
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-json
 
+  // CONTAINMENT ESCAPE FIX: `listTargetFilesFn` (the real
+  // `createFsListTargetFilesFn`, `adapters/fs-project-io.ts`) deliberately
+  // FOLLOWS a symlink while enumerating the target's real reachable content
+  // — correct for computing the deletion plan itself, but it means
+  // `final.plan.toDelete` can legitimately name a project-relative path
+  // whose actual on-disk location, once re-joined with `repoRoot` and
+  // resolved through that same symlink, sits outside the project entirely
+  // (a target directory a developer replaced with a symlink to somewhere
+  // outside between `apply` and this `delete`). Every path this plan is
+  // about to remove is proven to stay inside `repoRoot` in its own pass
+  // BEFORE anything is deleted — an escape anywhere in the plan aborts the
+  // whole deletion, nothing removed.
+  const invalidPaths: string[] = [];
+  for (const deletedPath of final.plan.toDelete) {
+    try {
+      assertPathWithinRootFn(path.join(repoRoot, deletedPath));
+    } catch {
+      invalidPaths.push(deletedPath);
+    }
+  }
+  if (invalidPaths.length > 0) {
+    return {
+      ok: false,
+      code: 'INVALID_PATH',
+      message:
+        `Aborted — path(s) could not be proven to stay inside the project root: ${invalidPaths.join(', ')}; ` +
+        'nothing deleted.',
+      details: { target: canonical, paths: invalidPaths },
+    };
+  }
+
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-remove
   // @cpt-begin:cpt-frontx-state-cli-scaffolding-delete-op:p1:inst-do-confirmed-deleted
   for (const deletedPath of final.plan.toDelete) {
@@ -269,7 +311,24 @@ export async function deleteTarget(
   const wasLastTarget = targetsBefore > 0 && remainingTargets.length === 0;
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-remove-bundle
   if (wasLastTarget && removeAiBundleFn) {
-    await removeAiBundleFn(ownerName);
+    try {
+      await removeAiBundleFn(ownerName);
+    } catch (error) {
+      // The CLI-owned bundle removal (`adapters/fs-ai-bundle.ts`'s
+      // `createFsRemoveBundleFn`) refuses fail-closed, the same way, when
+      // its own target cannot be proven to stay inside the project root —
+      // surfaced here as a real refusal rather than an unhandled crash. The
+      // target itself has already been removed and its project-state entry
+      // already updated above; only the bundle removal is refused.
+      return {
+        ok: false,
+        code: 'INVALID_PATH',
+        message:
+          `"${canonical}" was deleted, but its AI-extension bundle could not be proven to stay inside the ` +
+          `project root: ${error instanceof Error ? error.message : String(error)}`,
+        details: { name: ownerName },
+      };
+    }
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-remove-bundle
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-last-target

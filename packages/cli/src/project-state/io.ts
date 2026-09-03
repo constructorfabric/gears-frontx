@@ -32,6 +32,17 @@ export function projectStatePath(repoRoot: string): string {
 }
 // @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-locate
 
+// DEFECT FIX (ADR-0019 "More Information"): the OLD per-template
+// `.frontx/provenance.json` record this feature's own header (`./types.ts`)
+// says is "slated for deletion once callers migrate" — never itself read by
+// this module's normal logic, referenced here ONLY so `loadProjectStateDocument`
+// can detect the one combination the ADR requires be refused rather than
+// silently treated as an empty project: this legacy file present with no
+// `.frontx/project.json` alongside it.
+function legacyProvenancePath(repoRoot: string): string {
+  return path.join(repoRoot, '.frontx', 'provenance.json');
+}
+
 function initialProjectStateDocument(): ProjectStateDocument {
   return { formatVersion: 1, templates: {}, projectOwnedRoots: [] };
 }
@@ -117,6 +128,25 @@ async function loadProjectStateDocument(
 
   // @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-absent
   if (raw === null) {
+    // DEFECT FIX (ADR-0019 "More Information"): the absence of
+    // `.frontx/project.json` is deliberately NOT a failure on its own — the
+    // marked default below stands for every ordinary empty project. The ONE
+    // combination the ADR requires be refused instead is this absence PLUS a
+    // legacy `.frontx/provenance.json` alongside it: a repository an older
+    // CLI version created, never migrated to this single-document model.
+    // Guessing a translation from that old per-template record is explicitly
+    // out of scope; the developer recreates or re-registers instead.
+    const legacyPath = legacyProvenancePath(repoRoot);
+    const legacyRaw = await readProjectStateFn(legacyPath);
+    if (legacyRaw !== null) {
+      return {
+        ok: false,
+        message:
+          `"${legacyPath}" is a legacy provenance record from an older CLI version; this repository was never ` +
+          'migrated to the current .frontx/project.json model. Recreate the project or re-register its ' +
+          'templates against the current model before running this command.',
+      };
+    }
     // @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-absent-default
     return { ok: true, document: initialProjectStateDocument() };
     // @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-absent-default

@@ -3,6 +3,25 @@ import type { InventoryEntry } from '../inventory/types';
 // Injected write function — caller supplies; no direct filesystem access in core logic.
 export type WriteFileFn = (destPath: string, content: string) => Promise<void>;
 
+// Injected containment guard — proves an absolute path stays inside a
+// project root the caller already resolved, symlinks resolved, throwing
+// when it does not (the real implementation, `assertPathWithinProjectRoot`
+// in `../adapters/fs-project-io.ts`, is a plain throwing function rather
+// than a `Promise`-returning one: every call site here is a synchronous,
+// read-only filesystem check before an async write, not itself an I/O
+// operation worth awaiting).
+//
+// Injected — never imported directly by `commands/apply.ts`/`commands/
+// delete.ts` — because `WriteFileFn`/`RemoveProjectFileFn` are shared,
+// `CliDeps`-injected values whose applicable root varies per command
+// (`apply`'s `process.cwd()` vs. `seed <dir>`'s own directory argument),
+// and because a directly-imported real-fs check would run unconditionally
+// even against this package's own in-memory, no-real-filesystem dispatch
+// fixtures (`__tests__/entry-flows.test.ts`, `__tests__/cli.test.ts`),
+// which model a project root (`/repo`, `/tmp/fresh-repo`, ...) that does
+// not exist on the real filesystem at all.
+export type AssertPathWithinRootFn = (absolutePath: string) => void;
+
 // Injected reader for a file already on disk at a target repository path —
 // `null` when absent. Symmetric to upgrade's `ReadProjectFileFn`
 // (`../upgrade/types.ts`), redeclared here (rather than imported) so

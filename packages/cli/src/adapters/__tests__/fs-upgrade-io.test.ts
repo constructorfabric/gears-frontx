@@ -229,7 +229,7 @@ describe('fs-upgrade-io', () => {
     it('writes content, creating missing parent directories', async () => {
       const dir = await makeRoot();
       const destination = path.join(dir, 'a', 'b', 'c', 'new-file.txt');
-      const writeDiskFile = createFsWriteDiskFileFn();
+      const writeDiskFile = createFsWriteDiskFileFn(dir);
 
       await writeDiskFile(destination, 'staged content');
 
@@ -244,7 +244,7 @@ describe('fs-upgrade-io', () => {
       const to = path.join(dir, 'destination.txt');
       await writeFile(from, 'new content', 'utf-8');
       await writeFile(to, 'old content', 'utf-8');
-      const renameDiskFile = createFsRenameDiskFileFn();
+      const renameDiskFile = createFsRenameDiskFileFn(dir);
 
       await renameDiskFile(from, to);
 
@@ -257,7 +257,7 @@ describe('fs-upgrade-io', () => {
       const from = path.join(dir, 'source.txt');
       const to = path.join(dir, 'nested', 'new', 'destination.txt');
       await writeFile(from, 'content', 'utf-8');
-      const renameDiskFile = createFsRenameDiskFileFn();
+      const renameDiskFile = createFsRenameDiskFileFn(dir);
 
       await renameDiskFile(from, to);
 
@@ -270,7 +270,7 @@ describe('fs-upgrade-io', () => {
       const dir = await makeRoot();
       const filePath = path.join(dir, 'to-remove.txt');
       await writeFile(filePath, 'content', 'utf-8');
-      const unlinkDiskFile = createFsUnlinkDiskFileFn();
+      const unlinkDiskFile = createFsUnlinkDiskFileFn(dir);
 
       await unlinkDiskFile(filePath);
 
@@ -279,7 +279,7 @@ describe('fs-upgrade-io', () => {
 
     it('is a no-op (does not throw) when the path is already absent', async () => {
       const dir = await makeRoot();
-      const unlinkDiskFile = createFsUnlinkDiskFileFn();
+      const unlinkDiskFile = createFsUnlinkDiskFileFn(dir);
 
       await expect(unlinkDiskFile(path.join(dir, 'never-existed.txt'))).resolves.toBeUndefined();
     });
@@ -290,7 +290,7 @@ describe('fs-upgrade-io', () => {
       await mkdir(subdir);
       const filePath = path.join(subdir, 'only-file.txt');
       await writeFile(filePath, 'content', 'utf-8');
-      const unlinkDiskFile = createFsUnlinkDiskFileFn();
+      const unlinkDiskFile = createFsUnlinkDiskFileFn(dir);
 
       await unlinkDiskFile(filePath);
 

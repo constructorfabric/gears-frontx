@@ -33,6 +33,7 @@ import type {
   UnlinkDiskFileFn,
   WriteDiskFileFn,
 } from '../upgrade/types';
+import { assertPathWithinProjectRoot } from './fs-project-io';
 
 // Install-time output, never committed template content
 // (`cpt-frontx-algo-template-manifest-validate-content-self-containment`'s own
@@ -156,9 +157,24 @@ function walkRegularFiles(root: string, relativeDir: string): string[] {
  * Real `WriteDiskFileFn` — writes `content`, creating parent directories as
  * needed. Used for the staged write's temporary files and for recovery's
  * baseline restoration.
+ *
+ * CONTAINMENT ESCAPE FIX: `destinationPath`/`tempPath` in `../upgrade/
+ * commit.ts` are computed by joining `repoRoot` with a plan-declared
+ * project-relative path — proven inside the project only at the CANDIDATE/
+ * BASELINE level classification saw it, never re-checked against the real
+ * filesystem at write time. A path segment a developer replaced with a
+ * symlink to somewhere outside the project between review and commit would
+ * otherwise let `fs.writeFileSync` follow it straight past `repoRoot`.
+ * `assertPathWithinProjectRoot` (`./fs-project-io.ts`) is the ONE shared
+ * "inside the root, symlinks resolved" check every adapter that writes into
+ * a project uses; thrown here, it is caught by `commitUpgrade`'s own
+ * `inst-com-catch` exactly like any other I/O failure and reported as
+ * `INTERNAL` with recovery — `INVALID_PATH` is deliberately never used for
+ * `upgrade`'s own refusals (`upgrade/payload.ts`'s own header explains why).
  */
-export function createFsWriteDiskFileFn(): WriteDiskFileFn {
+export function createFsWriteDiskFileFn(repoRoot: string): WriteDiskFileFn {
   return async function writeDiskFile(absolutePath: string, content: string): Promise<void> {
+    assertPathWithinProjectRoot(repoRoot, absolutePath);
     fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
     fs.writeFileSync(absolutePath, content, 'utf-8');
   };
@@ -171,9 +187,14 @@ export function createFsWriteDiskFileFn(): WriteDiskFileFn {
  * filesystem, which a temporary file written beside its own destination is by
  * construction — that adjacency is why the staged write places temporaries
  * beside their destinations rather than in a shared temp directory.
+ *
+ * `to` (the actual landing destination) is proven to stay inside the project
+ * root, symlinks resolved, before the rename — see `createFsWriteDiskFileFn`
+ * above for why this check exists and how a violation is reported.
  */
-export function createFsRenameDiskFileFn(): RenameDiskFileFn {
+export function createFsRenameDiskFileFn(repoRoot: string): RenameDiskFileFn {
   return async function renameDiskFile(from: string, to: string): Promise<void> {
+    assertPathWithinProjectRoot(repoRoot, to);
     fs.mkdirSync(path.dirname(to), { recursive: true });
     fs.renameSync(from, to);
   };
@@ -185,9 +206,13 @@ export function createFsRenameDiskFileFn(): RenameDiskFileFn {
  * boundary` requires a `REMOVE` to "unlink each `REMOVE` operation's path
  * without removing the directory it leaves empty", since that directory may
  * hold ground this engine does not own.
+ *
+ * Proven to stay inside the project root, symlinks resolved, before the
+ * unlink — see `createFsWriteDiskFileFn` above for why this check exists.
  */
-export function createFsUnlinkDiskFileFn(): UnlinkDiskFileFn {
+export function createFsUnlinkDiskFileFn(repoRoot: string): UnlinkDiskFileFn {
   return async function unlinkDiskFile(absolutePath: string): Promise<void> {
+    assertPathWithinProjectRoot(repoRoot, absolutePath);
     try {
       fs.unlinkSync(absolutePath);
     } catch (error) {

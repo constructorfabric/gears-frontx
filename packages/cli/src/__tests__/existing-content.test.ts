@@ -204,7 +204,7 @@ describe('reconcileExistingContent', () => {
 
   // Same regression, for a NESTED target — proves the manifest exclusion is
   // applied to the still-template-relative path (`item.path`) BEFORE
-  // `toProjectRelativePath` re-roots it, not to the already-re-rooted
+  // `joinUnderTarget` re-roots it, not to the already-re-rooted
   // project-relative path: a naive comparison against the bare
   // `MANIFEST_FILENAME` after re-rooting would never match
   // `sub/dir/frontx-template.json`.

@@ -15,11 +15,12 @@ import { assembleBatch } from '../commands/assemble';
 import { runApplyPipeline } from '../commands/apply';
 import type { ApplyPipelineDeps } from '../commands/apply';
 import { seedRepository } from '../commands/seed-repository';
+import { projectStatePath } from '../project-state/io';
 import type { UniformApplyBatch, UniformApplyInventoryPort } from '../scaffold/assembler';
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { BundleExistsFn, CopyBundleFn, RemoveBundleFn } from '../scaffold/ai-bundle';
 import type { ReadExistingContentFn, ReadInstalledContentFn } from '../scaffold/existing-content';
-import type { ContentItem, WriteFileFn } from '../scaffold/types';
+import type { AssertPathWithinRootFn, ContentItem, WriteFileFn } from '../scaffold/types';
 import type { ProjectStateDocument, ReadProjectStateFn, WriteProjectStateFn } from '../project-state/types';
 import type { ReadFileFn } from '../manifest/types';
 import type { InventoryEntry } from '../inventory/types';
@@ -84,6 +85,14 @@ function makeHarness() {
   // elsewhere in this package).
   const canonicalizeFn: CanonicalizeTargetFn = (rawTarget) => rawTarget;
 
+  // No-op for the identical reason `canonicalizeFn` above is an identity:
+  // `REPO_ROOT` (`/repo`) is a notional path with no real filesystem
+  // backing, so the real, symlink-resolving `assertPathWithinProjectRoot`
+  // cannot honestly run against it — that seam's own real-fs coverage lives
+  // in `__tests__/fs-containment.test.ts`, including its required
+  // `runApplyPipeline` end-to-end regression against a REAL project root.
+  const assertPathWithinRootFn: AssertPathWithinRootFn = () => undefined;
+
   const readProjectStateFn: ReadProjectStateFn = async () => projectStateContent;
   const writeProjectStateFn: WriteProjectStateFn = async (_absolutePath, content) => {
     projectStateContent = content;
@@ -131,6 +140,7 @@ function makeHarness() {
     bundleExistsFn,
     copyBundleFn,
     removeBundleFn,
+    assertPathWithinRootFn,
   };
 
   function registerInstalled(name: string, manifestJson: Record<string, unknown>, content: ContentItem[]): void {
@@ -588,7 +598,11 @@ describe('seedRepository — bootstrap a fresh project (cpt-frontx-flow-cli-scaf
   });
 
   // inst-seed-foreach-default's own error scenario: a non-default name.
-  it('refuses TEMPLATE_NOT_REGISTERED for a batch entry that is not one of the CLI\'s official default templates', async () => {
+  // DEFECT FIX regression: this refusal is now a pre-flight check, before
+  // `.frontx/project.json` is ever created — so a directory refused this
+  // way is left exactly as it was found, never locked out of a later
+  // `seed` call by a document this same refusal wrote.
+  it('refuses TEMPLATE_NOT_REGISTERED for a batch entry that is not one of the CLI\'s official default templates, writing nothing', async () => {
     const h = makeHarness();
 
     const result = await seedRepository(REPO_ROOT, { templates: { 'not-a-default': ['.'] } }, false, h.deps);
@@ -596,6 +610,34 @@ describe('seedRepository — bootstrap a fresh project (cpt-frontx-flow-cli-scaf
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe('TEMPLATE_NOT_REGISTERED');
+    expect(await h.deps.readProjectStateFn(projectStatePath(REPO_ROOT))).toBeNull();
+  });
+
+  // DEFECT FIX regression: `seed` previously created `.frontx/project.json`
+  // BEFORE resolving any batch entry, so a default that could not actually
+  // be resolved (e.g. its local origin folder cannot be proven to exist)
+  // left the empty document behind — and `seed`'s own already-seeded guard
+  // then permanently refused the very directory the aborted seed was
+  // supposed to leave untouched. The fix resolves every named default
+  // BEFORE the first write, so this failure leaves nothing behind and a
+  // later `seed` call on the same directory is accepted.
+  it('leaves no .frontx/project.json when a batch entry names an official default that cannot be resolved, and accepts a later seed', async () => {
+    const h = makeHarness();
+    h.deps.existsFn = vi.fn(async () => false);
+
+    const result = await seedRepository(
+      REPO_ROOT,
+      { templates: { '@gears-frontx/frontx-template-shell': ['.'] } },
+      false,
+      h.deps,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(await h.deps.readProjectStateFn(projectStatePath(REPO_ROOT))).toBeNull();
+
+    const secondAttempt = await seedRepository(REPO_ROOT, { templates: {} }, false, h.deps);
+    expect(secondAttempt.ok).toBe(true);
   });
 
   // inst-seed-create-project-state — created UNCONDITIONALLY, even for a

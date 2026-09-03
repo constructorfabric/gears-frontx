@@ -17,6 +17,7 @@
 // it is handed.
 import { isWithinEffectiveOwnership } from './effective-ownership';
 import { isTemplatePayloadPath } from '../manifest/types';
+import { joinUnderTarget } from '../paths/relative-path';
 import type { ContentItem } from './types';
 
 // Injected reader for a template's installed content — every file reachable
@@ -25,7 +26,7 @@ import type { ContentItem } from './types';
 // `ContentItem` (`scaffold/types.ts`) rather than inventing a second "path
 // plus content" shape — the same shape `ReadContentItemsFn` already reads
 // for materialization. This module itself narrows the result down to one
-// target's effective ownership area (`joinUnderEffectiveOwnershipTarget` +
+// target's effective ownership area (`joinUnderTarget` +
 // `isWithinEffectiveOwnership` below), so the seam only has to enumerate,
 // never judge scope.
 export type ReadInstalledContentFn = (installedContentPath: string) => Promise<ContentItem[]>;
@@ -59,19 +60,6 @@ export interface ExistingContentPartitions {
   additionalPaths: string[];
 }
 
-// A content item's path is read template-relative (relative to the
-// template's own installed content root); comparison against on-disk
-// content and against `exclusionRoots` needs it PROJECT-relative instead —
-// re-rooted under `target` exactly as `effective-ownership.ts`'s own
-// (unexported) `joinUnderTarget` re-roots a manifest's declared
-// `excludedSubtrees` entry under the same target, and for the identical
-// reason: `target` may legitimately be `.`, the project root, for which
-// `${target}/${relative}` would wrongly spell `./docs/readme.md` instead of
-// the plain `docs/readme.md` a real on-disk path resolves to.
-function toProjectRelativePath(target: string, templateRelativePath: string): string {
-  return target === '.' ? templateRelativePath : `${target}/${templateRelativePath}`;
-}
-
 // @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-compute-payload
 function computePayloadSet(
   target: string,
@@ -82,12 +70,13 @@ function computePayloadSet(
   for (const item of rawContent) {
     // `item.path` is still template-relative here — `isTemplatePayloadPath`
     // (`../manifest/types.ts`, the ONE shared formulation of the payload
-    // definition FEATURE §1.2 owns) must see it BEFORE `toProjectRelativePath`
-    // re-roots it under `target`: a non-`.` target would otherwise re-root
-    // the manifest as `<target>/frontx-template.json`, which a check against
-    // the bare `MANIFEST_FILENAME` would never recognize.
+    // definition FEATURE §1.2 owns) must see it BEFORE `joinUnderTarget`
+    // (`../paths/relative-path.ts`) re-roots it under `target`: a non-`.`
+    // target would otherwise re-root the manifest as
+    // `<target>/frontx-template.json`, which a check against the bare
+    // `MANIFEST_FILENAME` would never recognize.
     if (!isTemplatePayloadPath(item.path)) continue;
-    const projectPath = toProjectRelativePath(target, item.path);
+    const projectPath = joinUnderTarget(target, item.path);
     if (!isWithinEffectiveOwnership(projectPath, target, exclusionRoots)) continue;
     payload.set(projectPath, item.content);
   }

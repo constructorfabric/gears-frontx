@@ -44,6 +44,7 @@
 // it possible to report one as the other.
 import path from 'node:path';
 import { RESERVED_TEMP_SUFFIX, isReservedTempName } from '../paths/reserved-temp-name';
+import { joinUnderTarget } from '../paths/relative-path';
 import { isWithinEffectiveOwnership } from '../scaffold/effective-ownership';
 import { mutateProjectState } from '../project-state/io';
 import type { ReadProjectStateFn, WriteProjectStateFn, TemplateEntry } from '../project-state/types';
@@ -114,14 +115,6 @@ function requireNewContent(op: UpgradeOperation): string {
     );
   }
   return op.newContent;
-}
-
-// The identical one-line join every sibling module restates for the same
-// documented reason (`effective-ownership.ts`, `classify.ts`, `delete-plan.ts`,
-// `apply.ts`): `target` may legitimately be `.`, the project root, for which a
-// plain `${target}/${relative}` join would wrongly spell `./x` instead of `x`.
-function joinUnderTarget(target: string, relativePath: string): string {
-  return target === '.' ? relativePath : `${target}/${relativePath}`;
 }
 
 function destinationPath(repoRoot: string, op: UpgradeOperation): string {

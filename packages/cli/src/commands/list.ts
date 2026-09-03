@@ -4,7 +4,7 @@
 import { readManifestFromContent } from '../manifest/validate-contract';
 import { TemplateInventory } from '../inventory/TemplateInventory';
 import { resolveToInventory } from '../resolver/resolve';
-import { LOCAL_ORIGIN_PREFIX } from '../resolver/types';
+import { parseLocalOrigin } from '../resolver/types';
 import type { FetchFn, PathExistsFn, ListFolderFilesFn, ReadFolderFileFn } from '../resolver/types';
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { TemplateEntry } from '../project-state/types';
@@ -225,7 +225,7 @@ async function resolveRegisteredDescription(
   inventory: TemplateInventory,
   deps: CatalogResolveDeps,
 ): Promise<string | undefined> {
-  if (origin.startsWith(LOCAL_ORIGIN_PREFIX)) {
+  if (parseLocalOrigin(origin) !== undefined) {
     return (await resolveLocalManifest(origin, deps))?.description;
   }
   const installed = inventory.lookup(name);

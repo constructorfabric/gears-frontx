@@ -34,6 +34,20 @@ export type FetchFn = (url: string) => Promise<string | FetchResult>;
 // its own copy of this exact string.
 export const LOCAL_ORIGIN_PREFIX = 'path:';
 
+// The "is this a local origin, and if so what relative path does it name"
+// pair every caller that must branch on an origin's kind before acting on
+// its local arm needs together — returned as one value so nothing can act
+// on the predicate half (the prefix check) without the extraction half (the
+// slice past it) agreeing about the same prefix. `undefined` for a remote
+// origin, which names no local relative path at all. Exported for the same
+// reason `LOCAL_ORIGIN_PREFIX` above is: every caller that used to carry its
+// own copy of `origin.startsWith(LOCAL_ORIGIN_PREFIX)` followed by
+// `origin.slice(LOCAL_ORIGIN_PREFIX.length)` now shares this one
+// formulation instead.
+export function parseLocalOrigin(origin: string): string | undefined {
+  return origin.startsWith(LOCAL_ORIGIN_PREFIX) ? origin.slice(LOCAL_ORIGIN_PREFIX.length) : undefined;
+}
+
 // Either a validated structured reference for a remote origin, or a local
 // `path:<relative-path>` origin naming a folder inside the project's own
 // tree — the resolver's own Input line (`cpt-frontx-algo-template-

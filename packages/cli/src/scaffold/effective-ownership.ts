@@ -30,15 +30,12 @@
 // own doc comment on why the two are distinct). The re-rooting join below
 // has its own root case: `${target}/${declared}` would spell `./docs/`
 // when `target` is `.`, a form `pathWithinSubtree` does not recognize as
-// equal to the plain `docs/` a real payload path resolves to — `joinUnderTarget`
-// is the one place that decides how a declaration is re-rooted, so this
-// module and any future caller never have to agree on that spelling twice.
-import { pathWithinTarget } from '../paths/relative-path';
+// equal to the plain `docs/` a real payload path resolves to —
+// `joinUnderTarget` (`../paths/relative-path.ts`) is the one shared place
+// that decides how a declaration is re-rooted, so this module and every
+// other caller never have to agree on that spelling twice.
+import { pathWithinTarget, joinUnderTarget } from '../paths/relative-path';
 import { RESERVED_ENVIRONMENT_ENTRIES } from '../manifest/validate-contract';
-
-function joinUnderTarget(target: string, declared: string): string {
-  return target === '.' ? declared : `${target}/${declared}`;
-}
 
 // Same spelling as `scaffold/conflict-check.ts`'s own `FRONTX_NAMESPACE_ROOT`
 // — restated rather than imported because neither module exports it as a

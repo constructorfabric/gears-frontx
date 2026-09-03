@@ -64,7 +64,7 @@ import type { DeleteOutcome, ConfirmDeletionFn } from './commands/delete';
 
 import { TemplateInventory } from './inventory/TemplateInventory';
 import type { FetchFn } from './resolver/types';
-import type { ReadContentItemsFn, WriteFileFn } from './scaffold/types';
+import type { AssertPathWithinRootFn, ReadContentItemsFn, WriteFileFn } from './scaffold/types';
 import type { CanonicalizeTargetFn } from './scaffold/conflict-check';
 import type { ResolveInstalledContentPathFn, UniformApplyBatch } from './scaffold/assembler';
 import type { ReadExistingContentFn, ReadInstalledContentFn } from './scaffold/existing-content';
@@ -77,6 +77,8 @@ import type { ReadProjectStateFn, WriteProjectStateFn } from './project-state/ty
 import type { ListTargetFilesFn } from './scaffold/delete-plan';
 import type { RemoveProjectFileFn, PresentUpgradePlanFn } from './upgrade/types';
 import { ok, err } from './envelope';
+import type { ErrorCode } from './envelope';
+import type { ValidateCommandResult } from './commands/validate';
 
 import { FsInventoryIndex } from './adapters/fs-inventory-index';
 import { FsContentStore } from './adapters/fs-content-store';
@@ -95,6 +97,7 @@ import {
   createFsCanonicalizeTargetFn,
   createFsListTargetFilesFn,
   createFsPathExistsFn,
+  createFsAssertPathWithinRootFn,
 } from './adapters/fs-project-io';
 
 // --- exit-code state machine (cpt-frontx-state-cli-invocation-run) ---
@@ -250,6 +253,13 @@ export interface CliDeps {
   readProjectStateFn: ReadProjectStateFn;
   writeProjectStateFn: WriteProjectStateFn;
   createCanonicalizeTargetFn: (repoRoot: string) => CanonicalizeTargetFn;
+  // `apply`/`seed`/`delete` — CONTAINMENT ESCAPE FIX: proves an absolute
+  // path a write or removal is about to touch stays inside the applicable
+  // project root, symlinks resolved. A FACTORY for the identical reason
+  // `createCanonicalizeTargetFn` above is one: `apply`'s root
+  // (`process.cwd()`) is not always `seed <dir>`'s (`dir` itself), so this
+  // is built fresh per command, at dispatch time, never once here.
+  createAssertPathWithinRootFn: (repoRoot: string) => AssertPathWithinRootFn;
   // `delete` — enumerates real on-disk paths under an arbitrary applied
   // target (`cpt-frontx-algo-cli-scaffolding-delete-plan`), DISTINCT from
   // `listPayloadFilesFn` above, which is scoped to a template's own
@@ -296,6 +306,7 @@ export function createRealDeps(): CliDeps {
     readProjectStateFn: createFsReadProjectStateFn(),
     writeProjectStateFn: createFsWriteProjectStateFn(),
     createCanonicalizeTargetFn: createFsCanonicalizeTargetFn,
+    createAssertPathWithinRootFn: createFsAssertPathWithinRootFn,
     listTargetFilesFn: createFsListTargetFilesFn(),
     confirmDeletion: createInteractiveDeletionConfirm(),
     presentUpgradePlan: createInteractiveUpgradeApproval(),
@@ -432,6 +443,37 @@ function parseJsonMode(args: string[]): boolean {
 // @cpt-end:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-json-mode
 // @cpt-end:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-json-suppress-prompt
 
+// Every command that recognizes a known set of flags/positionals, then
+// finds leftover argv tokens, refuses them through this ONE formulation
+// rather than each command re-writing the same "Unrecognized argument(s)
+// for <command>: ..." envelope/stderr branch. Before this fix, most dispatch
+// cases below silently DROPPED anything past what they recognized —
+// `validate --project unexpected --json` returned PASS at exit 0, the extra
+// `unexpected` token never even inspected — which is exactly the near-miss
+// failure `list`'s own `inst-list-abort-unknown-arg` refuses rather than
+// ignores.
+function rejectUnrecognizedArgs(command: string, extra: string[], jsonMode: boolean, usage: string): CommandOutcome | undefined {
+  if (extra.length === 0) return undefined;
+  const message = `Unrecognized argument(s) for ${command}: ${extra.join(', ')}. Usage: ${usage}`;
+  return jsonMode
+    ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+    : { exitCode: EXIT_USER_ERROR, stderr: message };
+}
+
+// The ONE place an `ErrorCode` becomes an exit code
+// (`cpt-frontx-dod-cli-invocation-exit-codes`'s "a distinct process exit
+// code for each outcome class — success, user error, and internal error"):
+// every code except `INTERNAL` is a user error (`EXIT_USER_ERROR`);
+// `INTERNAL` alone is the internal-error class (`EXIT_INTERNAL_ERROR`).
+// Every render*Outcome failure branch below calls this instead of
+// re-deciding the same split under a repeated `EXIT_USER_ERROR` literal —
+// which is exactly how an `INTERNAL`-coded envelope (`apply`'s staged-but-
+// unregistered guard, `upgrade`'s promotion/bundle-refresh failures) used to
+// report itself at exit 1, indistinguishable from an ordinary refusal.
+function exitCodeForError(code: ErrorCode): ExitCode {
+  return code === 'INTERNAL' ? EXIT_INTERNAL_ERROR : EXIT_USER_ERROR;
+}
+
 // Step 7 of the flow — rendering the outcome as the single envelope value
 // under `--json`, or the human-readable form otherwise — is the same
 // obligation `inst-pd-render` states at the algorithm's altitude, so it is
@@ -452,8 +494,8 @@ function parseJsonMode(args: string[]): boolean {
 function renderAssembleOutcome(result: AssembleOutcome, jsonMode: boolean): CommandOutcome {
   if (!result.ok) {
     return jsonMode
-      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
-      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+      ? { exitCode: exitCodeForError(result.code), stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: exitCodeForError(result.code), stderr: result.message };
   }
   const data = { entries: result.entries };
   const text =
@@ -468,8 +510,8 @@ function renderAssembleOutcome(result: AssembleOutcome, jsonMode: boolean): Comm
 function renderApplyOutcome(result: ApplyBatchOutcome, jsonMode: boolean): CommandOutcome {
   if (!result.ok) {
     return jsonMode
-      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
-      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+      ? { exitCode: exitCodeForError(result.code), stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: exitCodeForError(result.code), stderr: result.message };
   }
   const data = { applied: result.applied, noop: result.noop };
   const text = `Applied ${result.applied.length} target(s); ${result.noop.length} already recorded (no-op).`;
@@ -481,8 +523,8 @@ function renderApplyOutcome(result: ApplyBatchOutcome, jsonMode: boolean): Comma
 function renderSeedOutcome(result: SeedRepositoryOutcome, jsonMode: boolean): CommandOutcome {
   if (!result.ok) {
     return jsonMode
-      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
-      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+      ? { exitCode: exitCodeForError(result.code), stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: exitCodeForError(result.code), stderr: result.message };
   }
   const data = { registeredDefaults: result.registeredDefaults, applied: result.applied, noop: result.noop };
   const text =
@@ -502,9 +544,10 @@ function formatInstallResult(result: InstallCommandResult, jsonMode: boolean): C
     // above refuses a near-miss flag to avoid. The code now travels the whole
     // way from the resolver, so a refused manifest reports
     // `INVALID_MANIFEST` here rather than nothing.
+    const code = result.code ?? 'ORIGIN_UNAVAILABLE';
     return jsonMode
-      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code ?? 'ORIGIN_UNAVAILABLE', result.message)) }
-      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+      ? { exitCode: exitCodeForError(code), stdout: JSON.stringify(err(code, result.message)) }
+      : { exitCode: exitCodeForError(code), stderr: result.message };
   }
   const discoveryLine =
     result.discovery && result.discovery.triggered
@@ -535,8 +578,8 @@ function formatInstallResult(result: InstallCommandResult, jsonMode: boolean): C
 function renderRegisterOutcome(result: RegisterOutcome, jsonMode: boolean): CommandOutcome {
   if (!result.ok) {
     return jsonMode
-      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
-      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+      ? { exitCode: exitCodeForError(result.code), stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: exitCodeForError(result.code), stderr: result.message };
   }
   const data = { outcome: result.outcome, name: result.name, entry: result.entry };
   const text =
@@ -553,8 +596,8 @@ function renderRegisterOutcome(result: RegisterOutcome, jsonMode: boolean): Comm
 function renderUnregisterOutcome(result: UnregisterOutcome, jsonMode: boolean): CommandOutcome {
   if (!result.ok) {
     return jsonMode
-      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
-      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+      ? { exitCode: exitCodeForError(result.code), stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: exitCodeForError(result.code), stderr: result.message };
   }
   return jsonMode
     ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok({ name: result.name })) }
@@ -564,8 +607,8 @@ function renderUnregisterOutcome(result: UnregisterOutcome, jsonMode: boolean): 
 function renderOwnershipAddOutcome(result: OwnershipAddOutcome, jsonMode: boolean): CommandOutcome {
   if (!result.ok) {
     return jsonMode
-      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
-      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+      ? { exitCode: exitCodeForError(result.code), stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: exitCodeForError(result.code), stderr: result.message };
   }
   const data = { outcome: result.outcome, path: result.path, projectOwnedRoots: result.projectOwnedRoots };
   const text =
@@ -580,8 +623,8 @@ function renderOwnershipAddOutcome(result: OwnershipAddOutcome, jsonMode: boolea
 function renderOwnershipRemoveOutcome(result: OwnershipRemoveOutcome, jsonMode: boolean): CommandOutcome {
   if (!result.ok) {
     return jsonMode
-      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message)) }
-      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+      ? { exitCode: exitCodeForError(result.code), stdout: JSON.stringify(err(result.code, result.message)) }
+      : { exitCode: exitCodeForError(result.code), stderr: result.message };
   }
   const data = { path: result.path, projectOwnedRoots: result.projectOwnedRoots };
   return jsonMode
@@ -592,8 +635,8 @@ function renderOwnershipRemoveOutcome(result: OwnershipRemoveOutcome, jsonMode: 
 function renderOwnershipListOutcome(result: OwnershipListOutcome, jsonMode: boolean): CommandOutcome {
   if (!result.ok) {
     return jsonMode
-      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message)) }
-      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+      ? { exitCode: exitCodeForError(result.code), stdout: JSON.stringify(err(result.code, result.message)) }
+      : { exitCode: exitCodeForError(result.code), stderr: result.message };
   }
   return jsonMode
     ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok({ projectOwnedRoots: result.projectOwnedRoots })) }
@@ -670,11 +713,31 @@ function renderValidateProjectOutcome(result: ValidateProjectOutcome, jsonMode: 
   // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-pass
 }
 
+// `validate <templateDir>` (manifest-for-publication) — the only command
+// that dropped `--json` on the floor entirely, rendering the SAME human
+// PASS/FAIL text to stdout/stderr no matter what the caller asked for. Now
+// routes through the shared envelope exactly like every other command's
+// failure/success rendering above: `INVALID_MANIFEST` for a refused or
+// missing manifest (the vocabulary's own code for "the manifest failed
+// validation"), carrying the same violations a human reader already sees in
+// `result.message`.
+function renderValidateCommandOutcome(result: ValidateCommandResult, jsonMode: boolean): CommandOutcome {
+  if (!result.ok) {
+    const details = result.violations === undefined ? undefined : { violations: result.violations };
+    return jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_MANIFEST', result.message, details)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+  }
+  return jsonMode
+    ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok({ status: 'PASS', message: result.message })) }
+    : { exitCode: EXIT_SUCCESS, stdout: result.message };
+}
+
 function renderDeleteOutcome(result: DeleteOutcome, jsonMode: boolean): CommandOutcome {
   if (!result.ok) {
     return jsonMode
-      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
-      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+      ? { exitCode: exitCodeForError(result.code), stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: exitCodeForError(result.code), stderr: result.message };
   }
   const listText = (label: string, paths: string[]): string => `${label}:\n${paths.map((p) => `  ${p}`).join('\n') || '  (nothing)'}`;
   if (result.outcome === 'dry-run') {
@@ -709,8 +772,8 @@ function renderDeleteOutcome(result: DeleteOutcome, jsonMode: boolean): CommandO
 function renderUpgradeOutcome(result: UpgradeCommandOutcome, jsonMode: boolean): CommandOutcome {
   if (!result.ok) {
     return jsonMode
-      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
-      : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+      ? { exitCode: exitCodeForError(result.code), stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+      : { exitCode: exitCodeForError(result.code), stderr: result.message };
   }
   if (result.outcome === 'noop') {
     const data = { outcome: result.outcome, at: result.at };
@@ -762,12 +825,8 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
           ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
-      if (extra.length > 0) {
-        const message = `Unrecognized argument(s) for install: ${extra.join(', ')}. Usage: frontx install <spec> [--json]`;
-        return jsonMode
-          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
-          : { exitCode: EXIT_USER_ERROR, stderr: message };
-      }
+      const extraArgsOutcome = rejectUnrecognizedArgs('install', extra, jsonMode, 'frontx install <spec> [--json]');
+      if (extraArgsOutcome) return extraArgsOutcome;
       const result = await installCommand(spec, deps.inventory, deps.fetchFn);
       return formatInstallResult(result, jsonMode);
     }
@@ -785,19 +844,23 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       // unambiguously, every mainstream CLI tolerates a repeated flag, and
       // refusing it would break a caller that appends to an argv list for no
       // gain in safety.
+      //
+      // `jsonMode` is read HERE, before the check, so a near-miss like
+      // `--json --jsonl` still renders its own refusal as the envelope the
+      // caller asked for — it used to be computed only after this check
+      // returned, so `list --json --jsonl` reported the refusal on stderr
+      // with nothing on stdout even though `--json` was right there in argv.
+      const jsonMode = parseJsonMode(args);
       const unknownArgs = args.filter((arg) => arg !== '--json');
-      if (unknownArgs.length > 0) {
+      const extraArgsOutcome = rejectUnrecognizedArgs('list', unknownArgs, jsonMode, 'frontx list [--json]');
+      if (extraArgsOutcome) {
         // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-abort-unknown-arg
-        return {
-          exitCode: EXIT_USER_ERROR,
-          stderr: `Unrecognized argument(s) for list: ${unknownArgs.join(', ')}. Usage: frontx list [--json]`,
-        };
+        return extraArgsOutcome;
         // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-abort-unknown-arg
       }
       // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-check-args
 
       // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-invoke
-      const jsonMode = parseJsonMode(args);
       const repoRoot = process.cwd();
       // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-invoke
 
@@ -879,20 +942,22 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
           ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
-      if (extra.length > 0) {
-        const message = `Unrecognized argument(s) for update-local: ${extra.join(', ')}. Usage: frontx update-local <identity> <spec> [--json]`;
-        return jsonMode
-          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
-          : { exitCode: EXIT_USER_ERROR, stderr: message };
-      }
+      const extraArgsOutcome = rejectUnrecognizedArgs(
+        'update-local',
+        extra,
+        jsonMode,
+        'frontx update-local <identity> <spec> [--json]',
+      );
+      if (extraArgsOutcome) return extraArgsOutcome;
       const result = await updateLocalCommand(name, spec, deps.inventory, deps.fetchFn);
       if (!result.ok) {
         // The last command in the surface to gain the envelope. Its refusals
         // already carried a code from the inventory; there was simply no
         // machine-readable form for them to travel in.
+        const code = result.code ?? 'ORIGIN_UNAVAILABLE';
         return jsonMode
-          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code ?? 'ORIGIN_UNAVAILABLE', result.message)) }
-          : { exitCode: EXIT_USER_ERROR, stderr: result.message };
+          ? { exitCode: exitCodeForError(code), stdout: JSON.stringify(err(code, result.message)) }
+          : { exitCode: exitCodeForError(code), stderr: result.message };
       }
       return jsonMode
         ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok({ message: result.message })) }
@@ -912,6 +977,13 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         // in, exactly as `.frontx/project.json` is always resolved relative
         // to.
         const repoRoot = process.cwd();
+        // `validate --project` used to tolerate anything past `--project`/
+        // `--json` — `validate --project unexpected --json` returned PASS at
+        // exit 0, `unexpected` never even inspected. Refused here exactly as
+        // every other command's own flags/positionals are.
+        const extra = args.filter((a) => a !== '--project' && a !== '--json');
+        const extraArgsOutcome = rejectUnrecognizedArgs('validate --project', extra, jsonMode, 'frontx validate --project [--json]');
+        if (extraArgsOutcome) return extraArgsOutcome;
         // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-invoke
         // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-run-algorithm
         const result = await validateProject(repoRoot, {
@@ -933,26 +1005,38 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         return renderValidateProjectOutcome(result, jsonMode);
       }
 
-      const [templateDir] = args;
-      if (!templateDir) return { exitCode: EXIT_USER_ERROR, stderr: 'validate requires a <templateDir> argument.' };
+      const positional = args.filter((a) => a !== '--json');
+      const [templateDir, ...extra] = positional;
+      if (!templateDir) {
+        const message = 'validate requires a <templateDir> argument.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
+      const extraArgsOutcome = rejectUnrecognizedArgs('validate', extra, jsonMode, 'frontx validate <templateDir> [--json]');
+      if (extraArgsOutcome) return extraArgsOutcome;
+      // `validate <templateDir>` used to ignore `--json` entirely — it always
+      // wrote its human PASS/FAIL sentence to stdout/stderr regardless, so a
+      // caller asking for the envelope got human text with no `ok`
+      // discriminant to parse. Routed through the same envelope every other
+      // command's `--json` mode already uses (ADR-0042).
       const result = await validateCommand(templateDir, deps.readFileFn, deps.listPayloadFilesFn, deps.resolveDeclaredExclusionFn);
-      return {
-        exitCode: result.exitCode === 0 ? EXIT_SUCCESS : EXIT_USER_ERROR,
-        stdout: result.ok ? result.message : undefined,
-        stderr: result.ok ? undefined : result.message,
-      };
+      return renderValidateCommandOutcome(result, jsonMode);
     }
 
     // dispatch -> cpt-frontx-flow-cli-scaffolding-assemble-preview (assembleBatch)
     case 'assemble': {
       const jsonMode = parseJsonMode(args);
-      const { value: inputRaw } = extractFlagValue(args, '--input');
+      const { value: inputRaw, rest } = extractFlagValue(args, '--input');
       if (inputRaw === undefined) {
         const message = 'assemble requires --input <batch-json>.';
         return jsonMode
           ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
+      const extra = rest.filter((a) => a !== '--json');
+      const extraArgsOutcome = rejectUnrecognizedArgs('assemble', extra, jsonMode, 'frontx assemble --input <batch-json> [--json]');
+      if (extraArgsOutcome) return extraArgsOutcome;
       const parsedBatch = parseBatchInput(inputRaw);
       if (!parsedBatch.ok) {
         return jsonMode
@@ -983,7 +1067,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       const jsonMode = parseJsonMode(args);
       const adoptExisting = args.includes('--adopt-existing');
       const { value: inputRaw, rest: afterInput } = extractFlagValue(args, '--input');
-      const [dir] = afterInput.filter((a) => a !== '--json' && a !== '--adopt-existing');
+      const [dir, ...extra] = afterInput.filter((a) => a !== '--json' && a !== '--adopt-existing');
       if (!dir) {
         const message = 'seed requires a <dir> argument.';
         return jsonMode
@@ -996,6 +1080,13 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
           ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
+      const extraArgsOutcome = rejectUnrecognizedArgs(
+        'seed',
+        extra,
+        jsonMode,
+        'frontx seed <dir> --input <batch-json> [--adopt-existing] [--json]',
+      );
+      if (extraArgsOutcome) return extraArgsOutcome;
       const parsedBatch = parseBatchInput(inputRaw);
       if (!parsedBatch.ok) {
         return jsonMode
@@ -1024,6 +1115,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         bundleExistsFn: createFsBundleExistsFn(),
         copyBundleFn: createFsCopyBundleFn(),
         removeBundleFn: createFsRemoveBundleFn(),
+        assertPathWithinRootFn: deps.createAssertPathWithinRootFn(targetDir),
       });
       return renderSeedOutcome(result, jsonMode);
     }
@@ -1032,13 +1124,21 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
     case 'apply': {
       const jsonMode = parseJsonMode(args);
       const adoptExisting = args.includes('--adopt-existing');
-      const { value: inputRaw } = extractFlagValue(args, '--input');
+      const { value: inputRaw, rest } = extractFlagValue(args, '--input');
       if (inputRaw === undefined) {
         const message = 'apply requires --input <batch-json>.';
         return jsonMode
           ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
+      const extra = rest.filter((a) => a !== '--json' && a !== '--adopt-existing');
+      const extraArgsOutcome = rejectUnrecognizedArgs(
+        'apply',
+        extra,
+        jsonMode,
+        'frontx apply --input <batch-json> [--adopt-existing] [--json]',
+      );
+      if (extraArgsOutcome) return extraArgsOutcome;
       const parsedBatch = parseBatchInput(inputRaw);
       if (!parsedBatch.ok) {
         return jsonMode
@@ -1067,6 +1167,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         bundleExistsFn: createFsBundleExistsFn(),
         copyBundleFn: createFsCopyBundleFn(),
         removeBundleFn: createFsRemoveBundleFn(),
+        assertPathWithinRootFn: deps.createAssertPathWithinRootFn(repoRoot),
       };
       const result = await runApplyPipeline(parsedBatch.batch, repoRoot, adoptExisting, pipelineDeps);
       return renderApplyOutcome(result, jsonMode);
@@ -1081,13 +1182,15 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       // as the origin.
       const jsonMode = parseJsonMode(args);
       const replace = args.includes('--replace');
-      const [origin] = args.filter((a) => a !== '--json' && a !== '--replace');
+      const [origin, ...extra] = args.filter((a) => a !== '--json' && a !== '--replace');
       if (!origin) {
         const message = 'register requires an <origin> argument.';
         return jsonMode
           ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
+      const extraArgsOutcome = rejectUnrecognizedArgs('register', extra, jsonMode, 'frontx register <origin> [--replace] [--json]');
+      if (extraArgsOutcome) return extraArgsOutcome;
       // No explicit project-root argument on this command's own FEATURE
       // flow signature (`register <origin>`) — it operates on the project
       // the developer is standing in, exactly as `.frontx/project.json`
@@ -1124,13 +1227,15 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
     // @cpt-begin:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-invoke
     case 'unregister': {
       const jsonMode = parseJsonMode(args);
-      const [name] = args.filter((a) => a !== '--json');
+      const [name, ...extra] = args.filter((a) => a !== '--json');
       if (!name) {
         const message = 'unregister requires a <name> argument.';
         return jsonMode
           ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
+      const extraArgsOutcome = rejectUnrecognizedArgs('unregister', extra, jsonMode, 'frontx unregister <name> [--json]');
+      if (extraArgsOutcome) return extraArgsOutcome;
       const repoRoot = process.cwd();
       // @cpt-end:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-invoke
       // @cpt-begin:cpt-frontx-flow-composed-provenance-unregister-template:p1:inst-unreg-run-algorithm
@@ -1169,13 +1274,15 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       switch (sub) {
         // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-invoke
         case 'add': {
-          const [rawPath] = positional;
+          const [rawPath, ...extra] = positional;
           if (!rawPath) {
             const message = 'ownership add requires a <path> argument.';
             return jsonMode
               ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
               : { exitCode: EXIT_USER_ERROR, stderr: message };
           }
+          const extraArgsOutcome = rejectUnrecognizedArgs('ownership add', extra, jsonMode, 'frontx ownership add <path> [--json]');
+          if (extraArgsOutcome) return extraArgsOutcome;
           const canonicalizeFn = deps.createCanonicalizeTargetFn(repoRoot);
           // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-invoke
           // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-add:p1:inst-oadd-run-algorithm
@@ -1207,13 +1314,15 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
 
         // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-remove:p1:inst-orem-invoke
         case 'remove': {
-          const [rawPath] = positional;
+          const [rawPath, ...extra] = positional;
           if (!rawPath) {
             const message = 'ownership remove requires a <path> argument.';
             return jsonMode
               ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
               : { exitCode: EXIT_USER_ERROR, stderr: message };
           }
+          const extraArgsOutcome = rejectUnrecognizedArgs('ownership remove', extra, jsonMode, 'frontx ownership remove <path> [--json]');
+          if (extraArgsOutcome) return extraArgsOutcome;
           // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-remove:p1:inst-orem-invoke
           // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-remove:p1:inst-orem-run-algorithm
           const result = await ownershipRemove(
@@ -1232,6 +1341,8 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-invoke
         case 'list': {
           // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-invoke
+          const extraArgsOutcome = rejectUnrecognizedArgs('ownership list', positional, jsonMode, 'frontx ownership list [--json]');
+          if (extraArgsOutcome) return extraArgsOutcome;
           const result = await ownershipList(repoRoot, deps.readProjectStateFn);
           // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-if-invalid
           // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-return-invalid
@@ -1257,13 +1368,20 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       const jsonMode = parseJsonMode(args);
       const dryRun = args.includes('--dry-run');
       const yes = args.includes('--yes');
-      const [target] = args.filter((a) => a !== '--json' && a !== '--dry-run' && a !== '--yes');
+      const [target, ...extra] = args.filter((a) => a !== '--json' && a !== '--dry-run' && a !== '--yes');
       if (!target) {
         const message = 'delete requires a <target> argument.';
         return jsonMode
           ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
+      const extraArgsOutcome = rejectUnrecognizedArgs(
+        'delete',
+        extra,
+        jsonMode,
+        'frontx delete <target> [--json] [--yes] [--dry-run]',
+      );
+      if (extraArgsOutcome) return extraArgsOutcome;
       // No explicit project-root argument on this command's own FEATURE
       // flow signature (`delete <target>`) — operates on the project the
       // developer is standing in, exactly as `register`/`unregister`/
@@ -1296,6 +1414,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         deps.listTargetFilesFn,
         deps.readFileFn,
         deps.removeProjectFile,
+        deps.createAssertPathWithinRootFn(repoRoot),
         deps.readProjectStateFn,
         deps.writeProjectStateFn,
         deps.confirmDeletion,
@@ -1311,13 +1430,20 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       const jsonMode = parseJsonMode(args);
       const yes = args.includes('--yes');
       const restore = args.includes('--restore');
-      const [templateName, newOrigin] = args.filter((a) => a !== '--json' && a !== '--yes' && a !== '--restore');
+      const [templateName, newOrigin, ...extra] = args.filter((a) => a !== '--json' && a !== '--yes' && a !== '--restore');
       if (!templateName) {
         const message = 'upgrade requires a <templateName> argument.';
         return jsonMode
           ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
+      const extraArgsOutcome = rejectUnrecognizedArgs(
+        'upgrade',
+        extra,
+        jsonMode,
+        'frontx upgrade <templateName> <new-origin>|--restore [--yes] [--json]',
+      );
+      if (extraArgsOutcome) return extraArgsOutcome;
       // Argument shape CHANGED from the retired engine's own `<projectRoot>
       // <targetVersion>`: this is `<templateName> <new-origin>` XOR
       // `<templateName> --restore`, with NO origin argument for restore
@@ -1507,9 +1633,9 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         resolvePayload,
         resolveRegisteredExclusions,
         readDiskEntry: createFsReadDiskEntryFn(),
-        writeDiskFile: createFsWriteDiskFileFn(),
-        renameDiskFile: createFsRenameDiskFileFn(),
-        unlinkDiskFile: createFsUnlinkDiskFileFn(),
+        writeDiskFile: createFsWriteDiskFileFn(repoRoot),
+        renameDiskFile: createFsRenameDiskFileFn(repoRoot),
+        unlinkDiskFile: createFsUnlinkDiskFileFn(repoRoot),
         listDiskFiles: createFsListDiskFilesFn(),
         canonicalizeFn,
         promoteInventory,
@@ -1563,10 +1689,16 @@ export function helpOutcome(parsed: ParsedInvocation): CommandOutcome {
   // @cpt-begin:cpt-frontx-flow-cli-invocation-help:p1:inst-help-return-user-error
   // @cpt-begin:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-return-unknown
   // @cpt-begin:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-unknown
-  return {
-    exitCode: EXIT_USER_ERROR,
-    stderr: `Unrecognized command: "${parsed.command}"\n\n${usage}`,
-  };
+  // An unrecognized command never reached a dispatch case that could parse
+  // `--json` out of its own args, so it always fell to this HUMAN branch —
+  // `frontx nosuchcommand --json` wrote nothing but usage text to stderr and
+  // nothing to stdout, exactly the "empty stream, unreadable refusal" failure
+  // `install`'s own envelope fix above already closed for a KNOWN command.
+  const jsonMode = parseJsonMode(parsed.args);
+  const message = `Unrecognized command: "${parsed.command}".`;
+  return jsonMode
+    ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+    : { exitCode: EXIT_USER_ERROR, stderr: `Unrecognized command: "${parsed.command}"\n\n${usage}` };
   // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-unknown
   // @cpt-end:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-return-unknown
   // @cpt-end:cpt-frontx-flow-cli-invocation-help:p1:inst-help-return-user-error

@@ -351,19 +351,35 @@ jobs:
     # the four-field contract has no field for "where does my content land"
     # (composition is now driven by the caller's explicit application, not by
     # one template naming the other, cpt-frontx-adr-template-manifest-contract
-    # §1.2). What each overlay contributes is instead read straight off its
-    # own directory: every top-level DIRECTORY the overlay has (excluding
-    # `.frontx`, the CLI-reserved namespace an AI-extension bundle is
-    # delivered through by a separate mechanism, and `node_modules`, install-
-    # time output) is copied onto the matching path under the shell — the
-    # same structural fact `cpt-frontx-feature-template-manifest`'s own §1.2
-    # payload definition and `validate-content-self-containment.ts` already
-    # rely on. A top-level FILE (README.md, frontx-template.json, and any
-    # monorepo-only dev harness manifest such as template-mfe/package.json,
-    # #489) is deliberately never copied here: it is the overlay's own
-    # presentation or dev tooling, not shared-target content, and copying it
-    # would silently clobber the shell's identically-named file instead of
-    # surfacing the conflict a real assembler would catch.
+    # §1.2).
+    #
+    # Each overlay's payload is now re-rooted at its OWN template root — it is
+    # exactly what a real `frontx apply <template> <target>` would place under
+    # whatever target the caller names, with no ownership prefix inside it any
+    # more (the doubled-prefix defect this repo's three real templates carried
+    # until this fix). That means the target is not something this job can
+    # read off the overlay's directory structure the way the old subtree-per-
+    # subtree copy did — it is an application-time decision, same as a real
+    # `apply` call needs a caller to supply one. OVERLAY_TARGETS below mirrors
+    # the target map this repo has actually decided for its own templates
+    # (see the manifest cutover's decomposition); a new overlay needs an entry
+    # added here for the same reason a real deployment needs an operator to
+    # choose where it lands — there is no way to derive it structurally, and a
+    # missing entry fails the step rather than silently skipping composition.
+    #
+    # What lands at that target is the overlay's whole PAYLOAD: every
+    # top-level entry the overlay has, files included, excluding only
+    # `frontx-template.json` (never payload) and `.frontx` (the CLI-reserved
+    # namespace an AI-extension bundle is delivered through by a separate
+    # mechanism) and `node_modules` (install-time output) — the same
+    # structural fact `cpt-frontx-feature-template-manifest`'s own §1.2 payload
+    # definition and `validate-content-self-containment.ts` already rely on.
+    # Top-level files (template-mfe's README.md, template-design-guardrails's
+    # DESIGN.md) are copied too, unlike the old subtree-only copy: a real
+    # `apply` places them under the target like everything else, and there is
+    # no shell-root collision to dodge any more now that each overlay owns a
+    # target the shell has reserved for it (`excludedSubtrees`) instead of
+    # landing loose at the shell's root.
     - name: Validate shell + overlay composition
       run: |
         set -euo pipefail
@@ -381,72 +397,72 @@ jobs:
           exit 1
         fi
 
+        declare -A OVERLAY_TARGETS=(
+          [template-mfe]="src-app/mfe_packages"
+          [template-design-guardrails]="src-app/verify_packages"
+        )
+
         # Every check below is a silent no-op if an overlay did not land —
         # eslint just matches no files, test:unit finds no extra workspaces.
         # That vacuous pass is the exact failure mode this job exists to
         # catch, so each overlay's own contribution is counted as it lands,
-        # not folded into one total afterwards: a subtree that exists but
-        # holds no package.json (a docs-only directory, say) must not be
-        # hidden by another overlay's packages passing the count for
-        # everyone.
-        # No literal subtree glob-matches when an overlay happens to have
-        # nothing to contribute (should never happen — caught below by
-        # overlay_count) — nullglob turns that into zero iterations instead
-        # of a literal, unexpanded pattern string.
+        # not folded into one total afterwards: a target that exists but holds
+        # no package.json must not be hidden by another overlay's packages
+        # passing the count for everyone. Both overlays this repo ships today
+        # contribute at least one package.json (template-mfe's four fixture
+        # apps, template-design-guardrails's design-verify package), so there
+        # is no "manifest-only, zero packages by design" exemption here any
+        # more — a future pure-docs overlay would need one added back
+        # alongside its OVERLAY_TARGETS entry above.
+        # nullglob turns a top-level pattern that matches nothing (should
+        # never happen — caught below by overlay_count) into zero iterations
+        # instead of a literal, unexpanded pattern string.
         shopt -s nullglob
 
         composed_total=0
         for overlay in $OVERLAY_TEMPLATES; do
-          overlay_count=0
-          for entry in "$overlay"/*/; do
-            subtree="$(basename "$entry")"
-            # `.frontx` is never matched by this glob by default (bash does
-            # not expand `*` over dot-prefixed names without `dotglob`, which
-            # this step does not set) — the explicit skips below are the
-            # same rule stated defensively, not relied on twice.
-            [ "$subtree" = ".frontx" ] && continue
-            [ "$subtree" = "node_modules" ] && continue
-            echo "==> Overlaying $overlay/$subtree"
-            # Copy the *contents* into the destination: `cp -R src dest` nests
-            # under dest when dest already exists, which would bury the
-            # packages a level deeper than the count below looks.
-            mkdir -p "$shell/$subtree"
-            cp -R "$overlay/$subtree/." "$shell/$subtree/"
-            # Each MFE ships a standalone package-lock.json whose file:
-            # targets point into template-mfe/packages/*, which does not
-            # exist. npm ignores nested locks inside a workspace, but drop
-            # them so nothing reads them — from the subtree just copied, not
-            # a hardcoded mfe_packages path.
-            find "$shell/$subtree" -not -path '*/node_modules/*' \
-              -name package-lock.json -delete
-            # Counted from the subtree just copied, not a hardcoded
-            # `src-app/mfe_packages` path — the overlay's own directory
-            # structure already told us where this content landed.
-            subtree_count="$(find "$shell/$subtree" -not -path '*/node_modules/*' \
-              -name package.json 2>/dev/null | wc -l)"
-            overlay_count=$((overlay_count + subtree_count))
-          done
-
-          # A manifest-only overlay — none of its declared exclusiveSubtrees
-          # contains a package.json anywhere, root or nested — ships docs and
-          # an AI bundle, never an MFE package; zero packages is its correct
-          # contribution, not the vacuous pass the guard below catches for
-          # code overlays. An overlay whose subtrees do contain a
-          # package.json falls through to that guard even without one at its
-          # own template root.
-          if [ "$overlay_has_pkg" -eq 0 ]; then
-            echo "==> $overlay is manifest-only; composed without MFE packages (by design)"
-            continue
-          fi
-
-          if [ "$overlay_count" -eq 0 ]; then
-            echo "::error::$overlay's top-level directories exist but contain no MFE package (no package.json found)"
+          target="${OVERLAY_TARGETS[$overlay]:-}"
+          if [ -z "$target" ]; then
+            echo "::error::$overlay has no declared composition target — add it to OVERLAY_TARGETS in this step"
             exit 1
           fi
-          echo "==> $overlay contributed $overlay_count MFE package(s)"
+
+          dest="$shell/$target"
+          mkdir -p "$dest"
+          echo "==> Overlaying $overlay onto $target"
+          for entry in "$overlay"/*; do
+            name="$(basename "$entry")"
+            # `.frontx` is never matched by this glob by default (bash does
+            # not expand `*` over dot-prefixed names without `dotglob`, which
+            # this step does not set) — the explicit skip below is the same
+            # rule stated defensively, not relied on twice.
+            [ "$name" = ".frontx" ] && continue
+            [ "$name" = "node_modules" ] && continue
+            [ "$name" = "frontx-template.json" ] && continue
+            cp -R "$entry" "$dest/"
+          done
+
+          # Each MFE ships a standalone package-lock.json whose file:
+          # targets point into template-mfe/packages/*, which does not
+          # exist. npm ignores nested locks inside a workspace, but drop
+          # them so nothing reads them — from the target just populated, not
+          # a hardcoded mfe_packages path.
+          find "$dest" -not -path '*/node_modules/*' \
+            -name package-lock.json -delete
+          # Counted from the target just populated, not a hardcoded
+          # `src-app/mfe_packages` path — OVERLAY_TARGETS already told us
+          # where this overlay's content landed.
+          overlay_count="$(find "$dest" -not -path '*/node_modules/*' \
+            -name package.json 2>/dev/null | wc -l)"
+
+          if [ "$overlay_count" -eq 0 ]; then
+            echo "::error::$overlay's payload landed at $target but contains no package (no package.json found)"
+            exit 1
+          fi
+          echo "==> $overlay contributed $overlay_count package(s) at $target"
           composed_total=$((composed_total + overlay_count))
         done
-        echo "==> Composed $composed_total MFE package(s) into $shell"
+        echo "==> Composed $composed_total package(s) into $shell"
 
         # Out of the checkout before installing, for the reason given above
         # the standalone step: an ancestor node_modules must not be able to

@@ -126,7 +126,6 @@ export { createFsReadTargetPathStateFn } from './adapters/fs-target-path';
 // directly for its own second implementation.
 export { upgradeToOrigin, restorePreceding } from './upgrade/flow';
 export type { UpgradeEngineDeps, UpgradeFlowOutcome } from './upgrade/flow';
-export { UpgradeLifecycleState } from './upgrade/state';
 export { validateUpgrade } from './upgrade/validate';
 export type { ValidateInput, ValidateOutcome } from './upgrade/validate';
 export { classifyTarget } from './upgrade/classify';

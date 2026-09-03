@@ -29,6 +29,7 @@ import { computeExclusionRoots, isWithinEffectiveOwnership } from '../scaffold/e
 import { checkTargetConflicts } from '../scaffold/conflict-check';
 import type { TargetClaim } from '../scaffold/conflict-check';
 import { isReservedTempName } from '../paths/reserved-temp-name';
+import { joinUnderTarget } from '../paths/relative-path';
 import type {
   DiskEntry,
   ReadDiskEntryFn,
@@ -38,27 +39,12 @@ import type {
   UpgradeSkippedPath,
 } from './types';
 
-// Re-roots a payload's template-relative path (or a manifest-declared
-// `excludedSubtrees` entry, which is authored the same way — see
-// `manifest/types.ts`'s own doc comment) under `target`. Duplicated rather
-// than imported: neither `effective-ownership.ts`'s own (unexported)
-// `joinUnderTarget` nor `existing-content.ts`'s `toProjectRelativePath` nor
-// `delete-plan.ts`'s `joinUnderTarget` nor `apply.ts`'s `joinUnderTarget`
-// export this join as a shared name today, and every one of those callers
-// duplicates it for the identical reason this module does: `target` may
-// legitimately be `.`, the project root, for which a plain
-// `${target}/${declared}` join would wrongly spell `./docs/readme.md`
-// instead of the plain `docs/readme.md` a real project-relative path
-// resolves to.
-function joinUnderTarget(target: string, relativePath: string): string {
-  return target === '.' ? relativePath : `${target}/${relativePath}`;
-}
-
-// The exact inverse of `joinUnderTarget` above, needed to look a classified
-// project-relative path back up in the payloads' template-relative
-// `files` maps. Safe because every path this module strips was itself
-// produced by `joinUnderTarget(target, ...)` a few lines earlier — never a
-// path handed in from outside this module's own bookkeeping.
+// The exact inverse of `joinUnderTarget` (`../paths/relative-path.ts`),
+// needed to look a classified project-relative path back up in the
+// payloads' template-relative `files` maps. Safe because every path this
+// module strips was itself produced by `joinUnderTarget(target, ...)`
+// elsewhere in this module — never a path handed in from outside this
+// module's own bookkeeping.
 function stripTarget(target: string, projectRelativePath: string): string {
   return target === '.' ? projectRelativePath : projectRelativePath.slice(target.length + 1);
 }

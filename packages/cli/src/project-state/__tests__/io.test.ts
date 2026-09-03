@@ -1,7 +1,16 @@
 // @cpt-algo:cpt-frontx-algo-composed-provenance-project-state-io:p1
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { mutateProjectState, projectStatePath, readProjectState } from '../io';
 import type { ProjectStateDocument, ReadProjectStateFn, WriteProjectStateFn } from '../types';
+
+// Path-keyed, unlike `fakeStore` below: ADR-0019's legacy-provenance
+// refusal is a function of TWO distinct paths (`.frontx/project.json` and
+// the legacy `.frontx/provenance.json`) existing or not independently of
+// each other — a single-value fake cannot model that.
+function pathKeyedStore(entries: Record<string, string>): ReadProjectStateFn {
+  return async (absolutePath) => entries[absolutePath] ?? null;
+}
 
 // Pure-logic coverage against fakes, proving the algorithm's own steps
 // (locate / absent-default / malformed refusal / read / mutate) without
@@ -36,6 +45,37 @@ describe('readProjectState', () => {
       document: { formatVersion: 1, templates: {}, projectOwnedRoots: [] },
     });
     expect(written()).toBeNull();
+  });
+
+  // ADR-0019 "More Information" / Confirmation's fifth test: a repository
+  // carrying a legacy `.frontx/provenance.json` and no `.frontx/project.json`
+  // is NOT migrated automatically — it is refused with an actionable message
+  // naming the legacy file, never silently treated as an ordinary empty
+  // project.
+  it('refuses PROJECT_INVALID naming the legacy provenance.json when project.json is absent but it exists', async () => {
+    const legacyPath = path.join('/repo', '.frontx', 'provenance.json');
+    const read = pathKeyedStore({ [legacyPath]: JSON.stringify([{ name: 'auth', version: '1.0.0' }]) });
+
+    const result = await readProjectState('/repo', read);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe('PROJECT_INVALID');
+      expect(result.message).toContain(legacyPath);
+    }
+  });
+
+  // The ordinary path this fix must not break: neither file present is
+  // still a plain empty project, not a refusal.
+  it('still returns the initial empty shape when neither project.json nor a legacy provenance.json exists', async () => {
+    const read = pathKeyedStore({});
+
+    const result = await readProjectState('/repo', read);
+
+    expect(result).toEqual({
+      ok: true,
+      document: { formatVersion: 1, templates: {}, projectOwnedRoots: [] },
+    });
   });
 
   it('returns PROJECT_INVALID naming the document when it cannot be parsed', async () => {

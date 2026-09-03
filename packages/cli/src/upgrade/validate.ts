@@ -1,6 +1,7 @@
 // @cpt-FEATURE:cpt-frontx-feature-upgrade-changeset:p1
 // @cpt-algo:cpt-frontx-algo-upgrade-changeset-validate:p1
 // @cpt-dod:cpt-frontx-dod-upgrade-changeset-computation:p1
+// @cpt-state:cpt-frontx-state-upgrade-changeset-lifecycle:p1
 //
 // Validates a candidate new origin against every target a registered name
 // carries, per `cpt-frontx-adr-project-upgrade-mechanism`'s ordering: several
@@ -48,34 +49,18 @@ import type {
   UpgradeSkippedPath,
 } from './types';
 import type { ProjectStateDocument, TemplateEntry } from '../project-state/types';
-
-// Same spelling as `register.ts`'s/`scaffold/delete-plan.ts`'s own
-// (module-private) constant — restated here for the identical reason every
-// other module in this ecosystem restates it: no shared module exports this
-// literal as a named constant today.
-const LOCAL_ORIGIN_PREFIX = 'path:';
-
-// The exact join `scaffold/effective-ownership.ts`'s own (unexported)
-// `joinUnderTarget` performs, and `classify.ts` restates for the identical
-// reason: `target` may legitimately be `.`, the project root, for which a
-// plain `${target}/${declared}` join would wrongly spell `./docs/` instead
-// of the plain `docs/` a real project-relative path resolves to.
-function joinUnderTarget(target: string, declared: string): string {
-  return target === '.' ? declared : `${target}/${declared}`;
-}
+import { joinUnderTarget } from '../paths/relative-path';
+import { parseLocalOrigin } from '../resolver/types';
 
 // Derives the project-relative folder a `path:`-installed name's own origin
-// occupies — the SAME derivation `scaffold/delete-plan.ts`'s own
-// `deriveLocalOriginFolder` performs, restated here rather than imported for
-// the identical reason that module's own comment gives: neither module
-// exports this join as a shared name today. Derived from the BASELINE's
-// currently recorded origin (`entry.origin`) — never the candidate's — since
-// that is the origin actually registered in the project state store for the
-// whole of this validation; the transition to the candidate's origin has not
-// committed yet.
+// occupies. Derived from the BASELINE's currently recorded origin
+// (`entry.origin`) — never the candidate's — since that is the origin
+// actually registered in the project state store for the whole of this
+// validation; the transition to the candidate's origin has not committed
+// yet.
 function deriveLocalOriginFolder(origin: string, canonicalizeFn: (raw: string) => string | null): string | undefined {
-  if (!origin.startsWith(LOCAL_ORIGIN_PREFIX)) return undefined;
-  const relativePath = origin.slice(LOCAL_ORIGIN_PREFIX.length);
+  const relativePath = parseLocalOrigin(origin);
+  if (relativePath === undefined) return undefined;
   const canonical = canonicalizeFn(relativePath);
   return canonical ?? undefined;
 }
@@ -389,6 +374,7 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-if-nested-conflict
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-return-pass
+  // @cpt-begin:cpt-frontx-state-upgrade-changeset-lifecycle:p1:inst-st-read-to-validated
   const plan: UpgradePlan = {
     name,
     from: { origin: entry.origin, version: entry.version },
@@ -399,5 +385,6 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
     exclusionRootsByTarget,
   };
   return { ok: true, kind: 'plan', plan };
+  // @cpt-end:cpt-frontx-state-upgrade-changeset-lifecycle:p1:inst-st-read-to-validated
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-return-pass
 }

@@ -14,6 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { BundleExistsFn, CopyBundleFn, RemoveBundleFn } from '../scaffold/ai-bundle';
+import { assertPathWithinProjectRoot } from './fs-project-io';
 
 // The one place `.frontx/ai/<manifestName>/` is spelled, from either a
 // template's installed content path (source) or the project root (dest) —
@@ -39,11 +40,20 @@ export function createFsBundleExistsFn(): BundleExistsFn {
  * destination verbatim, creating every parent directory the destination
  * needs. `fs.cpSync`'s own `recursive: true` walks the whole convention
  * folder (extension.json, guidelines/, workflows/, skills/ — whatever a
- * template's real bundle carries), so no bespoke walker is needed here. */
+ * template's real bundle carries), so no bespoke walker is needed here.
+ *
+ * CONTAINMENT ESCAPE FIX: `dest` is proven to stay inside `destRoot`
+ * (the project root every real caller passes here), symlinks resolved,
+ * before anything is created or copied — `assertPathWithinProjectRoot`
+ * (`./fs-project-io.ts`) is the ONE shared check every adapter that writes
+ * into a project uses. `destRoot` is an ordinary argument on this seam
+ * already, unlike `WriteFileFn`/`RemoveProjectFileFn`, so no factory-level
+ * threading is needed here. */
 export function createFsCopyBundleFn(): CopyBundleFn {
   return async function copyBundle(sourceRoot: string, destRoot: string, manifestName: string): Promise<void> {
     const source = bundlePath(sourceRoot, manifestName);
     const dest = bundlePath(destRoot, manifestName);
+    assertPathWithinProjectRoot(destRoot, dest);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.cpSync(source, dest, { recursive: true });
   };
@@ -52,9 +62,14 @@ export function createFsCopyBundleFn(): CopyBundleFn {
 /** Real `RemoveBundleFn` — removes the bundle folder recursively; a no-op
  * (never a throw) when it is already absent, matching every other adapter
  * in this codebase that treats "already gone" as success rather than an
- * error the caller has to guard against separately. */
+ * error the caller has to guard against separately.
+ *
+ * Proven to stay inside `root`, symlinks resolved, before the removal — see
+ * `createFsCopyBundleFn` above for why this check exists. */
 export function createFsRemoveBundleFn(): RemoveBundleFn {
   return async function removeBundle(root: string, manifestName: string): Promise<void> {
-    fs.rmSync(bundlePath(root, manifestName), { recursive: true, force: true });
+    const dest = bundlePath(root, manifestName);
+    assertPathWithinProjectRoot(root, dest);
+    fs.rmSync(dest, { recursive: true, force: true });
   };
 }

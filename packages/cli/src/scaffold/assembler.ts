@@ -22,7 +22,7 @@ import { readManifestFromContent } from '../manifest/validate-contract';
 import type { ReadFileFn } from '../manifest/types';
 import type { ProjectStateDocument } from '../project-state/types';
 import { resolveToInventory } from '../resolver/resolve';
-import { LOCAL_ORIGIN_PREFIX } from '../resolver/types';
+import { parseLocalOrigin } from '../resolver/types';
 import type { FetchFn, ListFolderFilesFn, PathExistsFn } from '../resolver/types';
 import type { ErrorCode } from '../envelope';
 import type { ContributionEntry, StagedAssembly } from './types';
@@ -122,8 +122,9 @@ function collectOtherLocalOriginFolders(
   const folders: string[] = [];
   for (const [name, entry] of Object.entries(document.templates)) {
     if (name === ownName) continue;
-    if (!entry.origin.startsWith(LOCAL_ORIGIN_PREFIX)) continue;
-    const canonical = canonicalizeFn(entry.origin.slice(LOCAL_ORIGIN_PREFIX.length));
+    const relativePath = parseLocalOrigin(entry.origin);
+    if (relativePath === undefined) continue;
+    const canonical = canonicalizeFn(relativePath);
     // A folder that can no longer be proven to stay inside the project root
     // is simply omitted rather than refusing the whole batch: it was proven
     // at register time, so a failure here means that ground has since been
@@ -156,7 +157,8 @@ async function resolveRegisteredTemplate(
   origin: string,
   deps: UniformApplyDeps,
 ): Promise<{ ok: true; value: ResolvedTemplate } | { ok: false; message: string }> {
-  if (origin.startsWith(LOCAL_ORIGIN_PREFIX)) {
+  const relativePath = parseLocalOrigin(origin);
+  if (relativePath !== undefined) {
     // Re-resolved here rather than trusted from an earlier `register` call,
     // since apply "never trusts a prior run" (FEATURE §5, "One Uniform
     // Batch Path") and the directory a `path:` origin names is free to be
@@ -186,7 +188,7 @@ async function resolveRegisteredTemplate(
     // resolver computes — for a local origin they are simply the canonical
     // folder, derived here at the call site (the resolver's own return
     // value carries no path, only identity/content/ref/source).
-    const canonical = deps.canonicalizeFn(origin.slice(LOCAL_ORIGIN_PREFIX.length));
+    const canonical = deps.canonicalizeFn(relativePath);
     if (canonical === null) {
       // Unreachable in practice: `resolved.ok` above already proves this
       // exact call just succeeded against this exact origin. Guarded rather

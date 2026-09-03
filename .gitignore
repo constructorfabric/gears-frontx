@@ -126,6 +126,7 @@ __pycache__/
 .agents/skills/cf-coding-review/SKILL.md
 .agents/skills/cf-coding-tests/SKILL.md
 .agents/skills/cf-coding/SKILL.md
+.agents/skills/cf-cyber-pilot-kit-frontx-frontx-project-scaffolding/SKILL.md
 .agents/skills/cf-cyber-pilot-kit-frontx-frontx/SKILL.md
 .agents/skills/cf-debug-prompts/SKILL.md
 .agents/skills/cf-docs-ci/SKILL.md
@@ -230,6 +231,7 @@ __pycache__/
 .claude/skills/cf-coding-review/SKILL.md
 .claude/skills/cf-coding-tests/SKILL.md
 .claude/skills/cf-coding/SKILL.md
+.claude/skills/cf-cyber-pilot-kit-frontx-frontx-project-scaffolding/SKILL.md
 .claude/skills/cf-cyber-pilot-kit-frontx-frontx/SKILL.md
 .claude/skills/cf-debug-prompts/SKILL.md
 .claude/skills/cf-docs-ci/SKILL.md

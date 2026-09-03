@@ -27,8 +27,7 @@ import { MANIFEST_FILENAME } from '../manifest/types';
 import type { ReadFileFn } from '../manifest/types';
 import type { CanonicalizeTargetFn } from './conflict-check';
 import type { InventoryEntry } from '../inventory/types';
-
-const LOCAL_ORIGIN_PREFIX = 'path:';
+import { parseLocalOrigin } from '../resolver/types';
 
 // Narrow port over `TemplateInventory` — only `lookup` is needed here, the
 // same one-method shape every prior call site already injected.
@@ -65,8 +64,8 @@ async function resolveRegisteredManifestContent(
   origin: string,
   deps: ResolveRegisteredManifestDeps,
 ): Promise<string | undefined> {
-  if (origin.startsWith(LOCAL_ORIGIN_PREFIX)) {
-    const relativePath = origin.slice(LOCAL_ORIGIN_PREFIX.length);
+  const relativePath = parseLocalOrigin(origin);
+  if (relativePath !== undefined) {
     const canonical = deps.canonicalizeFn(relativePath);
     if (canonical === null) return undefined;
     try {

@@ -23,22 +23,13 @@ import path from 'node:path';
 import { RESERVED_ENVIRONMENT_ENTRIES } from '../manifest/validate-contract';
 import { computeExclusionRoots, isWithinEffectiveOwnership } from './effective-ownership';
 import { resolveRegisteredExcludedSubtrees } from './registered-manifest';
-import { pathWithinSubtree, pathWithinTarget } from '../paths/relative-path';
+import { pathWithinSubtree, pathWithinTarget, joinUnderTarget } from '../paths/relative-path';
+import { parseLocalOrigin } from '../resolver/types';
 import type { CanonicalizeTargetFn } from './conflict-check';
 import type { ProjectStateDocument } from '../project-state/types';
 import type { InventoryEntry } from '../inventory/types';
 import type { ReadFileFn } from '../manifest/types';
 import type { ErrorCode } from '../envelope';
-
-// A local `path:` origin is recorded on the template's project-state entry
-// EXACTLY as given at register time (`commands/register.ts`'s own header
-// comment: "Recorded EXACTLY as given") — never canonicalized before
-// storage. The SAME literal prefix `register.ts` defines privately (no
-// module exports it as a shared constant today, so it is restated here
-// rather than imported — the identical discipline `conflict-check.ts` and
-// `effective-ownership.ts` already apply to `FRONTX_NAMESPACE_ROOT` for the
-// same reason).
-const LOCAL_ORIGIN_PREFIX = 'path:';
 
 // Narrow port over `TemplateInventory` — this algorithm needs only
 // `lookup`, to read the owning template's installed manifest for its
@@ -87,18 +78,6 @@ export type DeletionPlanResult =
     }
   | { ok: false; code: ErrorCode; message: string; details?: Record<string, unknown> };
 
-// Re-roots a manifest-declared `excludedSubtrees` entry (target-relative)
-// under `target` — the identical one-line join `effective-ownership.ts`'s
-// own (unexported) `joinUnderTarget` performs, duplicated here rather than
-// imported for the same reason `existing-content.ts`'s `toProjectRelativePath`
-// duplicates it: neither module exports this join as a shared name today,
-// and `target` may legitimately be `.`, the project root, for which a plain
-// `${target}/${declared}` join would wrongly spell `./docs/` instead of the
-// plain `docs/` a real on-disk path resolves to.
-function joinUnderTarget(target: string, declared: string): string {
-  return target === '.' ? declared : `${target}/${declared}`;
-}
-
 // Derives the project-relative folder a `path:`-installed template's own
 // origin occupies, re-running the SAME canonicalization `register.ts`'s own
 // `resolveOrigin` performs (and discards without storing) at register time —
@@ -114,8 +93,8 @@ function joinUnderTarget(target: string, declared: string): string {
 // omitted rather than refusing the whole plan over ground that no longer
 // exists.
 function deriveLocalOriginFolder(origin: string, canonicalizeFn: CanonicalizeTargetFn): string | undefined {
-  if (!origin.startsWith(LOCAL_ORIGIN_PREFIX)) return undefined;
-  const relativePath = origin.slice(LOCAL_ORIGIN_PREFIX.length);
+  const relativePath = parseLocalOrigin(origin);
+  if (relativePath === undefined) return undefined;
   const canonical = canonicalizeFn(relativePath);
   return canonical ?? undefined;
 }

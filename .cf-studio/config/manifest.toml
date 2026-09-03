@@ -1,0 +1,532 @@
+[manifest]
+version = "2.0"
+
+[[agents]]
+id = "cf-analyze-planner"
+description = "Invoke when the analyze workflow needs a reviewer execution plan: decompose the analyze run into reviewer-sub-agent tasks partitioned by methodology and path-partition, identify dependencies, and mark which tasks can run in parallel. Read-only; disk-mode plan files are written by the orchestrator from the returned plan. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-analyze-planner.md"
+
+[[agents]]
+id = "cf-brainstorm-expert"
+description = "Invoke when contributing one expert's persona-scoped turn to a brainstorm round — parameterized by persona and mode (`topic` | `challenge`) passed in the dispatch prompt. Given {persona, topic, state, mode, challenged_decisions?}, returns either `{ relevant: false, reason }` (sit out) or `{ relevant: true, questions: [1..3], critique, next_topic_proposal }`. In `challenge` mode the expert pushes back on the supplied `challenged_decisions` from its persona's POV, emits challenge-mode `0..3` questions, allows a critique-only challenge, and sets `next_topic_proposal = null`; counter-proposals are emitted as the questions' `proposed_default`. Dispatched in parallel for the full panel per round. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-brainstorm-expert.md"
+
+[[agents]]
+id = "cf-brainstorm-facilitator"
+description = "Invoke when opening a brainstorm session — one-shot per session. Given the initial topic plus rules.md / template / example / project context, proposes a 3-6-person expert panel (persona, focus, rationale) and a seed topic for round 1. Pure function: orchestrator collects user edits before the round loop starts. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-brainstorm-facilitator.md"
+
+[[agents]]
+id = "cf-brainstorm-panel"
+description = "Invoke when running the single-agent panel-mode brainstorm round — dispatched once per round instead of per-expert fan-out. Owns serialized persona iteration (§4), per-iteration mirror writes (§6), anti-collapse guards G3-G5 (§8), envelope-emit contract with parse-time invariants (§9-§10), protocol branching (independent-then-critique, single-pass), and deterministic envelope rendering. Returns the `envelope` object the orchestrator flattens into `contributions[]`. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-brainstorm-panel.md"
+
+[[agents]]
+id = "cf-code-bug-finder"
+description = "Invoke when running the code bug-finding methodology on code targets — expects the controller to inject that methodology and emits Findings for correctness, logic, reliability, security, concurrency, performance, and integration defects. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-code-bug-finder.md"
+
+[[agents]]
+id = "cf-codegen"
+description = "Invoke when requirements are fully specified and code must be implemented in an isolated context without back-and-forth clarification — takes a complete task description and writes the code. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-codegen.md"
+
+[[agents]]
+id = "cf-deterministic-validator"
+description = "Invoke when running target-applicable validation commands through the resolved validator command for the target bootstrap (`validate`, `validate --artifact`, `validate-toc`, `check-language`) and returning the canonical Deterministic Gate block (per-command exit code, JSON status, error_count, warning_count, overall PASS/FAIL/SKIPPED with availability proof). Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-deterministic-validator.md"
+
+[[agents]]
+id = "cf-diff-scope-resolver"
+description = "Invoke when an analyze/review request targets a commit, branch, worktree, patch, or uncommitted changes — resolves the Git diff scope, changed files, omissions, and review targets while leaving `changed_hunks` empty in this structural-only mode, and only emits `risk_hotspots` when direct targets were explicitly named, so the orchestrator does not perform semantic diff scanning itself. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-diff-scope-resolver.md"
+
+[[agents]]
+id = "cf-explorer"
+description = "Invoke when a controller needs read-only discovery of task-relevant project resources before dispatching brainstorm, generate, analyze, or planning agents. Returns a resource_context map with relevant files, summaries, suggested slices, persona-specific needs, and missing-context questions. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-explorer.md"
+
+[[agents]]
+id = "cf-generate-author-junior"
+description = "Invoke when the generate-author selector chooses junior for simple, bounded create/fix tasks: one file, complete inputs, low-risk prose or mechanical edits, and no architectural/code/security ambiguity. Consumes the shared author execution prompt assets and returns a manifest. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-generate-author-junior.md"
+
+[[agents]]
+id = "cf-generate-author-lead"
+description = "Invoke when the generate-author selector chooses lead for high-risk or broad generation/fix tasks: cross-system architecture, security/concurrency/data integrity concerns, workflow/agent prompt changes, large finding batches, or uncertain scope where cheaper tiers are likely to fail. Consumes the shared author execution prompt assets and returns a manifest. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-generate-author-lead.md"
+
+[[agents]]
+id = "cf-generate-author-middle"
+description = "Invoke when the generate-author selector chooses middle for standard artifact or small code create/fix tasks with clear inputs, moderate cross-references, or small mechanical review-loop batches. Consumes the shared author execution prompt assets and returns a manifest. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-generate-author-middle.md"
+
+[[agents]]
+id = "cf-generate-author-senior"
+description = "Invoke when the generate-author selector chooses senior for complex artifacts, code changes, multi-file writes, strict-rule outputs, or non-mechanical fixes that require careful judgment. Consumes the shared author execution prompt assets and returns a manifest. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-generate-author-senior.md"
+
+[[agents]]
+id = "cf-generate-author"
+description = "Invoke when a generate author write/fix dispatch is needed to classify task domain and complexity, then select the cheapest capable author agent. Routes generic artifact/config work to junior/middle/senior/lead, code-only work to coder-casual/coder-smart, and prompt/workflow/agent instructions to prompt-engineer-casual/prompt-engineer-smart. The selector is read-only and does not write files. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-generate-author.md"
+
+[[agents]]
+id = "cf-generate-coder-casual"
+description = "Invoke when the generate-author selector chooses coder-casual for small, code-only create/fix tasks with complete inputs, at most two source/test files, no security/concurrency/data-model risk, and no prompt/artifact writing. Consumes the shared author execution prompt assets and returns a manifest. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-generate-coder-casual.md"
+
+[[agents]]
+id = "cf-generate-coder-smart"
+description = "Invoke when the generate-author selector chooses coder-smart for code-only tasks that need deeper implementation judgment: behavior changes, tests, refactors, API boundaries, or moderate security/concurrency/data implications, without prompt/workflow authoring. Consumes the shared author execution prompt assets and returns a manifest. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-generate-coder-smart.md"
+
+[[agents]]
+id = "cf-generate-collector"
+description = "Invoke when parsing a template into per-section questions and proposing defaults to produce an Inputs block for the user — parses H2 sections, loads the example, and returns the rendered Inputs proposal block for the orchestrator to show. When pre_resolved_inputs is supplied (from brainstorm), pre-fills those sections marked [from brainstorm] and proposes only the remaining ones. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-generate-collector.md"
+
+[[agents]]
+id = "cf-generate-planner"
+description = "Invoke when generate inputs are approved and the workflow needs a lightweight author execution plan before Phase 3 summary: decompose work into author tasks, recommend author worker agents, identify dependencies, and mark which tasks can run in parallel. Read-only; disk-mode plan files are written by the orchestrator from the returned plan. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-generate-planner.md"
+
+[[agents]]
+id = "cf-generate-prompt-engineer-casual"
+description = "Invoke when the generate-author selector chooses prompt-engineer-casual for small prompt/workflow/agent wording or routing edits with local scope and no state-machine, handoff, or multi-file semantic redesign. Consumes the shared author execution prompt assets and returns a manifest. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-generate-prompt-engineer-casual.md"
+
+[[agents]]
+id = "cf-generate-prompt-engineer-smart"
+description = "Invoke when the generate-author selector chooses prompt-engineer-smart for prompt/workflow/agent/skill changes that affect state, routing, handoffs, sub-agent contracts, validation criteria, or multi-file prompt semantics. Consumes the shared author execution prompt assets and returns a manifest. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-generate-prompt-engineer-smart.md"
+
+[[agents]]
+id = "cf-migrate-migrator"
+description = "Invoke when applying a pre-approved migration plan to disk — write-capable: category A substitutions mechanically, category B items via interactive walk, category C operations printed for manual execution. Returns a migration manifest of every change applied. Operates in-place (isolation = false) so its edits are visible to the verifier without requiring a commit. Uses `cf_studio_path` as the managed-tree boundary input, must never modify `{cf_studio_path}/.core/`, and must preserve planner-approved Category C semantics without unresolved placeholders or silent downgrades. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-migrate-migrator.md"
+
+[[agents]]
+id = "cf-migrate-planner"
+description = "Invoke when turning the migrate-scanner's findings into a categorized migration plan — read-only; groups items by execution category A (auto-fixable string substitutions), B (needs-review context-sensitive), and C (cascade operations: workspace rename only, member-repo cascade, agent-config regeneration). Emits a plan with resolved user-presentable Category C items for the orchestrator to present before dispatching the migrator. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-migrate-planner.md"
+
+[[agents]]
+id = "cf-migrate-scanner"
+description = "Invoke when scanning a project for residual cypilot/cpt/Cypilot/Cyber Pilot references that the mechanical `cfs init --migrate-from-cypilot=yes` did not touch (source code, CI, docs, agent configs, workspaces, build files) — read-only post-deterministic cleanup; expects the controller to inject Constructor Studio mode and emits a structured findings list for the planner to categorize. Dispatched by the `migrate from cypilot` orchestrator after user approval. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-migrate-scanner.md"
+
+[[agents]]
+id = "cf-migrate-verifier"
+description = "Invoke when re-running scanning after a migrator pass to close the migration loop — read-only; confirms the migrator's manifest landed correctly on disk, re-runs scanner patterns over the changed-files surface to catch regressions, and surfaces residue (regressed, missed-by-plan, or noticed-but-not-in-plan items) for the orchestrator to feed back into another migrator pass. Uses `cf_studio_path` as the managed-tree boundary input. Bounded by the orchestrator's 3-iteration cap. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-migrate-verifier.md"
+
+[[agents]]
+id = "cf-pdsl-author"
+description = "Invoke when cf-pdsl new mode must create a new prompt, workflow, skill, or agent instruction file as a compact PDSL contract using the shared-context-pack PDSL spec with explicit state, menus, UX prompts, stop points, authority boundaries, and completion gates. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-pdsl-author.md"
+
+[[agents]]
+id = "cf-pdsl-reviewer"
+description = "Invoke when cf-pdsl review mode must inspect prompt, workflow, skill, requirement, or agent instruction files for PDSL correctness, compactness, state/menu/UX safety, hidden prose rules, missing STOP_TURN, and handoff bugs. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-pdsl-reviewer.md"
+
+[[agents]]
+id = "cf-pdsl-transformer"
+description = "Invoke when cf-pdsl transform mode must convert existing prose prompt, workflow, skill, requirement, or agent instruction files into PDSL while preserving behavior, constraints, state transitions, menus, and handoffs. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-pdsl-transformer.md"
+
+[[agents]]
+id = "cf-phase-compiler-isolated"
+description = "Invoke when compiling exactly one generated plan phase from its compilation brief in a worktree-isolated agent context, only when the brief, output path, and plan manifest are tracked or otherwise visible inside the worktree. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-phase-compiler-isolated.md"
+
+[[agents]]
+id = "cf-phase-compiler"
+description = "Invoke when compiling exactly one generated plan phase from its compilation brief in-place against main-checkout-local plan state, without delegating to ralphex or executing the phase. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-phase-compiler.md"
+
+[[agents]]
+id = "cf-phase-runner-isolated"
+description = "Invoke when executing the next or a specific phase from a generated Constructor Studio plan in a worktree-isolated agent context, only when plan.toml, briefs, phase files, and declared outputs are tracked or otherwise visible inside the worktree. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-phase-runner-isolated.md"
+
+[[agents]]
+id = "cf-phase-runner"
+description = "Invoke when executing the next or a specific phase from a generated Constructor Studio plan in-place against main-checkout-local plan state, without delegating to ralphex. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-phase-runner.md"
+
+[[agents]]
+id = "cf-pr-review"
+description = "Invoke when reviewing a GitHub pull request with structured checklist-based analysis in a separate context — keeps detailed review output isolated from the main conversation. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-pr-review.md"
+
+[[agents]]
+id = "cf-prompt-bug-finder"
+description = "Invoke when running the prompt-bug-finding methodology on prompt / instruction targets — expects the controller to inject that methodology and emits Findings for behavioral defects, routing bugs, unsafe defaults, hidden failure modes, and handoff breakage. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-prompt-bug-finder.md"
+
+[[agents]]
+id = "cf-ralphex"
+description = "Invoke when delegating a generated Constructor Studio plan to ralphex for autonomous execution — manages the discovery, export, delegation, and handoff lifecycle. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-ralphex.md"
+
+[[agents]]
+id = "cf-semantic-reviewer-artifact"
+description = "Invoke when running the kit-checklist semantic review on an artifact target plus its cross-refs — expects the controller to inject the checklist/compliance instruction context, walks every category, and emits Findings (severity, mechanical, path, line, evidence_quote, root_cause, suggested_fix) against the artifact-mode semantic-review contract. Missing a contract-required checklist asset is fail-closed; only truly optional RELAXED reviews degrade to a limited sweep, never by reopening prompt files from disk. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-semantic-reviewer-artifact.md"
+
+[[agents]]
+id = "cf-semantic-reviewer-code"
+description = "Invoke when running the code-checklist semantic review on code targets against a design artifact — expects the controller to inject the review methodology, walks every category, and emits Findings against the code-checklist review contract. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-semantic-reviewer-code.md"
+
+[[agents]]
+id = "cf-semantic-reviewer-consistency"
+description = "Invoke when cross-checking terminology, references, normative claims, and scope across ≥ 2 target documents — expects the controller to inject the consistency checklist and emits Findings against the consistency contract. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-semantic-reviewer-consistency.md"
+
+[[agents]]
+id = "cf-semantic-reviewer-freeform"
+description = "Invoke when running a freeform semantic review driven by a user-supplied custom prompt or question — no fixed checklist; applies the freeform_prompt criteria to the target paths and emits Findings in the Freeform Review output schema (Rf namespace). Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-semantic-reviewer-freeform.md"
+
+[[agents]]
+id = "cf-semantic-reviewer-prompt"
+description = "Invoke when running the 10-layer prompt-engineering review on prompt / instruction targets (workflows, skills, agent prompts, AGENTS.md) — expects the controller to inject the prompt-engineering methodology and compliance assets in the final dispatch prompt, and emits Findings plus review_result/checkpoint discriminator outputs in the Prompt Review schema. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-semantic-reviewer-prompt.md"
+
+[[agents]]
+id = "cf-storytelling-context-pack"
+description = "Invoke when the orchestrator enters storytelling phase E1.5.pack-build — read the whole input once and emit a content_pack JSON parameterized by strategy (snippets/anchors/hybrid). Returns anchors, plan_anchor_map, depth_mode_flags, overview, and total_extracted_bytes; portions in the inline E2 loop read from this pack instead of re-reading source. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-storytelling-context-pack.md"
+
+[[agents]]
+id = "cf-storytelling-export"
+description = "Invoke when the orchestrator enters storytelling phase E5.export-emit — emit the package on disk under {cf-studio-path}/.cache/explain/packages/<slug>-<timestamp>/ with index.md, per-portion files, Mermaid navigation graph, and mode-specific extras (review→comments.md, onboarding→next-steps-checklist.md, decision→decision-record.md). All artifact bodies use relative paths; refuses export for mode=socratic per AP-#34. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-storytelling-export.md"
+
+[[agents]]
+id = "cf-storytelling-gate"
+description = "Invoke when the orchestrator enters any storytelling E1 or E5 gate (mode / artifact-disposition / audience / plan / context-pack-strategy / export-format) — generic two-phase agent: phase=render returns rendered_menu + parse_table + suggested_default_n; phase=parse returns selected_tag + next_action. Plan-gate is the only gate authorized to emit chat (4-option Go/Edit/Pivot/Cancel approval menu); other gates return parsing artefacts the orchestrator emits. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-storytelling-gate.md"
+
+[[agents]]
+id = "cf-storytelling-preflight"
+description = "Invoke when the orchestrator enters storytelling phase E0 — canonicalize the input_ref, derive session_id, scan for prior session on disk under {cf-studio-path}/.cache/explain/sessions/, run cheap size guards, pick the input-access tier (local → MCP → skill → CLI → user-fallback), load preferences.json, and return the structured handle (target_type / file_count / primary_language / preferences_loaded / input_access_*). Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-storytelling-preflight.md"
+
+[[agents]]
+id = "cf-storytelling-wrap"
+description = "Invoke when the orchestrator enters storytelling phase E5.wrap — synthesise the final summary (Key Takeaways with source refs as clickable markdown links, Open Questions, Glossary, Bookmarked Takeaways, Suggested Next Steps) from accumulated session state. Does NOT auto-fill open_questions or glossary — only user-driven entries are carried forward. Constructor Studio endpoint only; valid for dispatch from the cf skill/controller, not for standalone loading or use outside Constructor Studio flows."
+source = "/Users/virtuozzo/gears-frontx/.claude/agents/cf-storytelling-wrap.md"
+
+[[skills]]
+id = "cf"
+description = "Invoke when user asks to choose a Constructor Studio workflow; resolves cf-* workflows and presents a companion-aware launch menu."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf/SKILL.md"
+
+[[skills]]
+id = "cf-analyze"
+description = "Invoke when the user or another skill or workflow explicitly asks for `cf-analyze` or `analyze`, asks for help choosing the right analysis skill, or needs a generic analysis router because no concrete review, validation, or inspection workflow has been chosen yet."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-analyze/SKILL.md"
+
+[[skills]]
+id = "cf-auto-config"
+description = "Invoke when the user or another skill or workflow needs or asks to bootstrap or auto-config a project, initialize Constructor Studio, discover existing setup, wire agent integration, set up a kit, configure a workspace, or scan a brownfield repo to generate project rules."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-auto-config/SKILL.md"
+
+[[skills]]
+id = "cf-brainstorm"
+description = "Invoke when the user or another skill or workflow needs or asks to brainstorm, think through options, compare approaches, explore tradeoffs, shape a design, clarify requirements, figure out what to do, or work through an uncertain decision before implementation."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-brainstorm/SKILL.md"
+
+[[skills]]
+id = "cf-brave-new-world"
+description = "Invoke when the user or another skill or workflow needs or wants Brave New World mode, autonomous-by-default behavior, fewer confirmation questions, or a reversible safe path chosen automatically."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-brave-new-world/SKILL.md"
+
+[[skills]]
+id = "cf-code-planning"
+description = "Invoke when the user or another skill or workflow needs or asks to plan code work, break implementation into steps, define a coding phase plan, sequence tests before implementation, or spell out the implementation checklist and definition of done for a code change."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-code-planning/SKILL.md"
+
+[[skills]]
+id = "cf-coding"
+description = "Invoke when the user explicitly asks for `coding` or `cf-coding` by name."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-coding/SKILL.md"
+
+[[skills]]
+id = "cf-coding-ci"
+description = "Invoke when the user or another skill or workflow needs or asks to run checks for code changes, make sure CI passes, validate the implementation, run tests, lint, typecheck, build, or verify that the code is green."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-coding-ci/SKILL.md"
+
+[[skills]]
+id = "cf-coding-fix"
+description = "Invoke when the user or another skill or workflow needs or asks to fix code issues from a review, address reported findings, apply approved fixes, resolve review comments, or patch a scoped set of known code problems."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-coding-fix/SKILL.md"
+
+[[skills]]
+id = "cf-coding-gen"
+description = "Invoke when the user or another skill or workflow needs or asks to write code, implement a feature, fix a bug in production code, change behavior, refactor implementation, wire a new path, or update existing source files to satisfy an approved implementation scope."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-coding-gen/SKILL.md"
+
+[[skills]]
+id = "cf-coding-review"
+description = "Invoke when the user or another skill or workflow needs or asks to review code for bugs, gaps, regressions, design mismatches, risky behavior, security issues, or implementation problems and report findings without applying fixes."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-coding-review/SKILL.md"
+
+[[skills]]
+id = "cf-coding-tests"
+description = "Invoke when the user or another skill or workflow needs or asks to write tests first, add unit tests, add e2e coverage, codify acceptance criteria as tests, update failing tests for a planned change, or produce a test spec for implementation."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-coding-tests/SKILL.md"
+
+[[skills]]
+id = "cf-cyber-pilot-kit-frontx-frontx"
+description = "FrontX ecosystem AI capabilities: MFE runtime substrate, GTS type system, API protocol surface, CLI scaffolding, and AI tooling kit. Routes a FrontX request to the capability that serves it. Solution-agnostic base only."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-cyber-pilot-kit-frontx-frontx/SKILL.md"
+
+[[skills]]
+id = "cf-cyber-pilot-kit-frontx-frontx-project-scaffolding"
+description = "Applies when a developer wants a new FrontX project created from what they say they want built, rather than from a reference they already hold - for example a console with a stated number of screens. Matches the stated intent against what the locally installed inventory declares about itself, drives the frontx executable to apply the chosen set, and then realizes each unit the intent names inside the applied ground."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-cyber-pilot-kit-frontx-frontx-project-scaffolding/SKILL.md"
+
+[[skills]]
+id = "cf-debug-prompts"
+description = "Invoke when the user or another skill or workflow needs or asks to debug prompts, skills, or workflows in session — for example to step through a skill, set a breakpoint, pause before each instruction, inspect why a workflow did something, or approve cf actions one at a time."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-debug-prompts/SKILL.md"
+
+[[skills]]
+id = "cf-docs-ci"
+description = "Invoke when the user explicitly asks for `docs-ci` or `cf-docs-ci` by name."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-docs-ci/SKILL.md"
+
+[[skills]]
+id = "cf-docs-planning"
+description = "Invoke when the user explicitly asks for `docs-planning` or `cf-docs-planning` by name."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-docs-planning/SKILL.md"
+
+[[skills]]
+id = "cf-docs-review"
+description = "Invoke when the user explicitly asks for `docs-review` or `cf-docs-review` by name."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-docs-review/SKILL.md"
+
+[[skills]]
+id = "cf-documenting-ci"
+description = "Invoke when the user or another skill or workflow needs or asks to validate docs, run document checks, verify artifact structure, check TOC or language rules, or make sure documentation passes the project's deterministic doc CI."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-documenting-ci/SKILL.md"
+
+[[skills]]
+id = "cf-documenting-fix"
+description = "Invoke when the user or another skill or workflow needs or asks to fix documentation issues from review, address doc findings, apply approved document fixes, resolve comments on a spec or guide, or patch a known set of documentation problems."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-documenting-fix/SKILL.md"
+
+[[skills]]
+id = "cf-documenting-gen"
+description = "Invoke when the user or another skill or workflow needs or asks to write or update documentation such as a README, guide, spec, ADR, design doc, feature doc, report, or other project document within an approved scope."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-documenting-gen/SKILL.md"
+
+[[skills]]
+id = "cf-documenting-planning"
+description = "Invoke when the user or another skill or workflow needs or asks to plan documentation work, break a doc task into steps, define a writing and review sequence, or spell out the checklist and definition of done for document changes."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-documenting-planning/SKILL.md"
+
+[[skills]]
+id = "cf-documenting-review"
+description = "Invoke when the user or another skill or workflow needs or asks to review documentation for gaps, ambiguity, inconsistency, missing context, bad structure, design mismatch, or other content problems and report findings without applying fixes."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-documenting-review/SKILL.md"
+
+[[skills]]
+id = "cf-explain"
+description = "Invoke when the user or another skill or workflow needs or asks to explain what was done, walk through code or docs, teach a subsystem, onboard someone, give a code tour, summarize a result, narrate changes, or produce a source-grounded explanation of an artifact or decision."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-explain/SKILL.md"
+
+[[skills]]
+id = "cf-explore"
+description = "Invoke when the user or another skill or workflow needs or asks to explore the codebase, figure out where something lives, find relevant files, locate docs or artifacts, search references or call sites, map dependencies, or gather context before planning, writing, or reviewing."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-explore/SKILL.md"
+
+[[skills]]
+id = "cf-generate"
+description = "Invoke when the user or another skill or workflow explicitly asks for `cf-generate` or `generate`, asks for help choosing the right authoring skill, or needs a generic create-or-update router because no concrete coding, documenting, prompting, or kit workflow has been chosen yet."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-generate/SKILL.md"
+
+[[skills]]
+id = "cf-git-commit"
+description = "Invoke when the user or another skill or workflow needs or asks to make a commit, stage specific files, finalize scoped changes in git, or prepare a policy-compliant commit for a known set of paths."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-git-commit/SKILL.md"
+
+[[skills]]
+id = "cf-help"
+description = "Invoke when the user or another skill or workflow needs or asks for cf help, Constructor Studio help, /cf help, /cf-studio help, cfs help, or asks how to use the Studio workflows and skills."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-help/SKILL.md"
+
+[[skills]]
+id = "cf-kit"
+description = "Invoke when the user or another skill or workflow needs or asks to create or fix a Studio kit, initialize a kit folder, validate or edit .cf-studio-kit.toml, migrate a legacy manifest, normalize kit layout, or discover resources for a new kit."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-kit/SKILL.md"
+
+[[skills]]
+id = "cf-kit-ci"
+description = "Invoke when the user or another skill or workflow needs or asks to run deterministic validation for scoped kit prompt, document, or code assets."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-kit-ci/SKILL.md"
+
+[[skills]]
+id = "cf-kit-fix"
+description = "Invoke when the user or another skill or workflow needs or asks to apply approved review findings or fix scoped kit prompt, document, or code issues from an existing findings report."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-kit-fix/SKILL.md"
+
+[[skills]]
+id = "cf-kit-gen"
+description = "Invoke when the user or another skill or workflow needs or asks to write or update scoped kit prompt, document, or code assets for an approved phase contract."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-kit-gen/SKILL.md"
+
+[[skills]]
+id = "cf-kit-planning"
+description = "Invoke when the user or another skill or workflow needs or asks to build a phase plan for kit prompt, document, or code work with explicit authoring, review, CI, git, and phase-close checklists."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-kit-planning/SKILL.md"
+
+[[skills]]
+id = "cf-kit-review"
+description = "Invoke when the user or another skill or workflow needs or asks to semantically review scoped kit prompt, document, or code assets and report findings."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-kit-review/SKILL.md"
+
+[[skills]]
+id = "cf-map"
+description = "Invoke when the user or another skill or workflow needs or asks to map dependencies, visualize cross-references, scan markdown and code links, inspect relationships between artifacts, detect phantom cpts, or render the interactive map viewer."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-map/SKILL.md"
+
+[[skills]]
+id = "cf-plan"
+description = "Invoke when the user or another skill or workflow needs or asks to decompose a large task, break work into phases, make a standalone execution plan, or turn a big multi-step request into self-contained phase files with briefs and compiled forms."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-plan/SKILL.md"
+
+[[skills]]
+id = "cf-planning"
+description = "Invoke when the user or another skill or workflow needs or asks to plan work inside a workflow, break a task into reusable phases, define phase checklists, or produce an integrable plan and DoD that other skills can consume directly."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-planning/SKILL.md"
+
+[[skills]]
+id = "cf-prompting-ci"
+description = "Invoke when the user or another skill or workflow needs or asks to validate prompts or skills, run deterministic checks for workflows or system instructions, or make sure prompt and PDSL artifacts pass their configured validation."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-prompting-ci/SKILL.md"
+
+[[skills]]
+id = "cf-prompting-fix"
+description = "Invoke when the user or another skill or workflow needs or asks to fix prompt issues from review, address skill or workflow findings, apply approved prompt fixes, resolve prompt review comments, or patch a known set of prompt or PDSL problems."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-prompting-fix/SKILL.md"
+
+[[skills]]
+id = "cf-prompting-gen"
+description = "Invoke when the user or another skill or workflow needs or asks to write or update a prompt, skill, workflow, agent instruction, system prompt, or other prompt-driven artifact within an approved scope."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-prompting-gen/SKILL.md"
+
+[[skills]]
+id = "cf-prompting-planning"
+description = "Invoke when the user or another skill or workflow needs or asks to plan prompt or skill work, break a workflow or agent task into steps, define the authoring and review sequence, or spell out the checklist and definition of done for prompt artifacts."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-prompting-planning/SKILL.md"
+
+[[skills]]
+id = "cf-prompting-review"
+description = "Invoke when the user or another skill or workflow needs or asks to review prompts, skills, workflows, agent instructions, or system prompts for logic bugs, unclear routing, missing cases, risky behavior, or prompt-quality problems and report findings without applying fixes."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-prompting-review/SKILL.md"
+
+[[skills]]
+id = "cf-sdlc-change-impact-analysis"
+description = "Invoke when the user intent is analyzing the impact of an upstream artifact change (PRD/ADR/DESIGN/DECOMPOSITION/FEATURE) on downstream artifacts and code."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-sdlc-change-impact-analysis/SKILL.md"
+
+[[skills]]
+id = "cf-sdlc-decompose"
+description = "Invoke when the user asks to decompose, break down, or author/revise a DECOMPOSITION — e.g. \\\"decompose\\\", \\\"break into features\\\", \\\"create the feature list / plan\\\", \\\"order features and dependencies with coverage back to PRD/DESIGN\\\". Thin preset binding the DECOMPOSITION artifact KIND, delegating authoring and review to the core cf-write-docs engine."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-sdlc-decompose/SKILL.md"
+
+[[skills]]
+id = "cf-sdlc-doc-adr"
+description = "Invoke when the user asks to author, write, revise, generate, or record an ADR or architecture decision — e.g. \\\"generate ADR\\\", \\\"record a decision\\\", \\\"document why we chose X\\\", \\\"capture context / options / decision / consequences\\\". Thin preset binding the ADR artifact KIND, delegating authoring and review to the core cf-write-docs engine."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-sdlc-doc-adr/SKILL.md"
+
+[[skills]]
+id = "cf-sdlc-doc-design"
+description = "Invoke when the user asks to author, write, revise, generate, or produce a DESIGN or system/technical design — e.g. \\\"generate DESIGN\\\", \\\"design the system\\\", \\\"define components / interfaces / architecture / boundaries\\\". Thin preset binding the DESIGN artifact KIND, delegating authoring and review to the core cf-write-docs engine."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-sdlc-doc-design/SKILL.md"
+
+[[skills]]
+id = "cf-sdlc-doc-feature"
+description = "Invoke when the user asks to author, write, revise, generate, or spec a FEATURE — e.g. \\\"generate FEATURE\\\", \\\"spec the feature\\\", \\\"define flows / algorithms / states / definition of done (CDSL)\\\", \\\"write test scenarios for a feature\\\". Thin preset binding the FEATURE artifact KIND, delegating authoring and review to the core cf-write-docs engine."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-sdlc-doc-feature/SKILL.md"
+
+[[skills]]
+id = "cf-sdlc-doc-prd"
+description = "Invoke when the user asks to author, write, revise, or generate a PRD — e.g. \\\"generate PRD\\\", \\\"write the PRD\\\", \\\"create product requirements\\\", \\\"capture actors, FR/NFR, use cases, or success criteria\\\". Thin preset binding the PRD artifact KIND, delegating authoring and review to the core cf-write-docs engine."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-sdlc-doc-prd/SKILL.md"
+
+[[skills]]
+id = "cf-sdlc-implement"
+description = "Invoke when the user asks to implement, build, or write the code for a FEATURE — e.g. \\\"implement\\\", \\\"write the code\\\", \\\"build this feature\\\", \\\"implement FEATURE with @cpt-* traceability\\\". Thin preset binding the CODE artifact KIND, delegating implementation and review to the core cf-coding engine."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-sdlc-implement/SKILL.md"
+
+[[skills]]
+id = "cf-sdlc-migrate-openspec"
+description = "Invoke when the user asks to migrate or convert OpenSpec artifacts to Constructor Studio SDLC documents — e.g. \\\"migrate openspec\\\", \\\"migrate from openspec\\\", \\\"convert openspec\\\", \\\"openspec to Constructor Studio\\\". Converts OpenSpec proposals/specs/designs/tasks into PRD, DESIGN, ADR, FEATURE, and DECOMPOSITION with code-verified ID traceability."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-sdlc-migrate-openspec/SKILL.md"
+
+[[skills]]
+id = "cf-sdlc-pr-review"
+description = "Invoke when the user asks to review a GitHub PR or do a code review — e.g. \\\"review PR <number>\\\", \\\"review PR\" #<n>\", \"review PR <url>\", \"code review PR <n>\", \"check PR <n>\". Read-only: fetches diffs/metadata from GitHub and analyzes them against configurable prompts and checklists to produce a structured review report."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-sdlc-pr-review/SKILL.md"
+
+[[skills]]
+id = "cf-sdlc-pr-status"
+description = "Invoke when the user asks for the status of a GitHub PR — e.g. \\\"PR status <number>\\\", \\\"status of PR <n>\\\", \\\"check PR status <n>\\\". Fetches the latest PR data and generates a status report with severity assessment and a resolved-comment audit."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-sdlc-pr-status/SKILL.md"
+
+[[skills]]
+id = "cf-sdlc-reverse-engineer"
+description = "Invoke when the user intent is reconstructing SDLC artifacts (PRD/ADR/DESIGN/DECOMPOSITION/FEATURE) from existing code using code markers (@cpt-*) and the reverse-engineering methodology, without converting from another spec format."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-sdlc-reverse-engineer/SKILL.md"
+
+[[skills]]
+id = "cf-skills-ci"
+description = "Invoke when the user explicitly asks for `skills-ci` or `cf-skills-ci` by name."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-skills-ci/SKILL.md"
+
+[[skills]]
+id = "cf-skills-planning"
+description = "Invoke when the user or another skill or workflow needs or asks to plan skill, prompt, or workflow work, define a prompting phase plan, break a skills task into steps, or spell out the implementation checklist and definition of done for prompt artifacts."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-skills-planning/SKILL.md"
+
+[[skills]]
+id = "cf-skills-review"
+description = "Invoke when the user explicitly asks for `skills-review` or `cf-skills-review` by name."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-skills-review/SKILL.md"
+
+[[skills]]
+id = "cf-studio"
+description = "Invoke when the user or another skill or workflow needs or asks for /cf-studio, cf-studio help, or cfs studio."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-studio/SKILL.md"
+
+[[skills]]
+id = "cf-testing"
+description = "Invoke when the user explicitly asks for `testing` or `cf-testing` by name."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-testing/SKILL.md"
+
+[[skills]]
+id = "cf-workspace"
+description = "Invoke when the user or another skill or workflow needs or asks to set up or modify a multi-repo workspace, connect repositories, configure workspace sources, federate projects, sync cross-repo references, or validate a Studio workspace layout."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-workspace/SKILL.md"
+
+[[skills]]
+id = "cf-write-docs"
+description = "Invoke when the user explicitly asks for `write-docs` or `cf-write-docs` by name."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-write-docs/SKILL.md"
+
+[[skills]]
+id = "cf-write-skills"
+description = "Invoke when the user explicitly asks for `write-skills` or `cf-write-skills` by name."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/cf-write-skills/SKILL.md"
+
+[[skills]]
+id = "team-lead"
+description = "Use this skill whenever delegating work to subagents — whether a single Task call or a full team via TeamCreate. Guides delegation, task decomposition, agent selection, and coordination. Covers when to spawn architect (design decisions, trade-offs), researcher (explorations, technical investigation), developer (FEATURE specs and code), tech-writer (documentation), qa (post-implementation validation), and architecture-critic (stress-testing architect output). Trigger on any subagent spawn, team creation, multi-agent coordination, or parallel work request."
+source = "/Users/virtuozzo/gears-frontx/.claude/skills/team-lead/SKILL.md"

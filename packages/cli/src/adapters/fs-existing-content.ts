@@ -105,8 +105,8 @@ export function createFsReadExistingContentFn(repoRoot: string): ReadExistingCon
     // relative already; re-root them under `target` here (never `.`, the
     // spelling `path.join('.', 'x')` avoids anyway) so a caller comparing
     // against a payload's own project-relative path set — which never
-    // spells the "." prefix either (`existing-content.ts`'s own
-    // `toProjectRelativePath`) — compares like for like.
+    // spells the "." prefix either (`joinUnderTarget`,
+    // `../paths/relative-path.ts`) — compares like for like.
     // A project TARGET: no skip list, per the six-term subtraction.
     const items = listFilesRecursive(absolute, false);
     if (target === '.') return items;
