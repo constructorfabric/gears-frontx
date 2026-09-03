@@ -430,6 +430,24 @@ export async function runApplyPipeline(
   const identicalByEntry = new Map<ContributionEntry, Set<string>>();
   const contentConflictPaths: string[] = [];
   const undecidedAdditionalPaths: string[] = [];
+  // DEFECT FIX (PR review, reproduced against the built binary): `--adopt-
+  // existing`'s own contract is to leave an undeclared on-disk path
+  // untouched — but the real existing-content walk (`adapters/fs-existing-
+  // content.ts`) reports neither `isFile()` nor `isDirectory()` for a
+  // symlink dirent, so a DECLARED payload path that is ITSELF a
+  // pre-existing symlink is invisible to reconciliation: it looks exactly
+  // like a brand-new path, and materialization below writes straight
+  // through it. Reproduced live: two targets in the same batch, one an
+  // adopted additional path, the other a declared payload path that is a
+  // symlink aliasing it — the write for the second silently overwrote the
+  // first's content, the exact thing `--adopt-existing` promised not to
+  // do. This module has no seam that can SEE a symlink before writing (that
+  // seam lives in `adapters/`); what it CAN do honestly is snapshot every
+  // adopted path's content now, before anything is written, and verify it
+  // again after materialization (below) — detection, not prevention, but
+  // the batch is then refused and nothing is recorded, rather than
+  // reporting success over content it silently corrupted.
+  const adoptedSnapshots: { target: string; path: string; content: string }[] = [];
   for (const entry of unrecorded) {
     const payload = await computePayloadForTarget(entry, deps.readInstalledContentFn);
     payloads.set(entry, payload);
@@ -442,7 +460,16 @@ export async function runApplyPipeline(
     });
     identicalByEntry.set(entry, new Set(partitions.identicalFiles));
     contentConflictPaths.push(...partitions.contentConflicts);
-    if (!adoptExisting) undecidedAdditionalPaths.push(...partitions.additionalPaths);
+    if (!adoptExisting) {
+      undecidedAdditionalPaths.push(...partitions.additionalPaths);
+    } else if (partitions.additionalPaths.length > 0) {
+      const rawExisting = await deps.readExistingContentFn(entry.target);
+      const existingByPath = new Map(rawExisting.map((item) => [item.path, item.content]));
+      for (const adoptedPath of partitions.additionalPaths) {
+        const content = existingByPath.get(adoptedPath);
+        if (content !== undefined) adoptedSnapshots.push({ target: entry.target, path: adoptedPath, content });
+      }
+    }
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-existing-content
   // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p1:inst-as-checked-reconciled
@@ -512,94 +539,181 @@ export async function runApplyPipeline(
     };
   }
 
-  // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p1:inst-as-reconciled-assembled
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
-  for (const entry of unrecorded) {
-    const payload = payloads.get(entry) ?? new Map<string, string>();
-    const identical = identicalByEntry.get(entry) ?? new Set<string>();
-    for (const [projectPath, content] of payload) {
-      // Already correct on disk — writing it again would be harmless but
-      // pointless; skipped so materialization writes exactly the paths that
-      // are NEW or that reconciliation cleared as adopted, never a path
-      // already confirmed byte-identical.
-      if (identical.has(projectPath)) continue;
-      await deps.writeFileFn(path.join(repoRoot, projectPath), content);
+  // DEFECT FIX (PR review, reproduced against the built binary): a thrown
+  // write failure (EACCES, ENOSPC, or any other exception this pipeline
+  // does not itself convert to a structured refusal) used to propagate
+  // straight out of this function — `seed`'s own caller had no return
+  // value to roll back FROM. Everything below that can still write or
+  // refuse now runs inside one `try`, so every exit from here on is the
+  // same honest, structured shape every EARLIER refusal above already
+  // returns — `writtenPaths` names exactly what this call actually wrote
+  // before stopping, rather than leaving the caller to guess (or assume
+  // "nothing written", which only the checks ABOVE this point can honestly
+  // claim).
+  const writtenPaths: string[] = [];
+  try {
+    // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p1:inst-as-reconciled-assembled
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
+    for (const entry of unrecorded) {
+      const payload = payloads.get(entry) ?? new Map<string, string>();
+      const identical = identicalByEntry.get(entry) ?? new Set<string>();
+      for (const [projectPath, content] of payload) {
+        // Already correct on disk — writing it again would be harmless but
+        // pointless; skipped so materialization writes exactly the paths that
+        // are NEW or that reconciliation cleared as adopted, never a path
+        // already confirmed byte-identical.
+        if (identical.has(projectPath)) continue;
+        await deps.writeFileFn(path.join(repoRoot, projectPath), content);
+        writtenPaths.push(projectPath);
+      }
     }
-  }
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
 
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize-bundle
-  // Run ONCE per name that just gained its first target across the WHOLE
-  // batch — never per target — matching `cpt-frontx-algo-cli-scaffolding-
-  // ai-bundle`'s own "runs once per name transition" contract.
-  const handledNames = new Set<string>();
-  for (const entry of unrecorded) {
-    if (handledNames.has(entry.templateName)) continue;
-    handledNames.add(entry.templateName);
-    const targetsBefore = document.templates[entry.templateName]?.targets.length ?? 0;
-    if (targetsBefore > 0) continue; // this name already had a target before this batch
-    try {
-      await materializeOrRemoveAiBundle({
-        manifestName: entry.templateName,
-        transition: { kind: 'FIRST_TARGET_GAINED', installedContentPath: entry.installedContentPath },
-        projectRoot: repoRoot,
-        bundleExists: deps.bundleExistsFn,
-        copyBundle: deps.copyBundleFn,
-        removeBundle: deps.removeBundleFn,
-      });
-    } catch (error) {
-      // The CLI-owned bundle copy (`adapters/fs-ai-bundle.ts`'s
-      // `createFsCopyBundleFn`) refuses fail-closed, the same way, when its
-      // own destination cannot be proven to stay inside the project root —
-      // surfaced here as a real refusal rather than an unhandled crash.
-      return {
-        ok: false,
-        code: 'INVALID_PATH',
-        message:
-          `Aborted — the AI-extension bundle for "${entry.templateName}" could not be proven to stay inside the ` +
-          `project root: ${error instanceof Error ? error.message : String(error)}`,
-        details: { name: entry.templateName },
-      };
+    // DEFECT FIX (PR review, reproduced against the built binary): verifies
+    // every `--adopt-existing`-adopted path snapshotted above
+    // (`adoptedSnapshots`, see its own comment for the reproduced
+    // mechanism) still reads exactly as it did before the writes just
+    // above. Detection, not prevention — the write already happened
+    // through ground this module has no seam to inspect beforehand — but
+    // the batch is refused and nothing below is recorded, rather than
+    // reporting success over content it silently corrupted.
+    if (adoptedSnapshots.length > 0) {
+      const rereadByTarget = new Map<string, Map<string, string>>();
+      const corruptedAdoptedPaths: string[] = [];
+      for (const snapshot of adoptedSnapshots) {
+        let reread = rereadByTarget.get(snapshot.target);
+        if (reread === undefined) {
+          const rawExisting = await deps.readExistingContentFn(snapshot.target);
+          reread = new Map(rawExisting.map((item) => [item.path, item.content]));
+          rereadByTarget.set(snapshot.target, reread);
+        }
+        if (reread.get(snapshot.path) !== snapshot.content) corruptedAdoptedPaths.push(snapshot.path);
+      }
+      if (corruptedAdoptedPaths.length > 0) {
+        return {
+          ok: false,
+          code: 'CONTENT_CONFLICT',
+          message:
+            `Aborted — "--adopt-existing" promised to leave existing content untouched, but materializing this ` +
+            `batch altered it anyway at: ${corruptedAdoptedPaths.join(', ')} (a declared payload path elsewhere in ` +
+            'this batch is very likely a symlink aliasing one of these locations); nothing was recorded, but ' +
+            `${writtenPaths.length} file(s) this batch wrote remain on disk: ${writtenPaths.join(', ')}.`,
+          details: { paths: corruptedAdoptedPaths, writtenPaths },
+        };
+      }
     }
-  }
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize-bundle
 
-  // @cpt-begin:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-applied-to-applied
-  // @cpt-begin:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-empty-to-applied
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-record
-  const newTargetsByName = new Map<string, string[]>();
-  for (const entry of unrecorded) {
-    const list = newTargetsByName.get(entry.templateName) ?? [];
-    list.push(entry.target);
-    newTargetsByName.set(entry.templateName, list);
-  }
-  const applied: ApplyBatchTargetRef[] = [];
-  for (const [name, newTargets] of newTargetsByName) {
-    const existingEntry = document.templates[name];
-    if (existingEntry === undefined) {
-      // Unreachable in practice — `uniformApply` already refuses
-      // `TEMPLATE_NOT_REGISTERED` for any name with no project-state entry,
-      // so every name reaching here was already confirmed registered.
-      // Guarded rather than asserted so a caller-supplied fake document
-      // cannot turn this into a thrown TypeError.
-      return { ok: false, code: 'INTERNAL', message: `Template "${name}" was staged but is no longer registered.` };
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize-bundle
+    // Run ONCE per name that just gained its first target across the WHOLE
+    // batch — never per target — matching `cpt-frontx-algo-cli-scaffolding-
+    // ai-bundle`'s own "runs once per name transition" contract.
+    const handledNames = new Set<string>();
+    for (const entry of unrecorded) {
+      if (handledNames.has(entry.templateName)) continue;
+      handledNames.add(entry.templateName);
+      const targetsBefore = document.templates[entry.templateName]?.targets.length ?? 0;
+      if (targetsBefore > 0) continue; // this name already had a target before this batch
+      try {
+        await materializeOrRemoveAiBundle({
+          manifestName: entry.templateName,
+          transition: { kind: 'FIRST_TARGET_GAINED', installedContentPath: entry.installedContentPath },
+          projectRoot: repoRoot,
+          bundleExists: deps.bundleExistsFn,
+          copyBundle: deps.copyBundleFn,
+          removeBundle: deps.removeBundleFn,
+        });
+      } catch (error) {
+        // The CLI-owned bundle copy (`adapters/fs-ai-bundle.ts`'s
+        // `createFsCopyBundleFn`) refuses fail-closed, the same way, when its
+        // own destination cannot be proven to stay inside the project root —
+        // surfaced here as a real refusal rather than an unhandled crash.
+        // DEFECT FIX (PR review, reproduced against the built binary): this
+        // refusal is reached AFTER the main payload materialize loop above
+        // has already written this batch's files — `writtenPaths` names
+        // exactly what is still on disk, rather than leaving the caller to
+        // assume the "nothing written" only an EARLIER refusal can honestly
+        // claim.
+        return {
+          ok: false,
+          code: 'INVALID_PATH',
+          message:
+            `Aborted — the AI-extension bundle for "${entry.templateName}" could not be proven to stay inside the ` +
+            `project root: ${error instanceof Error ? error.message : String(error)}` +
+            (writtenPaths.length > 0
+              ? ` ${writtenPaths.length} file(s) this batch already wrote remain on disk: ${writtenPaths.join(', ')}.`
+              : ''),
+          details: writtenPaths.length > 0 ? { name: entry.templateName, writtenPaths } : { name: entry.templateName },
+        };
+      }
     }
-    const mergedTargets = [...existingEntry.targets, ...newTargets];
-    const written = await mutateProjectState(
-      repoRoot,
-      { kind: 'set-template', name, entry: { ...existingEntry, targets: mergedTargets } },
-      deps.readProjectStateFn,
-      deps.writeProjectStateFn,
-    );
-    if (!written.ok) return { ok: false, code: 'PROJECT_INVALID', message: written.message };
-    for (const target of newTargets) applied.push({ templateName: name, target });
-  }
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-record
-  // @cpt-end:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-empty-to-applied
-  // @cpt-end:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-applied-to-applied
-  // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p1:inst-as-reconciled-assembled
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize-bundle
 
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-done
-  return { ok: true, applied, noop };
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-done
+    // @cpt-begin:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-applied-to-applied
+    // @cpt-begin:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-empty-to-applied
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-record
+    const newTargetsByName = new Map<string, string[]>();
+    for (const entry of unrecorded) {
+      const list = newTargetsByName.get(entry.templateName) ?? [];
+      list.push(entry.target);
+      newTargetsByName.set(entry.templateName, list);
+    }
+    const applied: ApplyBatchTargetRef[] = [];
+    for (const [name, newTargets] of newTargetsByName) {
+      const existingEntry = document.templates[name];
+      if (existingEntry === undefined) {
+        // Unreachable in practice — `uniformApply` already refuses
+        // `TEMPLATE_NOT_REGISTERED` for any name with no project-state entry,
+        // so every name reaching here was already confirmed registered.
+        // Guarded rather than asserted so a caller-supplied fake document
+        // cannot turn this into a thrown TypeError.
+        return {
+          ok: false,
+          code: 'INTERNAL',
+          message: `Template "${name}" was staged but is no longer registered.`,
+          details: writtenPaths.length > 0 ? { writtenPaths } : undefined,
+        };
+      }
+      const mergedTargets = [...existingEntry.targets, ...newTargets];
+      const written = await mutateProjectState(
+        repoRoot,
+        { kind: 'set-template', name, entry: { ...existingEntry, targets: mergedTargets } },
+        deps.readProjectStateFn,
+        deps.writeProjectStateFn,
+      );
+      if (!written.ok) {
+        return {
+          ok: false,
+          code: 'PROJECT_INVALID',
+          message: written.message,
+          details: writtenPaths.length > 0 ? { writtenPaths } : undefined,
+        };
+      }
+      for (const target of newTargets) applied.push({ templateName: name, target });
+    }
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-record
+    // @cpt-end:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-empty-to-applied
+    // @cpt-end:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-applied-to-applied
+    // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p1:inst-as-reconciled-assembled
+
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-done
+    return { ok: true, applied, noop };
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-done
+  } catch (error) {
+    // DEFECT FIX (PR review, reproduced against the built binary): any
+    // OTHER thrown failure materializing this batch — converted to the
+    // same honest, structured shape, `writtenPaths` naming whatever this
+    // call actually wrote before the failure, so `seed`'s own rollback
+    // (`commands/seed-repository.ts`) has something real to undo instead of
+    // an exception it never gets a chance to catch cleanly.
+    return {
+      ok: false,
+      code: 'INTERNAL',
+      message:
+        `Aborted — an unexpected error interrupted materialization: ${error instanceof Error ? error.message : String(error)}.` +
+        (writtenPaths.length > 0
+          ? ` ${writtenPaths.length} file(s) this batch already wrote remain on disk: ${writtenPaths.join(', ')}.`
+          : ' Nothing from this batch was written to disk.'),
+      details: writtenPaths.length > 0 ? { writtenPaths } : undefined,
+    };
+  }
 }

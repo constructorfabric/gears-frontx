@@ -12,6 +12,7 @@ import type { CommitDeps } from '../upgrade/commit';
 import type { DiskEntry, UpgradeOperation, UpgradePlan } from '../upgrade/types';
 import type { ProjectStateDocument, ReadProjectStateFn, WriteProjectStateFn } from '../project-state/types';
 import { RESERVED_TEMP_SUFFIX } from '../paths/reserved-temp-name';
+import { PathContainmentError } from '../adapters/fs-project-io';
 
 const REPO_ROOT = '/repo';
 
@@ -388,6 +389,136 @@ describe('commitUpgrade (cpt-frontx-algo-upgrade-changeset-commit)', () => {
     expect(harness.wasProjectStateWritten()).toBe(false);
     expect(harness.promoteInventory).not.toHaveBeenCalled();
     expect(harness.refreshAiBundle).not.toHaveBeenCalled();
+  });
+
+  // Defect fix: a `PathContainmentError` escaping the destination-write step
+  // used to be swallowed into this algorithm's own generic `INTERNAL` shape
+  // exactly like any other I/O failure — reported honestly as "the upgrade
+  // failed", but never as the SAME containment refusal `register`/`apply`/
+  // `delete` report through `cli.ts`'s dedicated `PathContainmentError`
+  // branch (`INVALID_PATH`, user-error exit). Recovery must still run
+  // exactly as it does for any other failure at this point — this test
+  // proves it does (the already-landed REPLACE is reversed to baseline)
+  // BEFORE the original `PathContainmentError` is rethrown, never a second
+  // classification of what containment means.
+  it('rethrows a PathContainmentError from the destination-write step after fully recovering every already-landed op', async () => {
+    const harness = makeHarness({ '/repo/app/replace-me.ts': 'baseline content' });
+    harness.seedProjectState({
+      formatVersion: 1,
+      templates: { 'acme-tool': { origin: 'github:acme/tool@v1', version: '1.0.0', targets: ['app'] } },
+      projectOwnedRoots: [],
+    });
+
+    const plan = makePlan({
+      operations: [
+        // Lands first (REPLACE) - then the ADD's rename is made to escape
+        // containment, exactly as a symlink swapped in between review and
+        // commit would.
+        op({
+          target: 'app',
+          path: 'app/replace-me.ts',
+          op: 'REPLACE',
+          expectedDisk: 'baseline content',
+          baselineContent: 'baseline content',
+          newContent: 'replaced content',
+        }),
+        op({ target: 'app', path: 'app/added.ts', op: 'ADD', expectedDisk: null, baselineContent: null, newContent: 'added content' }),
+      ],
+    });
+
+    const originalRename = harness.deps.renameDiskFile;
+    harness.deps.renameDiskFile = async (from: string, to: string) => {
+      if (to === '/repo/app/added.ts') {
+        throw new PathContainmentError(to, '/repo');
+      }
+      return originalRename(from, to);
+    };
+
+    await expect(commitUpgrade(plan, harness.deps)).rejects.toBeInstanceOf(PathContainmentError);
+
+    // Recovery still ran to completion: the landed REPLACE was reversed to
+    // baseline, and the ADD never landed.
+    expect(harness.disk.get('/repo/app/replace-me.ts')).toBe('baseline content');
+    expect(harness.disk.has('/repo/app/added.ts')).toBe(false);
+
+    // Nothing past the destination-write step ran: no commit, promotion, or
+    // bundle refresh for a rethrown containment escape, exactly as for any
+    // other recovered failure.
+    expect(harness.wasProjectStateWritten()).toBe(false);
+    expect(harness.promoteInventory).not.toHaveBeenCalled();
+    expect(harness.refreshAiBundle).not.toHaveBeenCalled();
+  });
+
+  // The trivial-recovery mirror: a containment escape caught before the
+  // first rename (during materialization, or during stale-temp reclaim)
+  // lands nothing, so recovery is vacuously successful - and the rethrow
+  // still happens.
+  it('rethrows a PathContainmentError caught before the first rename (during materialization)', async () => {
+    const harness = makeHarness();
+
+    const plan = makePlan({
+      operations: [op({ target: 'app', path: 'app/new.ts', op: 'ADD', expectedDisk: null, baselineContent: null, newContent: 'content' })],
+    });
+
+    const originalWrite = harness.deps.writeDiskFile;
+    harness.deps.writeDiskFile = async (absolutePath: string, content: string) => {
+      if (absolutePath === `/repo/app/new.ts${RESERVED_TEMP_SUFFIX}`) {
+        throw new PathContainmentError(absolutePath, '/repo');
+      }
+      return originalWrite(absolutePath, content);
+    };
+
+    await expect(commitUpgrade(plan, harness.deps)).rejects.toBeInstanceOf(PathContainmentError);
+    expect(harness.disk.size).toBe(0);
+    expect(harness.wasProjectStateWritten()).toBe(false);
+  });
+
+  // When recovery ITSELF fails, the containment escape is still reported as
+  // `INTERNAL` with `unrecovered` - never rethrown as a bare
+  // `PathContainmentError` - because a target left NOT fully restored to
+  // baseline is a more severe situation than an ordinary, actionable
+  // "your tree has a symlink escaping the project" refusal: telling the
+  // caller only "fix your symlink" here would hide that recovery itself did
+  // not fully succeed.
+  it('reports INTERNAL with unrecovered, never a rethrow, when recovery fails after a PathContainmentError', async () => {
+    const harness = makeHarness({ '/repo/app/replace-me.ts': 'baseline content' });
+
+    const plan = makePlan({
+      operations: [
+        op({
+          target: 'app',
+          path: 'app/replace-me.ts',
+          op: 'REPLACE',
+          expectedDisk: 'baseline content',
+          baselineContent: 'baseline content',
+          newContent: 'replaced content',
+        }),
+        op({ target: 'app', path: 'app/added.ts', op: 'ADD', expectedDisk: null, baselineContent: null, newContent: 'added content' }),
+      ],
+    });
+
+    const originalRename = harness.deps.renameDiskFile;
+    harness.deps.renameDiskFile = async (from: string, to: string) => {
+      if (to === '/repo/app/added.ts') {
+        throw new PathContainmentError(to, '/repo');
+      }
+      return originalRename(from, to);
+    };
+    const originalWrite = harness.deps.writeDiskFile;
+    harness.deps.writeDiskFile = async (absolutePath: string, content: string) => {
+      if (absolutePath === '/repo/app/replace-me.ts') {
+        throw new Error('simulated recovery failure');
+      }
+      return originalWrite(absolutePath, content);
+    };
+
+    const result = await commitUpgrade(plan, harness.deps);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('unreachable');
+    expect(result.code).toBe('INTERNAL');
+    expect(result.details).toMatchObject({ unrecovered: [{ target: 'app', path: 'app/replace-me.ts' }] });
+    expect(harness.wasProjectStateWritten()).toBe(false);
   });
 
   it('recovers vacuously when the I/O failure is caught before the first rename (during materialization)', async () => {

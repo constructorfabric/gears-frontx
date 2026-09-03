@@ -207,7 +207,8 @@ jobs:
   #     place — its packages' file: links resolve to template-mfe/packages/*
   #     (which does not exist), and their vite/vitest configs import out of
   #     the shell. The only way to run their checks is to compose the pair the
-  #     way `frontx add` does and validate the result, which the second step
+  #     way `frontx register`/`frontx apply` does and validate the result,
+  #     which the second step
   #     does.
   template-validate:
     name: Template Validate
@@ -270,9 +271,10 @@ jobs:
     # its own: #489 adds a root package.json to template-mfe as a
     # monorepo-only dev harness (`frontx-template-mfe-monorepo-harness`,
     # unscoped, `private: true` — see that file's own header), deliberately
-    # never declared as the template's shipped identity so `frontx add` never
-    # copies it anywhere. A bare presence check would route that overlay down
-    # the self-contained path and then fail on the arch:deps / lint /
+    # never declared as the template's shipped identity so registering and
+    # applying the template never copies it anywhere. A bare presence check
+    # would route that overlay down the self-contained path and then fail on
+    # the arch:deps / lint /
     # test:unit scripts a dev harness has no reason to define. The identity
     # cross-check is what tells "my own root package.json" apart from "a
     # foreign package.json that happens to sit here" without reviving the
@@ -336,7 +338,8 @@ jobs:
         done
 
     # Composes the overlays onto the shell and runs the shell's checks over the
-    # union — the tree a real `frontx seed shell && frontx add mfe` produces.
+    # union — the tree a real `frontx register`/`frontx apply` of the shell
+    # followed by the mfe template produces.
     # This is what actually covers the MFE packages: the shell's eslint config
     # has an src-app/mfe_packages/** block, its dependency-cruiser config has
     # no-cross-mfe-imports, and its test:unit ends in
@@ -380,6 +383,44 @@ jobs:
     # no shell-root collision to dodge any more now that each overlay owns a
     # target the shell has reserved for it (`excludedSubtrees`) instead of
     # landing loose at the shell's root.
+    # Proves the "no self-nesting" guard below actually rejects the shape it
+    # exists to catch, rather than being trusted on the strength of a comment.
+    # PR #586's review is the reason this exists: the doubled-path defect
+    # (`src-app/mfe_packages/src-app/mfe_packages/...`) shipped past a
+    # count-only version of that check because a doubled tree still has a
+    # positive package count, and nothing in this job's history had ever
+    # driven the fixed check through a tree it should reject. Calls the SAME
+    # `.github/scripts/assert-overlay-not-doubled.sh` the real step below
+    # calls, on synthetic fixtures that cost nothing to build (no npm, no
+    # real templates) — a future edit that guts the shared script is caught
+    # here, not by a reviewer reading it a second time.
+    - name: Self-test composition guard against a doubled tree
+      run: |
+        set -euo pipefail
+        guard=".github/scripts/assert-overlay-not-doubled.sh"
+        fixture="$RUNNER_TEMP/composition-guard-selftest"
+        rm -rf "$fixture" && mkdir -p "$fixture"
+
+        # Doubled case: the overlay's own target path exists a second time
+        # inside itself — exactly the shape the real defect produced. The
+        # guard MUST reject this; if it does not, the guard is broken.
+        mkdir -p "$fixture/doubled/dest/some/target"
+        if "$guard" "$fixture/doubled/dest" "some/target" "selftest-overlay"; then
+          echo "::error::composition guard accepted a doubled tree it exists to reject — self-test failed"
+          exit 1
+        fi
+        echo "==> guard correctly rejected a doubled tree"
+
+        # Correct case: the target path exists exactly once (no self-nested
+        # copy). The guard MUST accept this; if it does not, it now rejects
+        # ordinary correct compositions too.
+        mkdir -p "$fixture/correct/dest"
+        if ! "$guard" "$fixture/correct/dest" "some/target" "selftest-overlay"; then
+          echo "::error::composition guard rejected a correctly-rooted tree — self-test failed"
+          exit 1
+        fi
+        echo "==> guard correctly accepted a non-doubled tree"
+
     - name: Validate shell + overlay composition
       run: |
         set -euo pipefail
@@ -497,10 +538,10 @@ jobs:
           # independently of the exact-path assertion above, since a defect
           # that duplicated only SOME of a target's segments (not deep enough
           # to also miss a declared package) would otherwise pass it.
-          if [ -d "$dest/$target" ]; then
-            echo "::error::$overlay composed a nested copy of its own target path at $dest/$target — the payload was not re-rooted at the overlay's own top level"
-            exit 1
-          fi
+          # Delegated to the shared script (rather than inlined here) so the
+          # "Self-test composition guard against a doubled tree" step earlier
+          # in this job exercises the identical check, not a copy of it.
+          .github/scripts/assert-overlay-not-doubled.sh "$dest" "$target" "$overlay"
 
           echo "==> $overlay contributed $overlay_count package(s) at $target"
           composed_total=$((composed_total + overlay_count))

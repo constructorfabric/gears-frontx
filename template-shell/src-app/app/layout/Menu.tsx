@@ -244,7 +244,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
             <li className="list-none px-3 py-4 text-sm text-muted-foreground">
               No screens yet. If this project has no{' '}
               <code className={hintCodeClass}>src-app/mfe_packages/</code> directory, register and
-              apply <code className={hintCodeClass}>frontx-template-mfe</code> at{' '}
+              apply <code className={hintCodeClass}>@gears-frontx/frontx-template-mfe</code> at{' '}
               <code className={hintCodeClass}>src-app/mfe_packages</code>, then run{' '}
               <code className={hintCodeClass}>npm install</code> to get it. Then add a package by
               copying the <code className={hintCodeClass}>_blank-mfe</code> scaffold, and delete{' '}

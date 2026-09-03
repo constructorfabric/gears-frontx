@@ -31,16 +31,16 @@ fresh external folder too:
 ```bash
 mkdir my-app && cd my-app
 frontx register <shell-origin>
-frontx apply --input '{"templates":{"frontx-template-shell":["."]}}'
+frontx apply --input '{"templates":{"@gears-frontx/frontx-template-shell":["."]}}'
 frontx register <mfe-origin>
-frontx apply --input '{"templates":{"frontx-template-mfe":["src-app/mfe_packages"]}}'
+frontx apply --input '{"templates":{"@gears-frontx/frontx-template-mfe":["src-app/mfe_packages"]}}'
 npm install   # required after applying a new template — the workspace glob
               # picks up the new packages, so the lock must be regenerated
 ```
 
 **Upgrading a multi-template repository is supported.** `frontx upgrade`
 operates on one registered template name across every target it has been
-applied to, so `frontx-template-shell` and `frontx-template-mfe` upgrade
+applied to, so `@gears-frontx/frontx-template-shell` and `@gears-frontx/frontx-template-mfe` upgrade
 independently by name once both are applied to the same repo — there is no
 restriction on upgrading after a second template has been added.
 

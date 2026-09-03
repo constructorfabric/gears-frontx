@@ -227,6 +227,7 @@ FrontX/                              # Ecosystem repository root
 │   └── cyber-pilot-kit-frontx/     # Projects orchestration: AI Tooling Kit
 ├── template-shell/                 # Reference template: app shell (developed here; register + apply, or seed inside this checkout)
 ├── template-mfe/                   # Reference template: add-only MFE bundle (register + apply)
+├── template-design-guardrails/     # Reference template: design-review contract (register + apply)
 ├── internal/                       # Internal build/lint config workspaces
 ├── scripts/                        # Architecture, version-policy, and test tooling
 └── tsconfig.json                   # TypeScript config (ecosystem packages only)

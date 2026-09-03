@@ -21,7 +21,7 @@ import path from 'node:path';
 import { registerTemplate, probeRegistration } from './register';
 import { officialDefaultOrigin } from './official-defaults';
 import { runApplyPipeline } from './apply';
-import type { ApplyBatchTargetRef, ApplyPipelineDeps } from './apply';
+import type { ApplyBatchOutcome, ApplyBatchTargetRef, ApplyPipelineDeps } from './apply';
 import type { UniformApplyBatch } from '../scaffold/assembler';
 import { projectStatePath } from '../project-state/io';
 import type { ProjectStateDocument } from '../project-state/types';
@@ -172,20 +172,39 @@ export async function seedRepository(
   // DEFECT FIX (PR review, reproduced against the built binary): every
   // refusal below this line used to leave `.frontx/project.json` behind —
   // the CLI reported failure, but the directory was left permanently
-  // "already seeded" for every later `seed` attempt. `runApplyPipeline`
-  // itself refuses before writing any payload FILE for every one of the
-  // failures this rollback is reached from (`CONTENT_CONFLICT`/
-  // `EXISTING_PATHS_REQUIRE_DECISION`/`TARGET_CONFLICT`/the pre-materialize
-  // payload-escape `INVALID_PATH` check — see `apply.ts`'s own instruction
-  // ordering), so the only ground `seed` itself ever has to undo is its OWN
-  // two writes above: the project state document, and — only when `seed`
+  // "already seeded" for every later `seed` attempt. Most of the failures
+  // this rollback is reached from leave no payload FILE behind either
+  // (`CONTENT_CONFLICT`/`EXISTING_PATHS_REQUIRE_DECISION`/`TARGET_CONFLICT`/
+  // the pre-materialize payload-escape `INVALID_PATH` check all refuse
+  // BEFORE `apply.ts`'s own materialize step — see that file's own
+  // instruction ordering) — but a refusal reached AFTER materialization
+  // (the AI-bundle step, or the project-state record step, or an
+  // unexpected thrown write failure) does leave real payload files on disk,
+  // and `apply.ts` now reports exactly which ones via `writtenPaths`
+  // (`ApplyBatchOutcome`'s own `details.writtenPaths`). This rollback
+  // removes those too — passed in by the caller below — in addition to its
+  // own two writes: the project state document, and — only when `seed`
   // created it and it is now empty again — the `.frontx` directory that
   // document's write brought into being as a side effect.
-  async function rollbackSeedWrites(): Promise<void> {
+  async function rollbackSeedWrites(writtenPaths: readonly string[] = []): Promise<void> {
+    for (const relativePath of writtenPaths) {
+      await deps.removeProjectFileFn(path.join(dir, relativePath));
+    }
     await deps.removeProjectFileFn(projectStatePath(dir));
     if (!frontxDirPreexisted) {
       await deps.removeEmptyDirFn(frontxDir);
     }
+  }
+
+  // The `writtenPaths` an apply-phase failure's `details` carries, narrowed
+  // from `unknown` — defensive against a caller-shaped `details` that
+  // doesn't carry the field at all (every refusal BEFORE materialization)
+  // or carries something other than a string array (never true for
+  // `apply.ts`'s own outcome shape, but this reads a structurally untyped
+  // `Record<string, unknown>`, not a value this function controls).
+  function extractWrittenPaths(details: Record<string, unknown> | undefined): string[] {
+    const value = details?.writtenPaths;
+    return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
 
@@ -267,12 +286,56 @@ export async function seedRepository(
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-materialize
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-materialize-bundle
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-record
-  const applyResult = await runApplyPipeline(batch, dir, adoptExisting, deps);
-  if (!applyResult.ok) {
+  // DEFECT FIX (PR review, reproduced against the built binary): this call
+  // used to sit outside any `try` — a thrown failure (EACCES, ENOSPC, a
+  // native abort) bypassed `inst-seed-rollback` entirely, propagating past
+  // `seedRepository` and out through the CLI's own top-level catch-all
+  // (`cli.ts`'s `run`) as exit 2 with empty `--json` stdout, and leaving the
+  // directory locked out of every later `seed` call by the very document
+  // this rollback exists to remove. `apply.ts` itself now converts every
+  // write-phase throw it knows about into a structured refusal, but this
+  // catch is the backstop for anything that still escapes — from apply's
+  // own resolve/conflict-check phase or elsewhere — so rollback runs on
+  // every path out of this call, not only a returned refusal.
+  let applyResult: ApplyBatchOutcome;
+  try {
+    applyResult = await runApplyPipeline(batch, dir, adoptExisting, deps);
+  } catch (error) {
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
     await rollbackSeedWrites();
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
-    return applyResult;
+    return {
+      ok: false,
+      code: 'INTERNAL',
+      message:
+        `Seed aborted — an unexpected error interrupted the apply phase: ` +
+        `${error instanceof Error ? error.message : String(error)}; the project state document (and any ` +
+        'directory it created) has been rolled back — nothing from this batch remains.',
+    };
+  }
+  if (!applyResult.ok) {
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
+    const writtenPaths = extractWrittenPaths(applyResult.details);
+    await rollbackSeedWrites(writtenPaths);
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
+    if (writtenPaths.length === 0) return applyResult;
+    // `applyResult.message` itself names files as currently "on disk" —
+    // true when `apply` returned it, false now that the rollback just
+    // above removed exactly those paths. The CURRENT truth leads this
+    // message; `applyResult.message` follows only as labeled, superseded
+    // context — never restated as though it still describes the present,
+    // which is exactly the stale, dishonest report `inst-seed-rollback`
+    // exists to prevent. `details.writtenPaths` is dropped entirely for
+    // the same reason: nothing it names is still true.
+    const { writtenPaths: _rolledBack, ...remainingDetails } = applyResult.details ?? {};
+    return {
+      ok: false,
+      code: applyResult.code,
+      message:
+        'Seed has rolled back everything this attempt wrote — nothing from this batch remains on disk. ' +
+        `The apply phase's own refusal, before that rollback: ${applyResult.message}`,
+      details: Object.keys(remainingDetails).length > 0 ? remainingDetails : undefined,
+    };
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-record
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-materialize-bundle

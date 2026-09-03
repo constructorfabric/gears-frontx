@@ -657,14 +657,14 @@ sequenceDiagram
     AI->>CLI: delete <target> --json
     CLI->>Chk: compute deletion plan geometry (target − excludedSubtrees − nested targets − projectOwnedRoots)
     Chk-->>CLI: delete/preserve lists
-    CLI-->>AI: {"ok": false, "error": {"code": "CONFIRMATION_REQUIRED", "details": {"delete": [...], "preserve": [...]}}}
+    CLI-->>AI: {"ok": false, "error": {"code": "CONFIRMATION_REQUIRED", "details": {"toDelete": [...], "toPreserve": [...]}}}
     AI->>AI: inspect result; obtain Project Developer's authorization
     AI->>CLI: delete <target> --json --yes
     CLI->>Chk: recompute the identical geometry
     Chk-->>CLI: delete/preserve lists
     CLI->>Repo: remove the target's owned ground only
     CLI->>State: remove the target from its template's entry
-    CLI-->>AI: {"ok": true, "data": {"deleted": [...], "preserved": [...], "aiBundleResidue"?: {...}}}
+    CLI-->>AI: {"ok": true, "data": {"toDelete": [...], "toPreserve": [...], "aiBundleResidue"?: {...}}}
 ```
 
 **Description**: Delete is destructive, so `--json` mode never prompts and never blocks on stdin: a first call without explicit confirmation returns `ok: false` with `error.code: "CONFIRMATION_REQUIRED"` and `details` naming exactly what the deletion plan would remove and what it would preserve — the target's declared `excludedSubtrees`, any nested target belonging to another template, and any `projectOwnedRoots` entry beneath it — computed by the same canonicalized geometry the conflict checker uses for `assemble`/`apply` ([What Every CLI Command's Machine-Readable Output Must Look Like](../../../architecture/ADR/0042-cli-machine-readable-output.md)). A success carries one optional field beyond the two lists: the CLI removes the name's own `.frontx/ai/<manifest-name>/` bundle when it removes that name's last target, and if that one CLI-owned cleanup fails after the target's ground is already gone and the project state already records it, the outcome stays `ok: true` — the deletion happened and the document is correct — and names the surviving path in `aiBundleResidue` rather than reporting a failure over a completed deletion or dropping the residue silently. Having obtained the Project Developer's authorization out of band, the AI agent re-issues the identical command with `--yes`; the CLI recomputes the same geometry — never trusting the first call's result as a cached plan — and only then removes the target's owned ground and removes the target from its template's entry in the project state store. Withholding confirmation leaves the repository and the project state document unchanged; `--dry-run` produces the same delete/preserve lists without ever requiring confirmation, because nothing is at stake to confirm.

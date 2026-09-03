@@ -43,6 +43,7 @@
 // transition stands committed), and folding them into one catch would make
 // it possible to report one as the other.
 import path from 'node:path';
+import { PathContainmentError } from '../adapters/fs-project-io';
 import { RESERVED_TEMP_SUFFIX, isReservedTempName } from '../paths/reserved-temp-name';
 import { joinUnderTarget } from '../paths/relative-path';
 import { isWithinEffectiveOwnership } from '../scaffold/effective-ownership';
@@ -339,6 +340,22 @@ export async function commitUpgrade(plan: UpgradePlan, deps: CommitDeps): Promis
 
     // @cpt-begin:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-if-recovery-succeeds
     if (unrecovered.length === 0) {
+      // A CONTAINMENT refusal is reported through the SAME channel every
+      // other command's containment refusal already uses, never
+      // re-classified into this algorithm's own generic `INTERNAL` shape —
+      // `cli.ts`'s `run()` catches `PathContainmentError` specifically and
+      // maps it to an `INVALID_PATH` envelope with the user-error exit,
+      // exactly as it does for `register`/`apply`/`delete`. Recovery above
+      // already ran to completion for this error exactly like any other
+      // failure caught here — every already-landed destination is back at
+      // baseline before this rethrow, so nothing about that discipline is
+      // skipped for this error class. This is a RETHROW, not a second
+      // formulation of what containment means: `PathContainmentError`
+      // itself, and the one check that produces it
+      // (`assertPathWithinProjectRoot`), are untouched here.
+      if (caught instanceof PathContainmentError) {
+        throw caught;
+      }
       // @cpt-begin:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-return-failure
       // Every target, the project state store, and the inventory entry are
       // exactly as they were before this attempt: nothing below this point

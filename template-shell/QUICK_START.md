@@ -122,7 +122,7 @@ and apply it first if `src-app/mfe_packages/_blank-mfe` isn't there yet:
 
 ```bash
 frontx register <mfe-origin>
-frontx apply --input '{"templates":{"frontx-template-mfe":["src-app/mfe_packages"]}}'
+frontx apply --input '{"templates":{"@gears-frontx/frontx-template-mfe":["src-app/mfe_packages"]}}'
 ```
 
 then `npm install` (the workspace glob picks up the new packages, so the lock

@@ -1177,11 +1177,15 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       // directory, is an ordinary user error, refused here — before any
       // other seam is even constructed — with the vocabulary this codebase
       // already uses for an unusable path.
+      // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-invalid-dir
       const targetDirState = await deps.readSeedDirStateFn(targetDir);
       if (targetDirState !== 'directory') {
+        // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-invalid-dir
         const message = `"${targetDir}" does not exist or is not a directory; seed requires an existing directory.`;
         return renderSeedOutcome({ ok: false, code: 'INVALID_PATH', message, details: { dir: targetDir } }, jsonMode);
+        // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-invalid-dir
       }
+      // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-invalid-dir
       const canonicalizeFn = deps.createCanonicalizeTargetFn(targetDir);
       const result = await seedRepository(targetDir, parsedBatch.batch, adoptExisting, {
         inventory: deps.inventory,

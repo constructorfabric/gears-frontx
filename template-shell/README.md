@@ -8,10 +8,15 @@ to develop and ship it.
 You are (typically) reading this inside a project that was scaffolded from this
 template with the FrontX CLI. `seed` bootstraps a project from the CLI's
 built-in official defaults, which only resolve inside this monorepo checkout —
-useful for developing the templates themselves:
+useful for developing the templates themselves. Each default is a `path:`
+origin resolved against the directory being seeded, so seeding a bare empty
+folder has nothing to resolve against; vendor this template into it first,
+then seed on top of that:
 
 ```bash
-frontx seed ./my-app --input '{"templates":{"frontx-template-shell":["."]}}'
+mkdir -p ./my-app/template-shell
+cp -R template-shell/. ./my-app/template-shell/
+frontx seed ./my-app --input '{"templates":{"@gears-frontx/frontx-template-shell":["."]}}'
 ```
 
 Anywhere else — a fresh external folder — `register` a remote origin and
@@ -20,7 +25,7 @@ checkout:
 
 ```bash
 frontx register <origin>
-frontx apply --input '{"templates":{"frontx-template-shell":["."]}}'
+frontx apply --input '{"templates":{"@gears-frontx/frontx-template-shell":["."]}}'
 ```
 
 From here on, this repository is **your application**. This template gives you a
@@ -133,7 +138,7 @@ errors. Add MFE packages by registering and applying
 
 ```bash
 frontx register <mfe-origin>
-frontx apply --input '{"templates":{"frontx-template-mfe":["src-app/mfe_packages"]}}'
+frontx apply --input '{"templates":{"@gears-frontx/frontx-template-mfe":["src-app/mfe_packages"]}}'
 ```
 
 then run `npm install` again — applying a new template changes what the
@@ -198,11 +203,11 @@ template version is released, upgrade with the FrontX CLI — changes are shown 
 a reviewable change set before anything is written:
 
 ```bash
-frontx upgrade frontx-template-shell <new-origin>
+frontx upgrade @gears-frontx/frontx-template-shell <new-origin>
 ```
 
 `upgrade` acts on one registered template name across every target it has been
 applied to, so a project with more than one template registered (shell plus
-`frontx-template-mfe`, say) upgrades each independently by name — there is no
+`@gears-frontx/frontx-template-mfe`, say) upgrades each independently by name — there is no
 restriction on upgrading once a second template has been added. `--restore`
 reverses the immediately preceding upgrade for a name.

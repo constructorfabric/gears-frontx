@@ -29,6 +29,7 @@ import {
   createFsAssertPathWithinRootFn,
   createFsWriteFileFn,
   createFsWriteProjectStateFn,
+  ExistingSymlinkDestinationError,
 } from '../adapters/fs-project-io';
 import {
   createFsWriteDiskFileFn,
@@ -36,6 +37,7 @@ import {
   createFsUnlinkDiskFileFn,
 } from '../adapters/fs-upgrade-io';
 import { createFsCopyBundleFn, createFsRemoveBundleFn } from '../adapters/fs-ai-bundle';
+import { createFsReadExistingContentFn } from '../adapters/fs-existing-content';
 import { runApplyPipeline } from '../commands/apply';
 import type { ApplyPipelineDeps } from '../commands/apply';
 import type { UniformApplyInventoryPort } from '../scaffold/assembler';
@@ -169,6 +171,101 @@ describe('assertPathWithinProjectRoot', () => {
   });
 });
 
+// SYMLINK-DESTINATION FIX (found in PR review, reproduced against the built
+// binary): `createFsWriteFileFn` used to hand `destPath` straight to
+// `fs.writeFileSync`, which follows a symlink at its FINAL path component
+// exactly as it follows one at an intermediate component. When `destPath`
+// was itself an existing symlink aliasing a DIFFERENT on-disk file — the
+// reproduced defect's exact shape, an INTERNAL alias that
+// `assertPathWithinProjectRoot`'s own escape check passes cleanly since
+// nothing about it ever leaves the project root — the write silently
+// overwrote whatever the link pointed at, exactly what `--adopt-existing`
+// promises never to do. This suite proves the fix directly against a real
+// filesystem, and that an ordinary ANCESTOR symlink (not the final
+// component) is completely unaffected.
+describe('createFsWriteFileFn (destination-symlink refusal)', () => {
+  let repoRoot: string;
+
+  afterEach(async () => {
+    if (repoRoot) await rm(repoRoot, { recursive: true, force: true });
+    repoRoot = '';
+  });
+
+  async function makeRepo(): Promise<string> {
+    const dir = await mkdtemp(path.join(tmpdir(), 'frontx-write-symlink-dest-'));
+    repoRoot = dir;
+    return dir;
+  }
+
+  it('refuses to write when the destination already exists as a symlink aliasing another file inside the project', async () => {
+    const dir = await makeRepo();
+    await mkdir(path.join(dir, 'shared'), { recursive: true });
+    await writeFile(path.join(dir, 'shared', 'precious.txt'), 'PRECIOUS-CONTENT', 'utf-8');
+    await mkdir(path.join(dir, 'app'), { recursive: true });
+    await symlink(path.join(dir, 'shared', 'precious.txt'), path.join(dir, 'app', 'config.json'));
+    const writeFileFn = createFsWriteFileFn();
+
+    await expect(writeFileFn(path.join(dir, 'app', 'config.json'), 'TEMPLATE-CONTENT')).rejects.toThrow(
+      ExistingSymlinkDestinationError,
+    );
+
+    // The heart of the fix: the aliased file's content is untouched.
+    expect(await readFile(path.join(dir, 'shared', 'precious.txt'), 'utf-8')).toBe('PRECIOUS-CONTENT');
+  });
+
+  it('refuses to write when the destination already exists as a symlink pointing outside the project', async () => {
+    const dir = await makeRepo();
+    const outsideDir = await mkdtemp(path.join(tmpdir(), 'frontx-write-symlink-outside-'));
+    try {
+      await writeFile(path.join(outsideDir, 'precious.txt'), 'OUTSIDE-CONTENT', 'utf-8');
+      await mkdir(path.join(dir, 'app'), { recursive: true });
+      await symlink(path.join(outsideDir, 'precious.txt'), path.join(dir, 'app', 'config.json'));
+      const writeFileFn = createFsWriteFileFn();
+
+      await expect(writeFileFn(path.join(dir, 'app', 'config.json'), 'TEMPLATE-CONTENT')).rejects.toThrow(
+        ExistingSymlinkDestinationError,
+      );
+      expect(await readFile(path.join(outsideDir, 'precious.txt'), 'utf-8')).toBe('OUTSIDE-CONTENT');
+    } finally {
+      await rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  // The legitimate mirror: only the FINAL component is inspected, so a
+  // project legitimately structured through a symlinked ANCESTOR directory
+  // keeps writing into its real target exactly as it always has.
+  it('still writes normally through an ancestor symlink (not the final component)', async () => {
+    const dir = await makeRepo();
+    await mkdir(path.join(dir, 'app', 'real-src'), { recursive: true });
+    await symlink(path.join(dir, 'app', 'real-src'), path.join(dir, 'app', 'src'));
+    const writeFileFn = createFsWriteFileFn();
+
+    await writeFileFn(path.join(dir, 'app', 'src', 'index.ts'), 'payload');
+
+    expect(await readFile(path.join(dir, 'app', 'real-src', 'index.ts'), 'utf-8')).toBe('payload');
+  });
+
+  it('still writes normally for a brand-new destination, no symlink involved', async () => {
+    const dir = await makeRepo();
+    const writeFileFn = createFsWriteFileFn();
+
+    await writeFileFn(path.join(dir, 'app', 'index.ts'), 'payload');
+
+    expect(await readFile(path.join(dir, 'app', 'index.ts'), 'utf-8')).toBe('payload');
+  });
+
+  it('still overwrites normally when the destination is an ordinary (non-symlink) existing file', async () => {
+    const dir = await makeRepo();
+    await mkdir(path.join(dir, 'app'), { recursive: true });
+    await writeFile(path.join(dir, 'app', 'index.ts'), 'old', 'utf-8');
+    const writeFileFn = createFsWriteFileFn();
+
+    await writeFileFn(path.join(dir, 'app', 'index.ts'), 'new');
+
+    expect(await readFile(path.join(dir, 'app', 'index.ts'), 'utf-8')).toBe('new');
+  });
+});
+
 describe('createFsWriteProjectStateFn containment (escape 2 — the project-state writer)', () => {
   let root: string;
   let outsideDir: string;
@@ -208,6 +305,30 @@ describe('createFsWriteProjectStateFn containment (escape 2 — the project-stat
 
     await writeProjectState(path.join(dir, '.frontx', 'project.json'), '{"ok":true}');
 
+    expect(await readFile(path.join(dir, '.frontx', 'project.json'), 'utf-8')).toBe('{"ok":true}');
+  });
+
+  // DANGLING-SYMLINK-INSIDE FIX (found in PR review, reproduced against the
+  // built binary): `.frontx` a DANGLING symlink whose target resolves
+  // INSIDE the project — legitimately ALLOWED by `assertPathWithinProjectRoot`
+  // (the test above, in the outer `describe`, pins that) — but whose
+  // resolved target's own parent directory did not exist yet. The write used
+  // to fail with an uncaught `ENOENT` past every caller's error handling: a
+  // literal `fs.mkdirSync(path.dirname(absolutePath))` creates nothing the
+  // symlink's resolved target needs, since the literal parent (containing
+  // the link itself) already exists.
+  it('writes project.json through a dangling .frontx symlink pointing inside the root, creating its resolved parent chain', async () => {
+    const dir = await makeRoot();
+    await symlink(path.join('internal', 'nested', 'frontx-real'), path.join(dir, '.frontx'));
+    const writeProjectState = createFsWriteProjectStateFn();
+
+    await writeProjectState(path.join(dir, '.frontx', 'project.json'), '{"ok":true}');
+
+    expect(await readFile(path.join(dir, 'internal', 'nested', 'frontx-real', 'project.json'), 'utf-8')).toBe(
+      '{"ok":true}',
+    );
+    // Readable back through the symlink itself too, now that its target
+    // exists.
     expect(await readFile(path.join(dir, '.frontx', 'project.json'), 'utf-8')).toBe('{"ok":true}');
   });
 });
@@ -287,6 +408,43 @@ describe('fs-upgrade-io containment (createFsWriteDiskFileFn / createFsRenameDis
     await writeDiskFile(path.join(dir, 'app', 'src', 'index.ts'), 'payload');
 
     expect(await readFile(path.join(dir, 'app', 'src', 'index.ts'), 'utf-8')).toBe('payload');
+  });
+
+  // DANGLING-SYMLINK-INSIDE FIX (found in PR review, reproduced against the
+  // built binary): `app/README.md` a DANGLING symlink whose target resolves
+  // INSIDE the root but whose own parent directory ("app/missing") did not
+  // exist yet. Containment already allows this (`fs-containment.test.ts`'s
+  // own `assertPathWithinProjectRoot` suite above pins that); the write used
+  // to fail with an uncaught `ENOENT` regardless, since `fs.writeFileSync`
+  // follows the symlink to a directory nothing had created.
+  it('createFsWriteDiskFileFn writes through a dangling symlink pointing inside the root, creating its resolved parent chain', async () => {
+    const dir = await makeRoot();
+    await mkdir(path.join(dir, 'app'), { recursive: true });
+    await symlink(path.join(dir, 'app', 'missing', 'target.txt'), path.join(dir, 'app', 'README.md'));
+    const writeDiskFile = createFsWriteDiskFileFn(dir);
+
+    await writeDiskFile(path.join(dir, 'app', 'README.md'), 'payload');
+
+    expect(await readFile(path.join(dir, 'app', 'missing', 'target.txt'), 'utf-8')).toBe('payload');
+  });
+
+  // The same shape for `renameDiskFile`, but as an INTERMEDIATE ancestor:
+  // `rename(2)` does not dereference the FINAL component of its destination
+  // (it replaces whatever directory entry sits there, symlink or not), but
+  // it does resolve every component ABOVE that one exactly like any other
+  // path — so a dangling symlink one level up still needs its resolved
+  // parent chain created before the rename can land.
+  it('createFsRenameDiskFileFn renames through a dangling symlink ancestor pointing inside the root, creating its resolved parent chain', async () => {
+    const dir = await makeRoot();
+    await mkdir(path.join(dir, 'app'), { recursive: true });
+    const from = path.join(dir, 'staged.tmp');
+    await writeFile(from, 'payload', 'utf-8');
+    await symlink(path.join(dir, 'internal', 'dir'), path.join(dir, 'app', 'link'));
+    const renameDiskFile = createFsRenameDiskFileFn(dir);
+
+    await renameDiskFile(from, path.join(dir, 'app', 'link', 'file.txt'));
+
+    expect(await readFile(path.join(dir, 'internal', 'dir', 'file.txt'), 'utf-8')).toBe('payload');
   });
 });
 
@@ -535,6 +693,116 @@ describe('apply end-to-end containment (runApplyPipeline with the real project-f
     if (result.ok) return;
     expect(result.code).toBe('INVALID_PATH');
     expect(existsSync(outsideTarget)).toBe(false);
+    expect(JSON.parse(projectStateContent ?? 'null').templates[templateName].targets).toEqual([]);
+  });
+});
+
+// The ORIGINAL DEFECT's own end-to-end reproduction (found in PR review,
+// reproduced against the built binary, and — until now — only half-fixed:
+// `commands/apply.ts` already snapshots an adopted path and refuses
+// `CONTENT_CONFLICT` after the fact if it changed, but that only turns
+// silent corruption into REPORTED corruption; the file is still destroyed
+// by the time the refusal fires. This suite proves PREVENTION, through both
+// real adapters this task owns together: `createFsReadExistingContentFn`
+// (the walker that now SEES the symlink, `adapters/fs-existing-content.ts`)
+// and `createFsWriteFileFn` (the writer that now REFUSES to write through
+// one, `adapters/fs-project-io.ts`) — either fix alone already closes this
+// exact reproduction; this suite exercises them together, as production
+// wiring actually does.
+describe('apply --adopt-existing end-to-end: a declared payload path aliasing another file via symlink', () => {
+  let repoRoot: string;
+
+  afterEach(async () => {
+    if (repoRoot) await rm(repoRoot, { recursive: true, force: true });
+    repoRoot = '';
+  });
+
+  function manifest(name: string): Record<string, unknown> {
+    return { name, version: '1.0.0', excludedSubtrees: [], description: `Fixture template "${name}"` };
+  }
+
+  it('refuses CONTENT_CONFLICT and leaves the aliased file intact, instead of overwriting it', async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-adopt-symlink-repo-'));
+    // The exact reproduction named in the task brief: `shared/precious.txt`
+    // holds known content, and the template's own declared payload path is
+    // a symlink aliasing it.
+    await mkdir(path.join(repoRoot, 'shared'), { recursive: true });
+    await writeFile(path.join(repoRoot, 'shared', 'precious.txt'), 'PRECIOUS-CONTENT', 'utf-8');
+    await mkdir(path.join(repoRoot, 'app'), { recursive: true });
+    await symlink(path.join(repoRoot, 'shared', 'precious.txt'), path.join(repoRoot, 'app', 'config.json'));
+
+    const templateName = '@acme/t';
+    const installedEntries = new Map<string, InventoryEntry>();
+    installedEntries.set(templateName, {
+      name: templateName,
+      source: `github:acme/t@v1`,
+      ref: 'v1',
+      status: InventoryState.INSTALLED,
+      content: JSON.stringify(manifest(templateName)),
+    });
+    const templateContent = new Map<string, ContentItem[]>([
+      [templateName, [{ path: 'config.json', content: 'TEMPLATE-CONTENT' }]],
+    ]);
+
+    let projectStateContent: string | null = JSON.stringify({
+      formatVersion: 1,
+      templates: { [templateName]: { origin: `github:acme/t@v1`, version: '1.0.0', targets: [] } },
+      projectOwnedRoots: [],
+    } satisfies ProjectStateDocument);
+
+    const inventory: UniformApplyInventoryPort = {
+      lookup: (name) => installedEntries.get(name),
+      install: vi.fn(async () => ({ ok: false as const, error: { message: 'install not stubbed for this test' } })),
+    };
+    const readInstalledContentFn: ReadInstalledContentFn = async (installedContentPath) =>
+      templateContent.get(installedContentPath) ?? [];
+    // The REAL adapter under test — this is the seam the reported defect
+    // proved blind to a symlink already standing at the target.
+    const readExistingContentFn: ReadExistingContentFn = createFsReadExistingContentFn(repoRoot);
+    const canonicalizeFn: CanonicalizeTargetFn = (rawTarget) => rawTarget;
+    const readProjectStateFn: ReadProjectStateFn = async () => projectStateContent;
+    const writeProjectStateFn: WriteProjectStateFn = async (_absolutePath, content) => {
+      projectStateContent = content;
+    };
+    const readFileFn: ReadFileFn = vi.fn(async () => {
+      throw new Error('readFileFn not stubbed for this test');
+    });
+    const bundleExistsFn: BundleExistsFn = vi.fn(async () => false);
+    const copyBundleFn: CopyBundleFn = vi.fn(async () => undefined);
+    const removeBundleFn: RemoveBundleFn = vi.fn(async () => undefined);
+
+    const deps: ApplyPipelineDeps = {
+      inventory,
+      fetchFn: vi.fn(async () => ''),
+      readFileFn,
+      canonicalizeFn,
+      existsFn: vi.fn(async () => true),
+      listFolderFilesFn: vi.fn(async () => []),
+      resolveInstalledContentPathFn: (name: string) => name,
+      readInstalledContentFn,
+      readExistingContentFn,
+      // The REAL adapter under test too — belt and suspenders with the
+      // walker above; either fix alone already prevents the corruption.
+      writeFileFn: createFsWriteFileFn() as WriteFileFn,
+      readProjectStateFn,
+      writeProjectStateFn,
+      bundleExistsFn,
+      copyBundleFn,
+      removeBundleFn,
+      assertPathWithinRootFn: createFsAssertPathWithinRootFn(repoRoot),
+    };
+
+    // `--adopt-existing` (the third argument, `true`): the exact flag the
+    // defect's own promise ("leave existing content untouched") was made
+    // under, and broken by.
+    const result = await runApplyPipeline({ templates: { [templateName]: ['app'] } }, repoRoot, true, deps);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('CONTENT_CONFLICT');
+    // The heart of the fix: the aliased file survives, byte-for-byte, and
+    // the batch was never recorded as applied.
+    expect(await readFile(path.join(repoRoot, 'shared', 'precious.txt'), 'utf-8')).toBe('PRECIOUS-CONTENT');
     expect(JSON.parse(projectStateContent ?? 'null').templates[templateName].targets).toEqual([]);
   });
 });

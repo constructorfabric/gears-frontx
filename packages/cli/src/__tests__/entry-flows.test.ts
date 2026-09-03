@@ -126,15 +126,26 @@ function makeHarness() {
 
   // `seed`'s own rollback seams (`inst-seed-rollback`) — a plain "remove
   // this one file" over the SAME in-memory `projectStateContent` store
-  // `readProjectStateFn`/`writeProjectStateFn` above already share, and a
-  // no-op for the `.frontx`-directory removal (this harness models no real
-  // filesystem, so there is no real directory for it to reconsider). Kept
-  // on the ONE `deps` object below — typed `SeedRepositoryDeps`, a strict
-  // superset of `ApplyPipelineDeps` — so every existing `assembleBatch`/
+  // `readProjectStateFn`/`writeProjectStateFn` above already share for
+  // exactly the project state path, and over the SAME in-memory `files`
+  // map for any OTHER absolute path — `rollbackSeedWrites`'s own
+  // `writtenPaths` cleanup (DEFECT FIX, PR review) reuses this identical
+  // seam to remove whatever payload files a failed apply phase reported as
+  // written, so this fake must genuinely model "remove whatever is really
+  // at this absolute path" rather than unconditionally nulling project
+  // state regardless of which path was asked for. A no-op for the
+  // `.frontx`-directory removal (this harness models no real filesystem, so
+  // there is no real directory for it to reconsider). Kept on the ONE
+  // `deps` object below — typed `SeedRepositoryDeps`, a strict superset of
+  // `ApplyPipelineDeps` — so every existing `assembleBatch`/
   // `runApplyPipeline` call in this file keeps working unchanged (a wider
   // object structurally satisfies the narrower parameter type they expect).
-  const removeProjectFileFn = vi.fn(async () => {
-    projectStateContent = null;
+  const removeProjectFileFn = vi.fn(async (absolutePath: string) => {
+    if (absolutePath === projectStatePath(REPO_ROOT)) {
+      projectStateContent = null;
+    } else {
+      files.delete(absolutePath);
+    }
   });
   const removeEmptyDirFn = vi.fn(async () => undefined);
 
@@ -598,6 +609,94 @@ describe('runApplyPipeline — materializing a batch (cpt-frontx-flow-cli-scaffo
     expect(result.applied).toEqual([{ templateName: 'template-a', target: 'apps/foo' }]);
     expect(h.readProjectStateDocument().templates['template-a'].targets).toEqual(['apps/foo']);
   });
+
+  // DEFECT FIX regression (PR review, reproduced against the built binary):
+  // `runApplyPipeline` materializes a batch's payload BEFORE the AI-bundle
+  // step, which can still refuse — a refusal there used to report only
+  // `INVALID_PATH`, with no indication the payload was already on disk.
+  // `details.writtenPaths` now names exactly what remains, and the payload
+  // genuinely IS still there (this file's own `apply` never rolls back its
+  // own partial write — only `seed`, layered on top, does).
+  it('reports writtenPaths, and leaves the payload on disk, when the AI-bundle step refuses after materializing', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a'), [{ path: 'src/index.ts', content: 'hello' }]);
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
+      projectOwnedRoots: [],
+    });
+    h.deps.bundleExistsFn = vi.fn(async () => true);
+    h.deps.copyBundleFn = vi.fn(async () => {
+      throw new Error('simulated bundle copy failure');
+    });
+
+    const result = await runApplyPipeline({ templates: { 'template-a': ['apps/foo'] } }, REPO_ROOT, false, h.deps);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('INVALID_PATH');
+    expect(result.details?.writtenPaths).toEqual(['apps/foo/src/index.ts']);
+    expect(result.message).toContain('apps/foo/src/index.ts');
+    // The payload really is on disk — never recorded as applied, though.
+    expect(h.files.get('/repo/apps/foo/src/index.ts')).toBe('hello');
+    expect(h.readProjectStateDocument().templates['template-a'].targets).toEqual([]);
+  });
+
+  // DEFECT FIX regression (PR review, reproduced against the built binary,
+  // real filesystem): `--adopt-existing`'s own contract is to leave an
+  // undeclared on-disk path untouched, but a DECLARED payload path that is
+  // itself a pre-existing symlink is invisible to existing-content
+  // reconciliation (`adapters/fs-existing-content.ts` reports neither
+  // `isFile()` nor `isDirectory()` for a symlink dirent) — writing it
+  // follows the symlink and can silently overwrite whatever it aliases,
+  // including a path this SAME batch just adopted. This fake models
+  // exactly that blind spot (`readExistingContentFn` below reports nothing
+  // at the symlinked payload path, exactly as the real adapter would), and
+  // `writeFileFn` models the write actually landing on the aliased path —
+  // proving `runApplyPipeline` detects the corruption after the fact and
+  // refuses, rather than reporting success over content it silently
+  // altered.
+  it('refuses CONTENT_CONFLICT when materializing a batch alters a path --adopt-existing had just adopted', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a'), [{ path: 'alias.txt', content: 'FROM-TEMPLATE' }]);
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
+      projectOwnedRoots: [],
+    });
+    // The adopted file, pre-existing under a DIFFERENT target.
+    h.files.set('/repo/shared/precious.txt', 'PRECIOUS');
+    // `linked/alias.txt` is a symlink aliasing `shared/precious.txt` on a
+    // real filesystem — this fake's own `readExistingContentFn` (a plain
+    // prefix scan over `files`) already reports nothing under `linked/` at
+    // all, faithfully matching the real adapter's blind spot for that
+    // shape without needing an actual symlink; `writeFileFn` is overridden
+    // for JUST this test to model the write physically landing on the
+    // aliased path, exactly as `fs.writeFileSync` would through a real one.
+    const realWriteFileFn = h.deps.writeFileFn;
+    h.deps.writeFileFn = async (destPath, content) => {
+      if (destPath === '/repo/linked/alias.txt') {
+        await realWriteFileFn('/repo/shared/precious.txt', content);
+        return;
+      }
+      await realWriteFileFn(destPath, content);
+    };
+
+    const result = await runApplyPipeline(
+      { templates: { 'template-a': ['shared', 'linked'] } },
+      REPO_ROOT,
+      true,
+      h.deps,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('CONTENT_CONFLICT');
+    expect(result.details?.paths).toEqual(['shared/precious.txt']);
+    // Nothing was recorded as applied — the corruption is caught before
+    // the record step, even though the writes themselves already happened.
+    expect(h.readProjectStateDocument().templates['template-a'].targets).toEqual([]);
+  });
 });
 
 describe('seedRepository — bootstrap a fresh project (cpt-frontx-flow-cli-scaffolding-seed-repository)', () => {
@@ -736,5 +835,76 @@ describe('seedRepository — bootstrap a fresh project (cpt-frontx-flow-cli-scaf
     expect(secondAttempt.ok).toBe(false);
     if (secondAttempt.ok) return;
     expect(secondAttempt.code).toBe('CONTENT_CONFLICT');
+  });
+
+  // DEFECT FIX (PR review, reproduced against the built binary): unlike the
+  // refusal above, the AI-bundle step refuses AFTER `runApplyPipeline`
+  // already materializes the batch's payload — so `apply`'s own outcome
+  // carries `details.writtenPaths` naming a REAL file still on disk.
+  // `seed`'s rollback used to undo only its own two writes (the state
+  // document and the `.frontx` directory it created), leaving that payload
+  // file behind despite reporting failure. It now removes exactly the
+  // paths `apply` named too, so a late refusal leaves the directory exactly
+  // as empty as an early one, and a second seed is accepted.
+  it('rolls back a payload file apply already materialized when the apply phase refuses late, leaving the directory seedable again', async () => {
+    const h = makeHarness();
+    h.deps.readFileFn = vi.fn(async () => JSON.stringify(manifest('@gears-frontx/frontx-template-shell')));
+    h.templateContent.set('template-shell', [{ path: 'package.json', content: '{}' }]);
+    h.deps.bundleExistsFn = vi.fn(async () => true);
+    h.deps.copyBundleFn = vi.fn(async () => {
+      throw new Error('simulated bundle copy failure');
+    });
+
+    const batch: UniformApplyBatch = { templates: { '@gears-frontx/frontx-template-shell': ['.'] } };
+    const result = await seedRepository(REPO_ROOT, batch, false, h.deps);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    // The payload apply materialized is gone — rolled back, not merely
+    // unrecorded — and so is the state document apply's own failure never
+    // wrote to (seed's OWN pre-apply write, from BEFORE this call).
+    expect(h.files.has('/repo/package.json')).toBe(false);
+    expect(await h.deps.readProjectStateFn(projectStatePath(REPO_ROOT))).toBeNull();
+    // The report is honest about what happened: the CURRENT truth (rolled
+    // back, nothing remains) leads the message, rather than restating
+    // apply's own now-stale "still on disk" claim as though it were still
+    // true — and `writtenPaths` itself is dropped, since nothing it names
+    // is still on disk.
+    expect(result.message.startsWith('Seed has rolled back everything this attempt wrote')).toBe(true);
+    expect(result.details?.writtenPaths).toBeUndefined();
+
+    const secondAttempt = await seedRepository(REPO_ROOT, { templates: {} }, false, h.deps);
+    expect(secondAttempt.ok).toBe(true);
+  });
+
+  // DEFECT FIX (PR review, reproduced against the built binary): `seed` had
+  // no `try`/`catch` around `runApplyPipeline` — a thrown failure (EACCES,
+  // ENOSPC, a native abort) bypassed rollback entirely, propagating out of
+  // `seedRepository` itself with the state document (and any directory it
+  // created) left behind, permanently locking the directory out of a later
+  // `seed`. This throws from the batch's own existing-content reconciliation
+  // — a step `apply.ts` does NOT wrap in its own try (that only covers
+  // materialize-onward, see that file's own comment), so it genuinely
+  // escapes `runApplyPipeline` uncaught and reaches `seedRepository`'s own
+  // new `try`/`catch`, which now returns a structured refusal instead of
+  // throwing, and rolls back exactly as it does for a returned refusal.
+  it('rolls back and returns a structured refusal, never throwing, when the apply phase throws', async () => {
+    const h = makeHarness();
+    h.deps.readFileFn = vi.fn(async () => JSON.stringify(manifest('@gears-frontx/frontx-template-shell')));
+    h.deps.readInstalledContentFn = vi.fn(async () => {
+      throw new Error('EACCES: permission denied');
+    });
+
+    const batch: UniformApplyBatch = { templates: { '@gears-frontx/frontx-template-shell': ['.'] } };
+    const result = await seedRepository(REPO_ROOT, batch, false, h.deps);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('INTERNAL');
+    expect(result.message).toContain('EACCES');
+    expect(await h.deps.readProjectStateFn(projectStatePath(REPO_ROOT))).toBeNull();
+
+    const secondAttempt = await seedRepository(REPO_ROOT, { templates: {} }, false, h.deps);
+    expect(secondAttempt.ok).toBe(true);
   });
 });

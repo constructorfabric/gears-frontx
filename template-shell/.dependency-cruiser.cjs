@@ -202,9 +202,10 @@ module.exports = {
     // business type-parsing that output than a package's own.
     //
     // node_modules is matched at ANY depth, not just the root: after
-    // `frontx add mfe` (or CI's composition of template-mfe onto this shell),
-    // `npm install` nests a node_modules under each src-app/mfe_packages/*
-    // workspace whose pins conflict with the shell's. Anchored `^node_modules`
+    // registering and applying template-mfe (or CI's composition of
+    // template-mfe onto this shell), `npm install` nests a node_modules
+    // under each src-app/mfe_packages/* workspace whose pins conflict with
+    // the shell's. Anchored `^node_modules`
     // misses those, and dependency-cruiser then traverses the entire installed
     // dependency universe — which is not a rule violation but an OOM. Those same
     // overlaid workspaces build into `src-app/mfe_packages/*/dist`, listed below

@@ -33,7 +33,7 @@ import type {
   UnlinkDiskFileFn,
   WriteDiskFileFn,
 } from '../upgrade/types';
-import { assertPathWithinProjectRoot } from './fs-project-io';
+import { assertPathWithinProjectRoot, resolveWriteParentDir } from './fs-project-io';
 
 // Install-time output, never committed template content
 // (`cpt-frontx-algo-template-manifest-validate-content-self-containment`'s own
@@ -168,14 +168,30 @@ function walkRegularFiles(root: string, relativeDir: string): string[] {
  * `assertPathWithinProjectRoot` (`./fs-project-io.ts`) is the ONE shared
  * "inside the root, symlinks resolved" check every adapter that writes into
  * a project uses; thrown here, it is caught by `commitUpgrade`'s own
- * `inst-com-catch` exactly like any other I/O failure and reported as
- * `INTERNAL` with recovery — `INVALID_PATH` is deliberately never used for
- * `upgrade`'s own refusals (`upgrade/payload.ts`'s own header explains why).
+ * `inst-com-catch` exactly like any other I/O failure — recovery runs
+ * exactly as it would for any other failure at this point — but the outcome
+ * `commitUpgrade` reports for THIS class of failure is a rethrow of the
+ * original `PathContainmentError`, once recovery has fully returned every
+ * already-landed destination to baseline, never its own `INTERNAL` shape.
+ * That rethrow propagates past `upgrade/flow.ts` and `commands/upgrade.ts`
+ * (neither wraps `commitUpgrade`'s call) to `cli.ts`'s `run()`, which maps
+ * `PathContainmentError` to `INVALID_PATH` — the SAME mapping `register`/
+ * `apply`/`delete`'s own containment refusals already get. `commitUpgrade`'s
+ * own TYPED refusal vocabulary (`CommitOutcome`/`UpgradeRefusalCode`) still
+ * never lists `INVALID_PATH` (`upgrade/payload.ts`'s own header explains
+ * why) — that vocabulary is for VALUES this algorithm decides to hand back,
+ * and a containment escape was never one of upgrade's own decisions to
+ * classify, exactly like it is not `register`'s or `apply`'s.
  */
 export function createFsWriteDiskFileFn(repoRoot: string): WriteDiskFileFn {
   return async function writeDiskFile(absolutePath: string, content: string): Promise<void> {
     assertPathWithinProjectRoot(repoRoot, absolutePath);
-    fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+    // `resolveWriteParentDir`, not a literal `path.dirname(absolutePath)`:
+    // see `fs-project-io.ts`'s DANGLING-SYMLINK-INSIDE FIX comment. An
+    // ALLOWED dangling symlink at (or above) `absolutePath` needs its
+    // resolved target's directory created, not the directory literally
+    // containing the link — which already exists.
+    fs.mkdirSync(resolveWriteParentDir(absolutePath), { recursive: true });
     fs.writeFileSync(absolutePath, content, 'utf-8');
   };
 }
@@ -195,7 +211,11 @@ export function createFsWriteDiskFileFn(repoRoot: string): WriteDiskFileFn {
 export function createFsRenameDiskFileFn(repoRoot: string): RenameDiskFileFn {
   return async function renameDiskFile(from: string, to: string): Promise<void> {
     assertPathWithinProjectRoot(repoRoot, to);
-    fs.mkdirSync(path.dirname(to), { recursive: true });
+    // See `createFsWriteDiskFileFn` above and `fs-project-io.ts`'s
+    // DANGLING-SYMLINK-INSIDE FIX comment: `to` may resolve through an
+    // ALLOWED dangling symlink whose target's own directory does not exist
+    // yet.
+    fs.mkdirSync(resolveWriteParentDir(to), { recursive: true });
     fs.renameSync(from, to);
   };
 }

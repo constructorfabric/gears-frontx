@@ -420,4 +420,50 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
     expect(written().templates.appTemplate.targets).toEqual([]);
     expect(written().templates.adminTemplate.targets).toEqual(['admin']);
   });
+
+  // Every fixture above passes `noopAssertPathWithinRoot`, which never
+  // refuses anything — none of them would notice if `deleteTarget` stopped
+  // calling `assertPathWithinRootFn` at all, or stopped honouring its
+  // refusal. This case uses a REAL assertion that throws for one specific
+  // `toDelete` path (the CONTAINMENT ESCAPE FIX `delete.ts` itself documents
+  // — a target directory a developer replaced with a symlink to somewhere
+  // outside `/repo` between `apply` and this `delete`), so the suite
+  // actually exercises the abort path rather than assuming it exists.
+  it('aborts with INVALID_PATH, deleting nothing, when a planned deletion path escapes the project root', async () => {
+    const initialDocument: ProjectStateDocument = {
+      formatVersion: 1,
+      templates: { appTemplate: entry(['packages/app']) },
+      projectOwnedRoots: [],
+    };
+    const { read, write, written } = fakeProjectState(initialDocument);
+    const { remove, removed } = fakeRemoveFile();
+    const throwOnEscapedPath: AssertPathWithinRootFn = (absolutePath) => {
+      if (absolutePath.includes('escaped-symlink')) {
+        throw new Error(`"${absolutePath}" could not be proven to stay inside the project root.`);
+      }
+    };
+
+    const result = await deleteTarget(
+      'packages/app',
+      '/repo',
+      { jsonMode: true, dryRun: false, yes: true },
+      fakeInventory({ appTemplate: { excludedSubtrees: [] } }),
+      identityCanonicalize,
+      fakeListTargetFiles({ '/repo/packages/app': ['src/index.ts', 'escaped-symlink/data.ts'] }),
+      neverCalledReadFileFn,
+      remove,
+      throwOnEscapedPath,
+      read,
+      write,
+      neverConfirm(),
+    );
+
+    expect(result).toMatchObject({ ok: false, code: 'INVALID_PATH' });
+    // Fail-closed for the WHOLE plan, not just the offending path: the
+    // legitimate `src/index.ts` entry is left alone too, and the project
+    // state document is untouched.
+    expect(removed()).toEqual([]);
+    expect(write).not.toHaveBeenCalled();
+    expect(written().templates.appTemplate.targets).toEqual(['packages/app']);
+  });
 });

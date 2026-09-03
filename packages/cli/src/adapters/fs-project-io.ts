@@ -33,10 +33,78 @@ import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { ListTargetFilesFn } from '../scaffold/delete-plan';
 import type { PathExistsFn } from '../resolver/types';
 
+// SYMLINK-DESTINATION FIX (defect confirmed by PR review and reproduced
+// against the built binary): `writeFile` below used to hand `destPath`
+// straight to `fs.writeFileSync`, which follows a symlink at its FINAL path
+// component exactly like it follows one at an intermediate component. When
+// `destPath` was itself an existing symlink aliasing a DIFFERENT on-disk
+// file — the exact shape `adapters/fs-existing-content.ts`'s own
+// SYMLINK-INVISIBLE FIX now makes reconciliation able to SEE and refuse
+// before ever reaching this point — a write through it silently overwrote
+// whatever the link pointed at, which is precisely what `--adopt-existing`
+// promises never to touch.
+//
+// This function is the last, narrowest place that promise can still be kept:
+// it refuses outright when `destPath` already exists as a symlink, rather
+// than replacing it. `adapters/fs-ai-bundle.ts`'s `createFsCopyBundleFn`
+// replaces a symlink found at ITS destination instead — correct there
+// because that destination (`.frontx/ai/<name>/`) is ground ADR 0031 already
+// makes the CLI's own sole property, so nothing else is ever entitled to
+// have placed a symlink there. A payload path materialized by THIS function
+// is ordinary ground inside a developer's project, never CLI-owned — a
+// symlink standing there may be the developer's own deliberate structure
+// (see `fs-containment.test.ts`'s "a project may legitimately contain its
+// own symlinks"), and this function has no way to tell that case apart from
+// the aliasing defect above. Refusing is the only choice that cannot corrupt
+// content on either side of that distinction.
+//
+// This check is orthogonal to `assertPathWithinProjectRoot`: that function
+// (called separately, by `commands/apply.ts`, before this one) proves
+// `destPath` itself resolves inside the project root, symlinks resolved — it
+// says nothing about whether `destPath` ALREADY exists as a symlink, which
+// is exactly the case an INTERNAL alias (the reproduced defect: the link's
+// target was another file inside the same project) passes cleanly. Only an
+// ANCESTOR directory component being a symlink is unaffected by this
+// check — `mkdirSync(path.dirname(destPath))` and `writeFileSync` still
+// follow one exactly as before, so a project structured through a symlinked
+// directory (`app/src` -> `app/real-src`) keeps writing into its real target
+// precisely as it always has; only the FINAL component is inspected here.
+function refuseIfDestinationIsSymlink(destPath: string): void {
+  let stat: fs.Stats;
+  try {
+    stat = fs.lstatSync(destPath);
+  } catch (error) {
+    if (isEnoent(error)) return; // ordinary case: nothing stands here yet
+    throw error;
+  }
+  if (stat.isSymbolicLink()) {
+    throw new ExistingSymlinkDestinationError(destPath);
+  }
+}
+
+/**
+ * `destPath` already exists as a symlink, and a write was refused rather
+ * than following it — see `refuseIfDestinationIsSymlink`'s own doc comment
+ * for the full defect this guards against.
+ */
+export class ExistingSymlinkDestinationError extends Error {
+  readonly destPath: string;
+
+  constructor(destPath: string) {
+    super(
+      `Refusing to write "${destPath}": it already exists as a symlink, and writing through it could silently ` +
+        'overwrite whatever it points at instead of leaving existing content untouched.',
+    );
+    this.name = 'ExistingSymlinkDestinationError';
+    this.destPath = destPath;
+  }
+}
+
 /** Real `WriteFileFn` — writes a destination file, creating parent dirs. */
 export function createFsWriteFileFn(): WriteFileFn {
   return async function writeFile(destPath: string, content: string): Promise<void> {
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    refuseIfDestinationIsSymlink(destPath);
     fs.writeFileSync(destPath, content, 'utf-8');
   };
 }
@@ -153,7 +221,13 @@ export function createFsWriteProjectStateFn(): WriteProjectStateFn {
     const projectRoot = path.dirname(path.dirname(absolutePath));
     assertPathWithinProjectRoot(projectRoot, absolutePath);
     const dir = path.dirname(absolutePath);
-    fs.mkdirSync(dir, { recursive: true });
+    // `resolveWriteParentDir`, not a literal `fs.mkdirSync(dir, ...)`: `dir`
+    // may itself BE (or sit beneath) an ALLOWED dangling symlink — e.g. a
+    // `.frontx` symlink whose target lands inside the project but whose own
+    // parent does not exist yet — and a literal mkdir on `dir` creates
+    // nothing such a link's target needs (see this file's own
+    // DANGLING-SYMLINK-INSIDE FIX comment above `resolveWriteParentDir`).
+    fs.mkdirSync(resolveWriteParentDir(absolutePath), { recursive: true });
     const tempPath = path.join(dir, `.${path.basename(absolutePath)}.${crypto.randomUUID()}.tmp`);
     fs.writeFileSync(tempPath, content, 'utf-8');
     fs.renameSync(tempPath, absolutePath);
@@ -456,6 +530,47 @@ export function assertPathWithinProjectRoot(root: string, absolutePath: string):
   if (resolved === null || !isInside(realRoot, resolved)) {
     throw new PathContainmentError(absolutePath, root);
   }
+}
+
+// DANGLING-SYMLINK-INSIDE FIX (found in PR review, reproduced against the
+// built binary): `assertPathWithinProjectRoot` above deliberately ALLOWS a
+// dangling symlink whose (lexical, for a dangling one) target still resolves
+// inside the project root — "a project may legitimately contain its own
+// symlinks" (this file's own `resolveNearestExistingAncestor` header). But a
+// write through such a link used to still fail with an uncaught `ENOENT`
+// straight past every caller's error handling: every writer in this file and
+// in `fs-upgrade-io.ts` creates missing parent directories with
+// `fs.mkdirSync(path.dirname(absolutePath), { recursive: true })`, and
+// `path.dirname` on a path THROUGH a symlink names the directory CONTAINING
+// the link (which already exists — the link itself is a real directory entry
+// there), never the directory the OS will actually land in once it follows
+// that link. `mkdir -p app && ln -s app/missing/target.txt app/README.md`
+// followed by a write to `app/README.md` passed containment (correctly —
+// `missing/target.txt` resolves inside `app`) and then failed outright: the
+// literal `mkdirSync(path.dirname('app/README.md'))` creates nothing
+// `missing/` needs, since `app` already exists, and `fs.writeFileSync`/
+// `fs.renameSync` then follow the symlink straight into a `missing/`
+// directory that was never created.
+/**
+ * The directory that must exist before a write or rename into
+ * `absolutePath` can succeed, resolving every symlink along the way exactly
+ * as `assertPathWithinProjectRoot` already does for containment — the SAME
+ * walk (`resolveNearestExistingAncestor`), never a second, independently
+ * formulated resolution. The write/rename call itself is still made against
+ * the ORIGINAL, unresolved `absolutePath`: this only widens what `mkdirSync`
+ * is asked to prepare, so the OS's own symlink-following on the actual I/O
+ * call behaves exactly as it always has.
+ *
+ * Only ever called after `assertPathWithinProjectRoot` has already accepted
+ * the same path, so the `null` (symlink-cycle) case below is unreachable in
+ * practice — that call would have thrown first. The fallback to the literal
+ * `path.dirname` is defensive, not load-bearing: it reproduces this
+ * function's pre-fix behavior rather than inventing a new one for a state
+ * this function is never actually reached in.
+ */
+export function resolveWriteParentDir(absolutePath: string): string {
+  const resolved = resolveNearestExistingAncestor(path.resolve(absolutePath));
+  return path.dirname(resolved ?? absolutePath);
 }
 
 /**

@@ -12,16 +12,43 @@
 //
 // Deliberately simple, matching `adapters/fs-read-content-items.ts`'s own
 // scope: a plain recursive `readdir`/`readFile` walk, no symlink-cycle
-// handling. `readInstalledContent`'s installed-content-path enumeration
-// mirrors that adapter's own walk exactly (a template's installed content is
-// never a symlink farm); `readExistingContent`'s target-directory walk
-// intentionally applies NO skip list (no `node_modules` exclusion) for the
-// identical reason `adapters/fs-project-io.ts`'s `createFsListTargetFilesFn`
-// already gives for the delete-plan algorithm's own real-file enumeration:
-// the six-term effective-ownership subtraction these seams feed
+// handling (neither walk below ever descends INTO a symlinked directory, so
+// there is no cycle to guard against). `readInstalledContent`'s
+// installed-content-path enumeration mirrors that adapter's own walk exactly
+// (a template's installed content is never a symlink farm) and, like it,
+// still SKIPS a symlink dirent outright — that walk is unchanged by the fix
+// below; `adapters/fs-project-io.ts`'s `createFsListPayloadFilesFn` is the
+// sibling walker that resolves symlinks for a DIFFERENT algorithm (template
+// content self-containment), and is not this one.
+// `readExistingContent`'s target-directory walk intentionally applies NO
+// skip list (no `node_modules` exclusion) for the identical reason
+// `adapters/fs-project-io.ts`'s `createFsListTargetFilesFn` already gives for
+// the delete-plan algorithm's own real-file enumeration: the six-term
+// effective-ownership subtraction these seams feed
 // (`scaffold/effective-ownership.ts`) names no such exclusion, and adding
 // one here would silently add a seventh, undeclared term to that one
 // shared formula.
+//
+// SYMLINK-INVISIBLE FIX (found in PR review, reproduced against the built
+// binary): `readdirSync(..., { withFileTypes: true })` reports a symlink
+// dirent as neither `isDirectory()` nor `isFile()`, so a symlink already
+// standing at a TARGET path used to be skipped by this walk exactly like the
+// "fifo, socket, or device" entries it was written to ignore. That made
+// `readExistingContent` (this file's OTHER walk, feeding
+// `reconcileExistingContent`'s "existing" side) blind to it: a declared
+// payload path that a developer (or, one target over in the same batch, the
+// pipeline itself) had already turned into a symlink aliasing a DIFFERENT
+// on-disk file looked exactly like a brand-new path, and `commands/apply.ts`
+// materialized straight through it, following the link into the aliased
+// file and overwriting content `--adopt-existing` had promised to leave
+// alone. `readExistingContent`'s walk below now reports a symlink dirent as
+// an OCCUPIED existing entry — never silently dropped — while still never
+// descending into it (matching this walk's own "deliberately simple, no
+// symlink-cycle handling" scope, and the reproduced defect is a symlinked
+// FILE, not a symlinked directory). `readInstalledContent`'s walk keeps
+// skipping a symlink outright: a TEMPLATE's own payload is a different data
+// source entirely (never expected to contain one), and is not this fix's
+// target.
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ContentItem } from '../scaffold/types';
@@ -32,6 +59,27 @@ import type { ReadInstalledContentFn, ReadExistingContentFn } from '../scaffold/
 // `inst-csc-enumerate-files`, which enumerates a payload "never descending into
 // a `node_modules` directory").
 const PAYLOAD_SKIP_DIR = 'node_modules';
+
+// A symlink's on-disk "content" cannot be meaningfully compared against a
+// payload's declared text content — matching the sibling upgrade engine's
+// own precedent for the identical class of ground
+// (`architecture/ADR/0021-project-upgrade-mechanism.md`: "A payload path
+// where the disk holds a directory or a symlink instead of a regular file
+// cannot be compared at all and refuses the same way, fail-closed, with
+// CONTENT_CONFLICT."). Rather than attempt to read through a link that might
+// alias another location entirely, resolve outside the project, or not
+// resolve at all, `readExistingContent`'s walk below reports a symlink
+// dirent as an EXISTING entry (occupying its path, so reconciliation never
+// treats it as if nothing were there) carrying this fixed marker as its
+// `content` — a value no legitimate template payload could ever author, so
+// the entry can never land in `identicalFiles` and always forces the honest
+// partition: `contentConflicts` when the payload declares this exact path,
+// `additionalPaths` when it does not, for `--adopt-existing` to decide. The
+// value is a CONSTANT (not e.g. a per-call random one) so that reading the
+// same on-disk symlink twice — exactly what `commands/apply.ts`'s own
+// adopted-path snapshot-then-reread verification does — reports it
+// identically both times when nothing about that symlink actually changed.
+const SYMLINK_CONTENT_MARKER = '\uFFFF\uFFFFfrontx:existing-content:symlink-cannot-be-compared\uFFFF\uFFFF';
 
 // `skipInstallOutput` distinguishes the two callers below, and the distinction
 // is load-bearing rather than cosmetic:
@@ -49,8 +97,19 @@ const PAYLOAD_SKIP_DIR = 'node_modules';
 //     undeclared seventh term — the exact reason
 //     `createFsListTargetFilesFn`'s own comment gives for ITS empty skip set.
 //
-// One walk, one parameter, so the two rules cannot drift apart in two copies.
-function listFilesRecursive(root: string, skipInstallOutput: boolean, relativeDir = ''): ContentItem[] {
+// `reportSymlinksAsExisting` is the SYMLINK-INVISIBLE FIX's own per-caller
+// switch (this file's header comment) — `false` for `readInstalledContent`
+// (a template's payload keeps skipping a symlink outright, unchanged), `true`
+// for `readExistingContent` (a target's on-disk symlink is now reported,
+// never silently dropped).
+//
+// One walk, two parameters, so no rule can drift apart into a second copy.
+function listFilesRecursive(
+  root: string,
+  skipInstallOutput: boolean,
+  reportSymlinksAsExisting: boolean,
+  relativeDir = '',
+): ContentItem[] {
   const absoluteDir = path.join(root, relativeDir);
   const entries = fs.readdirSync(absoluteDir, { withFileTypes: true });
   const items: ContentItem[] = [];
@@ -58,15 +117,21 @@ function listFilesRecursive(root: string, skipInstallOutput: boolean, relativeDi
     const relativePath = relativeDir === '' ? entry.name : `${relativeDir}/${entry.name}`;
     if (entry.isDirectory()) {
       if (skipInstallOutput && entry.name === PAYLOAD_SKIP_DIR) continue;
-      items.push(...listFilesRecursive(root, skipInstallOutput, relativePath));
+      items.push(...listFilesRecursive(root, skipInstallOutput, reportSymlinksAsExisting, relativePath));
     } else if (entry.isFile()) {
       items.push({ path: relativePath, content: fs.readFileSync(path.join(root, relativePath), 'utf-8') });
+    } else if (reportSymlinksAsExisting && entry.isSymbolicLink()) {
+      // Reported, never resolved and never descended into — see this
+      // constant's own doc comment for why an uncomparable marker, rather
+      // than the link's real target content, is the honest thing to report.
+      items.push({ path: relativePath, content: SYMLINK_CONTENT_MARKER });
     }
-    // A symlink or other special entry is neither a directory nor a file by
-    // `withFileTypes`'s own report; skipped rather than resolved, matching
-    // `fs-read-content-items.ts`'s identical scope for the identical reason
-    // (a template's installed content, and an applied target, are not
-    // expected to be symlink farms).
+    // Any other special entry (fifo, socket, device), or — when
+    // `reportSymlinksAsExisting` is false — a symlink, is neither a
+    // directory nor a file by `withFileTypes`'s own report and is skipped,
+    // matching `fs-read-content-items.ts`'s identical scope for the
+    // identical reason (a template's installed content is not expected to
+    // be a symlink farm).
   }
   return items;
 }
@@ -85,8 +150,11 @@ export function createFsReadInstalledContentFn(repoRoot: string): ReadInstalledC
   return async function readInstalledContent(installedContentPath: string): Promise<ContentItem[]> {
     const absolute = path.isAbsolute(installedContentPath) ? installedContentPath : path.join(repoRoot, installedContentPath);
     if (!fs.existsSync(absolute)) return [];
-    // A TEMPLATE's payload: install output is not content.
-    return listFilesRecursive(absolute, true);
+    // A TEMPLATE's payload: install output is not content. `false` here
+    // keeps a symlink dirent skipped outright, unchanged by the
+    // SYMLINK-INVISIBLE FIX above (this file's header comment) — a
+    // template's own payload is not this fix's target.
+    return listFilesRecursive(absolute, true, false);
   };
 }
 
@@ -107,8 +175,11 @@ export function createFsReadExistingContentFn(repoRoot: string): ReadExistingCon
     // against a payload's own project-relative path set — which never
     // spells the "." prefix either (`joinUnderTarget`,
     // `../paths/relative-path.ts`) — compares like for like.
-    // A project TARGET: no skip list, per the six-term subtraction.
-    const items = listFilesRecursive(absolute, false);
+    // A project TARGET: no skip list, per the six-term subtraction. `true`
+    // here is the SYMLINK-INVISIBLE FIX itself (this file's header comment)
+    // — a symlink already on disk under this target is reported as an
+    // existing entry rather than silently skipped.
+    const items = listFilesRecursive(absolute, false, true);
     if (target === '.') return items;
     return items.map((item) => ({ ...item, path: `${target}/${item.path}` }));
   };

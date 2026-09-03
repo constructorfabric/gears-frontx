@@ -123,31 +123,33 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
 
 **Steps**:
 1. [x] - `p1` - Developer invokes `seed <dir> --input <batch>`, naming in the batch the official default templates to apply - `inst-seed-invoke`
-2. [x] - `p1` - **IF** `<dir>` already carries a `.frontx/project.json` - `inst-seed-if-already-seeded`
+2. [x] - `p1` - **IF** `<dir>` does not exist, or exists but is not a directory - `inst-seed-if-invalid-dir`
+   1. [x] - `p1` - **RETURN** `INVALID_PATH` naming the path; nothing written. Checked before any other seam is constructed, because the canonicalizer this command builds from `<dir>` resolves the real path and throws on a missing one — an unhandled throw the entrypoint could only report as an internal error, with no envelope at all in `--json` mode. A caller-supplied path that is not there is an ordinary user error and answers like one - `inst-seed-return-invalid-dir`
+3. [x] - `p1` - **IF** `<dir>` already carries a `.frontx/project.json` - `inst-seed-if-already-seeded`
    1. [x] - `p1` - **RETURN** `INVALID_INPUT`, directing the developer to `apply` instead; nothing written - `inst-seed-return-already-seeded`
-3. [x] - `p1` - **FOR EACH** batch entry naming a default template, before writing anything the CLI resolves and validates it exactly as the register algorithm would (`cpt-frontx-algo-composed-provenance-register`), without writing - `inst-seed-preflight-defaults`
+4. [x] - `p1` - **FOR EACH** batch entry naming a default template, before writing anything the CLI resolves and validates it exactly as the register algorithm would (`cpt-frontx-algo-composed-provenance-register`), without writing - `inst-seed-preflight-defaults`
    1. [x] - `p1` - **IF** the name does not name one of the CLI's official default templates, or probing its registration fails - `inst-seed-if-preflight-fail`
       1. [x] - `p1` - **RETURN** `TEMPLATE_NOT_REGISTERED` (unnamed default) or the probe's own failure code; nothing written, since this runs before the CLI's first write - `inst-seed-return-preflight-fail`
-4. [x] - `p1` - The CLI creates `.frontx/project.json` with the initial empty shape (`cpt-frontx-algo-composed-provenance-project-state-io`) - `inst-seed-create-project-state`
-5. [x] - `p1` - **IF** any step from here through the apply mechanism below fails - `inst-seed-rollback`
+5. [x] - `p1` - The CLI creates `.frontx/project.json` with the initial empty shape (`cpt-frontx-algo-composed-provenance-project-state-io`) - `inst-seed-create-project-state`
+6. [x] - `p1` - **IF** any step from here through the apply mechanism below fails - `inst-seed-rollback`
    1. [x] - `p1` - Before returning the failure, the CLI rolls back its own writes so far: removing `.frontx/project.json`, and removing the `.frontx` directory itself when this call created it (it did not already exist immediately before step 4 above) and it is now empty again — so the directory is left exactly as `seed` found it - `inst-seed-rollback`
-6. [x] - `p1` - **FOR EACH** batch entry naming an official default template not yet registered — every name here already passed the up-front validation above - `inst-seed-foreach-default`
+7. [x] - `p1` - **FOR EACH** batch entry naming an official default template not yet registered — every name here already passed the up-front validation above - `inst-seed-foreach-default`
    1. [x] - `p1` - The CLI resolves the built-in default's origin and invokes the register algorithm (`cpt-frontx-algo-composed-provenance-register`) to pin it and write `templates[name]` - `inst-seed-register-default`
    2. [x] - `p1` - **IF** resolution or registration fails - `inst-seed-if-register-fail`
       1. [x] - `p1` - Roll back (`inst-seed-rollback`) and **RETURN** `ORIGIN_UNAVAILABLE` naming the default and its origin; abort before any target is applied, nothing remains written - `inst-seed-return-register-fail`
-7. [x] - `p1` - The CLI resolves and re-stages the batch (`cpt-frontx-algo-cli-scaffolding-uniform-apply`) against the now-registered names - `inst-seed-resolve`
-8. [x] - `p1` - **IF** any named template still has no entry in the project state store, or its registered origin cannot be auto-installed - `inst-seed-if-resolve-fail`
+8. [x] - `p1` - The CLI resolves and re-stages the batch (`cpt-frontx-algo-cli-scaffolding-uniform-apply`) against the now-registered names - `inst-seed-resolve`
+9. [x] - `p1` - **IF** any named template still has no entry in the project state store, or its registered origin cannot be auto-installed - `inst-seed-if-resolve-fail`
    1. [x] - `p1` - Roll back (`inst-seed-rollback`) and **RETURN** the corresponding failure (`TEMPLATE_NOT_REGISTERED` or `ORIGIN_UNAVAILABLE`); nothing further remains written - `inst-seed-return-resolve-fail`
-9. [x] - `p1` - The CLI runs the pre-flight conflict check (`cpt-frontx-algo-cli-scaffolding-conflict-check`); because no template has yet been applied in this project, the comparison set is the batch's own entries plus reserved ground only (`.frontx`, the reserved environment entries `.git`/`.DS_Store`/`Thumbs.db`; there is no `projectOwnedRoots` yet) - `inst-seed-conflict-check`
-10. [x] - `p1` - **IF** the check reports an intersecting claim - `inst-seed-if-conflict`
+10. [x] - `p1` - The CLI runs the pre-flight conflict check (`cpt-frontx-algo-cli-scaffolding-conflict-check`); because no template has yet been applied in this project, the comparison set is the batch's own entries plus reserved ground only (`.frontx`, the reserved environment entries `.git`/`.DS_Store`/`Thumbs.db`; there is no `projectOwnedRoots` yet) - `inst-seed-conflict-check`
+11. [x] - `p1` - **IF** the check reports an intersecting claim - `inst-seed-if-conflict`
     1. [x] - `p1` - Roll back (`inst-seed-rollback`) and **RETURN** `TARGET_CONFLICT`; nothing remains written - `inst-seed-return-conflict`
-11. [x] - `p1` - The CLI runs existing-content reconciliation (`cpt-frontx-algo-cli-scaffolding-existing-content`) for every target in the batch — every target is unrecorded, since the project state store was just created empty - `inst-seed-existing-content`
-12. [x] - `p1` - **IF** any target reports a content conflict, or reports additional paths and `--adopt-existing` was not given - `inst-seed-if-existing-conflict`
+12. [x] - `p1` - The CLI runs existing-content reconciliation (`cpt-frontx-algo-cli-scaffolding-existing-content`) for every target in the batch — every target is unrecorded, since the project state store was just created empty - `inst-seed-existing-content`
+13. [x] - `p1` - **IF** any target reports a content conflict, or reports additional paths and `--adopt-existing` was not given - `inst-seed-if-existing-conflict`
     1. [x] - `p1` - Roll back (`inst-seed-rollback`) and **RETURN** `CONTENT_CONFLICT` or `EXISTING_PATHS_REQUIRE_DECISION` naming the paths; nothing remains written for the whole batch - `inst-seed-return-existing-conflict`
-13. [x] - `p1` - The CLI materializes every target in the batch in one operation, leaving any adopted additional paths untouched - `inst-seed-materialize`
-14. [x] - `p1` - For each template name that just received its first target, the CLI materializes that name's CLI-owned AI-extension bundle (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) into `.frontx/ai/<manifest-name>/`, when the template's payload carries one - `inst-seed-materialize-bundle`
-15. [x] - `p1` - The CLI records every newly applied target under its template's entry in the project state store (`cpt-frontx-feature-composed-provenance`) - `inst-seed-record`
-16. [x] - `p1` - **RETURN** success — repository seeded, every default registered, every target recorded - `inst-seed-return-done`
+14. [x] - `p1` - The CLI materializes every target in the batch in one operation, leaving any adopted additional paths untouched - `inst-seed-materialize`
+15. [x] - `p1` - For each template name that just received its first target, the CLI materializes that name's CLI-owned AI-extension bundle (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) into `.frontx/ai/<manifest-name>/`, when the template's payload carries one - `inst-seed-materialize-bundle`
+16. [x] - `p1` - The CLI records every newly applied target under its template's entry in the project state store (`cpt-frontx-feature-composed-provenance`) - `inst-seed-record`
+17. [x] - `p1` - **RETURN** success — repository seeded, every default registered, every target recorded - `inst-seed-return-done`
 
 ### Apply a Batch into an Already-Assembled Repository
 
@@ -196,6 +198,7 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
 - Developer runs `delete <target>` interactively: the CLI computes the deletion plan, shows what would be deleted and what would be preserved, prompts for confirmation defaulting to No, and on explicit confirmation removes the deletion plan's ground from disk and removes the target from its template's entry in the project state store.
 - An AI agent acting for the developer runs `delete <target> --json`: the CLI returns `CONFIRMATION_REQUIRED` with the delete/preserve lists, never prompting or reading stdin; having obtained the developer's authorization out of band, the agent re-issues the identical command with `--yes`, and the CLI recomputes the identical geometry — never trusting the first call's result — before deleting.
 - Developer or agent runs `delete <target> --dry-run`: the CLI reports the same delete/preserve lists without deleting anything and without requiring confirmation in either mode, because nothing is at stake to confirm.
+- Deleting `<target>` empties its template name's last remaining target, and the CLI's own follow-up removal of that name's `.frontx/ai/<manifest-name>/` bundle fails: the deletion still reports success — the target's ground is gone and the project state document already reflects it, both correct — and names the surviving bundle path in the reported `aiBundleResidue`, rather than reporting the whole operation as failed over a destruction that already happened.
 
 **Error Scenarios**:
 - `<target>` is not found among any registered template's `targets` array: the CLI refuses with `TARGET_NOT_APPLIED`, naming the target as not an applied instance of any registered template.
@@ -221,8 +224,8 @@ A template's AI-extension bundle at `.frontx/ai/<manifest-name>/` is delivered b
 7. [x] - `p1` - Remove the deletion plan's ground from disk, preserving every path in the plan's preserve list - `inst-del-remove`
 8. [x] - `p1` - Remove `<target>` from its template's `targets` array in the project state store (`cpt-frontx-feature-composed-provenance`) - `inst-del-update-state`
 9. [x] - `p1` - **IF** this removal empties the owning template name's `targets` array - `inst-del-if-last-target`
-   1. [x] - `p1` - The CLI removes that name's CLI-owned AI-extension bundle at `.frontx/ai/<manifest-name>/`, if present (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) - `inst-del-remove-bundle`
-10. [x] - `p1` - **RETURN** success — the deleted and preserved lists - `inst-del-return-success`
+   1. [x] - `p1` - The CLI removes that name's CLI-owned AI-extension bundle at `.frontx/ai/<manifest-name>/`, if present (`cpt-frontx-algo-cli-scaffolding-ai-bundle`). By this point the target's ground is already off disk and its template-state entry already updated (steps 7–8 above), both real and correct; if this bundle removal itself fails, that failure is not surfaced as a refused operation over a deletion that in fact already happened — it is carried forward as `aiBundleResidue` (manifest name, path, and the failure's own message) on the success outcome step 10 returns, rather than reported as `ok: false` or silently dropped - `inst-del-remove-bundle`
+10. [x] - `p1` - **RETURN** success — the deleted and preserved lists, the owning template name, whether this deletion emptied it, and `aiBundleResidue` when the CLI-owned bundle removal above failed (absent, never `null`, otherwise) - `inst-del-return-success`
 
 ## 3. Processes / Business Logic (CDSL)
 
