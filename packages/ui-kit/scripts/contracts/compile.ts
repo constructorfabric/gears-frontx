@@ -34,15 +34,17 @@
 //        The instance path is outPath with `.json` swapped for
 //        `.instance.json`; both files are written together.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { extractComponent, type Extraction } from './extract';
+// YAML 1.2, where a bare `no`/`off`/`yes`/`on` stays a string. Under the
+// YAML 1.1 rules js-yaml implements, those spellings parse as booleans, so
+// an overlay writing one unquoted (a `hint: no`, an anti-pattern `dont: on`)
+// would reach the compiler as `false`/`true` and fail the metamodel's
+// `type: string` far from the line that caused it.
+import { parse as parseYaml } from 'yaml';
 
-// Demo shortcut: js-yaml is what the workspace already hoists. Production
-// pins the `yaml` package (YAML 1.2) so bare `off`/`no` stay strings.
-const yaml = createRequire(import.meta.url)('js-yaml') as { load: (text: string) => unknown };
+import { extractComponent, type Extraction } from './extract';
 
 export interface Examples {
   good: { title: string; code: string }[];
@@ -193,7 +195,7 @@ export function propsSchemaId(component: string): string {
 
 function loadOverlay(component: string): Overlay {
   const path = join(kitRoot, 'src', 'components', component, `${component}.contract.yaml`);
-  const overlay = yaml.load(readFileSync(path, 'utf8')) as Overlay & Record<string, unknown>;
+  const overlay = parseYaml(readFileSync(path, 'utf8')) as Overlay & Record<string, unknown>;
 
   const shadowed = MACHINE_OWNED.filter((key) => key in overlay);
   if (shadowed.length > 0) {
