@@ -248,6 +248,54 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
     expect(removeAiBundle).toHaveBeenCalledWith('appTemplate');
   });
 
+  it('bundle-cleanup failure after the last target is deleted reports success with a named residue, never ok:false over a completed deletion', async () => {
+    const initialDocument: ProjectStateDocument = {
+      formatVersion: 1,
+      templates: { appTemplate: entry(['packages/app']) },
+      projectOwnedRoots: [],
+    };
+    const { read, write, written } = fakeProjectState(initialDocument);
+    const { remove, removed } = fakeRemoveFile();
+    const removeAiBundle = vi.fn(async () => {
+      throw new Error('".frontx/ai/appTemplate" could not be proven to stay inside the project root.');
+    });
+
+    const result = await deleteTarget(
+      'packages/app',
+      '/repo',
+      { jsonMode: true, dryRun: false, yes: true },
+      fakeInventory({ appTemplate: { excludedSubtrees: [] } }),
+      identityCanonicalize,
+      fakeListTargetFiles({ '/repo/packages/app': ['src/index.ts'] }),
+      neverCalledReadFileFn,
+      remove,
+      noopAssertPathWithinRoot,
+      read,
+      write,
+      neverConfirm(),
+      removeAiBundle,
+    );
+
+    // The envelope reports success: the deletion this call was asked to
+    // perform genuinely happened and is genuinely recorded — asserted
+    // below against the same fakes' actual state, not just the return
+    // value's own claim.
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.outcome !== 'deleted') throw new Error('expected a deleted outcome');
+    expect(result.wasLastTarget).toBe(true);
+    expect(result.aiBundleResidue).toMatchObject({
+      manifestName: 'appTemplate',
+      path: '.frontx/ai/appTemplate',
+    });
+    expect(result.aiBundleResidue?.message).toContain('could not be proven to stay inside the project root');
+
+    // On-disk and project-state outcome actually matches what the envelope
+    // claims: the target's files are gone and its entry's targets[] is
+    // empty — the residue names ONLY the bundle cleanup, nothing else.
+    expect(removed()).toEqual(['/repo/packages/app/src/index.ts']);
+    expect(written().templates.appTemplate.targets).toEqual([]);
+  });
+
   it('does not call the optional AI-bundle seam when this was not the last target', async () => {
     const initialDocument: ProjectStateDocument = {
       formatVersion: 1,

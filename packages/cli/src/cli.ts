@@ -20,7 +20,7 @@
 import readline from 'node:readline/promises';
 import path from 'node:path';
 import process from 'node:process';
-import { realpathSync } from 'node:fs';
+import { realpathSync, readdirSync, rmdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { installCommand } from './commands/install';
@@ -35,7 +35,7 @@ import type { AssembleOutcome } from './commands/assemble';
 import { runApplyPipeline } from './commands/apply';
 import type { ApplyBatchOutcome, ApplyPipelineDeps } from './commands/apply';
 import { seedRepository } from './commands/seed-repository';
-import type { SeedRepositoryOutcome } from './commands/seed-repository';
+import type { SeedRepositoryOutcome, RemoveEmptyDirFn } from './commands/seed-repository';
 import { upgradeCommand } from './commands/upgrade';
 import type { UpgradeCommandOutcome, UpgradeDirection } from './commands/upgrade';
 import type { UpgradeEngineDeps } from './upgrade/flow';
@@ -98,6 +98,7 @@ import {
   createFsListTargetFilesFn,
   createFsPathExistsFn,
   createFsAssertPathWithinRootFn,
+  PathContainmentError,
 } from './adapters/fs-project-io';
 
 // --- exit-code state machine (cpt-frontx-state-cli-invocation-run) ---
@@ -215,6 +216,19 @@ export interface CliDeps {
   listPayloadFilesFn: ListPayloadFilesFn;
   resolveDeclaredExclusionFn: ResolveDeclaredExclusionFn;
   readTargetPathStateFn: ReadTargetPathStateFn;
+  // `seed` ONLY — probes `<dir>` itself (not a template target) before
+  // dispatching into `seedRepository`: an absent path or an existing FILE
+  // both currently reach a raw `fs` throw several seams deep (the
+  // canonicalize-target factory's own `realpathSync` refusal, or a
+  // downstream `mkdirSync` under a path with a file component), surfacing
+  // as an uncaught internal error (exit 2, no `--json` envelope) rather
+  // than the ordinary `INVALID_PATH` user-error refusal a caller-supplied
+  // bad path deserves. A SEPARATE field from `readTargetPathStateFn` above
+  // (same type, same real adapter) rather than a second use of it: that
+  // seam probes individual TARGETS inside an already-valid project, a
+  // different question from "is this the project root `seed` was even
+  // given".
+  readSeedDirStateFn: ReadTargetPathStateFn;
   // `register`/`assemble`/`apply`/`seed`/`upgrade` — the shared resolver's
   // own local-`path:`-origin seams (`resolver/types.ts`'s `LocalOriginDeps`):
   // confirms a folder actually exists (containment alone cannot) and
@@ -243,6 +257,14 @@ export interface CliDeps {
   // shapes are deliberately distinct from this generic one, per `upgrade/
   // types.ts`'s own header).
   removeProjectFile: RemoveProjectFileFn;
+  // `seed` ONLY — rollback (`commands/seed-repository.ts`'s own
+  // `inst-seed-rollback`): removes the `.frontx` directory `seed`'s own
+  // first write may have created, but only when it is still (or once again)
+  // completely empty. No existing seam can do this — every other one here
+  // either reads/writes the ONE `.frontx/project.json` file, or removes a
+  // single file (`removeProjectFile` above, reused as-is for that document
+  // itself) — none can remove a directory.
+  removeEmptyDirFn: RemoveEmptyDirFn;
   // `register`/`unregister`/`ownership add|remove|list` — the single
   // project state document's own read/write seams (`.frontx/project.json`).
   // `createCanonicalizeTargetFn` is a FACTORY rather than a built
@@ -297,12 +319,18 @@ export function createRealDeps(): CliDeps {
     listPayloadFilesFn: createFsListPayloadFilesFn(),
     resolveDeclaredExclusionFn: createFsResolveDeclaredExclusionFn(),
     readTargetPathStateFn: createFsReadTargetPathStateFn(),
+    // Same real adapter as `readTargetPathStateFn` above — a fresh instance
+    // is unnecessary (the function is stateless), but a distinct FIELD keeps
+    // `seed`'s own root-directory probe conceptually separate from that
+    // seam's other, per-target callers (`ownership add`).
+    readSeedDirStateFn: createFsReadTargetPathStateFn(),
     existsFn: createFsPathExistsFn(),
     listFolderFilesFn: createFsListDiskFilesFn(),
     resolveInstalledContentPathFn: (name: string) => resolveInstalledContentPath(inventoryRoot, name),
     createReadInstalledContentFn: createFsReadInstalledContentFn,
     createReadExistingContentFn: createFsReadExistingContentFn,
     removeProjectFile: createFsRemoveProjectFileFn(),
+    removeEmptyDirFn: createFsRemoveEmptyDirFn(),
     readProjectStateFn: createFsReadProjectStateFn(),
     writeProjectStateFn: createFsWriteProjectStateFn(),
     createCanonicalizeTargetFn: createFsCanonicalizeTargetFn,
@@ -310,6 +338,33 @@ export function createRealDeps(): CliDeps {
     listTargetFilesFn: createFsListTargetFilesFn(),
     confirmDeletion: createInteractiveDeletionConfirm(),
     presentUpgradePlan: createInteractiveUpgradeApproval(),
+  };
+}
+
+/**
+ * Real `RemoveEmptyDirFn` (`commands/seed-repository.ts`) — removes
+ * `absolutePath` only when it exists and is now completely empty; a no-op
+ * when it is absent, non-empty, or not a plain directory. `seed`'s own
+ * rollback is the ONLY caller: it never forces, never recurses, and never
+ * touches anything but the exact directory it is told to reconsider.
+ */
+function createFsRemoveEmptyDirFn(): RemoveEmptyDirFn {
+  return async function removeEmptyDir(absolutePath: string): Promise<void> {
+    let entries: string[];
+    try {
+      entries = readdirSync(absolutePath);
+    } catch {
+      return; // absent, or not a readable directory — nothing to remove
+    }
+    if (entries.length > 0) return; // genuinely non-empty — never forced
+    try {
+      rmdirSync(absolutePath);
+    } catch {
+      // Best-effort: a concurrent write between the `readdirSync` above and
+      // this `rmdirSync` (or a permission refusal) leaves the directory in
+      // place rather than escalating into a second failure on top of the
+      // one already being reported.
+    }
   };
 }
 
@@ -751,16 +806,30 @@ function renderDeleteOutcome(result: DeleteOutcome, jsonMode: boolean): CommandO
       ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
       : { exitCode: EXIT_SUCCESS, stdout: `Deletion of "${result.target}" declined; nothing was deleted.` };
   }
+  // `aiBundleResidue` is present ONLY when the deletion itself succeeded and
+  // was recorded, but the CLI-owned `.frontx/ai/<name>/` bundle could not be
+  // cleaned up afterwards. It is reported rather than swallowed: the outcome is
+  // an honest success — the target is gone and the project state says so — but
+  // one CLI-owned path survives, and a caller told nothing about it has no way
+  // to learn that it is there. Absent, not `null`, in the ordinary case.
   const data = {
     target: result.target,
     toDelete: result.toDelete,
     toPreserve: result.toPreserve,
     templateName: result.templateName,
     wasLastTarget: result.wasLastTarget,
+    ...(result.aiBundleResidue !== undefined ? { aiBundleResidue: result.aiBundleResidue } : {}),
   };
+  const residueNote =
+    result.aiBundleResidue !== undefined
+      ? ` The AI-extension bundle at "${result.aiBundleResidue.path}" could not be removed: ${result.aiBundleResidue.message}`
+      : '';
   return jsonMode
     ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
-    : { exitCode: EXIT_SUCCESS, stdout: `Deleted "${result.target}" (${result.toDelete.length} path(s) removed).` };
+    : {
+        exitCode: EXIT_SUCCESS,
+        stdout: `Deleted "${result.target}" (${result.toDelete.length} path(s) removed).${residueNote}`,
+      };
 }
 
 // `upgrade` — routes through the shared envelope exactly like `apply`/
@@ -1098,6 +1167,21 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       // a developer who typed `.` is told which directory was refused
       // rather than shown their own shorthand reflected at them.
       const targetDir = path.resolve(dir);
+      // DEFECT FIX (PR review, reproduced against the built binary): a
+      // missing `<dir>`, or one that names an existing FILE, used to reach
+      // `deps.createCanonicalizeTargetFn(targetDir)`/`seedRepository`
+      // several seams deep before failing on a raw, uncaught `fs` throw —
+      // surfacing as exit 2 (the internal-error class) with an EMPTY stdout
+      // under `--json`, never the single envelope `--json` mode owes every
+      // caller. A caller-supplied path that does not exist, or is not a
+      // directory, is an ordinary user error, refused here — before any
+      // other seam is even constructed — with the vocabulary this codebase
+      // already uses for an unusable path.
+      const targetDirState = await deps.readSeedDirStateFn(targetDir);
+      if (targetDirState !== 'directory') {
+        const message = `"${targetDir}" does not exist or is not a directory; seed requires an existing directory.`;
+        return renderSeedOutcome({ ok: false, code: 'INVALID_PATH', message, details: { dir: targetDir } }, jsonMode);
+      }
       const canonicalizeFn = deps.createCanonicalizeTargetFn(targetDir);
       const result = await seedRepository(targetDir, parsedBatch.batch, adoptExisting, {
         inventory: deps.inventory,
@@ -1116,6 +1200,8 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         copyBundleFn: createFsCopyBundleFn(),
         removeBundleFn: createFsRemoveBundleFn(),
         assertPathWithinRootFn: deps.createAssertPathWithinRootFn(targetDir),
+        removeProjectFileFn: deps.removeProjectFile,
+        removeEmptyDirFn: deps.removeEmptyDirFn,
       });
       return renderSeedOutcome(result, jsonMode);
     }
@@ -1749,6 +1835,21 @@ export async function run(argv: string[], deps: CliDeps): Promise<CommandOutcome
     // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-user-error
     // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-success
   } catch (error) {
+    // A containment violation is a USER error, not an internal one: the tree
+    // the caller pointed at carries a symlink leading out of the project, which
+    // they can see and fix. Reported through the ordinary envelope so a `--json`
+    // caller receives one parseable answer rather than the bare stderr line and
+    // internal-error exit every thrown error used to collapse into — the state
+    // writer's own refusal reached callers that way until this branch existed.
+    // @cpt-begin:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-user-error
+    if (error instanceof PathContainmentError) {
+      const envelope = err('INVALID_PATH', error.message, { path: error.offendingPath });
+      return parseJsonMode(parsed.args)
+        ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(envelope) }
+        : { exitCode: EXIT_USER_ERROR, stderr: error.message };
+    }
+    // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-user-error
+
     // The dispatched behavior failed unexpectedly -> internal-error exit code.
     // @cpt-begin:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-internal-error
     const message = error instanceof Error ? error.message : String(error);

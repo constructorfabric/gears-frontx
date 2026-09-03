@@ -13,8 +13,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { assembleBatch } from '../commands/assemble';
 import { runApplyPipeline } from '../commands/apply';
-import type { ApplyPipelineDeps } from '../commands/apply';
 import { seedRepository } from '../commands/seed-repository';
+import type { SeedRepositoryDeps } from '../commands/seed-repository';
 import { projectStatePath } from '../project-state/io';
 import type { UniformApplyBatch, UniformApplyInventoryPort } from '../scaffold/assembler';
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
@@ -124,7 +124,21 @@ function makeHarness() {
   const existsFn = vi.fn(async () => true);
   const listFolderFilesFn = vi.fn(async () => [] as string[]);
 
-  const deps: ApplyPipelineDeps = {
+  // `seed`'s own rollback seams (`inst-seed-rollback`) — a plain "remove
+  // this one file" over the SAME in-memory `projectStateContent` store
+  // `readProjectStateFn`/`writeProjectStateFn` above already share, and a
+  // no-op for the `.frontx`-directory removal (this harness models no real
+  // filesystem, so there is no real directory for it to reconsider). Kept
+  // on the ONE `deps` object below — typed `SeedRepositoryDeps`, a strict
+  // superset of `ApplyPipelineDeps` — so every existing `assembleBatch`/
+  // `runApplyPipeline` call in this file keeps working unchanged (a wider
+  // object structurally satisfies the narrower parameter type they expect).
+  const removeProjectFileFn = vi.fn(async () => {
+    projectStateContent = null;
+  });
+  const removeEmptyDirFn = vi.fn(async () => undefined);
+
+  const deps: SeedRepositoryDeps = {
     inventory,
     fetchFn: vi.fn(async () => ''),
     readFileFn,
@@ -141,6 +155,8 @@ function makeHarness() {
     copyBundleFn,
     removeBundleFn,
     assertPathWithinRootFn,
+    removeProjectFileFn,
+    removeEmptyDirFn,
   };
 
   function registerInstalled(name: string, manifestJson: Record<string, unknown>, content: ContentItem[]): void {
@@ -689,21 +705,36 @@ describe('seedRepository — bootstrap a fresh project (cpt-frontx-flow-cli-scaf
   // Proves seed shares apply's own reconciliation — the identical refusal
   // `apply` itself produces for the same on-disk situation, rather than a
   // second, independently-formulated seed-only check.
-  it('refuses CONTENT_CONFLICT for a batch target whose on-disk content already differs from the payload, exactly as apply does', async () => {
+  //
+  // DEFECT FIX (PR review, reproduced against the built binary): this
+  // refusal is reached AFTER `seed` has already written `.frontx/project.json`
+  // and registered the default — `runApplyPipeline` itself refuses before
+  // writing any payload file, but the state document `seed` wrote earlier
+  // used to survive the refusal, permanently locking the directory out of a
+  // later `seed` call. Rollback now undoes that write on this exact path too.
+  it('refuses CONTENT_CONFLICT for a batch target whose on-disk content already differs from the payload, exactly as apply does — and rolls back, leaving the directory seedable again', async () => {
     const h = makeHarness();
     h.deps.readFileFn = vi.fn(async () => JSON.stringify(manifest('@gears-frontx/frontx-template-shell')));
     h.templateContent.set('template-shell', [{ path: 'package.json', content: '{}' }]);
     h.files.set('/repo/package.json', 'not what the template would write');
 
-    const result = await seedRepository(
-      REPO_ROOT,
-      { templates: { '@gears-frontx/frontx-template-shell': ['.'] } },
-      false,
-      h.deps,
-    );
+    const batch: UniformApplyBatch = { templates: { '@gears-frontx/frontx-template-shell': ['.'] } };
+    const result = await seedRepository(REPO_ROOT, batch, false, h.deps);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe('CONTENT_CONFLICT');
+    // No project state document, and no registered template, survives the
+    // refusal...
+    expect(await h.deps.readProjectStateFn(projectStatePath(REPO_ROOT))).toBeNull();
+
+    // ...so a second seed against the identical (still-conflicting)
+    // directory is refused with the SAME CONTENT_CONFLICT again, never
+    // INVALID_INPUT ("already seeded") — proving the first call's own state
+    // write did not survive its own refusal.
+    const secondAttempt = await seedRepository(REPO_ROOT, batch, false, h.deps);
+    expect(secondAttempt.ok).toBe(false);
+    if (secondAttempt.ok) return;
+    expect(secondAttempt.code).toBe('CONTENT_CONFLICT');
   });
 });

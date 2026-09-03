@@ -23,19 +23,26 @@ What an applied shell actually supplies is the **runtime host**: the
 Without an applied shell there is no host to mount into and no plugin to load,
 even though `npm install` alone would succeed.
 
+`seed` bootstraps a project from the CLI's built-in official defaults, which
+only resolve inside this monorepo checkout. Anywhere else, `register` a
+remote origin for each template and `apply` it — the path that works in a
+fresh external folder too:
+
 ```bash
-frontx seed frontx-template-shell ./my-app
-frontx add frontx-template-mfe ./my-app
-cd my-app && npm install   # required after every `add` — the workspace glob
-                            # picks up the new packages, so the lock must be
-                            # regenerated
+mkdir my-app && cd my-app
+frontx register <shell-origin>
+frontx apply --input '{"templates":{"frontx-template-shell":["."]}}'
+frontx register <mfe-origin>
+frontx apply --input '{"templates":{"frontx-template-mfe":["src-app/mfe_packages"]}}'
+npm install   # required after applying a new template — the workspace glob
+              # picks up the new packages, so the lock must be regenerated
 ```
 
-**Upgrade is not supported yet in a multi-template repository.** `frontx
-upgrade` reads a single provenance record; once both `frontx-template-shell`
-and `frontx-template-mfe` are applied to the same repo, upgrading either one
-is not yet safe — treat the repo as pinned to its current versions until this
-lands.
+**Upgrading a multi-template repository is supported.** `frontx upgrade`
+operates on one registered template name across every target it has been
+applied to, so `frontx-template-shell` and `frontx-template-mfe` upgrade
+independently by name once both are applied to the same repo — there is no
+restriction on upgrading after a second template has been added.
 
 ## Add your own MFE
 

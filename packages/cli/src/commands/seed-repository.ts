@@ -17,6 +17,7 @@
 // batch through the IDENTICAL mechanism `apply` uses
 // (`./apply.ts`'s `runApplyPipeline`) — never a second, independently
 // duplicated materialize/reconcile/record sequence.
+import path from 'node:path';
 import { registerTemplate, probeRegistration } from './register';
 import { officialDefaultOrigin } from './official-defaults';
 import { runApplyPipeline } from './apply';
@@ -24,9 +25,31 @@ import type { ApplyBatchTargetRef, ApplyPipelineDeps } from './apply';
 import type { UniformApplyBatch } from '../scaffold/assembler';
 import { projectStatePath } from '../project-state/io';
 import type { ProjectStateDocument } from '../project-state/types';
+import type { RemoveProjectFileFn } from '../upgrade/types';
 import type { ErrorCode } from '../envelope';
 
-export type SeedRepositoryDeps = ApplyPipelineDeps;
+// DEFECT FIX (PR review, reproduced against the built binary): removes the
+// directory at `absolutePath` only when it exists and is now completely
+// empty — a no-op when it is absent, or genuinely non-empty (never a
+// forced/recursive removal). The one capability `seedRepository`'s own
+// rollback (`inst-seed-rollback` below) needs that no existing seam
+// provides: every other project-state seam either reads/writes the ONE
+// `.frontx/project.json` FILE (`ReadProjectStateFn`/`WriteProjectStateFn`)
+// or removes a single file (`RemoveProjectFileFn`, reused as-is below for
+// that document itself) — none of them can remove the `.frontx` DIRECTORY
+// `seed`'s own first write may have brought into being as a side effect.
+// Real implementation wired at the `cli.ts` dispatch site, exactly as every
+// other seam here is.
+export type RemoveEmptyDirFn = (absolutePath: string) => Promise<void>;
+
+export type SeedRepositoryDeps = ApplyPipelineDeps & {
+  // Reused as-is (`adapters/fs-project-io.ts`'s `createFsRemoveProjectFileFn`,
+  // already wired into `CliDeps` as `removeProjectFile` for `delete`/
+  // `upgrade`'s own restores) — this is a plain "remove this one file" seam,
+  // and `.frontx/project.json` is exactly that.
+  removeProjectFileFn: RemoveProjectFileFn;
+  removeEmptyDirFn: RemoveEmptyDirFn;
+};
 
 export type SeedRepositoryOutcome =
   | { ok: true; registeredDefaults: string[]; applied: ApplyBatchTargetRef[]; noop: ApplyBatchTargetRef[] }
@@ -77,20 +100,22 @@ export async function seedRepository(
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-already-seeded
 
-  // DEFECT FIX: resolve and validate every batch entry named against the
-  // CLI's official defaults BEFORE the first write to the project below
-  // (`inst-seed-create-project-state`), so a batch naming a default that
-  // cannot actually be resolved is refused with the directory left EXACTLY
-  // as it was found — never a `.frontx/project.json` this same directory's
-  // next `seed` call would then be permanently refused for
-  // (`inst-seed-if-already-seeded` above refuses any directory that already
-  // carries one). Nothing here writes anything; a failure here leaves no
-  // state to undo, which is why this runs first rather than as a rollback
-  // after `inst-seed-create-project-state`/`inst-seed-register-default`
-  // below have already run.
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-preflight-defaults
+  // Resolve and validate every batch entry named against the CLI's official
+  // defaults BEFORE the first write below (`inst-seed-create-project-state`),
+  // so a batch naming a default that cannot actually be resolved is refused
+  // with the directory left EXACTLY as it was found — never a
+  // `.frontx/project.json` this same directory's next `seed` call would then
+  // be permanently refused for (`inst-seed-if-already-seeded` above refuses
+  // any directory that already carries one). Nothing here writes anything; a
+  // failure here leaves no state to undo, which is why this runs first
+  // rather than as a rollback after `inst-seed-create-project-state`/
+  // `inst-seed-register-default` below have already run.
   for (const name of Object.keys(batch.templates)) {
     const origin = officialDefaultOrigin(name);
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-preflight-fail
     if (origin === undefined) {
+      // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-preflight-fail
       return {
         ok: false,
         code: 'TEMPLATE_NOT_REGISTERED',
@@ -100,7 +125,9 @@ export async function seedRepository(
           'seed itself would have) and then "apply" it; nothing written.',
         details: { name },
       };
+      // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-preflight-fail
     }
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-preflight-fail
 
     const probe = await probeRegistration(
       origin,
@@ -112,7 +139,9 @@ export async function seedRepository(
       deps.existsFn,
       deps.listFolderFilesFn,
     );
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-preflight-fail
     if (!probe.ok) {
+      // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-preflight-fail
       return {
         ok: false,
         code: probe.code,
@@ -121,29 +150,65 @@ export async function seedRepository(
           `${probe.message}; nothing written.`,
         details: { name, origin },
       };
+      // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-preflight-fail
     }
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-preflight-fail
   }
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-preflight-defaults
+
+  // ROLLBACK GROUND: `.frontx` may not exist at all yet — captured BEFORE
+  // the write immediately below is the only way to later tell "`seed` itself
+  // created this directory" apart from "this directory was already here for
+  // some other reason" (`inst-seed-rollback`'s own qualifier: remove it only
+  // when `seed` created it AND it is now empty).
+  const frontxDir = path.dirname(projectStatePath(dir));
+  const frontxDirPreexisted = await deps.existsFn(frontxDir);
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-create-project-state
   await deps.writeProjectStateFn(projectStatePath(dir), JSON.stringify(initialProjectStateDocument(), null, 2));
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-create-project-state
+
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
+  // DEFECT FIX (PR review, reproduced against the built binary): every
+  // refusal below this line used to leave `.frontx/project.json` behind —
+  // the CLI reported failure, but the directory was left permanently
+  // "already seeded" for every later `seed` attempt. `runApplyPipeline`
+  // itself refuses before writing any payload FILE for every one of the
+  // failures this rollback is reached from (`CONTENT_CONFLICT`/
+  // `EXISTING_PATHS_REQUIRE_DECISION`/`TARGET_CONFLICT`/the pre-materialize
+  // payload-escape `INVALID_PATH` check — see `apply.ts`'s own instruction
+  // ordering), so the only ground `seed` itself ever has to undo is its OWN
+  // two writes above: the project state document, and — only when `seed`
+  // created it and it is now empty again — the `.frontx` directory that
+  // document's write brought into being as a side effect.
+  async function rollbackSeedWrites(): Promise<void> {
+    await deps.removeProjectFileFn(projectStatePath(dir));
+    if (!frontxDirPreexisted) {
+      await deps.removeEmptyDirFn(frontxDir);
+    }
+  }
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-foreach-default
   const registeredDefaults: string[] = [];
   for (const name of Object.keys(batch.templates)) {
     const origin = officialDefaultOrigin(name);
     if (origin === undefined) {
-      // Not one of the CLI's official defaults — `seed` accepts only those,
-      // since nothing else can be registered against yet (no prior `seed`
-      // call is required for a non-default template: `register` then
-      // `apply` is the complete bootstrap on its own).
+      // Unreachable in practice — the pre-flight loop above
+      // (`inst-seed-preflight-defaults`) already refused any name that does
+      // not resolve to an official default. Guarded rather than assumed
+      // away, for the same reason `apply.ts`'s own defensive branches are:
+      // a future caller reaching this point some other way must still be
+      // rolled back honestly rather than leaving the state document this
+      // call already wrote behind.
+      await rollbackSeedWrites();
       return {
         ok: false,
         code: 'TEMPLATE_NOT_REGISTERED',
         message:
           `Seed aborted — "${name}" is not one of the CLI's official default templates. Register it yourself ` +
           '(this creates ".frontx/project.json" on its own first mutation if it does not exist yet, exactly as ' +
-          'seed itself would have) and then "apply" it; whole batch aborted, nothing written.',
+          'seed itself would have) and then "apply" it; whole batch aborted, nothing remains written.',
         details: { name },
       };
     }
@@ -166,11 +231,16 @@ export async function seedRepository(
 
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-register-fail
     if (!registerResult.ok) {
+      // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
+      await rollbackSeedWrites();
+      // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
       // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-register-fail
       return {
         ok: false,
         code: 'ORIGIN_UNAVAILABLE',
-        message: `Seed aborted — official default "${name}" (origin "${origin}") could not be registered: ${registerResult.message}`,
+        message:
+          `Seed aborted — official default "${name}" (origin "${origin}") could not be registered: ` +
+          `${registerResult.message}; nothing remains written.`,
         details: { name, origin },
       };
       // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-register-fail
@@ -198,7 +268,12 @@ export async function seedRepository(
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-materialize-bundle
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-record
   const applyResult = await runApplyPipeline(batch, dir, adoptExisting, deps);
-  if (!applyResult.ok) return applyResult;
+  if (!applyResult.ok) {
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
+    await rollbackSeedWrites();
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
+    return applyResult;
+  }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-record
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-materialize-bundle
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-materialize

@@ -124,9 +124,34 @@ export function createFsReadProjectStateFn(): ReadProjectStateFn {
  * destination itself is never opened for writing at all — only the
  * temporary file is, and the rename that publishes it is a single atomic
  * filesystem operation.
+ *
+ * CONTAINMENT ESCAPE FIX (found in PR review, reproduced against the built
+ * binary): this was, until this fix, the ONE real adapter that writes into a
+ * project with NO containment check at all — every other one
+ * (`WriteFileFn`/`RemoveProjectFileFn` via `assertPathWithinProjectRoot`
+ * called from `commands/apply.ts`/`commands/delete.ts`; `fs-upgrade-io.ts`;
+ * `fs-ai-bundle.ts`) proves the write lands inside the project root,
+ * symlinks resolved, before it happens. `ln -s /outside/state .frontx`
+ * followed by any command that mutates project state (`register`,
+ * `unregister`, `ownership add|remove`, `upgrade`, `seed`) passed straight
+ * through and wrote `/outside/state/project.json`. `register`/`unregister`/
+ * `ownership *` operate on the current working directory with no explicit
+ * root argument of their own (this file's header, and `CliDeps`'
+ * `writeProjectStateFn` itself, is a plain shared value rather than a
+ * per-command factory precisely for that reason) — but every production
+ * caller reaches this function through `projectStatePath(repoRoot)`
+ * (`project-state/io.ts`), which is ALWAYS exactly `<repoRoot>/.frontx/
+ * project.json`, two path segments below the applicable root. That
+ * invariant is used here to recover the root this write must stay inside
+ * without threading a second constructor parameter through `CliDeps` for a
+ * value this store's own fixed shape already determines, then reuses the
+ * SAME `assertPathWithinProjectRoot` helper `WriteFileFn`'s own callers use
+ * — never a second, independently-formulated check.
  */
 export function createFsWriteProjectStateFn(): WriteProjectStateFn {
   return async function writeProjectState(absolutePath: string, content: string): Promise<void> {
+    const projectRoot = path.dirname(path.dirname(absolutePath));
+    assertPathWithinProjectRoot(projectRoot, absolutePath);
     const dir = path.dirname(absolutePath);
     fs.mkdirSync(dir, { recursive: true });
     const tempPath = path.join(dir, `.${path.basename(absolutePath)}.${crypto.randomUUID()}.tmp`);
@@ -319,18 +344,20 @@ function isInside(root: string, candidate: string): boolean {
  * while a target under check here ordinarily does NOT exist on disk yet —
  * this is the PRE-FLIGHT check for a batch that has not been materialized.
  *
- * `fs.realpathSync` throws on a path that does not exist, so it cannot be
- * called on the full candidate the way it is called on a template
- * directory already known to exist. Instead this walks UP from the
- * candidate toward the project root until it finds the nearest EXISTING
- * ancestor, resolves THAT ancestor's real path (following every symlink on
- * the way there, exactly as an already-existing full path would be), and
- * re-attaches the still-nonexistent remainder literally — a segment that
- * does not exist yet cannot itself be a symlink, so nothing is lost by not
- * resolving it. `path.resolve` (building the lexical candidate below)
- * already collapses a `..` segment before any filesystem call is made, so a
- * plain `../escape` is caught even when every component along the way is on
- * the same filesystem and fully readable.
+ * `fs.realpathSync` throws on a path that does not exist — and also on one
+ * that exists only as a DANGLING symlink, which is not the same thing as not
+ * existing at all (see `resolveNearestExistingAncestor`'s own doc comment
+ * below for why that distinction matters) — so it cannot be called on the
+ * full candidate the way it is called on a template directory already known
+ * to exist. Instead this walks the candidate component by component,
+ * resolving every symlink actually found along the way (dangling or not)
+ * exactly as an already-existing full path would be, and reattaches
+ * whatever never exists at all literally once the walk runs out of real
+ * ground — a segment that has never existed cannot itself be a symlink, so
+ * nothing is lost by not resolving it. `path.resolve` (building the lexical
+ * candidate below) already collapses a `..` segment before any filesystem
+ * call is made, so a plain `../escape` is caught even when every component
+ * along the way is on the same filesystem and fully readable.
  */
 export function createFsCanonicalizeTargetFn(projectRoot: string): CanonicalizeTargetFn {
   const realRoot = realPathOrNull(projectRoot);
@@ -388,13 +415,38 @@ export function createFsCanonicalizeTargetFn(projectRoot: string): CanonicalizeT
 //
 // A path that does not exist yet (the ordinary case for a write about to
 // create one) is handled exactly as `resolveNearestExistingAncestor`
-// already handles a not-yet-existing target: walk up to the nearest
-// EXISTING ancestor, resolve THAT through every symlink on its own path,
-// and reattach the never-existing remainder literally. An internal symlink
-// — one whose real target still resolves inside `root` — is deliberately
-// ALLOWED, never refused outright: a project may legitimately contain its
-// own symlinks, and only an escape past `root` is the defect this guard
-// exists to catch.
+// already handles a not-yet-existing target: walk forward component by
+// component, following every symlink found along the way — including one
+// whose own target does not exist (a DANGLING link, final component or
+// intermediate — see that function's own doc comment for why both shapes
+// matter) — and reattach whatever never exists at all literally, once the
+// walk runs out of real ground to stand on. An internal symlink — one whose
+// real (or, for a dangling one, LEXICAL) target still resolves inside
+// `root` — is deliberately ALLOWED, never refused outright: a project may
+// legitimately contain its own symlinks, and only an escape past `root` is
+// the defect this guard exists to catch.
+/**
+ * A path the CLI was asked to write, remove or claim could not be proven to
+ * stay inside the project root once symlinks were resolved.
+ *
+ * Typed rather than a bare `Error` so the command boundary can tell it apart
+ * from a genuine internal failure. Both used to arrive at `run()`'s catch as
+ * plain `Error`s and were reported identically: exit 2 with a bare stderr
+ * line and, under `--json`, no envelope at all. Containment being enforced is
+ * not the same as it being reported honestly — a caller cannot act on an
+ * internal-error exit for what is an ordinary, actionable problem with the
+ * tree it pointed the CLI at.
+ */
+export class PathContainmentError extends Error {
+  readonly offendingPath: string;
+
+  constructor(offendingPath: string, root: string) {
+    super(`Refusing to write outside the project root: "${offendingPath}" is not within "${root}".`);
+    this.name = 'PathContainmentError';
+    this.offendingPath = offendingPath;
+  }
+}
+
 export function assertPathWithinProjectRoot(root: string, absolutePath: string): void {
   const realRoot = realPathOrNull(root);
   if (realRoot === null) {
@@ -402,7 +454,7 @@ export function assertPathWithinProjectRoot(root: string, absolutePath: string):
   }
   const resolved = resolveNearestExistingAncestor(path.resolve(absolutePath));
   if (resolved === null || !isInside(realRoot, resolved)) {
-    throw new Error(`Refusing to write outside the project root: "${absolutePath}" is not within "${root}".`);
+    throw new PathContainmentError(absolutePath, root);
   }
 }
 
@@ -423,28 +475,85 @@ export function createFsAssertPathWithinRootFn(projectRoot: string): AssertPathW
   };
 }
 
-// Walks up from `lexicalCandidate` toward the filesystem root, one segment
-// at a time, until an ancestor that actually exists is found; resolves that
-// ancestor through every symlink on its own path (`realPathOrNull`), then
-// reattaches the never-existing remainder literally, deepest segment last.
-// `null` only when even the filesystem root itself could not be resolved —
-// kept as a fail-closed guard rather than an assumed-unreachable branch,
-// since `realRoot` resolving successfully in the enclosing factory does not
-// itself prove every ancestor above it in this SAME walk still will a
-// moment later (a permission change between the two calls, however
-// unlikely, is not assumed away here).
+// SYMLINK-ESCAPE FIX (found in PR review, reproduced against the built
+// binary): this function used to walk UP from `lexicalCandidate` toward the
+// filesystem root, one segment at a time, stopping at the nearest ancestor
+// `fs.realpathSync` could resolve, then reattaching every segment below that
+// literally as a plain name. That treated a DANGLING symlink — one that
+// exists (an `lstat` on it succeeds) but whose own target does not
+// (`realpathSync` on it therefore fails, exactly like a name that was never
+// created at all) — as if it were an ordinary not-yet-existing path
+// component, never as the link it actually is. `fs.writeFileSync` and every
+// other write/remove syscall do not make that mistake: they follow a
+// symlink's target on every component, dangling or not, so a dangling link
+// pointing outside the project silently became the OS's actual write
+// destination while this check kept comparing the wrong (literal,
+// unresolved) path against the root — `mkdir -p app && ln -s /outside/
+// nonexistent.txt app/README.md` followed by a write to `app/README.md`
+// passed this check and landed on `/outside/nonexistent.txt`. The same gap
+// applied to a dangling link in an INTERMEDIATE position, not only the final
+// component: the old walk could climb straight past it as just another
+// unresolved segment.
+//
+// The fix is to resolve the same way the OS does: left to right, one
+// component at a time, from the filesystem root down, following every
+// symlink found — dangling or not, final or intermediate — via `lstatSync`
+// (which reports the link itself, never silently follows it the way
+// `existsSync`/`realpathSync` do) and `readlinkSync`. A component that does
+// not exist at all (`lstatSync` throws `ENOENT`) ends the walk: since a
+// segment that has never existed cannot itself be a symlink, it and every
+// segment still queued behind it are joined onto what has been resolved so
+// far literally — this is the ordinary "about to create this path" case a
+// write is expected to hit constantly, and it is handled identically
+// whether or not any dangling link appeared earlier in the same walk. A
+// component that DOES exist as a symlink — whether or not what it points at
+// exists — is dereferenced via `readlinkSync`: an absolute target replaces
+// the walk's position outright; a relative one is resolved against the
+// symlink's OWN containing directory (`path.resolve`, which also collapses
+// any `..` the target itself contains) — either way the walk then continues
+// from the target, which may itself be another symlink, another dangling
+// link, or ground further outside `root` still to be discovered. A cycle of
+// symlinks is the only way this walk could fail to terminate, so the number
+// of links followed is capped (`MAX_SYMLINK_RESOLUTIONS`) and the walk
+// returns `null` — the same fail-closed answer `realpathSync`'s own `ELOOP`
+// produces — rather than looping forever.
+const MAX_SYMLINK_RESOLUTIONS = 40;
+
 function resolveNearestExistingAncestor(lexicalCandidate: string): string | null {
-  const remainder: string[] = [];
-  let probe = lexicalCandidate;
-  let real = realPathOrNull(probe);
-  while (real === null) {
-    const parent = path.dirname(probe);
-    if (parent === probe) return null; // filesystem root itself could not be resolved
-    remainder.unshift(path.basename(probe));
-    probe = parent;
-    real = realPathOrNull(probe);
+  const parsed = path.parse(lexicalCandidate);
+  const relative = lexicalCandidate.slice(parsed.root.length);
+  let queue = relative.length > 0 ? relative.split(path.sep).filter((segment) => segment.length > 0) : [];
+  let resolvedPrefix = parsed.root;
+  let linkResolutions = 0;
+
+  while (queue.length > 0) {
+    const name = queue.shift() as string;
+    const candidate = path.join(resolvedPrefix, name);
+    let stats;
+    try {
+      stats = fs.lstatSync(candidate);
+    } catch {
+      // Nothing stands here at all — this segment, and every segment still
+      // queued behind it, cannot exist either (a segment cannot exist
+      // beneath a parent that does not), so the whole remainder is reattached
+      // literally onto what has been resolved so far.
+      return queue.length > 0 ? path.join(candidate, ...queue) : candidate;
+    }
+    if (!stats.isSymbolicLink()) {
+      resolvedPrefix = candidate;
+      continue;
+    }
+    linkResolutions += 1;
+    if (linkResolutions > MAX_SYMLINK_RESOLUTIONS) return null; // symlink cycle
+    const linkTarget = fs.readlinkSync(candidate);
+    const absoluteTarget = path.isAbsolute(linkTarget) ? linkTarget : path.resolve(resolvedPrefix, linkTarget);
+    const targetParsed = path.parse(absoluteTarget);
+    const targetRelative = absoluteTarget.slice(targetParsed.root.length);
+    const targetSegments = targetRelative.length > 0 ? targetRelative.split(path.sep).filter((segment) => segment.length > 0) : [];
+    queue = [...targetSegments, ...queue];
+    resolvedPrefix = targetParsed.root;
   }
-  return remainder.length > 0 ? path.join(real, ...remainder) : real;
+  return resolvedPrefix;
 }
 
 // `relativeDir === ''` addresses `templateDir` itself (the payload-root

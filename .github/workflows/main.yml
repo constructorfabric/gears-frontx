@@ -414,6 +414,22 @@ jobs:
         # is no "manifest-only, zero packages by design" exemption here any
         # more — a future pure-docs overlay would need one added back
         # alongside its OVERLAY_TARGETS entry above.
+        #
+        # A bare COUNT of package.json files under $dest is not enough: the
+        # doubled-path defect this job exists to catch
+        # (`src-app/mfe_packages/src-app/mfe_packages/...`, shipped past the
+        # count-only version of this check because a doubled tree still has a
+        # positive count) needed an EXACT expected path per package, so a
+        # package landing one directory level deeper than intended still
+        # fails. OVERLAY_PACKAGES is that explicit expectation, paths relative
+        # to the overlay's own root — same fail-closed shape as
+        # OVERLAY_TARGETS above: a new overlay, or a new package inside an
+        # existing one, needs an entry added here for the same reason.
+        declare -A OVERLAY_PACKAGES=(
+          [template-mfe]="demo-mfe/package.json _blank-mfe/package.json widgets-fixture-a/package.json widgets-fixture-b/package.json"
+          [template-design-guardrails]="design-verify/package.json"
+        )
+
         # nullglob turns a top-level pattern that matches nothing (should
         # never happen — caught below by overlay_count) into zero iterations
         # instead of a literal, unexpanded pattern string.
@@ -449,16 +465,43 @@ jobs:
           # a hardcoded mfe_packages path.
           find "$dest" -not -path '*/node_modules/*' \
             -name package-lock.json -delete
-          # Counted from the target just populated, not a hardcoded
-          # `src-app/mfe_packages` path — OVERLAY_TARGETS already told us
-          # where this overlay's content landed.
-          overlay_count="$(find "$dest" -not -path '*/node_modules/*' \
-            -name package.json 2>/dev/null | wc -l)"
 
-          if [ "$overlay_count" -eq 0 ]; then
-            echo "::error::$overlay's payload landed at $target but contains no package (no package.json found)"
+          # Exact-path assertion, not a count: each declared package must
+          # exist at precisely $dest/<relative path> — the path
+          # OVERLAY_PACKAGES says a correctly-rooted payload produces. A
+          # doubled-prefix defect would land it one (or more) directories
+          # deeper instead, which a `find -name package.json | wc -l` count
+          # cannot distinguish from the correct tree (both are non-zero) but
+          # this can.
+          packages="${OVERLAY_PACKAGES[$overlay]:-}"
+          if [ -z "$packages" ]; then
+            echo "::error::$overlay has no declared expected packages — add it to OVERLAY_PACKAGES in this step"
             exit 1
           fi
+
+          overlay_count=0
+          for rel in $packages; do
+            if [ ! -f "$dest/$rel" ]; then
+              echo "::error::$overlay's payload landed at $target but the expected package $rel is missing — not found at $dest/$rel"
+              exit 1
+            fi
+            overlay_count=$((overlay_count + 1))
+          done
+
+          # No self-nesting: composing $overlay's payload into $target must
+          # never reproduce $target's own path again inside itself. This is
+          # exactly the doubled-path defect's shape
+          # (`src-app/mfe_packages/src-app/mfe_packages/...` — the overlay's
+          # payload still carrying its own ownership-prefixed root instead of
+          # being rooted at the overlay's top level) and is checked
+          # independently of the exact-path assertion above, since a defect
+          # that duplicated only SOME of a target's segments (not deep enough
+          # to also miss a declared package) would otherwise pass it.
+          if [ -d "$dest/$target" ]; then
+            echo "::error::$overlay composed a nested copy of its own target path at $dest/$target — the payload was not re-rooted at the overlay's own top level"
+            exit 1
+          fi
+
           echo "==> $overlay contributed $overlay_count package(s) at $target"
           composed_total=$((composed_total + overlay_count))
         done

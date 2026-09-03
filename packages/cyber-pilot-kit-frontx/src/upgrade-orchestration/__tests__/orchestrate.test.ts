@@ -66,14 +66,23 @@ const RESOLVABLE_CHANGESET: ChangeSet = {
 // the real command's contract: it computes (or fails to compute) a change
 // set, hands it to `onChangeSet` for review, and applies only on 'approved'.
 function makeCommandInvoker(options: {
-  resolvable?: boolean;
+  resolutionFailure?: { code: string; message: string };
+  noop?: boolean;
   applyFails?: boolean;
   changeSet?: ChangeSet;
 }): { invoke: InvokeUpgradeCommandFn; appliedSpy: ReturnType<typeof vi.fn> } {
   const appliedSpy = vi.fn();
   const invoke: InvokeUpgradeCommandFn = async (_projectRoot, _templateName, _targetVersion, onChangeSet) => {
-    if (options.resolvable === false) {
-      return { ok: false, status: 'resolution-failed', message: 'Target template not found in local inventory.' };
+    if (options.resolutionFailure) {
+      return { ok: false, status: 'resolution-failed', code: options.resolutionFailure.code, message: options.resolutionFailure.message };
+    }
+    if (options.noop) {
+      // The command surface's first, unconfirmed call reporting the
+      // project is already at the target version — `onChangeSet` is never
+      // invoked, exactly as it never is for a genuine resolution failure;
+      // this is the real no-op this kit's own `empty-changeset` status
+      // names, never a refusal.
+      return { ok: true, status: 'noop' };
     }
     const decision: ReviewDecision = await onChangeSet(options.changeSet ?? RESOLVABLE_CHANGESET);
     if (decision === 'approved') {
@@ -161,13 +170,39 @@ describe('orchestrateAiDrivenUpgrade (F17 — drives the SINGLE F14 engine throu
     }
   });
 
-  // inst-invoke-enrichment / inst-check-changeset / inst-empty-changeset
-  it('returns empty-changeset and presents no review when the command surface cannot resolve the change set', async () => {
-    const { invoke } = makeCommandInvoker({ resolvable: false });
+  // inst-invoke-enrichment / inst-check-changeset — a genuine no-op (the
+  // command surface's baseline already equals the candidate) is the ONLY
+  // case that legitimately reports "nothing to update": `onChangeSet` is
+  // never invoked, and the command surface itself reports `ok:true,
+  // status:'noop'` rather than a refusal.
+  it('returns empty-changeset and presents no review for a genuine no-op (baseline already equals the candidate)', async () => {
+    const { invoke } = makeCommandInvoker({ noop: true });
+    const presentSpy = vi.fn();
+    const deps = baseDeps({ invokeUpgradeCommand: invoke, presentEnrichedReview: presentSpy });
+    const result = await orchestrateAiDrivenUpgrade(PROJ_ROOT, 'my-template', '1.0.0', deps);
+    expect(result.status).toBe('empty-changeset');
+    expect(presentSpy).not.toHaveBeenCalled();
+  });
+
+  // inst-invoke-enrichment / inst-check-changeset — a genuine CLI refusal
+  // from the command surface's first call MUST surface as a failure
+  // carrying its own code, never as "nothing to update": `onChangeSet` is
+  // never invoked for this status either, which is exactly what used to
+  // make this indistinguishable from the real no-op above.
+  it.each([
+    { code: 'CONTENT_CONFLICT', message: 'A file was changed both by the candidate and on disk.' },
+    { code: 'TARGET_CONFLICT', message: 'Ground newly claimed holds another template\'s nested target.' },
+    { code: 'PROJECT_INVALID', message: 'The project state document is absent or unreadable.' },
+  ])('surfaces $code from the command surface as resolution-failed, never empty-changeset', async ({ code, message }) => {
+    const { invoke } = makeCommandInvoker({ resolutionFailure: { code, message } });
     const presentSpy = vi.fn();
     const deps = baseDeps({ invokeUpgradeCommand: invoke, presentEnrichedReview: presentSpy });
     const result = await orchestrateAiDrivenUpgrade(PROJ_ROOT, 'my-template', '9.9.9', deps);
-    expect(result.status).toBe('empty-changeset');
+    expect(result.status).toBe('resolution-failed');
+    if (result.status === 'resolution-failed') {
+      expect(result.code).toBe(code);
+      expect(result.message).toBe(message);
+    }
     expect(presentSpy).not.toHaveBeenCalled();
   });
 

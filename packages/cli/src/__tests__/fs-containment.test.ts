@@ -28,6 +28,7 @@ import {
   assertPathWithinProjectRoot,
   createFsAssertPathWithinRootFn,
   createFsWriteFileFn,
+  createFsWriteProjectStateFn,
 } from '../adapters/fs-project-io';
 import {
   createFsWriteDiskFileFn,
@@ -122,6 +123,92 @@ describe('assertPathWithinProjectRoot', () => {
     expect(() =>
       assertPathWithinProjectRoot('/definitely/does/not/exist/frontx-fixture-root', '/definitely/does/not/exist/frontx-fixture-root/x'),
     ).toThrow('/definitely/does/not/exist/frontx-fixture-root');
+  });
+
+  // ESCAPE 1 (found in PR review, reproduced against the built binary): a
+  // DANGLING symlink — one that exists but whose own target does not — used
+  // to be treated as an ordinary not-yet-existing path component, because
+  // `fs.realpathSync` fails identically for "never existed" and "exists but
+  // its target doesn't", and the old walk could not tell those apart. The OS
+  // still follows a dangling link on write, so this must refuse exactly like
+  // an escaping REAL symlink does.
+  it('throws when the final path component is a dangling symlink pointing outside the root', async () => {
+    const dir = await makeRoot();
+    await mkdir(path.join(dir, 'app'), { recursive: true });
+    await symlink('/definitely/does/not/exist/frontx-dangling-outside-target.txt', path.join(dir, 'app', 'README.md'));
+
+    expect(() => assertPathWithinProjectRoot(dir, path.join(dir, 'app', 'README.md'))).toThrow(
+      /outside the project root/,
+    );
+  });
+
+  // The legitimate mirror of the above: a project may contain its own
+  // dangling symlink (e.g. a not-yet-materialized generated file) as long as
+  // its target still lands inside the root — only an escape past the root is
+  // refused.
+  it('does not throw when the final path component is a dangling symlink pointing inside the root', async () => {
+    const dir = await makeRoot();
+    await mkdir(path.join(dir, 'app'), { recursive: true });
+    await symlink(path.join(dir, 'app', 'generated.txt'), path.join(dir, 'app', 'README.md'));
+
+    expect(() => assertPathWithinProjectRoot(dir, path.join(dir, 'app', 'README.md'))).not.toThrow();
+  });
+
+  // The same shape, one level up: a dangling symlink in an INTERMEDIATE
+  // position (not the final component being written) has to be caught too —
+  // the old walk-up-to-nearest-existing-ancestor algorithm could climb
+  // straight past it as just another unresolved segment.
+  it('throws when an INTERMEDIATE path component is a dangling symlink pointing outside the root', async () => {
+    const dir = await makeRoot();
+    await mkdir(path.join(dir, 'app'), { recursive: true });
+    await symlink('/definitely/does/not/exist/frontx-dangling-outside-dir', path.join(dir, 'app', 'src'));
+
+    expect(() => assertPathWithinProjectRoot(dir, path.join(dir, 'app', 'src', 'index.ts'))).toThrow(
+      /outside the project root/,
+    );
+  });
+});
+
+describe('createFsWriteProjectStateFn containment (escape 2 — the project-state writer)', () => {
+  let root: string;
+  let outsideDir: string;
+
+  afterEach(async () => {
+    if (root) await rm(root, { recursive: true, force: true });
+    if (outsideDir) await rm(outsideDir, { recursive: true, force: true });
+    root = '';
+    outsideDir = '';
+  });
+
+  async function makeRoot(): Promise<string> {
+    const dir = await mkdtemp(path.join(tmpdir(), 'frontx-pstate-containment-root-'));
+    root = dir;
+    return dir;
+  }
+
+  // ESCAPE 2 (found in PR review, reproduced against the built binary):
+  // `createFsWriteProjectStateFn` performed no containment check at all — a
+  // `.frontx` symlink escaping the project root let `register`/`unregister`/
+  // `ownership add|remove` write `project.json` anywhere on disk.
+  it('refuses to write project.json when .frontx is a symlink leaving the root, writing nothing outside', async () => {
+    const dir = await makeRoot();
+    outsideDir = await mkdtemp(path.join(tmpdir(), 'frontx-pstate-outside-'));
+    await symlink(outsideDir, path.join(dir, '.frontx'));
+    const writeProjectState = createFsWriteProjectStateFn();
+
+    await expect(writeProjectState(path.join(dir, '.frontx', 'project.json'), '{}')).rejects.toThrow(
+      /outside the project root/,
+    );
+    expect(existsSync(path.join(outsideDir, 'project.json'))).toBe(false);
+  });
+
+  it('writes project.json normally when .frontx is an ordinary directory inside the root', async () => {
+    const dir = await makeRoot();
+    const writeProjectState = createFsWriteProjectStateFn();
+
+    await writeProjectState(path.join(dir, '.frontx', 'project.json'), '{"ok":true}');
+
+    expect(await readFile(path.join(dir, '.frontx', 'project.json'), 'utf-8')).toBe('{"ok":true}');
   });
 });
 
@@ -370,6 +457,84 @@ describe('apply end-to-end containment (runApplyPipeline with the real project-f
     // and the project state document was never mutated to record the
     // target as applied.
     expect(existsSync(path.join(outsideDir, 'index.ts'))).toBe(false);
+    expect(JSON.parse(projectStateContent ?? 'null').templates[templateName].targets).toEqual([]);
+  });
+
+  // ESCAPE 1's exact end-to-end reproduction: `mkdir -p app && ln -s
+  // /outside/nonexistent.txt app/README.md`, then `apply` a template whose
+  // payload lands on `app/README.md`. The dangling link's own target does
+  // not exist, so the old containment walk treated it as an ordinary
+  // not-yet-existing path and let the write through.
+  it('refuses INVALID_PATH, writing nothing outside the project, when a payload path resolves through a dangling symlink pointing outside', async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-apply-dangling-repo-'));
+    outsideDir = await mkdtemp(path.join(tmpdir(), 'frontx-apply-dangling-outside-'));
+    const outsideTarget = path.join(outsideDir, 'nonexistent.txt');
+    await mkdir(path.join(repoRoot, 'app'), { recursive: true });
+    await symlink(outsideTarget, path.join(repoRoot, 'app', 'README.md'));
+
+    const templateName = '@acme/t';
+    const installedEntries = new Map<string, InventoryEntry>();
+    installedEntries.set(templateName, {
+      name: templateName,
+      source: `github:acme/t@v1`,
+      ref: 'v1',
+      status: InventoryState.INSTALLED,
+      content: JSON.stringify(manifest(templateName)),
+    });
+    const templateContent = new Map<string, ContentItem[]>([
+      [templateName, [{ path: 'README.md', content: 'hello' }]],
+    ]);
+
+    let projectStateContent: string | null = JSON.stringify({
+      formatVersion: 1,
+      templates: { [templateName]: { origin: `github:acme/t@v1`, version: '1.0.0', targets: [] } },
+      projectOwnedRoots: [],
+    } satisfies ProjectStateDocument);
+
+    const inventory: UniformApplyInventoryPort = {
+      lookup: (name) => installedEntries.get(name),
+      install: vi.fn(async () => ({ ok: false as const, error: { message: 'install not stubbed for this test' } })),
+    };
+    const readInstalledContentFn: ReadInstalledContentFn = async (installedContentPath) =>
+      templateContent.get(installedContentPath) ?? [];
+    const readExistingContentFn: ReadExistingContentFn = async () => [];
+    const canonicalizeFn: CanonicalizeTargetFn = (rawTarget) => rawTarget;
+    const readProjectStateFn: ReadProjectStateFn = async () => projectStateContent;
+    const writeProjectStateFn: WriteProjectStateFn = async (_absolutePath, content) => {
+      projectStateContent = content;
+    };
+    const readFileFn: ReadFileFn = vi.fn(async () => {
+      throw new Error('readFileFn not stubbed for this test');
+    });
+    const bundleExistsFn: BundleExistsFn = vi.fn(async () => false);
+    const copyBundleFn: CopyBundleFn = vi.fn(async () => undefined);
+    const removeBundleFn: RemoveBundleFn = vi.fn(async () => undefined);
+
+    const deps: ApplyPipelineDeps = {
+      inventory,
+      fetchFn: vi.fn(async () => ''),
+      readFileFn,
+      canonicalizeFn,
+      existsFn: vi.fn(async () => true),
+      listFolderFilesFn: vi.fn(async () => []),
+      resolveInstalledContentPathFn: (name: string) => name,
+      readInstalledContentFn,
+      readExistingContentFn,
+      writeFileFn: createFsWriteFileFn() as WriteFileFn,
+      readProjectStateFn,
+      writeProjectStateFn,
+      bundleExistsFn,
+      copyBundleFn,
+      removeBundleFn,
+      assertPathWithinRootFn: createFsAssertPathWithinRootFn(repoRoot),
+    };
+
+    const result = await runApplyPipeline({ templates: { [templateName]: ['app'] } }, repoRoot, false, deps);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('INVALID_PATH');
+    expect(existsSync(outsideTarget)).toBe(false);
     expect(JSON.parse(projectStateContent ?? 'null').templates[templateName].targets).toEqual([]);
   });
 });

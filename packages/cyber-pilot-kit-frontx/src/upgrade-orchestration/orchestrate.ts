@@ -45,6 +45,18 @@ export type OrchestrationResult =
   | { status: 'template-not-registered'; code: 'TEMPLATE_NOT_REGISTERED'; message: string }
   | { status: 'target-not-applied'; code: 'TARGET_NOT_APPLIED'; message: string }
   | { status: 'origin-unavailable'; code: 'ORIGIN_UNAVAILABLE'; message: string }
+  // A genuine refusal from the command surface's FIRST, unconfirmed call —
+  // `CONTENT_CONFLICT`, `TARGET_CONFLICT`, `PROJECT_INVALID`, or any other
+  // non-`CONFIRMATION_REQUIRED` `ok:false` code the engine can return before
+  // a change set is ever computed (`InvokeUpgradeCommandFn`'s
+  // `'resolution-failed'` status). `onChangeSet` is never invoked for this
+  // status, so it is recognized by `commandResult.status` directly, never
+  // inferred from the absence of a review package — that inference is what
+  // used to fold this refusal into `'empty-changeset'` below. `code` is
+  // relayed verbatim rather than flattened into `message`, mirroring
+  // `UpgradeCommandJsonResult.code`'s own optionality: it is always present
+  // for a real refusal, and only absent for an incomplete test double.
+  | { status: 'resolution-failed'; code?: string; message: string }
   | { status: 'empty-changeset' }
   | { status: 'apply-failed'; message: string; lifecycleHistory: readonly OrchestrationLifecycleStateValue[] };
 
@@ -192,6 +204,21 @@ export async function orchestrateAiDrivenUpgrade(
   // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-invoke-enrichment
 
   // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-check-changeset
+  // Checked BEFORE the empty-changeset fallback below: a genuine refusal
+  // from the command surface's first call (`CONTENT_CONFLICT`,
+  // `TARGET_CONFLICT`, `PROJECT_INVALID`, ...) never invokes `onChangeSet`
+  // either, so `reviewPackage` is `undefined` for it too — the exact same
+  // shape a real no-op (`commandResult.status === 'noop'`) leaves behind.
+  // Distinguishing them by `commandResult.status` here is what keeps a real
+  // refusal from reaching the caller as "there is nothing to update."
+  if (!commandResult.ok && commandResult.status === 'resolution-failed') {
+    return {
+      status: 'resolution-failed',
+      code: commandResult.code,
+      message: commandResult.message ?? 'The upgrade command surface refused to resolve a change set.',
+    };
+  }
+
   if (sawEmptyChangeSet || !reviewPackage) {
     // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-empty-changeset
     return { status: 'empty-changeset' };

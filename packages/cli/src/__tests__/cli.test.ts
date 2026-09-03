@@ -8,6 +8,7 @@ import {
   EXIT_USER_ERROR,
   EXIT_INTERNAL_ERROR,
 } from '../cli';
+import { PathContainmentError } from '../adapters/fs-project-io';
 import type { CliDeps } from '../cli';
 import { TemplateInventory } from '../inventory/TemplateInventory';
 import { BUNDLE_MARKER } from '../bundle/envelope';
@@ -157,6 +158,12 @@ function makeDeps(overrides: Partial<CliDeps> = {}): DepsFixture {
     // at them, so its occupied-ground guard clears (`ownership add` dispatch
     // still uses this seam; the refusal cases override it).
     readTargetPathStateFn: vi.fn(async (): Promise<TargetPathState> => 'absent'),
+    // `seed`'s own `<dir>` pre-flight — every dispatch fixture's notional
+    // `/tmp/...-repo` argument is meant to be usable, so this defaults to
+    // "directory" (never the `readTargetPathStateFn` default above, which
+    // is chosen for a DIFFERENT command's occupied-ground probe). The
+    // dedicated invalid-path tests override this to `'absent'`/`'file'`.
+    readSeedDirStateFn: vi.fn(async (): Promise<TargetPathState> => 'directory'),
     // A local `path:` origin's folder is presumed to exist and to hold no
     // files beyond the manifest `readFileFn` above already fixtures by
     // path — dispatch fixtures in this suite are not exercising the
@@ -179,7 +186,21 @@ function makeDeps(overrides: Partial<CliDeps> = {}): DepsFixture {
     // default — the ordinary case for a fresh apply/seed target; a test
     // exercising existing-content reconciliation overrides this.
     createReadExistingContentFn: vi.fn((): ReadExistingContentFn => async () => []),
-    removeProjectFile: vi.fn(async () => undefined),
+    // Wired to the SAME in-memory `.frontx/project.json` fake `readProjectStateFn`/
+    // `writeProjectStateFn` below read and write — this fixture keeps exactly
+    // one flat document, so an unconditional clear is faithful to what the
+    // real adapter does to the ONE file it is ever asked to remove here
+    // (`seed`'s own rollback). Delete/upgrade dispatch tests that exercise
+    // `removeProjectFile` always override `readProjectStateFn`/
+    // `writeProjectStateFn` with their own `seededProjectState` closure, so
+    // this default never reaches (and can never corrupt) their state.
+    removeProjectFile: vi.fn(async () => {
+      projectStateContent = null;
+    }),
+    // `seed`'s own rollback — no dispatch fixture models a real `.frontx`
+    // directory, so this is a harmless no-op by default; the rollback test
+    // overrides it to assert it was called.
+    removeEmptyDirFn: vi.fn(async () => undefined),
     readProjectStateFn,
     writeProjectStateFn,
     createCanonicalizeTargetFn,
@@ -1241,6 +1262,97 @@ describe('dispatch: seed (cpt-frontx-flow-cli-scaffolding-seed-repository)', () 
     });
     expect(deps.writeFileFn).toHaveBeenCalledWith(expect.stringContaining('package.json'), '{}');
   });
+
+  // Defect (PR review, reproduced against the built binary): `seed` wrote
+  // `.frontx/project.json` and registered every default BEFORE the apply
+  // phase could still refuse. CONTENT_CONFLICT is the reproduced case: the
+  // refusal itself was reported correctly, but the state document survived
+  // it, so the directory read as permanently "already seeded" from then on.
+  // Rollback now removes that state document (and any `.frontx` directory
+  // `seed` itself created) so a refused `seed` leaves the directory exactly
+  // as it found it.
+  it('rolls back its own state-document write when the apply phase refuses with CONTENT_CONFLICT, leaving the directory seedable again', async () => {
+    const { deps, registerContent, readProjectStateDocument } = makeDeps({
+      readFileFn: vi.fn(async (filePath: string) => {
+        if (filePath.endsWith('template-shell/frontx-template.json')) {
+          return JSON.stringify({
+            name: '@gears-frontx/frontx-template-shell',
+            version: '1.0.0',
+            excludedSubtrees: [],
+            description: 'The official shell template fixture.',
+          });
+        }
+        throw new Error(`unexpected readFileFn path: ${filePath}`);
+      }),
+      // Existing on-disk content at the target differs from what the
+      // template's own payload would write there — existing-content
+      // reconciliation (run by `runApplyPipeline` AFTER seed's own
+      // state-document write and registration) refuses with
+      // CONTENT_CONFLICT before writing any payload file.
+      createReadExistingContentFn: vi.fn(
+        (): ReadExistingContentFn => async () => [{ path: 'package.json', content: 'NOT THE TEMPLATE PAYLOAD' }],
+      ),
+    });
+    registerContent('template-shell', [{ path: 'package.json', content: '{}' }]);
+
+    const batchInput = JSON.stringify({ templates: { '@gears-frontx/frontx-template-shell': ['.'] } });
+
+    const first = await run(['seed', '/tmp/conflict-repo', '--input', batchInput, '--json'], deps);
+
+    expect(first.exitCode).toBe(EXIT_USER_ERROR);
+    const parsedFirst = JSON.parse(first.stdout!) as { ok: false; error: { code: string } };
+    expect(parsedFirst.error.code).toBe('CONTENT_CONFLICT');
+    // The refused seed leaves no project state document behind...
+    expect(deps.removeProjectFile).toHaveBeenCalled();
+    expect(readProjectStateDocument()).toBeNull();
+
+    // ...so a second seed against the identical directory is accepted
+    // rather than refused as already-seeded (INVALID_INPUT) — proving the
+    // first call's own state write did not survive its own refusal.
+    const second = await run(['seed', '/tmp/conflict-repo', '--input', batchInput, '--json'], deps);
+    expect(second.exitCode).toBe(EXIT_USER_ERROR);
+    const parsedSecond = JSON.parse(second.stdout!) as { ok: false; error: { code: string } };
+    expect(parsedSecond.error.code).toBe('CONTENT_CONFLICT');
+  });
+
+  // Defect (PR review, reproduced against the built binary): `seed` against
+  // a nonexistent directory used to reach a raw, uncaught `fs` throw several
+  // seams deep, surfacing as exit 2 (the internal-error class) with an EMPTY
+  // stdout under `--json` — never the single envelope `--json` mode owes
+  // every caller for an ordinary, caller-supplied bad path.
+  it('exits user-error with INVALID_PATH, emitting one --json envelope on stdout, when <dir> does not exist', async () => {
+    const { deps } = makeDeps({
+      readSeedDirStateFn: vi.fn(async (): Promise<TargetPathState> => 'absent'),
+    });
+
+    const outcome = await run(
+      ['seed', '/tmp/does-not-exist-repo', '--input', JSON.stringify({ templates: {} }), '--json'],
+      deps,
+    );
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stdout).toBeTruthy();
+    const parsed = JSON.parse(outcome.stdout!) as { ok: false; error: { code: string } };
+    expect(parsed.error.code).toBe('INVALID_PATH');
+  });
+
+  // Same defect, the other reproduced shape: `<dir>` names an existing FILE
+  // rather than a directory.
+  it('exits user-error with INVALID_PATH, emitting one --json envelope on stdout, when <dir> names an existing file', async () => {
+    const { deps } = makeDeps({
+      readSeedDirStateFn: vi.fn(async (): Promise<TargetPathState> => 'file'),
+    });
+
+    const outcome = await run(
+      ['seed', '/tmp/a-file-not-a-dir', '--input', JSON.stringify({ templates: {} }), '--json'],
+      deps,
+    );
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stdout).toBeTruthy();
+    const parsed = JSON.parse(outcome.stdout!) as { ok: false; error: { code: string } };
+    expect(parsed.error.code).toBe('INVALID_PATH');
+  });
 });
 
 // Rewritten this checkpoint onto the whole-file, name-atomic engine
@@ -1710,6 +1822,43 @@ describe('dispatch: delete (cpt-frontx-flow-cli-scaffolding-delete-target)', () 
     expect(parsed).toMatchObject({ ok: true, data: { toDelete: ['packages/app/src/index.ts'] } });
     expect(written().templates.foo.targets).toEqual([]);
     expect(deps.removeProjectFile).toHaveBeenCalled();
+  });
+
+  // A containment violation reaches `run()` as a throw from the adapter layer,
+  // where every thrown error used to collapse into the internal-error exit with
+  // a bare stderr line and, under `--json`, no envelope at all. The project-state
+  // writer's own refusal reached callers exactly that way: containment was
+  // enforced, and the report about it was wrong twice over — wrong outcome class
+  // for a problem in the caller's own tree, and no parseable answer for a machine
+  // caller. The real-filesystem coverage of the check itself lives in
+  // `fs-containment.test.ts`; this pins how its refusal is REPORTED.
+  it('reports a containment violation as an INVALID_PATH envelope with the user-error exit, not an internal error', async () => {
+    const { readProjectStateFn } = seededProjectState({
+      formatVersion: 1,
+      templates: { foo: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0', targets: ['packages/app'] } },
+      projectOwnedRoots: [],
+    });
+    // The writer is where containment is enforced for project state, so this is
+    // the seam that throws in the real adapter; a command that actually reaches
+    // it is what proves the report, not the check.
+    const writeProjectStateFn = vi.fn(() => {
+      throw new PathContainmentError('/outside/state/project.json', '/repo');
+    });
+    const { deps } = makeDeps({
+      readProjectStateFn,
+      writeProjectStateFn,
+      listTargetFilesFn: vi.fn(async () => ['src/index.ts']),
+    });
+
+    const outcome = await run(['delete', 'packages/app', '--json', '--yes'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toBeUndefined();
+    const parsed: unknown = JSON.parse(outcome.stdout ?? '');
+    expect(parsed).toMatchObject({
+      ok: false,
+      error: { code: 'INVALID_PATH', details: { path: '/outside/state/project.json' } },
+    });
   });
 
   it('--json without --yes returns CONFIRMATION_REQUIRED and deletes nothing', async () => {

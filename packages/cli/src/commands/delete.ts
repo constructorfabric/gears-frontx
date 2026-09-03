@@ -84,6 +84,18 @@ export type DeleteOutcome =
       // removal seam was supplied to act on it (see this file's own header
       // comment).
       wasLastTarget: boolean;
+      // Set only when `wasLastTarget` triggered a bundle-removal attempt
+      // (`removeAiBundleFn`) that itself failed. By the time this can
+      // happen, the target's files are already off disk and
+      // `.frontx/project.json` already reflects the removal — both real,
+      // both correct — so this is reported as success carrying one named
+      // CLI-owned residue, never as `ok: false` over a completed
+      // destruction a retrying or error-branching caller would otherwise
+      // read as "nothing happened." `removeAiBundleFn` is an opaque seam
+      // from this module's point of view (see `RemoveAiBundleFn` above), so
+      // its failure can only be discovered by calling it — there is no
+      // precondition this module can check up front instead.
+      aiBundleResidue?: { manifestName: string; path: string; message: string };
     }
   | { ok: false; code: ErrorCode; message: string; details?: Record<string, unknown> };
 
@@ -310,23 +322,28 @@ export async function deleteTarget(
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-last-target
   const wasLastTarget = targetsBefore > 0 && remainingTargets.length === 0;
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-remove-bundle
+  let aiBundleResidue: { manifestName: string; path: string; message: string } | undefined;
   if (wasLastTarget && removeAiBundleFn) {
     try {
       await removeAiBundleFn(ownerName);
     } catch (error) {
       // The CLI-owned bundle removal (`adapters/fs-ai-bundle.ts`'s
       // `createFsRemoveBundleFn`) refuses fail-closed, the same way, when
-      // its own target cannot be proven to stay inside the project root —
-      // surfaced here as a real refusal rather than an unhandled crash. The
-      // target itself has already been removed and its project-state entry
-      // already updated above; only the bundle removal is refused.
-      return {
-        ok: false,
-        code: 'INVALID_PATH',
-        message:
-          `"${canonical}" was deleted, but its AI-extension bundle could not be proven to stay inside the ` +
-          `project root: ${error instanceof Error ? error.message : String(error)}`,
-        details: { name: ownerName },
+      // its own target cannot be proven to stay inside the project root.
+      // By this point the target itself is already removed and its
+      // project-state entry already updated above — both real, both
+      // correct — so this is not surfaced as `ok: false` (which would tell
+      // a caller the whole operation failed over a deletion that in fact
+      // already happened and is already recorded). Instead it is carried
+      // as a named residue on the success outcome below: the deletion
+      // succeeded, one CLI-owned path could not be cleaned, and this
+      // module cannot check that precondition up front because
+      // `removeAiBundleFn` is an opaque seam whose failure is only
+      // discoverable by calling it.
+      aiBundleResidue = {
+        manifestName: ownerName,
+        path: `.frontx/ai/${ownerName}`,
+        message: error instanceof Error ? error.message : String(error),
       };
     }
   }
@@ -343,6 +360,7 @@ export async function deleteTarget(
     toPreserve: final.plan.toPreserve,
     templateName: ownerName,
     wasLastTarget,
+    ...(aiBundleResidue ? { aiBundleResidue } : {}),
   };
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-return-success
 }
