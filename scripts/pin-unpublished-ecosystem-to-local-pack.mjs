@@ -17,10 +17,6 @@
  *     npm error code ETARGET
  *     npm error notarget No matching version found for @gears-frontx/ui-kit@0.4.0-alpha.2
  *
- * PR #598 is the third instance of that class - `0.4.0-alpha.0` and
- * `0.4.0-alpha.1` were the first two - and every instance is a correctly-bumped
- * pull request that is red by construction, with nothing wrong in it.
- *
  * ## The criterion, and why it has exactly three branches
  *
  * Per exact-registry-version pin site in the tree under validation, naming a
@@ -62,9 +58,8 @@
  * the wrong one here: this job exists to validate what a seeded project
  * INSTALLS, so the substitute has to be the artifact `npm publish` would upload.
  * `npm pack` produces exactly that - `files`, `.npmignore` and the
- * `prepack`/`prepare` lifecycle all applied - which is why an unbuilt package
- * is refused rather than packed: a tarball missing its entry point installs
- * green and fails at import.
+ * `prepack`/`prepare` lifecycle all applied (see `packSubstitutedPackages`
+ * for what that buys and what it still cannot catch on its own).
  *
  * ## Why a post-merge run never substitutes
  *

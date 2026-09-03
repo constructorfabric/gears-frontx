@@ -345,27 +345,12 @@ jobs:
     # (packages/cli/src/scaffold/assembler.ts) rather than guessing at paths.
     - name: Validate shell + overlay composition
       env:
-        # PULL REQUESTS ONLY, and that restriction is the whole guarantee that a
-        # post-merge run never papers over a failed publish.
-        #
-        # `policy:version-bump-on-change` makes a pull request that edits a
-        # package's src/ bump its version, and the templates pin
-        # @gears-frontx/* to exact versions, so that same pull request moves
-        # every pin site onto a version only `publish-packages.yml` will ever
-        # publish — after the merge. The composed `npm install` below then dies
-        # on ETARGET and the pull request is red by construction (#598, and
-        # 0.4.0-alpha.0 and alpha.1 before it). With this set, the step packs
-        # that exact version out of this checkout instead; see
-        # scripts/pin-unpublished-ecosystem-to-local-pack.mjs for the criterion.
-        #
-        # The version criterion alone could NOT be trusted on a push: `main.yml`
-        # and `publish-packages.yml` start together on a develop push, so for a
-        # few minutes the just-merged version is both absent from the registry
-        # and equal to the local one, and the substitution would fire over a
-        # publish that had not happened yet. `main.yml` runs on nothing but
-        # main/develop pushes and pull requests against them, so gating on the
-        # event is exact: on a push, an unresolvable pin is a real publish
-        # failure and stays red.
+        # PULL REQUESTS ONLY: on a develop push, main.yml and publish-packages.yml
+        # start together, so for a few minutes the just-merged version is both
+        # unpublished and equal to the local one — substituting there would
+        # paper over a publish that failed or has not landed yet. See
+        # scripts/pin-unpublished-ecosystem-to-local-pack.mjs for the
+        # substitution criterion this enables.
         FRONTX_SUBSTITUTE_UNPUBLISHED_PINS: ${{ github.event_name == 'pull_request' && '1' || '' }}
       run: |
         set -euo pipefail
@@ -505,22 +490,15 @@ jobs:
         rm -rf "$composed" && mkdir -p "$composed"
         tar -C "$shell" --exclude=node_modules -cf - . | tar -C "$composed" -xf -
 
-        # Pointed at the composed COPY, not at the checkout: the copy is the
-        # tree npm install reads, and the tarballs are packed into it so every
-        # `file:` specifier stays a relative path inside it rather than one
-        # climbing out of $RUNNER_TEMP. A no-op unless some pin names a version
-        # the registry does not carry; see this step's env block for why it is
-        # pull-request-only. Run before the `cd` because the script resolves
+        # Pointed at the composed COPY: the tarballs are packed into it so every
+        # `file:` specifier stays a relative path inside it, not one climbing
+        # out of $RUNNER_TEMP. Run before `cd` because the script resolves
         # this repo's packages/* from its own location.
         #
-        # The trap is what makes the undo unconditional. `npm install` below
-        # runs under `set -e`, so on failure the shell leaves this step without
-        # reaching the restore line and the tree stays rewritten for whatever
-        # reads it next — a log dump, an artifact upload, a future step. It is
-        # registered once the call above has succeeded, whether or not that call
-        # found anything to substitute, and it runs the same `--restore`, which
-        # is a no-op both when nothing was rewritten and after the explicit
-        # restore below has removed the journal.
+        # The trap makes the undo run even if `npm install` fails under
+        # `set -e`, which would otherwise skip the restore line below and leave
+        # the tree rewritten for whatever reads it next. Registered once the
+        # call above succeeds; `--restore` is a no-op if nothing was rewritten.
         if [ -n "${FRONTX_SUBSTITUTE_UNPUBLISHED_PINS:-}" ]; then
           node scripts/pin-unpublished-ecosystem-to-local-pack.mjs --tree "$composed"
           # `|| true` is load-bearing, not defensive noise: bash carries the
@@ -540,11 +518,8 @@ jobs:
         # workflow (template-mfe/README.md).
         npm install
 
-        # The substitution is an install-time device and nothing more: the
-        # manifests come back before anything is built, so every check below
-        # reads exactly the files a seeded project ships — the same invariant
-        # template-drift.yml states for its own pin rewrite. `git checkout`
-        # cannot do it here: this tree is a copy outside the checkout.
+        # Must run before anything below reads these manifests as committed —
+        # see RESTORE_JOURNAL_NAME's docblock in the script for why.
         if [ -n "${FRONTX_SUBSTITUTE_UNPUBLISHED_PINS:-}" ]; then
           node "$repo/scripts/pin-unpublished-ecosystem-to-local-pack.mjs" --tree "$composed" --restore
         fi
