@@ -91,7 +91,7 @@ async function writeLocalUiKit(root, version) {
  *
  * @param {string} root
  * @param {Record<string, string>} dependencies
- * @param {Record<string, string>} [overrides]
+ * @param {Record<string, unknown>} [overrides]
  */
 async function writeComposedTree(root, dependencies, overrides) {
   await writeJson(inTree(root, 'package.json'), {
@@ -452,6 +452,50 @@ describe('applyLocalPackSubstitution', () => {
     const manifest = await readManifest(inTree(root, 'package.json'));
     expect(manifest.overrides).toEqual({
       '@gears-frontx/frontx-template-shell': 'file:.',
+      '@gears-frontx/ui-kit': `file:./${PACK_DIR_NAME}/x.tgz`,
+    });
+  });
+
+  it('refuses when the tree scopes a substituted package to a dependency path instead of one spec', async () => {
+    const root = await makeRoot();
+    // A nested `overrides` value is valid npm configuration: it scopes the
+    // override to one dependency path rather than naming a single spec.
+    await writeComposedTree(
+      root,
+      { '@gears-frontx/ui-kit': '0.4.0-alpha.2' },
+      { '@gears-frontx/ui-kit': { react: '19.2.4' } },
+    );
+    const before = await readFile(inTree(root, 'package.json'), 'utf8');
+
+    const applied = applyLocalPackSubstitution({
+      treeDir: inTree(root),
+      substitutions: [UI_KIT_SUBSTITUTION],
+      tarballByPackage: { '@gears-frontx/ui-kit': inPackDir(root, 'x.tgz') },
+    });
+
+    expect(applied.ok).toBe(false);
+    if (applied.ok) return;
+    expect(applied.reason).toBe('override-not-comparable');
+    expect(await readFile(inTree(root, 'package.json'), 'utf8')).toBe(before);
+  });
+
+  it('keeps a nested overrides entry for another package instead of dropping it on write', async () => {
+    const root = await makeRoot();
+    await writeComposedTree(
+      root,
+      { '@gears-frontx/ui-kit': '0.4.0-alpha.2' },
+      { '@gears-frontx/api': { react: '19.2.4' } },
+    );
+
+    applyLocalPackSubstitution({
+      treeDir: inTree(root),
+      substitutions: [UI_KIT_SUBSTITUTION],
+      tarballByPackage: { '@gears-frontx/ui-kit': inPackDir(root, 'x.tgz') },
+    });
+
+    const manifest = await readManifest(inTree(root, 'package.json'));
+    expect(manifest.overrides).toEqual({
+      '@gears-frontx/api': { react: '19.2.4' },
       '@gears-frontx/ui-kit': `file:./${PACK_DIR_NAME}/x.tgz`,
     });
   });

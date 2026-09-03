@@ -204,7 +204,8 @@ const ROOT_MANIFEST_FILE = 'package.json';
  * @typedef {'build-failed' | 'unbuilt-package' | 'pack-failed'} PackRefusalReason
  * @typedef {{ ok: true; tarballByPackage: Record<string, string>; logLines: string[] } | { ok: false; reason: PackRefusalReason; message: string }} PackOutcome
  *
- * @typedef {{ ok: true; logLines: string[] } | { ok: false; reason: 'override-conflict'; message: string }} ApplyOutcome
+ * @typedef {'override-conflict' | 'override-not-comparable'} ApplyRefusalReason
+ * @typedef {{ ok: true; logLines: string[] } | { ok: false; reason: ApplyRefusalReason; message: string }} ApplyOutcome
  *
  * @typedef {'journal-unusable' | 'journal-escapes-tree'} RestoreRefusalReason
  * @typedef {{ ok: true; restored: string[] } | { ok: false; reason: RestoreRefusalReason; message: string }} RestoreOutcome
@@ -532,12 +533,35 @@ export function applyLocalPackSubstitution({ treeDir, substitutions, tarballByPa
   const rootEntry = openManifest(ROOT_MANIFEST_FILE);
   const rootReportedFile = path.relative(treeDir, rootEntry.manifestPath);
   const existingOverrides = readOverrides(rootEntry.manifest);
-  /** @type {Record<string, string>} */
+  // Spread VERBATIM, values included: an npm `overrides` value may legally be a
+  // nested object scoping the override to one dependency path, and a merge that
+  // kept only the string values would delete every such entry on write - a
+  // change to the install contract this step has no business making.
+  /** @type {Record<string, unknown>} */
   const merged = { ...existingOverrides };
 
   for (const packageName of new Set(substitutions.map((sub) => sub.packageName))) {
     const fileSpec = localPackFileSpec(treeDir, tarballByPackage[packageName]);
     const existingValue = existingOverrides[packageName];
+
+    // A nested object here is not a spec this step can compare a tarball
+    // against, and it is not absent either - so neither "leave it" nor
+    // "replace it" is a decision this step may make silently. Refusing names
+    // the entry and hands it back, which is the same fail-closed trade the
+    // disagreeing-string case takes below.
+    if (existingValue !== undefined && typeof existingValue !== 'string') {
+      return {
+        ok: false,
+        reason: 'override-not-comparable',
+        message:
+          `Cannot substitute: ${rootReportedFile} has a non-string "overrides" entry for ` +
+          `${packageName} (${JSON.stringify(existingValue)}), which scopes the override to a ` +
+          'dependency path rather than naming one spec. Replacing it with the local pack would ' +
+          'change what the install resolves for every other path it covers - resolve it in the ' +
+          'template manifest, or teach this step how the two compose.',
+      };
+    }
+
     if (existingValue !== undefined && existingValue !== fileSpec) {
       return {
         ok: false,
@@ -569,23 +593,27 @@ export function applyLocalPackSubstitution({ treeDir, substitutions, tarballByPa
 }
 
 /**
+ * The manifest's `overrides` map as it stands, every value kept as written.
+ *
+ * Values are deliberately NOT narrowed to strings. An earlier version of this
+ * returned only the string ones, which read as harmless and was not: a nested
+ * entry for a package being substituted came back `undefined`, the conflict
+ * check saw no conflict, and the tarball spec replaced a valid path-scoped
+ * override - and every nested entry for any other package was dropped from the
+ * manifest on write. Both cases are decided at the call site now, one of them
+ * by refusing.
+ *
+ * A missing or non-object `overrides` is no map at all rather than an error:
+ * npm would reject the manifest itself long before this step's substitution
+ * mattered.
+ *
  * @param {Record<string, unknown>} manifest
- * @returns {Record<string, string>}
+ * @returns {Record<string, unknown>}
  */
 function readOverrides(manifest) {
   const overrides = manifest['overrides'];
   if (typeof overrides !== 'object' || overrides === null || Array.isArray(overrides)) return {};
-
-  /** @type {Record<string, string>} */
-  const flat = {};
-  for (const [key, value] of Object.entries(overrides)) {
-    // A nested override object is not a spec this step can compare against, so
-    // it is left out of the flat view and therefore never silently overwritten:
-    // a nested entry for a package being substituted surfaces as a conflict on
-    // the `undefined` branch instead of being merged into.
-    if (typeof value === 'string') flat[key] = value;
-  }
-  return flat;
+  return { ...overrides };
 }
 
 /**
