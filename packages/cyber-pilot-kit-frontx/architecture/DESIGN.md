@@ -474,7 +474,7 @@ No database, network client, or external service boundary exists for this packag
 
 ### Applicability of the remaining checklist categories
 
-- **PERF** — Addressed: `cpt-frontx-cyber-pilot-kit-frontx-nfr-resource-scale` (§1.2 NFR Allocation) sets the discovery-scale and latency thresholds for agent-resource discovery, verified by the discovery-test approach named there.
+- **PERF** — Addressed: `cpt-frontx-cyber-pilot-kit-frontx-nfr-resource-scale` (kit PRD §6.1, where it is declared — this DESIGN's own §1.2 NFR Allocation table does not carry it) sets the discovery-scale and latency thresholds for agent-resource discovery, verified by the discovery-test approach named there.
 - **SEC** — Not applicable as an independent security surface: the package holds no secret material of its own; it reads only project-visible template identity, origin, version, and target metadata the CLI already writes, and the project's own trust policy for template AI extensions gates which discovered capabilities activate (`cpt-frontx-fr-ai-extension-discovery-activation`).
 - **REL** — Not applicable as an independent reliability property: the package runs synchronously inside a developer's or agent's own invocation with no service of its own to keep available; the atomicity and recovery guarantees of the change set it orchestrates are owned by the CLI engine it drives (CLI DESIGN CLI-3, CLI-7), not reimplemented here.
 - **DATA** — Not applicable as a schema owner: this package holds no persistent store of its own; the only data-adjacent structures it reads — `ProjectProvenance` and the AI-extension bundle — are written and owned by the CLI (§3.1).

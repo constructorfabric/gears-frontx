@@ -368,7 +368,7 @@ Realizes resolution B1: a template's AI-extension bundle at `.frontx/ai/<manifes
 **Initial State**: PLAN_COMPUTED
 
 **Transitions**:
-1. [x] - `p1` - **FROM** PLAN_COMPUTED **TO** CONFIRMATION_PENDING **WHEN** `<target>` matches an applied instance and neither `--dry-run` nor a prior confirmation is present - `inst-do-plan-pending`
+1. [x] - `p1` - **FROM** PLAN_COMPUTED **TO** CONFIRMATION_PENDING **WHEN** `<target>` matches an applied instance and the invocation is not `--dry-run`. The state means the plan now awaits a confirmation decision, not that a prompt is pending: the decision may still be asked for interactively, may be refused because `--json` carries no `--yes`, or may already have arrived with the call as `--json --yes` — all three leave through transition 2 or 3. A prior confirmation must NOT exclude entry here, or the `--json --yes` path named in transition 2 would have no way to reach the state it departs from. A `--dry-run` invocation never leaves PLAN_COMPUTED: it reports the delete/preserve lists and ends there, with nothing at stake to confirm - `inst-do-plan-pending`
 2. [x] - `p1` - **FROM** CONFIRMATION_PENDING **TO** CONFIRMED **WHEN** the developer confirms interactively, or `--json --yes` is supplied and the plan is recomputed identically - `inst-do-pending-confirmed`
 3. [x] - `p1` - **FROM** CONFIRMATION_PENDING **TO** DECLINED **WHEN** the developer declines interactively (the default), or `--json` is called without `--yes` (`CONFIRMATION_REQUIRED`) - `inst-do-pending-declined`
 4. [x] - `p1` - **FROM** CONFIRMED **TO** DELETED **WHEN** the plan's `toDelete` ground is removed from disk and `<target>` is removed from the project state store - `inst-do-confirmed-deleted`
