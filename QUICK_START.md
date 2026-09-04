@@ -49,6 +49,12 @@ frontx list          # show installed templates and versions
 frontx list --json   # same set, one machine-readable record per entry
 ```
 
+`acme` above is a placeholder: any repository can publish templates. The official
+FrontX templates are published from
+[`constructorfabric/gears-frontx-templates`](https://github.com/constructorfabric/gears-frontx-templates),
+one per subtree — for example
+`frontx install github:constructorfabric/gears-frontx-templates//template-shell@<ref>`.
+
 A template is tracked under the identity its own `frontx-template.json` declares, not under
 the repository name. Installing a template whose identity is already taken by a different
 source fails rather than overwriting the installed one.

@@ -4,11 +4,11 @@
  * Root workspaces are discovered from package.json so `test:unit` packages
  * register automatically and this script cannot drift when new packages land.
  *
- * The host app + its nested MFEs are template territory (relocated to the
- * self-contained `template-shell/` by Phase 11 template-move, later split
- * from its MFE content into the sibling `template-mfe/` in issue #470) and
- * are no longer discovered here; `template-shell` runs its own tests via its
- * own package.json `test:unit` script.
+ * The host app + its nested MFEs are template territory, which lives in its
+ * own repository (constructorfabric/gears-frontx-templates, `template-shell/`
+ * plus the sibling `template-mfe/` split off in issue #470) and is not
+ * discovered here; `template-shell` runs its own tests via its own
+ * package.json `test:unit` script.
  */
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';

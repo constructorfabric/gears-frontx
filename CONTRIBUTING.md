@@ -80,7 +80,9 @@ The project is **pre-1.0** — backward compatibility is not guaranteed.
 - **Patch bump** (`0.1.0` → `0.1.1`) — non-breaking fixes/features
 - **Alpha increment** (`alpha.0` → `alpha.1`) — each merge to develop
 
-A PR that changes non-documentation source under `src/`, or the dependency fields of `package.json`, for a governed package (non-private `@gears-frontx`-scoped packages: `packages/*`, `template-shell`, and `template-shell/packages/*`) must bump that package's own `version` in the same PR — and update every exact pin on it (see `policy:template-pin-drift`). CI (`policy:version-bump-on-change`, pull requests only) compares the version at the PR's merge base against the version at its head, so a bump that is later reverted within the same PR does not count. Packages the PR itself adds or removes are exempt, as are private packages (e.g. the `template-mfe` fixture apps), which are pinned consumers rather than published sources.
+A PR that changes non-documentation source under `src/`, or the dependency fields of `package.json`, for a governed package (the non-private `@gears-frontx`-scoped packages under [`packages/`](packages)) must bump that package's own `version` in the same PR — and update every exact pin on it (see `policy:ecosystem-pin-drift`). CI (`policy:version-bump-on-change`, pull requests only) compares the version at the PR's merge base against the version at its head, so a bump that is later reverted within the same PR does not count. Packages the PR itself adds or removes are exempt, as are private packages (the [`internal/`](internal) config and test-support workspaces), which are consumed in-tree rather than published.
+
+Templates pin these same packages, but their pins are governed in the templates repository. See [Templates](#templates) below.
 
 ## Publishing
 
@@ -135,44 +137,22 @@ npm run build:packages:studio
 npm run build:packages:cli
 ```
 
-## Template Development Loop
+## Templates
 
-[`template-shell/`](template-shell) is not a root workspace: it is a standalone npm project that pins `@gears-frontx/api`, `@gears-frontx/mfes` and `@gears-frontx/gts-plugin` to exact registry versions, so that a seeded project installs outside the monorepo. Those pins mean a plain `npm install` inside the template resolves the **published** alpha, not the sources you are editing.
-
-After changing anything under `packages/api`, `packages/mfes` or `packages/gts-plugin`, relink before running the template:
+Templates are not in this repository. They live in [`constructorfabric/gears-frontx-templates`](https://github.com/constructorfabric/gears-frontx-templates), one top-level directory per template, and a consumer addresses one by the subtree form of a source-spec:
 
 ```bash
-npm run build:packages       # publish-shaped dist/ for the ecosystem packages
-npm run dev:template:link    # point the template's node_modules at the packages/* builds
-cd template-shell && npm run dev
+frontx install github:constructorfabric/gears-frontx-templates//template-shell@<ref>
 ```
 
-`dev:template:link` ([`scripts/link-template-ecosystem.mjs`](scripts/link-template-ecosystem.mjs)) only repoints the directories inside the template's `node_modules` that the template pins to the registry - it reads the template's own manifests to find out which those are, so a newly pinned package is linked without anyone editing the script. It never writes `package.json` or `package-lock.json`, so nothing from the dev loop can leak into a seeded project. What each linked directory then resolves through is its `dist/`, which is why the script refuses to link an unbuilt package instead of leaving the failure to surface later as a missing module.
+Everything that existed only to serve them moved with them: manifest validation, the lockfile and token-format guards, the guideline-index generation, the composition and publish jobs, and the dev loop that linked a template against local `packages/*` builds. That dev loop is documented in the templates repository's own `CONTRIBUTING.md`; read it there rather than here, so there is one copy to keep true.
 
-> **Forgetting to relink is silent.** The template builds, type-checks and tests green against the published pins on its own, so a missing relink produces no error anywhere - it just means the `packages/*` edits you are testing are not the code being run. Nothing warns you. Relink after every ecosystem change, and when a template-side result contradicts a change you just made in `packages/*`, suspect the link first.
+Two consequences land on work done in this repository:
 
-The silence is local only: the [Template Drift workflow](.github/workflows/template-drift.yml) runs this same relink-and-check sequence in CI for the in-repo inputs it watches, so a working tree that has drifted from `template-shell` goes red there even when every local check passes ([#518](https://github.com/constructorfabric/gears-frontx/issues/518)).
+- **Pin drift surfaces on the other side.** The check comparing `packages/*` against what the shell template pins and mirrors runs in the templates repository, against a checkout of this one — found as a sibling directory named by the `FRONTX_ECOSYSTEM_DIR` convention, falling back to the package registry when no checkout is present. A pin that goes stale because of a change here goes red there, not on your PR. What remains here is `policy:ecosystem-pin-drift`, which covers exact pins between `packages/*` only.
+- **Changes spanning both repositories are ordered.** The ecosystem packages publish first; the templates repository then re-pins to the published versions and publishes after. That is two PRs in that order, and the second cannot be prepared until the first has published.
 
-A feature branch's pins routinely name a version that has not been published yet: `policy:version-bump-on-change` requires the bump the moment a package's `src/` changes substantively, while [publish-packages.yml](.github/workflows/publish-packages.yml) only publishes from `main`/`develop`/`release/*`. A plain `npm ci` inside `template-shell` on such a branch therefore fails with `ETARGET` - a lockfile cannot resolve a tarball that does not exist yet - and the relink step above, which repoints those pins at the working tree, must run before any template command that touches `node_modules`.
-
-To go back to the pinned registry versions, run `npm ci` inside `template-shell`. There is no `--unlink`: the links replace published tarball *content*, which only npm can restore.
-
-Two ways to lose the links without meaning to:
-
-- **any `npm install` inside `template-shell`** — say, while adding a dependency — reifies the tree from the lockfile and silently puts the registry tarballs back. Relink afterwards.
-- **`npm run clean:artifacts`** at the repo root removes `packages/*/dist`, so the links survive but point at nothing. `npm run build:packages` restores them; the link script refuses to run at all if the build is missing.
-
-The dev loop uses symlinks on macOS and Linux and directory junctions on Windows, so no elevated shell or Developer Mode is required on any platform. If a link cannot be created anyway, the run moves each installed directory aside rather than deleting it, so it rolls the tree back to the pinned versions and names what it could not restore. Read that last part: a failed link usually costs only a re-run, but if the rollback itself could not put a directory back, the message says so and names it - and that case does need `npm ci` inside `template-shell`, exactly as the message instructs.
-
-### Why template drift CI installs without a lockfile
-
-The [Template Drift workflow](.github/workflows/template-drift.yml) points the template's `@gears-frontx` pins at the working tree's `packages/*` builds, then installs with `npm install --no-package-lock` instead of `npm ci`. Both departures from the ordinary install exist for reasons that are easy to re-break without this record.
-
-**Why not `npm ci` against the rewritten manifests.** Rewriting the pins ahead of install desyncs `template-shell/package-lock.json` from `template-shell/package.json` by construction, and `npm ci` refuses to run against a desynced lockfile. `npm install` reconciles it instead - which is exactly the operation that trips `--no-package-lock`'s reason below.
-
-**Why `--no-package-lock` is load-bearing.** `template-shell` pins its own root package to itself via a `file:.` override, materialized as an npm-managed symlink that `packages/framework`'s re-exports resolve through. Reconciling a desynced lockfile is exactly the operation npm `<= 11.13.0` gets wrong for a self-referential `file:.` entry (npm/cli#524, already referenced by `scripts/template-lockfile-selflink-check.mjs`): it drops the link from the *installed tree*, not just from the lockfile, so `packages/framework`'s import of its own template root resolves to nothing and the build fails. GitHub's `ubuntu-latest` runner's Node 25.x ships npm 11.12.1, squarely in the broken range; the upstream fix lands in 11.14.0. Skipping lockfile reconciliation with `--no-package-lock` sidesteps the bug entirely regardless of which npm version the runner carries, so the flag stays correct even after the runner's npm moves past 11.14.0 - there is nothing to remember to remove later.
-
-**The tradeoff this accepts.** Without the lockfile guiding resolution, transitive dependencies float to their latest in-range version instead of the exact one the lockfile pinned - verified on a test run at 41 of 546 packages resolving differently, all patch-level bumps within their declared ranges. That is acceptable for this job specifically, since its purpose is detecting drift between `packages/*` and `template-shell`, not verifying that the exact pinned dependency tree installs cleanly; the latter is Template Validate's job ([main.yml](.github/workflows/main.yml)), which runs an unmodified `npm ci` and is unaffected by this workflow's substitutions.
+The rationale and the full list of what moved are in [ADR-0034](architecture/ADR/0034-template-repository-separation.md).
 
 ## Validation
 

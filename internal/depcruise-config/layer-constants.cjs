@@ -12,12 +12,13 @@
  * §1.3: three layers — published libraries, templates, projects orchestration —
  * with membership defined by property, plus the two stated non-layer categories
  * (build internals; non-package code). Templates are hosted outside this
- * repository and resolved by versioned source-spec, so no template-side package
- * may appear in this file; the template owns and enforces its own internal
- * layering in `template-shell/.dependency-cruiser.cjs`. This is NOT the historic
+ * repository (constructorfabric/gears-frontx-templates) and resolved by
+ * versioned source-spec, so no template-side package may appear in this
+ * file; the template owns and enforces its own internal layering in its own
+ * `template-shell/.dependency-cruiser.cjs`. This is NOT the historic
  * L1/L2/L3 SDK -> framework -> react chain — that chain described packages
  * (`state`, `i18n`, `framework`, `react`, `auth`, `studio`) that emigrated to
- * the self-contained `template-shell/` tree.
+ * `template-shell/`, which now lives in that other repository.
  */
 
 /**
