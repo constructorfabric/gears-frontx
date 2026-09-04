@@ -52,6 +52,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ContentItem } from '../scaffold/types';
+import { SYMLINK_CONTENT_MARKER } from '../scaffold/existing-content';
 import type { ReadInstalledContentFn, ReadExistingContentFn } from '../scaffold/existing-content';
 
 // Install-time output, never committed template content
@@ -79,7 +80,20 @@ const PAYLOAD_SKIP_DIR = 'node_modules';
 // same on-disk symlink twice — exactly what `commands/apply.ts`'s own
 // adopted-path snapshot-then-reread verification does — reports it
 // identically both times when nothing about that symlink actually changed.
-const SYMLINK_CONTENT_MARKER = '\uFFFF\uFFFFfrontx:existing-content:symlink-cannot-be-compared\uFFFF\uFFFF';
+//
+// DIRECTORY-SYMLINK FIX (found in PR review, reproduced against the built
+// binary): the marker's DEFINITION now lives in `../scaffold/existing-
+// content.ts`, imported from there rather than restated here. A symlinked
+// DIRECTORY anywhere above a payload path defeated reconciliation entirely
+// (this walk never descends into a symlinked directory, so it never even
+// reports an entry for a path beneath one — a gap distinct from, and worse
+// than, the symlinked-FILE case this marker originally existed to cover);
+// closing it required `reconcileExistingContent` itself to recognize "a
+// symlink stands here" as a fact about the RAW read, before its own
+// ownership filter narrows things down. A value both this adapter (the
+// writer of it) and that algorithm (now also a reader of it) have to agree
+// on has exactly one honest home — see that module's own doc comment on the
+// constant for the full reasoning.
 
 // `skipInstallOutput` distinguishes the two callers below, and the distinction
 // is load-bearing rather than cosmetic:

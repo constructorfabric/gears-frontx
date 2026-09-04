@@ -63,12 +63,23 @@ import type { PathExistsFn } from '../resolver/types';
 // `destPath` itself resolves inside the project root, symlinks resolved — it
 // says nothing about whether `destPath` ALREADY exists as a symlink, which
 // is exactly the case an INTERNAL alias (the reproduced defect: the link's
-// target was another file inside the same project) passes cleanly. Only an
-// ANCESTOR directory component being a symlink is unaffected by this
-// check — `mkdirSync(path.dirname(destPath))` and `writeFileSync` still
-// follow one exactly as before, so a project structured through a symlinked
-// directory (`app/src` -> `app/real-src`) keeps writing into its real target
-// precisely as it always has; only the FINAL component is inspected here.
+// target was another file inside the same project) passes cleanly.
+//
+// Only the FINAL component is inspected here — an ANCESTOR directory
+// component being a symlink is not this check's business, and was never
+// closable at this seam: `writeFile` receives one absolute destination and
+// no project root, so it has nowhere to stop walking up. That case is
+// refused a whole phase earlier instead, by `scaffold/existing-content.ts`'s
+// own DIRECTORY-SYMLINK FIX, which sees a symlinked directory standing
+// between a target and a payload path and reports `CONTENT_CONFLICT` before
+// materialization begins. Note what that means for a project deliberately
+// structured through a symlinked directory (`app/src` -> `app/real-src`):
+// it no longer applies a template through that link the way it once did —
+// the batch is refused, fail-closed, and the developer resolves the link.
+// That is a real behaviour change, made deliberately and recorded in the
+// FEATURE's own acceptance criteria, because the alternative is the
+// reproduced data loss: writing through a link the CLI cannot compare
+// against, into content it never named.
 function refuseIfDestinationIsSymlink(destPath: string): void {
   let stat: fs.Stats;
   try {
@@ -100,10 +111,41 @@ export class ExistingSymlinkDestinationError extends Error {
   }
 }
 
-/** Real `WriteFileFn` — writes a destination file, creating parent dirs. */
+/**
+ * Real `WriteFileFn` — writes a destination file, creating parent dirs.
+ *
+ * DANGLING-SYMLINK-INSIDE FIX (found in PR review, reproduced against the
+ * built binary): this used to call the literal `fs.mkdirSync(path.dirname(
+ * destPath), ...)` — the one writer in this file that still did, after
+ * `createFsWriteProjectStateFn` and every writer in `fs-upgrade-io.ts` were
+ * already fixed to call `resolveWriteParentDir` instead (see that function's
+ * own doc comment for the full defect: a dangling symlink whose lexical
+ * target resolves INSIDE the project root is deliberately ALLOWED by
+ * `assertPathWithinProjectRoot`, but a literal `mkdirSync(path.dirname(...))`
+ * creates nothing the link's resolved target needs, since the literal parent
+ * — the directory containing the link itself — already exists). Reproduced
+ * live: `app/dir -> missing-parent/real-dir` (dangling, lexical target
+ * inside the project) with a payload declaring `app/dir/file.txt` failed
+ * with an uncaught `ENOENT` on `mkdir '.../app/dir'`, after an earlier
+ * payload path in the same batch had already been written — this is now the
+ * single `resolveWriteParentDir` formulation every writer in this package
+ * shares, never a fourth independently-reasoned parent-directory resolution.
+ *
+ * With `scaffold/existing-content.ts`'s own DIRECTORY-SYMLINK FIX in place,
+ * reconciliation now refuses this exact shape (a symlinked directory
+ * standing between `target` and a payload path) with `CONTENT_CONFLICT`
+ * before materialization ever reaches this function — but this fix remains
+ * as the backstop for a link that appears in the narrow window between that
+ * read and this write (an existing-content snapshot is not a lock), and for
+ * a DANGLING link whose target does not exist yet at all, which reconciliation's
+ * own read reports as an existing entry but which is not a data-loss risk
+ * the way an aliasing link is — refusing it outright would be strictly more
+ * conservative than this package's already-settled position that a project
+ * may legitimately contain its own (non-aliasing) symlinks.
+ */
 export function createFsWriteFileFn(): WriteFileFn {
   return async function writeFile(destPath: string, content: string): Promise<void> {
-    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    fs.mkdirSync(resolveWriteParentDir(destPath), { recursive: true });
     refuseIfDestinationIsSymlink(destPath);
     fs.writeFileSync(destPath, content, 'utf-8');
   };

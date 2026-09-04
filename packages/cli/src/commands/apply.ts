@@ -49,6 +49,28 @@ import { parseLocalOrigin } from '../resolver/types';
 import type { FetchFn, ListFolderFilesFn, PathExistsFn } from '../resolver/types';
 import { joinUnderTarget } from '../paths/relative-path';
 import type { ErrorCode } from '../envelope';
+// DEFECT FIX (PR review, reproduced against the built binary): `apply`'s own
+// blanket `catch` at the end of `runApplyPipeline` used to report EVERY
+// thrown failure as `INTERNAL`, including two deliberate, typed refusals
+// that already know their own honest error code —
+// `PathContainmentError` (`../adapters/fs-project-io.ts`, thrown by
+// `createFsWriteProjectStateFn` when `.frontx` itself resolves outside the
+// project root through a symlink) and `ExistingSymlinkDestinationError`
+// (same file, thrown by `createFsWriteFileFn` when a payload path already
+// exists as a symlink). `upgrade/commit.ts` fixed the identical mistake for
+// the upgrade engine by RETHROWING `PathContainmentError` for `cli.ts`'s own
+// top-level `run()` catch to map — this file does NOT rethrow, because
+// `seed` (`commands/seed-repository.ts`) reads `details.writtenPaths` off
+// THIS function's own RETURNED outcome to roll back; a rethrow here would
+// hand seed an exception it never gets a chance to catch cleanly, exactly
+// the bug `runApplyPipeline`'s own pre-existing generic catch below was
+// already written to prevent for every OTHER thrown failure. A deliberate,
+// typed refusal must never arrive as `INTERNAL`: that code tells a caller
+// the CLI itself broke, when in fact the CLI worked correctly and the tree
+// it was pointed at is the problem — the same distinction `PathContainmentError`
+// and `ExistingSymlinkDestinationError` already carry in their own names.
+import { PathContainmentError, ExistingSymlinkDestinationError } from '../adapters/fs-project-io';
+import type { RemoveProjectFileFn } from '../upgrade/types';
 
 /**
  * Canonicalizes every target in a raw batch to a project-relative path,
@@ -367,6 +389,138 @@ export interface ApplyPipelineDeps extends ResolveAndCheckDeps {
   // `../adapters/fs-project-io.ts`) at the `cli.ts` dispatch site, exactly
   // as `canonicalizeFn` already is.
   assertPathWithinRootFn: AssertPathWithinRootFn;
+  // ATOMICITY FIX (PR review, reproduced against the built binary,
+  // `inst-add-rollback-writes`): the two seams `rollbackWrittenPaths` below
+  // needs to make "nothing recorded" also mean "nothing left" — reused
+  // rather than reinvented. `removeProjectFileFn` is the SAME
+  // `RemoveProjectFileFn` shape `commands/delete.ts` already calls to remove
+  // one `toDelete` entry, and the SAME real adapter
+  // (`createFsRemoveProjectFileFn`, `../adapters/fs-project-io.ts`) already
+  // wired into `CliDeps` for `register`/`unregister`/`ownership`/`delete`. A
+  // second, independently-named "remove one file" seam for this call site
+  // would be a second formulation of a rule this package has already
+  // settled once. `removeEmptyDirFn` was `commands/seed-repository.ts`'s own
+  // seam alone until this fix — see `RemoveEmptyDirFn`'s own doc comment
+  // below for why it now lives here instead, shared by both callers.
+  removeProjectFileFn: RemoveProjectFileFn;
+  removeEmptyDirFn: RemoveEmptyDirFn;
+}
+
+// MOVED HERE from `commands/seed-repository.ts` (ATOMICITY FIX, PR review,
+// reproduced against the built binary): `seed`'s own rollback was the only
+// caller that could remove a directory a failed batch's writes brought into
+// being, but `apply` itself needed the identical capability the moment its
+// own post-materialization refusals started rolling back their writes too
+// (`rollbackWrittenPaths` below) — a directory apply's own writes create and
+// leave empty on a refusal is exactly as much apply's to remove as one
+// seed's writes create, for the identical reason `seed`'s own doc comment
+// already gave: no existing seam can remove a DIRECTORY (every other
+// project-state seam reads/writes the one `.frontx/project.json` FILE, or
+// removes a single file). One type, imported by both callers, rather than
+// two independently-declared copies of the same function shape.
+export type RemoveEmptyDirFn = (absolutePath: string) => Promise<void>;
+
+// ATOMICITY FIX (PR review, reproduced against the built binary,
+// `inst-add-rollback-writes`): the ONE shared removal formulation both
+// `apply`'s own post-materialization rollback and `seed`'s own rollback
+// (`commands/seed-repository.ts`'s `rollbackSeedWrites`) call, rather than
+// two independently duplicated directory-pruning walks. Removes every file
+// in `writtenPaths` (project-relative to `repoRoot` — exactly the shape
+// `ApplyBatchOutcome`'s own `details.writtenPaths` already carries), then
+// prunes every directory those removals leave empty, deepest-first,
+// bounded by `repoRoot` itself: `repoRoot` is never a candidate (a caller
+// removing its OWN writes has no business ever removing the project root
+// it was invoked against), and neither is anything above it. "Deepest
+// first" matters because `removeEmptyDirFn`'s own contract — no-op unless
+// the directory is ALREADY empty — means a parent can only ever become
+// removable once its child already was; sorting by path-segment count,
+// descending, guarantees every child is considered before the parent that
+// would otherwise still see it standing.
+//
+// `dirsThisCallCreated` is what keeps the pruning honest, and it is not
+// optional. OVER-PRUNING FIX (found by re-running this round's own fix
+// against the built binary, before it shipped): the first version of this
+// walk pruned every emptied ancestor up to `repoRoot`, which quietly deleted
+// a directory the DEVELOPER created and this batch merely wrote into.
+// Reproduced: a project with its own empty `app/`, a payload declaring
+// `app/dir/file.txt`, and a post-materialization refusal — the rollback
+// removed the file, then `app/dir`, then `app` itself, and the developer's
+// directory was gone with nothing in the report mentioning it. A rollback
+// may only undo what the call itself did; a directory already standing when
+// materialization began is not this call's to remove, however empty the
+// file's removal leaves it. So the walk climbs only through directories
+// named in this set, and stops at the first one that is not — the set
+// `runApplyPipeline` fills in its pre-write pass, BEFORE any write, which is
+// the only moment "was this already here" is still answerable at all. A
+// caller that cannot answer it passes an EMPTY set and prunes nothing:
+// leaving an empty directory behind is a residue, while removing someone
+// else's is damage, and the two are not comparable.
+//
+// Every path in `writtenPaths` is safe to remove outright, never merely
+// "probably" safe: `apply` never overwrites pre-existing content (a content
+// conflict or an un-adopted additional path both abort BEFORE
+// materialization, per `cpt-frontx-dod-cli-scaffolding-existing-content-
+// protocol`, and an ADOPTED additional path is never written at all — see
+// `runApplyPipeline`'s own `adoptedSnapshots` mechanism), so every path this
+// function is ever asked to remove is a file THIS CALL itself brought into
+// being.
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-rollback-writes
+export async function rollbackWrittenPaths(
+  repoRoot: string,
+  writtenPaths: readonly string[],
+  removeProjectFileFn: RemoveProjectFileFn,
+  removeEmptyDirFn: RemoveEmptyDirFn,
+  dirsThisCallCreated: ReadonlySet<string>,
+): Promise<void> {
+  const candidateDirs = new Set<string>();
+  for (const relativePath of writtenPaths) {
+    const absolutePath = path.join(repoRoot, relativePath);
+    await removeProjectFileFn(absolutePath);
+    // `relativePath` is project-relative (no `..` segment can survive
+    // `joinUnderTarget`/effective-ownership scoping this far), so
+    // `absolutePath` is always a proper descendant of `repoRoot` and this
+    // walk is guaranteed to reach `repoRoot` itself — never the filesystem
+    // root above it — and stop there.
+    let dir = path.dirname(absolutePath);
+    while (dir !== repoRoot && dirsThisCallCreated.has(dir)) {
+      candidateDirs.add(dir);
+      dir = path.dirname(dir);
+    }
+  }
+  const deepestFirst = [...candidateDirs].sort(
+    (a, b) => b.split(path.sep).length - a.split(path.sep).length,
+  );
+  for (const dir of deepestFirst) {
+    await removeEmptyDirFn(dir);
+  }
+}
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-rollback-writes
+
+// The ONE trailing clause every refusal message below composes from
+// `writtenPaths` — never a per-call-site restatement of the same sentence.
+// DEFECT FIX (PR review, reproduced against the built binary): the clause
+// used to always say "remain on disk", which became a lie the moment a
+// refusal started rolling those same paths back (`rollbackWrittenPaths`
+// above) — a message cannot honestly say both "nothing was recorded" and
+// "N files remain on disk" in the same breath. `removed` names which of the
+// two is true for THIS call site: `false` only for the one refusal that
+// still cannot roll back (a mid-record-loop failure after an earlier name
+// in the same batch already committed, `recordedAnyThisCall`'s own doc
+// comment above).
+//
+// Exported so `commands/seed-repository.ts` can strip this EXACT clause back
+// off `applyResult.message` before composing its own wrapper text
+// (`stripWrittenPathsClause`) — seed's own rollback runs AFTER apply already
+// returned, so whatever this function said about `writtenPaths` at the
+// moment apply composed it may no longer be true once seed's rollback runs
+// too; reusing this same formulation to find and remove that clause is the
+// one honest way to recover apply's underlying REASON without seed
+// re-deriving or re-guessing the clause's exact wording a second time.
+export function describeWrittenPaths(writtenPaths: readonly string[], removed: boolean): string {
+  if (writtenPaths.length === 0) return ' Nothing from this batch was written to disk.';
+  return removed
+    ? ` ${writtenPaths.length} file(s) this batch had written have been removed as part of this refusal: ${writtenPaths.join(', ')}.`
+    : ` ${writtenPaths.length} file(s) this batch already wrote remain on disk: ${writtenPaths.join(', ')}.`;
 }
 
 export interface ApplyBatchTargetRef {
@@ -482,8 +636,18 @@ export async function runApplyPipeline(
       ok: false,
       code: 'CONTENT_CONFLICT',
       message:
-        `Aborted — existing content differs from the template's payload at: ${contentConflictPaths.join(', ')}; ` +
-        'nothing written.',
+        // Both causes named, because `contentConflicts` unions two of them
+        // (the FEATURE's own Output line for this algorithm says so): content
+        // that differs from what the payload declares, and content that
+        // cannot be compared against it AT ALL because a symlink stands at
+        // the payload path or on the way to it. Saying only "differs" was
+        // accurate for the first and false for the second — a developer
+        // reading it went looking for a content difference that does not
+        // exist, and the remedy is different in each case (edit or remove
+        // the file, versus resolve the link).
+        `Aborted — existing content cannot be taken for the template's payload at: ${contentConflictPaths.join(', ')} ` +
+        '— it either differs from what the payload declares, or stands on (or beneath) a symlink, which cannot be ' +
+        'compared against declared content at all; nothing written.',
       details: { paths: contentConflictPaths },
     };
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-existing-conflict
@@ -515,16 +679,37 @@ export async function runApplyPipeline(
   // BEFORE anything is written — an escape anywhere in the batch aborts the
   // whole batch, nothing written, exactly as `contentConflictPaths`/
   // `undecidedAdditionalPaths` above already abort before writing anything.
+  //
+  // The same pass also answers the one question a rollback can no longer ask
+  // once materialization has begun: which of the directories this batch is
+  // about to write into were ALREADY standing. `rollbackWrittenPaths` above
+  // prunes only the directories the batch itself brought into being, and
+  // "already standing" is only observable BEFORE the first write — afterwards
+  // a directory apply created and one the developer created look identical.
+  // Probed here rather than in a pass of its own so the two questions asked
+  // of the same path set are asked once, walking it once.
   const invalidPaths: string[] = [];
+  const dirsThisCallCreated = new Set<string>();
+  const probedDirs = new Set<string>();
   for (const entry of unrecorded) {
     const payload = payloads.get(entry) ?? new Map<string, string>();
     const identical = identicalByEntry.get(entry) ?? new Set<string>();
     for (const [projectPath] of payload) {
       if (identical.has(projectPath)) continue;
+      const absolutePath = path.join(repoRoot, projectPath);
       try {
-        deps.assertPathWithinRootFn(path.join(repoRoot, projectPath));
+        deps.assertPathWithinRootFn(absolutePath);
       } catch {
         invalidPaths.push(projectPath);
+      }
+      // Every ancestor between the file and `repoRoot`, deduplicated across
+      // the whole batch (`probedDirs`) so a directory shared by two hundred
+      // payload paths costs one `existsFn` call, not two hundred.
+      let dir = path.dirname(absolutePath);
+      while (dir !== repoRoot && !probedDirs.has(dir)) {
+        probedDirs.add(dir);
+        if (!(await deps.existsFn(dir))) dirsThisCallCreated.add(dir);
+        dir = path.dirname(dir);
       }
     }
   }
@@ -551,6 +736,23 @@ export async function runApplyPipeline(
   // "nothing written", which only the checks ABOVE this point can honestly
   // claim).
   const writtenPaths: string[] = [];
+  // ATOMICITY FIX (PR review, reproduced against the built binary,
+  // `inst-add-rollback-writes`/`inst-add-if-write-refusal`): true from the
+  // moment this call's FIRST project-state commit (`mutateProjectState`
+  // below) succeeds. Every refusal below this point rolls back
+  // `writtenPaths` unconditionally EXCEPT one already committed a name's
+  // targets to the project state store during THIS call — rolling back
+  // `writtenPaths` there would delete files a just-recorded project-state
+  // entry now (correctly) claims are applied, trading one inconsistency for
+  // a worse one. This narrow case is bounded to a multi-name batch whose
+  // record loop commits one name and then fails on a LATER one — the
+  // sibling defensive branch below already calls its own failure
+  // "unreachable in practice" for the same reason a validated document's
+  // shape does not usually turn valid then invalid between two writes in
+  // the same call; when it is reached, this flag is what keeps the already-
+  // recorded name's files honestly left in place rather than corrupted by
+  // an overzealous rollback.
+  let recordedAnyThisCall = false;
   try {
     // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p1:inst-as-reconciled-assembled
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
@@ -577,6 +779,7 @@ export async function runApplyPipeline(
     // through ground this module has no seam to inspect beforehand — but
     // the batch is refused and nothing below is recorded, rather than
     // reporting success over content it silently corrupted.
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-adopted-corrupted
     if (adoptedSnapshots.length > 0) {
       const rereadByTarget = new Map<string, Map<string, string>>();
       const corruptedAdoptedPaths: string[] = [];
@@ -590,18 +793,26 @@ export async function runApplyPipeline(
         if (reread.get(snapshot.path) !== snapshot.content) corruptedAdoptedPaths.push(snapshot.path);
       }
       if (corruptedAdoptedPaths.length > 0) {
+        // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-adopted-corrupted
+        // ATOMICITY FIX (`inst-add-rollback-writes`): reached before the
+        // record loop below ever runs, so `recordedAnyThisCall` is always
+        // false here — every file this call wrote is unconditionally safe
+        // to remove.
+        await rollbackWrittenPaths(repoRoot, writtenPaths, deps.removeProjectFileFn, deps.removeEmptyDirFn, dirsThisCallCreated);
         return {
           ok: false,
           code: 'CONTENT_CONFLICT',
           message:
             `Aborted — "--adopt-existing" promised to leave existing content untouched, but materializing this ` +
             `batch altered it anyway at: ${corruptedAdoptedPaths.join(', ')} (a declared payload path elsewhere in ` +
-            'this batch is very likely a symlink aliasing one of these locations); nothing was recorded, but ' +
-            `${writtenPaths.length} file(s) this batch wrote remain on disk: ${writtenPaths.join(', ')}.`,
+            'this batch is very likely a symlink aliasing one of these locations); nothing was recorded, and' +
+            describeWrittenPaths(writtenPaths, true),
           details: { paths: corruptedAdoptedPaths, writtenPaths },
         };
+        // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-adopted-corrupted
       }
     }
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-adopted-corrupted
 
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize-bundle
     // Run ONCE per name that just gained its first target across the WHOLE
@@ -629,19 +840,21 @@ export async function runApplyPipeline(
         // surfaced here as a real refusal rather than an unhandled crash.
         // DEFECT FIX (PR review, reproduced against the built binary): this
         // refusal is reached AFTER the main payload materialize loop above
-        // has already written this batch's files — `writtenPaths` names
-        // exactly what is still on disk, rather than leaving the caller to
-        // assume the "nothing written" only an EARLIER refusal can honestly
-        // claim.
+        // has already written this batch's files, and BEFORE the record
+        // loop below has committed anything for ANY name this call —
+        // `recordedAnyThisCall` is always false here, so every file this
+        // call wrote is unconditionally safe to remove (`inst-add-rollback-
+        // writes`); `writtenPaths` still names them in `details` for the
+        // caller's own audit, but the message now says they were removed,
+        // not that they remain.
+        await rollbackWrittenPaths(repoRoot, writtenPaths, deps.removeProjectFileFn, deps.removeEmptyDirFn, dirsThisCallCreated);
         return {
           ok: false,
           code: 'INVALID_PATH',
           message:
             `Aborted — the AI-extension bundle for "${entry.templateName}" could not be proven to stay inside the ` +
             `project root: ${error instanceof Error ? error.message : String(error)}` +
-            (writtenPaths.length > 0
-              ? ` ${writtenPaths.length} file(s) this batch already wrote remain on disk: ${writtenPaths.join(', ')}.`
-              : ''),
+            describeWrittenPaths(writtenPaths, true),
           details: writtenPaths.length > 0 ? { name: entry.templateName, writtenPaths } : { name: entry.templateName },
         };
       }
@@ -665,11 +878,18 @@ export async function runApplyPipeline(
         // `TEMPLATE_NOT_REGISTERED` for any name with no project-state entry,
         // so every name reaching here was already confirmed registered.
         // Guarded rather than asserted so a caller-supplied fake document
-        // cannot turn this into a thrown TypeError.
+        // cannot turn this into a thrown TypeError. ATOMICITY FIX: rolls
+        // back only when no earlier name in this same batch has already
+        // committed (`recordedAnyThisCall`'s own doc comment above) — this
+        // defensive branch can in principle be reached after an earlier
+        // name's `mutateProjectState` call already succeeded.
+        if (!recordedAnyThisCall) {
+          await rollbackWrittenPaths(repoRoot, writtenPaths, deps.removeProjectFileFn, deps.removeEmptyDirFn, dirsThisCallCreated);
+        }
         return {
           ok: false,
           code: 'INTERNAL',
-          message: `Template "${name}" was staged but is no longer registered.`,
+          message: `Template "${name}" was staged but is no longer registered.` + describeWrittenPaths(writtenPaths, !recordedAnyThisCall),
           details: writtenPaths.length > 0 ? { writtenPaths } : undefined,
         };
       }
@@ -681,13 +901,20 @@ export async function runApplyPipeline(
         deps.writeProjectStateFn,
       );
       if (!written.ok) {
+        // ATOMICITY FIX: see the defensive branch just above for why this
+        // rollback is conditional on `recordedAnyThisCall` rather than
+        // unconditional like the two earlier (pre-record-loop) refusals.
+        if (!recordedAnyThisCall) {
+          await rollbackWrittenPaths(repoRoot, writtenPaths, deps.removeProjectFileFn, deps.removeEmptyDirFn, dirsThisCallCreated);
+        }
         return {
           ok: false,
           code: 'PROJECT_INVALID',
-          message: written.message,
+          message: written.message + describeWrittenPaths(writtenPaths, !recordedAnyThisCall),
           details: writtenPaths.length > 0 ? { writtenPaths } : undefined,
         };
       }
+      recordedAnyThisCall = true;
       for (const target of newTargets) applied.push({ templateName: name, target });
     }
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-record
@@ -698,7 +925,50 @@ export async function runApplyPipeline(
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-done
     return { ok: true, applied, noop };
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-done
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-write-refusal
   } catch (error) {
+    // ATOMICITY FIX (`inst-add-rollback-writes`): unconditional whenever no
+    // name in this call has yet been recorded — see `recordedAnyThisCall`'s
+    // own doc comment above for the one narrow case where it must NOT run.
+    const canRollback = !recordedAnyThisCall;
+    if (canRollback) {
+      await rollbackWrittenPaths(repoRoot, writtenPaths, deps.removeProjectFileFn, deps.removeEmptyDirFn, dirsThisCallCreated);
+    }
+
+    // DEFECT FIX (PR review, reproduced against the built binary): a
+    // deliberate, typed refusal — `PathContainmentError` (thrown by
+    // `createFsWriteProjectStateFn` when `.frontx` itself resolves outside
+    // the project root through a symlink introduced since the pre-flight
+    // check) or `ExistingSymlinkDestinationError` (thrown by
+    // `createFsWriteFileFn` when a payload path already exists as a
+    // symlink) — used to fall straight through to the generic `INTERNAL`
+    // branch below, exactly like any other unrecognized exception. Both are
+    // discriminated here, BEFORE the generic fallback, into the SAME
+    // structured code every OTHER refusal for their own class of problem
+    // already uses elsewhere in this file (`INVALID_PATH` for a containment
+    // escape, `CONTENT_CONFLICT` for an existing-symlink destination) — see
+    // this file's own import comment for why this is a RETURN, never a
+    // rethrow, unlike `upgrade/commit.ts`'s identical fix for the same two
+    // error classes.
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-write-refusal
+    if (error instanceof PathContainmentError) {
+      return {
+        ok: false,
+        code: 'INVALID_PATH',
+        message: error.message + describeWrittenPaths(writtenPaths, canRollback),
+        details: writtenPaths.length > 0 ? { path: error.offendingPath, writtenPaths } : { path: error.offendingPath },
+      };
+    }
+    if (error instanceof ExistingSymlinkDestinationError) {
+      return {
+        ok: false,
+        code: 'CONTENT_CONFLICT',
+        message: error.message + describeWrittenPaths(writtenPaths, canRollback),
+        details: writtenPaths.length > 0 ? { paths: [error.destPath], writtenPaths } : { paths: [error.destPath] },
+      };
+    }
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-write-refusal
+
     // DEFECT FIX (PR review, reproduced against the built binary): any
     // OTHER thrown failure materializing this batch — converted to the
     // same honest, structured shape, `writtenPaths` naming whatever this
@@ -710,10 +980,9 @@ export async function runApplyPipeline(
       code: 'INTERNAL',
       message:
         `Aborted — an unexpected error interrupted materialization: ${error instanceof Error ? error.message : String(error)}.` +
-        (writtenPaths.length > 0
-          ? ` ${writtenPaths.length} file(s) this batch already wrote remain on disk: ${writtenPaths.join(', ')}.`
-          : ' Nothing from this batch was written to disk.'),
+        describeWrittenPaths(writtenPaths, canRollback),
       details: writtenPaths.length > 0 ? { writtenPaths } : undefined,
     };
   }
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-write-refusal
 }

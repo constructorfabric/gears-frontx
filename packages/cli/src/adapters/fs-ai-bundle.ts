@@ -85,31 +85,38 @@ export function createFsBundleExistsFn(): BundleExistsFn {
 // any other ownership declaration; the CLI, not the template, is the sole
 // writer and remover of `.frontx/ai/<manifest-name>/`" (`architecture/ADR/
 // 0031-template-ownership-boundary-declaration.md`). Since nothing else is
-// ever entitled to have placed content at this exact path, replacing
-// whatever is found there — dangling symlink, live symlink, or (the
-// ordinary case) nothing at all — is the CLI reclaiming its own ground, not
-// a destructive guess. Only the LINK ITSELF is ever removed (`fs.unlinkSync`
-// on a symlink removes the directory entry, never walks into or deletes
-// whatever the link points at), so a LIVE symlink's real target — reachable
-// from elsewhere in the project — is left untouched; only the stale
-// reference to it at this one path is cleared, exactly as the containment
-// guard above already resolved it (a `dest` whose real, or dangling-lexical,
-// target lands outside the project root was already refused before this
-// point runs). An ordinary pre-existing directory at `dest` (e.g. a
-// same-version reapply) is left exactly as it was — `cpSync`'s own
-// recursive merge already handles that case correctly, and this guard fires
-// on nothing but a symlink.
-function removeSymlinkAt(dest: string): void {
-  let stat: fs.Stats;
-  try {
-    stat = fs.lstatSync(dest);
-  } catch (error) {
-    if (isEnoent(error)) return; // ordinary case: nothing there yet
-    throw error;
-  }
-  if (stat.isSymbolicLink()) {
-    fs.unlinkSync(dest);
-  }
+// ever entitled to have placed content at this exact path, clearing
+// whatever is found there — dangling symlink, live symlink, a real
+// directory, or (the ordinary case) nothing at all — is the CLI reclaiming
+// its own ground, not a destructive guess.
+//
+// STALE-MERGE FIX (PR review, below the reporting threshold there but a real
+// hole): an earlier version of this function cleared ONLY a symlink and left
+// a pre-existing real DIRECTORY standing, on the reasoning that `cpSync`'s
+// recursive merge "handles that case correctly". A merge does not handle it
+// correctly — it handles it SILENTLY. A file the previous bundle shipped and
+// the new one dropped survives the copy, because a recursive merge only ever
+// adds and overwrites, never removes. The path where that actually happens
+// is already known and already reported: `delete` can fail to remove a
+// bundle and says so through its own `aiBundleResidue`, leaving a real
+// directory of the OLD bundle's files at exactly this path for the next
+// apply to merge into. The result would be a bundle that is neither the old
+// one nor the new one, with nothing in any report saying so.
+//
+// So the whole entry is removed, whatever it is. `fs.rmSync` decides what to
+// remove by `lstat`, so a symlink is unlinked as a directory ENTRY — never
+// walked into, never deleting whatever it points at — and a LIVE symlink's
+// real target, reachable from elsewhere in the project, is left untouched
+// exactly as before; only the stale reference at this one path is cleared.
+// The containment guard in `createFsCopyBundleFn` has already refused a
+// `dest` whose real (or dangling-lexical) target lands outside the project
+// root before this ever runs, so the ground being cleared is always inside
+// the project and always the CLI's own. `force: true` keeps "nothing there
+// yet" — the ordinary first apply — a no-op rather than an ENOENT, matching
+// `createFsRemoveBundleFn` below, which reclaims the identical ground the
+// identical way.
+function clearBundleDestination(dest: string): void {
+  fs.rmSync(dest, { recursive: true, force: true });
 }
 
 /** Real `CopyBundleFn` — copies the source's bundle folder into the
@@ -131,7 +138,7 @@ export function createFsCopyBundleFn(): CopyBundleFn {
     const dest = bundlePath(destRoot, manifestName);
     assertPathWithinProjectRoot(destRoot, dest);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    removeSymlinkAt(dest);
+    clearBundleDestination(dest);
     fs.cpSync(source, dest, { recursive: true });
   };
 }

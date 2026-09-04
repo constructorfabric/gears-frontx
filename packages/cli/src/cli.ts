@@ -173,9 +173,9 @@ export function usageText(): string {
     'Usage: frontx <command> [args]',
     '',
     'Commands:',
-    '  install <spec>                          Install a template from a source-spec',
+    '  install <spec> [--json]                 Install a template from a source-spec',
     '  list [--json]                           List installed templates (--json: one record per entry)',
-    '  update-local <identity> <spec>          Update a locally installed template',
+    '  update-local <identity> <spec> [--json] Update a locally installed template',
     '  validate <templateDir>                  Validate a template manifest for publication',
     '  validate --project [--json]             Validate .frontx/project.json against reality',
     '  assemble --input <batch-json> [--json]  Preview an explicit batch; writes nothing',
@@ -1258,6 +1258,16 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         copyBundleFn: createFsCopyBundleFn(),
         removeBundleFn: createFsRemoveBundleFn(),
         assertPathWithinRootFn: deps.createAssertPathWithinRootFn(repoRoot),
+        // The rollback pair `runApplyPipeline` undoes its OWN writes with
+        // when a refusal lands after materialization has already begun
+        // (`inst-add-rollback-writes`) — the same two `CliDeps` values
+        // `seed`'s dispatch above already passes, never a second pair of
+        // adapters built here: both commands roll back through one shared
+        // helper (`commands/apply.ts`'s `rollbackWrittenPaths`), so they
+        // must remove files and prune emptied directories the identical
+        // way.
+        removeProjectFileFn: deps.removeProjectFile,
+        removeEmptyDirFn: deps.removeEmptyDirFn,
       };
       const result = await runApplyPipeline(parsedBatch.batch, repoRoot, adoptExisting, pipelineDeps);
       return renderApplyOutcome(result, jsonMode);
@@ -1770,6 +1780,30 @@ export function helpOutcome(parsed: ParsedInvocation): CommandOutcome {
   // @cpt-begin:cpt-frontx-flow-cli-invocation-help:p1:inst-help-return-success
   // @cpt-begin:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-help-success
   if (parsed.helpRequested) {
+    // `help`/`-h`/`--help` were the one dispatchable request left tolerating
+    // trailing garbage — `frontx help extra` used to exit 0 and print usage
+    // with `extra` never even inspected, the identical near-miss every OTHER
+    // command's own `rejectUnrecognizedArgs` call already refuses (`list`'s
+    // `inst-list-abort-unknown-arg` precedent). Bare `frontx` produces an
+    // empty `parsed.args`, so this never fires for the no-command case.
+    //
+    // `--json` is refused here too, rather than tolerated and ignored, and
+    // that is a deliberate choice between two coherent surfaces rather than
+    // an oversight. `help` is the one dispatchable request with no result to
+    // render: its output IS the usage prose, and wrapping a block of prose
+    // in `{"ok": true, "data": {...}}` gives an agent nothing to branch on —
+    // so `help` does not appear in `usageText()` above with a `[--json]` of
+    // its own, and `cpt-frontx-adr-cli-machine-readable-output`'s contract is
+    // scoped to "every command SUPPORTING `--json`". Tolerating the flag
+    // while still printing plain text would leave the one invocation on this
+    // whole surface that answers `--json` with something no parser can read;
+    // refusing it says so in the envelope itself, since `jsonMode` is read
+    // BEFORE the refusal is built and the refusal is therefore rendered as
+    // one — an agent that appends `--json` to everything gets a parseable
+    // answer either way, and a truthful one here.
+    const jsonMode = parseJsonMode(parsed.args);
+    const extraArgsOutcome = rejectUnrecognizedArgs('help', parsed.args, jsonMode, 'frontx help');
+    if (extraArgsOutcome) return extraArgsOutcome;
     return { exitCode: EXIT_SUCCESS, stdout: usage };
   }
   // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-help-success

@@ -312,9 +312,13 @@ the CLI's machine-readable command surface (`src/upgrade-orchestration/`):
 frontx upgrade @acme/my-template github:acme/my-template@1.1.0 --json
 ```
 
-The `--json` surface emits the computed operation plan and reads a decision
-back, so the kit can layer review gates, migration analysis, and downstream
-impact assessment onto the change set before it is applied.
+There is no stdin exchange: the surface is a two-call protocol. The first
+`--json` invocation above writes nothing and returns `CONFIRMATION_REQUIRED`
+with the computed plan in `details.plan`; approval is expressed by re-issuing
+the identical command with `--yes` appended, which recomputes the plan and
+acts on it. That two-call shape is what lets the kit layer review gates,
+migration analysis, and downstream impact assessment onto the change set
+between the two calls, before anything is applied.
 
 > **Two paths, one engine.** Scaffolding is reachable both ways. State an intent
 > and the kit's scaffolding skill chooses and applies for you; hold a template

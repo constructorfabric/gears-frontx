@@ -20,36 +20,36 @@
 import path from 'node:path';
 import { registerTemplate, probeRegistration } from './register';
 import { officialDefaultOrigin } from './official-defaults';
-import { runApplyPipeline } from './apply';
-import type { ApplyBatchOutcome, ApplyBatchTargetRef, ApplyPipelineDeps } from './apply';
+import { runApplyPipeline, rollbackWrittenPaths, describeWrittenPaths } from './apply';
+import type { ApplyBatchOutcome, ApplyBatchTargetRef, ApplyPipelineDeps, RemoveEmptyDirFn } from './apply';
 import type { UniformApplyBatch } from '../scaffold/assembler';
 import { projectStatePath } from '../project-state/io';
 import type { ProjectStateDocument } from '../project-state/types';
-import type { RemoveProjectFileFn } from '../upgrade/types';
 import type { ErrorCode } from '../envelope';
 
-// DEFECT FIX (PR review, reproduced against the built binary): removes the
-// directory at `absolutePath` only when it exists and is now completely
-// empty — a no-op when it is absent, or genuinely non-empty (never a
-// forced/recursive removal). The one capability `seedRepository`'s own
-// rollback (`inst-seed-rollback` below) needs that no existing seam
-// provides: every other project-state seam either reads/writes the ONE
-// `.frontx/project.json` FILE (`ReadProjectStateFn`/`WriteProjectStateFn`)
-// or removes a single file (`RemoveProjectFileFn`, reused as-is below for
-// that document itself) — none of them can remove the `.frontx` DIRECTORY
-// `seed`'s own first write may have brought into being as a side effect.
-// Real implementation wired at the `cli.ts` dispatch site, exactly as every
-// other seam here is.
-export type RemoveEmptyDirFn = (absolutePath: string) => Promise<void>;
+// `RemoveEmptyDirFn` used to be declared here — this was, until the
+// ATOMICITY FIX (PR review, reproduced against the built binary) below, the
+// only caller that needed it. `apply`'s own post-materialization rollback
+// (`inst-add-rollback-writes`, `./apply.ts`) needed the identical capability
+// the moment ITS OWN refusals started rolling back their writes too, so the
+// type (and the shared removal helper built on it, `rollbackWrittenPaths`)
+// moved there and this module imports both rather than keeping two
+// independently-declared copies. Re-exported under this module's own name
+// so `cli.ts`'s existing `import type { RemoveEmptyDirFn } from
+// './commands/seed-repository'` keeps resolving without that file needing
+// to change its own import path for a type move that is otherwise none of
+// its dispatch logic's concern.
+export type { RemoveEmptyDirFn };
 
-export type SeedRepositoryDeps = ApplyPipelineDeps & {
-  // Reused as-is (`adapters/fs-project-io.ts`'s `createFsRemoveProjectFileFn`,
-  // already wired into `CliDeps` as `removeProjectFile` for `delete`/
-  // `upgrade`'s own restores) — this is a plain "remove this one file" seam,
-  // and `.frontx/project.json` is exactly that.
-  removeProjectFileFn: RemoveProjectFileFn;
-  removeEmptyDirFn: RemoveEmptyDirFn;
-};
+// `removeProjectFileFn`/`removeEmptyDirFn` used to be declared as this
+// type's OWN additional fields, layered on top of `ApplyPipelineDeps` —
+// `seed` was the only caller that needed either seam. Both are now
+// `ApplyPipelineDeps`'s own fields instead (see that interface's own doc
+// comment in `./apply.ts` for why `apply` itself needs them too), so this
+// type is a plain alias rather than an extension: every `SeedRepositoryDeps`
+// value already IS a complete `ApplyPipelineDeps` value, with nothing seed-
+// specific left to add.
+export type SeedRepositoryDeps = ApplyPipelineDeps;
 
 export type SeedRepositoryOutcome =
   | { ok: true; registeredDefaults: string[]; applied: ApplyBatchTargetRef[]; noop: ApplyBatchTargetRef[] }
@@ -187,9 +187,45 @@ export async function seedRepository(
   // created it and it is now empty again — the `.frontx` directory that
   // document's write brought into being as a side effect.
   async function rollbackSeedWrites(writtenPaths: readonly string[] = []): Promise<void> {
-    for (const relativePath of writtenPaths) {
-      await deps.removeProjectFileFn(path.join(dir, relativePath));
-    }
+    // ATOMICITY FIX (PR review, reproduced against the built binary,
+    // defect 5a — a rolled-back seed left 73-99 empty directories behind
+    // in the live reproduction): reuses the SAME shared removal formulation
+    // `apply`'s own post-materialization rollback uses
+    // (`rollbackWrittenPaths`, `./apply.ts`) rather than a second,
+    // independently-duplicated removal walk — removes every file in
+    // `writtenPaths` over the same ground apply's OWN rollback covers
+    // (`dir` IS the `repoRoot` `runApplyPipeline` above was called with).
+    // Directory pruning is apply's, not this call's — see the fifth
+    // argument below for why. Calling it
+    // here even when apply's OWN rollback already removed everything (the
+    // ordinary case — see `runApplyPipeline`'s own `recordedAnyThisCall`
+    // doc comment) is harmless, never a double-removal that errors: both
+    // `removeProjectFileFn` and `removeEmptyDirFn` are no-ops over ground
+    // already gone. The one case this call is NOT redundant for is the
+    // narrow one `recordedAnyThisCall` itself documents — a multi-name
+    // batch where apply's OWN rollback deliberately left an earlier,
+    // already-recorded name's files in place; `seed`, unlike a standalone
+    // `apply`, is about to delete the WHOLE project state document below
+    // regardless (a project either seeds completely or not at all), so
+    // that earlier name's files are this rollback's to remove too — the
+    // two rollbacks do not fight, they compose.
+    //
+    // The empty set is the fifth argument deliberately, not for want of a
+    // better value: `rollbackWrittenPaths` prunes only directories the
+    // CALLER can prove its own writes created, and that is answerable only
+    // BEFORE materialization begins — a moment `seed` never has, since it
+    // learns `writtenPaths` from an apply that has already run and returned.
+    // `runApplyPipeline` DOES have that moment and takes it (its own
+    // pre-write pass), so in the ordinary case the directories are already
+    // pruned by the time this runs and there is nothing here to do. What is
+    // left for this call is the narrow case `recordedAnyThisCall` documents
+    // — an earlier, already-recorded name's files apply deliberately kept —
+    // whose FILES are `seed`'s to remove (a project either seeds completely
+    // or not at all) but whose directories `seed` cannot tell apart from
+    // ones the developer put there. An empty directory left behind is a
+    // residue; removing a developer's is damage, and this call declines to
+    // guess between them.
+    await rollbackWrittenPaths(dir, writtenPaths, deps.removeProjectFileFn, deps.removeEmptyDirFn, new Set());
     await deps.removeProjectFileFn(projectStatePath(dir));
     if (!frontxDirPreexisted) {
       await deps.removeEmptyDirFn(frontxDir);
@@ -205,6 +241,29 @@ export async function seedRepository(
   function extractWrittenPaths(details: Record<string, unknown> | undefined): string[] {
     const value = details?.writtenPaths;
     return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+  }
+
+  // MESSAGE-HONESTY FIX (PR review, reproduced against the built binary,
+  // defect 5b): recovers apply's underlying refusal REASON from
+  // `applyResult.message` by removing the exact trailing clause
+  // `describeWrittenPaths` (`./apply.ts`) composed onto it — that clause is
+  // the one part of the message this rollback makes stale (it names
+  // `writtenPaths` as either "remaining" or already "removed" as of the
+  // MOMENT apply returned, never as of after THIS rollback also ran). Tries
+  // both possible clause spellings (`removed: true` and `removed: false`)
+  // rather than assuming which one apply used, since either is possible
+  // depending on whether apply's OWN rollback already ran
+  // (`runApplyPipeline`'s own `recordedAnyThisCall` doc comment) — and
+  // falls back to the message unchanged when neither matches, which is
+  // defensive rather than load-bearing: every `ApplyBatchOutcome` failure
+  // that ever carries a non-empty `details.writtenPaths` composes its
+  // message through this exact function.
+  function stripWrittenPathsClause(message: string, writtenPaths: readonly string[]): string {
+    const removedClause = describeWrittenPaths(writtenPaths, true);
+    const remainingClause = describeWrittenPaths(writtenPaths, false);
+    if (message.endsWith(removedClause)) return message.slice(0, message.length - removedClause.length).trimEnd();
+    if (message.endsWith(remainingClause)) return message.slice(0, message.length - remainingClause.length).trimEnd();
+    return message;
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
 
@@ -319,21 +378,35 @@ export async function seedRepository(
     await rollbackSeedWrites(writtenPaths);
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
     if (writtenPaths.length === 0) return applyResult;
-    // `applyResult.message` itself names files as currently "on disk" —
-    // true when `apply` returned it, false now that the rollback just
-    // above removed exactly those paths. The CURRENT truth leads this
-    // message; `applyResult.message` follows only as labeled, superseded
-    // context — never restated as though it still describes the present,
-    // which is exactly the stale, dishonest report `inst-seed-rollback`
-    // exists to prevent. `details.writtenPaths` is dropped entirely for
-    // the same reason: nothing it names is still true.
+    // MESSAGE-HONESTY FIX (PR review, reproduced against the built binary,
+    // defect 5b): `applyResult.message` narrates apply's own refusal AT THE
+    // MOMENT apply returned it — for a refusal that names `writtenPaths`,
+    // that always ends in EXACTLY the clause `describeWrittenPaths`
+    // composes (`./apply.ts`), saying either that those files "remain on
+    // disk" or that apply's OWN rollback already "removed" them
+    // (`runApplyPipeline`'s own `recordedAnyThisCall` doc comment). Either
+    // way, that clause is now STALE the moment `rollbackSeedWrites` just
+    // above runs: this rollback is the one that gets the final, honest word
+    // on what is on disk, so quoting apply's clause verbatim risked exactly
+    // the self-contradiction the review flagged ("...file(s) remain on
+    // disk. ...nothing remains written." in one breath). Rather than
+    // restate apply's message and hope the two halves agree,
+    // `stripWrittenPathsClause` recovers apply's underlying REASON by
+    // removing that exact clause (reusing `describeWrittenPaths` itself to
+    // find it, never a second, independently-guessed pattern), and this
+    // composes its OWN, current-tense description of what the rollback just
+    // above actually did around that reason. `details.writtenPaths` is
+    // dropped entirely for the identical reason: nothing it names is still
+    // true.
     const { writtenPaths: _rolledBack, ...remainingDetails } = applyResult.details ?? {};
+    const reason = stripWrittenPathsClause(applyResult.message, writtenPaths);
     return {
       ok: false,
       code: applyResult.code,
       message:
-        'Seed has rolled back everything this attempt wrote — nothing from this batch remains on disk. ' +
-        `The apply phase's own refusal, before that rollback: ${applyResult.message}`,
+        `Seed has rolled back everything this attempt wrote — including ${writtenPaths.length} file(s) the apply ` +
+        'phase had already written — so nothing from this batch remains on disk or in the project state store. ' +
+        `The apply phase's own reason for refusing: ${reason}`,
       details: Object.keys(remainingDetails).length > 0 ? remainingDetails : undefined,
     };
   }

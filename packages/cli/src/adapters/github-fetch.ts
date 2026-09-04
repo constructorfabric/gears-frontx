@@ -6,14 +6,14 @@ import zlib from 'node:zlib';
 import { BUNDLE_MARKER } from '../bundle/envelope';
 import type { FetchFn, FetchResult } from '../resolver/types';
 
-// A commit SHA is 40 lowercase-or-uppercase hex characters. Validated before
-// ever being trusted as a pin (`inst-resolve-pin`'s own requirement): a wrong
-// pin recorded as though immutable is worse than none, because nothing
-// downstream re-checks it — `cpt-frontx-adr-project-upgrade-mechanism`'s
-// baseline re-resolution takes a recorded pin on faith. Anything shorter
-// (GitHub's abbreviated-SHA forms) or non-hex is refused rather than
+// A commit SHA, as GitHub's tarball response actually exposes it, is
+// 7-to-40 lowercase-or-uppercase hex characters — not a fixed 40. Validated
+// before ever being trusted as a pin (`inst-resolve-pin`'s own requirement):
+// a wrong pin recorded as though immutable is worse than none, because
+// nothing downstream re-checks it — `cpt-frontx-adr-project-upgrade-
+// mechanism`'s baseline re-resolution takes a recorded pin on faith.
+// Anything outside that range, or non-hex, is refused rather than
 // half-trusted.
-// A commit SHA as GitHub's tarball actually exposes it.
 //
 // MEASURED, not assumed — and an earlier `/^[0-9a-f]{40}$/` here meant pinning
 // never fired in production at all. GitHub names a tarball's single root

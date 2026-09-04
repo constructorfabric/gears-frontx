@@ -42,8 +42,11 @@ export type RemoveTargetFileFn = (absolutePath: string) => Promise<void>;
 
 // The CLI-owned AI-extension bundle removal this flow's `inst-del-remove-
 // bundle` step names (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) — declared
-// here as the seam this command calls, not implemented here. See this file's
-// own header comment for why no real value is wired to it yet.
+// here as the seam this command calls, not implemented here. The real
+// implementation is wired at the `cli.ts` call site (see this file's own
+// header comment above): a closure there adapts `scaffold/ai-bundle.ts`'s
+// three-seam `materializeOrRemoveAiBundle` algorithm down to this single
+// function shape, fixed to the `LAST_TARGET_LOST` transition.
 export type RemoveAiBundleFn = (manifestName: string) => Promise<void>;
 
 // The developer's or agent's confirmation decision for one computed plan —

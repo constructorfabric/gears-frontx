@@ -1,6 +1,6 @@
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-existing-content:p1
 import { describe, expect, it } from 'vitest';
-import { reconcileExistingContent } from '../scaffold/existing-content';
+import { reconcileExistingContent, SYMLINK_CONTENT_MARKER } from '../scaffold/existing-content';
 import { computeExclusionRoots } from '../scaffold/effective-ownership';
 import type { ContentItem } from '../scaffold/types';
 import type { ReadExistingContentFn, ReadInstalledContentFn } from '../scaffold/existing-content';
@@ -228,5 +228,111 @@ describe('reconcileExistingContent', () => {
     expect(result.identicalFiles).toEqual(['sub/dir/src/index.ts']);
     expect(result.contentConflicts).toEqual([]);
     expect(result.additionalPaths).toEqual(['sub/dir/frontx-template.json']);
+  });
+
+  // DIRECTORY-SYMLINK FIX (PR review defect 1, reproduced against the built
+  // binary — variant A, the symlink stands INSIDE the target). The real
+  // `readExistingContent` walk (`adapters/fs-existing-content.ts`) never
+  // descends into a symlinked directory: it reports the symlink itself, at
+  // its own path, and nothing beneath it. Before this fix, a payload path
+  // hidden beneath such a symlink looked exactly like a brand-new path —
+  // `existing.get(payloadPath)` was `undefined` — so it was reported as
+  // neither `contentConflicts` nor `additionalPaths`, and materialization
+  // would write straight through the link into whatever it actually
+  // pointed at (here, `app/realdir/file.txt`, which this fake models as a
+  // REAL file the walk reports normally, exactly as the real walk would).
+  it('reports a payload path as contentConflicts when a directory ANCESTOR inside the target is a symlink, never as a silent no-op', async () => {
+    const roots = computeExclusionRoots({ target: '.', excludedSubtrees: [], projectOwnedRoots: [] });
+
+    const result = await reconcileExistingContent({
+      target: '.',
+      exclusionRoots: roots,
+      installedContentPath: '/inventory/my-template',
+      readInstalledContent: fakeReadInstalledContent([{ path: 'app/dir/file.txt', content: 'TEMPLATE-CONTENT' }]),
+      readExistingContent: fakeReadExistingContent([
+        // The symlink itself — reported at its own path, the walk never
+        // descending into it (so no `app/dir/file.txt` entry exists at all).
+        { path: 'app/dir', content: SYMLINK_CONTENT_MARKER },
+        // What the link actually points at — real, unrelated content the
+        // walk reports normally because it is a plain directory.
+        { path: 'app/realdir/file.txt', content: 'PRECIOUS-DO-NOT-TOUCH' },
+      ]),
+    });
+
+    expect(result.contentConflicts).toEqual(['app/dir/file.txt']);
+    expect(result.identicalFiles).toEqual([]);
+    // Both the symlink's own directory entry AND the real content it
+    // happens to point at are foreign ground the payload never declared —
+    // reported honestly as `additionalPaths`, never silently adopted or
+    // overwritten by this algorithm (materialization is a separate concern).
+    expect(result.additionalPaths.sort()).toEqual(['app/dir', 'app/realdir/file.txt']);
+  });
+
+  // DIRECTORY-SYMLINK FIX, variant B: the symlink stands ABOVE a payload
+  // path but its own directory entry is reported WITHIN the target's own
+  // effective-ownership area (`dst/app/dir`, for target `dst`) even though
+  // the link's target lies outside the target entirely. Before this fix
+  // `existing.get('dst/app/dir/file.txt')` was `undefined` for the identical
+  // reason as variant A — the walk never produced that entry — and the
+  // batch reported `ok:true`, materializing into whatever `dst/app/dir`
+  // actually pointed at, worse than variant A because no refusal fired at
+  // all.
+  it('reports a payload path as contentConflicts when a directory ancestor ABOVE it in the target is a symlink, for a nested target too', async () => {
+    const roots = computeExclusionRoots({ target: 'dst', excludedSubtrees: [], projectOwnedRoots: [] });
+
+    const result = await reconcileExistingContent({
+      target: 'dst',
+      exclusionRoots: roots,
+      installedContentPath: '/inventory/my-template',
+      readInstalledContent: fakeReadInstalledContent([{ path: 'app/dir/file.txt', content: 'TEMPLATE-CONTENT' }]),
+      readExistingContent: fakeReadExistingContent([{ path: 'dst/app/dir', content: SYMLINK_CONTENT_MARKER }]),
+    });
+
+    expect(result.contentConflicts).toEqual(['dst/app/dir/file.txt']);
+    expect(result.identicalFiles).toEqual([]);
+    // The symlink's own directory entry is itself foreign, undeclared
+    // ground — reported as `additionalPaths` exactly like any other
+    // existing path the payload does not declare.
+    expect(result.additionalPaths).toEqual(['dst/app/dir']);
+  });
+
+  // The ancestor walk must catch a symlink at ANY depth between the target
+  // and the payload path, not only the immediate parent directory.
+  it('catches a symlink two directory levels above the payload path, not only the immediate parent', async () => {
+    const roots = computeExclusionRoots({ target: 'pkg', excludedSubtrees: [], projectOwnedRoots: [] });
+
+    const result = await reconcileExistingContent({
+      target: 'pkg',
+      exclusionRoots: roots,
+      installedContentPath: '/inventory/my-template',
+      readInstalledContent: fakeReadInstalledContent([{ path: 'sub/dir/deep/file.txt', content: 'x' }]),
+      readExistingContent: fakeReadExistingContent([{ path: 'pkg/sub/dir', content: SYMLINK_CONTENT_MARKER }]),
+    });
+
+    expect(result.contentConflicts).toEqual(['pkg/sub/dir/deep/file.txt']);
+  });
+
+  // A symlink standing elsewhere — never an ancestor of the payload path
+  // under test — must not cause a false-positive conflict for an unrelated
+  // payload path.
+  it('does not flag a payload path whose ancestors are all ordinary directories, even when an unrelated symlink exists elsewhere', async () => {
+    const roots = computeExclusionRoots({ target: '.', excludedSubtrees: [], projectOwnedRoots: [] });
+
+    const result = await reconcileExistingContent({
+      target: '.',
+      exclusionRoots: roots,
+      installedContentPath: '/inventory/my-template',
+      readInstalledContent: fakeReadInstalledContent([{ path: 'app/src/index.ts', content: 'export {};' }]),
+      readExistingContent: fakeReadExistingContent([
+        { path: 'app/src/index.ts', content: 'export {};' },
+        // An unrelated symlink, sibling to `app`, never an ancestor of the
+        // payload path above.
+        { path: 'other/link', content: SYMLINK_CONTENT_MARKER },
+      ]),
+    });
+
+    expect(result.identicalFiles).toEqual(['app/src/index.ts']);
+    expect(result.contentConflicts).toEqual([]);
+    expect(result.additionalPaths).toEqual(['other/link']);
   });
 });

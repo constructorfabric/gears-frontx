@@ -21,7 +21,7 @@
 // own real-temp-directory convention.
 import path from 'node:path';
 import { mkdtemp, mkdir, rm, symlink, writeFile, readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, rmdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -29,6 +29,9 @@ import {
   createFsAssertPathWithinRootFn,
   createFsWriteFileFn,
   createFsWriteProjectStateFn,
+  createFsReadProjectStateFn,
+  createFsRemoveProjectFileFn,
+  createFsPathExistsFn,
   ExistingSymlinkDestinationError,
 } from '../adapters/fs-project-io';
 import {
@@ -38,8 +41,8 @@ import {
 } from '../adapters/fs-upgrade-io';
 import { createFsCopyBundleFn, createFsRemoveBundleFn } from '../adapters/fs-ai-bundle';
 import { createFsReadExistingContentFn } from '../adapters/fs-existing-content';
-import { runApplyPipeline } from '../commands/apply';
-import type { ApplyPipelineDeps } from '../commands/apply';
+import { runApplyPipeline, rollbackWrittenPaths } from '../commands/apply';
+import type { ApplyPipelineDeps, RemoveEmptyDirFn } from '../commands/apply';
 import type { UniformApplyInventoryPort } from '../scaffold/assembler';
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { BundleExistsFn, CopyBundleFn, RemoveBundleFn } from '../scaffold/ai-bundle';
@@ -49,6 +52,32 @@ import type { ProjectStateDocument, ReadProjectStateFn, WriteProjectStateFn } fr
 import type { ReadFileFn } from '../manifest/types';
 import type { InventoryEntry } from '../inventory/types';
 import { InventoryState } from '../inventory/types';
+
+// ATOMICITY FIX (`ApplyPipelineDeps` now carries `removeProjectFileFn`/
+// `removeEmptyDirFn` too, `../commands/apply.ts`) — a real, filesystem-backed
+// `RemoveEmptyDirFn` for this suite's real-temp-directory harness, mirroring
+// `cli.ts`'s own production `createFsRemoveEmptyDirFn` exactly (no-op unless
+// the directory exists and is now completely empty; never forced, never
+// recursive). This suite already proves every OTHER real adapter directly
+// against the filesystem — a fake standing in for this one would leave
+// `runApplyPipeline`'s own rollback (`rollbackWrittenPaths`) untested against
+// real directories the way its sibling suites already test real symlinks.
+function createFsRemoveEmptyDirFn(): RemoveEmptyDirFn {
+  return async function removeEmptyDir(absolutePath: string): Promise<void> {
+    let entries: string[];
+    try {
+      entries = readdirSync(absolutePath);
+    } catch {
+      return;
+    }
+    if (entries.length > 0) return;
+    try {
+      rmdirSync(absolutePath);
+    } catch {
+      // Already gone, or not a plain directory — nothing further to do.
+    }
+  };
+}
 
 describe('assertPathWithinProjectRoot', () => {
   let root: string;
@@ -505,6 +534,51 @@ describe('fs-ai-bundle containment (createFsCopyBundleFn / createFsRemoveBundleF
 
     expect(existsSync(path.join(destRoot, '.frontx', 'ai', MANIFEST_NAME, 'extension.json'))).toBe(true);
   });
+
+  // STALE-MERGE FIX: a real directory already standing at the bundle path is
+  // REPLACED, not merged into. `delete` can leave exactly such a directory
+  // behind — it reports that residue itself, through `aiBundleResidue` — so
+  // the next apply for the same name finds the OLD bundle's files at the
+  // destination. `fs.cpSync`'s recursive merge only ever adds and
+  // overwrites, so a file the previous bundle shipped and the new one
+  // dropped would survive, producing a bundle that is neither version with
+  // nothing in any report saying so.
+  it('createFsCopyBundleFn replaces a pre-existing real bundle directory rather than merging into it', async () => {
+    sourceRoot = await mkdtemp(path.join(tmpdir(), 'frontx-ai-bundle-source-'));
+    await writeSourceBundle(sourceRoot);
+    destRoot = await mkdtemp(path.join(tmpdir(), 'frontx-ai-bundle-dest-'));
+    const destBundle = path.join(destRoot, '.frontx', 'ai', MANIFEST_NAME);
+    await mkdir(path.join(destBundle, 'skills'), { recursive: true });
+    // A file the OLD bundle shipped and the source bundle does not.
+    await writeFile(path.join(destBundle, 'skills', 'retired.md'), 'from a previous version', 'utf-8');
+    const copyBundle: CopyBundleFn = createFsCopyBundleFn();
+
+    await copyBundle(sourceRoot, destRoot, MANIFEST_NAME);
+
+    expect(existsSync(path.join(destBundle, 'extension.json'))).toBe(true);
+    expect(existsSync(path.join(destBundle, 'skills', 'retired.md'))).toBe(false);
+  });
+
+  // The live symlink case the reclaim must NOT get wrong: the entry at the
+  // bundle path is removed, but whatever it pointed at — ordinary project
+  // ground reachable from elsewhere — keeps its content.
+  it('createFsCopyBundleFn clears a live symlink at the bundle path without touching what it points at', async () => {
+    sourceRoot = await mkdtemp(path.join(tmpdir(), 'frontx-ai-bundle-source-'));
+    await writeSourceBundle(sourceRoot);
+    destRoot = await mkdtemp(path.join(tmpdir(), 'frontx-ai-bundle-dest-'));
+    const pointedAt = path.join(destRoot, 'developer-own-folder');
+    await mkdir(pointedAt, { recursive: true });
+    await writeFile(path.join(pointedAt, 'precious.txt'), 'PRECIOUS', 'utf-8');
+    await mkdir(path.dirname(path.join(destRoot, '.frontx', 'ai', MANIFEST_NAME)), { recursive: true });
+    await symlink(pointedAt, path.join(destRoot, '.frontx', 'ai', MANIFEST_NAME));
+    const copyBundle: CopyBundleFn = createFsCopyBundleFn();
+
+    await copyBundle(sourceRoot, destRoot, MANIFEST_NAME);
+
+    expect(existsSync(path.join(destRoot, '.frontx', 'ai', MANIFEST_NAME, 'extension.json'))).toBe(true);
+    expect(await readFile(path.join(pointedAt, 'precious.txt'), 'utf-8')).toBe('PRECIOUS');
+    expect(existsSync(path.join(pointedAt, 'extension.json'))).toBe(false);
+  });
 });
 
 // The one required end-to-end regression: `apply` itself refuses, through
@@ -588,7 +662,14 @@ describe('apply end-to-end containment (runApplyPipeline with the real project-f
       fetchFn: vi.fn(async () => ''),
       readFileFn,
       canonicalizeFn,
-      existsFn: vi.fn(async () => true),
+      // REAL, not a `vi.fn(async () => true)` stub: the pipeline's pre-write
+      // pass asks this seam which ancestor directories were already standing
+      // before materialization, and `rollbackWrittenPaths` prunes only the
+      // ones that were not. A stub that answers "yes, it exists" to every
+      // path makes every directory look like the developer's own and turns
+      // the rollback into a silent no-op — the fixture would then assert a
+      // pruning that never happened.
+      existsFn: createFsPathExistsFn(),
       listFolderFilesFn: vi.fn(async () => []),
       resolveInstalledContentPathFn: (name: string) => name,
       readInstalledContentFn,
@@ -604,6 +685,8 @@ describe('apply end-to-end containment (runApplyPipeline with the real project-f
       // The REAL containment guard, curried over the REAL repository root —
       // this is what actually refuses the escape below.
       assertPathWithinRootFn: createFsAssertPathWithinRootFn(repoRoot),
+      removeProjectFileFn: createFsRemoveProjectFileFn(),
+      removeEmptyDirFn: createFsRemoveEmptyDirFn(),
     };
 
     const result = await runApplyPipeline({ templates: { [templateName]: ['app'] } }, repoRoot, false, deps);
@@ -673,7 +756,14 @@ describe('apply end-to-end containment (runApplyPipeline with the real project-f
       fetchFn: vi.fn(async () => ''),
       readFileFn,
       canonicalizeFn,
-      existsFn: vi.fn(async () => true),
+      // REAL, not a `vi.fn(async () => true)` stub: the pipeline's pre-write
+      // pass asks this seam which ancestor directories were already standing
+      // before materialization, and `rollbackWrittenPaths` prunes only the
+      // ones that were not. A stub that answers "yes, it exists" to every
+      // path makes every directory look like the developer's own and turns
+      // the rollback into a silent no-op — the fixture would then assert a
+      // pruning that never happened.
+      existsFn: createFsPathExistsFn(),
       listFolderFilesFn: vi.fn(async () => []),
       resolveInstalledContentPathFn: (name: string) => name,
       readInstalledContentFn,
@@ -685,6 +775,8 @@ describe('apply end-to-end containment (runApplyPipeline with the real project-f
       copyBundleFn,
       removeBundleFn,
       assertPathWithinRootFn: createFsAssertPathWithinRootFn(repoRoot),
+      removeProjectFileFn: createFsRemoveProjectFileFn(),
+      removeEmptyDirFn: createFsRemoveEmptyDirFn(),
     };
 
     const result = await runApplyPipeline({ templates: { [templateName]: ['app'] } }, repoRoot, false, deps);
@@ -776,7 +868,14 @@ describe('apply --adopt-existing end-to-end: a declared payload path aliasing an
       fetchFn: vi.fn(async () => ''),
       readFileFn,
       canonicalizeFn,
-      existsFn: vi.fn(async () => true),
+      // REAL, not a `vi.fn(async () => true)` stub: the pipeline's pre-write
+      // pass asks this seam which ancestor directories were already standing
+      // before materialization, and `rollbackWrittenPaths` prunes only the
+      // ones that were not. A stub that answers "yes, it exists" to every
+      // path makes every directory look like the developer's own and turns
+      // the rollback into a silent no-op — the fixture would then assert a
+      // pruning that never happened.
+      existsFn: createFsPathExistsFn(),
       listFolderFilesFn: vi.fn(async () => []),
       resolveInstalledContentPathFn: (name: string) => name,
       readInstalledContentFn,
@@ -790,6 +889,8 @@ describe('apply --adopt-existing end-to-end: a declared payload path aliasing an
       copyBundleFn,
       removeBundleFn,
       assertPathWithinRootFn: createFsAssertPathWithinRootFn(repoRoot),
+      removeProjectFileFn: createFsRemoveProjectFileFn(),
+      removeEmptyDirFn: createFsRemoveEmptyDirFn(),
     };
 
     // `--adopt-existing` (the third argument, `true`): the exact flag the
@@ -804,5 +905,418 @@ describe('apply --adopt-existing end-to-end: a declared payload path aliasing an
     // the batch was never recorded as applied.
     expect(await readFile(path.join(repoRoot, 'shared', 'precious.txt'), 'utf-8')).toBe('PRECIOUS-CONTENT');
     expect(JSON.parse(projectStateContent ?? 'null').templates[templateName].targets).toEqual([]);
+  });
+});
+
+// DIRECTORY-SYMLINK FIX (PR review defect 1, reproduced against the built
+// binary): neither of the two suites above catches a symlinked DIRECTORY —
+// only a symlinked FILE standing exactly at a payload path. This suite
+// proves the fix at the SAME end-to-end depth (real `createFsReadExisting
+// ContentFn` walker feeding real `reconcileExistingContent`, real
+// `createFsWriteFileFn` writer) for both reproduced variants: A, the
+// symlinked directory stands INSIDE the target; B, it stands inside the
+// project but OUTSIDE the target. Both used to report `ok:true` (variant B)
+// or a too-late `CONTENT_CONFLICT` (variant A, via the adopted-path
+// snapshot check, ONLY after the precious bytes were already overwritten) —
+// this suite proves PREVENTION: the precious file survives, byte for byte,
+// and the batch is refused before a single byte is written through the
+// link.
+describe('apply --adopt-existing end-to-end: a symlinked DIRECTORY standing over a payload path', () => {
+  let repoRoot: string;
+
+  afterEach(async () => {
+    if (repoRoot) await rm(repoRoot, { recursive: true, force: true });
+    repoRoot = '';
+  });
+
+  function manifest(name: string): Record<string, unknown> {
+    return { name, version: '1.0.0', excludedSubtrees: [], description: `Fixture template "${name}"` };
+  }
+
+  function makeApplyDeps(args: {
+    repoRoot: string;
+    templateName: string;
+    payload: ContentItem[];
+    getProjectStateContent: () => string | null;
+    setProjectStateContent: (content: string) => void;
+  }): ApplyPipelineDeps {
+    const installedEntries = new Map<string, InventoryEntry>();
+    installedEntries.set(args.templateName, {
+      name: args.templateName,
+      source: `github:acme/t@v1`,
+      ref: 'v1',
+      status: InventoryState.INSTALLED,
+      content: JSON.stringify(manifest(args.templateName)),
+    });
+    const templateContent = new Map<string, ContentItem[]>([[args.templateName, args.payload]]);
+    const inventory: UniformApplyInventoryPort = {
+      lookup: (name) => installedEntries.get(name),
+      install: vi.fn(async () => ({ ok: false as const, error: { message: 'install not stubbed for this test' } })),
+    };
+    return {
+      inventory,
+      fetchFn: vi.fn(async () => ''),
+      readFileFn: vi.fn(async () => {
+        throw new Error('readFileFn not stubbed for this test');
+      }),
+      canonicalizeFn: (rawTarget: string) => rawTarget,
+      // REAL, not a `vi.fn(async () => true)` stub: the pipeline's pre-write
+      // pass asks this seam which ancestor directories were already standing
+      // before materialization, and `rollbackWrittenPaths` prunes only the
+      // ones that were not. A stub that answers "yes, it exists" to every
+      // path makes every directory look like the developer's own and turns
+      // the rollback into a silent no-op — the fixture would then assert a
+      // pruning that never happened.
+      existsFn: createFsPathExistsFn(),
+      listFolderFilesFn: vi.fn(async () => []),
+      resolveInstalledContentPathFn: (name: string) => name,
+      readInstalledContentFn: async (installedContentPath) => templateContent.get(installedContentPath) ?? [],
+      readExistingContentFn: createFsReadExistingContentFn(args.repoRoot),
+      writeFileFn: createFsWriteFileFn() as WriteFileFn,
+      readProjectStateFn: async () => args.getProjectStateContent(),
+      writeProjectStateFn: async (_absolutePath, content) => args.setProjectStateContent(content),
+      bundleExistsFn: vi.fn(async () => false),
+      copyBundleFn: vi.fn(async () => undefined),
+      removeBundleFn: vi.fn(async () => undefined),
+      assertPathWithinRootFn: createFsAssertPathWithinRootFn(args.repoRoot),
+      removeProjectFileFn: createFsRemoveProjectFileFn(),
+      removeEmptyDirFn: createFsRemoveEmptyDirFn(),
+    };
+  }
+
+  // Variant A: `app/dir -> app/realdir` (a REAL directory the link aliases),
+  // and `app/realdir/file.txt` already holds precious content. The
+  // template's payload declares `app/dir/file.txt`, target `.`.
+  it('variant A (symlink inside the target): refuses CONTENT_CONFLICT and leaves the aliased file byte-for-byte intact', async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-dirsymlink-a-'));
+    await mkdir(path.join(repoRoot, 'app', 'realdir'), { recursive: true });
+    await writeFile(path.join(repoRoot, 'app', 'realdir', 'file.txt'), 'PRECIOUS-DO-NOT-TOUCH', 'utf-8');
+    await symlink(path.join(repoRoot, 'app', 'realdir'), path.join(repoRoot, 'app', 'dir'));
+
+    const templateName = '@acme/dirsymlink-a';
+    let projectStateContent: string | null = JSON.stringify({
+      formatVersion: 1,
+      templates: { [templateName]: { origin: 'github:acme/t@v1', version: '1.0.0', targets: [] } },
+      projectOwnedRoots: [],
+    } satisfies ProjectStateDocument);
+
+    const deps = makeApplyDeps({
+      repoRoot,
+      templateName,
+      payload: [{ path: 'app/dir/file.txt', content: 'TEMPLATE-CONTENT' }],
+      getProjectStateContent: () => projectStateContent,
+      setProjectStateContent: (content) => {
+        projectStateContent = content;
+      },
+    });
+
+    const result = await runApplyPipeline({ templates: { [templateName]: ['.'] } }, repoRoot, true, deps);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('CONTENT_CONFLICT');
+    // The heart of the fix: the bytes behind the link are untouched, and
+    // nothing was recorded as applied.
+    expect(await readFile(path.join(repoRoot, 'app', 'realdir', 'file.txt'), 'utf-8')).toBe('PRECIOUS-DO-NOT-TOUCH');
+    expect(JSON.parse(projectStateContent ?? 'null').templates[templateName].targets).toEqual([]);
+  });
+
+  // Variant B: `dst/app/dir -> ../../shared` (escaping the TARGET, `dst`,
+  // but still resolving inside the PROJECT), and `shared/file.txt` already
+  // holds precious content. The template's payload declares
+  // `app/dir/file.txt`, target `dst`. This is the WORSE reproduction: no
+  // refusal at all before this fix, because the post-materialization
+  // adopted-path re-read only ever looks inside the target and can never
+  // see a change landing outside it.
+  it('variant B (symlink inside the project but outside the target): refuses CONTENT_CONFLICT and leaves the aliased file byte-for-byte intact', async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-dirsymlink-b-'));
+    await mkdir(path.join(repoRoot, 'shared'), { recursive: true });
+    await writeFile(path.join(repoRoot, 'shared', 'file.txt'), 'PRECIOUS-DO-NOT-TOUCH', 'utf-8');
+    await mkdir(path.join(repoRoot, 'dst', 'app'), { recursive: true });
+    await symlink(path.join('..', '..', 'shared'), path.join(repoRoot, 'dst', 'app', 'dir'));
+
+    const templateName = '@acme/dirsymlink-b';
+    let projectStateContent: string | null = JSON.stringify({
+      formatVersion: 1,
+      templates: { [templateName]: { origin: 'github:acme/t@v1', version: '1.0.0', targets: [] } },
+      projectOwnedRoots: [],
+    } satisfies ProjectStateDocument);
+
+    const deps = makeApplyDeps({
+      repoRoot,
+      templateName,
+      payload: [{ path: 'app/dir/file.txt', content: 'TEMPLATE-CONTENT' }],
+      getProjectStateContent: () => projectStateContent,
+      setProjectStateContent: (content) => {
+        projectStateContent = content;
+      },
+    });
+
+    const result = await runApplyPipeline({ templates: { [templateName]: ['dst'] } }, repoRoot, true, deps);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('CONTENT_CONFLICT');
+    // The heart of the fix: content OUTSIDE the target, aliased through the
+    // link, survives byte-for-byte — the exact ground the old adopted-path
+    // re-read could never even see.
+    expect(await readFile(path.join(repoRoot, 'shared', 'file.txt'), 'utf-8')).toBe('PRECIOUS-DO-NOT-TOUCH');
+    expect(JSON.parse(projectStateContent ?? 'null').templates[templateName].targets).toEqual([]);
+  });
+});
+
+// DANGLING-SYMLINK-INSIDE FIX for `createFsWriteFileFn` (PR review defect 3,
+// reproduced against the built binary): the last writer in this package that
+// still called `fs.mkdirSync(path.dirname(destPath), ...)` literally instead
+// of `resolveWriteParentDir` — see `createFsWriteProjectStateFn`'s own
+// analogous suite above, and `fs-upgrade-io`'s own analogous suite below it,
+// for the identical fix already proven for every OTHER writer.
+describe('createFsWriteFileFn (dangling-symlink-inside parent resolution)', () => {
+  let repoRoot: string;
+
+  afterEach(async () => {
+    if (repoRoot) await rm(repoRoot, { recursive: true, force: true });
+    repoRoot = '';
+  });
+
+  it('writes through a dangling symlink pointing inside the root, creating its resolved parent chain instead of crashing on mkdir', async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-writefile-dangling-'));
+    await mkdir(path.join(repoRoot, 'app'), { recursive: true });
+    // `app/dir` is a DANGLING symlink whose LEXICAL target
+    // (`missing-parent/real-dir`) resolves inside the project root —
+    // deliberately ALLOWED by containment, and exactly the reproduction:
+    // `mkdirSync(path.dirname('app/dir/file.txt'))` used to call
+    // `mkdirSync('app/dir')` literally, which creates nothing
+    // `missing-parent/real-dir` needs, since `app/dir` already "exists" (as
+    // the link itself).
+    await symlink(path.join('missing-parent', 'real-dir'), path.join(repoRoot, 'app', 'dir'));
+    const writeFileFn = createFsWriteFileFn();
+
+    await writeFileFn(path.join(repoRoot, 'app', 'dir', 'file.txt'), 'payload');
+
+    expect(await readFile(path.join(repoRoot, 'app', 'missing-parent', 'real-dir', 'file.txt'), 'utf-8')).toBe(
+      'payload',
+    );
+  });
+});
+
+// DEFECT FIX (PR review defect 2, reproduced against the built binary): a
+// deliberate `PathContainmentError` used to fall through `runApplyPipeline`'s
+// blanket catch as `INTERNAL`, exit 2, instead of the `INVALID_PATH` user-
+// error every OTHER containment refusal in this package already reports.
+// This suite reproduces it with `.frontx` itself replaced by a symlink to a
+// directory OUTSIDE the project — the exact shape the review named — through
+// the REAL project-state reader/writer, so the error is thrown from exactly
+// where production throws it (`createFsWriteProjectStateFn`'s own
+// containment check, reached from `mutateProjectState` during the record
+// step), never simulated with a fake that throws on command.
+describe('apply end-to-end: PathContainmentError from the record step is reported as INVALID_PATH, not INTERNAL', () => {
+  let repoRoot: string;
+  let outsideDir: string;
+
+  afterEach(async () => {
+    if (repoRoot) await rm(repoRoot, { recursive: true, force: true });
+    if (outsideDir) await rm(outsideDir, { recursive: true, force: true });
+    repoRoot = '';
+    outsideDir = '';
+  });
+
+  function manifest(name: string): Record<string, unknown> {
+    return { name, version: '1.0.0', excludedSubtrees: [], description: `Fixture template "${name}"` };
+  }
+
+  it('reports INVALID_PATH (exit-mapped, `--json`-safe) and rolls back the payload this call itself wrote', async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-pcontainment-apply-repo-'));
+    outsideDir = await mkdtemp(path.join(tmpdir(), 'frontx-pcontainment-apply-outside-'));
+    const templateName = '@acme/pcontainment';
+    // The project state document already exists — readable through the
+    // symlink below exactly as `createFsReadProjectStateFn` reads any other
+    // file — but every WRITE to it must resolve inside `repoRoot`, which
+    // this symlink defeats.
+    const initialDocument: ProjectStateDocument = {
+      formatVersion: 1,
+      templates: { [templateName]: { origin: 'github:acme/t@v1', version: '1.0.0', targets: [] } },
+      projectOwnedRoots: [],
+    };
+    await mkdir(outsideDir, { recursive: true });
+    await writeFile(path.join(outsideDir, 'project.json'), JSON.stringify(initialDocument, null, 2), 'utf-8');
+    await symlink(outsideDir, path.join(repoRoot, '.frontx'));
+
+    const installedEntries = new Map<string, InventoryEntry>();
+    installedEntries.set(templateName, {
+      name: templateName,
+      source: 'github:acme/t@v1',
+      ref: 'v1',
+      status: InventoryState.INSTALLED,
+      content: JSON.stringify(manifest(templateName)),
+    });
+    const templateContent = new Map<string, ContentItem[]>([
+      [templateName, [{ path: 'src/index.ts', content: 'hello' }]],
+    ]);
+    const inventory: UniformApplyInventoryPort = {
+      lookup: (name) => installedEntries.get(name),
+      install: vi.fn(async () => ({ ok: false as const, error: { message: 'install not stubbed for this test' } })),
+    };
+
+    const deps: ApplyPipelineDeps = {
+      inventory,
+      fetchFn: vi.fn(async () => ''),
+      readFileFn: vi.fn(async () => {
+        throw new Error('readFileFn not stubbed for this test');
+      }),
+      canonicalizeFn: (rawTarget: string) => rawTarget,
+      // REAL, not a `vi.fn(async () => true)` stub: the pipeline's pre-write
+      // pass asks this seam which ancestor directories were already standing
+      // before materialization, and `rollbackWrittenPaths` prunes only the
+      // ones that were not. A stub that answers "yes, it exists" to every
+      // path makes every directory look like the developer's own and turns
+      // the rollback into a silent no-op — the fixture would then assert a
+      // pruning that never happened.
+      existsFn: createFsPathExistsFn(),
+      listFolderFilesFn: vi.fn(async () => []),
+      resolveInstalledContentPathFn: (name: string) => name,
+      readInstalledContentFn: async (installedContentPath) => templateContent.get(installedContentPath) ?? [],
+      readExistingContentFn: createFsReadExistingContentFn(repoRoot),
+      writeFileFn: createFsWriteFileFn() as WriteFileFn,
+      // Both REAL — the exact seams that throw `PathContainmentError` in
+      // production (`createFsWriteProjectStateFn`) and read the document
+      // it protects (`createFsReadProjectStateFn`).
+      readProjectStateFn: createFsReadProjectStateFn(),
+      writeProjectStateFn: createFsWriteProjectStateFn(),
+      bundleExistsFn: vi.fn(async () => false),
+      copyBundleFn: vi.fn(async () => undefined),
+      removeBundleFn: vi.fn(async () => undefined),
+      assertPathWithinRootFn: createFsAssertPathWithinRootFn(repoRoot),
+      removeProjectFileFn: createFsRemoveProjectFileFn(),
+      removeEmptyDirFn: createFsRemoveEmptyDirFn(),
+    };
+
+    const result = await runApplyPipeline({ templates: { [templateName]: ['app'] } }, repoRoot, false, deps);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    // The heart of the fix: a deliberate, typed refusal reported as the
+    // SAME `INVALID_PATH` code every other containment escape in this
+    // package uses — never `INTERNAL`.
+    expect(result.code).toBe('INVALID_PATH');
+    expect(result.message).toMatch(/outside the project root/);
+    expect(result.details).toMatchObject({ path: expect.stringContaining('.frontx') });
+    // ATOMICITY FIX (defect 6): this call never recorded anything (the
+    // record step is exactly where it failed), so the payload it wrote is
+    // unambiguously its own to remove — the file, and the now-empty `app`
+    // directory it created, are both actually gone.
+    expect(existsSync(path.join(repoRoot, 'app', 'src', 'index.ts'))).toBe(false);
+    expect(existsSync(path.join(repoRoot, 'app'))).toBe(false);
+    // The document OUTSIDE the project is untouched — the refusal fired
+    // before any write to it landed.
+    expect(JSON.parse(await readFile(path.join(outsideDir, 'project.json'), 'utf-8'))).toEqual(initialDocument);
+  });
+});
+
+// ATOMICITY FIX (PR review defect 5a/6, reproduced against the built binary
+// — a rolled-back `seed` left 73-99 empty directories behind in the live
+// run): `rollbackWrittenPaths` (`../commands/apply.ts`) is the ONE shared
+// removal formulation both `apply`'s own post-materialization rollback and
+// `seed`'s own rollback (`commands/seed-repository.ts`) call. Proven here
+// directly against a real filesystem, independent of either caller's own
+// batch-resolution machinery.
+describe('rollbackWrittenPaths (real fs): removes written files and prunes the directories they leave empty', () => {
+  let repoRoot: string;
+
+  afterEach(async () => {
+    if (repoRoot) await rm(repoRoot, { recursive: true, force: true });
+    repoRoot = '';
+  });
+
+  it('removes every written file and prunes every directory left empty, deepest-first, bounded by repoRoot', async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-rollback-writtenpaths-'));
+    await mkdir(path.join(repoRoot, 'apps', 'foo', 'src', 'deep'), { recursive: true });
+    await writeFile(path.join(repoRoot, 'apps', 'foo', 'src', 'deep', 'a.ts'), 'a', 'utf-8');
+    await writeFile(path.join(repoRoot, 'apps', 'foo', 'src', 'b.ts'), 'b', 'utf-8');
+    await mkdir(path.join(repoRoot, 'apps', 'bar'), { recursive: true });
+    // A sibling file OUTSIDE `writtenPaths` — its directory must survive.
+    await writeFile(path.join(repoRoot, 'apps', 'bar', 'keep.txt'), 'keep', 'utf-8');
+
+    await rollbackWrittenPaths(
+      repoRoot,
+      ['apps/foo/src/deep/a.ts', 'apps/foo/src/b.ts'],
+      createFsRemoveProjectFileFn(),
+      createFsRemoveEmptyDirFn(),
+      // Every directory below `apps` was created by this notional call;
+      // `apps` itself was not, so it is not in the set and the walk stops
+      // there even before its surviving sibling would have saved it.
+      new Set([
+        path.join(repoRoot, 'apps', 'foo'),
+        path.join(repoRoot, 'apps', 'foo', 'src'),
+        path.join(repoRoot, 'apps', 'foo', 'src', 'deep'),
+      ]),
+    );
+
+    // The written files are gone.
+    expect(existsSync(path.join(repoRoot, 'apps', 'foo', 'src', 'deep', 'a.ts'))).toBe(false);
+    expect(existsSync(path.join(repoRoot, 'apps', 'foo', 'src', 'b.ts'))).toBe(false);
+    // Every directory those removals left empty is pruned, deepest-first —
+    // `apps/foo` itself included, since nothing else was ever written there.
+    expect(existsSync(path.join(repoRoot, 'apps', 'foo'))).toBe(false);
+    // `apps` itself survives: `apps/bar/keep.txt` still lives beneath it.
+    expect(existsSync(path.join(repoRoot, 'apps'))).toBe(true);
+    expect(existsSync(path.join(repoRoot, 'apps', 'bar', 'keep.txt'))).toBe(true);
+    // `repoRoot` itself is never a removal candidate.
+    expect(existsSync(repoRoot)).toBe(true);
+  });
+
+  it('is a no-op for an empty writtenPaths list', async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-rollback-writtenpaths-empty-'));
+
+    await expect(
+      rollbackWrittenPaths(repoRoot, [], createFsRemoveProjectFileFn(), createFsRemoveEmptyDirFn(), new Set()),
+    ).resolves.toBeUndefined();
+    expect(existsSync(repoRoot)).toBe(true);
+  });
+
+  // OVER-PRUNING FIX (found by re-running this round's own fix against the
+  // built binary, before it shipped): the pruning walk used to climb every
+  // emptied ancestor up to `repoRoot`, which deleted a directory the
+  // DEVELOPER created and the batch merely wrote into. A rollback may undo
+  // only what the call itself did.
+  it('never prunes a directory that was already standing before the call wrote into it', async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-rollback-preexisting-'));
+    // The developer's own empty directory. The batch writes BENEATH it, in
+    // a subdirectory it creates itself.
+    await mkdir(path.join(repoRoot, 'app', 'dir'), { recursive: true });
+    await writeFile(path.join(repoRoot, 'app', 'dir', 'file.txt'), 'written by this call', 'utf-8');
+
+    await rollbackWrittenPaths(
+      repoRoot,
+      ['app/dir/file.txt'],
+      createFsRemoveProjectFileFn(),
+      createFsRemoveEmptyDirFn(),
+      // Only `app/dir` was created by this call; `app` was already there.
+      new Set([path.join(repoRoot, 'app', 'dir')]),
+    );
+
+    expect(existsSync(path.join(repoRoot, 'app', 'dir', 'file.txt'))).toBe(false);
+    expect(existsSync(path.join(repoRoot, 'app', 'dir'))).toBe(false);
+    expect(existsSync(path.join(repoRoot, 'app'))).toBe(true);
+  });
+
+  // The caller that cannot answer "did this exist already" prunes nothing —
+  // `seed`'s own rollback passes exactly this, since it learns
+  // `writtenPaths` only from an apply that has already finished writing.
+  it('prunes no directory at all when the caller passes an empty created-set', async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-rollback-noprune-'));
+    await mkdir(path.join(repoRoot, 'a', 'b'), { recursive: true });
+    await writeFile(path.join(repoRoot, 'a', 'b', 'f.txt'), 'f', 'utf-8');
+
+    await rollbackWrittenPaths(
+      repoRoot,
+      ['a/b/f.txt'],
+      createFsRemoveProjectFileFn(),
+      createFsRemoveEmptyDirFn(),
+      new Set(),
+    );
+
+    expect(existsSync(path.join(repoRoot, 'a', 'b', 'f.txt'))).toBe(false);
+    expect(existsSync(path.join(repoRoot, 'a', 'b'))).toBe(true);
   });
 });

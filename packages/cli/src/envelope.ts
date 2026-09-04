@@ -4,18 +4,26 @@
 // `{"ok": false, "error": {"code", "message", "details"}}` on failure or a
 // decision the caller must make. This module fixes only the outer shape and
 // the shared sixteen-code vocabulary; a command's own `data` payload shape
-// remains owned by that command's FEATURE (ADR "More Information"), and no
-// command is wired to this yet — `cli.ts` and the existing bespoke
-// `--json` shapes (`commands/list.ts`'s `ListJsonEnvelope`, `upgrade`'s own
-// status shape) are untouched; retrofitting them is a separate, later step.
+// remains owned by that command's FEATURE (ADR "More Information"). Every
+// command's `--json` mode now renders through this shape: `cli.ts`'s
+// `render*Outcome` functions all build their output with this module's `ok`/
+// `err` constructors, and the two callers that used to carry their own
+// bespoke shape were migrated onto it rather than left beside it —
+// `commands/list.ts`'s `ListJsonEnvelope` is gone, replaced by
+// `listCatalogEnvelope` returning this module's `OkEnvelope`, and `upgrade`'s
+// status codes are drawn from this module's shared `ErrorCode` union
+// (`upgrade/types.ts`) instead of a status shape of its own.
 //
-// No `@cpt-` marker on this module: the ADR and the cli-invocation FEATURE's
-// "Uniform Envelope Dispatch" DoD (`cpt-frontx-dod-cli-invocation-json-
-// envelope-dispatch`) assign an ID to the DISPATCHER'S rendering step — the
-// act of routing a dispatched command's outcome through this shape at the
-// `cli.ts` entrypoint — not to this helper module itself, which no command
-// consumes yet. Neither artifact fixes a distinct ID for "the envelope
-// helper" as its own traceable unit, so none is invented here.
+// No `@cpt-` marker on this module even so: the ADR and the cli-invocation
+// FEATURE's "Uniform Envelope Dispatch" DoD (`cpt-frontx-dod-cli-invocation-
+// json-envelope-dispatch`) assign an ID to the DISPATCHER'S rendering step —
+// the act of routing a dispatched command's outcome through this shape at
+// the `cli.ts` entrypoint, already marked there alongside
+// `cpt-frontx-algo-cli-invocation-parse-dispatch`'s `inst-pd-render` — not to
+// the shape definitions a rendering step happens to call. Universal
+// consumption doesn't change which artifact names the traceable unit:
+// neither the ADR nor the DoD fixes a distinct ID for "the envelope
+// constructors" themselves, so none is invented here.
 
 /**
  * The v1 vocabulary of stable `error.code` values — sixteen codes, exactly

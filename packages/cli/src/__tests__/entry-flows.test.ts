@@ -610,14 +610,18 @@ describe('runApplyPipeline — materializing a batch (cpt-frontx-flow-cli-scaffo
     expect(h.readProjectStateDocument().templates['template-a'].targets).toEqual(['apps/foo']);
   });
 
-  // DEFECT FIX regression (PR review, reproduced against the built binary):
-  // `runApplyPipeline` materializes a batch's payload BEFORE the AI-bundle
-  // step, which can still refuse — a refusal there used to report only
-  // `INVALID_PATH`, with no indication the payload was already on disk.
-  // `details.writtenPaths` now names exactly what remains, and the payload
-  // genuinely IS still there (this file's own `apply` never rolls back its
-  // own partial write — only `seed`, layered on top, does).
-  it('reports writtenPaths, and leaves the payload on disk, when the AI-bundle step refuses after materializing', async () => {
+  // ATOMICITY FIX (PR review, reproduced against the built binary, defect 6
+  // — "apply is not atomic across the AI-bundle step"): `runApplyPipeline`
+  // materializes a batch's payload BEFORE the AI-bundle step, which can
+  // still refuse. This USED TO report `INVALID_PATH` with the payload left
+  // genuinely on disk — "nothing recorded" did not also mean "nothing
+  // left", so `validate --project` would PASS over content no state
+  // document mentioned. `apply` now rolls back its own writes on exactly
+  // this refusal (this call never committed anything to the project state
+  // store, so every file it wrote is unambiguously its own to remove) —
+  // `details.writtenPaths` still names what WAS written, but the message
+  // now says it was removed, and the payload is genuinely gone.
+  it('rolls back the payload, and reports it as removed, when the AI-bundle step refuses after materializing', async () => {
     const h = makeHarness();
     h.registerInstalled('template-a', manifest('template-a'), [{ path: 'src/index.ts', content: 'hello' }]);
     h.seedProjectState({
@@ -637,8 +641,10 @@ describe('runApplyPipeline — materializing a batch (cpt-frontx-flow-cli-scaffo
     expect(result.code).toBe('INVALID_PATH');
     expect(result.details?.writtenPaths).toEqual(['apps/foo/src/index.ts']);
     expect(result.message).toContain('apps/foo/src/index.ts');
-    // The payload really is on disk — never recorded as applied, though.
-    expect(h.files.get('/repo/apps/foo/src/index.ts')).toBe('hello');
+    expect(result.message).toContain('removed');
+    // The heart of the fix: the payload this call wrote is gone, not merely
+    // unrecorded.
+    expect(h.files.get('/repo/apps/foo/src/index.ts')).toBeUndefined();
     expect(h.readProjectStateDocument().templates['template-a'].targets).toEqual([]);
   });
 

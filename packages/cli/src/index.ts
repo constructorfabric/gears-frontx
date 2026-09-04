@@ -49,12 +49,15 @@ export type {
 } from './manifest/types';
 export type { ReadManifestResult } from './manifest/validate-contract';
 // The now-legacy ownership/reference shapes the four-field contract retired
-// (cpt-frontx-adr-template-manifest-contract) - re-exported from their new
-// home (`./manifest/legacy-ownership.ts`) so every existing import of these
-// type names keeps working while the composition/assembly/upgrade code that
-// still uses them is migrated off the five-category shape.
-export type { OwnershipBoundary, SharedFileEntry, MergeStrategy, ReferencedTemplate } from './manifest/legacy-ownership';
-export { readLegacyOwnershipBoundary, readLegacyReferencedTemplates } from './manifest/legacy-ownership';
+// (cpt-frontx-adr-template-manifest-contract) are NOT re-exported here:
+// every consumer of `./manifest/legacy-ownership.ts` — the composition/
+// assembly/upgrade code still migrating off the five-category shape, and
+// this package's own tests — imports it by its own relative path, and
+// nothing outside this package depends on `@gears-frontx/cli` at all
+// (the kit's `no-cli-package-edge` test enforces exactly that boundary).
+// Putting a transitional, internal-only shape on the public barrel would
+// invite an external dependency on something meant to be retired, not
+// preserve one that already exists.
 // The read-side counterpart to pre-publish validation
 // (cpt-frontx-algo-template-manifest-refuse-legacy): refuses a manifest
 // declaring any undeclared field outright. NOT YET wired into any command

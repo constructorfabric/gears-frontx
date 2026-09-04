@@ -294,6 +294,55 @@ describe('usage/help (cpt-frontx-flow-cli-invocation-help)', () => {
     expect(envelope.error.message).toContain('nosuchcommand');
   });
 
+  // `help` was the one dispatchable request that still tolerated trailing
+  // garbage after every OTHER command gained strict extra-argument rejection
+  // (`rejectUnrecognizedArgs`) in an earlier round: `frontx help extra --json`
+  // used to exit 0 and print usage with `extra` never even inspected.
+  it('rejects an unrecognized extra argument to an explicit help request instead of silently ignoring it', () => {
+    const outcome = helpOutcome(parseInvocation(['help', 'extra']));
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toContain('Unrecognized argument(s) for help: extra');
+  });
+
+  it('rejects an unrecognized extra argument to an explicit help request under --json, on stdout as the shared envelope', () => {
+    const outcome = helpOutcome(parseInvocation(['help', 'extra', '--json']));
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toBeUndefined();
+    const envelope = JSON.parse(outcome.stdout ?? '') as { ok: boolean; error: { code: string; message: string } };
+    expect(envelope.ok).toBe(false);
+    expect(envelope.error.code).toBe('INVALID_INPUT');
+    expect(envelope.error.message).toContain('extra');
+  });
+
+  // `--json` is refused for `help` rather than tolerated and ignored: `help`
+  // has no result to render, so it advertises no `--json` of its own in
+  // `usageText()`, and answering the flag with plain usage prose would leave
+  // the one invocation on this surface that responds to `--json` with
+  // something no parser can read. The refusal itself IS an envelope, so an
+  // agent that appends `--json` to every invocation still gets a parseable —
+  // and truthful — answer. See `helpOutcome`'s own comment for the full
+  // reasoning behind choosing this over adding a JSON mode to `help`.
+  it('refuses --json for help itself, answering in the envelope rather than printing prose no parser can read', () => {
+    const outcome = helpOutcome(parseInvocation(['help', '--json']));
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toBeUndefined();
+    const envelope = JSON.parse(outcome.stdout ?? '') as { ok: boolean; error: { code: string; message: string } };
+    expect(envelope.ok).toBe(false);
+    expect(envelope.error.code).toBe('INVALID_INPUT');
+    expect(envelope.error.message).toContain('--json');
+  });
+
+  // The no-command and token-form help requests keep working untouched: they
+  // carry no arguments of their own for the new strictness to inspect.
+  it.each([[[]], [['help']], [['--help']], [['-h']]])(
+    'still prints usage and exits 0 for %j',
+    (argv: string[]) => {
+      const outcome = helpOutcome(parseInvocation(argv));
+      expect(outcome.exitCode).toBe(EXIT_SUCCESS);
+      expect(outcome.stdout).toContain('Usage: frontx <command> [args]');
+    },
+  );
+
   it('run() propagates the same --json envelope for an unrecognized command end-to-end', async () => {
     const { deps } = makeDeps();
     const outcome = await run(['nosuchcommand', '--json'], deps);
