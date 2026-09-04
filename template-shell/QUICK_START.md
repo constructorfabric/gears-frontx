@@ -117,10 +117,16 @@ scaffold step deletes it.
 ## Add a microfrontend
 
 MFEs are the unit of composition. `_blank-mfe` (the copy-from scaffold) ships
-with [`frontx-template-mfe`](../template-mfe/README.md), not the shell — run
-`frontx add frontx-template-mfe` first if `src-app/mfe_packages/_blank-mfe`
-isn't there yet, then `npm install` (the workspace glob picks up the new
-packages, so the lock must be regenerated). Start from the blank MFE:
+with [`frontx-template-mfe`](../template-mfe/README.md), not the shell — register
+and apply it first if `src-app/mfe_packages/_blank-mfe` isn't there yet:
+
+```bash
+frontx register <mfe-origin>
+frontx apply --input '{"templates":{"@gears-frontx/frontx-template-mfe":["src-app/mfe_packages"]}}'
+```
+
+then `npm install` (the workspace glob picks up the new packages, so the lock
+must be regenerated). Start from the blank MFE:
 
 ```bash
 NEW=src-app/mfe_packages/my-mfe
