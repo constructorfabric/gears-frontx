@@ -18,12 +18,14 @@ export function normalizeOptions(config: TelemetryConfig): TelemetryConfigNormal
     url: configUrl,
     // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-normalize-config:p2:inst-carry-required
     storagePrefix: config.storagePrefix,
+    sanitizeUrl: config.sanitizeUrl,
     appName: config.appName,
     appVersion: config.appVersion,
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-normalize-config:p2:inst-carry-required
     // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-normalize-config:p2:inst-default-values
     autocapture: config.autocapture ?? true,
     navigationCapture: config.navigationCapture ?? true,
+    redactUrls: config.redactUrls ?? false,
     sessionDuration: config.sessionDuration ?? 30 * 60 * 1000, // 30 minutes
     apiVersion,
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-normalize-config:p2:inst-default-values

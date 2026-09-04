@@ -593,6 +593,21 @@ describe('Telemetry Client', () => {
     expect(record.context_language).toBe('en-US');
   });
 
+  test('should redact identifying values from the page view path', () => {
+    const telemetry = createTelemetry({ ...mockAppInfo, redactUrls: true });
+
+    telemetry.start();
+    onTestFinished(() => telemetry.destroy());
+
+    window.history.pushState({}, '', '/users/98765/profile');
+    vi.runAllTimers();
+
+    const payload: TelemetryApiPayload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const pageView = payload.records.find((r: TelemetryApiRecord) => r.value.name === 'page_view');
+
+    expect(pageView?.value.data).toMatchObject({ url: '"/users/:id/profile"' });
+  });
+
   test('should record a page view on a history navigation', () => {
     const telemetry = createTelemetry(mockAppInfo);
 

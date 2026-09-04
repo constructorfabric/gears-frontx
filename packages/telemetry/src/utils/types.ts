@@ -11,6 +11,8 @@ export type TelemetryConfigNormalized = {
   url: string;
   autocapture: boolean;
   navigationCapture: boolean;
+  redactUrls: boolean;
+  sanitizeUrl?: SanitizeUrlFn;
   sessionDuration: number;
   apiVersion: number;
 };
@@ -41,6 +43,23 @@ export type TelemetryConfig = {
    */
   navigationCapture?: boolean;
   /**
+   * Replace identifying values in recorded urls with placeholders: `:email`, `:uuid`, `:token`,
+   * `:id` and `:hash`. Applies to the `page_view` path and to autocaptured link urls.
+   * @default false
+   */
+  redactUrls?: boolean;
+  /**
+   * Rewrite a url before it is recorded. Runs on the raw value, ahead of `redactUrls`, so a host
+   * can map its own routes. With `redactUrls` on, whatever it returns is then swept by the
+   * built-in patterns; with `redactUrls` off, its output is recorded as returned. A throw is
+   * reported through the SDK logger and the built-in patterns run on the raw url instead.
+   *
+   * The value passed in depends on the recording site: the navigation plugin passes
+   * `location.pathname`, the autocapture walk passes an anchor's `href` as authored - absolute,
+   * relative, `#/route` or `mailto:`. A rule anchored on `^` will not see an absolute href.
+   */
+  sanitizeUrl?: SanitizeUrlFn;
+  /**
    * Enables or disables telemetry events
    */
   enabled?: boolean;
@@ -70,6 +89,8 @@ export type TelemetrySession = {
 };
 
 export type LogEvent = (...args: TelemetryLogEventParams) => TelemetryRecord;
+
+export type SanitizeUrlFn = (url: string) => string;
 
 export type TelemetryPluginOption = TelemetryPlugin | false | null | undefined;
 

@@ -297,6 +297,16 @@ The system **MUST** reduce accidental sensitive-data capture through default sup
 
 **Actors**: `cpt-frontx-telemetry-actor-end-user`
 
+#### Identifying values in recorded addresses
+
+- [x] `p2` - **ID**: `cpt-frontx-telemetry-fr-url-redaction`
+
+The system **MUST** offer to record a page address with the values that identify a person or a record replaced by a placeholder that preserves the address's shape, and **MUST** let an application supply its own replacement rule for the values only it can recognize.
+
+**Rationale**: Applications put people and records in the address itself, so an address stream carries identity even where no field does — and dropping the address instead would remove the unit the whole usage question is asked in.
+
+**Actors**: `cpt-frontx-telemetry-actor-end-user`, `cpt-frontx-telemetry-actor-application-developer`
+
 ### 5.6 Distribution
 
 #### Independent publication
@@ -468,6 +478,7 @@ The system **MUST NOT** throw when imported or called in an environment without 
 - [x] Autocapture records common DOM interaction without per-element instrumentation.
 - [x] A subtree opt-out suppresses capture for that subtree.
 - [x] Pattern-based redaction reduces accidental sensitive-value capture.
+- [x] A recorded page address can carry placeholders in place of the values that identify a person or a record, with the application able to name the values only it recognizes.
 - [x] Element attribution works across independently loaded SDK copies.
 - [x] Published code contains no ecosystem, UI-framework or template-territory imports.
 - [x] Server-side import and lifecycle calls complete without error.

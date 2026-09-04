@@ -78,6 +78,8 @@ removes the listeners.
 | `url`               | `string`  | see below  | Endpoint events are POSTed to. Defaults to the same-origin path `/api/events` when `apiVersion` is `1`, otherwise `/api/telemetry/v{apiVersion}/events`.           |
 | `autocapture`       | `boolean` | `true`     | Automatically capture `click`, `change` and `submit` events from the page.                                                                                         |
 | `navigationCapture` | `boolean` | `true`     | Record a `page_view` on every path change, and stamp later records with `caused_by_id`. When `false` the navigation plugin is not registered and `window.history` is left unwrapped. |
+| `redactUrls`        | `boolean` | `false`    | Replace identifying values in recorded urls with `:email`, `:uuid`, `:token`, `:id` and `:hash`. See *Url redaction* below. |
+| `sanitizeUrl`       | `function`| none       | `(url: string) => string`, applied to the raw url before `redactUrls`. Your own route rules; with `redactUrls` on, its output is then swept by the built-in patterns. |
 | `enabled`           | `boolean` | `true`     | When `false`, events are still collected, enriched and drained from the queue - only the POST is skipped.                                                          |
 | `verbose`           | `boolean` | `false`    | Log SDK activity to the console.                                                                                                                                  |
 | `storagePrefix`     | `string`  | none       | Infix for the `localStorage` keys the SDK owns: `telemetry_{storagePrefix}_device_id` and `telemetry_{storagePrefix}_session`. Set it to keep two clients apart.   |
@@ -257,6 +259,47 @@ single-use, so the id is minted by the next client's `start()`:
 localStorage.removeItem('telemetry_device_id'); // or `telemetry_${storagePrefix}_device_id`
 ```
 
+## Url redaction
+
+Off by default. `redactUrls: true` rewrites identifying values in every url the SDK records - the
+`page_view` path, an autocaptured link's `$el_attr_href`, and `$external_click_url` - keeping the
+address's shape so it still groups:
+
+| Segment or query value | Becomes |
+| --- | --- |
+| `john@x.com` | `:email` |
+| a UUID | `:uuid` |
+| a JWT (`eyJ…` with two dots) | `:token` |
+| 5 or more digits | `:id` |
+| 16 or more hex characters | `:hash` |
+
+Matching is whole-segment and deliberately narrow, so `/reports/2026` and
+`/docs/Chapter-2-Introduction` survive untouched. The cost of that is real: `/users/8` and
+`?name=Nikita` match nothing and reach the collector as they are.
+
+`sanitizeUrl` covers what the SDK cannot recognize. It runs first, on the raw url, because your
+router is the only thing that knows which segments are ids:
+
+```ts
+createTelemetry({
+  appName: 'cloud',
+  appVersion: '1.0.0',
+  redactUrls: true,
+  sanitizeUrl: (url) => url.replace(/^\/o\/\d+/, '/o/:orgId'),
+});
+```
+
+With `redactUrls` on, whatever it returns is then swept by the built-in patterns; with `redactUrls`
+off, its output is recorded as it returned it. Either way, a hook that throws is reported through
+the SDK logger - so visible when `verbose` - and the built-in patterns run on the raw url instead,
+because a broken rule must not publish what it was written to remove.
+
+What the hook receives differs by recording site: the navigation plugin passes
+`location.pathname`, while the autocapture walk passes the anchor's `href` exactly as authored -
+absolute, `../relative`, `#/route` or `mailto:`. A rule anchored on `^` therefore rewrites the path
+change but not an absolute href carrying the same route. Match both forms if a route can be linked
+to as well as navigated to.
+
 ## Browser support
 
 Modern evergreen browsers. Requires `fetch`, `localStorage`, `crypto.randomUUID` and `Intl.Locale`.
@@ -274,6 +317,11 @@ The SDK is being extracted from an internal codebase. These are tracked and will
 - `Content-Type` is not configurable.
 - Several `context_*` record fields are declared but never populated (tenant, user profile,
   screen size, touch support, DOM element id and value).
+- Url redaction rewrites query **values** only - a parameter *name* is never rewritten.
+- Url redaction treats an anchor's `href` and the `page_view` path as urls, and nothing else. A
+  `src`, an `action` or a `data-*` attribute carrying an id is recorded as-is.
+- A url nested inside a query value (`?next=/users/98765`) is left alone. Matching is whole-value,
+  and a value holding a path separator matches no rule.
 
 ## Development
 
@@ -288,7 +336,8 @@ node scripts/run-monorepo-unit-tests.mjs --run --project=telemetry
 npm run demo:telemetry                                      # browser example on port 5273
 ```
 
-47 tests live in `src/__tests__/` - `telemetry.test.ts` (23) and `autocapture.test.ts` (24).
+65 tests live in `src/__tests__/` - `telemetry.test.ts` (24), `autocapture.test.ts` (26) and
+`url.test.ts` (15).
 `vitest` is pinned to an exact version, guarded repo-wide by
 `scripts/check-test-dependency-versions.mjs`. The vitest `globalSetup` pins `TZ=UTC`, so timezone
 assertions do not depend on the machine.

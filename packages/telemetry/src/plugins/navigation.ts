@@ -1,4 +1,5 @@
 import type { TelemetryRecord, TelemetryRecordId } from '../utils/eventTypes';
+import { redactUrl } from '../utils/url';
 import type { TelemetryPlugin, TelemetryPluginContext } from '../utils/types';
 
 // @cpt-dod:cpt-frontx-telemetry-dod-event-collection-builtin-context:p1
@@ -28,7 +29,7 @@ export function navigationPlugin(): TelemetryPlugin {
 
         context.refreshSession();
         currentUrl = window.location.pathname;
-        const record = context.logEvent('page_view', { url: currentUrl });
+        const record = context.logEvent('page_view', { url: redactUrl(currentUrl, context) });
         currentPageRecordId = record.id ?? null;
       }
 

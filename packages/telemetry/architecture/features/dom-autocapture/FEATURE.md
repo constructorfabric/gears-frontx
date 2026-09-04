@@ -26,6 +26,7 @@
   - [Interaction Capture Without Instrumentation](#interaction-capture-without-instrumentation)
   - [Subtree Opt-Out By Presence](#subtree-opt-out-by-presence)
   - [Whole-Event Redaction](#whole-event-redaction)
+  - [Anchor Url Redaction](#anchor-url-redaction)
   - [Cross-Realm Element Hook Contract](#cross-realm-element-hook-contract)
   - [Hook Contribution Semantics](#hook-contribution-semantics)
   - [Untrusted Hook Error Discipline](#untrusted-hook-error-discipline)
@@ -46,11 +47,11 @@ Covers recording user interaction from the DOM without per-element instrumentati
 
 Realizes the automatic-capture requirements and the sequence `cpt-frontx-telemetry-seq-autocapture-walk`. This is the feature that makes interaction data available without an instrumentation project, and it is also where every safety decision lives, because it is the only part of the SDK that records data nobody wrote for the purpose.
 
-**Requirements**: `cpt-frontx-telemetry-fr-dom-autocapture`, `cpt-frontx-telemetry-fr-element-attribution`, `cpt-frontx-telemetry-fr-capture-opt-out`, `cpt-frontx-telemetry-fr-redaction`, `cpt-frontx-telemetry-nfr-hook-compatibility`
+**Requirements**: `cpt-frontx-telemetry-fr-dom-autocapture`, `cpt-frontx-telemetry-fr-element-attribution`, `cpt-frontx-telemetry-fr-capture-opt-out`, `cpt-frontx-telemetry-fr-redaction`, `cpt-frontx-telemetry-fr-url-redaction`, `cpt-frontx-telemetry-nfr-hook-compatibility`
 
 **Principles**: `cpt-frontx-telemetry-principle-untrusted-extensions`, `cpt-frontx-telemetry-principle-additive-cross-version`, `cpt-frontx-telemetry-principle-enrichment-via-plugins`
 
-**Components**: `cpt-frontx-telemetry-component-autocapture`, `cpt-frontx-telemetry-component-events-manager`, `cpt-frontx-telemetry-component-plugins-manager`
+**Components**: `cpt-frontx-telemetry-component-autocapture`, `cpt-frontx-telemetry-component-events-manager`, `cpt-frontx-telemetry-component-plugins-manager`, `cpt-frontx-telemetry-component-url-redaction`
 
 ### 1.3 Actors
 
@@ -160,7 +161,7 @@ Realizes the automatic-capture requirements and the sequence `cpt-frontx-telemet
 2. [x] - `p1` - **IF** no element on the path was one autocapture records - `inst-check-no-result`
    1. [x] - `p1` - **RETURN** abandonment - `inst-abandon-no-result`
 3. [x] - `p1` - **IF** an anchor target was remembered - `inst-check-anchor`
-   1. [x] - `p1` - Record it, and **IF** its host differs from the page's host on a click, mark the interaction as leaving the site - `inst-mark-external`
+   1. [x] - `p1` - Record it through the url redaction policy, and **IF** its host differs from the page's host on a click, mark the interaction as leaving the site with the same redacted url - `inst-mark-external`
 4. [x] - `p1` - **IF** the collected result holds no fields - `inst-check-empty-result`
    1. [x] - `p1` - **RETURN** abandonment - `inst-abandon-empty`
 5. [x] - `p1` - Merge the hook-contributed data first and autocapture's own fields last, so its own keys always win - `inst-merge-own-last`
@@ -306,6 +307,18 @@ The system **MUST** abandon the entire event, not merely the offending element's
 **Touches**:
 - Entities: `Record`
 
+### Anchor Url Redaction
+
+- [x] `p2` - **ID**: `cpt-frontx-telemetry-dod-dom-autocapture-anchor-url`
+
+The url a captured anchor contributes **MUST** pass through the shared url redaction policy rather than a rule of autocapture's own, so an identifying value in a link carries the same treatment as one in a path change, and an external click **MUST** be marked with that same rewritten value rather than the raw one. The policy **MUST** run after the value-safety gate above, whose answer is to drop the whole event: a placeholder substitution never stands in where a drop is owed.
+
+**Implements**:
+- `cpt-frontx-telemetry-algo-event-collection-url-redaction`
+
+**Touches**:
+- Entities: `Record`
+
 ### Cross-Realm Element Hook Contract
 
 - [x] `p1` - **ID**: `cpt-frontx-telemetry-dod-dom-autocapture-hook-contract`
@@ -365,6 +378,7 @@ The system **MUST** suppress the whole event when any hook on the walked path ve
 - [x] With autocapture disabled, no document listener is installed and no interaction produces an event.
 - [x] Teardown removes every listener autocapture installed.
 - [x] The opt-out attribute on an ancestor suppresses the event whether it is bare, set to a truthy value, or set to a falsy one.
+- [x] With url redaction on, a captured link url and an external click url both carry placeholders in place of their identifying values.
 - [x] A password input, a hidden input, and an element whose name or identifier matches a sensitive pattern each cause the whole event to be dropped, with no partial record emitted.
 - [x] For a selection list, a multi-line text control and an editable region, only name, identifier and accessible label are read.
 - [x] A value matching a payment-card or national-identifier pattern is not recorded.
