@@ -8,8 +8,9 @@
  *   imports except the type-substrate port, and no React
  *
  * The former `framework`, `react`, and `screenset` configs described the
- * retired L1/L2/L3 chain, whose packages emigrated to `template-shell/`.
- * The template enforces its own internal layering in its self-owned
+ * retired L1/L2/L3 chain, whose packages emigrated to `template-shell/` in
+ * the templates repository (constructorfabric/gears-frontx-templates). That
+ * repository enforces its own internal layering in its own
  * `template-shell/.dependency-cruiser.cjs`; this package is ecosystem-only.
  */
 

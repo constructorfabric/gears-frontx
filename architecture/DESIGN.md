@@ -104,6 +104,7 @@ CLI (projects orchestration):
 
 * `cpt-frontx-adr-template-acquisition-and-location` — Externalizes templates and resolves them by source-spec at runtime.
 * `cpt-frontx-adr-source-spec-syntax` — Defines the versioned source-spec syntax for template acquisition, including the optional subtree segment that lets one repository publish several addressable templates.
+* `cpt-frontx-adr-template-repository-separation` — Places the templates in a repository of their own, `constructorfabric/gears-frontx-templates`, one addressable subtree per template, realizing the externalization physically.
 * `cpt-frontx-adr-uniform-template-mechanism` — Establishes one uniform mechanism that operates over any template, each template declaring what it produces.
 * `cpt-frontx-adr-template-manifest-contract` — Defines the template manifest publication contract declaring identity, version, ownership boundaries, and referenced templates.
 * `cpt-frontx-adr-template-ownership-boundary-declaration` — Defines the two-tier ownership-boundary declaration (exclusive subtrees plus shared-file region ownership with a declared merge) - owned by the CLI member tree, `packages/cli/architecture/ADR/`.

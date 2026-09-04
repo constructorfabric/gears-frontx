@@ -33,15 +33,15 @@
  *    on a concrete class couples the consumer to its shape just the same.
  *
  * Zero scanned files is a hard failure, never a vacuous pass (same rule as
- * `template-pin-drift-check.mjs`): a walk that stops matching means the guard
+ * `ecosystem-pin-drift-check.mjs`): a walk that stops matching means the guard
  * is broken, and a human needs to see that as red.
  *
  * Why a script and not eslint `no-restricted-imports`/`no-restricted-exports`:
- * the root `eslint.config.js` deliberately ignores template territory
- * (`template-shell/**`, `template-mfe/**` — each ships its own config), so a
- * root-owned rule can never reach it; and even where a template does lint
- * itself, that config is a file the template is free to edit, not a place a
- * repo-wide boundary can durably live.
+ * template territory (`template-shell`, `template-mfe`) now lives in its own
+ * repository (constructorfabric/gears-frontx-templates) with its own ESLint
+ * config, so a root-owned rule here could never reach it even were it in this
+ * tree; and even where a template does lint itself, that config is a file the
+ * template is free to edit, not a place a repo-wide boundary can durably live.
  *
  * CLI entry: `node scripts/mfes-import-boundary-check.mjs` (exit 0 on success).
  * Wired into `npm run policy:mfes-import-boundary` and

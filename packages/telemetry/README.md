@@ -110,8 +110,9 @@ registers them a second time. Build a new client instead.
 ## Framework integration
 
 There is no app-wiring entry point in this package. The FrontX framework lives in template
-territory (`template-shell/packages/framework`, whose plugin type is `FrontXPlugin`), and no
-ecosystem package may import template territory at the source level - see
+territory (`template-shell/packages/framework`, whose plugin type is `FrontXPlugin`), in its own
+repository (constructorfabric/gears-frontx-templates), and no ecosystem package may import template
+territory at the source level - see
 `packages/cyber-pilot-kit-frontx/guidelines/ecosystem-boundaries.md`. Binding this SDK to an app's
 lifecycle or event bus is therefore template-side work, and this package exposes no API for it.
 Create the client with `createTelemetry`, `start()` it where the app boots, `destroy()` it on

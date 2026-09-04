@@ -4,11 +4,9 @@
  * Covers ONLY the ecosystem packages (mfes, gts-plugin, api, cli,
  * cyber-pilot-kit-frontx).
  * The template-side packages (state, i18n, framework, react, auth, studio) and
- * the host app now live in the self-contained top-level `template-shell/`
- * (see Phase 11 template-move; split from its MFE content into the sibling
- * `template-mfe/` in issue #470); it ships its own `eslint.config.js`. Both
- * `template-shell/` and `template-mfe/` are excluded from this config's
- * scope below.
+ * the host app now live in their own repository
+ * (`constructorfabric/gears-frontx-templates`), which ships its own
+ * `eslint.config.js` for them.
  */
 
 import js from '@eslint/js';
@@ -144,7 +142,6 @@ export default [
       '**/dist/**', // All dist directories are build artifacts
       '**/*.__mf__temp/**', // Module Federation generated temp files
       '**/.__mf__temp/**', // Module Federation generated temp files (dot-prefixed)
-      'packages/**/templates/**',
       'scripts/**', // Monorepo scripts — see the reasoning on the global ignore above
       '**/.vitepress/**',
       // Legacy config files (still used by dependency-cruiser)
@@ -152,9 +149,6 @@ export default [
       '.husky/**',
       '.artifacts/**', // Sandbox artifacts (gitignored)
       '.agents/**', // Agent infrastructure (gitignored)
-      'template-shell/**', // Self-contained template; ships its own eslint.config.js
-      'template-mfe/**', // MFE content extracted from template-shell (issue #470); linted as part of the assembled shell+mfe tree, not from this ecosystem root
-      'template-design-guardrails/**', // Manifest-only template; its verify package ships a lint fragment the shell consumes, linted as part of the assembled shell+overlay tree, not from this ecosystem root
     ],
   },
 

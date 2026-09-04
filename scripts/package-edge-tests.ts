@@ -115,9 +115,10 @@ function log(message: string, color: keyof typeof colors = 'reset'): void {
 /**
  * Ecosystem packages live under two workspace roots — `packages/*` and
  * `internal/*` — so the directory comes from the shared map, never from a
- * hardcoded prefix. Template-side packages live in the self-contained
- * `template-shell/` tree and are deliberately absent from the map: the
- * ecosystem guard must not reach into template territory (see #456, #476).
+ * hardcoded prefix. Template-side packages live in `template-shell/` in the
+ * templates repository (constructorfabric/gears-frontx-templates) and are
+ * deliberately absent from the map: the ecosystem guard must not reach into
+ * template territory (see #456, #476).
  */
 function resolvePackageDir(pkgName: string): string {
   const dir = ECOSYSTEM_PACKAGE_DIRS[pkgName];

@@ -5,15 +5,16 @@
  * gts-plugin, api, cli, cyber-pilot-kit-frontx).
  *
  * The template-side packages (state, i18n, framework, react, auth, studio)
- * and the host app now live in the self-contained top-level
- * `template-shell/` (Phase 11 template-move; split from its MFE content into
- * the sibling `template-mfe/` in issue #470); its template-internal
- * layering/isolation rules moved into its own `.dependency-cruiser.cjs`.
- * Once template-shell is no longer an npm workspace of this repo,
- * ecosystem packages have no module-resolution path into it at all — the
- * forbid rules below enforce that boundary generically (by shape, not by
- * naming the template's path), so they keep working if the template's
- * location or identity changes.
+ * and the host app live in the templates repository
+ * (constructorfabric/gears-frontx-templates, top-level `template-shell/`,
+ * split from its MFE content into the sibling `template-mfe/` in issue
+ * #470); that repository enforces its own template-internal
+ * layering/isolation rules in its own `.dependency-cruiser.cjs`. Since
+ * `template-shell` is not an npm workspace of this repo, ecosystem packages
+ * have no module-resolution path into it at all — the forbid rules below
+ * enforce that boundary generically (by shape, not by naming the template's
+ * path), so they keep working regardless of the template's location or
+ * identity.
  */
 
 /**
@@ -205,10 +206,9 @@ module.exports = {
 
     // @cpt-begin:cpt-frontx-constraint-cli-template-independence:p17:inst-dep-cruiser-rule
     // Scoped to SHIPPED source only (packages/cli/src, excluding the
-    // auto-generated version registry). packages/cli/templates/ and
-    // packages/cli/template-sources/ are fixture/scratch dirs (NOT shipped —
-    // package.json "files": ["dist"]) that legitimately contain template
-    // names/content; they must never trip the CLI-1 boundary check.
+    // auto-generated version registry). The CLI ships zero bundled template
+    // content today (ADR-0016/0017: templates are resolved at runtime by
+    // source-spec), so this rule has nothing to carve an exception for.
     {
       name: 'frontx-cli-1-no-bundled-template-content',
       severity: 'error',
@@ -344,11 +344,9 @@ module.exports = {
     exclude: {
       dynamic: true,
       // Only genuinely-not-ours trees are path-excluded, and none of them is a
-      // rule target: `packages/cli/templates` and `template-sources` are
-      // fixture/scratch dirs the CLI resolves at runtime rather than imports,
-      // `packages/mfes/mfes` is generated output, and `.claude/worktrees` are
-      // disposable agent-spawned repo checkouts.
-      path: 'packages/mfes/mfes|packages/cli/templates|packages/cli/template-sources|\\.claude',
+      // rule target: `packages/mfes/mfes` is generated output, and
+      // `.claude/worktrees` are disposable agent-spawned repo checkouts.
+      path: 'packages/mfes/mfes|\\.claude',
     },
     // Type-only imports are erased before emit, so without this a boundary
     // crossing written as `import type` is invisible to every rule above. The
