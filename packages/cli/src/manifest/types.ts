@@ -22,15 +22,28 @@
 
 export const MANIFEST_FILENAME = 'frontx-template.json';
 
-// The CLI-owned reserved namespace root FEATURE §1.2's payload definition
-// excludes unconditionally, restated here (rather than imported) only
-// because `isTemplatePayloadPath` below is the one place that owns the
-// spelling now - every other module's own `.frontx` literal (`scaffold/
-// conflict-check.ts`, `scaffold/effective-ownership.ts`) answers a
-// different, PROJECT-relative question (a target's effective ownership),
-// not this TEMPLATE-relative one, so this is not a second copy of their
-// term.
-const FRONTX_NAMESPACE_ROOT = '.frontx';
+// The CLI-owned reserved namespace root, exported as the ONE named spelling
+// of it in this package.
+//
+// This comment used to argue the opposite — that the literal was restated
+// here rather than shared, because `isTemplatePayloadPath` below asks a
+// TEMPLATE-relative question while `scaffold/conflict-check.ts` and
+// `scaffold/effective-ownership.ts` ask a PROJECT-relative one, so the three
+// copies were "not a second copy of their term". Those two modules carried
+// the same argument in their own words, each pointing at the others. Three
+// files agreeing in prose that they are allowed to disagree in code is
+// exactly the shape this package's own "one formulation, never a second"
+// discipline exists to prevent: the QUESTIONS differ, but the reserved NAME
+// they are all asking about is one fact, and a rename would have had to be
+// made identically in three places or silently split the CLI's reserved
+// namespace in two. The name is shared from here; each caller keeps its own
+// question.
+//
+// Deliberately NOT shared with `adapters/github-fetch.ts`'s
+// `~/.frontx/inventory`: that is the USER-HOME inventory root, a different
+// location that merely happens to spell the same dot-directory, and folding
+// the two would tie a project's reserved namespace to a machine-wide store.
+export const FRONTX_NAMESPACE_ROOT = '.frontx';
 
 // Whether `templateRelativePath` - a path relative to the template
 // directory itself (as it appears inside the template's own installed

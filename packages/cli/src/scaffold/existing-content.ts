@@ -78,6 +78,16 @@ export interface ExistingContentPartitions {
   identicalFiles: string[];
   contentConflicts: string[];
   additionalPaths: string[];
+  // The SUBSET of `contentConflicts` refused because a symlink stands at the
+  // payload path or on the way to it, rather than because the content there
+  // differs. Not a fourth partition: every path here is also in
+  // `contentConflicts`, and a caller that only reads the three partitions
+  // behaves exactly as before. It exists because the two causes are one
+  // refusal with two different remedies — reconcile the edit, versus resolve
+  // the link — and a report that names only the more common one sends a
+  // developer looking for a content difference that does not exist. Added
+  // after the fifth review round observed exactly that message in the wild.
+  uncomparablePaths: string[];
 }
 
 // @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-compute-payload
@@ -207,6 +217,7 @@ export async function reconcileExistingContent(
 
   const identicalFiles: string[] = [];
   const contentConflicts: string[] = [];
+  const uncomparablePaths: string[] = [];
 
   // @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-foreach-payload-path
   for (const [payloadPath, payloadContent] of payload) {
@@ -237,6 +248,13 @@ export async function reconcileExistingContent(
       // touches something else entirely — never the thing `--adopt-existing`
       // was asked to leave alone in the first place.
       contentConflicts.push(payloadPath);
+      // Recorded a second time, in the subset that names WHY — see
+      // `ExistingContentPartitions.uncomparablePaths`. The push is here, in
+      // the symlink branch itself, so the two lists cannot drift: nothing
+      // else in this function can add to `uncomparablePaths`, and this
+      // branch cannot add to `contentConflicts` without also naming the
+      // cause.
+      uncomparablePaths.push(payloadPath);
       continue;
       // @cpt-end:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-add-symlink-conflict
     }
@@ -275,6 +293,6 @@ export async function reconcileExistingContent(
   // @cpt-end:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-foreach-extra
 
   // @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-return-partitions
-  return { identicalFiles, contentConflicts, additionalPaths };
+  return { identicalFiles, contentConflicts, additionalPaths, uncomparablePaths };
   // @cpt-end:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-return-partitions
 }

@@ -14,7 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { BundleExistsFn, CopyBundleFn, RemoveBundleFn } from '../scaffold/ai-bundle';
-import { assertPathWithinProjectRoot } from './fs-project-io';
+import { assertPathWithinProjectRoot, resolveWriteParentDir } from './fs-project-io';
 
 // The one place `.frontx/ai/<manifestName>/` is spelled, from either a
 // template's installed content path (source) or the project root (dest) —
@@ -131,13 +131,34 @@ function clearBundleDestination(dest: string): void {
  * (`./fs-project-io.ts`) is the ONE shared check every adapter that writes
  * into a project uses. `destRoot` is an ordinary argument on this seam
  * already, unlike `WriteFileFn`/`RemoveProjectFileFn`, so no factory-level
- * threading is needed here. */
+ * threading is needed here.
+ *
+ * DANGLING-SYMLINK-INSIDE FIX (fifth review round, reproduced against the
+ * built binary): this called the literal `fs.mkdirSync(path.dirname(dest),
+ * ...)` — the last of a class of two writers a prior round's fix missed
+ * (`createFsWriteProjectFileFn`, `./fs-project-io.ts`, is the other) when it
+ * claimed `resolveWriteParentDir` was already "the single formulation every
+ * writer in this package shares". It was not, and the gap is the identical
+ * defect `createFsWriteFileFn`'s own DANGLING-SYMLINK-INSIDE FIX already
+ * closed there: a dangling `.frontx/ai/<manifestName>` symlink whose lexical
+ * target resolves INSIDE the project root is deliberately ALLOWED by
+ * `assertPathWithinProjectRoot` above, but the literal `mkdirSync(path.
+ * dirname(dest))` creates nothing the link's resolved target needs — the
+ * directory containing the link itself already exists. Reproduced live: a
+ * dangling internal `.frontx/ai` link produced an uncaught `ENOENT` on the
+ * literal parent, reported as `INVALID_PATH` by `apply.ts`'s own generic
+ * catch only because that catch happens to fire on ANY thrown error here,
+ * not because containment was actually the problem — the real cause (a
+ * missing directory) was never the diagnosis the caller received. Now uses
+ * the SAME `resolveWriteParentDir` walk `createFsWriteFileFn` and
+ * `createFsWriteProjectStateFn` already call, never a fourth independently-
+ * reasoned parent-directory resolution. */
 export function createFsCopyBundleFn(): CopyBundleFn {
   return async function copyBundle(sourceRoot: string, destRoot: string, manifestName: string): Promise<void> {
     const source = bundlePath(sourceRoot, manifestName);
     const dest = bundlePath(destRoot, manifestName);
     assertPathWithinProjectRoot(destRoot, dest);
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.mkdirSync(resolveWriteParentDir(dest), { recursive: true });
     clearBundleDestination(dest);
     fs.cpSync(source, dest, { recursive: true });
   };

@@ -15,6 +15,7 @@
 // that call is atomic, exactly as `provenance/write.ts` trusts
 // `ProvenanceWriteFn` without knowing how its real implementation persists.
 import path from 'node:path';
+import { FRONTX_NAMESPACE_ROOT } from '../manifest/types';
 import type {
   MutateProjectStateResult,
   ProjectStateDocument,
@@ -28,7 +29,7 @@ import type {
 // @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-locate
 /** The document's one location inside the repository root. */
 export function projectStatePath(repoRoot: string): string {
-  return path.join(repoRoot, '.frontx', 'project.json');
+  return path.join(repoRoot, FRONTX_NAMESPACE_ROOT, 'project.json');
 }
 // @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-locate
 
@@ -40,7 +41,7 @@ export function projectStatePath(repoRoot: string): string {
 // silently treated as an empty project: this legacy file present with no
 // `.frontx/project.json` alongside it.
 function legacyProvenancePath(repoRoot: string): string {
-  return path.join(repoRoot, '.frontx', 'provenance.json');
+  return path.join(repoRoot, FRONTX_NAMESPACE_ROOT, 'provenance.json');
 }
 
 function initialProjectStateDocument(): ProjectStateDocument {

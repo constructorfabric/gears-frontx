@@ -122,7 +122,11 @@ interface UnpackedGithubTarball {
   files: Record<string, string>;
   // The commit SHA recovered from the tarball's own top-level directory
   // name, when that segment's last `-`-separated component validates as a
-  // full 40-character hex SHA. `undefined` when the archive carried no
+  // hex SHA in the 7-to-40 form GitHub actually emits there (`GIT_SHA_PATTERN`
+  // — this said "full 40-character" until the third review round found it,
+  // the last of three statements of a rule the code stopped applying once
+  // measurement showed the abbreviated form is what arrives).
+  // `undefined` when the archive carried no
   // top-level segment at all (pathological) or the last component does not
   // look like a SHA — an absent pin is honest; a wrong one recorded as
   // immutable is not (`inst-resolve-pin`).
@@ -215,7 +219,12 @@ function unpackGithubTarball(url: string, tarballBytes: Buffer): UnpackedGithubT
 // trusted by every later re-resolution
 // (`cpt-frontx-adr-project-upgrade-mechanism`'s baseline story) while
 // addressing nothing. So this returns `undefined`, never a best-effort
-// guess, whenever the candidate is not exactly 40 hex characters.
+// guess, whenever the candidate does not match `GIT_SHA_PATTERN` — the 7-to-40
+// hex form GitHub's tarball root directory actually carries, as that
+// pattern's own comment sets out. This sentence used to say "not exactly 40
+// hex characters", describing the rule that measurement had already replaced
+// and that made pinning never fire at all; one of the two statements of it
+// was corrected a round ago and this one was missed.
 function extractPinnedSha(topLevelDir: string | undefined): string | undefined {
   if (topLevelDir === undefined) return undefined;
   const lastDash = topLevelDir.lastIndexOf('-');

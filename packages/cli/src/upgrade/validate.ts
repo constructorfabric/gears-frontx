@@ -175,11 +175,37 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-if-resolve-fail
   if (!candidateResolved.ok) {
     // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-return-unavailable
-    // Propagates the resolver's own code (`ORIGIN_UNAVAILABLE` or, for a
-    // legacy-shaped manifest, `INVALID_MANIFEST` — `payload.ts`'s own header
-    // documents why that second code exists) rather than collapsing both to
-    // `ORIGIN_UNAVAILABLE`: `UpgradeRefusalCode` includes both for exactly
-    // this reason.
+    // STALE-COMMENT FIX (PR review round five): this line propagates
+    // `candidateResolved.code` VERBATIM, whatever `resolvePayload` — the
+    // injected `ResolvePayloadFn` seam this function is handed, never a
+    // hardcoded reference to one concrete implementation — actually
+    // returns. `ResolvePayloadResult`'s own failure arm (`./types.ts`) types
+    // that code as `'ORIGIN_UNAVAILABLE' | 'INVALID_MANIFEST'`, so this
+    // pass-through must compile for either.
+    //
+    // What is FALSE, and what an earlier version of this comment wrongly
+    // claimed and then wrongly defended: that `./payload.ts`'s own
+    // `createResolvePayloadFn` — the one implementation this seam is wired
+    // to outside tests — ever actually produces `INVALID_MANIFEST` for a
+    // legacy-shaped manifest. It does not. `payload.ts`'s own header and its
+    // `readDeclared` helper (verified directly: every `return` in that
+    // module's failure paths, for both the local and the remote branch,
+    // sets `code: 'ORIGIN_UNAVAILABLE'`) fold EVERY unreadable manifest —
+    // legacy-shaped or any other kind of contract violation — into
+    // `ORIGIN_UNAVAILABLE`, on the explicit ground that upgrade's own
+    // FEATURE never lists `INVALID_MANIFEST` among its refusals at all
+    // (`payload.ts`'s `readDeclared`/`resolveLocalPayload`/
+    // `resolveRemotePayload` comments). `upgrade-payload.test.ts` asserts
+    // this directly ("refuses ORIGIN_UNAVAILABLE, never INVALID_MANIFEST").
+    //
+    // `INVALID_MANIFEST` stays in `ResolvePayloadResult`'s and
+    // `UpgradeRefusalCode`'s union regardless: both are typed against the
+    // SEAM, not against `payload.ts` alone, and `upgrade-validate.test.ts`'s
+    // own `makeResolvePayload` fixture helper is typed to allow a test
+    // double to return it — so narrowing either union to drop
+    // `INVALID_MANIFEST` would be a decision about the seam's contract, not
+    // a decision about what this one wiring produces today, and is left
+    // alone here.
     return { ok: false, code: candidateResolved.code, message: candidateResolved.message };
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-return-unavailable
   }
@@ -349,7 +375,21 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
     return {
       ok: false,
       code: 'CONTENT_CONFLICT',
-      message: `"${name}"'s upgrade was refused: ${contentConflicts.length} file(s) have both moved away from the baseline and do not already match the candidate.`,
+      // MESSAGE-HONESTY FIX (fifth review round, found by reading this
+      // refusal's own output after the symlink-ancestor fix landed): this
+      // sentence named ONE cause — drift away from the baseline — while
+      // `conflictPaths` unions three. `inst-cls-record-not-regular` also
+      // records a path whose leaf is a directory or a symlink, and now one
+      // whose ancestor directory is a symlink; neither of those has "moved
+      // away from" anything, and a developer told they had went looking for
+      // a content change that does not exist. The remedy differs per cause
+      // (reconcile the edit, versus resolve the link or the directory), so
+      // the message names both rather than collapsing them into whichever
+      // one happens to be more common.
+      message:
+        `"${name}"'s upgrade was refused: ${contentConflicts.length} file(s) cannot be upgraded in place — each has ` +
+        'either moved away from the baseline without already matching the candidate, or stands on (or beneath) a ' +
+        'symlink or a directory, which cannot be compared against the payload at all.',
       details: { conflicts: contentConflicts },
     };
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-return-target-fail

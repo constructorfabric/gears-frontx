@@ -60,8 +60,16 @@ export type { ReadManifestResult } from './manifest/validate-contract';
 // preserve one that already exists.
 // The read-side counterpart to pre-publish validation
 // (cpt-frontx-algo-template-manifest-refuse-legacy): refuses a manifest
-// declaring any undeclared field outright. NOT YET wired into any command
-// or into `readManifestFromContent` - a later checkpoint does that.
+// declaring any undeclared field outright.
+//
+// This comment used to end "NOT YET wired into any command or into
+// `readManifestFromContent` - a later checkpoint does that." That checkpoint
+// happened: `manifest/validate-contract.ts`'s `readManifestFromContent`
+// calls `refuseLegacyManifest` before its own contract check, so every
+// command that reads a manifest through it — `register`, `validate`, the
+// assembler, the upgrade engine's payload resolution — refuses a
+// legacy-shaped manifest already. The note survived the wiring and was
+// still telling readers the opposite one review round later.
 export { refuseLegacyManifest } from './manifest/refuse-legacy';
 export type { ManifestRefusal, RefuseLegacyResult, ParsedManifestJson } from './manifest/refuse-legacy';
 export { createFsReadFileFn, createFsListPayloadFilesFn, createFsResolveDeclaredExclusionFn } from './adapters/fs-project-io';

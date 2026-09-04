@@ -103,13 +103,16 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 
 **Error Scenarios**:
 - Developer runs the executable with a command token that matches no known command: the entrypoint prints usage and exits with the user-error code; in `--json` mode, it instead emits `{"ok": false, "error": {"code": "INVALID_INPUT", ...}}` naming the unrecognized token, since no dispatched command's envelope exists yet to carry the failure.
+- Developer runs `help` (or `-h`/`--help`) with additional, unrecognized trailing arguments (`frontx help extra`): the entrypoint refuses with `INVALID_INPUT` naming the unrecognized argument(s) — usage in the human-readable form, or the envelope in `--json` mode — and exits with the user-error code, never the success code an explicit help request otherwise reaches.
 
 **Steps**:
 1. [x] - `p1` - Developer runs the executable with no command, an explicit help request, or an unrecognized command token. - `inst-help-invoke`
 2. [x] - `p1` - The entrypoint produces the usage summary listing the available commands (`cpt-frontx-algo-cli-invocation-parse-dispatch`). - `inst-help-usage`
 3. [x] - `p1` - **IF** the invocation was an unrecognized command token - `inst-help-if-unrecognized`
    1. [x] - `p1` - **RETURN** `INVALID_INPUT` naming the unrecognized token; usage is emitted in the human-readable form, or the envelope in `--json` mode, and the process exits with the user-error code - `inst-help-return-user-error`
-4. [x] - `p1` - **RETURN** for no command or an explicit help request, usage is emitted and the process exits with the success code. - `inst-help-return-success`
+4. [x] - `p1` - **IF** the invocation was an explicit help request whose trailing arguments cannot be parsed under `help`'s own accepts-no-arguments usage - `inst-help-if-unrecognized-args`
+   1. [x] - `p1` - **RETURN** `INVALID_INPUT` naming the unrecognized argument(s); usage is emitted in the human-readable form, or the envelope in `--json` mode, and the process exits with the user-error code — never the success code an explicit help request otherwise reaches - `inst-help-return-unrecognized-args`
+5. [x] - `p1` - **RETURN** for no command, or an explicit help request whose arguments parsed cleanly, usage is emitted and the process exits with the success code. - `inst-help-return-success`
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -154,6 +157,7 @@ Internal system functions and procedures called by actor flows above.
 5. [x] - `p1` - **FROM** DISPATCHED **TO** SUCCEEDED **WHEN** the dispatched behavior completes and the outcome maps to the success exit code. - `inst-st-dispatched-success`
 6. [x] - `p1` - **FROM** DISPATCHED **TO** USER_ERROR **WHEN** the dispatched behavior reports a user/input failure and the outcome maps to the user-error exit code. - `inst-st-dispatched-user-error`
 7. [x] - `p1` - **FROM** DISPATCHED **TO** INTERNAL_ERROR **WHEN** the dispatched behavior fails unexpectedly and the outcome maps to the internal-error exit code. - `inst-st-dispatched-internal-error`
+8. [x] - `p1` - **FROM** REQUESTED **TO** USER_ERROR **WHEN** an explicit help request carries trailing arguments that cannot be parsed under `help`'s own accepts-no-arguments usage, and the refusal is emitted. Distinct from transition 3 above, whose **WHEN** clause is specifically an unrecognized COMMAND token — `help` is itself a recognized token here, so reusing that transition for this case would make its own condition false the moment it fired. - `inst-st-req-help-user-error`
 
 ## 5. Definitions of Done
 
@@ -229,6 +233,7 @@ The system **MUST**, when a dispatched command is invoked with `--json`, render 
 - [x] Running the `frontx` executable with a recognized command dispatches to the internal component that owns that command's behavior through a single dispatch path. (`target`) — every command-owning feature this dispatch reaches is now delivered, so it is verifiable end to end, and was: each command in the surface was driven against a real project
 - [x] Running the executable with no command or an explicit help request emits the usage summary and exits with the success code. (`target`)
 - [x] Running the executable with an unrecognized command token emits usage (or, in `--json` mode, `{"ok": false, "error": {"code": "INVALID_INPUT", ...}}`) and exits with the user-error code. (`target`)
+- [x] Running `help` (or `-h`/`--help`) with additional, unrecognized trailing arguments is refused with `INVALID_INPUT` and the user-error exit code, never the success code a clean help request reaches. (`target`)
 - [x] A dispatched behavior's user/input failure exits with the user-error code and an unexpected failure exits with the internal-error code. (`target`) — every dispatched command feature is now delivered, and the mapping is covered by the dispatcher's own tests, including an unexpected failure exiting with the internal-error code
 - [x] No command behavior is redefined in this feature; each dispatched behavior is referenced by its canonical ID. (`target`)
 - [x] The command surface is part of `cpt-frontx-interface-cli`; an incompatible change to it requires a major version bump per `cpt-frontx-adr-artifact-versioning-and-distribution`. (`target`)

@@ -712,10 +712,24 @@ function renderOwnershipListOutcome(result: OwnershipListOutcome, jsonMode: bool
 // and `INVALID_PATH` are each reported through their OWN step, unlike every
 // register/unregister/ownership renderer above (which has only one failure
 // shape to report). `ValidateProjectErrorCode` is a CLOSED five-code union
-// (narrower than `ErrorCode`), so this switch carries no `default` branch: a
-// sixth code added to the algorithm's own output type without a matching
-// case here fails at COMPILE time rather than silently falling through to
-// the PASS branch below.
+// (narrower than `ErrorCode`).
+//
+// EXHAUSTIVENESS FIX (fifth review round, reproduced against an isolated
+// `tsc --strict`): a prior round's comment here claimed a sixth code added
+// to the algorithm's own output type "fails at COMPILE time rather than
+// silently falling through to the PASS branch below" — that was false the
+// moment it was written. A `switch` with no `default` is not itself checked
+// for exhaustiveness by TypeScript; an unhandled member simply falls out of
+// the switch with no case having matched, straight into the PASS `return`
+// two lines below — reported as a passing `validate --project`, over a
+// refusal `result.ok` already says is `false`. The `default` branch below is
+// what actually buys the promise: assigning the narrowed `result.code` to a
+// `never`-typed binding only compiles when every OTHER case has already
+// excluded every member of the union, so a sixth `ValidateProjectErrorCode`
+// value with no matching `case` above leaves something other than `never`
+// reaching that assignment and the build fails — the guard this file has no
+// other instance of yet, so this is the first, not a reuse of an existing
+// pattern.
 function renderValidateProjectOutcome(result: ValidateProjectOutcome, jsonMode: boolean): CommandOutcome {
   if (!result.ok) {
     switch (result.code) {
@@ -759,6 +773,21 @@ function renderValidateProjectOutcome(result: ValidateProjectOutcome, jsonMode: 
           : { exitCode: EXIT_USER_ERROR, stderr: result.message };
         // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-invalid-path
         // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-if-invalid-path
+      default: {
+        // Unreachable for any of the five real codes above — reached only if
+        // `ValidateProjectErrorCode` grows a member this switch was not
+        // updated for, which is exactly the shape this guard exists to catch
+        // at compile time rather than at PASS-branch runtime (see this
+        // function's own header comment). `result.code`'s type here is
+        // `never` only when every real member was already handled by a
+        // `case` above; a sixth member left unhandled makes this assignment
+        // a type error, not this branch's own `throw` — the throw is the
+        // runtime fallback for the (otherwise unreachable) case a caller
+        // constructs a `ValidateProjectOutcome` by hand rather than through
+        // `commands/validate-project.ts`'s own typed return statements.
+        const _exhaustive: never = result.code;
+        throw new Error(`renderValidateProjectOutcome: unhandled ValidateProjectErrorCode "${String(_exhaustive)}"`);
+      }
     }
   }
   // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-pass
@@ -1777,8 +1806,6 @@ export function helpOutcome(parsed: ParsedInvocation): CommandOutcome {
   // @cpt-end:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-return-help
   // @cpt-end:cpt-frontx-flow-cli-invocation-help:p1:inst-help-usage
 
-  // @cpt-begin:cpt-frontx-flow-cli-invocation-help:p1:inst-help-return-success
-  // @cpt-begin:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-help-success
   if (parsed.helpRequested) {
     // `help`/`-h`/`--help` were the one dispatchable request left tolerating
     // trailing garbage — `frontx help extra` used to exit 0 and print usage
@@ -1802,8 +1829,37 @@ export function helpOutcome(parsed: ParsedInvocation): CommandOutcome {
     // one — an agent that appends `--json` to everything gets a parseable
     // answer either way, and a truthful one here.
     const jsonMode = parseJsonMode(parsed.args);
+
+    // MARKER-CONTRADICTION FIX (fifth review round, reproduced against the
+    // built binary): `rejectUnrecognizedArgs` here can return exit code 1
+    // (`INVALID_INPUT`/user error) for `frontx help extra`. A prior round
+    // added this call INSIDE `inst-help-return-success`'s own marker pair —
+    // an instruction whose FEATURE text (`cli-invocation/FEATURE.md`) reads
+    // "**RETURN** for no command or an explicit help request, usage is
+    // emitted and the process exits with the success code." A marker that
+    // brackets a branch capable of exiting 1 while claiming, by the
+    // instruction it cites, that this code path always succeeds is a
+    // contradiction `cfs validate` cannot see, because it checks that a
+    // marker's ID exists in the FEATURE, never that the bracketed code
+    // actually does what that instruction says. This refusal now has its
+    // own instruction (`inst-help-if-unrecognized-args` /
+    // `inst-help-return-unrecognized-args`, added alongside this fix,
+    // renumbered into the contiguous step block) and its own marker pair,
+    // so `inst-help-return-success` below brackets ONLY the return that is
+    // actually a success.
+    // @cpt-begin:cpt-frontx-flow-cli-invocation-help:p1:inst-help-if-unrecognized-args
+    // @cpt-begin:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-help-user-error
     const extraArgsOutcome = rejectUnrecognizedArgs('help', parsed.args, jsonMode, 'frontx help');
-    if (extraArgsOutcome) return extraArgsOutcome;
+    if (extraArgsOutcome) {
+      // @cpt-begin:cpt-frontx-flow-cli-invocation-help:p1:inst-help-return-unrecognized-args
+      return extraArgsOutcome;
+      // @cpt-end:cpt-frontx-flow-cli-invocation-help:p1:inst-help-return-unrecognized-args
+    }
+    // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-help-user-error
+    // @cpt-end:cpt-frontx-flow-cli-invocation-help:p1:inst-help-if-unrecognized-args
+
+    // @cpt-begin:cpt-frontx-flow-cli-invocation-help:p1:inst-help-return-success
+    // @cpt-begin:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-help-success
     return { exitCode: EXIT_SUCCESS, stdout: usage };
   }
   // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-help-success

@@ -70,6 +70,77 @@ function diskContentOf(entry: DiskEntry): string | null {
   return entry.kind === 'file' ? entry.content : null;
 }
 
+// SYMLINK-ANCESTOR FIX (PR review round five, reproduced against the built
+// binary): `readDiskEntry` is `lstat`-based on the FULL leaf path only
+// (`../adapters/fs-upgrade-io.ts`'s own header), which correctly reports a
+// symlinked LEAF as `'symlink'` — but an intermediate directory component
+// between `target` and the leaf that is itself a symlink is simply followed
+// by the OS on every read of a path beneath it, exactly as it would be for
+// any other path traversal. `inst-cls-if-not-regular` below refused
+// fail-closed on the leaf case only; a plan naming
+// `app/dir/sub/b.txt` where `app/dir` was a symlink actually compared and
+// then landed content through whatever `app/dir` pointed at, while reporting
+// the plan as touching `app/dir/sub/b.txt` — a mismatch between what the
+// plan named and what was actually written, for EVERY operation class
+// (`ADD`, `REPLACE`, `REMOVE`, `UNCHANGED` alike), not only a `REPLACE`.
+//
+// `../scaffold/existing-content.ts`'s `collectSymlinkPaths` /
+// `ancestorDirsBelowTarget` is the sibling formulation that already closed
+// the identical hole on the apply side — but it is shaped around a full-tree
+// walk (`ReadExistingContentFn` enumerates everything reachable under
+// `target` in one call, so a symlinked directory the walk refuses to
+// descend into simply reports itself and nothing beneath it), and its own
+// `ancestorDirsBelowTarget` helper is a private, unexported function this
+// module has no way to import without either widening that module's public
+// surface (outside this change's ownership — `scaffold/**` belongs to
+// another agent) or introducing a second import boundary this package does
+// not otherwise cross for a single free function. This module's own
+// `readDiskEntry` is a per-path probe, not a walk, so the two sides need
+// their own, differently-shaped formulations of the SAME rule rather than
+// one shared function — the rule itself (`architecture/ADR/0021-project-
+// upgrade-mechanism.md`: "a payload path where the disk holds a directory
+// or a symlink instead of a regular file cannot be compared at all and
+// refuses the same way, fail-closed, with CONTENT_CONFLICT") is what stays
+// singular; only its two mechanical realizations differ.
+//
+// `target` may be `.` (the project root, zero path segments) — mirrors
+// `ancestorDirsBelowTarget`'s own handling of that case exactly.
+function ancestorDirsBelowTarget(projectPath: string, target: string): string[] {
+  const segments = projectPath.split('/');
+  const targetDepth = target === '.' ? 0 : target.split('/').length;
+  const ancestors: string[] = [];
+  for (let depth = targetDepth + 1; depth < segments.length; depth++) {
+    ancestors.push(segments.slice(0, depth).join('/'));
+  }
+  return ancestors;
+}
+
+// Probes every ancestor directory component of `projectPath` below `target`
+// through the injected `readDiskEntry` seam, short-circuiting on the first
+// symlink found. `cache` is shared across every enumerated path in one
+// `classifyTarget` call (declared once by the caller, at
+// `inst-cls-foreach-path`'s own loop below) so a directory shared by many
+// enumerated paths — a common `src/` or `app/` prefix — costs exactly one
+// `readDiskEntry` call for the whole classification, never one per path
+// beneath it.
+async function hasSymlinkAncestor(
+  projectPath: string,
+  target: string,
+  repoRoot: string,
+  cache: Map<string, DiskEntry>,
+  readDiskEntry: ReadDiskEntryFn,
+): Promise<boolean> {
+  for (const ancestor of ancestorDirsBelowTarget(projectPath, target)) {
+    let entry = cache.get(ancestor);
+    if (entry === undefined) {
+      entry = await readDiskEntry(path.join(repoRoot, ancestor));
+      cache.set(ancestor, entry);
+    }
+    if (entry.kind === 'symlink') return true;
+  }
+  return false;
+}
+
 export interface ClassifyInput {
   target: string;
   repoRoot: string;
@@ -366,6 +437,10 @@ export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResu
 
   const operations: UpgradeOperation[] = [];
   const conflictPaths: string[] = [];
+  // Shared across every enumerated path below — see `hasSymlinkAncestor`'s
+  // own doc comment for why this cache is what keeps a directory shared by
+  // many paths a single `readDiskEntry` probe rather than one per path.
+  const ancestorEntryCache = new Map<string, DiskEntry>();
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-foreach-path
   for (const projectPath of enumeratedPaths) {
@@ -378,12 +453,23 @@ export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResu
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-read-three
 
     // @cpt-begin:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-if-not-regular
+    // The ancestor probe runs UNCONDITIONALLY, never gated on what
+    // `diskEntry` above reported for the leaf: when an ancestor directory
+    // component is a symlink, the OS already resolved it transparently
+    // while producing `diskEntry` itself, so a leaf that LOOKS like an
+    // ordinary file or absence here may in fact be reporting on whatever
+    // the symlink actually points at, not on the path this plan names. See
+    // `hasSymlinkAncestor`'s own doc comment for the full defect and why
+    // this is this module's own formulation of the sibling rule
+    // `../scaffold/existing-content.ts` already applies on the apply side.
+    const symlinkAncestor = await hasSymlinkAncestor(projectPath, target, repoRoot, ancestorEntryCache, readDiskEntry);
     const carriedByPayload = baselineContent !== null || candidateContent !== null;
-    if (carriedByPayload && (diskEntry.kind === 'directory' || diskEntry.kind === 'symlink')) {
+    if (carriedByPayload && (diskEntry.kind === 'directory' || diskEntry.kind === 'symlink' || symlinkAncestor)) {
       // @cpt-begin:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-record-not-regular
-      // Fail-closed: a directory or a symlink cannot be compared at all,
-      // so no comparison is attempted — this is not weighed against
-      // `UNCHANGED` or any other branch below.
+      // Fail-closed: a directory or a symlink — at the leaf, or at any
+      // ancestor directory component below `target` — cannot be compared
+      // at all, so no comparison is attempted — this is not weighed
+      // against `UNCHANGED` or any other branch below.
       conflictPaths.push(projectPath);
       // @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-record-not-regular
       continue;

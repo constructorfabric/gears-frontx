@@ -1,13 +1,5 @@
 import { pathWithinSubtree, pathWithinTarget, targetsNest } from '../paths/relative-path';
-import { RESERVED_ENVIRONMENT_ENTRIES } from '../manifest/validate-contract';
-
-// The CLI-owned reserved namespace root — same spelling as every other
-// caller (`adapters/github-fetch.ts`'s inventory-home helper, the AI-bundle
-// materialization algorithm, `.frontx/project.json` itself). Declared here
-// rather than imported: no shared module exports it as a named constant, and
-// this file's own header comment is the one place that needs to say why the
-// literal is spelled this way rather than derived.
-const FRONTX_NAMESPACE_ROOT = '.frontx';
+import { CLI_RESERVED_ROOTS } from './effective-ownership';
 
 // Resolves a caller-supplied target path against the project root, fail-
 // closed: `null` when the path cannot be PROVEN to stay inside the root
@@ -363,10 +355,19 @@ interface ReservedGroundEntry {
 // this algorithm's own input contract). `label` is what a refusal report
 // names as the contested ground; `path` is what `pathWithinSubtree` tests
 // the target under check against.
+//
+// The FIXED half — `.frontx` and the environment entries — comes from
+// `CLI_RESERVED_ROOTS` (`./effective-ownership.ts`), not from a second
+// literal composed here. It used to be composed here, and separately in the
+// six-term subtraction, from a shared `RESERVED_ENVIRONMENT_ENTRIES` array
+// and each module's own `.frontx` literal: the ENTRIES were one formulation
+// while the COMPOSITE was two, so "what the CLI reserves unconditionally"
+// could have been changed in one list and not the other. The variable half
+// stays here, because this algorithm's variable terms are genuinely its own
+// (see that constant's doc comment).
 function buildReservedGround(projectOwnedRoots: string[], localOriginFolders: string[]): ReservedGroundEntry[] {
   return [
-    { label: FRONTX_NAMESPACE_ROOT, path: FRONTX_NAMESPACE_ROOT },
-    ...RESERVED_ENVIRONMENT_ENTRIES.map((entry) => ({ label: entry, path: entry })),
+    ...CLI_RESERVED_ROOTS.map((entry) => ({ label: entry, path: entry })),
     ...projectOwnedRoots.map((root) => ({ label: `projectOwnedRoots: ${root}`, path: root })),
     ...localOriginFolders.map((folder) => ({ label: `local origin folder: ${folder}`, path: folder })),
   ];

@@ -20,7 +20,7 @@
 import path from 'node:path';
 import { registerTemplate, probeRegistration } from './register';
 import { officialDefaultOrigin } from './official-defaults';
-import { runApplyPipeline, rollbackWrittenPaths, describeWrittenPaths } from './apply';
+import { runApplyPipeline, rollbackWrittenPaths, describeWrittenPaths, describeBundleRollback } from './apply';
 import type { ApplyBatchOutcome, ApplyBatchTargetRef, ApplyPipelineDeps, RemoveEmptyDirFn } from './apply';
 import type { UniformApplyBatch } from '../scaffold/assembler';
 import { projectStatePath } from '../project-state/io';
@@ -186,7 +186,7 @@ export async function seedRepository(
   // own two writes: the project state document, and — only when `seed`
   // created it and it is now empty again — the `.frontx` directory that
   // document's write brought into being as a side effect.
-  async function rollbackSeedWrites(writtenPaths: readonly string[] = []): Promise<void> {
+  async function rollbackSeedWrites(writtenPaths: readonly string[] = [], bundledNames: readonly string[] = []): Promise<void> {
     // ATOMICITY FIX (PR review, reproduced against the built binary,
     // defect 5a — a rolled-back seed left 73-99 empty directories behind
     // in the live reproduction): reuses the SAME shared removal formulation
@@ -204,11 +204,16 @@ export async function seedRepository(
     // already gone. The one case this call is NOT redundant for is the
     // narrow one `recordedAnyThisCall` itself documents — a multi-name
     // batch where apply's OWN rollback deliberately left an earlier,
-    // already-recorded name's files in place; `seed`, unlike a standalone
-    // `apply`, is about to delete the WHOLE project state document below
-    // regardless (a project either seeds completely or not at all), so
-    // that earlier name's files are this rollback's to remove too — the
-    // two rollbacks do not fight, they compose.
+    // already-recorded name's files (and, since the fifth review round's
+    // BUNDLE-ROLLBACK FIX, that name's bundle too) in place; `seed`, unlike a
+    // standalone `apply`, is about to delete the WHOLE project state
+    // document below regardless (a project either seeds completely or not at
+    // all), so that earlier name's files AND its bundle are this rollback's
+    // to remove too — the two rollbacks do not fight, they compose.
+    // `bundledNames` is exactly `applyResult.details.bundledNames`
+    // (`extractBundledNames` below) — the ONLY way this call learns which
+    // names apply's own bundle step materialized a bundle for, since this
+    // function has no other visibility into that step at all.
     //
     // The empty set is the fifth argument deliberately, not for want of a
     // better value: `rollbackWrittenPaths` prunes only directories the
@@ -225,45 +230,73 @@ export async function seedRepository(
     // ones the developer put there. An empty directory left behind is a
     // residue; removing a developer's is damage, and this call declines to
     // guess between them.
-    await rollbackWrittenPaths(dir, writtenPaths, deps.removeProjectFileFn, deps.removeEmptyDirFn, new Set());
+    await rollbackWrittenPaths(
+      dir,
+      writtenPaths,
+      deps.removeProjectFileFn,
+      deps.removeEmptyDirFn,
+      new Set(),
+      deps.removeBundleFn,
+      new Set(bundledNames),
+    );
     await deps.removeProjectFileFn(projectStatePath(dir));
     if (!frontxDirPreexisted) {
       await deps.removeEmptyDirFn(frontxDir);
     }
   }
 
-  // The `writtenPaths` an apply-phase failure's `details` carries, narrowed
-  // from `unknown` — defensive against a caller-shaped `details` that
-  // doesn't carry the field at all (every refusal BEFORE materialization)
-  // or carries something other than a string array (never true for
-  // `apply.ts`'s own outcome shape, but this reads a structurally untyped
-  // `Record<string, unknown>`, not a value this function controls).
+  // The `writtenPaths`/`bundledNames` an apply-phase failure's `details`
+  // carries, narrowed from `unknown` — defensive against a caller-shaped
+  // `details` that doesn't carry the field at all (every refusal BEFORE
+  // materialization, or one that never reached the bundle step) or carries
+  // something other than a string array (never true for `apply.ts`'s own
+  // outcome shape, but this reads a structurally untyped `Record<string,
+  // unknown>`, not a value this function controls).
   function extractWrittenPaths(details: Record<string, unknown> | undefined): string[] {
     const value = details?.writtenPaths;
     return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
   }
 
+  function extractBundledNames(details: Record<string, unknown> | undefined): string[] {
+    const value = details?.bundledNames;
+    return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+  }
+
   // MESSAGE-HONESTY FIX (PR review, reproduced against the built binary,
-  // defect 5b): recovers apply's underlying refusal REASON from
-  // `applyResult.message` by removing the exact trailing clause
-  // `describeWrittenPaths` (`./apply.ts`) composed onto it — that clause is
-  // the one part of the message this rollback makes stale (it names
-  // `writtenPaths` as either "remaining" or already "removed" as of the
-  // MOMENT apply returned, never as of after THIS rollback also ran). Tries
-  // both possible clause spellings (`removed: true` and `removed: false`)
-  // rather than assuming which one apply used, since either is possible
-  // depending on whether apply's OWN rollback already ran
-  // (`runApplyPipeline`'s own `recordedAnyThisCall` doc comment) — and
-  // falls back to the message unchanged when neither matches, which is
-  // defensive rather than load-bearing: every `ApplyBatchOutcome` failure
-  // that ever carries a non-empty `details.writtenPaths` composes its
-  // message through this exact function.
-  function stripWrittenPathsClause(message: string, writtenPaths: readonly string[]): string {
+  // defect 5b; extended fifth review round to the bundle clause
+  // `describeBundleRollback` added alongside it): recovers apply's
+  // underlying refusal REASON from `applyResult.message` by removing the
+  // exact trailing clause(s) `describeWrittenPaths`/`describeBundleRollback`
+  // (`./apply.ts`) composed onto it — those clauses are the part of the
+  // message this rollback makes stale (they name `writtenPaths`/
+  // `bundledNames` as either "remaining" or already "removed" as of the
+  // MOMENT apply returned, never as of after THIS rollback also ran). The
+  // bundle clause is stripped FIRST, since apply always appends it AFTER the
+  // written-paths clause (`describeWrittenPaths(...) + describeBundleRollback
+  // (...)` at every apply.ts call site) — stripping in the reverse of
+  // append order is the only way each `endsWith` check ever matches. Tries
+  // both possible written-paths clause spellings (`removed: true` and
+  // `removed: false`) rather than assuming which one apply used, since
+  // either is possible depending on whether apply's OWN rollback already ran
+  // (`runApplyPipeline`'s own `recordedAnyThisCall` doc comment) — and falls
+  // back to the message unchanged when neither matches, which is defensive
+  // rather than load-bearing: every `ApplyBatchOutcome` failure that ever
+  // carries a non-empty `details.writtenPaths` composes its message through
+  // this exact function.
+  function stripWrittenPathsClause(message: string, writtenPaths: readonly string[], bundledNames: readonly string[]): string {
+    const bundleClause = describeBundleRollback(new Set(bundledNames));
+    const withoutBundleClause = bundleClause.length > 0 && message.endsWith(bundleClause)
+      ? message.slice(0, message.length - bundleClause.length).trimEnd()
+      : message;
     const removedClause = describeWrittenPaths(writtenPaths, true);
     const remainingClause = describeWrittenPaths(writtenPaths, false);
-    if (message.endsWith(removedClause)) return message.slice(0, message.length - removedClause.length).trimEnd();
-    if (message.endsWith(remainingClause)) return message.slice(0, message.length - remainingClause.length).trimEnd();
-    return message;
+    if (withoutBundleClause.endsWith(removedClause)) {
+      return withoutBundleClause.slice(0, withoutBundleClause.length - removedClause.length).trimEnd();
+    }
+    if (withoutBundleClause.endsWith(remainingClause)) {
+      return withoutBundleClause.slice(0, withoutBundleClause.length - remainingClause.length).trimEnd();
+    }
+    return withoutBundleClause;
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
 
@@ -375,36 +408,43 @@ export async function seedRepository(
   if (!applyResult.ok) {
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
     const writtenPaths = extractWrittenPaths(applyResult.details);
-    await rollbackSeedWrites(writtenPaths);
+    const bundledNames = extractBundledNames(applyResult.details);
+    await rollbackSeedWrites(writtenPaths, bundledNames);
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
-    if (writtenPaths.length === 0) return applyResult;
+    if (writtenPaths.length === 0 && bundledNames.length === 0) return applyResult;
     // MESSAGE-HONESTY FIX (PR review, reproduced against the built binary,
-    // defect 5b): `applyResult.message` narrates apply's own refusal AT THE
-    // MOMENT apply returned it — for a refusal that names `writtenPaths`,
-    // that always ends in EXACTLY the clause `describeWrittenPaths`
-    // composes (`./apply.ts`), saying either that those files "remain on
-    // disk" or that apply's OWN rollback already "removed" them
-    // (`runApplyPipeline`'s own `recordedAnyThisCall` doc comment). Either
-    // way, that clause is now STALE the moment `rollbackSeedWrites` just
-    // above runs: this rollback is the one that gets the final, honest word
-    // on what is on disk, so quoting apply's clause verbatim risked exactly
-    // the self-contradiction the review flagged ("...file(s) remain on
-    // disk. ...nothing remains written." in one breath). Rather than
-    // restate apply's message and hope the two halves agree,
-    // `stripWrittenPathsClause` recovers apply's underlying REASON by
-    // removing that exact clause (reusing `describeWrittenPaths` itself to
-    // find it, never a second, independently-guessed pattern), and this
-    // composes its OWN, current-tense description of what the rollback just
-    // above actually did around that reason. `details.writtenPaths` is
-    // dropped entirely for the identical reason: nothing it names is still
-    // true.
-    const { writtenPaths: _rolledBack, ...remainingDetails } = applyResult.details ?? {};
-    const reason = stripWrittenPathsClause(applyResult.message, writtenPaths);
+    // defect 5b; extended fifth review round to `bundledNames`):
+    // `applyResult.message` narrates apply's own refusal AT THE MOMENT apply
+    // returned it — for a refusal that names `writtenPaths`/`bundledNames`,
+    // that always ends in EXACTLY the clause(s) `describeWrittenPaths`/
+    // `describeBundleRollback` compose (`./apply.ts`), saying either that
+    // those files/bundles "remain" or that apply's OWN rollback already
+    // "removed" them (`runApplyPipeline`'s own `recordedAnyThisCall` doc
+    // comment). Either way, that clause is now STALE the moment
+    // `rollbackSeedWrites` just above runs: this rollback is the one that
+    // gets the final, honest word on what is on disk, so quoting apply's
+    // clause verbatim risked exactly the self-contradiction the review
+    // flagged ("...file(s) remain on disk. ...nothing remains written." in
+    // one breath). Rather than restate apply's message and hope the two
+    // halves agree, `stripWrittenPathsClause` recovers apply's underlying
+    // REASON by removing those exact clauses (reusing `describeWrittenPaths`/
+    // `describeBundleRollback` themselves to find them, never a second,
+    // independently-guessed pattern), and this composes its OWN,
+    // current-tense description of what the rollback just above actually
+    // did around that reason. `details.writtenPaths`/`details.bundledNames`
+    // are dropped entirely for the identical reason: nothing they name is
+    // still true.
+    const { writtenPaths: _rolledBackFiles, bundledNames: _rolledBackBundles, ...remainingDetails } = applyResult.details ?? {};
+    const reason = stripWrittenPathsClause(applyResult.message, writtenPaths, bundledNames);
+    const removedParts = [
+      writtenPaths.length > 0 ? `${writtenPaths.length} file(s)` : undefined,
+      bundledNames.length > 0 ? `${bundledNames.length} AI-extension bundle(s)` : undefined,
+    ].filter((part): part is string => part !== undefined);
     return {
       ok: false,
       code: applyResult.code,
       message:
-        `Seed has rolled back everything this attempt wrote — including ${writtenPaths.length} file(s) the apply ` +
+        `Seed has rolled back everything this attempt wrote — including ${removedParts.join(' and ')} the apply ` +
         'phase had already written — so nothing from this batch remains on disk or in the project state store. ' +
         `The apply phase's own reason for refusing: ${reason}`,
       details: Object.keys(remainingDetails).length > 0 ? remainingDetails : undefined,

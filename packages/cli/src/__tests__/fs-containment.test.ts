@@ -1250,6 +1250,11 @@ describe('rollbackWrittenPaths (real fs): removes written files and prunes the d
         path.join(repoRoot, 'apps', 'foo', 'src'),
         path.join(repoRoot, 'apps', 'foo', 'src', 'deep'),
       ]),
+      // No bundle materialization in play for this test — the two new
+      // BUNDLE-ROLLBACK FIX arguments (fifth review round) are covered on
+      // their own below.
+      vi.fn(async () => {}),
+      new Set(),
     );
 
     // The written files are gone.
@@ -1269,7 +1274,15 @@ describe('rollbackWrittenPaths (real fs): removes written files and prunes the d
     repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-rollback-writtenpaths-empty-'));
 
     await expect(
-      rollbackWrittenPaths(repoRoot, [], createFsRemoveProjectFileFn(), createFsRemoveEmptyDirFn(), new Set()),
+      rollbackWrittenPaths(
+        repoRoot,
+        [],
+        createFsRemoveProjectFileFn(),
+        createFsRemoveEmptyDirFn(),
+        new Set(),
+        vi.fn(async () => {}),
+        new Set(),
+      ),
     ).resolves.toBeUndefined();
     expect(existsSync(repoRoot)).toBe(true);
   });
@@ -1293,6 +1306,8 @@ describe('rollbackWrittenPaths (real fs): removes written files and prunes the d
       createFsRemoveEmptyDirFn(),
       // Only `app/dir` was created by this call; `app` was already there.
       new Set([path.join(repoRoot, 'app', 'dir')]),
+      vi.fn(async () => {}),
+      new Set(),
     );
 
     expect(existsSync(path.join(repoRoot, 'app', 'dir', 'file.txt'))).toBe(false);
@@ -1314,9 +1329,64 @@ describe('rollbackWrittenPaths (real fs): removes written files and prunes the d
       createFsRemoveProjectFileFn(),
       createFsRemoveEmptyDirFn(),
       new Set(),
+      vi.fn(async () => {}),
+      new Set(),
     );
 
     expect(existsSync(path.join(repoRoot, 'a', 'b', 'f.txt'))).toBe(false);
     expect(existsSync(path.join(repoRoot, 'a', 'b'))).toBe(true);
+  });
+
+  // BUNDLE-ROLLBACK FIX (fifth review round, DEFECT 1, reproduced against the
+  // built binary): a rollback used to remove only the payload files named in
+  // `writtenPaths`, leaving every `.frontx/ai/<name>/` bundle this same call
+  // materialized standing — `targets: []` for the name, but its CLI-owned
+  // bundle directory still on disk, so a later `validate --project` reported
+  // PASS over ground no state document mentioned. Proven directly here,
+  // independent of `apply`'s own batch machinery: every name in
+  // `bundledNamesThisCall` gets `removeBundleFn` called for it, exactly once,
+  // regardless of whether it also had a payload file in `writtenPaths`.
+  it('also removes every AI-extension bundle named in bundledNamesThisCall', async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-rollback-bundles-'));
+    const removedBundles: string[] = [];
+    const removeBundleFn = vi.fn(async (root: string, name: string) => {
+      expect(root).toBe(repoRoot);
+      removedBundles.push(name);
+    });
+
+    await rollbackWrittenPaths(
+      repoRoot,
+      [],
+      createFsRemoveProjectFileFn(),
+      createFsRemoveEmptyDirFn(),
+      new Set(),
+      removeBundleFn,
+      new Set(['@scratch/a', '@scratch/b']),
+    );
+
+    expect(removeBundleFn).toHaveBeenCalledTimes(2);
+    expect(removedBundles.sort()).toEqual(['@scratch/a', '@scratch/b']);
+  });
+
+  // The mirror case: a name never added to `bundledNamesThisCall` (an
+  // already-bundled name this call only added a SECOND target to, per
+  // `runApplyPipeline`'s own `targetsBefore > 0` skip) must never have
+  // `removeBundleFn` called for it — its bundle predates this call and its
+  // record stands untouched.
+  it('never calls removeBundleFn for a name outside bundledNamesThisCall', async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), 'frontx-rollback-no-bundle-touch-'));
+    const removeBundleFn = vi.fn(async () => {});
+
+    await rollbackWrittenPaths(
+      repoRoot,
+      [],
+      createFsRemoveProjectFileFn(),
+      createFsRemoveEmptyDirFn(),
+      new Set(),
+      removeBundleFn,
+      new Set(),
+    );
+
+    expect(removeBundleFn).not.toHaveBeenCalled();
   });
 });

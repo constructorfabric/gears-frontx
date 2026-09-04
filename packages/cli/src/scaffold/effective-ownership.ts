@@ -36,12 +36,22 @@
 // other caller never have to agree on that spelling twice.
 import { pathWithinTarget, joinUnderTarget } from '../paths/relative-path';
 import { RESERVED_ENVIRONMENT_ENTRIES } from '../manifest/validate-contract';
+import { FRONTX_NAMESPACE_ROOT } from '../manifest/types';
 
-// Same spelling as `scaffold/conflict-check.ts`'s own `FRONTX_NAMESPACE_ROOT`
-// — restated rather than imported because neither module exports it as a
-// shared named constant today; both are the CLI's one reserved-namespace
-// literal, not two independently-chosen spellings.
-const FRONTX_NAMESPACE_ROOT = '.frontx';
+// The ground the CLI reserves from every target unconditionally, before any
+// project-state term is added: its own namespace root plus the fixed
+// environment entries. Exported because `scaffold/conflict-check.ts` builds
+// the SAME composite for its own reserved-ground check and used to build it
+// independently — `RESERVED_ENVIRONMENT_ENTRIES` was shared between the two,
+// but the `.frontx`-plus-those-entries composite was not, so the two lists
+// were one edit away from disagreeing about what the CLI reserves. The
+// VARIABLE terms stay with each caller, because they genuinely differ: the
+// six-term subtraction below adds `projectOwnedRoots`, the declared
+// `excludedSubtrees` re-rooted under the target, and the template's own
+// local origin folder; the conflict check adds `projectOwnedRoots` and
+// EVERY local origin folder the caller passed, each with a report label.
+// Only the fixed part is one fact, and only the fixed part is shared here.
+export const CLI_RESERVED_ROOTS: readonly string[] = [FRONTX_NAMESPACE_ROOT, ...RESERVED_ENVIRONMENT_ENTRIES];
 
 export interface EffectiveOwnershipTerms {
   target: string;
@@ -62,7 +72,7 @@ export interface EffectiveOwnershipTerms {
  * within none of these roots (`isWithinEffectiveOwnership`, below).
  */
 export function computeExclusionRoots(terms: EffectiveOwnershipTerms): string[] {
-  const roots: string[] = [FRONTX_NAMESPACE_ROOT, ...RESERVED_ENVIRONMENT_ENTRIES, ...terms.projectOwnedRoots];
+  const roots: string[] = [...CLI_RESERVED_ROOTS, ...terms.projectOwnedRoots];
   for (const declared of terms.excludedSubtrees) {
     roots.push(joinUnderTarget(terms.target, declared));
   }

@@ -253,6 +253,128 @@ describe('classifyTarget (cpt-frontx-algo-upgrade-changeset-classify)', () => {
     expect(result.operations).toEqual([]);
   });
 
+  // --- 7b. symlinked ANCESTOR directory component, fail-closed -----------
+  // (PR review round five, reproduced against the built binary: the
+  // leaf-only check above refused a symlinked LEAF but silently followed a
+  // symlinked ANCESTOR — see `../upgrade/classify.ts`'s `hasSymlinkAncestor`
+  // doc comment for the full defect.)
+
+  it('reports a conflict when an ancestor directory component below target is a symlink, regardless of what the leaf itself reports', async () => {
+    const result = await classifyTarget(
+      baseInput({
+        baseline: payload({ 'vendor/lib.ts': 'old' }),
+        candidate: payload({ 'vendor/lib.ts': 'new' }),
+        readDiskEntry: fakeReadDiskEntry({
+          '/repo/packages/app/vendor': symlinkEntry,
+          // The leaf itself looks like an ordinary matching file — through
+          // the symlink, this is whatever `vendor` actually resolves to,
+          // never to be trusted once an ancestor is a symlink.
+          '/repo/packages/app/vendor/lib.ts': fileEntry('old'),
+        }),
+      }),
+    );
+
+    expect(result.conflictPaths).toEqual(['packages/app/vendor/lib.ts']);
+    expect(result.operations).toEqual([]);
+  });
+
+  it('flags every operation class (ADD, REPLACE, REMOVE) sharing one symlinked ancestor, probing that ancestor exactly once', async () => {
+    const calls: string[] = [];
+    const readDiskEntry = async (absolutePath: string) => {
+      calls.push(absolutePath);
+      if (absolutePath === '/repo/packages/app/vendor') return symlinkEntry;
+      if (absolutePath === '/repo/packages/app/vendor/replace.ts') return fileEntry('old');
+      if (absolutePath === '/repo/packages/app/vendor/remove.ts') return fileEntry('gone-baseline');
+      return absentEntry;
+    };
+
+    const result = await classifyTarget(
+      baseInput({
+        baseline: payload({ 'vendor/replace.ts': 'old', 'vendor/remove.ts': 'gone-baseline' }),
+        candidate: payload({ 'vendor/replace.ts': 'new', 'vendor/add.ts': 'brand-new' }),
+        readDiskEntry,
+      }),
+    );
+
+    expect(result.conflictPaths.sort()).toEqual(
+      ['packages/app/vendor/add.ts', 'packages/app/vendor/remove.ts', 'packages/app/vendor/replace.ts'].sort(),
+    );
+    expect(result.operations).toEqual([]);
+    // The shared ancestor is probed once for the whole classification, not
+    // once per path beneath it — the caching `hasSymlinkAncestor` requires.
+    expect(calls.filter((c) => c === '/repo/packages/app/vendor')).toHaveLength(1);
+  });
+
+  it('flags a conflict when a DEEPER ancestor directory component is a symlink, not only the immediate parent', async () => {
+    const result = await classifyTarget(
+      baseInput({
+        baseline: payload({}),
+        candidate: payload({ 'vendor/nested/deep/new.ts': 'content' }),
+        readDiskEntry: fakeReadDiskEntry({
+          '/repo/packages/app/vendor': directoryEntry,
+          '/repo/packages/app/vendor/nested': symlinkEntry,
+        }),
+      }),
+    );
+
+    expect(result.conflictPaths).toEqual(['packages/app/vendor/nested/deep/new.ts']);
+    expect(result.operations).toEqual([]);
+  });
+
+  it('does not flag a path whose ancestor directories are ordinary real directories', async () => {
+    const result = await classifyTarget(
+      baseInput({
+        baseline: payload({}),
+        candidate: payload({ 'vendor/nested/new.ts': 'content' }),
+        readDiskEntry: fakeReadDiskEntry({
+          '/repo/packages/app/vendor': directoryEntry,
+          '/repo/packages/app/vendor/nested': directoryEntry,
+        }),
+      }),
+    );
+
+    expect(result.operations).toEqual([
+      { target: 'packages/app', path: 'packages/app/vendor/nested/new.ts', op: 'ADD', expectedDisk: null, newContent: 'content', baselineContent: null },
+    ]);
+    expect(result.conflictPaths).toEqual([]);
+  });
+
+  it('target "." (the project root): a symlinked ancestor directory component is still detected, with a zero-segment target', async () => {
+    const result = await classifyTarget(
+      baseInput({
+        target: '.',
+        baseline: payload({}),
+        candidate: payload({ 'app/dir/sub/b.txt': 'V2' }),
+        readDiskEntry: fakeReadDiskEntry({
+          '/repo/app': directoryEntry,
+          '/repo/app/dir': symlinkEntry,
+        }),
+      }),
+    );
+
+    expect(result.conflictPaths).toEqual(['app/dir/sub/b.txt']);
+    expect(result.operations).toEqual([]);
+  });
+
+  it('never probes a symlinked directory elsewhere in the target that is not an ancestor of any enumerated payload path', async () => {
+    const result = await classifyTarget(
+      baseInput({
+        baseline: payload({ 'src/a.ts': 'v1' }),
+        candidate: payload({ 'src/a.ts': 'v1' }),
+        readDiskEntry: fakeReadDiskEntry(
+          { '/repo/packages/app/src/a.ts': fileEntry('v1') },
+          // An unrelated symlinked directory (simulating a node_modules
+          // link) no enumerated payload path ever passes through — the
+          // ancestor probe must never even ask about it.
+          ['/repo/packages/app/vendor'],
+        ),
+      }),
+    );
+
+    expect(result.operations).toEqual([expect.objectContaining({ path: 'packages/app/src/a.ts', op: 'UNCHANGED' })]);
+    expect(result.conflictPaths).toEqual([]);
+  });
+
   // --- 8. an undeclared symlink is never enumerated -----------------------
 
   it('never enumerates, compares, or conflicts on a developer symlink at a path neither payload declares', async () => {

@@ -116,32 +116,57 @@ export class ExistingSymlinkDestinationError extends Error {
  *
  * DANGLING-SYMLINK-INSIDE FIX (found in PR review, reproduced against the
  * built binary): this used to call the literal `fs.mkdirSync(path.dirname(
- * destPath), ...)` — the one writer in this file that still did, after
- * `createFsWriteProjectStateFn` and every writer in `fs-upgrade-io.ts` were
- * already fixed to call `resolveWriteParentDir` instead (see that function's
- * own doc comment for the full defect: a dangling symlink whose lexical
- * target resolves INSIDE the project root is deliberately ALLOWED by
- * `assertPathWithinProjectRoot`, but a literal `mkdirSync(path.dirname(...))`
- * creates nothing the link's resolved target needs, since the literal parent
- * — the directory containing the link itself — already exists). Reproduced
- * live: `app/dir -> missing-parent/real-dir` (dangling, lexical target
- * inside the project) with a payload declaring `app/dir/file.txt` failed
- * with an uncaught `ENOENT` on `mkdir '.../app/dir'`, after an earlier
- * payload path in the same batch had already been written — this is now the
- * single `resolveWriteParentDir` formulation every writer in this package
- * shares, never a fourth independently-reasoned parent-directory resolution.
+ * destPath), ...)`, after `createFsWriteProjectStateFn` and every writer in
+ * `fs-upgrade-io.ts` were already fixed to call `resolveWriteParentDir`
+ * instead (see that function's own doc comment for the full defect: a
+ * dangling symlink whose lexical target resolves INSIDE the project root is
+ * deliberately ALLOWED by `assertPathWithinProjectRoot`, but a literal
+ * `mkdirSync(path.dirname(...))` creates nothing the link's resolved target
+ * needs, since the literal parent — the directory containing the link
+ * itself — already exists). Reproduced live: `app/dir -> missing-parent/
+ * real-dir` (dangling, lexical target inside the project) with a payload
+ * declaring `app/dir/file.txt` failed with an uncaught `ENOENT` on `mkdir
+ * '.../app/dir'`, after an earlier payload path in the same batch had
+ * already been written.
+ *
+ * A PRIOR round's fix here claimed this made `resolveWriteParentDir` "the
+ * single formulation every writer in this package shares" — false when
+ * written: `createFsWriteProjectFileFn` below in this same file, and
+ * `createFsCopyBundleFn` (`./fs-ai-bundle.ts`), both still built a literal
+ * parent path and were only brought into line in the FIFTH review round (see
+ * their own doc comments). The claim is accurate now that all three writers
+ * that create parent directories for a path inside a PROJECT share this one
+ * walk — `fs-content-store.ts`'s own `mkdirSync` calls are deliberately
+ * excluded from that count: they write into the CLI's own local inventory
+ * cache, a directory tree only this store itself ever populates (never a
+ * developer's project, never a template's content), so no dangling symlink
+ * planted by anything other than this store's own `mkdirSync`/`writeFileSync`
+ * calls — which never create a symlink — can ever appear there for
+ * `resolveWriteParentDir`'s walk to matter against.
  *
  * With `scaffold/existing-content.ts`'s own DIRECTORY-SYMLINK FIX in place,
  * reconciliation now refuses this exact shape (a symlinked directory
  * standing between `target` and a payload path) with `CONTENT_CONFLICT`
- * before materialization ever reaches this function — but this fix remains
- * as the backstop for a link that appears in the narrow window between that
- * read and this write (an existing-content snapshot is not a lock), and for
- * a DANGLING link whose target does not exist yet at all, which reconciliation's
- * own read reports as an existing entry but which is not a data-loss risk
- * the way an aliasing link is — refusing it outright would be strictly more
- * conservative than this package's already-settled position that a project
- * may legitimately contain its own (non-aliasing) symlinks.
+ * before materialization ever reaches this function — and it refuses a
+ * DANGLING symlink there identically to a live one: `inst-ec-if-symlink-
+ * component` (`scaffold/existing-content.ts`) checks for a symlink AT that
+ * path by name, never by dereferencing it, so whether the link's target
+ * exists is irrelevant to whether reconciliation catches it. COMMENT FIX
+ * (fifth review round): a prior version of this comment claimed a dangling
+ * link was one reconciliation's "own read reports as an existing entry but
+ * which is not a data-loss risk" — implying reconciliation lets it through.
+ * It does not; that claim was verified false against the built binary
+ * (`CONTENT_CONFLICT` reproduced for the dangling case exactly as for the
+ * aliasing one). What this fix genuinely remains the backstop for is
+ * narrower: a link that appears in the window between that read and this
+ * write (an existing-content snapshot is not a lock, dangling or not), and a
+ * dangling symlink standing ABOVE `target` itself — an ancestor of `target`,
+ * never a descendant of it — which reconciliation's own walk never inspects
+ * at all, since it only checks the ground BETWEEN `target` and a payload
+ * path, never `target`'s own ancestors. Refusing that remaining shape
+ * outright would be strictly more conservative than this package's already-
+ * settled position that a project may legitimately contain its own
+ * (non-aliasing) symlinks.
  */
 export function createFsWriteFileFn(): WriteFileFn {
   return async function writeFile(destPath: string, content: string): Promise<void> {
@@ -185,10 +210,25 @@ export function createFsReadProjectFileFn(): ReadProjectFileFn {
   };
 }
 
-/** Real `WriteProjectFileFn` — writes an absolute project file, creating parent dirs. */
+/** Real `WriteProjectFileFn` — writes an absolute project file, creating
+ * parent dirs.
+ *
+ * DANGLING-SYMLINK-INSIDE FIX (fifth review round, reproduced against the
+ * built binary): this called the literal `fs.mkdirSync(path.dirname(
+ * absolutePath), ...)` — one of the two writers a prior round's fix missed
+ * (`createFsCopyBundleFn`, `./fs-ai-bundle.ts`, is the other) when it
+ * declared `resolveWriteParentDir` "the single formulation every writer in
+ * this package shares" while this function, sitting a few lines above that
+ * very comment in the same file, still built a literal parent path. Same
+ * defect class as `createFsWriteFileFn`'s own DANGLING-SYMLINK-INSIDE FIX
+ * above: a dangling symlink whose lexical target resolves INSIDE the
+ * applicable root is deliberately ALLOWED, and the literal `mkdirSync(path.
+ * dirname(...))` creates nothing that link's resolved target needs. Now uses
+ * the SAME `resolveWriteParentDir` walk every other writer in this file
+ * calls. */
 export function createFsWriteProjectFileFn(): WriteProjectFileFn {
   return async function writeProjectFile(absolutePath: string, content: string): Promise<void> {
-    fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+    fs.mkdirSync(resolveWriteParentDir(absolutePath), { recursive: true });
     fs.writeFileSync(absolutePath, content, 'utf-8');
   };
 }

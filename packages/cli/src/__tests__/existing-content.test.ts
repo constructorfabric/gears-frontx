@@ -14,7 +14,7 @@ function fakeReadExistingContent(items: ContentItem[]): ReadExistingContentFn {
 }
 
 describe('reconcileExistingContent', () => {
-  it('reports all three partitions empty when nothing pre-exists', async () => {
+  it('reports every partition empty when nothing pre-exists', async () => {
     const roots = computeExclusionRoots({ target: 'packages/app', excludedSubtrees: [], projectOwnedRoots: [] });
 
     const result = await reconcileExistingContent({
@@ -25,7 +25,7 @@ describe('reconcileExistingContent', () => {
       readExistingContent: fakeReadExistingContent([]),
     });
 
-    expect(result).toEqual({ identicalFiles: [], contentConflicts: [], additionalPaths: [] });
+    expect(result).toEqual({ uncomparablePaths: [], identicalFiles: [], contentConflicts: [], additionalPaths: [] });
   });
 
   it('classifies a payload path whose on-disk content matches exactly as identicalFiles', async () => {
@@ -260,12 +260,33 @@ describe('reconcileExistingContent', () => {
     });
 
     expect(result.contentConflicts).toEqual(['app/dir/file.txt']);
+    // ...and named in the subset that says WHY, so the refusal can tell a
+    // developer to resolve a link rather than to reconcile a content
+    // difference that does not exist. Every uncomparable path is also a
+    // content conflict; the subset never stands alone.
+    expect(result.uncomparablePaths).toEqual(['app/dir/file.txt']);
     expect(result.identicalFiles).toEqual([]);
     // Both the symlink's own directory entry AND the real content it
     // happens to point at are foreign ground the payload never declared —
     // reported honestly as `additionalPaths`, never silently adopted or
     // overwritten by this algorithm (materialization is a separate concern).
     expect(result.additionalPaths.sort()).toEqual(['app/dir', 'app/realdir/file.txt']);
+  });
+
+  // The other half of the same distinction: an ordinary differing file is a
+  // content conflict and is NOT named uncomparable, so a refusal listing
+  // both causes attributes each path to the right one.
+  it('leaves an ordinary differing payload path out of uncomparablePaths', async () => {
+    const result = await reconcileExistingContent({
+      target: '.',
+      exclusionRoots: [],
+      installedContentPath: 'inv/t',
+      readInstalledContent: fakeReadInstalledContent([{ path: 'app/a.txt', content: 'FROM-PAYLOAD' }]),
+      readExistingContent: fakeReadExistingContent([{ path: 'app/a.txt', content: 'EDITED-BY-DEVELOPER' }]),
+    });
+
+    expect(result.contentConflicts).toEqual(['app/a.txt']);
+    expect(result.uncomparablePaths).toEqual([]);
   });
 
   // DIRECTORY-SYMLINK FIX, variant B: the symlink stands ABOVE a payload

@@ -648,6 +648,149 @@ describe('runApplyPipeline — materializing a batch (cpt-frontx-flow-cli-scaffo
     expect(h.readProjectStateDocument().templates['template-a'].targets).toEqual([]);
   });
 
+  // BUNDLE-ROLLBACK FIX (fifth review round, DEFECT 1, reproduced against the
+  // built binary): a refusal reached AFTER the AI-extension bundle step had
+  // ALREADY materialized a bundle for one or more names, but during the
+  // LATER project-state record step (a two-name batch, both bundles
+  // successfully copied, then the very first `mutateProjectState` write
+  // throws — modeling a read-only `.frontx` on a real filesystem), used to
+  // roll back only the payload files and leave every bundle this call itself
+  // materialized standing: `targets: []` for both names, yet both bundle
+  // directories still on disk, which a later `validate --project` would PASS
+  // over despite naming nothing in the state document. Both names' bundles
+  // must now come back out with the payload.
+  it('also removes every AI-extension bundle this call materialized when the record step throws before anything committed', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a'), [{ path: 'ta.txt', content: 'a' }]);
+    h.registerInstalled('template-b', manifest('template-b'), [{ path: 'tb.txt', content: 'b' }]);
+    h.templateHasBundle.add('template-a');
+    h.templateHasBundle.add('template-b');
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: {
+        'template-a': registeredEntry('github:acme/template-a@v1'),
+        'template-b': registeredEntry('github:acme/template-b@v1'),
+      },
+      projectOwnedRoots: [],
+    });
+    // Models a read-only `.frontx`: every attempt to persist the project
+    // state document throws before this call ever commits a single name, so
+    // `recordedAnyThisCall` stays false for the whole call — exactly the
+    // condition under which a rollback is unconditional.
+    h.deps.writeProjectStateFn = vi.fn(async () => {
+      throw new Error('simulated EACCES on .frontx/project.json');
+    });
+
+    const result = await runApplyPipeline(
+      { templates: { 'template-a': ['ta'], 'template-b': ['tb'] } },
+      REPO_ROOT,
+      false,
+      h.deps,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('INTERNAL');
+    // Both bundles were actually materialized before the record step threw.
+    expect(h.deps.copyBundleFn).toHaveBeenCalledTimes(2);
+    // ...and both are gone again after the rollback — the heart of the fix.
+    expect(h.projectHasBundle.has('template-a')).toBe(false);
+    expect(h.projectHasBundle.has('template-b')).toBe(false);
+    expect(h.deps.removeBundleFn).toHaveBeenCalledTimes(2);
+    // The payload files are gone too (pre-existing behavior, unaffected).
+    expect(h.files.get('/repo/ta/ta.txt')).toBeUndefined();
+    expect(h.files.get('/repo/tb/tb.txt')).toBeUndefined();
+    // The message is honest about BOTH removals, and `details` names them.
+    expect(result.message).toContain('AI-extension bundle');
+    expect(result.message).toContain('template-a');
+    expect(result.message).toContain('template-b');
+    expect(result.details?.bundledNames).toEqual(expect.arrayContaining(['template-a', 'template-b']));
+    expect(result.details?.writtenPaths).toEqual(expect.arrayContaining(['ta/ta.txt', 'tb/tb.txt']));
+  });
+
+  // The mirror case, run BACKWARDS per the review's own instruction: a batch
+  // that adds a SECOND target to a name that already had one (and therefore
+  // already has a bundle from an earlier call) must NOT have that
+  // pre-existing bundle swept up by a later rollback — its bundle predates
+  // this call, so this call never added it to `bundledNamesThisCall` in the
+  // first place (the bundle loop's own `targetsBefore > 0` skip), and the
+  // rollback must never reach for it.
+  it('never removes a name\'s pre-existing bundle when a later batch adding its SECOND target fails', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a'), [{ path: 'index.ts', content: 'x' }]);
+    h.templateHasBundle.add('template-a');
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
+      projectOwnedRoots: [],
+    });
+
+    // First call: ordinary success, materializes the bundle for template-a's
+    // FIRST target.
+    const first = await runApplyPipeline({ templates: { 'template-a': ['apps/one'] } }, REPO_ROOT, false, h.deps);
+    expect(first.ok).toBe(true);
+    expect(h.projectHasBundle.has('template-a')).toBe(true);
+    vi.mocked(h.deps.copyBundleFn).mockClear();
+    vi.mocked(h.deps.removeBundleFn).mockClear();
+
+    // Second call: adds a SECOND target to the SAME name, then fails during
+    // the record step (the bundle loop never runs for template-a at all this
+    // time, since `targetsBefore > 0`).
+    h.deps.writeProjectStateFn = vi.fn(async () => {
+      throw new Error('simulated EACCES on .frontx/project.json');
+    });
+    const second = await runApplyPipeline({ templates: { 'template-a': ['apps/two'] } }, REPO_ROOT, false, h.deps);
+
+    expect(second.ok).toBe(false);
+    if (second.ok) return;
+    // The bundle copy step never even ran for this call (no first-target
+    // transition to react to), and the pre-existing bundle is untouched.
+    expect(h.deps.copyBundleFn).not.toHaveBeenCalled();
+    expect(h.deps.removeBundleFn).not.toHaveBeenCalled();
+    expect(h.projectHasBundle.has('template-a')).toBe(true);
+    // The message never claims a bundle was removed — none was.
+    expect(second.message).not.toContain('AI-extension bundle');
+    expect(second.details?.bundledNames).toBeUndefined();
+  });
+
+  // ORDERING FIX (fifth review round, DEFECT 5b, reproduced against the
+  // built binary): a payload path that cannot be proven to stay inside the
+  // project root used to be checked AFTER existing-content reconciliation's
+  // own `contentConflicts` refusal, so an escaping path that reconciliation
+  // ALSO happened to flag (its own symlink test cannot tell an escape apart
+  // from an ordinary internal symlink) was reported as `CONTENT_CONFLICT`
+  // instead of `INVALID_PATH` — the wrong remedy for the actual problem.
+  // This fixture does not need a real symlink to prove the ORDERING: the
+  // same path is made to fail BOTH checks at once (existing content that
+  // genuinely differs, model reconciliation's own refusal cause; and
+  // `assertPathWithinRootFn` throwing for that exact absolute path, modeling
+  // a containment escape) — whichever code wins the race is the one
+  // reported, and it must be `INVALID_PATH`.
+  it('reports INVALID_PATH ahead of CONTENT_CONFLICT for a path that fails both checks at once', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a'), [{ path: 'file.txt', content: 'FROM-TEMPLATE' }]);
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
+      projectOwnedRoots: [],
+    });
+    // Existing content genuinely differs — reconciliation's OWN reason to
+    // refuse this path with CONTENT_CONFLICT, were containment not checked
+    // first.
+    h.files.set('/repo/apps/foo/file.txt', 'DIFFERENT-ON-DISK');
+    // ...and the identical path also fails containment.
+    h.deps.assertPathWithinRootFn = (absolutePath: string) => {
+      if (absolutePath === '/repo/apps/foo/file.txt') throw new Error('simulated escape');
+    };
+
+    const result = await runApplyPipeline({ templates: { 'template-a': ['apps/foo'] } }, REPO_ROOT, false, h.deps);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('INVALID_PATH');
+    expect(result.details).toEqual({ paths: ['apps/foo/file.txt'] });
+  });
+
   // DEFECT FIX regression (PR review, reproduced against the built binary,
   // real filesystem): `--adopt-existing`'s own contract is to leave an
   // undeclared on-disk path untouched, but a DECLARED payload path that is
