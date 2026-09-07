@@ -17,6 +17,10 @@ reason = "In-package demos exercise a package's public surface rather than imple
 patterns = ["*/demo/*"]
 
 [[ignore]]
+reason = "Extractor fixtures are inputs to a test, not implementable source: each one is a deliberately shaped component written so the extractor's own suite can assert what it reads out of it, so no instruction exists for a marker to point at. They are .tsx and reach the scan through the packages/ + .tsx catch-all rather than through ui-kit's own scripts entry, which is .ts only. Structural and permanent - this is not a placeholder for missing artifacts and must never be given an expiry."
+patterns = ["packages/ui-kit/scripts/contracts/__fixtures__/*"]
+
+[[ignore]]
 reason = "Unmarked build/test tooling has no CDSL backing. Three CI guards added after this entry was last enumerated belong to the same category and are registered here: scripts/version-bump-on-change-check.mjs (#575) diffs a PR against its merge base and fails any governed package whose substantive changes came without a version bump; scripts/mfes-import-boundary-check.mjs (#540) reads the mfes barrel and its consumers to fail concrete-implementation exports and deep imports across the ADR-0003 boundary; packages/mfes/scripts/verify-dist-import-pragmas.mjs (#504) greps the two built dist formats to fail a build that dropped the webpackIgnore / @vite-ignore comments off the blob-module dynamic import. All three read the tree or the build output and exit non-zero. None of them implements ecosystem behaviour a numbered instruction specifies, so no marker has an instruction to point at. verify-dist-import-pragmas is listed as its own pattern rather than under scripts/ because it lives beside the package it guards and reaches the scan through the root system's packages/ + .mjs catch-all, not through the scripts/ codebase entry. NOTE: scripts/ecosystem-version-policy.mjs (ecosystem-distribution), scripts/package-edge-tests.ts and scripts/verify-guard-configs.ts (ecosystem-governance), and scripts/test-architecture.ts carry @cpt markers and MUST stay scanned — they are deliberately NOT ignored here."
 patterns = ["scripts/test-runner/*", "scripts/check-test-dependency-versions.mjs", "scripts/run-monorepo-unit-tests.mjs", "scripts/version-bump-on-change-check.mjs", "scripts/mfes-import-boundary-check.mjs", "packages/mfes/scripts/verify-dist-import-pragmas.mjs"]
 
@@ -299,13 +303,17 @@ extensions = [".ts"]
 # FEATURE required, because `required` flags do not inherit and the explicit-artifact-list form
 # validates while enforcing nothing. DECOMPOSITION and ADR are omitted rather than declared
 # optional: a member never owns a DECOMPOSITION, and this member owns no decision of its own yet.
-# Two codebase paths because two trees carry markers: `src` holds the components the contracts
-# describe (.tsx) and the kit-wide guards beside them (.ts), and `scripts` holds the contract
-# harness (.ts only - the fixtures under scripts/contracts/__fixtures__ are .tsx and are deliberately
-# left unscanned, being inputs to the extractor's own tests rather than implementable source). Both
-# paths would also be reached by the root system's packages/ + .ts/.tsx/.mjs catch-all now that the
-# ignore is gone; they are declared here anyway so this member's scanned surface is stated by the
-# member's own registration rather than inherited from a catch-all that could change.
+# Two codebase paths. `scripts` holds the contract harness, which carries the markers today. `src`
+# holds the components those contracts describe: nothing under it is marked - the kit-wide guards
+# beside the components are `*.test.ts` and are excluded by the test ignore above - and it is
+# registered anyway because it is the subject the harness reads and the DESIGN's component-surface
+# component, so markers belong there as soon as component-level instructions exist to carry. A
+# scanned file with no marker is not a defect; an unscanned tree that later needs one is.
+# Both paths would also be reached by the root system's packages/ + .ts/.tsx/.mjs catch-all now
+# that the package-wide ignore is gone; they are declared here anyway so this member's scanned
+# surface is stated by the member's own registration rather than inherited from a catch-all that
+# could change. The `.tsx` fixtures under scripts/contracts/__fixtures__ are reached by that same
+# catch-all and are excluded by their own [[ignore]] entry above.
 [[systems.children]]
 name = "UI Kit"
 slug = "ui-kit"
