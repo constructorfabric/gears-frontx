@@ -2058,7 +2058,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
     // the rejected design's false-positive bug through undetected:
     //  - '@reduxjs/toolkit' import line: node_modules/recharts/es6/state/mouseEventsMiddleware.js:1
     //  - '@gears-frontx/api' + '@gears-frontx/state' import lines:
-    //    template-shell/packages/framework/dist/index.js:15-16
+    //    a consumer's framework package dist/index.js:15-16
     // Each excerpt is the chunk of a CONSUMER dep, distinct from the
     // package it imports, so declaring the imported names does not create a
     // self-import.
