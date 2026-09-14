@@ -261,8 +261,8 @@ Architecture's build bullet).
    "Studio / shadcn" variable collection. Landed: theme.css carries the
    palette and the new token groups (see Architecture's theme bullet), and
    the existing components follow the mockups' component specs — Badge on
-   semantic intents (`pill`/`plain` shapes, with `dot` and `icon` both
-   opt-in; the shadcn variant list retired), Button's
+   semantic intents via its `variant` axis (upstream paint values plus
+   success/warning/danger/info/accent tones; see badge.md), Button's
    `icon` slot + auto icon-only + `loading`, Tabs on the trackless Kind=tab
    look (the spec's Kind=segment is the planned `toggle-group`'s styling,
    per the design file's own component description), the unified Field set
@@ -399,16 +399,17 @@ Architecture's build bullet).
      #5f6f88, dark #667085 -> #7a8396) — same token name, same single
      consumer (Table's header label), but a visibly darker/dimmer color in
      both themes now that it clears AA against the header's fill.
-   - Badge's props are `variant`/`shape`, not `intent`/`form`. The
-     semantic-only rule is unchanged — the values are still states, never
-     paint jobs — but it is carried by the value names and the doc rather
-     than by an axis name only this component used, so every component in
-     the kit is driven by `variant` (+ `size`, or the occasional real extra
-     axis: Badge's `shape`, Table's `density`). `shape` rather than `size`
-     because the values are pill vs. plain (dot is a separate opt-in flag,
-     orthogonal to shape) and Badge has no size axis;
-     not `form`, which is a real HTML attribute a styling prop would shadow
-     for anyone rendering a form-associated element via `render`.
+   - Badge's one prop is `variant`, not `intent`/`form`. The semantic-only
+     rule is unchanged - the values are still states, never paint jobs -
+     but it is carried by the value names and the doc rather than by an
+     axis name only this component used, so every component in the kit is
+     driven by `variant` (+ `size`, or the occasional real extra axis like
+     Table's `density`); not `form`, which is a real HTML attribute a
+     styling prop would shadow for anyone rendering a form-associated
+     element via `render`. Badge has no size axis and no `dot`/`icon`
+     slots: the mockup's specimens carry a 6px status dot, but that is
+     anatomy, not paint, and this port only carries what shadcn's own
+     Badge carries (see badge.tsx).
    - Four new tokens: `--link-foreground` (Button's `link` variant text),
      `--popover-border`/`--popover-shadow` (the ring-plus-shadow recipe
      every card-like popup — Dialog/DropdownMenu/Select/Toast — now shares
