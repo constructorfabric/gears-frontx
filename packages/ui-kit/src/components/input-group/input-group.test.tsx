@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 import buttonStyles from '../button/button.module.css';
 import {
   InputGroup,
@@ -134,5 +139,71 @@ describe('InputGroup', () => {
     const group = screen.getByRole('group', { name: 'Amount field' });
     expect(group.className).toContain(styles.group);
     expect(group.className).toContain('consumer');
+  });
+
+  it('renders size="default" and an omitted size as the exact same class list', () => {
+    render(
+      <>
+        <InputGroup aria-label="Omitted" />
+        <InputGroup size="default" aria-label="Explicit default" />
+      </>,
+    );
+    const omitted = screen.getByRole('group', { name: 'Omitted' });
+    const explicitDefault = screen.getByRole('group', { name: 'Explicit default' });
+    // Same class STRING, not just "both render at 40px" - CVA's
+    // defaultVariants is what makes an omitted `size` and `size="default"`
+    // literally the same code path rather than two renderings that happen
+    // to agree today.
+    expect(omitted.className).toBe(explicitDefault.className);
+    expect(omitted.className).not.toContain(styles.sizeSm);
+  });
+
+  it('adds the sizeSm class only for size="sm"', () => {
+    render(<InputGroup size="sm" aria-label="Amount field" />);
+    expect(screen.getByRole('group', { name: 'Amount field' }).className).toContain(
+      styles.sizeSm,
+    );
+  });
+
+  /*
+   * Reads input-group.module.css's own source (not the hashed `styles`
+   * import, which has no selector names left in it) the same way
+   * button.test.tsx's focus-ring guard does, to prove `sm` actually carries
+   * the control-height token, AND that `default` carries no CSS rule of
+   * its own - the group's bare `.group` rule (40px, 16px icon, both
+   * unconditional) is genuinely the only rule reached whether `size` is
+   * omitted or explicitly `"default"`, not a same-valued sibling rule that
+   * could drift from it.
+   */
+  const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'input-group.module.css');
+  const rules = extractRules(readFileSync(cssPath, 'utf8'));
+
+  function declared(selector: string, prop: string): string | undefined {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('keeps the bare group/addon-icon rules at 40px height and a 16px icon', () => {
+    expect(declared('.group', 'min-height')).toBe('var(--control-height-lg)');
+    expect(declared('.addon > svg', 'width')).toBe('var(--icon-size-sm)');
+  });
+
+  it('maps sizeSm to --control-height-sm with no icon-size rule of its own', () => {
+    expect(declared('.group.sizeSm', 'min-height')).toBe('var(--control-height-sm)');
+    // No sizeSm-scoped icon rule exists at all - the icon stays on the
+    // bare `.addon > svg` rule above for every size, `sm` included.
+    expect(rules.some((rule) => rule.selector.includes('sizeSm') && rule.selector.includes('svg')))
+      .toBe(false);
+  });
+
+  it('has no CSS rule naming a "default" size class', () => {
+    // groupVariants maps `default` to '' (input-group.tsx) - there is
+    // nothing for a selector to key off, so this asserts the absence
+    // directly rather than the (currently vacuous) presence of one.
+    expect(rules.some((rule) => /size(?:d|D)efault/i.test(rule.selector))).toBe(false);
+  });
+
+  it('tightens the wrapped control block padding only under sizeSm, to land the group at exactly 32px', () => {
+    expect(declared('.group.sizeSm .control', 'padding-block')).toBe('3px');
   });
 });

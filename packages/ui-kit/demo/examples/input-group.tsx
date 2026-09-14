@@ -85,6 +85,33 @@ export default function InputGroupExample() {
         </Row>
       </Section>
 
+      <Section title="Size">
+        <Row style={column}>
+          {/* size unset and size="default" are the same rendering (CVA's
+              defaultVariants, see input-group.tsx) - both 40px with a
+              16px icon, matching the kit's own Input. size="sm" is the
+              one shipped smaller step, 32px with the same 16px icon. */}
+          <InputGroup>
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput type="search" placeholder="Search (unset)" aria-label="Search, unset size" />
+          </InputGroup>
+          <InputGroup size="default">
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput type="search" placeholder="Search (default)" aria-label="Search, default size" />
+          </InputGroup>
+          <InputGroup size="sm">
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput type="search" placeholder="Search (sm)" aria-label="Search, small" />
+          </InputGroup>
+        </Row>
+      </Section>
+
       <Section title="Prefix and suffix text">
         <Row style={column}>
           <InputGroup>

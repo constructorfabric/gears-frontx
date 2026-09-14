@@ -264,6 +264,13 @@ describe('theme tokens', () => {
       // geometrically correct on their own terms — they just don't share a
       // mechanism.
       'switch.module.css|margin-inline-start|2px',
+      // 3px is arithmetic, not a step on the space scale: `sm`'s wrapped
+      // control needs exactly 1px less padding on each side than
+      // `--space-1` (4px) to offset the 1px border the GROUP (not the
+      // control) adds on that side, landing InputGroup's own 32px total
+      // height exactly (see input-group.module.css's `.group.sizeSm
+      // .control` comment for the full sum).
+      'input-group.module.css|padding-block|3px',
     ]);
     for (const file of moduleFiles) {
       const base = file.slice(file.lastIndexOf('/') + 1);

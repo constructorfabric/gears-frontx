@@ -18,12 +18,35 @@ import styles from './input-group.module.css';
  * attributes (the kit drops them, see kbd.tsx) and one fewer wrapper,
  * since Input already renders the control directly.
  */
-export interface InputGroupProps extends Omit<ComponentProps<'div'>, 'className'> {
+const groupVariants = cva(styles.group, {
+  variants: {
+    size: {
+      /*
+       * `default` carries no class of its own - the bare `.group` rule in
+       * input-group.module.css already renders --control-height-lg (40px)
+       * with a 16px addon icon, and that is also what an OMITTED `size`
+       * renders, via `defaultVariants` below. Two code paths producing the
+       * same class list is what makes them the same rendering, not a
+       * comment claiming they match: 40px is the kit's own Input height
+       * and the design spec's standalone Input specimen too, so it is the
+       * honest default, not a separate step someone opted into.
+       */
+      default: '',
+      sm: styles.sizeSm,
+    },
+  },
+  defaultVariants: {
+    size: 'default',
+  },
+});
+
+export interface InputGroupProps
+  extends Omit<ComponentProps<'div'>, 'className'>, VariantProps<typeof groupVariants> {
   className?: string;
 }
 
-export function InputGroup({ className, ...props }: InputGroupProps) {
-  return <div role="group" className={cx(styles.group, className)} {...props} />;
+export function InputGroup({ className, size, ...props }: InputGroupProps) {
+  return <div role="group" className={groupVariants({ size, className })} {...props} />;
 }
 
 const addonVariants = cva(styles.addon, {
