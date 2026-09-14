@@ -37,24 +37,21 @@ generate screens consistently.
 - White-label theming APIs. Basic branding = overriding CSS-variable tokens;
   deep customization = fork the kit or build the template on another kit.
 - Framework-agnostic components (React is a hard requirement).
-- `data-table`, date-picker, charts, page layout templates, form validation
-  integration (RHF/zod), i18n helpers, Storybook.
+- Form validation integration (RHF/zod), i18n helpers, Storybook.
+- The larger blocks the F-mockups draw over kit primitives - Sidebar
+  Navigation, Top Bar / Page Header, an App Shell, a Data Table toolbar with
+  bulk-selection bar and row states, and the Studio AI cards. Those frames
+  are titled "MVP Building blocks / shadcn compositions" in the design file
+  itself: compositions over kit primitives, not kit components. They stay
+  with consumers/templates; the kit's contribution is composition recipes
+  (see AI layer).
 
-`insight-front` uses shadcn's `calendar`, `chart` and `sidebar`, and the kit
-will not cover them — a known gap, not an oversight. `calendar` (date-picker)
-needs `react-day-picker` + `date-fns` and `chart` (charts) needs `recharts`, so
-both fall to the architecture's "behavior from Base UI, no extra runtime deps"
-rule. `sidebar` (page layout templates) adds no dependencies but is a large
-composite over `sheet`, `button`, `input`, `separator`, `skeleton` and
-`tooltip` plus a mobile-detection hook: app layout, not a base component.
-
-The F-mockups draw larger blocks too — Sidebar Navigation, Top Bar / Page
-Header, an App Shell, a Data Table with toolbar, bulk-selection bar and row
-states, and the Studio AI cards. Those frames are titled "MVP Building
-blocks / shadcn compositions" in the design file itself: compositions over
-kit primitives, not kit components. They stay with consumers/templates, and
-the kit's contribution is composition recipes (see AI layer) — which keeps
-the `sidebar` / `data-table` exclusions above intact.
+`data-table`, `date-picker`, `calendar`, `chart` and `sidebar` ship and are
+exported from `src/index.ts`. `data-table` brings `@tanstack/react-table` as
+a runtime dependency; `date-picker` and `calendar` bring `react-day-picker`
+and `date-fns`; `chart` brings `recharts`. `sidebar` adds no dependency of
+its own - it composes existing kit primitives (`sheet`, `button`, `input`,
+`separator`, `skeleton`, `tooltip`) plus a mobile-detection hook.
 
 ## Architecture
 
