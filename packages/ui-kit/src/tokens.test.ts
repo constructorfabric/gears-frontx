@@ -264,6 +264,13 @@ describe('theme tokens', () => {
       // geometrically correct on their own terms — they just don't share a
       // mechanism.
       'switch.module.css|margin-inline-start|2px',
+      // 3px is arithmetic, not a step on the space scale: `sm`'s wrapped
+      // control needs exactly 1px less padding on each side than
+      // `--space-1` (4px) to offset the 1px border the GROUP (not the
+      // control) adds on that side, landing InputGroup's own 32px total
+      // height exactly (see input-group.module.css's `.group.sizeSm
+      // .control` comment for the full sum).
+      'input-group.module.css|padding-block|3px',
     ]);
     for (const file of moduleFiles) {
       const base = file.slice(file.lastIndexOf('/') + 1);
@@ -418,6 +425,9 @@ describe('theme tokens', () => {
       '--radius-md',
       '--radius-lg',
       '--radius-xl',
+      // Pill/circle cap. Independent of --radius (fixed 9999px), but the
+      // same shape-not-color reasoning as the scale above keeps it here.
+      '--radius-full',
       // Spacing scale (Figma space/1–8; step number = value in 4px units,
       // so there is no space/7).
       '--space-1',
@@ -438,6 +448,9 @@ describe('theme tokens', () => {
       '--icon-size-lg',
       '--border-width',
       '--border-width-focus',
+      // Dim for every disabled control surface. A magnitude, not a color -
+      // never per-theme.
+      '--opacity-disabled',
       // Typography (Figma "Typography / Specimens", frame 175:371):
       // families and the Studio type ramp. Shape and scale, not color —
       // never per-theme.

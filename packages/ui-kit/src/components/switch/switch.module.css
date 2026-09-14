@@ -20,7 +20,7 @@
   flex-shrink: 0;
   padding: 0;
   border: var(--border-width) solid transparent;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   outline: none;
   /* Colour and box-shadow crossfades only, no transform/geometry — not motion under
      WCAG 2.3.3, so deliberately left unguarded under prefers-reduced-motion. */
@@ -65,7 +65,7 @@
 /* disabled opacity: see input.module.css */
 .switch[data-disabled] {
   cursor: not-allowed;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 /* Declared after :focus-visible so the invalid border wins while focused. */
@@ -87,7 +87,7 @@
 .thumb {
   pointer-events: none;
   display: block;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   /* The drawn thumb keeps the same bright fill in BOTH themes and states —
    * that's --primary-foreground in this palette. --background would flip
    * the thumb near-black in dark mode. */

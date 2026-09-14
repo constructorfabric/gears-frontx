@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 import toggleStyles from '../toggle/toggle.module.css';
 import { ToggleGroup, ToggleGroupItem } from './toggle-group';
 import styles from './toggle-group.module.css';
@@ -83,5 +88,90 @@ describe('ToggleGroup', () => {
     );
     expect(screen.getByRole('group', { name: 'Group' }).className).toContain('consumer-group');
     expect(screen.getByRole('button', { name: 'A' }).className).toContain('consumer-item');
+  });
+
+  it('does not stamp data-spacing or a gap style when spacing is omitted', () => {
+    render(
+      <ToggleGroup aria-label="Group">
+        <ToggleGroupItem value="a" aria-label="A" />
+      </ToggleGroup>,
+    );
+    const group = screen.getByRole('group', { name: 'Group' });
+    expect(group.hasAttribute('data-spacing')).toBe(false);
+    expect(group.style.gap).toBe('');
+  });
+
+  it('sets an explicit pixel gap for a non-zero spacing without the segmented attribute', () => {
+    render(
+      <ToggleGroup aria-label="Group" spacing={12}>
+        <ToggleGroupItem value="a" aria-label="A" />
+      </ToggleGroup>,
+    );
+    const group = screen.getByRole('group', { name: 'Group' });
+    expect(group.getAttribute('data-spacing')).toBe('12');
+    expect(group.style.gap).toBe('12px');
+  });
+
+  it('stamps data-spacing="0" and zeroes the gap for the segmented look', () => {
+    render(
+      <ToggleGroup aria-label="Group" spacing={0}>
+        <ToggleGroupItem value="a" aria-label="A" />
+      </ToggleGroup>,
+    );
+    const group = screen.getByRole('group', { name: 'Group' });
+    expect(group.getAttribute('data-spacing')).toBe('0');
+    expect(group.style.gap).toBe('0px');
+  });
+
+  it('preserves a consumer style alongside the spacing-driven gap', () => {
+    render(
+      <ToggleGroup aria-label="Group" spacing={0} style={{ marginTop: '4px' }}>
+        <ToggleGroupItem value="a" aria-label="A" />
+      </ToggleGroup>,
+    );
+    expect(screen.getByRole('group', { name: 'Group' }).style.marginTop).toBe('4px');
+  });
+
+  /*
+   * Reads toggle-group.module.css's own source (not the hashed `styles`
+   * import) the same way button.test.tsx's focus-ring guard does, to
+   * prove the segmented-mode join CSS actually squares inner corners,
+   * re-rounds only the outer ones, and drops the shared inline-start
+   * border - the "collapsed inner borders and outer-only radius" claim in
+   * toggle-group.md, checked against the stylesheet rather than asserted.
+   */
+  const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'toggle-group.module.css');
+  const rules = extractRules(readFileSync(cssPath, 'utf8'));
+
+  function declared(selector: string, prop: string): string | undefined {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('squares every segmented item then re-rounds only the outer corners', () => {
+    expect(
+      declared(".group[data-spacing='0']:not([data-orientation='vertical']) > .item", 'border-radius'),
+    ).toBe('0');
+    expect(
+      declared(
+        ".group[data-spacing='0']:not([data-orientation='vertical']) > .item:first-child",
+        'border-start-start-radius',
+      ),
+    ).toBe('var(--radius-md)');
+    expect(
+      declared(
+        ".group[data-spacing='0']:not([data-orientation='vertical']) > .item:last-child",
+        'border-start-end-radius',
+      ),
+    ).toBe('var(--radius-md)');
+  });
+
+  it('drops the shared border between adjoining segmented items', () => {
+    expect(
+      declared(
+        ".group[data-spacing='0']:not([data-orientation='vertical']) > .item + .item",
+        'border-inline-start-width',
+      ),
+    ).toBe('0');
   });
 });

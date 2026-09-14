@@ -72,6 +72,28 @@
 }
 
 /*
+ * `sm` (InputGroupProps.size, groupVariants in input-group.tsx): the one
+ * shipped step below the bare `.group` rule's 40px default. Compound
+ * `.group.sizeSm`, not a bare `.sizeSm`, because both classes land on the
+ * same element (cva always keeps the base class) and `.group` already
+ * declares `min-height` - a same-specificity bare rule would depend on
+ * stylesheet load order to win.
+ *
+ * `min-height`, not `height`, for the same floor-not-fixed reason as
+ * `.group` above (a block addon or wrapped Textarea still grows it) - but
+ * a floor alone left `sm` measuring 34px, not 32: the CONTROL's own
+ * intrinsic content height (24px line-height + the 4+4px block padding
+ * input.module.css sets) is 32px, 2px taller than the 30px of content
+ * space a 32px min-height leaves once the group's own 1px+1px border is
+ * subtracted, so the control's own height was winning. `.control`'s block
+ * padding below undoes exactly that 2px, giving 24+3+3=30 content height,
+ * +2px border = 32.
+ */
+.group.sizeSm {
+  min-height: var(--control-height-sm);
+}
+
+/*
  * The ring belongs to the GROUP and is driven by the CONTROL's focus, not
  * by `:focus-within`: `:focus-within` also fires when a button inside an
  * addon takes focus, which would light the whole field up as if the text
@@ -128,7 +150,7 @@
  */
 .group:has(.control:disabled) {
   cursor: not-allowed;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .addon {
@@ -166,6 +188,11 @@
  * `[&>svg:not([class*='size-'])]:size-4`. Restricting to `>` is what keeps
  * it from reaching an icon nested inside a `Kbd` or an `InputGroupButton`,
  * both of which size their own icons (--icon-size-xs / the button's slot).
+ */
+/*
+ * Fixed at --icon-size-sm regardless of `size` (InputGroupProps.size): the
+ * one shipped extra step (`sm`) only tightens the field's own height, and
+ * carries no icon change of its own.
  */
 .addon > svg {
   flex-shrink: 0;
@@ -312,6 +339,19 @@
    * a standalone Input's would. The two rules below trim it on whichever
    * side an inline addon has already paid for. */
   padding-inline: var(--space-3);
+}
+
+/*
+ * Undoes 1px of Input's own block padding on each side, only under `sm`
+ * (see `.group.sizeSm` above for the full arithmetic): 3px is
+ * `--space-1` (4px) minus the 1px the group's own border adds on that
+ * side, so the control's 24px line-height plus this 3+3px padding lands
+ * on 30px of content, +2px border = the group's own 32px. `--space-1`
+ * alone (the untouched value every other size keeps) overshoots by 2px.
+ * (0,3,0), above `.input`'s own `padding` shorthand (0,1,0).
+ */
+.group.sizeSm .control {
+  padding-block: 3px;
 }
 
 /* Upstream's `has-[>[data-align=inline-start]]:[&>input]:pl-2` /

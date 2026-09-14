@@ -272,7 +272,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: var(--muted);
   /* 2px/6px (upstream's py-0.5/px-1.5) sit off the --space-* scale on both
    * axes; snapped to Badge's own pill formula (badge.module.css) rather

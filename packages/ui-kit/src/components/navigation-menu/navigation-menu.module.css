@@ -107,7 +107,7 @@
 .trigger:disabled,
 .trigger[data-disabled] {
   pointer-events: none;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .triggerIcon {

@@ -118,7 +118,7 @@
  */
 .input:disabled {
   cursor: not-allowed;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 /* Declared after :focus-visible so the invalid border wins while focused. */
@@ -179,7 +179,7 @@
  */
 .wrap:has(.input:disabled) .icon,
 .wrap:has(.input:disabled) .end {
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
   pointer-events: none;
 }
 

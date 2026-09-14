@@ -143,7 +143,7 @@
 
 .field[data-disabled='true'] .fieldLabel {
   /* 0.42, matching every other disabled control in the kit. */
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .fieldTitle {
@@ -158,7 +158,7 @@
 }
 
 .field[data-disabled='true'] .fieldTitle {
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .fieldDescription {

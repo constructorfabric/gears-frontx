@@ -118,6 +118,8 @@
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 4px);
   --radius-xl: calc(var(--radius) + 8px);
+  /* Pill/circle cap, independent of --radius; the design spec's --radius-full = 999. */
+  --radius-full: 9999px;
 
   /* Spacing scale (Figma space/1–8; the step number is the value in 4px
    * units, so there is no space/7). */
@@ -163,6 +165,9 @@
    * `outline` (see button.module.css), so it never consumes --ring-inset.
    */
   --ring-inset: calc(var(--border-width-focus) - var(--border-width));
+
+  /* Dim for every disabled control surface; the design spec's --opacity-disabled = 42. */
+  --opacity-disabled: 0.42;
 
   /*
    * Typography — the Studio blue rebrand's "Studio/Type" ramp (the

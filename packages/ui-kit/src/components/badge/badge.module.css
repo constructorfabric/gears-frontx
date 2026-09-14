@@ -42,7 +42,7 @@
   gap: var(--space-1);
   overflow: hidden;
   border: var(--border-width) solid transparent;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   padding: var(--space-1) var(--space-2);
   font-family: inherit;
   font-size: var(--text-meta-size);

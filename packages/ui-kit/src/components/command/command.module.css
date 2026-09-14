@@ -99,7 +99,7 @@
 .input:disabled {
   cursor: not-allowed;
   /* disabled opacity: see input.module.css */
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 /*
@@ -173,7 +173,7 @@
 
 .item[data-disabled='true'] {
   pointer-events: none;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .item svg {

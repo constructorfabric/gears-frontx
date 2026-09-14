@@ -37,24 +37,21 @@ generate screens consistently.
 - White-label theming APIs. Basic branding = overriding CSS-variable tokens;
   deep customization = fork the kit or build the template on another kit.
 - Framework-agnostic components (React is a hard requirement).
-- `data-table`, date-picker, charts, page layout templates, form validation
-  integration (RHF/zod), i18n helpers, Storybook.
+- Form validation integration (RHF/zod), i18n helpers, Storybook.
+- The larger blocks the F-mockups draw over kit primitives - Sidebar
+  Navigation, Top Bar / Page Header, an App Shell, a Data Table toolbar with
+  bulk-selection bar and row states, and the Studio AI cards. Those frames
+  are titled "MVP Building blocks / shadcn compositions" in the design file
+  itself: compositions over kit primitives, not kit components. They stay
+  with consumers/templates; the kit's contribution is composition recipes
+  (see AI layer).
 
-`insight-front` uses shadcn's `calendar`, `chart` and `sidebar`, and the kit
-will not cover them — a known gap, not an oversight. `calendar` (date-picker)
-needs `react-day-picker` + `date-fns` and `chart` (charts) needs `recharts`, so
-both fall to the architecture's "behavior from Base UI, no extra runtime deps"
-rule. `sidebar` (page layout templates) adds no dependencies but is a large
-composite over `sheet`, `button`, `input`, `separator`, `skeleton` and
-`tooltip` plus a mobile-detection hook: app layout, not a base component.
-
-The F-mockups draw larger blocks too — Sidebar Navigation, Top Bar / Page
-Header, an App Shell, a Data Table with toolbar, bulk-selection bar and row
-states, and the Studio AI cards. Those frames are titled "MVP Building
-blocks / shadcn compositions" in the design file itself: compositions over
-kit primitives, not kit components. They stay with consumers/templates, and
-the kit's contribution is composition recipes (see AI layer) — which keeps
-the `sidebar` / `data-table` exclusions above intact.
+`data-table`, `date-picker`, `calendar`, `chart` and `sidebar` ship and are
+exported from `src/index.ts`. `data-table` brings `@tanstack/react-table` as
+a runtime dependency; `date-picker` and `calendar` bring `react-day-picker`
+and `date-fns`; `chart` brings `recharts`. `sidebar` adds no dependency of
+its own - it composes existing kit primitives (`sheet`, `button`, `input`,
+`separator`, `skeleton`, `tooltip`) plus a mobile-detection hook.
 
 ## Architecture
 
@@ -264,8 +261,8 @@ Architecture's build bullet).
    "Studio / shadcn" variable collection. Landed: theme.css carries the
    palette and the new token groups (see Architecture's theme bullet), and
    the existing components follow the mockups' component specs — Badge on
-   semantic intents (`pill`/`plain` shapes, with `dot` and `icon` both
-   opt-in; the shadcn variant list retired), Button's
+   semantic intents via its `variant` axis (upstream paint values plus
+   success/warning/danger/info/accent tones; see badge.md), Button's
    `icon` slot + auto icon-only + `loading`, Tabs on the trackless Kind=tab
    look (the spec's Kind=segment is the planned `toggle-group`'s styling,
    per the design file's own component description), the unified Field set
@@ -402,16 +399,17 @@ Architecture's build bullet).
      #5f6f88, dark #667085 -> #7a8396) — same token name, same single
      consumer (Table's header label), but a visibly darker/dimmer color in
      both themes now that it clears AA against the header's fill.
-   - Badge's props are `variant`/`shape`, not `intent`/`form`. The
-     semantic-only rule is unchanged — the values are still states, never
-     paint jobs — but it is carried by the value names and the doc rather
-     than by an axis name only this component used, so every component in
-     the kit is driven by `variant` (+ `size`, or the occasional real extra
-     axis: Badge's `shape`, Table's `density`). `shape` rather than `size`
-     because the values are pill vs. plain (dot is a separate opt-in flag,
-     orthogonal to shape) and Badge has no size axis;
-     not `form`, which is a real HTML attribute a styling prop would shadow
-     for anyone rendering a form-associated element via `render`.
+   - Badge's one prop is `variant`, not `intent`/`form`. The semantic-only
+     rule is unchanged - the values are still states, never paint jobs -
+     but it is carried by the value names and the doc rather than by an
+     axis name only this component used, so every component in the kit is
+     driven by `variant` (+ `size`, or the occasional real extra axis like
+     Table's `density`); not `form`, which is a real HTML attribute a
+     styling prop would shadow for anyone rendering a form-associated
+     element via `render`. Badge has no size axis and no `dot`/`icon`
+     slots: the mockup's specimens carry a 6px status dot, but that is
+     anatomy, not paint, and this port only carries what shadcn's own
+     Badge carries (see badge.tsx).
    - Four new tokens: `--link-foreground` (Button's `link` variant text),
      `--popover-border`/`--popover-shadow` (the ring-plus-shadow recipe
      every card-like popup — Dialog/DropdownMenu/Select/Toast — now shares
