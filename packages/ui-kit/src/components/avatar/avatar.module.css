@@ -34,7 +34,7 @@
   position: relative;
   display: flex;
   flex-shrink: 0;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   user-select: none;
 }
 
@@ -218,7 +218,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: var(--primary);
   color: var(--primary-foreground);
   box-shadow: 0 0 0 2px var(--background);
@@ -270,7 +270,7 @@
   justify-content: center;
   width: var(--space-8);
   height: var(--space-8);
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: var(--muted);
   color: var(--muted-foreground);
   font-size: var(--text-label-size);

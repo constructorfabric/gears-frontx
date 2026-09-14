@@ -93,7 +93,7 @@
 /* disabled opacity: see input.module.css */
 .input:disabled {
   cursor: not-allowed;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 /* Declared after :focus-visible so the invalid border wins while focused. */
@@ -158,7 +158,7 @@
 .inputTrigger:disabled,
 .inputClear:disabled {
   cursor: not-allowed;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 /*
@@ -303,7 +303,7 @@
 /* disabled opacity: see input.module.css */
 .item[data-disabled] {
   pointer-events: none;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .itemIndicator {
@@ -390,7 +390,7 @@
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-1) var(--space-2);
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: var(--secondary);
   color: var(--secondary-foreground);
   font-size: var(--text-meta-size);
@@ -400,7 +400,7 @@
 
 /* disabled opacity: see input.module.css */
 .chip[data-disabled] {
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .chipRemove {
@@ -412,7 +412,7 @@
   height: var(--icon-size-md);
   padding: 0;
   border: none;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: transparent;
   color: inherit;
   cursor: pointer;
@@ -429,7 +429,7 @@
 
 .chipRemove:disabled {
   cursor: not-allowed;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .chipRemoveIcon {

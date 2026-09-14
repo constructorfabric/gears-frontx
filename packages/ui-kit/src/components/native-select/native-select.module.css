@@ -39,7 +39,7 @@
 
 .wrapper[data-disabled] {
   /* Same 0.42 disabled dim as every other kit control (button/input/select). */
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .select {

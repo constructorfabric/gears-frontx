@@ -160,7 +160,7 @@
 /* disabled opacity: see input.module.css */
 .item[data-disabled] {
   pointer-events: none;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .variantDefault {
@@ -227,7 +227,7 @@
 .checkboxItem[data-disabled],
 .radioItem[data-disabled] {
   pointer-events: none;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .itemIndicator {
@@ -303,7 +303,7 @@
 /* disabled opacity: see input.module.css */
 .subTrigger[data-disabled] {
   pointer-events: none;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .subTriggerIcon {

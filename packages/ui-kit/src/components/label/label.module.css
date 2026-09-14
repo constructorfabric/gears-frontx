@@ -25,5 +25,5 @@
 .label[data-disabled] {
   pointer-events: none;
   /* 0.42, matching the controls' own disabled dim. */
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
