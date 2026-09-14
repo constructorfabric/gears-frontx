@@ -36,14 +36,14 @@
 }
 
 .control[data-disabled] {
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .track {
   position: relative;
   flex-grow: 1;
   overflow: hidden;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: var(--secondary);
 }
 
@@ -82,7 +82,7 @@
   width: 1rem;
   height: 1rem;
   border: var(--border-width-focus) solid var(--primary);
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: var(--surface-elevated);
   outline: none;
   transition:

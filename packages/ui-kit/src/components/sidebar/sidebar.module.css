@@ -751,7 +751,7 @@
 .menuButton:disabled,
 .menuButton[aria-disabled='true'] {
   pointer-events: none;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 /* Deliberately empty — not dead CSS (see card.module.css's identical
@@ -1080,7 +1080,7 @@
 .menuSubButton:disabled,
 .menuSubButton[aria-disabled='true'] {
   pointer-events: none;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 /* Type ramp only — the 28px row height is on `.menuSubButton` above,

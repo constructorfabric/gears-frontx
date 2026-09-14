@@ -204,7 +204,7 @@
 .choice[data-disabled] {
   cursor: not-allowed;
   pointer-events: none;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .choiceInput {
@@ -256,7 +256,7 @@
 }
 
 .choice[data-type='radio'] .indicator {
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
 }
 
 /* Checked fills the box for both types — the glyph inside is what differs. */
@@ -279,7 +279,7 @@
   display: none;
   width: 0.5rem;
   height: 0.5rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: var(--primary-foreground);
 }
 

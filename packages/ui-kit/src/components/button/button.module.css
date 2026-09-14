@@ -111,7 +111,7 @@
 /* disabled opacity: see input.module.css */
 .button:disabled {
   pointer-events: none;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 /*
@@ -126,7 +126,7 @@
  */
 .button[data-loading] {
   pointer-events: none;
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .variantDefault {

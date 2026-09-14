@@ -418,6 +418,9 @@ describe('theme tokens', () => {
       '--radius-md',
       '--radius-lg',
       '--radius-xl',
+      // Pill/circle cap. Independent of --radius (fixed 9999px), but the
+      // same shape-not-color reasoning as the scale above keeps it here.
+      '--radius-full',
       // Spacing scale (Figma space/1–8; step number = value in 4px units,
       // so there is no space/7).
       '--space-1',
@@ -438,6 +441,9 @@ describe('theme tokens', () => {
       '--icon-size-lg',
       '--border-width',
       '--border-width-focus',
+      // Dim for every disabled control surface. A magnitude, not a color -
+      // never per-theme.
+      '--opacity-disabled',
       // Typography (Figma "Typography / Specimens", frame 175:371):
       // families and the Studio type ramp. Shape and scale, not color —
       // never per-theme.

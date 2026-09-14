@@ -43,7 +43,7 @@
   align-items: center;
   justify-content: center;
   align-self: flex-end;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: var(--muted);
 }
 

@@ -17,7 +17,7 @@
 }
 
 .root:has(.slot:disabled) {
-  opacity: 0.42;
+  opacity: var(--opacity-disabled);
 }
 
 .group {

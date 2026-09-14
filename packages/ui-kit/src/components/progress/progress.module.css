@@ -19,7 +19,7 @@
   width: 100%;
   align-items: center;
   overflow: hidden;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: var(--secondary);
   height: 0.5rem;
 }
