@@ -36,6 +36,20 @@ so a group and a plain field line up in the same form. A `block-start`/
 
 ## Props (kit level)
 
+`InputGroup`:
+
+| Prop | Type | Default |
+|------|------|---------|
+| `size` | `sm` \| `default` - control height 32 / 40, addon icon 16 in both | `'default'` |
+
+`default` - both the CVA default and what an omitted `size` renders, the
+same code path either way - is `--control-height-lg` (40px), matching the
+kit's own `Input` and the design spec's standalone Input specimen; `sm`
+drops to `--control-height-sm` (32px), with no change to the addon icon.
+The design spec's middle step (36px, its search-field specimen) is not
+carried: it conflicts with `Input`'s own 40px default, and a search field
+that must sit beside a 36px control is a template composition.
+
 `InputGroupAddon`:
 
 | Prop | Type | Default |
@@ -108,6 +122,14 @@ import {
     <InputGroupText>$</InputGroupText>
   </InputGroupAddon>
   <InputGroupInput type="number" placeholder="0.00" aria-label="Amount" />
+</InputGroup>
+
+// Compact search field (size="sm") in a toolbar row
+<InputGroup size="sm">
+  <InputGroupAddon>
+    <SearchIcon />
+  </InputGroupAddon>
+  <InputGroupInput type="search" placeholder="Search" aria-label="Search" />
 </InputGroup>
 
 // Search field with a leading icon and a trailing shortcut hint
