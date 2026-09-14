@@ -67,6 +67,22 @@ export default function ToggleGroupExample() {
         </Row>
       </Section>
 
+      <Section title="Segmented (spacing={0})">
+        <Row>
+          <ToggleGroup aria-label="View mode, segmented" spacing={0} variant="outline" defaultValue={['list']}>
+            <ToggleGroupItem value="list" aria-label="List view">
+              List
+            </ToggleGroupItem>
+            <ToggleGroupItem value="grid" aria-label="Grid view">
+              Grid
+            </ToggleGroupItem>
+            <ToggleGroupItem value="table" aria-label="Table view">
+              Table
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </Row>
+      </Section>
+
       <Section title="Vertical orientation">
         <Row>
           <ToggleGroup aria-label="View mode" orientation="vertical" defaultValue={['list']}>

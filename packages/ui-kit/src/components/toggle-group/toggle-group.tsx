@@ -1,7 +1,7 @@
 import { Toggle as TogglePrimitive } from '@base-ui/react/toggle';
 import { ToggleGroup as ToggleGroupPrimitive } from '@base-ui/react/toggle-group';
 import { cx, type VariantProps } from 'class-variance-authority';
-import { createContext, useContext } from 'react';
+import { createContext, useContext, type CSSProperties } from 'react';
 
 import { toggleVariants } from '../toggle/toggle';
 import styles from './toggle-group.module.css';
@@ -21,20 +21,42 @@ const ToggleGroupContext = createContext<VariantProps<typeof toggleVariants>>({
 });
 
 export interface ToggleGroupProps<Value extends string = string>
-  extends Omit<ToggleGroupPrimitive.Props<Value>, 'className'>,
+  extends Omit<ToggleGroupPrimitive.Props<Value>, 'className' | 'style'>,
     VariantProps<typeof toggleVariants> {
   className?: string;
+  style?: CSSProperties;
+  /**
+   * Gap between items, in pixels - upstream's `spacing` prop, restored
+   * (see toggle-group.md's "Deviation from upstream" for why it was
+   * dropped and then brought back). `spacing={0}` additionally switches
+   * the group into the segmented look: items lose their individual
+   * radius and share collapsed borders, rounded only on the group's own
+   * outer corners (the design mockups' segmented specimen, and upstream's
+   * own zero-spacing behavior) - the same join idiom `ButtonGroup`
+   * already uses. Left `undefined`, the group keeps
+   * rendering exactly what it always has: a fixed `--space-1` gap between
+   * independently-bordered items.
+   * @default undefined
+   */
+  spacing?: number;
 }
 
 export function ToggleGroup<Value extends string = string>({
   className,
+  style,
   variant,
   size,
+  spacing,
   children,
   ...props
 }: ToggleGroupProps<Value>) {
   return (
-    <ToggleGroupPrimitive className={cx(styles.group, className)} {...props}>
+    <ToggleGroupPrimitive
+      data-spacing={spacing}
+      className={cx(styles.group, className)}
+      style={spacing === undefined ? style : { ...style, gap: `${spacing}px` }}
+      {...props}
+    >
       <ToggleGroupContext.Provider value={{ variant, size }}>
         {children}
       </ToggleGroupContext.Provider>

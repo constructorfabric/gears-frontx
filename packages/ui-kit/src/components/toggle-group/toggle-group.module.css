@@ -2,18 +2,17 @@
  * Toggle group styles, translated from shadcn/ui (MIT) to CSS Modules.
  * Consumes only theme.css variables — no raw colors.
  *
- * Deviation from upstream: upstream's `spacing` prop (default 2, a small
- * gap) can be set to 0 to collapse into a bordered "segment" control —
- * adjoining items then share borders via Tailwind's arbitrary
- * `group-data-*` sibling selectors. That opt-in zero-gap mode is a
- * Tailwind-arbitrary-value mechanic with no direct CSS Modules
- * equivalent, and it is never shadcn's own default (spacing=2 ships as
- * the default; the segment look only appears when a consumer explicitly
- * passes spacing={0}). This port keeps the shipped default — a small,
- * fixed gap between independently-bordered items — and drops the
- * `spacing` prop; the F-mockups' bordered "segment" look these items also
- * reference (see tabs.module.css's header comment) is left for a future
- * pass if a consumer needs the collapsed variant.
+ * The `spacing={0}` segmented look (ToggleGroupProps.spacing) reuses
+ * ButtonGroup's own join idiom (see button-group.module.css's header):
+ * square every item's corners, re-round only the two outer corners on the
+ * first/last item, and remove the leading border of every item but the
+ * first so adjoining borders don't double up. Structural selectors, not
+ * upstream's `group-data-*` sibling mechanic (which has no direct CSS
+ * Modules equivalent) - reached here through `[data-spacing='0']`
+ * instead, set by the group itself rather than read off a shared
+ * ancestor's `data-slot`. Every other `spacing` value only sets the gap
+ * (inline style, see toggle-group.tsx) and leaves the independently
+ * bordered/radiused look below untouched.
  */
 
 .group {
@@ -38,4 +37,53 @@
 
 .item:focus-visible {
   z-index: 1;
+}
+
+/*
+ * Segmented mode (`[data-spacing='0']`, see file header). Horizontal join:
+ * square every item's corners, re-round only the two outer corners on the
+ * first/last item, and remove the leading border of every item but the
+ * first. `.group[data-spacing='0'] > .item` is (0,2,0), reliably above
+ * `.toggle`'s own `.variantOutline`/`.sizeSm` radius declarations
+ * ((0,1,0) each in toggle.module.css) regardless of stylesheet load order.
+ */
+.group[data-spacing='0'] {
+  gap: 0;
+}
+
+.group[data-spacing='0']:not([data-orientation='vertical']) > .item {
+  border-radius: 0;
+}
+
+.group[data-spacing='0']:not([data-orientation='vertical']) > .item:first-child {
+  border-start-start-radius: var(--radius-md);
+  border-end-start-radius: var(--radius-md);
+}
+
+.group[data-spacing='0']:not([data-orientation='vertical']) > .item:last-child {
+  border-start-end-radius: var(--radius-md);
+  border-end-end-radius: var(--radius-md);
+}
+
+.group[data-spacing='0']:not([data-orientation='vertical']) > .item + .item {
+  border-inline-start-width: 0;
+}
+
+/* Vertical join: the same idea, rotated onto the block axis. */
+.group[data-spacing='0'][data-orientation='vertical'] > .item {
+  border-radius: 0;
+}
+
+.group[data-spacing='0'][data-orientation='vertical'] > .item:first-child {
+  border-start-start-radius: var(--radius-md);
+  border-start-end-radius: var(--radius-md);
+}
+
+.group[data-spacing='0'][data-orientation='vertical'] > .item:last-child {
+  border-end-start-radius: var(--radius-md);
+  border-end-end-radius: var(--radius-md);
+}
+
+.group[data-spacing='0'][data-orientation='vertical'] > .item + .item {
+  border-block-start-width: 0;
 }
