@@ -93,7 +93,7 @@
    */
   padding: 0;
   border: var(--border-width) solid var(--popover-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   background-color: var(--popover);
   color: var(--popover-foreground);
   /* Studio/Body — was the shadcn translation's 14px, migrated to the ramp. */
