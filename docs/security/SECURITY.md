@@ -1,6 +1,6 @@
 # Security in FrontX
 
-> **Source of truth:** `develop` branch of [cyberfabric/frontx](https://github.com/cyberfabric/frontx/tree/develop)
+> **Source of truth:** `develop` branch of [constructorfabric/gears-frontx](https://github.com/constructorfabric/gears-frontx/tree/develop)
 
 FrontX takes a **defense-in-depth** approach to security, combining TypeScript's strict compile-time type system with layered static analysis, architecture boundary enforcement, dependency auditing, and structured development processes. This document summarizes the security measures in place across the project.
 
@@ -510,7 +510,7 @@ Developers also have access to [Claude Code](https://docs.anthropic.com/) as a l
 
 > Source: [`.cypilot/`](../../.cypilot/) · [`architecture/`](../../architecture/)
 
-FrontX follows a **spec-driven development** lifecycle via [Cypilot](https://github.com/cyberfabric/cyber-pilot) where architecture documents are written before implementation. Security is addressed at multiple points in the pipeline:
+FrontX follows a **spec-driven development** lifecycle via [Cypilot](https://github.com/constructorfabric/cyber-pilot) where architecture documents are written before implementation. Security is addressed at multiple points in the pipeline:
 
 ```
 PRD (Product Requirements) → ADR (Architecture Decisions) + DESIGN (System Design)

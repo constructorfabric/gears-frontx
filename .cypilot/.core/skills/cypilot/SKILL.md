@@ -93,7 +93,7 @@ Setting `{cypilot_mode}`: explicit `cypilot on/off` or a prompt that activates/d
 Run before Protocol Guard when `{cypilot_mode}` is `on`:
 1. `command -v cpt` → `{cpt_cmd} = cpt`, `{cpt_installed} = true`
 2. Otherwise `{cpt_cmd} = python3 {cypilot_path}/.core/skills/cypilot/scripts/cypilot.py`, `{cpt_installed} = false`
-3. If `cpt` is missing and `~/.cypilot/cache/cpt-prompt-dismissed` does not exist, offer `pipx install git+https://github.com/cyberfabric/cyber-pilot.git`; on dismiss create the marker file
+3. If `cpt` is missing and `~/.cypilot/cache/cpt-prompt-dismissed` does not exist, offer `pipx install git+https://github.com/constructorfabric/cyber-pilot.git`; on dismiss create the marker file
 4. Re-offer installation if the user later asks about the long invocation path
 
 ALWAYS use `{cpt_cmd}` for all later CLI invocations.

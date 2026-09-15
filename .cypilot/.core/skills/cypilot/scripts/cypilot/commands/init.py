@@ -534,7 +534,7 @@ def cmd_init(argv: List[str]) -> int:
         _parse_github_source, _download_kit_from_github,
     )
 
-    _DEFAULT_KIT_SOURCE = "cyberfabric/cyber-pilot-kit-sdlc"
+    _DEFAULT_KIT_SOURCE = "constructorfabric/cyber-pilot-kit-sdlc"
     kit_results: Dict[str, Any] = {}
 
     if not args.dry_run:

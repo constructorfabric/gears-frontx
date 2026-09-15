@@ -87,7 +87,7 @@ All CLI output is JSON to stdout. Human-readable messages go to stderr. This ena
 ## Installation
 
 ```bash
-pipx install git+https://github.com/cyberfabric/cyber-pilot.git
+pipx install git+https://github.com/constructorfabric/cyber-pilot.git
 ```
 
 After installation, `cpt` is available globally as the CLI command. The `cypilot` keyword is reserved for agent chat prompts.

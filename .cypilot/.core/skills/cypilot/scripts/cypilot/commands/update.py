@@ -770,8 +770,8 @@ def _deduplicate_legacy_kits(config_dir: Path) -> Dict[str, str]:
 
 # Known bundled kits and their GitHub sources
 _KNOWN_KIT_SOURCES: Dict[str, str] = {
-    "sdlc": "github:cyberfabric/cyber-pilot-kit-sdlc",
-    "cypilot-sdlc": "github:cyberfabric/cyber-pilot-kit-sdlc",
+    "sdlc": "github:constructorfabric/cyber-pilot-kit-sdlc",
+    "cypilot-sdlc": "github:constructorfabric/cyber-pilot-kit-sdlc",
 }
 
 def _migrate_kit_sources(config_dir: Path) -> Dict[str, str]:

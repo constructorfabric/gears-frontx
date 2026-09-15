@@ -854,7 +854,7 @@ def cmd_kit_install(argv: List[str]) -> int:
     )
     p.add_argument(
         "source", nargs="?", default=None,
-        help="GitHub source: owner/repo[@version] (e.g. cyberfabric/cyber-pilot-kit-sdlc@v1.0.0)",
+        help="GitHub source: owner/repo[@version] (e.g. constructorfabric/cyber-pilot-kit-sdlc@v1.0.0)",
     )
     p.add_argument(
         "--path", dest="local_path", default=None,

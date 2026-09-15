@@ -81,7 +81,7 @@ Each package is versioned independently within a single major version.
 ## Development Setup
 
 ```bash
-git clone https://github.com/cyberfabric/frontx.git
+git clone https://github.com/constructorfabric/gears-frontx.git
 cd frontx
 npm ci
 npm run build:packages
