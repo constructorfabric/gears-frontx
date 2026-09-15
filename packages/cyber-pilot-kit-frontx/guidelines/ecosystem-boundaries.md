@@ -10,6 +10,8 @@ template territory and do NOT add solution-specific logic.
 | `@gears-frontx/mfes` | MFES-2: no template deps; MFES-3: no solution schemas |
 | `@gears-frontx/gts-plugin` | GTS-PLUGIN-2: no solution schemas |
 | `@gears-frontx/api` | API-1: handler-agnostic, no mocks |
+| `@gears-frontx/routing` | ROUTING-1: no template content (`frontx-routing-1-no-template-content`); ROUTING-2: no intra-ecosystem dependency — declares and imports no other `@gears-frontx/*` package (`frontx-routing-2-no-intra-ecosystem-dependency`, `arch:edges`); ROUTING-3: no router-engine import (`frontx-routing-3-no-engine-leak`). May be depended on only by `@gears-frontx/routing-tanstack`, its one declared runtime edge (`arch:edges`, `cpt-frontx-routing-tanstack-nfr-single-ecosystem-edge`). |
+| `@gears-frontx/routing-tanstack` | ROUTING-TANSTACK-1: no template content (`frontx-routing-tanstack-1-no-template-content`). Depends on exactly one ecosystem package, `@gears-frontx/routing` (ROUTING-TANSTACK-2, `frontx-routing-tanstack-2-single-ecosystem-edge`, `arch:edges`); no ecosystem package may depend on it. ROUTING-TANSTACK-3: sole ecosystem package permitted to import a concrete router engine (`frontx-routing-tanstack-3-sole-engine-import`). |
 
 ## Projects Orchestration — CLI (greenfield)
 

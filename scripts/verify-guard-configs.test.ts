@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { verifyMemberRegistrationInRegistry } from './verify-guard-configs.ts';
+import { verifyMemberRegistrationInRegistry, verifyRoutingEngineLeakPattern } from './verify-guard-configs.ts';
 
 describe('verifyMemberRegistrationInRegistry', () => {
   const cleanupDirs: string[] = [];
@@ -98,5 +98,56 @@ patterns = ["*/dist/*"]`);
         message: expect.stringContaining('no [[ignore]] recording the debt'),
       }),
     ]);
+  });
+});
+
+describe('verifyRoutingEngineLeakPattern', () => {
+  const results = verifyRoutingEngineLeakPattern();
+
+  it.each([
+    'react-router',
+    '@remix-run/router',
+    '@tanstack/react-router',
+    '@tanstack/router-core',
+  ])('catches %s', (engineName) => {
+    expect(results).toContainEqual(
+      expect.objectContaining({
+        name: `frontx-routing-3-no-engine-leak: catches ${engineName}`,
+        passed: true,
+      }),
+    );
+  });
+
+  it.each(['@tanstack/react-table', '@tanstack/react-query', 'lodash', 'react'])(
+    'router-name patterns do not match %s',
+    (packageName) => {
+      expect(results).toContainEqual(
+        expect.objectContaining({
+          name: `frontx-routing-3-no-engine-leak: router-name patterns do not match ${packageName}`,
+          passed: true,
+        }),
+      );
+    },
+  );
+
+  it.each(['@tanstack/react-table', '@tanstack/react-query'])(
+    'the blanket @tanstack/ ban still blocks %s',
+    (packageName) => {
+      expect(results).toContainEqual(
+        expect.objectContaining({
+          name: `frontx-routing-3-no-engine-leak: the blanket @tanstack/ ban still blocks ${packageName}`,
+          passed: true,
+        }),
+      );
+    },
+  );
+
+  it.each(['lodash', 'react'])('no part of the rule blocks %s', (packageName) => {
+    expect(results).toContainEqual(
+      expect.objectContaining({
+        name: `frontx-routing-3-no-engine-leak: no part of the rule blocks ${packageName}`,
+        passed: true,
+      }),
+    );
   });
 });
