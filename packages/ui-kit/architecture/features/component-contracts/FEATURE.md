@@ -575,7 +575,7 @@ The system **MUST** compile an admitted overlay and an extraction into a props s
 **Constraints**: `cpt-frontx-ui-kit-constraint-contracts-repository-only`
 
 **Touches**:
-- Entities: `Contract`, `Metamodel instance`, `Element type`
+- Entities: `Contract`, `Props type`, `Element type`
 
 ### Contracts Are Named In The Type System's Grammar
 
@@ -587,7 +587,7 @@ The system **MUST** construct every component, props-type, host-element-surface 
 - `cpt-frontx-ui-kit-algo-component-contracts-identifiers`
 
 **Touches**:
-- Entities: `Contract`, `Metamodel instance`, `Element type`
+- Entities: `Contract`, `Component type`, `Props type`, `Element type`
 
 ### The Component Type Is Derived, Not Restated
 
@@ -611,7 +611,7 @@ The system **MUST** compare a component's committed contract - and, on every run
 - `cpt-frontx-ui-kit-algo-component-contracts-freshness`
 
 **Touches**:
-- Entities: `Contract`, `Metamodel instance`, `Element type`
+- Entities: `Contract`, `Component type`, `Element type`
 
 ### Each Described Component Carries Its Own Conformance Suite
 
