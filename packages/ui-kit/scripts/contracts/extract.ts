@@ -1062,11 +1062,11 @@ function loadCompilerOptions(): ts.CompilerOptions {
 // exports are components, and what every export is called - are allowed to
 // share, or to skip a program altogether.
 
-// One extraction per tsxPath for the life of the process - resolveTargetExtraction,
-// compileContract and compileInstance each resolve a directory's extraction
-// independently (compileInstance calls compileContract, which calls
-// resolveTargetExtraction, and callers routinely call resolveTargetExtraction
-// again directly), so a single freshness check for one component builds this
+// One extraction per tsxPath for the life of the process - resolveTargetExtraction
+// and compileContract each resolve a directory's extraction independently
+// (compileContract calls resolveTargetExtraction, and callers routinely call
+// resolveTargetExtraction again directly), so a single freshness check for one
+// component builds this
 // same ts.createProgram several times over for the same source file. That
 // program build is several seconds on a CI-class runner, so the redundant
 // builds are what pushed the contract test suites past vitest's default

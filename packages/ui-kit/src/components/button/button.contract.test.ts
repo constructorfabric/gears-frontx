@@ -768,10 +768,10 @@ describe('M3: assembled output validated against its own schema before writing',
   });
 
   it('drops a genuinely-unset field (JSON round-trip) rather than validating it as `undefined`', () => {
-    // The exact reason compileInstance/compileContract round-trip through
-    // JSON before validating (see testing.ts's validateContractTraits for
-    // the same rule applied to x-gts-traits): an own key set to `undefined`
-    // must read as absent, not as a value to type-check.
+    // The exact reason compileContract round-trips through JSON before
+    // validating (see testing.ts's validateContractInstance for the same rule
+    // applied to a committed document): an own key set to `undefined` must
+    // read as absent, not as a value to type-check.
     const schema = { type: 'object', properties: { maybe: { type: ['string', 'null'] } }, additionalProperties: false };
     expect(() => assertValidatesAgainst('button', 'test-value', schema, { maybe: undefined })).not.toThrow();
   });

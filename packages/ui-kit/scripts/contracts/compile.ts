@@ -580,10 +580,10 @@ export const loadComponentType = memoizeSchema(
 );
 
 // The committed copies of the vocabulary types the component type
-// references. Read from disk for the same reason
-// loadBaseSchema does: whoever registers them in a GTS store or an Ajv
-// instance must see the shipped file, not a fresh build that might differ
-// from it - the freshness check is what makes those two the same thing.
+// references. Read from disk for the same reason loadComponentType is:
+// whoever registers them in a GTS store or an Ajv instance must see the
+// shipped file, not a fresh build that might differ from it - the freshness
+// check is what makes those two the same thing.
 export const loadVocabularyTypes = memoizeSchema((): Record<string, unknown>[] =>
   readdirSync(VOCABULARY_DIR)
     .filter((name) => name.endsWith('.json'))
