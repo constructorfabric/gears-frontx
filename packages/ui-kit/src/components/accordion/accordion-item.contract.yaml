@@ -12,7 +12,7 @@ dont_use_when:
   - situation: A section that must always stay visible and never collapse
     instead:
       target: Card
-      component: gts.frontx.uikit.base.component.v1~frontx.uikit.component.card.v1~
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1
 
 # `mounted_in` is not authored: the compiler fills it from every other
 # contract's accepted components, so "an item goes inside an Accordion" is
@@ -20,8 +20,8 @@ dont_use_when:
 accepts:
   content: specified
   components:
-    - gts.frontx.uikit.base.component.v1~frontx.uikit.component.accordion_trigger.v1~ # AccordionTrigger
-    - gts.frontx.uikit.base.component.v1~frontx.uikit.component.accordion_content.v1~ # AccordionContent
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.accordion_trigger.v1 # AccordionTrigger
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.accordion_content.v1 # AccordionContent
 
 invariants:
   - id: value-required-to-control-or-default-open

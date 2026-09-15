@@ -15,27 +15,28 @@ import { GTS, isValidGtsID, type ValidationResult } from '@globaltypesystem/gts-
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  BASE_TYPE_ID,
-  buildMetamodel,
+  buildComponentType,
   buildVocabularyTypes,
   compileContract,
-  compileInstance,
   familyRoster,
   findUntypedPropMismatches,
   forwardsToRef,
-  loadBaseSchema,
+  liftPropsSchema,
+  loadComponentType,
   loadElementSurfaces,
   registerContractTypes,
   type CompiledContract,
 } from './compile';
 import {
   bareGtsId,
-  componentTypeRefPattern,
-  METAMODEL_TYPE_ID,
+  componentRefPattern,
+  COMPONENT_TYPE_ID,
   elementTypeIdPattern,
   elementTypeRefPattern,
+  propsSchemaId,
   vocabularyTypeIdPattern,
 } from './ids';
+import { extractContractMajor } from './check-lib';
 import { checkComponentFreshness, type FreshnessReport } from './freshness';
 
 const kitRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -95,13 +96,13 @@ export interface ResolvedComponentRef {
   ref: string;
   directory: string;
   stem: string;
-  // The `$id` of the contract that component ships, bare, or undefined when
-  // it ships none yet.
+  // The `$id` of the document that component ships, or undefined when it
+  // ships none yet.
   contractId?: string;
 }
 
 export function resolveComponentRef(ref: string): ResolvedComponentRef {
-  const match = new RegExp(componentTypeRefPattern(true)).exec(ref);
+  const match = new RegExp(componentRefPattern(true)).exec(ref);
   if (!match) throw new Error(`"${ref}" is not a grammatical component reference`);
   const stem = match[1].replace(/_/g, '-');
   // A part's stem is its directory name plus a suffix, so a directory whose
@@ -139,8 +140,7 @@ export function resolveComponentRef(ref: string): ResolvedComponentRef {
 // A family's own name is a token rather than a reference and is not one; nor
 // is a container outside the kit, which is an object precisely because there
 // is nothing to resolve.
-export function componentRefsIn(contract: CompiledContract): { field: string; ref: string }[] {
-  const meaning = contract['x-gts-traits'];
+export function componentRefsIn(meaning: CompiledContract): { field: string; ref: string }[] {
   const refs: { field: string; ref: string }[] = [];
   for (const [index, entry] of meaning.dont_use_when.entries()) {
     const component = entry.instead.component;
@@ -168,13 +168,13 @@ export function componentRefsIn(contract: CompiledContract): { field: string; re
 // this same suite is what guarantees the committed copies are the compiled
 // ones.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-instance-ref
-function loadCommittedContracts(): Record<string, unknown>[] {
-  const contracts: Record<string, unknown>[] = [];
+function loadCommittedContracts(): CompiledContract[] {
+  const contracts: CompiledContract[] = [];
   for (const entry of readdirSync(COMPONENTS_DIR, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const dir = join(COMPONENTS_DIR, entry.name);
     for (const file of readdirSync(dir)) {
-      if (file.endsWith('.contract.json')) contracts.push(JSON.parse(readFileSync(join(dir, file), 'utf8')) as Record<string, unknown>);
+      if (file.endsWith('.contract.json')) contracts.push(JSON.parse(readFileSync(join(dir, file), 'utf8')) as CompiledContract);
     }
   }
   return contracts;
@@ -193,20 +193,29 @@ function composedSurfaceRefs(): Set<string> {
   return refs;
 }
 
-// The registry a contract instance is validated in: the base type, the
-// vocabulary its x-gts-traits-schema references, every host element surface
-// a contract may name, the metamodel the instance is typed by, and every
-// contract the kit ships - which is what the instance's own props_schema and
-// forwards_to references have to resolve against.
+// The registry a component instance is validated in: the component type it
+// is an instance of, the vocabulary that type references, every host element
+// surface a component may name, every component instance the kit ships, and
+// the props type lifted out of each of them.
+//
+// The instances are registered, not only their types: a component reference
+// resolves to the component's own instance, so the wildcard
+// `gts.frontx.uikit._.component.v1~*` an x-gts-ref declares is only
+// resolvable while those instances are in the store (XGtsRefValidator's
+// validateGtsPattern ends in a store.get on the value).
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-register
 export function registeredKitStore(): GTS {
   const gts = new GTS();
-  gts.register(JSON.parse(JSON.stringify(loadBaseSchema())) as Record<string, unknown>);
+  gts.register(buildComponentType());
   registerContractTypes((entity) => gts.register(entity));
   for (const surface of loadElementSurfaces()) gts.register(surface);
-  gts.register(buildMetamodel());
-  for (const contract of loadCommittedContracts()) gts.register(contract);
+  for (const contract of loadCommittedContracts()) {
+    gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
+    gts.register(liftPropsSchema(contract));
+  }
   return gts;
 }
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-register
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-instance-ref
 
 // `exportStem` defaults to `directory` for the ordinary one-overlay case
@@ -224,13 +233,9 @@ export function registeredKitStore(): GTS {
 export function assertContractFreshness(directory: string, exportStem: string = directory): void {
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-freshness
   describe(`${exportStem} contract freshness`, () => {
-    it('committed contract.json and contract.instance.json match a fresh compile', () => {
+    it('the committed contract.json matches a fresh compile', () => {
       const report = memoizedFreshnessReport(directory, exportStem);
       expect(report.contractDiff, `${exportStem}.contract.json is stale:\n${report.contractDiff.join('\n')}`).toEqual([]);
-      expect(
-        report.instanceDiff,
-        `${exportStem}.contract.instance.json is stale:\n${report.instanceDiff.join('\n')}`,
-      ).toEqual([]);
     });
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-freshness
 
@@ -243,9 +248,9 @@ export function assertContractFreshness(directory: string, exportStem: string = 
 
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-base
     it('every committed shared schema equals a fresh build', () => {
-      // The abstract base type, the metamodel and each vocabulary type they
-      // reference: written by `contracts:compile -- --schemas`, and stale
-      // the moment a builder changes without that being re-run.
+      // The component type and each vocabulary type it references: written
+      // by `contracts:compile -- --schemas`, and stale the moment a builder
+      // changes without that being re-run.
       const report = memoizedFreshnessReport(directory, exportStem);
       for (const [file, diff] of Object.entries(report.sharedSchemaDiffs)) {
         expect(diff, `${file} is stale:\n${diff.join('\n')}`).toEqual([]);
@@ -270,14 +275,12 @@ export function assertContractFreshness(directory: string, exportStem: string = 
       // pattern restates - and the one an id that dropped a token would break
       // without any pattern here noticing.
       const contract = compileContract(directory, exportStem);
-      const instance = compileInstance(directory, exportStem);
       const ids = [
-        BASE_TYPE_ID,
-        `${METAMODEL_TYPE_ID}~`,
+        COMPONENT_TYPE_ID,
         contract.$id,
-        instance.id,
-        instance.props_schema,
-        ...(instance.forwards_to === undefined ? [] : [instance.forwards_to]),
+        contract.gts_type,
+        String(liftPropsSchema(contract).$id),
+        ...(contract.forwards_to === undefined ? [] : [contract.forwards_to]),
         ...buildVocabularyTypes().map((type) => String(type.$id)),
         ...loadElementSurfaces().map((surface) => String(surface.$id)),
       ];
@@ -298,7 +301,7 @@ export function assertContractFreshness(directory: string, exportStem: string = 
           expect(target.contractId, `${field}: "${ref}" does not name ${target.stem}'s current contract`).toBe(ref);
         } else {
           expect(ref, `${field}: "${ref}" names ${target.stem}, which ships no contract, so it may only be referenced at major 1`).toMatch(
-            /\.v1~$/,
+            /\.v1$/,
           );
         }
       }
@@ -342,9 +345,8 @@ export function assertContractFreshness(directory: string, exportStem: string = 
       // one inside it, and a part of a family may only be mounted inside its
       // own family, or the parts are independently mountable and the family
       // is not one.
-      const contract = compileContract(directory, exportStem);
-      const meaning = contract['x-gts-traits'];
-      const self = bareGtsId(String(contract.$id));
+      const meaning = compileContract(directory, exportStem);
+      const self = meaning.$id;
       // The family's WHOLE membership, read off the roster rather than off
       // this component's own record: a part states its membership and nothing
       // else, so the set it may be mounted inside is the root plus every
@@ -358,7 +360,7 @@ export function assertContractFreshness(directory: string, exportStem: string = 
       for (const entry of meaning.mounted_in ?? []) {
         if (entry.component === undefined) continue;
         const container = resolveComponentRef(entry.component);
-        const containerMeaning = compileContract(container.directory, container.stem)['x-gts-traits'];
+        const containerMeaning = compileContract(container.directory, container.stem);
         expect(
           containerMeaning.accepts.components ?? [],
           `${exportStem}: filled mount point "${entry.component}" does not accept it inside`,
@@ -376,10 +378,10 @@ export function assertContractFreshness(directory: string, exportStem: string = 
       // makes "one root per family" a fact about the kit rather than about
       // whichever overlay was read first.
       const contract = compileContract(directory, exportStem);
-      const membership = contract['x-gts-traits'].family_membership;
+      const membership = contract.family_membership;
       if (membership === undefined) return;
       const roster = familyRoster(membership.name);
-      const self = bareGtsId(String(contract.$id));
+      const self = contract.$id;
       if (membership.role === 'part') {
         expect(membership.members, `${exportStem}: a part carries no member list`).toBeUndefined();
         expect(roster.parts, `${exportStem}: the family roster does not list it as a part`).toContain(self);
@@ -393,26 +395,23 @@ export function assertContractFreshness(directory: string, exportStem: string = 
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-parent
 
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-element
-    it('derives from exactly one type, the abstract component type', () => {
-      // The single-parent rule, asserted on the schema body rather than left
-      // to the id: the chained $id says one parent, and an allOf carrying a
-      // second $ref would say two. The host element's surface is a reference
-      // the contract HOLDS - checked below - not a parent it derives from.
+    it('carries its props surface as a standalone schema with one identifier, stamped on lift', () => {
+      // The document holds exactly one identifier, its own, and the props
+      // surface it carries holds none until something asks for it as a
+      // schema. Asserted both ways: a `$id` or `$schema` left on the surface
+      // would be a second identifier a level down, and a lift that did not
+      // stamp them would hand a registry a schema it cannot address. Nothing
+      // is derived either - a component is an instance of the component type,
+      // not a type descended from anything, so no parent reference appears.
       const contract = compileContract(directory, exportStem);
-      expect(contract.allOf, `${exportStem}: a contract derives from one type`).toEqual([{ $ref: BASE_TYPE_ID }]);
-    });
-
-    it('leaves the abstract marker on the type nothing instantiates, and only there', () => {
-      // The abstract type declares no properties, so a props object validated
-      // against it would pass whatever it carried - which is exactly why
-      // nothing ever validates against it, and why it says so. A derived
-      // contract IS instantiated, by every props object a consumer passes, so
-      // the marker on one would be false.
-      expect(loadBaseSchema()['x-gts-abstract'], 'the abstract component type states that it is abstract').toBe(true);
-      const contract = compileContract(directory, exportStem);
-      expect(contract, `${exportStem}: a component's own contract is instantiated by every props object`).not.toHaveProperty(
-        'x-gts-abstract',
+      expect(Object.keys(contract.props_schema)).not.toContain('$id');
+      expect(Object.keys(contract.props_schema)).not.toContain('$schema');
+      expect(contract, `${exportStem}: a component derives from nothing`).not.toHaveProperty('allOf');
+      const lifted = liftPropsSchema(contract);
+      expect(lifted.$id, `${exportStem}: the lift stamps the props type id back on`).toBe(
+        propsSchemaId(exportStem, extractContractMajor(contract.$id)),
       );
+      expect(lifted.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
     });
 
     it('resolves the host-element surface it names to a committed file in the grammar', () => {
@@ -457,66 +456,59 @@ export function assertContractFreshness(directory: string, exportStem: string = 
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-element
 
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-instance-ref
-    it("resolves the instance's own props-schema reference through the type registry", () => {
-      // The one reference gts-ts resolves for us: it sits directly on an
-      // instance property, which is as deep as its own reference validator
-      // walks. A contract absent from the registry fails by name here.
+    it('validates as an instance of the component type, in a registry holding what it names', () => {
+      // The whole document against the whole type: every meaning field, the
+      // extraction block and the props surface, checked by the same validator
+      // that checks any instance against its type. The one reference gts-ts
+      // resolves for us is the host-element surface, which sits directly on a
+      // document property - as deep as its own reference walker goes - so a
+      // surface absent from the registry fails by name here.
       const gts = registeredKitStore();
-      const instance = compileInstance(directory, exportStem);
-      gts.register(JSON.parse(JSON.stringify(instance)) as Record<string, unknown>);
-      const result = gts.validateInstance(instance.id);
+      const contract = compileContract(directory, exportStem);
+      gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
+      const result = gts.validateInstance(contract.$id);
       expect(result.ok, result.error).toBe(true);
     });
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-instance-ref
   });
 }
 
-// Registers base.component.json plus a JSON-round-tripped copy of a compiled
-// contract into a fresh GTS store and returns GTS.validateEntity's result
-// for that contract's own $id.
+// Registers the committed component type plus a JSON-round-tripped copy of a
+// compiled contract into a fresh GTS store and returns GTS.validateInstance's
+// result for that contract's own id.
 //
-// The API: GTS.validateEntity, for a schema entity, calls TWO store methods
-// - GtsStore.validateSchemaAgainstParent (which, for a derived schema,
-// itself calls the private validateSchemaTraits as its last step - the
-// merged-values-against-effective-schema Ajv check) and
-// GtsStore.validateEntityTraits (the closure check: every x-gts-traits-schema in
-// the chain must set additionalProperties: false). Both already run through
-// this one call; nothing here calls validateSchemaTraits directly, because
-// GTS.validateEntity already reaches it for a derived schema like a
-// component contract.
+// The whole document is what gets checked: gts-ts finds the type through the
+// instance's own id chain, compiles that type with Ajv and validates the
+// document against it, then walks the document for x-gts-ref values sitting
+// directly on a property. So a missing required meaning field, an unknown
+// key, a malformed component reference and a mistyped extraction block all
+// fail here, by name.
 //
 // Round-tripped through JSON rather than passed as the in-memory
 // CompiledContract object compileContract returns: an overlay field left
-// unset (family_membership, slots) is genuinely ABSENT as a JSON Schema
-// property once JSON.stringify drops it (the shape the committed
-// <name>.contract.json - "the canonical contract every consumer reads",
-// per compile.ts's own header comment - actually carries), not merely
-// `undefined` the way the in-memory object still holds it as an own key.
-// GtsStore.validateSchemaTraits tests trait-property presence with the `in`
-// operator, which reads those two cases differently (`'family' in obj` is
-// true even when `obj.family === undefined`) - registering the in-memory
-// object directly would pass this check by accident, on a property shape no
-// real consumer of the compiled JSON ever sees, and would stop testing
-// anything the day a future refactor made pickFields omit unset keys
-// instead of assigning them undefined.
+// unset (family_membership, slots) is genuinely ABSENT once JSON.stringify
+// drops it - the shape the committed <name>.contract.json, "the canonical
+// contract every consumer reads" per compile.ts's own header comment,
+// actually carries - not merely `undefined` the way the in-memory object
+// still holds it as an own key. Ajv reads those two cases differently
+// against a `type`-constrained property, so registering the in-memory object
+// directly would be testing a shape no real consumer ever sees.
 //
-// Only base.component.json and the contract are registered: gts-ts resolves
-// a schema's x-gts-traits chain from the GTS ID's OWN dot-token segments
-// (GtsStore.buildSchemaChain), not by dereferencing any $ref, so neither the
-// host element's surface nor any other component's contract is ever consulted
-// for x-gts-traits validation - and forwards_to is a plain string value in the block
-// being checked, not a type this store has to resolve.
-// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-traits
-export function validateContractTraits(contract: CompiledContract): ValidationResult & { entity_type: string } {
+// The committed element surfaces are registered too: `forwards_to` sits
+// directly on a document property, so gts-ts's own reference walker resolves
+// it against this store, and a store without them would fail every component
+// that names one for a reason that has nothing to do with the document.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-instance
+export function validateContractInstance(contract: CompiledContract): ValidationResult {
   const gts = new GTS();
-  gts.register(JSON.parse(JSON.stringify(loadBaseSchema())) as Record<string, unknown>);
-  // The vocabulary the base type's x-gts-traits-schema references. Without them
-  // gts-ts fails the whole check with "Unresolvable trait schema reference"
-  // rather than a validation error, which is the right failure - an
-  // x-gts-traits-schema whose types are missing has not been checked against
-  // anything.
+  gts.register(JSON.parse(JSON.stringify(loadComponentType())) as Record<string, unknown>);
+  // The vocabulary the component type references. Without them the Ajv
+  // compile of that type fails outright rather than reporting a validation
+  // error, which is the right failure - a type whose references are missing
+  // has not checked anything.
   registerContractTypes((entity) => gts.register(entity));
+  for (const surface of loadElementSurfaces()) gts.register(surface);
   gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
-  return gts.validateEntity(bareGtsId(contract.$id));
+  return gts.validateInstance(contract.$id);
 }
-// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-traits
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-instance

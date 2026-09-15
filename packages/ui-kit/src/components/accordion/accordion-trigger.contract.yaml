@@ -12,7 +12,7 @@ dont_use_when:
   - situation: A standalone button with no AccordionItem to expand or collapse
     instead:
       target: Button
-      component: gts.frontx.uikit.base.component.v1~frontx.uikit.component.button.v1~
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
 
 # `mounted_in` is filled from AccordionItem's own accepted components, not
 # authored here.

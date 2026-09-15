@@ -57,7 +57,8 @@ import {
 import {
   compileContract,
   forwardsToToken,
-  loadBaseSchema,
+  liftPropsSchema,
+  loadComponentType,
   loadElementSurface,
   loadHostSurface,
   overlayStems,
@@ -186,7 +187,7 @@ export function defaultCheckContext(): CheckContext {
       const contract = compileContract(directory, exportStem);
       const component = pascalCase(exportStem);
       const usages: { source: string; props: string[] }[] = [];
-      const examples = contract['x-gts-traits'].examples;
+      const examples = contract.examples;
       for (const [kind, entries] of [
         ['good', examples.good],
         ['bad', examples.bad],
@@ -197,7 +198,7 @@ export function defaultCheckContext(): CheckContext {
           }
         }
       }
-      return nearMissesIn(exportStem, usages, contract, loadHostSurface(contract));
+      return nearMissesIn(exportStem, usages, contract.props_schema, loadHostSurface(contract));
     },
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-props-classification:p1:inst-pc-enforce
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-shared-program
@@ -511,11 +512,11 @@ function checkCompatForUnit(
   // component's run must never leak in.
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-unit:p1:inst-cu-register
   const gts = new GTS();
-  gts.register(loadBaseSchema());
-  // The vocabulary the base type's x-gts-traits-schema references: registered here
-  // too, so a store this tool builds is a complete registry rather than one
-  // whose x-gts-traits-schema cannot resolve, and so a future change to one of
-  // those types is compared through the same store as every other schema.
+  gts.register(loadComponentType());
+  // The vocabulary the component type references: registered here too, so a
+  // store this tool builds is a complete registry rather than one whose
+  // component type cannot resolve, and so a future change to one of those
+  // types is compared through the same store as every other schema.
   registerContractTypes((entity) => gts.register(entity));
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-unit:p1:inst-cu-register
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-unit:p1:inst-cu-element-surface-both
@@ -572,11 +573,17 @@ function checkCompatForUnit(
   // registered under synthetic minor-versioned ids to avoid one silently
   // overwriting the other in the store.
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-unit:p1:inst-cu-register
-  const oldSynthetic = { ...oldContract, $id: synthesizeVersionedId(oldContract.$id, 0) };
-  const newSynthetic = { ...newContract, $id: synthesizeVersionedId(newContract.$id, 1) };
+  // The props TYPE of each revision, lifted out of the document it is carried
+  // in: what a compatibility check compares is two revisions of a component's
+  // props surface, and that surface is a schema only once its own identifier
+  // is stamped back on.
+  const oldProps = liftPropsSchema(oldContract);
+  const newProps = liftPropsSchema(newContract);
+  const oldSynthetic = { ...oldProps, $id: synthesizeVersionedId(String(oldProps.$id), 0) };
+  const newSynthetic = { ...newProps, $id: synthesizeVersionedId(String(newProps.$id), 1) };
   gts.register(oldSynthetic);
   gts.register(newSynthetic);
-  const result = gts.checkCompatibility(bareGtsId(oldSynthetic.$id), bareGtsId(newSynthetic.$id), 'backward');
+  const result = gts.checkCompatibility(bareGtsId(String(oldSynthetic.$id)), bareGtsId(String(newSynthetic.$id)), 'backward');
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-unit:p1:inst-cu-register
 
   // gts-ts's own backward check misses a newly required own prop, a vanished
@@ -590,16 +597,16 @@ function checkCompatForUnit(
   // accepts - a component dropping its own `className` declaration forwards
   // `className` all the same, and a consumer notices nothing.
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-own
-  const ownPropsDiff = diffOwnPropsSchema(oldContract, newContract, newElementSurface);
+  const ownPropsDiff = diffOwnPropsSchema(oldContract.props_schema, newContract.props_schema, newElementSurface);
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-own
 
   // An invariant id is a stable handle a lint finding or an eval can cite by
-  // name (base.component.json's own description makes the promise); an id
+  // name (the invariant type's own description makes the promise); an id
   // present at the base ref and gone now breaks that promise the same way a
   // removed prop breaks a call site, so it is compared here alongside every
   // other compatibility signal rather than left to prose.
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-invariants
-  const invariantsDiff = diffInvariants(oldContract['x-gts-traits'].invariants, newContract['x-gts-traits'].invariants);
+  const invariantsDiff = diffInvariants(oldContract.invariants, newContract.invariants);
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-invariants
 
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-unit:p1:inst-cu-decide

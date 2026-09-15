@@ -21,7 +21,7 @@ dont_use_when:
   - situation: Static markup with no sorting, selection or pagination need
     instead:
       target: Table
-      component: gts.frontx.uikit.base.component.v1~frontx.uikit.component.table.v1~
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1
 
 # DataTable takes no children at all - not even text: DataTableProps has no
 # `children` field, and the component renders Table/TableHeader/TableBody

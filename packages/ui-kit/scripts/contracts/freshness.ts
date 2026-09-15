@@ -1,6 +1,6 @@
-// Freshness: whether the artifacts committed next to a component's source
-// (<name>.contract.json and <name>.contract.instance.json) are exactly what
-// compiling the component right now produces. The host elements' surfaces
+// Freshness: whether the artifact committed next to a component's source
+// (<name>.contract.json) is exactly what compiling the component right now
+// produces. The host elements' surfaces
 // are hand-written source, not compiler output, so there is nothing to
 // compare them against - what the conformance suite checks about them instead
 // is that their identifiers obey the grammar and that the reference a contract
@@ -15,12 +15,9 @@ import { fileURLToPath } from 'node:url';
 
 import { jsonDiff } from './check-lib';
 import {
-  buildBaseSchema,
-  buildMetamodel,
+  buildComponentType,
   buildVocabularyTypes,
   compileContract,
-  compileInstance,
-  loadBaseSchema,
   resolveTargetExtraction,
   vocabularyTypeFileName,
 } from './compile';
@@ -32,7 +29,6 @@ const VOCABULARY_DIR = join(CONTRACTS_DIR, 'vocabulary');
 export interface FreshnessReport {
   component: string;
   contractDiff: string[];
-  instanceDiff: string[];
   // Every property of a prop the component DECLARES that asserts nothing (no
   // `type`, no `enum` - Ajv asserts nothing about it) is partly typed, and
   // x-uikit.partially_typed_props is where its real TS shape is recorded. The
@@ -44,9 +40,8 @@ export interface FreshnessReport {
   // x-uikit.partially_typed_props, which is the kit's own declared props and
   // nothing else.
   slotSchemaMismatches: string[];
-  // The schemas that belong to no single component - the abstract component type,
-  // the metamodel, and each vocabulary type the two of them reference -
-  // keyed by file name. Computed on every call regardless of which component
+  // The schemas that belong to no single component - the component type and
+  // each vocabulary type it references - keyed by file name. Computed on every call regardless of which component
   // is being checked (cheap: the builders are pure construction, and the
   // committed copies are small JSON reads) so that a stale shared schema is
   // caught by whichever component's contract test happens to run
@@ -74,17 +69,13 @@ export function checkComponentFreshness(directory: string, exportStem: string = 
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-freshness:p1:inst-fr-artifacts
   const dir = join(kitRoot, 'src', 'components', directory);
   const committedContract = readJsonIfExists(join(dir, `${exportStem}.contract.json`));
-  const committedInstance = readJsonIfExists(join(dir, `${exportStem}.contract.instance.json`));
   const freshContract = compileContract(directory, exportStem);
-  const freshInstance = compileInstance(directory, exportStem);
 
   const contractDiff = jsonDiff(committedContract, freshContract);
-  const instanceDiff = jsonDiff(committedInstance, freshInstance);
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-freshness:p1:inst-fr-artifacts
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-freshness:p1:inst-fr-base
   const sharedSchemaDiffs: Record<string, string[]> = {
-    'base.component.json': jsonDiff(loadBaseSchema(), buildBaseSchema()),
-    'ui-component.meta.json': jsonDiff(readJsonIfExists(join(CONTRACTS_DIR, 'ui-component.meta.json')), buildMetamodel()),
+    'ui-component.meta.json': jsonDiff(readJsonIfExists(join(CONTRACTS_DIR, 'ui-component.meta.json')), buildComponentType()),
   };
   // The union of what the builder produces and what the directory holds, not
   // just the builder's own list: a type file the builder no longer produces
@@ -105,7 +96,7 @@ export function checkComponentFreshness(directory: string, exportStem: string = 
   const extraction = resolveTargetExtraction(directory, exportStem);
   const declaredProps = new Set(extraction.ownProps.map((prop) => prop.name));
   const slotSchemaMismatches: string[] = [];
-  for (const [name, prop] of Object.entries(freshContract.properties)) {
+  for (const [name, prop] of Object.entries(freshContract.props_schema.properties)) {
     // A slot is a declared prop whose shape the schema does not state in
     // full, which is not the same as one it says nothing about: `columns`
     // carries `type: "array"` and is still a slot, because what is IN the
@@ -126,10 +117,9 @@ export function checkComponentFreshness(directory: string, exportStem: string = 
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-freshness:p1:inst-fr-return
   const fresh =
     contractDiff.length === 0 &&
-    instanceDiff.length === 0 &&
     slotSchemaMismatches.length === 0 &&
     Object.values(sharedSchemaDiffs).every((diff) => diff.length === 0);
 
-  return { component: exportStem, contractDiff, instanceDiff, slotSchemaMismatches, sharedSchemaDiffs, fresh };
+  return { component: exportStem, contractDiff, slotSchemaMismatches, sharedSchemaDiffs, fresh };
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-freshness:p1:inst-fr-return
 }

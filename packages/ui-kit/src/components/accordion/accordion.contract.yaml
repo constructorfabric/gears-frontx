@@ -21,11 +21,11 @@ dont_use_when:
   - situation: A single show/hide toggle for one piece of content
     instead:
       target: Collapsible
-      component: gts.frontx.uikit.base.component.v1~frontx.uikit.component.collapsible.v1~
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.collapsible.v1
   - situation: Primary navigation between sections that stays visible
     instead:
       target: Tabs
-      component: gts.frontx.uikit.base.component.v1~frontx.uikit.component.tabs.v1~
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.tabs.v1
 
 # The ONE authored statement of a nesting relationship: the compiler fills
 # every other contract's `mounted_in` from lists like this one, so the two
@@ -33,7 +33,7 @@ dont_use_when:
 accepts:
   content: specified
   components:
-    - gts.frontx.uikit.base.component.v1~frontx.uikit.component.accordion_item.v1~ # AccordionItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.accordion_item.v1 # AccordionItem
 
 invariants:
   - id: multiple-false-at-most-one-open

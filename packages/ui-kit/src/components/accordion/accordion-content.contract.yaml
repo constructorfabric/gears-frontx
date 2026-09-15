@@ -12,7 +12,7 @@ dont_use_when:
   - situation: Content that must stay visible regardless of any item's open state
     instead:
       target: Card
-      component: gts.frontx.uikit.base.component.v1~frontx.uikit.component.card.v1~
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1
 
 # `mounted_in` is filled from AccordionItem's own accepted components, not
 # authored here.

@@ -244,7 +244,7 @@ export interface InvariantLike {
 }
 
 export interface InvariantsDiff {
-  // An id present at the base ref and gone now: base.component.json's own
+  // An id present at the base ref and gone now: the invariant type's own
   // description states the promise directly ("never reused after removal"),
   // which was prose with nothing checking it. Treated as a compatibility
   // break for the same reason a removed prop is - a lint finding or an eval
@@ -493,11 +493,11 @@ export function decideCompat(input: CompatDecisionInput): CompatDecision {
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-fail
 }
 
-// Extracts the major version off the LAST segment of a component contract's
-// $id (…component.<name>.v<major>~ or, for a synthetic compat id, the same
-// with a trailing minor token: …v<major>.<minor>~). ids.ts's propsSchemaId
-// never emits a minor, so this only ever needs to look at the token
-// immediately before the trailing `~`.
+// Extracts the major version off the LAST segment of an identifier - a
+// component's own instance id (…_.<name>.v<major>), its props type id
+// (…props.<name>.v<major>~) or, for a synthetic compat id, the same with a
+// trailing minor token (…v<major>.<minor>~). ids.ts never emits a minor, so
+// this only ever needs to look at the token at the end.
 export function extractContractMajor(id: string): number {
   const match = /\.v(\d+)(?:\.\d+)?~?$/.exec(id);
   if (!match) {
@@ -552,8 +552,7 @@ const CONTRACTS_TOOLING_PREFIX = 'scripts/contracts/';
 // circular, since check.ts is what performs that check), its unit tests,
 // and prose. Everything else directly under scripts/contracts/ (compile.ts,
 // extract.ts, ids.ts, freshness.ts, testing.ts, check-lib.ts,
-// base.component.json, ui-component.meta.json, every committed element
-// surface) participates in producing or comparing EVERY enrolled component's
+// ui-component.meta.json, every committed element surface) participates in producing or comparing EVERY enrolled component's
 // compiled output, so a change to any of it invalidates the "only the
 // touched directory needs re-checking" assumption mapChangedFilesToComponents
 // makes (M6 - the review's own name for exactly this blind spot).

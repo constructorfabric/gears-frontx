@@ -13,19 +13,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
   addContractTypes,
-  buildGtsTraitsSchema,
-  buildMetamodel,
+  buildComponentType,
   compileContract,
-  compileInstance,
-  loadBaseSchema,
+  liftPropsSchema,
   registerContractTypes,
   resolveTargetExtraction,
   type CompiledContract,
-  type ContractInstance,
 } from '../../../scripts/contracts/compile';
 import { listExportedDeclarationNames } from '../../../scripts/contracts/extract';
-import { bareGtsId, componentTypeRef } from '../../../scripts/contracts/ids';
-import { applyContractTestTimeout, assertContractFreshness, validateContractTraits } from '../../../scripts/contracts/testing';
+import { componentRef } from '../../../scripts/contracts/ids';
+import { applyContractTestTimeout, assertContractFreshness, validateContractInstance } from '../../../scripts/contracts/testing';
 
 // resolveTargetExtraction and listExportedDeclarationNames below each build a
 // real TypeScript program - several seconds on a CI-class runner, comfortably
@@ -45,35 +42,26 @@ for (const stem of STEMS) assertContractFreshness(DIRECTORY, stem);
 interface CompiledUnit {
   stem: string;
   contract: CompiledContract;
-  // Everything the component means, read where it is emitted: once, in the
-  // contract's own x-gts-traits. The instance names the contract and repeats
-  // none of it.
-  meaning: CompiledContract['x-gts-traits'];
-  instance: ContractInstance;
 }
 
 const units: Record<string, CompiledUnit> = Object.fromEntries(
-  STEMS.map((stem) => {
-    const contract = compileContract(DIRECTORY, stem);
-    return [stem, { stem, contract, meaning: contract['x-gts-traits'], instance: compileInstance(DIRECTORY, stem) }];
-  }),
+  STEMS.map((stem) => [stem, { stem, contract: compileContract(DIRECTORY, stem) }]),
 );
-const metaSchema = buildMetamodel();
-const baseSchema = loadBaseSchema();
+const componentType = buildComponentType();
 
-describe('data-table: metamodel validity', () => {
-  it('every instance validates against the component metamodel', () => {
+describe('data-table: component type validity', () => {
+  it('both components validate against the component type', () => {
     const ajv = new Ajv2020();
     addContractTypes(ajv);
-    const validate = ajv.compile(metaSchema);
-    for (const { stem, instance } of Object.values(units)) {
-      expect(validate(instance), `${stem}: ${ajv.errorsText(validate.errors)}`).toBe(true);
+    const validate = ajv.compile(componentType);
+    for (const { stem, contract } of Object.values(units)) {
+      expect(validate(JSON.parse(JSON.stringify(contract))), `${stem}: ${ajv.errorsText(validate.errors)}`).toBe(true);
     }
   });
 
-  it("each instance's props_schema points at its own compiled contract", () => {
-    for (const { stem, instance, contract } of Object.values(units)) {
-      expect(instance.props_schema, stem).toBe(bareGtsId(contract.$id));
+  it('each one lifts a props type named after itself', () => {
+    for (const { stem, contract } of Object.values(units)) {
+      expect(liftPropsSchema(contract).$id, stem).toContain(`props.${stem.replace(/-/g, '_')}.v`);
     }
   });
 
@@ -81,7 +69,7 @@ describe('data-table: metamodel validity', () => {
     // DataTable is the one component that says "nothing": it renders its
     // Table internally from columns/data, so `text` would claim a slot that
     // does not exist and an absent statement would read as unconstrained.
-    expect(units[DIRECTORY].meaning.accepts).toEqual({ content: 'nothing' });
+    expect(units[DIRECTORY].contract.accepts).toEqual({ content: 'nothing' });
   });
 
   it('refuses accepted detail beside a content that already answered the question', () => {
@@ -90,18 +78,17 @@ describe('data-table: metamodel validity', () => {
     // rather than leaving a reader to resolve the contradiction.
     const ajv = new Ajv2020();
     addContractTypes(ajv);
-    const validate = ajv.compile(buildGtsTraitsSchema());
-    const { meaning } = units[DIRECTORY];
+    const validate = ajv.compile(componentType);
     const contradictory = {
-      ...meaning,
-      accepts: { content: 'nothing', components: [componentTypeRef('button', 1)] },
+      ...units[DIRECTORY].contract,
+      accepts: { content: 'nothing', components: [componentRef('button', 1)] },
     };
     expect(validate(JSON.parse(JSON.stringify(contradictory)))).toBe(false);
   });
 
   it('neither contract states a family - two independent exports, not a compound family', () => {
-    for (const { stem, meaning } of Object.values(units)) {
-      expect(meaning.family_membership, stem).toBeUndefined();
+    for (const { stem, contract } of Object.values(units)) {
+      expect(contract.family_membership, stem).toBeUndefined();
     }
   });
 });
@@ -148,12 +135,11 @@ describe('data-table: no forwarded surface for either contract', () => {
     // The absence is stated in the reference, not in the allOf: every
     // contract's allOf is the base type alone (the shared conformance suite
     // asserts that for all of them), so "no forwarded surface" is now
-    // `forwards_to` being absent from both halves of the artifact.
+    // `forwards_to` being absent from the document.
     const extraction = resolveTargetExtraction(DIRECTORY, DIRECTORY);
     expect(extraction.forwardedProps).toEqual([]);
     expect(extraction.elementKind).toBeUndefined();
-    expect(units[DIRECTORY].contract['x-gts-traits'].forwards_to).toBeUndefined();
-    expect(units[DIRECTORY].instance.forwards_to).toBeUndefined();
+    expect(units[DIRECTORY].contract.forwards_to).toBeUndefined();
   });
 
   it('DataTableSortButton composes Button by rendering it, not by extending its props type - also no forwarded surface', () => {
@@ -167,14 +153,13 @@ describe('data-table: no forwarded surface for either contract', () => {
     expect(extraction.forwardedProps).toEqual([]);
     expect(extraction.apiProps).toEqual([]);
     expect(extraction.elementKind).toBeUndefined();
-    expect(units['data-table-sort-button'].contract['x-gts-traits'].forwards_to).toBeUndefined();
-    expect(units['data-table-sort-button'].instance.forwards_to).toBeUndefined();
+    expect(units['data-table-sort-button'].contract.forwards_to).toBeUndefined();
   });
 });
 
 describe('data-table: growth surfaces', () => {
   it("declares columns as the slot a consumer fills", () => {
-    const slots = units[DIRECTORY].meaning.slots ?? [];
+    const slots = units[DIRECTORY].contract.slots ?? [];
     expect(slots.map((slot) => slot.prop)).toEqual(['columns']);
     expect(slots[0].typed_by).toContain('ColumnDef');
   });
@@ -183,7 +168,7 @@ describe('data-table: growth surfaces', () => {
     // The one behaviour a consumer switches on: `enableRowSelection` makes
     // rows selectable, and the checkbox column is a separate opt-in - which is
     // why the capability names the prop rather than a type.
-    const capabilities = units[DIRECTORY].meaning.capabilities ?? [];
+    const capabilities = units[DIRECTORY].contract.capabilities ?? [];
     expect(capabilities.map((capability) => capability.name)).toEqual(['row_selection']);
     expect(capabilities[0].enabled_by).toBe('enableRowSelection');
   });
@@ -192,7 +177,7 @@ describe('data-table: growth surfaces', () => {
     // Every other export of data-table.tsx that is not a React component: the
     // extractor generates no contract for them, and each is something a
     // consumer imports rather than a prop it passes.
-    const companions = units[DIRECTORY].meaning.companions ?? [];
+    const companions = units[DIRECTORY].contract.companions ?? [];
     expect(companions.map((companion) => companion.export).sort()).toEqual([
       'dataTableColumnHelper',
       'dataTableFeatures',
@@ -201,16 +186,16 @@ describe('data-table: growth surfaces', () => {
   });
 
   it('DataTableSortButton declares no growth surface of its own', () => {
-    const { meaning } = units['data-table-sort-button'];
-    expect(meaning.slots).toBeUndefined();
-    expect(meaning.capabilities).toBeUndefined();
-    expect(meaning.companions).toBeUndefined();
+    const { contract } = units['data-table-sort-button'];
+    expect(contract.slots).toBeUndefined();
+    expect(contract.capabilities).toBeUndefined();
+    expect(contract.companions).toBeUndefined();
   });
 });
 
 describe('data-table: what the schema cannot assert', () => {
   it("DataTable names every prop the schema cannot type, and its internal state as an invariant", () => {
-    const statements = units[DIRECTORY].meaning.props ?? {};
+    const statements = units[DIRECTORY].contract.props ?? {};
     for (const prop of ['columns', 'data', 'emptyMessage', 'nextLabel', 'previousLabel', 'selectionSummary']) {
       expect(Object.keys(statements), prop).toContain(prop);
     }
@@ -219,25 +204,25 @@ describe('data-table: what the schema cannot assert', () => {
     // property for a `props` statement to key on - it is a fact about the
     // component, which is exactly what an invariant is for (the dissolved
     // `untyped` catch-all's `about: behaviour` category).
-    const invariants = units[DIRECTORY].meaning.invariants;
+    const invariants = units[DIRECTORY].contract.invariants;
     expect(invariants.some((entry) => /internal, not props/.test(entry.text))).toBe(true);
   });
 
   it('DataTableSortButton states its mount point outside the kit, in mounted_in, and its Button composition as an unexposed part', () => {
-    const { meaning } = units['data-table-sort-button'];
+    const { contract } = units['data-table-sort-button'];
     // `mounted_in` already states the mount point outside the kit; there is
     // no second, separate statement of the same fact any more (the dissolved
     // `untyped` catch-all's `about: outside_mount` category).
-    const unexposedParts = meaning.unexposed_parts ?? [];
+    const unexposedParts = contract.unexposed_parts ?? [];
     expect(unexposedParts.some((entry) => /Button/.test(entry.part) && /internal composition/.test(entry.reason))).toBe(true);
-    const statements = meaning.props ?? {};
+    const statements = contract.props ?? {};
     expect(Object.keys(statements).sort()).toEqual(['children', 'column']);
     // A component reference covers kit-to-kit nesting only, and it is FILLED
     // rather than authored: a column's `header` render function is a TanStack
     // Table prop, not a kit component, so the mount point is stated as a
     // container outside the kit instead of naming a component that does not
     // exist.
-    const mounts = meaning.mounted_in ?? [];
+    const mounts = contract.mounted_in ?? [];
     expect(mounts.length).toBe(1);
     const [mount] = mounts;
     expect(mount.component).toBeUndefined();
@@ -249,55 +234,48 @@ describe('data-table: what the schema cannot assert', () => {
 describe('data-table in a GTS store', () => {
   function registeredStore(): GTS {
     const gts = new GTS();
-    gts.register(baseSchema);
-    // The vocabulary the base type's x-gts-traits-schema references: a store
-    // missing one fails every entity in it, not just the x-gts-traits block.
+    gts.register(componentType);
+    // The vocabulary the component type references: a store missing one
+    // cannot compile the type at all.
     registerContractTypes((entity) => gts.register(entity));
-    for (const { contract } of Object.values(units)) gts.register(contract);
+    for (const { contract } of Object.values(units)) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
     return gts;
   }
 
-  it('every contract validates as a derived GTS type', () => {
+  it('both components validate as instances of the component type', () => {
     const gts = registeredStore();
     for (const { stem, contract } of Object.values(units)) {
-      const result = gts.validateEntity(bareGtsId(contract.$id));
+      const result = gts.validateInstance(contract.$id);
       expect(result.ok, `${stem}: ${result.error}`).toBe(true);
-      expect(result.entity_type).toBe('schema');
     }
   });
 
-  it('fails when the parent type is not registered - negative control', () => {
+  it('fails when the component type is not registered - negative control', () => {
     const gts = new GTS();
-    for (const { contract } of Object.values(units)) gts.register(contract);
-    const result = gts.validateEntity(bareGtsId(units[DIRECTORY].contract.$id));
+    for (const { contract } of Object.values(units)) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
+    const result = gts.validateInstance(units[DIRECTORY].contract.$id);
     expect(result.ok).toBe(false);
-    expect(result.error).toContain('Parent schema not found');
+    expect(result.error).toContain('Schema not found');
   });
 
-  it("every contract's x-gts-traits validates against base.component.json's x-gts-traits-schema", () => {
-    // See button.contract.test.ts for which gts-ts API this goes through
-    // and why validateContractTraits (testing.ts) round-trips the contract
-    // through JSON first. Real here: DataTable declares growth surfaces but no
-    // family, DataTableSortButton sets neither - between the two contracts,
-    // every optional x-gts-traits absence shape this directory can produce is
-    // exercised.
+  it('both components validate against the committed component type', () => {
+    // Real here: DataTable declares growth surfaces but no family,
+    // DataTableSortButton sets neither - between the two, every optional
+    // absence shape this directory can produce is exercised, which is what
+    // validateContractInstance's JSON round-trip exists for.
     for (const { stem, contract } of Object.values(units)) {
-      const result = validateContractTraits(contract);
+      const result = validateContractInstance(contract);
       expect(result.ok, `${stem}: ${result.error}`).toBe(true);
     }
   });
 
-  it("rejects DataTable's contract when x-gts-traits carries a malformed dont_use_when.instead - negative control", () => {
-    const original = units[DIRECTORY].contract;
+  it('rejects DataTable when a dont_use_when.instead is malformed - negative control', () => {
     const corrupted: CompiledContract = {
-      ...original,
-      'x-gts-traits': {
-        ...original['x-gts-traits'],
-        dont_use_when: [{ situation: 'placeholder', instead: { target: 'anything', component: 'not-a-gts-id' } }],
-      },
+      ...units[DIRECTORY].contract,
+      dont_use_when: [{ situation: 'placeholder', instead: { target: 'anything', component: 'not-a-gts-id' } }],
     };
-    const result = validateContractTraits(corrupted);
+    const result = validateContractInstance(corrupted);
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/trait/i);
+    expect(result.error).toMatch(/pattern/i);
   });
 });

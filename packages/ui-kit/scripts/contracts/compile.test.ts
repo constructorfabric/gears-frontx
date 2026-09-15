@@ -21,10 +21,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildBaseSchema,
+  buildComponentType,
   buildFamilyRoster,
-  buildGtsTraitsSchema,
-  buildMetamodel,
   buildOverlaySchema,
   buildPropsAndRequired,
   buildVocabularyTypes,
@@ -36,7 +34,7 @@ import {
   sharedAttributeConflicts,
 } from './compile';
 import { extractComponent } from './extract';
-import { gtsToken, VENDOR_PACKAGE } from './ids';
+import { componentRefPrefix } from './ids';
 import { applyContractTestTimeout } from './testing';
 
 // This suite builds a real TypeScript program through extractComponent -
@@ -188,7 +186,7 @@ describe('describeUnexpressedType', () => {
 });
 
 
-describe('the vocabulary the base type references', () => {
+describe('the vocabulary the component type references', () => {
   const builtIds = new Set(buildVocabularyTypes().map((type) => String(type.$id)));
 
   function gtsRefs(node: unknown, found: string[] = []): string[] {
@@ -206,31 +204,33 @@ describe('the vocabulary the base type references', () => {
   }
 
   it('is complete: every reference resolves to a type the builder writes', () => {
-    // A field added to the x-gts-traits-schema, the overlay schema or the
-    // metamodel naming a type nobody builds would fail at validation time
-    // with "Unresolvable trait schema reference", far from the edit that
-    // caused it. This is that failure moved to the build.
+    // A field added to the component type or the overlay schema naming a type
+    // nobody builds would fail at validation time with an unresolvable
+    // reference, far from the edit that caused it. This is that failure moved
+    // to the build.
     const referenced = new Set([
-      ...gtsRefs(buildBaseSchema()),
-      ...gtsRefs(buildMetamodel()),
+      ...gtsRefs(buildComponentType()),
       ...gtsRefs(buildOverlaySchema()),
       ...gtsRefs(buildVocabularyTypes()),
     ]);
     expect([...referenced].filter((ref) => !builtIds.has(ref))).toEqual([]);
   });
 
-  it('widens a bare-$ref optional x-gts-traits field with anyOf, not a positional type/default', () => {
-    // No key order to get right: `anyOf: [{ $ref }, { type: "null" }]` says
-    // the value is either what the reference asserts or null regardless of
-    // where in the object it is written, unlike a `type` widened beside
-    // `$ref` (gts-ts merges a resolved reference in at the position of the
-    // `$ref` key, so a `type` written first used to be overwritten by the
-    // referenced type's own `object` and `family: null` silently stopped
-    // validating for every component that omits the field).
-    const family = (buildGtsTraitsSchema().properties as Record<string, Record<string, unknown>>).family_membership;
-    expect(family.anyOf).toEqual([{ $ref: expect.stringContaining('family_membership') }, { type: 'null' }]);
-    expect(family.type).toBeUndefined();
-    expect(family.default).toBeNull();
+  it('states an optional meaning field as the plain reference, with no null alternative and no default', () => {
+    // The nullable widening and the nine `default: null`s existed for one
+    // reason: gts-ts's trait machinery demanded a value or a schema default
+    // for every property an x-gts-traits-schema declared, regardless of
+    // `required`. A component is an instance of the component type now, and a
+    // property an instance does not carry is simply absent - so a field the
+    // vocabulary does not require is stated exactly as the vocabulary defines
+    // it.
+    const properties = buildComponentType().properties as Record<string, Record<string, unknown>>;
+    expect(properties.family_membership.$ref).toEqual(expect.stringContaining('family_membership'));
+    expect(properties.family_membership.anyOf).toBeUndefined();
+    expect(buildComponentType().required).not.toContain('family_membership');
+    for (const [name, definition] of Object.entries(properties)) {
+      expect(definition.default, `${name} carries a default`).toBeUndefined();
+    }
   });
 });
 
@@ -301,18 +301,35 @@ describe('collectOverlays / usableOverlays: a broken overlay is scoped by what i
   // throwing from it, and only a derivation whose own reference the broken
   // text happens to carry is the one usableOverlays can no longer answer.
   const brokenPath = '/kit/src/components/ghost/ghost.contract.yaml';
-  const accordionNeedle = `${VENDOR_PACKAGE}.component.${gtsToken('accordion')}.v`;
-  const buttonNeedle = `${VENDOR_PACKAGE}.component.${gtsToken('button')}.v`;
+  const accordionNeedle = componentRefPrefix('accordion');
+  const buttonNeedle = componentRefPrefix('button');
+  // The id the committed accordion contract really carries, read off disk
+  // rather than rebuilt from the same expression the assertions use: a needle
+  // and a fixture built from one string agree with each other whatever the
+  // grammar does, which is exactly how a silently-never-matching needle
+  // survived undetected.
+  const accordionRef = String(
+    (JSON.parse(readFileSync(join(process.cwd(), 'src/components/accordion/accordion.contract.json'), 'utf8')) as { $id: string }).$id,
+  );
   // An unterminated flow sequence: real YAML, invalid the moment the `]`
-  // never lands - and its text still carries accordion's own reference
-  // token, because a WIP `accepts.components` entry is exactly the kind of
-  // edit that gets interrupted mid-line.
+  // never lands - and its text still carries accordion's own reference,
+  // because a WIP `accepts.components` entry is exactly the kind of edit that
+  // gets interrupted mid-line.
   const broken = {
     directory: 'ghost',
     stem: 'ghost',
     path: brokenPath,
-    text: `component: ghost\naccepts:\n  components: [gts://${accordionNeedle}1~\n`,
+    text: `component: ghost\naccepts:\n  components: [${accordionRef}\n`,
   };
+
+  it('builds a needle the committed contract id really starts with, and no other component\'s', () => {
+    // The needle decides whether an unparseable overlay blocks a compile or
+    // merely warns, and nothing downstream notices when it stops matching -
+    // the refusal silently becomes a console.warn and the output is
+    // identical. So it is pinned to a real id here rather than to itself.
+    expect(accordionRef.startsWith(accordionNeedle)).toBe(true);
+    expect(accordionRef.startsWith(buttonNeedle)).toBe(false);
+  });
   // The real, committed button overlay: parseOverlay validates a full
   // component overlay against the overlay schema (intent, accepts,
   // attestations and the rest), so a source has to be a whole valid overlay

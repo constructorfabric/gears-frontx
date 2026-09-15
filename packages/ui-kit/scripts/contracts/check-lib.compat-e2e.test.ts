@@ -20,7 +20,6 @@ import { GTS } from '@globaltypesystem/gts-ts';
 import { describe, expect, it } from 'vitest';
 
 import { decideCompat, diffOwnPropsSchema, extractContractMajor, synthesizeVersionedId } from './check-lib';
-import { loadBaseSchema } from './compile';
 import { bareGtsId, propsSchemaId } from './ids';
 import { applyContractTestTimeout } from './testing';
 
@@ -35,17 +34,20 @@ applyContractTestTimeout();
 
 const COMPONENT = 'compat-e2e-fixture';
 
-// A minimal but real compiled-shape props schema: the same $id grammar and
-// single-parent allOf compile.ts emits for every real component, with a
-// hand-picked properties/required set per scenario below. No host-element
-// reference: these scenarios are about a contract's OWN props, and the
-// forwarded surface has its own comparison (check.e2e.test.ts).
+// A minimal but real lifted props type: the same $id grammar liftPropsSchema
+// stamps on for every real component, with a hand-picked properties/required
+// set per scenario below. STANDALONE, with no parent - a props surface has
+// nothing above it to derive from, and gts-ts's own backward check reads each
+// schema's raw `properties`/`required` without resolving a chain, so the five
+// verdicts pinned below are what they were when a near-empty parent was in
+// the picture. No host-element reference either: these scenarios are about a
+// component's OWN props, and the forwarded surface has its own comparison
+// (check.e2e.test.ts).
 function schema(major: number, properties: Record<string, { type?: string; enum?: string[]; description?: string }>, required: string[]) {
   return {
     $id: propsSchemaId(COMPONENT, major),
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     type: 'object' as const,
-    allOf: [{ $ref: 'gts://gts.frontx.uikit.base.component.v1~' }],
     properties,
     required,
     unevaluatedProperties: { 'x-uikit-classification': 'unchecked' } as const,
@@ -58,7 +60,6 @@ function schema(major: number, properties: Record<string, { type?: string; enum?
 // a silently weaker gate.
 function gtsBackwardDecision(old: ReturnType<typeof schema>, fresh: ReturnType<typeof schema>) {
   const gts = new GTS();
-  gts.register(loadBaseSchema());
   const oldSynthetic = { ...old, $id: synthesizeVersionedId(old.$id, 0) };
   const newSynthetic = { ...fresh, $id: synthesizeVersionedId(fresh.$id, 1) };
   gts.register(oldSynthetic);

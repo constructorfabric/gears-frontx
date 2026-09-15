@@ -32,7 +32,7 @@ dont_use_when:
   - situation: Toggling a persistent on/off state
     instead:
       target: Switch
-      component: gts.frontx.uikit.base.component.v1~frontx.uikit.component.switch.v1~
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.switch.v1
 
 # What may appear inside. `text` says a non-component React node may:
 # a string, a number, a fragment, a formatted inline element.

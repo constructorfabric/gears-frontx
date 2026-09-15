@@ -269,7 +269,7 @@ describe('decideCompat', () => {
   });
 
   it('fails on a removed invariant id, and reports a changed-text id informationally either way', () => {
-    // A removed id breaks the promise base.component.json's own description
+    // A removed id breaks the promise the invariant type's own description
     // states ("never reused after removal") - a lint finding or an eval
     // citing it now resolves to nothing, the same failure mode a removed
     // prop has for a caller.
@@ -316,20 +316,26 @@ describe('decideCompat', () => {
 });
 
 describe('extractContractMajor / synthesizeVersionedId', () => {
-  const id = 'gts.frontx.uikit.base.component.v1~frontx.uikit.component.button.v1~';
+  // The two identifiers a component has: the instance id its document carries
+  // (no trailing `~` - an instance is not a type) and the props type id
+  // lifted out of that document. The major is read off both; only the type
+  // id is what a compatibility comparison registers under a synthetic minor.
+  const instanceId = 'gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1';
+  const propsTypeId = 'gts.frontx.uikit.props.button.v1~';
 
-  it('reads the major off the trailing version segment', () => {
-    expect(extractContractMajor(id)).toBe(1);
+  it('reads the major off the trailing version segment of either identifier', () => {
+    expect(extractContractMajor(instanceId)).toBe(1);
+    expect(extractContractMajor(propsTypeId)).toBe(1);
   });
 
   it('synthesizes a distinct, still-major-1 id by inserting a minor before the trailing tilde', () => {
-    const synthetic = synthesizeVersionedId(id, 0);
-    expect(synthetic).toBe('gts.frontx.uikit.base.component.v1~frontx.uikit.component.button.v1.0~');
+    const synthetic = synthesizeVersionedId(propsTypeId, 0);
+    expect(synthetic).toBe('gts.frontx.uikit.props.button.v1.0~');
     expect(extractContractMajor(synthetic)).toBe(1);
   });
 
   it('produces distinct ids for distinct minors, so old and new never collide in one store', () => {
-    expect(synthesizeVersionedId(id, 0)).not.toBe(synthesizeVersionedId(id, 1));
+    expect(synthesizeVersionedId(propsTypeId, 0)).not.toBe(synthesizeVersionedId(propsTypeId, 1));
   });
 });
 
@@ -413,7 +419,6 @@ describe('touchesSharedContractTooling', () => {
       'scripts/contracts/extract.ts',
       'scripts/contracts/ids.ts',
       'scripts/contracts/ui-component.meta.json',
-      'scripts/contracts/base.component.json',
     ]) {
       expect(touchesSharedContractTooling([file])).toBe(true);
     }
@@ -460,13 +465,13 @@ describe('touchesSharedContractTooling', () => {
 
 describe('resolveRenameSource', () => {
   const baseContracts = [
-    { path: 'src/components/accordion/accordion-item.contract.json', id: 'gts://gts.frontx.uikit.base.component.v1~frontx.uikit.component.accordion_item.v1~', stem: 'accordion-item' },
+    { path: 'src/components/accordion/accordion-item.contract.json', id: 'gts://gts.frontx.uikit._.component.v1~frontx.uikit._.accordion_item.v1', stem: 'accordion-item' },
   ];
 
   it('prefers gits own rename detection when it named a source path', () => {
     const source = resolveRenameSource({
       currentPath: 'src/components/accordion/accordion-part.contract.json',
-      currentId: 'gts://gts.frontx.uikit.base.component.v1~frontx.uikit.component.accordion_part.v1~',
+      currentId: 'gts://gts.frontx.uikit._.component.v1~frontx.uikit._.accordion_part.v1',
       currentStem: 'accordion-part',
       renamedFrom: 'src/components/accordion/accordion-item.contract.json',
       baseContracts,
@@ -477,7 +482,7 @@ describe('resolveRenameSource', () => {
   it('falls back to matching by $id when git named no rename source', () => {
     const source = resolveRenameSource({
       currentPath: 'src/components/accordion-part/accordion-item.contract.json',
-      currentId: 'gts://gts.frontx.uikit.base.component.v1~frontx.uikit.component.accordion_item.v1~',
+      currentId: 'gts://gts.frontx.uikit._.component.v1~frontx.uikit._.accordion_item.v1',
       currentStem: 'accordion-item',
       baseContracts,
     });
@@ -487,7 +492,7 @@ describe('resolveRenameSource', () => {
   it('falls back to matching by stem when neither rename detection nor $id matched', () => {
     const source = resolveRenameSource({
       currentPath: 'src/components/accordion-v2/accordion-item.contract.json',
-      currentId: 'gts://gts.frontx.uikit.base.component.v1~frontx.uikit.component.accordion_item.v2~',
+      currentId: 'gts://gts.frontx.uikit._.component.v1~frontx.uikit._.accordion_item.v2',
       currentStem: 'accordion-item',
       baseContracts,
     });
@@ -497,7 +502,7 @@ describe('resolveRenameSource', () => {
   it('is undefined when nothing at the base ref matches by any signal - genuinely new', () => {
     const source = resolveRenameSource({
       currentPath: 'src/components/data-table/data-table.contract.json',
-      currentId: 'gts://gts.frontx.uikit.base.component.v1~frontx.uikit.component.data_table.v1~',
+      currentId: 'gts://gts.frontx.uikit._.component.v1~frontx.uikit._.data_table.v1',
       currentStem: 'data-table',
       baseContracts,
     });
@@ -564,12 +569,11 @@ describe('touchesAnyOverlay', () => {
     expect(touchesAnyOverlay(['src/components/accordion/accordion.contract.yaml'])).toBe(true);
   });
 
-  it('is false for the artifacts an overlay compiles into, and for anything else', () => {
+  it('is false for the artifact an overlay compiles into, and for anything else', () => {
     // The compiled JSON is downstream of the overlay, so it never widens on
     // its own - the guard is about what a change could still make stale.
     for (const file of [
       'src/components/accordion/accordion.contract.json',
-      'src/components/accordion/accordion.contract.instance.json',
       'src/components/accordion/accordion.tsx',
       'scripts/contracts/compile.ts',
     ]) {

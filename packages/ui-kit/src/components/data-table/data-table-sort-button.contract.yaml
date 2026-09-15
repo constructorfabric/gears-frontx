@@ -16,7 +16,7 @@ dont_use_when:
   - situation: A standalone action button with no column to sort
     instead:
       target: Button
-      component: gts.frontx.uikit.base.component.v1~frontx.uikit.component.button.v1~
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
 
 accepts:
   content: specified

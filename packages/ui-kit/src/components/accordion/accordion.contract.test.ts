@@ -10,25 +10,23 @@ import { describe, expect, it } from 'vitest';
 
 import {
   addContractTypes,
-  buildMetamodel,
+  buildComponentType,
   compileContract,
   contractMajor,
-  compileInstance,
   familyRoster,
-  loadBaseSchema,
+  liftPropsSchema,
   loadElementSurface,
   pascalCase,
   registerContractTypes,
   resolveTargetExtraction,
   type CompiledContract,
-  type ContractInstance,
 } from '../../../scripts/contracts/compile';
-import { bareGtsId, componentTypeRef, elementTypeRef } from '../../../scripts/contracts/ids';
+import { bareGtsId, componentRef, elementTypeRef } from '../../../scripts/contracts/ids';
 import {
   applyContractTestTimeout,
   assertContractFreshness,
   resolveComponentRef,
-  validateContractTraits,
+  validateContractInstance,
 } from '../../../scripts/contracts/testing';
 
 // assertContractFreshness below builds a real TypeScript program - several
@@ -48,66 +46,59 @@ for (const stem of ALL_STEMS) assertContractFreshness(DIRECTORY, stem);
 interface CompiledUnit {
   stem: string;
   contract: CompiledContract;
-  // Everything the component means, read where it is emitted: once, in the
-  // contract's own x-gts-traits. The instance names the contract and repeats
-  // none of it.
-  meaning: CompiledContract['x-gts-traits'];
-  instance: ContractInstance;
   elementSurface: Record<string, unknown>;
 }
 
 function compileUnit(stem: string): CompiledUnit {
   const extraction = resolveTargetExtraction(DIRECTORY, stem);
   const contract = compileContract(DIRECTORY, stem);
-  const instance = compileInstance(DIRECTORY, stem);
   // Every export here renders a real element (all four wrap a Base UI
   // primitive), so elementKind is never undefined - a defensive message
   // beats a bare "Cannot read properties of undefined" if that ever changes.
   if (!extraction.elementKind) {
     throw new Error(`${stem}: expected a host element kind, extraction resolved none`);
   }
-  return { stem, contract, meaning: contract['x-gts-traits'], instance, elementSurface: loadElementSurface(extraction.elementKind) };
+  return { stem, contract, elementSurface: loadElementSurface(extraction.elementKind) };
 }
 
 const units: Record<string, CompiledUnit> = Object.fromEntries(ALL_STEMS.map((stem) => [stem, compileUnit(stem)]));
-const baseSchema = loadBaseSchema();
-const metaSchema = buildMetamodel();
+const componentType = buildComponentType();
 
 // The ref every pointer at Accordion itself should agree on - built once so a
 // typo in one overlay shows up as a mismatch against this, not just against
 // itself.
-const ROOT_REF = componentTypeRef(DIRECTORY, contractMajor(DIRECTORY, DIRECTORY));
+const ROOT_REF = componentRef(DIRECTORY, contractMajor(DIRECTORY, DIRECTORY));
 
-describe('accordion family: metamodel validity', () => {
-  it('every instance validates against the component metamodel', () => {
+describe('accordion family: component type validity', () => {
+  it('every one of the four validates against the component type', () => {
     const ajv = new Ajv2020();
     addContractTypes(ajv);
-    const validate = ajv.compile(metaSchema);
-    for (const { stem, instance } of Object.values(units)) {
-      expect(validate(instance), `${stem}: ${ajv.errorsText(validate.errors)}`).toBe(true);
+    const validate = ajv.compile(componentType);
+    for (const { stem, contract } of Object.values(units)) {
+      expect(validate(JSON.parse(JSON.stringify(contract))), `${stem}: ${ajv.errorsText(validate.errors)}`).toBe(true);
     }
   });
 
-  it("each instance's props_schema points at its own compiled contract", () => {
-    for (const { stem, instance, contract } of Object.values(units)) {
-      expect(instance.props_schema, stem).toBe(bareGtsId(contract.$id));
+  it('each one lifts a props type named after itself', () => {
+    for (const { stem, contract } of Object.values(units)) {
+      expect(liftPropsSchema(contract).$id, stem).toContain(`props.${stem.replace(/-/g, '_')}.v`);
     }
   });
 });
 
 describe('accordion family: membership resolves', () => {
   it('the root names the family, calls itself root, and carries every part', () => {
-    const root = units[DIRECTORY].meaning.family_membership;
+    const root = units[DIRECTORY].contract.family_membership;
     expect(root?.name).toBe('accordion');
     expect(root?.role).toBe('root');
     expect(root?.members).toEqual(
-      PART_STEMS.map((stem) => componentTypeRef(stem, contractMajor(DIRECTORY, stem))).sort(),
+      PART_STEMS.map((stem) => componentRef(stem, contractMajor(DIRECTORY, stem))).sort(),
     );
   });
 
   it('every part names the same family, calls itself a part, and lists no members', () => {
     for (const stem of PART_STEMS) {
-      const membership = units[stem].meaning.family_membership;
+      const membership = units[stem].contract.family_membership;
       expect(membership?.name, stem).toBe('accordion');
       expect(membership?.role, stem).toBe('part');
       expect(membership?.members, stem).toBeUndefined();
@@ -121,7 +112,7 @@ describe('accordion family: membership resolves', () => {
     // runs. What is specific to a family is stronger: a part the root carries
     // must itself be described, or the family is a set of pointers into
     // components nobody has contracted.
-    for (const ref of units[DIRECTORY].meaning.family_membership?.members ?? []) {
+    for (const ref of units[DIRECTORY].contract.family_membership?.members ?? []) {
       const target = resolveComponentRef(ref);
       expect(target.contractId, `${ref}: ${target.stem} ships no compiled contract`).toBe(ref);
     }
@@ -133,7 +124,7 @@ describe('accordion family: membership resolves', () => {
     // makes `members` derivable at all.
     const roster = familyRoster('accordion');
     expect(roster.root).toBe(ROOT_REF);
-    expect(roster.parts).toEqual(PART_STEMS.map((stem) => componentTypeRef(stem, contractMajor(DIRECTORY, stem))).sort());
+    expect(roster.parts).toEqual(PART_STEMS.map((stem) => componentRef(stem, contractMajor(DIRECTORY, stem))).sort());
   });
 });
 
@@ -142,7 +133,7 @@ describe('accordion family: what nests where', () => {
   // that carries a component reference (not a container outside the kit,
   // which does not) - gathered once so the resolution check does not repeat
   // itself per unit.
-  function nestingRefs(meaning: CompiledContract['x-gts-traits']): string[] {
+  function nestingRefs(meaning: CompiledContract): string[] {
     const mounts = (meaning.mounted_in ?? [])
       .map((entry) => entry.component)
       .filter((ref): ref is string => ref !== undefined);
@@ -150,9 +141,9 @@ describe('accordion family: what nests where', () => {
   }
 
   it("the root accepts AccordionItem and nothing else", () => {
-    expect(units[DIRECTORY].meaning.accepts).toEqual({
+    expect(units[DIRECTORY].contract.accepts).toEqual({
       content: 'specified',
-      components: [componentTypeRef('accordion-item', contractMajor(DIRECTORY, 'accordion-item'))],
+      components: [componentRef('accordion-item', contractMajor(DIRECTORY, 'accordion-item'))],
     });
   });
 
@@ -163,12 +154,12 @@ describe('accordion family: what nests where', () => {
     // accepted it. Nothing in the four overlays writes a mount point, so the
     // two directions cannot disagree - what is asserted here is that the
     // derivation produces the family the overlays describe.
-    expect(units['accordion-item'].meaning.mounted_in).toEqual([
-      { container: pascalCase(DIRECTORY), component: componentTypeRef(DIRECTORY, contractMajor(DIRECTORY, DIRECTORY)) },
+    expect(units['accordion-item'].contract.mounted_in).toEqual([
+      { container: pascalCase(DIRECTORY), component: componentRef(DIRECTORY, contractMajor(DIRECTORY, DIRECTORY)) },
     ]);
     for (const stem of ['accordion-trigger', 'accordion-content'] as const) {
-      expect(units[stem].meaning.mounted_in, stem).toEqual([
-        { container: pascalCase('accordion-item'), component: componentTypeRef('accordion-item', contractMajor(DIRECTORY, 'accordion-item')) },
+      expect(units[stem].contract.mounted_in, stem).toEqual([
+        { container: pascalCase('accordion-item'), component: componentRef('accordion-item', contractMajor(DIRECTORY, 'accordion-item')) },
       ]);
     }
   });
@@ -176,7 +167,7 @@ describe('accordion family: what nests where', () => {
   it('gives the root no mount point at all - nothing in the kit mounts an Accordion', () => {
     // Absent, not an empty list: no contract accepts the root inside it, and
     // an empty list would read as "may be mounted nowhere".
-    expect(units[DIRECTORY].meaning.mounted_in).toBeUndefined();
+    expect(units[DIRECTORY].contract.mounted_in).toBeUndefined();
   });
 
   it('every nesting reference in the family points inside the family', () => {
@@ -186,8 +177,8 @@ describe('accordion family: what nests where', () => {
     // would make the parts independently mountable, which is exactly what a
     // compound component is not.
     const familyRefs = new Set(Object.values(units).map(({ contract }) => bareGtsId(String(contract.$id))));
-    for (const { stem, meaning } of Object.values(units)) {
-      for (const ref of nestingRefs(meaning)) {
+    for (const { stem, contract } of Object.values(units)) {
+      for (const ref of nestingRefs(contract)) {
         expect(familyRefs.has(ref), `${stem}: it names "${ref}", which is not a member of this family`).toBe(true);
       }
     }
@@ -205,11 +196,11 @@ describe('accordion family: what the schema cannot assert', () => {
     // property itself now (the dissolved `untyped` catch-all's `about: prop`
     // category), and emitted into that property's own description beside
     // the `TS:` text.
-    const statements = units[DIRECTORY].meaning.props ?? {};
+    const statements = units[DIRECTORY].contract.props ?? {};
     for (const prop of ['value', 'defaultValue', 'onValueChange']) {
       expect(Object.keys(statements), prop).toContain(prop);
     }
-    const properties = units[DIRECTORY].contract.properties;
+    const properties = units[DIRECTORY].contract.props_schema.properties;
     for (const prop of ['value', 'defaultValue']) {
       expect(properties[prop].type, prop).toBe('array');
       expect(properties[prop].items, prop).toBeUndefined();
@@ -223,15 +214,15 @@ describe('accordion family: what the schema cannot assert', () => {
     // horizontal orientation is not something this kit offers. Left out of
     // `properties`, and the reason is on the `withheld` entry rather than in a
     // second statement saying the same thing beside it.
-    const withheld = units[DIRECTORY].meaning.withheld ?? [];
+    const withheld = units[DIRECTORY].contract.withheld ?? [];
     expect(withheld.map((entry) => entry.prop)).toEqual(['orientation']);
     expect(withheld[0].reason).toContain('flex-direction: column');
-    expect(units[DIRECTORY].contract.properties).not.toHaveProperty('orientation');
-    expect(units[DIRECTORY].meaning.unexposed_parts ?? []).toEqual([]);
+    expect(units[DIRECTORY].contract.props_schema.properties).not.toHaveProperty('orientation');
+    expect(units[DIRECTORY].contract.unexposed_parts ?? []).toEqual([]);
   });
 
   it("the trigger's unexposed_parts entry documents the Header+Trigger composition", () => {
-    const unexposedParts = units['accordion-trigger'].meaning.unexposed_parts ?? [];
+    const unexposedParts = units['accordion-trigger'].contract.unexposed_parts ?? [];
     expect(unexposedParts.some((entry) => /Header/.test(entry.part) || /Header/.test(entry.reason))).toBe(true);
   });
 
@@ -239,9 +230,9 @@ describe('accordion family: what the schema cannot assert', () => {
     // The filing rule on the family: `multiple` is Base UI's own
     // AccordionRootProps and reaches the contract typed, while `children`
     // and `role` are React's div attributes and stay on the element surface.
-    expect(units[DIRECTORY].contract.properties.multiple).toEqual({ type: 'boolean' });
+    expect(units[DIRECTORY].contract.props_schema.properties.multiple).toEqual({ type: 'boolean' });
     for (const prop of ['children', 'role', 'onClick']) {
-      expect(units[DIRECTORY].contract.properties, prop).not.toHaveProperty(prop);
+      expect(units[DIRECTORY].contract.props_schema.properties, prop).not.toHaveProperty(prop);
     }
   });
 });
@@ -249,73 +240,68 @@ describe('accordion family: what the schema cannot assert', () => {
 describe('accordion family in a GTS store', () => {
   function registeredStore(): GTS {
     const gts = new GTS();
-    gts.register(baseSchema);
-    // The vocabulary the base type's x-gts-traits-schema references: a store
-    // missing one fails every entity in it, not just the x-gts-traits block.
+    gts.register(componentType);
+    // The vocabulary the component type references: a store missing one
+    // fails every entity in it rather than one field.
     registerContractTypes((entity) => gts.register(entity));
-    // The element surfaces this family's four contracts $ref. Three of the
+    // The element surfaces this family's four components name. Three of the
     // four render a <div> and the trigger renders a <button>, so there are
-    // two distinct schemas across four contracts - de-duplicated by $id,
+    // two distinct schemas across four components - de-duplicated by $id,
     // because registering the same one twice is not a fact about the family.
     const byId = new Map(Object.values(units).map(({ elementSurface }) => [String(elementSurface.$id), elementSurface]));
     for (const elementSurface of byId.values()) gts.register(elementSurface);
-    for (const { contract } of Object.values(units)) gts.register(contract);
+    for (const { contract } of Object.values(units)) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
     return gts;
   }
 
-  it('every contract in the family validates as a derived GTS type', () => {
+  it('every component in the family validates as an instance of the component type', () => {
     const gts = registeredStore();
     for (const { stem, contract } of Object.values(units)) {
-      const result = gts.validateEntity(bareGtsId(contract.$id));
+      const result = gts.validateInstance(contract.$id);
       expect(result.ok, `${stem}: ${result.error}`).toBe(true);
-      expect(result.entity_type).toBe('schema');
     }
   });
 
-  it('each part names the surface of the element it renders, in both halves of its artifact', () => {
-    // Agreement between the three things that could disagree: the element the
-    // extraction resolved, the reference the contract holds, and the reference
-    // the instance holds. Worth stating on this family in particular, because
-    // it is the one place in the kit where a family spans two elements - the
-    // trigger renders a <button>, the other three a <div> - so a family
-    // shares a root and not a surface.
-    for (const { stem, contract, instance, elementSurface } of Object.values(units)) {
-      const ref = bareGtsId(String(elementSurface.$id));
-      expect(contract['x-gts-traits'].forwards_to, stem).toBe(ref);
-      expect(instance.forwards_to, stem).toBe(ref);
+  it('each part names the surface of the element it renders', () => {
+    // Agreement between the two things that could disagree: the element the
+    // extraction resolved and the reference the component holds. Worth
+    // stating on this family in particular, because it is the one place in
+    // the kit where a family spans two elements - the trigger renders a
+    // <button>, the other three a <div> - so a family shares a root and not
+    // a surface.
+    for (const { stem, contract, elementSurface } of Object.values(units)) {
+      expect(contract.forwards_to, stem).toBe(bareGtsId(String(elementSurface.$id)));
     }
-    expect(units['accordion-trigger'].contract['x-gts-traits'].forwards_to).toBe(elementTypeRef('dom_button'));
-    expect(units[DIRECTORY].contract['x-gts-traits'].forwards_to).toBe(elementTypeRef('dom_div'));
+    expect(units['accordion-trigger'].contract.forwards_to).toBe(elementTypeRef('dom_button'));
+    expect(units[DIRECTORY].contract.forwards_to).toBe(elementTypeRef('dom_div'));
   });
 
-  it('fails when the parent type is not registered - negative control', () => {
+  it('fails when the component type is not registered - negative control', () => {
     const gts = new GTS();
     const byId = new Map(Object.values(units).map(({ elementSurface }) => [String(elementSurface.$id), elementSurface]));
     for (const elementSurface of byId.values()) gts.register(elementSurface);
-    for (const { contract } of Object.values(units)) gts.register(contract);
-    const result = gts.validateEntity(bareGtsId(units[DIRECTORY].contract.$id));
+    for (const { contract } of Object.values(units)) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
+    const result = gts.validateInstance(units[DIRECTORY].contract.$id);
     expect(result.ok).toBe(false);
-    expect(result.error).toContain('Parent schema not found');
+    expect(result.error).toContain('Schema not found');
   });
 
-  it("every contract's x-gts-traits validates against base.component.json's x-gts-traits-schema", () => {
-    // See button.contract.test.ts for which gts-ts API this goes through
-    // (GTS.validateEntity) and why the registration round-trips through
-    // JSON first (validateContractTraits, testing.ts) - real here because
-    // three of these four contracts (item, trigger, content) omit `family`
-    // and all four omit every growth surface, which is exactly the "genuinely
-    // absent, not merely undefined" case that round-trip matters for.
+  it('every component validates as an instance of the committed component type', () => {
+    // Real here because three of these four (item, trigger, content) omit
+    // `family_membership` and all four omit every growth surface, which is
+    // exactly the "genuinely absent, not merely undefined" case
+    // validateContractInstance's JSON round-trip exists for.
     for (const { stem, contract } of Object.values(units)) {
-      const result = validateContractTraits(contract);
+      const result = validateContractInstance(contract);
       expect(result.ok, `${stem}: ${result.error}`).toBe(true);
     }
   });
 
-  it("rejects the root's contract when x-gts-traits carries an unknown trait key - negative control", () => {
+  it('rejects the root when it carries an unknown key - negative control', () => {
     const root = units[DIRECTORY].contract;
-    const corrupted = { ...root, 'x-gts-traits': { ...root['x-gts-traits'], bogus_field: true } } as typeof root;
-    const result = validateContractTraits(corrupted);
+    const corrupted = { ...root, bogus_field: true } as typeof root;
+    const result = validateContractInstance(corrupted);
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/trait/i);
+    expect(result.error).toMatch(/additional propert/i);
   });
 });

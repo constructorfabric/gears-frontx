@@ -29,7 +29,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { OPEN_UNEVALUATED } from './compile';
 import { nearMissesIn, propsPassedTo } from './check-lib';
 import { runCompat, runEnrollment, runGuard, type CheckContext } from './check';
-import { BASE_TYPE_ID, elementTypeId, elementTypeRef, propsSchemaId } from './ids';
+import { componentRef, COMPONENT_TYPE_ID_BARE, elementTypeId, elementTypeRef, METAMODEL_VERSION } from './ids';
 import { applyContractTestTimeout } from './testing';
 
 // Each case builds a git repository and runs the real GTS store over it;
@@ -69,10 +69,11 @@ function pascalCase(stem: string): string {
     .join('');
 }
 
-// A minimal but real compiled-shape props schema: the same $id grammar and
-// single-parent allOf compile.ts emits for every real component, plus the
-// host-element reference `compat` reads the surface off - held in
-// x-gts-traits, bare, exactly as a real contract holds it.
+// A minimal but real compiled-shape document: the same instance $id grammar
+// compile.ts emits for every real component, its props surface carried under
+// `props_schema` with no identifier of its own, plus the host-element
+// reference `compat` reads the surface off - bare, exactly as a real
+// component holds it.
 function contractJson(
   component: string,
   options: {
@@ -85,16 +86,18 @@ function contractJson(
 ): Record<string, unknown> {
   const { major = 1, element, properties = {}, required = [], examples } = options;
   return {
-    $id: propsSchemaId(component, major),
-    $schema: 'https://json-schema.org/draft/2020-12/schema',
-    type: 'object',
-    allOf: [{ $ref: BASE_TYPE_ID }],
-    properties,
-    required,
-    unevaluatedProperties: OPEN_UNEVALUATED,
-    'x-gts-traits': {
-      ...(element === undefined ? {} : { forwards_to: elementTypeRef(element) }),
-      ...(examples === undefined ? {} : { examples }),
+    $id: componentRef(component, major),
+    gts_type: COMPONENT_TYPE_ID_BARE,
+    metamodel: METAMODEL_VERSION,
+    component,
+    ...(element === undefined ? {} : { forwards_to: elementTypeRef(element) }),
+    ...(examples === undefined ? {} : { examples }),
+    props_schema: {
+      title: `UiKit ${pascalCase(component)}`,
+      type: 'object',
+      properties,
+      required,
+      unevaluatedProperties: OPEN_UNEVALUATED,
     },
   };
 }
@@ -186,10 +189,10 @@ function createFixture(): Fixture {
         const path = join(root, 'src', 'components', directory, `${stem}.contract.json`);
         if (!existsSync(path)) return [];
         const contract = JSON.parse(readFileSync(path, 'utf8')) as {
-          properties?: Record<string, unknown>;
-          'x-gts-traits'?: { examples?: { good?: { title: string; code: string }[]; bad?: { title: string; code: string }[] } };
+          props_schema?: { properties?: Record<string, unknown> };
+          examples?: { good?: { title: string; code: string }[]; bad?: { title: string; code: string }[] };
         };
-        const examples = contract['x-gts-traits']?.examples;
+        const examples = contract.examples;
         const usages: { source: string; props: string[] }[] = [];
         for (const [kind, entries] of [
           ['good', examples?.good ?? []],
@@ -199,7 +202,7 @@ function createFixture(): Fixture {
             for (const props of propsPassedTo(entry.code, pascalCase(stem))) usages.push({ source: `examples.${kind} "${entry.title}"`, props });
           }
         }
-        return nearMissesIn(stem, usages, contract);
+        return nearMissesIn(stem, usages, contract.props_schema ?? {});
       },
       // No TypeScript source in a fixture repo, so nothing to build a program
       // over - the two export listings above answer from the overlays.
