@@ -654,28 +654,47 @@ YAML diff plus JSON diffs of the same fact" on every prop change - is
 accepted as the cost of keeping the compiled artifact the single normative
 one.
 
-**2. Vendor namespace stays `frontx.uikit`.** The harness reviewer proposed
-a base type id shaped `gts.frontx.design.uikit.component.v1~`; the harness
-author's reply explained the base type actually needed a segment
-`frontx.uikit.component.v1` could not supply either - gts-ts's own grammar
-requires 5-6 dot-tokens per segment, and that string is 4 - so the base type
-shipped as
-`gts.frontx.uikit.base.component.v1~`, one token longer, keeping
-`frontx.uikit` rather than `frontx.design.uikit`. No reply followed on the
-reviewer's side of that thread. The question stays open, not resolved by
-default: `ids.ts`'s `VENDOR_PACKAGE` constant is the one place a rename
-would land, and it is cheap now (three directories - button, accordion,
-data-table) and gets more expensive every additional component `covered.json`
-gains, since every id a renamed vendor segment appears in - base type,
-every props schema, every passthrough type, every instance - would move in
-the same commit. Get the call before coverage grows much further.
+**2. Vendor namespace stays `frontx.uikit`; the slot above `component` is
+empty.** The harness reviewer proposed a type id shaped
+`gts.frontx.design.uikit.component.v1~`. The reply at the time explained that
+the type needed a segment `frontx.uikit.component.v1` could not supply -
+gts-ts's grammar requires 5-6 dot-tokens per segment and that string is 4 -
+and shipped `gts.frontx.uikit.base.component.v1~` instead. That reply
+conflated two things: needing a fifth token, and needing the word `base`. The
+reviewer's proposal does supply a fifth token, legitimately.
 
-**3. Instance artifact kept.** See "The x-gts-traits hybrid" section above -
-the instance is what a catalog, plan validator or lint reads without JSON
-Schema machinery; the props schema is what a schema-aware validator or
-structured-output projection reads. Different readers, different costs;
-merging them would create a third, poorer-fit artifact rather than remove
-one.
+Settled now, with three candidates on the table:
+
+```
+(a) gts.frontx.uikit.base.component.v1~       base pads the slot
+(b) gts.frontx.uikit._.component.v1~          the slot carries nothing
+(c) gts.frontx.design.uikit.component.v1~     the slot carries uikit
+```
+
+(b) is adopted. `_` is what the GTS spec reserves for a namespace slot that is
+not applicable, and inside `uikit` there is no category above `component`: a
+word there either restates the package or names a position in a hierarchy,
+which is what made `base` wrong. (c) is declined: `uikit` is already the
+package token in every id in this repository and in the GTS plugin package, so
+(c) moves `VENDOR_PACKAGE` for every artifact here and there in exchange for a
+word that adds no category. gts-ts accepts all three - its segment-token
+grammar is `^[a-z_][a-z0-9_]*$` with no special case for `_` - so this is a
+modelling choice and not a constraint. One disclosure: every `_` in the spec
+corpus sits in a post-`~` segment, the way a component instance's own segment
+does here; `_` in the first absolute segment is legal and unprecedented.
+
+**3. Instance and props schema are ONE document.** The objection recorded
+here before - that merging them would create a third, poorer-fit artifact -
+was an argument against merging a DERIVED SCHEMA with a plain record. There is
+no derivation left to merge: a component is a well-known instance of the
+component type, so the record IS the component and the props schema is a part
+of it. One document carries the identity, the meaning, the extraction's own
+readings and the props surface; the props surface has no identifier inside it,
+and `liftPropsSchema` stamps its type id and schema dialect back on for the
+readers that need it as a schema. The reader the split was defended for - a
+catalog or a lint with no JSON Schema machinery - reads the same path it read
+before and now finds `forwards_to` and the metamodel version in the same file
+as everything else, rather than split across two.
 
 **4. The x-gts-traits hybrid is implemented; what ADR 0005's answer changes.**
 See "The x-gts-traits hybrid" section above for the split itself and the two
@@ -1570,3 +1589,70 @@ other claim as "not claimed" rather than "considered, not established".
 the mechanical gaps, the shapes. The three real components recompiled through
 the harness with no hand-edited JSON; the guarantees the harness gives are the
 same guarantees, checked more completely.
+
+## A component is an instance of the component type, not a type derived from one
+
+**Observed.** The base component type carried two halves whose relationship to
+a component ran in opposite directions. On the props side, every component's
+schema derived from a parent that declared no properties at all, so `Valid(base)`
+was "every object" and the one prop all seven contracts share, `className`, was
+declared seven times independently. On the meaning side, the same base type
+carried an `x-gts-traits-schema` and each contract's `x-gts-traits` block was
+checked against it - which is instantiation, not derivation. The type was marked
+`x-gts-abstract: true`, normatively "never instantiated": true of the empty half
+and false of the half where all the content was. Measured: 0 of 7 contracts
+declared an `x-gts-traits-schema` of their own, so the spec's own narrowing rule
+was unused, the chain was two deep everywhere, and nothing in the harness read
+the chain semantically. Its one live job was letting a reference wildcard-match
+"is a kit component", which works on an instance id just as well.
+
+**What the correction removes.** The trait machinery was the source of three
+workarounds, all of them now gone rather than relaxed. gts-ts demands a value or
+a schema `default` for every property an `x-gts-traits-schema` declares,
+regardless of that schema's own `required` list, so nine optional fields carried
+`default: null` and eight carried a widened `["...", "null"]` type; one field
+that was nothing but a `$ref` needed an `anyOf` wrapper because a `type` written
+beside a `$ref` depends on key order when the reference is merged in. All three
+were conditions of using traits, not statements about a component. The same is
+true of the closure: `validateEntityTraits` REQUIRES `additionalProperties: false`
+on every trait schema in the chain, so the closure that would block a second
+vendor from adding a field of its own was not a choice the kit could unmake
+while it used traits. Off that path it is an ordinary content-model decision,
+kept closed for now and reversible in one keyword.
+
+One correction to the argument as it was put: the conditional inside
+`accepted_content` was never vacuous - `accepts` is required, so it was live for
+all seven components. Only `family_membership`'s conditional was vacuous for a
+component that omits the field, and it stays vacuous under plain properties too,
+because a property an instance does not carry is not checked either way. The
+gain is the deleted wrapper and the deleted defaults, not a conditional switched
+back on.
+
+**What it costs.** Every identifier in the kit moves, which is why it was done
+now: nothing outside this repository reads these files, so the churn is free
+today and never cheaper. The component type is `gts.frontx.uikit._.component.v1~`;
+a component is the instance `gts.frontx.uikit._.component.v1~frontx.uikit._.<name>.v<major>`,
+and that is also what every reference to a component carries; the props surface
+lifted out of a document is `gts.frontx.uikit.props.<name>.v<major>~`, a
+standalone type with no parent. Element and vocabulary ids are unchanged.
+
+**One silent failure the move exposed.** `deriveMountPoints` decides whether an
+unparseable overlay blocks a compile or merely warns by asking, textually,
+whether the file mentions this component - and it built that needle by hand from
+a bare segment. Under the new grammar the needle would never have matched: a
+hard refusal would have become a `console.warn`, with no output change and
+freshness still green. The test covering it could not have caught the drift
+either, because it rebuilt the needle from the same expression it asserted on
+and built its fixture from that string as well. The needle is now
+`componentRefPrefix` in `ids.ts`, imported by both, and the test pins it against
+the id a committed contract really carries.
+
+**Effort.** One pass over the harness: `ids.ts` and the component type, the
+compiler and the merged document, the conformance suite and the tests, then the
+feature spec and these notes. Seven `.contract.instance.json` files and
+`base.component.json` are deleted, `buildBaseSchema`, `buildGtsTraitsSchema` and
+`nullableGtsTraitsProperty` with them. The genuinely new code is the six-line
+lift. The five pinned compatibility verdicts are unchanged, which is the
+measurement that mattered: gts-ts's `checkBackwardCompatibility` reads each
+schema's raw `properties` and never resolves a chain, so a standalone props type
+and a derived one compare identically.
