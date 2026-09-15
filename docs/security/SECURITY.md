@@ -559,4 +559,4 @@ The following areas have been identified for future hardening:
 
 ---
 
-*This document is maintained alongside the codebase. For the overall system design, see [`architecture/DESIGN.md`](../../architecture/DESIGN.md). For architecture decisions, see [`architecture/ADR/`](../../architecture/ADR/). For the companion backend security document, see [cyberfabric-core/docs/security/SECURITY.md](https://github.com/cyberfabric/cyberfabric-core/blob/main/docs/security/SECURITY.md).*
+*This document is maintained alongside the codebase. For the overall system design, see [`architecture/DESIGN.md`](../../architecture/DESIGN.md). For architecture decisions, see [`architecture/ADR/`](../../architecture/ADR/). For the companion backend security document, see [gears-rust/docs/security/SECURITY.md](https://github.com/constructorfabric/gears-rust/blob/main/docs/security/SECURITY.md).*
