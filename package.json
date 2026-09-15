@@ -31,6 +31,7 @@
     "policy:version-bump-on-change": "node scripts/version-bump-on-change-check.mjs",
     "policy:ecosystem-pin-drift": "node scripts/ecosystem-pin-drift-check.mjs",
     "policy:mfes-import-boundary": "node scripts/mfes-import-boundary-check.mjs",
+    "policy:contracts": "node scripts/contracts-policy.mjs",
     "type-check": "npm run type-check:all",
     "type-check:host": "tsc --noEmit",
     "type-check:all": "npm run type-check:host && npm run type-check:packages && npm run type-check:packages:test && npm run type-check:scripts",

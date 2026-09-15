@@ -1,0 +1,265 @@
+{
+  "$id": "gts://gts.frontx.uikit._.component.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UiKit component",
+  "description": "The type every kit component is a well-known INSTANCE of. A component is not a type derived from an abstract component type - that relationship ran in opposite directions for the two halves of the old split artifact, and only one of them was real - so this type carries the whole content model directly: the instance's identity, the version of the vocabulary it was compiled against, everything asserted about the component, what the extraction read off its source, and its props surface. A field whose shape another type owns is a reference to that type (gts.frontx.uikit.vocabulary.*) rather than an inline definition; only a sentence, a capped list of strings and the one reference gts-ts's own walk must find directly on a document property stay inline. See the domain model in the package DESIGN for how they relate.",
+  "type": "object",
+  "properties": {
+    "$id": {
+      "type": "string",
+      "pattern": "^gts\\.frontx\\.uikit\\._\\.component\\.v1~frontx\\.uikit\\._\\.[a-z_][a-z0-9_]*\\.v\\d+$",
+      "description": "GTS instance id of this component: the component type, then the component's own instance segment (frontx.uikit._.<name>.v<major>), with no trailing `~` - an instance is not a type. The ONE identifier this document carries; the props surface it holds gets its own stamped on when something registers or diffs it."
+    },
+    "gts_type": {
+      "type": "string",
+      "x-gts-ref": "/$id",
+      "description": "GTS type id of the component type - what makes this document a typed value rather than a bare JSON record."
+    },
+    "metamodel": {
+      "const": "1.0.0",
+      "description": "Version of the overlay vocabulary the compiler emitted. Checked as a const, not a free string with minLength: a contract compiled against a different metamodel version must fail loudly, not pass silently with a stale value."
+    },
+    "component": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Kit directory name under src/components/, or - for one export of a compound component - that export's own kebab-case stem, which shares the directory's name as a prefix (accordion-item lives in src/components/accordion/)."
+    },
+    "forwards_to": {
+      "type": "string",
+      "pattern": "^gts\\.frontx\\.uikit\\.element\\.[a-z_][a-z0-9_]*\\.v\\d+~$",
+      "x-gts-ref": "gts.frontx.uikit.element.*",
+      "description": "GTS id of the hand-written surface for the host element this component forwards to. HELD as an id, not composed into the schema as a second parent: a contract derives from ONE type, the abstract component type, and a surface shared kit-wide by every component that forwards to the same element is not a second thing this component IS. Whoever needs the surface resolves it through this reference and applies it beside the contract; nothing in the props schema merges it in. `x-gts-ref` declares what the value must resolve to; `type` and `pattern` are what enforce it, because gts-ts strips x-gts-ref before validating. Absent entirely for a component that forwards to no host element of its own - DataTable, which renders its Table internally and correctly declares none.",
+      "$comment": "The element token, not the tag: `dom_button` for a <button>, normalized by domElementToken - the same token the committed file under scripts/contracts/elements/ is named by, so the reference and the file name are one identity. Named `forwards_to` rather than `host_element`: the value is the element surface the component FORWARDS TO, and a field named for the element read as a bug on a component (DataTable) that has one and declares none."
+    },
+    "intent": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One sentence, the selection-card headline: why the component exists."
+    },
+    "typical_uses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "maxItems": 3,
+      "description": "A handful of archetypal scenarios this component fits - not an exhaustive selection rule, and not claimed to be one. Capped at 3 so the field stays a fast read; the component's full API is the actual source of truth for what it can do."
+    },
+    "dont_use_when": {
+      "type": "array",
+      "items": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.dont_use_when_rule.v1~"
+      },
+      "minItems": 1,
+      "description": "A \"don't\" without an alternative leaves the agent with no next move, so every entry carries a recommendation: what to use instead in the words a reader acts on, plus the kit component to resolve when the kit ships one. At least one entry is required for the same reason: a component with nothing it should not be used for would be a modeling gap, not a fact worth leaving unstated."
+    },
+    "accepts": {
+      "$ref": "gts://gts.frontx.uikit.vocabulary.accepted_content.v1~"
+    },
+    "mounted_in": {
+      "type": "array",
+      "items": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.mount_point.v1~"
+      },
+      "minItems": 1,
+      "description": "Where this component may be mounted. The component references here are FILLED by the compiler from every other contract's `accepts.components`, so the two directions of one nesting relationship cannot disagree; a container outside the kit is authored, because nothing in the kit knows about it. Absent entirely when there is neither - nothing in the kit mounts an Accordion, and an empty list would read as \"may be mounted nowhere\"."
+    },
+    "invariants": {
+      "type": "array",
+      "items": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.invariant.v1~"
+      }
+    },
+    "anti_patterns": {
+      "type": "array",
+      "items": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.anti_pattern.v1~"
+      },
+      "$comment": "`do_instead` here is prose about this component's own API, not a component type ref - the fix stays inside the component. `instead` stays the word for a DIFFERENT component (dont_use_when's recommendation)."
+    },
+    "deprecations": {
+      "$ref": "gts://gts.frontx.uikit.vocabulary.deprecations.v1~"
+    },
+    "attestations": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.attestation.v1~"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "required": [
+        "a11y",
+        "rtl"
+      ],
+      "description": "What this contract claims about itself, one entry per claim. `a11y` and `rtl` are the kit's own core claims and every component states both; a claim beyond those is present only when the component actually makes it - its absence means \"not claimed\", which is a different fact from an attestation whose outcome is `unknown` (\"considered, not established\"). Open beyond the two required keys by construction - the claim names are the kit's own and grow with it - which is why the attestation type is referenced from additionalProperties rather than from a fixed property list, and why no key inside it is reserved for anything else."
+    },
+    "props": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.prop_statement.v1~"
+      },
+      "propertyNames": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.prop_name.v1~"
+      },
+      "description": "What each property that reaches this contract asserting nothing (or only part of its shape) actually states, and why nothing checks it further - a generic, a function, a live object, a React node. Absent for a component whose whole surface the provider-safe subset can express, which no described component is today."
+    },
+    "unexposed_parts": {
+      "type": "array",
+      "items": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.unexposed_part.v1~"
+      },
+      "minItems": 1,
+      "description": "Internal structure of the primitive underneath that this kit does not expose as a component of its own, each with why. Absent for a component that composes nothing hidden, which is most of the kit."
+    },
+    "examples": {
+      "type": "object",
+      "properties": {
+        "good": {
+          "type": "array",
+          "items": {
+            "$ref": "gts://gts.frontx.uikit.vocabulary.example_pair.v1~"
+          },
+          "minItems": 1
+        },
+        "bad": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "gts://gts.frontx.uikit.vocabulary.example_pair.v1~"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "why"
+                ]
+              }
+            ]
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "good",
+        "bad"
+      ],
+      "additionalProperties": false
+    },
+    "family_membership": {
+      "$ref": "gts://gts.frontx.uikit.vocabulary.family_membership.v1~",
+      "description": "Absent entirely for a component that is part of no family - Button, most of the kit."
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.slot.v1~"
+      },
+      "minItems": 1,
+      "description": "Props through which the consumer supplies content, declared at the component level as the kit's own authored extension surface - regardless of whether the schema happens to be able to type them. Absent for a component with no such surface - Button, Accordion, most of the kit. The complement in x-uikit.partially_typed_props is the machine's own list of every property that asserts nothing (or only part of its shape), with the checker's printed type; this is the subset the kit deliberately declares as extension surface, which a consumer acts on."
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.capability.v1~"
+      },
+      "minItems": 1,
+      "description": "Behaviours a consumer turns on, each with the prop that turns it on. Absent for a component with nothing to turn on."
+    },
+    "companions": {
+      "type": "array",
+      "items": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.companion.v1~"
+      },
+      "minItems": 1,
+      "description": "Exports beside the component that a consumer builds its input with. Absent for a component whose module exports nothing but the component itself, which is most of the kit."
+    },
+    "withheld": {
+      "type": "array",
+      "description": "Props of the primitive underneath that this kit does not advertise, so they are left out of the contract's own properties - each with the reason it is not advertised, because a bare name leaves every later reader to rediscover why the prop is gone. Every `prop` is checked against the extracted prop list - a name the primitive no longer declares fails the compile rather than withholding nothing - and may not name a prop the component declares itself, which would be the overlay asking the compiler to drop what the source states. Absent for a component that advertises everything it forwards, which is most of them.",
+      "items": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.withheld_prop.v1~"
+      },
+      "minItems": 1
+    },
+    "x-uikit": {
+      "type": "object",
+      "description": "What the SOURCE says, none of it authored and none of it a claim anybody made: the props whose type no JSON Schema shape can express, with the checker's own printed type text; where this component's variant axes come from; and every fact the extraction could not read. Separated from the meaning fields beside it because those are assertions and these are readings.",
+      "properties": {
+        "partially_typed_props": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "typeText": {
+                "type": "string",
+                "minLength": 1
+              },
+              "optional": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "typeText",
+              "optional"
+            ],
+            "additionalProperties": false
+          },
+          "propertyNames": {
+            "$ref": "gts://gts.frontx.uikit.vocabulary.prop_name.v1~"
+          },
+          "description": "Each DECLARED prop whose shape the props surface does not state in full, with the type the checker printed for it. The kit's own declared props and nothing else: a prop of the primitive underneath that asserts nothing is documented by its own description and its own `props` statement instead."
+        },
+        "variant_sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Where this component's variant axes were read from, one label per resolved cva(...) call."
+        },
+        "cannot_extract": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Every fact the extraction could not read, in its own words. Recorded rather than dropped: a gap nobody can see is a gap nobody closes."
+        }
+      },
+      "required": [
+        "partially_typed_props",
+        "variant_sources",
+        "cannot_extract"
+      ],
+      "additionalProperties": false
+    },
+    "props_schema": {
+      "type": "object",
+      "description": "The component's props surface: a standalone JSON Schema body carrying the variant axes, the props the component declares itself and the props the primitive states for the part it wraps. It has no `$id` or `$schema` of its own here - liftPropsSchema stamps both back on (gts.frontx.uikit.props.<name>.v<major>~) at the moment something registers or diffs it, so this document holds one identifier at one depth. Left OPEN: `unevaluatedProperties` carries the annotation `x-uikit-classification: unchecked`, because a schema cannot tell a typo'd kit prop from an attribute this harness has not classified.",
+      "required": [
+        "title",
+        "type",
+        "properties",
+        "required",
+        "unevaluatedProperties"
+      ]
+    }
+  },
+  "required": [
+    "$id",
+    "gts_type",
+    "metamodel",
+    "component",
+    "intent",
+    "typical_uses",
+    "dont_use_when",
+    "accepts",
+    "invariants",
+    "anti_patterns",
+    "deprecations",
+    "attestations",
+    "examples",
+    "x-uikit",
+    "props_schema"
+  ],
+  "additionalProperties": false
+}
