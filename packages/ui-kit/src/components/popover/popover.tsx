@@ -31,6 +31,10 @@ export interface PopoverContentProps
       | 'positionMethod'
       | 'collisionBoundary'
       | 'collisionPadding'
+      // The element the popup positions against, when that is not the
+      // trigger: a cell in a grid the trigger sits above, a virtual
+      // element at a pointer position, a rect the caller computes.
+      | 'anchor'
     > {
   className?: string;
   /**
@@ -49,6 +53,7 @@ export function PopoverContent({
   sideOffset = 4,
   align = 'center',
   alignOffset = 0,
+  anchor,
   positionMethod,
   collisionBoundary,
   collisionPadding,
@@ -61,6 +66,7 @@ export function PopoverContent({
         sideOffset={sideOffset}
         align={align}
         alignOffset={alignOffset}
+        anchor={anchor}
         positionMethod={positionMethod}
         collisionBoundary={collisionBoundary}
         collisionPadding={collisionPadding}

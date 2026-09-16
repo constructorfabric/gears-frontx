@@ -99,6 +99,24 @@ export default function DropdownMenuExample() {
         </DropdownMenu>
       </Section>
 
+      {/* The drawn leading placement: the check moves to a reserved 32px
+          slot on the leading edge and the checked row takes a fill. */}
+      <Section title="Radio group, leading indicator">
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="outline">Open</Button>} />
+          <DropdownMenuContent>
+            <DropdownMenuRadioGroup value={view} onValueChange={setView}>
+              <DropdownMenuRadioItem indicatorSide="start" value="list">
+                List view
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem indicatorSide="start" value="grid">
+                Grid view
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </Section>
+
       <Section title="Submenu">
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="outline">Open</Button>} />

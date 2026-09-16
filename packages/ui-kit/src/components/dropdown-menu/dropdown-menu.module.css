@@ -243,6 +243,32 @@
   justify-content: center;
 }
 
+/*
+ * The drawn leading placement (DropdownMenuRadioItemProps.indicatorSide).
+ * The trailing one above reserves --space-8 on the end edge and parks the
+ * check there; this mirrors exactly that, reserving the same slot on the
+ * start edge and pulling the trailing inset back to the item's own
+ * --space-2. A checked row also takes the secondary pairing, the role the
+ * spec paints a selected control from.
+ */
+.radioItem.indicatorSideStart {
+  padding-inline: var(--space-8) var(--space-2);
+}
+
+.radioItem.indicatorSideStart > .itemIndicator {
+  inset-inline-end: auto;
+  inset-inline-start: var(--space-2);
+}
+
+/* Declared after the highlight rule above, so a checked row keeps its own
+ * fill while the pointer is on it. */
+.radioItem.indicatorSideStart[data-checked],
+.radioItem.indicatorSideStart[data-checked]:focus,
+.radioItem.indicatorSideStart[data-checked][data-highlighted] {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
 .separator {
   pointer-events: none;
   margin: var(--space-1) calc(-1 * var(--space-1));

@@ -165,15 +165,31 @@ export function DropdownMenuRadioGroup({ className, ...props }: DropdownMenuRadi
 export interface DropdownMenuRadioItemProps
   extends Omit<MenuPrimitive.RadioItem.Props, 'className'> {
   className?: string;
+  /**
+   * Which edge of the row holds the check. `'end'` is the trailing slot
+   * this menu has always drawn; `'start'` is the drawn leading placement,
+   * which reserves a 32px slot on the leading edge and fills a checked row
+   * from the secondary role.
+   * @default 'end'
+   */
+  indicatorSide?: 'end' | 'start';
 }
 
 export function DropdownMenuRadioItem({
   className,
   children,
+  indicatorSide = 'end',
   ...props
 }: DropdownMenuRadioItemProps) {
   return (
-    <MenuPrimitive.RadioItem className={cx(styles.radioItem, className)} {...props}>
+    <MenuPrimitive.RadioItem
+      className={cx(
+        styles.radioItem,
+        indicatorSide === 'start' && styles.indicatorSideStart,
+        className,
+      )}
+      {...props}
+    >
       {children}
       <MenuPrimitive.RadioItemIndicator className={styles.itemIndicator}>
         <CheckIcon className={styles.svgIcon} />

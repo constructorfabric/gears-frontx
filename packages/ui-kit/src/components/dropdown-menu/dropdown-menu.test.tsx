@@ -306,3 +306,73 @@ describe('DropdownMenu destructive item paint', () => {
     expect(highlighted?.body).not.toContain('--destructive');
   });
 });
+
+/*
+ * The drawn leading indicator placement. jsdom computes no layout, so what
+ * is asserted is the class reaching the row and the mirrored insets in the
+ * stylesheet, which is where the reserved slot actually lives.
+ */
+describe('DropdownMenuRadioItem indicator side', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'dropdown-menu.module.css'), 'utf8'),
+  );
+
+  function declared(selector: string, prop: string) {
+    const rule = rules.find(
+      (candidate) => candidate.selector.replace(/\s*,\s*/g, ',').replace(/\s+/g, ' ').trim() === selector,
+    );
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('leaves the check on the trailing edge by default', () => {
+    render(
+      <DropdownMenu defaultOpen>
+        <DropdownMenuTrigger>Open</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuRadioGroup defaultValue="list">
+            <DropdownMenuRadioItem value="list">List</DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+    expect(screen.getByRole('menuitemradio', { name: 'List' }).className).not.toContain(
+      styles.indicatorSideStart,
+    );
+  });
+
+  it('moves the check to the leading slot on request', () => {
+    render(
+      <DropdownMenu defaultOpen>
+        <DropdownMenuTrigger>Open</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuRadioGroup defaultValue="list">
+            <DropdownMenuRadioItem indicatorSide="start" value="list">
+              List
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+    expect(screen.getByRole('menuitemradio', { name: 'List' }).className).toContain(
+      styles.indicatorSideStart,
+    );
+  });
+
+  it('mirrors the trailing insets rather than writing a second idiom', () => {
+    // The trailing placement reserves --space-8 on the end edge; the
+    // leading one reserves the same slot on the start edge and pulls the
+    // trailing inset back to the item's own --space-2.
+    expect(declared('.radioItem.indicatorSideStart', 'padding-inline')).toBe(
+      'var(--space-8) var(--space-2)',
+    );
+    expect(declared('.radioItem.indicatorSideStart > .itemIndicator', 'inset-inline-start')).toBe(
+      'var(--space-2)',
+    );
+    expect(
+      declared(
+        '.radioItem.indicatorSideStart[data-checked],.radioItem.indicatorSideStart[data-checked]:focus,.radioItem.indicatorSideStart[data-checked][data-highlighted]',
+        'background-color',
+      ),
+    ).toBe('var(--secondary)');
+  });
+});

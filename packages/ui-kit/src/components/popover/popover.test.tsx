@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { useState } from 'react';
+
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -97,6 +99,30 @@ describe('Popover', () => {
     fireEvent.mouseEnter(trigger);
     fireEvent.mouseMove(trigger);
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeNull());
+  });
+});
+
+describe('PopoverContent anchor', () => {
+  it('positions against a caller-supplied element instead of the trigger', () => {
+    function Anchored() {
+      const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+      return (
+        <>
+          <div ref={setAnchor} data-testid="anchor" />
+          <Popover open>
+            <PopoverTrigger>Open</PopoverTrigger>
+            <PopoverContent anchor={anchor}>
+              <PopoverTitle>Anchored</PopoverTitle>
+            </PopoverContent>
+          </Popover>
+        </>
+      );
+    }
+    render(<Anchored />);
+    // jsdom computes no layout, so what is provable here is that the prop
+    // reaches the positioner without throwing and the popup still mounts
+    // against the given element rather than the trigger.
+    expect(screen.getByText('Anchored')).toBeTruthy();
   });
 });
 

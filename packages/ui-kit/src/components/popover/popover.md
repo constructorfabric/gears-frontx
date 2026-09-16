@@ -50,6 +50,7 @@ on hover, e.g. an info icon whose only job is revealing more text), `delay`
 | `align` | `start` \| `center` \| `end` | `center` |
 | `sideOffset` / `alignOffset` | `number` | `4` / `0` |
 | `container` | DOM node to portal the popup into | `<body>` |
+| `anchor` | the element or virtual element the popup positions against | the trigger |
 | `positionMethod` | `absolute` \| `fixed` — pass `fixed` when the trigger sits inside a `transform`/`filter` container | `absolute` |
 | `collisionBoundary` / `collisionPadding` | see Base UI Popover.Positioner — bound and pad the flip/shift collision logic | viewport / `5` |
 | `className` | `string` — merged after the kit class | — |

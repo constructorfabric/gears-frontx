@@ -68,6 +68,12 @@ selection).
 item — both leave `closeOnClick` at Base UI's default of `false` so the
 menu stays open after a toggle.
 
+`DropdownMenuRadioItem`:
+
+| Prop | Type | Default |
+|------|------|---------|
+| `indicatorSide` | `'end'` \| `'start'` - start reserves a 32 px leading slot and fills the checked row | `'end'` |
+
 `DropdownMenuTrigger` is an unstyled pass-through (native `<button>`
 semantics) — compose it with `Button` via its `render` prop for a
 styled trigger, same as `DialogTrigger`.
