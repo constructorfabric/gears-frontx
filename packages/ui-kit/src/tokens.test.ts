@@ -403,9 +403,10 @@ describe('theme tokens', () => {
     // overrides colors, never shape or scale (see the comment on theme.css's
     // `:root` invariants block).
     const THEME_INVARIANT_TOKENS = new Set([
-      // Scrim behind modal-style popups. A dark tint dims the page in both
-      // light and dark UI; --foreground would flip to near-white in dark
-      // mode and brighten instead of dim (see the --overlay comment in
+      // Scrim behind modal-style popups: the design spec's --foreground at
+      // 48%. Invariant because it is declared once and resolves per theme
+      // through the role it references, which also means it veils white in
+      // dark and near-black in light (see the --overlay comment in
       // theme.css).
       '--overlay',
       // Popover chrome (ring + drop shadow) shared by every card-like

@@ -578,11 +578,13 @@ Architecture's build bullet).
    size. What this reversed in the passes above: the four status-color
    corrections (`--success`, `--warning` and `--danger` are back on the
    drawn hexes, which puts `--danger` and `--destructive` on one value in
-   both themes while keeping both roles) and the `--muted` / `--sidebar`
-   step-off. The guards that pinned those deviations were replaced with
-   guards that pin the drawn values, so the next in-code "fix" of a
-   contrast number fails a test instead of shipping. Contrast findings go
-   to the designer list.
+   both themes while keeping both roles), the `--muted` / `--sidebar`
+   step-off, and the fixed dark scrim: `--overlay` is the drawn
+   `--foreground` at 48%, so a dark-theme dialog veils the page white
+   instead of dimming it. The guards that pinned those deviations were
+   replaced with guards that pin the drawn values, so the next in-code
+   "fix" of a contrast number fails a test instead of shipping. Contrast
+   findings go to the designer list.
 5. The twelve gap components, mockups-first: `popover`, `alert`, `avatar`,
    `empty` are in both the mockups and the `insight-front` set and go first;
    `pagination` and `breadcrumb` are the mockups-only additions;

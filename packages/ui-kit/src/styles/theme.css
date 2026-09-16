@@ -67,13 +67,17 @@
  */
 :root {
   /*
-   * Scrim behind modal-style popups (Dialog's backdrop). Unlike every color
-   * token below, it is not redefined in [data-theme='dark'] or the
-   * prefers-color-scheme block: a dark tint dims the page in both light and
-   * dark UI, whereas --foreground would flip to near-white in dark mode and
-   * brighten instead of dim.
+   * Scrim behind modal-style popups (Dialog's backdrop): the design spec's
+   * --foreground at 48%. Declared once here and never redefined in
+   * [data-theme='dark'] or the prefers-color-scheme block, because the
+   * role it references already resolves per theme at the point of use -
+   * the same arrangement --popover-border and --popover-shadow below have.
+   * The drawn consequence, which is the intent and not an oversight:
+   * --foreground is white in dark, so the scrim is a white veil there and
+   * a near-black one in light. It brightens the page behind a dark-theme
+   * dialog instead of dimming it.
    */
-  --overlay: oklch(0 0 0 / 50%);
+  --overlay: color-mix(in oklab, var(--foreground) 48%, transparent);
 
   /*
    * Popover chrome shared by every card-like popup (Dialog/DropdownMenu/
