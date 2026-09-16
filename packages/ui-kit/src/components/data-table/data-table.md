@@ -57,12 +57,17 @@ beats ordinary inheritance.
 
 Scope is deliberately narrower than the full guide: **column defs,
 sorting, row selection, and pagination** only — no column filtering, no
-column-visibility toggling, no row actions dropdown, no virtualization, no
-column resizing. Each of those is itself a whole guide section the upstream
-doc treats as separable; nothing here stops a consumer building any of them
-directly against the `table` instance TanStack Table itself exposes (this
-component doesn't hide it — see "Escape hatch" below), but `DataTable`
-doesn't wire them up automatically.
+column-visibility toggling, no row actions dropdown, no virtualization.
+Each of those is itself a whole guide section the upstream doc treats as
+separable; nothing here stops a consumer building any of them directly
+against the `table` instance TanStack Table itself exposes (this component
+doesn't hide it, see "Escape hatch" below), but `DataTable` doesn't wire
+them up automatically.
+
+Column resizing is the one that is no longer out of scope: the `table`
+primitive resizes a column by pointer and by keyboard (`TableHead`'s
+`resizable`, see table.md), and `DataTable` composes that primitive, so a
+consumer passing `resizable` through their own header cell gets it.
 
 **TanStack Table v9 API note:** the pinned `@tanstack/react-table@9.1.2` is
 a from-scratch rewrite of v8's `useReactTable` — tree-shakeable features

@@ -15,7 +15,7 @@ import {
   TableRow,
 } from '@gears-frontx/ui-kit';
 
-import { Section } from '../shared';
+import { Measure, Section } from '../shared';
 
 const INVOICES = [
   { id: 'INV001', status: 'Paid', amount: '$250.00' },
@@ -139,6 +139,82 @@ export default function TableExample() {
             </TableRow>
           </TableBody>
         </Table>
+      </Section>
+
+      {/* The resize handle at rest, hovered, focused and mid-drag. Drag a
+          boundary and both column widths move while the table's own width
+          stays put; the arrow keys move it 12px per press. */}
+      <Section title="Resizable columns">
+        <Measure
+          of={{
+            'handle rect': '#table-resize th:first-child [role=separator]',
+            'first column': '#table-resize th:first-child',
+            'second column': '#table-resize th:nth-child(2)',
+            'third column': '#table-resize th:nth-child(3)',
+          }}
+        >
+          <Table id="table-resize" label="Invoices, resizable">
+            <TableHeader>
+              <TableRow>
+                <TableHead resizable>Invoice</TableHead>
+                <TableHead resizable>Status</TableHead>
+                <TableHead resizable resizeMinWidth={120}>
+                  Amount
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {INVOICES.map((invoice) => (
+                <TableRow key={invoice.id}>
+                  <TableCell>{invoice.id}</TableCell>
+                  <TableCell>{invoice.status}</TableCell>
+                  <TableCell>{invoice.amount}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Measure>
+      </Section>
+
+      {/* The collection view: a fixed layout, a sticky header on its own
+          fill, 64px rows that wrap, and the two row states. */}
+      <Section title="Collection view">
+        <Measure
+          of={{
+            header: '#table-collection th:first-child',
+            row: '#table-collection tbody tr:first-child',
+            cell: '#table-collection tbody td:first-child',
+            'pending row': '#table-collection tbody tr[data-pending]',
+          }}
+        >
+          <div style={{ maxHeight: 220, overflow: 'auto' }}>
+            <Table id="table-collection" variant="collection" label="Invoices, collection">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {INVOICES.map((invoice, index) => (
+                  <TableRow
+                    key={invoice.id}
+                    tabIndex={0}
+                    data-pending={index === 1 ? '' : undefined}
+                  >
+                    <TableCell>
+                      {invoice.id} - a long value that wraps onto a second line in a
+                      collection row instead of being cut off
+                    </TableCell>
+                    <TableCell>{invoice.status}</TableCell>
+                    <TableCell>{invoice.amount}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Measure>
       </Section>
     </>
   );

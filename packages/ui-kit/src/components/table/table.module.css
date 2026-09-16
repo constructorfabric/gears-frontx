@@ -40,12 +40,12 @@
 .table {
   width: 100%;
   /*
-   * The COLLAPSED borders model — back to the standard model, and back to
+   * The COLLAPSED borders model - back to the standard model, and back to
    * what the shadcn translation this file started as always used. The
-   * separated model here served an older mockup frame (202:407) that drew
-   * every row as its own rounded card floating on gaps of border-spacing;
-   * the Studio Data Table frame (40001455:6353) that supersedes it draws a
-   * flat table instead — rows packed edge to edge, separated by nothing but
+   * separated model here served an older drawing that gave every row its
+   * own rounded card floating on gaps of border-spacing; the design spec
+   * that supersedes it draws a
+   * flat table instead - rows packed edge to edge, separated by nothing but
    * a full-bleed 1px rule, with the border and the corner radius belonging
    * to the container around the table rather than to each row. Nothing in
    * the drawn table needs a model that can put space between cells, and the
@@ -167,6 +167,8 @@
    * behave as given.
    */
   box-sizing: border-box;
+  /* The resize handle positions against this cell's own box. */
+  position: relative;
   /*
    * The drawn header bar is 36px tall with 16px side padding — both land
    * on the token scales exactly (--control-height-md, --space-4), so
@@ -207,6 +209,58 @@
 
 .tableHead:has([role='checkbox']) {
   padding-inline-end: 0;
+}
+
+/*
+ * The column-resize handle (TableHeadProps.resizable). Its grab width and
+ * the half-overhang that straddles the column's trailing edge are set
+ * inline from table.tsx's own constants: they decide where the drag can be
+ * picked up, not how the column looks. What lives here is the hairline it
+ * draws, which thickens and takes the brand colour while the boundary is
+ * hovered, focused or being dragged.
+ */
+.columnResizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: col-resize;
+  /* Or the browser claims the drag as a scroll gesture on touch. */
+  touch-action: none;
+  outline: none;
+}
+
+.columnResizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: var(--border-width);
+  translate: -50% 0;
+  background-color: var(--border);
+  transition:
+    width var(--duration-micro) var(--ease-standard),
+    background-color var(--duration-micro) var(--ease-standard);
+}
+
+.columnResizer:hover::after,
+.columnResizer:focus-visible::after,
+.columnResizer:active::after {
+  width: var(--border-width-focus);
+  background-color: var(--primary);
+}
+
+/* The hairline above is the focus indicator, and forced-colors mode
+ * flattens an author colour, so pin the focused state to the system
+ * Highlight explicitly. */
+@media (forced-colors: active) {
+  .columnResizer:focus-visible::after {
+    background-color: Highlight;
+  }
 }
 
 .tableCell {
@@ -261,6 +315,72 @@
 
 .tableCell:has([role='checkbox']) {
   padding-inline-end: 0;
+}
+
+/*
+ * The collection view (TableProps.variant). A fixed layout on a floor wide
+ * enough for its own columns, a header that sticks to the top of the
+ * scrollport on its own fill, and tall rows whose cells wrap rather than
+ * truncate. `default` carries nothing of its own: it is the base styling
+ * above, and the class exists so the omitted prop and `variant="default"`
+ * take the same code path.
+ */
+.variantDefault {
+  /* The base table, unchanged. */
+}
+
+.variantCollection {
+  table-layout: fixed;
+  min-width: 960px;
+}
+
+.variantCollection .tableHead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: var(--control-height-lg);
+  padding: 0 var(--space-3);
+  background-color: var(--card);
+  color: var(--muted-foreground);
+  /* The drawn column label is the mono role at a 16 line, and the role's
+   * own line is 14. One consumer is not enough to add a step to the role,
+   * so the drawn line is set literally here and pinned in table.test.tsx. */
+  line-height: 16px;
+}
+
+.variantCollection .tableBody .tableRow {
+  height: 4rem;
+}
+
+.variantCollection .tableCell {
+  height: auto;
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  /* Tall rows exist so a long value can wrap instead of being cut off. */
+  white-space: normal;
+}
+
+/* An inset ring, not an outline: a row's own box is shared with the
+ * container's clipping, and an outline drawn outside it is cut off at the
+ * scrollport's edge. */
+.variantCollection .tableBody .tableRow:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 var(--border-width-focus) var(--primary);
+}
+
+/* A row waiting on work it has already started: the fill says so and the
+ * cursor says it cannot be acted on again yet. */
+.variantCollection .tableBody .tableRow[data-pending] {
+  --table-row-fill: var(--muted);
+  cursor: progress;
+}
+
+/* A row the caller made focusable is a row that can be activated, so it
+ * takes the pointer cursor; a plain display row does not. */
+.variantCollection .tableBody .tableRow[tabindex] {
+  cursor: pointer;
+  transition: background-color var(--duration-micro) var(--ease-standard);
 }
 
 /*

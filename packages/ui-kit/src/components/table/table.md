@@ -197,11 +197,39 @@ its separator, since the body is then no longer the last section.
 
 ## Props (kit level)
 
-Two kit-specific props on `Table`: `label` (`string`) names the focusable
-scroll wrapper with `role="region"` + `aria-label` (see above), and
-`density` (`default` | `compact`) tightens cell padding for operational
-views — purely cell metrics, not a data-table feature. Every other prop
-is the matching native element's own (`ComponentProps<'table'>`,
+`Table`:
+
+| Prop | Type | Default |
+|------|------|---------|
+| `label` | `string` - names the focusable scroll wrapper with `role="region"` + `aria-label` (see above) | - |
+| `density` | `'default'` \| `'compact'` - tightens cell padding for operational views; purely cell metrics, not a data-table feature | `'default'` |
+| `variant` | `'default'` \| `'collection'` - collection is the fixed-layout view with a sticky 40 px header and 64 px rows | `'default'` |
+
+`TableHead`:
+
+| Prop | Type | Default |
+|------|------|---------|
+| `resizable` | `boolean` - draggable and keyboard-resizable trailing edge | `false` |
+| `resizeMinWidth` | `number` - px floor for this column, overriding the 72 / 32 defaults | - |
+
+The two axes on `Table` are orthogonal: `collection` sets the layout, the
+header and the row height, and `density` still tightens the cells inside
+it.
+
+A resizable column trades width with its trailing neighbour, so the table's
+own width never changes as a boundary moves; the first drag freezes every
+column at what it currently renders and switches the table to a fixed
+layout. The handle is an 8 px grab area straddling the trailing edge, drawn
+as a 1 px `--border` hairline that thickens to 2 px `--primary` while
+hovered, focused or dragged. It is focusable, carries `role="separator"`,
+and its accessible name reports the column's current pixel width live;
+arrow keys move the boundary 12 px per press.
+
+In the collection view a row carrying `data-pending` fills with `--muted`
+and shows a progress cursor, and a row the caller makes focusable (a
+`tabIndex`) takes a pointer cursor and a focus ring.
+
+Every other prop is the matching native element's own (`ComponentProps<'table'>`,
 `<'thead'>`, `<'tbody'>`, `<'tfoot'>`, `<'tr'>`, `<'th'>`, `<'td'>`,
 `<'caption'>`), plus `className`, merged after the kit class on every
 part.

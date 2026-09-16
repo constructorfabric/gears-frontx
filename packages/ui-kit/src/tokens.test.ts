@@ -350,6 +350,11 @@ describe('theme tokens', () => {
       // --space-1 (4) and --space-2 (8); tooltip.test.tsx pins both.
       'tooltip.module.css|padding|6px var(--space-3)',
       'tooltip.module.css|gap|6px',
+      // The drawn collection header sets the mono role's 10px size on a 16
+      // line, and the role's own line is 14. One consumer is not enough to
+      // add a step to a shared role, so the drawn line is literal here and
+      // pinned in table.test.tsx.
+      'table.module.css|line-height|16px',
     ]);
     for (const file of moduleFiles) {
       const base = file.slice(file.lastIndexOf('/') + 1);

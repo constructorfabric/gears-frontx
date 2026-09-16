@@ -1,5 +1,11 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 
 import {
   Table,
@@ -210,5 +216,222 @@ describe('Table', () => {
     expect(screen.getAllByRole('row')).toHaveLength(3);
     expect(screen.getAllByRole('columnheader')).toHaveLength(2);
     expect(screen.getAllByRole('cell')).toHaveLength(4);
+  });
+});
+
+/*
+ * Column resize. jsdom reports every rect as zero, so each case installs its
+ * own widths through getBoundingClientRect before acting: what is under test
+ * is the arithmetic and the wiring, not the browser's layout.
+ */
+describe('TableHead column resize', () => {
+  function renderResizable(props: { resizeMinWidth?: number } = {}) {
+    return render(
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead resizable {...props}>
+              Name
+            </TableHead>
+            <TableHead>Owner</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell>Ada</TableCell>
+            <TableCell>Grace</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+  }
+
+  // Every <th> in the header row reports `width`, so the component's own
+  // measurement has something to read.
+  function stubWidths(widths: number[]) {
+    const cells = screen.getAllByRole('columnheader');
+    cells.forEach((cell, index) => {
+      vi.spyOn(cell, 'getBoundingClientRect').mockImplementation(
+        () => ({ width: widths[index] ?? 0 }) as DOMRect,
+      );
+    });
+    return cells;
+  }
+
+  function pointerEvent(type: string, init: Record<string, unknown>) {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.assign(event, { pointerId: 1, button: 0, ...init });
+    return event;
+  }
+
+  it('renders no handle unless the column asks for one', () => {
+    render(
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+          </TableRow>
+        </TableHeader>
+      </Table>,
+    );
+    expect(screen.queryByRole('separator')).toBeNull();
+  });
+
+  it('names the handle after its column and reports the width live', () => {
+    renderResizable();
+    const [nameCell] = stubWidths([200, 200]);
+    const handle = screen.getByRole('separator');
+    expect(handle.getAttribute('aria-label')).toBe('Name width');
+    fireEvent(handle, pointerEvent('pointerdown', { clientX: 0 }));
+    fireEvent(handle, pointerEvent('pointermove', { clientX: 40 }));
+    expect(handle.getAttribute('aria-label')).toBe('Name width, 240 pixels');
+    expect(nameCell?.style.width).toBe('240px');
+  });
+
+  it('trades width with the trailing neighbour and leaves the total stable', () => {
+    renderResizable();
+    const cells = stubWidths([200, 200]);
+    const handle = screen.getByRole('separator');
+    fireEvent(handle, pointerEvent('pointerdown', { clientX: 0 }));
+    fireEvent(handle, pointerEvent('pointermove', { clientX: 30 }));
+    expect(cells[0]?.style.width).toBe('230px');
+    expect(cells[1]?.style.width).toBe('170px');
+  });
+
+  it('freezes every column and fixes the layout on the first drag', () => {
+    const { container } = renderResizable();
+    const cells = stubWidths([200, 140]);
+    const table = container.querySelector('table');
+    expect(table?.style.tableLayout).toBe('');
+    fireEvent(screen.getByRole('separator'), pointerEvent('pointerdown', { clientX: 0 }));
+    expect(table?.style.tableLayout).toBe('fixed');
+    expect(cells[1]?.style.width).toBe('140px');
+  });
+
+  it('clamps at the dragged column floor and at the neighbour floor', () => {
+    renderResizable();
+    const cells = stubWidths([200, 200]);
+    const handle = screen.getByRole('separator');
+    fireEvent(handle, pointerEvent('pointerdown', { clientX: 0 }));
+    // 72 is the floor for a column carrying text.
+    fireEvent(handle, pointerEvent('pointermove', { clientX: -500 }));
+    expect(cells[0]?.style.width).toBe('72px');
+    fireEvent(handle, pointerEvent('pointermove', { clientX: 500 }));
+    expect(cells[1]?.style.width).toBe('72px');
+  });
+
+  it('takes a per-column floor over the default one', () => {
+    renderResizable({ resizeMinWidth: 120 });
+    const cells = stubWidths([200, 200]);
+    const handle = screen.getByRole('separator');
+    fireEvent(handle, pointerEvent('pointerdown', { clientX: 0 }));
+    fireEvent(handle, pointerEvent('pointermove', { clientX: -500 }));
+    expect(cells[0]?.style.width).toBe('120px');
+  });
+
+  it('moves the boundary 12px per arrow-key press', () => {
+    renderResizable();
+    const cells = stubWidths([200, 200]);
+    const handle = screen.getByRole('separator');
+    fireEvent.keyDown(handle, { key: 'ArrowRight' });
+    expect(cells[0]?.style.width).toBe('212px');
+    expect(handle.getAttribute('aria-label')).toBe('Name width, 212 pixels');
+    fireEvent.keyDown(handle, { key: 'ArrowLeft' });
+    // The second press re-measures, and the stub still reports 200.
+    expect(cells[0]?.style.width).toBe('188px');
+  });
+
+  it('releases the page lock when the drag ends and when the header unmounts', () => {
+    const { unmount } = renderResizable();
+    stubWidths([200, 200]);
+    const handle = screen.getByRole('separator');
+    fireEvent(handle, pointerEvent('pointerdown', { clientX: 0 }));
+    expect(document.body.style.cursor).toBe('col-resize');
+    expect(document.body.style.userSelect).toBe('none');
+    fireEvent(handle, pointerEvent('pointerup', { clientX: 0 }));
+    expect(document.body.style.cursor).toBe('');
+
+    fireEvent(screen.getByRole('separator'), pointerEvent('pointerdown', { clientX: 0 }));
+    expect(document.body.style.cursor).toBe('col-resize');
+    unmount();
+    expect(document.body.style.cursor).toBe('');
+    expect(document.body.style.userSelect).toBe('');
+  });
+});
+
+/*
+ * The collection view's own metrics. jsdom computes no layout, so they are
+ * asserted on the stylesheet, plus the one thing that is a rendering fact:
+ * the omitted variant and variant="default" take the same code path.
+ */
+describe('Table collection view', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'table.module.css'), 'utf8'),
+  );
+
+  function declared(selector: string, prop: string) {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('renders variant="default" and an omitted variant as the same class list', () => {
+    const { container } = render(
+      <>
+        <Table>
+          <TableBody>
+            <TableRow>
+              <TableCell>Omitted</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+        <Table variant="default">
+          <TableBody>
+            <TableRow>
+              <TableCell>Explicit</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </>,
+    );
+    const [omitted, explicit] = Array.from(container.querySelectorAll('table'));
+    expect(omitted?.className).toBe(explicit?.className);
+  });
+
+  it('fixes the layout on a floor wide enough for its own columns', () => {
+    expect(declared('.variantCollection', 'table-layout')).toBe('fixed');
+    expect(declared('.variantCollection', 'min-width')).toBe('960px');
+  });
+
+  it('sticks the header on its own fill at the drawn 40', () => {
+    expect(declared('.variantCollection .tableHead', 'position')).toBe('sticky');
+    expect(declared('.variantCollection .tableHead', 'height')).toBe('var(--control-height-lg)');
+    expect(declared('.variantCollection .tableHead', 'padding')).toBe('0 var(--space-3)');
+    expect(declared('.variantCollection .tableHead', 'background-color')).toBe('var(--card)');
+    expect(declared('.variantCollection .tableHead', 'color')).toBe('var(--muted-foreground)');
+    // The mono role's line is 14; the drawn label sits on 16, and one
+    // consumer is not enough to add a step to a shared role.
+    expect(declared('.variantCollection .tableHead', 'line-height')).toBe('16px');
+  });
+
+  it('gives the row its drawn height and lets the cell wrap', () => {
+    expect(declared('.variantCollection .tableBody .tableRow', 'height')).toBe('4rem');
+    expect(declared('.variantCollection .tableCell', 'padding')).toBe(
+      'var(--space-3) var(--space-2)',
+    );
+    expect(declared('.variantCollection .tableCell', 'white-space')).toBe('normal');
+  });
+
+  it('draws the row focus ring inset and marks a pending row', () => {
+    // An outline would be clipped at the scrollport's edge.
+    expect(declared('.variantCollection .tableBody .tableRow:focus-visible', 'box-shadow')).toBe(
+      'inset 0 0 0 var(--border-width-focus) var(--primary)',
+    );
+    expect(declared('.variantCollection .tableBody .tableRow[data-pending]', '--table-row-fill')).toBe(
+      'var(--muted)',
+    );
+    expect(declared('.variantCollection .tableBody .tableRow[data-pending]', 'cursor')).toBe(
+      'progress',
+    );
+    expect(declared('.variantCollection .tableBody .tableRow[tabindex]', 'cursor')).toBe('pointer');
   });
 });

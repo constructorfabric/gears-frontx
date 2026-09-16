@@ -44,8 +44,8 @@ Rules for generated code:
   kit components that carry a `'use client'` banner of their own:
   Attachment, Badge, Breadcrumb, Bubble, ButtonGroup, Carousel, Chart,
   Combobox, ContextMenu, DataTable, Drawer, DropdownMenu, Marker, Sidebar,
-  Toast. Each calls a hook directly in its own render body, so it always
-  renders on the client, wherever it is imported from.
+  Table, Toast. Each calls a hook directly in its own render body, so it
+  always renders on the client, wherever it is imported from.
 - The kit paints the page itself from its tokens and sets `color-scheme`: with
   no `data-theme` attribute anywhere, `prefers-color-scheme: dark` alone
   yields a correct, legible dark page (background, text, and UA-owned
