@@ -18,6 +18,7 @@ mouse and keyboard, exposes state through `data-checked`/`data-unchecked`.
 
 | Prop | Type | Default |
 |------|------|---------|
+| `size` | `'sm' \| 'default'` - a 16 or 20 px control box, with the same radius, the same 12 px glyph and the same 32 px interaction row at both | `'default'` |
 | `checked` / `defaultChecked` | controlled / uncontrolled state | `false` |
 | `onCheckedChange` | `(checked: boolean, eventDetails) => void` | — |
 | `name` / `value` | form submission via the hidden native input | — |

@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { Checkbox, Label } from '@gears-frontx/ui-kit';
 
-import { Row, Section } from '../shared';
+import { Measure, Row, Section } from '../shared';
 
 export default function CheckboxExample() {
   const [subscribed, setSubscribed] = useState(true);
@@ -21,6 +21,49 @@ export default function CheckboxExample() {
             <Checkbox /> Enable notifications
           </Label>
         </Row>
+      </Section>
+
+      {/* Both sizes in the three states the control has. The measurement
+          block reports the box, its radius, the glyph and the interaction
+          row the ::after draws, which is what has to stay 32 at both. */}
+      <Section title="Size">
+        <Measure
+          of={{
+            'sm box': '#cb-sm [role=checkbox]',
+            'sm glyph': '#cb-sm svg',
+            'default box': '#cb-default [role=checkbox]',
+            'default glyph': '#cb-default svg',
+            'unset box': '#cb-unset [role=checkbox]',
+          }}
+        >
+          <Row>
+            <Label id="cb-sm">
+              <Checkbox size="sm" defaultChecked /> sm, checked
+            </Label>
+            <Label>
+              <Checkbox size="sm" /> sm, unchecked
+            </Label>
+            <Label>
+              <Checkbox size="sm" indeterminate /> sm, indeterminate
+            </Label>
+          </Row>
+          <Row>
+            <Label id="cb-default">
+              <Checkbox size="default" defaultChecked /> default, checked
+            </Label>
+            <Label>
+              <Checkbox size="default" /> default, unchecked
+            </Label>
+            <Label>
+              <Checkbox size="default" indeterminate /> default, indeterminate
+            </Label>
+          </Row>
+          <Row>
+            <Label id="cb-unset">
+              <Checkbox defaultChecked /> unset size
+            </Label>
+          </Row>
+        </Measure>
       </Section>
 
       <Section title="Controlled">

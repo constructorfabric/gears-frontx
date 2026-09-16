@@ -6,9 +6,9 @@
 .checkbox {
   /*
    * Substitutes for the preflight the kit lacks: without it, content-box
-   * (this kit's ambient default) piles the border on top of the declared
-   * width/height, rendering a 22x22 box instead of 20x20 — same acute
-   * case as tabs.module.css/badge.module.css, scoped the same way (this
+   * (this kit's ambient default) piles the border on top of the size
+   * classes' declared width/height, rendering each box 2px over its drawn
+   * value. Same acute case as tabs.module.css, scoped the same way (this
    * class only).
    */
   box-sizing: border-box;
@@ -17,12 +17,6 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  /* The mockups' Selection Control spec (frame 195:409): a 20px box. The
-   * drawn specimens bind that box to icon/size/md rather than restating the
-   * number, so the token is what this reads — the checkbox is glyph-sized
-   * by construction, and follows a consumer who retunes the icon scale. */
-  width: var(--icon-size-md);
-  height: var(--icon-size-md);
   padding: 0;
   border: var(--border-width) solid var(--input);
   /* Drawn at rx 5, between --radius-xs (4) and --radius-sm (6); snapped
@@ -38,11 +32,37 @@
     box-shadow 150ms ease;
 }
 
-/* Enlarged touch target beyond the 1.25rem box. */
+/*
+ * The size axis. The spec draws the control box at 16 and 20, bound to the
+ * icon scale rather than restated as numbers, so the token is what these
+ * read: the checkbox is glyph-sized by construction and follows a consumer
+ * who retunes the icon scale. Nothing else moves between the two steps -
+ * same radius, same glyph, same interaction row.
+ */
+.sizeSm {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.sizeDefault {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+}
+
+/*
+ * The 32px interaction row the spec draws at BOTH sizes, centred on the
+ * control box whatever that box measures. Stated as a height rather than as
+ * a negative inset: an inset has to be recomputed per size to keep the row
+ * at 32, and the two would then drift apart the moment either box moves.
+ * Horizontally the target keeps its wider reach, which the spec does not
+ * draw and the kit keeps.
+ */
 .checkbox::after {
   content: '';
   position: absolute;
-  inset: calc(-1 * var(--space-2)) calc(-1 * var(--space-3));
+  inset-inline: calc(-1 * var(--space-3));
+  top: calc(50% - var(--control-height-sm) / 2);
+  height: var(--control-height-sm);
 }
 
 .checkbox[data-checked] {
@@ -93,9 +113,10 @@
   color: currentcolor;
 }
 
+/* The drawn glyph is 12 at both sizes. */
 .icon {
-  width: 0.875rem;
-  height: 0.875rem;
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
 }
 
 /* Indeterminate shows a minus in an unfilled box (the root gets
