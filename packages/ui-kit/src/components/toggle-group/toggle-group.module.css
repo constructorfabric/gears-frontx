@@ -13,6 +13,12 @@
  * ancestor's `data-slot`. Every other `spacing` value only sets the gap
  * (inline style, see toggle-group.tsx) and leaves the independently
  * bordered/radiused look below untouched.
+ *
+ * The design spec draws that segmented group differently again, as a
+ * horizontal container with its own chrome rather than a row of joined
+ * items: see `.segmented` at the bottom of this file. It applies to the
+ * one case the spec draws, and the join idiom above still covers the
+ * vertical group and any other combination.
  */
 
 .group {
@@ -51,21 +57,21 @@
   gap: 0;
 }
 
-.group[data-spacing='0']:not([data-orientation='vertical']) > .item {
+.group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item {
   border-radius: 0;
 }
 
-.group[data-spacing='0']:not([data-orientation='vertical']) > .item:first-child {
+.group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item:first-child {
   border-start-start-radius: var(--radius-md);
   border-end-start-radius: var(--radius-md);
 }
 
-.group[data-spacing='0']:not([data-orientation='vertical']) > .item:last-child {
+.group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item:last-child {
   border-start-end-radius: var(--radius-md);
   border-end-end-radius: var(--radius-md);
 }
 
-.group[data-spacing='0']:not([data-orientation='vertical']) > .item + .item {
+.group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item + .item {
   border-inline-start-width: 0;
 }
 
@@ -86,4 +92,47 @@
 
 .group[data-spacing='0'][data-orientation='vertical'] > .item + .item {
   border-block-start-width: 0;
+}
+
+/*
+ * The drawn segmented group: a 32px container carrying the chrome, with
+ * 28px items inside it, rather than a row of items whose own borders are
+ * joined. Applied only where the spec draws it - a horizontal group at
+ * `spacing={0}` on the `outline` variant, which toggle-group.tsx decides
+ * and marks with this class.
+ *
+ * The 2px inset has no step on the spacing scale, and it is what makes the
+ * arithmetic close: 32 minus 2 minus 2 is 28, which is --control-height-xs
+ * exactly. tokens.test.ts carries the reasoned exception rather than
+ * rounding it up to --space-1, because the drawn value governs.
+ *
+ * The hairline is an inset shadow, not a border, for that same arithmetic:
+ * the drawn stroke sits inside the container's own 32px, so a real border
+ * would either push the box to 34 or squeeze the item to 26.
+ *
+ * The selected item keeps the --accent fill Toggle already paints for
+ * `data-pressed`. The spec binds a product-owned selection token there,
+ * which this kit excludes by ownership, and --accent is the kit-generic
+ * role for exactly that meaning.
+ */
+.group.segmented {
+  box-sizing: border-box;
+  height: var(--control-height-sm);
+  padding: 2px;
+  box-shadow: inset 0 0 0 var(--border-width) var(--border);
+  border-radius: var(--radius-md);
+}
+
+/*
+ * (0,3,0), above the join idiom's own (0,3,0) rules by source order and
+ * above toggle.module.css's `.sizeSm`/`.variantOutline` (0,1,0) regardless
+ * of stylesheet load order. `border: 0` rather than a collapsed width: the
+ * container draws the only stroke here, and a 1px item border would cost
+ * the item the 2px its 28px box has no room for.
+ */
+.group.segmented > .item {
+  height: var(--control-height-xs);
+  min-width: var(--control-height-xs);
+  border: 0;
+  border-radius: var(--radius-sm);
 }

@@ -135,10 +135,12 @@ describe('ToggleGroup', () => {
   /*
    * Reads toggle-group.module.css's own source (not the hashed `styles`
    * import) the same way button.test.tsx's focus-ring guard does, to
-   * prove the segmented-mode join CSS actually squares inner corners,
-   * re-rounds only the outer ones, and drops the shared inline-start
-   * border - the "collapsed inner borders and outer-only radius" claim in
-   * toggle-group.md, checked against the stylesheet rather than asserted.
+   * prove the join CSS actually squares inner corners, re-rounds only the
+   * outer ones, and drops the shared inline-start border - the "collapsed
+   * inner borders and outer-only radius" claim in toggle-group.md, checked
+   * against the stylesheet rather than asserted. The last case covers the
+   * other model: where the spec draws a container instead of joined items,
+   * the join rules must step aside rather than fight it.
    */
   const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'toggle-group.module.css');
   const rules = extractRules(readFileSync(cssPath, 'utf8'));
@@ -150,17 +152,17 @@ describe('ToggleGroup', () => {
 
   it('squares every segmented item then re-rounds only the outer corners', () => {
     expect(
-      declared(".group[data-spacing='0']:not([data-orientation='vertical']) > .item", 'border-radius'),
+      declared(".group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item", 'border-radius'),
     ).toBe('0');
     expect(
       declared(
-        ".group[data-spacing='0']:not([data-orientation='vertical']) > .item:first-child",
+        ".group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item:first-child",
         'border-start-start-radius',
       ),
     ).toBe('var(--radius-md)');
     expect(
       declared(
-        ".group[data-spacing='0']:not([data-orientation='vertical']) > .item:last-child",
+        ".group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item:last-child",
         'border-start-end-radius',
       ),
     ).toBe('var(--radius-md)');
@@ -169,9 +171,52 @@ describe('ToggleGroup', () => {
   it('drops the shared border between adjoining segmented items', () => {
     expect(
       declared(
-        ".group[data-spacing='0']:not([data-orientation='vertical']) > .item + .item",
+        ".group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item + .item",
         'border-inline-start-width',
       ),
     ).toBe('0');
+  });
+
+  it('gives the drawn segmented group a container and its items the inner box', () => {
+    expect(declared('.group.segmented', 'height')).toBe('var(--control-height-sm)');
+    expect(declared('.group.segmented', 'padding')).toBe('2px');
+    expect(declared('.group.segmented', 'border-radius')).toBe('var(--radius-md)');
+    // An inset shadow, not a border: the drawn stroke sits inside the
+    // container's own 32px, so a border would push the box to 34.
+    expect(declared('.group.segmented', 'box-shadow')).toBe(
+      'inset 0 0 0 var(--border-width) var(--border)',
+    );
+    expect(declared('.group.segmented', 'border')).toBeUndefined();
+    expect(declared('.group.segmented > .item', 'height')).toBe('var(--control-height-xs)');
+    expect(declared('.group.segmented > .item', 'border-radius')).toBe('var(--radius-sm)');
+    expect(declared('.group.segmented > .item', 'border')).toBe('0');
+  });
+
+  it('adds the segmented container only for a spacing={0} outline group', () => {
+    const { rerender } = render(
+      <ToggleGroup variant="outline" spacing={0} aria-label="Align">
+        <ToggleGroupItem value="left">L</ToggleGroupItem>
+        <ToggleGroupItem value="right">R</ToggleGroupItem>
+      </ToggleGroup>,
+    );
+    expect(screen.getByRole('group', { name: 'Align' }).className).toContain(styles.segmented);
+
+    // Same spacing, no outline: the join idiom still applies.
+    rerender(
+      <ToggleGroup spacing={0} aria-label="Align">
+        <ToggleGroupItem value="left">L</ToggleGroupItem>
+        <ToggleGroupItem value="right">R</ToggleGroupItem>
+      </ToggleGroup>,
+    );
+    expect(screen.getByRole('group', { name: 'Align' }).className).not.toContain(styles.segmented);
+
+    // Outline but spaced: not a segmented group at all.
+    rerender(
+      <ToggleGroup variant="outline" spacing={4} aria-label="Align">
+        <ToggleGroupItem value="left">L</ToggleGroupItem>
+        <ToggleGroupItem value="right">R</ToggleGroupItem>
+      </ToggleGroup>,
+    );
+    expect(screen.getByRole('group', { name: 'Align' }).className).not.toContain(styles.segmented);
   });
 });

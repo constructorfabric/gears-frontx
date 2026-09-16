@@ -28,7 +28,7 @@ navigation between items, state via `data-pressed` on each item.
 | `disabled` | disables every item in the group | `false` |
 | `variant` | `default` \| `outline` — applied to every item unless an item overrides it | `default` |
 | `size` | `default` \| `sm` \| `lg` — applied to every item unless an item overrides it | `default` |
-| `spacing` | `number` - gap between items, in pixels; `0` also switches to the segmented look (see "Deviation from upstream") | `undefined` |
+| `spacing` | `number` - gap between items, in pixels; `0` also switches to the segmented look (see "Segmented geometry") | `undefined` |
 | `className` | `string` — merged after the kit class | — |
 
 `ToggleGroupItem`: `value` (required — identifies the item), `variant`,
@@ -76,17 +76,23 @@ import { ToggleGroup, ToggleGroupItem } from '@gears-frontx/ui-kit';
 - Do not omit `aria-label`/`aria-labelledby` on the group — it groups
   buttons, but the group itself still needs a name for assistive tech.
 
-## Deviation from upstream
+## Segmented geometry
 
-Upstream's `spacing` prop is ported: a plain number sets the gap between
-items in pixels, and `0` additionally collapses the group into a bordered
-"segment" look, with adjoining items sharing borders and rounding only on
-the group's own outer corners, matching the design spec's segmented
-specimen. Upstream reaches the segment look through arbitrary sibling
-selectors with no direct CSS Modules equivalent; this port reaches the
-same geometry through plain structural selectors keyed on
-`data-spacing`, the same join idiom `ButtonGroup` already uses for its own
-bordered strip (see button-group.module.css). Leaving `spacing` unset
-renders exactly what this component always has - a fixed `--space-1` gap
-between independently bordered items - so no existing consumer's markup
-changes.
+A horizontal `outline` group at `spacing={0}` renders the drawn segmented
+control: a 32px container carrying the 1px hairline and an 8px radius, with
+28px items inside it at a 6px radius, a 2px inset between the two and a
+16px icon. The container is what draws the chrome; the items draw none of
+their own, and the selected one takes the `--accent` fill `Toggle` already
+paints for its pressed state. The 32/2/28 relationship is exact: the inset
+off each edge is what leaves the item its own height.
+
+Every other `spacing={0}` group - vertical, or any variant other than
+`outline` - keeps the join idiom instead: adjoining items share borders and
+round only on the group's own outer corners. Upstream reaches that look
+through arbitrary sibling selectors with no direct CSS Modules equivalent;
+this port reaches the same geometry through plain structural selectors keyed
+on `data-spacing`, the same idiom `ButtonGroup` already uses for its own
+bordered strip (see button-group.module.css).
+
+Leaving `spacing` unset renders exactly what this component always has - a
+fixed `--space-1` gap between independently bordered items.
