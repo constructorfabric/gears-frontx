@@ -269,6 +269,9 @@
 
 :root,
 [data-theme='light'] {
+  /* In dark the drawn page value equals the drawn card, popover and muted
+   * values, so surfaces do not separate by fill in that theme; that is the
+   * drawn arrangement. */
   --background: #f1f5f9;
   --foreground: #0f172a;
 
@@ -312,14 +315,11 @@
    * ring is drawn OUTSIDE the button (see button.module.css), so it only
    * ever borders the page. */
   --primary-ring: #2668c5;
-  /* derived: the old light secondary equalled --muted, but the rebrand
-   * moved --background onto that same slate-50 — a secondary fill equal to
-   * the page would vanish. One step down the frame's neutral ramp
-   * (neutral-100) keeps it a visible fill (1.13:1 against the page) the
-   * way the old value was against the old page. Dark mirrors the move one
-   * step the OTHER way from its (card-equal) drawn muted — see the dark
-   * block. */
-  --secondary: #e2e8f0;
+  /* The drawn secondary fill, which is also what a selected control paints
+   * (see toggle/toggle-group/tabs). In dark it equals the drawn card and
+   * page values, so a secondary surface separates there by its text tone
+   * and by whatever hairline the component draws, not by fill. */
+  --secondary: #eef2f7;
   --secondary-foreground: #0f172a;
   /* The design spec draws muted at the page value in light and at the card
    * surface in dark, and the kit carries exactly that. Muted is the kit's
@@ -368,11 +368,10 @@
    */
   --selection-subtle: #dce7f2;
 
-  /* derived: no mockup node draws with destructive/*, so it carries the
-   * drawn danger red, the same hex in both themes. One red, two names,
-   * both overridable separately: --destructive is the fill role, white
-   * text on it measures 4.70:1 in both themes, while --danger below is the
-   * text tone components paint on light backdrops. */
+  /* The drawn danger red: the deep rose in light, the lighter rose in
+   * dark. One red, two names, both overridable separately: --destructive
+   * is the fill role verified under --destructive-foreground, while
+   * --danger below is the text tone components paint on light backdrops. */
   --destructive: #e11d48;
   --destructive-foreground: #ffffff;
   /* Badge's destructive-variant hover tone (see badge.module.css) — darker
@@ -432,32 +431,27 @@
 
   --border: #e2e8f0;
   --border-strong: #cbd5e1;
-  /* Field-control borders. Not derived: the mockups' Field set strokes
-   * every input/textarea/select with the border-strong value, so input
-   * carries it in both modes (the rebrand frame collapses the dark border
-   * pair — see the dark block). */
-  --input: #cbd5e1;
-  /* Focus color, per the rebrand frame: the brand blue in light, the
-   * "blue-sky" tint in dark. 4.83:1 / 7.75:1 against the page — clears the
-   * 3:1 non-text floor the shared focus rings need. */
+  /* Field-control borders: the drawn stroke on every input, textarea and
+   * select. Its own value in light, the collapsed neutral border in dark,
+   * both taken as drawn. */
+  --input: #d9e2ec;
+  /* Focus colour: the drawn brand blue, the same value in both themes. */
   --ring: #0065e3;
 
   /* Sidebar Navigation block. Read by the kit's Sidebar parts and offered
-   * for a consumer's own navigation chrome alike. The rebrand frame draws
-   * no sidebar entries, so the whole block is derived from the same-role
-   * tokens above: sidebar follows --muted, its foreground follows
-   * --muted-foreground, the active-item fill takes --surface (light) /
-   * --selection-subtle's value (dark), its foreground follows --foreground,
-   * and the border follows --border-strong — NOT --border, whose light
-   * value is the panel fill itself, which would erase SidebarSeparator,
-   * the menu-sub rail and the floating variant's outline (1.20:1 against
-   * the panel instead; dark's collapsed border family is border-strong
-   * already). tokens.test.ts pins the border/panel separation. */
+   * for a consumer's own navigation chrome alike. The panel fill, its text
+   * tone and its hairline are the design spec's; the accent pair stays
+   * derived from the same-role tokens above (the active-item fill takes
+   * --surface in light and --selection-subtle's value in dark, its
+   * foreground follows --foreground), because the spec draws no
+   * active-item specimen. In light the hairline is close enough to the
+   * panel that it reads as a seam rather than a rule; that is the drawn
+   * value and tokens.test.ts pins it. */
   --sidebar: #f1f5f9;
-  --sidebar-foreground: #334155;
+  --sidebar-foreground: #0f172a;
   --sidebar-accent: #ffffff;
   --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #cbd5e1;
+  --sidebar-border: #e2e8f0;
 
   /* Also palette-only: the kit ships no code/pre component, so these exist
    * for a consumer rendering code blocks beside kit parts. The foreground
@@ -478,7 +472,7 @@
 }
 
 [data-theme='dark'] {
-  --background: #090b10;
+  --background: #0f172a;
   --foreground: #ffffff;
   /* The rebrand frame draws surface and surface-elevated COLLAPSED onto
    * one slate-900 (overlays separate via --popover-border/-shadow, not
@@ -494,7 +488,7 @@
   --primary-hover: #2668c5;
   --primary-foreground: #ffffff;
   --primary-ring: #6ba5f0;
-  --secondary: #1e293b;
+  --secondary: #0f172a;
   --secondary-foreground: #ffffff;
   --muted: #0f172a;
   --muted-foreground: #94a3b8;
@@ -502,7 +496,7 @@
   --accent: #00204d;
   --accent-foreground: #e6effa;
   --selection-subtle: #26384b;
-  --destructive: #e11d48;
+  --destructive: #fb7185;
   --destructive-foreground: #ffffff;
   --destructive-hover: #be123c;
   --destructive-ring: #f87f8f;
@@ -511,7 +505,7 @@
   --success-soft: #0d2921;
   --warning: #f6c453;
   --warning-soft: #2b1e04;
-  --danger: #e11d48;
+  --danger: #fb7185;
   --danger-soft: #32111b;
   --info: #60a5fa;
   --info-soft: #111e2d;
@@ -521,9 +515,9 @@
   --border: #334155;
   --border-strong: #334155;
   --input: #334155;
-  --ring: #6ba5f0;
+  --ring: #0065e3;
   --sidebar: #0f172a;
-  --sidebar-foreground: #94a3b8;
+  --sidebar-foreground: #ffffff;
   --sidebar-accent: #26384b;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #334155;
@@ -536,7 +530,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --background: #090b10;
+    --background: #0f172a;
     --foreground: #ffffff;
     --surface: #0f172a;
     --surface-elevated: #0f172a;
@@ -549,7 +543,7 @@
     --primary-hover: #2668c5;
     --primary-foreground: #ffffff;
     --primary-ring: #6ba5f0;
-    --secondary: #1e293b;
+    --secondary: #0f172a;
     --secondary-foreground: #ffffff;
     --muted: #0f172a;
     --muted-foreground: #94a3b8;
@@ -557,7 +551,7 @@
     --accent: #00204d;
     --accent-foreground: #e6effa;
     --selection-subtle: #26384b;
-    --destructive: #e11d48;
+    --destructive: #fb7185;
     --destructive-foreground: #ffffff;
     --destructive-hover: #be123c;
     --destructive-ring: #f87f8f;
@@ -566,7 +560,7 @@
     --success-soft: #0d2921;
     --warning: #f6c453;
     --warning-soft: #2b1e04;
-    --danger: #e11d48;
+    --danger: #fb7185;
     --danger-soft: #32111b;
     --info: #60a5fa;
     --info-soft: #111e2d;
@@ -574,9 +568,9 @@
     --border: #334155;
     --border-strong: #334155;
     --input: #334155;
-    --ring: #6ba5f0;
+    --ring: #0065e3;
     --sidebar: #0f172a;
-    --sidebar-foreground: #94a3b8;
+    --sidebar-foreground: #ffffff;
     --sidebar-accent: #26384b;
     --sidebar-accent-foreground: #ffffff;
     --sidebar-border: #334155;

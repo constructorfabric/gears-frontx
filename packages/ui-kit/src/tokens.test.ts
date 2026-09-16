@@ -639,8 +639,12 @@ describe('theme tokens', () => {
         const drawn: Record<string, [light: string, dark: string]> = {
           '--success': ['#059669', '#34d399'],
           '--warning': ['#f59e0b', '#f6c453'],
-          '--danger': ['#e11d48', '#e11d48'],
+          '--danger': ['#e11d48', '#fb7185'],
           '--info': ['#2563eb', '#60a5fa'],
+          // The fill role beside --danger's text role. Both names carry the
+          // same drawn hex per theme and both stay: the split is a naming
+          // decision, so pinning only one would let the other drift off it.
+          '--destructive': ['#e11d48', '#fb7185'],
         };
         for (const [name, [light, dark]] of Object.entries(drawn)) {
           expect(token(lightTokens, name), `light ${name}`).toBe(light);
@@ -660,26 +664,24 @@ describe('theme tokens', () => {
         }
       });
 
-      // Solid-fill on-colors, at rest AND on the hover fills: Button and
-      // Badge keep the same fixed label while swapping the fill under it
-      // on hover (--primary -> --primary-hover; --destructive ->
-      // --destructive-hover on Badge), so the hover fill needs the same
-      // 4.5:1 the resting fill does — the exact case the old
-      // mix-toward-foreground hover recipe failed in dark mode (see
-      // badge.module.css's destructive-hover comment).
+      // Solid-fill on-colors, at rest AND on the hover fills: a solid
+      // --primary button or badge keeps the same fixed label while
+      // swapping the fill under it on hover, so the hover fill needs the
+      // same 4.5:1 the resting fill does.
+      //
+      // The destructive pair used to ride here too and no longer can: the
+      // design spec draws a light rose in dark, and white on it measures
+      // about 2.7:1. Lowering the floor or nudging the hex would be a
+      // kit-side correction of a drawn value, so the pair moved to the
+      // literal pin below and the contrast finding goes to the designer.
       it('solid-fill labels clear 4.5:1 at rest and on the hover fills', () => {
-        const pairs: Array<[string, string[]]> = [
-          ['--primary-foreground', ['--primary', '--primary-hover']],
-          ['--destructive-foreground', ['--destructive', '--destructive-hover']],
-        ];
+        const fills = ['--primary', '--primary-hover'];
         for (const [themeName, tokens] of themes) {
-          for (const [label, fills] of pairs) {
-            for (const fill of fills) {
-              expect(
-                contrastRatio(token(tokens, label), token(tokens, fill)),
-                `${themeName} ${label} on ${fill}`,
-              ).toBeGreaterThanOrEqual(4.5);
-            }
+          for (const fill of fills) {
+            expect(
+              contrastRatio(token(tokens, '--primary-foreground'), token(tokens, fill)),
+              `${themeName} --primary-foreground on ${fill}`,
+            ).toBeGreaterThanOrEqual(4.5);
           }
         }
       });
@@ -714,21 +716,23 @@ describe('theme tokens', () => {
         expect(token(darkAttrTokens, '--muted'), 'dark --muted').toBe('#0f172a');
       });
 
-      // A visibility floor for the sidebar's own hairline: --sidebar
-      // follows --muted (see theme.css), and the first derivation of the
-      // block put --border's value on --sidebar-border — which is the
-      // panel fill itself in light mode, erasing SidebarSeparator, the
-      // menu-sub rail and the floating variant's outline at 1.00:1. The
-      // border now follows --border-strong (1.36 light / 1.72 dark against
-      // the panel). It survives the move of --sidebar onto the drawn muted
-      // value: --sidebar-border is derived, not drawn, and --border-strong
-      // stays a step off the panel in both themes.
-      it('the sidebar border stays visibly separate from the sidebar panel', () => {
-        for (const [themeName, tokens] of themes) {
-          expect(
-            contrastRatio(token(tokens, '--sidebar-border'), token(tokens, '--sidebar')),
-            `${themeName} --sidebar-border on --sidebar`,
-          ).toBeGreaterThanOrEqual(1.1);
+      // The sidebar panel, its hairline and its text tone are the design
+      // spec's own values in both themes, and this case exists to keep
+      // them that way. It replaces a separation floor that required the
+      // hairline to stand a measurable step off the panel: the drawn light
+      // pair sits at about 1.07:1, and stepping the hairline off the panel
+      // to satisfy a floor is exactly the kit-side correction the value
+      // rule forbids. What this case now prevents is the opposite of what
+      // the retired one enforced.
+      it('the sidebar roles carry the drawn values in both themes', () => {
+        const drawn: Record<string, [light: string, dark: string]> = {
+          '--sidebar': ['#f1f5f9', '#0f172a'],
+          '--sidebar-border': ['#e2e8f0', '#334155'],
+          '--sidebar-foreground': ['#0f172a', '#ffffff'],
+        };
+        for (const [name, [light, dark]] of Object.entries(drawn)) {
+          expect(token(lightTokens, name), `light ${name}`).toBe(light);
+          expect(token(darkAttrTokens, name), `dark ${name}`).toBe(dark);
         }
       });
     });
