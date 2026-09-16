@@ -104,21 +104,21 @@
   --popover-shadow: 0 8px 24px 0 var(--popover-border);
 
   /*
-   * Radius scale. Components consume only the derived steps; consumers
-   * rebrand by overriding --radius alone and the whole scale follows. The
-   * offsets place the Studio scale (sm 6 / md 8 / lg 12 / xl 16, unchanged
-   * by the blue rebrand) on the 8px base — note md, not lg, sits at the
-   * base value, unlike shadcn v4's derivation. --radius-xs has no Figma
-   * counterpart; it predates the Studio scale and keeps its 4px slot.
-   * Corner shape isn't a light/dark concern, so none of this is redefined
-   * per-theme.
+   * Radius scale. The drawn scale is 4 / 6 / 8 / 10 / 12 / 16 on a 10px
+   * base, and the base sits at the lg step: the drawn field, button, popup
+   * surface and segmented group all round at 10, so that is the value a
+   * consumer reaches for first. Components consume only the derived steps,
+   * so rebranding is still one knob - override --radius alone and the whole
+   * scale follows. Corner shape isn't a light/dark concern, so none of this
+   * is redefined per-theme.
    */
-  --radius: 0.5rem;
-  --radius-xs: calc(var(--radius) - 4px);
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 4px);
-  --radius-xl: calc(var(--radius) + 8px);
+  --radius: 0.625rem;
+  --radius-xs: calc(var(--radius) - 6px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 6px);
   /* Pill/circle cap, independent of --radius; the design spec's --radius-full = 999. */
   --radius-full: 9999px;
 

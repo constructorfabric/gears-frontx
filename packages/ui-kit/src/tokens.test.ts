@@ -72,6 +72,15 @@ const definedTokens = new Set(
   ),
 );
 
+// The invariants block's own declarations, read at module scope so the
+// radius case can assert the derivation EXPRESSIONS, not just that the
+// names exist. Same `:root`-exact finder the nested block-sync describe
+// uses, for the same reason: the light block's selector contains `:root`
+// as a substring, so only an exact match points at the invariants.
+const invariantTokens = declarationMap(
+  extractRules(themeCss).find((rule) => rule.selector === ':root')?.body ?? '',
+);
+
 const componentsDir = join(srcDir, 'components');
 const moduleFiles = readdirSync(componentsDir, { recursive: true, encoding: 'utf8' })
   .filter((file) => file.endsWith('.module.css'))
@@ -84,16 +93,23 @@ const GUARDED_PROP =
   /^(?:padding|margin|scroll-margin)(?:-[a-z]+)*$|^(?:gap|row-gap|column-gap|font-size|line-height|letter-spacing|font-weight|border-spacing)$/;
 
 describe('theme tokens', () => {
+  // The scale is 4 / 6 / 8 / 10 / 12 / 16 on a 10px base, with the base at
+  // the lg step. Asserting the derivation rather than the six resolved
+  // numbers is what keeps the single-knob rebrand provable: a consumer who
+  // overrides --radius alone still moves every step with it, which a table
+  // of literal pixel values would not catch if someone hard-coded a step.
   it('defines the radius scale derived from --radius', () => {
-    for (const token of [
-      '--radius',
-      '--radius-xs',
-      '--radius-sm',
-      '--radius-md',
-      '--radius-lg',
-      '--radius-xl',
-    ]) {
-      expect(definedTokens.has(token), `${token} is missing from theme.css`).toBe(true);
+    const derivation: Record<string, string> = {
+      '--radius': '0.625rem',
+      '--radius-xs': 'calc(var(--radius) - 6px)',
+      '--radius-sm': 'calc(var(--radius) - 4px)',
+      '--radius-md': 'calc(var(--radius) - 2px)',
+      '--radius-lg': 'var(--radius)',
+      '--radius-xl': 'calc(var(--radius) + 2px)',
+      '--radius-2xl': 'calc(var(--radius) + 6px)',
+    };
+    for (const [token, value] of Object.entries(derivation)) {
+      expect(invariantTokens.get(token), `${token} in theme.css`).toBe(value);
     }
   });
 
@@ -457,6 +473,7 @@ describe('theme tokens', () => {
       '--radius-md',
       '--radius-lg',
       '--radius-xl',
+      '--radius-2xl',
       // Pill/circle cap. Independent of --radius (fixed 9999px), but the
       // same shape-not-color reasoning as the scale above keeps it here.
       '--radius-full',
