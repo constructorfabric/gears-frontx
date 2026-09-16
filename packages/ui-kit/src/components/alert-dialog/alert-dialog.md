@@ -37,7 +37,7 @@ is no `modal={false}` escape hatch (unlike `Dialog`).
 | Prop | Type | Default |
 |------|------|---------|
 | `size` | `'default' \| 'sm'` — `sm` narrows the max width and stacks `AlertDialogCancel`/`AlertDialogAction` into two equal columns instead of a row | `'default'` |
-| `showBackdrop` | `boolean` — renders the dimming backdrop | `true` |
+| `showBackdrop` | `boolean` - renders the dimming backdrop (`--overlay-modal`, the same dark scrim in both themes) | `true` |
 | `container` | DOM node to portal the popup into | `<body>` |
 | `initialFocus` / `finalFocus` | `boolean \| RefObject \| function` — see Base UI Dialog.Popup | default focus behavior |
 | `className` | `string` — merged after the kit class | — |

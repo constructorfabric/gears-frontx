@@ -7,7 +7,7 @@ import { useTokenValues } from './token-utils';
  * theme.css color custom property appended in theme.css's own declaration
  * order — card/popover/destructive/link/sidebar/blue are real tokens the
  * mockup's 31-role list doesn't name but the kit ships and a consumer can
- * reach for. Excluded on purpose: --overlay (a translucent scrim, not a
+ * reach for. Excluded on purpose: the --overlay-* scrims (translucent, not a
  * fill a chip can show meaningfully), and --popover-border/--popover-shadow
  * (composite values, not standalone colors — --popover-shadow gets its own
  * specimen on the Layout & Elevation page instead).

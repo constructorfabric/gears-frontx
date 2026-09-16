@@ -22,11 +22,9 @@
  * `--drawer-swipe-strength` are written directly onto THIS element by Base
  * UI's own DrawerViewport during a live swipe of the drawer this backdrop
  * belongs to (both are in tokens.test.ts's BASE_UI_RUNTIME_VARS).
- * Background color is this port's own inference:
- * not in the fetched Tailwind class list (the `cn-drawer-overlay` base
- * recipe most likely supplies it), taken from the SAME --overlay scrim
- * token Dialog's and Sheet's own backdrops already use for the identical
- * modal-dimming role.
+ * The backdrop is the drawn side-panel veil, --overlay-panel: barely a
+ * tint plus a blur, the same scrim Sheet's own backdrop takes. The modal
+ * scrim that dims is a different token (see theme.css).
  */
 .backdrop {
   position: fixed;
@@ -34,12 +32,20 @@
   isolation: isolate;
   z-index: 50;
   min-height: 100dvh;
-  background-color: var(--overlay);
+  background-color: var(--overlay-panel);
   opacity: max(var(--drawer-overlay-min-opacity, 0), calc(1 - var(--drawer-swipe-progress)));
   user-select: none;
   /* Upstream's own verified duration/curve — deliberately not Dialog's
    * 100ms ease: Drawer's fetched source specifies this exact pair. */
   transition: opacity 450ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Guarded: a browser without backdrop-filter would otherwise be left with
+ * a 10 per cent tint as the panel's only separation from the page. */
+@supports (backdrop-filter: blur(1px)) {
+  .backdrop {
+    backdrop-filter: blur(var(--overlay-panel-blur));
+  }
 }
 
 /* iOS Safari's `position: fixed` can misbehave against the drawer's own

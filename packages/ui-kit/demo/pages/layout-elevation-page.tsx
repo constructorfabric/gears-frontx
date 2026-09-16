@@ -25,7 +25,7 @@ const LAYOUT_TOKENS = [
 // tokens exist (see the report for the gap against Figma's 4-specimen
 // Elevation board). --popover-border isn't listed on its own: it is the
 // color --popover-shadow is composed from, not a shadow value itself.
-const ELEVATION_TOKENS = ['overlay', 'popover-shadow'];
+const ELEVATION_TOKENS = ['overlay-modal', 'overlay-panel', 'overlay-panel-blur', 'popover-shadow'];
 
 function LayoutRow({
   token,
@@ -200,17 +200,17 @@ export function LayoutElevationPage() {
             }}
           >
             <code style={{ fontSize: 'var(--text-meta-size)', color: 'var(--primary-foreground)' }}>
-              --overlay · Dialog backdrop scrim
+              --overlay-modal · Dialog backdrop scrim
             </code>
             <div
               style={{
                 height: 64,
                 borderRadius: 'var(--radius-md)',
-                background: 'var(--overlay)',
+                background: 'var(--overlay-modal)',
               }}
             />
             <code style={{ fontSize: 'var(--text-meta-size)', color: 'var(--primary-foreground)' }}>
-              {elevationValues.overlay}
+              {elevationValues['overlay-modal']}
             </code>
           </div>
         </div>

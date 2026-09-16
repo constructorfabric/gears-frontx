@@ -67,17 +67,23 @@
  */
 :root {
   /*
-   * Scrim behind modal-style popups (Dialog's backdrop): the design spec's
-   * --foreground at 48%. Declared once here and never redefined in
-   * [data-theme='dark'] or the prefers-color-scheme block, because the
-   * role it references already resolves per theme at the point of use -
-   * the same arrangement --popover-border and --popover-shadow below have.
-   * The drawn consequence, which is the intent and not an oversight:
-   * --foreground is white in dark, so the scrim is a white veil there and
-   * a near-black one in light. It brightens the page behind a dark-theme
-   * dialog instead of dimming it.
+   * The two drawn scrims. The spec draws a modal backdrop that DIMS and a
+   * side-panel veil that barely tints and blurs; one token cannot carry
+   * both, and a bare name with a suffixed sibling would read as one being
+   * a variant of the other. The pair is symmetric instead, named for what
+   * each dims: --overlay-modal behind Dialog and AlertDialog,
+   * --overlay-panel behind Sheet and Drawer.
+   *
+   * Both are fixed inks: the modal scrim is the same dark ink in light and
+   * in dark, the panel one is black at 10 per cent in both, so both are
+   * declared once here and never under a theme selector. Fixed rather than
+   * resolved through a role, which is what the previous single token did:
+   * mixing from --foreground inverted the scrim to a light veil in dark
+   * and brightened the page behind a dialog instead of dimming it.
    */
-  --overlay: color-mix(in oklab, var(--foreground) 48%, transparent);
+  --overlay-modal: color-mix(in oklab, #0f172a 48%, transparent);
+  --overlay-panel: color-mix(in oklab, #000000 10%, transparent);
+  --overlay-panel-blur: 4px;
 
   /*
    * Popover chrome shared by every card-like popup (Dialog/DropdownMenu/
@@ -89,16 +95,14 @@
    * have no kit consumer yet and are not carried as tokens until one does.
    * All four consumers already paint their surface from the --popover/
    * --popover-foreground pair, so this chrome takes the same family name
-   * rather than "--overlay-*", which would read as a variant of --overlay
-   * above (the modal *scrim*, an unrelated concept — a popover has no
-   * backdrop) and reversed word order from it besides. --popover-shadow is
+   * rather than "--overlay-*", which names the two backdrop scrims above,
+   * an unrelated concept - a popover has no backdrop. --popover-shadow is
    * COMPOSED from --popover-border (its layer is that same color), not just
    * co-located with it: rebranding the hairline recolors the shadow along
    * with it, by construction, not as a separate edit anyone has to remember
-   * to make. Same rationale as --overlay above for living here un-redefined
-   * regardless: both are mixed from --foreground, so the computed value
-   * already flips correctly per theme without a separate light/dark
-   * declaration.
+   * to make. Both live here un-redefined because they are mixed from
+   * --foreground, so the computed value already flips correctly per theme
+   * without a separate light/dark declaration.
    */
   --popover-border: color-mix(in oklab, var(--foreground) 12%, transparent);
   --popover-shadow: 0 8px 24px 0 var(--popover-border);

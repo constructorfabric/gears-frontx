@@ -47,7 +47,7 @@ default; `false`; `'trap-focus'`) — see Base UI Dialog.Root.
 |------|------|---------|
 | `side` | `'top' \| 'right' \| 'bottom' \| 'left'` — which viewport edge the panel is anchored to | `'right'` |
 | `showCloseButton` | `boolean` — renders a top-right close (X) button | `true` |
-| `showBackdrop` | `boolean` — renders the dimming backdrop; set `false` together with `modal={false}` on the root for a genuinely non-modal sheet | `true` |
+| `showBackdrop` | `boolean` - renders the backdrop, which is the drawn side-panel veil (`--overlay-panel`, a 10 per cent tint plus a 4px blur) rather than the modal scrim that dims; set `false` together with `modal={false}` on the root for a genuinely non-modal sheet | `true` |
 | `closeLabel` | `string` — accessible name for that button, the panel's only kit-authored text; same contract as `Dialog`'s `closeLabel` | `'Close'` |
 | `container` | DOM node to portal the panel into | `<body>` |
 | `initialFocus` / `finalFocus` | `boolean \| RefObject \| function` — see Base UI Dialog.Popup | default focus behavior |

@@ -505,18 +505,21 @@ describe('theme tokens', () => {
     // overrides colors, never shape or scale (see the comment on theme.css's
     // `:root` invariants block).
     const THEME_INVARIANT_TOKENS = new Set([
-      // Scrim behind modal-style popups: the design spec's --foreground at
-      // 48%. Invariant because it is declared once and resolves per theme
-      // through the role it references, which also means it veils white in
-      // dark and near-black in light (see the --overlay comment in
-      // theme.css).
-      '--overlay',
+      // The two drawn backdrop scrims and the panel one's blur. Invariant
+      // because both inks are fixed: the spec draws the same dark modal
+      // scrim in light and in dark, and black at 10 per cent behind a side
+      // panel in both. Declaring them once is what keeps the dark scrim
+      // from inverting into a light veil, which is what the single
+      // role-resolved token they replace did.
+      '--overlay-modal',
+      '--overlay-panel',
+      '--overlay-panel-blur',
       // Popover chrome (ring + drop shadow) shared by every card-like
       // popup, named after the --popover/--popover-foreground pair every
       // consumer already paints with (see theme.css for why not
-      // "--overlay-*"). Both are mixed from --foreground, so the computed
-      // value already flips correctly per theme without a separate
-      // light/dark declaration — same rationale as --overlay above.
+      // "--overlay-*", which names the backdrop scrims). Both are mixed
+      // from --foreground, so the computed value already flips correctly
+      // per theme without a separate light/dark declaration.
       '--popover-border',
       '--popover-shadow',
       // Radius scale derived from --radius. Corner shape isn't a light/dark

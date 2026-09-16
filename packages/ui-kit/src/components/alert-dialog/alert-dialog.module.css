@@ -6,7 +6,7 @@
  * the hood (@base-ui/react/alert-dialog re-exports @base-ui/react/dialog's
  * Popup/Backdrop/Portal/Title/Description), so this file mirrors
  * dialog.module.css's popup/backdrop treatment — including the kit's
- * `--overlay` scrim rather than upstream's lighter `bg-black/10` — for the
+ * `--overlay-modal` scrim rather than a lighter one, for the
  * same reason DialogContent and AlertDialogContent already share a
  * primitive: they are architecturally the same modal surface.
  */
@@ -16,7 +16,7 @@
   inset: 0;
   isolation: isolate;
   z-index: 50;
-  background-color: var(--overlay);
+  background-color: var(--overlay-modal);
   /* Opacity-only, no transform/geometry — a fade isn't motion under
      WCAG 2.3.3, so deliberately left unguarded under prefers-reduced-motion. */
   transition: opacity 100ms ease;

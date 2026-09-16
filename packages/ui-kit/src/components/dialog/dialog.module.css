@@ -8,7 +8,7 @@
   inset: 0;
   isolation: isolate;
   z-index: 50;
-  background-color: var(--overlay);
+  background-color: var(--overlay-modal);
   /* Opacity-only, no transform/geometry — a fade isn't motion under
      WCAG 2.3.3, so deliberately left unguarded under prefers-reduced-motion. */
   transition: opacity 100ms ease;
