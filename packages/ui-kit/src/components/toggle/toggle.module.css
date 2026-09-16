@@ -90,6 +90,35 @@
   border-color: var(--border-strong);
 }
 
+/*
+ * The drawn third variant: a hairline in --border over nothing, a --muted
+ * hover, and the same secondary pairing for pressed. The spec binds a
+ * product-owned neutral for the hover fill, which this kit excludes by
+ * ownership; --muted is the kit-generic role at that value, the same
+ * substitution the segmented group already makes.
+ *
+ * The name is the spec's own. shadcn has none for this look, and the word
+ * carries no vendor or product term, so it is adopted as drawn.
+ */
+.variantSteel {
+  border-color: var(--border);
+  background-color: transparent;
+}
+
+.variantSteel:hover {
+  background-color: var(--muted);
+  color: var(--foreground);
+}
+
+/* Declared after the hover rule: a pressed steel toggle ignores hover, so
+ * the fill has to hold under the pointer. */
+.variantSteel[data-pressed],
+.variantSteel[data-pressed]:hover {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+  border-color: var(--border);
+}
+
 /* Toggles sit on the same control/height scale as Button. */
 .sizeDefault {
   height: var(--control-height-md);

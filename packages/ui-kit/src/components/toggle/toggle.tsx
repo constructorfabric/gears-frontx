@@ -8,6 +8,7 @@ export const toggleVariants = cva(styles.toggle, {
     variant: {
       default: styles.variantDefault,
       outline: styles.variantOutline,
+      steel: styles.variantSteel,
     },
     size: {
       default: styles.sizeDefault,

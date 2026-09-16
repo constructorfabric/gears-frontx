@@ -21,7 +21,7 @@ an item inside `ToggleGroup`.
 |------|------|---------|
 | `pressed` / `defaultPressed` | controlled / uncontrolled pressed state | `false` |
 | `onPressedChange` | `(pressed: boolean, eventDetails) => void` | — |
-| `variant` | `default` \| `outline` | `default` |
+| `variant` | `default` \| `outline` \| `steel` - `steel` is a hairline in `--border` over nothing, filling with `--muted` on hover and holding `--secondary` while pressed | `default` |
 | `size` | `default` \| `sm` \| `lg` | `default` |
 | `value` | identifies this toggle inside a `ToggleGroup` | — |
 | `className` | `string` — merged after variant/size classes | — |

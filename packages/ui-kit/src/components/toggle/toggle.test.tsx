@@ -1,5 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 
 import { Toggle } from './toggle';
 import styles from './toggle.module.css';
@@ -48,5 +54,46 @@ describe('Toggle', () => {
     render(<Toggle aria-label="Locked" disabled onPressedChange={onPressedChange} />);
     fireEvent.click(screen.getByRole('button', { name: 'Locked' }));
     expect(onPressedChange).not.toHaveBeenCalled();
+  });
+});
+
+/*
+ * The drawn steel variant. Pressed has to hold its fill under the pointer,
+ * which is a source-order relationship no rendered assertion reaches in
+ * jsdom, so the rules are read off the stylesheet.
+ */
+describe('Toggle steel variant', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'toggle.module.css'), 'utf8'),
+  );
+
+  function declared(selector: string, prop: string) {
+    const rule = rules.find(
+      (candidate) => candidate.selector.replace(/\s*,\s*/g, ',').replace(/\s+/g, ' ').trim() === selector,
+    );
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('applies the steel class', () => {
+    render(
+      <Toggle aria-label="Bold" variant="steel">
+        B
+      </Toggle>,
+    );
+    expect(screen.getByRole('button', { name: 'Bold' }).className).toContain(styles.variantSteel);
+  });
+
+  it('draws a hairline over nothing and fills with --muted on hover', () => {
+    expect(declared('.variantSteel', 'border-color')).toBe('var(--border)');
+    expect(declared('.variantSteel', 'background-color')).toBe('transparent');
+    // The drawn hover fill binds a product-owned neutral this kit excludes
+    // by ownership; --muted is the kit-generic role at that value.
+    expect(declared('.variantSteel:hover', 'background-color')).toBe('var(--muted)');
+  });
+
+  it('holds the pressed fill under the pointer', () => {
+    expect(
+      declared('.variantSteel[data-pressed],.variantSteel[data-pressed]:hover', 'background-color'),
+    ).toBe('var(--secondary)');
   });
 });

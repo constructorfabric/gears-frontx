@@ -1,6 +1,6 @@
 import { Toggle } from '@gears-frontx/ui-kit';
 
-import { Row, Section } from '../shared';
+import { Measure, Row, Section } from '../shared';
 
 export default function ToggleExample() {
   return (
@@ -23,6 +23,38 @@ export default function ToggleExample() {
             I
           </Toggle>
         </Row>
+      </Section>
+
+      {/* The drawn steel variant: a hairline over nothing, a --muted hover
+          and the secondary pairing while pressed. */}
+      <Section title="Steel">
+        <Measure
+          of={{
+            'steel idle': '#toggle-steel-idle',
+            'steel pressed': '#toggle-steel-pressed',
+            'steel sm': '#toggle-steel-sm',
+          }}
+        >
+          <Row>
+            <Toggle id="toggle-steel-idle" aria-label="Bold, steel" variant="steel">
+              B
+            </Toggle>
+            <Toggle
+              id="toggle-steel-pressed"
+              aria-label="Italic, steel"
+              variant="steel"
+              defaultPressed
+            >
+              I
+            </Toggle>
+            <Toggle id="toggle-steel-sm" aria-label="Underline, steel" variant="steel" size="sm">
+              U
+            </Toggle>
+            <Toggle aria-label="Strike, steel" variant="steel" disabled>
+              S
+            </Toggle>
+          </Row>
+        </Measure>
       </Section>
 
       <Section title="With text">
