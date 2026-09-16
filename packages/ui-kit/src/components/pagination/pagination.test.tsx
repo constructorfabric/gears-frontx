@@ -1,7 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import styles from '../button/button.module.css';
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 import {
   Pagination,
   PaginationContent,
@@ -30,24 +34,22 @@ describe('Pagination', () => {
     expect(screen.getByRole('list')).toHaveProperty('tagName', 'UL');
   });
 
-  it('renders a link with the button base class and square footprint by default', () => {
+  it('renders a link with its own class and a square footprint by default', () => {
     render(<PaginationLink href="#2">2</PaginationLink>);
     const link = screen.getByRole('link', { name: '2' });
-    expect(link.className).toContain(styles.button);
+    expect(link.className).toContain(paginationStyles.link);
     expect(link.className).toContain(paginationStyles.square);
-    // Not active: ghost variant, no aria-current.
-    expect(link.className).toContain(styles.variantGhost);
     expect(link.hasAttribute('aria-current')).toBe(false);
+    expect(link.hasAttribute('data-active')).toBe(false);
   });
 
-  it('switches to the outline variant and aria-current when active', () => {
+  it('marks the active page with aria-current and data-active', () => {
     render(
       <PaginationLink href="#1" isActive>
         1
       </PaginationLink>,
     );
     const link = screen.getByRole('link', { name: '1' });
-    expect(link.className).toContain(styles.variantOutline);
     expect(link.getAttribute('aria-current')).toBe('page');
     expect(link.getAttribute('data-active')).toBe('true');
   });
@@ -83,5 +85,38 @@ describe('Pagination', () => {
     );
     fireEvent.click(screen.getByRole('link', { name: '3' }));
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+   * Reads the module's own source: the drawn pagination item is a set of
+   * numbers and a paint inversion, and jsdom computes neither. What this
+   * pins is that the item owns them, rather than borrowing a Button size
+   * that could move underneath it.
+   */
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'pagination.module.css'), 'utf8'),
+  );
+
+  function declared(selector: string, prop: string) {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('pins the drawn 28px item, its radius and its label role', () => {
+    expect(declared('.link', 'height')).toBe('var(--control-height-xs)');
+    expect(declared('.link', 'border-radius')).toBe('var(--radius-sm)');
+    expect(declared('.link', 'color')).toBe('var(--muted-foreground)');
+    expect(declared('.link', 'font-size')).toBe('var(--text-label-size)');
+    expect(declared('.link.square', 'width')).toBe('var(--control-height-xs)');
+    expect(declared('.ellipsis', 'height')).toBe('var(--control-height-xs)');
+    expect(declared('.icon', 'width')).toBe('var(--icon-size-sm)');
+    expect(declared('.content', 'gap')).toBe('var(--space-1)');
+  });
+
+  it('inverts the active page onto the page background under a primary label', () => {
+    // Not an outline button: the drawn active item takes the page's own
+    // background as its fill, which reads as a recess on a raised surface.
+    expect(declared('.link[data-active]', 'background-color')).toBe('var(--background)');
+    expect(declared('.link[data-active]', 'color')).toBe('var(--primary)');
   });
 });

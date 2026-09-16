@@ -1,10 +1,15 @@
 # Pagination
 
-Page-number navigation built from real anchors, styled through `Button`'s
-own variant classes so a page link looks exactly like a ghost/outline
-button. No Base UI primitive backs it — pure styling translation over
-semantic markup (`nav` > `ul` > `li`), the same shape as `Table`/
-`Breadcrumb`.
+Page-number navigation built from real anchors. No Base UI primitive backs
+it: pure styling over semantic markup (`nav` > `ul` > `li`), the same shape
+as `Table`/`Breadcrumb`.
+
+An item is a 28px square at a 6px radius, transparent, with a centred 12/16
+label in `--muted-foreground` and a 4px gap between items. The active page
+inverts: the page's own `--background` becomes the chip fill, under a
+`--primary` label. `PaginationPrevious`/`PaginationNext` take the same 28px
+height with horizontal padding instead of a fixed square, because they carry
+an icon and a label side by side.
 
 ## When to use
 
@@ -35,20 +40,18 @@ semantic markup (`nav` > `ul` > `li`), the same shape as `Table`/
 
 | Prop | Type | Default |
 |------|------|---------|
-| `isActive` | `boolean` — outline variant + `aria-current="page"` when true, ghost otherwise | `false` |
-| `size` | `default` \| `sm` \| `lg` (Button's own size scale) | `default` |
-| `square` | `boolean` — square, icon-sized footprint | `true` |
+| `isActive` | `boolean` - inverts the item's paint and sets `aria-current="page"` | `false` |
+| `square` | `boolean` - a 28px square footprint instead of a padded one | `true` |
 
-`PaginationPrevious`/`PaginationNext` accept the same props minus `size`/
-`square` (fixed to `default`/`false`), plus `text` to relabel the button.
+`PaginationPrevious`/`PaginationNext` accept the same props minus `square`
+(fixed to `false`), plus `text` to relabel the link.
 
 ## Implementation note
 
-`PaginationLink` is styled through the exact same CSS classes `Button`
-renders with (`button.module.css`'s `.button`/`.variantOutline`/
-`.variantGhost`/`.sizeDefault` etc.) — visually and behaviorally the same
-"button" surface, applied to a real `<a>` instead of Base UI's `Button`
-primitive, so pagination items are real, crawlable, cmd-clickable links.
+Pagination carries its own geometry rather than a `Button` size: the drawn
+item is 28px with a paint inversion on the active page that no Button
+variant renders. The parts are real `<a>` elements, so pagination items stay
+crawlable and cmd-clickable.
 
 ## Examples
 

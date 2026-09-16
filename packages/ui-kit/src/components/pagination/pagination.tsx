@@ -1,8 +1,7 @@
-import { cx, type VariantProps } from 'class-variance-authority';
+import { cx } from 'class-variance-authority';
 import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
-import { buttonVariants } from '../button/button.js';
 import styles from './pagination.module.css';
 
 export type PaginationProps = ComponentProps<'nav'>;
@@ -30,9 +29,7 @@ export function PaginationItem(props: PaginationItemProps) {
   return <li {...props} />;
 }
 
-export interface PaginationLinkProps
-  extends Omit<ComponentProps<'a'>, 'className'>,
-    Pick<VariantProps<typeof buttonVariants>, 'size'> {
+export interface PaginationLinkProps extends Omit<ComponentProps<'a'>, 'className'> {
   className?: string;
   isActive?: boolean;
   /**
@@ -46,28 +43,18 @@ export interface PaginationLinkProps
   square?: boolean;
 }
 
-export function PaginationLink({
-  className,
-  isActive,
-  size = 'default',
-  square = true,
-  ...props
-}: PaginationLinkProps) {
+export function PaginationLink({ className, isActive, square = true, ...props }: PaginationLinkProps) {
   return (
     <a
       aria-current={isActive ? 'page' : undefined}
       data-active={isActive || undefined}
-      className={buttonVariants({
-        variant: isActive ? 'outline' : 'ghost',
-        size,
-        className: cx(styles.link, square && styles.square, className),
-      })}
+      className={cx(styles.link, square && styles.square, className)}
       {...props}
     />
   );
 }
 
-export interface PaginationPreviousProps extends Omit<PaginationLinkProps, 'size' | 'square'> {
+export interface PaginationPreviousProps extends Omit<PaginationLinkProps, 'square'> {
   /** Label text, hidden below the `sm` breakpoint (640px) — matching
    * upstream's `hidden sm:block`. @default 'Previous' */
   text?: string;
@@ -81,7 +68,6 @@ export function PaginationPrevious({
   return (
     <PaginationLink
       aria-label="Go to previous page"
-      size="default"
       square={false}
       className={cx(styles.previous, className)}
       {...props}
@@ -92,7 +78,7 @@ export function PaginationPrevious({
   );
 }
 
-export interface PaginationNextProps extends Omit<PaginationLinkProps, 'size' | 'square'> {
+export interface PaginationNextProps extends Omit<PaginationLinkProps, 'square'> {
   /** @default 'Next' */
   text?: string;
 }
@@ -101,7 +87,6 @@ export function PaginationNext({ className, text = 'Next', ...props }: Paginatio
   return (
     <PaginationLink
       aria-label="Go to next page"
-      size="default"
       square={false}
       className={cx(styles.next, className)}
       {...props}

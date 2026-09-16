@@ -8,36 +8,51 @@ import {
   PaginationPrevious,
 } from '@gears-frontx/ui-kit';
 
-import { Section } from '../shared';
+import { Measure, Section } from '../shared';
 
 export default function PaginationExample() {
   return (
     <>
+      {/* A full row with the active page in the middle, plus the compact and
+          the minimal arrangements below. Everything in the row sits on the
+          same 28px box; only the prev/next pair trades the square for
+          horizontal padding. */}
       <Section title="Default">
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious href="#" />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#">1</PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#" isActive>
-                2
-              </PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#">3</PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationEllipsis />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext href="#" />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+        <Measure
+          of={{
+            'inactive item': '#pg-full [href="#3"]',
+            'active item': '#pg-full [aria-current=page]',
+            previous: '#pg-full [aria-label="Go to previous page"]',
+            ellipsis: '#pg-full li > span[aria-hidden]',
+            row: '#pg-full ul',
+            'prev icon': '#pg-full [aria-label="Go to previous page"] svg',
+          }}
+        >
+          <Pagination id="pg-full">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious href="#" />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#1">1</PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#2" isActive>
+                  2
+                </PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#3">3</PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext href="#" />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </Measure>
       </Section>
 
       <Section title="Simple">

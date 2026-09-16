@@ -2,13 +2,15 @@
  * Pagination styles, translated from shadcn/ui (MIT) to CSS Modules.
  * Consumes only theme.css variables — no raw colors.
  *
- * PaginationLink reuses button.module.css's own classes via `buttonVariants`
- * (see pagination.tsx) for color/geometry — this file only adds the parts
- * upstream's Button doesn't have: the square icon-sized footprint (upstream's
- * `size="icon"`, which this kit's Button replaced with a derived
- * `data-icon-only` state — not reachable from outside button.tsx, so
- * Pagination re-derives the same square geometry independently here) and
- * the previous/next text's responsive visibility.
+ * PaginationLink used to borrow button.module.css's classes for its paint
+ * and geometry, rendering as a ghost button until it was active and an
+ * outline one once it was. The design spec draws pagination as its own
+ * item rather than as a button size: a 28px square at a 6px radius,
+ * transparent with a --muted-foreground label, inverting on the active
+ * page to a --background fill under a --primary one. That last pair is a
+ * real inversion - the page's own background colour becomes the chip fill
+ * on a raised surface - and no Button variant renders it, so the item is
+ * styled here and takes no size from Button at all.
  */
 
 .pagination {
@@ -27,20 +29,78 @@
 }
 
 /*
- * `.link.square` — two classes on the same <a>, both applied by
- * pagination.tsx (buttonVariants' `className` param carries both) — is a
- * (0,2,0)-specificity compound selector, which reliably outranks
- * button.module.css's own `.sizeDefault`/`.sizeSm`/`.sizeLg` (each (0,1,0))
- * regardless of which stylesheet a consumer's bundler happens to load
- * first; specificity, not source order, is what decides the cascade here.
- * Height stays whatever the reused size class already set — aspect-ratio
- * derives width from it, so only padding/aspect-ratio need overriding.
- * Same idiom as button.module.css's own `.button[data-icon-only]`,
- * independently declared since this file cannot edit that one.
+ * The drawn item: 28 tall at a 6px radius, a 12/16 label in
+ * --muted-foreground, centred, on nothing. Prev/Next share this rule and
+ * only opt out of the square width below, because they carry an icon AND a
+ * label side by side.
  */
+.link {
+  /* Substitutes for the preflight the kit lacks: an <a> is content-box, so
+   * the padding below would otherwise be added to the square width. */
+  box-sizing: border-box;
+  display: inline-flex;
+  height: var(--control-height-xs);
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  border-radius: var(--radius-sm);
+  padding-inline: var(--space-2);
+  background-color: transparent;
+  color: var(--muted-foreground);
+  font-family: inherit;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+  font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-label-tracking);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  /* Colour crossfades only, no transform/geometry, not motion under
+     WCAG 2.3.3, so deliberately left unguarded under prefers-reduced-motion. */
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+/* The spec draws no pagination hover, so this is the kit's own and stays
+ * as close to the drawn look as a state can: the label brightens toward the
+ * active one's emphasis and nothing else moves. A fill would be the wrong
+ * cue here, since the active page is the one thing in the row that has one. */
+.link:hover {
+  color: var(--foreground);
+}
+
+/* The kit-wide outside ring, Button's idiom: an item with no border of its
+ * own has nothing to thicken, and the ring's only contrast neighbour is the
+ * surface behind the row. */
+.link:focus-visible {
+  outline: var(--border-width-focus) solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .link:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+/*
+ * The active page. The drawn inversion: the page's own --background becomes
+ * the chip fill, which reads as a recess wherever the row sits on a raised
+ * surface, under a --primary label. Declared after :hover so the active
+ * page keeps its own paint while the pointer is over it.
+ */
+.link[data-active] {
+  background-color: var(--background);
+  color: var(--primary);
+}
+
+/* The square footprint a bare page number takes: the drawn item is 28 on
+ * both axes, so the width is the same token as the height rather than an
+ * aspect ratio derived from it. */
 .link.square {
-  padding: 0;
-  aspect-ratio: 1;
+  width: var(--control-height-xs);
+  padding-inline: 0;
 }
 
 .previousNextText {
@@ -61,12 +121,15 @@
   height: var(--icon-size-sm);
 }
 
+/* The same 28px box as an item, so the collapsed-pages marker sits on the
+ * row's own rhythm. */
 .ellipsis {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--control-height-md);
-  height: var(--control-height-md);
+  width: var(--control-height-xs);
+  height: var(--control-height-xs);
+  color: var(--muted-foreground);
 }
 
 /*
