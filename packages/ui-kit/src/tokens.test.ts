@@ -440,6 +440,7 @@ describe('theme tokens', () => {
       '--space-8',
       // Control metrics (Figma control/height/*, icon/size/*,
       // border/width/*). Sizes, not colors — never per-theme.
+      '--control-height-xs',
       '--control-height-sm',
       '--control-height-md',
       '--control-height-lg',
@@ -485,6 +486,10 @@ describe('theme tokens', () => {
       '--text-mono-line-height',
       '--text-mono-weight',
       '--text-mono-tracking',
+      '--text-micro-size',
+      '--text-micro-line-height',
+      '--text-micro-weight',
+      '--text-micro-tracking',
     ]);
 
     it('defines the two dark blocks identically', () => {

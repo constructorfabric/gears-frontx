@@ -73,7 +73,9 @@ Rules for generated code:
   override `--radius` alone and every component follows.
 - Page typography uses the Studio type ramp tokens:
   `--text-<role>-size|line-height|weight|tracking` for roles
-  display|heading-1|heading-2|body|label|meta|mono (e.g. a page title is
+  display|heading-1|heading-2|body|label|meta|mono|micro (`micro` is the
+  10/14 step in the UI face, `mono` the same metrics in the monospace
+  face) (e.g. a page title is
   `font-size: var(--text-heading-1-size)` etc.; medium-weight body text is
   the body role at `font-weight: 500`). Use the ramp for template text
   instead of inventing sizes — kit components already sit on it.

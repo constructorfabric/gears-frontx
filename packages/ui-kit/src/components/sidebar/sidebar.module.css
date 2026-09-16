@@ -781,7 +781,7 @@
 }
 
 .sizeSm {
-  height: calc(var(--control-height-sm) - var(--space-1));
+  height: var(--control-height-xs);
   font-size: var(--text-label-size);
   line-height: var(--text-label-line-height);
 }
@@ -857,7 +857,7 @@
 
 .menuItem:has(.sizeSm) .menuAction,
 .menuItem:has(.sizeSm) .menuBadge {
-  top: calc((var(--control-height-sm) - var(--space-1) - var(--space-5)) / 2);
+  top: calc((var(--control-height-xs) - var(--space-5)) / 2);
 }
 
 .menuItem:has(.sizeLg) .menuAction,
@@ -1026,7 +1026,7 @@
 .menuSubButton {
   box-sizing: border-box;
   display: flex;
-  height: calc(var(--control-height-sm) - var(--space-1));
+  height: var(--control-height-xs);
   min-width: 0;
   align-items: center;
   gap: var(--space-2);

@@ -141,6 +141,10 @@
    * Buttons sit on sm/md/lg directly; the drawn fields are 40px (the lg
    * step) and the filter chip 36px (md).
    */
+  /* The compact step the spec binds on a small icon action, the dialog and
+   * popover close buttons and a table toolbar action, and the step a
+   * segmented group's items sit on inside its 32px container. */
+  --control-height-xs: 1.75rem;
   --control-height-sm: 2rem;
   --control-height-md: 2.25rem;
   --control-height-lg: 2.5rem;
@@ -185,6 +189,8 @@
    *                meta-size + label-weight mix
    *   meta      <- UI Secondary Regular (12/16 — same metrics as before)
    *   mono      <- System Micro (10/14, --font-mono)
+   *   micro     <- the drawn 10/14 step in the UI face, in three weights
+   *                (400/500/600); 500 is the role's default
    * All Studio/Type styles carry letter-spacing 0, so every role's
    * tracking is normalized to 0 with them. heading-1 (20/28) has NO
    * counterpart in the new ramp — the kit keeps it as an interpolated step
@@ -249,6 +255,16 @@
   --text-mono-line-height: 0.875rem;
   --text-mono-weight: 400;
   --text-mono-tracking: 0px;
+  /* Micro: 10/14 medium, --font-sans. Same metrics as mono, different
+   * family: mono is the monospace role, and the spec draws this step in
+   * the UI face, in three weights (400, 500, 600). 500 is the middle one
+   * and the role's default; a call site that needs 400 or 600 sets
+   * font-weight itself over this size, the way badge.module.css already
+   * mixes a --text-meta size with a --text-label weight. */
+  --text-micro-size: 0.625rem;
+  --text-micro-line-height: 0.875rem;
+  --text-micro-weight: 500;
+  --text-micro-tracking: 0px;
 }
 
 :root,
