@@ -380,11 +380,16 @@
    * --muted-foreground; that collapse is the design's, see above).
    */
   --subtle-foreground: #334155;
-  /* The brand-tinted fill+text pair (menus' hover/active rows, Badge's
-   * accent tone, Bubble). The drawn pair measures 4.68:1 light / 13.77:1
-   * dark — clears the 4.5:1 AA floor as drawn. */
-  --accent: #e6effa;
-  --accent-foreground: #2668c5;
+  /* The emphasis pair a HIGHLIGHTED row wears: menus' hover and keyboard-
+   * active rows, a highlighted select item, the focused calendar day,
+   * Badge's accent tone, Bubble. The drawn role is an emphasis fill, not a
+   * wash - the brand fill with white type in light, the dark slate with
+   * white type in dark. A SELECTED control is a different role and paints
+   * from --secondary (see toggle/toggle-group/tabs); painting selection
+   * from this pair would make a selected segment read as a focused menu
+   * row. */
+  --accent: #0065e3;
+  --accent-foreground: #ffffff;
   /*
    * The tint a row carries while it is selected. Table's row-state hooks
    * are the only consumer (see table.module.css). Its own token rather
@@ -553,8 +558,8 @@
   --muted: #0f172a;
   --muted-foreground: #94a3b8;
   --subtle-foreground: #94a3b8;
-  --accent: #00204d;
-  --accent-foreground: #e6effa;
+  --accent: #26384b;
+  --accent-foreground: #ffffff;
   --selection-subtle: #26384b;
   --destructive: #fb7185;
   --destructive-foreground: #ffffff;
@@ -619,8 +624,8 @@
     --muted: #0f172a;
     --muted-foreground: #94a3b8;
     --subtle-foreground: #94a3b8;
-    --accent: #00204d;
-    --accent-foreground: #e6effa;
+    --accent: #26384b;
+    --accent-foreground: #ffffff;
     --selection-subtle: #26384b;
     --destructive: #fb7185;
     --destructive-foreground: #ffffff;
