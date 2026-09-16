@@ -30,7 +30,7 @@
    * drawn and keep their heights. */
   padding: var(--space-2);
   border: var(--border-width) solid var(--input);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   /* Fields sit raised, not transparent, per the Field spec (frame 193:433). */
   background-color: var(--surface-elevated);
   color: var(--foreground);
@@ -179,7 +179,7 @@
   width: var(--anchor-width);
   min-width: 9rem;
   overflow: hidden;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   border: var(--border-width) solid var(--popover-border);
   background-color: var(--popover);
   color: var(--popover-foreground);

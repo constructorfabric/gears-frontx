@@ -62,13 +62,13 @@
 }
 
 .group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item:first-child {
-  border-start-start-radius: var(--radius-md);
-  border-end-start-radius: var(--radius-md);
+  border-start-start-radius: var(--radius-lg);
+  border-end-start-radius: var(--radius-lg);
 }
 
 .group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item:last-child {
-  border-start-end-radius: var(--radius-md);
-  border-end-end-radius: var(--radius-md);
+  border-start-end-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
 }
 
 .group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item + .item {
@@ -81,13 +81,13 @@
 }
 
 .group[data-spacing='0'][data-orientation='vertical'] > .item:first-child {
-  border-start-start-radius: var(--radius-md);
-  border-start-end-radius: var(--radius-md);
+  border-start-start-radius: var(--radius-lg);
+  border-start-end-radius: var(--radius-lg);
 }
 
 .group[data-spacing='0'][data-orientation='vertical'] > .item:last-child {
-  border-end-start-radius: var(--radius-md);
-  border-end-end-radius: var(--radius-md);
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
 }
 
 .group[data-spacing='0'][data-orientation='vertical'] > .item + .item {

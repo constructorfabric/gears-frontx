@@ -17,7 +17,7 @@
      the description instead of collapsing flush against it (see theme.css's
      "tokens win" snapping ruling). */
   gap: var(--space-1);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   border: var(--border-width) solid var(--border);
   padding: var(--space-3) var(--space-4);
   text-align: left;

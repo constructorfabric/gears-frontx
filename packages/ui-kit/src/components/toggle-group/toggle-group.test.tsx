@@ -159,13 +159,13 @@ describe('ToggleGroup', () => {
         ".group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item:first-child",
         'border-start-start-radius',
       ),
-    ).toBe('var(--radius-md)');
+    ).toBe('var(--radius-lg)');
     expect(
       declared(
         ".group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item:last-child",
         'border-start-end-radius',
       ),
-    ).toBe('var(--radius-md)');
+    ).toBe('var(--radius-lg)');
   });
 
   it('drops the shared border between adjoining segmented items', () => {

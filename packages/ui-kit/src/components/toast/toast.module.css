@@ -88,13 +88,8 @@
   z-index: calc(1000 - var(--toast-index));
   width: 100%;
   height: var(--height);
-  /*
-   * The kit's radius scale (theme.css) tops out at --radius-xl; the
-   * source's rounded-2xl is one step larger. Capped here rather than
-   * growing the shared scale for this one component.
-   */
   border: var(--border-width) solid var(--popover-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-2xl);
   background-color: var(--popover);
   color: var(--popover-foreground);
   /* --popover-shadow: the ring-plus-drop-shadow recipe every card-like

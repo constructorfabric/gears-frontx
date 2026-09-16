@@ -435,7 +435,7 @@
 .swipeHandle {
   flex-shrink: 0;
   cursor: grab;
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-2xl);
   background-color: var(--border-strong);
   transition: opacity 200ms ease;
 }

@@ -18,8 +18,7 @@
  * that chrome belongs, the same division of labor as Card owning a
  * border around content that doesn't draw its own.
  *
- * The Studio Data Table frame (40001455:6353) draws this card at 12px
- * (--radius-lg, one step up from the recipe's `rounded-md`) on the
+ * The design spec draws this card at 12px (--radius-xl) on the
  * --surface fill, and puts the pagination bar INSIDE it rather than
  * floating below — so the card wraps the table and the footer together
  * (see data-table.tsx), and the fill has to live here because the rows it
@@ -34,7 +33,7 @@
  */
 .wrapper {
   border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background-color: var(--surface);
 }
 

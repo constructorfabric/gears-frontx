@@ -58,7 +58,7 @@
    */
   min-height: var(--size-height);
   border: var(--border-width) solid var(--input);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   /* Fields sit raised, not transparent, per the Field spec — same token
    * Input/Textarea use, since the group replaces their chrome. */
   background-color: var(--surface-elevated);

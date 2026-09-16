@@ -42,7 +42,7 @@
   overflow: hidden;
   overflow-wrap: break-word;
   border: var(--border-width) solid transparent;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-body-size);
   /*
@@ -64,10 +64,9 @@
 }
 
 /*
- * Speaker-side corner - the one deliberate departure from upstream, which
- * frames every bubble in a uniform --radius-lg on all four corners
- * (`rounded-xl` there; the same value, since upstream's own xl step is
- * --radius + 4px, exactly this kit's --radius-lg). A uniformly rounded,
+ * Speaker-side corner - the one deliberate departure from the upstream
+ * recipe, which frames every bubble uniformly on all four corners at the
+ * 12px step this kit names --radius-xl. A uniformly rounded,
  * filled, content-width box carrying one short line is the shape of a
  * BUTTON, and that is how the kit's bubbles were being read. Notching the
  * corner nearest the speaker down to --radius-xs is the cue that makes the

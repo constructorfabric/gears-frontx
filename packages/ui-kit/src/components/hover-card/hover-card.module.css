@@ -20,7 +20,7 @@
   width: 16rem;
   padding: var(--space-4);
   border: var(--border-width) solid var(--popover-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background-color: var(--popover);
   color: var(--popover-foreground);
   font-size: var(--text-body-size);

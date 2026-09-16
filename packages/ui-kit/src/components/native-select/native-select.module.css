@@ -59,7 +59,7 @@
   height: var(--control-height-lg);
   padding: 0 var(--space-8) 0 var(--space-3);
   border: var(--border-width) solid var(--input);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   /* Fields sit raised, not transparent — same surface as Select's trigger
    * and Input (see select.module.css). */
   background-color: var(--surface-elevated);

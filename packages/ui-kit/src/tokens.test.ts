@@ -402,6 +402,34 @@ describe('theme tokens', () => {
     expect(withoutAttributeSelectorValues(declarationCase).match(RAW_COLOR)?.[0]).toBe('#ccc');
   });
 
+  // The drawn field corner is 10, which --radius-lg carries. Every control
+  // that presents as a field binds it: Input, Textarea, Select's trigger,
+  // InputGroup's group, NativeSelect, and Combobox's own field and its
+  // multi-select chips box. This lives
+  // here rather than in one component's own suite because it is the one
+  // check no single module can make - the whole point is that the family
+  // agrees, and a module that quietly drops to another step is exactly what
+  // a per-module test cannot see.
+  it('binds one corner across every field control', () => {
+    const fields: Array<[file: string, selector: string]> = [
+      ['input/input.module.css', '.input'],
+      ['textarea/textarea.module.css', '.textarea'],
+      ['select/select.module.css', '.trigger'],
+      ['input-group/input-group.module.css', '.group'],
+      ['native-select/native-select.module.css', '.select'],
+      ['combobox/combobox.module.css', '.input'],
+      ['combobox/combobox.module.css', '.chips'],
+    ];
+    for (const [file, selector] of fields) {
+      const rules = extractRules(readFileSync(join(componentsDir, file), 'utf8'));
+      const rule = rules.find((candidate) => candidate.selector === selector);
+      expect(rule, `${selector} missing from ${file}`).toBeDefined();
+      expect(declarationMap(rule?.body ?? '').get('border-radius'), `${selector} in ${file}`).toBe(
+        'var(--radius-lg)',
+      );
+    }
+  });
+
   // Guards the token blocks in theme.css against drift: the dark palette is
   // hand-duplicated between [data-theme='dark'] and the prefers-color-scheme
   // media block (custom properties can't be shared across two selectors any

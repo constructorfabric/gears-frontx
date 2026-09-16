@@ -91,14 +91,14 @@
 
 .group.orientationHorizontal > *:first-child,
 .group.orientationHorizontal > *:first-child:has(> input) > input {
-  border-start-start-radius: var(--radius-md);
-  border-end-start-radius: var(--radius-md);
+  border-start-start-radius: var(--radius-lg);
+  border-end-start-radius: var(--radius-lg);
 }
 
 .group.orientationHorizontal > *:last-child,
 .group.orientationHorizontal > *:last-child:has(> input) > input {
-  border-start-end-radius: var(--radius-md);
-  border-end-end-radius: var(--radius-md);
+  border-start-end-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
 }
 
 .group.orientationHorizontal > * + *,
@@ -114,14 +114,14 @@
 
 .group.orientationVertical > *:first-child,
 .group.orientationVertical > *:first-child:has(> input) > input {
-  border-start-start-radius: var(--radius-md);
-  border-start-end-radius: var(--radius-md);
+  border-start-start-radius: var(--radius-lg);
+  border-start-end-radius: var(--radius-lg);
 }
 
 .group.orientationVertical > *:last-child,
 .group.orientationVertical > *:last-child:has(> input) > input {
-  border-end-start-radius: var(--radius-md);
-  border-end-end-radius: var(--radius-md);
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
 }
 
 .group.orientationVertical > * + *,

@@ -13,7 +13,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-6); /* upstream gap-6 (24px) - exact scale step, unlike padding below */
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   border: var(--border-width) dashed var(--border);
   /* Upstream p-12 (48px) has no single scale step; expressed as a sum so
      the metric guard's var-only arithmetic still holds (see
@@ -52,7 +52,7 @@
   width: 2.5rem; /* upstream size-10; no scale step this specific, kept as
     a literal (dimensions aren't guarded — see tokens.test.ts) */
   height: 2.5rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background-color: var(--muted);
   color: var(--foreground);
 }

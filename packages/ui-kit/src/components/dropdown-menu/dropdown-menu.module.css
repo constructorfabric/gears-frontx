@@ -50,7 +50,7 @@
   overflow-x: hidden;
   overflow-y: auto;
   padding: var(--space-1);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   border: var(--border-width) solid var(--popover-border);
   background-color: var(--popover);
   color: var(--popover-foreground);

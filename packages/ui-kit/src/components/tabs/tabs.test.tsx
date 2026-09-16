@@ -287,7 +287,7 @@ describe('Tabs drawn geometry', () => {
   });
 
   it('gives the trigger the drawn radius and padding, and no border to grow it', () => {
-    expect(declared('.trigger', 'border-radius')).toBe('var(--radius-sm)');
+    expect(declared('.trigger', 'border-radius')).toBe('var(--radius-md)');
     expect(declared('.trigger', 'padding')).toBe('var(--space-2) var(--space-3)');
     // `border: 0`, not absent: a native <button>'s UA border is 2px, and it
     // takes over the moment an author border stops covering it.

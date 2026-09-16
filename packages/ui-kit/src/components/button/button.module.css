@@ -55,7 +55,7 @@
    * effect for it. */
   flex-shrink: 0;
   border: var(--border-width) solid var(--button-border, transparent);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   font-family: inherit;
   /* The drawn buttons (frame 182:371) are BOUND to the Studio/Label text
    * style — the one component text that references the ramp instead of
@@ -279,12 +279,9 @@
 }
 
 /*
- * --radius-md, not --radius-sm: all three drawn sizes bind the SAME corner
- * (radius/md), so the small button is a shorter button rather than a
- * differently-shaped one. The Button / Icon masters do draw their own sm
- * specimen at radius/sm — but that is an icon-only treatment, not this size
- * class, and squaring the two is a design question rather than something to
- * settle here (see the handover notes).
+ * One step tighter than the base rule's --radius-lg: the drawn small
+ * control rounds at 8 where the taller two round at 10, so the small
+ * button is a shorter AND slightly squarer button.
  */
 .sizeSm {
   height: var(--control-height-sm);

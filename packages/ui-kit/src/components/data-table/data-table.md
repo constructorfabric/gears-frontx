@@ -37,7 +37,7 @@ shipped as reusable exports instead:
 
 `Table` stays primitive markup with no chrome of its own; `DataTable` is
 where the Studio Data Table frame's card lives. One element wraps the whole
-widget: a 1px `--border` on `--surface` at `--radius-lg`, with the table's
+widget: a 1px `--border` on `--surface` at `--radius-xl`, with the table's
 rows above and the pagination bar **inside** it — the frame draws that bar
 within the same bordered container, separated from the last row by the same
 rule that separates any two rows, not floating below the card as the

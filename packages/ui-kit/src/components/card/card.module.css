@@ -19,7 +19,7 @@
   box-sizing: border-box;
   overflow: hidden;
   border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background-color: var(--card);
   color: var(--card-foreground);
   /* Studio/Body — was the shadcn translation's 14px, migrated to the ramp. */
@@ -66,13 +66,13 @@
 }
 
 .card > img:first-child {
-  border-top-left-radius: var(--radius-lg);
-  border-top-right-radius: var(--radius-lg);
+  border-top-left-radius: var(--radius-xl);
+  border-top-right-radius: var(--radius-xl);
 }
 
 .card > img:last-child {
-  border-bottom-left-radius: var(--radius-lg);
-  border-bottom-right-radius: var(--radius-lg);
+  border-bottom-left-radius: var(--radius-xl);
+  border-bottom-right-radius: var(--radius-xl);
 }
 
 /* Deliberately empty — do not delete as dead CSS. Kept so `size="default"`
@@ -96,8 +96,8 @@
   grid-auto-rows: min-content;
   align-items: start;
   gap: var(--space-1);
-  border-top-left-radius: var(--radius-lg);
-  border-top-right-radius: var(--radius-lg);
+  border-top-left-radius: var(--radius-xl);
+  border-top-right-radius: var(--radius-xl);
 }
 
 .card .cardHeader {
@@ -147,8 +147,8 @@
 .cardFooter {
   display: flex;
   align-items: center;
-  border-bottom-left-radius: var(--radius-lg);
-  border-bottom-right-radius: var(--radius-lg);
+  border-bottom-left-radius: var(--radius-xl);
+  border-bottom-right-radius: var(--radius-xl);
 }
 
 .card .cardFooter {

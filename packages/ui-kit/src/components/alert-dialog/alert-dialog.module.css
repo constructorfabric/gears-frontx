@@ -58,7 +58,7 @@
    */
   padding: 0;
   border: var(--border-width) solid var(--popover-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background-color: var(--popover);
   color: var(--popover-foreground);
   font-size: var(--text-body-size);
