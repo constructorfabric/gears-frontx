@@ -33,7 +33,7 @@ raw value instead of the label until the popup has been opened once.
 
 | Prop | Type | Default |
 |------|------|---------|
-| `size` | `default` \| `sm` | `default` |
+| `size` | `default` \| `sm` - a 40 or a 32 px trigger; the design spec draws the 32 one, and both inset their content by 8 on each horizontal edge | `default` |
 | `variant` | `default` \| `filter` — `filter` is the compact toolbar filter chip: 36px tall and the label stays `--muted-foreground` even with a value chosen (in a filter the message is "this narrows the list", not the picked value). Compose the visible label yourself, e.g. `Filter · {count}` | `default` |
 | `className` | `string` — merged after the kit class | — |
 

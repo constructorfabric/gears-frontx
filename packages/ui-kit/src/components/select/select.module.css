@@ -24,7 +24,11 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  /* The drawn trigger insets 8 on both horizontal edges, not 12 on the
+   * label side. The spec draws a single 32px trigger, which is this
+   * component's `sm`; the kit's own default (40) and `filter` (36) are not
+   * drawn and keep their heights. */
+  padding: var(--space-2);
   border: var(--border-width) solid var(--input);
   border-radius: var(--radius-md);
   /* Fields sit raised, not transparent, per the Field spec (frame 193:433). */

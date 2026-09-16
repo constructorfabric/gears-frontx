@@ -339,12 +339,25 @@
   opacity: 0;
 }
 
+/* The drawn loading state uses a 12px spinner and leaves the button's own
+ * height alone. It also swaps the label for a working-state string, which
+ * is a specimen rather than a contract: the kit keeps the caller's children
+ * at opacity 0 under aria-busy, so the button holds its width and its
+ * accessible name. */
 .spinner {
+  /*
+   * border-box, so the drawn 12 is the rendered box rather than the ring's
+   * inner hole: content-box would add the 2px arc on each side and paint a
+   * 16px spinner from a 12px token. Substitutes for the preflight the kit
+   * lacks, same as `.button` above, and load-bearing here rather than
+   * merely tidy.
+   */
+  box-sizing: border-box;
   position: absolute;
   inset: 0;
   margin: auto;
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
   border: 2px solid color-mix(in oklab, currentColor 25%, transparent);
   border-top-color: currentColor;
   border-radius: 50%;

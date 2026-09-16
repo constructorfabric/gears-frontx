@@ -133,7 +133,9 @@
   align-content: center;
   gap: var(--space-2);
   border: var(--border-width) solid var(--input);
-  border-radius: var(--radius-md);
+  /* The drawn choice rounds at 6, not 8. Its 44px height, 8/12 padding,
+   * 8px gap and 16px indicator slot already match and stay. */
+  border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   cursor: pointer;
   text-align: start;
@@ -287,11 +289,12 @@
   display: block;
 }
 
-/* Checkbox's mark: a check drawn in the filled square. */
+/* Checkbox's mark: a check drawn in the filled square. The drawn glyph is
+ * 12, inside the 16px indicator slot the box keeps. */
 .check {
   display: none;
-  width: 0.875rem;
-  height: 0.875rem;
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
 }
 
 .choice[data-type='checkbox'][data-checked] .check {

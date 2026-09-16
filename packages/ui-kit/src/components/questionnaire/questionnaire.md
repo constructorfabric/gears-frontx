@@ -181,8 +181,10 @@ Every part carries data attributes you can key CSS off:
   upstream's `gap-2.5`/`py-2.5` inside a choice row land on `--space-2`
   (8px) here; the shortcut cap uses the kit's `--text-mono-size`, which
   the Studio blue rebrand moved to 10px — the same size upstream draws.
-  Every other measurement (44px row, 8px radius, 16px indicator, 20px cap,
-  8px choice gap, 16px item and root gaps) matches upstream exactly.
+  Every other measurement (44px row, 16px indicator slot, 20px cap, 8px
+  choice gap, 16px item and root gaps) matches upstream exactly. The choice
+  row's own radius and its check glyph follow the design spec instead of
+  upstream: a 6px corner and a 12px glyph inside the unchanged 16px slot.
 - **Focus is the kit's field ring.** Upstream draws a 3px translucent halo
   outside the row; the kit's field idiom (`input.module.css`) is a
   recolored border plus an inset ring, so the choice row wears that
