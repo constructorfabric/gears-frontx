@@ -64,6 +64,10 @@ prop](https://github.com/pacocoursey/cmdk#command) (`label`, `filter`,
 | `showCloseButton` | `boolean` — see below | `false` |
 | `className` | `string` — merged onto the popup | — |
 
+`CommandDialog` caps the popup at `40rem` (640px, the drawn search surface)
+from the 640px breakpoint up, rather than `DialogContent`'s own cap. Its
+height stays with the content.
+
 `showCloseButton` defaults to `false` here (unlike `DialogContent`, which
 defaults it to `true`) — a command palette already dismisses on Escape or
 an outside click, the palette's one-line header has no spare room for an

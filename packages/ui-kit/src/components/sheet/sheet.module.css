@@ -99,24 +99,35 @@
   width: 75%;
 }
 
+/* The two corners facing into the viewport are rounded; the two on the
+ * attached edge are not. Each side variant already knows which edge it is
+ * pinned to, so the pair is scoped per side rather than set once and then
+ * unset. Physical corners, not logical ones, to pair with the physical
+ * `right`/`left` and border-width each variant already sets: a logical
+ * radius would move to the other corners under RTL while the panel itself
+ * stayed put. The top/bottom variants are not drawn and stay square. */
 .sideRight {
   right: 0;
   border-left-width: var(--border-width);
+  border-top-left-radius: var(--radius-lg);
+  border-bottom-left-radius: var(--radius-lg);
 }
 
 .sideLeft {
   left: 0;
   border-right-width: var(--border-width);
+  border-top-right-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
 }
 
-/* Upstream's `sm:max-w-sm`: 75% width fills a small viewport, capped at
-   24rem from the 640px breakpoint up so the panel stops growing on a wide
-   screen. Top/bottom stay full-width at every size — upstream never caps
-   that axis. */
+/* 75% width fills a small viewport, capped at the drawn 416 from the 640px
+   breakpoint up so the panel stops growing on a wide screen. Top/bottom
+   stay full-width at every size: the spec draws neither, and upstream never
+   caps that axis. */
 @media (min-width: 640px) {
   .sideRight,
   .sideLeft {
-    max-width: 24rem;
+    max-width: 26rem;
   }
 }
 

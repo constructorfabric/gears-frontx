@@ -24,7 +24,7 @@
   gap: var(--space-4);
   padding: var(--space-4);
   border: var(--border-width) solid var(--popover-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background-color: var(--popover);
   color: var(--popover-foreground);
   font-size: var(--text-body-size);

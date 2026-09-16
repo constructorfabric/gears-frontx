@@ -42,8 +42,10 @@
 }
 
 @media (min-width: 640px) {
+  /* The drawn search surface is 640 wide. Its 520 height is a specimen for
+   * a populated list, not a cap, so the height stays with the content. */
   .dialogPopup {
-    max-width: 32rem;
+    max-width: 40rem;
   }
 }
 

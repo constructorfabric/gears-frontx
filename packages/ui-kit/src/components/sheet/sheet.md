@@ -74,16 +74,18 @@ direction:
 
 - `top` — full width, height sized to content (capped and scrollable past
   the viewport), slides down from above.
-- `right` (default) — full height, 75% width capped at `24rem` from the
-  640px breakpoint up, slides in from the right.
+- `right` (default) - full height, 75% width capped at `26rem` (416px) from
+  the 640px breakpoint up, slides in from the right.
 - `bottom` — full width, height sized to content (capped and scrollable
   past the viewport), slides up from below.
-- `left` — full height, 75% width capped at `24rem` from the 640px
+- `left` - full height, 75% width capped at `26rem` (416px) from the 640px
   breakpoint up, slides in from the left.
 
-Every variant is square — the kit's Sheet does not round any corner,
-matching the upstream source (unlike `Dialog`'s fully-rounded, centered
-popup, an edge-anchored panel has no corner that reads as "inner").
+`left` and `right` round the two corners that face into the viewport at
+`--radius-lg` (12px) and leave the two on the attached edge square. `top`
+and `bottom` stay square on all four: the design spec draws neither of
+them, and a panel spanning the full width has no corner that reads as
+inner.
 
 ## Examples
 
