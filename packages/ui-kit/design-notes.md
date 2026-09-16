@@ -443,33 +443,17 @@ Architecture's build bullet).
    briefly carried as new tokens on the namespace argument, then removed
    before merge — see the inline-review pass below.
 
-   Per the user ruling that a drawn value failing WCAG gets corrected in
-   code (the same standing instruction as the accessibility pass above),
-   the rebrand deviates from the frame in exactly four status colors, all
-   12px label text over their own -soft fills (worst-case ratios across
-   soft/card/page):
-
-   | token | drawn | shipped | worst case |
-   |---|---|---|---|
-   | light `--success` | `#059669` (3.43:1) | `#047857` | 5.00:1 |
-   | light `--warning` | `#f59e0b` (1.96:1) | `#b45309` | 4.58:1 |
-   | light `--danger`  | `#e11d48` (4.28:1) | `#be123c` | 5.72:1 |
-   | dark `--danger`   | `#e11d48` (3.63:1) | `#fb7185` | 6.34:1 |
-
-   Light `--info` (`#2563eb`, 4.59:1 worst case) passes as drawn and was
-   kept. `--destructive` tracks the DRAWN red (`#e11d48` both modes — its
-   text is the on-color, 4.70:1, not the token itself), so the one-red
-   alias now diverges from the corrected `--danger` by design. Component
-   fallout, same ruling: Avatar's `solid` treatment labels each status
-   tone with that tone's own `-soft` value instead of the mockup's
-   all-white `--primary-foreground` binding (which fails at ~1.5–2:1 on
-   the light dark-mode tones); Badge's `link` variant moved onto
-   `--link-foreground` (dark `--primary` is 3.72:1 on the page); Badge's
-   tone-label contrast debt (previously "raised for a design decision") is
-   resolved by the token corrections — every pair now clears 4.5:1, per
-   the recomputed table in badge.module.css. Contrast guards
-   (tokens.test.ts floors, button.test.tsx ring cases) recompute from the
-   live CSS and pass.
+   This pass also corrected four status colors in code where the drawn
+   value missed its contrast floor (light `--success`, light `--warning`,
+   light and dark `--danger`). The value ruling below reverses that half:
+   all four carry the drawn hex today. What survives from the pass is the
+   role work, not the value work. `--destructive` is the fill role,
+   verified under `--destructive-foreground`; `--danger` is the text role;
+   Avatar's `solid` treatment labels each status tone with that tone's own
+   `-soft` value rather than the mockup's all-white `--primary-foreground`
+   binding, which has no drawn specimen to answer to (the spec draws a
+   photo avatar, not an initials fallback); Badge's `link` variant sits on
+   `--link-foreground` (dark `--primary` is 3.72:1 on the page).
 
    **Typography follow-up (same rebrand, second pass).** The frame's
    "Studio/Type" ramp was adopted onto the existing `--text-*` role names
@@ -499,7 +483,7 @@ Architecture's build bullet).
    - `--destructive` is a FILL token, verified only under
      `--destructive-foreground` — every component that painted it as
      TEXT (FieldError, destructive Alert/Bubble/Attachment/Toast icon,
-     QuestionnaireError) moved to the AA-corrected `--danger`;
+     QuestionnaireError) moved to `--danger`, the text role;
    - new `--destructive-hover` token (`#be123c` both modes): Badge's
      destructive hover previously mixed the fill toward `--foreground`,
      which darkens in light mode but LIGHTENS in dark (foreground flips
@@ -524,30 +508,19 @@ Architecture's build bullet).
    **Inline-review pass (2026-09-01, PR #604 second review).** A reviewer
    pass over the rebrand diff itself; every numeric claim was re-measured
    before acting. Two substantive fixes and one demo fix:
-   - **`--muted` stepped off its backdrops.** The frame draws muted AT the
-     light page value and AT the dark card value — a 1.00:1 fill that
-     makes Skeleton, outline/ghost Button hover and the other muted
-     consumers vanish. Same one-step correction --secondary already took;
-     muted now lands ON secondary's value in both modes (upstream shadcn's
-     own default arrangement): light `#f1f5f9 → #e2e8f0` (1.13:1 vs page),
-     dark `#0f172a → #1e293b` (1.22:1 vs card). Every text seat re-checked
-     (muted-foreground on the new fill 8.40:1 light / 5.71:1 dark);
-     tokens.test.ts pins the separation at ≥ 1.1:1 so a later palette move
-     cannot silently re-collapse it. `--sidebar` follows per its documented
-     derivation (it carries muted's value in both modes — CodeRabbit
-     caught the light half going stale), restoring the pre-rebrand
-     tinted-panel-on-lighter-page relationship; the light active item
-     improves (1.07:1 → 1.23:1 vs the panel) and every sidebar text seat
-     re-measures clear. A follow-up review round then caught the knock-on:
-     `--sidebar-border` derived from `--border`, whose light value IS the
-     new panel fill — separators, the menu-sub rail and the floating
-     outline vanished at 1.00:1. The border now derives from
-     `--border-strong` (1.20:1 light / 1.41:1 dark against the panel;
-     dark's collapsed border family already was border-strong), and
-     tokens.test.ts pins the pair alongside the muted guard. This is a fifth deviation from the
-     drawn frame — visibility, not WCAG-text, so it sits outside the
-     status-token table above — and joins the open designer question on
-     whether the drawn collapses are intent.
+   - **`--muted` stepped off its backdrops.** The spec draws muted AT the
+     light page value and AT the dark card value, a 1.00:1 fill that makes
+     Skeleton, outline/ghost Button hover and the other muted consumers
+     sit flush with their own backdrop. This pass stepped it off onto
+     `--secondary`'s value in both modes, and `--sidebar` followed it. The
+     value ruling below reverses that too: both are back on the drawn
+     value. The knock-on this round found is what survives, because it was
+     never a value correction: `--sidebar-border` derived from `--border`,
+     whose light value IS the panel fill, so separators, the menu-sub rail
+     and the floating outline vanished at 1.00:1. The border derives from
+     `--border-strong` instead (1.36:1 light / 1.72:1 dark against the
+     drawn panel; dark's collapsed border family already was
+     border-strong), and tokens.test.ts still pins that pair.
    - **The last two `--destructive`-mix seats moved onto the corrected
      tokens.** Button's destructive hover still mixed the fill toward
      `--foreground` (3.90:1 under the white label in dark — the exact
@@ -556,10 +529,10 @@ Architecture's build bullet).
      highlighted in dark. Button now paints `--destructive-hover` like
      Badge; the menu items paint `--danger` text with a popover-anchored
      12% danger tint as the highlight (first shipped as `--danger-soft`,
-     which the follow-up round measured too faint for the only focus cue —
+     which the follow-up round measured too faint for the only focus cue:
      1.10:1/1.05:1 vs the popover against the sibling accent highlight's
-     1.16/1.12; the tint measures 1.20/1.17 with the text clear at
-     5.26/5.68). Unlike the removed recipe the tint is anchored to
+     1.16/1.12; the tint measures 1.17/1.11 on the drawn `--danger`).
+     Unlike the removed recipe the tint is anchored to
      `--popover`, so its direction never flips with the theme. Per-file
      CSS guards added (button.test.tsx, dropdown-menu.test.tsx,
      context-menu.test.tsx) so a foreground-anchored mix cannot come back.
@@ -590,11 +563,26 @@ Architecture's build bullet).
 
    Still NOT part of the rebrand: the elevation scale beyond the popover
    shadow (Elevation/100/300/Dock top have no kit consumer yet). Open
-   designer questions: pin AA-passing status values in the Figma file
-   (the four deviations above), confirm the dark surface/border collapses
-   are intent rather than spec-sheet shorthand (now also load-bearing for
-   the `--muted` step-off above), and rule the button label weight (500 vs
-   the drawn 600).
+   designer questions: pin AA-passing status values in the design file,
+   confirm the dark surface/border collapses are intent rather than
+   spec-sheet shorthand, and rule the button label weight (500 vs the
+   drawn 600).
+
+   **Values are the design spec's (2026-09-16 ruling).** Every color,
+   height, width, radius, padding, icon size, opacity and the scrim is
+   taken from the drawn spec literally, in both themes. No kit-side
+   correction survives a disagreement with it, accessibility corrections
+   included, and where the spec draws nothing the kit keeps its current
+   value. Names stay on the shadcn order regardless: the spec's `sm/md/lg`
+   map to `sm`/`default`/`lg`, and its `M` on an overlay is the omitted
+   size. What this reversed in the passes above: the four status-color
+   corrections (`--success`, `--warning` and `--danger` are back on the
+   drawn hexes, which puts `--danger` and `--destructive` on one value in
+   both themes while keeping both roles) and the `--muted` / `--sidebar`
+   step-off. The guards that pinned those deviations were replaced with
+   guards that pin the drawn values, so the next in-code "fix" of a
+   contrast number fails a test instead of shipping. Contrast findings go
+   to the designer list.
 5. The twelve gap components, mockups-first: `popover`, `alert`, `avatar`,
    `empty` are in both the mockups and the `insight-front` set and go first;
    `pagination` and `breadcrumb` are the mockups-only additions;

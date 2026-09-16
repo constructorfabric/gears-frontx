@@ -172,21 +172,23 @@
  * --destructive is the kit's fill red, verified only under
  * --destructive-foreground; the mix-toward---foreground recipe this rule
  * used to share with the old Badge darkens correctly in light mode but
- * LIGHTENS in dark (--foreground flips near-white there), landing the
- * highlighted state under the 4.5:1 floor on the rebrand palette. --danger
- * is the AA-corrected text red every other destructive TEXT seat already
- * moved to (FieldError, Alert, Toast — see theme.css), and tokens.test.ts's
- * status matrix holds it ≥ 4.5:1 against --popover.
+ * LIGHTENS in dark (--foreground flips near-white there), so the
+ * highlighted state changed direction with the theme instead of holding
+ * one tone. --danger is the text red every other destructive TEXT seat
+ * already uses (FieldError, Alert, Toast, see theme.css), and it carries
+ * the value the design spec draws.
  *
  * The highlight fill is a 12% tint of --danger over --popover, NOT
  * --danger-soft: the text keeps one color at rest and highlighted, so the
  * fill change is the only focus cue, and --danger-soft sits too close to
- * the popover for that job (1.10:1 light / 1.05:1 dark — weaker than the
+ * the popover for that job (1.10:1 light / 1.05:1 dark, weaker than the
  * sibling rows' --accent highlight at 1.16/1.12). The 12% tint measures
- * 1.20:1 light / 1.17:1 dark against --popover, and --danger stays clear
- * on it (5.26:1 / 5.68:1). Unlike the removed recipe, this mix is anchored
- * to --popover, not --foreground, so its direction never flips with the
- * theme.
+ * 1.17:1 light / 1.11:1 dark against --popover, and --danger on it
+ * measures 4.02:1 light / 3.42:1 dark. That is under the 4.5:1 AA floor
+ * and stays as drawn: a contrast finding on a drawn color is raised with
+ * the designer, not corrected here (see theme.css's header). Unlike the
+ * removed recipe, this mix is anchored to --popover, not --foreground, so
+ * its direction never flips with the theme.
  */
 .variantDestructive {
   color: var(--danger);

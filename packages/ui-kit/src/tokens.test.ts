@@ -589,37 +589,25 @@ describe('theme tokens', () => {
         }
       });
 
-      // The status tokens are 12px label text in the kit — Badge's tone
-      // variants and Avatar's soft treatment paint them over their own
-      // -soft fill, and Field/Alert/Toast/Attachment/Bubble/Questionnaire
-      // error text paints --danger over whatever page/card/panel the
-      // component sits on — so each status color must clear the 4.5:1 AA
-      // floor against ALL of those backdrops, not only the one a single
-      // component happens to test. This is the guard the original Studio
-      // values shipped without: they cleared their own -soft fills but not
-      // every page/panel seat, and --destructive doubled as a text color
-      // (see design-notes.md's "Post-review contrast pass" entry) — a hue
-      // that only works as a dot or solid fill can no longer pass for a
-      // text color. (--popover is included even though it currently equals
-      // --card in both modes: Toast paints its error icon on --popover, and
-      // the two tokens are free to diverge later.)
-      it('status label text clears 4.5:1 on its soft fill and every surface it sits on', () => {
-        for (const [themeName, tokens] of themes) {
-          for (const status of ['--success', '--warning', '--danger', '--info']) {
-            const label = token(tokens, status);
-            for (const backdrop of [
-              `${status}-soft`,
-              '--background',
-              '--surface',
-              '--card',
-              '--popover',
-            ]) {
-              expect(
-                contrastRatio(label, token(tokens, backdrop)),
-                `${themeName} ${status} on ${backdrop}`,
-              ).toBeGreaterThanOrEqual(4.5);
-            }
-          }
+      // The status tokens are the design spec's own values, and this case
+      // exists to keep them that way. It replaces a contrast floor that
+      // used to run --success/--warning/--danger/--info against their -soft
+      // fills and every panel they sit on: three of the four drawn values
+      // do not clear 4.5:1 as 12px label text, and the kit used to carry a
+      // corrected hex for each. The ruling now is the opposite one: a
+      // contrast finding is raised with the designer and the drawn value
+      // ships, so the guard that belongs here is the one that fails when
+      // somebody re-corrects a hex in code instead of in the spec.
+      it('the status tokens carry the drawn values in both themes', () => {
+        const drawn: Record<string, [light: string, dark: string]> = {
+          '--success': ['#059669', '#34d399'],
+          '--warning': ['#f59e0b', '#f6c453'],
+          '--danger': ['#e11d48', '#e11d48'],
+          '--info': ['#2563eb', '#60a5fa'],
+        };
+        for (const [name, [light, dark]] of Object.entries(drawn)) {
+          expect(token(lightTokens, name), `light ${name}`).toBe(light);
+          expect(token(darkAttrTokens, name), `dark ${name}`).toBe(dark);
         }
       });
 
@@ -678,34 +666,26 @@ describe('theme tokens', () => {
         }
       });
 
-      // Not a WCAG floor — a visibility floor. --muted is the kit's
-      // workhorse fill (Skeleton, outline/ghost Button hover, Calendar's
-      // outside days, …) and the rebrand frame draws it AT the light page
-      // value and AT the dark card value, which makes every one of those
-      // fills vanish against its own backdrop; theme.css steps it off
-      // deliberately (see --muted's comment there). 1.1 is below the
-      // shipped separations (1.13 light page / 1.22 dark card are the
-      // tightest) but far above the ~1.0 a re-collapse would produce, so
-      // this pins the intent without hard-coding the palette.
-      it('the muted fill stays visibly separate from the page and card it fills on', () => {
-        for (const [themeName, tokens] of themes) {
-          for (const backdrop of ['--background', '--card']) {
-            expect(
-              contrastRatio(token(tokens, '--muted'), token(tokens, backdrop)),
-              `${themeName} --muted on ${backdrop}`,
-            ).toBeGreaterThanOrEqual(1.1);
-          }
-        }
+      // --muted has no separation floor of its own: the design spec draws
+      // it AT the light page value and AT the dark card value, so it sits
+      // flush with its own backdrop by design and any floor above ~1.0
+      // would be a kit-side correction of a drawn value. What is pinned
+      // instead is the pair of hexes, for the same reason the status case
+      // above pins its four.
+      it('the muted fill carries the drawn value in both themes', () => {
+        expect(token(lightTokens, '--muted'), 'light --muted').toBe('#f1f5f9');
+        expect(token(darkAttrTokens, '--muted'), 'dark --muted').toBe('#0f172a');
       });
 
-      // Same visibility floor for the sidebar's own hairline: --sidebar
+      // A visibility floor for the sidebar's own hairline: --sidebar
       // follows --muted (see theme.css), and the first derivation of the
       // block put --border's value on --sidebar-border — which is the
       // panel fill itself in light mode, erasing SidebarSeparator, the
       // menu-sub rail and the floating variant's outline at 1.00:1. The
-      // border now follows --border-strong (1.20 light / 1.41 dark against
-      // the panel); this pins the pair the way the muted guard above pins
-      // muted against its backdrops.
+      // border now follows --border-strong (1.36 light / 1.72 dark against
+      // the panel). It survives the move of --sidebar onto the drawn muted
+      // value: --sidebar-border is derived, not drawn, and --border-strong
+      // stays a step off the panel in both themes.
       it('the sidebar border stays visibly separate from the sidebar panel', () => {
         for (const [themeName, tokens] of themes) {
           expect(

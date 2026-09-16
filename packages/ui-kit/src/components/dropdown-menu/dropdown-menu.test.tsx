@@ -272,9 +272,9 @@ describe('DropdownMenu', () => {
 
 /*
  * Guards the destructive item's paint. --destructive is the kit's FILL
- * red, verified only under --destructive-foreground; as menu TEXT it needs
- * the AA-corrected --danger (held ≥ 4.5:1 against --popover by
- * tokens.test.ts's status matrix). The highlight fill is a 12% tint of
+ * red, verified only under --destructive-foreground; as menu TEXT the seat
+ * belongs to --danger, the text role of the same drawn red. The highlight
+ * fill is a 12% tint of
  * --danger over --popover — anchored to the popover so its direction
  * never flips with the theme, unlike the removed mix toward --foreground
  * that fell under the floor in dark mode; this guard notices if a

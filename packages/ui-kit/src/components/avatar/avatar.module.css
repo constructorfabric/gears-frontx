@@ -124,17 +124,20 @@
  *
  * The solid label DEVIATES from the mockup, which binds --primary-foreground
  * for all six solid tones: in dark mode the status tones are light tints,
- * so --primary-foreground initials on them land around 1.5–2:1 — far under
- * the 4.5:1 AA floor — and per the kit's standing WCAG ruling (theme.css
- * header) a drawn color failing its floor gets corrected, not footnoted.
- * The correction invents no tokens: each status tone's solid label is that
- * tone's own -soft value — the exact inverse of the `soft` treatment below,
- * and dark ink on light fills / light ink on dark fills by construction in
- * both themes (worst case 4.59:1, light info; the rest measure
- * 4.67–10.03:1). `neutral` inverts its borrowed pair the same way (--muted
- * on --muted-foreground, 8.40:1 light / 5.71:1 dark). `accent` alone keeps
- * the mockup's binding: --primary-foreground on --primary measures 5.29:1
- * in both modes, so the drawn pair passes as-is.
+ * so --primary-foreground initials on them land around 1.5-2:1. The
+ * deviation is the kit's own and sits on a part no specimen covers: the
+ * spec draws a photo avatar, not an initials fallback, so there is no
+ * drawn label binding here to take literally. It invents no tokens either.
+ * Each status tone's solid label is that tone's own -soft value, the exact
+ * inverse of the `soft` treatment below, which puts dark ink on light
+ * fills and light ink on dark fills by construction in both themes. Where
+ * the drawn tone is itself a pale amber no ink clears 4.5:1 on it (light
+ * warning measures 2.00:1, the tightest pair here; dark warning is the
+ * loosest at 10.03:1) - that is a finding for the designer, since the tone
+ * values are drawn and ship as drawn. `neutral` inverts its borrowed pair
+ * the same way (--muted on --muted-foreground, 9.45:1 light / 6.96:1
+ * dark). `accent` alone keeps the mockup's binding: --primary-foreground
+ * on --primary measures 5.29:1 in both modes.
  *
  * `neutral` has no --neutral family to draw from and borrows the muted one,
  * which is why neutral+soft resolves to precisely the

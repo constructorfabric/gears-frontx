@@ -20,15 +20,12 @@
  * carry a `derived:` comment with the reasoning, and are the ones to
  * re-check when the design file pins them down.
  *
- * WCAG ruling (2026-08-31, standing): a drawn value that fails its
- * contrast floor gets a corrected value in code — the deviation is recorded
- * at the token, never shipped as a "kept as drawn" footnote. This pass
- * deviates from the frame in exactly four places, all status colors used as
- * 12px badge/avatar labels over their own -soft fills: light --success
- * #059669→#047857, light --warning #f59e0b→#b45309, light --danger
- * #e11d48→#be123c, dark --danger #e11d48→#fb7185 (per-token comments carry
- * the measured ratios). Open designer question: pin AA-passing status
- * values in the Figma file.
+ * Color values are the design spec's, taken literally in both themes;
+ * contrast findings go to the designer, not into code. --destructive and
+ * --danger carry the same hex as a result. Both names stay: --destructive
+ * is the fill role, verified under --destructive-foreground, and --danger
+ * is the text tone components paint on light backdrops. The split is a
+ * naming decision, not a value one, so neither collapses into the other.
  *
  * Deliberately not here: the `--studio-color-*` entries the same frame
  * draws (progress-value/track, icon-subtle/icon-selected, and the studio
@@ -304,19 +301,15 @@
    * block. */
   --secondary: #e2e8f0;
   --secondary-foreground: #0f172a;
-  /* derived: the frame draws muted at slate-50 — the exact value the
-   * rebrand made the page itself — and its dark muted at the card surface.
-   * Muted is the kit's workhorse FILL (Skeleton, outline/ghost Button
-   * hover, Calendar's outside days, a dozen more), and a fill equal to its
-   * own backdrop vanishes: the same argument --secondary above already
-   * applies, so muted takes the same one-step correction and lands ON
-   * secondary's value — which is also upstream shadcn's own arrangement
-   * (its default theme ships muted == secondary). 1.13:1 against the page
-   * / 1.23:1 against the card in light, 1.22 / 1.35 in dark; every text
-   * seat stays clear (--muted-foreground on this fill is 8.40:1 light /
-   * 5.71:1 dark). tokens.test.ts pins the separation so a later value
-   * move cannot silently re-collapse it. */
-  --muted: #e2e8f0;
+  /* The design spec draws muted at the page value in light and at the card
+   * surface in dark, and the kit carries exactly that. Muted is the kit's
+   * workhorse FILL (Skeleton, outline/ghost Button hover, Calendar's
+   * outside days, a dozen more), so it sits flush with whichever of those
+   * two backdrops it is painted on. A consumer that needs a visible fill
+   * takes it from a drawn state, not from a kit-side step off the backdrop.
+   * Every text seat stays clear either way (--muted-foreground on this fill
+   * is 9.45:1 light / 6.96:1 dark). */
+  --muted: #f1f5f9;
   /* The frame collapses muted-foreground, subtle-foreground and
    * code-foreground onto one slate-600 in light (and one slate-400 in
    * dark). Adopted as drawn — the collapse is the design's own, and every
@@ -355,12 +348,11 @@
    */
   --selection-subtle: #dce7f2;
 
-  /* derived: no mockup node draws with destructive/*, so it aliases the
-   * frame's danger red — one red, two names, both overridable separately.
-   * The alias tracks the DRAWN danger (#e11d48 both modes), not the
-   * AA-corrected --danger below: destructive is a solid fill under white
-   * text (4.70:1, passes in both modes), so the label-driven correction
-   * that moved --danger does not apply to it. */
+  /* derived: no mockup node draws with destructive/*, so it carries the
+   * drawn danger red, the same hex in both themes. One red, two names,
+   * both overridable separately: --destructive is the fill role, white
+   * text on it measures 4.70:1 in both themes, while --danger below is the
+   * text tone components paint on light backdrops. */
   --destructive: #e11d48;
   --destructive-foreground: #ffffff;
   /* Badge's destructive-variant hover tone (see badge.module.css) — darker
@@ -369,8 +361,8 @@
    * --foreground works in light (foreground is dark) but LIGHTENS in dark
    * mode instead (foreground flips to white there), so this token sidesteps
    * that by not depending on --foreground at all. #be123c is the same
-   * literal --destructive-ring/--danger already carry — white on it
-   * measures 6.29:1 in both modes. */
+   * literal --destructive-ring already carries; white on it measures
+   * 6.29:1 in both modes. */
   --destructive-hover: #be123c;
   /* Button destructive variant's focus-ring tone, measured against
    * --background: 5.74:1 light / 7.89:1 dark. Literal hexes, not var()
@@ -395,32 +387,17 @@
   /* Status colors with their -soft fills. The status colors themselves are
    * consumed as 12px label text over the -soft fills (Badge's tone
    * variants, Avatar's soft treatment) and as solid Avatar fills; the
-   * -soft fills also carry Table's stale/restricted row tints. Because
-   * they are label text, each base value must clear 4.5:1 over its own
-   * -soft fill, --card and --background — and four drawn values don't,
-   * which is where this file's WCAG ruling (see header) deviates from the
-   * frame:
-   *   - light success: drawn #059669 is 3.43:1 on its soft fill →
-   *     #047857, one step down the same green ramp (5.00/5.48/5.01 on
-   *     soft/card/bg);
-   *   - light warning: drawn #f59e0b is 1.96–2.15:1 everywhere → #b45309
-   *     (4.67/5.02/4.58) — amber simply has no AA-passing tone brighter
-   *     than this over near-white fills;
-   *   - light danger: drawn #e11d48 is 4.28:1 on its soft fill → #be123c
-   *     (5.72/6.29/5.74), the same hex the destructive ring already
-   *     carries;
-   *   - light info: drawn #2563eb PASSES (4.59:1 worst case) and is kept
-   *     as drawn — the floor is met, though with little headroom;
-   *   - dark: success #34d399, warning #f6c453 and info #60a5fa all pass
-   *     as drawn (8.05/10.03/6.62 worst case); danger #e11d48 fails
-   *     (3.63:1 on its soft fill) → #fb7185, the light rose tint one step
-   *     up (6.34:1 worst case).
-   * The -soft fills are the frame's own in both modes. */
-  --success: #047857;
+   * -soft fills also carry Table's stale/restricted row tints. Every
+   * value in this group is the design spec's own, in both themes,
+   * including the seats where a 12px label over a near-white fill does not
+   * reach 4.5:1. That is a finding for the designer, not a value the kit
+   * corrects; tokens.test.ts pins the drawn hexes so a later "fix" has to
+   * be a spec change first. */
+  --success: #059669;
   --success-soft: #e8f8f1;
-  --warning: #b45309;
+  --warning: #f59e0b;
   --warning-soft: #fff7d6;
-  --danger: #be123c;
+  --danger: #e11d48;
   --danger-soft: #fff1f2;
   --info: #2563eb;
   --info-soft: #eaf2ff;
@@ -456,7 +433,7 @@
    * the menu-sub rail and the floating variant's outline (1.20:1 against
    * the panel instead; dark's collapsed border family is border-strong
    * already). tokens.test.ts pins the border/panel separation. */
-  --sidebar: #e2e8f0;
+  --sidebar: #f1f5f9;
   --sidebar-foreground: #334155;
   --sidebar-accent: #ffffff;
   --sidebar-accent-foreground: #0f172a;
@@ -499,7 +476,7 @@
   --primary-ring: #6ba5f0;
   --secondary: #1e293b;
   --secondary-foreground: #ffffff;
-  --muted: #1e293b;
+  --muted: #0f172a;
   --muted-foreground: #94a3b8;
   --subtle-foreground: #94a3b8;
   --accent: #00204d;
@@ -514,7 +491,7 @@
   --success-soft: #0d2921;
   --warning: #f6c453;
   --warning-soft: #2b1e04;
-  --danger: #fb7185;
+  --danger: #e11d48;
   --danger-soft: #32111b;
   --info: #60a5fa;
   --info-soft: #111e2d;
@@ -525,7 +502,7 @@
   --border-strong: #334155;
   --input: #334155;
   --ring: #6ba5f0;
-  --sidebar: #1e293b;
+  --sidebar: #0f172a;
   --sidebar-foreground: #94a3b8;
   --sidebar-accent: #26384b;
   --sidebar-accent-foreground: #ffffff;
@@ -554,7 +531,7 @@
     --primary-ring: #6ba5f0;
     --secondary: #1e293b;
     --secondary-foreground: #ffffff;
-    --muted: #1e293b;
+    --muted: #0f172a;
     --muted-foreground: #94a3b8;
     --subtle-foreground: #94a3b8;
     --accent: #00204d;
@@ -569,7 +546,7 @@
     --success-soft: #0d2921;
     --warning: #f6c453;
     --warning-soft: #2b1e04;
-    --danger: #fb7185;
+    --danger: #e11d48;
     --danger-soft: #32111b;
     --info: #60a5fa;
     --info-soft: #111e2d;
@@ -578,7 +555,7 @@
     --border-strong: #334155;
     --input: #334155;
     --ring: #6ba5f0;
-    --sidebar: #1e293b;
+    --sidebar: #0f172a;
     --sidebar-foreground: #94a3b8;
     --sidebar-accent: #26384b;
     --sidebar-accent-foreground: #ffffff;
