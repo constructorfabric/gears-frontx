@@ -110,10 +110,10 @@
  * the drawn stroke sits inside the container's own 32px, so a real border
  * would either push the box to 34 or squeeze the item to 26.
  *
- * The selected item keeps the --accent fill Toggle already paints for
- * `data-pressed`. The spec binds a product-owned selection token there,
- * which this kit excludes by ownership, and --accent is the kit-generic
- * role for exactly that meaning.
+ * The selected item keeps the --secondary fill Toggle already paints for
+ * `data-pressed`, which is the role the spec paints a selected control
+ * from. The spec binds a product-owned token there; --secondary is the
+ * kit-generic role carrying the same drawn value.
  */
 .group.segmented {
   box-sizing: border-box;

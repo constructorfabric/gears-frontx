@@ -226,15 +226,27 @@
 }
 
 /*
- * The active tab is a raised fill, not a track inset: --surface-elevated
- * is the palette's "lifted panel" step in both themes (brighter than the
- * page in light mode AND in dark mode), which resolves the
- * raised-direction flip the old --background fill had to apologize for.
- * No shadow — the mockup marks the active tab with the fill alone.
+ * The active tab takes the secondary pairing, the role the spec paints a
+ * selected control from, plus a 1px hairline. The hairline is drawn rather
+ * than a kit-side correction: in dark the secondary fill equals the card
+ * fill, and the drawn active trigger carries a border for exactly that
+ * reason. An inset shadow, not a border, so the trigger's box stays the
+ * size its padding and label add up to.
  */
 .trigger[data-active] {
-  background-color: var(--surface-elevated);
-  color: var(--foreground);
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+  box-shadow: inset 0 0 0 var(--border-width) var(--border);
+}
+
+/*
+ * The active hairline and the focus ring are both inset shadows on the same
+ * element, and the ring is the thicker of the two, so a focused active
+ * trigger draws the ring alone rather than letting whichever rule came last
+ * silently drop the other.
+ */
+.trigger[data-active]:focus-visible {
+  box-shadow: inset 0 0 0 var(--border-width-focus) var(--ring);
 }
 
 /*

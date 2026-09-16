@@ -82,8 +82,8 @@ A horizontal `outline` group at `spacing={0}` renders the drawn segmented
 control: a 32px container carrying the 1px hairline and an 8px radius, with
 28px items inside it at a 6px radius, a 2px inset between the two and a
 16px icon. The container is what draws the chrome; the items draw none of
-their own, and the selected one takes the `--accent` fill `Toggle` already
-paints for its pressed state. The 32/2/28 relationship is exact: the inset
+their own, and the selected one takes the `--secondary` fill `Toggle`
+already paints for its pressed state. The 32/2/28 relationship is exact: the inset
 off each edge is what leaves the item its own height.
 
 Every other `spacing={0}` group - vertical, or any variant other than

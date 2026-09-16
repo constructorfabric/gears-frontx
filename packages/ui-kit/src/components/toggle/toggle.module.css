@@ -44,13 +44,14 @@
 
 /*
  * Pressed (Base UI's `data-pressed`, the Toggle equivalent of Switch's
- * data-checked): promoted to the accent pairing the drawn masters reserve
- * for their `selected` specimen, one step louder than the --muted hover
- * above, so a pressed toggle reads as "selected" rather than merely hovered.
+ * data-checked): the secondary pairing, which is what the spec paints a
+ * SELECTED control with. --accent is the highlighted-row role instead, so
+ * a pressed toggle wearing it would read as a focused menu row rather than
+ * a chosen option.
  */
 .toggle[data-pressed] {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
 }
 
 .toggle:focus-visible {
@@ -75,17 +76,17 @@
   background-color: transparent;
 }
 
-/* The same neutral hover as the borderless toggle above — the drawn outline
+/* The same neutral hover as the borderless toggle above: the drawn outline
  * `hover` specimen fills with --muted and keeps its border, leaving the
- * accent tint to mean `pressed` on both variants alike. */
+ * secondary fill to mean `pressed` on both variants alike. */
 .variantOutline:hover {
   background-color: var(--muted);
   color: var(--foreground);
 }
 
 .variantOutline[data-pressed] {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
   border-color: var(--border-strong);
 }
 

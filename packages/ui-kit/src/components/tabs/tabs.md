@@ -43,7 +43,7 @@ by `value`.
 
 | Prop | Type | Default |
 |------|------|---------|
-| `variant` | `default` \| `line` - `line` is the drawn model: a flat row whose active tab carries a full-width 3px `--primary` indicator below it. `default` is a trackless list where the active tab gets its own raised background (`--surface-elevated`) instead. A bordered segmented-control look is not a Tabs variant; that styling belongs to `toggle-group` | `default` |
+| `variant` | `default` \| `line` - `line` is the drawn model: a flat row whose active tab carries a full-width 3px `--primary` indicator below it. `default` is a trackless list where the active tab gets its own raised background (`--secondary` with a 1px `--border` hairline) instead. A bordered segmented-control look is not a Tabs variant; that styling belongs to `toggle-group` | `default` |
 | `size` | `sm` \| `default` - a 12/16 or a 14/20 label, which makes the `line` list 38 or 42 px tall overall; nothing else moves between the two | `default` |
 | `className` | `string` — merged after the kit class | — |
 
