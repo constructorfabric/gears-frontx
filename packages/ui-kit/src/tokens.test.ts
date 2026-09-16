@@ -60,6 +60,15 @@ const BASE_UI_RUNTIME_VARS = new Set([
   '--drawer-height',
   '--drawer-frontmost-height',
   '--drawer-snap-point-offset',
+  // Written by Base UI's Tabs Indicator: the active tab's measured
+  // position and size against the list box, re-measured on every switch so
+  // CSS can travel one bar to it - see tabs.module.css.
+  '--active-tab-left',
+  '--active-tab-right',
+  '--active-tab-top',
+  '--active-tab-bottom',
+  '--active-tab-width',
+  '--active-tab-height',
 ]);
 
 // Strip comments before scanning for declarations: theme.css's prose quotes
@@ -262,16 +271,17 @@ describe('theme tokens', () => {
   //   - Drawer's `--drawer-inset: 0px` feeds `margin`. It is a zero, which
   //     this guard already admits when written out.
   //   - Tabs' `--indicator-gap` and `--indicator-thickness` (3px each) feed
-  //     the list's `padding-block-end`/`padding-inline-end`. The design
-  //     spec draws the indicator 3 thick and holds it 3 clear of the
-  //     trigger; the spacing scale has no 3 step, and rounding either to 4
-  //     would be a kit-side correction of a drawn value, which is the same
-  //     standing as the reasoned exceptions below. They are locals rather
-  //     than repeated literals because the list reserves the band and the
-  //     trigger draws the bar, so one source is what keeps the pair in
-  //     step. tabs.test.tsx's "Tabs drawn geometry" case pins both values
-  //     literally, so the laundering cannot hide a drift this guard does
-  //     not see through.
+  //     the line list's `padding-block-end`/`padding-inline-end` AND the
+  //     filled track's own `padding`. The design spec draws the indicator 3
+  //     thick, holds it 3 clear of the trigger, and insets the drawn track
+  //     by the same 3; the spacing scale has no 3 step, and rounding any of
+  //     them to 4 would be a kit-side correction of a drawn value, which is
+  //     the same standing as the reasoned exceptions below. They are locals
+  //     rather than repeated literals because the list reserves the band,
+  //     the track insets by it and the indicator is drawn at it, so one
+  //     source is what keeps all three in step. tabs.test.tsx's "Tabs drawn
+  //     geometry" cases pin both values literally, so the laundering cannot
+  //     hide a drift this guard does not see through.
   it('keeps spacing and type metrics on the token scales', () => {
     const EXCEPTIONS = new Set([
       // 16px is the iOS Safari floor below which focusing a field zooms
@@ -330,6 +340,11 @@ describe('theme tokens', () => {
       // be a kit-side correction. select.test.tsx pins both literals.
       'select.module.css|padding-inline|10px var(--space-2)',
       'select.module.css|padding|var(--space-1) var(--space-8) var(--space-1) 6px',
+      // The drawn tab trigger insets 2 on the block axis and 6 on the
+      // inline one. The spacing scale starts at 4 and steps to 8, so
+      // neither has a step and rounding either would change the drawn
+      // track height. tabs.test.tsx pins the pair.
+      'tabs.module.css|padding|2px 6px',
     ]);
     for (const file of moduleFiles) {
       const base = file.slice(file.lastIndexOf('/') + 1);

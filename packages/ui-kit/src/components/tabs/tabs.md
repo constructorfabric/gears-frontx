@@ -12,6 +12,11 @@ Composition: `Tabs` (root, holds the selected value) → `TabsList` (→ one
 `TabsTrigger` per tab) → one `TabsContent` per tab, matched to its trigger
 by `value`.
 
+`TabsList` renders the indicator itself: one bar per list that travels to
+the active tab over 240 ms, positioned from the geometry Base UI measures
+at runtime. There is no indicator part to place, because every list has
+exactly one.
+
 ## When to use
 
 - Grouping related views that don't need to be compared side by side —
@@ -43,8 +48,8 @@ by `value`.
 
 | Prop | Type | Default |
 |------|------|---------|
-| `variant` | `default` \| `line` - `line` is the drawn model: a flat row whose active tab carries a full-width 3px `--primary` indicator below it. `default` is a trackless list where the active tab gets its own raised background (`--secondary` with a 1px `--border` hairline) instead. A bordered segmented-control look is not a Tabs variant; that styling belongs to `toggle-group` | `default` |
-| `size` | `sm` \| `default` - a 12/16 or a 14/20 label, which makes the `line` list 38 or 42 px tall overall; nothing else moves between the two | `default` |
+| `variant` | `default` \| `line` - `line` is a trackless row with one 3px `--primary` bar travelling under the active tab. `default` is the filled track: a `--muted` strip at a 10px corner insetting its triggers by 3, whose active tab takes `--secondary` with a 1px `--border` hairline and no bar. A bordered segmented-control look is not a Tabs variant; that styling belongs to `toggle-group` | `default` |
+| `size` | `sm` \| `default` - a 12/16 or a 14/20 label; nothing else moves between the two | `default` |
 | `className` | `string` — merged after the kit class | — |
 
 `TabsTrigger`: `value` (required, matches a `TabsContent`), `disabled`;
@@ -111,15 +116,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gears-frontx/ui-kit';
   position, uncommitted form input) unless you pass `keepMounted` — by
   default an inactive panel unmounts, and remounts from scratch when
   reselected.
-- Do not reach for `variant="line"` expecting an animated highlight that
-  slides between tabs — the underline is a per-tab crossfade, not a
-  single element in motion.
 - Do not omit `defaultValue`/`value` and leave the first `TabsTrigger`
   disabled — Base UI falls back to the next enabled tab client-side, but
   it can't do that during server-side rendering (it doesn't yet know
   which tabs are disabled while pre-rendering), so the server- and
   client-rendered output disagree. Set `defaultValue`/`value` explicitly
   to an enabled tab's value whenever the first one might be disabled.
-- Do not expect an icon placed inside a `TabsTrigger` to be auto-sized —
-  unlike some shadcn components, this kit has no `data-icon`/generic
-  `svg` sizing convention yet; size your own icon via `className`.
+- Do not size an icon inside a `TabsTrigger` yourself: the trigger draws
+  every direct `svg` child at the drawn 16px box.

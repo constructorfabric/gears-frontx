@@ -10,16 +10,14 @@ import styles from './tabs.module.css';
  * recognize them. Every prop besides `className` is Base UI's own — see
  * each part's re-exported `Props` type below.
  *
- * base-vega's own translation renders every part as a styled div/button
- * with no Base UI `Indicator` part: the "line" variant's underline is a
- * static `::after` pseudo-element toggled per tab by `data-active`, not
- * one element sliding between tabs. Base UI's `Tabs.Indicator` (a `<span>`
- * whose position/size Base UI measures and writes as CSS variables at
- * runtime — see `TabsIndicatorCssVars`) would be a genuine upgrade for the
- * "line" variant, but it's deliberately left unexposed here: the source
- * this kit translates does not use it, adding it would be writing new UI
- * rather than curating the existing design, and it can be added later as
- * an additive, optional export without breaking this API.
+ * The drawn model is ONE indicator per list that travels to the active
+ * tab, not one bar per trigger crossfading. Base UI's `Tabs.Indicator` is
+ * the part that implements it: a `<span>` whose position and size Base UI
+ * measures and writes as CSS variables at runtime (`--active-tab-left`,
+ * `--active-tab-width` and their siblings, see `TabsIndicatorCssVars`).
+ * `TabsList` renders it itself rather than exposing a part of its own -
+ * every list has exactly one, and a consumer placing a second one, or
+ * none, is not a composition the drawn model has.
  */
 
 export interface TabsProps extends Omit<TabsPrimitive.Root.Props, 'className'> {
@@ -60,9 +58,12 @@ export interface TabsListProps
   className?: string;
 }
 
-export function TabsList({ className, variant, size, ...props }: TabsListProps) {
+export function TabsList({ className, variant, size, children, ...props }: TabsListProps) {
   return (
-    <TabsPrimitive.List className={tabsListVariants({ variant, size, className })} {...props} />
+    <TabsPrimitive.List className={tabsListVariants({ variant, size, className })} {...props}>
+      {children}
+      <TabsPrimitive.Indicator className={styles.indicator} />
+    </TabsPrimitive.List>
   );
 }
 

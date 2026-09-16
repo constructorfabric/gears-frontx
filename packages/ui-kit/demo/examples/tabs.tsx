@@ -31,16 +31,22 @@ export default function TabsExample() {
 
       {/* Both sizes in both variants, with the numbers that define the
           drawn model: the list's outer box, the trigger's own box and the
-          indicator rect the active tab draws below it. */}
+          one travelling indicator each line list carries. Switching a tab
+          moves that one element rather than crossfading a bar per
+          trigger, which is what the mid-switch frame sampling checks. */}
       <Section title="Size">
         <Measure
           of={{
             'line sm list': '#tabs-line-sm [role=tablist]',
             'line sm trigger': '#tabs-line-sm [role=tab]',
+            'line sm indicator': '#tabs-line-sm [role=tablist] > [role=presentation]',
             'line default list': '#tabs-line-default [role=tablist]',
             'line default trigger': '#tabs-line-default [role=tab]',
+            'line default indicator': '#tabs-line-default [role=tablist] > [role=presentation]',
             'track sm list': '#tabs-track-sm [role=tablist]',
+            'track sm trigger': '#tabs-track-sm [role=tab]',
             'track default list': '#tabs-track-default [role=tablist]',
+            'track default active trigger': '#tabs-track-default [role=tab][data-active]',
             'unset list': '#tabs-unset [role=tablist]',
           }}
         >
@@ -92,6 +98,7 @@ export default function TabsExample() {
           of={{
             'vertical line list': '#tabs-vertical [role=tablist]',
             'vertical line trigger': '#tabs-vertical [role=tab]',
+            'vertical line indicator': '#tabs-vertical [role=tablist] > [role=presentation]',
           }}
         >
           <Tabs id="tabs-vertical" defaultValue="general" orientation="vertical">

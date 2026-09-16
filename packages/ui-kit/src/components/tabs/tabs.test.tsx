@@ -251,23 +251,44 @@ describe('Tabs', () => {
 
 /*
  * Reads the module's own source: the drawn tab model is a set of numbers
- * that no rendered assertion can reach in jsdom, and the one that matters
- * most is structural. The list reserves the indicator's band as padding
- * and the trigger draws the bar outside its own box, so the two drawn outer
- * heights (38 and 42) fall out of the label step instead of being pinned.
+ * that no rendered assertion can reach in jsdom, and several of them sit
+ * off the spacing scale, so the literals are pinned here.
  */
 describe('Tabs drawn geometry', () => {
   const rules = extractRules(
     readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'tabs.module.css'), 'utf8'),
   );
 
+  // Collapses the whitespace a multi-line declaration keeps, so a value
+  // written across several source lines compares as one string.
+  const flatten = (value: string | undefined) => value?.replace(/\s+/g, ' ').trim();
+
   function declared(selector: string, prop: string) {
     const rule = rules.find((candidate) => candidate.selector === selector);
-    return rule ? declarationMap(rule.body).get(prop) : undefined;
+    return flatten(rule ? declarationMap(rule.body).get(prop) : undefined);
   }
 
-  it('sizes the list from its content and reserves the indicator band on the drawn variant', () => {
-    expect(declared(".list[data-orientation='horizontal']", 'height')).toBe('fit-content');
+  // The same selector appears twice for the indicator: once plain and once
+  // inside the reduced-motion query, so the query's copy is the last.
+  function declaredLast(selector: string, prop: string) {
+    const matches = rules.filter((candidate) => candidate.selector === selector);
+    const rule = matches[matches.length - 1];
+    return flatten(rule ? declarationMap(rule.body).get(prop) : undefined);
+  }
+
+  it('gives the filled track the drawn fill, corner, inset and height', () => {
+    expect(declared('.list.variantDefault', 'background-color')).toBe('var(--muted)');
+    expect(declared('.list.variantDefault', 'padding')).toBe('var(--indicator-thickness)');
+    expect(declared('.list', 'border-radius')).toBe('var(--radius-lg)');
+    expect(declared(".list.variantDefault[data-orientation='horizontal']", 'height')).toBe(
+      'var(--control-height-sm)',
+    );
+  });
+
+  it('leaves the line list trackless and reserves the indicator band', () => {
+    expect(declared('.variantLine', 'background-color')).toBe('transparent');
+    expect(declared('.variantLine', 'border-radius')).toBe('0');
+    expect(declared('.variantLine', 'gap')).toBe('var(--space-1)');
     const band = 'calc(var(--indicator-gap) + var(--indicator-thickness))';
     expect(declared(".list.variantLine[data-orientation='horizontal']", 'padding-block-end')).toBe(
       band,
@@ -277,18 +298,44 @@ describe('Tabs drawn geometry', () => {
     );
   });
 
-  it('draws the indicator 3px thick in --primary, clear of the trigger box', () => {
+  // One bar per list that travels, not one per trigger that crossfades:
+  // the geometry comes from the --active-tab-* properties Base UI writes
+  // at runtime, and only transform and the cross-axis size animate.
+  it('drives one travelling indicator off the runtime active-tab geometry', () => {
     expect(declared('.list', '--indicator-thickness')).toBe('3px');
     expect(declared('.list', '--indicator-gap')).toBe('3px');
-    expect(declared('.list .trigger::after', 'background-color')).toBe('var(--primary)');
-    expect(declared(".list .trigger[data-orientation='horizontal']::after", 'height')).toBe(
+    expect(declared('.list .indicator', 'background-color')).toBe('var(--primary)');
+    expect(declared('.list .indicator', 'transition')).toBe(
+      'transform var(--duration-tab) var(--ease-standard), width var(--duration-tab) var(--ease-standard), height var(--duration-tab) var(--ease-standard)',
+    );
+    expect(declared(".list .indicator[data-orientation='horizontal']", 'width')).toBe(
+      'var(--active-tab-width)',
+    );
+    expect(declared(".list .indicator[data-orientation='horizontal']", 'height')).toBe(
       'var(--indicator-thickness)',
+    );
+    expect(declared(".list .indicator[data-orientation='horizontal']", 'transform')).toBe(
+      'translateX(var(--active-tab-left))',
+    );
+    expect(declared(".list .indicator[data-orientation='vertical']", 'height')).toBe(
+      'var(--active-tab-height)',
+    );
+    expect(declared(".list .indicator[data-orientation='vertical']", 'transform')).toBe(
+      'translateY(var(--active-tab-top))',
     );
   });
 
-  it('gives the trigger the drawn radius and padding, and no border to grow it', () => {
+  // A travelling bar is motion under WCAG 2.3.3, unlike the colour
+  // crossfades elsewhere in the file, so it has to collapse.
+  it('collapses the indicator travel under reduced motion', () => {
+    expect(declaredLast('.list .indicator', 'transition-duration')).toBe('1ms');
+  });
+
+  it('gives the trigger the drawn corner, insets and box', () => {
     expect(declared('.trigger', 'border-radius')).toBe('var(--radius-md)');
-    expect(declared('.trigger', 'padding')).toBe('var(--space-2) var(--space-3)');
+    // 2 and 6 sit off the spacing scale, which starts at 4 and steps to 8.
+    expect(declared('.trigger', 'padding')).toBe('2px 6px');
+    expect(declared('.trigger', 'height')).toBe('calc(100% - var(--border-width))');
     // `border: 0`, not absent: a native <button>'s UA border is 2px, and it
     // takes over the moment an author border stops covering it.
     expect(declared('.trigger', 'border')).toBe('0');
@@ -296,6 +343,14 @@ describe('Tabs drawn geometry', () => {
     expect(declared('.trigger:focus-visible', 'box-shadow')).toBe(
       'inset 0 0 0 var(--border-width-focus) var(--ring)',
     );
+  });
+
+  it('paints the idle label at the drawn transparency and the icon at one box', () => {
+    expect(declared('.trigger', 'color')).toBe(
+      'color-mix(in oklab, var(--foreground) 60%, transparent)',
+    );
+    expect(declared('.trigger:hover', 'color')).toBe('var(--foreground)');
+    expect(declared('.trigger svg', 'width')).toBe('var(--icon-size-sm)');
   });
 
   it('moves only the label between the two size steps', () => {

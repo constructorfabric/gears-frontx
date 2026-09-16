@@ -1,18 +1,18 @@
 /*
  * Tabs styles, structure translated from shadcn/ui (MIT).
  *
- * The design spec draws exactly one tab model: a trackless trigger with a
- * full-width 3px indicator beneath it, in two label sizes. That is the
- * `line` variant here, and the size axis below is those two steps. The
- * filled-track `default` variant has no drawn counterpart and keeps the
- * kit's own raised-fill treatment; what the two share is the trigger
- * itself, whose radius, padding and label the spec does draw. Disabled
- * stays at the drawn 0.42.
+ * The design spec draws two lists, and both ship. `default` is the filled
+ * track: a --muted strip that insets its triggers by 3 and marks its active
+ * tab with a fill and a hairline. `line` is the trackless row: no chrome of
+ * its own, and one 3px indicator that travels to the active tab. The
+ * indicator belongs to `line` alone - the filled track has none, because
+ * its active tab is already marked by the fill. The two share the trigger,
+ * whose radius, padding and label the spec draws once. Disabled stays at
+ * the drawn 0.42.
  *
  * The segment look (bordered items on --border-strong) is NOT a Tabs
- * variant: the design file's own component description says "shadcn Tabs
- * and Toggle Group segment states", so it belongs to ToggleGroup.
- * Consumes only theme.css variables — no raw colors.
+ * variant: it belongs to ToggleGroup.
+ * Consumes only theme.css variables - no raw colors.
  */
 
 /*
@@ -53,7 +53,7 @@
  * a column-shaped list beside its panel. Base UI stamps `data-orientation`
  * on every part (root, list, tab, and panel alike), so every rule below
  * targets that attribute directly on the part it styles, rather than
- * reading a shared ancestor's data attribute the way the Tailwind
+ * reading a shared ancestor's data attribute the way the upstream
  * `group-data-*` source does.
  */
 .tabs[data-orientation='horizontal'] {
@@ -61,34 +61,27 @@
 }
 
 /*
- * The indicator's two 3px measurements, declared here because the LIST is
- * what reserves room for them and the trigger is what draws them: the band
- * the list keeps clear below its triggers is exactly the gap plus the bar.
- * Neither 3 is a step on the spacing scale, and the drawn value is what
- * governs, so they stay raw rather than rounding up to --space-1.
+ * The indicator's own two 3px measurements, declared on the LIST because
+ * that is what reserves room for the bar and positions it: the band the
+ * `line` list keeps clear below its triggers is exactly the gap plus the
+ * bar. Neither 3 is a step on the spacing scale, and the drawn value is
+ * what governs, so they stay raw rather than rounding up to --space-1.
+ * tabs.test.tsx pins both, and tokens.test.ts's metric-guard comment names
+ * them as the locals that reach a guarded property this way.
  */
 .list {
   --indicator-gap: 3px;
   --indicator-thickness: 3px;
+  /* Relative, because the indicator positions against this box. */
+  position: relative;
   display: inline-flex;
   width: fit-content;
-  /* stretch, not center: with the list at content height, this is what
-   * makes every trigger share the tallest one's box. */
+  /* stretch, not center: this is what makes every trigger share the
+   * tallest one's box, and what lets a trigger fill the drawn track. */
   align-items: stretch;
   justify-content: center;
   border-radius: var(--radius-lg);
-  gap: var(--space-1);
   color: var(--muted-foreground);
-}
-
-/*
- * The list takes its height from the trigger rather than pinning one, so
- * the two drawn outer heights fall out of the type step instead of being
- * restated: 16 + 8 + 8 + 3 + 3 = 38 at `sm`, 20 + 8 + 8 + 3 + 3 = 42 at
- * `default`.
- */
-.list[data-orientation='horizontal'] {
-  height: fit-content;
 }
 
 /*
@@ -114,17 +107,36 @@
 }
 
 /*
- * Trackless per the mockups — the old shadcn translation filled this with
- * --muted and inset the triggers 3px; the Studio spec marks the active tab
- * with its own raised fill instead of a shared track.
+ * The drawn filled track: a --muted strip at the 10px corner, insetting its
+ * triggers by 3 on every edge. 3 has no step on the spacing scale, and it
+ * is the same 3 the indicator is drawn at, so it reads the local rather
+ * than restating the number. The horizontal track is drawn at 32; a
+ * vertical one is not drawn and sizes to its content.
  */
-.variantDefault {
-  background-color: transparent;
+.list.variantDefault {
+  padding: var(--indicator-thickness);
+  background-color: var(--muted);
 }
 
+.list.variantDefault[data-orientation='horizontal'] {
+  height: var(--control-height-sm);
+}
+
+.list.variantDefault[data-orientation='vertical'] {
+  height: fit-content;
+}
+
+/* The drawn line list has no track of its own: the travelling bar is the
+ * only chrome, and the triggers sit in a 4px row. */
 .variantLine {
   background-color: transparent;
   border-radius: 0;
+  gap: var(--space-1);
+}
+
+.list.variantLine[data-orientation='horizontal'],
+.list.variantLine[data-orientation='vertical'] {
+  height: fit-content;
 }
 
 /* The band the indicator lives in, kept clear of the trigger box so the
@@ -156,17 +168,19 @@
    */
   border: 0;
   border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
+  /* The drawn trigger insets 2 on the block axis and 6 on the inline one.
+   * Neither sits on the spacing scale, which starts at 4 and steps to 8;
+   * tabs.test.tsx pins both literals. */
+  padding: 2px 6px;
+  /* The drawn trigger fills the track it sits in, minus the hairline the
+   * active one draws inside its own box. */
+  height: calc(100% - var(--border-width));
   background-color: transparent;
-  /*
-   * The plain token is enough now: with the --muted track gone (see
-   * .variantDefault), inactive labels sit on the page surfaces, where
-   * --muted-foreground clears AA in both themes — measured 9.45:1 on
-   * --background / 10.35:1 on --card in light, 7.68:1 / 6.96:1 in dark.
-   * The old translation needed a foreground/muted mix here only because
-   * its own track was the backdrop; that reasoning left with the track.
-   */
-  color: var(--muted-foreground);
+  /* The drawn idle label is --foreground at 60 per cent, going to the full
+   * tone on hover. A mix rather than --muted-foreground, because the drawn
+   * value is a transparency of the text colour and follows it in both
+   * themes. */
+  color: color-mix(in oklab, var(--foreground) 60%, transparent);
   /* Size and line-height come from the size axis above; the weight is 500
    * at both drawn steps and stays here. */
   font-family: inherit;
@@ -176,10 +190,17 @@
   /* Colour and box-shadow crossfades only, no transform/geometry — not motion under
      WCAG 2.3.3, so deliberately left unguarded under prefers-reduced-motion. */
   transition:
-    color 150ms ease,
-    background-color 150ms ease,
-    border-color 150ms ease,
-    box-shadow 150ms ease;
+    color var(--duration-micro) var(--ease-standard),
+    background-color var(--duration-micro) var(--ease-standard),
+    box-shadow var(--duration-micro) var(--ease-standard);
+}
+
+/* The drawn trigger icon, one box at both label steps. */
+.trigger svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .trigger[data-orientation='vertical'] {
@@ -250,47 +271,63 @@
 }
 
 /*
- * The drawn indicator: a full-width bar in --primary, one per tab, shown on
- * the active tab alone and crossfaded by opacity rather than one element
- * sliding between tabs; see the Tabs.Indicator note in tabs.tsx for why
- * this kit doesn't animate a shared element's position instead.
+ * The drawn indicator: ONE bar per list that travels to the active tab,
+ * not one bar per trigger crossfading. Base UI's Tabs.Indicator measures
+ * the active tab and writes its geometry as --active-tab-* custom
+ * properties on this element at runtime; everything here reads them.
  *
- * Scoped under `.list` because that is where the two 3px measurements are
- * declared, and the offset below is the same band the list reserves.
+ * Pinned to the list's bottom-left on the horizontal axis and translated on
+ * X, so only `transform` and `width` animate and the browser can keep both
+ * off the layout path. Scoped under `.list` because the two 3px
+ * measurements are declared there.
  */
-.list .trigger::after {
+.list .indicator {
   position: absolute;
   background-color: var(--primary);
-  opacity: 0;
-  /* Opacity-only, no transform/geometry — a crossfade isn't motion under
-     WCAG 2.3.3, so deliberately left unguarded under prefers-reduced-motion. */
-  transition: opacity 150ms ease;
-  content: '';
+  pointer-events: none;
+  transition:
+    transform var(--duration-tab) var(--ease-standard),
+    width var(--duration-tab) var(--ease-standard),
+    height var(--duration-tab) var(--ease-standard);
+}
+
+.list .indicator[data-orientation='horizontal'] {
+  bottom: 0;
+  left: 0;
+  width: var(--active-tab-width);
+  height: var(--indicator-thickness);
+  transform: translateX(var(--active-tab-left));
+}
+
+.list .indicator[data-orientation='vertical'] {
+  top: 0;
+  right: 0;
+  width: var(--indicator-thickness);
+  height: var(--active-tab-height);
+  transform: translateY(var(--active-tab-top));
 }
 
 /*
- * The bar sits past the trigger's own edge by the gap, so it never joins
- * the trigger's layout box; the list's band is what holds the space.
+ * A travelling bar IS motion under WCAG 2.3.3, unlike the colour crossfades
+ * elsewhere in this file, so it collapses rather than being left unguarded.
+ * 1ms rather than `none`: the bar still lands in the right place on the
+ * frame after the switch, it just does not travel there.
  */
-.list .trigger[data-orientation='horizontal']::after {
-  inset-inline: 0;
-  bottom: calc(-1 * (var(--indicator-gap) + var(--indicator-thickness)));
-  height: var(--indicator-thickness);
+@media (prefers-reduced-motion: reduce) {
+  .list .indicator {
+    transition-duration: 1ms;
+  }
 }
 
-.list .trigger[data-orientation='vertical']::after {
-  inset-block: 0;
-  inset-inline-end: calc(-1 * (var(--indicator-gap) + var(--indicator-thickness)));
-  width: var(--indicator-thickness);
+/* The filled track marks its active tab with the fill and the hairline, so
+ * it draws no bar at all - see the file header. */
+.list.variantDefault .indicator {
+  display: none;
 }
 
 .variantLine .trigger[data-active] {
   background-color: transparent;
   box-shadow: none;
-}
-
-.list.variantLine .trigger[data-active]::after {
-  opacity: 1;
 }
 
 .content {
