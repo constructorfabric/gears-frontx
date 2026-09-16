@@ -481,6 +481,10 @@ describe('theme tokens', () => {
       '--icon-size-lg',
       '--border-width',
       '--border-width-focus',
+      // The thickness a focus ring adds inside an existing hairline. A
+      // derived width, not a colour, so it belongs with the two it is
+      // derived from.
+      '--ring-inset',
       // Dim for every disabled control surface. A magnitude, not a color -
       // never per-theme.
       '--opacity-disabled',
@@ -488,6 +492,8 @@ describe('theme tokens', () => {
       // families and the Studio type ramp. Shape and scale, not color —
       // never per-theme.
       '--font-sans',
+      // The heading face, declared beside --font-sans as a role of its own.
+      '--font-heading',
       '--font-mono',
       '--text-display-size',
       '--text-display-line-height',

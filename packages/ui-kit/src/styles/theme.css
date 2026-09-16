@@ -9,7 +9,7 @@
  * match. The token structure derives from shadcn/ui (MIT,
  * https://ui.shadcn.com; see the repository NOTICE file for attribution);
  * the values implement the Studio BLUE rebrand recorded on the mockups'
- * token spec frame "02 · Tokens, type & elevation" (node 40001232:5254),
+ * token spec frame "02 · Tokens, type & elevation",
  * which superseded the violet "Studio / shadcn" collection this file
  * previously carried. That frame's swatches label their WEB syntax with a
  * `color/` prefix (`var(--color-background)`); the CSS names here stay
@@ -176,7 +176,7 @@
 
   /*
    * Typography — the Studio blue rebrand's "Studio/Type" ramp (the
-   * "02 · Tokens, type & elevation" frame, node 40001232:5254), carried on
+   * "02 · Tokens, type & elevation" frame), carried on
    * the kit's existing role names: the roles are the public API and the
    * NEW ramp's styles map onto them rather than renaming them —
    *   display   <- Page Title (26/32 semibold)
@@ -216,6 +216,11 @@
    * guard enforces it; design-notes.md records it.
    */
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* The heading face. A role of its own even though it resolves to the same
+   * family as --font-sans today: the design spec declares the two
+   * separately, so a consumer can rebrand headings without touching body
+   * text. Shape, not colour, so it lives here and never per theme. */
+  --font-heading: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   /* Display: 26/32 semibold (Studio/Type/Page Title). */
   --text-display-size: 1.625rem;
@@ -420,6 +425,13 @@
   --danger-soft: #fff1f2;
   --info: #2563eb;
   --info-soft: #eaf2ff;
+  /* The drawn TEXT tone of each status role, for a label painted on a light
+   * backdrop. A separate family from the -soft fills above and from the
+   * role itself: one is what a chip is filled with, this is what its label
+   * is written in. --info has no drawn text tone and gets none here. */
+  --success-foreground: #047857;
+  --warning-foreground: #92400e;
+  --danger-foreground: #be123c;
   /* A palette entry, not a semantic: --info is the token a component reaches
    * for, and nothing in the kit reads this one. Kept because the collection
    * names it separately from --info; the rebrand pointed it at the brand
@@ -452,6 +464,12 @@
   --sidebar-accent: #ffffff;
   --sidebar-accent-foreground: #0f172a;
   --sidebar-border: #e2e8f0;
+  /* The emphasis pair and focus ring of a navigation item, drawn on the
+   * brand blue in both themes so a sidebar brands independently of the
+   * page's own --primary/--ring. */
+  --sidebar-primary: #0065e3;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-ring: #0065e3;
 
   /* Also palette-only: the kit ships no code/pre component, so these exist
    * for a consumer rendering code blocks beside kit parts. The foreground
@@ -509,6 +527,9 @@
   --danger-soft: #32111b;
   --info: #60a5fa;
   --info-soft: #111e2d;
+  --success-foreground: #34d399;
+  --warning-foreground: #f6c453;
+  --danger-foreground: #fb7185;
   --blue: #6ba5f0;
   /* The frame draws border and border-strong collapsed onto one slate-600
    * in dark; --input follows border-strong as in light. */
@@ -521,6 +542,9 @@
   --sidebar-accent: #26384b;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #334155;
+  --sidebar-primary: #0065e3;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-ring: #0065e3;
   --code-background: #090b10;
   --code-foreground: #e2e8f0;
 
@@ -564,6 +588,9 @@
     --danger-soft: #32111b;
     --info: #60a5fa;
     --info-soft: #111e2d;
+    --success-foreground: #34d399;
+    --warning-foreground: #f6c453;
+    --danger-foreground: #fb7185;
     --blue: #6ba5f0;
     --border: #334155;
     --border-strong: #334155;
@@ -574,6 +601,9 @@
     --sidebar-accent: #26384b;
     --sidebar-accent-foreground: #ffffff;
     --sidebar-border: #334155;
+    --sidebar-primary: #0065e3;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-ring: #0065e3;
     --code-background: #090b10;
     --code-foreground: #e2e8f0;
 
