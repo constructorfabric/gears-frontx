@@ -2,7 +2,7 @@ import { PlusIcon } from 'lucide-react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gears-frontx/ui-kit';
 
-import { Section } from '../shared';
+import { Measure, Section } from '../shared';
 
 export default function TabsExample() {
   return (
@@ -29,15 +29,88 @@ export default function TabsExample() {
         </Tabs>
       </Section>
 
+      {/* Both sizes in both variants, with the numbers that define the
+          drawn model: the list's outer box, the trigger's own box and the
+          indicator rect the active tab draws below it. */}
+      <Section title="Size">
+        <Measure
+          of={{
+            'line sm list': '#tabs-line-sm [role=tablist]',
+            'line sm trigger': '#tabs-line-sm [role=tab]',
+            'line default list': '#tabs-line-default [role=tablist]',
+            'line default trigger': '#tabs-line-default [role=tab]',
+            'track sm list': '#tabs-track-sm [role=tablist]',
+            'track default list': '#tabs-track-default [role=tablist]',
+            'unset list': '#tabs-unset [role=tablist]',
+          }}
+        >
+          <Tabs id="tabs-line-sm" defaultValue="one">
+            <TabsList variant="line" size="sm">
+              <TabsTrigger value="one">Line sm</TabsTrigger>
+              <TabsTrigger value="two">Two</TabsTrigger>
+            </TabsList>
+            <TabsContent value="one">First panel.</TabsContent>
+            <TabsContent value="two">Second panel.</TabsContent>
+          </Tabs>
+          <Tabs id="tabs-line-default" defaultValue="one">
+            <TabsList variant="line" size="default">
+              <TabsTrigger value="one">Line default</TabsTrigger>
+              <TabsTrigger value="two">Two</TabsTrigger>
+            </TabsList>
+            <TabsContent value="one">First panel.</TabsContent>
+            <TabsContent value="two">Second panel.</TabsContent>
+          </Tabs>
+          <Tabs id="tabs-track-sm" defaultValue="one">
+            <TabsList size="sm">
+              <TabsTrigger value="one">Track sm</TabsTrigger>
+              <TabsTrigger value="two">Two</TabsTrigger>
+            </TabsList>
+            <TabsContent value="one">First panel.</TabsContent>
+            <TabsContent value="two">Second panel.</TabsContent>
+          </Tabs>
+          <Tabs id="tabs-track-default" defaultValue="one">
+            <TabsList size="default">
+              <TabsTrigger value="one">Track default</TabsTrigger>
+              <TabsTrigger value="two">Two</TabsTrigger>
+            </TabsList>
+            <TabsContent value="one">First panel.</TabsContent>
+            <TabsContent value="two">Second panel.</TabsContent>
+          </Tabs>
+          <Tabs id="tabs-unset" defaultValue="one">
+            <TabsList variant="line">
+              <TabsTrigger value="one">Unset size</TabsTrigger>
+              <TabsTrigger value="two">Two</TabsTrigger>
+            </TabsList>
+            <TabsContent value="one">First panel.</TabsContent>
+            <TabsContent value="two">Second panel.</TabsContent>
+          </Tabs>
+        </Measure>
+      </Section>
+
       <Section title="Vertical">
-        <Tabs defaultValue="general" orientation="vertical">
-          <TabsList variant="line">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
-          </TabsList>
-          <TabsContent value="general">General settings.</TabsContent>
-          <TabsContent value="billing">Billing settings.</TabsContent>
-        </Tabs>
+        <Measure
+          of={{
+            'vertical line list': '#tabs-vertical [role=tablist]',
+            'vertical line trigger': '#tabs-vertical [role=tab]',
+          }}
+        >
+          <Tabs id="tabs-vertical" defaultValue="general" orientation="vertical">
+            <TabsList variant="line">
+              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="billing">Billing</TabsTrigger>
+            </TabsList>
+            <TabsContent value="general">General settings.</TabsContent>
+            <TabsContent value="billing">Billing settings.</TabsContent>
+          </Tabs>
+          <Tabs defaultValue="general" orientation="vertical">
+            <TabsList variant="line" size="sm">
+              <TabsTrigger value="general">General sm</TabsTrigger>
+              <TabsTrigger value="billing">Billing</TabsTrigger>
+            </TabsList>
+            <TabsContent value="general">General settings.</TabsContent>
+            <TabsContent value="billing">Billing settings.</TabsContent>
+          </Tabs>
+        </Measure>
       </Section>
 
       <Section title="Disabled tab">

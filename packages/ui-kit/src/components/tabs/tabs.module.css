@@ -1,13 +1,17 @@
 /*
- * Tabs styles — structure translated from shadcn/ui (MIT), visuals per the
- * F-mockups' Tabs/Segment spec (Figma frame 196:382, Kind=tab): trackless
- * list, the active tab raised on --surface-elevated, the drawn 13/18
- * medium labels (shipped at the ramp's 12/16 — see .trigger below),
- * disabled at 0.42. The spec's Kind=segment (bordered items on
- * --border-strong) is NOT a Tabs variant — the design file's own component
- * description says "shadcn Tabs and Toggle Group segment states", i.e. the
- * segment look belongs to the planned toggle-group component. The "line"
- * underline variant has no mockup counterpart; kept as a kit extra.
+ * Tabs styles, structure translated from shadcn/ui (MIT).
+ *
+ * The design spec draws exactly one tab model: a trackless trigger with a
+ * full-width 3px indicator beneath it, in two label sizes. That is the
+ * `line` variant here, and the size axis below is those two steps. The
+ * filled-track `default` variant has no drawn counterpart and keeps the
+ * kit's own raised-fill treatment; what the two share is the trigger
+ * itself, whose radius, padding and label the spec does draw. Disabled
+ * stays at the drawn 0.42.
+ *
+ * The segment look (bordered items on --border-strong) is NOT a Tabs
+ * variant: the design file's own component description says "shadcn Tabs
+ * and Toggle Group segment states", so it belongs to ToggleGroup.
  * Consumes only theme.css variables — no raw colors.
  */
 
@@ -18,14 +22,14 @@
  * modules, 20 classes total, each substituting for that same missing
  * reset on its own class list — see input.module.css/dialog.module.css/
  * select.module.css and others for the acute case each one fixes). Tabs
- * needed it first because `.trigger` is the kit's only part sized by a
- * *percentage* height (`height: 100%` below): under content-box, that
- * percentage resolves against `.list`'s content height and then
- * padding/border pile on top of it, so the trigger renders taller than
- * its list instead of matching it.
+ * needed it first, back when `.trigger` was sized by a percentage height
+ * against a fixed-height list. The list is content-height now, so the
+ * acute case here is the `line` list's own indicator band: content-box
+ * would add that band to a height a consumer set rather than fit it
+ * inside.
  *
  * Declared on the kit's own classes only (`.list`/`.trigger` — the two
- * with padding/border driving the bug — plus `.tabs`/`.content` for the
+ * carrying padding, plus `.tabs`/`.content` for the
  * same box model consistently within this component), never on a
  * universal descendant selector: a `.tabs *` reset would also silently
  * flip the box model of whatever a consumer renders inside a
@@ -56,19 +60,52 @@
   flex-direction: column;
 }
 
+/*
+ * The indicator's two 3px measurements, declared here because the LIST is
+ * what reserves room for them and the trigger is what draws them: the band
+ * the list keeps clear below its triggers is exactly the gap plus the bar.
+ * Neither 3 is a step on the spacing scale, and the drawn value is what
+ * governs, so they stay raw rather than rounding up to --space-1.
+ */
 .list {
+  --indicator-gap: 3px;
+  --indicator-thickness: 3px;
   display: inline-flex;
   width: fit-content;
-  align-items: center;
+  /* stretch, not center: with the list at content height, this is what
+   * makes every trigger share the tallest one's box. */
+  align-items: stretch;
   justify-content: center;
   border-radius: var(--radius-lg);
   gap: var(--space-1);
   color: var(--muted-foreground);
 }
 
+/*
+ * The list takes its height from the trigger rather than pinning one, so
+ * the two drawn outer heights fall out of the type step instead of being
+ * restated: 16 + 8 + 8 + 3 + 3 = 38 at `sm`, 20 + 8 + 8 + 3 + 3 = 42 at
+ * `default`.
+ */
 .list[data-orientation='horizontal'] {
-  /* Tabs are md-height controls in the mockups (36px). */
-  height: var(--control-height-md);
+  height: fit-content;
+}
+
+/*
+ * The size axis: the spec draws the two label steps and nothing else
+ * between them, so the trigger's padding, radius and weight are shared and
+ * only the type role changes.
+ */
+.sizeSm .trigger {
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+  letter-spacing: var(--text-label-tracking);
+}
+
+.sizeDefault .trigger {
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  letter-spacing: var(--text-body-tracking);
 }
 
 .list[data-orientation='vertical'] {
@@ -90,17 +127,36 @@
   border-radius: 0;
 }
 
+/* The band the indicator lives in, kept clear of the trigger box so the
+ * bar never overlaps the label's own row. Only the drawn variant reserves
+ * it; the filled-track one has no bar to make room for. */
+.list.variantLine[data-orientation='horizontal'] {
+  padding-block-end: calc(var(--indicator-gap) + var(--indicator-thickness));
+}
+
+.list.variantLine[data-orientation='vertical'] {
+  padding-inline-end: calc(var(--indicator-gap) + var(--indicator-thickness));
+}
+
 .trigger {
   position: relative;
   display: inline-flex;
   flex: 1 1 0%;
-  height: 100%;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  border: var(--border-width) solid transparent;
-  border-radius: var(--radius-md);
-  padding: var(--space-1) var(--space-3);
+  /*
+   * `border: 0`, not a 1px transparent one. The transparent border existed
+   * only so :focus-visible had something to recolor, and it put every
+   * trigger 2px over the box the drawn padding and label add up to; the
+   * ring is an inset shadow instead (see below), which takes part in no
+   * layout. Zero rather than nothing at all because the trigger is a native
+   * <button>, whose UA border is 2px and would take over the moment an
+   * author border stopped covering it.
+   */
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
   background-color: transparent;
   /*
    * The plain token is enough now: with the --muted track gone (see
@@ -111,13 +167,10 @@
    * its own track was the backdrop; that reasoning left with the track.
    */
   color: var(--muted-foreground);
-  /* Studio/Label (the spec's hand-set 18px line normalizes to the ramp's
-   * 16 under the tokens-win ruling, see theme.css). */
+  /* Size and line-height come from the size axis above; the weight is 500
+   * at both drawn steps and stays here. */
   font-family: inherit;
-  font-size: var(--text-label-size);
-  line-height: var(--text-label-line-height);
   font-weight: var(--text-label-weight);
-  letter-spacing: var(--text-label-tracking);
   white-space: nowrap;
   cursor: pointer;
   /* Colour and box-shadow crossfades only, no transform/geometry — not motion under
@@ -140,11 +193,9 @@
 
 .trigger:focus-visible {
   outline: none;
-  /* The kit-wide 2px focus border in --ring, geometry-stable (see
-   * input.module.css). */
-  border-color: var(--ring);
-  box-shadow: inset 0 0 0 var(--ring-inset)
-    var(--ring);
+  /* The kit-wide 2px focus ring in --ring, drawn wholly as an inset shadow
+   * now that the trigger carries no border for --ring-inset to add to. */
+  box-shadow: inset 0 0 0 var(--border-width-focus) var(--ring);
 }
 
 /* The ring above is an inset box-shadow, and forced-colors mode doesn't
@@ -187,14 +238,17 @@
 }
 
 /*
- * The "line" variant's underline: a static bar per tab, crossfaded by
- * opacity rather than one element sliding between tabs — see the
- * Tabs.Indicator note in tabs.tsx for why this kit doesn't animate a
- * shared element's position instead.
+ * The drawn indicator: a full-width bar in --primary, one per tab, shown on
+ * the active tab alone and crossfaded by opacity rather than one element
+ * sliding between tabs; see the Tabs.Indicator note in tabs.tsx for why
+ * this kit doesn't animate a shared element's position instead.
+ *
+ * Scoped under `.list` because that is where the two 3px measurements are
+ * declared, and the offset below is the same band the list reserves.
  */
-.trigger::after {
+.list .trigger::after {
   position: absolute;
-  background-color: var(--foreground);
+  background-color: var(--primary);
   opacity: 0;
   /* Opacity-only, no transform/geometry — a crossfade isn't motion under
      WCAG 2.3.3, so deliberately left unguarded under prefers-reduced-motion. */
@@ -203,21 +257,19 @@
 }
 
 /*
- * Both orientations set the underline's cross-axis offset to the same
- * -1 * --space-1 (-0.25rem): both exist for the identical reason (sit the
- * bar just past the tab's own edge without adding to its layout box), so
- * neither may drift onto an off-grid hand-set value.
+ * The bar sits past the trigger's own edge by the gap, so it never joins
+ * the trigger's layout box; the list's band is what holds the space.
  */
-.trigger[data-orientation='horizontal']::after {
+.list .trigger[data-orientation='horizontal']::after {
   inset-inline: 0;
-  bottom: calc(-1 * var(--space-1));
-  height: 0.125rem;
+  bottom: calc(-1 * (var(--indicator-gap) + var(--indicator-thickness)));
+  height: var(--indicator-thickness);
 }
 
-.trigger[data-orientation='vertical']::after {
+.list .trigger[data-orientation='vertical']::after {
   inset-block: 0;
-  inset-inline-end: calc(-1 * var(--space-1));
-  width: 0.125rem;
+  inset-inline-end: calc(-1 * (var(--indicator-gap) + var(--indicator-thickness)));
+  width: var(--indicator-thickness);
 }
 
 .variantLine .trigger[data-active] {
@@ -225,7 +277,7 @@
   box-shadow: none;
 }
 
-.variantLine .trigger[data-active]::after {
+.list.variantLine .trigger[data-active]::after {
   opacity: 1;
 }
 

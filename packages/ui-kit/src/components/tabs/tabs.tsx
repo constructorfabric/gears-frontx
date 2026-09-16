@@ -30,15 +30,27 @@ export function Tabs({ className, ...props }: TabsProps) {
   return <TabsPrimitive.Root className={cx(styles.tabs, className)} {...props} />;
 }
 
+/*
+ * Two axes on the list, both inherited by the triggers the way the kit's
+ * other container-driven scales are: `variant` picks the look (the drawn
+ * indicator model, or the kit's own filled track), `size` picks the label
+ * step the spec draws, 12/16 or 14/20. A trigger takes no prop of its own
+ * for either, so a list cannot hold two triggers that disagree.
+ */
 const tabsListVariants = cva(styles.list, {
   variants: {
     variant: {
       default: styles.variantDefault,
       line: styles.variantLine,
     },
+    size: {
+      sm: styles.sizeSm,
+      default: styles.sizeDefault,
+    },
   },
   defaultVariants: {
     variant: 'default',
+    size: 'default',
   },
 });
 
@@ -48,8 +60,10 @@ export interface TabsListProps
   className?: string;
 }
 
-export function TabsList({ className, variant, ...props }: TabsListProps) {
-  return <TabsPrimitive.List className={tabsListVariants({ variant, className })} {...props} />;
+export function TabsList({ className, variant, size, ...props }: TabsListProps) {
+  return (
+    <TabsPrimitive.List className={tabsListVariants({ variant, size, className })} {...props} />
+  );
 }
 
 export interface TabsTriggerProps extends Omit<TabsPrimitive.Tab.Props, 'className'> {

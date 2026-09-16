@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 import styles from './tabs.module.css';
 
@@ -131,16 +136,41 @@ describe('Tabs', () => {
     expect(panel.className).toContain('consumer');
   });
 
-  it('does not leak the variant prop to the DOM as an attribute', () => {
-    render(
+  it('defaults TabsList to the default size and switches to sm', () => {
+    const { rerender } = render(
       <Tabs defaultValue="a">
-        <TabsList variant="line">
+        <TabsList>
           <TabsTrigger value="a">A</TabsTrigger>
         </TabsList>
         <TabsContent value="a">A content</TabsContent>
       </Tabs>,
     );
-    expect(screen.getByRole('tablist').hasAttribute('variant')).toBe(false);
+    expect(screen.getByRole('tablist').className).toContain(styles.sizeDefault);
+    rerender(
+      <Tabs defaultValue="a">
+        <TabsList size="sm">
+          <TabsTrigger value="a">A</TabsTrigger>
+        </TabsList>
+        <TabsContent value="a">A content</TabsContent>
+      </Tabs>,
+    );
+    const list = screen.getByRole('tablist');
+    expect(list.className).toContain(styles.sizeSm);
+    expect(list.className).not.toContain(styles.sizeDefault);
+  });
+
+  it('does not leak the variant or size props to the DOM as attributes', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList variant="line" size="sm">
+          <TabsTrigger value="a">A</TabsTrigger>
+        </TabsList>
+        <TabsContent value="a">A content</TabsContent>
+      </Tabs>,
+    );
+    const list = screen.getByRole('tablist');
+    expect(list.hasAttribute('variant')).toBe(false);
+    expect(list.hasAttribute('size')).toBe(false);
   });
 
   it('stamps data-orientation on every part, defaulting to horizontal', () => {
@@ -216,5 +246,63 @@ describe('Tabs', () => {
     expect(document.activeElement).toBe(account);
     fireEvent.keyDown(account, { key: 'ArrowDown' });
     await waitFor(() => expect(document.activeElement).toBe(password));
+  });
+});
+
+/*
+ * Reads the module's own source: the drawn tab model is a set of numbers
+ * that no rendered assertion can reach in jsdom, and the one that matters
+ * most is structural. The list reserves the indicator's band as padding
+ * and the trigger draws the bar outside its own box, so the two drawn outer
+ * heights (38 and 42) fall out of the label step instead of being pinned.
+ */
+describe('Tabs drawn geometry', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'tabs.module.css'), 'utf8'),
+  );
+
+  function declared(selector: string, prop: string) {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('sizes the list from its content and reserves the indicator band on the drawn variant', () => {
+    expect(declared(".list[data-orientation='horizontal']", 'height')).toBe('fit-content');
+    const band = 'calc(var(--indicator-gap) + var(--indicator-thickness))';
+    expect(declared(".list.variantLine[data-orientation='horizontal']", 'padding-block-end')).toBe(
+      band,
+    );
+    expect(declared(".list.variantLine[data-orientation='vertical']", 'padding-inline-end')).toBe(
+      band,
+    );
+  });
+
+  it('draws the indicator 3px thick in --primary, clear of the trigger box', () => {
+    expect(declared('.list', '--indicator-thickness')).toBe('3px');
+    expect(declared('.list', '--indicator-gap')).toBe('3px');
+    expect(declared('.list .trigger::after', 'background-color')).toBe('var(--primary)');
+    expect(declared(".list .trigger[data-orientation='horizontal']::after", 'height')).toBe(
+      'var(--indicator-thickness)',
+    );
+  });
+
+  it('gives the trigger the drawn radius and padding, and no border to grow it', () => {
+    expect(declared('.trigger', 'border-radius')).toBe('var(--radius-sm)');
+    expect(declared('.trigger', 'padding')).toBe('var(--space-2) var(--space-3)');
+    // `border: 0`, not absent: a native <button>'s UA border is 2px, and it
+    // takes over the moment an author border stops covering it.
+    expect(declared('.trigger', 'border')).toBe('0');
+    expect(declared('.trigger:focus-visible', 'border-color')).toBeUndefined();
+    expect(declared('.trigger:focus-visible', 'box-shadow')).toBe(
+      'inset 0 0 0 var(--border-width-focus) var(--ring)',
+    );
+  });
+
+  it('moves only the label between the two size steps', () => {
+    expect(declared('.sizeSm .trigger', 'font-size')).toBe('var(--text-label-size)');
+    expect(declared('.sizeDefault .trigger', 'font-size')).toBe('var(--text-body-size)');
+    // The weight is 500 at both drawn steps, so it stays on the shared rule.
+    expect(declared('.trigger', 'font-weight')).toBe('var(--text-label-weight)');
+    expect(declared('.sizeSm .trigger', 'font-weight')).toBeUndefined();
   });
 });

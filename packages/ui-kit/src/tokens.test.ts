@@ -235,12 +235,27 @@ describe('theme tokens', () => {
   // is `--foo`, which GUARDED_PROP never matches, and the `padding:
   // var(--foo)` that reads it strips to nothing. Guarding custom properties
   // directly is not the fix: a local can legitimately hold literal geometry
-  // for an UNguarded property, which this guard leaves alone by design —
-  // Toast's `--peek: 0.75rem` feeds its stacked-card transform. Closing it
-  // takes resolving each local var to its value before scanning the property
-  // that reads it. Not exploited today: the kit declares exactly two locals
-  // holding a literal (Toast's `--peek`, Table's `--table-row-ring-inset`),
-  // and both feed unguarded properties — a transform and a box-shadow.
+  // for an UNguarded property, which this guard leaves alone by design
+  // (Toast's `--peek` feeds a stacked-card transform, Drawer's `--bleed`
+  // and `--stack-step` their own, Sidebar's widths a width). Closing the
+  // blind spot takes resolving each local to its value before scanning the
+  // property that reads it.
+  //
+  // Exactly two locals in the kit reach a GUARDED property this way, and
+  // both are deliberate:
+  //   - Drawer's `--drawer-inset: 0px` feeds `margin`. It is a zero, which
+  //     this guard already admits when written out.
+  //   - Tabs' `--indicator-gap` and `--indicator-thickness` (3px each) feed
+  //     the list's `padding-block-end`/`padding-inline-end`. The design
+  //     spec draws the indicator 3 thick and holds it 3 clear of the
+  //     trigger; the spacing scale has no 3 step, and rounding either to 4
+  //     would be a kit-side correction of a drawn value, which is the same
+  //     standing as the reasoned exceptions below. They are locals rather
+  //     than repeated literals because the list reserves the band and the
+  //     trigger draws the bar, so one source is what keeps the pair in
+  //     step. tabs.test.tsx's "Tabs drawn geometry" case pins both values
+  //     literally, so the laundering cannot hide a drift this guard does
+  //     not see through.
   it('keeps spacing and type metrics on the token scales', () => {
     const EXCEPTIONS = new Set([
       // 16px is the iOS Safari floor below which focusing a field zooms
