@@ -317,12 +317,6 @@ describe('theme tokens', () => {
       // so --text-micro-weight ships the middle cut (500) and the drawn 600
       // is set at the call site.
       'badge.module.css|font-weight|600',
-      // The drawn segmented toggle group insets its items by 2px, and that
-      // inset is what makes the container's arithmetic close: 32 minus 2
-      // minus 2 is --control-height-xs exactly. The spacing scale starts at
-      // 4, so rounding up would break the very relationship the value is
-      // there for.
-      'toggle-group.module.css|padding|2px',
       // The drawn popover panel insets its content by 10 and sets the same
       // 10 between its stacked regions. The spacing scale has no step
       // between --space-2 (8) and --space-3 (12), and rounding either would

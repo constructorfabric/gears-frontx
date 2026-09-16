@@ -14,11 +14,10 @@
  * (inline style, see toggle-group.tsx) and leaves the independently
  * bordered/radiused look below untouched.
  *
- * The design spec draws that segmented group differently again, as a
- * horizontal container with its own chrome rather than a row of joined
- * items: see `.segmented` at the bottom of this file. It applies to the
- * one case the spec draws, and the join idiom above still covers the
- * vertical group and any other combination.
+ * That is also what the design spec draws for a zero-spacing group: the
+ * group itself has no height, no padding, no border and no fill of its
+ * own, and the items carry everything. The group's outer corners are the
+ * only rounded ones, and each item insets its label by the drawn 8.
  */
 
 .group {
@@ -57,21 +56,25 @@
   gap: 0;
 }
 
-.group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item {
+.group[data-spacing='0']:not([data-orientation='vertical']) > .item {
   border-radius: 0;
+  /* The drawn item inset at zero spacing: 8 on each inline edge, whatever
+   * the size axis sets for a standalone toggle. (0,2,0), above
+   * `.sizeDefault`'s own `padding` shorthand (0,1,0) in toggle.module.css. */
+  padding-inline: var(--space-2);
 }
 
-.group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item:first-child {
+.group[data-spacing='0']:not([data-orientation='vertical']) > .item:first-child {
   border-start-start-radius: var(--radius-lg);
   border-end-start-radius: var(--radius-lg);
 }
 
-.group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item:last-child {
+.group[data-spacing='0']:not([data-orientation='vertical']) > .item:last-child {
   border-start-end-radius: var(--radius-lg);
   border-end-end-radius: var(--radius-lg);
 }
 
-.group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item + .item {
+.group[data-spacing='0']:not([data-orientation='vertical']) > .item + .item {
   border-inline-start-width: 0;
 }
 
@@ -95,44 +98,27 @@
 }
 
 /*
- * The drawn segmented group: a 32px container carrying the chrome, with
- * 28px items inside it, rather than a row of items whose own borders are
- * joined. Applied only where the spec draws it - a horizontal group at
- * `spacing={0}` on the `outline` variant, which toggle-group.tsx decides
- * and marks with this class.
- *
- * The 2px inset has no step on the spacing scale, and it is what makes the
- * arithmetic close: 32 minus 2 minus 2 is 28, which is --control-height-xs
- * exactly. tokens.test.ts carries the reasoned exception rather than
- * rounding it up to --space-1, because the drawn value governs.
- *
- * The hairline is an inset shadow, not a border, for that same arithmetic:
- * the drawn stroke sits inside the container's own 32px, so a real border
- * would either push the box to 34 or squeeze the item to 26.
- *
- * The selected item keeps the --secondary fill Toggle already paints for
- * `data-pressed`, which is the role the spec paints a selected control
- * from. The spec binds a product-owned token there; --secondary is the
- * kit-generic role carrying the same drawn value.
+ * A group the caller sizes down rounds one step tighter, the same
+ * relationship Button and Select carry between their own two steps. Keyed
+ * off the group's own `size` prop rather than the item's class, because the
+ * corner belongs to the group's outer edge, not to any one item.
  */
-.group.segmented {
-  box-sizing: border-box;
-  height: var(--control-height-sm);
-  padding: 2px;
-  box-shadow: inset 0 0 0 var(--border-width) var(--border);
-  border-radius: var(--radius-md);
+.group[data-spacing='0'][data-size='sm'] > .item:first-child {
+  border-start-start-radius: var(--radius-md);
+  border-end-start-radius: var(--radius-md);
 }
 
-/*
- * (0,3,0), above the join idiom's own (0,3,0) rules by source order and
- * above toggle.module.css's `.sizeSm`/`.variantOutline` (0,1,0) regardless
- * of stylesheet load order. `border: 0` rather than a collapsed width: the
- * container draws the only stroke here, and a 1px item border would cost
- * the item the 2px its 28px box has no room for.
- */
-.group.segmented > .item {
-  height: var(--control-height-xs);
-  min-width: var(--control-height-xs);
-  border: 0;
-  border-radius: var(--radius-sm);
+.group[data-spacing='0'][data-size='sm'] > .item:last-child {
+  border-start-end-radius: var(--radius-md);
+  border-end-end-radius: var(--radius-md);
+}
+
+.group[data-spacing='0'][data-size='sm'][data-orientation='vertical'] > .item:first-child {
+  border-start-start-radius: var(--radius-md);
+  border-start-end-radius: var(--radius-md);
+}
+
+.group[data-spacing='0'][data-size='sm'][data-orientation='vertical'] > .item:last-child {
+  border-end-start-radius: var(--radius-md);
+  border-end-end-radius: var(--radius-md);
 }

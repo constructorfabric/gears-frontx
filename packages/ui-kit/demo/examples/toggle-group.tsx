@@ -74,12 +74,15 @@ export default function ToggleGroupExample() {
       <Section title="Segmented (spacing={0})">
         <Measure
           of={{
-            'container, 2 items': '#tg-seg-2',
+            'group, 2 items': '#tg-seg-2',
             'item, 2 items': '#tg-seg-2 button',
             'icon, 2 items': '#tg-seg-2 svg',
-            'container, 4 items': '#tg-seg-4',
-            'item, 4 items': '#tg-seg-4 button',
+            'group, 4 items': '#tg-seg-4',
+            'first item, 4 items': '#tg-seg-4 button:first-child',
+            'last item, 4 items': '#tg-seg-4 button:last-child',
             'label strip': '#tg-seg-labels',
+            'sm group': '#tg-seg-sm',
+            'sm first item': '#tg-seg-sm button:first-child',
           }}
         >
           <Row>
@@ -141,7 +144,26 @@ export default function ToggleGroupExample() {
                 Table
               </ToggleGroupItem>
             </ToggleGroup>
-            {/* Not outline: the join idiom, not the drawn container. */}
+            {/* The group's own size is what tightens the outer corner. */}
+            <ToggleGroup
+              id="tg-seg-sm"
+              aria-label="View mode, segmented small"
+              spacing={0}
+              size="sm"
+              variant="outline"
+              defaultValue={['grid']}
+            >
+              <ToggleGroupItem value="list" aria-label="List view">
+                List
+              </ToggleGroupItem>
+              <ToggleGroupItem value="grid" aria-label="Grid view">
+                Grid
+              </ToggleGroupItem>
+              <ToggleGroupItem value="table" aria-label="Table view">
+                Table
+              </ToggleGroupItem>
+            </ToggleGroup>
+            {/* No variant set: the same collapse, on the default paint. */}
             <ToggleGroup aria-label="View mode, joined" spacing={0} defaultValue={['list']}>
               <ToggleGroupItem value="list" aria-label="List view">
                 List

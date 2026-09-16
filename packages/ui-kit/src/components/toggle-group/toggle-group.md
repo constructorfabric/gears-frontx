@@ -78,17 +78,15 @@ import { ToggleGroup, ToggleGroupItem } from '@gears-frontx/ui-kit';
 
 ## Segmented geometry
 
-A horizontal `outline` group at `spacing={0}` renders the drawn segmented
-control: a 32px container carrying the 1px hairline and an 8px radius, with
-28px items inside it at a 6px radius, a 2px inset between the two and a
-16px icon. The container is what draws the chrome; the items draw none of
-their own, and the selected one takes the `--secondary` fill `Toggle`
-already paints for its pressed state. The 32/2/28 relationship is exact: the inset
-off each edge is what leaves the item its own height.
+The drawn group at `spacing={0}` has no height, no padding, no border and
+no fill of its own: the items carry everything. Adjoining items drop the
+border they share, the group's own outer corners are the only rounded ones
+(10px, or 8px when the group itself is sized `sm`), each item insets its
+label by 8, and the selected one takes the `--secondary` fill `Toggle`
+already paints for its pressed state.
 
-Every other `spacing={0}` group - vertical, or any variant other than
-`outline` - keeps the join idiom instead: adjoining items share borders and
-round only on the group's own outer corners. Upstream reaches that look
+Every `spacing={0}` group reaches that look, vertical ones on the block
+axis instead of the inline one. Upstream reaches it
 through arbitrary sibling selectors with no direct CSS Modules equivalent;
 this port reaches the same geometry through plain structural selectors keyed
 on `data-spacing`, the same idiom `ButtonGroup` already uses for its own

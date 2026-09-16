@@ -136,11 +136,9 @@ describe('ToggleGroup', () => {
    * Reads toggle-group.module.css's own source (not the hashed `styles`
    * import) the same way button.test.tsx's focus-ring guard does, to
    * prove the join CSS actually squares inner corners, re-rounds only the
-   * outer ones, and drops the shared inline-start border - the "collapsed
-   * inner borders and outer-only radius" claim in toggle-group.md, checked
-   * against the stylesheet rather than asserted. The last case covers the
-   * other model: where the spec draws a container instead of joined items,
-   * the join rules must step aside rather than fight it.
+   * outer ones, drops the shared inline-start border and insets each item
+   * by the drawn 8 - the drawn zero-spacing collapse, checked against the
+   * stylesheet rather than asserted.
    */
   const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'toggle-group.module.css');
   const rules = extractRules(readFileSync(cssPath, 'utf8'));
@@ -150,73 +148,49 @@ describe('ToggleGroup', () => {
     return rule ? declarationMap(rule.body).get(prop) : undefined;
   }
 
-  it('squares every segmented item then re-rounds only the outer corners', () => {
-    expect(
-      declared(".group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item", 'border-radius'),
-    ).toBe('0');
-    expect(
-      declared(
-        ".group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item:first-child",
-        'border-start-start-radius',
-      ),
-    ).toBe('var(--radius-lg)');
-    expect(
-      declared(
-        ".group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item:last-child",
-        'border-start-end-radius',
-      ),
-    ).toBe('var(--radius-lg)');
-  });
+  const horizontal = ".group[data-spacing='0']:not([data-orientation='vertical'])";
 
-  it('drops the shared border between adjoining segmented items', () => {
-    expect(
-      declared(
-        ".group[data-spacing='0']:not([data-orientation='vertical']):not(.segmented) > .item + .item",
-        'border-inline-start-width',
-      ),
-    ).toBe('0');
-  });
-
-  it('gives the drawn segmented group a container and its items the inner box', () => {
-    expect(declared('.group.segmented', 'height')).toBe('var(--control-height-sm)');
-    expect(declared('.group.segmented', 'padding')).toBe('2px');
-    expect(declared('.group.segmented', 'border-radius')).toBe('var(--radius-md)');
-    // An inset shadow, not a border: the drawn stroke sits inside the
-    // container's own 32px, so a border would push the box to 34.
-    expect(declared('.group.segmented', 'box-shadow')).toBe(
-      'inset 0 0 0 var(--border-width) var(--border)',
+  it('squares every collapsed item then re-rounds only the outer corners', () => {
+    expect(declared(`${horizontal} > .item`, 'border-radius')).toBe('0');
+    expect(declared(`${horizontal} > .item:first-child`, 'border-start-start-radius')).toBe(
+      'var(--radius-lg)',
     );
-    expect(declared('.group.segmented', 'border')).toBeUndefined();
-    expect(declared('.group.segmented > .item', 'height')).toBe('var(--control-height-xs)');
-    expect(declared('.group.segmented > .item', 'border-radius')).toBe('var(--radius-sm)');
-    expect(declared('.group.segmented > .item', 'border')).toBe('0');
+    expect(declared(`${horizontal} > .item:last-child`, 'border-start-end-radius')).toBe(
+      'var(--radius-lg)',
+    );
   });
 
-  it('adds the segmented container only for a spacing={0} outline group', () => {
-    const { rerender } = render(
-      <ToggleGroup variant="outline" spacing={0} aria-label="Align">
+  it('rounds one step tighter when the group itself is sized down', () => {
+    expect(
+      declared(".group[data-spacing='0'][data-size='sm'] > .item:first-child", 'border-start-start-radius'),
+    ).toBe('var(--radius-md)');
+    expect(
+      declared(".group[data-spacing='0'][data-size='sm'] > .item:last-child", 'border-end-end-radius'),
+    ).toBe('var(--radius-md)');
+  });
+
+  it('drops the shared border between adjoining items and insets each by the drawn 8', () => {
+    expect(declared(`${horizontal} > .item + .item`, 'border-inline-start-width')).toBe('0');
+    expect(declared(`${horizontal} > .item`, 'padding-inline')).toBe('var(--space-2)');
+  });
+
+  it('gives the group itself no chrome of its own at zero spacing', () => {
+    // The drawn collapse has no container: every rule that used to draw one
+    // is gone, and the group carries only the gap.
+    expect(declared(".group[data-spacing='0']", 'gap')).toBe('0');
+    expect(declared(".group[data-spacing='0']", 'height')).toBeUndefined();
+    expect(declared(".group[data-spacing='0']", 'padding')).toBeUndefined();
+    expect(declared(".group[data-spacing='0']", 'box-shadow')).toBeUndefined();
+    expect(declared(".group[data-spacing='0']", 'background-color')).toBeUndefined();
+  });
+
+  it('mirrors the group size onto the element so the outer corner can follow it', () => {
+    render(
+      <ToggleGroup variant="outline" size="sm" spacing={0} aria-label="Align">
         <ToggleGroupItem value="left">L</ToggleGroupItem>
         <ToggleGroupItem value="right">R</ToggleGroupItem>
       </ToggleGroup>,
     );
-    expect(screen.getByRole('group', { name: 'Align' }).className).toContain(styles.segmented);
-
-    // Same spacing, no outline: the join idiom still applies.
-    rerender(
-      <ToggleGroup spacing={0} aria-label="Align">
-        <ToggleGroupItem value="left">L</ToggleGroupItem>
-        <ToggleGroupItem value="right">R</ToggleGroupItem>
-      </ToggleGroup>,
-    );
-    expect(screen.getByRole('group', { name: 'Align' }).className).not.toContain(styles.segmented);
-
-    // Outline but spaced: not a segmented group at all.
-    rerender(
-      <ToggleGroup variant="outline" spacing={4} aria-label="Align">
-        <ToggleGroupItem value="left">L</ToggleGroupItem>
-        <ToggleGroupItem value="right">R</ToggleGroupItem>
-      </ToggleGroup>,
-    );
-    expect(screen.getByRole('group', { name: 'Align' }).className).not.toContain(styles.segmented);
+    expect(screen.getByRole('group', { name: 'Align' }).getAttribute('data-size')).toBe('sm');
   });
 });
