@@ -30,6 +30,12 @@ also exported standalone for composing a custom layout (e.g. a label row
 above the bar) instead of the `Progress` convenience wrapper's default
 Track+Indicator. All forward Base UI's own props for that part.
 
+The track is 6 px tall and fully round, filled with `--muted` under a
+`--primary` indicator; the parts sit 12 px apart. Label and readout are
+both 14 px, the label at 500 in `--foreground` and the readout at 400 in
+`--muted-foreground`, pushed to the end of the row with tabular figures so
+a counting percentage does not shift the label beside it.
+
 ## Examples
 
 ```tsx

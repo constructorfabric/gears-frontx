@@ -13,6 +13,13 @@
   gap: var(--space-3);
 }
 
+/*
+ * The drawn track: 6 tall, fully round, filled with --muted. The drawn
+ * height is carried by a product-owned token this kit excludes by
+ * ownership; 6 is a generic number and lands as a literal, which the
+ * spacing scale has no step for anyway (nothing between 4 and 8).
+ * progress.test.tsx pins it.
+ */
 .track {
   position: relative;
   display: flex;
@@ -20,8 +27,8 @@
   align-items: center;
   overflow: hidden;
   border-radius: var(--radius-full);
-  background-color: var(--secondary);
-  height: 0.5rem;
+  background-color: var(--muted);
+  height: 6px;
 }
 
 .indicator {
@@ -56,18 +63,24 @@
   }
 }
 
+/* The drawn label and readout are both 14; only the weight and the tone
+ * separate them. */
 .label {
-  font-size: var(--text-label-size);
-  line-height: var(--text-label-line-height);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
   font-weight: var(--text-label-weight);
-  letter-spacing: var(--text-label-tracking);
+  letter-spacing: var(--text-body-tracking);
   color: var(--foreground);
 }
 
+/* Pushed to the end of the row, with tabular figures so a counting readout
+ * does not shift the label beside it as the digits change. */
 .value {
-  font-size: var(--text-meta-size);
-  line-height: var(--text-meta-line-height);
-  font-weight: var(--text-meta-weight);
-  letter-spacing: var(--text-meta-tracking);
+  margin-inline-start: auto;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  font-weight: var(--text-body-weight);
+  letter-spacing: var(--text-body-tracking);
+  font-variant-numeric: tabular-nums;
   color: var(--muted-foreground);
 }
