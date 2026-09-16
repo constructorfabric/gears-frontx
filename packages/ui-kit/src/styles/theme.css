@@ -175,6 +175,22 @@
   --opacity-disabled: 0.42;
 
   /*
+   * Motion. Four drawn duration steps and the drawn curve: micro for a
+   * hover, focus or colour swap, standard for a state change that moves
+   * something, panel for a surface sliding in or out, tab for the
+   * travelling tab indicator. Every kit transition whose value equals one
+   * of these steps reads the token rather than restating the number; a
+   * module whose duration matches no step keeps its own literal, because
+   * the spec draws no value there to take. Scale, not colour, so they are
+   * declared once here and never per theme.
+   */
+  --duration-micro: 120ms;
+  --duration-standard: 180ms;
+  --duration-panel: 220ms;
+  --duration-tab: 240ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /*
    * Typography — the Studio blue rebrand's "Studio/Type" ramp (the
    * "02 · Tokens, type & elevation" frame), carried on
    * the kit's existing role names: the roles are the public API and the

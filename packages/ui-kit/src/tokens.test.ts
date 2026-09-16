@@ -533,6 +533,13 @@ describe('theme tokens', () => {
       // Dim for every disabled control surface. A magnitude, not a color -
       // never per-theme.
       '--opacity-disabled',
+      // Motion: four drawn duration steps and the drawn curve. Timing is
+      // scale, not colour - never per-theme.
+      '--duration-micro',
+      '--duration-standard',
+      '--duration-panel',
+      '--duration-tab',
+      '--ease-standard',
       // Typography (Figma "Typography / Specimens", frame 175:371):
       // families and the Studio type ramp. Shape and scale, not color —
       // never per-theme.
@@ -762,6 +769,22 @@ describe('theme tokens', () => {
       // would be a kit-side correction of a drawn value. What is pinned
       // instead is the pair of hexes, for the same reason the status case
       // above pins its four.
+      // The motion steps are the design spec's own, in the same shape as
+      // the status pin above: they are theme-invariant, so they are read
+      // off the invariants block rather than a theme one.
+      it('carries the drawn duration and easing values', () => {
+        const drawn: Record<string, string> = {
+          '--duration-micro': '120ms',
+          '--duration-standard': '180ms',
+          '--duration-panel': '220ms',
+          '--duration-tab': '240ms',
+          '--ease-standard': 'cubic-bezier(0.2, 0, 0, 1)',
+        };
+        for (const [name, value] of Object.entries(drawn)) {
+          expect(invariantTokens.get(name), name).toBe(value);
+        }
+      });
+
       it('the muted fill carries the drawn value in both themes', () => {
         expect(token(lightTokens, '--muted'), 'light --muted').toBe('#f1f5f9');
         expect(token(darkAttrTokens, '--muted'), 'dark --muted').toBe('#0f172a');
