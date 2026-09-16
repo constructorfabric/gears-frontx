@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from './popover';
 import styles from './popover.module.css';
 
@@ -92,5 +97,33 @@ describe('Popover', () => {
     fireEvent.mouseEnter(trigger);
     fireEvent.mouseMove(trigger);
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeNull());
+  });
+});
+
+/*
+ * The drawn panel's own numbers. tokens.test.ts's metric guard carries the
+ * two 10s as a reasoned exception, so only a case here keeps them from
+ * drifting off the drawn box.
+ */
+describe('Popover drawn geometry', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'popover.module.css'), 'utf8'),
+  );
+
+  function declared(selector: string, prop: string) {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('insets the panel by the drawn 10 and sets the same 10 between regions', () => {
+    // The spacing scale has no step between --space-2 (8) and --space-3
+    // (12), so rounding either would be a kit-side correction.
+    expect(declared('.popup', 'padding')).toBe('10px');
+    expect(declared('.popup', 'gap')).toBe('10px');
+  });
+
+  it('keeps the drawn width and corner', () => {
+    expect(declared('.popup', 'width')).toBe('18rem');
+    expect(declared('.popup', 'border-radius')).toBe('var(--radius-lg)');
   });
 });

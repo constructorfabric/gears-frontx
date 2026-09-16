@@ -10,8 +10,10 @@ Composition: `Popover` (root, holds open state) → `PopoverTrigger` →
 `PopoverContent` (portals and positions `PopoverHeader` / `PopoverTitle` /
 `PopoverDescription` / consumer content against the trigger).
 
-The panel is `18rem` wide with a `--radius-lg` (10px) corner and the shared
-popover chrome (`--popover-border` hairline plus `--popover-shadow`).
+The panel is `18rem` wide with a `--radius-lg` (10px) corner, a 10px inset
+around its content and the same 10px between its stacked regions, plus the
+shared popover chrome (`--popover-border` hairline and `--popover-shadow`).
+It fades and scales from 95 per cent over 100ms on open and on close.
 
 ## When to use
 

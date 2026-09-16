@@ -21,8 +21,12 @@
   display: flex;
   flex-direction: column;
   width: 18rem;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  /* The drawn panel insets its content by 10 and sets the same 10 between
+   * its stacked regions. Neither sits on the spacing scale, which has no
+   * step between --space-2 (8) and --space-3 (12); rounding either would be
+   * a kit-side correction of a drawn value. popover.test.tsx pins both. */
+  gap: 10px;
+  padding: 10px;
   border: var(--border-width) solid var(--popover-border);
   border-radius: var(--radius-lg);
   background-color: var(--popover);

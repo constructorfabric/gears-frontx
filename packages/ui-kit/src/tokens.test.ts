@@ -323,6 +323,13 @@ describe('theme tokens', () => {
       // 4, so rounding up would break the very relationship the value is
       // there for.
       'toggle-group.module.css|padding|2px',
+      // The drawn popover panel insets its content by 10 and sets the same
+      // 10 between its stacked regions. The spacing scale has no step
+      // between --space-2 (8) and --space-3 (12), and rounding either would
+      // be a kit-side correction of a drawn value. popover.test.tsx pins
+      // both literals.
+      'popover.module.css|padding|10px',
+      'popover.module.css|gap|10px',
     ]);
     for (const file of moduleFiles) {
       const base = file.slice(file.lastIndexOf('/') + 1);
