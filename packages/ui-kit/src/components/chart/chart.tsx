@@ -15,21 +15,21 @@
  * constraints rather than a style preference — see chart.md's "Porting
  * notes" for the consumer-facing summary:
  *
- * 1. THEMES / dark selector — upstream keys the per-theme color map by
- *    `{ light: "", dark: ".dark" }`, a literal Tailwind dark-mode class
- *    selector. This kit has no such class (see theme.css's header): dark
+ * 1. THEMES / dark selector - upstream keys the per-theme color map by
+ *    `{ light: "", dark: ".dark" }`, a literal dark-mode class selector.
+ *    This kit has no such class (see theme.css's header): dark
  *    mode is `[data-theme='dark']` plus a `prefers-color-scheme` fallback
  *    guarded by `:not([data-theme='light'])`. ChartStyle below emits BOTH
  *    selectors for the dark entry instead of one, mirroring theme.css's own
  *    dual mechanism. The public `ChartConfig['theme']` keys stay exactly
  *    `light`/`dark` regardless — that part is upstream's real API, not the
  *    selector text it happens to compile to.
- * 2. No `--chart-1`..`--chart-5` palette — those tokens don't exist in
- *    theme.css (frozen for this port) and were deliberately not added.
- *    A consumer supplies every series color through `ChartConfig` itself
- *    (`color` or `theme`) — upstream's real, load-bearing API regardless;
- *    shadcn's own docs setting `--chart-1` etc. is just ONE value for that
- *    same `color` field, not a requirement of the mechanism.
+ * 2. Palette fallback - theme.css publishes `--chart-1`..`--chart-5`, and a
+ *    `ChartConfig` entry that names neither a `color` nor a `theme` pair
+ *    takes the step at its own position in the config (see CHART_PALETTE
+ *    below). A consumer still supplies every series colour through
+ *    `ChartConfig` itself when they want to, and an explicit value always
+ *    wins; the fallback only decides what an unbranded chart paints.
  */
 
 import {
@@ -52,6 +52,21 @@ import styles from './chart.module.css';
 // so ChartContainer's children render immediately instead of waiting for a
 // ResizeObserver entry that jsdom (and a slow first paint) may delay.
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const;
+
+// The published series palette, in order. A ChartConfig entry naming no
+// colour of its own takes the step at ITS OWN index in the config, not at
+// its index among the uncoloured entries: a caller who brands one series
+// and leaves the rest alone then still gets distinct steps for the rest,
+// instead of a fallback landing on the same hue they just chose. Five
+// series is what the spec draws; a sixth wraps to the first, which reads
+// better than a series painting in the charting library's stock colour.
+const CHART_PALETTE = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+] as const;
 
 type TooltipNameType = number | string;
 
@@ -154,7 +169,7 @@ export interface ChartStyleProps {
 // chart shell without ChartContainer's div/ResponsiveContainer wrapper, who
 // still wants the same per-instance `--color-*` custom-property injection.
 export function ChartStyle({ id, config }: ChartStyleProps) {
-  const colorConfig = Object.entries(config).filter(([, itemConfig]) => itemConfig.theme ?? itemConfig.color);
+  const colorConfig = Object.entries(config);
 
   if (!colorConfig.length) {
     return null;
@@ -164,8 +179,11 @@ export function ChartStyle({ id, config }: ChartStyleProps) {
 
   const declarationsFor = (theme: 'light' | 'dark') =>
     colorConfig
-      .map(([key, itemConfig]) => {
-        const color = itemConfig.theme?.[theme] ?? itemConfig.color;
+      .map(([key, itemConfig], index) => {
+        const color =
+          itemConfig.theme?.[theme] ??
+          itemConfig.color ??
+          CHART_PALETTE[index % CHART_PALETTE.length];
         // A rejected colour drops its whole declaration rather than
         // emitting a broken one: the series then paints in Recharts' own
         // default instead of taking the rest of the stylesheet with it.
@@ -308,7 +326,7 @@ export function ChartTooltipContent({
                             indicator === 'dashed' && nestLabel && styles.indicatorNested,
                           )}
                           // Two paint targets, not one custom-property pair like
-                          // upstream's Tailwind `bg-(--color-bg)`/`border-(--color-border)`
+                          // upstream's `bg-(--color-bg)`/`border-(--color-border)`
                           // arbitrary-value classes: dot/line indicators are filled
                           // swatches (background only — chart.module.css's `.indicator`
                           // sets no border), the dashed indicator is a hollow
@@ -316,7 +334,7 @@ export function ChartTooltipContent({
                           // keeps its own background transparent). Setting both
                           // properties unconditionally, like upstream does via two
                           // always-present custom properties, would depend on which
-                          // Tailwind utility wins the cascade for the dashed case;
+                          // upstream utility wins the cascade for the dashed case;
                           // branching here is unambiguous.
                           style={
                             indicator === 'dashed'

@@ -35,8 +35,9 @@ import { Row, Section } from '../shared';
  *
  * Every color is a `--color-<dataKey>` variable, which ChartContainer emits
  * from the ChartConfig below. The palette entries themselves are kit theme
- * tokens: the kit defines no --chart-1..5 ramp, and a literal hex would only
- * hold for one theme.
+ * tokens. The "Palette fallback" section at the end shows what a config
+ * that names no colour at all paints instead: the published --chart-1..5
+ * steps, by each entry's own position in the config.
  *
  * No --info slot: after the rebrand --primary and --info are near-identical
  * blues in light mode (~1.02:1 apart), so a palette carrying both would let
@@ -54,6 +55,23 @@ const PALETTE = {
   amber: 'var(--warning)',
   rose: 'var(--destructive)',
 } as const;
+
+/*
+ * Six series and not one colour between them: each entry falls back to the
+ * palette step at its own index, and the sixth wraps to --chart-1. The
+ * demo's measurement pass reads the resolved --color-<key> per series in
+ * both themes against the matching --chart-N.
+ */
+const PALETTE_SERIES = ['one', 'two', 'three', 'four', 'five', 'six'] as const;
+
+const paletteConfig = Object.fromEntries(
+  PALETTE_SERIES.map((key, index) => [key, { label: `Series ${index + 1}` }]),
+) satisfies ChartConfig;
+
+const paletteData = ['Jan', 'Feb', 'Mar'].map((month, monthIndex) => ({
+  month,
+  ...Object.fromEntries(PALETTE_SERIES.map((key, index) => [key, 40 + index * 12 + monthIndex * 6])),
+}));
 
 const chartConfig = {
   desktop: { label: 'Desktop', color: PALETTE.brand },
@@ -494,6 +512,19 @@ export default function ChartExample() {
             <ChartLegend content={<ChartLegendContent verticalAlign="top" />} verticalAlign="top" />
             <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} />
             <Bar dataKey="mobile" fill="var(--color-mobile)" radius={4} />
+          </BarChart>
+        </ChartContainer>
+      </Section>
+      <Section title="Palette fallback">
+        <ChartContainer config={paletteConfig} style={{ maxWidth: 560 }}>
+          <BarChart data={paletteData}>
+            <CartesianGrid vertical={false} stroke="var(--border)" />
+            <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            {PALETTE_SERIES.map((key) => (
+              <Bar key={key} dataKey={key} fill={`var(--color-${key})`} radius={4} />
+            ))}
+            <ChartLegend content={<ChartLegendContent />} />
           </BarChart>
         </ChartContainer>
       </Section>

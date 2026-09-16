@@ -93,9 +93,35 @@ describe('ChartContainer', () => {
 });
 
 describe('ChartStyle', () => {
-  it('renders nothing when no series declares a color or theme', () => {
-    const { container } = render(<ChartStyle id="empty" config={{ desktop: { label: 'Desktop' } }} />);
+  it('renders nothing for an empty config', () => {
+    const { container } = render(<ChartStyle id="empty" config={{}} />);
     expect(container.querySelector('style')).toBeNull();
+  });
+
+  it('falls back to the palette step at each uncoloured series own position', () => {
+    const { container } = render(
+      <ChartStyle
+        id="palette"
+        config={{ a: {}, b: {}, c: {}, d: {}, e: {}, f: {} }}
+      />,
+    );
+    const css = container.querySelector('style')?.innerHTML ?? '';
+    expect(css).toContain('--color-a: var(--chart-1);');
+    expect(css).toContain('--color-e: var(--chart-5);');
+    // Sixth series wraps rather than falling out of the palette.
+    expect(css).toContain('--color-f: var(--chart-1);');
+  });
+
+  it('lets an explicit colour win over the palette without shifting the rest', () => {
+    const { container } = render(
+      <ChartStyle id="mixed" config={{ a: {}, b: { color: '#123456' }, c: {} }} />,
+    );
+    const css = container.querySelector('style')?.innerHTML ?? '';
+    expect(css).toContain('--color-b: #123456;');
+    // c keeps the step for its own index, so the fallback never lands on
+    // the hue the caller just picked for the series before it.
+    expect(css).toContain('--color-a: var(--chart-1);');
+    expect(css).toContain('--color-c: var(--chart-3);');
   });
 
   it('scopes a flat color to the chart id, unconditionally (no theme block needed)', () => {

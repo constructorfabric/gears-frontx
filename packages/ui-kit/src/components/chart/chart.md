@@ -34,7 +34,7 @@ layout, spacing, text roles) or supplied per-instance by the consumer's own
 `content` prop for themed rendering, or omit `content` for Recharts'
 own default.
 
-## Series colors: `ChartConfig`, not `--chart-*` tokens
+## Series colors: `ChartConfig`, with the `--chart-*` palette behind it
 
 ```ts
 type ChartConfig = Record<
@@ -60,16 +60,21 @@ const chartConfig = {
 } satisfies ChartConfig;
 ```
 
-**This kit does not ship `--chart-1` through `--chart-5`.** Upstream's own
-docs use those as example *values* for `ChartConfig`'s `color` field
-(`color: "var(--chart-1)"`) — a convenience palette, not part of the
-mechanism itself, which only ever reads whatever string `ChartConfig`
-supplies. `theme.css` is frozen for this port and defines no such tokens,
-so they are not available as a shorthand today. A consumer can reference
-any existing kit token (`var(--primary)`, `var(--info)`, ...), a literal
-color, or its own palette. **Open integrator decision:** if a fixed,
-theme-aware chart palette (`--chart-1`..`--chart-5`) is wanted as a kit
-default, it needs a `theme.css` addition — out of scope for this port.
+The kit publishes a five-step series palette, `--chart-1` through
+`--chart-5`, with its own light and dark value per step, plus four
+categorical hues (`--chart-category-blue|purple|brown|teal`) that carry one
+value in both themes. A `ChartConfig` entry that names neither `color` nor
+`theme` falls back to the palette step at its own position in the config,
+wrapping to `--chart-1` after the fifth entry, so a chart is legible before
+anyone brands it. An explicit `color` or `theme` always wins, and it wins
+without shifting the fallback for the entries around it: each entry's step
+follows its own index, not its position among the uncoloured ones.
+
+A consumer can still reference any other kit token (`var(--primary)`,
+`var(--info)`, ...), a literal colour, or their own palette.
+`--color-<key>` is unchanged: it is the per-instance custom property
+`ChartStyle` writes for each series, which the palette steps are one
+possible value for.
 
 ### Dark mode
 
@@ -177,6 +182,7 @@ const data = [
 - Do not hardcode a series color inline on the Recharts element and skip
   `ChartConfig` — the config is also what the tooltip/legend read back to
   resolve each series' label and (for the legend's fallback swatch) color.
-- Do not reach for `--chart-1`..`--chart-5` — they don't exist in this
-  kit; use `ChartConfig`'s `color`/`theme` with an existing token or a
-  literal value instead (see "Series colors" above).
+- Do not paint a series in `--muted-foreground`: it is the chart's own
+  chrome colour (grid, axis, legend), so a series wearing it disappears
+  into the chart's furniture. The published palette deliberately excludes
+  it (see "Series colors" above).
