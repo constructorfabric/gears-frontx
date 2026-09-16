@@ -56,15 +56,24 @@ DropdownMenu/Select sit here instead:
 | `collisionBoundary` / `collisionPadding` | see Base UI NavigationMenu.Positioner | viewport / `5` |
 | `className` | `string` — merged after the kit class | — |
 
-`NavigationMenuTrigger` / `NavigationMenuContent` / `NavigationMenuLink` /
-`NavigationMenuList` / `NavigationMenuItem` / `NavigationMenuViewport`:
-thin styled pass-throughs, no extra props beyond Base UI's own (see each
-part's `.d.ts` under `node_modules/@base-ui/react/navigation-menu/`).
+`NavigationMenuTrigger` / `NavigationMenuContent` / `NavigationMenuList` /
+`NavigationMenuItem` / `NavigationMenuViewport`: thin styled
+pass-throughs, no extra props beyond Base UI's own (see each part's
+`.d.ts` under `node_modules/@base-ui/react/navigation-menu/`).
 
 `NavigationMenuLink`: `active` (marks the current page, styles via
 `[data-active]` and sets `aria-current="page"`), `closeOnClick` (`false`
 by default — a plain in-content link does not auto-close the menu unless
-asked to).
+asked to), plus:
+
+| Prop | Type | Default |
+|------|------|---------|
+| `size` | `default` \| `compact` - 36 or 28 px link height | `default` |
+
+Both steps share the corner, the 12 px inline inset, the 14/20 label and
+the 16 px icon; a link carrying a description grows past its step rather
+than clipping. Hovering fills the row with `--muted`; the current link
+takes `--secondary` with a 1 px `--border` hairline.
 
 `navigationMenuTriggerStyle()` — a `cva()` className recipe (no variants
 yet) that makes a plain `NavigationMenuLink` look identical to a

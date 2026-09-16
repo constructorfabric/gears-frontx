@@ -9,7 +9,7 @@ import {
   navigationMenuTriggerStyle,
 } from '@gears-frontx/ui-kit';
 
-import { DemoIcon, Section } from '../shared';
+import { DemoIcon, Measure, Section } from '../shared';
 
 export default function NavigationMenuExample() {
   return (
@@ -91,6 +91,45 @@ export default function NavigationMenuExample() {
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
+      </Section>
+
+      {/* Both link steps, in their three paints: idle, hovered and the
+          current page. The row heights are what has to measure 36 and 28. */}
+      <Section title="Link sizes">
+        <Measure
+          of={{
+            'link default': '#nm-link-default',
+            'link compact': '#nm-link-compact',
+            'link current': '#nm-link-current',
+            'link icon': '#nm-link-icon svg',
+          }}
+        >
+          <NavigationMenu>
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <NavigationMenuLink id="nm-link-default" href="#overview">
+                  Default
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <NavigationMenuLink id="nm-link-compact" size="compact" href="#billing">
+                  Compact
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <NavigationMenuLink id="nm-link-current" href="#current" active>
+                  Current page
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <NavigationMenuLink id="nm-link-icon" href="#icon">
+                  <DemoIcon />
+                  With icon
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
+        </Measure>
       </Section>
 
       <Section title="Active link">

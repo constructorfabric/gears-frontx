@@ -1,5 +1,5 @@
 import { NavigationMenu as NavigationMenuPrimitive } from '@base-ui/react/navigation-menu';
-import { cva, cx } from 'class-variance-authority';
+import { cva, cx, type VariantProps } from 'class-variance-authority';
 import { ChevronDownIcon } from 'lucide-react';
 
 import styles from './navigation-menu.module.css';
@@ -144,12 +144,36 @@ export function NavigationMenuContent({ className, ...props }: NavigationMenuCon
   return <NavigationMenuPrimitive.Content className={cx(styles.content, className)} {...props} />;
 }
 
-export interface NavigationMenuLinkProps extends Omit<NavigationMenuPrimitive.Link.Props, 'className'> {
+/*
+ * The two drawn link heights. The axis is geometry only: corner, inset,
+ * label and icon are the same at both steps, and only the row height and
+ * the block inset that lands it move.
+ */
+const navigationMenuLinkVariants = cva(styles.link, {
+  variants: {
+    size: {
+      default: styles.sizeDefault,
+      compact: styles.sizeCompact,
+    },
+  },
+  defaultVariants: {
+    size: 'default',
+  },
+});
+
+export interface NavigationMenuLinkProps
+  extends Omit<NavigationMenuPrimitive.Link.Props, 'className'>,
+    VariantProps<typeof navigationMenuLinkVariants> {
   className?: string;
 }
 
-export function NavigationMenuLink({ className, ...props }: NavigationMenuLinkProps) {
-  return <NavigationMenuPrimitive.Link className={cx(styles.link, className)} {...props} />;
+export function NavigationMenuLink({ className, size, ...props }: NavigationMenuLinkProps) {
+  return (
+    <NavigationMenuPrimitive.Link
+      className={navigationMenuLinkVariants({ size, className })}
+      {...props}
+    />
+  );
 }
 
 export interface NavigationMenuViewportProps

@@ -1,5 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 
 import {
   NavigationMenu,
@@ -116,5 +122,61 @@ describe('NavigationMenu', () => {
     const link = await waitFor(() => screen.getByRole('link', { name: 'Product A' }));
     fireEvent.click(link);
     await waitFor(() => expect(screen.queryByRole('link', { name: 'Product A' })).toBeNull());
+  });
+});
+
+/*
+ * The drawn link steps. jsdom computes no layout, so the step, the inset
+ * that lands it and the two paints are asserted on the declarations.
+ */
+describe('NavigationMenuLink size axis', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'navigation-menu.module.css'), 'utf8'),
+  );
+
+  // Selector lists keep their source whitespace, so they are matched with
+  // it collapsed.
+  function declared(selector: string, prop: string) {
+    const rule = rules.find(
+      (candidate) => candidate.selector.replace(/\s*,\s*/g, ',').replace(/\s+/g, ' ').trim() === selector,
+    );
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('renders size="default" and an omitted size as the same class list', () => {
+    render(
+      <NavigationMenu>
+        <NavigationMenuList>
+          <NavigationMenuItem>
+            <NavigationMenuLink href="#a">Omitted</NavigationMenuLink>
+            <NavigationMenuLink href="#b" size="default">
+              Explicit
+            </NavigationMenuLink>
+          </NavigationMenuItem>
+        </NavigationMenuList>
+      </NavigationMenu>,
+    );
+    expect(screen.getByText('Omitted').className).toBe(screen.getByText('Explicit').className);
+  });
+
+  it('moves only the step and the block inset between the two', () => {
+    expect(declared('.link.sizeDefault', 'min-height')).toBe('var(--control-height-md)');
+    expect(declared('.link.sizeDefault', 'padding-block')).toBe('var(--space-2)');
+    expect(declared('.link.sizeCompact', 'min-height')).toBe('var(--control-height-xs)');
+    expect(declared('.link.sizeCompact', 'padding-block')).toBe('var(--space-1)');
+    // Shared by both steps, so they live on the base rule.
+    expect(declared('.link', 'padding-inline')).toBe('var(--space-3)');
+    expect(declared('.link', 'border-radius')).toBe('var(--radius-md)');
+    expect(declared('.link', 'font-size')).toBe('var(--text-body-size)');
+    // A floor needs border-box, or the inset would add on top of it.
+    expect(declared('.link', 'box-sizing')).toBe('border-box');
+  });
+
+  it('separates the hover fill from the current-page one', () => {
+    expect(declared('.link:hover,.link:focus', 'background-color')).toBe('var(--muted)');
+    expect(declared('.link[data-active]', 'background-color')).toBe('var(--secondary)');
+    expect(declared('.link[data-active]', 'box-shadow')).toBe(
+      'inset 0 0 0 var(--border-width) var(--border)',
+    );
   });
 });

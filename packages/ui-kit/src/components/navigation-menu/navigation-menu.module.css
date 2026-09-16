@@ -304,32 +304,77 @@
   transform: translateX(-50%);
 }
 
+/*
+ * The drawn link row. Both steps share everything but the height and the
+ * block inset that lands it: the label is 14/20 at 500, the inline inset
+ * 12 and the corner 8 at either. A link carrying a description grows past
+ * its step rather than clipping, which is why the step is a floor and the
+ * block inset is what makes a single-line link measure it exactly
+ * (20 + 8 + 8 = 36, 20 + 4 + 4 = 28).
+ *
+ * border-box, or the floor would apply to the content box and the inset
+ * would add on top of it - the same missing-preflight case the rest of the
+ * kit fixes per class.
+ */
 .link {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: var(--space-1);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  padding-inline: var(--space-3);
   color: var(--foreground);
-  font-size: var(--text-label-size);
-  line-height: var(--text-label-line-height);
-  font-weight: var(--text-body-weight);
-  letter-spacing: var(--text-label-tracking);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-body-tracking);
   text-decoration: none;
   outline: none;
   transition:
-    color 150ms ease,
-    background-color 150ms ease;
+    color var(--duration-micro) var(--ease-standard),
+    background-color var(--duration-micro) var(--ease-standard),
+    box-shadow var(--duration-micro) var(--ease-standard);
+}
+
+.link.sizeDefault {
+  min-height: var(--control-height-md);
+  padding-block: var(--space-2);
+}
+
+/*
+ * The drawn second step is named for a product scope this kit excludes;
+ * `compact` is the neutral name in the kit's own vocabulary for the same
+ * geometry.
+ */
+.link.sizeCompact {
+  min-height: var(--control-height-xs);
+  padding-block: var(--space-1);
+}
+
+/* The drawn link icon, one box at both steps. */
+.link svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex-shrink: 0;
+}
+
+.link:hover,
+.link:focus {
+  background-color: var(--muted);
+  color: var(--foreground);
 }
 
 /* data-active: Base UI's default state-attribute fallback for the `active`
  * boolean prop (getStateAttributesProps, no custom mapping declared for
- * Link — see NavigationMenuLink.mjs) — "this points at the current page". */
-.link:hover,
-.link:focus,
+ * Link, see NavigationMenuLink.mjs): "this points at the current page".
+ * The drawn current link takes the secondary pairing plus a hairline,
+ * drawn as an inset shadow so it costs the row no box. Declared after the
+ * hover rule so it holds under the pointer. */
 .link[data-active] {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+  box-shadow: inset 0 0 0 var(--border-width) var(--border);
 }
 
 .link:focus-visible {
