@@ -429,9 +429,11 @@ describe('Table collection view', () => {
     expect(declared('.variantCollection .tableBody .tableRow[data-pending]', '--table-row-fill')).toBe(
       'var(--muted)',
     );
+    expect(declared('.variantCollection .tableBody .tableRow[tabindex]', 'cursor')).toBe('pointer');
+    // Declared after the activatable rule, so an activatable row that is
+    // also pending reads as pending rather than as clickable.
     expect(declared('.variantCollection .tableBody .tableRow[data-pending]', 'cursor')).toBe(
       'progress',
     );
-    expect(declared('.variantCollection .tableBody .tableRow[tabindex]', 'cursor')).toBe('pointer');
   });
 });

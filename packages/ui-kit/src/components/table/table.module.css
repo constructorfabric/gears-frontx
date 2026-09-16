@@ -369,18 +369,20 @@
   box-shadow: inset 0 0 0 var(--border-width-focus) var(--primary);
 }
 
-/* A row waiting on work it has already started: the fill says so and the
- * cursor says it cannot be acted on again yet. */
-.variantCollection .tableBody .tableRow[data-pending] {
-  --table-row-fill: var(--muted);
-  cursor: progress;
-}
-
 /* A row the caller made focusable is a row that can be activated, so it
  * takes the pointer cursor; a plain display row does not. */
 .variantCollection .tableBody .tableRow[tabindex] {
   cursor: pointer;
   transition: background-color var(--duration-micro) var(--ease-standard);
+}
+
+/* A row waiting on work it has already started: the fill says so and the
+ * cursor says it cannot be acted on again yet. Declared after the
+ * activatable rule above, at the same specificity, because an activatable
+ * row that is also pending is pending first. */
+.variantCollection .tableBody .tableRow[data-pending] {
+  --table-row-fill: var(--muted);
+  cursor: progress;
 }
 
 /*

@@ -5,8 +5,8 @@
  * The base registry source ships Root/Viewport structurally
  * ("relative"/"size-full rounded-[inherit] ...") but leaves the
  * Scrollbar/Thumb's own geometry (track width, invisible padding border,
- * pill-shaped thumb) and Root's own size/overflow to the consumer — the
- * sibling new-york variant (same Base UI props, styled with Radix
+ * pill-shaped thumb) and Root's own size/overflow to the consumer - the
+ * sibling new-york variant (same Base UI props, styled against its own
  * upstream) fills in exactly those gaps identically for both primitives,
  * and is used here as the concrete reference: track 0.625rem, hairline
  * transparent border, rounded-full thumb (see scroll-area.md).
@@ -41,7 +41,15 @@
   }
 }
 
+/*
+ * Substitutes for the preflight the kit lacks, and here it is acute:
+ * without it the declared 10px cross-axis size is the CONTENT width, and
+ * the 1px padding on each side plus the 1px leading border add to it, so
+ * the drawn 10px track measured 13. Same case the rest of the kit fixes
+ * per class.
+ */
 .scrollbar {
+  box-sizing: border-box;
   display: flex;
   touch-action: none;
   user-select: none;

@@ -1,5 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 
 import { ScrollArea, ScrollBar } from './scroll-area';
 import styles from './scroll-area.module.css';
@@ -81,5 +87,28 @@ describe('ScrollArea', () => {
     // not only as its internal, non-overridable default.
     expect(container.querySelectorAll(`.${styles.scrollbar}`)).toHaveLength(1);
     expect(screen.getByTestId('h-bar').getAttribute('data-orientation')).toBe('horizontal');
+  });
+});
+
+describe('ScrollArea drawn track', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'scroll-area.module.css'), 'utf8'),
+  );
+
+  function declared(selector: string, prop: string) {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('keeps the drawn 10px track from growing by its own inset and border', () => {
+    // Measured in the demo: without border-box the declared 10 is the
+    // content width and the 1px padding on each side plus the 1px leading
+    // border make the rendered track 13.
+    expect(declared('.scrollbar', 'box-sizing')).toBe('border-box');
+    expect(declared('.scrollbar', 'padding')).toBe('var(--border-width)');
+    expect(declared(".scrollbar[data-orientation='vertical']", 'width')).toBe('0.625rem');
+    expect(declared(".scrollbar[data-orientation='horizontal']", 'height')).toBe('0.625rem');
+    expect(declared('.thumb', 'border-radius')).toBe('var(--radius-full)');
+    expect(declared('.thumb', 'background-color')).toBe('var(--border)');
   });
 });
