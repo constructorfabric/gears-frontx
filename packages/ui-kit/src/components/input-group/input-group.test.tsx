@@ -188,9 +188,9 @@ describe('InputGroup', () => {
 
   it('carries the drawn height, inset, gap and icon box on each size class', () => {
     const drawn = {
-      '.group.sizeSm': ['--control-height-sm', '--space-2', '--space-1', '--icon-size-sm'],
-      '.group.sizeDefault': ['--control-height-md', '--space-3', '--space-2', '--icon-size-md'],
-      '.group.sizeLg': ['--control-height-lg', '--space-3', '--space-2', '--icon-size-lg'],
+      '.group.sizeSm': ['--control-height-xs', '--space-2', '--space-1', '--icon-size-sm'],
+      '.group.sizeDefault': ['--control-height-sm', '--space-2', '--space-1', '--icon-size-sm'],
+      '.group.sizeLg': ['--control-height-md', '--space-3', '--space-2', '--icon-size-md'],
     };
     for (const [selector, [height, inset, gap, icon]] of Object.entries(drawn)) {
       expect(declared(selector, '--size-height'), selector).toBe(`var(${height})`);
@@ -208,11 +208,23 @@ describe('InputGroup', () => {
     expect(declared('.group .addon > svg', 'width')).toBe('var(--size-icon)');
   });
 
-  it('tightens the wrapped control block padding only under sizeSm, to land the group at exactly 32px', () => {
-    // `default` and `lg` leave 34px and 38px of content space over the
-    // control's own 32px intrinsic height, so only `sm` needs the pull-back.
-    expect(declared('.group.sizeSm .control', 'padding-block')).toBe('3px');
-    expect(declared('.group.sizeDefault .control', 'padding-block')).toBeUndefined();
+  it('tightens the wrapped control block padding so each step lands its drawn height', () => {
+    // The group's step is a min-height, so a control taller than the space
+    // the step leaves grows the group instead of fitting in it. `sm` (28)
+    // leaves 26 and `default` (32) leaves 30 over the control's own 32px
+    // intrinsic height; `lg` (36) leaves 34 and needs no pull-back.
+    expect(declared('.group.sizeSm .control', 'padding-block')).toBe('1px');
+    expect(declared('.group.sizeDefault .control', 'padding-block')).toBe('3px');
     expect(declared('.group.sizeLg .control', 'padding-block')).toBeUndefined();
+  });
+
+  it('caps an in-group button at the row it sits in', () => {
+    // Same min-height trap from the other side: an `sm` in-group button is
+    // --control-height-sm tall, which is the whole of the `default` step
+    // and more than `sm`'s, so without a cap the addon would push the group
+    // past its own drawn height.
+    expect(declared('.group .button', 'max-height')).toBe(
+      'calc(var(--size-height) - 2 * var(--border-width))',
+    );
   });
 });

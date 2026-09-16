@@ -295,12 +295,14 @@ describe('theme tokens', () => {
       // geometrically correct on their own terms — they just don't share a
       // mechanism.
       'switch.module.css|margin-inline-start|2px',
-      // 3px is arithmetic, not a step on the space scale: `sm`'s wrapped
-      // control needs exactly 1px less padding on each side than
-      // `--space-1` (4px) to offset the 1px border the GROUP (not the
-      // control) adds on that side, landing InputGroup's own 32px total
-      // height exactly (see input-group.module.css's `.group.sizeSm
-      // .control` comment for the full sum).
+      // Arithmetic, not a step on the space scale: each is the wrapped
+      // control's own line-height subtracted from a drawn group height and
+      // halved, so the group lands its step exactly (1px at `sm`'s 28, 3px
+      // at `default`'s 32 - see input-group.module.css's `.control` rules
+      // for the full sums). Rounding either onto --space-* would break the
+      // height it exists to land, and the 1 is not --border-width wearing a
+      // literal: it only happens to share that numeral today.
+      'input-group.module.css|padding-block|1px',
       'input-group.module.css|padding-block|3px',
       // The drawn compact count badge insets its label by 6px, and the
       // spacing scale has no step between --space-1 (4) and --space-2 (8).

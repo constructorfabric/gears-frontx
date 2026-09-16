@@ -85,28 +85,30 @@
  *
  * `default` is a class like the other two, not the absence of one, and it
  * is what an omitted `size` renders through `defaultVariants`. It carries
- * the drawn middle step, 36px - not the 40px a standalone Input is drawn
- * at, which is `lg` here.
+ * the one step the spec draws: 32px, with an 8px addon inset and a 16px
+ * addon icon. The 28 and 36 steps around it are the kit's own, built close
+ * to the drawn look, and they sit one step apart on the published control
+ * ladder so a group and a button beside it never disagree by 2px.
  */
 .group.sizeSm {
-  --size-height: var(--control-height-sm);
+  --size-height: var(--control-height-xs);
   --size-inset: var(--space-2);
   --size-gap: var(--space-1);
   --size-icon: var(--icon-size-sm);
 }
 
 .group.sizeDefault {
+  --size-height: var(--control-height-sm);
+  --size-inset: var(--space-2);
+  --size-gap: var(--space-1);
+  --size-icon: var(--icon-size-sm);
+}
+
+.group.sizeLg {
   --size-height: var(--control-height-md);
   --size-inset: var(--space-3);
   --size-gap: var(--space-2);
   --size-icon: var(--icon-size-md);
-}
-
-.group.sizeLg {
-  --size-height: var(--control-height-lg);
-  --size-inset: var(--space-3);
-  --size-gap: var(--space-2);
-  --size-icon: var(--icon-size-lg);
 }
 
 /*
@@ -206,9 +208,9 @@
  * both of which size their own icons (--icon-size-xs / the button's slot).
  */
 /*
- * The icon box comes off the size axis: the spec draws 16 / 20 / 24 across
- * the three steps, so it is not a constant the way it was while the group
- * had one drawn height.
+ * The icon box comes off the size axis: 16 at the two shorter steps and 20
+ * at `lg`, so it is not a constant the way it was while the group had one
+ * drawn height.
  */
 .group .addon > svg {
   flex-shrink: 0;
@@ -230,7 +232,7 @@
   order: 1;
 }
 
-/* The inset the spec draws per step: 8 at `sm`, 12 at `default` and `lg`.
+/* The inset per step: the drawn 8 at `sm` and `default`, 12 at `lg`.
  * Nested under `.group` because that is where the axis declares it. */
 .group .alignInlineStart {
   padding-inline-start: var(--size-inset);
@@ -279,6 +281,20 @@
 }
 
 /*
+ * No button inside the group may be taller than the row it sits in. The
+ * group's step is a min-height (a block addon or a wrapped Textarea has to
+ * be able to grow it), so a taller control would quietly push the whole
+ * field past its drawn height instead of fitting inside it - exactly what
+ * an `sm` in-group button, which is --control-height-sm tall, would do to
+ * the two shorter steps. Capping at the row's content box keeps the group
+ * measuring its step whatever a caller puts in an addon.
+ * (0,2,0), above Button's own (0,1,0) size rules.
+ */
+.group .button {
+  max-height: calc(var(--size-height) - 2 * var(--border-width));
+}
+
+/*
  * The in-group button scale. Upstream ships xs/sm (plus icon-only twins of
  * each, which this kit derives from Button's own `icon` prop instead of a
  * size of its own — see button.tsx). `sm` needs nothing: Button's own
@@ -307,10 +323,9 @@
 
 /*
  * Button draws its focus ring OUTSIDE itself (`outline` at
- * `outline-offset: 2px`, see button.module.css) — which has no room here:
- * an sm button is --control-height-sm tall inside a group whose tallest
- * step is --control-height-lg, and a 2px ring standing 2px clear of it
- * overshoots the group's own border. Pulling the offset to one border-width keeps the ring inside
+ * `outline-offset: 2px`, see button.module.css) - which has no room here:
+ * an in-group button fills most of the row, and a 2px ring standing 2px
+ * clear of it overshoots the group's own border. Pulling the offset to one border-width keeps the ring inside
  * the field. Nested under `.group` at (0,3,0) both to outrank Button's own
  * (0,2,0) rule without depending on load order, and because a standalone
  * InputGroupButton, outside any group, should keep the kit's normal ring.
@@ -366,18 +381,27 @@
 }
 
 /*
- * `sm` is the only step where the floor is not enough on its own. A
- * min-height renders taller than the token whenever the control's own
- * intrinsic height wins: Input's 24px line-height plus the 4+4px block
- * padding input.module.css sets is 32px, which is 2px more than the 30px
- * of content space a 32px group leaves once its 1px+1px border comes off,
- * so the group measured 34. 3px is `--space-1` minus the 1px the group's
- * border adds on that side, landing 24+3+3=30 content, +2px border = 32.
- * `default` (36) and `lg` (40) leave 34 and 38, both clear of the
- * control's 32, so they keep Input's untouched padding.
+ * The two shorter steps need the control trimmed, or the floor is not a
+ * floor. A min-height renders taller than the token whenever the control's
+ * own intrinsic height wins: Input's 24px line-height plus the 4+4px block
+ * padding input.module.css sets is 32px, and a group leaves its step minus
+ * its own 1px+1px border as content space. `sm` (28) leaves 26, so the
+ * control gets 1px on each side: 24+1+1 = 26, +2px border = 28. `default`
+ * (32) leaves 30, so it gets 3px: 24+3+3 = 30, +2px border = 32. `lg` (36)
+ * leaves 34, clear of the control's own 32, so it keeps Input's untouched
+ * padding. Neither literal sits on the spacing scale, and neither can: each
+ * is the control's own line-height subtracted from a drawn group height and
+ * halved, so rounding either to a step would break the height it exists to
+ * land. `sm`'s 1 equals --border-width by arithmetic coincidence and must
+ * NOT be re-expressed as that token: the two move for different reasons,
+ * and a wider hairline would shrink this inset rather than grow it.
  * (0,3,0), above `.input`'s own `padding` shorthand (0,1,0).
  */
 .group.sizeSm .control {
+  padding-block: 1px;
+}
+
+.group.sizeDefault .control {
   padding-block: 3px;
 }
 

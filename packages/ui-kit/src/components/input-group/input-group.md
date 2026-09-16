@@ -6,8 +6,7 @@ and error border; the wrapped control draws none of its own. No Base UI
 primitive backs it — pure styling composition over `Input`/`Textarea`/
 `Button`.
 
-The group has three heights (see `size` below); at `lg` it matches a
-standalone `Input`, so the two line up in the same form. A `block-start`/
+The group has three heights (see `size` below). A `block-start`/
 `block-end` addon or a wrapped `Textarea` grows it past whichever floor is
 active.
 
@@ -41,13 +40,13 @@ active.
 
 | Prop | Type | Default |
 |------|------|---------|
-| `size` | `sm` \| `default` \| `lg` - field height 32 / 36 / 40 with a 16 / 20 / 24 addon icon | `'default'` |
+| `size` | `sm` \| `default` \| `lg` - field height 28 / 32 / 36 with a 16 / 16 / 20 addon icon | `'default'` |
 
 Each step also sets the inset an inline addon keeps from the group edge
-(8 / 12 / 12) and the gap between that addon and the field text
-(4 / 8 / 8). `default` is both the CVA default and what an omitted `size`
-renders, the same code path either way. A standalone `Input` stays at 40px,
-which is `lg` here.
+(8 / 8 / 12) and the gap between that addon and the field text
+(4 / 4 / 8). `default` is both the CVA default and what an omitted `size`
+renders, the same code path either way. Only the 32px step is drawn; the
+28 and 36 steps are the kit's own, one control-ladder step on each side.
 
 `InputGroupAddon`:
 
