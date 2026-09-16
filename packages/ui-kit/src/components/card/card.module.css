@@ -26,10 +26,10 @@
   font-size: var(--text-body-size);
   line-height: var(--text-body-line-height);
   /*
-   * --card-spacing/--card-title-* are the source's own mechanism (Tailwind
-   * arbitrary properties: `[--card-spacing:--spacing(6)]` etc. on the card
-   * root), restored here as real custom properties rather than baked into
-   * per-size rules. Declared on `.card` so every reader below is written as
+   * --card-spacing and --card-title-* are the card's own two knobs: the
+   * inset every part shares and the title step the size axis moves, held as
+   * real custom properties rather than baked into per-size rules. Declared
+   * on `.card` so every reader below is written as
    * a `.card .part` *descendant* of the declarer: the token guard
    * (tokens.test.ts) scopes a locally-declared custom property to its
    * selector's leading class, and `.card .part`'s leading class is `.card`,
@@ -127,9 +127,38 @@
 
 .cardDescription {
   color: var(--muted-foreground);
-  /* Studio/Body, muted — same migration as the card root. */
+  /* The body role, muted. */
   font-size: var(--text-body-size);
   line-height: var(--text-body-line-height);
+}
+
+/*
+ * The typography axis on the two text parts (CardTitleProps.typography,
+ * CardDescriptionProps.typography). `default` is the card's own ramp,
+ * unchanged, and carries no declarations of its own; `panel` is the
+ * denser pair a drawn panel header uses. Both panel steps land exactly on
+ * roles the ramp already names, so neither coins a new one.
+ *
+ * Declared AFTER `.card .cardTitle` and at the same (0,2,0): the size
+ * axis's title step is the value `panel` has to beat, and source order is
+ * what settles two rules of equal weight.
+ */
+.typographyDefault {
+  /* The card's own ramp; the size axis above is what moves it. */
+}
+
+.card .cardTitle.typographyPanel,
+.cardTitle.typographyPanel {
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  font-weight: var(--text-heading-2-weight);
+  letter-spacing: normal;
+}
+
+.cardDescription.typographyPanel {
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  font-weight: var(--text-meta-weight);
 }
 
 .cardAction {

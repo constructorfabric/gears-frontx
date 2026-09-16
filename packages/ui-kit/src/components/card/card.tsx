@@ -33,16 +33,48 @@ export function CardHeader({ className, ...props }: CardHeaderProps) {
   return <div className={cx(styles.cardHeader, className)} {...props} />;
 }
 
-export type CardTitleProps = ComponentProps<'div'>;
+/*
+ * The typography axis, shared by the two text parts: `default` is the
+ * card's own ramp and `panel` the denser pair a drawn panel header uses.
+ * Two recipes rather than one, because the two parts step onto different
+ * roles; the axis name and its values are the same on both, so a caller
+ * sets the same word on each.
+ */
+const cardTitleVariants = cva(styles.cardTitle, {
+  variants: {
+    typography: {
+      default: styles.typographyDefault,
+      panel: styles.typographyPanel,
+    },
+  },
+  defaultVariants: {
+    typography: 'default',
+  },
+});
 
-export function CardTitle({ className, ...props }: CardTitleProps) {
-  return <div className={cx(styles.cardTitle, className)} {...props} />;
+const cardDescriptionVariants = cva(styles.cardDescription, {
+  variants: {
+    typography: {
+      default: styles.typographyDefault,
+      panel: styles.typographyPanel,
+    },
+  },
+  defaultVariants: {
+    typography: 'default',
+  },
+});
+
+export type CardTitleProps = ComponentProps<'div'> & VariantProps<typeof cardTitleVariants>;
+
+export function CardTitle({ className, typography, ...props }: CardTitleProps) {
+  return <div className={cardTitleVariants({ typography, className })} {...props} />;
 }
 
-export type CardDescriptionProps = ComponentProps<'div'>;
+export type CardDescriptionProps = ComponentProps<'div'> &
+  VariantProps<typeof cardDescriptionVariants>;
 
-export function CardDescription({ className, ...props }: CardDescriptionProps) {
-  return <div className={cx(styles.cardDescription, className)} {...props} />;
+export function CardDescription({ className, typography, ...props }: CardDescriptionProps) {
+  return <div className={cardDescriptionVariants({ typography, className })} {...props} />;
 }
 
 /** Positions in the header's second column, spanning both its rows (see CSS). */

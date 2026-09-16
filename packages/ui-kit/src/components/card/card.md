@@ -38,6 +38,12 @@ Every part except `Card` itself is a passthrough over
 | `size` | `'default' \| 'sm'` — scales the card's internal padding and gap, and `CardTitle`'s font size | `'default'` |
 | `className` | `string` — merged after the kit class | — |
 
+`CardTitle` and `CardDescription`:
+
+| Prop | Type | Default |
+|------|------|---------|
+| `typography` | `'default' \| 'panel'` - panel is the 14/20 semibold title and 12/16 description a dense panel uses | `'default'` |
+
 `CardHeader` becomes a two-column grid (content, then `CardAction`) when
 it contains a `CardAction`, and a two-row grid (title, then
 `CardDescription`) when it contains a `CardDescription` — both detected
