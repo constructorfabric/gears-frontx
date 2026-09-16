@@ -6,9 +6,10 @@ and error border; the wrapped control draws none of its own. No Base UI
 primitive backs it — pure styling composition over `Input`/`Textarea`/
 `Button`.
 
-The group is `--control-height-lg` tall, the same as a standalone `Input`,
-so a group and a plain field line up in the same form. A `block-start`/
-`block-end` addon or a wrapped `Textarea` grows it past that floor.
+The group has three heights (see `size` below); at `lg` it matches a
+standalone `Input`, so the two line up in the same form. A `block-start`/
+`block-end` addon or a wrapped `Textarea` grows it past whichever floor is
+active.
 
 ## When to use
 
@@ -40,15 +41,13 @@ so a group and a plain field line up in the same form. A `block-start`/
 
 | Prop | Type | Default |
 |------|------|---------|
-| `size` | `sm` \| `default` - control height 32 / 40, addon icon 16 in both | `'default'` |
+| `size` | `sm` \| `default` \| `lg` - field height 32 / 36 / 40 with a 16 / 20 / 24 addon icon | `'default'` |
 
-`default` - both the CVA default and what an omitted `size` renders, the
-same code path either way - is `--control-height-lg` (40px), matching the
-kit's own `Input` and the design spec's standalone Input specimen; `sm`
-drops to `--control-height-sm` (32px), with no change to the addon icon.
-The design spec's middle step (36px, its search-field specimen) is not
-carried: it conflicts with `Input`'s own 40px default, and a search field
-that must sit beside a 36px control is a template composition.
+Each step also sets the inset an inline addon keeps from the group edge
+(8 / 12 / 12) and the gap between that addon and the field text
+(4 / 8 / 8). `default` is both the CVA default and what an omitted `size`
+renders, the same code path either way. A standalone `Input` stays at 40px,
+which is `lg` here.
 
 `InputGroupAddon`:
 

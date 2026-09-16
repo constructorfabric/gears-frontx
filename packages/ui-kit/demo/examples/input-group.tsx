@@ -13,7 +13,7 @@ import {
   Spinner,
 } from '@gears-frontx/ui-kit';
 
-import { CloseIcon, Row, Section } from '../shared';
+import { CloseIcon, Measure, Row, Section } from '../shared';
 
 // Local to this example: the shared set has no magnifier, and an addon
 // sizes a bare <svg> child itself (input-group.module.css's `.addon > svg`),
@@ -86,30 +86,61 @@ export default function InputGroupExample() {
       </Section>
 
       <Section title="Size">
-        <Row style={column}>
-          {/* size unset and size="default" are the same rendering (CVA's
-              defaultVariants, see input-group.tsx) - both 40px with a
-              16px icon, matching the kit's own Input. size="sm" is the
-              one shipped smaller step, 32px with the same 16px icon. */}
-          <InputGroup>
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput type="search" placeholder="Search (unset)" aria-label="Search, unset size" />
-          </InputGroup>
-          <InputGroup size="default">
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput type="search" placeholder="Search (default)" aria-label="Search, default size" />
-          </InputGroup>
-          <InputGroup size="sm">
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput type="search" placeholder="Search (sm)" aria-label="Search, small" />
-          </InputGroup>
-        </Row>
+        {/* The three drawn steps, each with a leading icon addon and a
+            trailing button, plus the unset case: size unset and
+            size="default" are the same rendering (CVA's defaultVariants,
+            see input-group.tsx), which the measured rows show rather than
+            claim. */}
+        <Measure
+          of={{
+            unset: '#ig-unset',
+            sm: '#ig-sm',
+            default: '#ig-default',
+            lg: '#ig-lg',
+            'sm icon': '#ig-sm svg',
+            'default icon': '#ig-default svg',
+            'lg icon': '#ig-lg svg',
+          }}
+        >
+          <Row style={column}>
+            <InputGroup id="ig-unset">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput type="search" placeholder="Search (unset)" aria-label="Search, unset size" />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton>Go</InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            <InputGroup id="ig-sm" size="sm">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput type="search" placeholder="Search (sm)" aria-label="Search, small" />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton>Go</InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            <InputGroup id="ig-default" size="default">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput type="search" placeholder="Search (default)" aria-label="Search, default size" />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton>Go</InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            <InputGroup id="ig-lg" size="lg">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput type="search" placeholder="Search (lg)" aria-label="Search, large" />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton>Go</InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </Row>
+        </Measure>
       </Section>
 
       <Section title="Prefix and suffix text">

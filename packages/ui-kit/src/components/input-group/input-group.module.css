@@ -49,15 +49,14 @@
   min-width: 0;
   align-items: center;
   /*
-   * The field height, matching a standalone Input (`--control-height-lg`,
-   * see input.module.css) so a group and a plain field line up in the same
-   * form rather than the group collapsing to whatever its contents happen
-   * to measure. min-height, not height: a block-start/block-end addon or a
+   * The field height comes from the size axis below, never from this rule:
+   * a height here would sit at (0,1,0) and fight the three size classes on
+   * specificity. min-height, not height: a block-start/block-end addon or a
    * wrapped Textarea grows the group past one row — upstream's
    * `has-[>textarea]:h-auto` / `has-[>[data-align=block-*]]:h-auto`
    * escapes, expressed once as a floor instead of three exceptions.
    */
-  min-height: var(--control-height-lg);
+  min-height: var(--size-height);
   border: var(--border-width) solid var(--input);
   border-radius: var(--radius-md);
   /* Fields sit raised, not transparent, per the Field spec — same token
@@ -72,25 +71,42 @@
 }
 
 /*
- * `sm` (InputGroupProps.size, groupVariants in input-group.tsx): the one
- * shipped step below the bare `.group` rule's 40px default. Compound
- * `.group.sizeSm`, not a bare `.sizeSm`, because both classes land on the
- * same element (cva always keeps the base class) and `.group` already
- * declares `min-height` - a same-specificity bare rule would depend on
- * stylesheet load order to win.
+ * The size axis (InputGroupProps.size, groupVariants in input-group.tsx).
+ * The design spec draws the group at three steps, and each one is a row of
+ * four numbers: field height, the inset an inline addon keeps from the
+ * group edge, the gap between that addon and the field text, and the addon
+ * icon box. Each class declares exactly those four; every rule below reads
+ * them off `.group`. Four locals rather than four rules per size keeps the
+ * three classes reading the way the three drawn specimens do.
  *
- * `min-height`, not `height`, for the same floor-not-fixed reason as
- * `.group` above (a block addon or wrapped Textarea still grows it) - but
- * a floor alone left `sm` measuring 34px, not 32: the CONTROL's own
- * intrinsic content height (24px line-height + the 4+4px block padding
- * input.module.css sets) is 32px, 2px taller than the 30px of content
- * space a 32px min-height leaves once the group's own 1px+1px border is
- * subtracted, so the control's own height was winning. `.control`'s block
- * padding below undoes exactly that 2px, giving 24+3+3=30 content height,
- * +2px border = 32.
+ * Compound `.group.sizeX`, not a bare `.sizeX`: both classes land on the
+ * same element (cva always keeps the base class), and (0,2,0) is what
+ * holds these above the Input rules the group reaches into.
+ *
+ * `default` is a class like the other two, not the absence of one, and it
+ * is what an omitted `size` renders through `defaultVariants`. It carries
+ * the drawn middle step, 36px - not the 40px a standalone Input is drawn
+ * at, which is `lg` here.
  */
 .group.sizeSm {
-  min-height: var(--control-height-sm);
+  --size-height: var(--control-height-sm);
+  --size-inset: var(--space-2);
+  --size-gap: var(--space-1);
+  --size-icon: var(--icon-size-sm);
+}
+
+.group.sizeDefault {
+  --size-height: var(--control-height-md);
+  --size-inset: var(--space-3);
+  --size-gap: var(--space-2);
+  --size-icon: var(--icon-size-md);
+}
+
+.group.sizeLg {
+  --size-height: var(--control-height-lg);
+  --size-inset: var(--space-3);
+  --size-gap: var(--space-2);
+  --size-icon: var(--icon-size-lg);
 }
 
 /*
@@ -153,7 +169,7 @@
   opacity: var(--opacity-disabled);
 }
 
-.addon {
+.group .addon {
   /* Preflight substitute again: `.alignBlockStart`/`.alignBlockEnd` below
    * pair `width: 100%` with horizontal padding, which content-box would
    * push 24px past the group's inner width. */
@@ -168,7 +184,7 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
+  gap: var(--size-gap);
   color: var(--muted-foreground);
   /* Studio/Label, whole — upstream's `text-sm font-medium` on the addon.
    * Declared here rather than on `.text` so a bare string, a `Kbd` or an
@@ -190,14 +206,14 @@
  * both of which size their own icons (--icon-size-xs / the button's slot).
  */
 /*
- * Fixed at --icon-size-sm regardless of `size` (InputGroupProps.size): the
- * one shipped extra step (`sm`) only tightens the field's own height, and
- * carries no icon change of its own.
+ * The icon box comes off the size axis: the spec draws 16 / 20 / 24 across
+ * the three steps, so it is not a constant the way it was while the group
+ * had one drawn height.
  */
-.addon > svg {
+.group .addon > svg {
   flex-shrink: 0;
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
+  width: var(--size-icon);
+  height: var(--size-icon);
 }
 
 /*
@@ -208,12 +224,20 @@
  */
 .alignInlineStart {
   order: -1;
-  padding-inline-start: var(--space-3);
 }
 
 .alignInlineEnd {
   order: 1;
-  padding-inline-end: var(--space-3);
+}
+
+/* The inset the spec draws per step: 8 at `sm`, 12 at `default` and `lg`.
+ * Nested under `.group` because that is where the axis declares it. */
+.group .alignInlineStart {
+  padding-inline-start: var(--size-inset);
+}
+
+.group .alignInlineEnd {
+  padding-inline-end: var(--size-inset);
 }
 
 .alignBlockStart {
@@ -239,11 +263,11 @@
  * (`has-[>button]:ml-[-0.45rem]`); a smaller padding says it without
  * needing a magic number.
  */
-.alignInlineStart:has(> .button) {
+.group .alignInlineStart:has(> .button) {
   padding-inline-start: var(--space-1);
 }
 
-.alignInlineEnd:has(> .button) {
+.group .alignInlineEnd:has(> .button) {
   padding-inline-end: var(--space-1);
 }
 
@@ -284,9 +308,9 @@
 /*
  * Button draws its focus ring OUTSIDE itself (`outline` at
  * `outline-offset: 2px`, see button.module.css) — which has no room here:
- * an sm button is --control-height-sm tall inside a --control-height-lg
- * group, and a 2px ring standing 2px clear of it overshoots the group's
- * own border. Pulling the offset to one border-width keeps the ring inside
+ * an sm button is --control-height-sm tall inside a group whose tallest
+ * step is --control-height-lg, and a 2px ring standing 2px clear of it
+ * overshoots the group's own border. Pulling the offset to one border-width keeps the ring inside
  * the field. Nested under `.group` at (0,3,0) both to outrank Button's own
  * (0,2,0) rule without depending on load order, and because a standalone
  * InputGroupButton, outside any group, should keep the kit's normal ring.
@@ -342,12 +366,15 @@
 }
 
 /*
- * Undoes 1px of Input's own block padding on each side, only under `sm`
- * (see `.group.sizeSm` above for the full arithmetic): 3px is
- * `--space-1` (4px) minus the 1px the group's own border adds on that
- * side, so the control's 24px line-height plus this 3+3px padding lands
- * on 30px of content, +2px border = the group's own 32px. `--space-1`
- * alone (the untouched value every other size keeps) overshoots by 2px.
+ * `sm` is the only step where the floor is not enough on its own. A
+ * min-height renders taller than the token whenever the control's own
+ * intrinsic height wins: Input's 24px line-height plus the 4+4px block
+ * padding input.module.css sets is 32px, which is 2px more than the 30px
+ * of content space a 32px group leaves once its 1px+1px border comes off,
+ * so the group measured 34. 3px is `--space-1` minus the 1px the group's
+ * border adds on that side, landing 24+3+3=30 content, +2px border = 32.
+ * `default` (36) and `lg` (40) leave 34 and 38, both clear of the
+ * control's 32, so they keep Input's untouched padding.
  * (0,3,0), above `.input`'s own `padding` shorthand (0,1,0).
  */
 .group.sizeSm .control {
@@ -359,11 +386,11 @@
  * distance from the group edge, so the control only needs the gap between
  * the two, not a second full inset. (0,3,0), above `.group .control`. */
 .group:has(> .alignInlineStart) > .control {
-  padding-inline-start: var(--space-2);
+  padding-inline-start: var(--size-gap);
 }
 
 .group:has(> .alignInlineEnd) > .control {
-  padding-inline-end: var(--space-2);
+  padding-inline-end: var(--size-gap);
 }
 
 /* Input/Textarea recolor their own border and redraw their own ring on

@@ -22,17 +22,17 @@ const groupVariants = cva(styles.group, {
   variants: {
     size: {
       /*
-       * `default` carries no class of its own - the bare `.group` rule in
-       * input-group.module.css already renders --control-height-lg (40px)
-       * with a 16px addon icon, and that is also what an OMITTED `size`
-       * renders, via `defaultVariants` below. Two code paths producing the
-       * same class list is what makes them the same rendering, not a
-       * comment claiming they match: 40px is the kit's own Input height
-       * and the design spec's standalone Input specimen too, so it is the
-       * honest default, not a separate step someone opted into.
+       * The three steps the design spec draws for the group: 32 / 36 / 40,
+       * with a 16 / 20 / 24 addon icon. `default` carries a class of its
+       * own like the other two, and `defaultVariants` below is what makes
+       * an omitted `size` render it - same code path, not two renderings
+       * that happen to agree. The standalone Input stays at 40 because the
+       * spec draws the standalone field at one height and only the group
+       * at three; here 40 is `lg`.
        */
-      default: '',
       sm: styles.sizeSm,
+      default: styles.sizeDefault,
+      lg: styles.sizeLg,
     },
   },
   defaultVariants: {

@@ -155,25 +155,28 @@ describe('InputGroup', () => {
     // literally the same code path rather than two renderings that happen
     // to agree today.
     expect(omitted.className).toBe(explicitDefault.className);
-    expect(omitted.className).not.toContain(styles.sizeSm);
+    expect(omitted.className).toContain(styles.sizeDefault);
   });
 
-  it('adds the sizeSm class only for size="sm"', () => {
-    render(<InputGroup size="sm" aria-label="Amount field" />);
-    expect(screen.getByRole('group', { name: 'Amount field' }).className).toContain(
-      styles.sizeSm,
+  it('gives each size its own class', () => {
+    render(
+      <>
+        <InputGroup size="sm" aria-label="Small" />
+        <InputGroup size="lg" aria-label="Large" />
+      </>,
     );
+    expect(screen.getByRole('group', { name: 'Small' }).className).toContain(styles.sizeSm);
+    expect(screen.getByRole('group', { name: 'Large' }).className).toContain(styles.sizeLg);
   });
 
   /*
    * Reads input-group.module.css's own source (not the hashed `styles`
    * import, which has no selector names left in it) the same way
-   * button.test.tsx's focus-ring guard does, to prove `sm` actually carries
-   * the control-height token, AND that `default` carries no CSS rule of
-   * its own - the group's bare `.group` rule (40px, 16px icon, both
-   * unconditional) is genuinely the only rule reached whether `size` is
-   * omitted or explicitly `"default"`, not a same-valued sibling rule that
-   * could drift from it.
+   * button.test.tsx's focus-ring guard does. What it pins is the drawn
+   * table: the three size classes carry the three heights and the three
+   * icon boxes, and the height lives on them rather than on the bare
+   * `.group` rule, which is what keeps the steps from fighting the base
+   * rule on specificity.
    */
   const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'input-group.module.css');
   const rules = extractRules(readFileSync(cssPath, 'utf8'));
@@ -183,27 +186,33 @@ describe('InputGroup', () => {
     return rule ? declarationMap(rule.body).get(prop) : undefined;
   }
 
-  it('keeps the bare group/addon-icon rules at 40px height and a 16px icon', () => {
-    expect(declared('.group', 'min-height')).toBe('var(--control-height-lg)');
-    expect(declared('.addon > svg', 'width')).toBe('var(--icon-size-sm)');
+  it('carries the drawn height, inset, gap and icon box on each size class', () => {
+    const drawn = {
+      '.group.sizeSm': ['--control-height-sm', '--space-2', '--space-1', '--icon-size-sm'],
+      '.group.sizeDefault': ['--control-height-md', '--space-3', '--space-2', '--icon-size-md'],
+      '.group.sizeLg': ['--control-height-lg', '--space-3', '--space-2', '--icon-size-lg'],
+    };
+    for (const [selector, [height, inset, gap, icon]] of Object.entries(drawn)) {
+      expect(declared(selector, '--size-height'), selector).toBe(`var(${height})`);
+      expect(declared(selector, '--size-inset'), selector).toBe(`var(${inset})`);
+      expect(declared(selector, '--size-gap'), selector).toBe(`var(${gap})`);
+      expect(declared(selector, '--size-icon'), selector).toBe(`var(${icon})`);
+    }
   });
 
-  it('maps sizeSm to --control-height-sm with no icon-size rule of its own', () => {
-    expect(declared('.group.sizeSm', 'min-height')).toBe('var(--control-height-sm)');
-    // No sizeSm-scoped icon rule exists at all - the icon stays on the
-    // bare `.addon > svg` rule above for every size, `sm` included.
-    expect(rules.some((rule) => rule.selector.includes('sizeSm') && rule.selector.includes('svg')))
-      .toBe(false);
-  });
-
-  it('has no CSS rule naming a "default" size class', () => {
-    // groupVariants maps `default` to '' (input-group.tsx) - there is
-    // nothing for a selector to key off, so this asserts the absence
-    // directly rather than the (currently vacuous) presence of one.
-    expect(rules.some((rule) => /size(?:d|D)efault/i.test(rule.selector))).toBe(false);
+  it('leaves the height to the size axis instead of the bare group rule', () => {
+    // A height on `.group` would sit at (0,1,0) and the size classes at
+    // (0,2,0) would have to out-declare it; reading the axis local is what
+    // makes the three steps the only place a height is written.
+    expect(declared('.group', 'min-height')).toBe('var(--size-height)');
+    expect(declared('.group .addon > svg', 'width')).toBe('var(--size-icon)');
   });
 
   it('tightens the wrapped control block padding only under sizeSm, to land the group at exactly 32px', () => {
+    // `default` and `lg` leave 34px and 38px of content space over the
+    // control's own 32px intrinsic height, so only `sm` needs the pull-back.
     expect(declared('.group.sizeSm .control', 'padding-block')).toBe('3px');
+    expect(declared('.group.sizeDefault .control', 'padding-block')).toBeUndefined();
+    expect(declared('.group.sizeLg .control', 'padding-block')).toBeUndefined();
   });
 });
