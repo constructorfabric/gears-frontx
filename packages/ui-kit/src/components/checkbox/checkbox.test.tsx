@@ -48,25 +48,6 @@ describe('Checkbox', () => {
     expect(indicator?.querySelector(`.${styles.iconIndeterminate}`)).toBeTruthy();
   });
 
-  it('renders size="default" and an omitted size as the exact same class list', () => {
-    render(
-      <>
-        <Checkbox aria-label="Omitted" />
-        <Checkbox aria-label="Explicit" size="default" />
-      </>,
-    );
-    expect(screen.getByRole('checkbox', { name: 'Omitted' }).className).toBe(
-      screen.getByRole('checkbox', { name: 'Explicit' }).className,
-    );
-  });
-
-  it('applies the sm size class only for size="sm"', () => {
-    render(<Checkbox aria-label="Dense" size="sm" />);
-    const checkbox = screen.getByRole('checkbox', { name: 'Dense' });
-    expect(checkbox.className).toContain(styles.sizeSm);
-    expect(checkbox.className).not.toContain(styles.sizeDefault);
-  });
-
   it('does not toggle when disabled', () => {
     const onCheckedChange = vi.fn();
     render(<Checkbox aria-label="Terms" disabled onCheckedChange={onCheckedChange} />);
@@ -79,11 +60,11 @@ describe('Checkbox', () => {
 });
 
 /*
- * Reads the module's own source, the way badge.test.tsx does: the size axis
- * is only honest if the two steps differ in the box alone. jsdom computes
- * no styles, so the assertion is on the declarations.
+ * Reads the module's own source, the way badge.test.tsx does: jsdom
+ * computes no styles, so the drawn box, corner, glyph and hit area are
+ * asserted on the declarations.
  */
-describe('Checkbox size axis', () => {
+describe('Checkbox drawn geometry', () => {
   const rules = extractRules(
     readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'checkbox.module.css'), 'utf8'),
   );
@@ -93,20 +74,24 @@ describe('Checkbox size axis', () => {
     return rule ? declarationMap(rule.body).get(prop) : undefined;
   }
 
-  it('moves the control box between the two steps and nothing else', () => {
-    expect(declared('.sizeSm', 'width')).toBe('var(--icon-size-sm)');
-    expect(declared('.sizeDefault', 'width')).toBe('var(--icon-size-md)');
-    // A box on the base rule would compete with the two steps; the radius
-    // and the glyph stay there because the spec draws one of each.
-    expect(declared('.checkbox', 'width')).toBeUndefined();
-    expect(declared('.checkbox', 'border-radius')).toBe('var(--radius-sm)');
-    expect(declared('.icon', 'width')).toBe('var(--icon-size-xs)');
+  it('carries the one drawn box and corner on the base rule', () => {
+    expect(declared('.checkbox', 'width')).toBe('var(--icon-size-sm)');
+    expect(declared('.checkbox', 'height')).toBe('var(--icon-size-sm)');
+    expect(declared('.checkbox', 'border-radius')).toBe('var(--radius-xs)');
   });
 
-  it('states the interaction row as a height, so both steps get the drawn 32px', () => {
-    // A negative inset would have to be recomputed per size to hold 32, and
-    // the two would drift the moment either box moved.
-    expect(declared('.checkbox::after', 'height')).toBe('var(--control-height-sm)');
-    expect(declared('.checkbox::after', 'inset')).toBeUndefined();
+  // 14 is not on the icon scale (12 / 16 / 20 / 24). Rounding it onto a
+  // step would be a kit-side correction of a drawn value, so the literal
+  // is pinned here instead.
+  it('draws the mark at the drawn 14, off the icon scale', () => {
+    expect(declared('.icon', 'width')).toBe('14px');
+    expect(declared('.icon', 'height')).toBe('14px');
+  });
+
+  it('states the hit area as the two drawn insets around the box', () => {
+    // 16 + 8 + 8 on the block axis is the drawn 32px row; the inline reach
+    // is wider, which is also drawn.
+    expect(declared('.checkbox::after', 'inset-inline')).toBe('calc(-1 * var(--space-3))');
+    expect(declared('.checkbox::after', 'inset-block')).toBe('calc(-1 * var(--space-2))');
   });
 });

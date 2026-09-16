@@ -23,44 +23,28 @@ export default function CheckboxExample() {
         </Row>
       </Section>
 
-      {/* Both sizes in the three states the control has. The measurement
-          block reports the box, its radius, the glyph and the interaction
-          row the ::after draws, which is what has to stay 32 at both. */}
-      <Section title="Size">
+      {/* The one drawn box in the three states the control has. The
+          measurement block reports the box, its corner and the glyph; the
+          interaction row the ::after draws is what has to measure 32. */}
+      <Section title="Geometry">
         <Measure
           of={{
-            'sm box': '#cb-sm [role=checkbox]',
-            'sm glyph': '#cb-sm svg',
-            'default box': '#cb-default [role=checkbox]',
-            'default glyph': '#cb-default svg',
-            'unset box': '#cb-unset [role=checkbox]',
+            'checked box': '#cb-checked [role=checkbox]',
+            'checked glyph': '#cb-checked svg',
+            'unchecked box': '#cb-unchecked [role=checkbox]',
+            'indeterminate box': '#cb-indeterminate [role=checkbox]',
+            'hit area': '#cb-checked [role=checkbox]::after',
           }}
         >
           <Row>
-            <Label id="cb-sm">
-              <Checkbox size="sm" defaultChecked /> sm, checked
+            <Label id="cb-checked">
+              <Checkbox defaultChecked /> checked
             </Label>
-            <Label>
-              <Checkbox size="sm" /> sm, unchecked
+            <Label id="cb-unchecked">
+              <Checkbox /> unchecked
             </Label>
-            <Label>
-              <Checkbox size="sm" indeterminate /> sm, indeterminate
-            </Label>
-          </Row>
-          <Row>
-            <Label id="cb-default">
-              <Checkbox size="default" defaultChecked /> default, checked
-            </Label>
-            <Label>
-              <Checkbox size="default" /> default, unchecked
-            </Label>
-            <Label>
-              <Checkbox size="default" indeterminate /> default, indeterminate
-            </Label>
-          </Row>
-          <Row>
-            <Label id="cb-unset">
-              <Checkbox defaultChecked /> unset size
+            <Label id="cb-indeterminate">
+              <Checkbox indeterminate /> indeterminate
             </Label>
           </Row>
         </Measure>

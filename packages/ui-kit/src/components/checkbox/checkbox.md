@@ -4,6 +4,12 @@ An on/off tick box. Wraps the Base UI Checkbox primitive: renders a
 `role="checkbox"` button with a hidden native input for forms, toggles via
 mouse and keyboard, exposes state through `data-checked`/`data-unchecked`.
 
+One drawn control box, 16 px on a 4 px corner, carrying a 14 px mark. There
+is no size axis. The hit area is larger than the box on both axes: 12 px
+past each inline edge and 8 px past each block edge, which is the drawn
+32 px interaction row, so a checkbox in a dense row is no harder to hit
+than one in a form.
+
 ## When to use
 
 - Opting in/out of independent options (multiple can be on at once).
@@ -18,7 +24,6 @@ mouse and keyboard, exposes state through `data-checked`/`data-unchecked`.
 
 | Prop | Type | Default |
 |------|------|---------|
-| `size` | `'sm' \| 'default'` - a 16 or 20 px control box, with the same radius, the same 12 px glyph and the same 32 px interaction row at both | `'default'` |
 | `checked` / `defaultChecked` | controlled / uncontrolled state | `false` |
 | `onCheckedChange` | `(checked: boolean, eventDetails) => void` | — |
 | `name` / `value` | form submission via the hidden native input | — |
