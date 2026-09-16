@@ -145,27 +145,46 @@
   color: var(--button-fg-hover, var(--button-fg, var(--primary-foreground)));
 }
 
+/*
+ * The drawn destructive button is a TINT, not a solid fill: --destructive
+ * at 10 per cent of transparent in light and 20 in dark, under a
+ * --destructive label. Badge carries the identical recipe; the two are
+ * meant to stay in step.
+ *
+ * The standing ban on destructive colour-mixes targets mixes anchored to
+ * --foreground: those darken in light and LIGHTEN in dark, where
+ * --foreground flips near-white, dropping a fixed pale label below its
+ * floor. This mix is anchored to `transparent` and carries a --destructive
+ * label rather than a pale one, so that failure mode does not apply, and
+ * the per-file guard that rejects foreground-anchored mixes still stands.
+ *
+ * The strength is a local so the theme overrides below restate one number
+ * instead of the whole recipe twice.
+ */
 .variantDestructive {
-  background-color: var(--button-bg, var(--destructive));
-  color: var(--button-fg, var(--destructive-foreground));
+  --tint: 10%;
+  --tint-hover: 20%;
+  background-color: var(--button-bg, color-mix(in oklab, var(--destructive) var(--tint), transparent));
+  color: var(--button-fg, var(--destructive));
 }
 
-/*
- * --destructive-hover, not the registry's `destructive/90` fade to
- * transparent and not the mix-toward---foreground recipe this rule used
- * to share with Badge. The fade pulls an already-marginal fill toward the
- * page and fails AA on hover in light mode; the mix darkens correctly in
- * light but LIGHTENS in dark (where --foreground flips near-white),
- * dropping the fixed --destructive-foreground label to 3.90:1 under the
- * rebrand palette.
- * --destructive-hover is a literal, same hex both modes (see theme.css),
- * so the direction never depends on the theme — same fix, same reasoning
- * as badge.module.css's destructive hover, and tokens.test.ts holds the
- * label ≥ 4.5:1 on it in both themes.
- */
+[data-theme='dark'] .variantDestructive {
+  --tint: 20%;
+  --tint-hover: 30%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .variantDestructive {
+    --tint: 20%;
+    --tint-hover: 30%;
+  }
+}
+
+/* Hover is the same tint one step stronger, in the same idiom, so the
+ * label never changes tone under the pointer. */
 .variantDestructive:hover {
-  background-color: var(--button-bg-hover, var(--button-bg, var(--destructive-hover)));
-  color: var(--button-fg-hover, var(--button-fg, var(--destructive-foreground)));
+  background-color: var(--button-bg-hover, var(--button-bg, color-mix(in oklab, var(--destructive) var(--tint-hover), transparent)));
+  color: var(--button-fg-hover, var(--button-fg, var(--destructive)));
 }
 
 /*
@@ -242,6 +261,84 @@
   background-color: var(--button-bg-hover, var(--button-bg, transparent));
   color: var(--button-fg-hover, var(--button-fg, var(--link-foreground)));
   text-decoration: underline;
+}
+
+/*
+ * The drawn navigation button: a card-filled row with a hairline, the
+ * muted label tone, and a neutral --muted hover. Its current-location
+ * state takes the secondary pairing, the role the spec paints a selected
+ * control from, and is driven by a `data-current` attribute a caller sets
+ * so the state is the caller's data rather than a second variant.
+ */
+.variantNavigation {
+  border-color: var(--button-border, var(--border));
+  background-color: var(--button-bg, var(--card));
+  color: var(--button-fg, var(--muted-foreground));
+}
+
+.variantNavigation:hover {
+  background-color: var(--button-bg-hover, var(--button-bg, var(--muted)));
+  color: var(--button-fg-hover, var(--button-fg, var(--muted-foreground)));
+}
+
+/* Declared after the hover rule so the current location holds its fill
+ * under the pointer: at equal specificity, source order decides. */
+.variantNavigation[data-current],
+.variantNavigation[data-current]:hover {
+  background-color: var(--button-bg-hover, var(--button-bg, var(--secondary)));
+  color: var(--button-fg-hover, var(--button-fg, var(--secondary-foreground)));
+}
+
+/*
+ * The drawn avatar button: no box of its own at all. The child supplies
+ * the box, the button supplies the round hit area and the ring it wears
+ * while hovered or while it owns an open popup.
+ */
+.variantAvatar {
+  border-radius: var(--radius-full);
+  border-color: transparent;
+  padding: 0;
+  background-color: var(--button-bg, transparent);
+  color: var(--button-fg, inherit);
+}
+
+.variantAvatar:hover {
+  background-color: var(--button-bg-hover, var(--button-bg, transparent));
+  color: var(--button-fg-hover, var(--button-fg, inherit));
+}
+
+/* The drawn ring, as a shadow rather than a border so the child's own box
+ * stays the button's box. Same on hover and while a popup it owns is
+ * open, which is what the spec draws. */
+.variantAvatar:hover,
+.variantAvatar[data-popup-open],
+.variantAvatar[aria-expanded='true'] {
+  box-shadow: 0 0 0 var(--border-width-focus)
+    color-mix(in oklab, var(--primary) 35%, transparent);
+}
+
+/*
+ * The drawn utility button: no fill and no border at rest, the muted label
+ * tone, a --muted hover, and an icon one step off the scale.
+ */
+.variantUtility {
+  border-color: transparent;
+  background-color: var(--button-bg, transparent);
+  color: var(--button-fg, var(--muted-foreground));
+}
+
+.variantUtility:hover {
+  background-color: var(--button-bg-hover, var(--button-bg, var(--muted)));
+  color: var(--button-fg-hover, var(--button-fg, var(--foreground)));
+}
+
+/* The drawn utility glyph is 18, and the icon scale runs 12 / 16 / 20 / 24
+ * with no 18 step. Rounding it onto a step would be a kit-side correction
+ * of a drawn value; button.test.tsx pins the literal. (0,2,0), above the
+ * base `.icon svg` rule and the `lg` override alike. */
+.variantUtility .icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 /*

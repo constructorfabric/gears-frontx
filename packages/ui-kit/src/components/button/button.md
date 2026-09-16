@@ -24,7 +24,7 @@ polymorphism, correct disabled/focus behavior, `type="button"` by default
 
 | Prop | Type | Default |
 |------|------|---------|
-| `variant` | `default` \| `destructive` \| `outline` \| `secondary` \| `ghost` \| `link` | `default` |
+| `variant` | `default` \| `destructive` \| `outline` \| `secondary` \| `ghost` \| `link` \| `navigation` \| `avatar` \| `utility` - `destructive` is a tint of `--destructive` under a `--destructive` label; `navigation` is a card-filled row with a hairline whose current location is marked by a `data-current` attribute; `avatar` has no box of its own and wears a `--primary` ring while hovered or while it owns an open popup; `utility` is a borderless action with an 18px glyph | `default` |
 | `size` | `default` \| `sm` \| `lg` (the F-mockups' md/sm/lg scale; `default` is md) | `default` |
 | `icon` | `ReactNode` — leading icon slot, marked decorative (`aria-hidden`); the ONLY right place for a button icon | — |
 | `loading` | `boolean` — centered spinner, disables the button, sets `aria-busy`; content keeps its space and the button keeps its accessible name | `false` |
@@ -34,7 +34,8 @@ polymorphism, correct disabled/focus behavior, `type="button"` by default
 | `className` | `string` — merged after variant classes | — |
 
 All other props are native `<button>` props (`onClick`, `disabled`, `type`,
-`aria-*`, ...) and are forwarded as-is.
+`aria-*`, ...) and are forwarded as-is, including `data-current`, which the
+`navigation` variant reads for its current-location state.
 
 ## Custom colors
 

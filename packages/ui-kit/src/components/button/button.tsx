@@ -17,6 +17,9 @@ export const buttonVariants = cva(styles.button, {
       secondary: styles.variantSecondary,
       ghost: styles.variantGhost,
       link: styles.variantLink,
+      navigation: styles.variantNavigation,
+      avatar: styles.variantAvatar,
+      utility: styles.variantUtility,
     },
     size: {
       default: styles.sizeDefault,

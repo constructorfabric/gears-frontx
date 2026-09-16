@@ -265,6 +265,9 @@ const variants = [
   'variantSecondary',
   'variantGhost',
   'variantLink',
+  'variantNavigation',
+  'variantAvatar',
+  'variantUtility',
 ];
 
 describe('Button focus-ring contrast', () => {
@@ -359,21 +362,83 @@ describe('Button focus-ring contrast', () => {
 });
 
 /*
- * Guards the destructive hover fill recipe. The old recipe mixed
- * --destructive toward --foreground, which darkens in light mode but
- * LIGHTENS in dark (the token flips near-white there) and dropped the
- * fixed white label to ~3.90:1 — under the 4.5:1 floor. The fix is the
- * --destructive-hover token (tokens.test.ts holds the label to 4.5:1 on
- * it in both themes), so the guard here is that this rule actually paints
- * the token rather than re-deriving a theme-dependent mix.
+ * Guards the destructive tint recipe. The banned recipe mixes
+ * --destructive toward --foreground: that darkens in light mode but
+ * LIGHTENS in dark (the token flips near-white there), dropping a fixed
+ * pale label under the 4.5:1 floor. The drawn recipe mixes toward
+ * `transparent` and paints a --destructive label instead, so the failure
+ * mode does not apply - but the ban on a foreground-anchored mix stands,
+ * and this is what enforces it.
  */
-describe('Button destructive hover fill', () => {
-  it('paints --destructive-hover, not a mix toward --foreground', () => {
-    const hover = rules.find((rule) => rule.selector === '.variantDestructive:hover');
-    expect(hover, '.variantDestructive:hover rule missing').toBeDefined();
-    const background = declarationMap(hover?.body ?? '').get('background-color');
-    expect(background).toContain('var(--destructive-hover)');
-    expect(background).not.toContain('color-mix');
+describe('Button destructive tint', () => {
+  function declaredFor(selector: string, prop: string) {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return declarationMap(rule?.body ?? '').get(prop);
+  }
+
+  it('tints toward transparent and never toward --foreground', () => {
+    for (const selector of ['.variantDestructive', '.variantDestructive:hover']) {
+      const background = declaredFor(selector, 'background-color');
+      expect(background, `${selector} background-color`).toContain(
+        'color-mix(in oklab, var(--destructive)',
+      );
+      expect(background, `${selector} background-color`).toContain('transparent)');
+      expect(background, `${selector} must not anchor to --foreground`).not.toContain(
+        '--foreground',
+      );
+    }
+  });
+
+  it('carries the drawn per-theme strength and the --destructive label', () => {
+    expect(declaredFor('.variantDestructive', '--tint')).toBe('10%');
+    expect(declaredFor('.variantDestructive', '--tint-hover')).toBe('20%');
+    expect(declaredFor("[data-theme='dark'] .variantDestructive", '--tint')).toBe('20%');
+    expect(declaredFor("[data-theme='dark'] .variantDestructive", '--tint-hover')).toBe('30%');
+    expect(declaredFor('.variantDestructive', 'color')).toBe('var(--button-fg, var(--destructive))');
+  });
+});
+
+/*
+ * The three variants the spec draws that had no kit counterpart. Their
+ * paint routes through the same --button-* hooks as every other variant
+ * (the custom-color suite below covers that); what is pinned here is the
+ * geometry and the one state each has of its own.
+ */
+describe('Button navigation, avatar and utility variants', () => {
+  // Selector lists keep their source whitespace, so they are compared
+  // with it collapsed.
+  function declaredFor(selector: string, prop: string) {
+    const rule = rules.find(
+      (candidate) => candidate.selector.replace(/\s*,\s*/g, ',').replace(/\s+/g, ' ').trim() === selector,
+    );
+    return declarationMap(rule?.body ?? '').get(prop);
+  }
+
+  it('marks the navigation button current state from a data attribute', () => {
+    expect(declaredFor('.variantNavigation', 'border-color')).toBe(
+      'var(--button-border, var(--border))',
+    );
+    expect(
+      declaredFor('.variantNavigation[data-current],.variantNavigation[data-current]:hover', 'background-color'),
+    ).toBe('var(--button-bg-hover, var(--button-bg, var(--secondary)))');
+  });
+
+  it('gives the avatar button no box of its own and the drawn ring', () => {
+    expect(declaredFor('.variantAvatar', 'border-radius')).toBe('var(--radius-full)');
+    expect(declaredFor('.variantAvatar', 'padding')).toBe('0');
+    expect(
+      declaredFor(
+        ".variantAvatar:hover,.variantAvatar[data-popup-open],.variantAvatar[aria-expanded='true']",
+        'box-shadow',
+      )?.replace(/\s+/g, ' '),
+    ).toBe('0 0 0 var(--border-width-focus) color-mix(in oklab, var(--primary) 35%, transparent)');
+  });
+
+  // 18 is off the icon scale (12 / 16 / 20 / 24). Rounding it onto a step
+  // would be a kit-side correction of a drawn value.
+  it('draws the utility glyph at the drawn 18', () => {
+    expect(declaredFor('.variantUtility .icon svg', 'width')).toBe('18px');
+    expect(declaredFor('.variantUtility .icon svg', 'height')).toBe('18px');
   });
 });
 
