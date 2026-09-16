@@ -74,18 +74,17 @@ direction:
 
 - `top` — full width, height sized to content (capped and scrollable past
   the viewport), slides down from above.
-- `right` (default) - full height, 75% width capped at `26rem` (416px) from
+- `right` (default) - full height, 75% width capped at `24rem` (384px) from
   the 640px breakpoint up, slides in from the right.
 - `bottom` — full width, height sized to content (capped and scrollable
   past the viewport), slides up from below.
-- `left` - full height, 75% width capped at `26rem` (416px) from the 640px
+- `left` - full height, 75% width capped at `24rem` (384px) from the 640px
   breakpoint up, slides in from the left.
 
-`left` and `right` round the two corners that face into the viewport at
-`--radius-lg` (12px) and leave the two on the attached edge square. `top`
-and `bottom` stay square on all four: the design spec draws neither of
-them, and a panel spanning the full width has no corner that reads as
-inner.
+Every side is square on all four corners: the drawn panel carries no
+radius, and a surface pinned to an edge of the viewport has no corner that
+reads as inner. The header and footer inset their content by 16px and size
+to their own content; the rest of the panel keeps the 24px inset.
 
 ## Examples
 

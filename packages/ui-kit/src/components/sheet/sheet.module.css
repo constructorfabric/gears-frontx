@@ -99,42 +99,34 @@
   width: 75%;
 }
 
-/* The two corners facing into the viewport are rounded; the two on the
- * attached edge are not. Each side variant already knows which edge it is
- * pinned to, so the pair is scoped per side rather than set once and then
- * unset. Physical corners, not logical ones, to pair with the physical
- * `right`/`left` and border-width each variant already sets: a logical
- * radius would move to the other corners under RTL while the panel itself
- * stayed put. The top/bottom variants are not drawn and stay square. */
+/* The drawn panel is square on every side, on every variant: a surface
+ * pinned to an edge of the viewport has no corner that reads as inner. Each
+ * side variant carries only the edge it is pinned to and the hairline on
+ * that edge. */
 .sideRight {
   right: 0;
   border-left-width: var(--border-width);
-  border-top-left-radius: var(--radius-lg);
-  border-bottom-left-radius: var(--radius-lg);
 }
 
 .sideLeft {
   left: 0;
   border-right-width: var(--border-width);
-  border-top-right-radius: var(--radius-lg);
-  border-bottom-right-radius: var(--radius-lg);
 }
 
-/* 75% width fills a small viewport, capped at the drawn 416 from the 640px
+/* 75% width fills a small viewport, capped at the drawn 384 from the 640px
    breakpoint up so the panel stops growing on a wide screen. Top/bottom
    stay full-width at every size: the spec draws neither, and upstream never
    caps that axis. */
 @media (min-width: 640px) {
   .sideRight,
   .sideLeft {
-    max-width: 26rem;
+    max-width: 24rem;
   }
 }
 
 /*
- * Off-screen distance matches the fetched Base UI upstream's own enter/exit
- * transform (2.5rem), not a full 100%-off-viewport slide — a subtler
- * entrance than the classic Radix-era Sheet's slide-in-from-edge.
+ * The drawn enter and exit travel: 40px on the panel's own attached axis,
+ * not a full 100%-off-viewport slide.
  */
 .sideTop[data-starting-style],
 .sideTop[data-ending-style] {
@@ -204,13 +196,20 @@
  * full width and edges, the strips around its box keep bleeding. Opaque
  * var(--popover) matches .popup's own background exactly.
  */
+/*
+ * The drawn header sizes to its content at a 16px inset with a 4px block
+ * gap: there is no band height to hold, so none is set. The shorthand is
+ * what overrides the panel's own 24px inset above, which is (0,1,0) like
+ * this rule and earlier in the file.
+ */
 .header {
   position: sticky;
   top: 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  padding: var(--space-4);
   background-color: var(--popover);
 }
 
@@ -226,6 +225,7 @@
  * same header/footer-bleed fix as dialog.module.css, see there for the
  * full reasoning.
  */
+/* Same 16px inset as the header, an 8px gap, pushed to the end. */
 .footer {
   position: sticky;
   bottom: 0;
@@ -233,6 +233,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding: var(--space-4);
   margin-top: auto;
   background-color: var(--popover);
 }
