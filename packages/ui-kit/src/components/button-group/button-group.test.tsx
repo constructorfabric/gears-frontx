@@ -1,5 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 
 import { Button } from '../button/public';
 import { ButtonGroup, ButtonGroupSeparator, ButtonGroupText } from './button-group';
@@ -68,5 +74,37 @@ describe('ButtonGroup', () => {
   it('lets ButtonGroupSeparator opt into horizontal', () => {
     const { container } = render(<ButtonGroupSeparator orientation="horizontal" />);
     expect(container.firstElementChild?.getAttribute('data-orientation')).toBe('horizontal');
+  });
+});
+
+/*
+ * The drawn text part and divider. jsdom computes no layout, so the plate
+ * fill, its hairline and the divider tone are asserted on the stylesheet.
+ */
+describe('ButtonGroup drawn text part and divider', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'button-group.module.css'), 'utf8'),
+  );
+
+  function declared(selector: string, prop: string) {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('fills the text part and gives it the same hairline its neighbours carry', () => {
+    expect(declared('.text', 'background-color')).toBe('var(--muted)');
+    expect(declared('.text', 'border')).toBe('var(--border-width) solid var(--border)');
+    // Or the border would push the segment past the buttons beside it.
+    expect(declared('.text', 'box-sizing')).toBe('border-box');
+    expect(declared('.text svg', 'width')).toBe('var(--icon-size-sm)');
+  });
+
+  it('paints the divider in the field-border tone', () => {
+    expect(declared(".group > .separator[data-orientation='vertical']", 'background-color')).toBe(
+      'var(--input)',
+    );
+    expect(declared(".group > .separator[data-orientation='horizontal']", 'background-color')).toBe(
+      'var(--input)',
+    );
   });
 });

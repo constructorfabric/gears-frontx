@@ -1,5 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';
 import styles from './tooltip.module.css';
@@ -83,7 +89,7 @@ describe('Tooltip', () => {
     container.remove();
   });
 
-  it('does not open instantly under a bare TooltipProvider', async () => {
+  it('opens instantly under a bare TooltipProvider', async () => {
     render(
       <TooltipProvider>
         <Tooltip>
@@ -94,19 +100,30 @@ describe('Tooltip', () => {
     );
     const trigger = screen.getByRole('button', { name: 'Hover me' });
     fireEvent.mouseEnter(trigger);
+    // The drawn provider delay is 0, so hovering opens it with no wait and
+    // no hover-intent rest timer to arm. That is the behaviour difference
+    // mounting the provider is for; a caller who wants the slower open
+    // passes `delay` explicitly.
+    await waitFor(() => expect(screen.queryByText('Saved successfully')).not.toBeNull());
+  });
+
+  it('slows back down when a caller passes a delay explicitly', async () => {
+    render(
+      <TooltipProvider delay={600}>
+        <Tooltip>
+          <TooltipTrigger>Hover me</TooltipTrigger>
+          <TooltipContent>Saved successfully</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+    const trigger = screen.getByRole('button', { name: 'Hover me' });
+    fireEvent.mouseEnter(trigger);
     // With a real (non-zero) open delay, Base UI defers to its "hover
-    // intent" rest timer, which only arms on a mousemove after entry — a
-    // bare mouseenter never opens it (unlike the delay={0} tests above).
+    // intent" rest timer, which only arms on a mousemove after entry.
     fireEvent.mouseMove(trigger);
-    // The design call here (see tooltip.tsx) is that mounting TooltipProvider
-    // must not silently speed up opening — Base UI's per-trigger 600ms
-    // default should still apply unless a delay is passed explicitly.
-    //
     // Real timers, so on a loaded runner this 200ms sleep can overshoot;
     // the "still closed" claim is only meaningful while we're actually
-    // inside the 600ms window. Guarding on measured elapsed time (instead
-    // of switching to fake timers) keeps the race out without coupling the
-    // test to when Base UI's hover-intent rest timer arms.
+    // inside the 600ms window.
     const started = Date.now();
     await new Promise((resolve) => setTimeout(resolve, 200));
     if (Date.now() - started < 600) {
@@ -115,5 +132,40 @@ describe('Tooltip', () => {
     await waitFor(() => expect(screen.queryByText('Saved successfully')).not.toBeNull(), {
       timeout: 800,
     });
+  });
+});
+
+/*
+ * The drawn plate's own numbers. tokens.test.ts's metric guard carries the
+ * two 6s as reasoned exceptions, so only these cases keep them from
+ * drifting off the drawn box.
+ */
+describe('Tooltip drawn geometry', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'tooltip.module.css'), 'utf8'),
+  );
+
+  function declared(selector: string, prop: string) {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('insets the plate by the drawn 6 and 12, with the same 6 between parts', () => {
+    expect(declared('.popup', 'padding')).toBe('6px var(--space-3)');
+    expect(declared('.popup', 'gap')).toBe('6px');
+  });
+
+  it('keeps the drawn corner, cap and inverted paint', () => {
+    expect(declared('.popup', 'border-radius')).toBe('var(--radius-md)');
+    expect(declared('.popup', 'max-width')).toBe('20rem');
+    expect(declared('.popup', 'background-color')).toBe('var(--foreground)');
+    expect(declared('.popup', 'color')).toBe('var(--background)');
+  });
+
+  it('draws the arrow as a 10px square turned 45 degrees', () => {
+    expect(declared('.arrow', 'width')).toBe('0.625rem');
+    expect(declared('.arrow', 'rotate')).toBe('45deg');
+    expect(declared('.arrow', 'border-radius')).toBe('2px');
+    expect(declared('.arrow', 'background-color')).toBe('var(--foreground)');
   });
 });

@@ -16,15 +16,15 @@ export type TooltipProps = TooltipPrimitive.Root.Props;
  * each `Tooltip` behaves standalone with Base UI's own per-trigger default
  * (600ms open delay, no grouping).
  *
- * Deliberately does not default `delay` to `0` the way base-vega's own
- * wrapper does: that default is coherent in a model where the Provider is
- * mounted once, globally, at the app root, but this kit ships it as
- * optional — silently defaulting to instant-open would mean identical
- * trigger markup opens at 600ms or 0ms depending on an invisible ancestor.
- * Pass `delay` explicitly (here, or per `TooltipTrigger`) to opt into
- * faster grouped tooltips.
+ * `delay` defaults to the drawn `0`: inside a provider, a tooltip opens on
+ * hover with no wait. That is a real behaviour difference from a tooltip
+ * outside one, which is what mounting the provider is FOR; pass `delay`
+ * explicitly here or per `TooltipTrigger` to slow it back down.
  */
-export const TooltipProvider = TooltipPrimitive.Provider;
+export function TooltipProvider({ delay = 0, ...props }: TooltipProviderProps) {
+  return <TooltipPrimitive.Provider delay={delay} {...props} />;
+}
+
 export type TooltipProviderProps = TooltipPrimitive.Provider.Props;
 
 export interface TooltipTriggerProps extends Omit<TooltipPrimitive.Trigger.Props, 'className'> {

@@ -129,11 +129,18 @@
   border-block-start-width: 0;
 }
 
+/* The drawn text part is a filled segment, not bare type: a --muted plate
+ * with the same hairline its button neighbours carry, so the collapsed
+ * group reads as one control. border-box, or the border would push the
+ * segment a pixel past the buttons beside it on each edge. */
 .text {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: var(--space-2);
   padding: 0 var(--space-3);
+  border: var(--border-width) solid var(--border);
+  background-color: var(--muted);
   color: var(--muted-foreground);
   font-size: var(--text-label-size);
   line-height: var(--text-label-line-height);
@@ -142,6 +149,9 @@
 }
 
 .text svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex-shrink: 0;
   pointer-events: none;
 }
 
@@ -154,12 +164,16 @@
  * `.separator[data-orientation=...]` rule ((0,2,0) there) regardless of
  * which file a consumer's bundler loads first.
  */
+/* The drawn divider paints the field-border tone, one step stronger than
+ * the group's own hairline, so it reads inside a filled group. */
 .group > .separator[data-orientation='vertical'] {
   height: auto;
   margin-inline: var(--border-width);
+  background-color: var(--input);
 }
 
 .group > .separator[data-orientation='horizontal'] {
   width: auto;
   margin-block: var(--border-width);
+  background-color: var(--input);
 }

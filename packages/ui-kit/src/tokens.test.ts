@@ -345,6 +345,11 @@ describe('theme tokens', () => {
       // neither has a step and rounding either would change the drawn
       // track height. tabs.test.tsx pins the pair.
       'tabs.module.css|padding|2px 6px',
+      // The drawn tooltip plate insets 6 on the block axis and sets the
+      // same 6 between its parts. The spacing scale has no step between
+      // --space-1 (4) and --space-2 (8); tooltip.test.tsx pins both.
+      'tooltip.module.css|padding|6px var(--space-3)',
+      'tooltip.module.css|gap|6px',
     ]);
     for (const file of moduleFiles) {
       const base = file.slice(file.lastIndexOf('/') + 1);

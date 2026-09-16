@@ -35,19 +35,19 @@
   width: fit-content;
   max-width: 20rem;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
+  /* The drawn plate insets 6 on the block axis and 12 on the inline one,
+   * and sets the same 6 between its parts. 6 has no step between
+   * --space-1 (4) and --space-2 (8); tooltip.test.tsx pins both. */
+  gap: 6px;
+  padding: 6px var(--space-3);
   border-radius: var(--radius-md);
   background-color: var(--foreground);
   color: var(--background);
-  /* The drawn tooltip (Overlay symbol, 197:399) is 12 medium — Meta's own
-   * size/line-height at --text-label-weight (also 500) for the emphasis,
-   * the same "role at a different weight" idiom as Table's header/footer
-   * and DropdownMenu's .label — no "Meta at 500" style exists in the
-   * Studio ramp to name instead. The hand-set 17px line normalizes to the
-   * ramp's 16 under the tokens-win ruling (see theme.css). The padding
-   * above matches the drawn plate: 12px sides, drawn 11px vertical
-   * snapped up to 12 (a 40px plate vs the drawn 42). */
+  /* The drawn tooltip is 12 medium: Meta's own size and line-height at
+   * --text-label-weight (also 500) for the emphasis, the same "role at a
+   * different weight" idiom as Table's header/footer and DropdownMenu's
+   * .label. The hand-set 17px line normalizes to the ramp's 16 under the
+   * tokens-win ruling (see theme.css). */
   font-size: var(--text-meta-size);
   line-height: var(--text-meta-line-height);
   font-weight: var(--text-label-weight);

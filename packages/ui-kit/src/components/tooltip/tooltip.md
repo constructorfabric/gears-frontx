@@ -80,15 +80,11 @@ to share open/close delay and grouping: once one tooltip in the group
 opens, adjacent ones open instantly while hovering within `timeout`
 (default `400`ms) of each other. It renders no DOM element itself.
 
-By itself, mounting it does **not** change the open delay — Base UI's
-per-trigger default (`600`ms) still applies to the first tooltip opened
-in the group. (This is a deliberate divergence from base-vega's own
-wrapper, which defaults the Provider's `delay` to `0`: that default only
-makes sense in a model where the Provider is mounted once, globally, at
-the app root — here, where it's optional, defaulting to instant-open
-would mean identical trigger markup opens at 600ms or 0ms depending on
-an invisible ancestor.) Pass `delay` explicitly on `TooltipProvider` (or
-on individual `TooltipTrigger`s) to open faster.
+Inside a provider, `delay` is the drawn `0`: the first tooltip opens on
+hover with no wait, and the rest of the group follows it. Outside one,
+Base UI's per-trigger default (`600`ms) applies. Pass `delay` explicitly
+on `TooltipProvider` (or on individual `TooltipTrigger`s) to slow it back
+down.
 
 A lone `Tooltip` works standalone without a `TooltipProvider` — grouping
 is the only thing wrapping one adds.
