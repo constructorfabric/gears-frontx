@@ -122,18 +122,16 @@
 }
 
 @media (min-width: 640px) {
-  /* The drawn modal is 560 wide, which is the omitted size here. */
+  /* The drawn modal is 384 wide, which is the omitted size here. */
   .popup {
-    max-width: 35rem;
+    max-width: 24rem;
   }
 
   /* `lg`: a wider cap for content the omitted size crowds (a multi-field
    * form, a taller textarea) - see DialogContentProps.size. The spec draws
-   * one modal width, so this second step stays the kit's own value, which
-   * leaves the two only 16px apart. That is what taking the drawn width
-   * literally produces, not a gap to close in code. The attribute
-   * selector's specificity wins over the bare class rule above regardless
-   * of declaration order. */
+   * one modal width, so this second step stays the kit's own value. The
+   * attribute selector's specificity wins over the bare class rule above
+   * regardless of declaration order. */
   .popup[data-size='lg'] {
     max-width: 36rem;
   }

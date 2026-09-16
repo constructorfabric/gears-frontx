@@ -41,7 +41,7 @@ default; `false`; `'trap-focus'`) — see Base UI Dialog.Root.
 
 | Prop | Type | Default |
 |------|------|---------|
-| `size` | `'default' \| 'lg'` - the omitted size caps the popup at `35rem` (560px, the drawn modal width) from the 640px breakpoint up; `lg` widens that to `36rem` for content that needs more room than 560px comfortably fits | `'default'` |
+| `size` | `'default' \| 'lg'` - the omitted size caps the popup at `24rem` (384px, the drawn modal width) from the 640px breakpoint up; `lg` widens that to `36rem` (576px) for content that needs more room | `'default'` |
 | `showCloseButton` | `boolean` — renders a top-right close (X) button | `true` |
 | `showBackdrop` | `boolean` — renders the dimming backdrop; set `false` together with `modal={false}` on the root for a genuinely non-modal dialog | `true` |
 | `closeLabel` | `string` — accessible name for that button, the popup's only kit-authored text; same contract as `Toaster`'s `closeLabel` | `'Close'` |
