@@ -294,10 +294,29 @@
  * the box, the button supplies the round hit area and the ring it wears
  * while hovered or while it owns an open popup.
  */
-.variantAvatar {
-  border-radius: var(--radius-full);
-  border-color: transparent;
+/*
+ * (0,2,0) for the box: the size classes below own `height` and
+ * `padding-inline` at (0,1,0) and come later in the file, so a
+ * same-specificity reset here would lose to whichever size is active and
+ * the button would measure its size step instead of its child.
+ *
+ * `border: 0`, not a transparent border: the base rule's hairline sits
+ * INSIDE this button's own box, so a transparent one still renders a 32px
+ * child as a 34px button. The drawn ring below is an outset shadow, which
+ * takes part in no box at all, so nothing here ever adds to the child.
+ *
+ * The corner is here for the same specificity reason as the box: `.sizeSm`
+ * tightens the corner at (0,1,0) later in the file, and an avatar button is
+ * round at every size because its child is.
+ */
+.button.variantAvatar {
+  height: auto;
   padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+}
+
+.variantAvatar {
   background-color: var(--button-bg, transparent);
   color: var(--button-fg, inherit);
 }

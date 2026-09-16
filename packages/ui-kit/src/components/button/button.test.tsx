@@ -424,8 +424,18 @@ describe('Button navigation, avatar and utility variants', () => {
   });
 
   it('gives the avatar button no box of its own and the drawn ring', () => {
-    expect(declaredFor('.variantAvatar', 'border-radius')).toBe('var(--radius-full)');
-    expect(declaredFor('.variantAvatar', 'padding')).toBe('0');
+    // (0,2,0) throughout: the size classes own height, padding and the
+    // small corner at (0,1,0) and come later in the file, so every reset
+    // has to outrank them or the button wears its size step instead of its
+    // child's box.
+    expect(declaredFor('.button.variantAvatar', 'padding')).toBe('0');
+    expect(declaredFor('.button.variantAvatar', 'height')).toBe('auto');
+    expect(declaredFor('.button.variantAvatar', 'border-radius')).toBe('var(--radius-full)');
+    // `border: 0`, not `border-color: transparent`: the base rule's
+    // hairline is inside the button's own box, so a transparent one still
+    // renders a 32px child as a 34px button.
+    expect(declaredFor('.button.variantAvatar', 'border')).toBe('0');
+    expect(declaredFor('.variantAvatar', 'border-color')).toBeUndefined();
     expect(
       declaredFor(
         ".variantAvatar:hover,.variantAvatar[data-popup-open],.variantAvatar[aria-expanded='true']",

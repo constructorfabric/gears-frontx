@@ -47,7 +47,9 @@ export default function ButtonExample() {
             'navigation current': '#btn-nav-current',
             'utility default': '#btn-util-default',
             'utility icon': '#btn-util-default svg',
+            'avatar sm': '#btn-avatar-sm',
             'avatar default': '#btn-avatar',
+            'avatar lg': '#btn-avatar-lg',
             'destructive default': '#btn-destructive',
           }}
         >
@@ -75,12 +77,17 @@ export default function ButtonExample() {
             </Button>
           </Row>
           <Row>
+            <Button id="btn-avatar-sm" variant="avatar" size="sm" aria-label="Open account menu, small">
+              <Avatar size="sm">
+                <AvatarFallback>SE</AvatarFallback>
+              </Avatar>
+            </Button>
             <Button id="btn-avatar" variant="avatar" aria-label="Open account menu">
               <Avatar>
                 <AvatarFallback>SE</AvatarFallback>
               </Avatar>
             </Button>
-            <Button variant="avatar" size="lg" aria-label="Open account menu, large">
+            <Button id="btn-avatar-lg" variant="avatar" size="lg" aria-label="Open account menu, large">
               <Avatar size="lg">
                 <AvatarFallback>SE</AvatarFallback>
               </Avatar>
