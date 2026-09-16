@@ -39,7 +39,7 @@ export default function EmptyExample() {
       </Section>
 
       <Section title="With border">
-        <Empty style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}>
+        <Empty style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)' }}>
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <DemoIcon />

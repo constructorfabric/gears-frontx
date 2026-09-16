@@ -69,7 +69,7 @@ Rules for generated code:
 - Brand/appearance changes go through theme tokens (CSS variables in
   `theme.css`, light/dark via `data-theme`), never through inline styles or
   overriding kit class names.
-- Rounding is a scale derived from `--radius` (`--radius-xs|sm|md|lg|xl`);
+- Rounding is a scale derived from `--radius` (`--radius-xs|sm|md|lg|xl|2xl`);
   override `--radius` alone and every component follows.
 - Page typography uses the Studio type ramp tokens:
   `--text-<role>-size|line-height|weight|tracking` for roles

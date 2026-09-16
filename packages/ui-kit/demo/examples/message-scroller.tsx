@@ -54,7 +54,7 @@ function Bubble({ message }: { message: ChatMessage }) {
       <div
         style={{
           maxWidth: '32rem',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: 'var(--radius-xl)',
           padding: 'var(--space-3) var(--space-4)',
           backgroundColor: message.from === 'user' ? 'var(--primary)' : 'var(--muted)',
           color: message.from === 'user' ? 'var(--primary-foreground)' : 'var(--foreground)',
@@ -74,7 +74,7 @@ function frame(children: ReactNode, height = '16rem') {
       style={{
         height,
         border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg)',
+        borderRadius: 'var(--radius-xl)',
         backgroundColor: 'var(--surface)',
       }}
     >

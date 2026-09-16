@@ -65,7 +65,7 @@ function ShellFrame({ height, children }: { height: string; children: ReactNode 
         contain: 'layout paint',
         height,
         border: 'var(--border-width) solid var(--border)',
-        borderRadius: 'var(--radius-lg)',
+        borderRadius: 'var(--radius-xl)',
       }}
     >
       {children}
@@ -409,7 +409,7 @@ function RowAnatomy() {
         display: 'flex',
         width: 'fit-content',
         border: 'var(--border-width) solid var(--border)',
-        borderRadius: 'var(--radius-lg)',
+        borderRadius: 'var(--radius-xl)',
         overflow: 'hidden',
       }}
     >

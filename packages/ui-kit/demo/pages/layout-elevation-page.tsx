@@ -3,12 +3,9 @@ import type { ReactNode } from 'react';
 import { Section } from '../shared';
 import { useTokenValues } from './token-utils';
 
-// Figma's Layout board names radius/sm..xl (4 steps); theme.css also carries
-// a bare --radius and --radius-xs with no mockup-named counterpart in that
-// range (see theme.css's own comment: --radius-xs "predates the Studio
-// scale"). Both are real tokens, so both are shown — not a mismatch, just an
-// inventory note (see the report).
-const RADII = ['', '-xs', '-sm', '-md', '-lg', '-xl'];
+// Every step of the published radius scale, plus the bare --radius base a
+// consumer overrides to move all of them at once.
+const RADII = ['', '-xs', '-sm', '-md', '-lg', '-xl', '-2xl'];
 // No --space-7 — theme.css's own comment: "the step number is the value in
 // 4px units, so there is no space/7".
 const SPACES = ['1', '2', '3', '4', '5', '6', '8'];
@@ -166,7 +163,7 @@ export function LayoutElevationPage() {
               display: 'grid',
               gap: 'var(--space-3)',
               padding: 'var(--space-4)',
-              borderRadius: 'var(--radius-lg)',
+              borderRadius: 'var(--radius-xl)',
               background: 'var(--muted)',
             }}
           >
@@ -197,7 +194,7 @@ export function LayoutElevationPage() {
               display: 'grid',
               gap: 'var(--space-3)',
               padding: 'var(--space-4)',
-              borderRadius: 'var(--radius-lg)',
+              borderRadius: 'var(--radius-xl)',
               background: 'linear-gradient(135deg, var(--primary), var(--accent))',
               position: 'relative',
             }}
