@@ -540,6 +540,13 @@ describe('theme tokens', () => {
       '--duration-panel',
       '--duration-tab',
       '--ease-standard',
+      // The four categorical chart hues. The spec declares them once with
+      // no per-theme value, so they are invariant by the drawn arrangement
+      // rather than by the shape/scale reasoning the rest of this list has.
+      '--chart-category-blue',
+      '--chart-category-purple',
+      '--chart-category-brown',
+      '--chart-category-teal',
       // Typography (Figma "Typography / Specimens", frame 175:371):
       // families and the Studio type ramp. Shape and scale, not color —
       // never per-theme.
@@ -782,6 +789,44 @@ describe('theme tokens', () => {
         };
         for (const [name, value] of Object.entries(drawn)) {
           expect(invariantTokens.get(name), name).toBe(value);
+        }
+      });
+
+      // The chart palette, in the same shape as the status pin: five
+      // ordered series steps that change with the theme, and four
+      // categorical hues that do not.
+      it('the chart palette carries the drawn values', () => {
+        const series: Record<string, [light: string, dark: string]> = {
+          '--chart-1': ['#e11d48', '#fb7185'],
+          '--chart-2': ['#059669', '#34d399'],
+          '--chart-3': ['#4e79a7', '#0065e3'],
+          '--chart-4': ['#f59e0b', '#f6c453'],
+          '--chart-5': ['#2563eb', '#60a5fa'],
+        };
+        for (const [name, [light, dark]] of Object.entries(series)) {
+          expect(token(lightTokens, name), `light ${name}`).toBe(light);
+          expect(token(darkAttrTokens, name), `dark ${name}`).toBe(dark);
+        }
+        const categorical: Record<string, string> = {
+          '--chart-category-blue': '#4e79a7',
+          '--chart-category-purple': '#b07aa1',
+          '--chart-category-brown': '#9c755f',
+          '--chart-category-teal': '#499894',
+        };
+        for (const [name, value] of Object.entries(categorical)) {
+          expect(invariantTokens.get(name), name).toBe(value);
+        }
+      });
+
+      // The chart paints its own chrome (grid, axis, legend) in
+      // --muted-foreground, so a series equal to it would be invisible
+      // against the chart's own furniture.
+      it('keeps the chart chrome colour out of the series palette', () => {
+        for (const [themeName, tokens] of themes) {
+          const chrome = token(tokens, '--muted-foreground');
+          for (const step of ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5']) {
+            expect(token(tokens, step), `${themeName} ${step}`).not.toBe(chrome);
+          }
         }
       });
 

@@ -191,6 +191,19 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
   /*
+   * The four categorical chart hues, for a series that stands for a named
+   * category rather than a position in a series order. The spec declares
+   * them once with no per-theme value, so they are declared once here: they
+   * are theme-independent by the drawn arrangement, and inventing a dark
+   * counterpart would be a kit-side value. The ordered series steps that
+   * DO change with the theme are --chart-1..--chart-5 in the theme blocks.
+   */
+  --chart-category-blue: #4e79a7;
+  --chart-category-purple: #b07aa1;
+  --chart-category-brown: #9c755f;
+  --chart-category-teal: #499894;
+
+  /*
    * Typography — the Studio blue rebrand's "Studio/Type" ramp (the
    * "02 · Tokens, type & elevation" frame), carried on
    * the kit's existing role names: the roles are the public API and the
@@ -457,6 +470,19 @@
    * "blue-sky" tint, same move as --link-foreground. */
   --blue: #2668c5;
 
+  /* The ordered chart series palette. A ChartConfig entry that names no
+   * colour of its own falls back to the step at its position in the config
+   * (see chart.tsx), so a chart is legible before a consumer brands one.
+   * --color-<key> stays what it has always been: the per-instance property
+   * the chart writes for each series, which these are one possible value
+   * for. --muted-foreground is the chart's own chrome colour and is
+   * deliberately not among them. */
+  --chart-1: #e11d48;
+  --chart-2: #059669;
+  --chart-3: #4e79a7;
+  --chart-4: #f59e0b;
+  --chart-5: #2563eb;
+
   --border: #e2e8f0;
   --border-strong: #cbd5e1;
   /* Field-control borders: the drawn stroke on every input, textarea and
@@ -547,6 +573,11 @@
   --warning-foreground: #f6c453;
   --danger-foreground: #fb7185;
   --blue: #6ba5f0;
+  --chart-1: #fb7185;
+  --chart-2: #34d399;
+  --chart-3: #0065e3;
+  --chart-4: #f6c453;
+  --chart-5: #60a5fa;
   /* The frame draws border and border-strong collapsed onto one slate-600
    * in dark; --input follows border-strong as in light. */
   --border: #334155;
@@ -608,6 +639,11 @@
     --warning-foreground: #f6c453;
     --danger-foreground: #fb7185;
     --blue: #6ba5f0;
+    --chart-1: #fb7185;
+    --chart-2: #34d399;
+    --chart-3: #0065e3;
+    --chart-4: #f6c453;
+    --chart-5: #60a5fa;
     --border: #334155;
     --border-strong: #334155;
     --input: #334155;
