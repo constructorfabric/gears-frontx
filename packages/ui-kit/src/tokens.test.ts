@@ -305,10 +305,13 @@ describe('theme tokens', () => {
       'input-group.module.css|padding-block|1px',
       'input-group.module.css|padding-block|3px',
       // The drawn compact count badge insets its label by 6px, and the
-      // spacing scale has no step between --space-1 (4) and --space-2 (8).
-      // Rounding it to 8 to avoid a literal would be a kit-side correction
-      // of a drawn value, which is exactly what the value rule forbids.
+      // drawn badge box insets its own by 2px on the block axis. The
+      // spacing scale has no step between --space-1 (4) and --space-2 (8)
+      // and none below 4 at all. Rounding either to avoid a literal would
+      // be a kit-side correction of a drawn value, which is exactly what
+      // the value rule forbids.
       'badge.module.css|padding-inline|6px',
+      'badge.module.css|padding-block|2px',
       // Same badge, same reason on the other axis: the spec draws the micro
       // step in three weights and the type ramp names one weight per role,
       // so --text-micro-weight ships the middle cut (500) and the drawn 600

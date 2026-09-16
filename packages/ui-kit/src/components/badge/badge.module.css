@@ -1,12 +1,11 @@
 /*
  * Badge styles, translated from shadcn/ui (MIT, registry/bases/base/ui/
- * badge.tsx + the new-york-v4 style's Tailwind geometry) to CSS Modules.
- * Consumes only theme.css variables — no raw colors.
+ * badge.tsx plus the new-york-v4 style's geometry) to CSS Modules.
+ * Consumes only theme.css variables - no raw colors.
  *
- * The Studio mockup's Badge row (Figma "Phase 3 / Remaining core controls",
- * node 40001414:5973) draws six TONE specimens — Neutral, Success, Warning,
- * Danger, Info, Accent — all on one recipe: a soft tinted fill with the
- * tone's own color as the label. Its geometry is already what upstream's
+ * The design spec's badge row draws six TONE specimens - Neutral, Success,
+ * Warning, Danger, Info, Accent - all on one recipe: a soft tinted fill
+ * with the tone's own color as the label. Its geometry is already what upstream's
  * base rule below sets (4/8 padding, 4 gap, full radius, 12/16 medium), so
  * the mockup added no geometry deltas; what it added is the tone family at
  * the bottom of this file. Neutral is NOT among them: its drawn pair
@@ -22,11 +21,10 @@
  * (soft red fill, red label) are therefore both here on purpose: two
  * emphasis levels of the one red theme.css already names twice.
  *
- * Geometry is the size axis below, not this rule: the spec draws the badge
- * at three heights, and padding, type and the one explicit height all
- * belong to whichever step is active. What stays here is what every step
- * shares - the pill radius, the gap, the single-line rule and the
- * transitions.
+ * Geometry is the size axis below, not this rule: padding, type and the one
+ * explicit height belong to whichever step is active. What stays here is
+ * what both steps share - the pill radius, the gap, the single-line rule
+ * and the transitions.
  *
  * There is no transparent border. The 1px border this file used to carry
  * existed only so `outline` and the two ring states had something to
@@ -90,19 +88,20 @@
 }
 
 /*
- * The size axis. The spec draws three steps that differ in the label and
- * in nothing else: padding is the same 4/8 at `sm` and `default`, and the
- * height each renders falls out of its type step (16 + 4 + 4 = 24,
- * 20 + 4 + 4 = 28) rather than being restated.
+ * The size axis, two steps. The spec draws ONE badge box, 20 tall on a
+ * 12/16 label with 2px of block padding and 8px of inline: 16 + 2 + 2 = 20,
+ * so the height falls out of the type rather than being restated. That step
+ * is `default`, which is also what an omitted `size` renders.
  *
- * `xs` is the drawn compact count badge and is the one step that does not
- * fall out of its type: 10/14 with no block padding is 14, and the drawn
- * box is 18, so the height is set. `min-width` is what actually governs a
+ * `xs` is the count badge, and the spec draws no count badge at all, so the
+ * kit keeps the one it has: 10/14 with no block padding is 14 and the box
+ * is 18, so the height is set, and `min-width` is what actually governs a
  * one-digit value, keeping it a circle-ish pill instead of a 6px-wide
- * sliver. The 18/20/6 are drawn sizes with no step on the spacing scale
- * between --space-1 and --space-2; tokens.test.ts carries the reasoned
- * exception for the padding, and the value rule is what governs, not a
- * rounding up to 8.
+ * sliver.
+ *
+ * 2, 6, 18 and 20 are drawn sizes with no step on the spacing scale between
+ * --space-1 (4) and --space-2 (8). tokens.test.ts carries the reasoned
+ * exceptions for the two paddings; the value rule governs, not a rounding.
  */
 .sizeXs {
   height: 18px;
@@ -119,20 +118,13 @@
   letter-spacing: var(--text-micro-tracking);
 }
 
-.sizeSm {
-  padding: var(--space-1) var(--space-2);
+.sizeDefault {
+  padding-block: 2px;
+  padding-inline: var(--space-2);
   font-size: var(--text-meta-size);
   line-height: var(--text-meta-line-height);
   font-weight: var(--text-label-weight);
   letter-spacing: var(--text-meta-tracking);
-}
-
-.sizeDefault {
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--text-body-size);
-  line-height: var(--text-body-line-height);
-  font-weight: var(--text-label-weight);
-  letter-spacing: var(--text-body-tracking);
 }
 
 /*
@@ -189,26 +181,72 @@ a.variantSecondary:hover {
   background-color: color-mix(in oklab, var(--secondary) 80%, transparent);
 }
 
+/*
+ * The drawn destructive badge is a TINT, not a solid fill: --destructive at
+ * 10% of transparent in light, 20% in dark, under a --destructive label.
+ * Button's destructive variant carries the identical recipe; the two are
+ * meant to stay in step.
+ *
+ * The standing ban on destructive colour-mixes targets mixes anchored to
+ * --foreground, which lighten in dark and drop a --destructive-foreground
+ * label below its floor. This mix is anchored to `transparent` and carries
+ * a --destructive label instead, so that failure mode does not apply.
+ *
+ * The strength is a local so the theme overrides below restate one number
+ * instead of the whole recipe twice.
+ */
 .variantDestructive {
-  background-color: var(--destructive);
-  color: var(--destructive-foreground);
+  --tint: 10%;
+  --tint-hover: 20%;
+  background-color: color-mix(in oklab, var(--destructive) var(--tint), transparent);
+  color: var(--destructive);
+}
+
+[data-theme='dark'] .variantDestructive {
+  --tint: 20%;
+  --tint-hover: 30%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .variantDestructive {
+    --tint: 20%;
+    --tint-hover: 30%;
+  }
 }
 
 .variantDestructive:focus-visible {
   box-shadow: inset 0 0 0 var(--border-width-focus) var(--destructive-ring);
 }
 
-/*
- * --destructive-hover, not a color-mix toward --foreground: that recipe
- * (which button.module.css's destructive hover shared until the same fix)
- * darkens correctly in light mode, where --foreground is dark, but LIGHTENS
- * in dark mode instead, since --foreground flips near-white there — against
- * the fixed --destructive-foreground label, that drops dark-mode hover
- * to about 3.90:1. --destructive-hover is a literal, same hex both modes
- * (see theme.css), so the direction never depends on which theme is active.
- */
+/* Hover is the same tint one step stronger, in the same idiom, so the
+ * label never changes tone under the pointer. */
 a.variantDestructive:hover {
-  background-color: var(--destructive-hover);
+  background-color: color-mix(in oklab, var(--destructive) var(--tint-hover), transparent);
+}
+
+/*
+ * The drawn category chip: a 1px ring and label in the brand blue over a
+ * tint of the same blue, 10% in light and 40% in dark. The label is the
+ * brand blue carrying 14% of --foreground, which is the drawn tone; unlike
+ * the destructive recipe above, anchoring to --foreground is what the spec
+ * draws here, and the label darkens in light and lightens in dark along
+ * with the fill it sits on rather than against it.
+ */
+.variantCategory {
+  --tint: 10%;
+  box-shadow: inset 0 0 0 var(--border-width) var(--primary);
+  background-color: color-mix(in oklab, var(--primary) var(--tint), transparent);
+  color: color-mix(in oklab, var(--foreground) 14%, var(--primary));
+}
+
+[data-theme='dark'] .variantCategory {
+  --tint: 40%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .variantCategory {
+    --tint: 40%;
+  }
 }
 
 /* The bordered variant's hairline, drawn as an inset shadow like the two

@@ -13,6 +13,7 @@ export default function BadgeExample() {
           <Badge variant="outline">outline</Badge>
           <Badge variant="ghost">ghost</Badge>
           <Badge variant="link">link</Badge>
+          <Badge variant="category">category</Badge>
         </Row>
       </Section>
 
@@ -36,9 +37,11 @@ export default function BadgeExample() {
           of={{
             xs: '#badge-xs',
             'xs, two digits': '#badge-xs-2',
-            sm: '#badge-sm',
             default: '#badge-default',
             unset: '#badge-unset',
+            'default icon': '#badge-icon svg',
+            category: '#badge-category',
+            destructive: '#badge-destructive',
           }}
         >
           <Row>
@@ -48,16 +51,23 @@ export default function BadgeExample() {
             <Badge id="badge-xs-2" size="xs" variant="secondary">
               42
             </Badge>
-            <Badge id="badge-sm" size="sm">
-              sm
-            </Badge>
             <Badge id="badge-default" size="default">
               default
             </Badge>
             <Badge id="badge-unset">unset</Badge>
+            <Badge id="badge-icon" size="default" variant="secondary">
+              <DemoIcon />
+              icon
+            </Badge>
+            <Badge id="badge-category" variant="category">
+              category
+            </Badge>
+            <Badge id="badge-destructive" variant="destructive">
+              destructive
+            </Badge>
           </Row>
           <Row>
-            {(['xs', 'sm', 'default'] as const).map((size) => (
+            {(['xs', 'default'] as const).map((size) => (
               <Row key={size}>
                 <Badge size={size} variant="secondary">
                   neutral
@@ -79,6 +89,12 @@ export default function BadgeExample() {
                 </Badge>
                 <Badge size={size} variant="outline">
                   outline
+                </Badge>
+                <Badge size={size} variant="category">
+                  category
+                </Badge>
+                <Badge size={size} variant="destructive">
+                  destructive
                 </Badge>
               </Row>
             ))}
@@ -103,7 +119,7 @@ export default function BadgeExample() {
             <Badge dot variant="secondary">
               Neutral
             </Badge>
-            <Badge dot size="sm" variant="info">
+            <Badge dot size="xs" variant="info">
               Queued
             </Badge>
           </Row>

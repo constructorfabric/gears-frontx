@@ -7,24 +7,27 @@ UI's `useRender`/`mergeProps` utilities) for the one case that needs it:
 rendering as a link.
 
 Badge has two axes and one flag. `variant` is **paint only**, `size` is
-**geometry only** (18 / 24 / 28 px tall, differing in the label and in
-nothing else), and `dot` adds the drawn 6px status dot ahead of the label,
-in whatever tone the variant already paints the label.
+**geometry only** (18 or 20 px tall), and `dot` adds the drawn 6px status
+dot ahead of the label, in whatever tone the variant already paints the
+label.
 
 The `variant` axis carries two groups on one axis:
 
 - **Upstream paint** — `default`, `secondary`, `destructive`, `outline`,
   `ghost`, `link`: the same six names and the same meaning as
-  [Button](button.md)'s.
+  [Button](button.md)'s. `destructive` is a tint of `--destructive` under
+  a `--destructive` label, the identical recipe Button carries.
+- **Category** - `category`: a 1px ring and label in `--primary` over a
+  tint of the same blue, the drawn chip for a category tag.
 - **Tone** — `success`, `warning`, `danger`, `info`, `accent`: a soft
   tinted fill with the tone's own color as the label, matching the Studio
   design's Badge row. Its sixth specimen, Neutral, is `secondary` — that
   variant already paints the drawn pair exactly, so there is no separate
   `neutral` name.
 
-Note that `destructive` and `danger` are both present on purpose: solid
-red with a white label, and a soft red fill with a red label — two
-emphasis levels of the same red.
+Note that `destructive` and `danger` are both present on purpose: a tint
+of `--destructive` under a `--destructive` label, and a `--danger-soft`
+fill under a `--danger` label. Two names for one red, one per role.
 
 A tone is still paint, not state: it colors a label, it does not track
 one. Badge's five tones (`success`, `warning`, `danger`, `info`, `accent`)
@@ -65,8 +68,8 @@ substitute for a state machine.
 
 | Prop | Type | Default |
 |------|------|---------|
-| `variant` | `default` \| `secondary` \| `destructive` \| `outline` \| `ghost` \| `link` \| `success` \| `warning` \| `danger` \| `info` \| `accent` | `default` |
-| `size` | `xs` \| `sm` \| `default` - 18 / 24 / 28 px tall; `xs` is the compact count badge (10/14 label, 20px minimum width), `sm` a 12/16 label, `default` a 14/20 one | `default` |
+| `variant` | `default` \| `secondary` \| `destructive` \| `outline` \| `ghost` \| `link` \| `category` \| `success` \| `warning` \| `danger` \| `info` \| `accent` | `default` |
+| `size` | `xs` \| `default` - 18 or 20 px tall; `xs` holds a count and keeps a 20 px minimum width (10/14 label), `default` is the drawn box (12/16 label) | `default` |
 | `dot` | `boolean` - renders a 6px round status dot ahead of the label, in the label's own tone | `false` |
 | `render` | `ReactElement` — replaces the root `span`, e.g. with an `<a>` | — |
 | `className` | `string` — merged after the variant class | — |
@@ -106,10 +109,12 @@ import { Badge } from '@gears-frontx/ui-kit';
 <Badge variant="info">info</Badge>
 <Badge variant="accent">accent</Badge>
 
+// Category chip
+<Badge variant="category">Infrastructure</Badge>
+
 // Size - geometry only, any variant
 <Badge size="xs" variant="secondary">9</Badge>
-<Badge size="sm" variant="success">passed</Badge>
-<Badge size="default">28px</Badge>
+<Badge size="default">20px</Badge>
 
 // The drawn status dot, in the variant's own label tone
 <Badge dot variant="success">Running</Badge>

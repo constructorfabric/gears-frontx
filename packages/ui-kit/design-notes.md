@@ -406,10 +406,10 @@ Architecture's build bullet).
      driven by `variant` (+ `size`, or the occasional real extra axis like
      Table's `density`); not `form`, which is a real HTML attribute a
      styling prop would shadow for anyone rendering a form-associated
-     element via `render`. Badge grew a `size` axis and a `dot` flag in the
-     value pass below: the spec draws the badge at three heights and with
-     an optional 6px status dot, and both are geometry and anatomy rather
-     than paint, so neither joins the `variant` axis (see badge.tsx).
+     element via `render`. Badge carries a `size` axis and a `dot` flag
+     beside it: the spec draws one badge box, the kit keeps its own count
+     step beside it, and the optional 6px status dot is anatomy, so neither
+     joins the `variant` axis (see badge.tsx).
    - Four new tokens: `--link-foreground` (Button's `link` variant text),
      `--popover-border`/`--popover-shadow` (the ring-plus-shadow recipe
      every card-like popup — Dialog/DropdownMenu/Select/Toast — now shares

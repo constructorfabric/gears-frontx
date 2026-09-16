@@ -81,11 +81,55 @@ describe('Badge', () => {
 
   it.each([
     ['xs', styles.sizeXs],
-    ['sm', styles.sizeSm],
     ['default', styles.sizeDefault],
   ] as const)('applies the %s size class', (size, sizeClass) => {
     render(<Badge size={size}>Label</Badge>);
     expect(screen.getByText('Label').className).toContain(sizeClass);
+  });
+
+  // The two literals the spacing scale has no step for. tokens.test.ts's
+  // metric guard carries them as reasoned exceptions, which means only a
+  // case here keeps them from drifting off the drawn box.
+  it('insets the drawn box by the two literals the scale has no step for', () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'badge.module.css'), 'utf8');
+    const declared = (selector: string, prop: string) => {
+      const rule = extractRules(css).find((candidate) => candidate.selector === selector);
+      return rule ? declarationMap(rule.body).get(prop) : undefined;
+    };
+    // 20px tall: a 16px line-height plus 2px on each side.
+    expect(declared('.sizeDefault', 'padding-block')).toBe('2px');
+    expect(declared('.sizeDefault', 'line-height')).toBe('var(--text-meta-line-height)');
+    // 18px count badge, 6px inline inset, 20px floor on one digit.
+    expect(declared('.sizeXs', 'height')).toBe('18px');
+    expect(declared('.sizeXs', 'min-width')).toBe('20px');
+    expect(declared('.sizeXs', 'padding-inline')).toBe('6px');
+  });
+
+  // The drawn destructive badge is a tint under its own label, and the
+  // drawn category chip a tint under a ring; both carry a per-theme
+  // strength, which is what the local holds.
+  it('tints the destructive and category variants rather than filling them', () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'badge.module.css'), 'utf8');
+    const declared = (selector: string, prop: string) => {
+      const rule = extractRules(css).find((candidate) => candidate.selector === selector);
+      return rule ? declarationMap(rule.body).get(prop) : undefined;
+    };
+    expect(declared('.variantDestructive', 'background-color')).toBe(
+      'color-mix(in oklab, var(--destructive) var(--tint), transparent)',
+    );
+    expect(declared('.variantDestructive', 'color')).toBe('var(--destructive)');
+    expect(declared('.variantDestructive', '--tint')).toBe('10%');
+    expect(declared("[data-theme='dark'] .variantDestructive", '--tint')).toBe('20%');
+    expect(declared('.variantCategory', 'box-shadow')).toBe(
+      'inset 0 0 0 var(--border-width) var(--primary)',
+    );
+    expect(declared('.variantCategory', 'background-color')).toBe(
+      'color-mix(in oklab, var(--primary) var(--tint), transparent)',
+    );
+    expect(declared('.variantCategory', 'color')).toBe(
+      'color-mix(in oklab, var(--foreground) 14%, var(--primary))',
+    );
+    expect(declared("[data-theme='dark'] .variantCategory", '--tint')).toBe('40%');
   });
 
   it('renders the status dot ahead of the label, hidden from assistive tech', () => {
@@ -105,7 +149,7 @@ describe('Badge', () => {
 
   it('does not leak the size or dot props to the DOM as attributes', () => {
     render(
-      <Badge size="sm" dot>
+      <Badge size="xs" dot>
         Tag
       </Badge>,
     );

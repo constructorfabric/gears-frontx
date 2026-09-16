@@ -23,10 +23,10 @@ import styles from './badge.module.css';
  * markup here still renders what it renders upstream.
  *
  * `size` is the second axis and is geometry only, the way `variant` is
- * paint only: the spec draws the badge at three heights that differ in the
- * label and in nothing else. `dot` is the third thing the spec draws, the
- * optional 6px status dot; it is anatomy rather than paint, which is why it
- * is a flag and not a variant value.
+ * paint only. The spec draws one badge box, which is `default`; `xs` is the
+ * count badge the spec draws nothing for, kept as the kit's own. `dot` is
+ * the optional 6px status dot; it is anatomy rather than paint, which is
+ * why it is a flag and not a variant value.
  *
  * Badge has no Base UI primitive, but still gets `render`-prop
  * polymorphism from `useRender`/`mergeProps` — the same utilities Base
@@ -47,10 +47,10 @@ const badgeVariants = cva(styles.badge, {
       danger: styles.variantDanger,
       info: styles.variantInfo,
       accent: styles.variantAccent,
+      category: styles.variantCategory,
     },
     size: {
       xs: styles.sizeXs,
-      sm: styles.sizeSm,
       default: styles.sizeDefault,
     },
   },
