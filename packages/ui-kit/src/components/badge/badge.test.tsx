@@ -62,6 +62,58 @@ describe('Badge', () => {
     expect(badge.getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('renders size="default" and an omitted size as the exact same class list', () => {
+    render(
+      <>
+        <Badge data-testid="omitted">A</Badge>
+        <Badge data-testid="explicit" size="default">
+          B
+        </Badge>
+      </>,
+    );
+    // Same class STRING: defaultVariants is what makes the two one code
+    // path, rather than two renderings that agree today.
+    expect(screen.getByTestId('omitted').className).toBe(
+      screen.getByTestId('explicit').className,
+    );
+    expect(screen.getByTestId('omitted').className).toContain(styles.sizeDefault);
+  });
+
+  it.each([
+    ['xs', styles.sizeXs],
+    ['sm', styles.sizeSm],
+    ['default', styles.sizeDefault],
+  ] as const)('applies the %s size class', (size, sizeClass) => {
+    render(<Badge size={size}>Label</Badge>);
+    expect(screen.getByText('Label').className).toContain(sizeClass);
+  });
+
+  it('renders the status dot ahead of the label, hidden from assistive tech', () => {
+    render(<Badge dot>Running</Badge>);
+    const badge = screen.getByText(/Running/);
+    const dot = badge.firstElementChild;
+    expect(dot?.className).toContain(styles.dot);
+    expect(dot?.getAttribute('aria-hidden')).toBe('true');
+    // The label is still the accessible name; the dot adds no text.
+    expect(badge.textContent).toBe('Running');
+  });
+
+  it('omits the dot element entirely when the flag is off', () => {
+    render(<Badge>Running</Badge>);
+    expect(screen.getByText('Running').firstElementChild).toBeNull();
+  });
+
+  it('does not leak the size or dot props to the DOM as attributes', () => {
+    render(
+      <Badge size="sm" dot>
+        Tag
+      </Badge>,
+    );
+    const badge = screen.getByText(/Tag/);
+    expect(badge.hasAttribute('size')).toBe(false);
+    expect(badge.hasAttribute('dot')).toBe(false);
+  });
+
   it('renders as a different element via the render prop, keeping the kit class', () => {
     render(
       <Badge render={<a href="/filters/open" />} variant="outline">
@@ -87,13 +139,46 @@ describe('Badge', () => {
  * is therefore the page background — the same guarantee button.test.tsx
  * verifies for Button's ring. Reads the raw module CSS (like that file
  * does), not the rendered DOM: jsdom computes no styles.
+ *
+ * The second case here guards the other half of the same idiom: the ring,
+ * the invalid state and the bordered variant all draw an INSET box-shadow
+ * and no border at all. A border would put the badge 2px over the height
+ * the spec draws, which is how it used to render 26 instead of 24, and it
+ * is the kind of thing that creeps back one recolored `border-color` at a
+ * time.
  */
 describe('Badge focus ring', () => {
   const css = readFileSync(
     join(dirname(fileURLToPath(import.meta.url)), 'badge.module.css'),
     'utf8',
   );
-  const focusRule = extractRules(css).find((rule) => rule.selector === '.badge:focus-visible');
+  const rules = extractRules(css);
+  const focusRule = rules.find((rule) => rule.selector === '.badge:focus-visible');
+
+  it('draws every ring and hairline as an inset shadow, never as a border', () => {
+    for (const selector of [
+      '.badge',
+      '.badge:focus-visible',
+      ".badge[aria-invalid='true']",
+      '.variantDestructive:focus-visible',
+      '.variantOutline',
+    ]) {
+      const rule = rules.find((candidate) => candidate.selector === selector);
+      expect(rule, `${selector} rule missing from badge.module.css`).toBeDefined();
+      const decls = declarationMap(rule?.body ?? '');
+      expect(decls.get('border'), selector).toBeUndefined();
+      expect(decls.get('border-color'), selector).toBeUndefined();
+    }
+    for (const [selector, tone] of [
+      ['.badge:focus-visible', 'var(--ring)'],
+      [".badge[aria-invalid='true']", 'var(--destructive)'],
+      ['.variantDestructive:focus-visible', 'var(--destructive-ring)'],
+      ['.variantOutline', 'var(--border)'],
+    ] as const) {
+      const rule = rules.find((candidate) => candidate.selector === selector);
+      expect(declarationMap(rule?.body ?? '').get('box-shadow'), selector).toContain(tone);
+    }
+  });
 
   it('draws an outside outline in the kit-wide ring tone, offset off the fill', () => {
     expect(focusRule, '.badge:focus-visible rule missing from badge.module.css').toBeDefined();

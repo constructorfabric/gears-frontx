@@ -6,7 +6,12 @@ Base UI primitive — it's a styled `span`, plus a `render` prop (via Base
 UI's `useRender`/`mergeProps` utilities) for the one case that needs it:
 rendering as a link.
 
-Badge's variant axis is **paint only**, in two groups on one axis:
+Badge has two axes and one flag. `variant` is **paint only**, `size` is
+**geometry only** (18 / 24 / 28 px tall, differing in the label and in
+nothing else), and `dot` adds the drawn 6px status dot ahead of the label,
+in whatever tone the variant already paints the label.
+
+The `variant` axis carries two groups on one axis:
 
 - **Upstream paint** — `default`, `secondary`, `destructive`, `outline`,
   `ghost`, `link`: the same six names and the same meaning as
@@ -27,13 +32,14 @@ are the semantic-ish colors available — pick the one that best matches the
 status, but keep the label text itself explicit; color alone is not a
 substitute for a state machine.
 
-> **Accessibility of tones.** At Badge's 12px/500 label, WCAG 1.4.3 asks
-> 4.5:1, and every tone pair now clears it in both themes: the Studio blue
-> rebrand re-pinned the status tokens that used to fall short at the theme
-> level (see theme.css and the "Studio blue rebrand" entry in
-> design-notes.md), and tokens.test.ts holds each status color to the
-> floor against its own soft fill and every surface it sits on. Color is
-> still not a substitute for text: keep the label itself explicit.
+> **Accessibility of tones.** At Badge's label size WCAG 1.4.3 asks
+> 4.5:1, and on the drawn status values three pairs do not reach it: light
+> `success` (3.43:1), light `warning` (2.00:1) and dark `danger` (3.63:1),
+> with light `danger` at 4.28:1. The kit ships the drawn values; the
+> finding belongs with the designer, and `tokens.test.ts` pins the hexes so
+> a correction has to happen in the design first. Where that matters,
+> `secondary`, `info` and `accent` clear the floor in both themes. Color is
+> not a substitute for text either way: keep the label itself explicit.
 
 ## When to use
 
@@ -60,12 +66,21 @@ substitute for a state machine.
 | Prop | Type | Default |
 |------|------|---------|
 | `variant` | `default` \| `secondary` \| `destructive` \| `outline` \| `ghost` \| `link` \| `success` \| `warning` \| `danger` \| `info` \| `accent` | `default` |
+| `size` | `xs` \| `sm` \| `default` - 18 / 24 / 28 px tall; `xs` is the compact count badge (10/14 label, 20px minimum width), `sm` a 12/16 label, `default` a 14/20 one | `default` |
+| `dot` | `boolean` - renders a 6px round status dot ahead of the label, in the label's own tone | `false` |
 | `render` | `ReactElement` — replaces the root `span`, e.g. with an `<a>` | — |
 | `className` | `string` — merged after the variant class | — |
 
 All other props are native `<span>` props (or the target element's props
 when using `render`) and are forwarded as-is, including `aria-invalid`
-(shows a destructive-tinted border and ring, independent of `variant`).
+(shows a destructive-tinted ring, independent of `variant`).
+
+The ring, the invalid state and `outline`'s hairline are all drawn as inset
+shadows rather than borders, so none of them changes the badge's height.
+
+`xs` carries geometry only, like every other `size` value. The drawn compact
+count badge is the neutral paint at that size, which is
+`<Badge size="xs" variant="secondary">`.
 
 `badgeVariants` (the underlying `cva` recipe) is also exported, for a
 consumer that needs the class string without the component — e.g. styling
@@ -90,6 +105,14 @@ import { Badge } from '@gears-frontx/ui-kit';
 <Badge variant="danger">danger</Badge>
 <Badge variant="info">info</Badge>
 <Badge variant="accent">accent</Badge>
+
+// Size - geometry only, any variant
+<Badge size="xs" variant="secondary">9</Badge>
+<Badge size="sm" variant="success">passed</Badge>
+<Badge size="default">28px</Badge>
+
+// The drawn status dot, in the variant's own label tone
+<Badge dot variant="success">Running</Badge>
 
 // A badge that is actually a link — hover feedback only applies here
 <Badge variant="outline" render={<a href="/plans/pro" />}>

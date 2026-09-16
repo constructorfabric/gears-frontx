@@ -22,14 +22,18 @@
  * (soft red fill, red label) are therefore both here on purpose: two
  * emphasis levels of the one red theme.css already names twice.
  *
- * Geometry follows upstream (px-2 py-0.5 text-xs, gap-1, rounded-full,
- * size-3 icon) snapped onto the token scales per the kit-wide "tokens win"
- * ruling (see theme.css): 2px vertical padding has no --space-* step of
- * its own, so it rounds up to --space-1 (4px) rather than introducing a
- * literal. Type metrics mix ramp roles the same way textarea.module.css
- * does: size/line-height from --text-meta (12/16, matching upstream's
- * text-xs exactly) but weight from --text-label (500, matching upstream's
- * font-medium — --text-meta-weight alone is regular/400).
+ * Geometry is the size axis below, not this rule: the spec draws the badge
+ * at three heights, and padding, type and the one explicit height all
+ * belong to whichever step is active. What stays here is what every step
+ * shares - the pill radius, the gap, the single-line rule and the
+ * transitions.
+ *
+ * There is no transparent border. The 1px border this file used to carry
+ * existed only so `outline` and the two ring states had something to
+ * recolor, and it added 2px to every badge's height, which is why the
+ * default measured 26 instead of the drawn 24 at that type step. Those
+ * three states now draw an INSET box-shadow instead: it paints in the same
+ * place and takes part in no layout, so all three keep the drawn height.
  */
 
 .badge {
@@ -41,14 +45,8 @@
   justify-content: center;
   gap: var(--space-1);
   overflow: hidden;
-  border: var(--border-width) solid transparent;
   border-radius: var(--radius-full);
-  padding: var(--space-1) var(--space-2);
   font-family: inherit;
-  font-size: var(--text-meta-size);
-  line-height: var(--text-meta-line-height);
-  font-weight: var(--text-label-weight);
-  letter-spacing: var(--text-meta-tracking);
   white-space: nowrap;
   /* One offset for every underline this file draws (link's rest style and
    * the tone hovers alike), so hover underlines sit at the same height
@@ -66,10 +64,75 @@
     box-shadow 150ms ease;
 }
 
+/* The icon box is 12 at every step: the spec draws one icon size for the
+ * badge and moves only the label. */
 .badge svg {
   pointer-events: none;
   width: var(--icon-size-xs);
   height: var(--icon-size-xs);
+}
+
+/*
+ * The optional status dot, a 6px round lead-in the spec draws on the badge
+ * (and, under two other master names, on the same anatomy elsewhere).
+ * `currentColor` rather than a rule per variant: every variant already sets
+ * `color` to its own label tone, so the dot follows the tone for free, and
+ * it sits in the badge's own `gap` so the spacing is not dot-specific.
+ * 6px has no --space-* step and is not spacing anyway - it is the drawn
+ * size of a shape.
+ */
+.dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background-color: currentColor;
+}
+
+/*
+ * The size axis. The spec draws three steps that differ in the label and
+ * in nothing else: padding is the same 4/8 at `sm` and `default`, and the
+ * height each renders falls out of its type step (16 + 4 + 4 = 24,
+ * 20 + 4 + 4 = 28) rather than being restated.
+ *
+ * `xs` is the drawn compact count badge and is the one step that does not
+ * fall out of its type: 10/14 with no block padding is 14, and the drawn
+ * box is 18, so the height is set. `min-width` is what actually governs a
+ * one-digit value, keeping it a circle-ish pill instead of a 6px-wide
+ * sliver. The 18/20/6 are drawn sizes with no step on the spacing scale
+ * between --space-1 and --space-2; tokens.test.ts carries the reasoned
+ * exception for the padding, and the value rule is what governs, not a
+ * rounding up to 8.
+ */
+.sizeXs {
+  height: 18px;
+  min-width: 20px;
+  padding-block: 0;
+  padding-inline: 6px;
+  font-size: var(--text-micro-size);
+  line-height: var(--text-micro-line-height);
+  /* The micro role ships the middle of its three drawn weights (500); the
+   * count badge is drawn on the 600 cut. The ramp names one weight per
+   * role, so the cut is set here, the same mixing this file already does
+   * with a --text-meta size under a --text-label weight. */
+  font-weight: 600;
+  letter-spacing: var(--text-micro-tracking);
+}
+
+.sizeSm {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-meta-tracking);
+}
+
+.sizeDefault {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-body-tracking);
 }
 
 /*
@@ -85,12 +148,15 @@
  * color, the same guarantee button.module.css documents for its own ring.
  * Only reachable at all once rendered as a link via `render`; a plain span
  * is never in the tab order.
+ *
+ * The inset half is a full --border-width-focus, not --ring-inset: that
+ * token is the thickness a 2px ring adds INSIDE an existing 1px border,
+ * and this badge has no border for it to add to.
  */
 .badge:focus-visible {
   outline: var(--border-width-focus) solid var(--ring);
   outline-offset: 2px;
-  border-color: var(--ring);
-  box-shadow: inset 0 0 0 var(--ring-inset) var(--ring);
+  box-shadow: inset 0 0 0 var(--border-width-focus) var(--ring);
 }
 
 @media (forced-colors: active) {
@@ -100,10 +166,9 @@
   }
 }
 
-/* Declared after :focus-visible so the invalid border wins while focused. */
+/* Declared after :focus-visible so the invalid ring wins while focused. */
 .badge[aria-invalid='true'] {
-  border-color: var(--destructive);
-  box-shadow: inset 0 0 0 var(--ring-inset) var(--destructive);
+  box-shadow: inset 0 0 0 var(--border-width-focus) var(--destructive);
 }
 
 .variantDefault {
@@ -130,8 +195,7 @@ a.variantSecondary:hover {
 }
 
 .variantDestructive:focus-visible {
-  border-color: var(--destructive-ring);
-  box-shadow: inset 0 0 0 var(--ring-inset) var(--destructive-ring);
+  box-shadow: inset 0 0 0 var(--border-width-focus) var(--destructive-ring);
 }
 
 /*
@@ -147,8 +211,10 @@ a.variantDestructive:hover {
   background-color: var(--destructive-hover);
 }
 
+/* The bordered variant's hairline, drawn as an inset shadow like the two
+ * ring states above so it costs the badge no height. */
 .variantOutline {
-  border-color: var(--border);
+  box-shadow: inset 0 0 0 var(--border-width) var(--border);
   color: var(--foreground);
 }
 
@@ -190,30 +256,22 @@ a.variantLink:hover {
  * them". This is that surface. Accent is the same shape over the
  * --accent/--accent-foreground pair, matching the mockup's Accent badge.
  *
- * Contrast: at 12px/500 these labels need 4.5:1 (WCAG 1.4.3). The debt
- * this comment used to record ("four pairs miss it, raised for a design
- * decision") was resolved BY that decision, at the token level: the Studio
- * blue rebrand ruled that a drawn status color failing AA gets a corrected
- * value in theme.css (see its header and the --success/--warning/--danger
- * comments there), so every pair this file paints now clears the floor on
- * its own fill — light success 5.00:1 / warning 4.67:1 / danger 5.72:1 /
- * info 4.59:1 / accent 4.68:1, dark success 8.05:1 / warning 10.03:1 /
- * danger 6.34:1 / info 6.62:1 / accent 13.77:1 — as does Neutral via
- * --secondary. Nothing here needed a local literal, which is the point of
- * fixing the pair where it is defined.
+ * Contrast: at this label size WCAG 1.4.3 asks 4.5:1, and on the drawn
+ * values three of these pairs do not reach it - light success 3.43:1,
+ * light warning 2.00:1, light danger 4.28:1 and dark danger 3.63:1, against
+ * light info 4.59:1, light accent 4.68:1, dark success 8.05:1, dark warning
+ * 10.03:1, dark info 6.62:1 and dark accent 13.77:1. The kit used to ship a
+ * corrected hex for each; under the value rule (see theme.css's header) the
+ * drawn value ships and the finding goes to the designer. Nothing here
+ * paints a local literal to work around it, which is the point: the pair is
+ * fixed where it is defined, or not at all.
  *
- * Hover used to mix the fill toward --foreground, the idiom
- * `a.variantDestructive` above once used — wrong here for a different
- * reason than that one's dark-mode flip: the tightest of these labels sit
- * on their own tint at a bare 4.59:1–4.68:1 (info has 0.09 of headroom,
- * warning 0.17), so ANY darkening of the fill toward the label's own
- * darker luminance shrinks that margin, and
- * standard OKLab interpolation puts every one of them under the floor
- * (light success 3.97:1, warning 3.70:1, info 3.65:1, accent 3.72:1) well
- * before the mix reaches 10%. Recoloring the fill on hover isn't safe at
- * this headroom, so hover instead underlines the label — the mockup draws
- * no badge hover state, and Link's own hover (above) already establishes
- * underline as this file's affordance for "hover, no color change".
+ * Hover does not recolor the fill. The idiom `a.variantDestructive` above
+ * once used mixes toward --foreground, which flips direction with the
+ * theme, and any darkening of these tints costs the label margin it does
+ * not have. Hover underlines instead: the spec draws no badge hover state,
+ * and Link's own hover above already establishes underline as this file's
+ * affordance for "hover, no color change".
  */
 .variantSuccess {
   background-color: var(--success-soft);

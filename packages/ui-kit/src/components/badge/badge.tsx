@@ -22,9 +22,11 @@ import styles from './badge.module.css';
  * keeps every upstream value's name and meaning intact — porting shadcn
  * markup here still renders what it renders upstream.
  *
- * Still deliberately absent: the dot/icon slots. The mockup's specimens
- * carry a 6px status dot, but that is anatomy, not paint, and this port
- * only carries what shadcn's own Badge carries — no bespoke additions.
+ * `size` is the second axis and is geometry only, the way `variant` is
+ * paint only: the spec draws the badge at three heights that differ in the
+ * label and in nothing else. `dot` is the third thing the spec draws, the
+ * optional 6px status dot; it is anatomy rather than paint, which is why it
+ * is a flag and not a variant value.
  *
  * Badge has no Base UI primitive, but still gets `render`-prop
  * polymorphism from `useRender`/`mergeProps` — the same utilities Base
@@ -46,20 +48,45 @@ const badgeVariants = cva(styles.badge, {
       info: styles.variantInfo,
       accent: styles.variantAccent,
     },
+    size: {
+      xs: styles.sizeXs,
+      sm: styles.sizeSm,
+      default: styles.sizeDefault,
+    },
   },
   defaultVariants: {
     variant: 'default',
+    size: 'default',
   },
 });
 
 export interface BadgeProps
-  extends useRender.ComponentProps<'span'>, VariantProps<typeof badgeVariants> {}
+  extends useRender.ComponentProps<'span'>, VariantProps<typeof badgeVariants> {
+  /** Renders the drawn 6px status dot ahead of the label, in the label's own tone. */
+  dot?: boolean;
+}
 
-export function Badge({ className, variant, render, ...props }: BadgeProps) {
+export function Badge({ className, variant, size, dot, render, children, ...props }: BadgeProps) {
   return useRender({
     defaultTagName: 'span',
     render,
-    props: mergeProps<'span'>({ className: badgeVariants({ variant, className }) }, props),
+    props: mergeProps<'span'>(
+      { className: badgeVariants({ variant, size, className }) },
+      props,
+      {
+        // The dot is decorative: the label beside it is what carries the
+        // meaning, and a screen reader announcing a shape would only add
+        // noise to it.
+        children: dot ? (
+          <>
+            <span className={styles.dot} aria-hidden="true" />
+            {children}
+          </>
+        ) : (
+          children
+        ),
+      },
+    ),
   });
 }
 

@@ -271,6 +271,16 @@ describe('theme tokens', () => {
       // height exactly (see input-group.module.css's `.group.sizeSm
       // .control` comment for the full sum).
       'input-group.module.css|padding-block|3px',
+      // The drawn compact count badge insets its label by 6px, and the
+      // spacing scale has no step between --space-1 (4) and --space-2 (8).
+      // Rounding it to 8 to avoid a literal would be a kit-side correction
+      // of a drawn value, which is exactly what the value rule forbids.
+      'badge.module.css|padding-inline|6px',
+      // Same badge, same reason on the other axis: the spec draws the micro
+      // step in three weights and the type ramp names one weight per role,
+      // so --text-micro-weight ships the middle cut (500) and the drawn 600
+      // is set at the call site.
+      'badge.module.css|font-weight|600',
     ]);
     for (const file of moduleFiles) {
       const base = file.slice(file.lastIndexOf('/') + 1);
