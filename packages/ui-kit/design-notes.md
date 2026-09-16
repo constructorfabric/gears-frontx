@@ -40,7 +40,7 @@ generate screens consistently.
 - Form validation integration (RHF/zod), i18n helpers, Storybook.
 - The larger blocks the F-mockups draw over kit primitives - Sidebar
   Navigation, Top Bar / Page Header, an App Shell, a Data Table toolbar with
-  bulk-selection bar and row states, and the Studio AI cards. Those frames
+  bulk-selection bar and row states, and the AI assistant cards. Those frames
   are titled "MVP Building blocks / shadcn compositions" in the design file
   itself: compositions over kit primitives, not kit components. They stay
   with consumers/templates; the kit's contribution is composition recipes
