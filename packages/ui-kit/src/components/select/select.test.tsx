@@ -173,21 +173,31 @@ describe('Select', () => {
     ).toBeUndefined();
   });
 
-  it('always opens the popup below the trigger, with no align-with-trigger attribute', () => {
+  // The drawn behaviour is the overlay one: the selected item positions
+  // over the trigger, which Base UI reports by resolving the side to
+  // 'none' rather than to a real edge. jsdom computes no layout, so that
+  // resolved side is the one placement outcome the library genuinely
+  // computes here, and it is what tells the two modes apart.
+  it('positions the selected item over the trigger by default', () => {
     renderSelect({ defaultOpen: true });
     const popup = screen.getByRole('listbox').closest(`.${styles.popup}`);
     expect(popup).not.toBeNull();
-    // The retired overlay mode's attribute is gone entirely (not set to
-    // "false") — kept as a regression guard against the prop coming back.
-    expect(popup?.hasAttribute('data-align-trigger')).toBe(false);
-    // What's actually load-bearing: this kit pins `alignItemWithTrigger=
-    // {false}` unconditionally (select.tsx), so Base UI's resolved side is
-    // never overridden to 'none' (its overlay-mode value) and always
-    // reflects the real positioning result. jsdom computes no layout, so
-    // floating-ui never has a reason to flip off the requested `side`
-    // default ('bottom') — this is the one placement outcome that's both
-    // genuinely computed by the library under jsdom and would go stale
-    // (stuck at 'none') if the kit ever went back to overlay mode.
+    expect(popup?.getAttribute('data-side')).toBe('none');
+  });
+
+  it('opens on the requested side once a caller turns the overlay mode off', () => {
+    render(
+      <Select defaultOpen defaultValue="apple">
+        <SelectTrigger aria-label="Fruit">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent alignItemWithTrigger={false}>
+          <SelectItem value="apple">Apple</SelectItem>
+          <SelectItem value="banana">Banana</SelectItem>
+        </SelectContent>
+      </Select>,
+    );
+    const popup = screen.getByRole('listbox').closest(`.${styles.popup}`);
     expect(popup?.getAttribute('data-side')).toBe('bottom');
   });
 });
@@ -208,5 +218,38 @@ describe('Select scroll-arrow height', () => {
   // scroll padding .list reserves for it.
   it('keeps .scrollArrow border-box so its height absorbs its own padding', () => {
     expect(declaredValue('.scrollArrow', 'box-sizing')).toBe('border-box');
+  });
+});
+
+/*
+ * The drawn trigger and option geometry. Two of the insets have no step on
+ * the spacing scale and are carried as reasoned exceptions in
+ * tokens.test.ts's metric guard, so only these cases keep them from
+ * drifting off the drawn box.
+ */
+describe('Select drawn geometry', () => {
+  it('insets the trigger by the drawn 10 on the label edge and 8 elsewhere', () => {
+    expect(declaredValue('.trigger', 'padding-block')).toBe('var(--space-2)');
+    expect(declaredValue('.trigger', 'padding-inline')).toBe('10px var(--space-2)');
+  });
+
+  it('puts the two trigger heights on the drawn steps, with the corner to match', () => {
+    expect(declaredValue('.sizeDefault', 'height')).toBe('var(--control-height-sm)');
+    expect(declaredValue('.sizeSm', 'height')).toBe('var(--control-height-xs)');
+    expect(declaredValue('.trigger', 'border-radius')).toBe('var(--radius-lg)');
+    expect(declaredValue('.sizeSm', 'border-radius')).toBe('var(--radius-md)');
+  });
+
+  it('gives the option row the drawn insets and corner', () => {
+    expect(declaredValue('.item', 'padding')).toBe(
+      'var(--space-1) var(--space-8) var(--space-1) 6px',
+    );
+    expect(declaredValue('.item', 'border-radius')).toBe('var(--radius-md)');
+  });
+
+  it('keeps the popup at the drawn corner and minimum width', () => {
+    expect(declaredValue('.popup', 'border-radius')).toBe('var(--radius-lg)');
+    // 9rem is the drawn 144 exactly; recorded rather than re-expressed.
+    expect(declaredValue('.popup', 'min-width')).toBe('9rem');
   });
 });

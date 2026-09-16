@@ -24,14 +24,15 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  /* The drawn trigger insets 8 on both horizontal edges, not 12 on the
-   * label side. The spec draws a single 32px trigger, which is this
-   * component's `sm`; the kit's own default (40) and `filter` (36) are not
-   * drawn and keep their heights. */
-  padding: var(--space-2);
+  /* The drawn trigger insets 8 on the block axis and on the chevron edge,
+   * and 10 on the label edge. 10 has no step on the spacing scale, which
+   * runs 8 then 12; rounding it would be a kit-side correction of a drawn
+   * value, and select.test.tsx pins the literal. */
+  padding-block: var(--space-2);
+  padding-inline: 10px var(--space-2);
   border: var(--border-width) solid var(--input);
   border-radius: var(--radius-lg);
-  /* Fields sit raised, not transparent, per the Field spec (frame 193:433). */
+  /* Fields sit raised, not transparent, per the drawn field. */
   background-color: var(--surface-elevated);
   color: var(--foreground);
   font-family: inherit;
@@ -91,16 +92,16 @@
     var(--destructive);
 }
 
-/* The mockups' Field spec: a default select is 40px — the lg step of the
- * control scale (see theme.css). */
+/* The drawn trigger is 32, which is the omitted size. */
 .sizeDefault {
-  height: var(--control-height-lg);
+  height: var(--control-height-sm);
 }
 
-/* 32px — the one height the drawn controls and the token spec agree on
- * (see button.module.css's .sizeSm note). */
+/* One step down the control ladder, with the corner one step down the
+ * radius scale to match: a 28px control reads square at a 10px corner. */
 .sizeSm {
-  height: var(--control-height-sm);
+  height: var(--control-height-xs);
+  border-radius: var(--radius-md);
 }
 
 .variantDefault {
@@ -108,9 +109,10 @@
 }
 
 /*
- * The Field/filter chip (see select.tsx): 36px, the md step. Declared
- * after the size classes: equal specificity, later source order, so the
- * compact height wins over whichever size is active.
+ * The filter chip (see select.tsx): 36px, the md step. Not drawn, so it
+ * keeps its height. Declared after the size classes: equal specificity,
+ * later source order, so the chip height wins over whichever size is
+ * active.
  */
 .variantFilter {
   height: var(--control-height-md);
@@ -282,8 +284,11 @@
   width: 100%;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-8) var(--space-2) var(--space-2);
-  border-radius: var(--radius-sm);
+  /* The drawn option row: 4 on the block axis, 6 on the label edge and 32
+   * on the indicator edge. 6 has no step between --space-1 (4) and
+   * --space-2 (8); select.test.tsx pins the literal. */
+  padding: var(--space-1) var(--space-8) var(--space-1) 6px;
+  border-radius: var(--radius-md);
   cursor: default;
   user-select: none;
   /* The drawn dropdown options (Overlay symbol, 197:399) are 12px — Meta;

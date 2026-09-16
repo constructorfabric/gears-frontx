@@ -49,6 +49,24 @@ export default function SelectExample() {
         </Select>
       </Section>
 
+      {/* The drawn overlay behaviour is the default: the selected item
+          positions over the trigger and the open animation is suppressed
+          while it does. Passing false opens the list on `side` instead. */}
+      <Section title="Opened on its side">
+        <Select items={REGIONS} defaultValue={REGIONS[2]?.value}>
+          <SelectTrigger aria-label="Region, side-positioned">
+            <SelectValue placeholder="Pick a region" />
+          </SelectTrigger>
+          <SelectContent alignItemWithTrigger={false}>
+            {REGIONS.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Section>
+
       <Section title="Groups">
         <Select items={REGIONS}>
           <SelectTrigger aria-label="Region, grouped">

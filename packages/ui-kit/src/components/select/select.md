@@ -33,14 +33,18 @@ raw value instead of the label until the popup has been opened once.
 
 | Prop | Type | Default |
 |------|------|---------|
-| `size` | `default` \| `sm` - a 40 or a 32 px trigger; the design spec draws the 32 one, and both inset their content by 8 on each horizontal edge | `default` |
+| `size` | `default` \| `sm` - a 32 or a 28 px trigger; the drawn 32 one is the omitted size, and both inset their label edge by 10 and their chevron edge by 8 | `default` |
 | `variant` | `default` \| `filter` — `filter` is the compact toolbar filter chip: 36px tall and the label stays `--muted-foreground` even with a value chosen (in a filter the message is "this narrows the list", not the picked value). Compose the visible label yourself, e.g. `Filter · {count}` | `default` |
 | `className` | `string` — merged after the kit class | — |
 
+`SelectContent`:
+
+| Prop | Type | Default |
+|------|------|---------|
+| `alignItemWithTrigger` | `boolean` - positions the selected item over the trigger and suppresses the open animation, which is the drawn behaviour; `false` opens the list on `side` instead | `true` |
+
 `SelectValue`: renders the selected item's label. Pass `placeholder`
-directly to `SelectValue` (see example). `SelectContent` always opens the
-list on its `side` (below the trigger by default) — it never overlays the
-trigger the way a native `<select>` does. With no value selected the list
+directly to `SelectValue` (see example). With no value selected the list
 starts scrolled to the top; when the selected option is beyond the fold,
 it is scrolled into view on open. `SelectContent` accepts positioning
 props (`side`, `sideOffset`, `align`, `alignOffset`, plus the escape

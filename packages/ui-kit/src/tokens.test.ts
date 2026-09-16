@@ -330,6 +330,12 @@ describe('theme tokens', () => {
       // both literals.
       'popover.module.css|padding|10px',
       'popover.module.css|gap|10px',
+      // The drawn select trigger insets its label edge by 10 and the drawn
+      // option row insets its label edge by 6. The spacing scale carries
+      // neither (4, 8, 12 with nothing between), and rounding either would
+      // be a kit-side correction. select.test.tsx pins both literals.
+      'select.module.css|padding-inline|10px var(--space-2)',
+      'select.module.css|padding|var(--space-1) var(--space-8) var(--space-1) 6px',
     ]);
     for (const file of moduleFiles) {
       const base = file.slice(file.lastIndexOf('/') + 1);

@@ -31,10 +31,11 @@ const triggerVariants = cva(styles.trigger, {
       sm: styles.sizeSm,
     },
     /*
-     * `filter` is the mockups' Field/filter type (Figma frame 193:433): the
-     * same select, compacted into a toolbar filter chip — 36px, label in
-     * --muted-foreground even with a value chosen, because in a filter the
-     * enduring message is "this narrows the list", not the picked value.
+     * `filter` is the same select compacted into a toolbar filter chip:
+     * 36px, label in --muted-foreground even with a value chosen, because
+     * in a filter the enduring message is "this narrows the list", not the
+     * picked value. The spec draws no filter chip, so the step is the kit's
+     * own and keeps its height.
      */
     variant: {
       default: styles.variantDefault,
@@ -76,6 +77,8 @@ export interface SelectContentProps
       | 'positionMethod'
       | 'collisionBoundary'
       | 'collisionPadding'
+      // The drawn overlay behaviour, exposed so a caller can opt out of it.
+      | 'alignItemWithTrigger'
     > {
   className?: string;
   /**
@@ -94,6 +97,7 @@ export function SelectContent({
   sideOffset = 4,
   align = 'center',
   alignOffset = 0,
+  alignItemWithTrigger = true,
   positionMethod,
   collisionBoundary,
   collisionPadding,
@@ -107,15 +111,15 @@ export function SelectContent({
         align={align}
         alignOffset={alignOffset}
         /*
-         * Never the Base UI default overlay mode (selected item aligned over
-         * the trigger): the popup always opens on `side`, below by default.
-         * With nothing selected the list starts at the top; a selected item
-         * beyond the fold is scrolled into view natively on open — Floating
-         * UI's useListNavigation calls scrollIntoView({block: 'nearest'})
-         * when a selectedIndex exists (verified against @base-ui/react 1.6.0
-         * sources), so no scroll code of ours is needed.
+         * The drawn behaviour: the selected item positions over the trigger,
+         * and Base UI suppresses the open animation while it does. A caller
+         * who wants the popup to open on `side` instead passes `false`, and
+         * then `side`/`align` decide the placement as they do on every other
+         * popup in the kit. With nothing selected the list starts at the
+         * top; a selected item beyond the fold is scrolled into view
+         * natively on open, so no scroll code of ours is needed either way.
          */
-        alignItemWithTrigger={false}
+        alignItemWithTrigger={alignItemWithTrigger}
         positionMethod={positionMethod}
         collisionBoundary={collisionBoundary}
         collisionPadding={collisionPadding}
