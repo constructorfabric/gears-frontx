@@ -52,11 +52,16 @@
  * the component level since no other component needs a non-color property
  * to flip with the theme.
  */
+/* An INSET ring, not a border: an absolutely positioned pseudo-element
+ * with `inset: 0` and a border paints one pixel outside the root's own box
+ * on each edge, so the drawn 24 / 32 / 40 would read a pixel larger than it
+ * measures. An inset shadow paints in the same place and takes part in no
+ * box at all. */
 .avatar::after {
   content: '';
   position: absolute;
   inset: 0;
-  border: var(--border-width) solid var(--border);
+  box-shadow: inset 0 0 0 var(--border-width) var(--border);
   border-radius: inherit;
   mix-blend-mode: darken;
   pointer-events: none;
@@ -114,9 +119,9 @@
 }
 
 /*
- * The fill matrix, from the Figma spec sheet "Phase 3 / Avatar" (node
- * 40001346:4724): six identity tones x two treatments, one theme variable
- * pair per cell. Its API note names the axes verbatim — "treatment: solid |
+ * The fill matrix, from the design spec's avatar sheet: six identity tones
+ * x two treatments, one theme variable pair per cell. Its API note names
+ * the axes verbatim - "treatment: solid |
  * soft; tone: neutral | accent | info | success | warning | danger".
  *
  * `solid` paints the tone at full strength; `soft` inverts the pair — the
@@ -237,6 +242,9 @@
   display: none;
 }
 
+/* The drawn middle badge is 10, which no icon or spacing step carries: the
+ * icon scale runs 12 / 16 / 20 / 24 and the spacing scale 4 / 8 / 12. The
+ * literal is the drawn value and avatar.test.tsx pins it. */
 .sizeDefault .badge {
   width: 0.625rem;
   height: 0.625rem;
@@ -276,8 +284,10 @@
   border-radius: var(--radius-full);
   background-color: var(--muted);
   color: var(--muted-foreground);
-  font-size: var(--text-label-size);
-  line-height: var(--text-label-line-height);
+  /* The drawn count label is 14 at every group size; only the circle and
+   * the icon move with the group. */
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
   box-shadow: 0 0 0 2px var(--background);
 }
 
@@ -289,19 +299,12 @@
 /*
  * AvatarGroupCount takes no `size` prop of its own upstream — it sizes
  * itself off the group's OTHER children via `group-has-data-[size=…]`
- * (new-york's Tailwind translation). `:has()` is the same relationship
+ * (new-york's own translation). `:has()` is the same relationship
  * without a data attribute: is there a sibling carrying that size class.
  */
 .group:has(> .sizeSm) .groupCount {
   width: 1.5rem;
   height: 1.5rem;
-  font-size: var(--text-meta-size);
-  line-height: var(--text-meta-line-height);
-}
-
-.group:has(> .sizeSm) .groupCount svg {
-  width: 0.75rem;
-  height: 0.75rem;
 }
 
 .group:has(> .sizeLg) .groupCount {

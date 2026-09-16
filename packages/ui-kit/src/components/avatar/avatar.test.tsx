@@ -1,5 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 
 import {
   Avatar,
@@ -201,5 +207,60 @@ describe('AvatarGroup', () => {
     expect(count.className).toContain(styles.toneInfo);
     expect(count.className).toContain(styles.variantSolid);
     expect(count.className).toContain(styles.groupCount);
+  });
+});
+
+/*
+ * The drawn avatar geometry. jsdom computes no layout, so the sizes, the
+ * rings and the two literals with no step on any scale are asserted on the
+ * declarations.
+ */
+describe('Avatar drawn geometry', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'avatar.module.css'), 'utf8'),
+  );
+
+  function declared(selector: string, prop: string) {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('keeps the root at the drawn 24 / 32 / 40 with the hairline inside it', () => {
+    expect(declared('.sizeSm', 'width')).toBe('1.5rem');
+    expect(declared('.sizeDefault', 'width')).toBe('var(--space-8)');
+    expect(declared('.sizeLg', 'width')).toBe('2.5rem');
+    // An inset ring, not a border: an absolutely positioned pseudo-element
+    // with `inset: 0` and a border paints outside the root's own box.
+    expect(declared('.avatar::after', 'box-shadow')).toBe(
+      'inset 0 0 0 var(--border-width) var(--border)',
+    );
+    expect(declared('.avatar::after', 'border')).toBeUndefined();
+  });
+
+  it('steps the badge with its parent and rings it in the page fill', () => {
+    expect(declared('.sizeSm .badge', 'width')).toBe('0.5rem');
+    // 10 has no step on the icon or spacing scale; the literal is drawn.
+    expect(declared('.sizeDefault .badge', 'width')).toBe('0.625rem');
+    expect(declared('.sizeLg .badge', 'width')).toBe('0.75rem');
+    expect(declared('.badge', 'box-shadow')).toBe('0 0 0 2px var(--background)');
+    // The glyph is hidden at the smallest badge, which is a dot.
+    expect(declared('.sizeSm .badge svg', 'display')).toBe('none');
+  });
+
+  it('overlaps group children by the drawn 8 and rings each of them', () => {
+    expect(declared('.group > * + *', 'margin-left')).toBe('calc(-1 * var(--space-2))');
+    expect(declared('.group > .avatar', 'box-shadow')).toBe('0 0 0 2px var(--background)');
+  });
+
+  it('matches the count to the group and holds its label at 14', () => {
+    expect(declared('.groupCount', 'width')).toBe('var(--space-8)');
+    expect(declared('.group:has(> .sizeSm) .groupCount', 'width')).toBe('1.5rem');
+    expect(declared('.group:has(> .sizeLg) .groupCount', 'width')).toBe('2.5rem');
+    expect(declared('.groupCount', 'font-size')).toBe('var(--text-body-size)');
+    // Only the circle and the icon move with the group.
+    expect(declared('.group:has(> .sizeSm) .groupCount', 'font-size')).toBeUndefined();
+    expect(declared('.groupCount svg', 'width')).toBe('1rem');
+    expect(declared('.group:has(> .sizeSm) .groupCount svg', 'width')).toBeUndefined();
+    expect(declared('.group:has(> .sizeLg) .groupCount svg', 'width')).toBe('1.25rem');
   });
 });

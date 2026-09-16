@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@gears-frontx/ui-kit';
 
-import { DemoIcon, Row, Section } from '../shared';
+import { DemoIcon, Measure, Row, Section } from '../shared';
 
 export default function AvatarExample() {
   return (
@@ -26,18 +26,66 @@ export default function AvatarExample() {
         </Row>
       </Section>
 
+      {/* The drawn geometry at every size: the root has to measure 24 /
+          32 / 40 exactly, hairline included, and the badge, the group
+          overlap and the count circle step with it. */}
       <Section title="Sizes">
-        <Row>
-          <Avatar size="sm">
-            <AvatarFallback>JD</AvatarFallback>
-          </Avatar>
-          <Avatar>
-            <AvatarFallback>JD</AvatarFallback>
-          </Avatar>
-          <Avatar size="lg">
-            <AvatarFallback>JD</AvatarFallback>
-          </Avatar>
-        </Row>
+        <Measure
+          of={{
+            'root sm': '#av-sm',
+            'root default': '#av-default',
+            'root lg': '#av-lg',
+            'badge sm': '#av-sm span:last-child',
+            'badge default': '#av-default span:last-child',
+            'badge lg': '#av-lg span:last-child',
+            'group first': '#av-group > *:first-child',
+            'group second': '#av-group > *:nth-child(2)',
+            'count default': '#av-count-default',
+            'count sm': '#av-count-sm',
+            'count lg': '#av-count-lg',
+            'count icon lg': '#av-count-lg svg',
+          }}
+        >
+          <Row>
+            <Avatar id="av-sm" size="sm">
+              <AvatarFallback>JD</AvatarFallback>
+              <AvatarBadge />
+            </Avatar>
+            <Avatar id="av-default">
+              <AvatarFallback>JD</AvatarFallback>
+              <AvatarBadge />
+            </Avatar>
+            <Avatar id="av-lg" size="lg">
+              <AvatarFallback>JD</AvatarFallback>
+              <AvatarBadge />
+            </Avatar>
+          </Row>
+          <Row>
+            <AvatarGroup id="av-group">
+              <Avatar>
+                <AvatarFallback>JD</AvatarFallback>
+              </Avatar>
+              <Avatar>
+                <AvatarFallback>AB</AvatarFallback>
+              </Avatar>
+              <AvatarGroupCount id="av-count-default">+3</AvatarGroupCount>
+            </AvatarGroup>
+            <AvatarGroup>
+              <Avatar size="sm">
+                <AvatarFallback>JD</AvatarFallback>
+              </Avatar>
+              <AvatarGroupCount id="av-count-sm">+2</AvatarGroupCount>
+            </AvatarGroup>
+            <AvatarGroup>
+              <Avatar size="lg">
+                <AvatarFallback>JD</AvatarFallback>
+              </Avatar>
+              <AvatarGroupCount id="av-count-lg">
+                <DemoIcon />
+              </AvatarGroupCount>
+            </AvatarGroup>
+          </Row>
+        </Measure>
       </Section>
 
       <Section title="Fill · solid">

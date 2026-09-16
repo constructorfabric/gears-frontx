@@ -92,7 +92,9 @@ Plus all native `<div>` props. It takes the same fill matrix as
 `AvatarFallback` so a "+3" chip can match the toned members it caps off.
 It takes no `size` prop — it sizes itself off its sibling `Avatar`s' `size`
 inside the same `AvatarGroup` (via a CSS `:has()` selector), because size
-is a property of the group while tone is a choice about this one chip.
+is a property of the group while tone is a choice about this one chip. The
+circle matches the group (24 / 32 / 40) and the icon steps with it (16 at
+the two smaller sizes, 20 at `lg`); the label stays at 14 throughout.
 
 ## Examples
 
