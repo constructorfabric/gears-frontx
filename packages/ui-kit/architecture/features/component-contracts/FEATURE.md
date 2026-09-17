@@ -127,10 +127,11 @@ Prose describing a component can only be reviewed by a person, one screen at a t
 **Success Scenarios**:
 - The guard holds every component in the change's scope to a fresh, complete contract and reports each decision; a change touching only undescribed components passes with each reported as not yet requiring one.
 - The compatibility check compares every committed contract against the base reference and reports each as compatible, as incompatible with the contract major moved, or as refused.
-- The enrollment report prints the described set against the component set and never fails.
+- The enrollment report prints the described set against the component set; the counts never fail the run.
 
 **Error Scenarios**:
 - A subcommand invoked without the base reference it needs, or a subcommand the command does not answer to: the usage line is printed and the run fails.
+- The enrollment report finds a prop one edit from a name the contract declares: the run fails naming the prop, the declared name and the example it sits in.
 - An enrolled component's committed artifacts no longer equal a fresh compile: the run fails naming the component and the command that regenerates it.
 - An enrolled component's directory no longer exists: the run fails, because the enrolled set still names it.
 - A contract narrowed at an unchanged major: the run fails naming every reason.
@@ -147,7 +148,7 @@ Prose describing a component can only be reviewed by a person, one screen at a t
 6. [x] - `p1` - **IF** the subcommand is the compatibility check - `inst-dispatch-compat`
    1. [x] - `p1` - Compare every committed contract against the base reference, sweep for the contracts that only exist there, and **RETURN** a non-zero exit on any refusal - `inst-compat-exit`
 7. [x] - `p1` - **IF** the subcommand is the enrollment report - `inst-dispatch-enrollment`
-   1. [x] - `p1` - Print the report and **RETURN** success whatever the numbers are - `inst-enrollment-exit`
+   1. [x] - `p1` - Print the report and **RETURN** a non-zero exit when it found a prop one edit from a name the contract declares, success otherwise. The counts state where enrollment stands and never fail a build; a near miss is a defect whichever command finds it, and the report is documented with a machine-readable form for a caller that reads the exit code rather than the lines - `inst-enrollment-exit`
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -712,7 +713,7 @@ The system **MUST** report the described set against the component set, with a p
 - [x] A component's mount points are filled from every other contract's accepted components, never authored: an overlay writing a component reference there is refused with the fact that fills it, a container outside the kit is authored beside the filled ones, and a part of a compound component is only ever filled a mount point inside its own family.
 - [x] What a component accepts inside it is always stated: "unconstrained" for a component that accepts whatever a consumer puts in it, "nothing" for one that renders its own body, and "specified" with at least one of accepted components or text beside it. Detail beside either of the first two is refused by the vocabulary, and "specified" with no detail is refused too.
 - [x] Every `props` entry is keyed on a real property of the component, checked against the extraction; every `unexposed_parts` entry names the internal part and why it is not exposed.
-- [x] The enrollment report prints the described set against the component set and sets no exit code, whatever the numbers are.
+- [x] The enrollment report prints the described set against the component set and sets no exit code from the counts, whatever they are; it fails on a near miss in an enrolled component's example, and the command line carries that status out.
 - [x] Every member of a compound component's family names the family by the same token and states its own role; the root carries the member list the other members' own statements produce, a part carries none, and a family with two roots or no root at all fails the compile naming both sides.
 - [x] Every meaning field appears exactly once, as an ordinary property of the component's one document, beside its identity, the vocabulary version, the reference a type registry resolves, what the extraction read off the source, and the props surface.
 - [x] Recompiling every described component produces a byte-identical document whatever else ran in the same process, and the counting that feeds the enrollment report and the guard's completeness check never reaches the extraction a contract is compiled from.

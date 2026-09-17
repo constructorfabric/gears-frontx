@@ -81,9 +81,15 @@ describe('runCli', () => {
     expect(runner.calls).toEqual([{ npmScript: 'contracts:check', args: ['guard', '--base', 'origin/develop'] }]);
   });
 
-  it('never lets a nonzero enrollment-report exit fail the policy - the report is informational only', () => {
+  it('fails the policy on a nonzero enrollment-report exit - a near miss is a defect whichever command found it', () => {
     const runner = fakeRunner({ 'contracts:enrollment': 1 });
     const exit = runCli({ argv: ['--base-ref', 'origin/develop'], env: {}, log: () => {}, runner });
-    expect(exit).toBe(0);
+    expect(exit).toBe(1);
+  });
+
+  it('still gates on the enrollment report when there is no base ref to skip guard and compat for', () => {
+    const runner = fakeRunner({ 'contracts:enrollment': 1 });
+    const exit = runCli({ argv: [], env: {}, log: () => {}, runner });
+    expect(exit).toBe(1);
   });
 });

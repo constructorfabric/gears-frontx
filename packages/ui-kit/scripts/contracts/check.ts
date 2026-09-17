@@ -1063,43 +1063,53 @@ function invokedDirectly(): boolean {
   return import.meta.url === pathToFileURL(entry).href;
 }
 
+// The subcommand dispatch, as a function that RETURNS the exit code rather
+// than a switch assigning process.exitCode in each branch. Every subcommand
+// answers the same way then, and the answer is read in one place - a branch
+// cannot quietly drop the code the check it ran computed. Exported so a test
+// can drive it against a fixture repository, the way the three subcommands
+// themselves are driven.
 // @cpt-flow:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1
-if (invokedDirectly()) {
+export function runSubcommand(argv: string[], ctx: CheckContext = defaultCheckContext()): number {
   // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-invoke-check
-  const [command, ...rest] = process.argv.slice(2);
+  const [command, ...rest] = argv;
   const json = parseJsonFlag(rest);
   // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-invoke-check
   switch (command) {
     // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-dispatch-compat
     case 'compat':
-      // process.exitCode rather than process.exit(): the latter can truncate
-      // a still-flushing stdout write, which for a check means losing the
-      // very lines that say what failed.
       // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-compat-exit
-      process.exitCode = runCompat(parseBaseArg(rest), { json });
-      // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-compat-exit
-      break;
+      return runCompat(parseBaseArg(rest), { json }, ctx);
+    // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-compat-exit
     // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-dispatch-compat
     // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-dispatch-guard
     case 'guard':
       // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-guard-exit
-      process.exitCode = runGuard(parseBaseArg(rest), { json });
-      // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-guard-exit
-      break;
+      return runGuard(parseBaseArg(rest), { json }, ctx);
+    // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-guard-exit
     // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-dispatch-guard
     // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-dispatch-enrollment
     case 'enrollment':
+      // A near miss in an enrolled component's example is a defect whichever
+      // command finds it, and `--json` exists for a programmatic caller that
+      // reads the exit code rather than the lines.
       // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-enrollment-exit
-      runEnrollment({ json });
-      // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-enrollment-exit
-      break;
+      return runEnrollment({ json }, ctx);
+    // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-enrollment-exit
     // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-dispatch-enrollment
     // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-unknown-subcommand
     default:
       // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-unknown-subcommand-exit
       console.error('Usage: contracts:check <compat --base <git-ref> | guard --base <git-ref> | enrollment> [--json]');
-      process.exit(1);
-      // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-unknown-subcommand-exit
+      return 1;
+    // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-unknown-subcommand-exit
     // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-unknown-subcommand
   }
+}
+
+if (invokedDirectly()) {
+  // process.exitCode rather than process.exit(): the latter can truncate a
+  // still-flushing stdout write, which for a check means losing the very
+  // lines that say what failed.
+  process.exitCode = runSubcommand(process.argv.slice(2));
 }

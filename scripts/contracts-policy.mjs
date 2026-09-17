@@ -5,11 +5,13 @@
  * branch exists to build did not exist in the shipped workflow).
  *
  * Runs, in the ui-kit workspace: `contracts:check -- guard --base <ref>`,
- * `contracts:check -- compat --base <ref>`, then `contracts:enrollment`
- * (informational only - enrolled.json is an opt-in allowlist grown one
- * component at a time, not a floor every component must already meet, so a
- * low enrollment number never fails the build; it runs last, for visibility,
- * whether or not guard/compat ran at all).
+ * `contracts:check -- compat --base <ref>`, then `contracts:enrollment`,
+ * and fails the build on the first nonzero status. enrolled.json is an
+ * opt-in allowlist grown one component at a time, not a floor every
+ * component must already meet, so a low enrollment number is never a
+ * failure - the enrollment step fails only on a near miss in an enrolled
+ * component's own example, which no count can excuse. It runs last, and
+ * whether or not guard/compat ran at all.
  *
  * The base ref is never guessed here - this script only accepts one, either
  * as `--base-ref <ref>` or CONTRACTS_POLICY_BASE_REF, and does nothing
@@ -27,7 +29,7 @@
  * push) and this script just runs against whatever it is given - if nothing
  * is given (a branch's first push has no `before` commit worth diffing
  * against), guard/compat are skipped with a printed reason rather than
- * diffing against nothing; the enrollment report still runs.
+ * diffing against nothing; the enrollment step still runs and still gates.
  *
  * CLI entry: `node scripts/contracts-policy.mjs [--base-ref <ref>]`
  * (exit 0 on success). Core logic is exported for unit tests.
@@ -102,12 +104,13 @@ export function runCli(options = {}) {
     if (compatExit !== 0) return compatExit;
   }
 
-  // Never gates the build on its own exit code - `contracts:enrollment` itself
-  // never calls process.exit(1) (see check.ts's runEnrollment), so this is
-  // belt-and-braces against a future change to that contract, not a real
-  // branch this policy expects to take today.
-  runner.run('contracts:enrollment', []);
-  return 0;
+  // Gated like the two before it. What the report counts - how many
+  // components carry a contract, which forwarded props no surface declares -
+  // never produces a nonzero status; what it fails on is a prop one edit from
+  // a name the contract declares, and that is a defect regardless of which
+  // command found it. It runs last and unconditionally, so the counts are
+  // printed even on a branch with no base ref to diff against.
+  return runner.run('contracts:enrollment', []);
 }
 
 const isEntryPoint = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;

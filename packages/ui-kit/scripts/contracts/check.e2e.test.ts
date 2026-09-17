@@ -28,7 +28,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { OPEN_UNEVALUATED } from './compile';
 import { nearMissesIn, propsPassedTo } from './check-lib';
-import { runCompat, runEnrollment, runGuard, type CheckContext } from './check';
+import { runCompat, runEnrollment, runGuard, runSubcommand, type CheckContext } from './check';
 import { componentRef, COMPONENT_TYPE_ID_BARE, elementTypeId, elementTypeRef, METAMODEL_VERSION } from './ids';
 import { applyContractTestTimeout } from './testing';
 
@@ -534,6 +534,31 @@ describe("guard/enrollment: a near miss in a contract's own examples", () => {
 
     expect(runEnrollment({ json: false }, fixture.context)).toBe(1);
     expect(fixture.output()).toContain('"variannt" in examples.good "ghost variant" - probably "variant"');
+  });
+
+  it('carries the enrollment finding out through the command line the way guard and compat do', () => {
+    // The report's own exit code is only worth computing if the dispatch
+    // hands it on: a caller reading `--json` off stdout reads the status
+    // beside it, and the guard is not the only command that may run.
+    const fixture = createFixture();
+    committedButtonKit(fixture);
+    fixture.write(
+      'src/components/button/button.contract.json',
+      contractJson('button', {
+        element: 'dom_button',
+        properties: { variant: { type: 'string' } },
+        examples: {
+          good: [{ title: 'ghost variant', code: '<Button variannt="ghost">Click</Button>' }],
+          bad: [],
+        },
+      }),
+    );
+
+    expect(runSubcommand(['enrollment'], fixture.context)).toBe(1);
+  });
+
+  it('answers a subcommand it does not know with a non-zero exit', () => {
+    expect(runSubcommand(['inventory'], createFixture().context)).toBe(1);
   });
 });
 
