@@ -1121,9 +1121,11 @@ carries the TARGET's major, read from the target's overlay, so moving one
 component's major moves that component's identifiers and the references to it,
 and nothing else. The shape rule that the forwarded surface already had is now
 one function over both halves of a contract. And a declared prop that left
-`properties` is reconciled against the forwarded surface: accepted there, by
-declaration or by pattern, it is reported as moved rather than removed, with
-the shapes compared where the surface declares one.
+`properties` is reconciled against the forwarded surface: declared there under
+the same name, it is reported as moved rather than removed, with the two
+shapes compared. A name that surface admits only through a pattern family is a
+removal - the family admits a shape of name, and nothing behind it is the prop
+that left.
 
 **Decisions taken along the way.**
 

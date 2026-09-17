@@ -723,7 +723,7 @@ describe('diffOwnPropsSchema: narrowing and the forwarded surface', () => {
     expect(diff.narrowedProps).toEqual([]);
   });
 
-  it('reconciles a prop that left properties but is still accepted by the forwarded surface', () => {
+  it('reconciles a prop that left properties but is still declared by the forwarded surface', () => {
     // A component dropping its own `className` declaration still forwards
     // `className` to its host element, so nothing a consumer passes stops
     // validating. Reported, because the declaration really did disappear,
