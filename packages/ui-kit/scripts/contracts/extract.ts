@@ -959,17 +959,93 @@ function unwrapComponentInitializer(expr: ts.Expression | undefined, checker: ts
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 }
 
+// React's own ReactElement, taken from the program's copy of @types/react by
+// symbol rather than by the name at any use site - the same technique
+// classifyHeritageReference uses, for the same reason: a locally declared
+// type named ReactElement is not React's, and React's stays React's under
+// any import alias. A program with no React in its closure answers undefined,
+// which reads as "nothing here can be a component", the honest answer for a
+// file that cannot render.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
-function isReactComponentCandidate(
-  node: ts.Node,
-  checker: ts.TypeChecker,
-): node is ts.FunctionDeclaration | ts.VariableDeclaration {
-  if (ts.isFunctionDeclaration(node) && node.name && /^[A-Z]/.test(node.name.text)) return true;
-  if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && /^[A-Z]/.test(node.name.text)) {
-    const inner = unwrapComponentInitializer(node.initializer, checker);
-    if (inner && (ts.isArrowFunction(inner) || ts.isFunctionExpression(inner))) return true;
+function resolveReactElementType(program: ts.Program, checker: ts.TypeChecker): ts.Type | undefined {
+  for (const file of program.getSourceFiles()) {
+    if (!/[\\/]node_modules[\\/]@types[\\/]react[\\/]index\.d\.ts$/.test(file.fileName)) continue;
+    const moduleSymbol = checker.getSymbolAtLocation(file);
+    if (!moduleSymbol) continue;
+    const exported = checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.getName() === 'ReactElement');
+    if (exported) return checker.getDeclaredTypeOfSymbol(exported);
   }
-  return false;
+  return undefined;
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
+}
+
+// Whether a call signature's return type can be a React element. ReactNode is
+// the wrong question to ask here even though every component returns one:
+// `string` is a ReactNode, so a formatter would answer yes. The test is
+// therefore against ReactElement in both directions - either every value the
+// signature returns is an element (`JSX.Element`), or an element is one of
+// the values it admits (`ReactNode`, `ReactNode | Promise<ReactNode>`, which
+// is what React's own FC returns). `any` and `unknown` admit an element too,
+// and admit everything else with it, so they are refused rather than read as
+// a description of anything.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
+function returnsReactElement(returnType: ts.Type, checker: ts.TypeChecker, reactElement: ts.Type): boolean {
+  if (returnType.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return false;
+  return checker.isTypeAssignableTo(returnType, reactElement) || checker.isTypeAssignableTo(reactElement, returnType);
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
+}
+
+// The forms an exported declaration can take and still be this kit's idea of
+// a component. Two of them have a function body that renders; the third has
+// no body at all and is recognised by its type, so the two are kept apart
+// here rather than collapsed into "has a body or not" - an ambient
+// `declare function Widget()` also has no body, and is not a component.
+type ComponentShape =
+  // A body containing JSX, or returning the primitive library's useRender.
+  | { readonly form: 'body' }
+  // An alias of a component-typed callable: the signature is the aliased
+  // callable's own, and the props parameter below is read from it.
+  | { readonly form: 'alias'; readonly signature: ts.Signature };
+
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
+function renderingShape(body: ts.Node, checker: ts.TypeChecker): ComponentShape | undefined {
+  return containsJsx(body) || returnsUseRender(body, checker) ? { form: 'body' } : undefined;
+}
+
+// An alias carries no body to read, so the question is asked of its TYPE:
+// does what it names return a React element. The rule is deliberately
+// confined to a body-less initializer that is a name or a member of one
+// (`DialogPrimitive.Root`, `Root`), the shape a re-export takes. Anything
+// with a body keeps going through the render test above, so an exported
+// helper that happens to return a ReactNode is not swept in by its type.
+function aliasShape(
+  initializer: ts.Expression,
+  checker: ts.TypeChecker,
+  reactElement: ts.Type | undefined,
+): ComponentShape | undefined {
+  if (reactElement === undefined) return undefined;
+  if (!ts.isPropertyAccessExpression(initializer) && !ts.isIdentifier(initializer)) return undefined;
+  const signature = checker
+    .getTypeAtLocation(initializer)
+    .getCallSignatures()
+    .find((candidate) => returnsReactElement(candidate.getReturnType(), checker, reactElement));
+  return signature ? { form: 'alias', signature } : undefined;
+}
+
+function componentShape(
+  node: ts.FunctionDeclaration | ts.VariableDeclaration,
+  checker: ts.TypeChecker,
+  reactElement: ts.Type | undefined,
+): ComponentShape | undefined {
+  if (ts.isFunctionDeclaration(node)) {
+    if (!node.name || !/^[A-Z]/.test(node.name.text) || !node.body) return undefined;
+    return renderingShape(node.body, checker);
+  }
+  if (!ts.isIdentifier(node.name) || !/^[A-Z]/.test(node.name.text)) return undefined;
+  const inner = unwrapComponentInitializer(node.initializer, checker);
+  if (inner === undefined) return undefined;
+  if (ts.isArrowFunction(inner) || ts.isFunctionExpression(inner)) return renderingShape(inner.body, checker);
+  return aliasShape(inner, checker, reactElement);
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 }
 
@@ -1028,20 +1104,22 @@ function containsJsx(node: ts.Node): boolean {
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 }
 
-// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
-function functionBody(node: ts.FunctionDeclaration | ts.VariableDeclaration, checker: ts.TypeChecker): ts.Node | undefined {
-  if (ts.isFunctionDeclaration(node)) return node.body;
-  const inner = unwrapComponentInitializer(node.initializer, checker);
-  if (inner && (ts.isArrowFunction(inner) || ts.isFunctionExpression(inner))) return inner.body;
-  return undefined;
-  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
-}
-
+// The props parameter, wherever the shape that was accepted keeps it: on the
+// declaration itself for a body, and on the aliased callable's own signature
+// for an alias - declared in whatever file declares that callable, which is
+// where the checker reads its type from either way. A signature whose
+// parameter has no declaration to point at (a synthetic one) answers
+// undefined, the same as a component written with no parameter at all.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
 function firstParameter(
   node: ts.FunctionDeclaration | ts.VariableDeclaration,
+  shape: ComponentShape,
   checker: ts.TypeChecker,
 ): ts.ParameterDeclaration | undefined {
+  if (shape.form === 'alias') {
+    const declaration = shape.signature.getParameters()[0]?.valueDeclaration;
+    return declaration && ts.isParameter(declaration) ? declaration : undefined;
+  }
   if (ts.isFunctionDeclaration(node)) return node.parameters[0];
   const inner = unwrapComponentInitializer(node.initializer, checker);
   if (inner && (ts.isArrowFunction(inner) || ts.isFunctionExpression(inner))) return inner.parameters[0];
@@ -1122,7 +1200,11 @@ const extractionCache = new Map<string, ComponentExtraction[]>();
 // program building below so the same walk can serve a per-file program (the
 // artifact path) and a shared one (the counting path) without either being a
 // copy of the other.
-function extractFromSource(source: ts.SourceFile, checker: ts.TypeChecker): ComponentExtraction[] {
+function extractFromSource(source: ts.SourceFile, program: ts.Program): ComponentExtraction[] {
+  const checker = program.getTypeChecker();
+  // Resolved once per walk rather than per export: it is a property of the
+  // program, and the loop below asks it of every body-less initializer.
+  const reactElement = resolveReactElementType(program, checker);
   const extractions: ComponentExtraction[] = [];
 
   for (const statement of source.statements) {
@@ -1137,14 +1219,13 @@ function extractFromSource(source: ts.SourceFile, checker: ts.TypeChecker): Comp
 
     for (const candidate of candidates) {
       // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
-      if (!isReactComponentCandidate(candidate, checker)) continue;
-      const body = functionBody(candidate, checker);
-      if (!body || !(containsJsx(body) || returnsUseRender(body, checker))) continue;
+      const shape = componentShape(candidate, checker, reactElement);
+      if (!shape) continue;
       const name = ts.isFunctionDeclaration(candidate) ? candidate.name!.text : (candidate.name as ts.Identifier).text;
       // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 
       const cannotExtract: string[] = [];
-      const param = firstParameter(candidate, checker);
+      const param = firstParameter(candidate, shape, checker);
       const ownProps: ExtractedProp[] = [];
       const apiProps: ExtractedProp[] = [];
       const forwardedProps: ExtractedProp[] = [];
@@ -1281,7 +1362,7 @@ export function extractComponent(tsxPath: string): ComponentExtraction[] {
   if (!source) {
     throw new Error(`extract: ${tsxPath} was not found by the TypeScript program`);
   }
-  const extractions = extractFromSource(source, program.getTypeChecker());
+  const extractions = extractFromSource(source, program);
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-program
 
   extractionCache.set(tsxPath, extractions);
@@ -1304,7 +1385,6 @@ export function listComponentExportNames(tsxPaths: string[]): Map<string, string
   const missing = wanted.filter((path) => !componentNameCache.has(path));
   if (missing.length > 0) {
     const program = ts.createProgram({ rootNames: missing, options: loadCompilerOptions() });
-    const checker = program.getTypeChecker();
     for (const path of missing) {
       const source = program.getSourceFile(path);
       // A file the walk cannot read reports no components rather than
@@ -1313,7 +1393,7 @@ export function listComponentExportNames(tsxPaths: string[]): Map<string, string
       // take the other 62 down with it.
       let names: string[] = [];
       try {
-        if (source) names = extractFromSource(source, checker).map((extraction) => extraction.name);
+        if (source) names = extractFromSource(source, program).map((extraction) => extraction.name);
       } catch {
         names = [];
       }
@@ -1329,9 +1409,10 @@ export function listComponentExportNames(tsxPaths: string[]): Map<string, string
 // DataTable/DataTableSortButton alongside four non-component helpers/types -
 // dataTableColumnHelper, dataTableFeatures, dataTableSelectionColumn,
 // DataTableSelectionColumnLabels). extractComponent already excludes these
-// correctly (isReactComponentCandidate requires an uppercase function/const
-// whose body renders, through JSX or through the primitive library's
-// useRender; an interface or type alias is not even a value
+// correctly (componentShape requires an uppercase function/const that takes
+// one of the three component forms - a body with JSX, a body returning the
+// primitive library's useRender, or an alias of a component-typed callable;
+// an interface or type alias is not even a value
 // declaration), so the enrollment report's "N of M" count was never wrong - what was
 // missing is a way to SHOW which exports were excluded and why, rather than
 // leaving a reader to wonder if 2 of 6 exports means four are undescribed

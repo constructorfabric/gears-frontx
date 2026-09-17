@@ -365,6 +365,34 @@ describe('extractComponent: components that render through Base UI useRender', (
   });
 });
 
+describe('extractComponent: components exported as an alias of a primitive', () => {
+  const extractions = extractComponent(fixture('alias-component.fixture.tsx'));
+
+  it('recognizes a body-less export whose type is a component-typed callable', () => {
+    // Fifteen exports in the kit are the root of their directory written this
+    // way, so a walk that needs a body to read missed the first thing a
+    // consumer of each of those directories writes. The props come from the
+    // aliased callable's own signature, and the primitive library declares
+    // them, so they file as API props.
+    const root = extractions.find((e) => e.name === 'Root');
+    expect(root).toBeDefined();
+    expect(root?.apiProps.map((p) => p.name)).toContain('onOpenChange');
+  });
+
+  it('reads the initializer type, so an alias of a local alias counts too', () => {
+    const aliased = extractions.find((e) => e.name === 'AliasedRoot');
+    expect(aliased).toBeDefined();
+    expect(aliased?.apiProps.map((p) => p.name)).toContain('onOpenChange');
+  });
+
+  it('leaves out an alias of a callable that merely returns a ReactNode', () => {
+    // A number formatter returns a string, and a string is a ReactNode: the
+    // test is whether the return can be an ELEMENT, not whether React would
+    // render it.
+    expect(extractions.map((e) => e.name)).not.toContain('FormatPrice');
+  });
+});
+
 describe('extractComponent: forwardRef/memo-wrapped components (M8)', () => {
   it('recognizes a memo(...)-wrapped export as component-shaped', () => {
     const extractions = extractComponent(fixture('memo-component.fixture.tsx'));
