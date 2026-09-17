@@ -734,10 +734,42 @@ describe('diffOwnPropsSchema: narrowing and the forwarded surface', () => {
     expect(diff.compatible).toBe(true);
   });
 
-  it('reconciles a prop the surface accepts only by pattern', () => {
+  it('reports a prop the surface accepts only by pattern as removed', () => {
+    // A pattern family says the DOM would let an attribute of that shape
+    // through; it says nothing about the kit behaviour that stood behind the
+    // name, so nothing over there is the prop that left.
     const diff = diffOwnPropsSchema({ properties: { 'data-state': {} } }, { properties: {} }, surface);
-    expect(diff.movedToForwardedSurface).toEqual(['data-state']);
-    expect(diff.compatible).toBe(true);
+    expect(diff.removedProps).toEqual(['data-state']);
+    expect(diff.movedToForwardedSurface).toEqual([]);
+    expect(diff.compatible).toBe(false);
+  });
+
+  it('reports a callback that only matches the surface event family as removed', () => {
+    // The shape this branch's own Accordion has: `onValueChange` declared by
+    // the component, forwarded to a <div> surface carrying `^on[A-Z]`.
+    // Deleting the component's central callback is a removal, not a move.
+    const diff = diffOwnPropsSchema(
+      { properties: { onValueChange: {}, className: { type: 'string' } } },
+      { properties: { className: { type: 'string' } } },
+      { properties: { className: { type: 'string' } }, patternProperties: { '^aria-': {}, '^on[A-Z]': {} } },
+    );
+    expect(diff.removedProps).toEqual(['onValueChange']);
+    expect(diff.movedToForwardedSurface).toEqual([]);
+    expect(diff.compatible).toBe(false);
+  });
+
+  it('recurses into an array element when both revisions state one', () => {
+    // `{type:'array'}` with an `items` schema is what the compiler emits for
+    // an ordinary `string[]` prop, and an enum arriving inside `items`
+    // rejects every element value outside it.
+    const diff = diffOwnPropsSchema(
+      { properties: { columns: { type: 'array', items: { type: 'string' } } } },
+      { properties: { columns: { type: 'array', items: { type: 'string', enum: ['a'] } } } },
+    );
+    expect(diff.narrowedProps).toEqual([
+      { prop: 'columns[]', reason: 'enum constraint added: a where none existed before' },
+    ]);
+    expect(diff.compatible).toBe(false);
   });
 
   it('still reports a narrowing when the surface accepts the name with a stricter shape', () => {

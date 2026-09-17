@@ -46,6 +46,12 @@ export function jsonDiff(committed: unknown, fresh: unknown, path = '$'): string
 export interface ElementSurfacePropertyLike {
   type?: string;
   enum?: string[];
+  // An array property's element schema, which the compiler emits whenever
+  // the element type is expressible in full (extract.ts's expressArray). It
+  // constrains every value in the array, so a narrowing there rejects a call
+  // site exactly the way a narrowing on the property itself does, and the
+  // diff below recurses into it rather than stopping at `type: 'array'`.
+  items?: ElementSurfacePropertyLike;
   // Declared so the diff below can be seen NOT to read it. A property that
   // asserts nothing carries prose naming its TypeScript type (compile.ts's
   // describeUntypeableProperty), and prose is documentation: adding,
@@ -155,6 +161,16 @@ function shapeNarrowings(name: string, oldProp: ElementSurfacePropertyLike, newP
   } else if (oldProp.enum === undefined && newProp.enum !== undefined) {
     narrowed.push({ prop: name, reason: `enum constraint added: ${newProp.enum.join(', ')} where none existed before` });
   }
+
+  // The element schema is the same question one level down, so it is the same
+  // function one level down, and the path it is reported under says which
+  // level the finding came from. Only when BOTH revisions state one: the
+  // compiler omits `items` for an element type it cannot express in full, so
+  // one side missing it says the compiler stayed silent about the element,
+  // not that the element accepted anything.
+  if (oldProp.items !== undefined && newProp.items !== undefined) {
+    narrowed.push(...shapeNarrowings(`${name}[]`, oldProp.items, newProp.items));
+  }
   return narrowed;
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-shape
@@ -216,10 +232,10 @@ export function diffElementSurface(oldSchema: ElementSurfaceSchemaLike, newSchem
 //
 // A prop that leaves `properties` is not always gone, either: a component
 // whose own declaration of `className` is dropped still forwards `className`
-// through the surface its host element declares, and a consumer passing it
+// through the surface its host element DECLARES, and a consumer passing it
 // notices nothing. `movedToForwardedSurface` is that reconciliation - a
-// removal the surface still accepts, with a compatible shape, is not a
-// removal. gts-ts's own decision is computed over the flat schema and cannot
+// removal the surface declares under the same name, with a compatible shape,
+// is not a removal. gts-ts's own decision is computed over the flat schema and cannot
 // make that distinction either, but it also does not flag an optional prop
 // vanishing, so the two answers do not fight.
 export interface OwnPropsSchemaLike {
@@ -231,9 +247,10 @@ export interface OwnPropsDiff {
   removedProps: string[];
   newlyRequiredProps: string[];
   narrowedProps: { prop: string; reason: string }[];
-  // Props that left `properties` and are still accepted by the forwarded
-  // surface the current revision names. Reported so the move is visible,
-  // and left out of `removedProps` so it does not force a major bump.
+  // Props that left `properties` and are still declared, under the same name,
+  // by the forwarded surface the current revision names. Reported so the move
+  // is visible, and left out of `removedProps` so it does not force a major
+  // bump.
   movedToForwardedSurface: string[];
   compatible: boolean;
 }
@@ -269,20 +286,19 @@ export function diffInvariants(oldInvariants: readonly InvariantLike[] = [], new
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-invariants
 
-// Whether the forwarded surface accounts for a name at all: declared
-// outright, or matched by one of its pattern families (`aria-*`, `data-*`,
-// `on*`).
-function forwardedEntry(
+// The forwarded surface's own declaration of a name, if it has one. Only a
+// name the surface DECLARES counts here. A pattern family (`aria-*`,
+// `data-*`, `on*`) is not enough: it says the DOM would let an attribute of
+// that shape through to the element, and says nothing about the kit
+// behaviour that stood behind the name - nothing over there is the prop that
+// left. Reading a family as acceptance let a component's central callback
+// disappear at an unchanged major, reported as a move, because the surface
+// happened to carry `^on[A-Z]`.
+function forwardedDeclaration(
   surface: ElementSurfaceSchemaLike | undefined,
   name: string,
-): { accepted: boolean; shape: ElementSurfacePropertyLike | undefined } {
-  if (surface === undefined) return { accepted: false, shape: undefined };
-  const declared = (surface.properties ?? {})[name];
-  if (declared !== undefined) return { accepted: true, shape: declared };
-  const patterns = Object.keys(surface.patternProperties ?? {});
-  // A pattern family asserts nothing about a value, so a name it matches is
-  // accepted with no shape to compare.
-  return { accepted: patterns.some((source) => new RegExp(source).test(name)), shape: undefined };
+): ElementSurfacePropertyLike | undefined {
+  return (surface?.properties ?? {})[name];
 }
 
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-own
@@ -308,15 +324,15 @@ export function diffOwnPropsSchema(
       continue;
     }
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-own-forwarded
-    const { accepted, shape } = forwardedEntry(forwardedSurface, name);
-    if (!accepted) {
+    const declared = forwardedDeclaration(forwardedSurface, name);
+    if (declared === undefined) {
       removedProps.push(name);
       continue;
     }
     movedToForwardedSurface.push(name);
-    // The surface accepts the name; whether it accepts the same VALUES is a
+    // The surface declares the name; whether it declares the same VALUES is a
     // separate question, and the same rule answers it.
-    if (shape !== undefined) narrowedProps.push(...shapeNarrowings(name, oldProps[name], shape));
+    narrowedProps.push(...shapeNarrowings(name, oldProps[name], declared));
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-own-forwarded
   }
 
@@ -444,7 +460,7 @@ export function decideCompat(input: CompatDecisionInput): CompatDecision {
   // moved.
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-own-forwarded
   const moved = (ownPropsDiff?.movedToForwardedSurface ?? []).map(
-    (prop) => `${component}: own prop "${prop}" is no longer declared here but is still accepted by the forwarded surface`,
+    (prop) => `${component}: own prop "${prop}" is no longer declared here but is still declared by the forwarded surface`,
   );
   const invariantTextChanged = (invariantsDiff?.changedTextIds ?? []).map(
     (id) => `${component}: invariant "${id}" text changed (informational; the id is unchanged so nothing that cites it breaks)`,
