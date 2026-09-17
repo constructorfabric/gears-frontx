@@ -1656,3 +1656,24 @@ lift. The five pinned compatibility verdicts are unchanged, which is the
 measurement that mattered: gts-ts's `checkBackwardCompatibility` reads each
 schema's raw `properties` and never resolves a chain, so a standalone props type
 and a derived one compare identically.
+
+## The compiler version is an input to the freshness gate
+
+The guard fails an enrolled component whose committed artifacts differ from a
+fresh compile by so much as a byte, and one of the inputs to that compile is
+the TypeScript checker's printed type text - `checker.typeToString` over a
+prop's resolved type, which is what a forwarded `style` or a native attribute
+union reaches the contract as. That text is the compiler's own rendering, and
+it is not stable across compiler versions: a release that prints a union's
+members differently, expands an alias the old one kept, or renders an optional
+differently moves the bytes without anything in this repository changing.
+Sorting every prop list before emit (N3) settles member ORDER, which is a
+different question and already answered; the text itself has no such
+mitigation and needs none, because the version is pinned. `typescript` is
+therefore declared as an exact version in this package, the way `ajv`, `tsx`
+and the testing dependencies around it are, and that pin is part of the
+freshness contract rather than a tidiness preference: resolve a different 5.x
+in this workspace - an update, an install outside the monorepo lockfile, a
+future bump - and the guard turns red on a tree nobody touched. The bump is a
+deliberate act with its own regenerated artifacts, which is what an exact pin
+makes it.

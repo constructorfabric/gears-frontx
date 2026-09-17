@@ -562,6 +562,17 @@ describe("guard/enrollment: a near miss in a contract's own examples", () => {
   });
 });
 
+describe('the freshness gate and the compiler version', () => {
+  it("declares the package's typescript dependency as an exact version, not a range", () => {
+    // A committed contract carries the checker's printed type text, so the
+    // compiler is one of the inputs to the byte comparison the guard makes.
+    // Under a range an untouched tree can resolve a different 5.x and go red
+    // on artifacts nobody edited.
+    const manifest = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8'));
+    expect(manifest.devDependencies.typescript).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+});
+
 describe('guard: a component dropped from the enrolled set', () => {
   it('reports the de-listing instead of letting it leave scope in silence', () => {
     // The new list alone takes the component out of scope with no line in
