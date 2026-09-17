@@ -346,6 +346,25 @@ describe('extractComponent: synthetic property symbol with no declaration (N4)',
   });
 });
 
+describe('extractComponent: components that render through Base UI useRender', () => {
+  const extractions = extractComponent(fixture('use-render-component.fixture.tsx'));
+
+  it('recognizes a body that returns useRender(...) with no JSX in it', () => {
+    // The kit's own polymorphism idiom: the hook returns the element, so
+    // there is no JSX node to find. Eight files under src/components write
+    // components this way, and each was read as not a component at all.
+    const tag = extractions.find((e) => e.name === 'Tag');
+    expect(tag).toBeDefined();
+    expect(tag?.ownProps.map((p) => p.name)).toContain('tone');
+  });
+
+  it('resolves the hook by symbol, so an aliased import counts too', () => {
+    const aliased = extractions.find((e) => e.name === 'AliasedTag');
+    expect(aliased).toBeDefined();
+    expect(aliased?.ownProps.map((p) => p.name)).toContain('label');
+  });
+});
+
 describe('extractComponent: forwardRef/memo-wrapped components (M8)', () => {
   it('recognizes a memo(...)-wrapped export as component-shaped', () => {
     const extractions = extractComponent(fixture('memo-component.fixture.tsx'));

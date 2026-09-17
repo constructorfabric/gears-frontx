@@ -973,6 +973,49 @@ function isReactComponentCandidate(
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 }
 
+// True for a call whose resolved callee really is the primitive library's
+// `useRender` hook - checked by symbol identity the same way isCvaCall checks
+// cva, so an aliased import resolves the same as the plain form.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
+function isUseRenderCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
+  const symbol = checker.getSymbolAtLocation(call.expression);
+  if (!symbol) return false;
+  const resolved = symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+  if (resolved.getName() !== 'useRender') return false;
+  return declaredUnder(resolved.getDeclarations() ?? [], /[\\/]node_modules[\\/]@base-ui[\\/]react[\\/]/);
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
+}
+
+// A component that renders through `useRender` has no JSX node in its body at
+// all: the hook returns the element. It is the kit's polymorphism mechanism
+// (badge.tsx's own header calls it that), so asking for JSX alone read eight
+// files' main component as not a component - the enrollment report printed
+// "0 of 0 exports" for a directory with something to describe, the guard's
+// completeness rule could never be met there, and the target resolver
+// answered "no exported component named Badge". Only a RETURNED call counts,
+// and only this function's own returns: a nested callback's return is that
+// callback's, not the component's.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
+function returnsUseRender(body: ts.Node, checker: ts.TypeChecker): boolean {
+  const isHookCall = (expr: ts.Expression | undefined): boolean =>
+    expr !== undefined && ts.isCallExpression(expr) && isUseRenderCall(expr, checker);
+  // An arrow function's concise body IS its return.
+  if (!ts.isBlock(body)) return ts.isExpression(body) && isHookCall(body);
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node)) return;
+    if (ts.isReturnStatement(node) && isHookCall(node.expression)) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(body, visit);
+  return found;
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
+}
+
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 function containsJsx(node: ts.Node): boolean {
   if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) return true;
@@ -1096,7 +1139,7 @@ function extractFromSource(source: ts.SourceFile, checker: ts.TypeChecker): Comp
       // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
       if (!isReactComponentCandidate(candidate, checker)) continue;
       const body = functionBody(candidate, checker);
-      if (!body || !containsJsx(body)) continue;
+      if (!body || !(containsJsx(body) || returnsUseRender(body, checker))) continue;
       const name = ts.isFunctionDeclaration(candidate) ? candidate.name!.text : (candidate.name as ts.Identifier).text;
       // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 
@@ -1286,8 +1329,9 @@ export function listComponentExportNames(tsxPaths: string[]): Map<string, string
 // DataTable/DataTableSortButton alongside four non-component helpers/types -
 // dataTableColumnHelper, dataTableFeatures, dataTableSelectionColumn,
 // DataTableSelectionColumnLabels). extractComponent already excludes these
-// correctly (isReactComponentCandidate requires an uppercase, JSX-returning
-// function/const; an interface or type alias is not even a value
+// correctly (isReactComponentCandidate requires an uppercase function/const
+// whose body renders, through JSX or through the primitive library's
+// useRender; an interface or type alias is not even a value
 // declaration), so the enrollment report's "N of M" count was never wrong - what was
 // missing is a way to SHOW which exports were excluded and why, rather than
 // leaving a reader to wonder if 2 of 6 exports means four are undescribed
