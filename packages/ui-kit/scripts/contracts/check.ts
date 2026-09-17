@@ -1035,18 +1035,25 @@ export function runEnrollment(options: { json: boolean }, ctx: CheckContext = de
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-enrollment:p2:inst-en-return
 }
 
-function parseBaseArg(args: string[]): string {
+// A missing `--base` is a usage error, and a usage error is an exit code like
+// any other here: printed and RETURNED, never taken by calling process.exit.
+// The dispatch below is exported so a test can drive it, and a branch that
+// ends the process answers the caller by killing it - which for the test
+// runner means killing the worker rather than failing an assertion, and for a
+// real run means the same truncated stdout the entry point's own comment
+// argues against.
+function parseBaseArg(args: string[]): string | undefined {
   // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-usage
   const index = args.indexOf('--base');
-  const value = index === -1 ? undefined : args[index + 1];
-  if (!value) {
-    // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-usage-exit
-    console.error('Usage: contracts:check <compat|guard> --base <git-ref> [--json]');
-    process.exit(1);
-    // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-usage-exit
-  }
+  return index === -1 ? undefined : args[index + 1];
   // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-usage
-  return value;
+}
+
+function missingBaseArg(): number {
+  // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-usage-exit
+  console.error('Usage: contracts:check <compat|guard> --base <git-ref> [--json]');
+  return 1;
+  // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-usage-exit
 }
 
 // `--json` is an opt-in flag every subcommand honours the same way (N6): a
@@ -1077,16 +1084,22 @@ export function runSubcommand(argv: string[], ctx: CheckContext = defaultCheckCo
   // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-invoke-check
   switch (command) {
     // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-dispatch-compat
-    case 'compat':
+    case 'compat': {
+      const base = parseBaseArg(rest);
+      if (base === undefined) return missingBaseArg();
       // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-compat-exit
-      return runCompat(parseBaseArg(rest), { json }, ctx);
-    // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-compat-exit
+      return runCompat(base, { json }, ctx);
+      // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-compat-exit
+    }
     // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-dispatch-compat
     // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-dispatch-guard
-    case 'guard':
+    case 'guard': {
+      const base = parseBaseArg(rest);
+      if (base === undefined) return missingBaseArg();
       // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-guard-exit
-      return runGuard(parseBaseArg(rest), { json }, ctx);
-    // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-guard-exit
+      return runGuard(base, { json }, ctx);
+      // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-guard-exit
+    }
     // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-dispatch-guard
     // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-guard-change:p1:inst-dispatch-enrollment
     case 'enrollment':

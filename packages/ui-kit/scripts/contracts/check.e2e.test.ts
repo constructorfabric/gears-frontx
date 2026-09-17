@@ -24,7 +24,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import { OPEN_UNEVALUATED } from './compile';
 import { nearMissesIn, propsPassedTo } from './check-lib';
@@ -559,6 +559,27 @@ describe("guard/enrollment: a near miss in a contract's own examples", () => {
 
   it('answers a subcommand it does not know with a non-zero exit', () => {
     expect(runSubcommand(['inventory'], createFixture().context)).toBe(1);
+  });
+
+  it('answers a base-taking subcommand given no --base the same way, without ending the process', () => {
+    // The usage error is the one branch of the dispatch that used to take the
+    // exit itself. A branch that ends the process answers its caller by
+    // killing it: here that is the test worker, which is why the two cases
+    // below could not be written at all before, and in a real run it is the
+    // truncated stdout the entry point's own comment argues against.
+    const context = createFixture().context;
+    const printed: string[] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      printed.push(args.join(' '));
+    });
+    try {
+      expect(runSubcommand(['compat'], context)).toBe(1);
+      expect(runSubcommand(['guard'], context)).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
+    const usage = 'Usage: contracts:check <compat|guard> --base <git-ref> [--json]';
+    expect(printed).toEqual([usage, usage]);
   });
 });
 
