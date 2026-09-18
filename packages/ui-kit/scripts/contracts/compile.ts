@@ -1122,6 +1122,19 @@ export const buildVocabularyTypes = memoizeSchema((): Record<string, unknown>[] 
         },
         required: ['container'],
         additionalProperties: false,
+        // The same if/then/else idiom `accepted_content` uses, for the same
+        // reason: the description states both halves of the rule, and a rule
+        // that lives only in parseOverlay governs the authoring side alone -
+        // a hand-written contract carrying a bare `{container: "somewhere"}`
+        // validated against the published type. A filled mount point names a
+        // kit component, and the container IS the explanation there; an
+        // outside-the-kit one has no contract behind it, so the note is the
+        // only thing a reader gets.
+        // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-mount-note
+        if: { required: ['component'] },
+        then: { not: { required: ['note'] } },
+        else: { required: ['note'] },
+        // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-mount-note
       },
     ),
     vocabularyType(

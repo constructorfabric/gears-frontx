@@ -22,5 +22,22 @@
   "required": [
     "container"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "if": {
+    "required": [
+      "component"
+    ]
+  },
+  "then": {
+    "not": {
+      "required": [
+        "note"
+      ]
+    }
+  },
+  "else": {
+    "required": [
+      "note"
+    ]
+  }
 }

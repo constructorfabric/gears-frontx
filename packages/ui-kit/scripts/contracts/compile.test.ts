@@ -36,7 +36,7 @@ import {
   sharedAttributeConflicts,
 } from './compile';
 import { extractComponent } from './extract';
-import { componentRefPrefix } from './ids';
+import { componentRef, componentRefPrefix, vocabularyTypeId } from './ids';
 import { applyContractTestTimeout } from './testing';
 
 // This suite builds a real TypeScript program through extractComponent -
@@ -235,6 +235,25 @@ describe('the vocabulary the component type references', () => {
     for (const [name, definition] of Object.entries(properties)) {
       expect(definition.default, `${name} carries a default`).toBeUndefined();
     }
+  });
+
+  it('holds a mount point to the note rule its own description states, both ways', () => {
+    // The two halves lived in parseOverlay alone, which governs the authoring
+    // side: a hand-written contract carrying a bare container validated
+    // against the published type and left every reader to guess why the
+    // component belongs there. Exercised through the registered type rather
+    // than against the object literal, because what a reader validates
+    // against is the committed vocabulary file.
+    const ajv = new Ajv2020();
+    addContractTypes(ajv);
+    const validate = ajv.getSchema(vocabularyTypeId('mount_point'));
+    expect(validate).toBeDefined();
+    const filled = { container: 'AccordionItem', component: componentRef('accordion-item', 1) };
+    expect(validate?.(filled)).toBe(true);
+    expect(validate?.({ ...filled, note: 'redundant beside a kit component' })).toBe(false);
+    const outside = { container: "a column's header render function", note: 'TanStack Table hands it the column' };
+    expect(validate?.(outside)).toBe(true);
+    expect(validate?.({ container: "a column's header render function" })).toBe(false);
   });
 
   it('rejects a document claiming a type other than the component type, under plain Ajv', () => {
