@@ -1363,24 +1363,20 @@ different questions: an attestation carries an OUTCOME, a prop carries a
 CLASSIFICATION (`known`, `near_miss`, `unchecked`), a comparison against a base
 reference carries a DECISION. Only the shared word went.
 
-**One meaning document.** The instance is now a thin typed record - its own
-identity, the metamodel version, its props schema and its host element's
-surface - and every meaning field is emitted once, into the contract's
-`x-gts-traits`. The reasoning that settled it: a component's meaning is
-processing metadata OF THE TYPE, so a runtime that acts on it reads the type's
-own annotations, and an instance repeating it is one fact in two documents.
-`SEMANTIC_FIELD_TARGETS` stays a map with two possible targets rather than
-collapsing into a list, because it is the reversal point if that answer ever
-changes.
+**One meaning document.** A contract is one document: a well-known instance
+of the component type, carrying its identity, the metamodel version, every
+meaning field as an ordinary property, the `x-uikit` block of what the
+extraction read, and its props surface. Each meaning field is stated once, and
+a validator checks it by name against the type the same way it checks any
+instance property.
 
-**Two names that share a word, deliberately.** `slots` appears in both blocks:
-`x-uikit.slots` is every prop whose type no JSON Schema shape can express, as
-the extraction found it and with the checker's own printed type, while the
-authored `slots` are the subset the kit declares as extension surface, with
-the type a consumer has to satisfy. Same concept from the machine's side and
-the author's side, which is why one word carries both; a field routed to the
-wrong block would now be a type error at the routing map rather than one value
-silently winning over the other.
+**No routing map.** There is no per-field target column. A meaning field is
+one an author states and it lands on the document; `x-uikit` is written by the
+compiler end to end and nothing an author writes reaches it, so the question a
+routing map answered does not arise per field. `SEMANTIC_FIELDS` is the list
+of what an author may state, and the document's own type is derived from it.
+A future field that is neither asserted nor extracted would state where it
+belongs where it is defined, beside its own definition.
 
 **What the stress test withdrew.** The same review pushed six changes further
 than they went, and each was withdrawn by the maintainer's own stress test of

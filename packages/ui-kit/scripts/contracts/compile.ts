@@ -366,20 +366,17 @@ export interface SchemaRef {
   $ref: string;
 }
 
-// Where each meaning field lands in the compiled document, and THE ONE PLACE
-// that answer changes. Every one of them targets 'meaning' today - an
-// ordinary property of the component instance, which GTS.validateInstance
-// checks against the component type the same way it checks any instance
-// against its type, so a malformed meaning field fails the build rather than
-// a review.
+// Every field an author may state about a component, and the one list that
+// answers which they are. Each becomes an ordinary property of the component
+// instance, which GTS.validateInstance checks against the component type the
+// same way it checks any instance against its type, so a malformed meaning
+// field fails the build rather than a review.
 //
-// The map stays a map with two possible targets rather than collapsing into a
-// list, because it is the reversal point: the day the answer becomes "meaning
-// is documentation a validator never reads" (see the package DESIGN's open
-// questions), moving a field to 'x-uikit' - the block nothing validates - is
-// an edit here and nothing else. CompiledContract's own block types are
-// derived from this map's literal values (FieldsFor below), so an edit that
-// moves a field also moves which block TypeScript requires it to appear in.
+// Beside them, `x-uikit` carries what the extraction read, and nothing an
+// author writes reaches it: the block is compiler-written end to end, so
+// there is no routing question to answer per field. A field that is neither
+// - a future one nobody asserts and nothing extracts - would need its own
+// home stated where it is defined, not a target column here.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-route
 const SEMANTIC_FIELDS = [
   'intent',
@@ -402,43 +399,11 @@ const SEMANTIC_FIELDS = [
 ] as const;
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-route
 
+// The name of one meaning field, read off the list rather than hand-typed
+// beside it: a field added above is a field the document's own type requires,
+// with nothing to keep in step.
 type SemanticField = (typeof SEMANTIC_FIELDS)[number];
-type SemanticTarget = 'x-uikit' | 'meaning';
 
-// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-route
-const SEMANTIC_FIELD_TARGETS = {
-  intent: 'meaning',
-  typical_uses: 'meaning',
-  dont_use_when: 'meaning',
-  accepts: 'meaning',
-  mounted_in: 'meaning',
-  invariants: 'meaning',
-  anti_patterns: 'meaning',
-  deprecations: 'meaning',
-  attestations: 'meaning',
-  prop_statements: 'meaning',
-  unexposed_parts: 'meaning',
-  examples: 'meaning',
-  family_membership: 'meaning',
-  slots: 'meaning',
-  capabilities: 'meaning',
-  companions: 'meaning',
-  withheld: 'meaning',
-} as const satisfies Record<SemanticField, SemanticTarget>;
-// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-route
-
-// The field-name union routed at a given target, computed from
-// SEMANTIC_FIELD_TARGETS's own literal values (the `as const satisfies`
-// above is what keeps them literal instead of widening to `SemanticTarget`)
-// rather than duplicated as a second, hand-typed list - the type-level twin
-// of what fieldsTargeting computes at runtime. `UikitFields` is `never` while
-// every field targets the other block, which is what makes x-uikit's own type
-// carry the extraction facts and nothing else.
-type FieldsFor<Target extends SemanticTarget> = {
-  [Field in SemanticField]: (typeof SEMANTIC_FIELD_TARGETS)[Field] extends Target ? Field : never;
-}[SemanticField];
-type UikitFields = FieldsFor<'x-uikit'>;
-type MeaningFields = FieldsFor<'meaning'>;
 
 // Validated fields the COMPILER writes rather than the overlay: read off
 // the extraction, so an overlay may not author them (buildOverlaySchema
@@ -448,9 +413,9 @@ type MeaningFields = FieldsFor<'meaning'>;
 // because that list is what an overlay may say. Its definition lives with
 // every other field in buildMeaningFields, so the component type and the
 // overlay schema reach one shape through one place.
-// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-host
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-host
 const COMPILER_WRITTEN_FIELDS = ['forwards_to'] as const;
-// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-host
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-host
 
 // The props surface a component's document carries: a standalone JSON Schema
 // body with no `$id` and no `$schema` of its own. Both are stamped back on by
@@ -478,7 +443,7 @@ export interface PropsSchema {
 // optional field an overlay omits is genuinely absent, not `null`: these are
 // ordinary properties of an instance, and a property an instance does not
 // carry is a property it does not carry.
-export type ContractMeaning = Omit<Pick<Overlay, MeaningFields>, 'mounted_in' | 'family_membership'> & {
+export type ContractMeaning = Omit<Pick<Overlay, SemanticField>, 'mounted_in' | 'family_membership'> & {
   mounted_in?: MountPoint[];
   family_membership?: FamilyMembership;
 };
@@ -512,7 +477,7 @@ export type CompiledContract = ContractMeaning & {
     partially_typed_props: Record<string, { typeText: string; optional: boolean }>;
     variant_sources: string[];
     cannot_extract: string[];
-  } & Pick<Overlay, UikitFields>;
+  };
   props: PropsSchema;
 };
 
@@ -923,7 +888,7 @@ function expressedSchemaOf(prop: ExtractedProp): ContractProperty {
 // document property, which is as deep as gts-ts's own reference walker goes,
 // so each of them is free to `$ref` that type instead of repeating the
 // triple; the conformance suite is what resolves them.
-// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-id-value
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-id-value
 function componentRefSchema(): Record<string, unknown> {
   return {
     type: 'string',
@@ -934,7 +899,7 @@ function componentRefSchema(): Record<string, unknown> {
     $comment: 'GTS tokens are snake_case; kit directories are kebab-case (navigation_menu -> navigation-menu).',
   };
 }
-// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-id-value
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-id-value
 
 // A reference to another kit component, as it appears NESTED inside a value
 // object (a recommendation's `component`, an accepted component, a family
@@ -1004,7 +969,7 @@ function vocabularyType(token: string, title: string, description: string, body:
 // Referenced, not inlined: a resolver looks the id up among registered
 // entities, so a type that is not registered fails loudly instead of a
 // component's `accepts` quietly validating against nothing.
-// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-vocabulary
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-vocabulary
 export const buildVocabularyTypes = memoizeSchema((): Record<string, unknown>[] => [
     vocabularyType(
       'component_reference',
@@ -1094,11 +1059,11 @@ export const buildVocabularyTypes = memoizeSchema((): Record<string, unknown>[] 
         // or "whatever the consumer puts in it, unexamined" - carrying it
         // there would be a claim about content this type has already said
         // it is not making.
-        // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-content-exclusive
+        // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-content-exclusive
         if: { properties: { content: { const: 'specified' } }, required: ['content'] },
         then: { anyOf: [{ required: ['components'] }, { required: ['text'] }] },
         else: { not: { anyOf: [{ required: ['components'] }, { required: ['text'] }, { required: ['icons_via'] }] } },
-        // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-content-exclusive
+        // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-content-exclusive
       },
     ),
     vocabularyType(
@@ -1130,11 +1095,11 @@ export const buildVocabularyTypes = memoizeSchema((): Record<string, unknown>[] 
         // kit component, and the container IS the explanation there; an
         // outside-the-kit one has no contract behind it, so the note is the
         // only thing a reader gets.
-        // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-mount-note
+        // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-mount-note
         if: { required: ['component'] },
         then: { not: { required: ['note'] } },
         else: { required: ['note'] },
-        // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-mount-note
+        // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-mount-note
       },
     ),
     vocabularyType(
@@ -1360,7 +1325,7 @@ export const buildVocabularyTypes = memoizeSchema((): Record<string, unknown>[] 
       },
     ),
 ]);
-// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-vocabulary
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-vocabulary
 
 // One built vocabulary type, by its concept token. The overlay schema needs
 // two of them narrowed to the half an author may write, and taking the halves
@@ -1394,7 +1359,7 @@ export function vocabularyTypeFileName(type: Record<string, unknown>): string {
 // `forwards_to` is here too, and is the one field an overlay may not write:
 // which element a component forwards to is a fact of its source. It is listed
 // outside `required` because a component that forwards to none has nothing to say.
-// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-fields
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
 export const buildMeaningFields = memoizeSchema((): { properties: Record<string, Record<string, unknown>>; required: string[] } => ({
   properties: {
       intent: {
@@ -1522,7 +1487,7 @@ export const buildMeaningFields = memoizeSchema((): { properties: Record<string,
         description:
           "Exports beside the component that a consumer builds its input with. Absent for a component whose module exports nothing but the component itself, which is most of the kit.",
       },
-      // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-withheld
+      // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-withheld
       withheld: {
         type: 'array',
         description:
@@ -1530,8 +1495,8 @@ export const buildMeaningFields = memoizeSchema((): { properties: Record<string,
         items: { $ref: vocabularyTypeId('withheld_prop') },
         minItems: 1,
       },
-      // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-withheld
-      // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-host
+      // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-withheld
+      // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-host
       forwards_to: {
         type: 'string',
         pattern: elementTypeRefPattern(),
@@ -1540,14 +1505,14 @@ export const buildMeaningFields = memoizeSchema((): { properties: Record<string,
           "GTS id of the hand-written surface for the host element this component forwards to. A component forwards to exactly one element surface, and it is REFERENCED by id rather than composed into the schema: a surface shared kit-wide by every component that renders the same element is something this component uses, not a second thing it IS. Whoever needs the surface resolves it through this reference and applies it beside the contract; nothing in the props schema merges it in. `x-gts-ref` declares what the value must resolve to; `type` and `pattern` are what enforce it, because gts-ts strips x-gts-ref before validating. Absent entirely for a component that forwards to no host element of its own - DataTable, which renders its Table internally and correctly declares none.",
         $comment: "The element token, not the tag: `dom_button` for a <button>, normalized by domElementToken - the same token the committed file under scripts/contracts/elements/ is named by, so the reference and the file name are one identity. Named `forwards_to` rather than `host_element`: the value is the element surface the component FORWARDS TO, and a field named for the element read as a bug on a component (DataTable) that has one and declares none.",
       },
-      // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-host
+      // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-host
   },
   // Everything else is optional at every level: a component with no family, no
   // growth surface, no withheld prop and no mount point outside the kit
   // writes none of it.
   required: ['intent', 'typical_uses', 'dont_use_when', 'accepts', 'invariants', 'anti_patterns', 'deprecations', 'attestations', 'examples'],
 }));
-// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-fields
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
 
 // Stable kebab-case handle for an invariant. Inline rather than a local
 // `$defs` entry: these definitions are taken into the component type and
@@ -1561,21 +1526,6 @@ function invariantIdSchema(): Record<string, unknown> {
   };
 }
 
-// The fields routed at one block, at runtime - the twin of FieldsFor above,
-// and typed through it: the predicate is what lets a caller spread the result
-// into that block's own object type, so a field moved to the WRONG block is a
-// type error at the reversal point rather than one value silently winning
-// over another. `x-uikit`'s own compiler-written keys (`partially_typed_props`,
-// `variant_sources`, `cannot_extract`) used to collide by name with an
-// authored SEMANTIC_FIELD (`slots` named both the machine's per-property
-// record and the kit's own extension surface); the rename retired that
-// specific collision, and this guard is what would catch the next one.
-// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-route
-function fieldsTargeting<Target extends SemanticTarget>(target: Target): FieldsFor<Target>[] {
-  return SEMANTIC_FIELDS.filter((field): field is FieldsFor<Target> => SEMANTIC_FIELD_TARGETS[field] === target);
-  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-route
-}
-
 // The COMPONENT TYPE, built from ids.ts and the field definitions above
 // rather than typed twice: the committed ui-component.meta.json is a
 // generated copy of this object's JSON.stringify output, and the freshness
@@ -1587,10 +1537,10 @@ function fieldsTargeting<Target extends SemanticTarget>(target: Target): FieldsF
 // same validator that checks any instance against its type. There is nothing
 // abstract here and no derivation: a component is not a type descended from a
 // near-empty anchor, it is one of this type's instances.
-// @cpt-algo:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2
-// @cpt-dod:cpt-frontx-ui-kit-dod-component-contracts-gts-traits-schema:p1
+// @cpt-algo:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2
+// @cpt-dod:cpt-frontx-ui-kit-dod-component-contracts-component-type-schema:p1
 export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
-  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-fields
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
   const fields = buildMeaningFields();
   const properties: Record<string, unknown> = {
     $id: {
@@ -1632,7 +1582,7 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
         "Kit directory name under src/components/, or - for one export of a compound component - that export's own kebab-case stem, which shares the directory's name as a prefix (accordion-item lives in src/components/accordion/).",
     },
   };
-  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-fields
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
 
   // The one reference gts-ts itself resolves against the registry: it sits
   // directly on a document property, which is as deep as XGtsRefValidator's
@@ -1640,9 +1590,9 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
   // host-element surface is not a registered type. A reference nested inside
   // a meaning field's value object is not reached by that walk and is
   // resolved by the conformance suite instead.
-  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-host
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-host
   for (const field of COMPILER_WRITTEN_FIELDS) properties[field] = fields.properties[field];
-  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-host
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-host
 
   // Every meaning field, exactly as the vocabulary defines it and exactly as
   // an overlay author states it - no widening, no null alternative and no
@@ -1650,11 +1600,11 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
   // demanded a value or a schema default for every declared trait property
   // regardless of `required`; an ordinary property of an ordinary instance is
   // simply absent when the component has nothing to say there.
-  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-ref
-  for (const field of fieldsTargeting('meaning')) properties[field] = fields.properties[field];
-  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-ref
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-ref
+  for (const field of SEMANTIC_FIELDS) properties[field] = fields.properties[field];
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-ref
 
-  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-fields
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
   properties['x-uikit'] = {
     type: 'object',
     description:
@@ -1693,9 +1643,9 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
       "The component's props surface: a standalone JSON Schema body carrying the variant axes, the props the component declares itself and the props the primitive states for the part it wraps. It has no `$id` or `$schema` of its own here - liftPropsSchema stamps both back on (gts.frontx.uikit.props.<name>.v<major>~) at the moment something registers or diffs it, so this document holds one identifier at one depth. Left OPEN: `unevaluatedProperties` carries the annotation `x-uikit-classification: unchecked`, because a schema cannot tell a typo'd kit prop from an attribute this harness has not classified.",
     required: ['title', 'type', 'properties', 'required', 'unevaluatedProperties'],
   };
-  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-fields
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
 
-  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-return
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-return
   return {
     $id: COMPONENT_TYPE_ID,
     $schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -1713,7 +1663,7 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
     // leaving the trait machinery altogether.
     additionalProperties: false,
   };
-  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-return
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-return
 });
 
 // The overlay's own schema: every meaning field the vocabulary defines
@@ -2332,8 +2282,7 @@ export function findUntypedPropMismatches(contract: CompiledContract): string[] 
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-pair
 
-// Builds an object from exactly the given keys of `source` - the routing
-// primitive fieldsTargeting's map result feeds into. The single cast below
+// Builds an object from exactly the given keys of `source`. The single cast below
 // is the standard "accumulator starts empty, ends up the right shape" cast:
 // every assignment inside the loop is provably `T[K]` into `Pick<T, K>[K]`,
 // there is just no way to spell "empty object that will become Pick<T, K>"
@@ -2844,17 +2793,6 @@ export function compileContract(directory: string, exportStem: string = director
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-emit
 
-  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-route
-  const uikitFields = fieldsTargeting('x-uikit');
-  const meaningFields = fieldsTargeting('meaning');
-  if (uikitFields.length + meaningFields.length !== SEMANTIC_FIELDS.length) {
-    // Every meaning field must be routed exactly once. This only fires if
-    // SEMANTIC_FIELD_TARGETS is edited to drop a field on the floor - a
-    // config mistake worth failing loudly on rather than shipping a contract
-    // silently missing part of its overlay.
-    throw new Error(`${exportStem}: SEMANTIC_FIELD_TARGETS does not route every meaning field exactly once`);
-  }
-  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-route
   const major = overlay.major ?? DEFAULT_CONTRACT_MAJOR;
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-instance:p2:inst-mi-assemble
   const contract: CompiledContract = {
@@ -2873,7 +2811,7 @@ export function compileContract(directory: string, exportStem: string = director
     // Everything asserted about the component: every authored field, with the
     // two the compiler fills from other authors' assertions overwriting what
     // the overlay may say about them.
-    ...pickFields(overlay, meaningFields),
+    ...pickFields(overlay, SEMANTIC_FIELDS),
     mounted_in: compileMountedIn(directory, exportStem, overlay),
     family_membership: compileFamilyMembership(exportStem, overlay),
     // What the source says. Nothing here is authored, which is the whole of
@@ -2884,7 +2822,6 @@ export function compileContract(directory: string, exportStem: string = director
       // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-slots
       variant_sources: extraction.variantSourceLabels,
       cannot_extract: extraction.cannotExtract,
-      ...pickFields(overlay, uikitFields),
     },
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-route
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-close

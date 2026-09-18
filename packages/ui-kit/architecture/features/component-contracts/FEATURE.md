@@ -22,7 +22,7 @@
   - [Property Statements And Their Pairing](#property-statements-and-their-pairing)
   - [Prop Classification Report](#prop-classification-report)
   - [Contract Identifier Construction](#contract-identifier-construction)
-  - [Component Type Derivation](#component-type-derivation)
+  - [Component Type Schema](#component-type-schema)
   - [Freshness Comparison](#freshness-comparison)
   - [Compatibility Decision](#compatibility-decision)
   - [Comparison Source Beyond The Repository](#comparison-source-beyond-the-repository)
@@ -38,7 +38,7 @@
   - [Facts Come From The Code, By Symbol Identity](#facts-come-from-the-code-by-symbol-identity)
   - [A Contract Joins Meaning To The Extracted Surface](#a-contract-joins-meaning-to-the-extracted-surface)
   - [Contracts Are Named In The Type System's Grammar](#contracts-are-named-in-the-type-systems-grammar)
-  - [The Component Type Is Derived, Not Restated](#the-component-type-is-derived-not-restated)
+  - [The Component Type Is Built From The Vocabulary, Not Restated](#the-component-type-is-built-from-the-vocabulary-not-restated)
   - [A Described Component's Artifacts Equal A Fresh Compile](#a-described-components-artifacts-equal-a-fresh-compile)
   - [Each Described Component Carries Its Own Conformance Suite](#each-described-component-carries-its-own-conformance-suite)
   - [An Incompatible Change Moves The Contract Major](#an-incompatible-change-moves-the-contract-major)
@@ -222,7 +222,7 @@ Prose describing a component can only be reviewed by a person, one screen at a t
 6. [x] - `p1` - Declare each prop the primitive library states for the part being wrapped as a property of this contract, stating as much of its type as the schema carries and annotating it with its own TypeScript type for the rest, unless the overlay hides it - such a prop is this component's API, not surface it merely forwards, and filing it as forwarded surface is what buried a compound component's whole domain API in a file no reader opened - `inst-cc-api`
 7. [x] - `p1` - Where a property's name is also declared by the host element's surface, fail when the two shapes disagree: both apply to the same value, so a disagreement is a props object that can satisfy neither - `inst-cc-owner-conflict`
    1. [x] - `p1` - Refuse, naming the prop, where it was declared and what the element surface states - `inst-cc-owner-conflict-refuse`
-8. [x] - `p1` - Route each meaning field to its block through ONE map, exactly once, and emit the extraction's own facts into the other. Every meaning field goes to the block a validator reads, because the meaning of a component is processing metadata of its type; the map keeps both targets so that answer stays reversible in one edit - `inst-cc-route`
+8. [x] - `p1` - Emit every meaning field the overlay states as an ordinary property of the document, from ONE list of what those fields are, and the extraction's own readings into the block beside them. A field reaches the document exactly once and from exactly one side, so the document's own type can be derived from that list rather than kept in step with it by hand - `inst-cc-route`
 9. [x] - `p1` - Carry the props surface as a STANDALONE schema body inside the document, with no parent and no identifier of its own - there is nothing above a component's props for them to derive from. The surface of the host element the component renders is not one either: it is a hand-written set shared kit-wide by every component that renders the same element, so it is something the component uses rather than a second thing the component is - `inst-cc-close`
    1. [x] - `p1` - Name that surface as a reference the document HOLDS, decided from the extraction in one place: a component that resolves an element but forwards nothing to it names no surface, and two copies of that rule would disagree the day one of them changed - `inst-cc-close`
    2. [x] - `p1` - Leave the props surface OPEN: `unevaluatedProperties` carries the annotation `x-uikit-classification: unchecked` rather than `false`, stating that a prop nothing evaluates is unchecked rather than invalid - a schema cannot tell a typo'd kit prop from an attribute this harness has not classified, and answering "invalid" to both made the second unusable. This is also why keeping the element's surface out of the props body changes nothing a consumer may pass: a forwarded attribute was already admitted by the openness, not by a merge - `inst-cc-close`
@@ -343,9 +343,9 @@ This is what replaced closing the schema. A closed schema answered "invalid" to 
 6. [x] - `p1` - Build the vocabulary type identifier from its concept token - `inst-id-vocabulary-type`
 7. [x] - `p1` - **RETURN** the patterns that recognize each identifier shape - `inst-id-patterns`
 
-### Component Type Derivation
+### Component Type Schema
 
-- [x] `p2` - **ID**: `cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema`
+- [x] `p2` - **ID**: `cpt-frontx-ui-kit-algo-component-contracts-component-type-schema`
 
 **Input**: Nothing but the vocabulary itself.
 
@@ -593,14 +593,14 @@ The system **MUST** construct every component, props-type, host-element-surface 
 **Touches**:
 - Entities: `Contract`, `Component type`, `Props type`, `Element type`
 
-### The Component Type Is Derived, Not Restated
+### The Component Type Is Built From The Vocabulary, Not Restated
 
-- [x] `p1` - **ID**: `cpt-frontx-ui-kit-dod-component-contracts-gts-traits-schema`
+- [x] `p1` - **ID**: `cpt-frontx-ui-kit-dod-component-contracts-component-type-schema`
 
 The system **MUST** express the meaning vocabulary as one type per concept, each with its own identifier, and **MUST** define every meaning field ONCE and hand the same definitions to both readers - the component type and the schema an author is held to - rather than maintaining a second copy of them, so the two can never disagree about what a field looks like. A field the vocabulary does not require **MUST** be stated exactly as the vocabulary defines it, with no null alternative and no default: a property an instance does not carry is absent, and nothing has to make that absence resolve. Where a field holds the identifier of another type, the declaration **MUST** carry both the reference and the grammar that rejects a malformed identifier, because the type store removes the reference annotation before validating and a declaration left with nothing else in it stops constraining the value at all. Where one value of a field settles the question every other value leaves open - "what may appear inside this component" answered as unconstrained or as nothing - the vocabulary **MUST** refuse detail beside it, so a contract cannot say both that nothing may appear inside and that something may, and **MUST** require detail beside the value that answers nothing on its own. Every value a field admits **MUST** be defined in the type that admits it, including what "text" means, so a reader never has to find the definition elsewhere. Where a component may be mounted **MUST** be optional, because most of the kit is mounted anywhere; and a statement about what the schema cannot assert **MUST** say what it is about, from a closed list, with the one about a property naming that property and no other carrying a name, so a family of such claims can be checked against the contract instead of read one at a time. The three answers a contract gives **MUST** stay three: an attestation carries an outcome, a prop carries a classification, a comparison carries a decision. The fields nothing else references - what the component is for, its typical uses, the invariants, the anti-patterns, the examples, the props the kit does not advertise and the host element's surface reference - stay inline rather than becoming types of their own; the props the kit does not advertise **MUST** pair every name with the reason it is not advertised. The host element's surface reference is the one field an overlay **MUST NOT** write, because which element a component renders is a fact of its source, and it **MUST** sit directly on the document, where the type system's own reference walk reaches it. The component type **MUST** be closed against unknown keys, and that closure **MUST** be an ordinary content-model decision reversible in one keyword rather than a condition of the machinery validating it.
 
 **Implements**:
-- `cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema`
+- `cpt-frontx-ui-kit-algo-component-contracts-component-type-schema`
 
 **Touches**:
 - Entities: `Contract`
