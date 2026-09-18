@@ -198,7 +198,7 @@ export function defaultCheckContext(): CheckContext {
           }
         }
       }
-      return nearMissesIn(exportStem, usages, contract.props_schema, loadHostSurface(contract));
+      return nearMissesIn(exportStem, usages, contract.props, loadHostSurface(contract));
     },
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-props-classification:p1:inst-pc-enforce
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-shared-program
@@ -597,7 +597,7 @@ function checkCompatForUnit(
   // accepts - a component dropping its own `className` declaration forwards
   // `className` all the same, and a consumer notices nothing.
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-own
-  const ownPropsDiff = diffOwnPropsSchema(oldContract.props_schema, newContract.props_schema, newElementSurface);
+  const ownPropsDiff = diffOwnPropsSchema(oldContract.props, newContract.props, newElementSurface);
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-own
 
   // An invariant id is a stable handle a lint finding or an eval can cite by

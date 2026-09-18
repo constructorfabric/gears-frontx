@@ -16,7 +16,7 @@
       "description": "GTS type id of the component type - what makes this document a typed value rather than a bare JSON record."
     },
     "metamodel": {
-      "const": "1.0.0",
+      "const": "2.0.0",
       "description": "Version of the overlay vocabulary the compiler emitted. Checked as a const, not a free string with minLength: a contract compiled against a different metamodel version must fail loudly, not pass silently with a stale value."
     },
     "component": {
@@ -94,7 +94,7 @@
       ],
       "description": "What this contract claims about itself, one entry per claim. `a11y` and `rtl` are the kit's own core claims and every component states both; a claim beyond those is present only when the component actually makes it - its absence means \"not claimed\", which is a different fact from an attestation whose outcome is `unknown` (\"considered, not established\"). Open beyond the two required keys by construction - the claim names are the kit's own and grow with it - which is why the attestation type is referenced from additionalProperties rather than from a fixed property list, and why no key inside it is reserved for anything else."
     },
-    "props": {
+    "prop_statements": {
       "type": "object",
       "additionalProperties": {
         "$ref": "gts://gts.frontx.uikit.vocabulary.prop_statement.v1~"
@@ -232,7 +232,7 @@
       ],
       "additionalProperties": false
     },
-    "props_schema": {
+    "props": {
       "type": "object",
       "description": "The component's props surface: a standalone JSON Schema body carrying the variant axes, the props the component declares itself and the props the primitive states for the part it wraps. It has no `$id` or `$schema` of its own here - liftPropsSchema stamps both back on (gts.frontx.uikit.props.<name>.v<major>~) at the moment something registers or diffs it, so this document holds one identifier at one depth. Left OPEN: `unevaluatedProperties` carries the annotation `x-uikit-classification: unchecked`, because a schema cannot tell a typo'd kit prop from an attribute this harness has not classified.",
       "required": [
@@ -259,7 +259,7 @@
     "attestations",
     "examples",
     "x-uikit",
-    "props_schema"
+    "props"
   ],
   "additionalProperties": false
 }

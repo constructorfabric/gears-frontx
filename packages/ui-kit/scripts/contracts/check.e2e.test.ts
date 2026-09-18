@@ -71,7 +71,7 @@ function pascalCase(stem: string): string {
 
 // A minimal but real compiled-shape document: the same instance $id grammar
 // compile.ts emits for every real component, its props surface carried under
-// `props_schema` with no identifier of its own, plus the host-element
+// `props` with no identifier of its own, plus the host-element
 // reference `compat` reads the surface off - bare, exactly as a real
 // component holds it.
 function contractJson(
@@ -92,7 +92,7 @@ function contractJson(
     component,
     ...(element === undefined ? {} : { forwards_to: elementTypeRef(element) }),
     ...(examples === undefined ? {} : { examples }),
-    props_schema: {
+    props: {
       title: `UiKit ${pascalCase(component)}`,
       type: 'object',
       properties,
@@ -189,7 +189,7 @@ function createFixture(): Fixture {
         const path = join(root, 'src', 'components', directory, `${stem}.contract.json`);
         if (!existsSync(path)) return [];
         const contract = JSON.parse(readFileSync(path, 'utf8')) as {
-          props_schema?: { properties?: Record<string, unknown> };
+          props?: { properties?: Record<string, unknown> };
           examples?: { good?: { title: string; code: string }[]; bad?: { title: string; code: string }[] };
         };
         const examples = contract.examples;
@@ -202,7 +202,7 @@ function createFixture(): Fixture {
             for (const props of propsPassedTo(entry.code, pascalCase(stem))) usages.push({ source: `examples.${kind} "${entry.title}"`, props });
           }
         }
-        return nearMissesIn(stem, usages, contract.props_schema ?? {});
+        return nearMissesIn(stem, usages, contract.props ?? {});
       },
       // No TypeScript source in a fixture repo, so nothing to build a program
       // over - the two export listings above answer from the overlays.

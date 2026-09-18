@@ -1,7 +1,7 @@
 {
   "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.data_table.v1",
   "gts_type": "gts.frontx.uikit._.component.v1~",
-  "metamodel": "1.0.0",
+  "metamodel": "2.0.0",
   "component": "data-table",
   "intent": "Render tabular data with sorting, optional row selection, and pagination from one columns/data pair.",
   "typical_uses": [
@@ -58,7 +58,7 @@
       "outcome": "unknown"
     }
   },
-  "props": {
+  "prop_statements": {
     "columns": {
       "states": "columns is an array of @tanstack/react-table ColumnDef objects, generic over TData",
       "because": "The schema states that this is an array and stops there. ColumnDef carries function-valued fields (header/cell render functions among them) from a third-party package this contract does not own, and it is generic over the row type the caller picks - so what is IN the array is checked by tsc, and is why the prop is a slot rather than an enumerated shape."
@@ -160,7 +160,7 @@
     "variant_sources": [],
     "cannot_extract": []
   },
-  "props_schema": {
+  "props": {
     "title": "UiKit DataTable",
     "type": "object",
     "properties": {

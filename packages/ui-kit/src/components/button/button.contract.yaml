@@ -80,7 +80,7 @@ attestations:
 # itself. The compiler emits both halves into that property's own
 # description, beside the `TS:` text; the conformance suite pairs every key
 # here against the properties the schema leaves unasserted, both ways.
-props:
+prop_statements:
   icon:
     states: icon is a React node, not a value
     because: >-

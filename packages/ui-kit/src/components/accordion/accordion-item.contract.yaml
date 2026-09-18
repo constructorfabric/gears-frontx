@@ -42,7 +42,7 @@ attestations:
   rtl:
     outcome: unknown
 
-props:
+prop_statements:
   value:
     states: value is an opaque identifier, typed `any` by Base UI
     because: >-

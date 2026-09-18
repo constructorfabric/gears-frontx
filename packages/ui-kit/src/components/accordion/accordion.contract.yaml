@@ -77,7 +77,7 @@ attestations:
 # part of its shape) actually states, and why - keyed on the property
 # itself. The compiler emits both halves into that property's own
 # description, beside the `TS:` text.
-props:
+prop_statements:
   value:
     states: value is an array of the root's own generic Value parameter
     because: >-

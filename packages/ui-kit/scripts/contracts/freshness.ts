@@ -96,7 +96,7 @@ export function checkComponentFreshness(directory: string, exportStem: string = 
   const extraction = resolveTargetExtraction(directory, exportStem);
   const declaredProps = new Set(extraction.ownProps.map((prop) => prop.name));
   const slotSchemaMismatches: string[] = [];
-  for (const [name, prop] of Object.entries(freshContract.props_schema.properties)) {
+  for (const [name, prop] of Object.entries(freshContract.props.properties)) {
     // A slot is a declared prop whose shape the schema does not state in
     // full, which is not the same as one it says nothing about: `columns`
     // carries `type: "array"` and is still a slot, because what is IN the

@@ -876,7 +876,7 @@ than assumed.
 - **`note` optional, `external` required.** A reason with no next move is the
   same gap a "don't" without an "instead" leaves, one level down; a pointer
   with no reason is often complete on its own.
-- **The metamodel vocabulary is at `1.0.0`.** Nothing outside this repository
+- **The metamodel vocabulary is at `2.0.0`.** Nothing outside this repository
   reads the metamodel and the described set is three directories, so the
   version an instance carries states which vocabulary it was compiled
   against, not a compatibility promise to anyone. The metamodel's own type id
@@ -937,7 +937,7 @@ what the value must resolve to, the pattern is what rejects a malformed one.
 Resolution against the registry happens where gts-ts actually runs its
 reference validator, on the instance path
 (`GtsStore.validateInstance` -> `XGtsRefValidator`), and only for a property
-carrying `x-gts-ref` directly: the instance's `props_schema` is checked that
+carrying `x-gts-ref` directly: the instance's `props` is checked that
 way and fails when the contract it names is not registered. A reference
 nested inside a referenced vocabulary type - a `don't` alternative, a
 composition kind, a family member - is not reached by that walk, so those
@@ -1271,7 +1271,7 @@ just as well as from a merge.
 **Changed.** A contract derives from exactly one type. `allOf` carries the
 base type and nothing else, and the surface is a value the contract names:
 `x-gts-traits.host_element`, the surface's GTS id, bare. The instance carries
-the same reference beside `props_schema`. Every surface-aware check reads it
+the same reference beside `props`. Every surface-aware check reads it
 through one reader (`hostElementRef`/`hostElementToken`/`loadHostSurface` in
 `compile.ts`) instead of walking the schema body: the compatibility check's
 element-surface comparison for both revisions, the coverage report's line of
@@ -1289,7 +1289,7 @@ top-level `x-uikit-host` annotation. `x-gts-traits` is the block
 source, which no validator checks. The host element is read by four checks, so
 it belongs in the block that is checked - and its shape is then declared once,
 beside every other field of that block. On the instance it is a top-level field
-beside `props_schema`, which makes it the second reference gts-ts resolves
+beside `props`, which makes it the second reference gts-ts resolves
 against the registry itself: `XGtsRefValidator` walks instance properties, so
 an instance naming a surface no committed file declares now fails by name,
 which the `allOf` `$ref` never did on the trait path.
@@ -1521,7 +1521,7 @@ and `rtl` became the kit's two required claims. `icons_via` moved inside
 times between them - a component reference, a prop name - became vocabulary
 types of their own (`component_reference`, `prop_name`), referenced instead
 of repeated; the two places the type system's own reference walk must reach
-directly on an instance property (a metamodel instance's `props_schema`, and
+directly on an instance property (a metamodel instance's `props`, and
 `forwards_to` beside it) keep the literal triple, with the reason stated at
 the definition rather than left for a reader to reconstruct. `companion.export`
 stopped sharing a function with a prop name it was never one. Compat learned
@@ -1544,7 +1544,7 @@ each is now the same shape as the sibling that had already been fixed:
 - `untyped` was a flat list partitioned by an `about` discriminant, four ways
   the medium fell short rather than four kinds of fact, and two of its
   categories restated a fact a different field already carried. It is
-  dissolved: `about: prop` is now `props`, an overlay map keyed on the
+  dissolved: `about: prop` is now `prop_statements`, an overlay map keyed on the
   property itself and emitted by the compiler into that property's own
   description beside the `TS:` text; `about: unexposed_part` is
   `unexposed_parts`, beside `withheld`; `about: behaviour` is an ordinary

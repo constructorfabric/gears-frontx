@@ -195,7 +195,7 @@ describe('data-table: growth surfaces', () => {
 
 describe('data-table: what the schema cannot assert', () => {
   it("DataTable names every prop the schema cannot type, and its internal state as an invariant", () => {
-    const statements = units[DIRECTORY].contract.props ?? {};
+    const statements = units[DIRECTORY].contract.prop_statements ?? {};
     for (const prop of ['columns', 'data', 'emptyMessage', 'nextLabel', 'previousLabel', 'selectionSummary']) {
       expect(Object.keys(statements), prop).toContain(prop);
     }
@@ -215,7 +215,7 @@ describe('data-table: what the schema cannot assert', () => {
     // `untyped` catch-all's `about: outside_mount` category).
     const unexposedParts = contract.unexposed_parts ?? [];
     expect(unexposedParts.some((entry) => /Button/.test(entry.part) && /internal composition/.test(entry.reason))).toBe(true);
-    const statements = contract.props ?? {};
+    const statements = contract.prop_statements ?? {};
     expect(Object.keys(statements).sort()).toEqual(['children', 'column']);
     // A component reference covers kit-to-kit nesting only, and it is FILLED
     // rather than authored: a column's `header` render function is a TanStack

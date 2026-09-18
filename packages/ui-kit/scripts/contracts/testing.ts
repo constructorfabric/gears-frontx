@@ -323,7 +323,7 @@ export function assertContractFreshness(directory: string, exportStem: string = 
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-no-specifier
 
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-untyped
-    it('pairs every property that asserts nothing with a props statement about it, both ways', () => {
+    it('pairs every property that asserts nothing with a prop statement about it, both ways', () => {
       // The gap this closes was measured, not imagined: an evaluation pointed
       // an agent at three properties that asserted nothing and it reported
       // they took plain strings. A property Ajv will not check has to say
@@ -331,7 +331,7 @@ export function assertContractFreshness(directory: string, exportStem: string = 
       // a statement naming a property the contract does constrain tells a
       // reader something false about the contract in front of them.
       const problems = findUntypedPropMismatches(compileContract(directory, exportStem));
-      expect(problems, `${exportStem}: props statements and unasserted properties disagree:\n${problems.join('\n')}`).toEqual(
+      expect(problems, `${exportStem}: prop statements and unasserted properties disagree:\n${problems.join('\n')}`).toEqual(
         [],
       );
     });
@@ -404,8 +404,8 @@ export function assertContractFreshness(directory: string, exportStem: string = 
       // is derived either - a component is an instance of the component type,
       // not a type descended from anything, so no parent reference appears.
       const contract = compileContract(directory, exportStem);
-      expect(Object.keys(contract.props_schema)).not.toContain('$id');
-      expect(Object.keys(contract.props_schema)).not.toContain('$schema');
+      expect(Object.keys(contract.props)).not.toContain('$id');
+      expect(Object.keys(contract.props)).not.toContain('$schema');
       expect(contract, `${exportStem}: a component derives from nothing`).not.toHaveProperty('allOf');
       const lifted = liftPropsSchema(contract);
       expect(lifted.$id, `${exportStem}: the lift stamps the props type id back on`).toBe(

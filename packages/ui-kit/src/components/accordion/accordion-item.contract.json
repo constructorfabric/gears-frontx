@@ -1,7 +1,7 @@
 {
   "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.accordion_item.v1",
   "gts_type": "gts.frontx.uikit._.component.v1~",
-  "metamodel": "1.0.0",
+  "metamodel": "2.0.0",
   "component": "accordion-item",
   "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
   "intent": "One collapsible section of an Accordion, identified by a unique value.",
@@ -52,7 +52,7 @@
       "outcome": "unknown"
     }
   },
-  "props": {
+  "prop_statements": {
     "value": {
       "states": "value is an opaque identifier, typed `any` by Base UI",
       "because": "Base UI's Accordion.Item declares `value?: any` - it is compared by identity against the root's `value`/`defaultValue` array and never interpreted, so the primitive types it as anything. Strings are what accordion.md uses, and what a reader should reach for."
@@ -96,7 +96,7 @@
       "heritage: \"{\n    [P in keyof T]?: T[P];\n}\" is a MappedType, not a shape this walk can classify - cannot extract"
     ]
   },
-  "props_schema": {
+  "props": {
     "title": "UiKit AccordionItem",
     "type": "object",
     "properties": {

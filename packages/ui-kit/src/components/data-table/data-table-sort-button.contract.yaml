@@ -76,7 +76,7 @@ unexposed_parts:
 # part of its shape) actually states, and why - keyed on the property
 # itself. The compiler emits both halves into that property's own
 # description, beside the `TS:` text.
-props:
+prop_statements:
   column:
     states: column is a live @tanstack/react-table Column instance, generic over TData and TValue
     because: >-

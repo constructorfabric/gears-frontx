@@ -54,7 +54,7 @@ attestations:
 # part of its shape) actually states, and why - keyed on the property
 # itself. The compiler emits both halves into that property's own
 # description, beside the `TS:` text.
-props:
+prop_statements:
   render:
     states: render replaces the panel element with one the caller supplies
     because: >-

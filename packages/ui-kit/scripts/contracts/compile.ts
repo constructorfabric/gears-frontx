@@ -16,7 +16,7 @@
 // validator that checks any instance against its type, and its props surface
 // is a part of the document rather than a second artifact pointing back at it.
 //
-// The props surface is a STANDALONE type: `props_schema` holds the schema
+// The props surface is a STANDALONE type: `props` holds the schema
 // body, and the lift (liftPropsSchema below) stamps its own `$id` and schema
 // dialect back on at the moment something registers or diffs it, so the
 // document carries exactly one identifier at exactly one depth. It does NOT
@@ -122,7 +122,7 @@ export interface Attestation {
 
 // One prop's statement: what it states and why nothing checks it, the two
 // halves the retired `untyped` catch-all's `about: prop` category carried as
-// `claim`/`reason`. Keyed on the prop itself now (the overlay's `props` map)
+// `claim`/`reason`. Keyed on the prop itself now (the overlay's `prop_statements` map)
 // rather than living in a flat list that named the prop as one more field -
 // the same fact, one level closer to the property it is about. The compiler
 // emits it into that property's own `description`, beside the `TS:` text.
@@ -300,7 +300,7 @@ export interface Overlay {
   // why nothing checks it. Required for every prop the schema does not state
   // in full and forbidden for one it does - the compiler emits it into that
   // property's own description, checked both ways by the conformance suite.
-  props?: Record<string, PropStatement>;
+  prop_statements?: Record<string, PropStatement>;
   examples: Examples;
   // Absent for every component that is not part of a compound one (Button,
   // ...): a family only exists where a directory's public surface is more
@@ -381,7 +381,7 @@ const SEMANTIC_FIELDS = [
   'anti_patterns',
   'deprecations',
   'attestations',
-  'props',
+  'prop_statements',
   'unexposed_parts',
   'examples',
   'family_membership',
@@ -406,7 +406,7 @@ const SEMANTIC_FIELD_TARGETS = {
   anti_patterns: 'meaning',
   deprecations: 'meaning',
   attestations: 'meaning',
-  props: 'meaning',
+  prop_statements: 'meaning',
   unexposed_parts: 'meaning',
   examples: 'meaning',
   family_membership: 'meaning',
@@ -503,7 +503,7 @@ export type CompiledContract = ContractMeaning & {
     variant_sources: string[];
     cannot_extract: string[];
   } & Pick<Overlay, UikitFields>;
-  props_schema: PropsSchema;
+  props: PropsSchema;
 };
 
 const kitRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -831,16 +831,11 @@ function elementSurfacePropertyTypes(elementSurface: Record<string, unknown>): M
 // author might paste in by habit while debugging, rather than the vocabulary
 // this file actually defines.
 //
-// `props` is deliberately NOT here, and `slots` never needed to be: the
-// machine's own per-property record used to share the word `slots` with the
-// authored extension-surface field of the same name, which is why the two
-// were told apart by which BLOCK they live in rather than by name; renaming
-// the machine's record to `x-uikit.partially_typed_props` retired that
-// collision outright (see fieldsTargeting's own comment). `props` is the
-// SAME kind of field: an author writes `props: { <name>: {...} }` to state
-// what one of the component's own properties means, and nothing machine-
-// owned answers to that name any more either. A pasted debug dump under
-// either key now fails the shape check below instead of a blanket ban.
+// `prop_statements` is deliberately NOT here, and neither is `slots`: an
+// author writes `prop_statements: { <name>: {...} }` to state what one of
+// the component's own properties means, and `slots` to state a growth
+// surface, and nothing machine-owned answers to either name. A pasted debug
+// dump under either key fails the shape check below instead of a blanket ban.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-overlay-admission:p1:inst-oa-machine-owned
 const MACHINE_OWNED = ['axes', 'defaults', 'variants', 'required', 'type'];
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-overlay-admission:p1:inst-oa-machine-owned
@@ -891,7 +886,7 @@ function expressedSchemaOf(prop: ExtractedProp): ContractProperty {
 
 // How a reference to another kit component is spelled, everywhere one
 // appears: a recommendation's component, an accepted component, a family
-// member, the instance's own props_schema.
+// member, the instance's own props.
 //
 // THREE keywords, and all three are load-bearing:
 //   - `x-gts-ref` is the reference itself - it names what the value must
@@ -1440,7 +1435,7 @@ export const buildMeaningFields = memoizeSchema((): { properties: Record<string,
       // suite (findUntypedPropMismatches), the same pairing the old list was
       // held to. `propertyNames` reuses the prop-name grammar because a key
       // here IS a prop name.
-      props: {
+      prop_statements: {
         type: 'object',
         additionalProperties: { $ref: vocabularyTypeId('prop_statement') },
         propertyNames: { $ref: vocabularyTypeId('prop_name') },
@@ -1662,7 +1657,7 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
     additionalProperties: false,
   };
 
-  properties.props_schema = {
+  properties.props = {
     type: 'object',
     description:
       "The component's props surface: a standalone JSON Schema body carrying the variant axes, the props the component declares itself and the props the primitive states for the part it wraps. It has no `$id` or `$schema` of its own here - liftPropsSchema stamps both back on (gts.frontx.uikit.props.<name>.v<major>~) at the moment something registers or diffs it, so this document holds one identifier at one depth. Left OPEN: `unevaluatedProperties` carries the annotation `x-uikit-classification: unchecked`, because a schema cannot tell a typo'd kit prop from an attribute this harness has not classified.",
@@ -1679,7 +1674,7 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
       "The type every kit component is a well-known INSTANCE of. A component is not a type derived from an abstract component type - that relationship ran in opposite directions for the two halves of the old split artifact, and only one of them was real - so this type carries the whole content model directly: the instance's identity, the version of the vocabulary it was compiled against, everything asserted about the component, what the extraction read off its source, and its props surface. A field whose shape another type owns is a reference to that type (gts.frontx.uikit.vocabulary.*) rather than an inline definition; only a sentence, a capped list of strings and the one reference gts-ts's own walk must find directly on a document property stay inline. See the domain model in the package DESIGN for how they relate.",
     type: 'object',
     properties,
-    required: ['$id', 'gts_type', 'metamodel', 'component', ...fields.required, 'x-uikit', 'props_schema'],
+    required: ['$id', 'gts_type', 'metamodel', 'component', ...fields.required, 'x-uikit', 'props'],
     // Closed, so an unknown key fails by name instead of vanishing silently.
     // An ordinary content-model decision now, and reversible in one keyword:
     // while the meaning lived in x-gts-traits, gts-ts's validateEntityTraits
@@ -1832,11 +1827,11 @@ export function assertValidatesAgainst(component: string, what: string, schema: 
 // registering the kit's props types - so the identifier is derived from the
 // document's own id in one place instead of being rebuilt by each of them.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-identifiers:p2:inst-id-lift
-export function liftPropsSchema(document: Pick<CompiledContract, '$id' | 'props_schema'>): Record<string, unknown> {
+export function liftPropsSchema(document: Pick<CompiledContract, '$id' | 'props'>): Record<string, unknown> {
   return {
     $id: propsSchemaIdFor(document.$id),
     $schema: 'https://json-schema.org/draft/2020-12/schema',
-    ...document.props_schema,
+    ...document.props,
   };
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-identifiers:p2:inst-id-lift
@@ -2258,15 +2253,15 @@ function underCheck(prop: ExtractedProp): PropertyUnderCheck {
 // @cpt-algo:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-list
 export function partlyCheckedPropertyNames(contract: CompiledContract): string[] {
-  return Object.entries(contract.props_schema.properties)
+  return Object.entries(contract.props.properties)
     .filter(([, schema]) => schema.description !== undefined)
     .map(([name]) => name)
     .sort();
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-list
 
-// The pairing between those properties and the contract's own `props`
-// statements, both ways. A property nothing asserts and nothing explains is
+// The pairing between those properties and the contract's own
+// `prop_statements`, both ways. A property nothing asserts and nothing explains is
 // the defect this pairing came from: an evaluation read three such
 // properties out of a generated file and decided they took plain strings. A
 // statement naming a property the schema states IN FULL is the mirror error
@@ -2277,10 +2272,10 @@ export function partlyCheckedPropertyNames(contract: CompiledContract): string[]
 // the part nothing checks is the part a statement is owed for.
 //
 // Keyed on the property itself now (the dissolved `untyped` catch-all's
-// `about: prop` category moved into the overlay's `props` map), which is
-// what makes this checkable without reading a `about` discriminant first: a
-// statement in `props` is BY CONSTRUCTION about a prop, since that is the
-// only thing the map can be keyed on.
+// `about: prop` category moved into the overlay's `prop_statements` map),
+// which is what makes this checkable without reading a `about` discriminant
+// first: a statement in `prop_statements` is BY CONSTRUCTION about a prop,
+// since that is the only thing the map can be keyed on.
 //
 // Reported rather than thrown: this is a documentation gap, and a compile
 // that refuses it would make a component uncompilable until its prose caught
@@ -2289,16 +2284,16 @@ export function partlyCheckedPropertyNames(contract: CompiledContract): string[]
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-pair
 export function findUntypedPropMismatches(contract: CompiledContract): string[] {
   const partlyChecked = new Set(partlyCheckedPropertyNames(contract));
-  const named = new Set(Object.keys(contract.props ?? {}));
+  const named = new Set(Object.keys(contract.prop_statements ?? {}));
   const problems: string[] = [];
   for (const name of [...partlyChecked].sort()) {
     if (!named.has(name)) {
-      problems.push(`"${name}" is not fully checked by its schema but no props statement about it exists`);
+      problems.push(`"${name}" is not fully checked by its schema but no prop statement about it exists`);
     }
   }
   for (const name of [...named].sort()) {
     if (!partlyChecked.has(name)) {
-      problems.push(`a props statement names "${name}", which the contract's properties state in full`);
+      problems.push(`a prop statement names "${name}", which the contract's properties state in full`);
     }
   }
   return problems;
@@ -2423,9 +2418,9 @@ export function assertOverlayReferencesRealProps(component: string, overlay: Ove
       );
     }
   }
-  for (const prop of Object.keys(overlay.props ?? {})) {
+  for (const prop of Object.keys(overlay.prop_statements ?? {})) {
     if (!declared.has(prop) && !api.has(prop)) {
-      refuse(`overlay props references "${prop}", which is not a real prop`);
+      refuse(`overlay prop_statements references "${prop}", which is not a real prop`);
     }
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-overlay-admission:p1:inst-oa-absent-prop
@@ -2793,7 +2788,7 @@ export function compileContract(directory: string, exportStem: string = director
   // about; it is now IN the property's own description, where a reader of
   // `properties` finds it without a second lookup.
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-emit
-  for (const [name, statement] of Object.entries(overlay.props ?? {})) {
+  for (const [name, statement] of Object.entries(overlay.prop_statements ?? {})) {
     const existing = properties[name];
     // No description to append to means one of two things: the name is not
     // a real prop (assertOverlayReferencesRealProps already refused that),
@@ -2853,7 +2848,7 @@ export function compileContract(directory: string, exportStem: string = director
     // The props surface, carrying no identifier of its own - liftPropsSchema
     // stamps one on for whoever needs a schema. Left OPEN: a prop nothing
     // evaluates is classified as unchecked rather than rejected.
-    props_schema: {
+    props: {
       title: `UiKit ${pascalCase(exportStem)}`,
       type: 'object',
       properties,

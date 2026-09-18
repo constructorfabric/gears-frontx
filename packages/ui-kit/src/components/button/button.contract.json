@@ -1,7 +1,7 @@
 {
   "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1",
   "gts_type": "gts.frontx.uikit._.component.v1~",
-  "metamodel": "1.0.0",
+  "metamodel": "2.0.0",
   "component": "button",
   "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
   "intent": "Trigger a single action in the current context.",
@@ -60,7 +60,7 @@
       "outcome": "unknown"
     }
   },
-  "props": {
+  "prop_statements": {
     "icon": {
       "states": "icon is a React node, not a value",
       "because": "`ReactNode` has no JSON Schema representation - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot exists so the icon gets sized, spaced, hidden while `loading` and marked decorative; what may go in it is \"anything React renders\", which is the whole assertion."
@@ -110,7 +110,7 @@
     ],
     "cannot_extract": []
   },
-  "props_schema": {
+  "props": {
     "title": "UiKit Button",
     "type": "object",
     "properties": {

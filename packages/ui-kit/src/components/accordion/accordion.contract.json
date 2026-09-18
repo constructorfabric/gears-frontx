@@ -1,7 +1,7 @@
 {
   "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.accordion.v1",
   "gts_type": "gts.frontx.uikit._.component.v1~",
-  "metamodel": "1.0.0",
+  "metamodel": "2.0.0",
   "component": "accordion",
   "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
   "intent": "Show one or more sections at a time, collapsing the rest to their headers.",
@@ -61,7 +61,7 @@
       "outcome": "unknown"
     }
   },
-  "props": {
+  "prop_statements": {
     "value": {
       "states": "value is an array of the root's own generic Value parameter",
       "because": "`AccordionValue<Value>` is an ARRAY of the type parameter, not a single value - which is exactly the misreading this entry exists to prevent: an agent shown an unconstrained `value` concluded it took a plain string. The schema states the array; what is IN it is the caller's own `Value`, which no schema can state, because the caller chooses it. accordion.md's example uses string item values (`value=\"item-1\"` on the item), so a root value is an array of those."
@@ -118,7 +118,7 @@
     "variant_sources": [],
     "cannot_extract": []
   },
-  "props_schema": {
+  "props": {
     "title": "UiKit Accordion",
     "type": "object",
     "properties": {

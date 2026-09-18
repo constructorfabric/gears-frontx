@@ -45,7 +45,7 @@ export const DEFAULT_CONTRACT_MAJOR = 1;
 // changing is a contract major bump. A document's `metamodel` field is
 // validated as a const equal to this, so a contract compiled against a
 // stale metamodel fails loudly instead of silently degrading.
-export const METAMODEL_VERSION = '1.0.0';
+export const METAMODEL_VERSION = '2.0.0';
 
 // GTS type id of ui-component.meta.json, the component type. A CONCRETE
 // type: every kit component is a well-known INSTANCE of it, carrying the

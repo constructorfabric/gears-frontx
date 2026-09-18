@@ -196,11 +196,11 @@ describe('accordion family: what the schema cannot assert', () => {
     // property itself now (the dissolved `untyped` catch-all's `about: prop`
     // category), and emitted into that property's own description beside
     // the `TS:` text.
-    const statements = units[DIRECTORY].contract.props ?? {};
+    const statements = units[DIRECTORY].contract.prop_statements ?? {};
     for (const prop of ['value', 'defaultValue', 'onValueChange']) {
       expect(Object.keys(statements), prop).toContain(prop);
     }
-    const properties = units[DIRECTORY].contract.props_schema.properties;
+    const properties = units[DIRECTORY].contract.props.properties;
     for (const prop of ['value', 'defaultValue']) {
       expect(properties[prop].type, prop).toBe('array');
       expect(properties[prop].items, prop).toBeUndefined();
@@ -217,7 +217,7 @@ describe('accordion family: what the schema cannot assert', () => {
     const withheld = units[DIRECTORY].contract.withheld ?? [];
     expect(withheld.map((entry) => entry.prop)).toEqual(['orientation']);
     expect(withheld[0].reason).toContain('flex-direction: column');
-    expect(units[DIRECTORY].contract.props_schema.properties).not.toHaveProperty('orientation');
+    expect(units[DIRECTORY].contract.props.properties).not.toHaveProperty('orientation');
     expect(units[DIRECTORY].contract.unexposed_parts ?? []).toEqual([]);
   });
 
@@ -230,9 +230,9 @@ describe('accordion family: what the schema cannot assert', () => {
     // The filing rule on the family: `multiple` is Base UI's own
     // AccordionRootProps and reaches the contract typed, while `children`
     // and `role` are React's div attributes and stay on the element surface.
-    expect(units[DIRECTORY].contract.props_schema.properties.multiple).toEqual({ type: 'boolean' });
+    expect(units[DIRECTORY].contract.props.properties.multiple).toEqual({ type: 'boolean' });
     for (const prop of ['children', 'role', 'onClick']) {
-      expect(units[DIRECTORY].contract.props_schema.properties, prop).not.toHaveProperty(prop);
+      expect(units[DIRECTORY].contract.props.properties, prop).not.toHaveProperty(prop);
     }
   });
 });

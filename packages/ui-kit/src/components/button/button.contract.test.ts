@@ -109,15 +109,15 @@ const committedComponentType = JSON.parse(
 describe('button contract conformance', () => {
   it('mirrors every cva axis and value, both directions', () => {
     for (const [axis, values] of Object.entries(extraction.axes)) {
-      expect(contract.props_schema.properties[axis]?.enum).toEqual(values);
+      expect(contract.props.properties[axis]?.enum).toEqual(values);
     }
-    const enumProps = Object.entries(contract.props_schema.properties).filter(([, schema]) => schema.enum !== undefined);
+    const enumProps = Object.entries(contract.props.properties).filter(([, schema]) => schema.enum !== undefined);
     expect(enumProps.map(([name]) => name).sort()).toEqual(Object.keys(extraction.axes).sort());
   });
 
   it('mirrors defaultVariants', () => {
     for (const [axis, def] of Object.entries(extraction.defaults)) {
-      expect(contract.props_schema.properties[axis]?.default).toBe(def);
+      expect(contract.props.properties[axis]?.default).toBe(def);
     }
   });
 
@@ -129,12 +129,12 @@ describe('button contract conformance', () => {
     // icon, loading, focusableWhenDisabled, nativeButton, render and style
     // are all optional), so this also proves `required` is `[]`, not an
     // absent field, when nothing is required.
-    expect(Array.isArray(contract.props_schema.required)).toBe(true);
+    expect(Array.isArray(contract.props.required)).toBe(true);
     const expected = [...extraction.ownProps, ...extraction.apiProps]
-      .filter((prop) => prop.name in contract.props_schema.properties && !prop.optional)
+      .filter((prop) => prop.name in contract.props.properties && !prop.optional)
       .map((prop) => prop.name)
       .sort();
-    expect([...contract.props_schema.required].sort()).toEqual(expected);
+    expect([...contract.props.required].sort()).toEqual(expected);
   });
 
   it('overlay references only props that exist in code', () => {
@@ -195,8 +195,8 @@ describe('button contract conformance', () => {
     // an option here for a different reason: it only sees its sibling
     // `properties`, so it would reject every forwarded attribute the moment a
     // validator composed the host element's surface in beside the contract.
-    expect(contract.props_schema.unevaluatedProperties).toEqual(OPEN_UNEVALUATED);
-    expect(contract.props_schema.unevaluatedProperties[CLASSIFICATION_KEY]).toBe('unchecked');
+    expect(contract.props.unevaluatedProperties).toEqual(OPEN_UNEVALUATED);
+    expect(contract.props.unevaluatedProperties[CLASSIFICATION_KEY]).toBe('unchecked');
     expect(contract).not.toHaveProperty('additionalProperties');
   });
 
@@ -215,10 +215,10 @@ describe('button contract conformance', () => {
     // entries in a generated file nobody read.
     expect(extraction.forwardedProps.map((p) => p.name)).toContain('disabled');
     expect(elementSurface.properties).toHaveProperty('disabled');
-    expect(contract.props_schema.properties).not.toHaveProperty('disabled');
+    expect(contract.props.properties).not.toHaveProperty('disabled');
 
     expect(extraction.apiProps.map((p) => p.name)).toContain('nativeButton');
-    expect(contract.props_schema.properties.nativeButton).toEqual({ type: 'boolean' });
+    expect(contract.props.properties.nativeButton).toEqual({ type: 'boolean' });
   });
 
   it('gives an API prop the schema cannot type its TypeScript type, not an empty schema', () => {
@@ -228,10 +228,10 @@ describe('button contract conformance', () => {
     // reader gets instead is the checker's own printed type, followed by the
     // overlay's own `props.render` statement (states/because), which the
     // compiler emits into the same description beside the `TS:` text.
-    expect(contract.props_schema.properties.render.type).toBeUndefined();
-    expect(contract.props_schema.properties.render.description).toMatch(/^TS: .*Not expressible in JSON Schema, checked by tsc\./s);
-    expect(contract.props_schema.properties.render.description).toContain('ComponentRenderFn');
-    expect(contract.props_schema.properties.render.description).toContain('render replaces the rendered element with one the caller supplies');
+    expect(contract.props.properties.render.type).toBeUndefined();
+    expect(contract.props.properties.render.description).toMatch(/^TS: .*Not expressible in JSON Schema, checked by tsc\./s);
+    expect(contract.props.properties.render.description).toContain('ComponentRenderFn');
+    expect(contract.props.properties.render.description).toContain('render replaces the rendered element with one the caller supplies');
   });
 
   it("records only the kit's own slotted props in x-uikit.partially_typed_props, not every partly checked property", () => {
@@ -254,7 +254,7 @@ describe('button contract conformance', () => {
     // what the contract carries.
     expect(extraction.ownProps.map((p) => p.name)).toContain('className');
     expect(elementSurface.properties).toHaveProperty('className');
-    expect(contract.props_schema.properties.className).toEqual({ type: 'string' });
+    expect(contract.props.properties.className).toEqual({ type: 'string' });
   });
 });
 
@@ -342,7 +342,7 @@ describe('the props-classification report', () => {
   it('counts a kit prop, a forwarded attribute and a pattern match as known', () => {
     const report = classifyProps(
       { variant: 'ghost', nativeButton: true, disabled: true, 'aria-label': 'Delete', 'data-testid': 'x', onClick: () => {} },
-      contract.props_schema,
+      contract.props,
       surface,
     );
     expect(report.known).toEqual(['aria-label', 'data-testid', 'disabled', 'nativeButton', 'onClick', 'variant']);
@@ -351,7 +351,7 @@ describe('the props-classification report', () => {
   });
 
   it('upgrades a one-edit miss of a kit prop to a near miss, naming what it is probably meant to be', () => {
-    const report = classifyProps({ variannt: 'ghost' }, contract.props_schema, surface);
+    const report = classifyProps({ variannt: 'ghost' }, contract.props, surface);
     expect(report.unchecked).toEqual(['variannt']);
     expect(report.nearMiss).toEqual([{ prop: 'variannt', probably: 'variant' }]);
   });
@@ -360,7 +360,7 @@ describe('the props-classification report', () => {
     // `tooltip` is not one edit from any prop Button declares. The honest
     // answer is that nothing here checks it - which is a report, not a
     // refusal, and the distinction the open schema exists to preserve.
-    const report = classifyProps({ tooltip: 'Delete' }, contract.props_schema, surface);
+    const report = classifyProps({ tooltip: 'Delete' }, contract.props, surface);
     expect(report.unchecked).toEqual(['tooltip']);
     expect(report.nearMiss).toEqual([]);
   });
@@ -371,9 +371,9 @@ describe('the props-classification report', () => {
     // element surface declares - a typo in a DOM attribute is React's
     // business, not this contract's, and reporting it here would make the
     // report noisier than the thing it replaced.
-    const nearOwn = classifyProps({ classNam: 'x' }, contract.props_schema, surface);
+    const nearOwn = classifyProps({ classNam: 'x' }, contract.props, surface);
     expect(nearOwn.nearMiss).toEqual([{ prop: 'classNam', probably: 'className' }]);
-    const nearElement = classifyProps({ titl: 'x' }, contract.props_schema, surface);
+    const nearElement = classifyProps({ titl: 'x' }, contract.props, surface);
     expect(nearElement.unchecked).toEqual(['titl']);
     expect(nearElement.nearMiss).toEqual([]);
   });
@@ -384,7 +384,7 @@ describe('the props-classification report', () => {
     // not in `properties`, so it lands in `unchecked` exactly like any other
     // name the contract does not account for.
     const accordion = compileContract('accordion');
-    const report = classifyProps({ orientation: 'horizontal' }, accordion.props_schema, undefined);
+    const report = classifyProps({ orientation: 'horizontal' }, accordion.props, undefined);
     expect(report.unchecked).toEqual(['orientation']);
   });
 });
@@ -735,21 +735,21 @@ describe('overlay and extraction safety', () => {
     expect(() => assertOverlayReferencesRealProps('button', stale, extraction)).toThrow(/declares itself/);
   });
 
-  it('rejects a props statement naming a prop that does not exist', () => {
-    // `props` is keyed on the property itself now (the dissolved `untyped`
-    // catch-all's `about: prop` category moved one level closer to what it
-    // is about), which structurally rules out the two failure modes the old
-    // flat list needed separate refusals for: a statement naming no prop
-    // (there is no key-less entry to write), and a statement about something
-    // other than a prop (there is no `about` to mis-set). A bogus KEY is the
-    // one thing left to check.
+  it('rejects a prop statement naming a prop that does not exist', () => {
+    // `prop_statements` is keyed on the property itself (the dissolved
+    // `untyped` catch-all's `about: prop` category moved one level closer to
+    // what it is about), which structurally rules out the two failure modes
+    // the old flat list needed separate refusals for: a statement naming no
+    // prop (there is no key-less entry to write), and a statement about
+    // something other than a prop (there is no `about` to mis-set). A bogus
+    // KEY is the one thing left to check.
     const stale: Overlay = {
       ...validOverlay,
-      props: { ghostIcon: { states: 'placeholder', because: 'placeholder' } },
+      prop_statements: { ghostIcon: { states: 'placeholder', because: 'placeholder' } },
     };
     const extraction = syntheticExtraction([]);
     expect(() => assertOverlayReferencesRealProps('button', stale, extraction)).toThrow(
-      /overlay props references "ghostIcon"/,
+      /overlay prop_statements references "ghostIcon"/,
     );
   });
 });
