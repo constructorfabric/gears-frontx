@@ -1346,13 +1346,18 @@ current ones:
 | `dont_use_when[].instead` as an id or an `external_alternative` | `instead` as a `recommendation` (`target`, optional `component`, optional `note`) |
 | `composition.children.kinds` (refs, `text`, `none`) | `accepts` (`content`, `components`, `text`) |
 | `composition.children.icons_via` | `accepts.icons_via` |
-| `composition.mounts_in` plus the derived `composition.parent.kinds` | `mounted_in`, one field, filled refs beside authored `outside_mount` entries |
+| `composition.mounts_in` plus the derived `composition.parent.kinds` | `mounted_in`, one field, one shape - filled entries carrying a kit component reference beside authored ones carrying a note |
 | `family` (`root` ref, `role`, `parts`) | `family_membership` (`name` token, `role`, filled `members`) |
 | `coverage.<claim>: verified \| checked-no \| not-described` | `attestations.<claim>: { outcome: verified \| failed \| unknown, by? }` |
-| `coverage.assumptions[]` with `kind` | `untyped[]` with `about` |
-| assumption kinds `untyped_prop`, `hidden_part`, `external_mount` | `about` values `prop`, `unexposed_part`, `outside_mount` |
+| `coverage.assumptions[]` with `kind`, then `untyped[]` with `about` | `prop_statements`, a map keyed on the property (`states`, `because`), plus `unexposed_parts`, `mounted_in` and `invariants` for the rest |
+| assumption kinds `untyped_prop`, `hidden_part`, `external_mount`; `about` values `prop`, `unexposed_part`, `outside_mount` | a `prop_statements` key, an `unexposed_parts` entry, an authored `mounted_in` entry |
 | `extension_points[]` with `kind: prop \| helper \| feature` | `slots[]`, `companions[]`, `capabilities[]` |
 | `hidden[]` | `withheld[]` |
+| `x-uikit.slots`, the machine's own per-property record | `x-uikit.partially_typed_props` |
+| `Slot: <type>.` as the emitted prefix on such a property | `Partially typed: <type>.` |
+| `props_schema`, the document's props surface | `props` |
+| `props`, the authored statement map | `prop_statements` |
+| meaning fields emitted into the contract's `x-gts-traits` | meaning fields as top-level properties of the instance, checked by the component type |
 | `x-uikit-verdict: unchecked` | `x-uikit-classification: unchecked` (the key, not the value) |
 | `covered.json`, "coverage report" | `enrolled.json`, "enrollment report" |
 | `CompatVerdict.status` | `CompatDecision.decision` |
@@ -1675,3 +1680,18 @@ in this workspace - an update, an install outside the monorepo lockfile, a
 future bump - and the guard turns red on a tree nobody touched. The bump is a
 deliberate act with its own regenerated artifacts, which is what an exact pin
 makes it.
+
+## A component that accepts itself gets no mount point
+
+Mount points are derived by asking every OTHER overlay which components it
+accepts inside it, and the walk skips the component's own overlay outright
+(`if (stem === exportStem) continue;` in `mountPointsAccepting`). A component
+listing itself in its own `accepts.components` therefore yields no mount point
+at all, rather than a self-mount saying it nests inside itself. No kit
+component does this today, and the ones that could - a tree node, a nested
+menu - are not in the described set. The skip is deliberate for now: a
+self-mount is a real relationship but a different one from "this container
+accepts that part", and what a reader should be handed for it (one entry, or
+the depth rule that governs it) is not a question the kit has a case to answer
+yet. When one arrives, this is the line to change, and the filled-versus-
+authored rule on `mount_point` is what the answer has to fit.
