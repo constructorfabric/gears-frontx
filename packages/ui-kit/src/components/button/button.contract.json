@@ -122,7 +122,10 @@
           "outline",
           "secondary",
           "ghost",
-          "link"
+          "link",
+          "navigation",
+          "avatar",
+          "utility"
         ],
         "default": "default"
       },
