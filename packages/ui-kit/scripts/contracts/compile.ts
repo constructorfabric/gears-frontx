@@ -131,6 +131,16 @@ export interface PropStatement {
   because: string;
 }
 
+// One sentence's worth of punctuation, for text that is joined to more text.
+// An author writes `states` as a phrase - "icon is a React node, not a value"
+// - and reads it back inside a description that continues with `because`, so
+// the terminator belongs to the join rather than to the authored value. A
+// phrase that already ends in one is left alone rather than doubled.
+export function terminate(sentence: string): string {
+  const trimmed = sentence.trim();
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
 // Internal structure of the primitive underneath that the kit does not
 // expose as a component of its own - a Header glued onto a Trigger inside
 // one exported component. A prop the kit does not advertise is not this:
@@ -1514,7 +1524,7 @@ export const buildMeaningFields = memoizeSchema((): { properties: Record<string,
         pattern: elementTypeRefPattern(),
         'x-gts-ref': ELEMENT_REF_TARGET,
         description:
-          "GTS id of the hand-written surface for the host element this component forwards to. HELD as an id, not composed into the schema as a second parent: a contract derives from ONE type, the abstract component type, and a surface shared kit-wide by every component that forwards to the same element is not a second thing this component IS. Whoever needs the surface resolves it through this reference and applies it beside the contract; nothing in the props schema merges it in. `x-gts-ref` declares what the value must resolve to; `type` and `pattern` are what enforce it, because gts-ts strips x-gts-ref before validating. Absent entirely for a component that forwards to no host element of its own - DataTable, which renders its Table internally and correctly declares none.",
+          "GTS id of the hand-written surface for the host element this component forwards to. A component forwards to exactly one element surface, and it is REFERENCED by id rather than composed into the schema: a surface shared kit-wide by every component that renders the same element is something this component uses, not a second thing it IS. Whoever needs the surface resolves it through this reference and applies it beside the contract; nothing in the props schema merges it in. `x-gts-ref` declares what the value must resolve to; `type` and `pattern` are what enforce it, because gts-ts strips x-gts-ref before validating. Absent entirely for a component that forwards to no host element of its own - DataTable, which renders its Table internally and correctly declares none.",
         $comment: "The element token, not the tag: `dom_button` for a <button>, normalized by domElementToken - the same token the committed file under scripts/contracts/elements/ is named by, so the reference and the file name are one identity. Named `forwards_to` rather than `host_element`: the value is the element surface the component FORWARDS TO, and a field named for the element read as a bug on a component (DataTable) that has one and declares none.",
       },
       // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-gts-traits-schema:p2:inst-ts-host
@@ -1587,6 +1597,13 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
     // different type fails.
     gts_type: {
       type: 'string',
+      // `const` rather than a pattern, because there is exactly one value
+      // this field may hold: the component type's own id. `x-gts-ref` says
+      // the same thing as a pointer and is what gts-ts resolves, but it is
+      // stripped before validating, so a validator that only reads the schema
+      // would otherwise accept any string here - the one id-valued field with
+      // nothing enforcing the id.
+      const: COMPONENT_TYPE_ID_BARE,
       'x-gts-ref': '/$id',
       description: 'GTS type id of the component type - what makes this document a typed value rather than a bare JSON record.',
     },
@@ -2122,15 +2139,17 @@ export function buildPropsAndRequired(
       properties[prop.name] = { ...prop.expressed.schema };
     } else {
       // The schema does not state this prop's whole shape, so the shape is
-      // checked by the lint and by tsc, not by Ajv - which is what a slot
-      // record is. The property entry carries whatever the schema DID state
-      // (`columns` is checkably an array) alongside the source type, so a
-      // reader of `properties` gets both the part Ajv enforces and the part
-      // it does not.
+      // checked by the lint and by tsc, not by Ajv - which is what a
+      // partially-typed-props record is. The property entry carries whatever
+      // the schema DID state (`columns` is checkably an array) alongside the
+      // source type, so a reader of `properties` gets both the part Ajv
+      // enforces and the part it does not. The prefix names the machine's own
+      // reading of the prop, which is a different fact from the authored
+      // `slots` field: a prop the consumer supplies may be typed in full.
       partiallyTypedProps[prop.name] = { typeText: prop.typeText, optional: prop.optional };
       properties[prop.name] = {
         ...expressedSchemaOf(prop),
-        description: `Slot: ${prop.typeText}. ${
+        description: `Partially typed: ${prop.typeText}. ${
           prop.expressed === undefined ? 'No JSON Schema type exists for it' : 'No JSON Schema type covers it beyond the kind above'
         }; shape checked by tsc, see x-uikit.partially_typed_props.`,
       };
@@ -2159,10 +2178,10 @@ export function buildPropsAndRequired(
     assertAgreesWithElementSurface(component, underCheck(prop), prop.declarationFile, elementSurfaceTypes);
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-owner-conflict
     // No partially_typed_props record: that map is scoped to props the
-    // component DECLARES itself (freshness.ts's slotSchemaMismatches checks
+    // component DECLARES itself (freshness.ts's partiallyTypedMismatches checks
     // exactly that scope), and a forwarded API prop the schema cannot type is
     // not one of those - its TypeScript type goes in the description, and
-    // the overlay's `props` statement naming it is what a reader gets
+    // the overlay's `prop_statements` entry naming it is what a reader gets
     // instead of a second machine-readable copy.
     properties[prop.name] = describeUnexpressedType(expressedSchemaOf(prop), prop.typeText, prop.expressed?.complete === true);
     if (!prop.optional) required.push(prop.name);
@@ -2782,8 +2801,8 @@ export function compileContract(directory: string, exportStem: string = director
   );
 
   // The overlay's own per-prop statements, emitted into that property's
-  // description beside the TS:/Slot: text buildPropsAndRequired already
-  // wrote - the dissolved `untyped` catch-all's `about: prop` category no
+  // description beside the `TS:`/`Partially typed:` text
+  // buildPropsAndRequired already wrote - the dissolved `untyped` catch-all's `about: prop` category no
   // longer lives in a flat list read separately from the property it is
   // about; it is now IN the property's own description, where a reader of
   // `properties` finds it without a second lookup.
@@ -2797,7 +2816,11 @@ export function compileContract(directory: string, exportStem: string = director
     // reports that pairing failure. Either way, injecting prose here would
     // hide the mistake instead of surfacing it.
     if (existing?.description === undefined) continue;
-    properties[name] = { ...existing, description: `${existing.description} ${statement.states} ${statement.because}` };
+    // `states` is authored as a phrase rather than a sentence, so the three
+    // fragments would otherwise run together into one unreadable line.
+    // Terminated here rather than demanded of the author: a trailing period
+    // is punctuation of the emitted text, not part of what the author states.
+    properties[name] = { ...existing, description: `${existing.description} ${terminate(statement.states)} ${statement.because}` };
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-emit
 

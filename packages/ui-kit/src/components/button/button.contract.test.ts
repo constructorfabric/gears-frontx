@@ -226,7 +226,7 @@ describe('button contract conformance', () => {
     // concluded they took plain strings. `render` is a union of a React
     // element and a callback, so nothing can be asserted about it - what a
     // reader gets instead is the checker's own printed type, followed by the
-    // overlay's own `props.render` statement (states/because), which the
+    // overlay's own `prop_statements.render` entry (states/because), which the
     // compiler emits into the same description beside the `TS:` text.
     expect(contract.props.properties.render.type).toBeUndefined();
     expect(contract.props.properties.render.description).toMatch(/^TS: .*Not expressible in JSON Schema, checked by tsc\./s);
@@ -234,13 +234,25 @@ describe('button contract conformance', () => {
     expect(contract.props.properties.render.description).toContain('render replaces the rendered element with one the caller supplies');
   });
 
+  it('terminates the authored statement before the reason that follows it', () => {
+    // `states` is authored as a phrase and read inside a description that
+    // continues with `because`, so without a terminator the two fragments run
+    // together into one sentence that reads as neither. Asserted on the real
+    // emission rather than on the helper, because the defect was in the join.
+    const statements = contract.prop_statements ?? {};
+    for (const [name, statement] of Object.entries(statements)) {
+      expect(statement.states.trimEnd(), name).not.toMatch(/[.!?]$/);
+      expect(contract.props.properties[name].description, name).toContain(`${statement.states}. ${statement.because}`);
+    }
+  });
+
   it("records only the kit's own slotted props in x-uikit.partially_typed_props, not every partly checked property", () => {
     // Two kinds of property go unchecked by the schema, and they are
     // documented in different places: `icon` is the kit's own slot and its
     // type lives in x-uikit.partially_typed_props, while `render`/`style` are
     // the primitive's API and their types live in their own descriptions plus
-    // a `props` statement. Both are named by the props pairing (see
-    // testing.ts); only the first is a slot.
+    // a `prop_statements` entry. Both are named by the pairing (see
+    // testing.ts); only the first is the kit's own.
     expect(partlyCheckedPropertyNames(contract)).toEqual(['icon', 'render', 'style']);
     expect(Object.keys(contract['x-uikit'].partially_typed_props)).toEqual(['icon']);
   });

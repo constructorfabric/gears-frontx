@@ -12,6 +12,7 @@
     },
     "gts_type": {
       "type": "string",
+      "const": "gts.frontx.uikit._.component.v1~",
       "x-gts-ref": "/$id",
       "description": "GTS type id of the component type - what makes this document a typed value rather than a bare JSON record."
     },
@@ -28,7 +29,7 @@
       "type": "string",
       "pattern": "^gts\\.frontx\\.uikit\\.element\\.[a-z_][a-z0-9_]*\\.v\\d+~$",
       "x-gts-ref": "gts.frontx.uikit.element.*",
-      "description": "GTS id of the hand-written surface for the host element this component forwards to. HELD as an id, not composed into the schema as a second parent: a contract derives from ONE type, the abstract component type, and a surface shared kit-wide by every component that forwards to the same element is not a second thing this component IS. Whoever needs the surface resolves it through this reference and applies it beside the contract; nothing in the props schema merges it in. `x-gts-ref` declares what the value must resolve to; `type` and `pattern` are what enforce it, because gts-ts strips x-gts-ref before validating. Absent entirely for a component that forwards to no host element of its own - DataTable, which renders its Table internally and correctly declares none.",
+      "description": "GTS id of the hand-written surface for the host element this component forwards to. A component forwards to exactly one element surface, and it is REFERENCED by id rather than composed into the schema: a surface shared kit-wide by every component that renders the same element is something this component uses, not a second thing it IS. Whoever needs the surface resolves it through this reference and applies it beside the contract; nothing in the props schema merges it in. `x-gts-ref` declares what the value must resolve to; `type` and `pattern` are what enforce it, because gts-ts strips x-gts-ref before validating. Absent entirely for a component that forwards to no host element of its own - DataTable, which renders its Table internally and correctly declares none.",
       "$comment": "The element token, not the tag: `dom_button` for a <button>, normalized by domElementToken - the same token the committed file under scripts/contracts/elements/ is named by, so the reference and the file name are one identity. Named `forwards_to` rather than `host_element`: the value is the element surface the component FORWARDS TO, and a field named for the element read as a bug on a component (DataTable) that has one and declares none."
     },
     "intent": {

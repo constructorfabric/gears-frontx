@@ -39,7 +39,7 @@ export interface FreshnessReport {
   // description plus a `props` statement about that property rather than in
   // x-uikit.partially_typed_props, which is the kit's own declared props and
   // nothing else.
-  slotSchemaMismatches: string[];
+  partiallyTypedMismatches: string[];
   // The schemas that belong to no single component - the component type and
   // each vocabulary type it references - keyed by file name. Computed on every call regardless of which component
   // is being checked (cheap: the builders are pure construction, and the
@@ -95,21 +95,22 @@ export function checkComponentFreshness(directory: string, exportStem: string = 
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-freshness:p1:inst-fr-slots
   const extraction = resolveTargetExtraction(directory, exportStem);
   const declaredProps = new Set(extraction.ownProps.map((prop) => prop.name));
-  const slotSchemaMismatches: string[] = [];
+  const partiallyTypedMismatches: string[] = [];
   for (const [name, prop] of Object.entries(freshContract.props.properties)) {
-    // A slot is a declared prop whose shape the schema does not state in
-    // full, which is not the same as one it says nothing about: `columns`
-    // carries `type: "array"` and is still a slot, because what is IN the
-    // array is checked by tsc alone. The compiler writes prose exactly for
-    // that remainder, so the prose is what the two sides are matched on.
-    const isSlotShaped = prop.description !== undefined;
-    const hasSlotEntry = name in freshContract['x-uikit'].partially_typed_props;
-    if (isSlotShaped && declaredProps.has(name) && !hasSlotEntry) {
-      slotSchemaMismatches.push(`"${name}" is a declared prop the schema does not state in full but has no x-uikit.partially_typed_props entry`);
-    } else if (hasSlotEntry && !isSlotShaped) {
-      slotSchemaMismatches.push(`"${name}" has an x-uikit.partially_typed_props entry but is stated in full by properties`);
-    } else if (hasSlotEntry && !declaredProps.has(name)) {
-      slotSchemaMismatches.push(`"${name}" has an x-uikit.partially_typed_props entry but is not a prop ${exportStem} declares itself`);
+    // A partially typed prop is a declared prop whose shape the schema does
+    // not state in full, which is not the same as one it says nothing about:
+    // `columns` carries `type: "array"` and is still partially typed, because
+    // what is IN the array is checked by tsc alone. The compiler writes prose
+    // exactly for that remainder, so the prose is what the two sides are
+    // matched on.
+    const isPartiallyTyped = prop.description !== undefined;
+    const hasRecord = name in freshContract['x-uikit'].partially_typed_props;
+    if (isPartiallyTyped && declaredProps.has(name) && !hasRecord) {
+      partiallyTypedMismatches.push(`"${name}" is a declared prop the schema does not state in full but has no x-uikit.partially_typed_props entry`);
+    } else if (hasRecord && !isPartiallyTyped) {
+      partiallyTypedMismatches.push(`"${name}" has an x-uikit.partially_typed_props entry but is stated in full by properties`);
+    } else if (hasRecord && !declaredProps.has(name)) {
+      partiallyTypedMismatches.push(`"${name}" has an x-uikit.partially_typed_props entry but is not a prop ${exportStem} declares itself`);
     }
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-freshness:p1:inst-fr-slots
@@ -117,9 +118,9 @@ export function checkComponentFreshness(directory: string, exportStem: string = 
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-freshness:p1:inst-fr-return
   const fresh =
     contractDiff.length === 0 &&
-    slotSchemaMismatches.length === 0 &&
+    partiallyTypedMismatches.length === 0 &&
     Object.values(sharedSchemaDiffs).every((diff) => diff.length === 0);
 
-  return { component: exportStem, contractDiff, slotSchemaMismatches, sharedSchemaDiffs, fresh };
+  return { component: exportStem, contractDiff, partiallyTypedMismatches, sharedSchemaDiffs, fresh };
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-freshness:p1:inst-fr-return
 }

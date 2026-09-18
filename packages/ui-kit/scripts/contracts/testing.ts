@@ -240,9 +240,9 @@ export function assertContractFreshness(directory: string, exportStem: string = 
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-freshness
 
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-slots
-    it('every annotation-only slot property has a matching x-uikit.partially_typed_props entry', () => {
+    it('every partially typed property has a matching x-uikit.partially_typed_props entry', () => {
       const report = memoizedFreshnessReport(directory, exportStem);
-      expect(report.slotSchemaMismatches).toEqual([]);
+      expect(report.partiallyTypedMismatches).toEqual([]);
     });
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-slots
 

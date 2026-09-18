@@ -169,29 +169,29 @@
       },
       "columns": {
         "type": "array",
-        "description": "Slot: ColumnDef<{ rowSelectionFeature: TableFeature; rowSortingFeature: TableFeature; rowPaginationFeature: TableFeature; sortedRowModel: (table: Table<any, any>) => () => RowModel<any, any>; paginatedRowModel: (table: Table<any, any>) => () => RowModel<any, any>; }, TData>[]. No JSON Schema type covers it beyond the kind above; shape checked by tsc, see x-uikit.partially_typed_props. columns is an array of @tanstack/react-table ColumnDef objects, generic over TData The schema states that this is an array and stops there. ColumnDef carries function-valued fields (header/cell render functions among them) from a third-party package this contract does not own, and it is generic over the row type the caller picks - so what is IN the array is checked by tsc, and is why the prop is a slot rather than an enumerated shape."
+        "description": "Partially typed: ColumnDef<{ rowSelectionFeature: TableFeature; rowSortingFeature: TableFeature; rowPaginationFeature: TableFeature; sortedRowModel: (table: Table<any, any>) => () => RowModel<any, any>; paginatedRowModel: (table: Table<any, any>) => () => RowModel<any, any>; }, TData>[]. No JSON Schema type covers it beyond the kind above; shape checked by tsc, see x-uikit.partially_typed_props. columns is an array of @tanstack/react-table ColumnDef objects, generic over TData. The schema states that this is an array and stops there. ColumnDef carries function-valued fields (header/cell render functions among them) from a third-party package this contract does not own, and it is generic over the row type the caller picks - so what is IN the array is checked by tsc, and is why the prop is a slot rather than an enumerated shape."
       },
       "data": {
         "type": "array",
-        "description": "Slot: TData[]. No JSON Schema type covers it beyond the kind above; shape checked by tsc, see x-uikit.partially_typed_props. data is an array of the caller's own row type `TData[]` - an array, which the schema does state, of a type parameter the caller picks, which it cannot. The rows must be the same `TData` the `columns` were built for; that pairing is a call-site type error, not something this schema can check."
+        "description": "Partially typed: TData[]. No JSON Schema type covers it beyond the kind above; shape checked by tsc, see x-uikit.partially_typed_props. data is an array of the caller's own row type. `TData[]` - an array, which the schema does state, of a type parameter the caller picks, which it cannot. The rows must be the same `TData` the `columns` were built for; that pairing is a call-site type error, not something this schema can check."
       },
       "emptyMessage": {
-        "description": "Slot: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. emptyMessage is a React node, not a string `ReactNode` - an element, a string or a fragment, all valid and indistinguishable to JSON Schema. It replaces the whole \"no results\" row body, so an element is the usual case."
+        "description": "Partially typed: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. emptyMessage is a React node, not a string. `ReactNode` - an element, a string or a fragment, all valid and indistinguishable to JSON Schema. It replaces the whole \"no results\" row body, so an element is the usual case."
       },
       "enableRowSelection": {
         "type": "boolean"
       },
       "nextLabel": {
-        "description": "Slot: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. nextLabel is a React node, not a string `ReactNode`, same as previousLabel above and for the same reason."
+        "description": "Partially typed: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. nextLabel is a React node, not a string. `ReactNode`, same as previousLabel above and for the same reason."
       },
       "pageSize": {
         "type": "number"
       },
       "previousLabel": {
-        "description": "Slot: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. previousLabel is a React node, not a string `ReactNode`, so an icon or an element is as valid as a string. It is the pagination button's own label, which is why it is a node rather than a translated string this component would have to own."
+        "description": "Partially typed: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. previousLabel is a React node, not a string. `ReactNode`, so an icon or an element is as valid as a string. It is the pagination button's own label, which is why it is a node rather than a translated string this component would have to own."
       },
       "selectionSummary": {
-        "description": "Slot: ((selected: number, total: number) => ReactNode) | undefined. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. selectionSummary is a function prop, not data `(selected, total) => ReactNode` has no JSON Schema representation; it is a function returning a plurals-aware sentence, not a value this schema can assert shape against."
+        "description": "Partially typed: ((selected: number, total: number) => ReactNode) | undefined. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. selectionSummary is a function prop, not data. `(selected, total) => ReactNode` has no JSON Schema representation; it is a function returning a plurals-aware sentence, not a value this schema can assert shape against."
       }
     },
     "required": [

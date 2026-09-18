@@ -97,13 +97,13 @@
     "type": "object",
     "properties": {
       "children": {
-        "description": "Slot: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. children is a React node - the column's label `ReactNode`, so an element is as valid as a string. Required, because a sort button with no label is a button whose only content is a direction arrow."
+        "description": "Partially typed: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. children is a React node - the column's label. `ReactNode`, so an element is as valid as a string. Required, because a sort button with no label is a button whose only content is a direction arrow."
       },
       "className": {
         "type": "string"
       },
       "column": {
-        "description": "Slot: Column<{ rowSelectionFeature: TableFeature; rowSortingFeature: TableFeature; rowPaginationFeature: TableFeature; sortedRowModel: (table: Table<any, any>) => () => RowModel<any, any>; paginatedRowModel: (table: Table<any, any>) => () => RowModel<any, any>; }, TData, TValue>. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. column is a live @tanstack/react-table Column instance, generic over TData and TValue `Column<DataTableFeatures, TData, TValue>` carries methods (`toggleSorting`, `getIsSorted`) and internal state, not a serializable shape, and two of its three type arguments are the caller's own type parameters - neither a live object nor a generic has a JSON Schema representation. It is handed in by TanStack Table's own render call; a consumer never constructs one."
+        "description": "Partially typed: Column<{ rowSelectionFeature: TableFeature; rowSortingFeature: TableFeature; rowPaginationFeature: TableFeature; sortedRowModel: (table: Table<any, any>) => () => RowModel<any, any>; paginatedRowModel: (table: Table<any, any>) => () => RowModel<any, any>; }, TData, TValue>. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. column is a live @tanstack/react-table Column instance, generic over TData and TValue. `Column<DataTableFeatures, TData, TValue>` carries methods (`toggleSorting`, `getIsSorted`) and internal state, not a serializable shape, and two of its three type arguments are the caller's own type parameters - neither a live object nor a generic has a JSON Schema representation. It is handed in by TanStack Table's own render call; a consumer never constructs one."
       }
     },
     "required": [

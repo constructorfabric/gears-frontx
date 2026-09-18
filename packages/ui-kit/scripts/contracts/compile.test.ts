@@ -18,9 +18,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import Ajv2020 from 'ajv/dist/2020';
 import { describe, expect, it } from 'vitest';
 
 import {
+  addContractTypes,
   buildComponentType,
   buildFamilyRoster,
   buildOverlaySchema,
@@ -180,8 +182,10 @@ describe('describeUnexpressedType', () => {
   });
 
   it('leaves an existing description alone', () => {
-    const slot = { description: 'Slot: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props.' };
-    expect(describeUnexpressedType(slot, 'ReactNode', false)).toEqual(slot);
+    const described = {
+      description: 'Partially typed: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props.',
+    };
+    expect(describeUnexpressedType(described, 'ReactNode', false)).toEqual(described);
   });
 });
 
@@ -231,6 +235,23 @@ describe('the vocabulary the component type references', () => {
     for (const [name, definition] of Object.entries(properties)) {
       expect(definition.default, `${name} carries a default`).toBeUndefined();
     }
+  });
+
+  it('rejects a document claiming a type other than the component type, under plain Ajv', () => {
+    // `x-gts-ref` is the pointer form and gts-ts is what resolves it - but it
+    // strips the keyword before validating, so a reader holding nothing but
+    // this schema and an Ajv gets whatever the schema itself asserts. `const`
+    // is what carries the id for that reader: without it a component could
+    // name any type at all and still validate.
+    const ajv = new Ajv2020();
+    addContractTypes(ajv);
+    const validate = ajv.compile(buildComponentType());
+    const committed = JSON.parse(readFileSync(join(process.cwd(), 'src/components/button/button.contract.json'), 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    expect(validate(committed), ajv.errorsText(validate.errors)).toBe(true);
+    expect(validate({ ...committed, gts_type: 'total nonsense not an id' })).toBe(false);
   });
 });
 
