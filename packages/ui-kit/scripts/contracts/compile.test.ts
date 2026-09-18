@@ -30,6 +30,7 @@ import {
   buildVocabularyTypes,
   collectOverlays,
   describeUnexpressedType,
+  mountPointsAccepting,
   loadElementSurface,
   loadElementSurfaces,
   overlayFailuresMentioning,
@@ -329,6 +330,40 @@ describe('who belongs to one family', () => {
 
   it('is empty for a family name nothing names', () => {
     expect(buildFamilyRoster('carousel', [root, item, stranger])).toEqual({ name: 'carousel', root: undefined, parts: [] });
+  });
+});
+
+describe('mountPointsAccepting: a container naming a major the component no longer ships', () => {
+  // Read off the committed root overlay rather than hand-built, so the entry
+  // under test is the real accepted-components shape and only the major
+  // differs. Moving a major is an edit to every overlay naming the component;
+  // dropping the filled mount point for the ones left behind would hide
+  // exactly the edit the move demands, which is why this is a refusal rather
+  // than a skip.
+  const rootPath = join(process.cwd(), 'src/components/accordion/accordion.contract.yaml');
+  const rootText = readFileSync(rootPath, 'utf8');
+  const itemRef = componentRef('accordion-item', 1);
+  const staleRef = componentRef('accordion-item', 2);
+
+  function walk(text: string): ReturnType<typeof collectOverlays>['overlays'] {
+    const { overlays, failures } = collectOverlays([{ directory: 'accordion', stem: 'accordion', path: rootPath, text }]);
+    expect(failures.map((failure) => failure.message)).toEqual([]);
+    return overlays;
+  }
+
+  it('derives the mount point when the reference carries the major the component ships', () => {
+    // The mount point names the CONTAINER - its export name and its own
+    // reference - because that is what a reader of AccordionItem acts on.
+    expect(mountPointsAccepting('accordion-item', itemRef, walk(rootText))).toEqual([
+      { container: 'Accordion', component: componentRef('accordion', 1) },
+    ]);
+  });
+
+  it('refuses the stale reference by name, naming both majors and the overlay that carries it', () => {
+    expect(rootText).toContain(itemRef);
+    expect(() => mountPointsAccepting('accordion-item', itemRef, walk(rootText.replace(itemRef, staleRef)))).toThrow(
+      /accordion\/accordion\.contract\.yaml accepts "[^"]*accordion_item\.v2" inside it, but accordion-item ships "[^"]*accordion_item\.v1"/,
+    );
   });
 });
 

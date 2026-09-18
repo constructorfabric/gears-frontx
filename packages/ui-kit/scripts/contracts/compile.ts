@@ -2479,18 +2479,25 @@ export function assertOverlayReferencesRealProps(component: string, overlay: Ove
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-structure-derivation:p1:inst-co-derive
 export function deriveMountPoints(directory: string, exportStem: string): MountPoint[] {
   const self = componentRef(exportStem, contractMajor(directory, exportStem));
+  // What an unreadable overlay would have to say to be one of this
+  // component's containers: the reference every `accepts.components` entry
+  // naming it carries, up to the major - the stale-major refusal matches by
+  // name too, so a wrong major must still be seen. Built by ids.ts rather
+  // than spelled here, so the needle and the grammar it is a prefix of cannot
+  // drift apart (they did, silently, while both were hand-written).
+  const namesSelf = componentRefPrefix(exportStem);
+  return mountPointsAccepting(exportStem, self, usableOverlays([namesSelf], `${exportStem}: mount points`));
+}
+
+// The same derivation over the overlays it is HANDED, so the one refusal it
+// carries - an accepted-components list naming this component at a major it
+// no longer ships - can be exercised without writing an overlay into
+// src/components, the way buildFamilyRoster is pure over its entries.
+export function mountPointsAccepting(exportStem: string, self: string, overlays: OverlayWalk['overlays']): MountPoint[] {
   const selfToken = gtsToken(exportStem);
   const refPattern = new RegExp(componentRefPattern(true));
   const mountPoints: MountPoint[] = [];
-  // What an unreadable overlay would have to say to be one of this
-  // component's containers: the reference every `accepts.components` entry
-  // naming it carries, up to the major - the stale-major refusal below
-  // matches by name too, so a wrong major must still be seen. Built by
-  // ids.ts rather than spelled here, so the needle and the grammar it is a
-  // prefix of cannot drift apart (they did, silently, while both were
-  // hand-written).
-  const namesSelf = componentRefPrefix(exportStem);
-  for (const { directory: otherDirectory, stem, overlay } of usableOverlays([namesSelf], `${exportStem}: mount points`)) {
+  for (const { directory: otherDirectory, stem, overlay } of overlays) {
     if (stem === exportStem) continue;
     for (const accepted of overlay.accepts.components ?? []) {
       if (accepted === self) {
