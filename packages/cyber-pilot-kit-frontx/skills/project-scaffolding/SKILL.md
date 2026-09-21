@@ -1,6 +1,6 @@
 ---
 name: frontx-project-scaffolding
-description: "Applies when a developer wants a new FrontX project created from what they say they want built, rather than from a reference they already hold - for example a console with a stated number of screens. Matches the stated intent against what the locally installed inventory declares about itself, drives the frontx executable to apply the chosen set, and then realizes each unit the intent names inside the applied ground."
+description: "Applies when a developer wants a FrontX project built from what they say they want, rather than from a reference they already hold - for example a console with a stated number of screens - and equally when they want one more unit added to a project that already holds applied templates. Matches the stated intent against what the locally installed inventory declares about itself, drives the frontx executable to apply the chosen set, and then realizes each unit the intent names inside the applied ground."
 ---
 
 # Create a FrontX Project from a Stated Intent
@@ -142,6 +142,18 @@ Work from the intent, the records from step 1, and the identities from step 2.
    the plan. **A template contributes to a project once.** A part of the intent
    that repeats a unit inside ground the plan already covers adds no second
    application - see Step 7 (Realize the units the intent names) below.
+   **A part that names a unit is matched here like every other part.** Do not set
+   a unit aside as per-unit work before you have offered it to the inventory:
+   whether a unit has a template of its own is a fact of what is installed, not
+   of how small the unit sounds, and a family that publishes one template per
+   unit reads no differently here from one that publishes a single template
+   covering many. Where a distinct candidate's description claims the unit,
+   selecting it is the answer - one more `frontx add`, not a skill run later -
+   because a template of its own is what gives that unit its own declared
+   boundary, its own version line and its own upgrade cadence.
+   **Write down what you selected each part for.** Step 11 excludes exactly those
+   parts, so you need the pairing of part to selected identity, not just the list
+   of identities.
    **A tie here refuses exactly as an establishing tie does**: if two or more
    candidates match one supplemental part indistinguishably, refuse with a choice
    required, naming that part of the intent and each tied candidate with its
@@ -151,11 +163,25 @@ Work from the intent, the records from step 1, and the identities from step 2.
    (Read what the target directory already holds) recorded, and record it as already applied. Re-applying an identity
    re-claims ground it already occupies, and the CLI's conflict check refuses the
    whole operation rather than part of it.
-11. **Separate the per-unit work from the residual.** Every part of the intent
-    that names a unit living inside a selected or already-applied template's own
-    ground is per-unit work, recorded once per unit and attributed to the
-    template that owns that ground. It is **not** residual - Step 7 (Realize the
-    units the intent names) realizes it.
+   **Keep it in step 9's record all the same.** Dropping an identity from the
+   plan does not unmake the selection: the identity is already applied, so the
+   part of the intent you selected it for is already delivered. Step 11 reads
+   step 9's pairing, not the plan, precisely so a dropped identity does not let
+   its unit come back as per-unit work.
+11. **Separate the per-unit work from the residual.** Take every part of the
+    intent that names a unit living inside a selected or already-applied
+    template's own ground, **and that step 9 selected no identity for**. Those
+    are the per-unit work, recorded once per unit and attributed to the template
+    that owns that ground. It is **not** residual - Step 7 (Realize the units the
+    intent names) realizes it.
+    **A unit an application delivers is never also per-unit work.** If step 9
+    selected a distinct template for that unit, the unit is delivered by applying
+    it, and recording it here as well would plan the same unit twice - once as
+    ground to apply, once as work to improvise into ground. This holds whether
+    that identity is still in the plan or step 10 dropped it as already applied,
+    which is why the test is step 9's record and not the plan. Per-unit work is
+    what selection left over: the units the installed inventory offers no
+    template of their own for.
     Only what no template's description covers and no template's ground contains
     is residual.
 
