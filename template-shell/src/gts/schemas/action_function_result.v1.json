@@ -1,0 +1,40 @@
+{
+  "$id": "gts://gts.frontx.mfes.comm.action.v1~frontx.mfes.function.result.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Action for returning the result of a single function resolver extension execution. Upon receiving the return action from a function resolver extension, the function resolver extensions domain validates the returned value against the schema declared in the corresponding extension function signature, internally unmounts that function extension, and sends this result action to the caller from the original execute request.",
+  "allOf": [
+    { "$ref": "gts://gts.frontx.mfes.comm.action.v1~" }
+  ],
+  "type": "object",
+  "properties": {
+    "target": {
+      "oneOf": [
+        { "x-gts-ref": "gts.frontx.mfes.ext.domain.v1~*" },
+        { "x-gts-ref": "gts.frontx.mfes.ext.extension.v1~*" }
+      ],
+      "$comment": "Target matches the caller of the original function execution action"
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "func": {
+          "x-gts-ref": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.functions_resolver.v1~*",
+          "$comment": "Extension ID of the executed function"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "$comment": "Timestamp of the original function execution request; the caller uses it to identify which request this response belongs to"
+        },
+        "result": {
+          "type": "object",
+          "$ref": "gts://gts.frontx.func.result.v1~",
+          "$comment": "Result of the function execution, validated against the schema declared in the corresponding extension function signature"
+        }
+      },
+      "required": ["func", "timestamp"],
+      "$comment": "Action payload with required extension reference"
+    }
+  },
+  "required": ["type", "target", "payload"]
+}

@@ -1,0 +1,6 @@
+{
+  "$id": "gts://gts.frontx.func.result.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Function result schema. Open base type: each function refines it with its own derived id. It exists to provide typing for the final function return and result actions.",
+  "type": "object"
+}
