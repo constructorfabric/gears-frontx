@@ -44,8 +44,8 @@ Rules for generated code:
   kit components that carry a `'use client'` banner of their own:
   Attachment, Badge, Breadcrumb, Bubble, ButtonGroup, Carousel, Chart,
   Combobox, ContextMenu, DataTable, Drawer, DropdownMenu, Marker, Sidebar,
-  Table, Toast. Each calls a hook directly in its own render body, so it
-  always renders on the client, wherever it is imported from.
+  StatusDot, Table, Toast. Each calls a hook directly in its own render
+  body, so it always renders on the client, wherever it is imported from.
 - The kit paints the page itself from its tokens and sets `color-scheme`: with
   no `data-theme` attribute anywhere, `prefers-color-scheme: dark` alone
   yields a correct, legible dark page (background, text, and UA-owned
@@ -223,8 +223,10 @@ Rules for generated code:
   variants default|destructive; `DropdownMenuContent` takes `container`.
 - [Empty](dist/docs/empty.md): placeholder for a list/table/panel with
   nothing to show (Empty/EmptyHeader/EmptyMedia/EmptyTitle/
-  EmptyDescription/EmptyContent); no Base UI primitive; `EmptyMedia`
-  variant default|icon.
+  EmptyDescription/EmptyDetail/EmptyContent/EmptyActions); no Base UI
+  primitive; `EmptyMedia` variant default|icon; `EmptyDetail` goes last
+  inside the header, `EmptyActions` is the button row and needs no top
+  margin of its own.
 - [Field](dist/docs/field.md): primitive-free form-layout system
   (Field/FieldLabel/FieldDescription/FieldError/FieldGroup/FieldSet/
   FieldLegend/FieldSeparator/FieldContent/FieldTitle); Field's `orientation`
@@ -359,7 +361,16 @@ Rules for generated code:
   orientation horizontal|vertical.
 - [Spinner](dist/docs/spinner.md): CSS-spun lucide `loader-circle`;
   no Base UI primitive, no variants; use `Button`'s own `loading` prop
-  inside a button instead of nesting this.
+  inside a button instead of nesting this. `label`/`description` compose
+  it into a loading block (glyph in a 36 indicator box, text beneath),
+  which becomes the live region while the glyph turns decorative;
+  `compact` takes that pair to 28/14.
+- [StatusDot](dist/docs/status-dot.md): inline status - a 6px round dot
+  plus an optional 12/16 label, both in the tone's colour; tone
+  neutral|success|warning|danger|info, `live` for a 2s pulse; no box of
+  its own, unlike `Badge dot`; no Base UI primitive, but gets `render`-prop
+  polymorphism via `useRender`/`mergeProps` (e.g. `<li>`) for the wrapping
+  element only - still never a link or button.
 - [Switch](dist/docs/switch.md): immediate on/off toggle;
   `checked`/`onCheckedChange`, sizes default|sm; use checkbox for
   submit-time options.
@@ -374,7 +385,9 @@ Rules for generated code:
 - [Tabs](dist/docs/tabs.md): switch between panels sharing the same
   space (Tabs/TabsList/TabsTrigger/TabsContent); list variants
   default|line; orientation horizontal|vertical (default horizontal);
-  inactive panels unmount unless `keepMounted`; no portal.
+  inactive panels unmount unless `keepMounted`; the active panel replays a
+  short fade-up on every switch, `animate={false}` per panel to opt out;
+  no portal.
 - [Textarea](dist/docs/textarea.md): multi-line text field; a plain styled
   native `<textarea>` — no primitive, no Field auto-wiring; native
   `<textarea>` props; grows with content; `aria-invalid` for the error

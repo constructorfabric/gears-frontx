@@ -1,0 +1,94 @@
+/*
+ * StatusDot styles. No upstream registry entry to translate: the design
+ * spec draws this one itself as an inline status (a dot plus a 12/16
+ * label), and the kit builds it on its own parts. Consumes only theme.css
+ * variables - no raw colors.
+ *
+ * The tone classes set `color` and nothing else. The dot fills from
+ * `currentColor` and the label inherits, so one declaration per tone paints
+ * both, in light and dark alike (every token below is redefined per theme
+ * in theme.css). Same mechanism badge.module.css's own dot uses.
+ */
+
+.statusDot {
+  display: inline-flex;
+  align-items: center;
+  /*
+   * The drawn inline status sets 6 between the dot and its label. The
+   * spacing scale steps 4 to 8 with nothing between, and rounding either
+   * way would be a kit-side correction of a drawn value; status-dot.test.tsx
+   * pins the literal and tokens.test.ts carries the matching exception.
+   */
+  gap: 6px;
+  /* The drawn label is 12/16 medium - the Label role exactly. */
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+  font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-label-tracking);
+}
+
+/*
+ * The drawn dot: 6px round, the same shape Badge already draws ahead of
+ * its own label. A dimension, not a step on the spacing scale, so it stays
+ * literal (dimensions are not guarded - see tokens.test.ts).
+ */
+.dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background-color: currentColor;
+}
+
+/* Kept off `flex: 1` deliberately: the status sits at its natural width
+ * inside whatever row holds it, rather than claiming the row. */
+.label {
+  min-width: 0;
+}
+
+.toneNeutral {
+  color: var(--muted-foreground);
+}
+
+.toneSuccess {
+  color: var(--success);
+}
+
+.toneWarning {
+  color: var(--warning);
+}
+
+.toneDanger {
+  color: var(--danger);
+}
+
+.toneInfo {
+  color: var(--info);
+}
+
+/*
+ * `live`: a status that is still moving. Only the dot breathes - the label
+ * stays at full contrast, so the text never becomes harder to read than a
+ * static one. 2s and a shallow floor rather than a blink: this reports
+ * "still running", it does not demand attention.
+ */
+@keyframes status-dot-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.statusDot[data-live] .dot {
+  animation: status-dot-pulse 2s var(--ease-standard) infinite;
+}
+
+/*
+ * A pulsing dot IS motion under WCAG 2.3.3 and, unlike a spinner's
+ * rotation, it carries no information the tone and label do not already
+ * give - so it stops outright rather than slowing down.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .statusDot[data-live] .dot {
+    animation: none;
+  }
+}

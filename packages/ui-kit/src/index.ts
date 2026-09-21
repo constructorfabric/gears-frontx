@@ -81,6 +81,7 @@ export * from './components/sidebar/public.js';
 export * from './components/skeleton/public.js';
 export * from './components/slider/public.js';
 export * from './components/spinner/public.js';
+export * from './components/status-dot/public.js';
 export * from './components/switch/public.js';
 export * from './components/table/public.js';
 export * from './components/tabs/public.js';

@@ -67,7 +67,7 @@ in their own render body and ship a banner on their own chunk instead.
 
 The kit components that carry a `'use client'` banner of their own: Attachment,
 Badge, Breadcrumb, Bubble, ButtonGroup, Carousel, Chart, Combobox, ContextMenu,
-DataTable, Drawer, DropdownMenu, Marker, Sidebar, Table, Toast.
+DataTable, Drawer, DropdownMenu, Marker, Sidebar, StatusDot, Table, Toast.
 
 Everything else — including interactive primitives like Button, Checkbox,
 Dialog, Select, Switch, RadioGroup, and Tabs — stays server-renderable; each

@@ -355,6 +355,21 @@ describe('theme tokens', () => {
       // add a step to a shared role, so the drawn line is literal here and
       // pinned in table.test.tsx.
       'table.module.css|line-height|16px',
+      // The drawn inline status sets 6 between its dot and its label. Same
+      // scale gap as Tooltip's own 6 above: nothing between --space-1 (4)
+      // and --space-2 (8), and rounding either way would be a kit-side
+      // correction of a drawn value. status-dot.test.tsx pins the literal.
+      'status-dot.module.css|gap|6px',
+      // The drawn spinner label is the mono role tracked out by 0.08em -
+      // the only place the kit tracks type at all, so the ramp names no
+      // token for it and the role's own tracking is 0. spinner.test.tsx
+      // pins the literal.
+      'spinner.module.css|letter-spacing|0.08em',
+      // The drawn Empty title is 18/24, landing between Heading 1 (20/28)
+      // and Body (14/20) on both metrics at once - no ramp role covers it.
+      // empty.test.tsx pins the pair.
+      'empty.module.css|font-size|1.125rem',
+      'empty.module.css|line-height|1.5rem',
     ]);
     for (const file of moduleFiles) {
       const base = file.slice(file.lastIndexOf('/') + 1);

@@ -55,6 +55,7 @@ import {
   ChevronsDownUpIcon,
   ChevronsUpDownIcon,
   CircleDotIcon,
+  CircleSmallIcon,
   CircleUserRoundIcon,
   ClipboardListIcon,
   CommandIcon,
@@ -157,6 +158,10 @@ interface ComponentEntry {
    *  Badge marker communicates that instead — see BACKUP_SUFFIX below). */
   label: string;
   backup: boolean;
+  /** Whether this slug's base has a real shadcn/ui docs page (verified
+   *  against the live site, see NO_SHADCN_PAGE below). false hides the
+   *  CardAction "shadcn docs" link instead of pointing it at a 404. */
+  shadcn: boolean;
   Component: LazyExoticComponent<ComponentType>;
 }
 
@@ -169,11 +174,15 @@ function baseSlug(slug: string): string {
   return slug.endsWith(BACKUP_SUFFIX) ? slug.slice(0, -BACKUP_SUFFIX.length) : slug;
 }
 
-/** Every component slug in this demo maps 1:1 onto a shadcn/ui docs page
- *  under /docs/components/base/ — verified directly against the live site
- *  rather than assumed, including the two slugs that looked like they
- *  might not have one ("direction", "date-picker"/"data-table" all
- *  resolve to real pages, not shadcn's soft-404). */
+/** Base slugs with no shadcn/ui docs page under /docs/components/base/ -
+ *  a real 404 (server status, not a client soft-404), checked directly
+ *  against the live site rather than assumed. `status-dot` has no shadcn
+ *  counterpart; `contracts-demo` and `eval-overview` are demo-only routes
+ *  that ride the same examples/*.tsx glob without porting a shadcn part.
+ *  Every other slug here, including ones that looked unlikely, resolved
+ *  ("direction", "date-picker"/"data-table" all have real pages). */
+const NO_SHADCN_PAGE = new Set(['status-dot', 'contracts-demo', 'eval-overview']);
+
 function shadcnDocsUrl(slug: string): string {
   return `https://ui.shadcn.com/docs/components/base/${baseSlug(slug)}`;
 }
@@ -189,7 +198,8 @@ const COMPONENTS: ComponentEntry[] = Object.entries(exampleLoaders)
   .map(([path, load]) => {
     const slug = path.replace(/^\.\/examples\//, '').replace(/\.tsx$/, '');
     const backup = slug.endsWith(BACKUP_SUFFIX);
-    return { slug, label: toTitleCase(baseSlug(slug)), backup, Component: lazy(load) };
+    const shadcn = !NO_SHADCN_PAGE.has(baseSlug(slug));
+    return { slug, label: toTitleCase(baseSlug(slug)), backup, shadcn, Component: lazy(load) };
   })
   .sort((a, b) => a.slug.localeCompare(b.slug));
 
@@ -353,6 +363,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   skeleton: RectangleEllipsisIcon,
   slider: SlidersHorizontalIcon,
   spinner: LoaderCircleIcon,
+  'status-dot': CircleSmallIcon,
   switch: ToggleLeftIcon,
   table: TableIcon,
   tabs: GalleryVerticalIcon,
@@ -666,8 +677,11 @@ function App() {
                   slot shadcn's own docs use for header-level links); the
                   link itself is a plain <a>, not a kit Button, styled off
                   the same --link-foreground/--text-meta-size tokens the
-                  kit's own Button variant="link" uses (button.module.css). */}
-              {route.kind === 'component' && active && (
+                  kit's own Button variant="link" uses (button.module.css).
+                  Skipped when active.shadcn is false - a handful of slugs
+                  (see NO_SHADCN_PAGE) have no shadcn page to point at, so
+                  the link would otherwise open shadcn's own 404. */}
+              {route.kind === 'component' && active && active.shadcn && (
                 <CardAction>
                   <a
                     href={shadcnDocsUrl(active.slug)}
