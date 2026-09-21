@@ -9,6 +9,87 @@
   animation: spin 1s linear infinite;
 }
 
+/*
+ * A bare spinner asked to be compact drops to the composed block's own
+ * compact glyph, so the two shapes never disagree about what "compact"
+ * measures. 14 is a drawn value, not a step on the icon scale
+ * (12/16/20/24); dimensions are not guarded, and spinner.test.tsx pins it.
+ */
+.spinner[data-compact] {
+  width: 14px;
+  height: 14px;
+}
+
+/*
+ * The composed block: the glyph in an indicator box with its text beneath,
+ * centred. Only rendered when a label or a description is given - a bare
+ * spinner stays the icon and nothing else (see spinner.tsx).
+ */
+.block {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+/*
+ * The drawn indicator box, 36 around an 18 glyph, and 28 around 14 when
+ * compact. The box is what keeps the block's height steady while the text
+ * under it changes, which is why the glyph does not simply grow to fill
+ * it. All four are drawn values off the icon and control scales alike, so
+ * they stay literal (dimensions are not guarded) and spinner.test.tsx pins
+ * them.
+ */
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.indicator .spinner {
+  width: 18px;
+  height: 18px;
+}
+
+.block[data-compact] .indicator {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.block[data-compact] .indicator .spinner {
+  width: 14px;
+  height: 14px;
+}
+
+/*
+ * The drawn label: the monospace micro role, upper-cased and tracked out.
+ * 0.08em is the only tracked type in the kit, so the ramp names no token
+ * for it and the mono role's own tracking is 0 - tokens.test.ts carries
+ * the matching exception and spinner.test.tsx pins the value.
+ */
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-line-height);
+  font-weight: var(--text-mono-weight);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--foreground);
+}
+
+/* The second line: the meta role, subdued under the label it elaborates -
+ * the same title/description pairing Empty's own header draws. */
+.description {
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  font-weight: var(--text-meta-weight);
+  letter-spacing: var(--text-meta-tracking);
+  color: var(--muted-foreground);
+}
+
 @keyframes spin {
   to {
     /* The standalone `rotate` property, not `transform: rotate(...)` —
