@@ -23,6 +23,7 @@ an item inside `ToggleGroup`.
 | `onPressedChange` | `(pressed: boolean, eventDetails) => void` | — |
 | `variant` | `default` \| `outline` \| `steel` - `steel` is a hairline in `--border` over nothing, filling with `--muted` on hover and holding `--secondary` while pressed | `default` |
 | `size` | `default` \| `sm` \| `lg` | `default` |
+| `iconOnly` | `boolean` - the toggle holds a glyph and nothing else: it squares up to its own size step (32 at `sm`) and draws the glyph at 18 | `false` |
 | `value` | identifies this toggle inside a `ToggleGroup` | — |
 | `className` | `string` — merged after variant/size classes | — |
 
@@ -46,6 +47,11 @@ import { Toggle } from '@gears-frontx/ui-kit';
 // Outline variant, large size
 <Toggle variant="outline" size="lg" aria-label="Italic">
   <ItalicIcon />
+</Toggle>
+
+// Icon-only: square at its size step, glyph at 18
+<Toggle iconOnly variant="outline" size="sm" aria-label="Grid view">
+  <GridIcon />
 </Toggle>
 ```
 

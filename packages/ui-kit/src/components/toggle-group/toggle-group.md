@@ -29,11 +29,12 @@ navigation between items, state via `data-pressed` on each item.
 | `variant` | `default` \| `outline` — applied to every item unless an item overrides it | `default` |
 | `size` | `default` \| `sm` \| `lg` — applied to every item unless an item overrides it | `default` |
 | `spacing` | `number` - gap between items, in pixels; `0` also switches to the segmented look (see "Segmented geometry") | `undefined` |
+| `iconOnly` | `boolean` - every item holds a glyph and nothing else: each squares up to the group's size step (32 at `sm`) and draws its glyph at 18; an item's own `iconOnly` applies where the group leaves it unset | `undefined` |
 | `className` | `string` — merged after the kit class | — |
 
 `ToggleGroupItem`: `value` (required — identifies the item), `variant`,
-`size` (fall back to the group's when the group sets one), `className`;
-other props follow Base UI Toggle (`disabled`, ...).
+`size`, `iconOnly` (fall back to the group's when the group sets one),
+`className`; other props follow Base UI Toggle (`disabled`, ...).
 
 ## Examples
 
@@ -75,6 +76,45 @@ import { ToggleGroup, ToggleGroupItem } from '@gears-frontx/ui-kit';
   the group; use standalone `Toggle` instead.
 - Do not omit `aria-label`/`aria-labelledby` on the group — it groups
   buttons, but the group itself still needs a name for assistive tech.
+
+## Icon view switch
+
+The drawn single-choice icon switch: one square 32 box per option, glyphs
+at 18, no gap between them, a hairline strip around the whole thing, and
+exactly one option chosen at a time. Every part of it is already a prop -
+`spacing={0}` collapses the gap and joins the borders, `variant="outline"`
+draws the hairline, `iconOnly` squares the items, and single selection is
+what the group does unless `multiple` is set.
+
+Each option carries its own accessible name: the label is not drawn, so it
+lives in `aria-label` rather than in hidden text. The group needs a name of
+its own too.
+
+```tsx
+import { ToggleGroup, ToggleGroupItem } from '@gears-frontx/ui-kit';
+import { LayoutGridIcon, ListIcon, TableIcon } from 'lucide-react';
+
+const [view, setView] = useState('list');
+
+<ToggleGroup
+  size="sm"
+  spacing={0}
+  variant="outline"
+  iconOnly
+  value={[view]}
+  onValueChange={([next]) => next && setView(next)}
+  aria-label="View"
+>
+  <ToggleGroupItem value="list" aria-label="List"><ListIcon /></ToggleGroupItem>
+  <ToggleGroupItem value="grid" aria-label="Grid"><LayoutGridIcon /></ToggleGroupItem>
+  <ToggleGroupItem value="table" aria-label="Table"><TableIcon /></ToggleGroupItem>
+</ToggleGroup>;
+```
+
+`onValueChange` hands back an array even in single selection, and that
+array is empty when the chosen option is pressed again. Guarding on
+`next` is what keeps a view switch from ending up with nothing chosen; drop
+the guard where deselecting is a real state.
 
 ## Segmented geometry
 

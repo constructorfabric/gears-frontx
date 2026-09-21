@@ -1,11 +1,21 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+
+import { AlignCenter, AlignJustify, AlignLeft, AlignRight, LayoutGrid, List, Rows3, Rows4, Table2 } from 'lucide-react';
 
 import { ToggleGroup, ToggleGroupItem } from '@gears-frontx/ui-kit';
 
-import { DemoIcon, Measure, Row, Section } from '../shared';
+import { Measure, Row, Section } from '../shared';
+
+const alignIcons: Record<string, ReactNode> = {
+  left: <AlignLeft />,
+  center: <AlignCenter />,
+  right: <AlignRight />,
+  justify: <AlignJustify />,
+};
 
 export default function ToggleGroupExample() {
   const [align, setAlign] = useState<string[]>(['left']);
+  const [view, setView] = useState('list');
 
   return (
     <>
@@ -94,10 +104,10 @@ export default function ToggleGroupExample() {
               defaultValue={['comfortable']}
             >
               <ToggleGroupItem value="compact" aria-label="Compact density">
-                <DemoIcon />
+                <Rows3 />
               </ToggleGroupItem>
               <ToggleGroupItem value="comfortable" aria-label="Comfortable density">
-                <DemoIcon />
+                <Rows4 />
               </ToggleGroupItem>
             </ToggleGroup>
             <ToggleGroup
@@ -109,7 +119,7 @@ export default function ToggleGroupExample() {
             >
               {['left', 'center', 'right', 'justify'].map((value) => (
                 <ToggleGroupItem key={value} value={value} aria-label={`Align ${value}`}>
-                  <DemoIcon />
+                  {alignIcons[value]}
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
@@ -121,7 +131,7 @@ export default function ToggleGroupExample() {
             >
               {['left', 'center', 'right', 'justify'].map((value) => (
                 <ToggleGroupItem key={value} value={value} aria-label={`Align ${value}`}>
-                  <DemoIcon />
+                  {alignIcons[value]}
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
@@ -170,6 +180,44 @@ export default function ToggleGroupExample() {
               </ToggleGroupItem>
               <ToggleGroupItem value="grid" aria-label="Grid view">
                 Grid
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </Row>
+        </Measure>
+      </Section>
+
+      {/* The drawn icon view switch: square 32 boxes, 18 glyphs, no gap,
+          one hairline strip, one choice at a time. Measured because every
+          number in it is drawn - the item box, the glyph, and the strip the
+          three of them add up to. */}
+      <Section title="Icon view switch">
+        <Measure
+          of={{
+            group: '#tg-icon-switch',
+            'first item': '#tg-icon-switch button:first-child',
+            'middle item': '#tg-icon-switch button:nth-child(2)',
+            glyph: '#tg-icon-switch svg',
+          }}
+        >
+          <Row>
+            <ToggleGroup
+              id="tg-icon-switch"
+              aria-label="View"
+              size="sm"
+              spacing={0}
+              variant="outline"
+              iconOnly
+              value={[view]}
+              onValueChange={([next]) => next && setView(next)}
+            >
+              <ToggleGroupItem value="list" aria-label="List">
+                <List />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="grid" aria-label="Grid">
+                <LayoutGrid />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="table" aria-label="Table">
+                <Table2 />
               </ToggleGroupItem>
             </ToggleGroup>
           </Row>

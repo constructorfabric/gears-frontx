@@ -15,7 +15,12 @@ import styles from './toggle-group.module.css';
  * it automatically when rendered inside a ToggleGroup, so this context
  * only needs to carry the two CVA axes Base UI doesn't know about.
  */
-const ToggleGroupContext = createContext<VariantProps<typeof toggleVariants>>({
+interface ToggleGroupSharedProps extends VariantProps<typeof toggleVariants> {
+  /** See ToggleGroupProps.iconOnly. `undefined` means "the item decides". */
+  iconOnly?: boolean;
+}
+
+const ToggleGroupContext = createContext<ToggleGroupSharedProps>({
   variant: 'default',
   size: 'default',
 });
@@ -38,6 +43,15 @@ export interface ToggleGroupProps<Value extends string = string>
    * @default undefined
    */
   spacing?: number;
+  /**
+   * Every item holds a glyph and nothing else: each squares up to the
+   * group's size step (32 at `sm`) and draws its glyph at the drawn 18.
+   * An item's own `iconOnly` still wins where the group leaves it unset,
+   * the same precedence `variant` and `size` already have. Each item
+   * needs its own `aria-label`: a glyph carries no accessible name.
+   * @default undefined
+   */
+  iconOnly?: boolean;
 }
 
 export function ToggleGroup<Value extends string = string>({
@@ -46,6 +60,7 @@ export function ToggleGroup<Value extends string = string>({
   variant,
   size,
   spacing,
+  iconOnly,
   children,
   ...props
 }: ToggleGroupProps<Value>) {
@@ -62,7 +77,7 @@ export function ToggleGroup<Value extends string = string>({
       style={spacing === undefined ? style : { ...style, gap: `${spacing}px` }}
       {...props}
     >
-      <ToggleGroupContext.Provider value={{ variant, size }}>
+      <ToggleGroupContext.Provider value={{ variant, size, iconOnly }}>
         {children}
       </ToggleGroupContext.Provider>
     </ToggleGroupPrimitive>
@@ -71,7 +86,7 @@ export function ToggleGroup<Value extends string = string>({
 
 export interface ToggleGroupItemProps<Value extends string = string>
   extends Omit<TogglePrimitive.Props<Value>, 'className'>,
-    VariantProps<typeof toggleVariants> {
+    ToggleGroupSharedProps {
   className?: string;
 }
 
@@ -89,6 +104,7 @@ export function ToggleGroupItem<Value extends string = string>({
   className,
   variant,
   size,
+  iconOnly,
   ...props
 }: ToggleGroupItemProps<Value>) {
   const context = useContext(ToggleGroupContext);
@@ -100,6 +116,9 @@ export function ToggleGroupItem<Value extends string = string>({
         className,
       )}
       {...props}
+      // Same group-wins precedence as variant/size above, and spread after
+      // `...props` so a caller's own attribute cannot contradict the prop.
+      data-icon-only={(context.iconOnly ?? iconOnly) || undefined}
     />
   );
 }

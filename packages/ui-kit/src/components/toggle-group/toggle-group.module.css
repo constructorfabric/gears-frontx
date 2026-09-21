@@ -48,9 +48,12 @@
  * Segmented mode (`[data-spacing='0']`, see file header). Horizontal join:
  * square every item's corners, re-round only the two outer corners on the
  * first/last item, and remove the leading border of every item but the
- * first. `.group[data-spacing='0'] > .item` is (0,2,0), reliably above
- * `.toggle`'s own `.variantOutline`/`.sizeSm` radius declarations
- * ((0,1,0) each in toggle.module.css) regardless of stylesheet load order.
+ * first. `.group[data-spacing='0']:not([data-orientation='vertical']) >
+ * .item` is (0,4,0) - Selectors Level 4 counts `:not()` at its argument's
+ * own specificity, so the vertical-orientation exclusion adds one more
+ * attribute selector, not zero - reliably above `.toggle`'s own
+ * `.variantOutline`/`.sizeSm` radius declarations ((0,1,0) each in
+ * toggle.module.css) regardless of stylesheet load order.
  */
 .group[data-spacing='0'] {
   gap: 0;
@@ -59,9 +62,24 @@
 .group[data-spacing='0']:not([data-orientation='vertical']) > .item {
   border-radius: 0;
   /* The drawn item inset at zero spacing: 8 on each inline edge, whatever
-   * the size axis sets for a standalone toggle. (0,2,0), above
-   * `.sizeDefault`'s own `padding` shorthand (0,1,0) in toggle.module.css. */
+   * the size axis sets for a standalone toggle. (0,4,0), same `:not()`
+   * counting as the rule's own selector above - above `.sizeDefault`'s own
+   * `padding` shorthand (0,1,0) in toggle.module.css. */
   padding-inline: var(--space-2);
+}
+
+/*
+ * An icon-only item carries no label to inset, and the drawn icon switch
+ * is a strip of square 32 boxes. `.item[data-icon-only]` under the group
+ * is (0,5,0) - Selectors Level 4 counts `:not()` at its argument's own
+ * specificity, so the `:not([data-orientation='vertical'])` clause above
+ * adds one more attribute selector, not zero - above the 8px inset rule's
+ * own (0,4,0), so the square wins wherever it lands in the stylesheet
+ * order - the two modules ship as separate chunks and neither can rely on
+ * coming last.
+ */
+.group[data-spacing='0']:not([data-orientation='vertical']) > .item[data-icon-only] {
+  padding-inline: 0;
 }
 
 .group[data-spacing='0']:not([data-orientation='vertical']) > .item:first-child {

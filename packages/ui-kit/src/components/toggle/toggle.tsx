@@ -25,6 +25,16 @@ export const toggleVariants = cva(styles.toggle, {
 export interface ToggleProps<Value extends string = string>
   extends Omit<TogglePrimitive.Props<Value>, 'className'>, VariantProps<typeof toggleVariants> {
   className?: string;
+  /**
+   * The toggle holds a glyph and nothing else: it squares up to its own
+   * size step (32 at `sm`) and draws the glyph at the drawn 18. Icon-only
+   * is derived from an `icon` slot on `Button`, but a Toggle's glyph is
+   * its children, so there is nothing to derive it from here and the
+   * caller states it. Always pair it with an `aria-label`: a glyph carries
+   * no accessible name.
+   * @default false
+   */
+  iconOnly?: boolean;
 }
 
 /*
@@ -37,9 +47,17 @@ export function Toggle<Value extends string = string>({
   className,
   variant,
   size,
+  iconOnly,
   ...props
 }: ToggleProps<Value>) {
   return (
-    <TogglePrimitive className={toggleVariants({ variant, size, className })} {...props} />
+    <TogglePrimitive
+      className={toggleVariants({ variant, size, className })}
+      {...props}
+      // After `...props`, so a caller's own `data-icon-only` cannot
+      // contradict the prop the CSS below is keyed on - same ordering
+      // button.tsx uses for its derived attributes.
+      data-icon-only={iconOnly || undefined}
+    />
   );
 }

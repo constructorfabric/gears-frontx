@@ -148,3 +148,24 @@
   flex-shrink: 0;
   pointer-events: none;
 }
+
+/*
+ * Icon-only (`iconOnly`, set by toggle.tsx as a data attribute): square up
+ * whatever size step is active, the same derivation Button already carries
+ * (see button.module.css) rather than a size of its own - so an icon-only
+ * toggle exists at all three steps instead of one. At `sm` that is the
+ * drawn 32 box: aspect-ratio works off the border box here, so the
+ * hairline is inside the 32 rather than added to it.
+ */
+.toggle[data-icon-only] {
+  aspect-ratio: 1;
+  padding: 0;
+}
+
+/* The drawn icon-only glyph is 18, one step off the icon scale
+ * (12/16/20/24) - the same value the drawn utility button already sets for
+ * its own glyph (see button.module.css). */
+.toggle[data-icon-only] svg {
+  width: 18px;
+  height: 18px;
+}

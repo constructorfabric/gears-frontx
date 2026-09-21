@@ -184,6 +184,35 @@ describe('ToggleGroup', () => {
     expect(declared(".group[data-spacing='0']", 'background-color')).toBeUndefined();
   });
 
+  /*
+   * The drawn icon switch: square 32 boxes with 18 glyphs and no label to
+   * inset. The square and the glyph belong to Toggle and are pinned in its
+   * own suite; what the group owns is backing its 8px label inset off an
+   * item that has no label.
+   */
+  it('drops the label inset on an icon-only item', () => {
+    expect(declared(`${horizontal} > .item[data-icon-only]`, 'padding-inline')).toBe('0');
+  });
+
+  it('marks every item icon-only from the group, and from an item on its own', () => {
+    render(
+      <>
+        <ToggleGroup iconOnly spacing={0} variant="outline" aria-label="View">
+          <ToggleGroupItem value="list" aria-label="List" />
+          <ToggleGroupItem value="grid" aria-label="Grid" />
+        </ToggleGroup>
+        <ToggleGroup spacing={0} variant="outline" aria-label="Align">
+          <ToggleGroupItem value="left" iconOnly aria-label="Left" />
+          <ToggleGroupItem value="right" aria-label="Right" />
+        </ToggleGroup>
+      </>,
+    );
+    for (const name of ['List', 'Grid', 'Left']) {
+      expect(screen.getByRole('button', { name }).hasAttribute('data-icon-only')).toBe(true);
+    }
+    expect(screen.getByRole('button', { name: 'Right' }).hasAttribute('data-icon-only')).toBe(false);
+  });
+
   it('mirrors the group size onto the element so the outer corner can follow it', () => {
     render(
       <ToggleGroup variant="outline" size="sm" spacing={0} aria-label="Align">

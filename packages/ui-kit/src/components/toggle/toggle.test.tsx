@@ -97,3 +97,41 @@ describe('Toggle steel variant', () => {
     ).toBe('var(--secondary)');
   });
 });
+
+/*
+ * Icon-only, the drawn single-choice switch's box: square at whatever size
+ * step is active (32 at `sm`) with an 18 glyph. Pinned against the
+ * stylesheet because the kit's CSS-source guards assert token names and
+ * cannot see either literal drift - and pinned at all because the 18 sits
+ * one step off the icon scale on purpose.
+ */
+describe('Toggle icon-only', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'toggle.module.css'), 'utf8'),
+  );
+
+  function declared(selector: string, prop: string) {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('marks the element only when asked', () => {
+    render(
+      <>
+        <Toggle iconOnly aria-label="Grid" />
+        <Toggle aria-label="List" />
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'Grid' }).hasAttribute('data-icon-only')).toBe(true);
+    expect(screen.getByRole('button', { name: 'List' }).hasAttribute('data-icon-only')).toBe(false);
+  });
+
+  it('squares the box off its own size step and draws the glyph at the drawn 18', () => {
+    expect(declared('.toggle[data-icon-only]', 'aspect-ratio')).toBe('1');
+    expect(declared('.toggle[data-icon-only]', 'padding')).toBe('0');
+    expect(declared('.toggle[data-icon-only] svg', 'width')).toBe('18px');
+    expect(declared('.toggle[data-icon-only] svg', 'height')).toBe('18px');
+    // The step the drawn 32 comes from, so a change to either shows here.
+    expect(declared('.sizeSm', 'height')).toBe('var(--control-height-sm)');
+  });
+});
