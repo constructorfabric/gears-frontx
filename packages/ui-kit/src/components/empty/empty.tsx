@@ -67,3 +67,22 @@ export type EmptyContentProps = ComponentProps<'div'>;
 export function EmptyContent({ className, ...props }: EmptyContentProps) {
   return <div className={cx(styles.emptyContent, className)} {...props} />;
 }
+
+export type EmptyDetailProps = ComponentProps<'div'>;
+
+/** A secondary line under the description - a count, a hint, the query
+ * that came back empty. Goes last inside `EmptyHeader`, where the drawn
+ * 16 above it comes out of the header's own gap plus this part's margin
+ * (see empty.module.css). */
+export function EmptyDetail({ className, ...props }: EmptyDetailProps) {
+  return <div className={cx(styles.emptyDetail, className)} {...props} />;
+}
+
+export type EmptyActionsProps = ComponentProps<'div'>;
+
+/** A row of actions at the foot of the placeholder. A row, not a column:
+ * `EmptyContent` is the column that holds arbitrary content (a search
+ * field, a form), this is the button strip beneath it. */
+export function EmptyActions({ className, ...props }: EmptyActionsProps) {
+  return <div className={cx(styles.emptyActions, className)} {...props} />;
+}

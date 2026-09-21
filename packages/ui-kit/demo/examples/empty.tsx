@@ -4,8 +4,10 @@ import {
   AvatarGroup,
   Button,
   Empty,
+  EmptyActions,
   EmptyContent,
   EmptyDescription,
+  EmptyDetail,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -15,7 +17,7 @@ import {
   InputGroupInput,
 } from '@gears-frontx/ui-kit';
 
-import { DemoIcon, Row, Section } from '../shared';
+import { DemoIcon, Measure, Row, Section } from '../shared';
 
 export default function EmptyExample() {
   return (
@@ -36,6 +38,40 @@ export default function EmptyExample() {
             </Row>
           </EmptyContent>
         </Empty>
+      </Section>
+
+      {/* The two slots and the distances they are drawn at: 16 between
+          the description and the detail (the header's own 8 gap plus the
+          detail's 8), 24 above the action row (the root's gap, which the
+          row deliberately adds nothing to). Measured against the elements
+          above them, since a margin that stacks on a gap looks fine until
+          it is counted. */}
+      <Section title="Detail and actions">
+        <Measure
+          of={{
+            description: '#empty-slots-description',
+            detail: '#empty-slots-detail',
+            actions: '#empty-slots-actions',
+            plate: '#empty-slots-plate',
+          }}
+        >
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia id="empty-slots-plate" variant="icon">
+                <DemoIcon />
+              </EmptyMedia>
+              <EmptyTitle>No results</EmptyTitle>
+              <EmptyDescription id="empty-slots-description">
+                Try a different search term or clear your filters.
+              </EmptyDescription>
+              <EmptyDetail id="empty-slots-detail">3 filters applied</EmptyDetail>
+            </EmptyHeader>
+            <EmptyActions id="empty-slots-actions">
+              <Button>New project</Button>
+              <Button variant="outline">Clear filters</Button>
+            </EmptyActions>
+          </Empty>
+        </Measure>
       </Section>
 
       <Section title="With border">
