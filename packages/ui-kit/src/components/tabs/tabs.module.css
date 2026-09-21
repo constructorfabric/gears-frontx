@@ -339,6 +339,43 @@
 }
 
 /*
+ * The panel's enter animation: it fades up over 4px as it becomes the
+ * active one. `data-starting-style` is Base UI's own "this is the frame it
+ * opens on" hook - the same one the kit's overlays animate from - so the
+ * panel needs no wrapper keyed on the active value to replay it.
+ *
+ * `translate` rather than `transform`, so a consumer's own transform on
+ * the panel is not overwritten by the kit's 4px; same standalone-property
+ * idiom as the `spin` keyframe in spinner.module.css. The travel is 4 and
+ * stays literal: it is an offset, not a step on the spacing scale, and
+ * translate is not a guarded property.
+ *
+ * --duration-tab is the list's own step, the one the indicator already
+ * travels at, so the bar and the panel it points to settle together.
+ */
+.content[data-animate] {
+  transition:
+    opacity var(--duration-tab) var(--ease-standard),
+    translate var(--duration-tab) var(--ease-standard);
+}
+
+.content[data-animate][data-starting-style] {
+  opacity: 0;
+  translate: 0 4px;
+}
+
+/*
+ * The travel is motion under WCAG 2.3.3; the fade is not. So the panel
+ * still announces itself by arriving, it just arrives in place - the same
+ * split the travelling indicator above makes when it stops travelling.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .content[data-animate][data-starting-style] {
+    translate: none;
+  }
+}
+
+/*
  * Base UI puts the open panel in the tab order itself (`tabIndex: open ?
  * 0 : -1`, TabsPanel.js:83), so keyboard users land here right after the
  * tablist. `outline: none` above must not leave that stop invisible —

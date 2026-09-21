@@ -93,6 +93,36 @@ export default function TabsExample() {
         </Measure>
       </Section>
 
+      {/* The enter animation, and the way out of it. Switching either
+          list replays the fade-up on the panel that arrives; the second
+          one opts out, so its panels appear settled. Watch both while
+          clicking - there is nothing to measure here, the difference is
+          the switch itself. */}
+      <Section title="Panel enter animation">
+        <Tabs defaultValue="summary">
+          <TabsList variant="line">
+            <TabsTrigger value="summary">Summary</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+          <TabsContent value="summary">Animated: this panel fades up as it arrives.</TabsContent>
+          <TabsContent value="activity">Animated: so does this one, on every switch.</TabsContent>
+          <TabsContent value="settings">Animated: and this one.</TabsContent>
+        </Tabs>
+        <Tabs defaultValue="summary">
+          <TabsList variant="line">
+            <TabsTrigger value="summary">Summary</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+          </TabsList>
+          <TabsContent value="summary" animate={false}>
+            Opted out: this panel appears without moving.
+          </TabsContent>
+          <TabsContent value="activity" animate={false}>
+            Opted out: so does this one.
+          </TabsContent>
+        </Tabs>
+      </Section>
+
       <Section title="Vertical">
         <Measure
           of={{

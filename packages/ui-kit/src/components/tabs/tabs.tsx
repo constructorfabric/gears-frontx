@@ -77,8 +77,33 @@ export function TabsTrigger({ className, ...props }: TabsTriggerProps) {
 
 export interface TabsContentProps extends Omit<TabsPrimitive.Panel.Props, 'className'> {
   className?: string;
+  /**
+   * Replay a short enter animation (a fade up over 4px) every time this
+   * panel becomes the active one. Opt out for a panel that animates its
+   * own content, or one whose content must not move at all.
+   * @default true
+   */
+  animate?: boolean;
 }
 
-export function TabsContent({ className, ...props }: TabsContentProps) {
-  return <TabsPrimitive.Panel className={cx(styles.content, className)} {...props} />;
+/*
+ * The enter animation is CSS keyed on `data-starting-style`, the attribute
+ * Base UI's own transition machinery puts on a panel for the frame it
+ * mounts or opens on (TabsPanelDataAttributes.startingStyle, the same hook
+ * the kit's overlays already animate from). Nothing here measures or times
+ * anything: `data-animate` only says whether that CSS applies, so a panel
+ * that opts out has no transition to interrupt.
+ *
+ * It replays per activation because an inactive panel unmounts by default;
+ * with `keepMounted` the same attribute still lands on each open, so the
+ * animation holds either way.
+ */
+export function TabsContent({ className, animate = true, ...props }: TabsContentProps) {
+  return (
+    <TabsPrimitive.Panel
+      className={cx(styles.content, className)}
+      {...props}
+      data-animate={animate || undefined}
+    />
+  );
 }

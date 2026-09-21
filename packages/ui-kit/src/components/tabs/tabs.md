@@ -59,6 +59,15 @@ other props follow Base UI `Tabs.Tab`. Renders a native `<button>`.
 (keep the panel in the DOM while inactive instead of unmounting it —
 `false` by default); other props follow Base UI `Tabs.Panel`.
 
+| Prop | Type | Default |
+|------|------|---------|
+| `animate` | `boolean` - replay the enter animation each time this panel becomes the active one: a fade up over 4px, on the list's own 240 ms step. Under `prefers-reduced-motion` the panel still fades but does not travel | `true` |
+
+Switching tabs therefore moves two things together: the indicator travels
+to the new trigger while its panel arrives. Opt out per panel with
+`animate={false}` where the content animates itself, or must not move at
+all.
+
 Set `orientation="vertical"` on `Tabs` for a sidebar-style layout (list on
 the side, panel beside it instead of below it) — every part reads its own
 `data-orientation`, so no other prop changes.
@@ -124,3 +133,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gears-frontx/ui-kit';
   to an enabled tab's value whenever the first one might be disabled.
 - Do not size an icon inside a `TabsTrigger` yourself: the trigger draws
   every direct `svg` child at the drawn 16px box.
+- Do not add a wrapper keyed on the active value to replay an enter
+  animation - `TabsContent` already animates on becoming active, and a
+  keyed wrapper on top of it remounts the content twice as often as the
+  panel does.

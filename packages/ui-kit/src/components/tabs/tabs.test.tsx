@@ -361,3 +361,59 @@ describe('Tabs drawn geometry', () => {
     expect(declared('.sizeSm .trigger', 'font-weight')).toBeUndefined();
   });
 });
+
+/*
+ * The panel's enter animation. Nothing here asserts that a transition ran
+ * - jsdom has no compositor and Base UI owns the timing - so what is
+ * checked is the seam the kit actually owns: whether the CSS applies at
+ * all, and the two declarations it applies.
+ */
+describe('Tabs panel enter animation', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'tabs.module.css'), 'utf8'),
+  );
+
+  function declared(selector: string, prop: string) {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('marks the active panel as animated by default and drops the mark on opt-out', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList>
+          <TabsTrigger value="a">A</TabsTrigger>
+          <TabsTrigger value="b">B</TabsTrigger>
+        </TabsList>
+        <TabsContent value="a">Panel A</TabsContent>
+        <TabsContent value="b" animate={false}>
+          Panel B
+        </TabsContent>
+      </Tabs>,
+    );
+    expect(screen.getByText('Panel A').hasAttribute('data-animate')).toBe(true);
+    fireEvent.click(screen.getByRole('tab', { name: 'B' }));
+    expect(screen.getByText('Panel B').hasAttribute('data-animate')).toBe(false);
+  });
+
+  it('does not leak the animate prop to the DOM as an attribute', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList>
+          <TabsTrigger value="a">A</TabsTrigger>
+        </TabsList>
+        <TabsContent value="a">Panel A</TabsContent>
+      </Tabs>,
+    );
+    expect(screen.getByText('Panel A').hasAttribute('animate')).toBe(false);
+  });
+
+  it("fades the panel up over 4px on the list's own duration step", () => {
+    // Normalised: the declaration is written over two lines in the source.
+    expect(declared('.content[data-animate]', 'transition')?.replace(/\s+/g, ' ')).toBe(
+      'opacity var(--duration-tab) var(--ease-standard), translate var(--duration-tab) var(--ease-standard)',
+    );
+    expect(declared('.content[data-animate][data-starting-style]', 'opacity')).toBe('0');
+    expect(declared('.content[data-animate][data-starting-style]', 'translate')).toBe('0 4px');
+  });
+});
