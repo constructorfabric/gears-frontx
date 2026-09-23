@@ -19,6 +19,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Ajv2020 from 'ajv/dist/2020';
+import { parse as parseYaml } from 'yaml';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -29,16 +30,24 @@ import {
   buildPropsAndRequired,
   buildVocabularyTypes,
   collectOverlays,
+  describeBranches,
   describeUnexpressedType,
+  exportNameOf,
+  leavesTypeToTsc,
   mountPointsAccepting,
   loadElementSurface,
   loadElementSurfaces,
+  noHostElementRefusal,
   overlayFailuresMentioning,
+  parseOverlay,
+  partlyCheckedPropertyNames,
+  resolveTargetExtraction,
   sharedAttributeConflicts,
+  type CompiledContract,
 } from './compile';
 import { extractComponent } from './extract';
 import { componentRef, componentRefPrefix, vocabularyTypeId } from './ids';
-import { applyContractTestTimeout } from './testing';
+import { applyContractTestTimeout, mountPointsOutsideFamily } from './testing';
 
 // This suite builds a real TypeScript program through extractComponent -
 // several seconds on a CI-class runner. Must run before any
@@ -56,8 +65,7 @@ describe('the hand-written element surface', () => {
 
   it('states the TypeScript type of every attribute it cannot assert', () => {
     // `style` and `children` are the two React attributes no JSON Schema
-    // type covers - and the case that used to emit `{}` per component, 233
-    // times over, for props nobody had written down.
+    // type covers, so each carries its TypeScript type rather than `{}`.
     expect(properties.style.type).toBeUndefined();
     expect(properties.style.description).toContain('TS: CSSProperties');
     expect(properties.children.description).toContain('TS: ReactNode');
@@ -191,9 +199,8 @@ describe('a declared prop the schema cannot state in full', () => {
   });
 
   it('types an alias that unwraps to an array of a stated element type, and leaves it undescribed', () => {
-    // What the old text-based classifier got wrong on the accordion root:
-    // the printed alias name matched nothing, so a fully expressible type
-    // was declared inexpressible and slotted.
+    // The type is read, not its printed name: the alias name matches no
+    // keyword, and the array of strings behind it is stated in full.
     expect(properties.chosen).toEqual({ type: 'array', items: { type: 'string' } });
     expect(partiallyTypedProps.chosen).toBeUndefined();
   });
@@ -230,9 +237,8 @@ describe('describeUnexpressedType', () => {
   });
 
   it('describes what is left of a type the schema states only in part', () => {
-    // The claim the wording used to make - "not expressible" of a type that
-    // partly is - is the defect this whole rule came from, so a partly
-    // stated type keeps both halves: the assertion and the prose.
+    // "Not expressible" said of a type that partly is would be false, so a
+    // partly stated type keeps both halves: the assertion and the prose.
     expect(describeUnexpressedType({ type: 'array' }, 'ColumnDef<TFeatures, TData>[]', false)).toEqual({
       type: 'array',
       description:
@@ -424,6 +430,15 @@ describe('mountPointsAccepting: a container naming a major the component no long
     ]);
   });
 
+  it("names a container whose overlay states its export by that export, not by its stem", () => {
+    // `export: Toaster` on a stem like `toast-toaster`: the stem in
+    // PascalCase would name an export that does not exist.
+    const walked = walk(rootText).map((entry) => ({ ...entry, overlay: { ...entry.overlay, export: 'Toaster' } }));
+    expect(mountPointsAccepting('accordion-item', itemRef, walked)).toEqual([
+      { container: 'Toaster', component: componentRef('accordion', 1) },
+    ]);
+  });
+
   it('refuses the stale reference by name, naming both majors and the overlay that carries it', () => {
     expect(rootText).toContain(itemRef);
     expect(() => mountPointsAccepting('accordion-item', itemRef, walk(rootText.replace(itemRef, staleRef)))).toThrow(
@@ -439,7 +454,7 @@ describe('collectOverlays / usableOverlays: a broken overlay is scoped by what i
   // half-written overlay of an UNENROLLED component: real YAML errors are
   // ordinary mid-edit noise, so the walk collects the failure instead of
   // throwing from it, and only a derivation whose own reference the broken
-  // text happens to carry is the one usableOverlays can no longer answer.
+  // text happens to carry is the one usableOverlays cannot answer.
   const brokenPath = '/kit/src/components/ghost/ghost.contract.yaml';
   const accordionNeedle = componentRefPrefix('accordion');
   const buttonNeedle = componentRefPrefix('button');
@@ -498,5 +513,111 @@ describe('collectOverlays / usableOverlays: a broken overlay is scoped by what i
     const blocking = overlayFailuresMentioning(failures, [accordionNeedle]);
     expect(blocking).toHaveLength(1);
     expect(blocking[0].path).toBe(brokenPath);
+  });
+});
+
+describe('a prop only some branches of a union props type declare', () => {
+  const [picker] = extractComponent(fixture('union-props.fixture.tsx'));
+  const { properties, required } = buildPropsAndRequired('picker', picker, {});
+
+  it('reaches the schema as an optional property, its description naming the branches', () => {
+    expect(properties.clearable).toEqual({
+      type: 'boolean',
+      description: 'Declared only by SinglePickerProps of the props union; absent from the others.',
+    });
+    expect(required).not.toContain('clearable');
+    // Required on the range branch, and still not required of a picker on
+    // another branch.
+    expect(required).not.toContain('anchor');
+    expect(properties.anchor.description).toBe('Declared only by RangePickerProps of the props union; absent from the others.');
+    expect(required).toContain('label');
+  });
+
+  it('puts the branch sentence after the type text where the schema leaves the type to tsc', () => {
+    expect(properties.numberOfMonths.description).toMatch(
+      /^Partially typed: number \| "one" \| "two" \| undefined\. .* Declared only by RangePickerProps, WeekPickerProps of the props union; absent from the others\.$/,
+    );
+  });
+
+  it('counts only the prose that opens with the printed type as a gap the pairing is owed a statement for', () => {
+    // A branch sentence on a fully typed prop states no gap: read as one, it
+    // would demand a prop statement about a property the schema types in full.
+    expect(leavesTypeToTsc(properties.clearable)).toBe(false);
+    expect(leavesTypeToTsc(properties.numberOfMonths)).toBe(true);
+    const contract = { props: { properties } } as unknown as CompiledContract;
+    expect(partlyCheckedPropertyNames(contract)).toEqual(['numberOfMonths']);
+  });
+
+  it('leaves a prop every branch declares without a branch sentence', () => {
+    expect(properties.label).toEqual({ type: 'string' });
+    expect(describeBranches({ type: 'string' }, { ...picker.ownProps[0], branches: undefined })).toEqual({ type: 'string' });
+  });
+});
+
+describe('an overlay naming an export its stem cannot spell', () => {
+  const labelOverlay = parseYaml(readFileSync(join(process.cwd(), 'src/components/label/label.contract.yaml'), 'utf8')) as Record<string, unknown>;
+
+  it('admits an `export` field holding a component name', () => {
+    expect(parseOverlay('label', { ...labelOverlay, export: 'Label' }).export).toBe('Label');
+  });
+
+  it('refuses one that is not a component name', () => {
+    expect(() => parseOverlay('label', { ...labelOverlay, export: 'label' })).toThrow(/export/);
+  });
+
+  it('selects the export by that name, while the stem stays under the directory', () => {
+    // toast.tsx exports Toaster, whose own name does not extend the
+    // directory's: the stem `toast-toaster` keeps it resolvable to one
+    // directory, and the name is what picks the export.
+    expect(resolveTargetExtraction('toast', 'toast-toaster', 'Toaster').name).toBe('Toaster');
+    expect(() => resolveTargetExtraction('toast', 'toast-toaster')).toThrow(/no exported component named "ToastToaster"/);
+  });
+
+  it('defaults to the stem in PascalCase where no overlay names one', () => {
+    expect(exportNameOf('toast', 'toast-toaster')).toBe('ToastToaster');
+    expect(exportNameOf('label')).toBe('Label');
+  });
+});
+
+describe('the refusal for props forwarded to no host element', () => {
+  it('names every heritage node the walk could not read', () => {
+    const cell = extractComponent(fixture('wrapped-libraries.fixture.tsx')).find((e) => e.name === 'Cell')!;
+    const refusal = noHostElementRefusal('cell', 'cell', cell);
+    expect(refusal.message).toContain('no host element kind could be resolved');
+    expect(refusal.message).toContain('heritage could not be read at');
+    expect(refusal.message).toContain('"HTMLElement"');
+  });
+
+  it('says so when nothing was left unread and the types simply name no element', () => {
+    const handlers = extractComponent(fixture('wrapped-libraries.fixture.tsx')).find((e) => e.name === 'Handlers')!;
+    expect(handlers.forwardedProps.length).toBeGreaterThan(0);
+    expect(handlers.cannotExtract).toEqual([]);
+    expect(noHostElementRefusal('handlers', 'handlers', handlers).message).toContain('do not say which element it renders');
+  });
+});
+
+describe('where a family member may be mounted', () => {
+  const roster = {
+    name: 'menu',
+    root: componentRef('menu', 1),
+    parts: [componentRef('menu-item', 1)],
+  };
+  const elsewhere = componentRef('toolbar', 1);
+
+  it('fails a part mounted outside its own family', () => {
+    const part = { family_membership: { name: 'menu', role: 'part' as const }, mounted_in: [{ container: 'Toolbar', component: elsewhere }] };
+    expect(mountPointsOutsideFamily(part, roster)).toEqual([`"${elsewhere}" is not a member of family "menu"`]);
+  });
+
+  it('passes a part mounted inside its own family', () => {
+    const part = { family_membership: { name: 'menu', role: 'part' as const }, mounted_in: [{ container: 'Menu', component: roster.root }] };
+    expect(mountPointsOutsideFamily(part, roster)).toEqual([]);
+  });
+
+  it("passes a root mounted inside another component's container", () => {
+    // A group hosting the roots of its members: the root is a component in
+    // its own right, so nothing becomes independently mountable.
+    const root = { family_membership: { name: 'menu', role: 'root' as const }, mounted_in: [{ container: 'Toolbar', component: elsewhere }] };
+    expect(mountPointsOutsideFamily(root, roster)).toEqual([]);
   });
 });

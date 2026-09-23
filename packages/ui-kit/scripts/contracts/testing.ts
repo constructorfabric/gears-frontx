@@ -28,6 +28,7 @@ import {
   registerContractTypes,
   resolveTargetExtraction,
   type CompiledContract,
+  type FamilyRoster,
 } from './compile';
 import {
   bareGtsId,
@@ -220,6 +221,30 @@ export function registeredKitStore(): GTS {
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-register
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-instance-ref
 
+// The filled mount points of a family PART that lie outside its family, each
+// named. The family's whole membership is read off the roster rather than off
+// the part's own record: a part states its membership and nothing else, so
+// the set it may be mounted inside is the root plus every other part naming
+// the same family.
+//
+// Parts only. The rule exists so the parts of a compound component are not
+// independently mountable; a root is a component in its own right, and one
+// family's root may sit in another component's container (a group hosting
+// the roots of its members) without making anything mountable on its own.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-parent
+export function mountPointsOutsideFamily(
+  meaning: Pick<CompiledContract, 'family_membership' | 'mounted_in'>,
+  roster: FamilyRoster | undefined,
+): string[] {
+  if (meaning.family_membership?.role !== 'part' || roster === undefined) return [];
+  const members = new Set([...(roster.root === undefined ? [] : [roster.root]), ...roster.parts]);
+  return (meaning.mounted_in ?? [])
+    .map((entry) => entry.component)
+    .filter((ref): ref is string => ref !== undefined && !members.has(ref))
+    .map((ref) => `"${ref}" is not a member of family "${meaning.family_membership?.name}"`);
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-parent
+
 // `exportStem` defaults to `directory` for the ordinary one-overlay case
 // (assertContractFreshness('button')); a compound component's part passes
 // both (assertContractFreshness('accordion', 'accordion-item')) - see
@@ -349,16 +374,6 @@ export function assertContractFreshness(directory: string, exportStem: string = 
       // is not one.
       const meaning = compileContract(directory, exportStem);
       const self = meaning.$id;
-      // The family's WHOLE membership, read off the roster rather than off
-      // this component's own record: a part states its membership and nothing
-      // else, so the set it may be mounted inside is the root plus every
-      // other part naming the same family.
-      let familyMembers: Set<string> | undefined;
-      const membership = meaning.family_membership;
-      if (membership !== undefined) {
-        const roster = familyRoster(membership.name);
-        familyMembers = new Set([...(roster.root === undefined ? [] : [roster.root]), ...roster.parts]);
-      }
       for (const entry of meaning.mounted_in ?? []) {
         if (entry.component === undefined) continue;
         const container = resolveComponentRef(entry.component);
@@ -367,10 +382,9 @@ export function assertContractFreshness(directory: string, exportStem: string = 
           containerMeaning.accepts.components ?? [],
           `${exportStem}: filled mount point "${entry.component}" does not accept it inside`,
         ).toContain(self);
-        if (familyMembers !== undefined) {
-          expect(familyMembers.has(entry.component), `${exportStem}: filled mount point "${entry.component}" is not a member of its family`).toBe(true);
-        }
       }
+      const outside = mountPointsOutsideFamily(meaning, meaning.family_membership === undefined ? undefined : familyRoster(meaning.family_membership.name));
+      expect(outside, `${exportStem}: filled mount points outside its family:\n${outside.join('\n')}`).toEqual([]);
     });
 
     it('states its own family membership, and only a root carries the member list', () => {

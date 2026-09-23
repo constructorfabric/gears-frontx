@@ -166,7 +166,8 @@ describe('diffElementSurface', () => {
   it('is incompatible when a pattern family is removed, and compatible when one only arrives', () => {
     // Deleting `^on[A-Z]` from a <button>'s surface stops it accepting every
     // React event handler at once, while `properties` and `required` stay
-    // byte-identical - the half of the surface the comparison used to skip.
+    // byte-identical - the half of the surface a comparison of `properties`
+    // alone would miss.
     const surface = {
       properties: { disabled: { type: 'boolean' } },
       patternProperties: { '^aria-': {}, '^data-': {}, '^on[A-Z]': {} },
@@ -448,8 +449,7 @@ describe('touchesSharedContractTooling', () => {
 
   it('is false for the guard/compat entry point, any test file, fixtures, enrolled.json and pilot notes', () => {
     // The entry point is named in the exclusion set; a test file is excluded
-    // by its suffix, which is why naming one in that set as well said
-    // nothing and it no longer does.
+    // by its suffix, so the set does not name one as well.
     for (const file of [
       'scripts/contracts/check.ts',
       'scripts/contracts/check-lib.test.ts',
@@ -553,8 +553,8 @@ describe('buildEnrollmentReport', () => {
 
   it('does not count an allowlist entry that names no component directory', () => {
     // The number the report exists to give is how much of the kit is
-    // described; an entry pointing at nothing describes nothing, and used to
-    // be indistinguishable from a real one.
+    // described; an entry pointing at nothing describes nothing, and counted
+    // it would be indistinguishable from a real one.
     const report = buildEnrollmentReport(['button', 'alert'], ['button', 'ghost-component']);
     expect(report.enrolledCount).toBe(1);
     expect(report.unknownEnrolled).toEqual(['ghost-component']);

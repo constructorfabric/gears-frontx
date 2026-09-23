@@ -6,9 +6,8 @@
 // ordinary string axis, the compiled contract stated a prop accepting only
 // the strings "true" and "false" - a shape no caller can satisfy, since
 // `fullWidth` takes a boolean - and its default was lost outright: a
-// `defaultVariants` entry written as `false` is not a string literal, so the
-// old walk recorded "not a string literal" in a note that did not begin
-// `cva:` and therefore failed nothing.
+// `defaultVariants` entry written as `false` is not a string literal, and a
+// note saying so that did not begin `cva:` would fail nothing.
 //
 // `emphasis` is the control: a real string axis in the same config, so a
 // test can tell "read a boolean axis as boolean" apart from "read every axis

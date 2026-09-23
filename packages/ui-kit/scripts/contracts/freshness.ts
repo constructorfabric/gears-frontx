@@ -18,6 +18,7 @@ import {
   buildComponentType,
   buildVocabularyTypes,
   compileContract,
+  leavesTypeToTsc,
   resolveTargetExtraction,
   vocabularyTypeFileName,
 } from './compile';
@@ -103,7 +104,7 @@ export function checkComponentFreshness(directory: string, exportStem: string = 
     // what is IN the array is checked by tsc alone. The compiler writes prose
     // exactly for that remainder, so the prose is what the two sides are
     // matched on.
-    const isPartiallyTyped = prop.description !== undefined;
+    const isPartiallyTyped = leavesTypeToTsc(prop);
     const hasRecord = name in freshContract['x-uikit'].partially_typed_props;
     if (isPartiallyTyped && declaredProps.has(name) && !hasRecord) {
       partiallyTypedMismatches.push(`"${name}" is a declared prop the schema does not state in full but has no x-uikit.partially_typed_props entry`);

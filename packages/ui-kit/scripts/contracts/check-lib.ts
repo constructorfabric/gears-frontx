@@ -614,7 +614,7 @@ export function touchesSharedContractTooling(changedFiles: string[]): boolean {
 // the guard holds to the full standard, so a change to it has to put every
 // entry it now names back in scope. Without this the file could be edited
 // freely: an entry added for a directory with no overlay, or left behind for
-// a directory that no longer exists, was checked by nothing until some
+// a directory that has been removed, would be checked by nothing until some
 // unrelated change happened to touch that directory. Its own signal rather
 // than a widening of touchesSharedContractTooling, so the two reasons stay
 // distinguishable in the guard's own output and in the rule above.
@@ -712,9 +712,10 @@ export function resolveRenameSource(input: {
 // A contract that shipped at the base reference and is compared against
 // nothing here: no committed contract found it by path, by rename record, by
 // identifier or by name. Every unit on disk is compared against its own past;
-// a contract that is only in the past is visited by no unit at all, so a
-// deletion - and a rename whose two halves neither git nor resolveRenameSource
-// could pair up - used to leave the whole comparison silent.
+// a contract that is only in the past is visited by no unit at all, so
+// without this sweep a deletion - and a rename whose two halves neither git
+// nor resolveRenameSource could pair up - would leave the whole comparison
+// silent.
 export interface ContractRemoval {
   // The package-relative path the contract had at the base reference.
   path: string;
@@ -899,9 +900,9 @@ export interface EnrollmentReport {
   // Allowlist entries that name no component directory at all. Counted out
   // of enrolledCount rather than into it: the number is meant to say how much
   // of the kit is described, and an entry pointing at nothing describes
-  // nothing - it used to be indistinguishable from a real one, so a typo or
-  // a deleted directory quietly inflated the figure the report exists to
-  // give.
+  // nothing - counted, it would be indistinguishable from a real one, and a
+  // typo or a deleted directory would inflate the figure the report exists
+  // to give.
   unknownEnrolled: string[];
 }
 

@@ -5,10 +5,9 @@
 // `Readonly<T>` IS a real, resolvable type alias (declared in TypeScript's
 // own lib.es5.d.ts), so the walk correctly unwraps into it - but its
 // underlying type is a MappedTypeNode, a node kind walkPropsType/
-// resolveTopLevelMembers do not understand at all. The old code's fallback
-// for "not a type reference" (`if (!parts) return;`) silently gave up here
-// with no note that a real heritage member - and whatever DOM/Base UI
-// anchor or props it might have carried - went unclassified. This is the
+// resolveTopLevelMembers do not understand at all, so the walk records a
+// note that a real heritage member - and whatever DOM/Base UI anchor or
+// props it might have carried - went unclassified. This is the
 // general "any type-reference node in heritage position that cannot be
 // classified into a known shape" case M1 asks for, one level past the
 // aliased-import cases the other two fixtures cover.

@@ -12,8 +12,10 @@
 // Every property the checker resolves on the component's first parameter is
 // filed by WHERE ITS DECLARATION LIVES, into one of three sets:
 //
-//   - the component's own source file           -> ownProps
-//   - the primitive library's props for a part  -> apiProps
+//   - this package's own source                  -> ownProps
+//   - a library the component wraps (a primitive
+//     library's part, or a third-party library
+//     whose component the kit re-exposes)       -> apiProps
 //   - React's DOM attribute types               -> forwardedProps
 //
 // The middle set is the one that matters most to a reader. A prop declared in
@@ -68,6 +70,11 @@ export interface ExtractedProp {
   // focusableWhenDisabled) and it is worth keeping next to the fact it
   // documents rather than discarding it at extraction time.
   jsDocDefault?: string;
+  // Set only on a prop that some branches of a union props type declare and
+  // others do not: the branches that declare it, by name. Absent for a prop
+  // every branch declares, which is every prop of a props type that is not a
+  // union. See propsOfEveryBranch.
+  branches?: string[];
 }
 
 export interface ComponentExtraction {
@@ -83,11 +90,13 @@ export interface ComponentExtraction {
   // wrote and the compiler decides how to express them.
   booleanAxes: string[];
   defaults: Record<string, string>;
-  // Declared in the component's own source file.
+  // Declared in this package's own source: the component's own file, or a
+  // sibling kit file whose props type it reuses.
   ownProps: ExtractedProp[];
-  // Declared in the primitive library's own props type for the part this
-  // component wraps - this component's API, reached through the wrapping
-  // rather than typed out again in the kit's source. Compiled into the
+  // Declared by a library this component wraps - a primitive library's own
+  // props type for the part, or a third-party component the kit re-exposes -
+  // this component's API, reached through the wrapping rather than typed out
+  // again in the kit's source. Compiled into the
   // contract's own `properties` next to ownProps, not into the forwarded
   // surface.
   apiProps: ExtractedProp[];
@@ -95,8 +104,8 @@ export interface ComponentExtraction {
   // rendering the same host element forwards, declared once per element kind
   // by hand rather than re-derived here.
   forwardedProps: ExtractedProp[];
-  // Declared somewhere none of the three above covers - a second primitive
-  // library, a utility package. Named rather than filed: which side of the
+  // Declared somewhere none of the three above covers - a package no list in
+  // classifyDeclarationSite names. Named rather than filed: which side of the
   // API/forwarded line such a prop belongs on is a question about that
   // library's conventions, and the compiler refuses the component instead of
   // guessing (see the module comment).
@@ -570,8 +579,8 @@ interface PropsTypeWalkResult {
   kind: string | undefined;
   variantSources: ts.EntityName[];
   // Threaded alongside kind/variantSources rather than returned separately:
-  // a heritage node this walk cannot classify (a bare union, a mapped type,
-  // a generic wrapper resolving to neither an interface nor a type alias)
+  // a heritage node this walk cannot classify (a mapped type, a conditional
+  // type, a generic wrapper resolving to neither an interface nor a type alias)
   // is exactly as much a fact as a resolved kind or variant source, and
   // belongs on the same result so extractComponent merges it into the
   // component's cannotExtract list the same way.
@@ -619,10 +628,17 @@ type HeritageShape =
   // same way the other two element helpers' is. Recognised here rather than
   // unwrapped: unwrapped, the walk reaches `ComponentPropsWithRef` holding
   // the helper's own unbound `ElementType`, and the tag the kit wrote at the
-  // use site is gone.
-  | { readonly kind: 'use-render-component-props' };
+  // use site is gone. The second primitive library's helper has the same
+  // shape and reads the same way.
+  | { readonly kind: 'use-render-component-props' }
+  // React's own attribute interfaces (`HTMLAttributes<HTMLDivElement>`,
+  // `ButtonHTMLAttributes<HTMLButtonElement>`) and `DetailedHTMLProps<A, E>`,
+  // which is how a third-party library the kit wraps names the element its
+  // component renders: by DOM interface rather than by tag. `argument` is
+  // which type argument carries the interface.
+  | { readonly kind: 'dom-attributes'; readonly argument: number };
 
-// The shapes whose first type argument names the host element.
+// The shapes whose first type argument names the host element as a tag.
 function namesHostElement(shape: HeritageShape | undefined): boolean {
   return (
     shape?.kind === 'component-props' ||
@@ -630,6 +646,36 @@ function namesHostElement(shape: HeritageShape | undefined): boolean {
     shape?.kind === 'use-render-component-props'
   );
 }
+
+// The tag a DOM interface stands for, where it stands for exactly one. An
+// interface several tags share (HTMLElement, HTMLHeadingElement,
+// HTMLTableCellElement) is absent on purpose: which of them a component
+// renders is not in its type, and a guess would name the wrong surface.
+const DOM_INTERFACE_TAGS: Readonly<Record<string, string>> = {
+  HTMLAnchorElement: 'a',
+  HTMLButtonElement: 'button',
+  HTMLDivElement: 'div',
+  HTMLFieldSetElement: 'fieldset',
+  HTMLFormElement: 'form',
+  HTMLHRElement: 'hr',
+  HTMLImageElement: 'img',
+  HTMLInputElement: 'input',
+  HTMLLIElement: 'li',
+  HTMLLabelElement: 'label',
+  HTMLLegendElement: 'legend',
+  HTMLOListElement: 'ol',
+  HTMLOptGroupElement: 'optgroup',
+  HTMLOptionElement: 'option',
+  HTMLParagraphElement: 'p',
+  HTMLSelectElement: 'select',
+  HTMLSpanElement: 'span',
+  HTMLTableCaptionElement: 'caption',
+  HTMLTableElement: 'table',
+  HTMLTableRowElement: 'tr',
+  HTMLTextAreaElement: 'textarea',
+  HTMLUListElement: 'ul',
+  SVGSVGElement: 'svg',
+};
 
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
 function declaredUnder(declarations: readonly ts.Declaration[], pattern: RegExp): boolean {
@@ -673,6 +719,15 @@ function classifyHeritageSymbol(symbol: ts.Symbol, checker: ts.TypeChecker): Her
   ) {
     return { kind: 'use-render-component-props' };
   }
+  if (name === 'UseRenderComponentProps' && declaredUnder(declarations, /[\\/]node_modules[\\/]@shadcn[\\/]react[\\/]/)) {
+    return { kind: 'use-render-component-props' };
+  }
+  if (/^[A-Za-z]*HTMLAttributes$/.test(name) && declaredUnder(declarations, /[\\/]node_modules[\\/]@types[\\/]react[\\/]/)) {
+    return { kind: 'dom-attributes', argument: 0 };
+  }
+  if (name === 'DetailedHTMLProps' && declaredUnder(declarations, /[\\/]node_modules[\\/]@types[\\/]react[\\/]/)) {
+    return { kind: 'dom-attributes', argument: 1 };
+  }
   return undefined;
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
 }
@@ -702,6 +757,34 @@ function walkPropsType(
     walkPropsType(node.type, checker, result, visited, depth + 1);
     return;
   }
+  // A union of props types is walked branch by branch, the way its props are
+  // read (propsOfEveryBranch): each branch is a props type in its own right.
+  // Branches naming different host elements are a note rather than a guess
+  // passed off as the answer; the first branch's element is kept.
+  if (ts.isUnionTypeNode(node)) {
+    const kinds: string[] = [];
+    for (const member of node.types.filter((type) => !isNullishTypeNode(type))) {
+      const branch: PropsTypeWalkResult = { kind: undefined, variantSources: [], cannotExtract: [] };
+      walkPropsType(member, checker, branch, new Set(visited), depth + 1);
+      if (branch.kind !== undefined && !kinds.includes(branch.kind)) kinds.push(branch.kind);
+      for (const source of branch.variantSources) {
+        if (!result.variantSources.some((known) => known.getText() === source.getText())) result.variantSources.push(source);
+      }
+      result.cannotExtract.push(...branch.cannotExtract);
+    }
+    if (result.kind === undefined) result.kind = kinds[0];
+    // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+    // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+    if (kinds.length > 1) {
+      result.cannotExtract.push(
+        `heritage: the branches of "${node.getText()}" render different host elements (${kinds.join(', ')}) - the ` +
+          `contract names the first`,
+      );
+    }
+    // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+    // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+    return;
+  }
   // An inline object type literal - `{ tone: ... }` in `ComponentProps<'div'>
   // & { tone: ... }` - is a legitimate terminal: its own members are already
   // reachable through checker.getPropertiesOfType at the top level, so there
@@ -722,13 +805,10 @@ function walkPropsType(
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
   if (!parts) {
-    // A node kind this walk does not understand at all - a bare union, a
-    // mapped type, a conditional type - in heritage position. The old walk
-    // silently returned here with no kind/variantSources contributed and no
-    // note that anything was skipped (N2's bare-union case, and the general
-    // "unknown wrapper type" shape M1 asks for); recorded now instead of
-    // dropped, since whatever this node declares (a DOM/Base UI anchor, a
-    // cva axis) is exactly the kind of fact this walk exists to surface.
+    // A node kind this walk does not understand at all - a mapped type, a
+    // conditional type - in heritage position. Recorded rather than passed
+    // over, since whatever this node declares (a DOM/Base UI anchor, a cva
+    // axis) is exactly the kind of fact this walk exists to surface.
     result.cannotExtract.push(
       `heritage: "${node.getText()}" is a ${ts.SyntaxKind[node.kind]}, not a shape this walk can classify - cannot extract`,
     );
@@ -749,6 +829,12 @@ function walkPropsType(
   }
   if (namesHostElement(shape) && args?.length) {
     readHostElementArgument(node, args[0], checker, result, visited, depth);
+    return;
+  }
+  if (shape?.kind === 'dom-attributes' && args !== undefined && args.length > shape.argument) {
+    const argument = args[shape.argument];
+    const interfaceName = ts.isTypeReferenceNode(argument) ? lastEntityName(argument.typeName) : argument.getText();
+    readDomInterface(node, interfaceName, result);
     return;
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
@@ -820,12 +906,98 @@ function readHostElementArgument(
     walkQueriedComponentProps(first, node, checker, result, visited, depth);
     return;
   }
+  const tags = literalTagsOf(first);
+  const chosen = tags === undefined ? undefined : documentedDefaultTag(node, tags);
+  if (tags !== undefined && chosen !== undefined) {
+    if (result.kind === undefined) result.kind = chosen;
+    // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+    // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+    result.cannotExtract.push(
+      `heritage: "${node.getText()}" admits ${tags.length} host elements (${tags.join(', ')}); the contract names ` +
+        `"${chosen}", the element the declaring file documents the component as rendering - a caller may render another`,
+    );
+    return;
+    // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+    // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+  }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
   result.cannotExtract.push(
     `heritage: "${node.getText()}" names its host element with "${first.getText()}", a ${
       ts.SyntaxKind[first.kind]
     } rather than a string literal - the host element cannot be read from it`,
+  );
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+}
+
+// `null` and `undefined` in a union of props types: no props of their own,
+// and nothing for the walk to read or to note.
+function isNullishTypeNode(node: ts.TypeNode): boolean {
+  if (node.kind === ts.SyntaxKind.UndefinedKeyword) return true;
+  return ts.isLiteralTypeNode(node) && node.literal.kind === ts.SyntaxKind.NullKeyword;
+}
+
+// A union written entirely of string literals, as the tags it names, or
+// undefined for anything else.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+function literalTagsOf(node: ts.TypeNode): string[] | undefined {
+  if (!ts.isUnionTypeNode(node)) return undefined;
+  const tags: string[] = [];
+  for (const member of node.types) {
+    if (!ts.isLiteralTypeNode(member) || !ts.isStringLiteral(member.literal)) return undefined;
+    tags.push(member.literal.text);
+  }
+  return tags;
+}
+
+// The one tag among several that a primitive part documents itself as
+// rendering. A part whose props admit a family of tags (a title typed
+// `'h1' | ... | 'h6'`) still renders one of them when the caller picks none,
+// and its own documentation says which in a fixed phrase: "Renders an `<h2>`
+// element." Read from the JSDoc of the component the props type belongs to -
+// the value declared in the same primitive-library file whose type names that
+// props type - rather than from the file at large or guessed from the union,
+// and only when exactly one documented tag is in the union: two, or none, and
+// there is no default to name.
+function documentedDefaultTag(node: ts.TypeNode, tags: readonly string[]): string | undefined {
+  const source = node.getSourceFile();
+  const site = classifyDeclarationSite(relativeDeclarationFile(source.fileName, kitRoot));
+  if (site !== 'primitive-library') return undefined;
+  let owner: ts.Node | undefined = node.parent;
+  while (owner !== undefined && !ts.isInterfaceDeclaration(owner) && !ts.isTypeAliasDeclaration(owner)) owner = owner.parent;
+  if (owner === undefined) return undefined;
+  const propsName = owner.name.text;
+  const namesProps = new RegExp(`\\b${propsName}\\b`);
+  const documented = new Set<string>();
+  for (const statement of source.statements) {
+    const typed = ts.isVariableStatement(statement)
+      ? statement.declarationList.declarations.map((decl) => decl.type?.getText() ?? '').join(' ')
+      : ts.isFunctionDeclaration(statement)
+        ? statement.parameters.map((parameter) => parameter.type?.getText() ?? '').join(' ')
+        : '';
+    if (!namesProps.test(typed)) continue;
+    for (const doc of ts.getJSDocCommentsAndTags(statement)) {
+      for (const match of doc.getText().matchAll(/Renders an? `<([a-z][a-z0-9-]*)>` element/g)) {
+        if (tags.includes(match[1])) documented.add(match[1]);
+      }
+    }
+  }
+  return documented.size === 1 ? [...documented][0] : undefined;
+}
+
+// The host element a DOM interface names, or a note when the interface names
+// none this walk can map (see DOM_INTERFACE_TAGS).
+function readDomInterface(node: ts.TypeNode, interfaceName: string, result: PropsTypeWalkResult): void {
+  const tag = DOM_INTERFACE_TAGS[interfaceName];
+  if (tag !== undefined) {
+    if (result.kind === undefined) result.kind = tag;
+    return;
+  }
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+  result.cannotExtract.push(
+    `heritage: "${node.getText()}" names its host element by the DOM interface "${interfaceName}", which stands for no ` +
+      `single tag - the host element cannot be read from it`,
   );
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
 }
@@ -929,8 +1101,16 @@ function walkResolvedType(
     return;
   }
   const alias = type.aliasSymbol;
-  const shape = alias ? classifyHeritageSymbol(alias, checker) : undefined;
-  const typeArguments = type.aliasTypeArguments ?? [];
+  let shape = alias ? classifyHeritageSymbol(alias, checker) : undefined;
+  let typeArguments: readonly ts.Type[] = type.aliasTypeArguments ?? [];
+  // A generic INTERFACE instantiated (`ButtonHTMLAttributes<HTMLButtonElement>`)
+  // carries no alias: the interface is the type's own symbol, and its
+  // arguments are the reference's.
+  const reference = (type.flags & ts.TypeFlags.Object) !== 0 && ((type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference) !== 0;
+  if (shape === undefined && reference && type.getSymbol() !== undefined) {
+    shape = classifyHeritageSymbol(type.getSymbol()!, checker);
+    if (shape !== undefined) typeArguments = checker.getTypeArguments(type as ts.TypeReference);
+  }
   if (shape?.kind === 'omit-pick' && typeArguments.length > 0) {
     walkResolvedType(typeArguments[0], node, checker, result, visited, depth + 1);
     return;
@@ -949,6 +1129,11 @@ function walkResolvedType(
     return;
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+  }
+  if (shape?.kind === 'dom-attributes' && typeArguments.length > shape.argument) {
+    const argument = typeArguments[shape.argument];
+    readDomInterface(node, argument.getSymbol()?.getName() ?? stripModuleSpecifiers(checker.typeToString(argument)), result);
+    return;
   }
   if (shape?.kind === 'variant-props') {
     // Prefixed `cva:` so the compiler refuses: an instantiated VariantProps
@@ -1016,7 +1201,7 @@ function walkResolvedType(
 // (see walkPropsType's matching branches) is named in `cannotExtract`
 // instead of silently becoming an opaque label (N2/M1): the label-only
 // consumer downstream still gets a leaf back so it has something to render,
-// but the fact that the walk gave up on it is no longer lost.
+// and the fact that the walk gave up on it is recorded beside it.
 function resolveTopLevelMembers(
   node: ts.TypeNode,
   checker: ts.TypeChecker,
@@ -1031,6 +1216,11 @@ function resolveTopLevelMembers(
   }
   if (ts.isParenthesizedTypeNode(node)) {
     return resolveTopLevelMembers(node.type, checker, visited, depth + 1, cannotExtract);
+  }
+  if (ts.isUnionTypeNode(node)) {
+    return node.types
+      .filter((member) => !isNullishTypeNode(member))
+      .flatMap((member) => resolveTopLevelMembers(member, checker, visited, depth + 1, cannotExtract));
   }
   if (ts.isTypeLiteralNode(node)) return [node];
   // A leaf here for the reason a recognised helper is: walkPropsType reads
@@ -1110,36 +1300,57 @@ function variantSourceLabelsOf(
   for (const member of members) {
     const parts = typeRefParts(member);
     const shape = parts && classifyHeritageReference(parts.location, checker);
-    if (shape?.kind === 'variant-props') labels.push(member.getText());
+    // Once each: two branches of a union may name the same variant source.
+    if (shape?.kind === 'variant-props' && !labels.includes(member.getText())) labels.push(member.getText());
   }
   return labels;
 }
 
 // Where a prop's declaration lives decides which of the three sets it is
-// filed into (see the module comment). Two prefixes, checked against the
-// already-relativized declaration path rather than against a symbol, because
-// the question is genuinely about the FILE: the same helper type
-// (BaseUIComponentProps) contributes `render` and `style`, and React's own
-// DOM attribute interfaces contribute everything else, and no symbol name
-// separates them.
+// filed into (see the module comment), checked against the already-relativized
+// declaration path rather than against a symbol, because the question is
+// genuinely about the FILE: the same helper type (BaseUIComponentProps)
+// contributes `render` and `style`, and React's own DOM attribute interfaces
+// contribute everything else, and no symbol name separates them.
 //
-// The primitive-library prefix is the whole of this harness's coupling to a
-// specific headless library. A component whose props come from a different
-// one (Radix, react-aria, Ariakit) files every such prop as unclassified and
-// is refused by the compiler rather than described with the wrong half of its
-// API buried in a forwarded surface. Adding a library is one more prefix here
-// plus whatever its own declaration layout requires - new design work on this
-// classifier, not a config toggle.
+// A declaration in this package's own source is the component's own API and
+// never reaches this function (see isPackageSource). What does:
+//
+//   - the primitive libraries the kit builds its parts on - Base UI, and a
+//     second primitive library whose parts are laid out the same way (an
+//     element-parameterised props helper, and each part's own API);
+//   - the third-party libraries the kit wraps and re-exposes a component of
+//     (a chart library, a date picker, a command menu, resizable panels).
+//
+// Both kinds are the API of whatever the kit wraps, which is the middle set.
+// A prop from any other package is filed nowhere and the component is
+// refused: which side of the API/forwarded line it falls on is a question
+// about that package that this list has not answered. Adding a library is one
+// more prefix here, plus a heritage shape for its props helper when it has
+// one - a decision about that library, not a config toggle.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-file-class
-const PRIMITIVE_LIBRARY_PREFIX = '@base-ui/react/';
+const PRIMITIVE_LIBRARY_PREFIXES = ['@base-ui/react/', '@shadcn/react/'];
+const WRAPPED_LIBRARY_PREFIXES = ['recharts/', 'react-day-picker/', 'cmdk/', 'react-resizable-panels/'];
 const REACT_DOM_TYPES_PREFIX = '@types/react/';
 
-export type PropDeclarationSite = 'primitive-library' | 'react-dom' | 'elsewhere';
+export type PropDeclarationSite = 'primitive-library' | 'wrapped-library' | 'react-dom' | 'elsewhere';
 
 export function classifyDeclarationSite(declarationFile: string): PropDeclarationSite {
-  if (declarationFile.startsWith(PRIMITIVE_LIBRARY_PREFIX)) return 'primitive-library';
+  if (PRIMITIVE_LIBRARY_PREFIXES.some((prefix) => declarationFile.startsWith(prefix))) return 'primitive-library';
+  if (WRAPPED_LIBRARY_PREFIXES.some((prefix) => declarationFile.startsWith(prefix))) return 'wrapped-library';
   if (declarationFile.startsWith(REACT_DOM_TYPES_PREFIX)) return 'react-dom';
   return 'elsewhere';
+}
+
+// Whether a declaration lives in this package's own source rather than in a
+// dependency. The component's own file is the common case; a sibling kit
+// file is the other one (a trigger reusing the kit button's props type), and
+// its props are the kit's API for the same reason the component's own are:
+// the kit wrote them, so a consumer reads them as the kit's, not as a
+// primitive's forwarded surface.
+function isPackageSource(fileName: string): boolean {
+  const path = fileName.split('\\').join('/');
+  return path.startsWith(`${kitRoot.split('\\').join('/')}/`) && !path.includes('/node_modules/');
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-file-class
 
@@ -1209,10 +1420,10 @@ function isReactWrapperCall(call: ts.CallExpression, checker: ts.TypeChecker, wr
 // Unwraps `forwardRef(...)`/`memo(...)` call wrappers around a component
 // function, straight through nesting (`memo(forwardRef((props, ref) =>
 // ...))`) - M8: the initializer becomes a CallExpression instead of a
-// function value, which the old arrow/function-expression-only check
-// silently read as "not component-shaped," undercounting check.ts's own
-// enrollment report by miscounting a real, unwrapped component as one of the
-// exports it intentionally skips. `forwardRef`'s render function and
+// function value, which an arrow/function-expression-only check would read
+// as "not component-shaped", undercounting check.ts's own enrollment report
+// by miscounting a real, unwrapped component as one of the exports it
+// intentionally skips. `forwardRef`'s render function and
 // `memo`'s wrapped component are both their call's first argument - the
 // only argument shape either wrapper accepts there.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
@@ -1298,11 +1509,52 @@ function aliasShape(
   return signature ? { form: 'alias', signature } : undefined;
 }
 
-function componentShape(
-  node: ts.FunctionDeclaration | ts.VariableDeclaration,
+// A statement the candidate walk reads a component from: a function, one
+// declarator of a variable statement, or one name of a re-export.
+type CandidateDeclaration = ts.FunctionDeclaration | ts.VariableDeclaration | ts.ExportSpecifier;
+
+// `export { X } from 'somewhere'`, values rather than types: the form a
+// directory takes when all it ships is a primitive's own component under the
+// kit's name, with nothing declared locally to read. A local export list
+// (`export { X }` with no module) is not a candidate form: no kit file writes
+// one, and its names would be read from the local declarations it lists.
+function isValueReExport(
+  statement: ts.Statement,
+): statement is ts.ExportDeclaration & { exportClause: ts.NamedExports; moduleSpecifier: ts.Expression } {
+  return (
+    ts.isExportDeclaration(statement) &&
+    !statement.isTypeOnly &&
+    statement.moduleSpecifier !== undefined &&
+    statement.exportClause !== undefined &&
+    ts.isNamedExports(statement.exportClause)
+  );
+}
+
+// A re-exported name is an alias with no initializer at all, so the alias
+// rule applies to the symbol it re-exports: a component when that symbol's
+// type has a call signature returning a React element.
+function reExportShape(
+  specifier: ts.ExportSpecifier,
   checker: ts.TypeChecker,
   reactElement: ts.Type | undefined,
 ): ComponentShape | undefined {
+  if (reactElement === undefined || !/^[A-Z]/.test(specifier.name.text)) return undefined;
+  const local = checker.getSymbolAtLocation(specifier.name);
+  if (local === undefined) return undefined;
+  const target = local.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(local) : local;
+  const signature = checker
+    .getTypeOfSymbolAtLocation(target, specifier)
+    .getCallSignatures()
+    .find((candidate) => returnsReactElement(candidate.getReturnType(), checker, reactElement));
+  return signature ? { form: 'alias', signature } : undefined;
+}
+
+function componentShape(
+  node: CandidateDeclaration,
+  checker: ts.TypeChecker,
+  reactElement: ts.Type | undefined,
+): ComponentShape | undefined {
+  if (ts.isExportSpecifier(node)) return reExportShape(node, checker, reactElement);
   if (ts.isFunctionDeclaration(node)) {
     if (!node.name || !/^[A-Z]/.test(node.name.text) || !node.body) return undefined;
     return renderingShape(node.body, checker);
@@ -1378,7 +1630,7 @@ function containsJsx(node: ts.Node): boolean {
 // undefined, the same as a component written with no parameter at all.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
 function firstParameter(
-  node: ts.FunctionDeclaration | ts.VariableDeclaration,
+  node: CandidateDeclaration,
   shape: ComponentShape,
   checker: ts.TypeChecker,
 ): ts.ParameterDeclaration | undefined {
@@ -1387,6 +1639,7 @@ function firstParameter(
     return declaration && ts.isParameter(declaration) ? declaration : undefined;
   }
   if (ts.isFunctionDeclaration(node)) return node.parameters[0];
+  if (ts.isExportSpecifier(node)) return undefined;
   const inner = unwrapComponentInitializer(node.initializer, checker);
   if (inner && (ts.isArrowFunction(inner) || ts.isFunctionExpression(inner))) return inner.parameters[0];
   return undefined;
@@ -1462,6 +1715,79 @@ function loadCompilerOptions(): ts.CompilerOptions {
 // run, or `contracts:compile` invoked again) starts with an empty cache.
 const extractionCache = new Map<string, ComponentExtraction[]>();
 
+// Every prop a props type admits, read branch by branch when it is a union
+// of object types. The checker's own property list for a union is the props
+// EVERY branch declares - right for what a value of the union is guaranteed
+// to carry, wrong for what a caller may pass: a date picker typed
+// `SingleProps | RangeProps` takes `numberOfMonths` on the range branch, and
+// read off the union alone that prop never reached the schema or the
+// near-miss check. So the props of each branch are added too, each named with
+// the branches that declare it; a prop every branch declares is returned
+// once, as the union's own symbol, with no branch list.
+//
+// The symbol returned for a branch-only prop is the first declaring branch's.
+// Its type is read from that branch alone, which is exact when the branches
+// agree about it and narrower than the union when they do not - so where two
+// branches type it differently, the schema states nothing and the printed
+// types of every declaring branch are what a reader gets (see
+// extractFromSource).
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-props
+interface BranchedProp {
+  symbol: ts.Symbol;
+  branches?: string[];
+  // Every declaring branch's own symbol, the first one being `symbol`.
+  declaringSymbols?: ts.Symbol[];
+}
+
+function propsOfEveryBranch(type: ts.Type, checker: ts.TypeChecker): BranchedProp[] {
+  // Read without `null` and `undefined`: an optional props parameter
+  // (`props?: A | B`) admits them, and they have no props of their own, so
+  // read with them every prop would look like one no branch shares.
+  const nonNullable = checker.getNonNullableType(type);
+  const props: BranchedProp[] = checker.getPropertiesOfType(nonNullable).map((symbol) => ({ symbol }));
+  if (!nonNullable.isUnion()) return props;
+  const common = new Set(props.map(({ symbol }) => symbol.getName()));
+  const branchOnly = new Map<string, BranchedProp & { branches: string[]; declaringSymbols: ts.Symbol[] }>();
+  // In label order rather than the checker's, which follows internal type
+  // ids and so what the program bound first - the reason prop lists are
+  // sorted too.
+  const labelled = nonNullable.types
+    .map((branch) => ({ branch, label: branchLabel(branch, nonNullable.types, checker) }))
+    .sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : 0));
+  for (const { branch, label } of labelled) {
+    for (const symbol of checker.getPropertiesOfType(branch)) {
+      const name = symbol.getName();
+      if (common.has(name)) continue;
+      const known = branchOnly.get(name);
+      if (known === undefined) {
+        branchOnly.set(name, { symbol, branches: [label], declaringSymbols: [symbol] });
+      } else {
+        known.branches.push(label);
+        known.declaringSymbols.push(symbol);
+      }
+    }
+  }
+  return [...props, ...branchOnly.values()];
+}
+
+// How one branch of a union props type is named to a reader: its own alias
+// or interface name, or - for an intersection, which is what a union inside
+// an intersection normalizes into - the members that are not shared by every
+// branch, since the shared ones say nothing about which branch this is.
+function branchLabel(branch: ts.Type, branches: readonly ts.Type[], checker: ts.TypeChecker): string {
+  const own = branch.aliasSymbol?.getName() ?? branch.getSymbol()?.getName();
+  if (own !== undefined && own !== '__type') return own;
+  if (branch.isIntersection()) {
+    const distinct = branch.types.filter((member) => !branches.every((other) => other.isIntersection() && other.types.includes(member)));
+    const names = distinct.map((member) => member.aliasSymbol?.getName() ?? member.getSymbol()?.getName()).filter(
+      (name): name is string => name !== undefined && name !== '__type',
+    );
+    if (names.length > 0) return names.join(' & ');
+  }
+  return stripModuleSpecifiers(checker.typeToString(branch, undefined, TYPE_PRINT_FLAGS));
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-props
+
 // The walk itself, over one already-resolved source file. Split from the
 // program building below so the same walk can serve a per-file program (the
 // artifact path) and a shared one (the counting path) without either being a
@@ -1475,11 +1801,15 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
 
   for (const statement of source.statements) {
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
-    const candidates: (ts.FunctionDeclaration | ts.VariableDeclaration)[] = [];
+    const candidates: CandidateDeclaration[] = [];
     if (ts.isFunctionDeclaration(statement) && isNodeExported(statement)) {
       candidates.push(statement);
     } else if (ts.isVariableStatement(statement) && isNodeExported(statement)) {
       for (const decl of statement.declarationList.declarations) candidates.push(decl);
+    } else if (isValueReExport(statement)) {
+      for (const specifier of statement.exportClause.elements) {
+        if (!specifier.isTypeOnly) candidates.push(specifier);
+      }
     }
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 
@@ -1488,6 +1818,8 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
       const shape = componentShape(candidate, checker, reactElement);
       if (!shape) continue;
       const name = ts.isFunctionDeclaration(candidate) ? candidate.name!.text : (candidate.name as ts.Identifier).text;
+      // A re-export's name is the one it is exported under (`export { X as Y }`
+      // is Y), which `name` above already is for an export specifier.
       // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 
       const cannotExtract: string[] = [];
@@ -1504,9 +1836,19 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
 
       if (param) {
         // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
-        const paramType = checker.getTypeAtLocation(param);
+        // An alias's parameter is declared generically where the callable
+        // type is (`FC<P>`'s `props: P`), so what it takes is the parameter
+        // as the alias instantiates it, not as it is written there.
+        const declaredType = checker.getTypeAtLocation(param);
+        const instantiated =
+          shape.form === 'alias' ? checker.getTypeOfSymbolAtLocation(shape.signature.getParameters()[0], param) : declaredType;
+        const paramType = instantiated;
         const walk: PropsTypeWalkResult = { kind: undefined, variantSources: [], cannotExtract: [] };
-        if (param.type) {
+        if (param.type && instantiated !== declaredType) {
+          walkResolvedType(instantiated, param.type, checker, walk, new Set(), 0);
+          // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+        } else if (param.type) {
+          // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
           walkPropsType(param.type, checker, walk, new Set(), 0);
           // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
           variantSourceLabels = variantSourceLabelsOf(param.type, checker, cannotExtract);
@@ -1527,7 +1869,7 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
         // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-props
         const axisNames = new Set(Object.keys(axes));
 
-        for (const prop of checker.getPropertiesOfType(paramType)) {
+        for (const { symbol: prop, branches, declaringSymbols } of propsOfEveryBranch(paramType, checker)) {
           const propName = prop.getName();
           if (axisNames.has(propName)) continue;
 
@@ -1539,24 +1881,50 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
             // from a mapped type like `Record<'a' | 'b', string>`) carries
             // no declaration to point at - N4: own-vs-inherited classification
             // and declarationFile both depend on having one, so there is
-            // nothing honest to report beyond "this prop could not be read."
-            // The old code filled the gap with the literal string 'unknown'
-            // as if it were real data instead of surfacing the gap itself.
+            // nothing honest to report beyond "this prop could not be read",
+            // rather than a placeholder declaration site passed off as data.
             cannotExtract.push(`prop "${propName}": no declaration found (a synthetic/computed property symbol) - cannot extract`);
             continue;
           }
           // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-undeclared-prop
           // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-props
-          const ownDeclaration = declarations.find((d) => d.getSourceFile().fileName === source.fileName);
-          const declaration = ownDeclaration ?? declarations[0];
+          // The component's own file first, so the declaration site reported
+          // is the nearest one; any other file of this package next.
+          const ownDeclaration =
+            declarations.find((d) => d.getSourceFile().fileName === source.fileName) ??
+            declarations.find((d) => isPackageSource(d.getSourceFile().fileName));
+          // Then a wrapped library's own declaration: a library that restates
+          // a React attribute in an intersection (`id`, `className` beside
+          // `HTMLAttributes`) declares it as part of its component's API, and
+          // taking whichever declaration the checker lists first filed it by
+          // the order of the intersection instead.
+          const declaration =
+            ownDeclaration ??
+            declarations.find((d) => {
+              const site = classifyDeclarationSite(relativeDeclarationFile(d.getSourceFile().fileName, kitRoot));
+              return site === 'primitive-library' || site === 'wrapped-library';
+            }) ??
+            declarations[0];
           const propType = checker.getTypeOfSymbolAtLocation(prop, param);
+          // Printed without `undefined`, which every branch-only prop admits
+          // and the joined text states once.
+          const branchTexts = [
+            ...new Set(
+              (declaringSymbols ?? [prop]).map((symbol) =>
+                printTypeText(checker.getNonNullableType(checker.getTypeOfSymbolAtLocation(symbol, param)), param, checker),
+              ),
+            ),
+          ];
           const extracted: ExtractedProp = {
             name: propName,
-            optional: (prop.flags & ts.SymbolFlags.Optional) !== 0,
-            typeText: printTypeText(propType, param, checker),
-            expressed: expressType(propType, checker),
+            // A prop only some branches declare is absent from the others, so
+            // a caller may always leave it out.
+            optional: branches !== undefined || (prop.flags & ts.SymbolFlags.Optional) !== 0,
+            typeText: branches !== undefined ? `${branchTexts.join(' | ')} | undefined` : printTypeText(propType, param, checker),
+            expressed: branchTexts.length > 1 ? undefined : expressType(propType, checker),
             declarationFile: relativeDeclarationFile(declaration.getSourceFile().fileName, kitRoot),
             jsDocDefault: jsDocDefault(prop),
+            ...(branches === undefined ? {} : { branches }),
           };
           // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-props
           // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-file-class
@@ -1565,6 +1933,7 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
           } else {
             switch (classifyDeclarationSite(extracted.declarationFile)) {
               case 'primitive-library':
+              case 'wrapped-library':
                 apiProps.push(extracted);
                 break;
               case 'react-dom':
@@ -1704,6 +2073,12 @@ export function listExportedDeclarationNames(tsxPath: string): string[] {
         if (ts.isIdentifier(decl.name)) names.push(decl.name.text);
       }
     }
+  }
+  // A re-export carries no export modifier: `export` is the statement itself.
+  for (const statement of source.statements) {
+    if (!ts.isExportDeclaration(statement) || statement.exportClause === undefined) continue;
+    if (!ts.isNamedExports(statement.exportClause)) continue;
+    for (const specifier of statement.exportClause.elements) names.push(specifier.name.text);
   }
   return names;
 }

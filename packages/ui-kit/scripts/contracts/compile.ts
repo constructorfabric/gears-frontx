@@ -285,6 +285,12 @@ export interface Overlay {
   // acknowledgement cost a rewrite of every identifier in the kit. Absent
   // means 1, which is what every component carries today.
   major?: number;
+  // The name of the export this overlay describes, where it is not the stem
+  // in PascalCase: a directory whose export does not extend the directory's
+  // own name (`Toaster` in toast, `ScrollBar` in scroll-area) keeps its stem
+  // under the directory's name (`toast-toaster`) and names the export here.
+  // Absent means the stem in PascalCase, which is every other component.
+  export?: string;
   intent: string;
   // A handful of archetypal scenarios, not an exhaustive selection rule -
   // capped at 3 by the metamodel so the field stays a quick read rather than
@@ -610,9 +616,8 @@ export function assertKnownAttestationClaims(component: string, overlay: Overlay
 //     reference" when one is missing;
 //   - a plain Ajv instance resolves the same `gts://...` string as an
 //     absolute URI, which it can only do once the target has been added.
-// Both loops used to be spelled out at every call site; these two helpers
-// are what keep a new vocabulary type from having to be remembered in six
-// places.
+// These two helpers are the one place both loops are spelled out, so a new
+// vocabulary type is remembered once rather than at every call site.
 export function addContractTypes(ajv: Ajv2020): void {
   // Every annotation the kit's own schemas carry (ANNOTATION_KEYWORDS above),
   // declared rather than switched off with `strict: false`, which would also
@@ -859,6 +864,35 @@ function unexpressedClause(schema: ContractProperty): string {
     ? 'The compiler emits one JSON type per property; this type is left to tsc.'
     : 'Not fully expressible in JSON Schema; what the type states beyond the kind above is checked by tsc.';
 }
+
+// Which branches of a union props type declare a prop only some of them
+// declare, said in the property's own description after whatever the type
+// text already said: the schema admits the prop whichever branch a caller is
+// on, because a schema over the whole union cannot tell the branches apart,
+// so what narrows it has to be stated where a reader of the property looks.
+// A prop every branch declares carries no branch list and is returned as is.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-describe
+export function describeBranches(schema: ContractProperty, prop: ExtractedProp): ContractProperty {
+  if (prop.branches === undefined) return schema;
+  const sentence = `${BRANCH_SENTENCE_PREFIX} ${prop.branches.join(', ')} of the props union; absent from the others.`;
+  return { ...schema, description: schema.description === undefined ? sentence : `${schema.description} ${sentence}` };
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-describe
+
+const BRANCH_SENTENCE_PREFIX = 'Declared only by';
+
+// Whether a property's schema leaves part of its type to tsc - read off the
+// prose the compiler writes for exactly that gap, which always opens with the
+// printed type (`TS:` for a prop of the primitive, `Partially typed:` for one
+// the component declares). A description that opens any other way states a
+// fact about a prop the schema DOES type in full - which branch of a union
+// declares it - and is no sign of a gap. One reader for every check that asks,
+// so the pairing and the freshness comparison cannot disagree about it.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-list
+export function leavesTypeToTsc(schema: ContractProperty): boolean {
+  return schema.description !== undefined && /^(?:TS|Partially typed): /.test(schema.description);
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-list
 
 // The property schema for one extracted prop, before any branch-specific
 // prose: whatever the checker could state, or nothing.
@@ -1152,7 +1186,7 @@ export const buildVocabularyTypes = memoizeSchema((): Record<string, unknown>[] 
     vocabularyType(
       'prop_statement',
       'UiKit prop statement',
-      'What one of this component\'s own properties states and why nothing checks it further - the retired `untyped` catch-all\'s `about: prop` category, keyed on the property itself instead of naming it inside a flat list. Required for every prop the schema does not state in full (partly typed, or description-only) and forbidden for one it states completely: a claim about a fully typed prop would be a claim about a different contract, the same pairing the old list was checked against, now over the overlay\'s `props` map and the property it is a key of.',
+      'What one of this component\'s own properties states and why nothing checks it further, keyed on the property itself so the statement can be checked against the property it is about. Required for every prop the schema does not state in full (partly typed, or description-only) and forbidden for one it states completely: a claim about a fully typed prop would be a claim about a different contract. The conformance suite pairs the keys of the overlay\'s `prop_statements` map with those properties, both ways.',
       {
         type: 'object',
         properties: {
@@ -1427,8 +1461,7 @@ export const buildMeaningFields = memoizeSchema((): { properties: Record<string,
       // what it is about. A statement is required for every property the
       // schema does not state in full (partly typed or description-only) and
       // forbidden for one it states completely - checked by the conformance
-      // suite (findUntypedPropMismatches), the same pairing the old list was
-      // held to. `propertyNames` reuses the prop-name grammar because a key
+      // suite (findUntypedPropMismatches). `propertyNames` reuses the prop-name grammar because a key
       // here IS a prop name.
       prop_statements: {
         type: 'object',
@@ -1498,7 +1531,7 @@ export const buildMeaningFields = memoizeSchema((): { properties: Record<string,
       withheld: {
         type: 'array',
         description:
-          "Props of the primitive underneath that this kit does not advertise, so they are left out of the contract's own properties - each with the reason it is not advertised, because a bare name leaves every later reader to rediscover why the prop is gone. Every `prop` is checked against the extracted prop list - a name the primitive no longer declares fails the compile rather than withholding nothing - and may not name a prop the component declares itself, which would be the overlay asking the compiler to drop what the source states. Absent for a component that advertises everything it forwards, which is most of them.",
+          "Props of the primitive underneath that this kit does not advertise, so they are left out of the contract's own properties - each with the reason it is not advertised, because a bare name leaves every later reader to rediscover why the prop is gone. Every `prop` is checked against the extracted prop list - a name the primitive does not declare fails the compile rather than withholding nothing - and may not name a prop the component declares itself, which would be the overlay asking the compiler to drop what the source states. Absent for a component that advertises everything it forwards, which is most of them.",
         items: { $ref: vocabularyTypeId('withheld_prop') },
         minItems: 1,
       },
@@ -1658,7 +1691,7 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     title: 'UiKit component',
     description:
-      "The type every kit component is a well-known INSTANCE of. A component is not a type derived from an abstract component type - that relationship ran in opposite directions for the two halves of the old split artifact, and only one of them was real - so this type carries the whole content model directly: the instance's identity, the version of the vocabulary it was compiled against, everything asserted about the component, what the extraction read off its source, and its props surface. A field whose shape another type owns is a reference to that type (gts.frontx.uikit.vocabulary.*) rather than an inline definition; only a sentence, a capped list of strings and the one reference gts-ts's own walk must find directly on a document property stay inline. See the domain model in the package DESIGN for how they relate.",
+      "The type every kit component is a well-known INSTANCE of. A component is not a type derived from an abstract component type, so this type carries the whole content model directly: the instance's identity, the version of the vocabulary it was compiled against, everything asserted about the component, what the extraction read off its source, and its props surface. A field whose shape another type owns is a reference to that type (gts.frontx.uikit.vocabulary.*) rather than an inline definition; only a sentence, a capped list of strings and the one reference gts-ts's own walk must find directly on a document property stay inline. See the domain model in the package DESIGN for how they relate.",
     type: 'object',
     properties,
     required: ['$id', 'gts_type', 'metamodel', 'component', ...fields.required, 'x-uikit', 'props'],
@@ -1722,6 +1755,12 @@ export function buildOverlaySchema(): Record<string, unknown> {
   // (and of the props type id lifted out of it), so declaring it on the
   // component type as well would be the same fact written twice with nothing
   // keeping the two in step.
+  properties.export = {
+    type: 'string',
+    pattern: '^[A-Z][A-Za-z0-9]*$',
+    description:
+      "The export this overlay describes, when its name is not the stem in PascalCase. The stem still extends the directory's name (toast-toaster in src/components/toast/), because that is what keeps a reference resolvable to one directory; this names the export the stem cannot spell (Toaster). Absent means the stem in PascalCase.",
+  };
   properties.major = {
     type: 'integer',
     minimum: 1,
@@ -2071,8 +2110,8 @@ export function buildPropsAndRequired(
     // `enum: [<its variants>]` beside the surface's own
     // `enum: ["submit","reset","button"]`, and a validator that resolves the
     // surface reference accepts only the intersection, normally empty.
-    // Checked here rather than in the two prop loops alone, which is where
-    // the axes used to slip past it.
+    // Checked here as well as in the two prop loops, which never see the
+    // axes.
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-owner-conflict
     assertAgreesWithElementSurface(
       component,
@@ -2127,6 +2166,7 @@ export function buildPropsAndRequired(
       };
     }
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-slots
+    properties[prop.name] = describeBranches(properties[prop.name], prop);
     if (!prop.optional) required.push(prop.name);
   }
 
@@ -2155,7 +2195,10 @@ export function buildPropsAndRequired(
     // not one of those - its TypeScript type goes in the description, and
     // the overlay's `prop_statements` entry naming it is what a reader gets
     // instead of a second machine-readable copy.
-    properties[prop.name] = describeUnexpressedType(expressedSchemaOf(prop), prop.typeText, prop.expressed?.complete === true);
+    properties[prop.name] = describeBranches(
+      describeUnexpressedType(expressedSchemaOf(prop), prop.typeText, prop.expressed?.complete === true),
+      prop,
+    );
     if (!prop.optional) required.push(prop.name);
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-api
@@ -2234,6 +2277,26 @@ function sameEnumValues(a: readonly unknown[] | undefined, b: readonly unknown[]
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-owner-conflict
 
+// The refusal for props forwarded to no resolvable host element. What the
+// walk said about each node it could not read goes with it: for a component
+// whose props come from a library's own types, those notes are the whole of
+// what stands between it and a contract, and a refusal naming only the
+// symptom sends a reader to rediscover them.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-orphan-inherited
+export function noHostElementRefusal(directory: string, exportStem: string, extraction: ComponentExtraction): Error {
+  const unread = [...new Set(extraction.cannotExtract.filter((note) => note.startsWith('heritage:')))];
+  return new Error(
+    `${exportStem}: ${extraction.forwardedProps.length} forwarded DOM prop(s) found (e.g. ` +
+      `"${extraction.forwardedProps[0]?.name}") but no host element kind could be resolved from ` +
+      `${directory}.tsx's props type - cannot say which element surface they belong to` +
+      (unread.length === 0
+        ? `. Nothing in its heritage was left unread: no helper it is built from names an element, by tag or by DOM ` +
+          `interface, so the library's own types do not say which element it renders`
+        : `. The props type's heritage could not be read at:\n  ${unread.join('\n  ')}`),
+  );
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-orphan-inherited
+
 // The extracted-prop adapter: the two prop loops hold an ExtractedProp, and
 // what the check needs off it is its name, its printed type and whatever the
 // schema states about it.
@@ -2256,7 +2319,7 @@ function underCheck(prop: ExtractedProp): PropertyUnderCheck {
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-list
 export function partlyCheckedPropertyNames(contract: CompiledContract): string[] {
   return Object.entries(contract.props.properties)
-    .filter(([, schema]) => schema.description !== undefined)
+    .filter(([, schema]) => leavesTypeToTsc(schema))
     .map(([name]) => name)
     .sort();
 }
@@ -2329,6 +2392,18 @@ export function pascalCase(component: string): string {
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-select
 }
 
+// The export an overlay stem describes: the overlay's own `export` where it
+// names one, the stem in PascalCase otherwise - including for a stem with no
+// overlay yet, which is how the counting paths and a probe ask before anyone
+// has written one.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-select
+export function exportNameOf(directory: string, exportStem: string = directory): string {
+  const path = join(kitRoot, 'src', 'components', directory, `${exportStem}.contract.yaml`);
+  if (!existsSync(path)) return pascalCase(exportStem);
+  return loadOverlay(directory, exportStem).export ?? pascalCase(exportStem);
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-select
+
 // Finds the extraction for the export named by `exportStem` (button ->
 // Button, accordion-item -> AccordionItem). `exportStem` defaults to
 // `directory`: the ordinary case (one component per directory, named after
@@ -2336,18 +2411,22 @@ export function pascalCase(component: string): string {
 // own stem - the .tsx file is still the directory's single source file
 // (extractComponent already returns one ComponentExtraction per exported
 // component in it, see extract.ts), only the SELECTION changes.
-export function resolveTargetExtraction(directory: string, exportStem: string = directory): ComponentExtraction {
+// The export name is read from the stem's overlay when one exists
+// (exportNameOf), so this parses that overlay; a caller that already knows
+// the name - a probe over a directory with no overlays yet - passes it.
+export function resolveTargetExtraction(
+  directory: string,
+  exportStem: string = directory,
+  exportName: string = exportNameOf(directory, exportStem),
+): ComponentExtraction {
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-select
   const dir = join(kitRoot, 'src', 'components', directory);
   const extractions = extractComponent(join(dir, `${directory}.tsx`));
-  const wantedName = pascalCase(exportStem);
-  const extraction = extractions.find((e) => e.name === wantedName);
+  const extraction = extractions.find((e) => e.name === exportName);
   if (!extraction) {
     const available = extractions.map((e) => e.name).join(', ') || '(none)';
-    throw new Error(
-      `${exportStem}: no exported component named "${wantedName}" (overlay stem "${exportStem}" in PascalCase) - ` +
-        `${directory}.tsx exports: ${available}`,
-    );
+    const how = exportName === pascalCase(exportStem) ? `overlay stem "${exportStem}" in PascalCase` : `the overlay's \`export\``;
+    throw new Error(`${exportStem}: no exported component named "${exportName}" (${how}) - ${directory}.tsx exports: ${available}`);
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-select
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-select
@@ -2476,7 +2555,10 @@ export function mountPointsAccepting(exportStem: string, self: string, overlays:
         // resolves to), and the reference carries the major the target
         // ships, so a component that moves its major moves every reference
         // to it - including the filled ones.
-        mountPoints.push({ container: pascalCase(stem), component: componentRef(stem, overlay.major ?? DEFAULT_CONTRACT_MAJOR) });
+        mountPoints.push({
+          container: overlay.export ?? pascalCase(stem),
+          component: componentRef(stem, overlay.major ?? DEFAULT_CONTRACT_MAJOR),
+        });
         continue;
       }
       // An accepted-components list naming this component at a major it no
@@ -2739,15 +2821,15 @@ export function compileContract(directory: string, exportStem: string = director
 
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-orphan-inherited
   if (extraction.unclassifiedProps.length > 0) {
-    // A prop declared outside the component, the primitive library and
-    // React's DOM types: the compiler cannot tell whether it is part of this
+    // A prop declared outside this package, the libraries the component
+    // wraps and React's DOM types: the compiler cannot tell whether it is part of this
     // component's API or forwarded surface, and either guess would be a fact
     // the contract states without knowing it.
     const names = extraction.unclassifiedProps.map((prop) => `"${prop.name}" (${prop.declarationFile})`).join(', ');
     throw new Error(
       `${exportStem}: ${extraction.unclassifiedProps.length} prop(s) declared where the extractor cannot place ` +
-        `them - ${names}. Neither this component's own source, the primitive library it wraps, nor React's DOM ` +
-        `attribute types declare them, so the compiler cannot tell this component's API from what it forwards ` +
+        `them - ${names}. Neither this package's own source, a library the component wraps, nor React's ` +
+        `DOM attribute types declare them, so the compiler cannot tell this component's API from what it forwards ` +
         `(see extract.ts's declaration-site classification)`,
     );
   }
@@ -2765,11 +2847,7 @@ export function compileContract(directory: string, exportStem: string = director
       // notes say where), and there is no honest schema to declare the
       // forwarded surface in. Refused rather than compiled without it - the
       // contract would then claim the component forwards nothing.
-      throw new Error(
-        `${exportStem}: ${extraction.forwardedProps.length} forwarded DOM prop(s) found (e.g. ` +
-          `"${extraction.forwardedProps[0].name}") but no host element kind could be resolved from ` +
-          `${directory}.tsx's props type - cannot say which element surface they belong to`,
-      );
+      throw noHostElementRefusal(directory, exportStem, extraction);
     }
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-orphan-inherited
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-owner-conflict
@@ -2803,8 +2881,9 @@ export function compileContract(directory: string, exportStem: string = director
     // or it names a prop the schema states IN FULL - a statement about a
     // fully typed prop is forbidden, and findUntypedPropMismatches is what
     // reports that pairing failure. Either way, injecting prose here would
-    // hide the mistake instead of surfacing it.
-    if (existing?.description === undefined) continue;
+    // hide the mistake instead of surfacing it. A description that only says
+    // which union branch declares a fully typed prop is the second case too.
+    if (existing === undefined || !leavesTypeToTsc(existing)) continue;
     // `states` is authored as a phrase rather than a sentence, so the three
     // fragments would otherwise run together into one unreadable line.
     // Terminated here rather than demanded of the author: a trailing period
@@ -2849,7 +2928,7 @@ export function compileContract(directory: string, exportStem: string = director
     // stamps one on for whoever needs a schema. Left OPEN: a prop nothing
     // evaluates is classified as unchecked rather than rejected.
     props: {
-      title: `UiKit ${pascalCase(exportStem)}`,
+      title: `UiKit ${overlay.export ?? pascalCase(exportStem)}`,
       type: 'object',
       properties,
       required,

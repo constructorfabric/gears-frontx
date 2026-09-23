@@ -1,15 +1,20 @@
 // Extractor unit tests: each fixture under __fixtures__ reproduces one shape
-// the old syntax-only extractor (see git history) either missed entirely or
-// merged incorrectly - F15 (type-alias props), F16 (cva resolved by text
-// match, not by symbol), F17 (multiple exported components merged into one
-// extraction). A fixture that regresses silently is worse than one that
+// a syntax-only reading misses entirely or merges incorrectly - F15
+// (type-alias props), F16 (cva resolved by text match, not by symbol), F17
+// (multiple exported components merged into one extraction). A fixture that regresses silently is worse than one that
 // fails loudly, so several of these assert on the FAILURE path too
 // (cva-unresolvable), not just the happy path.
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { classifyDeclarationSite, extractComponent, isBooleanAxis, stripModuleSpecifiers } from './extract';
+import {
+  classifyDeclarationSite,
+  extractComponent,
+  isBooleanAxis,
+  listExportedDeclarationNames,
+  stripModuleSpecifiers,
+} from './extract';
 import { domElementToken, elementTypeId, elementTypeIdPattern } from './ids';
 import { applyContractTestTimeout } from './testing';
 
@@ -28,9 +33,9 @@ describe('extractComponent: type alias and intersection props (F15)', () => {
   const [banner] = extractComponent(fixture('alias-intersection.fixture.tsx'));
 
   it('reads a `type` alias props declaration, not just `interface`', () => {
-    // The old extractor matched only `ts.isInterfaceDeclaration`; BannerProps
-    // is a `type` alias, so a regression here reproduces F15 exactly - 42 of
-    // 63 kit components declare at least one type-alias props type.
+    // BannerProps is a `type` alias, not an interface; reading only
+    // `ts.isInterfaceDeclaration` would miss it, which is F15 - 42 of 63 kit
+    // components declare at least one type-alias props type.
     expect(banner).toBeDefined();
     expect(banner.name).toBe('Banner');
   });
@@ -118,16 +123,156 @@ describe('extractComponent: a Base UI part prop is API, a React attribute is for
 });
 
 describe('classifyDeclarationSite', () => {
-  // The whole of the harness's coupling to one headless library, asserted
-  // directly: a second primitive library resolves to neither side, which is
-  // what makes the compiler refuse such a component instead of filing its
-  // API as forwarded surface.
-  it('recognizes the primitive library and React, and nothing else', () => {
+  // The whole of the harness's coupling to the libraries it knows, asserted
+  // directly: a package no list names resolves to neither side, which is what
+  // makes the compiler refuse such a component instead of filing its API as
+  // forwarded surface.
+  it('recognizes the primitive libraries, the wrapped libraries and React, and nothing else', () => {
     expect(classifyDeclarationSite('@base-ui/react/accordion/root/AccordionRoot.d.mts')).toBe('primitive-library');
     expect(classifyDeclarationSite('@base-ui/react/internals/types.d.mts')).toBe('primitive-library');
+    expect(classifyDeclarationSite('@shadcn/react/dist/questionnaire/index.d.ts')).toBe('primitive-library');
+    for (const file of [
+      'recharts/types/component/Tooltip.d.ts',
+      'react-day-picker/dist/esm/types/props.d.ts',
+      'cmdk/dist/index.d.ts',
+      'react-resizable-panels/dist/react-resizable-panels.d.ts',
+    ]) {
+      expect(classifyDeclarationSite(file), file).toBe('wrapped-library');
+    }
     expect(classifyDeclarationSite('@types/react/index.d.ts')).toBe('react-dom');
     expect(classifyDeclarationSite('@radix-ui/react-accordion/dist/index.d.ts')).toBe('elsewhere');
+    // The kit's own files never reach this function as "own"; asked directly,
+    // they belong to no dependency list.
     expect(classifyDeclarationSite('src/components/button/button.tsx')).toBe('elsewhere');
+  });
+});
+
+describe("extractComponent: a prop a sibling kit file declares is this package's API", () => {
+  const [trigger] = extractComponent(fixture('sibling-props.fixture.tsx'));
+
+  it('files it with the component own props rather than leaving it unplaced', () => {
+    // `loading` and `icon` come from sibling-props.base.fixture.tsx, which
+    // the kit wrote; read as "declared elsewhere", the component was refused.
+    const own = trigger.ownProps.map((p) => p.name);
+    expect(own).toEqual(expect.arrayContaining(['icon', 'loading', 'side']));
+    expect(trigger.unclassifiedProps).toEqual([]);
+    expect(trigger.ownProps.find((p) => p.name === 'loading')?.declarationFile).toBe(
+      'scripts/contracts/__fixtures__/sibling-props.base.fixture.tsx',
+    );
+  });
+
+  it("still files React's attributes as forwarded surface and resolves the sibling's element", () => {
+    expect(trigger.forwardedProps.map((p) => p.name)).toContain('onClick');
+    expect(trigger.elementKind).toBe('button');
+  });
+});
+
+describe('extractComponent: the libraries a component wraps', () => {
+  const extractions = extractComponent(fixture('wrapped-libraries.fixture.tsx'));
+  const byName = (name: string) => extractions.find((e) => e.name === name)!;
+
+  it("reads the second primitive library's props helper for its element, and files its props as API", () => {
+    const title = byName('SecondTitle');
+    expect(title.elementKind).toBe('legend');
+    expect(title.apiProps.map((p) => p.name)).toContain('render');
+    expect(title.unclassifiedProps).toEqual([]);
+    expect(title.cannotExtract).toEqual([]);
+  });
+
+  it('takes the tag a multi-tag primitive documents it renders, and says a caller may render another', () => {
+    const heading = byName('PopoverHeading');
+    expect(heading.elementKind).toBe('h2');
+    const note = heading.cannotExtract.find((msg) => msg.includes('admits 6 host elements'));
+    expect(note).toContain('"h2"');
+    expect(note?.startsWith('heritage:')).toBe(true);
+  });
+
+  it("files a third-party component's props as API and reads its element from the DOM interface", () => {
+    const panel = byName('Panel');
+    expect(panel.elementKind).toBe('div');
+    expect(panel.apiProps.map((p) => p.name)).toEqual(expect.arrayContaining(['collapsible', 'defaultSize', 'minSize']));
+    expect(panel.unclassifiedProps).toEqual([]);
+  });
+
+  it('files a React attribute the library restates as its API, whatever order the declarations come in', () => {
+    // The panel's props restate `id`, `className` and `style` beside
+    // React's `HTMLAttributes<HTMLDivElement>`; the library's declaration is
+    // the one its component documents, so it decides the set.
+    const panel = byName('Panel');
+    expect(panel.apiProps.map((p) => p.name)).toEqual(expect.arrayContaining(['className', 'id', 'style']));
+    expect(panel.forwardedProps.map((p) => p.name)).not.toEqual(expect.arrayContaining(['id']));
+  });
+
+  it('maps a DOM interface to its tag only where it stands for one, and notes the rest', () => {
+    expect(byName('Region').elementKind).toBe('div');
+    expect(byName('Region').cannotExtract).toEqual([]);
+    const cell = byName('Cell');
+    expect(cell.elementKind).toBeUndefined();
+    expect(cell.cannotExtract.some((msg) => msg.includes('"HTMLElement"') && msg.includes('no single tag'))).toBe(true);
+  });
+});
+
+describe('extractComponent: a directory that only re-exports', () => {
+  it("reads a re-exported primitive component as a component, with the primitive's props as its API", () => {
+    const extractions = extractComponent(fixture('re-export.fixture.tsx'));
+    expect(extractions.map((e) => e.name)).toEqual(['DirectionProvider']);
+    const [provider] = extractions;
+    expect(provider.apiProps.map((p) => p.name)).toEqual(['children', 'direction']);
+    expect(provider.elementKind).toBeUndefined();
+    expect(provider.forwardedProps).toEqual([]);
+  });
+
+  it('lists every re-exported name among the exports, so the enrollment report can say which are not components', () => {
+    expect(listExportedDeclarationNames(fixture('re-export.fixture.tsx'))).toEqual([
+      'DirectionProvider',
+      'useDirection',
+      'DirectionProviderProps',
+    ]);
+  });
+});
+
+describe('extractComponent: a union props type', () => {
+  const extractions = extractComponent(fixture('union-props.fixture.tsx'));
+  const picker = extractions.find((e) => e.name === 'Picker')!;
+  const prop = (name: string) => picker.ownProps.find((p) => p.name === name);
+
+  it('keeps a prop every branch declares as it was, with no branch list', () => {
+    expect(prop('label')).toMatchObject({ optional: false });
+    expect(prop('label')?.branches).toBeUndefined();
+  });
+
+  it('adds a prop only some branches declare, as optional and named with its branches', () => {
+    expect(prop('clearable')).toMatchObject({ optional: true, branches: ['SinglePickerProps'], expressed: { schema: { type: 'boolean' } } });
+  });
+
+  it('reads a prop one branch requires as optional, since a caller may be on another branch', () => {
+    expect(prop('anchor')).toMatchObject({ optional: true, branches: ['RangePickerProps'], typeText: 'string | undefined' });
+  });
+
+  it('reads an optional union parameter the same way: `undefined` adds no branch', () => {
+    const optional = extractions.find((e) => e.name === 'OptionalPicker')!;
+    const label = optional.ownProps.find((p) => p.name === 'label');
+    expect(label?.optional).toBe(false);
+    expect(label?.branches).toBeUndefined();
+    expect(optional.ownProps.map((p) => p.name)).toEqual(picker.ownProps.map((p) => p.name));
+  });
+
+  it('names the declaring branches in a fixed order, not the order the checker holds them in', () => {
+    expect(prop('numberOfMonths')?.branches).toEqual([...(prop('numberOfMonths')?.branches ?? [])].sort());
+  });
+
+  it('keeps the first host element where branches render different ones, and notes it; `undefined` adds no note', () => {
+    const [linkOrButton] = extractComponent(fixture('union-host-elements.fixture.tsx'));
+    expect(linkOrButton.elementKind).toBe('a');
+    expect(linkOrButton.cannotExtract).toHaveLength(1);
+    expect(linkOrButton.cannotExtract[0]).toContain('render different host elements (a, button)');
+  });
+
+  it('states nothing about a branch-only prop the branches type differently, and prints both types', () => {
+    const months = prop('numberOfMonths');
+    expect(months?.branches).toEqual(['RangePickerProps', 'WeekPickerProps']);
+    expect(months?.expressed).toBeUndefined();
+    expect(months?.typeText).toBe('number | "one" | "two" | undefined');
   });
 });
 
@@ -274,7 +419,7 @@ describe('what JSON Schema can state about a prop type', () => {
     // A printed `import("<path>")` puts the machine's own filesystem layout
     // and a foreign package's internal file names into a committed
     // artifact. React's `style` and `onClick` arrive through
-    // ComponentProps<'div'> and are exactly where the printer used to emit
+    // ComponentProps<'div'> and are exactly where the printer would emit
     // one.
     const everyProp = [...picker.ownProps, ...picker.apiProps, ...picker.forwardedProps, ...picker.unclassifiedProps];
     expect(everyProp.filter((p) => p.typeText.includes('import(')).map((p) => p.name)).toEqual([]);
@@ -306,9 +451,9 @@ describe('extractComponent: heritage shapes recognized by resolved symbol, not i
   it('does not mistake a locally shadowed "Omit" for the real global utility type', () => {
     // Omit has no module export to alias via `import ... as ...` - the
     // failure mode that matters for it is the opposite of ComponentProps's:
-    // a local name collision. The old text match would have unwrapped this
-    // shadow's first "type argument" (ComponentProps<'span'>) and silently
-    // resolved a `span` forwarded kind/origin through a utility type that
+    // a local name collision. A text match would unwrap this shadow's first
+    // "type argument" (ComponentProps<'span'>) and silently
+    // resolve a `span` forwarded kind/origin through a utility type that
     // is not really Omit<T, K> at all. The forwarded props ARE present on
     // the checker-resolved type (this shadow really does forward them) -
     // proving this is a case of "found real props, refused to guess which
@@ -323,17 +468,20 @@ describe('extractComponent: heritage shapes recognized by resolved symbol, not i
   it('reports a cannotExtract entry for a heritage member wrapped in an unrecognized generic type helper', () => {
     // `Readonly<ComponentProps<'div'>>` - Readonly IS a real, resolvable
     // type alias, so the walk unwraps into it, but its underlying shape (a
-    // mapped type) is a node kind neither walk understands. The old code's
-    // catch-all `if (!parts) return;` silently gave up here.
+    // mapped type) is a node kind neither walk understands, and the walk
+    // says so rather than giving up in silence.
     const [widget] = extractComponent(fixture('unknown-wrapper.fixture.tsx'));
     expect(widget.cannotExtract.some((msg) => msg.includes('MappedType'))).toBe(true);
   });
 });
 
 describe('extractComponent: bare union type in heritage position (N2)', () => {
-  it('reports a cannotExtract entry instead of silently resolving nothing', () => {
+  it('walks each branch instead of silently resolving nothing, and reads the props of both', () => {
+    // A union of props types is walked branch by branch, the way its props
+    // are read, so there is nothing left unread.
     const [swatch] = extractComponent(fixture('bare-union-heritage.fixture.tsx'));
-    expect(swatch.cannotExtract.some((msg) => msg.includes('UnionType'))).toBe(true);
+    expect(swatch.cannotExtract).toEqual([]);
+    expect(swatch.ownProps.map((p) => p.name)).toEqual(['label', 'tone']);
   });
 });
 
@@ -527,9 +675,9 @@ describe('extractComponent: a boolean cva variant', () => {
   });
 
   it('reads a boolean default instead of losing it, and reports nothing it could not read', () => {
-    // The default was written as `false`, which is not a string literal: the
-    // note the old walk recorded for it did not begin `cva:`, so the compile
-    // did not fail and the axis simply shipped with no default at all.
+    // The default is written as `false`, not as a string literal; read as a
+    // string only, it would be lost, and a note that did not begin `cva:`
+    // would let the axis ship with no default at all.
     expect(panel.defaults).toEqual({ fullWidth: 'false', emphasis: 'low' });
     expect(panel.cannotExtract).toEqual([]);
   });

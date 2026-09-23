@@ -4,9 +4,8 @@
 // to point at. Own-vs-inherited classification and declarationFile both
 // depend on having a declaration to compare against the component's own
 // source file, so there is genuinely nothing honest to report for `a`/`b`
-// beyond "could not read this prop." The old extractor filled the gap with
-// the literal string 'unknown' as ordinary declarationFile data instead of
-// surfacing the gap as a cannotExtract entry.
+// beyond "could not read this prop", which is a cannotExtract entry rather
+// than a placeholder string passed off as ordinary declarationFile data.
 export type SyntheticProps = Record<'a' | 'b', string> & { own: string };
 
 export function SyntheticWidget(props: SyntheticProps) {

@@ -1,10 +1,9 @@
 // Fixture for extract.test.ts: cva configs whose `variants` or
 // `defaultVariants` block is not written inline. `fillAxes` is one axis set
 // shared by two cva calls, the shape avatar.tsx uses for its fallback and its
-// count; `sharedDefaults` does the same for the defaults. The walk used to
-// read either block only as an inline object literal and drop anything else
-// in silence, so both axes reached the contract with no values and no
-// default. `Unresolvable` builds its variants in a function call, which no
+// count; `sharedDefaults` does the same for the defaults. Read only as an
+// inline object literal, either block would be dropped in silence and both
+// axes would reach the contract with no values and no default. `Unresolvable` builds its variants in a function call, which no
 // walk of initializers can follow, and has to say so.
 import { cva, type VariantProps } from 'class-variance-authority';
 

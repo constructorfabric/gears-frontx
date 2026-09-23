@@ -121,11 +121,9 @@ describe('avatar directory: what nests where', () => {
   });
 
   it('AvatarGroup constrains nothing inside it, so nothing gains a kit mount point from it', () => {
-    // The shared suite requires every kit mount point of a family member -
-    // the root included - to lie inside that member's own family, so an
-    // AvatarGroup listing Avatar under `specified` would fail it; the group
-    // is a plain div that examines nothing about its children, which is what
-    // `unconstrained` states.
+    // The group is a plain div that examines nothing about its children,
+    // which is what `unconstrained` states, so no kit component gains a
+    // mount point from it.
     expect(units[GROUP].contract.accepts).toEqual({ content: 'unconstrained' });
     expect(units['avatar-group-count'].contract.mounted_in).toBeUndefined();
   });

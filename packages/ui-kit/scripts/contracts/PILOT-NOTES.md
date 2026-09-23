@@ -724,8 +724,8 @@ compose into - not shipped anywhere in this branch - a "block" rather than a
 artifact the way Accordion's own root/item/trigger/content family is, where
 a block implies something a template copies in and the owning project then
 forks and maintains itself, per DESIGN's own library-vs-template line (the
-same distinction shadcn/ui draws between its library components and its
-block templates). Adopted as the term for whoever picks up block/template
+same distinction the upstream component registry draws between its library
+components and its block templates). Adopted as the term for whoever picks up block/template
 composite work next; no code in this branch defines, ships or tests a
 block - Accordion and DataTable are both ordinary (if compound, in
 Accordion's case) kit components, not blocks.
@@ -797,38 +797,13 @@ extracted; what took the time was confirming the compatibility path treats
 prose as prose, since a wrong answer there would have made every existing
 contract refuse its own recompile.
 
-## Compiler coupling: one primitive library and React, for now
+## Compiler coupling: the libraries the classifier knows
 
-`extract.ts`'s `classifyDeclarationSite` recognizes exactly two families of
-declaration site for a prop the component does not declare itself: the
-primitive library, by the `@base-ui/react/` prefix on the already-relativized
-declaration path, and React's own DOM attribute types, by `@types/react/`.
-Nothing else. A prop declared by a different headless-primitive library
-(Radix, react-aria, Ariakit, MUI unstyled) is filed in `unclassifiedProps`,
-and `compileContract` refuses the component naming those props and their
-declaration files - by design: the compiler cannot tell that library's API
-from what it forwards, and either guess would be a fact the contract states
-without knowing it.
+`extract.ts`'s `classifyDeclarationSite` files a prop the kit does not declare by the package that declares it, read off the already-relativized declaration path. A package in `PRIMITIVE_LIBRARY_PREFIXES` (the primitive library the kit builds on, and a second laid out the same way) or in `WRAPPED_LIBRARY_PREFIXES` (the third-party libraries whose components the kit re-exposes) declares the component's API. React's own DOM attribute types declare the surface it forwards. A prop from any other package is filed in `unclassifiedProps`, and `compileContract` refuses the component naming those props and their declaration files: the compiler cannot tell that package's API from what it forwards, and either guess would be a fact the contract states without knowing it.
 
-The element side is a separate, narrower coupling: `walkPropsType` reads the
-host element out of a `BaseUIComponentProps<'tag', ...>` or
-`ComponentProps<'tag'>` generic argument, and a component whose props type
-offers neither anchor resolves no element. With forwarded DOM props and no
-element, `compileContract` refuses that too, because there is no honest
-surface to declare them in.
+The element side reads the host element from the first place the heritage walk finds one: the tag argument of an element helper (React's `ComponentProps<'tag'>`, the primitive libraries' props helpers), the one tag a multi-tag primitive part documents itself as rendering, or the DOM interface an attribute type names (`*HTMLAttributes<X>`, `DetailedHTMLProps<A, X>`) through `DOM_INTERFACE_TAGS`, which maps only interfaces that stand for one tag. With forwarded DOM props and no element, `compileContract` refuses, naming every heritage node the walk could not read, because there is no honest surface to declare them in.
 
-This is a real, current limit of the compiler itself, not just of the three
-overlays this pilot ships - the demo review's M5 finding named it precisely.
-Adding a second primitive library requires, at minimum: (1) its prefix in
-`classifyDeclarationSite`, and a decision about which of its declaration
-files are a part's API rather than a shared helper's; (2) a
-`classifyHeritageReference` shape for its own props-forwarding helper (the
-same symbol + declaration-file check every other shape here uses, never
-identifier text), so the host element still resolves; (3) a hand-written
-passthrough schema for any element kind the kit did not already render. None
-of that is designed against here - only Base UI and React were ever in scope
-for this pilot's three components - so treat "add a primitive library" as new
-design work on the classifier, not a config toggle.
+Adding a library is three things: its prefix in one of the two lists, a `classifyHeritageReference` shape for its props helper when it has one (the same symbol and declaration-file check every other shape uses, never identifier text), and a hand-written surface for any element kind the kit did not already render. Which list a library belongs in, and whether its props are a part's API at all, is a decision about that library, not a config toggle.
 
 ## "Not a component of this kit" is an answer the metamodel had no way to give
 
@@ -1695,3 +1670,77 @@ accepts that part", and what a reader should be handed for it (one entry, or
 the depth rule that governs it) is not a question the kit has a case to answer
 yet. When one arrives, this is the line to change, and the filled-versus-
 authored rule on `mount_point` is what the answer has to fit.
+
+## A sibling kit file's props are the kit's own API
+
+**Observed.** A trigger that reuses the kit button's props type, a menubar part that reuses the dropdown menu's, an input-group input that reuses the kit input's: each was refused, because `className`, `loading` and `icon` were declared in another file of this package, and the classifier's "own" set meant the component's own file only. Eight directories were blocked on nothing else.
+
+**Changed.** The first set is "this package's own source": a declaration in the component's file, or in any other file of the package that is not a dependency, files the prop with the component's own props. The three sets stay three. The nearest declaration is still the one reported, so a prop the component's own file redeclares names that file.
+
+**Decisions taken along the way.** The kit wrote those props, so a consumer reads them as the kit's API, not as a primitive's forwarded surface. The consequence is the one the own set always had: such a prop cannot be withheld (a withheld name may not be one the component declares), and one the schema cannot type gets a partially-typed-props record.
+
+**Cost.** One predicate, and a second `find` beside the first.
+
+## A second primitive library
+
+**Observed.** Two directories wrap a second headless library whose parts are laid out the way the first library's are: a props helper parameterised by the element (`UseRenderComponentProps<'legend'>`), and each part's own API beside React's attributes. Its props were unclassified and its parts resolved no host element.
+
+**Changed.** The classifier takes a list of primitive-library prefixes rather than one prefix, and that library's props helper is recognised as the same heritage shape as the render hook's. Its package identifier appears only as a literal in the prefix list and the helper's declaration check.
+
+**Cost.** Two list entries and one shape check. What "add a primitive library" costs is now stated by what it took: a prefix, and a shape for its props helper.
+
+## One host element among several
+
+**Observed.** A primitive title admits `'h1' | ... | 'h6'` as its element, so no single surface followed from the type and the component was refused.
+
+**Changed.** Where a helper's element argument is a union of tags, the host element is the one tag the file declaring the props type documents its component as rendering ("Renders an `<h2>` element."), read off that file's text, and a note says a caller may render another. With no such tag, or two, the note says the element cannot be read, as before.
+
+**Decisions taken along the way.** The default the primitive documents is what renders when the caller chooses nothing, so it is the element the surface describes; the `render` prop is where a different one comes from, and the overlay's statement for `render` is where that is said to a reader. A union of props types, as opposed to a union of tags, is walked branch by branch, and branches naming different elements are noted with the first kept.
+
+**Cost.** Half an hour; the harder part was deciding that documentation text is evidence here, which it is only because it is the primitive's own and it is read, not guessed.
+
+## Third-party components the kit re-exposes
+
+**Observed.** A chart library, a date picker, a command menu and resizable panels: each wrapper re-exposes the library's own component, so every prop the library declares was unclassified, and the host element was named by DOM interface (`HTMLAttributes<HTMLDivElement>`, `DetailedHTMLProps<..., HTMLDivElement>`) rather than by tag.
+
+**Changed.** Those libraries' props are the wrapper's API and are filed with the primitive libraries' in the middle set, from a second prefix list. React's own attribute interfaces are recognised as a heritage shape whose argument is a DOM interface, mapped to its tag through a table that holds only interfaces standing for one tag; `HTMLElement` and the other shared ones are noted instead. The resolved-type walk recognises an instantiated generic interface as well as an alias, which is how these libraries' types arrive. An alias's props are read from its signature as the alias instantiates it, not as the callable type declares it (`FC<P>`'s `props: P`).
+
+**What could not be read.** The chart legend: the library's own props for it adapt React's event handlers through its own mapped type and name no element anywhere, so 53 forwarded props have no surface. The refusal says so rather than naming only the symptom.
+
+**Cost.** A table, one shape, and an honest refusal message for the one case the types do not answer.
+
+## An export whose name does not extend the directory's
+
+**Observed.** `Toaster` in `toast` and `ScrollBar` in `scroll-area`: the stem from the export's own name is outside the directory's name, so the compiler refused the overlay, and renaming the exports would break the kit's public API.
+
+**Changed.** An overlay may name the export it describes in an `export` field. The stem still extends the directory (`toast-toaster`, `scroll-area-scroll-bar`), which keeps the longest-prefix reference resolution exact; the export name selects the extraction, titles the contract, names a filled mount point's container and is what the near-miss check reads usages of. Absent, the export is the stem in PascalCase, as for every existing contract.
+
+**Cost.** One overlay field and one lookup, used wherever the stem used to be turned into a name.
+
+## A directory that only re-exports a primitive
+
+**Observed.** The direction directory declares nothing: it re-exports the primitive's direction provider. The candidate walk read only function and variable statements, so the directory had no component at all.
+
+**Changed.** A re-exported name with no local declaration is a candidate by the alias rule, read from the symbol it re-exports. The enrollment report's list of exports includes re-exported names, so the hook and the type re-exported beside the provider are shown as not components.
+
+**Decisions taken along the way.** The directory gets a contract because the goal is a described kit, and an agent needs to know the provider exists and what it changes.
+
+**Cost.** One statement form and one shape function.
+
+## A family's root may be mounted elsewhere
+
+**Observed.** A group accepting its members' roots failed the conformance suite: every filled mount point of a family member, the root included, had to lie inside its own family, so the group could not state what it holds.
+
+**Changed.** The rule applies to parts only. It exists so the parts of a compound component are not independently mountable; a root is a component in its own right, so another component's container may hold it. The check is one exported function, tested both ways: a part outside its family still fails, a root inside another component's container passes.
+
+**Cost.** One condition, and moving the check out of the suite body so it can be tested.
+
+## A union props type is read branch by branch
+
+**Observed.** The date picker's props are one union of a single-date and a range branch. The checker's property list for a union holds only what every branch declares, so `numberOfMonths` and the range branch's own props never reached the schema or the near-miss check.
+
+**Changed.** Every branch's props are read. A prop only some branches declare is optional in the contract, and its description says which branches declare it, after the type text where there is one. Where two branches type it differently, the schema states nothing and the printed types of both are what a reader gets. Which descriptions count as a gap is decided by one predicate: prose that opens with the checker's printed type. A branch sentence on a fully typed prop states no gap, so it neither demands a prop statement nor counts as a partially typed prop.
+
+**Decisions taken along the way.** The schema cannot tell the branches apart, so it admits a branch-only prop whichever branch a caller is on; the description is where the narrowing is stated. Adding an optional prop is compatible, so a union reaching the contract this way moves no major.
+
+**Cost.** The enumeration was a small function; the care went into keeping "has a description" and "leaves part of the type to tsc" from meaning the same thing any longer.
