@@ -152,12 +152,21 @@ function TableColumnResizer({ minWidth }: TableColumnResizerProps) {
     }
   };
 
+  /*
+   * Only a drag this handle started may release the lock: the unmount
+   * cleanup and a stray pointerup both land here, and clearing the body
+   * styles unconditionally would wipe a cursor something else on the page
+   * had set.
+   */
   const endDrag = useCallback(() => {
     const drag = dragRef.current;
+    if (!drag) {
+      return;
+    }
     dragRef.current = null;
     lockPage(false);
     const handle = handleRef.current;
-    if (drag && handle) {
+    if (handle) {
       capturePointer(handle, drag.pointerId, false);
     }
   }, []);

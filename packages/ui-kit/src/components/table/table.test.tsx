@@ -341,6 +341,18 @@ describe('TableHead column resize', () => {
     expect(cells[0]?.style.width).toBe('188px');
   });
 
+  it('leaves a body cursor it did not set alone on pointer-up and unmount', () => {
+    const { unmount } = renderResizable();
+    document.body.style.cursor = 'wait';
+    document.body.style.userSelect = 'text';
+    fireEvent(screen.getByRole('separator'), pointerEvent('pointerup', { clientX: 0 }));
+    unmount();
+    expect(document.body.style.cursor).toBe('wait');
+    expect(document.body.style.userSelect).toBe('text');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+
   it('releases the page lock when the drag ends and when the header unmounts', () => {
     const { unmount } = renderResizable();
     stubWidths([200, 200]);
