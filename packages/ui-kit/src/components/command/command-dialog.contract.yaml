@@ -69,11 +69,20 @@ deprecations: {}
 
 attestations:
   a11y:
-    outcome: verified
+    outcome: failed
     by: >-
-      command.test.tsx asserts role="dialog" named "Command Palette" by
-      default and "Quick actions" with a custom `title`, no "Close" button
-      by default, and that Escape closes the dialog
+      command.tsx renders the dialog's cmdk root as `<Command
+      className={styles.command}>` with no `label`, so the hidden label
+      cmdk renders for it is empty, and the CommandInput combobox inside,
+      whose aria-labelledby cmdk sets after the caller's props, points at
+      that empty label: the palette's combobox has no accessible name and
+      CommandDialog takes no prop that reaches the root to give it one. An
+      aria-label on CommandInput names it in Chromium, which skips the empty
+      aria-labelledby, but not under the older accessible-name rules
+      dom-accessibility-api follows in the suite. The dialog itself is
+      sound: command.test.tsx asserts role="dialog" named
+      "Command Palette" by default and "Quick actions" with a custom
+      `title`, no "Close" button by default, and that Escape closes it
   rtl:
     outcome: unknown
 
