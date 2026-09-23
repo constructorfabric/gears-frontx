@@ -19,8 +19,12 @@
       "type": "array",
       "items": { "type": "object", "$ref": "gts://gts.frontx.mfes.lifecycle.hook.v1~" },
       "$comment": "Optional lifecycle hooks - explicitly declared actions for each stage"
+    },
+    "route": {
+      "type": "string",
+      "$comment": "Optional declared route, usable by an extension without a derived presentation. Validated against the routing grammar's name alphabet, and reconciled with presentation.route, by the mfes runtime at registration time, not by this schema."
     }
   },
   "required": ["id", "domain", "entry"],
-  "$comment": "Domain-specific fields are defined in derived Extension schemas. Domains may specify extensionsTypeId to require extensions use a derived type."
+  "$comment": "Domain-specific fields are defined in derived Extension schemas. Domains may specify extensionsTypeId to require extensions use a derived type. `route` on the base is a deliberate exception to that convention: routability applies to an extension in any domain, not to one domain's derived shape."
 }

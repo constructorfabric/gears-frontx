@@ -26,7 +26,7 @@ decision-makers: German Bartenev
 
 ## Context and Problem Statement
 
-Route Ownership Signal resolves, for each domain, every URL entry whose own domain key matches that domain's own key — matching that entry's own extension token against that domain's registered extensions — and reports the route owner each such entry names, or that none does, to the consumer holding that domain. That route owner is, in this ecosystem, ultimately an `mfes` runtime `Extension` — the concrete registration type carrying `id`, `domain`, `entry`, and, for a screen, a `presentation.route` (`packages/mfes/src/types/index.ts`). How should the routing core name and carry that identity through resolution and reporting without itself depending on the concrete extension type the `mfes` runtime defines?
+Route Ownership Signal resolves, for each domain, every URL entry whose own domain key matches that domain's own key — matching that entry's own extension token against that domain's registered extensions — and reports the route owner each such entry names, or that none does, to the consumer holding that domain. That route owner is, in this ecosystem, ultimately an `mfes` runtime `Extension` — the concrete registration type carrying `id`, `domain`, `entry`, an optional declared `route`, and, for a screen, a `presentation.route` (`packages/mfes/src/types/index.ts`). How should the routing core name and carry that identity through resolution and reporting without itself depending on the concrete extension type the `mfes` runtime defines?
 
 ## Decision Drivers
 

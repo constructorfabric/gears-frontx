@@ -11,7 +11,15 @@
     "lib": ["ES2023"],
     "types": ["node"],
     "allowJs": true,
-    "checkJs": true
+    "checkJs": true,
+    // Unlike every other project in this repo, this one clears the root
+    // config's source-path mapping for `@gears-frontx/*`: a script that
+    // imports a published package (e.g. the routing/mfes name-agreement
+    // test) resolves it through node_modules to its built `dist/*.d.ts`
+    // (skipLibCheck-exempt) instead of pulling that package's raw src graph
+    // — including DOM-touching internals no browser lib is declared for
+    // here — into this Node-only project.
+    "paths": {}
   },
   "include": ["scripts/**/*.ts", "scripts/**/*.mjs"]
 }
