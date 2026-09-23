@@ -76,7 +76,8 @@
       "by": "the primitive's Menu.RadioItem renders role=\"menuitemradio\" with aria-checked; dropdown-menu.test.tsx asserts the item is found by the menuitemradio role and name and that clicking it reports its value through the group's onValueChange"
     },
     "rtl": {
-      "outcome": "unknown"
+      "outcome": "failed",
+      "by": "dropdown-menu.module.css reserves the check glyph's space with a physical right padding on the row while the glyph sits at the row's inline end, so in a right-to-left page, at the default `indicatorSide=\"end\"`, the glyph overlaps the label at the left and the reserved space stays empty on the right"
     }
   },
   "prop_statements": {

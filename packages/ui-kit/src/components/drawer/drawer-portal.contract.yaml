@@ -67,7 +67,7 @@ examples:
   good:
     - title: A layer kept in the DOM while the drawer is closed
       code: |
-        <Drawer>
+        <Drawer modal="trap-focus">
           <DrawerTrigger>Open</DrawerTrigger>
           <DrawerPortal keepMounted>
             <StatusLayer />

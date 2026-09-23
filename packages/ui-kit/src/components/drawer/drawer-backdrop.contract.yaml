@@ -69,7 +69,7 @@ prop_statements:
 
 examples:
   good:
-    - title: A veil behind a drawer that traps focus without blocking the page
+    - title: A veil behind a drawer that traps focus without locking page scroll
       code: |
         <Drawer modal="trap-focus">
           <DrawerTrigger>Open</DrawerTrigger>

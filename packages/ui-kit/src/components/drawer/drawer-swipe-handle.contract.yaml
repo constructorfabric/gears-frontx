@@ -5,7 +5,7 @@ component: drawer-swipe-handle
 intent: The small grab bar that shows a drawer's panel can be swiped.
 
 typical_uses:
-  - The grab bar at the edge of a bottom drawer's panel
+  - The grab bar at the edge of a drawer's panel, shown by `showSwipeHandle` on the root
 
 dont_use_when:
   - situation: Showing the grab bar on a drawer's panel
@@ -22,7 +22,7 @@ accepts:
 invariants:
   - id: hidden-grab-bar
     text: >-
-      DrawerSwipeHandle is a div hidden from assistive technology
+      By default DrawerSwipeHandle is a div hidden from assistive technology
       (`aria-hidden="true"`), a rounded bar in var(--border-strong) that is
       2.5rem wide and 0.25rem tall on a top or bottom panel and turned
       upright on a left or right one; it is an affordance only, since the

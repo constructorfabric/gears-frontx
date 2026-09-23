@@ -65,7 +65,7 @@
     "good": [
       {
         "title": "A layer kept in the DOM while the drawer is closed",
-        "code": "<Drawer>\n  <DrawerTrigger>Open</DrawerTrigger>\n  <DrawerPortal keepMounted>\n    <StatusLayer />\n  </DrawerPortal>\n  <DrawerContent>\n    <DrawerTitle>Status</DrawerTitle>\n  </DrawerContent>\n</Drawer>\n"
+        "code": "<Drawer modal=\"trap-focus\">\n  <DrawerTrigger>Open</DrawerTrigger>\n  <DrawerPortal keepMounted>\n    <StatusLayer />\n  </DrawerPortal>\n  <DrawerContent>\n    <DrawerTitle>Status</DrawerTitle>\n  </DrawerContent>\n</Drawer>\n"
       }
     ],
     "bad": [

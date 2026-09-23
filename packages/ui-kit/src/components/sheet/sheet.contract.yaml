@@ -56,9 +56,10 @@ invariants:
       With `modal` at its default `true`, focus is trapped in the panel,
       page scroll is locked and presses outside the panel reach nothing on
       the page; `'trap-focus'` traps focus without locking page scroll or
-      adding the primitive's own blocking layer; SheetContent's visible
-      backdrop still covers the page unless `showBackdrop={false}`; `false`
-      does neither.
+      adding the primitive's own blocking layer; `false` traps no focus,
+      locks no scroll and adds no blocking layer. In every mode the visible
+      backdrop SheetContent renders stays, covering the page and catching
+      presses on it, unless `showBackdrop={false}`.
   - id: escape-and-outside-press-close
     text: >-
       Escape and a press outside the panel close the sheet, reporting the

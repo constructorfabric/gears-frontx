@@ -64,7 +64,7 @@
   "examples": {
     "good": [
       {
-        "title": "A veil behind a drawer that traps focus without blocking the page",
+        "title": "A veil behind a drawer that traps focus without locking page scroll",
         "code": "<Drawer modal=\"trap-focus\">\n  <DrawerTrigger>Open</DrawerTrigger>\n  <DrawerPortal>\n    <DrawerBackdrop />\n  </DrawerPortal>\n  <DrawerContent>\n    <DrawerTitle>Filters</DrawerTitle>\n  </DrawerContent>\n</Drawer>\n"
       }
     ],
