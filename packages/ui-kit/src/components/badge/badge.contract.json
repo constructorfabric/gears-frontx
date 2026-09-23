@@ -1,0 +1,204 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.badge.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "badge",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "Show a short, static inline label in a compact pill - a count, a category tag, a status word.",
+  "typical_uses": [
+    "A count, a version or a plan name beside a heading or inside a table cell",
+    "A status or category word whose tone backs up what the text already says",
+    "A tag that is itself a link, rendered over an anchor"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A clickable action with its own visual weight",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    },
+    {
+      "situation": "A one-word state in a dense row, where a filled pill is too much chrome",
+      "instead": {
+        "target": "StatusDot",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.status_dot.v1"
+      }
+    },
+    {
+      "situation": "A status note, system note or labelled separator inside a conversation thread",
+      "instead": {
+        "target": "Marker",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.marker.v1"
+      }
+    },
+    {
+      "situation": "A key or keyboard shortcut named in text",
+      "instead": {
+        "target": "Kbd",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1"
+      }
+    },
+    {
+      "situation": "A selectable filter chip that switches on and off",
+      "instead": {
+        "target": "Toggle",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.toggle.v1"
+      }
+    },
+    {
+      "situation": "A status mark pinned to the corner of an avatar",
+      "instead": {
+        "target": "AvatarBadge",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_badge.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "invariants": [
+    {
+      "id": "single-line-overflows-unless-sized",
+      "text": "A badge never wraps: badge.module.css sets `white-space: nowrap`, `width: fit-content` and `flex-shrink: 0` on the root, so it takes its full label width and overflows a narrower container rather than shrinking; only a `width` or `max-width` set on the badge clips the label (`overflow: hidden`, no ellipsis)."
+    },
+    {
+      "id": "dot-is-decorative-and-follows-the-label-tone",
+      "text": "With `dot`, a 6px dot span is rendered as the badge's first child with `aria-hidden=\"true\"`, painted from `currentColor`, so it always takes the label colour the variant sets and adds nothing to the accessible name. Without `dot` no dot element is rendered at all."
+    },
+    {
+      "id": "hover-paint-only-on-an-anchor",
+      "text": "Every hover rule in badge.module.css selects an anchor carrying a variant class (`a.variantOutline:hover` and its siblings; `category` has none), so hover feedback appears only when the rendered element is an `a` (via `render`); a plain span, or a badge rendered over any other element, has no hover state."
+    },
+    {
+      "id": "descendant-svg-is-icon-sized",
+      "text": "Any svg inside the badge, at any depth, is sized to the kit's extra-small icon size and gets `pointer-events: none` (badge.module.css's `.badge svg`)."
+    },
+    {
+      "id": "invalid-ring-independent-of-variant",
+      "text": "`aria-invalid=\"true\"` on the badge draws a destructive inset ring whatever the variant, as an inset box-shadow that does not change the badge's height; while a `destructive` badge is focused its own focus ring replaces it."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Let the tone carry the meaning on its own",
+      "do_instead": "Spell the state out in the label text; the variant only paints it"
+    },
+    {
+      "dont": "Nest a button, a link or another interactive control inside a Badge",
+      "do_instead": "Make the badge itself the link with `render={<a href=\"...\" />}`, or use Button for an action"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "failed",
+      "by": "theme.css token contrast measured with src/__test-utils__/contrast.ts: the tone label on its soft fill is 3.43:1 for light `success`, 2.00:1 for light `warning` and 4.28:1 for light `danger`, and the `destructive` label over its 10% tint on the light --background is 3.66:1, all under the 4.5:1 WCAG 1.4.3 asks of Badge's 12px label. badge.test.tsx itself asserts the dot's aria-hidden=\"true\" and a link role with its accessible name when rendered over an anchor."
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "useRender's render prop takes an element or a function that receives the props to spread (Badge passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is what makes `render={<a href=\"...\" />}` the way to turn a badge into a link while keeping its classes."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "the status dot span",
+      "reason": "badge.tsx renders it ahead of the children only when `dot` is set, aria-hidden and painted from the label colour; it is not exported as a component of its own, and the only control over it is the `dot` flag."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A status word with the drawn dot",
+        "code": "<Badge variant=\"success\" dot>Running</Badge>"
+      },
+      {
+        "title": "A compact count",
+        "code": "<Badge size=\"xs\" variant=\"secondary\">9</Badge>"
+      },
+      {
+        "title": "A tag that is a link",
+        "code": "<Badge variant=\"outline\" render={<a href=\"/plans/pro\" />}>Pro plan</Badge>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A neutral variant guessed from the tone names",
+        "code": "<Badge variant=\"neutral\">Draft</Badge>",
+        "why": "There is no `neutral` value; the neutral paint is `secondary`. An unknown value matches no variant class, so the badge renders with its base and size classes and no paint at all."
+      },
+      {
+        "title": "Wrapping the badge in an anchor instead of rendering it as one",
+        "code": "<a href=\"/plans/pro\"><Badge variant=\"outline\">Pro plan</Badge></a>",
+        "why": "The hover and focus styles are on the badge element itself, and the hover rules select only an anchor that carries the variant class, so the wrapped span never shows them. Pass the anchor through `render`."
+      },
+      {
+        "title": "asChild from another component library",
+        "code": "<Badge asChild><a href=\"/plans/pro\">Pro plan</a></Badge>",
+        "why": "Badge has no `asChild`; the element is replaced through `render`, which takes the element to render as."
+      }
+    ]
+  },
+  "companions": [
+    {
+      "export": "badgeVariants",
+      "typed_by": "cva(...), returns (props: VariantProps<typeof badgeVariants> & { className?: string }) => string",
+      "description": "The variant/size class-name builder Badge itself uses, exported for a consumer that needs the badge's classes on an element it renders itself, without the component."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof badgeVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Badge",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "secondary",
+          "destructive",
+          "outline",
+          "ghost",
+          "link",
+          "success",
+          "warning",
+          "danger",
+          "info",
+          "accent",
+          "category"
+        ],
+        "default": "default"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "xs",
+          "default"
+        ],
+        "default": "default"
+      },
+      "dot": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, {}> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. useRender's render prop takes an element or a function that receives the props to spread (Badge passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is what makes `render={<a href=\"...\" />}` the way to turn a badge into a link while keeping its classes."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

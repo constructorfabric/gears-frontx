@@ -1,0 +1,88 @@
+# Semantic overlay for ComboboxChipsInput - a part of the Combobox family,
+# see combobox.contract.yaml's `family_membership`. It wraps the same Base UI
+# Combobox.Input as ComboboxInput, styled bare; the forwarded surface is the
+# input element.
+component: combobox-chips-input
+
+intent: The borderless text input that sits among the chips of a multiple-value Combobox and takes the query that filters the list.
+
+typical_uses:
+  - The query input at the end of ComboboxChips
+
+dont_use_when:
+  - situation: The field of a one-value combobox
+    instead:
+      target: ComboboxInput
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_input.v1
+
+accepts:
+  content: nothing
+
+invariants:
+  - id: backspace-removes-the-last-value
+    text: >-
+      Backspace in the empty input removes the last chosen value, and the
+      arrow key toward the chips (left, or right in a right-to-left layout)
+      at the start of the input moves focus onto the last chip.
+  - id: no-border-of-its-own
+    text: >-
+      The input draws no border, background or focus ring; the enclosing
+      ComboboxChips draws them for the whole field.
+
+anti_patterns:
+  - dont: Leave the input with no accessible name
+    do_instead: >-
+      Pass `aria-label`, or `aria-labelledby` pointing at a visible label;
+      the placeholder is not a name
+
+deprecations: {}
+
+# combobox.test.tsx renders this input with an aria-label but asserts
+# nothing about it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the input's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the input's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, popupSide, listEmpty, readOnly, ...).
+      A JSON Schema `object` would reject the function form, so nothing is
+      asserted; the kit's own styling goes through combobox.module.css, not
+      through this.
+
+examples:
+  good:
+    - title: The query input after the chips
+      code: |
+        <ComboboxChips ref={anchor}>
+          <ComboboxValue>
+            {(values) => values.map((value) => <ComboboxChip key={value}>{value}</ComboboxChip>)}
+          </ComboboxValue>
+          <ComboboxChipsInput aria-label="Frameworks" placeholder="Add a framework" />
+        </ComboboxChips>
+  bad:
+    - title: The chips input used as a one-value field
+      code: |
+        <Combobox items={regions}>
+          <ComboboxChipsInput aria-label="Region" />
+        </Combobox>
+      why: >-
+        Without ComboboxChips around it the input has no border, background
+        or focus ring, so it draws as bare text; a one-value field is
+        ComboboxInput.
+
+family_membership:
+  name: combobox
+  role: part

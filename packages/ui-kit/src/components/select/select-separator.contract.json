@@ -1,0 +1,118 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.select_separator.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "select-separator",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "A horizontal rule between two sections of options in a SelectContent.",
+  "typical_uses": [
+    "A break between two captioned groups of options"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A rule between sections of a page or a card, outside any select",
+      "instead": {
+        "target": "Separator",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "SelectContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.select_content.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "spans-the-list-padding",
+      "text": "select.module.css pulls the rule out by the list's padding on both sides, so it runs edge to edge across the popup, and gives it vertical margin of its own."
+    },
+    {
+      "id": "horizontal-only",
+      "text": "select.module.css draws only a horizontal rule; `orientation` changes the announced `aria-orientation`, not the drawing."
+    },
+    {
+      "id": "not-an-option",
+      "text": "The separator renders with role `separator`, takes no pointer events and is not an option that arrow keys land on."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put a separator first or last in the popup, or two in a row",
+      "do_instead": "Place separators only between options or groups; a rule at an edge or doubled draws a break with nothing on one side"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the separator's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the separator's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A rule between two groups",
+        "code": "<SelectContent>\n  <SelectGroup>\n    <SelectLabel>Europe</SelectLabel>\n    <SelectItem value=\"eu-central\">Frankfurt</SelectItem>\n  </SelectGroup>\n  <SelectSeparator />\n  <SelectGroup>\n    <SelectLabel>Americas</SelectLabel>\n    <SelectItem value=\"us-east\">Virginia</SelectItem>\n  </SelectGroup>\n</SelectContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A general Separator used inside the popup",
+        "code": "<SelectContent>\n  <SelectItem value=\"eu-central\">Frankfurt</SelectItem>\n  <Separator />\n  <SelectItem value=\"us-east\">Virginia</SelectItem>\n</SelectContent>\n",
+        "why": "The popup accepts SelectSeparator, whose margins are set against the list's padding; a general Separator stops short of the popup's edges."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "select",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SelectSeparator",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ]
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, SeparatorState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the separator's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: SeparatorState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the separator's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

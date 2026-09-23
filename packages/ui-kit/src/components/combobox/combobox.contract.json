@@ -1,0 +1,361 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "combobox",
+  "intent": "Hold the chosen value, the typed query and the open state of one filterable field, and filter its list of items by what the user types.",
+  "typical_uses": [
+    "One value picked from a long list that is faster to type into than to scroll",
+    "Several values picked from a list and shown as removable chips"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "One value from a short fixed list the user scrolls rather than searches",
+      "instead": {
+        "target": "Select",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.select.v1"
+      }
+    },
+    {
+      "situation": "A short fixed list that should use the platform's own picker, such as on touch devices",
+      "instead": {
+        "target": "NativeSelect",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.native_select.v1"
+      }
+    },
+    {
+      "situation": "A handful of options that should all stay visible at once",
+      "instead": {
+        "target": "RadioGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1"
+      }
+    },
+    {
+      "situation": "A searchable list of actions or commands to run, rather than a value to keep",
+      "instead": {
+        "target": "Command",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command.v1"
+      }
+    },
+    {
+      "situation": "Free text with no list to pick from",
+      "instead": {
+        "target": "Input",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_input.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_chips.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_content.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "value-wins-over-default-value",
+      "text": "`value` and `defaultValue` are both accepted; `defaultValue` seeds the initial state and is ignored afterwards, and when `value` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "input-value-wins-over-default-input-value",
+      "text": "`inputValue` and `defaultInputValue` are both accepted; `defaultInputValue` seeds the initial state and is ignored afterwards, and when `inputValue` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "open-wins-over-default-open",
+      "text": "`open` and `defaultOpen` are both accepted; `defaultOpen` seeds the initial state and is ignored afterwards, and when `open` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "filtering-runs-over-items-only",
+      "text": "Filtering runs over `items` and nothing else: with `items`, the root keeps the items whose label contains the typed query (a case- and accent-insensitive match unless `filter` replaces it), showing every item while a one-value field still holds the chosen item's label untouched since opening, and ComboboxList and ComboboxEmpty read that filtered result; without `items`, every statically rendered ComboboxItem stays visible whatever is typed and ComboboxEmpty shows its message at all times."
+    },
+    {
+      "id": "single-closes-on-pick-multiple-toggles",
+      "text": "Without `multiple`, choosing an item makes it the value and closes the popup. With `multiple`, the value is an array: choosing an item adds it, choosing an already chosen item removes it, and the popup stays open unless a query had been typed."
+    },
+    {
+      "id": "field-text-resets-on-close",
+      "text": "Once the popup has finished closing, a one-value field's text is set back to the chosen item's label, or emptied when nothing is chosen, and a multiple-value field's typed query is emptied; typed text never becomes the value by itself."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave out `items` and render the ComboboxItem elements by hand",
+      "do_instead": "Pass the full list as `items` and render ComboboxList's children as a function of each item, so typing filters the list and ComboboxEmpty shows only when nothing matches"
+    },
+    {
+      "dont": "Use a combobox to navigate between pages",
+      "do_instead": "Use links, or the app router's own navigation; a combobox holds a value, and choosing an item only changes that value"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the root's content, React nodes holding the field and the popup",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+    },
+    "value": {
+      "states": "value is the chosen item, or an array of chosen items with `multiple`, or null for no choice",
+      "because": "`ComboboxValueType<Value, Multiple> | null` - `Value` is the caller's own item type and `Multiple` turns it into an array, so no JSON Schema type can state it."
+    },
+    "defaultValue": {
+      "states": "defaultValue is the initially chosen item, or an array of them with `multiple`, or null",
+      "because": "Same generic type as `value`; the caller chooses `Value`, so no schema can state it."
+    },
+    "onValueChange": {
+      "states": "onValueChange is a callback called with the next value and event details, not a value",
+      "because": "`(value, eventDetails) => void`; the value is null in single mode when the choice is cleared, and the second argument carries Base UI's change-event details, including the reason (such as an item press, a clear press or a chip removal). No JSON Schema type covers a function."
+    },
+    "inputValue": {
+      "states": "inputValue is the text in the field, controlled by the caller",
+      "because": "`string | number | readonly string[]`, the type of an input's `value` attribute - the compiler emits one JSON type per property."
+    },
+    "defaultInputValue": {
+      "states": "defaultInputValue is the text the field starts with",
+      "because": "`string | number | readonly string[]`, the type of an input's `defaultValue` attribute - the compiler emits one JSON type per property."
+    },
+    "onInputValueChange": {
+      "states": "onInputValueChange is a callback called with the field's next text and event details, not a value",
+      "because": "`(inputValue: string, eventDetails) => void` - a function, which no JSON Schema type covers."
+    },
+    "onOpenChange": {
+      "states": "onOpenChange is a callback called with the next open state and event details, not a value",
+      "because": "`(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (such as a trigger press, an outside press or Escape). No JSON Schema type covers a function."
+    },
+    "onOpenChangeComplete": {
+      "states": "onOpenChangeComplete is a callback called with the open state once the open or close animation has finished",
+      "because": "`(open: boolean) => void` - a function, which no JSON Schema type covers."
+    },
+    "onItemHighlighted": {
+      "states": "onItemHighlighted is a callback called with the highlighted item, or undefined, and details whose reason is keyboard, pointer or none",
+      "because": "`(highlightedValue: Value | undefined, eventDetails) => void` - a function, which no JSON Schema type covers."
+    },
+    "items": {
+      "states": "items is the full list to filter, either a flat array of item values or an array of groups each holding its own `items` array",
+      "because": "`readonly any[] | readonly Group<any>[]` - the schema asserts an array; what its entries are is the caller's own type."
+    },
+    "filteredItems": {
+      "states": "filteredItems is a list filtered by the caller, shown instead of the root's own filtering of `items`",
+      "because": "`readonly any[] | readonly Group<any>[]` - the schema asserts an array; what its entries are is the caller's own type."
+    },
+    "filter": {
+      "states": "filter is a function deciding whether an item matches the typed query, or null to show every item unfiltered",
+      "because": "`((itemValue, query, itemToString?) => boolean) | null` - a function or null, which no JSON Schema type covers."
+    },
+    "itemToStringLabel": {
+      "states": "itemToStringLabel is a function turning an object item into the text shown in the field and matched by the filter",
+      "because": "`(itemValue: Value) => string` - a function, which no JSON Schema type covers. Items shaped `{ value, label }` need none; their label is used."
+    },
+    "itemToStringValue": {
+      "states": "itemToStringValue is a function turning an object item into the string submitted with a form",
+      "because": "`(itemValue: Value) => string` - a function, which no JSON Schema type covers. Items shaped `{ value, label }` need none; their value is used."
+    },
+    "isItemEqualToValue": {
+      "states": "isItemEqualToValue is a function deciding whether an item equals the chosen value, for object items that are not the same reference",
+      "because": "`(itemValue: Value, value: Value) => boolean` - a function, which no JSON Schema type covers; without it items are compared with `Object.is`."
+    },
+    "multiple": {
+      "states": "multiple is a boolean that also switches the type of `value`, `defaultValue` and `onValueChange` to arrays",
+      "because": "Typed as the root's `Multiple` type parameter; the schema asserts a boolean, and what it does to the other props' types is checked by tsc."
+    },
+    "actionsRef": {
+      "states": "actionsRef is a ref the root fills with an imperative `unmount` action",
+      "because": "`React.RefObject<Actions | null>` - a ref object holding a function, which no JSON Schema type covers."
+    },
+    "inputRef": {
+      "states": "inputRef is a ref to the hidden native input Base UI renders for form submission",
+      "because": "`React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema."
+    },
+    "locale": {
+      "states": "locale is the locale, or list of locales, the default filter compares strings in",
+      "because": "`Intl.LocalesArgument` - a string, a locale object or an array of them; the compiler emits one JSON type per property."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "One value from a filterable list",
+        "code": "<Combobox items={regions}>\n  <ComboboxInput aria-label=\"Region\" placeholder=\"Pick a region\" showClear />\n  <ComboboxContent>\n    <ComboboxEmpty>No regions found.</ComboboxEmpty>\n    <ComboboxList>\n      {(item) => (\n        <ComboboxItem key={item} value={item}>\n          {item}\n        </ComboboxItem>\n      )}\n    </ComboboxList>\n  </ComboboxContent>\n</Combobox>\n"
+      },
+      {
+        "title": "A value the caller owns",
+        "code": "<Combobox items={regions} value={region} onValueChange={setRegion}>\n  <ComboboxInput aria-label=\"Region\" />\n  <ComboboxContent>\n    <ComboboxList>\n      {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}\n    </ComboboxList>\n  </ComboboxContent>\n</Combobox>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Props from another library's autocomplete",
+        "code": "<Combobox options={regions} onChange={setRegion}>\n  <ComboboxInput aria-label=\"Region\" />\n</Combobox>\n",
+        "why": "The root takes no `options` or `onChange`; the list goes in `items` and the chosen value is reported through `onValueChange`."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "combobox",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_chip.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_chips.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_chips_input.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_collection.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_empty.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_input.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_label.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_list.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_separator.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_trigger.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_value.v1"
+    ]
+  },
+  "companions": [
+    {
+      "export": "useComboboxAnchor",
+      "typed_by": "() => React.RefObject<HTMLDivElement | null>",
+      "description": "Returns a ref for a multiple-value combobox: pass it to ComboboxChips as `ref` and to ComboboxContent as `anchor`, so the popup is placed against, and as wide as, the whole chips field rather than the inline ComboboxChipsInput inside it. A plain `useRef<HTMLDivElement>(null)` does the same."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Combobox",
+    "type": "object",
+    "properties": {
+      "actionsRef": {
+        "description": "TS: React.RefObject<AriaCombobox.Actions | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. actionsRef is a ref the root fills with an imperative `unmount` action. `React.RefObject<Actions | null>` - a ref object holding a function, which no JSON Schema type covers."
+      },
+      "autoComplete": {
+        "type": "string"
+      },
+      "autoHighlight": {
+        "type": "boolean"
+      },
+      "children": {
+        "description": "TS: React.ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the root's content, React nodes holding the field and the popup. `React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      },
+      "defaultInputValue": {
+        "description": "TS: string | number | readonly string[] | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultInputValue is the text the field starts with. `string | number | readonly string[]`, the type of an input's `defaultValue` attribute - the compiler emits one JSON type per property."
+      },
+      "defaultOpen": {
+        "type": "boolean"
+      },
+      "defaultValue": {
+        "description": "TS: ComboboxValueType<Value, Multiple> | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultValue is the initially chosen item, or an array of them with `multiple`, or null. Same generic type as `value`; the caller chooses `Value`, so no schema can state it."
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "filter": {
+        "description": "TS: ((itemValue: Value, query: string, itemToString?: ((itemValue: Value) => string) | undefined) => boolean) | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. filter is a function deciding whether an item matches the typed query, or null to show every item unfiltered. `((itemValue, query, itemToString?) => boolean) | null` - a function or null, which no JSON Schema type covers."
+      },
+      "filteredItems": {
+        "type": "array",
+        "description": "TS: readonly any[] | readonly Group<any>[] | undefined. Not fully expressible in JSON Schema; what the type states beyond the kind above is checked by tsc. filteredItems is a list filtered by the caller, shown instead of the root's own filtering of `items`. `readonly any[] | readonly Group<any>[]` - the schema asserts an array; what its entries are is the caller's own type."
+      },
+      "form": {
+        "type": "string"
+      },
+      "grid": {
+        "type": "boolean"
+      },
+      "highlightItemOnHover": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "inline": {
+        "type": "boolean"
+      },
+      "inputRef": {
+        "description": "TS: React.Ref<HTMLInputElement> | undefined. The compiler emits one JSON type per property; this type is left to tsc. inputRef is a ref to the hidden native input Base UI renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema."
+      },
+      "inputValue": {
+        "description": "TS: string | number | readonly string[] | undefined. The compiler emits one JSON type per property; this type is left to tsc. inputValue is the text in the field, controlled by the caller. `string | number | readonly string[]`, the type of an input's `value` attribute - the compiler emits one JSON type per property."
+      },
+      "isItemEqualToValue": {
+        "description": "TS: ((itemValue: Value, value: Value) => boolean) | undefined. The compiler emits one JSON type per property; this type is left to tsc. isItemEqualToValue is a function deciding whether an item equals the chosen value, for object items that are not the same reference. `(itemValue: Value, value: Value) => boolean` - a function, which no JSON Schema type covers; without it items are compared with `Object.is`."
+      },
+      "itemToStringLabel": {
+        "description": "TS: ((itemValue: Value) => string) | undefined. The compiler emits one JSON type per property; this type is left to tsc. itemToStringLabel is a function turning an object item into the text shown in the field and matched by the filter. `(itemValue: Value) => string` - a function, which no JSON Schema type covers. Items shaped `{ value, label }` need none; their label is used."
+      },
+      "itemToStringValue": {
+        "description": "TS: ((itemValue: Value) => string) | undefined. The compiler emits one JSON type per property; this type is left to tsc. itemToStringValue is a function turning an object item into the string submitted with a form. `(itemValue: Value) => string` - a function, which no JSON Schema type covers. Items shaped `{ value, label }` need none; their value is used."
+      },
+      "items": {
+        "type": "array",
+        "description": "TS: readonly any[] | readonly Group<any>[] | undefined. Not fully expressible in JSON Schema; what the type states beyond the kind above is checked by tsc. items is the full list to filter, either a flat array of item values or an array of groups each holding its own `items` array. `readonly any[] | readonly Group<any>[]` - the schema asserts an array; what its entries are is the caller's own type."
+      },
+      "limit": {
+        "type": "number"
+      },
+      "locale": {
+        "description": "TS: Intl.LocalesArgument. The compiler emits one JSON type per property; this type is left to tsc. locale is the locale, or list of locales, the default filter compares strings in. `Intl.LocalesArgument` - a string, a locale object or an array of them; the compiler emits one JSON type per property."
+      },
+      "loopFocus": {
+        "type": "boolean"
+      },
+      "modal": {
+        "type": "boolean"
+      },
+      "multiple": {
+        "type": "boolean",
+        "description": "TS: Multiple | undefined. Not fully expressible in JSON Schema; what the type states beyond the kind above is checked by tsc. multiple is a boolean that also switches the type of `value`, `defaultValue` and `onValueChange` to arrays. Typed as the root's `Multiple` type parameter; the schema asserts a boolean, and what it does to the other props' types is checked by tsc."
+      },
+      "name": {
+        "type": "string"
+      },
+      "onInputValueChange": {
+        "description": "TS: ((inputValue: string, eventDetails: AriaCombobox.ChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onInputValueChange is a callback called with the field's next text and event details, not a value. `(inputValue: string, eventDetails) => void` - a function, which no JSON Schema type covers."
+      },
+      "onItemHighlighted": {
+        "description": "TS: ((highlightedValue: Value | undefined, eventDetails: AriaCombobox.HighlightEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onItemHighlighted is a callback called with the highlighted item, or undefined, and details whose reason is keyboard, pointer or none. `(highlightedValue: Value | undefined, eventDetails) => void` - a function, which no JSON Schema type covers."
+      },
+      "onOpenChange": {
+        "description": "TS: ((open: boolean, eventDetails: AriaCombobox.ChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChange is a callback called with the next open state and event details, not a value. `(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (such as a trigger press, an outside press or Escape). No JSON Schema type covers a function."
+      },
+      "onOpenChangeComplete": {
+        "description": "TS: ((open: boolean) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChangeComplete is a callback called with the open state once the open or close animation has finished. `(open: boolean) => void` - a function, which no JSON Schema type covers."
+      },
+      "onValueChange": {
+        "description": "TS: ((value: ComboboxValueType<Value, Multiple> | (Multiple extends true ? never : null), eventDetails: AriaCombobox.ChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueChange is a callback called with the next value and event details, not a value. `(value, eventDetails) => void`; the value is null in single mode when the choice is cleared, and the second argument carries Base UI's change-event details, including the reason (such as an item press, a clear press or a chip removal). No JSON Schema type covers a function."
+      },
+      "open": {
+        "type": "boolean"
+      },
+      "openOnInputClick": {
+        "type": "boolean"
+      },
+      "readOnly": {
+        "type": "boolean"
+      },
+      "required": {
+        "type": "boolean"
+      },
+      "value": {
+        "description": "TS: ComboboxValueType<Value, Multiple> | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. value is the chosen item, or an array of chosen items with `multiple`, or null for no choice. `ComboboxValueType<Value, Multiple> | null` - `Value` is the caller's own item type and `Multiple` turns it into an array, so no JSON Schema type can state it."
+      },
+      "virtualized": {
+        "type": "boolean"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,171 @@
+# Semantic overlay for ComboboxContent - a part of the Combobox family, see
+# combobox.contract.yaml's `family_membership`. It composes the primitive's
+# Portal, Positioner and Popup; the forwarded surface is the Popup's div.
+component: combobox-content
+
+intent: The popup of a Combobox, portalled and positioned against its field, holding the list and the no-results message.
+
+typical_uses:
+  - The popup that holds a combobox's ComboboxList and ComboboxEmpty
+
+dont_use_when:
+  - situation: A fixed list of options with no typed query
+    instead:
+      target: SelectContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.select_content.v1
+  - situation: A floating panel with arbitrary content, not tied to a filterable field
+    instead:
+      target: PopoverContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.popover_content.v1
+
+# The popup does not wrap its children in a list: ComboboxList and
+# ComboboxEmpty are its own children, side by side.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_list.v1 # ComboboxList
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_empty.v1 # ComboboxEmpty
+
+invariants:
+  - id: rendered-only-while-open
+    text: >-
+      The popup is in the DOM only while the combobox is open or animating
+      closed; the kit passes no `keepMounted` to the portal, so a closed
+      combobox renders no popup.
+  - id: portals-to-body-unless-container
+    text: >-
+      Without `container`, the popup portals into the node of the nearest
+      enclosing portal, or the document body when there is none; a theme
+      scoped to a subtree reaches the popup only when that subtree, or a
+      node inside it, is passed as `container`.
+  - id: anchored-to-the-input-unless-anchor
+    text: >-
+      Without `anchor`, the popup is placed against the combobox's input
+      element; combobox.module.css makes it as wide as that anchor (at least
+      9rem) and no taller than the space available, and the list inside it
+      scrolls.
+  - id: reduced-motion-keeps-the-fade
+    text: >-
+      The popup fades and scales on open and close; under
+      `prefers-reduced-motion` combobox.module.css drops the transform
+      transition and keeps the fade.
+
+anti_patterns:
+  - dont: Leave out `anchor` in a combobox whose field is ComboboxChips
+    do_instead: >-
+      Pass the ref from `useComboboxAnchor()` both to ComboboxChips and to
+      this `anchor`, so the popup lines up with the whole chips field
+      rather than with the inline input among the chips
+
+deprecations: {}
+
+# combobox.test.tsx asserts the listbox role of the list inside the popup and
+# the portal container; nothing asserts how assistive technology treats the
+# popup element itself.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: Combobox.Portal
+    reason: Composed inside ComboboxContent; only its `container` is exposed, as ComboboxContent's own prop.
+  - part: Combobox.Positioner
+    reason: Composed inside ComboboxContent; its placement props are exposed on ComboboxContent itself.
+
+prop_statements:
+  container:
+    states: container is the DOM node, shadow root or ref to one that the popup portals into; an explicit null renders no popup until a node is passed
+    because: >-
+      `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null`
+      - live DOM nodes and ref objects, which no JSON Schema type covers.
+  anchor:
+    states: anchor is the element, virtual element, ref or function returning one that the popup is placed against
+    because: >-
+      `Element | VirtualElement | RefObject<Element | null> | (() => Element | VirtualElement | null) | null`
+      - live DOM nodes, refs and functions, which no JSON Schema type
+      covers.
+  sideOffset:
+    states: sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  alignOffset:
+    states: alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  collisionBoundary:
+    states: collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle
+    because: >-
+      `'clipping-ancestors' | Element | Element[] | Rect` mixes a string with
+      live DOM elements, which no JSON Schema type covers.
+  collisionPadding:
+    states: collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object
+    because: >-
+      `number | { top?, right?, bottom?, left? }` - the compiler emits one
+      JSON type per property.
+  initialFocus:
+    states: initialFocus decides what receives focus when the popup opens - false for nothing, true for the default, a ref, or a function of the interaction type
+    because: >-
+      `boolean | RefObject<HTMLElement | null> | ((openType) => boolean | void | HTMLElement | null)`
+      mixes a boolean with refs and functions, which no JSON Schema type
+      covers.
+  finalFocus:
+    states: finalFocus decides what receives focus when the popup closes - false for nothing, true for the default, a ref, or a function of the interaction type
+    because: >-
+      `boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | void | HTMLElement | null)`
+      mixes a boolean with refs and functions, which no JSON Schema type
+      covers.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the popup's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the popup's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, side, align, anchorHidden,
+      transitionStatus, empty). A JSON Schema `object` would reject the
+      function form, so nothing is asserted; the kit's own styling goes
+      through combobox.module.css, not through this.
+
+examples:
+  good:
+    - title: The list beside a no-results message
+      code: |
+        <Combobox items={regions}>
+          <ComboboxInput aria-label="Region" />
+          <ComboboxContent>
+            <ComboboxEmpty>No regions found.</ComboboxEmpty>
+            <ComboboxList>
+              {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
+    - title: A popup portalled into a themed subtree
+      code: |
+        <ComboboxContent container={themedSectionRef}>
+          <ComboboxList>
+            {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}
+          </ComboboxList>
+        </ComboboxContent>
+  bad:
+    - title: Items placed straight into the popup
+      code: |
+        <ComboboxContent>
+          <ComboboxItem value="europe">Europe</ComboboxItem>
+          <ComboboxItem value="americas">Americas</ComboboxItem>
+        </ComboboxContent>
+      why: >-
+        ComboboxContent does not wrap its children in a list, so these items
+        sit in no listbox and the list's padding and scrolling are lost; put
+        them inside ComboboxList.
+
+family_membership:
+  name: combobox
+  role: part

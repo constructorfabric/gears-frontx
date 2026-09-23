@@ -1,0 +1,67 @@
+# Semantic overlay for MarkerIcon - part of the marker family, see
+# marker.contract.yaml's `family_membership`. `mounted_in` is filled from
+# Marker's accepted components, not authored here. No primitive backs it:
+# it is a plain span styled by marker.module.css.
+component: marker-icon
+
+intent: Hold the small decorative icon at the start of a marker, hidden from assistive tech.
+
+typical_uses:
+  - A glyph or a spinner that shows the kind of step a marker reports
+
+dont_use_when:
+  - situation: A status mark that stands on its own, outside a marker row
+    instead:
+      target: StatusDot
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.status_dot.v1
+
+# A glyph, an svg or a kit Spinner: any node.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: always-aria-hidden
+    text: >-
+      MarkerIcon renders `aria-hidden="true"` on its span, so nothing inside
+      it reaches assistive tech.
+  - id: fixed-small-box
+    text: >-
+      The span is a var(--icon-size-sm) square that does not shrink, and
+      any descendant svg fills it and ignores the pointer.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: marker.test.tsx asserts that MarkerIcon renders a span with `aria-hidden="true"`
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: An icon beside the text that carries the meaning
+      code: |
+        <Marker>
+          <MarkerIcon>
+            <CheckIcon />
+          </MarkerIcon>
+          <MarkerContent>Explored 4 files</MarkerContent>
+        </Marker>
+  bad:
+    - title: An icon as the marker's only content
+      code: |
+        <Marker>
+          <MarkerIcon>
+            <CheckIcon />
+          </MarkerIcon>
+        </Marker>
+      why: >-
+        MarkerIcon is aria-hidden, so assistive tech reads nothing for this
+        marker; the meaning belongs in a MarkerContent beside the icon.
+
+family_membership:
+  name: marker
+  role: part

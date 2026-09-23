@@ -1,0 +1,84 @@
+# Semantic overlay for SelectLabel - a part of the Select family, see
+# select.contract.yaml's `family_membership` for how the contracts relate.
+# It wraps the primitive's GroupLabel; the forwarded surface is its div.
+component: select-label
+
+intent: The caption of a SelectGroup, shown above its options and used as the group's accessible name.
+
+typical_uses:
+  - A section caption such as a continent above its regions
+
+dont_use_when:
+  - situation: The caption naming the whole select field
+    instead:
+      target: Label
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1
+
+# `mounted_in` is filled from SelectGroup's accepted components.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: throws-outside-a-group
+    text: >-
+      Rendering the label outside a SelectGroup throws; the primitive looks
+      up the group it labels from context.
+  - id: names-the-group-not-itself
+    text: >-
+      The label gives its id to the enclosing group's `aria-labelledby`; it
+      is not an option, so it cannot be chosen and arrow keys skip it.
+
+anti_patterns:
+  - dont: Use a disabled SelectItem as a section caption
+    do_instead: >-
+      Use a SelectLabel inside a SelectGroup; a disabled item is still
+      reached by arrow keys and announced as an option
+
+deprecations: {}
+
+# select.test.tsx renders no SelectLabel; nothing asserts the group's name.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the label's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the label's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (an empty object for a label). A JSON Schema
+      `object` would reject the function form, so nothing is asserted; the
+      kit's own styling goes through select.module.css, not through this.
+
+examples:
+  good:
+    - title: A caption over a section of options
+      code: |
+        <SelectGroup>
+          <SelectLabel>Europe</SelectLabel>
+          <SelectItem value="eu-central">Frankfurt</SelectItem>
+        </SelectGroup>
+  bad:
+    - title: A label straight under the popup
+      code: |
+        <SelectContent>
+          <SelectLabel>Europe</SelectLabel>
+          <SelectItem value="eu-central">Frankfurt</SelectItem>
+        </SelectContent>
+      why: >-
+        There is no group for the label to name, so the primitive throws;
+        wrap both in a SelectGroup.
+
+family_membership:
+  name: select
+  role: part

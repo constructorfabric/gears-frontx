@@ -1,0 +1,71 @@
+# Semantic overlay for BubbleGroup - the fourth contract of this directory.
+# It belongs to no family: it wraps whole bubbles, so it is not a part of
+# the bubble family itself. BubbleGroup declares no kit prop; every prop is
+# the native div's.
+component: bubble-group
+
+intent: Stack consecutive bubbles from the same sender into one tightly spaced column.
+
+typical_uses:
+  - Several turns in a row from one sender, without a Message row around each
+
+dont_use_when:
+  - situation: Consecutive turns that each carry an avatar, a header or a footer
+    instead:
+      target: MessageGroup, with one Message per turn
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.message_group.v1
+
+# The group examines nothing about its children: it is a plain flex column
+# (bubble.module.css `.bubbleGroup`), and Bubble roots are what it is for.
+# Listing Bubble under `specified` is not possible while the conformance
+# suite requires every kit mount point of a family member, the root
+# included, to lie inside that member's own family.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: flex-column-with-fixed-gap
+    text: >-
+      The group is a flex column that spaces its children var(--space-2)
+      apart and lets each Bubble move itself to the end edge with its own
+      `align`.
+
+anti_patterns:
+  - dont: Put bubbles from more than one sender in one BubbleGroup
+    do_instead: Start a new BubbleGroup at each change of sender
+  - dont: Set an alignment on the group to move all of its bubbles
+    do_instead: Set `align` on each Bubble; the group has no alignment prop
+
+deprecations: {}
+
+# bubble.test.tsx asserts the group's class only.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Two consecutive turns from the current user
+      code: |
+        <BubbleGroup>
+          <Bubble align="end">
+            <BubbleContent>First message.</BubbleContent>
+          </Bubble>
+          <Bubble align="end">
+            <BubbleContent>Second message.</BubbleContent>
+          </Bubble>
+        </BubbleGroup>
+  bad:
+    - title: Alignment set on the group
+      code: |
+        <BubbleGroup align="end">
+          <Bubble>
+            <BubbleContent>First message.</BubbleContent>
+          </Bubble>
+        </BubbleGroup>
+      why: >-
+        BubbleGroup declares no `align` and its div surface has none, so
+        TypeScript rejects it; alignment belongs on each Bubble, and this one
+        keeps its default start alignment.

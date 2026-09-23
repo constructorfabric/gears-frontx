@@ -1,0 +1,173 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.marker.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "marker",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Mark a status update, a system note or a labelled break inside a conversation thread as one muted full-width row.",
+  "typical_uses": [
+    "An in-progress or finished step reported between messages, such as a running tool or a completed search",
+    "A labelled break between sections of a thread, such as a date",
+    "A system note set off from the rows below it by a bottom border"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A turn someone said, with an avatar, a header or a footer",
+      "instead": {
+        "target": "Message",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message.v1"
+      }
+    },
+    {
+      "situation": "A turn's content that needs a framed surface",
+      "instead": {
+        "target": "Bubble",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1"
+      }
+    },
+    {
+      "situation": "A divider line with no label of its own",
+      "instead": {
+        "target": "Separator",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1"
+      }
+    },
+    {
+      "situation": "A one-word state in a dense row or a table cell",
+      "instead": {
+        "target": "StatusDot",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.status_dot.v1"
+      }
+    },
+    {
+      "situation": "A status or error message about the page, outside a conversation thread",
+      "instead": {
+        "target": "Alert",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.marker_icon.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.marker_content.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "muted-full-width-row",
+      "text": "The marker is a flex row that takes the full width of its parent, centers its children vertically, spaces them var(--space-2) apart and paints its text in var(--muted-foreground)."
+    },
+    {
+      "id": "no-role-of-its-own",
+      "text": "Marker renders no role and no live region of its own; a `role` or an aria attribute passed to it lands on the rendered element, so an in-progress marker announces only when the caller gives it `role=\"status\"`."
+    },
+    {
+      "id": "separator-variant-draws-flanking-lines",
+      "text": "`variant=\"separator\"` draws two 1px lines as the root's own ::before and ::after, which grow equally on either side of the children, and keeps any MarkerContent inside it at its natural width with centered text; `variant=\"border\"` instead draws a bottom border under the row."
+    },
+    {
+      "id": "descendant-svg-and-links-styled",
+      "text": "Any descendant svg of the marker is sized to var(--icon-size-sm) and ignores the pointer, and any descendant `a` is underlined and turns var(--foreground) on hover; a Marker rendered as a link through `render` is not itself underlined, because the rule reaches descendants only."
+    },
+    {
+      "id": "null-variant-is-default",
+      "text": "An explicit `variant={null}` renders the default variant, in both the class and the `data-variant` attribute."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Add `role=\"separator\"` to a separator-variant marker that shows a label",
+      "do_instead": "Leave the role off; the lines are decorative pseudo-elements and the label is read as ordinary text, while a separator role hides its children from assistive tech"
+    },
+    {
+      "dont": "Attach an onClick to the default div to make a marker clickable",
+      "do_instead": "Pass `render={<button type=\"button\" />}` or a link element, which is focusable and exposes its role"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "marker.test.tsx asserts that Marker rendered with `render={<a href=\"/files\" />}` is found by role \"link\" with the accessible name \"View files\", and that a forwarded `role=\"status\"` with `aria-label=\"Syncing\"` reaches the rendered element"
+    },
+    "rtl": {
+      "outcome": "failed",
+      "by": "marker.module.css `.marker` sets the physical `text-align: left`, so a marker's text does not mirror under a right-to-left direction"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "useRender's render prop takes an element or a function that receives the props to spread (Marker passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A running step announced as it appears",
+        "code": "<Marker role=\"status\">\n  <MarkerIcon>\n    <Spinner />\n  </MarkerIcon>\n  <MarkerContent>Checking the logs</MarkerContent>\n</Marker>\n"
+      },
+      {
+        "title": "A date break between sections of a thread",
+        "code": "<Marker variant=\"separator\">\n  <MarkerContent>Today</MarkerContent>\n</Marker>\n"
+      },
+      {
+        "title": "A marker that links somewhere",
+        "code": "<Marker render={<a href=\"/pull/42\" />}>\n  <MarkerContent>View the pull request</MarkerContent>\n</Marker>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A labelled date break given a separator role",
+        "code": "<Marker variant=\"separator\" role=\"separator\">\n  <MarkerContent>Today</MarkerContent>\n</Marker>\n",
+        "why": "A separator role makes its children presentational, so assistive tech never reads \"Today\"; the lines are already decorative pseudo-elements and need no role."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "marker",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.marker_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.marker_icon.v1"
+    ]
+  },
+  "companions": [
+    {
+      "export": "markerVariants",
+      "typed_by": "cva(...), returns (props: VariantProps<typeof markerVariants> & { className?: string }) => string",
+      "description": "The class-name builder Marker uses for its base and variant classes; it does not set the `data-variant` attribute Marker also renders."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof markerVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Marker",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "separator",
+          "border"
+        ],
+        "default": "default"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, {}> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. useRender's render prop takes an element or a function that receives the props to spread (Marker passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

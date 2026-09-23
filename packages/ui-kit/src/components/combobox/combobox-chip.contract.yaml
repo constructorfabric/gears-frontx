@@ -1,0 +1,101 @@
+# Semantic overlay for ComboboxChip - a part of the Combobox family, see
+# combobox.contract.yaml's `family_membership`. It wraps Base UI's
+# Combobox.Chip and composes its ChipRemove; the forwarded surface is the
+# chip's div.
+component: combobox-chip
+
+intent: One chosen value of a multiple-value Combobox, shown as a pill with a button that removes it.
+
+typical_uses:
+  - One chosen value inside ComboboxChips, rendered for one entry of the value
+
+dont_use_when:
+  - situation: A status or category tag that is not a chosen value
+    instead:
+      target: Badge
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.badge.v1
+
+# The chip's caption arrives as children; the remove button trails it.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: removes-the-value-at-its-position
+    text: >-
+      A chip stands for the chosen value at its own position among the
+      chips: the remove button, and Backspace or Delete while the chip has
+      focus, remove the value at that index of the root's value, whatever
+      the chip's caption says.
+  - id: remove-button-out-of-the-tab-order
+    text: >-
+      The remove button takes no keyboard focus (the primitive gives it
+      `tabIndex` -1); keyboard users reach the chip itself with the arrow
+      keys from the input and remove it with Backspace or Delete.
+
+anti_patterns:
+  - dont: Render chips in an order, or a number, different from the root's value
+    do_instead: >-
+      Render exactly one chip per chosen value, in the value's order,
+      typically from ComboboxValue's function child; a chip removes the
+      value at its own index
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Combobox.ChipRemove renders a native button;
+      combobox.test.tsx asserts the remove button is found by role button
+      and the default name "Remove", or "Entfernen" when `removeLabel` is
+      passed, and that pressing it reports the value without that chip
+      through onValueChange
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: Combobox.ChipRemove
+    reason: Composed inside ComboboxChip behind `showRemove`; only its accessible name is exposed, as `removeLabel`.
+
+prop_statements:
+  children:
+    states: children is the chip's caption, any React content
+    because: >-
+      `ReactNode` is a union of elements, strings, numbers, fragments and
+      more, which the compiler cannot state as one JSON type.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the chip's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the chip's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (disabled). A JSON Schema `object` would
+      reject the function form, so nothing is asserted; the kit's own
+      styling goes through combobox.module.css, not through this.
+
+examples:
+  good:
+    - title: A chip whose remove button names its value
+      code: <ComboboxChip removeLabel={`Remove ${value}`}>{value}</ComboboxChip>
+    - title: A fixed chip with no remove button
+      code: <ComboboxChip showRemove={false}>{value}</ComboboxChip>
+  bad:
+    - title: A chip outside ComboboxChips
+      code: |
+        <Combobox multiple items={frameworks}>
+          <ComboboxChip>React</ComboboxChip>
+        </Combobox>
+      why: >-
+        The primitive's Chip reads the enclosing ComboboxChips through
+        context and throws when there is none; place the chips inside
+        ComboboxChips.
+
+family_membership:
+  name: combobox
+  role: part

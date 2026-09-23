@@ -1,0 +1,127 @@
+# Semantic overlay for SelectTrigger - a part of the Select family, see
+# select.contract.yaml's `family_membership` for how the contracts relate.
+# The forwarded surface is the primitive's <button>.
+component: select-trigger
+
+intent: The field-styled button that shows the current choice of its Select and opens the popup list.
+
+typical_uses:
+  - The visible field of a Select, holding a SelectValue
+  - A compact filter chip in a toolbar, through the `filter` variant
+
+dont_use_when:
+  - situation: A button that opens a list of actions
+    instead:
+      target: DropdownMenuTrigger
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_trigger.v1
+
+# `mounted_in` is filled from the Select root's accepted components. The
+# trigger's caption is a SelectValue, or text the caller composes itself
+# (a filter chip's fixed caption).
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.select_value.v1 # SelectValue
+  text: true
+
+invariants:
+  - id: renders-its-own-chevron
+    text: >-
+      The trigger always appends a chevron icon after its children; there is
+      no prop to remove or replace it.
+  - id: filter-keeps-the-caption-muted
+    text: >-
+      With the `filter` variant the caption stays in the muted foreground
+      color even after a value is chosen; with the `default` variant only
+      the placeholder is muted.
+  - id: aria-invalid-tints-border-destructive
+    text: >-
+      Setting `aria-invalid="true"` on the trigger switches its border and
+      focus ring to the destructive color, also while it has focus.
+  - id: as-wide-as-its-content
+    text: >-
+      select.module.css sizes the trigger to its content (`width:
+      fit-content`); a trigger that should fill its column needs a width
+      from `className`.
+
+anti_patterns:
+  - dont: Render the trigger with no accessible name
+    do_instead: >-
+      Pass `aria-label` on the trigger, or point a Label's `htmlFor` at the
+      trigger's `id`; the trigger is a real button, so a label can name it
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Select.Trigger renders a button with role combobox,
+      aria-expanded and aria-haspopup="listbox"; select.test.tsx asserts the
+      trigger is found by the combobox role and its aria-label name
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: Select.Icon
+    reason: Composed inside SelectTrigger around the kit's fixed chevron; it has no props of its own on the trigger.
+
+prop_statements:
+  children:
+    states: children is the trigger's caption, a SelectValue or text the caller composes
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more, which the compiler cannot state as one JSON type.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the trigger's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the trigger's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, disabled, placeholder, ...). A JSON
+      Schema `object` would reject the function form, so nothing is
+      asserted; the kit's own styling goes through select.module.css, not
+      through this.
+
+examples:
+  good:
+    - title: A compact trigger with a placeholder
+      code: |
+        <Select items={REGIONS}>
+          <SelectTrigger size="sm" aria-label="Region">
+            <SelectValue placeholder="Pick a region" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="eu-central">Frankfurt</SelectItem>
+          </SelectContent>
+        </Select>
+    - title: A toolbar filter chip with a caption the caller composes
+      code: |
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger variant="filter" aria-label="Status filter">
+            Status
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="open">Open</SelectItem>
+            <SelectItem value="closed">Closed</SelectItem>
+          </SelectContent>
+        </Select>
+  bad:
+    - title: A chevron icon added inside the trigger
+      code: |
+        <SelectTrigger aria-label="Region">
+          <SelectValue placeholder="Pick a region" />
+          <ChevronDownIcon />
+        </SelectTrigger>
+      why: >-
+        The trigger already renders its own chevron after its children, so
+        this draws two.
+
+family_membership:
+  name: select
+  role: part

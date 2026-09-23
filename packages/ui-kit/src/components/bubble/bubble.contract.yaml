@@ -1,0 +1,145 @@
+# Semantic overlay for Bubble (the root) - the hand-written half of one of
+# three contracts in the bubble family. The parts are bubble-content and
+# bubble-reactions; `family_membership` below is how a reader (or the
+# conformance test) walks between them. BubbleGroup is the fourth contract
+# of this directory and belongs to no family: it is a wrapper around whole
+# bubbles, not a part of one (see bubble-group.contract.yaml).
+#
+# Machine-extractable facts (the `variant` axis, its default, the prop list,
+# the forwarded div surface) do NOT belong here: the compiler takes those
+# from bubble.tsx and rejects an overlay that restates them. Bubble wraps no
+# primitive; `align` is a plain union the schema states in full.
+component: bubble
+
+intent: Frame one conversational turn as a speech bubble, painting its content surface and marking which side of the conversation it came from.
+
+typical_uses:
+  - One turn of a chat thread, such as a user's question or an assistant's reply
+  - A short quoted reply, suggestion or structured output shown as part of a conversation
+
+dont_use_when:
+  - situation: A full conversation row with an avatar, a sender name, a timestamp or row-level actions
+    instead:
+      target: Message, with the Bubble inside its MessageContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.message.v1
+  - situation: A status update, system note or labelled break between turns
+    instead:
+      target: Marker
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.marker.v1
+  - situation: A status or error message about the page, not a turn in a conversation
+    instead:
+      target: Alert
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1
+  - situation: A short inline label, tag or count
+    instead:
+      target: Badge
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.badge.v1
+  - situation: A bounded panel around content that is not part of a conversation
+    instead:
+      target: Card
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one. No text
+# flag: Bubble itself paints nothing, its text belongs in BubbleContent.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_content.v1 # BubbleContent
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_reactions.v1 # BubbleReactions
+
+# A Bubble stands in any flex column; the kit's BubbleGroup and
+# MessageContent both accept unconstrained content, so no kit mount point is
+# filled here.
+mounted_in:
+  - container: any parent in the consuming application
+    note: >-
+      A Bubble sits on its own, in a BubbleGroup with other turns from the
+      same sender, or in a Message row's MessageContent.
+
+invariants:
+  - id: paint-reaches-direct-content-only
+    text: >-
+      The bubble's own box has no fill, border or padding; every variant
+      paints only a BubbleContent that is a direct child of the Bubble
+      (bubble.module.css `.bubble.variant* > .bubbleContent`), so a
+      BubbleContent nested one element deeper renders unpainted.
+  - id: align-end-needs-a-flex-column-parent
+    text: >-
+      `align="end"` moves the bubble with `align-self: flex-end`, which takes
+      effect only when its parent is a flex column, as BubbleGroup and
+      MessageContent are; inside a plain block parent the bubble stays at
+      the start edge.
+  - id: speaker-corner-is-notched
+    text: >-
+      The direct BubbleContent's top corner on the `align` side is cut to
+      var(--radius-xs) through a logical corner (`border-start-start-radius`
+      for start, `border-start-end-radius` for end), so it mirrors under a
+      right-to-left direction.
+  - id: width-capped-at-80-percent
+    text: >-
+      The bubble sizes to its content up to 80% of its parent's width;
+      `variant="ghost"` lifts the cap to 100%, makes the content's border
+      transparent and removes its fill, padding and radius.
+  - id: null-variant-is-default
+    text: >-
+      An explicit `variant={null}` renders the default variant, in both the
+      class and the `data-variant` attribute.
+
+anti_patterns:
+  - dont: Put an avatar, sender name, timestamp or row actions inside Bubble
+    do_instead: Place them on the surrounding Message's own parts, and keep only the turn's content in the Bubble
+  - dont: Let a variant's color be the only signal of an error or a sender
+    do_instead: Keep the error or the sender in the text or the alignment as well, since a variant is a paint treatment and adds no text or icon of its own
+
+deprecations: {}
+
+# Contrast measured with src/__test-utils__/contrast.ts over theme.css's
+# light tokens, the 10% tint composited onto the page color. No test
+# renders the bubble under a right-to-left direction.
+attestations:
+  a11y:
+    outcome: failed
+    by: >-
+      `variant="destructive"` paints --danger text over a 10% --destructive
+      tint; measured with src/__test-utils__/contrast.ts on the light theme
+      it reaches 3.66:1 over --background and 4.00:1 over --card, below the
+      4.5:1 that its 14px body text needs (the dark theme reaches 4.92:1)
+  rtl:
+    outcome: unknown
+
+companions:
+  - export: bubbleVariants
+    typed_by: 'cva(...), returns (props: VariantProps<typeof bubbleVariants> & { className?: string }) => string'
+    description: >-
+      The class-name builder Bubble uses for its own wrapper. It emits the
+      wrapper's base and variant classes only: the paint lands on a direct
+      BubbleContent child, and the speaker-corner notch needs the
+      `data-align` attribute Bubble sets, neither of which the builder
+      supplies.
+
+examples:
+  good:
+    - title: A reply with a reaction at the end edge
+      code: |
+        <Bubble align="end">
+          <BubbleContent>Done, the stale route is gone.</BubbleContent>
+          <BubbleReactions role="img" aria-label="Reactions: thumbs up">
+            <span>👍</span>
+          </BubbleReactions>
+        </Bubble>
+    - title: Unframed assistant text spanning the row
+      code: |
+        <Bubble variant="ghost">
+          <BubbleContent>Here is a summary of the three changes.</BubbleContent>
+        </Bubble>
+  bad:
+    - title: Text placed straight into Bubble
+      code: <Bubble variant="secondary">Can you check the build?</Bubble>
+      why: >-
+        Bubble's own box has no fill, border or padding; the variant paints
+        only a direct BubbleContent, so this text renders bare.
+
+family_membership:
+  name: bubble
+  role: root

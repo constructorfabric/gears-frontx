@@ -1,0 +1,240 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.select_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "select-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The popup of a Select, portalled and positioned against its trigger, that lists the options.",
+  "typical_uses": [
+    "The list of options a SelectTrigger opens"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The list of actions a menu button opens",
+      "instead": {
+        "target": "DropdownMenuContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_content.v1"
+      }
+    },
+    {
+      "situation": "A list the user filters by typing",
+      "instead": {
+        "target": "ComboboxContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_content.v1"
+      }
+    },
+    {
+      "situation": "A floating panel holding fields, buttons or free-form content",
+      "instead": {
+        "target": "PopoverContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.popover_content.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_separator.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Select",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.select.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "selected-item-over-the-trigger",
+      "text": "Unless `alignItemWithTrigger` is false, a popup opened by mouse or keyboard overlaps the trigger so the chosen item sits over the trigger's caption, and `side`, `align` and the offsets do not apply; opened by touch, turned off, or short of space, the popup opens on `side` instead."
+    },
+    {
+      "id": "children-go-into-the-list",
+      "text": "Children render inside the primitive's listbox list, which the content always places between a SelectScrollUpButton and a SelectScrollDownButton of its own; the list, not the popup, is what scrolls."
+    },
+    {
+      "id": "portals-to-body-unless-container",
+      "text": "Without `container`, the popup portals into the node of the nearest enclosing portal, or the document body when there is none; a theme scoped to a subtree reaches the popup only when that subtree, or a node inside it, is passed as `container`."
+    },
+    {
+      "id": "as-wide-as-the-trigger",
+      "text": "select.module.css sets the popup's width to the trigger's width (`--anchor-width`) with a 9rem floor, and caps its height at the space available beside the trigger."
+    },
+    {
+      "id": "reduced-motion-keeps-the-fade",
+      "text": "The popup fades and scales on open and close; under `prefers-reduced-motion` select.module.css drops the transform transition and keeps the fade."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Keep the default positioning when the trigger sits inside a transformed or filtered container, such as an animated panel",
+      "do_instead": "Pass `positionMethod=\"fixed\"`; absolute positioning resolves against the transformed container instead of the page and misplaces the popup"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's Select.List renders role=\"listbox\" (aria-multiselectable under multiple); select.test.tsx asserts no listbox is found while the select is closed and that the listbox is found by its role once open"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the popup's rows, the parts listed under accepts",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+    },
+    "container": {
+      "states": "container is the DOM node, shadow root or ref to one that the popup portals into; an explicit null renders no popup until a node is passed",
+      "because": "`HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null` - live DOM nodes and ref objects, which no JSON Schema type covers."
+    },
+    "sideOffset": {
+      "states": "sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes",
+      "because": "`number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+    },
+    "alignOffset": {
+      "states": "alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes",
+      "because": "`number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+    },
+    "collisionBoundary": {
+      "states": "collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle",
+      "because": "`'clipping-ancestors' | Element | Element[] | Rect` mixes a string with live DOM elements, which no JSON Schema type covers."
+    },
+    "collisionPadding": {
+      "states": "collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object",
+      "because": "`number | { top?, right?, bottom?, left? }` - the compiler emits one JSON type per property."
+    },
+    "finalFocus": {
+      "states": "finalFocus decides where focus goes when the popup closes - true for the default, false for nowhere, a ref, or a function of the interaction type",
+      "because": "`boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | HTMLElement | null | void)` mixes a boolean with a ref object and a callback; the compiler emits one JSON type per property."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the popup's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the popup's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, side, align, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "Select.Portal",
+      "reason": "Composed inside SelectContent; only its `container` is exposed, as a prop of the content itself."
+    },
+    {
+      "part": "Select.Positioner",
+      "reason": "Composed inside SelectContent; its placement and collision props are exposed on the content itself."
+    },
+    {
+      "part": "Select.List",
+      "reason": "Composed inside SelectContent as the scrolling listbox that holds the children; it takes no props from the caller."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A popup opening below the trigger instead of over it",
+        "code": "<Select items={REGIONS}>\n  <SelectTrigger aria-label=\"Region\">\n    <SelectValue placeholder=\"Pick a region\" />\n  </SelectTrigger>\n  <SelectContent alignItemWithTrigger={false} align=\"start\">\n    <SelectItem value=\"eu-central\">Frankfurt</SelectItem>\n    <SelectItem value=\"us-east\">Virginia</SelectItem>\n  </SelectContent>\n</Select>\n"
+      },
+      {
+        "title": "A popup portalled into a themed subtree",
+        "code": "<SelectContent container={themedSectionRef}>\n  <SelectItem value=\"eu-central\">Frankfurt</SelectItem>\n</SelectContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A made-up position prop on the popup",
+        "code": "<SelectContent position=\"popper\">\n  <SelectItem value=\"eu-central\">Frankfurt</SelectItem>\n</SelectContent>\n",
+        "why": "The content takes no `position`; to open the popup on `side` rather than over the trigger, pass `alignItemWithTrigger={false}`."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "select",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {
+      "container": {
+        "typeText": "HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null | undefined",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SelectContent",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "container": {
+        "description": "Partially typed: HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. container is the DOM node, shadow root or ref to one that the popup portals into; an explicit null renders no popup until a node is passed. `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null` - live DOM nodes and ref objects, which no JSON Schema type covers."
+      },
+      "align": {
+        "type": "string",
+        "enum": [
+          "center",
+          "end",
+          "start"
+        ]
+      },
+      "alignItemWithTrigger": {
+        "type": "boolean"
+      },
+      "alignOffset": {
+        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+      },
+      "children": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the popup's rows, the parts listed under accepts. `React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      },
+      "collisionBoundary": {
+        "description": "TS: Boundary | undefined. The compiler emits one JSON type per property; this type is left to tsc. collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle. `'clipping-ancestors' | Element | Element[] | Rect` mixes a string with live DOM elements, which no JSON Schema type covers."
+      },
+      "collisionPadding": {
+        "description": "TS: Padding | undefined. The compiler emits one JSON type per property; this type is left to tsc. collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object. `number | { top?, right?, bottom?, left? }` - the compiler emits one JSON type per property."
+      },
+      "finalFocus": {
+        "description": "TS: boolean | RefObject<HTMLElement | null> | ((closeType: InteractionType) => boolean | void | HTMLElement | null) | undefined. The compiler emits one JSON type per property; this type is left to tsc. finalFocus decides where focus goes when the popup closes - true for the default, false for nowhere, a ref, or a function of the interaction type. `boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | HTMLElement | null | void)` mixes a boolean with a ref object and a callback; the compiler emits one JSON type per property."
+      },
+      "positionMethod": {
+        "type": "string",
+        "enum": [
+          "absolute",
+          "fixed"
+        ]
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, SelectPopupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the popup's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "side": {
+        "type": "string",
+        "enum": [
+          "bottom",
+          "inline-end",
+          "inline-start",
+          "left",
+          "right",
+          "top"
+        ]
+      },
+      "sideOffset": {
+        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: SelectPopupState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the popup's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, side, align, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

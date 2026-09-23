@@ -1,0 +1,93 @@
+# Semantic overlay for ComboboxChips - a part of the Combobox family, see
+# combobox.contract.yaml's `family_membership`. It wraps Base UI's
+# Combobox.Chips; the forwarded surface is its div.
+component: combobox-chips
+
+intent: The field of a multiple-value Combobox, holding one chip per chosen value and the inline input that takes the query.
+
+typical_uses:
+  - The field of a combobox that holds several values
+
+dont_use_when:
+  - situation: A combobox that holds one value
+    instead:
+      target: ComboboxInput
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_input.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_value.v1 # ComboboxValue
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_chip.v1 # ComboboxChip
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_chips_input.v1 # ComboboxChipsInput
+
+invariants:
+  - id: toolbar-role-while-chips-exist
+    text: >-
+      While at least one value is chosen the container renders with role
+      "toolbar", and the arrow keys move between its chips and the input.
+  - id: focus-ring-while-focus-is-inside
+    text: >-
+      The container shows the field's focus ring while focus is anywhere
+      inside it, and its border and ring turn destructive with
+      `aria-invalid="true"` on the container.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      container's own state, so its type is a union of a React element and
+      a callback - neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the container's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (empty for this part). A JSON Schema
+      `object` would reject the function form, so nothing is asserted; the
+      kit's own styling goes through combobox.module.css, not through this.
+
+examples:
+  good:
+    - title: A multiple-value field anchoring its popup
+      code: |
+        const anchor = useComboboxAnchor();
+        <Combobox multiple items={frameworks}>
+          <ComboboxChips ref={anchor}>
+            <ComboboxValue>
+              {(values) => values.map((value) => <ComboboxChip key={value}>{value}</ComboboxChip>)}
+            </ComboboxValue>
+            <ComboboxChipsInput aria-label="Frameworks" placeholder="Add a framework" />
+          </ComboboxChips>
+          <ComboboxContent anchor={anchor}>
+            <ComboboxEmpty>No frameworks found.</ComboboxEmpty>
+            <ComboboxList>
+              {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
+  bad:
+    - title: The single-line field inside the chips
+      code: |
+        <ComboboxChips>
+          <ComboboxInput aria-label="Frameworks" />
+        </ComboboxChips>
+      why: >-
+        ComboboxInput brings its own border, trailing buttons and wrapper,
+        drawn as a field of its own inside the chips' field; the input that
+        sits among the chips is ComboboxChipsInput.
+
+family_membership:
+  name: combobox
+  role: part

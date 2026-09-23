@@ -1,0 +1,100 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "bubble-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Draw the framed surface of a bubble that holds the turn's text or rich content, optionally as a link or button.",
+  "typical_uses": [
+    "The text of one conversation turn inside a Bubble",
+    "A clickable bubble, such as a suggestion the user can pick, rendered as a button or a link"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A clickable action that is not a turn in a conversation",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "Bubble",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "interactive-styling-on-button-or-link-only",
+      "text": "The pointer cursor, the hover fill and the focus ring apply only when the rendered element is a `button` or an `a` (bubble.module.css `.bubbleContent:is(button, a)`); the default div gets none of them and is not focusable."
+    },
+    {
+      "id": "long-content-wraps-inside-the-frame",
+      "text": "The surface is capped at its Bubble's width, breaks long unbroken words (`overflow-wrap: break-word`) and clips anything that still overflows (`overflow: hidden`)."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Attach an onClick to the default div to make a bubble clickable",
+      "do_instead": "Pass `render={<button type=\"button\" />}` or a link element, which is focusable and gets the kit's hover and focus styling"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "bubble.test.tsx asserts that BubbleContent rendered with `render={<button type=\"button\" />}` is found by role \"button\" with the accessible name \"Click here\" and keeps the content class"
+    },
+    "rtl": {
+      "outcome": "failed",
+      "by": "bubble.module.css `.bubbleContent:is(button, a)` sets the physical `text-align: left`, so a clickable bubble's text does not mirror under a right-to-left direction"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "useRender's render prop takes an element or a function that receives the props to spread (BubbleContent passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A suggestion the user can pick",
+        "code": "<Bubble variant=\"outline\">\n  <BubbleContent render={<button type=\"button\" onClick={onPick} />}>Show me the diff</BubbleContent>\n</Bubble>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A clickable div",
+        "code": "<Bubble variant=\"outline\">\n  <BubbleContent onClick={onPick}>Show me the diff</BubbleContent>\n</Bubble>\n",
+        "why": "The default div is not focusable and exposes no button role, and the kit's pointer cursor, hover fill and focus ring apply only to a rendered button or link."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "bubble",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit BubbleContent",
+    "type": "object",
+    "properties": {
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, {}> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. useRender's render prop takes an element or a function that receives the props to spread (BubbleContent passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}
