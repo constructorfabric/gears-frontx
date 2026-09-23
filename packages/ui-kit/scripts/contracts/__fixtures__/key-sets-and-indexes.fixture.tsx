@@ -1,6 +1,7 @@
 // Fixture for extract.test.ts: key sets an Omit or Pick names in ways the
 // checker resolves, and props types whose index keys admit names they do not
-// list - including a StringMapping key such as `Uncapitalize<string>`.
+// list - including a StringMapping key such as `Uncapitalize<string>`, and a
+// type parameter, alone or in an intersection.
 import type { ComponentProps } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 const v = cva('b', { variants: { variant: { a: 'a', b: 'b' }, size: { s: 's', m: 'm' } } });
@@ -56,6 +57,11 @@ export function MappedOverButton(props: NoHandlers & { [k: Uncapitalize<string>]
 export function TemplateOverButton(props: NoHandlers & { [k: `on${string}`]: unknown }) {
   return <button type="button" {...props} />;
 }
+// A type parameter may be instantiated with any subtype, handlers included,
+// alone or met in an intersection.
 export function Generic<P extends NoHandlers>(props: P) {
+  return <button type="button" {...props} />;
+}
+export function GenericIntersection<P extends object>(props: NoHandlers & P) {
   return <button type="button" {...props} />;
 }

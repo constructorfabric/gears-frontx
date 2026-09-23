@@ -2533,6 +2533,23 @@ function literalValue(expr: ts.Expression): { value: PropDefault } | undefined {
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes
 
+// Whether a props type may accept a name it does not list. A string-like
+// index key does - a string, or a template literal such as `on${string}`; a
+// number or symbol index admits no attribute name. So does any part of the
+// type that is not fully known where the component is written: a type
+// parameter (`props: P`), or one met in an intersection (`Base & P`), may be
+// instantiated with any subtype, handlers included, as may an indexed access
+// or a conditional type over one.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+function admitsUnlistedNames(type: ts.Type, checker: ts.TypeChecker): boolean {
+  if (type.flags & ts.TypeFlags.Instantiable) return true;
+  if (type.isUnionOrIntersection()) return type.types.some((member) => admitsUnlistedNames(member, checker));
+  return checker
+    .getIndexInfosOfType(type)
+    .some((info) => (info.keyType.flags & (ts.TypeFlags.String | ts.TypeFlags.TemplateLiteral | ts.TypeFlags.StringMapping)) !== 0);
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+}
+
 // The walk itself, over one already-resolved source file. Split from the
 // program building below so the same walk can serve a per-file program (the
 // artifact path) and a shared one (the counting path) without either being a
@@ -2598,15 +2615,7 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
           shape.form === 'alias' ? checker.getTypeOfSymbolAtLocation(shape.signature.getParameters()[0], param) : declaredType;
         const paramType = instantiated;
         const nonNullable = checker.getNonNullableType(paramType);
-        // Only a key a name can be - a string, or a template literal such as
-        // `on${string}`; a number or symbol index admits no attribute name.
-        admitsUnlistedProps = (nonNullable.isUnion() ? nonNullable.types : [nonNullable]).some((branch) =>
-          checker
-            .getIndexInfosOfType(branch)
-            .some(
-              (info) => (info.keyType.flags & (ts.TypeFlags.String | ts.TypeFlags.TemplateLiteral | ts.TypeFlags.StringMapping)) !== 0,
-            ),
-        );
+        admitsUnlistedProps = admitsUnlistedNames(nonNullable, checker);
         const walk: PropsTypeWalkResult = { kind: undefined, variantSources: [], axisFilters: new Map(), cannotExtract: [] };
         if (param.type && instantiated !== declaredType) {
           walkResolvedType(instantiated, param.type, checker, walk, new Set(), 0);

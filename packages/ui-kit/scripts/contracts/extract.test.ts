@@ -964,9 +964,11 @@ describe('extractComponent: key sets and index keys the checker resolves', () =>
     }
   });
 
-  it('counts a StringMapping or template-literal index key as admitting unlisted names, and nothing else', () => {
-    for (const name of ['MappedIdx', 'MappedOverButton', 'TemplateOverButton']) expect(byName(name).admitsUnlistedProps, name).toBe(true);
-    for (const name of ['UnionHandlers', 'NoHandlerButton', 'Generic']) expect(byName(name).admitsUnlistedProps, name).toBe(false);
+  it('counts a StringMapping or template-literal index key, or a type parameter alone or in an intersection, as admitting unlisted names, and nothing else', () => {
+    for (const name of ['MappedIdx', 'MappedOverButton', 'TemplateOverButton', 'Generic', 'GenericIntersection']) {
+      expect(byName(name).admitsUnlistedProps, name).toBe(true);
+    }
+    for (const name of ['UnionHandlers', 'NoHandlerButton']) expect(byName(name).admitsUnlistedProps, name).toBe(false);
   });
 });
 
