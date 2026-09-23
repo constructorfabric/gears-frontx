@@ -1,0 +1,106 @@
+# Semantic overlay for CollapsibleContent - a part of the Collapsible family,
+# see collapsible.contract.yaml's `family_membership` for how the three
+# contracts relate.
+component: collapsible-content
+
+intent: The panel its Collapsible shows while open and hides while closed, animating its height between the two.
+
+typical_uses:
+  - The body of a Collapsible, revealed when the user opens it
+
+dont_use_when:
+  - situation: The body of one of several headed sections
+    instead:
+      target: AccordionContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.accordion_content.v1
+
+# `mounted_in` is filled from Collapsible's own accepted components, not
+# authored here.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: closed-panel-leaves-the-dom
+    text: >-
+      Once its close transition ends, a closed panel is removed from the DOM.
+      With `keepMounted` it stays in the DOM under the `hidden` attribute;
+      with `hiddenUntilFound` it stays as `hidden="until-found"`, so the
+      browser's find-in-page can match its text and ask to open it - the
+      root's `onOpenChange` is called with true, and an uncontrolled root
+      opens. `hiddenUntilFound` overrides `keepMounted`.
+  - id: height-animates-via-base-ui-runtime-var
+    text: >-
+      Open and close animate the panel's height between 0 and Base UI's
+      `--collapsible-panel-height`, a measurement the primitive writes on the
+      panel element, not a theme token; the transition is 200ms and is
+      turned off under `prefers-reduced-motion: reduce`.
+  - id: panel-clips-its-overflow
+    text: >-
+      The panel always has `overflow: hidden`, open or closed, so anything a
+      descendant draws outside the panel's box (a focus outline at its edge,
+      a negative margin) is clipped.
+
+anti_patterns:
+  - dont: Put form controls whose values must survive a collapse in a panel without `keepMounted`
+    do_instead: >-
+      Set `keepMounted` (or `hiddenUntilFound`) on the panel, or hold the
+      values in state outside it - an unmounted panel takes its uncontrolled
+      inputs' values and focus with it
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      The primitive's Collapsible.Panel puts the id the trigger's
+      `aria-controls` names on the panel and the `hidden` attribute on it
+      while closed and kept mounted; collapsible.test.tsx asserts the panel
+      is absent from the DOM until opened and again after a second click
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the panel's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the panel's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, disabled, transitionStatus). A JSON
+      Schema `object` would reject the function form, so nothing is
+      asserted; the kit's own styling goes through collapsible.module.css,
+      not through this.
+
+examples:
+  good:
+    - title: A panel that keeps its inputs across a collapse
+      code: |
+        <Collapsible defaultOpen>
+          <CollapsibleTrigger>Advanced options</CollapsibleTrigger>
+          <CollapsibleContent keepMounted>
+            <Input aria-label="Custom endpoint" />
+          </CollapsibleContent>
+        </Collapsible>
+    - title: A panel the browser's find-in-page can open
+      code: |
+        <Collapsible>
+          <CollapsibleTrigger>Release notes</CollapsibleTrigger>
+          <CollapsibleContent hiddenUntilFound>Full release notes.</CollapsibleContent>
+        </Collapsible>
+  bad:
+    - title: A panel with no Collapsible around it
+      code: <CollapsibleContent>Details go here.</CollapsibleContent>
+      why: >-
+        CollapsibleContent reads the nearest Collapsible's open state through
+        Base UI context and throws when there is none, so it cannot render on
+        its own.
+
+family_membership:
+  name: collapsible
+  role: part

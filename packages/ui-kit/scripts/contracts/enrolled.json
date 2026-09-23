@@ -5,6 +5,7 @@
   "alert",
   "aspect-ratio",
   "checkbox",
+  "collapsible",
   "input",
   "kbd",
   "label",
@@ -16,5 +17,7 @@
   "switch",
   "tabs",
   "textarea",
-  "toggle"
+  "toggle",
+  "toggle-group",
+  "tooltip"
 ]
