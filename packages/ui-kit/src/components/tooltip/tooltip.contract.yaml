@@ -90,7 +90,7 @@ prop_statements:
     because: >-
       `React.ReactNode | PayloadChildRenderFunction<Payload>` - the function
       form receives `{ payload }` from whichever trigger opened the tooltip.
-      A React node and a function have no JSON Schema representation.
+      The compiler emits one JSON type per property, and a function has no JSON Schema representation.
   onOpenChange:
     states: onOpenChange is a callback called with the next open state and event details, not a value
     because: >-

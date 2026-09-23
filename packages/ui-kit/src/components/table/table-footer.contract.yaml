@@ -1,0 +1,62 @@
+# Semantic overlay for TableFooter - part of the Table family, see
+# table.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from the accepting member's own
+# `accepts`, not authored here.
+component: table-footer
+
+intent: Hold the summary rows under a table's data, such as totals.
+
+typical_uses:
+  - A totals row under the data rows
+
+dont_use_when:
+  - situation: Page controls for stepping through the rows
+    instead:
+      target: Pagination
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.pagination.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.table_row.v1 # TableRow
+
+invariants:
+  - id: footer-rows-are-a-muted-band
+    text: >-
+      Rows inside TableFooter take the muted fill and the label font
+      weight, take no hover or data-state tint, and the last one draws no
+      bottom rule.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A totals row
+      code: |
+        <TableFooter>
+          <TableRow>
+            <TableCell>Total</TableCell>
+            <TableCell>$400.00</TableCell>
+          </TableRow>
+        </TableFooter>
+  bad:
+    - title: A cell with no row around it
+      code: |
+        <TableFooter>
+          <TableCell>Total</TableCell>
+        </TableFooter>
+      why: >-
+        A <td> cannot be a child of <tfoot>; TableFooter hosts rows, so put
+        the cell in a TableRow.
+
+family_membership:
+  name: table
+  role: part

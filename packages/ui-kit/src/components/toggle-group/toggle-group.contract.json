@@ -98,7 +98,7 @@
     },
     "render": {
       "states": "render replaces the rendered element with one the caller supplies",
-      "because": "Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      "because": "Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
     }
   },
   "examples": {
@@ -213,7 +213,7 @@
         ]
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ToggleGroupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ToggleGroupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
       },
       "value": {
         "type": "array",

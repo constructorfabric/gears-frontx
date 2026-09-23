@@ -1,0 +1,184 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.toast_toaster.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "toast-toaster",
+  "intent": "Render the transient notifications a toast manager holds, stacked in a fixed region over the page.",
+  "typical_uses": [
+    "Mounted once near the application root, showing every toast fired through the shared `toast` manager",
+    "A second, isolated notification region bound to its own `createToastManager()` manager"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A status message that belongs to the current page and stays in its flow",
+      "instead": {
+        "target": "Alert",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1"
+      }
+    },
+    {
+      "situation": "A message the user must acknowledge or decide on before continuing",
+      "instead": {
+        "target": "AlertDialog",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog.v1"
+      }
+    },
+    {
+      "situation": "A validation message tied to one form control",
+      "instead": {
+        "target": "FieldError",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_error.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "invariants": [
+    {
+      "id": "toasts-are-fired-not-composed",
+      "text": "A toast is shown by calling `add` (or `promise`) on the manager Toaster is bound to; the kit exports no toast part to compose as JSX, and each card's title, description, type icon and action come from the toast object passed to `add`; every card also carries a close button named by `closeLabel`."
+    },
+    {
+      "id": "region-portals-regardless-of-position",
+      "text": "The notification region portals into `container`, or the document body without one, wherever Toaster sits in the tree; its children are rendered in place."
+    },
+    {
+      "id": "shared-manager-by-default",
+      "text": "Without `toastManager`, Toaster renders the shared `toast` manager's toasts; two Toasters bound to the same manager each render every toast, once per region."
+    },
+    {
+      "id": "toast-fired-with-no-toaster-is-dropped",
+      "text": "The manager keeps no queue: a toast added while no Toaster bound to that manager is mounted is dropped silently and never appears."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Mount a Toaster in each fragment of a composed application on the shared manager",
+      "do_instead": "Mount one Toaster for the shared `toast` manager, and give any extra region its own `createToastManager()` manager"
+    },
+    {
+      "dont": "Leave `label` and `closeLabel` at their English defaults in a non-English application",
+      "do_instead": "Pass translated `label` (the region's accessible name) and `closeLabel` (each close button's accessible name)"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "The primitive's Toast.Viewport (role=\"region\", aria-live=\"polite\") and Toast.Root (role=\"dialog\", or \"alertdialog\" for a toast with `priority: 'high'`, labelled by its title and described by its description), plus toast.test.tsx, which asserts the region's accessible name (\"Notifications\" by default, replaced by `label`), the dialog role of each card and the close button's accessible name (\"Close toast\" by default, replaced by `closeLabel`)"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is any React content, rendered in place; any depth of it can read the manager through useToastManager",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    },
+    "container": {
+      "states": "container is the node the notification region portals into, the document body when absent",
+      "because": "Base UI types it `HTMLElement | ShadowRoot | null` or a React ref object holding one, and the compiler emits one JSON type per property. Passing a themed subtree's node makes the toasts inherit that subtree's tokens."
+    },
+    "toastManager": {
+      "states": "toastManager is the manager object whose toasts this Toaster renders, the shared `toast` manager when absent",
+      "because": "A manager is an object of functions (`add`, `close`, `update`, `promise` and a `' subscribe'` function) returned by `createToastManager()`; no JSON Schema type covers a function."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "Toast.Provider",
+      "reason": "Toaster renders it around its children, bound to `toastManager`."
+    },
+    {
+      "part": "Toast.Portal and Toast.Viewport",
+      "reason": "The portalled notification region, named by `label`, that holds the toast cards."
+    },
+    {
+      "part": "Toast.Root, Toast.Content, Toast.Title, Toast.Description, Toast.Action and Toast.Close",
+      "reason": "One card per toast in the manager, laid out by the kit and filled from the toast object; the close button is named by `closeLabel` and the action button is rendered only when the toast carries `actionProps`."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "One Toaster at the root, toasts fired from anywhere",
+        "code": "<Toaster label=\"Notifications\" closeLabel=\"Close notification\">\n  <App />\n</Toaster>\n\ntoast.add({ type: 'success', title: 'Saved', description: 'Your changes have been saved.' });\n"
+      },
+      {
+        "title": "An isolated region with its own manager",
+        "code": "const panelToasts = createToastManager();\n\n<Toaster toastManager={panelToasts} container={panelNode} />\n\npanelToasts.add({ title: 'Export finished' });\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Composing a toast as JSX",
+        "code": "<Toaster>\n  <Toast title=\"Saved\" />\n</Toaster>\n",
+        "why": "The kit exports no Toast component; a toast is shown with `toast.add({ title: 'Saved' })` and rendered by the mounted Toaster."
+      }
+    ]
+  },
+  "companions": [
+    {
+      "export": "toast",
+      "typed_by": "ToastManager (the result of createToastManager())",
+      "description": "The shared manager every Toaster renders by default. `toast.add({ title, description, type, actionProps })` shows a toast and returns its id; `close`, `update` and `promise` act on toasts already shown. It can be called from anywhere, without a hook or a Toaster ancestor."
+    },
+    {
+      "export": "createToastManager",
+      "typed_by": "() => ToastManager",
+      "description": "Creates a manager independent of the shared `toast`, for a Toaster passed it as `toastManager`."
+    },
+    {
+      "export": "useToastManager",
+      "typed_by": "() => UseToastManagerReturnValue",
+      "description": "Reads the live toast list and the `add`, `close`, `update` and `promise` of the nearest Toaster's manager; it throws when called with no Toaster above it. It does not render toasts: the kit exports no toast parts to render them with."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {
+      "container": {
+        "typeText": "HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null | undefined",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": [
+      "default: prop \"toastManager\" defaults to \"toast\", which is not a literal - the contract states no default for it"
+    ]
+  },
+  "props": {
+    "title": "UiKit Toaster",
+    "type": "object",
+    "properties": {
+      "closeLabel": {
+        "type": "string",
+        "default": "Close toast"
+      },
+      "container": {
+        "description": "Partially typed: HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. container is the node the notification region portals into, the document body when absent. Base UI types it `HTMLElement | ShadowRoot | null` or a React ref object holding one, and the compiler emits one JSON type per property. Passing a themed subtree's node makes the toasts inherit that subtree's tokens."
+      },
+      "label": {
+        "type": "string",
+        "default": "Notifications"
+      },
+      "children": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is any React content, rendered in place; any depth of it can read the manager through useToastManager. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "limit": {
+        "type": "number"
+      },
+      "timeout": {
+        "type": "number"
+      },
+      "toastManager": {
+        "description": "TS: ToastManager<any> | undefined. The compiler emits one JSON type per property; this type is left to tsc. toastManager is the manager object whose toasts this Toaster renders, the shared `toast` manager when absent. A manager is an object of functions (`add`, `close`, `update`, `promise` and a `' subscribe'` function) returned by `createToastManager()`; no JSON Schema type covers a function."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

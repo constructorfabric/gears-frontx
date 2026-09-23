@@ -54,7 +54,7 @@
     },
     "children": {
       "states": "children is a React node - the column's label",
-      "because": "`ReactNode`, so an element is as valid as a string. Required, because a sort button with no label is a button whose only content is a direction arrow."
+      "because": "`ReactNode`, so an element is as valid as a string, and the compiler emits one JSON type per property. Required, because a sort button with no label is a button whose only content is a direction arrow."
     }
   },
   "unexposed_parts": [
@@ -97,7 +97,7 @@
     "type": "object",
     "properties": {
       "children": {
-        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. children is a React node - the column's label. `ReactNode`, so an element is as valid as a string. Required, because a sort button with no label is a button whose only content is a direction arrow."
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. children is a React node - the column's label. `ReactNode`, so an element is as valid as a string, and the compiler emits one JSON type per property. Required, because a sort button with no label is a button whose only content is a direction arrow."
       },
       "className": {
         "type": "string"

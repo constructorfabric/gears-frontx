@@ -1,0 +1,91 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.table_caption.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "table-caption",
+  "forwards_to": "gts.frontx.uikit.element.dom_caption.v1~",
+  "intent": "Give a table its accessible name as a real <caption>, drawn below the rows.",
+  "typical_uses": [
+    "A one-line title or description of what a table lists"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The column headings of the table",
+      "instead": {
+        "target": "TableHeader",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.table_header.v1"
+      }
+    },
+    {
+      "situation": "Naming the table's focusable scroll region for keyboard users",
+      "instead": {
+        "target": "Table's `label` prop",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "Table",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "drawn-below-the-rows",
+      "text": "The table sets caption-side bottom, so the caption paints below the rows wherever it sits among Table's children; it stays the <table>'s caption in the accessibility tree either way."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put the table's title in a heading above Table with nothing linking the two",
+      "do_instead": "Use TableCaption, or keep the heading and pass aria-labelledby with the heading's id to Table"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A caption as the table's first child",
+        "code": "<Table>\n  <TableCaption>Recent invoices</TableCaption>\n  <TableBody>\n    <TableRow>\n      <TableCell>INV001</TableCell>\n    </TableRow>\n  </TableBody>\n</Table>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A caption outside the table",
+        "code": "<TableCaption>Recent invoices</TableCaption>\n<Table>\n  <TableBody>\n    <TableRow>\n      <TableCell>INV001</TableCell>\n    </TableRow>\n  </TableBody>\n</Table>\n",
+        "why": "A <caption> outside a <table> is invalid markup and names nothing; TableCaption belongs inside Table."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "table",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit TableCaption",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

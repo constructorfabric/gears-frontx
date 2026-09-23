@@ -33,6 +33,10 @@ dont_use_when:
     instead:
       target: MessageScroller
       component: gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller.v1
+  - situation: A file or image attached to a message
+    instead:
+      target: Attachment
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.attachment.v1
 
 # The ONE authored statement of a nesting relationship: the compiler fills
 # every other contract's `mounted_in` from lists like this one. The row

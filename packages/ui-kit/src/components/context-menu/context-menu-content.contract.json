@@ -93,7 +93,7 @@
   "prop_statements": {
     "children": {
       "states": "children is the popup's rows, the parts listed under accepts",
-      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
     },
     "container": {
       "states": "container is the DOM node, shadow root or ref to one that the popup portals into; null and undefined both mean no container of its own",
@@ -121,11 +121,11 @@
     },
     "render": {
       "states": "render replaces the rendered element with one the caller supplies",
-      "because": "Base UI's render prop takes an element or a function of the popup's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      "because": "Base UI's render prop takes an element or a function of the popup's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
     },
     "style": {
       "states": "style accepts a function of the popup's state as well as a plain style object",
-      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, side, align, nested, instant, transitionStatus). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through context-menu.module.css, not through this."
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, side, align, nested, instant, transitionStatus). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through context-menu.module.css, not through this."
     }
   },
   "unexposed_parts": [
@@ -195,7 +195,7 @@
         "default": 4
       },
       "children": {
-        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the popup's rows, the parts listed under accepts. `React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the popup's rows, the parts listed under accepts. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
       },
       "collisionBoundary": {
         "description": "TS: Boundary | undefined. The compiler emits one JSON type per property; this type is left to tsc. collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle. `'clipping-ancestors' | Element | Element[] | Rect` mixes a string with live DOM elements, which no JSON Schema type covers."
@@ -217,7 +217,7 @@
         ]
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, MenuPopupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the popup's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, MenuPopupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the popup's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
       },
       "side": {
         "type": "string",
@@ -236,7 +236,7 @@
         "default": 0
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: MenuPopupState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the popup's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, side, align, nested, instant, transitionStatus). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through context-menu.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: MenuPopupState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the popup's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, side, align, nested, instant, transitionStatus). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through context-menu.module.css, not through this."
       }
     },
     "required": [],

@@ -1,0 +1,151 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "table",
+  "forwards_to": "gts.frontx.uikit.element.dom_table.v1~",
+  "intent": "Lay out tabular data as a styled native HTML table, rows that share the same columns.",
+  "typical_uses": [
+    "Rows of records that share the same columns and are read down a column as well as across a row",
+    "The markup layer under sorting, filtering or paging logic the caller owns"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Sorting, row selection and pagination that the component should own, from one columns/data pair",
+      "instead": {
+        "target": "DataTable",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.data_table.v1"
+      }
+    },
+    {
+      "situation": "One record's key/value details or a summary panel",
+      "instead": {
+        "target": "Card",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1"
+      }
+    },
+    {
+      "situation": "A list of similar entries that do not share columns (media, a title and a trailing action per row)",
+      "instead": {
+        "target": "Item",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_caption.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_body.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_footer.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "props-land-on-the-table-not-the-wrapper",
+      "text": "Table renders a horizontally scrolling div around the <table>. Every prop other than `label`, `density` and `variant` - className, style, aria attributes, event handlers - lands on the inner <table>; the wrapper takes none of them."
+    },
+    {
+      "id": "wrapper-is-always-a-focus-stop",
+      "text": "The wrapper always carries tabIndex 0, whether or not the table overflows, so keyboard users can scroll it with the arrow keys. `label` gives the wrapper role=\"region\" and an aria-label; without it the wrapper has no role and no name. `label` names the wrapper only - the table's own accessible name comes from TableCaption or from aria-label / aria-labelledby passed to Table."
+    },
+    {
+      "id": "density-and-variant-are-independent",
+      "text": "`variant=\"collection\"` switches the table to a fixed layout on a 960px minimum width, gives the header cells a taller band on the card fill, sets body rows to a 4rem height and lets cell text wrap. `density=\"compact\"` lowers the header height and the cells' block padding and applies inside either variant; in the collection view the body rows keep their 4rem height."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Wrap Table in your own div and put role=\"region\" and aria-label on that div",
+      "do_instead": "Pass `label` to Table - the focusable scroll wrapper is Table's own, and a name on an outer div lands on an element that never takes focus"
+    },
+    {
+      "dont": "Pass a max-height or overflow-y through Table's style to cap a long table",
+      "do_instead": "Wrap Table in your own div with max-height and overflow-y; that div scrolls vertically while Table's wrapper scrolls horizontally"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "table.test.tsx asserts getByRole('table') with three rows, two columnheaders and four cells under it, and that `label` exposes the wrapper as getByRole('region', { name: 'Quarterly results' })"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "the horizontal scroll wrapper div",
+      "reason": "Table renders a div around its <table> with overflow-x auto and tabIndex 0; it is not exported, and `label` is the only prop that reaches it."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A captioned table with a header, a body and a totals footer",
+        "code": "<Table>\n  <TableCaption>Recent invoices</TableCaption>\n  <TableHeader>\n    <TableRow>\n      <TableHead>Invoice</TableHead>\n      <TableHead>Amount</TableHead>\n    </TableRow>\n  </TableHeader>\n  <TableBody>\n    <TableRow>\n      <TableCell>INV001</TableCell>\n      <TableCell>$250.00</TableCell>\n    </TableRow>\n  </TableBody>\n  <TableFooter>\n    <TableRow>\n      <TableCell>Total</TableCell>\n      <TableCell>$250.00</TableCell>\n    </TableRow>\n  </TableFooter>\n</Table>\n"
+      },
+      {
+        "title": "A compact collection view with a named scroll region",
+        "code": "<Table variant=\"collection\" density=\"compact\" label=\"Projects\">\n  <TableBody>\n    <TableRow>\n      <TableCell>Atlas</TableCell>\n    </TableRow>\n  </TableBody>\n</Table>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The region name put on an outer div",
+        "code": "<div role=\"region\" aria-label=\"Invoices\">\n  <Table>\n    <TableBody>\n      <TableRow>\n        <TableCell>INV001</TableCell>\n      </TableRow>\n    </TableBody>\n  </Table>\n</div>\n",
+        "why": "The element that takes keyboard focus is Table's own wrapper inside this div, and it stays nameless; pass `label=\"Invoices\"` to Table instead."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "table",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_body.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_caption.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_cell.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_footer.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_head.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_row.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof tableVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Table",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "collection"
+        ],
+        "default": "default"
+      },
+      "density": {
+        "type": "string",
+        "enum": [
+          "compact",
+          "default"
+        ]
+      },
+      "label": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

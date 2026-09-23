@@ -1,0 +1,151 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "scroll-area",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Make a bounded region scroll with the kit's own scrollbar in place of the platform's native one.",
+  "typical_uses": [
+    "A fixed-height or fixed-width panel whose content can outgrow it (a long list, a log, a wide table)"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The page's own document scroll",
+      "instead": {
+        "target": "the browser's native document scrolling",
+        "note": "No kit component replaces it; wrapping the whole page moves scrolling off the document, so the browser no longer restores the scroll position on history navigation."
+      }
+    },
+    {
+      "situation": "Content that never outgrows its box",
+      "instead": {
+        "target": "a plain div",
+        "note": "The scroll machinery measures and positions a scrollbar that never shows."
+      }
+    },
+    {
+      "situation": "A chat transcript that should follow the newest message while the user is at the bottom",
+      "instead": {
+        "target": "MessageScroller",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "invariants": [
+    {
+      "id": "children-render-inside-the-viewport",
+      "text": "Every child, including an extra ScrollBar, is rendered inside the scrolling viewport element, not as a direct child of the root."
+    },
+    {
+      "id": "renders-its-own-vertical-scroll-bar",
+      "text": "ScrollArea always composes one vertical ScrollBar and the corner of its own; a horizontal scrollbar appears only when a consumer adds a ScrollBar with `orientation=\"horizontal\"`."
+    },
+    {
+      "id": "scroll-bar-shown-only-while-overflowing",
+      "text": "The built-in vertical ScrollBar is not mounted while the content does not overflow vertically; it takes no `keepMounted` from ScrollArea."
+    },
+    {
+      "id": "no-intrinsic-size",
+      "text": "The root sets no height or width of its own (scroll-area.module.css gives `.root` only `position: relative`), so it scrolls only once a size is imposed on it by `style`, `className` or its layout parent."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave the ScrollArea unsized and expect it to scroll",
+      "do_instead": "Give it a definite height or width (a fixed size, or a stretched flex or grid cell); a `max-height` alone does not work, because the viewport's `height: 100%` needs a definite height to resolve against"
+    },
+    {
+      "dont": "Add a second vertical ScrollBar as a child",
+      "do_instead": "Add only a horizontal one; ScrollArea already renders the vertical bar"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "overflowEdgeThreshold": {
+      "states": "overflowEdgeThreshold is a pixel threshold, either one number for every edge or an object of per-edge numbers",
+      "because": "Base UI types it `number | Partial<{ xStart; xEnd; yStart; yEnd }>`, and the compiler emits one JSON type per property. It sets how far the content must be scrolled past an edge before the root's overflow edge attributes apply."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the scroll area's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the scroll area's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (scrolling, hasOverflowX, hasOverflowY, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through scroll-area.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "ScrollArea.Viewport",
+      "reason": "The scrolling element; ScrollArea renders it around its children with the kit's viewport class, and the kit exports no component for it."
+    },
+    {
+      "part": "ScrollArea.Corner",
+      "reason": "Rendered once by ScrollArea where the two scrollbars meet; Base UI sizes it from the measured scrollbars and the kit gives it no class."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A fixed-height list",
+        "code": "<ScrollArea style={{ height: '18rem', width: '16rem' }}>\n  <ul>\n    {items.map((item) => (\n      <li key={item.id}>{item.label}</li>\n    ))}\n  </ul>\n</ScrollArea>\n"
+      },
+      {
+        "title": "Wide content scrolling on both axes",
+        "code": "<ScrollArea style={{ height: '12rem', width: '24rem' }}>\n  <table>{rows}</table>\n  <ScrollBar orientation=\"horizontal\" />\n</ScrollArea>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Importing the viewport part",
+        "code": "<ScrollArea>\n  <ScrollAreaViewport>{content}</ScrollAreaViewport>\n</ScrollArea>\n",
+        "why": "The kit exports no ScrollAreaViewport; ScrollArea renders the viewport itself around its children."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "scroll_area",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area_scroll_bar.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ScrollArea",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "overflowEdgeThreshold": {
+        "description": "TS: number | Partial<{ xStart: number; xEnd: number; yStart: number; yEnd: number; }> | undefined. The compiler emits one JSON type per property; this type is left to tsc. overflowEdgeThreshold is a pixel threshold, either one number for every edge or an object of per-edge numbers. Base UI types it `number | Partial<{ xStart; xEnd; yStart; yEnd }>`, and the compiler emits one JSON type per property. It sets how far the content must be scrolled past an edge before the root's overflow edge attributes apply."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ScrollAreaRootState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the scroll area's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ScrollAreaRootState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the scroll area's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (scrolling, hasOverflowX, hasOverflowY, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through scroll-area.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

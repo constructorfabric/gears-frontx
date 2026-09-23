@@ -53,7 +53,7 @@
   "prop_statements": {
     "children": {
       "states": "children is any React content; every Tooltip inside it, at any depth, joins the group",
-      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
     }
   },
   "examples": {
@@ -85,7 +85,7 @@
     "type": "object",
     "properties": {
       "children": {
-        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is any React content; every Tooltip inside it, at any depth, joins the group. `React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is any React content; every Tooltip inside it, at any depth, joins the group. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
       },
       "closeDelay": {
         "type": "number"

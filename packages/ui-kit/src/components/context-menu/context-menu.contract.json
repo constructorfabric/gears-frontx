@@ -80,7 +80,7 @@
   "prop_statements": {
     "children": {
       "states": "children is the root's content, either React nodes or a function of the active trigger's payload that returns them",
-      "because": "`React.ReactNode | PayloadChildRenderFunction<Payload>` - a React node and a function have no JSON Schema representation. ContextMenuTrigger carries no payload, so in this family the function form receives an undefined payload."
+      "because": "`React.ReactNode | PayloadChildRenderFunction<Payload>` - the compiler emits one JSON type per property, and a function has no JSON Schema representation. ContextMenuTrigger carries no payload, so in this family the function form receives an undefined payload."
     },
     "onOpenChange": {
       "states": "onOpenChange is a callback called with the next open state and event details, not a value",
@@ -158,7 +158,7 @@
         "description": "TS: RefObject<MenuRootActions | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. actionsRef is a ref the root fills with imperative `close` and `unmount` actions. `React.RefObject<MenuRoot.Actions | null>` - a ref object holding functions, which no JSON Schema type covers."
       },
       "children": {
-        "description": "TS: ReactNode | PayloadChildRenderFunction<unknown>. The compiler emits one JSON type per property; this type is left to tsc. children is the root's content, either React nodes or a function of the active trigger's payload that returns them. `React.ReactNode | PayloadChildRenderFunction<Payload>` - a React node and a function have no JSON Schema representation. ContextMenuTrigger carries no payload, so in this family the function form receives an undefined payload."
+        "description": "TS: ReactNode | PayloadChildRenderFunction<unknown>. The compiler emits one JSON type per property; this type is left to tsc. children is the root's content, either React nodes or a function of the active trigger's payload that returns them. `React.ReactNode | PayloadChildRenderFunction<Payload>` - the compiler emits one JSON type per property, and a function has no JSON Schema representation. ContextMenuTrigger carries no payload, so in this family the function form receives an undefined payload."
       },
       "closeParentOnEsc": {
         "type": "boolean"

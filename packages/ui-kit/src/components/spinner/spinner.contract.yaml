@@ -102,7 +102,7 @@ prop_statements:
   label:
     states: label is a React node, not a string
     because: >-
-      `ReactNode` has no JSON Schema representation - a string, a number, a
+      `ReactNode` is a union, and the compiler emits one JSON type per property - a string, a number, a
       fragment or `false`/`null`/`undefined` (all of which count as absent,
       see the label-or-description-composes-the-block invariant) are all
       valid and only tsc can tell them apart. Its presence is what switches

@@ -73,11 +73,11 @@
     },
     "emptyMessage": {
       "states": "emptyMessage is a React node, not a string",
-      "because": "`ReactNode` - an element, a string or a fragment, all valid and indistinguishable to JSON Schema. It replaces the whole \"no results\" row body, so an element is the usual case."
+      "because": "`ReactNode` - an element, a string or a fragment, all valid; the compiler emits one JSON type per property. It replaces the whole \"no results\" row body, so an element is the usual case."
     },
     "previousLabel": {
       "states": "previousLabel is a React node, not a string",
-      "because": "`ReactNode`, so an icon or an element is as valid as a string. It is the pagination button's own label, which is why it is a node rather than a translated string this component would have to own."
+      "because": "`ReactNode`, so an icon or an element is as valid as a string, and the compiler emits one JSON type per property. It is the pagination button's own label, which is why it is a node rather than a translated string this component would have to own."
     },
     "nextLabel": {
       "states": "nextLabel is a React node, not a string",
@@ -178,7 +178,7 @@
         "description": "Partially typed: TData[]. No JSON Schema type covers it beyond the kind above; shape checked by tsc, see x-uikit.partially_typed_props. data is an array of the caller's own row type. `TData[]` - an array, which the schema does state, of a type parameter the caller picks, which it cannot. The rows must be the same `TData` the `columns` were built for; that pairing is a call-site type error, not something this schema can check."
       },
       "emptyMessage": {
-        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. emptyMessage is a React node, not a string. `ReactNode` - an element, a string or a fragment, all valid and indistinguishable to JSON Schema. It replaces the whole \"no results\" row body, so an element is the usual case.",
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. emptyMessage is a React node, not a string. `ReactNode` - an element, a string or a fragment, all valid; the compiler emits one JSON type per property. It replaces the whole \"no results\" row body, so an element is the usual case.",
         "default": "No results."
       },
       "enableRowSelection": {
@@ -194,7 +194,7 @@
         "default": 10
       },
       "previousLabel": {
-        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. previousLabel is a React node, not a string. `ReactNode`, so an icon or an element is as valid as a string. It is the pagination button's own label, which is why it is a node rather than a translated string this component would have to own.",
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. previousLabel is a React node, not a string. `ReactNode`, so an icon or an element is as valid as a string, and the compiler emits one JSON type per property. It is the pagination button's own label, which is why it is a node rather than a translated string this component would have to own.",
         "default": "Previous"
       },
       "selectionSummary": {

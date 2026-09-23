@@ -54,7 +54,7 @@ prop_statements:
     states: children is the submenu's sub-trigger and sub-content
     because: >-
       `React.ReactNode` is a union of elements, strings, numbers, fragments
-      and more, which the compiler cannot state as one JSON type.
+      and more; the compiler emits one JSON type per property.
   onOpenChange:
     states: onOpenChange is a callback called with the submenu's next open state and event details, not a value
     because: >-

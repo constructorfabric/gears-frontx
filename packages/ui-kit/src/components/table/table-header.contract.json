@@ -1,0 +1,81 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.table_header.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "table-header",
+  "forwards_to": "gts.frontx.uikit.element.dom_thead.v1~",
+  "intent": "Hold the row or rows of column headings at the top of a table.",
+  "typical_uses": [
+    "The heading row of a table, one TableHead per column"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A title or description of the whole table",
+      "instead": {
+        "target": "TableCaption",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.table_caption.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_row.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Table",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1"
+    }
+  ],
+  "invariants": [],
+  "anti_patterns": [
+    {
+      "dont": "Put the column headings in the first TableBody row as TableCell",
+      "do_instead": "Put them in TableHeader > TableRow > TableHead, so each cell is announced with its column heading"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "One heading row",
+        "code": "<TableHeader>\n  <TableRow>\n    <TableHead>Invoice</TableHead>\n    <TableHead>Status</TableHead>\n  </TableRow>\n</TableHeader>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Headings written as data cells",
+        "code": "<TableBody>\n  <TableRow>\n    <TableCell>Invoice</TableCell>\n    <TableCell>Status</TableCell>\n  </TableRow>\n</TableBody>\n",
+        "why": "Data cells in the body are not column headings: nothing is exposed as a columnheader, and the row takes the body's hover and state tints."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "table",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit TableHeader",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

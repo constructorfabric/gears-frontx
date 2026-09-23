@@ -100,14 +100,13 @@ prop_statements:
     because: >-
       Base UI's render prop takes an element or a function of the
       separator's own state, so its type is a union of a React element and a
-      callback - neither expressible in JSON Schema.
+      callback - the compiler emits one JSON type per property.
   style:
     states: style accepts a function of the separator's state as well as a plain style object
     because: >-
       Base UI widens React's `CSSProperties` to
       `CSSProperties | ((state) => CSSProperties)` so a caller can style off
-      the primitive's own state (orientation). A JSON Schema `object` would
-      reject the function form, so nothing is asserted; the kit's own
+      the primitive's own state (orientation). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
       styling goes through separator.module.css, not through this.
 
 examples:

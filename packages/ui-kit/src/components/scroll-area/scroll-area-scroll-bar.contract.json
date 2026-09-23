@@ -1,0 +1,114 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area_scroll_bar.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "scroll-area-scroll-bar",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Add a scrollbar for the second axis of a ScrollArea.",
+  "typical_uses": [
+    "The horizontal scrollbar of a ScrollArea whose content is wider than it"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A vertical scrollbar for a ScrollArea",
+      "instead": {
+        "target": "ScrollArea",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area.v1",
+        "note": "ScrollArea already renders its own vertical ScrollBar."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "invariants": [
+    {
+      "id": "requires-a-scroll-area-ancestor",
+      "text": "ScrollBar reads its ScrollArea through Base UI context; rendered with no ScrollArea around it, the primitive throws."
+    },
+    {
+      "id": "hidden-until-its-axis-overflows",
+      "text": "Without `keepMounted` the bar is not mounted while the content does not overflow along its own axis; with `keepMounted` it stays in the DOM either way."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the scrollbar's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the scrollbar's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation, scrolling, hovering, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through scroll-area.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "ScrollArea.Thumb",
+      "reason": "The draggable thumb; ScrollBar renders it as its only child with the kit's thumb class, and the kit exports no component for it."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A horizontal bar beside the built-in vertical one",
+        "code": "<ScrollArea style={{ height: '12rem', width: '24rem' }}>\n  <table>{rows}</table>\n  <ScrollBar orientation=\"horizontal\" />\n</ScrollArea>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A scrollbar with no ScrollArea around it",
+        "code": "<ScrollBar orientation=\"horizontal\" />",
+        "why": "ScrollBar has no scroll state of its own; with no ScrollArea ancestor the primitive throws instead of rendering."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "scroll_area",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ScrollBar",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "keepMounted": {
+        "type": "boolean"
+      },
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ],
+        "default": "vertical"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ScrollAreaScrollbarState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the scrollbar's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ScrollAreaScrollbarState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the scrollbar's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation, scrolling, hovering, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through scroll-area.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

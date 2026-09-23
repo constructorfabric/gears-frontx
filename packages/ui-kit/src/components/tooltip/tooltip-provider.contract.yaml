@@ -61,7 +61,7 @@ prop_statements:
     states: children is any React content; every Tooltip inside it, at any depth, joins the group
     because: >-
       `React.ReactNode` is a union of elements, strings, numbers, fragments
-      and more, which the compiler cannot state as one JSON type.
+      and more; the compiler emits one JSON type per property.
 
 examples:
   good:

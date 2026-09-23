@@ -104,13 +104,14 @@ prop_statements:
   emptyMessage:
     states: emptyMessage is a React node, not a string
     because: >-
-      `ReactNode` - an element, a string or a fragment, all valid and
-      indistinguishable to JSON Schema. It replaces the whole
+      `ReactNode` - an element, a string or a fragment, all valid; the
+      compiler emits one JSON type per property. It replaces the whole
       "no results" row body, so an element is the usual case.
   previousLabel:
     states: previousLabel is a React node, not a string
     because: >-
-      `ReactNode`, so an icon or an element is as valid as a string. It is
+      `ReactNode`, so an icon or an element is as valid as a string, and the
+      compiler emits one JSON type per property. It is
       the pagination button's own label, which is why it is a node rather
       than a translated string this component would have to own.
   nextLabel:

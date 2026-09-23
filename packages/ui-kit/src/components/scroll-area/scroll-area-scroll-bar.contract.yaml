@@ -1,0 +1,87 @@
+# Semantic overlay for ScrollBar - the other half of the ScrollArea family,
+# see scroll-area.contract.yaml's `family_membership` for how the two
+# contracts relate. The export's name does not extend the directory's, so
+# the stem keeps the directory prefix and `export` names the export.
+component: scroll-area-scroll-bar
+export: ScrollBar
+
+intent: Add a scrollbar for the second axis of a ScrollArea.
+
+typical_uses:
+  - The horizontal scrollbar of a ScrollArea whose content is wider than it
+
+dont_use_when:
+  - situation: A vertical scrollbar for a ScrollArea
+    instead:
+      target: ScrollArea
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area.v1
+      note: ScrollArea already renders its own vertical ScrollBar.
+
+# The component renders its own Thumb as the only child; a children value
+# passed through the forwarded surface is overridden by that fixed child.
+accepts:
+  content: nothing
+
+invariants:
+  - id: requires-a-scroll-area-ancestor
+    text: >-
+      ScrollBar reads its ScrollArea through Base UI context; rendered with
+      no ScrollArea around it, the primitive throws.
+  - id: hidden-until-its-axis-overflows
+    text: >-
+      Without `keepMounted` the bar is not mounted while the content does
+      not overflow along its own axis; with `keepMounted` it stays in the
+      DOM either way.
+
+anti_patterns: []
+
+deprecations: {}
+
+# scroll-area.test.tsx asserts the scrollbar and thumb classes and
+# data-orientation only; nothing checks ARIA or right-to-left layout.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      scrollbar's own state, so its type is a union of a React element and
+      a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the scrollbar's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (orientation, scrolling, hovering, ...). The compiler emits one JSON type per property, so nothing is
+      asserted; the kit's own styling goes through scroll-area.module.css,
+      not through this.
+
+unexposed_parts:
+  - part: ScrollArea.Thumb
+    reason: >-
+      The draggable thumb; ScrollBar renders it as its only child with the
+      kit's thumb class, and the kit exports no component for it.
+
+examples:
+  good:
+    - title: A horizontal bar beside the built-in vertical one
+      code: |
+        <ScrollArea style={{ height: '12rem', width: '24rem' }}>
+          <table>{rows}</table>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+  bad:
+    - title: A scrollbar with no ScrollArea around it
+      code: <ScrollBar orientation="horizontal" />
+      why: >-
+        ScrollBar has no scroll state of its own; with no ScrollArea
+        ancestor the primitive throws instead of rendering.
+
+family_membership:
+  name: scroll_area
+  role: part

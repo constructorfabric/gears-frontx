@@ -571,14 +571,17 @@ describe('an overlay naming an export its stem cannot spell', () => {
   it('selects the export by that name, while the stem stays under the directory', () => {
     // toast.tsx exports Toaster, whose own name does not extend the
     // directory's: the stem `toast-toaster` keeps it resolvable to one
-    // directory, and the name is what picks the export.
+    // directory, and the name is what picks the export. The stem spelled in
+    // PascalCase names no export of toast.tsx.
     expect(resolveTargetExtraction('toast', 'toast-toaster', 'Toaster').name).toBe('Toaster');
-    expect(() => resolveTargetExtraction('toast', 'toast-toaster')).toThrow(/no exported component named "ToastToaster"/);
+    expect(() => resolveTargetExtraction('toast', 'toast-toaster', 'ToastToaster')).toThrow(/no exported component named "ToastToaster"/);
   });
 
-  it('defaults to the stem in PascalCase where no overlay names one', () => {
-    expect(exportNameOf('toast', 'toast-toaster')).toBe('ToastToaster');
+  it('defaults to the stem in PascalCase where no overlay names one, and reads the name an overlay gives', () => {
+    // No overlay exists for this stem, and label's overlay writes no `export`.
+    expect(exportNameOf('toast', 'toast-region')).toBe('ToastRegion');
     expect(exportNameOf('label')).toBe('Label');
+    expect(exportNameOf('toast', 'toast-toaster')).toBe('Toaster');
   });
 });
 
